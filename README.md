@@ -11,14 +11,14 @@ Morf is a brand-new open source project.
 
 It is proven technology and has been in mission-critical production applications for many years as part of our flagship product.  **However**, as an open source project, it is in a very early **pre-alpha** state, as we go through the process of disentangling it from parts of the rest of our stack and tidying up the code for long-term support. Until then, consider the API unstable.
 
-We are doing this tidying work in the open, because we believe this is the right thing to do.  Please [get involved](Contributing.md) if you would like to help steer the project at this early stage.
+We are doing this tidying work in the open, because we believe this is the right thing to do.  Please [get involved](https://github.com/alfasoftware/morf/wiki/Contributing) if you would like to help steer the project at this early stage.
 
 See the [Roadmap](https://github.com/alfasoftware/morf/wiki/Roadmap) for more information.
 
 ## Getting Started
-Documentation is currently extremely sparse, not least because the APIs are not quite _ready_ to document.  One of the first items on the [roadmap](Roadmap.md) is to agree our new user "hello world" user stories, write them up and make sure the necessary APIs are in place to support them.
+Documentation is currently extremely sparse, not least because the APIs are not quite _ready_ to document.  One of the first items on the [roadmap](https://github.com/alfasoftware/morf/wiki/Roadmap) is to agree our new user "hello world" user stories, write them up and make sure the necessary APIs are in place to support them.
 
-As we work on those, we will be expanding the [Start here](Start-Here.md) part of the Wiki.
+As we work on those, we will be expanding the [Start here](https://github.com/alfasoftware/morf/wiki/Start-Here) part of the Wiki.
 
 ## Key features
 
@@ -48,4 +48,4 @@ As we work on those, we will be expanding the [Start here](Start-Here.md) part o
 - Database access at run-time using the same DSL used in upgrades
 
 ## Contributing
-If you're interested in contributing to the project, please read the [contribution guide](https://github.com/alfasoftware/morf/wiki/Contributions).
+If you're interested in contributing to the project, please read the [contribution guide](https://github.com/alfasoftware/morf/wiki/Contributing).
