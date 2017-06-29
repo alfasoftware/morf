@@ -1,0 +1,51 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<head>
+  <title>Database Support Library</title>
+</head>
+
+<body>
+Provides interfaces and classes for managing databases and datasets.
+
+<p>Functionality is provided in the following areas:</p>
+<ol>
+  <li>Database meta data functionality defined by interfaces in the package <a href="com/chpconsulting/database/metadata/package.html">
+    com.chpconsulting.database.metadata</a>.</li>
+	<li>Database deployment and upgrade functionality is available through <a href="com/chpconsulting/database/jdbc/FullDeployment.html">FullDeployment</a>
+    and a class that hasn't been implemented yet.</li>
+	<li>Data set functionality is available for streaming data between data bases and file systems in the package in the package 
+    <a href="com/chpconsulting/database/dataset/package.html">com.chpconsulting.database.dataset</a>.</li>
+</ol>
+
+<h3>Key Data Set Concepts</h3>
+<p>Cryo functionality is divided into the following behavioural categories:</p>
+
+<h4>Producers</h4>
+<p>Producers define sources of data. The main producer interface is <a href="com/chpconsulting/cryo/dataset/DataSetProducer.html">DataSetProducer</a>.
+Producers allow random access to tables and then provide iterators over the records within those tables.</p>
+
+<h4>Consumers</h4>
+<p>Consumers define destinations for data. The main consumer interface is <a href="com/chpconsulting/cryo/dataset/DataSetConsumer.html">DataSetConsumer</a>.
+Consumers are modelled on SAX semantics and expect to have data set 'events' pushed onto them.</p>
+
+<h4>Connectors</h4>
+<p>Connectors link producers to consumers. The main connector class is <a href="com/chpconsulting/cryo/dataset/DataSetConnector.html">DataSetConnector</a>.
+Given a producer and a consumer connectors can transmit all information from one to the other.</p>
+
+<h4>Adapters</h4>
+<p>Adapters typically modify a data set in transit either by wrapping a data set producer or by wrapping a data set consumer. They can then be added to 
+the chain Producer -> Adapter -> Connector -> Consumer or Producer -> Connector -> Adapter -> Consumer or even both.</p>
+
+<h3>Typical Usage</h3>
+<h4>Extracting data from a database to an XML file</h4>
+<blockquote><pre><code>DataSetProducer producer = new DatabaseDataSetProducer(connectionResources);
+DataSetConsumer consumer = new XmlDataSetConsumer(writer);
+new DataSetConnector(producer, consumer).connect();</code></pre></blockquote>
+
+<h4>Inserting data from an XML file to a database</h4>
+<blockquote><pre><code>DataSetProducer producer = new XmlDataSetProducer(reader);
+DataSetConsumer consumer = new DatabaseDataSetConsumer(connectionResources);
+new DataSetConnector(producer, consumer).connect();</code></pre></blockquote>
+  
+</body>
+</html>

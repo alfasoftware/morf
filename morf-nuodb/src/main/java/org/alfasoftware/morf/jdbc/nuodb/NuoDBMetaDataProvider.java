@@ -1,0 +1,192 @@
+/* Copyright 2017 Alfa Financial Software
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.alfasoftware.morf.jdbc.nuodb;
+
+import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.LinkedList;
+import java.util.List;
+
+import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
+import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import com.google.common.base.Function;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Collections2;
+import com.google.common.collect.Multimap;
+
+/**
+ * Database meta-data layer for NUODB.
+ *
+ * @author Copyright (c) Alfa Financial Software 2017
+ */
+class NuoDBMetaDataProvider extends DatabaseMetaDataProvider {
+
+  private static final Log log = LogFactory.getLog(NuoDBMetaDataProvider.class);
+
+  private Multimap<String, ColumnBuilder> schemaMetaData;
+
+  /**
+   * Converts a given SQL data type to a {@link DataType}.
+   * @param typeName The database specific type name
+   * @return The Cryo DataType that represents the sql connection data type
+   *         given in <var>sqlType</var>.
+   */
+  private static DataType dataTypeFromDeclaredType(String typeName) {
+    switch (typeName.toUpperCase()) {
+      case "INTEGER":
+        return DataType.INTEGER;
+      case "BIGINT":
+        return DataType.BIG_INTEGER;
+      case "DECIMAL":
+        return DataType.DECIMAL;
+      case "CHARACTER VARYING":
+      case "CHAR":
+      case "VARCHAR":
+        return DataType.STRING;
+      case "BOOLEAN":
+        return DataType.BOOLEAN;
+      case "DATE":
+        return DataType.DATE;
+      case "BLOB":
+        return DataType.BLOB;
+      case "NCLOB":
+        return DataType.CLOB;
+
+      default:
+        throw new IllegalArgumentException("Unknown SQL data type [" + typeName + "]");
+    }
+  }
+
+
+  /**
+   * @param connection DataSource to provide meta data for.
+   */
+  public NuoDBMetaDataProvider(Connection connection, String schemaName) {
+    super(connection, schemaName);
+  }
+
+
+  /**
+   * Retrieve the metadata for every field, on every table, in the schema.
+   * <br> Reading from the System tables is rather slow so we read every table in one
+   * go and cache the result for efficiency.
+   * <br> NuoDB can inaccurately store data types and so we parse the declared type
+   * for a column rather than the stored type.
+   * <br> The database driven autonumbering is managed with generator sequences, and we
+   * store the autonumber start value as a part of the generator sequence name.
+   */
+  private Multimap<String, ColumnBuilder> retrieveSchemaMetaData(Connection connection, String schemaName) {
+    String columnQuery = "SELECT F.TABLENAME, F.FIELD, F.DECLARED_TYPE, F.GENERATOR_SEQUENCE, F.SCALE, F.PRECISION, F.FLAGS "
+        + "FROM SYSTEM.FIELDS AS F, SYSTEM.TABLES AS T "
+        + "WHERE T.TABLENAME = F.TABLENAME AND T.TYPE = 'TABLE' AND T.SCHEMA = F.SCHEMA AND F.SCHEMA = ?";
+
+    try (PreparedStatement createStatement = connection.prepareStatement(columnQuery)) {
+      createStatement.setString(1, schemaName);
+      try (ResultSet columnQueryResult = createStatement.executeQuery()) {
+        Multimap<String, ColumnBuilder> multimap = ArrayListMultimap.create();
+        while (columnQueryResult.next()) {
+          String tablename = columnQueryResult.getString("TABLENAME");
+          String fieldName = columnQueryResult.getString("FIELD");
+          String declaredDataType = columnQueryResult.getString("DECLARED_TYPE");
+
+          if (log.isDebugEnabled()) log.debug("Fetched metadata for [" + tablename + "." + fieldName + "] type [" + declaredDataType + "]");
+          if (declaredDataType == null) throw new IllegalStateException("Null declared type for [" + tablename + "].[" + fieldName + "]");
+
+          DataType dataType = dataTypeFromDeclaredType(declaredDataType.replaceFirst("^([a-z ]+).*$", "$1"));
+
+          ColumnBuilder nuoDBFieldMetaData = column(fieldName, dataType, columnQueryResult.getInt("PRECISION"), columnQueryResult.getInt("SCALE"));
+          nuoDBFieldMetaData = nuoDBFieldMetaData.defaultValue(determineDefaultValue(fieldName));
+          nuoDBFieldMetaData = columnQueryResult.getInt("FLAGS") == 0 ? nuoDBFieldMetaData.nullable() : nuoDBFieldMetaData;
+
+          if (StringUtils.isNotBlank(columnQueryResult.getString("GENERATOR_SEQUENCE"))) {
+            nuoDBFieldMetaData = nuoDBFieldMetaData.autoNumbered(fetchAutoNumber(columnQueryResult.getString("GENERATOR_SEQUENCE")));
+          }
+
+          if (log.isDebugEnabled()) log.debug("Caching metadata for schema [" + schemaName + "], table [" + tablename + "], column [" + fieldName + "]");
+          multimap.put(tablename, nuoDBFieldMetaData);
+        }
+        return multimap;
+      }
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+
+  /**
+   * NUODB reports its primary key indexes as ..PRIMARY_KEY or similar.
+   *
+   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isPrimaryKeyIndex(java.lang.String)
+   */
+  @Override
+  protected boolean isPrimaryKeyIndex(String indexName) {
+    return indexName.endsWith("..PRIMARY_KEY");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#shouldIgnoreTable(java.lang.String)
+   */
+  @Override
+  protected boolean shouldIgnoreTable(String tableName) {
+    // Ignore temporary tables
+    return tableName.toUpperCase().startsWith(NuoDBDialect.TEMPORARY_TABLE_PREFIX);
+  }
+
+
+  /**
+   * Fetch the autonumber start from the name of the generator sequence in NuoDB
+   */
+  private int fetchAutoNumber(String generatorSequence) {
+    try {
+      return Integer.parseInt(generatorSequence.substring(generatorSequence.lastIndexOf('_') + 1));
+    } catch (NumberFormatException e) {
+      throw new RuntimeException("Cannot determine AutoNumber start from Generator_Sequence [" + generatorSequence + "]", e);
+    }
+  }
+
+
+  /**
+   * Cache the column metadata on the first column read for the whole schema for efficiency in NuoDB.
+   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#readColumns(java.lang.String, java.util.List)
+   */
+  @Override
+  protected List<Column> readColumns(String tableName, final List<String> primaryKeys) {
+    if (schemaMetaData == null) {
+      log.info("Initialising metadata cache for schema [" + schemaName + "]");
+      schemaMetaData = retrieveSchemaMetaData(connection, schemaName);
+    }
+
+    List<Column> rawColumns = new LinkedList<>(Collections2.transform(schemaMetaData.get(tableName), new Function<ColumnBuilder, Column>() {
+      @Override
+      public Column apply(ColumnBuilder input) {
+        return primaryKeys.contains(input.getName()) ? input.primaryKey() : input;
+      }
+    }));
+    return sortByPrimaryKey(primaryKeys, rawColumns);
+  }
+
+}

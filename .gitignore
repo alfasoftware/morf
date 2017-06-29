@@ -1,0 +1,7 @@
+*.jar
+target
+.project
+.settings
+.svn
+.classpath
+.fbExcludeFilterFile

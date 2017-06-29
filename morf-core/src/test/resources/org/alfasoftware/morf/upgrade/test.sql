@@ -1,0 +1,1 @@
+Insert into {Thingummy} values(true,'wibble',1234.5)
