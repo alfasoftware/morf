@@ -9,11 +9,6 @@
        <Bug code="EI2" />
      </Match>
      <Match>
-       <!-- We have @Entity classes marked @Immutable, but as Hibernate requires zero-args constructors,
-       these classes have to have non-final fields, and this rule fails -->
-       <Bug code="JCIP" pattern="JCIP_FIELD_ISNT_FINAL_IN_IMMUTABLE_CLASS" />
-     </Match>
-     <Match>
        <Bug code="Nm" />
      </Match>
      <Match>
@@ -38,23 +33,9 @@
        <Bug code="UwF" />
      </Match>
      <Match>
-       <Class name="com.chpconsulting.clustering.delegator.jgroups.JGroupsWorkDelegator$BatchWorkDelegatorImpl" />
-       <Method name="doNotifyAll" />
-       <Bug code="NN" />
-     </Match>
-     <Match>
-       <Class name="com.chpconsulting.alfa.storage.dao.impl.AbstractBlobStoreAccessImpl" />
-       <Method name="loadContent" />
-       <Bug code="OBL" />
-     </Match>
-     <Match>
        <Class name="org.starstandard.star._5.ObjectFactory" />
      </Match>
      <Match>
        <Class name="org.openapplications.oagis._9.ObjectFactory" />
-     </Match>
-     <Match>
-       <!-- Our sessions are not serializable. We don't want to pretend they are. --> 
-       <Bug code="J2EE" pattern="J2EE_STORE_OF_NON_SERIALIZABLE_OBJECT_INTO_SESSION"/>
      </Match>
 </FindBugsFilter>
