@@ -15,7 +15,8 @@
 
 package org.alfasoftware.morf.xml;
 
-import org.xmlpull.v1.XmlPullParser;
+import javax.xml.stream.XMLStreamReader;
+
 
 
 /**
@@ -28,7 +29,7 @@ class XmlPullProcessor {
   /**
    * Pull parser allows us to pull data from a single pass over the XML reader.
    */
-  protected final XmlPullParser xmlPullParser;
+  protected final XMLStreamReader xmlStreamReader;
 
 
   /**
@@ -36,9 +37,9 @@ class XmlPullProcessor {
    *
    * @param xmlPullParser The pull parser to use
    */
-  public XmlPullProcessor(XmlPullParser xmlPullParser) {
+  public XmlPullProcessor(XMLStreamReader xmlStreamReader) {
     super();
-    this.xmlPullParser = xmlPullParser;
+    this.xmlStreamReader = xmlStreamReader;
   }
 
 
@@ -49,7 +50,7 @@ class XmlPullProcessor {
    * @param expectedTagName The tag name expected
    */
   protected void readTag(String expectedTagName) {
-    XmlPullProcessor.readTag(xmlPullParser, expectedTagName);
+    XmlPullProcessor.readTag(xmlStreamReader, expectedTagName);
   }
 
 
@@ -60,27 +61,27 @@ class XmlPullProcessor {
    * @param xmlPullParser The pull parser to read from
    * @param expectedTagName The tag name expected
    */
-  public static void readTag(XmlPullParser xmlPullParser, String expectedTagName) {
+  public static void readTag(XMLStreamReader xmlStreamReader, String expectedTagName) {
     // Look for any start tag event
     int event;
     try {
       do {
-        event = xmlPullParser.next();
-      } while (event == XmlPullParser.TEXT || event == XmlPullParser.END_TAG);
+        event = xmlStreamReader.next();
+      } while (event == XMLStreamReader.CHARACTERS || event == XMLStreamReader.END_ELEMENT);
     } catch (Exception e) {
       throw new RuntimeException("Error reading data from the XML pull parser", e);
     }
 
-    if (event == XmlPullParser.START_TAG) {
-      if (!expectedTagName.equals(xmlPullParser.getName())) {
-        throw new IllegalArgumentException("Expected tag [" + expectedTagName + "] but got [" + xmlPullParser.getName() + "]");
+    if (event == XMLStreamReader.START_ELEMENT) {
+      if (!expectedTagName.equals(xmlStreamReader.getLocalName())) {
+        throw new IllegalArgumentException("Expected tag [" + expectedTagName + "] but got [" + xmlStreamReader.getLocalName() + "]");
       }
 
-    } else if (event == XmlPullParser.END_DOCUMENT) {
+    } else if (event == XMLStreamReader.END_DOCUMENT) {
       throw new IllegalStateException("Unexpected end of document while looking for tag [" + expectedTagName + "]");
 
     } else {
-      throw new IllegalStateException("Expecting a tag but found [" + xmlPullParser.getText() + "]");
+      throw new IllegalStateException("Expecting a tag but found [" + event + "]");
     }
   }
 
@@ -97,23 +98,23 @@ class XmlPullProcessor {
     int event;
     try {
       do {
-        event = xmlPullParser.next();
-      } while (event == XmlPullParser.TEXT || event == XmlPullParser.END_TAG && !xmlPullParser.getName().equals(parentTagName));
+        event = xmlStreamReader.next();
+      } while (event == XMLStreamReader.CHARACTERS || event == XMLStreamReader.END_ELEMENT && !xmlStreamReader.getLocalName().equals(parentTagName));
     } catch (Exception e) {
       throw new RuntimeException("Error reading data from the XML pull parser", e);
     }
 
-    if (event == XmlPullParser.START_TAG) {
-      return xmlPullParser.getName();
+    if (event == XMLStreamReader.START_ELEMENT) {
+      return xmlStreamReader.getLocalName();
 
-    } else if (event == XmlPullParser.END_TAG) {
+    } else if (event == XMLStreamReader.END_ELEMENT) {
       return null;
 
-    } else if (event == XmlPullParser.END_DOCUMENT) {
+    } else if (event == XMLStreamReader.END_DOCUMENT) {
       throw new IllegalStateException("Unexpected end of document while looking for a tag inside [" + parentTagName + "]");
 
     } else {
-      throw new IllegalStateException("Expecting a tag inside [" + parentTagName + "] but got [" + xmlPullParser.getText() + "]");
+      throw new IllegalStateException("Expecting a tag inside [" + parentTagName + "] but got [" + event + "]");
     }
   }
 

@@ -15,9 +15,12 @@
 
 package org.alfasoftware.morf.xml;
 
+import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -27,10 +30,23 @@ import java.net.URL;
 import java.util.Arrays;
 import java.util.Collection;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.internal.invocation.ArgumentsComparator;
 import org.alfasoftware.morf.dataset.DataSetConnector;
 import org.alfasoftware.morf.dataset.DataSetConsumer;
+import org.alfasoftware.morf.dataset.DataSetConsumer.CloseState;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.SchemaHomology;
+import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.dataset.DataSetProducer;
-import org.alfasoftware.morf.dataset.MockDataSetConsumer;
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.xml.XmlStreamProvider.XmlInputStreamProvider;
 import org.apache.commons.logging.Log;
@@ -91,15 +107,38 @@ public class TestXmlDataSetProducer {
   /**
    * Test we can read the reduced XML format in, the dump it back out to the same xml String.
    */
+  @SuppressWarnings({ "unchecked", "rawtypes" })
   @Test
   public void testReducedXMLRoundTrip() {
     DataSetProducer producer = new XmlDataSetProducer(new TestXmlInputStreamProvider(SourceXML.REDUCED_SAMPLE));
 
-    MockDataSetConsumer mockDataSetConsumer = new MockDataSetConsumer();
+    DataSetConsumer consumer = mock(DataSetConsumer.class);
 
-    new DataSetConnector(producer, mockDataSetConsumer).connect();
-
-    assertEquals("output should be the same as input", "[open, table Test [column id, column version, column bar, column baz, column bob], end table, close]", mockDataSetConsumer.toString());
+    new DataSetConnector(producer, consumer).connect();
+    
+    Mockito.verify(consumer).open();
+    
+    ArgumentCaptor<Table> tableCaptor = ArgumentCaptor.forClass(Table.class);
+    ArgumentCaptor<Iterable> iterableCaptor = ArgumentCaptor.forClass(Iterable.class);
+    
+    Mockito.verify(consumer).table(tableCaptor.capture(), iterableCaptor.capture());
+    
+    SchemaHomology schemaHomology = new SchemaHomology(new SchemaHomology.ThrowingDifferenceWriter());
+    assertTrue(
+      schemaHomology.tablesMatch(
+        tableCaptor.getValue(),
+        table("Test")
+        .columns(
+          column("id", DataType.BIG_INTEGER).primaryKey(),
+          column("version", DataType.INTEGER).defaultValue("0"),
+          column("bar", DataType.STRING),
+          column("baz", DataType.STRING),
+          column("bob", DataType.DECIMAL)
+        )
+      )
+    );
+    
+    Mockito.verify(consumer).close(CloseState.COMPLETE);
   }
 
 

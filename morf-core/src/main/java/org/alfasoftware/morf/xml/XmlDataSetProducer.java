@@ -51,6 +51,10 @@ import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
+import javax.xml.stream.FactoryConfigurationError;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
 
 import org.alfasoftware.morf.dataset.DataSetProducer;
 import org.alfasoftware.morf.dataset.Record;
@@ -65,9 +69,6 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.xml.XmlStreamProvider.XmlInputStreamProvider;
 import org.apache.commons.lang.StringUtils;
-import org.xmlpull.mxp1.MXParser;
-import org.xmlpull.v1.XmlPullParser;
-import org.xmlpull.v1.XmlPullParserException;
 
 import com.google.common.io.ByteStreams;
 import com.google.common.io.CharSource;
@@ -179,9 +180,9 @@ public class XmlDataSetProducer implements DataSetProducer {
       public Iterator<Record> iterator() {
         final InputStream inputStream = xmlStreamProvider.openInputStreamForTable(tableName);
 
-        final XmlPullParser pullParser = openPullParser(inputStream);
+        XMLStreamReader xmlStreamReader = openPullParser(inputStream);
 
-        return new PullProcessorRecordIterator(pullParser) {
+        return new PullProcessorRecordIterator(xmlStreamReader) {
           @Override
           public boolean hasNext() {
             boolean result = super.hasNext();
@@ -210,7 +211,7 @@ public class XmlDataSetProducer implements DataSetProducer {
     final InputStream inputStream = xmlStreamProvider.openInputStreamForTable(tableName);
 
     try {
-      final XmlPullParser pullParser = openPullParser(inputStream);
+      final XMLStreamReader pullParser = openPullParser(inputStream);
       PullProcessorRecordIterator pullProcessorRecordIterator = new PullProcessorRecordIterator(pullParser);
       return !pullProcessorRecordIterator.hasNext();
     } finally {
@@ -238,14 +239,11 @@ public class XmlDataSetProducer implements DataSetProducer {
    * @param inputStream The inputstream to read from
    * @return A new pull parser
    */
-  private static XmlPullParser openPullParser(InputStream inputStream) {
+  private static XMLStreamReader openPullParser(InputStream inputStream) {
     try {
-      XmlPullParser xmlPullParser = new MXParser();
-      xmlPullParser.setInput(inputStream, "UTF-8");
-      return xmlPullParser;
-
-    } catch (XmlPullParserException e) {
-      throw new RuntimeException("Error creating pull parser", e);
+      return XMLInputFactory.newFactory().createXMLStreamReader(inputStream, "UTF-8");
+    } catch (XMLStreamException|FactoryConfigurationError e) {
+      throw new RuntimeException(e);
     }
   }
 
@@ -290,19 +288,19 @@ public class XmlDataSetProducer implements DataSetProducer {
             }
 
             try (JarInputStream input = new JarInputStream(jar.getJarFileURL().openStream())) {
-              String prefix = jar.getJarEntry().getName();
-              ZipEntry entry = null;
-              while ((entry = input.getNextEntry()) != null) { // NOPMD
-                if (entry.getName().startsWith(prefix) && !entry.isDirectory()) {
-                  File target = new File(result, entry.getName().substring(prefix.length()));
-                  if (!target.getParentFile().exists() && !target.getParentFile().mkdirs()) {
-                    throw new RuntimeException("Could not make directories [" + target.getParentFile() + "]");
-                  }
+            String prefix = jar.getJarEntry().getName();
+            ZipEntry entry = null;
+            while ((entry = input.getNextEntry()) != null) { // NOPMD
+              if (entry.getName().startsWith(prefix) && !entry.isDirectory()) {
+                File target = new File(result, entry.getName().substring(prefix.length()));
+                if (!target.getParentFile().exists() && !target.getParentFile().mkdirs()) {
+                  throw new RuntimeException("Could not make directories [" + target.getParentFile() + "]");
+                }
                   try (OutputStream output = new BufferedOutputStream(new FileOutputStream(target))) {
                     ByteStreams.copy(input, output);
-                  }
                 }
               }
+            }
             }
 
           } else {
@@ -446,17 +444,17 @@ public class XmlDataSetProducer implements DataSetProducer {
     // Open a readable byte channel for the url
     try (ReadableByteChannel rbc = Channels.newChannel(url.openStream())) {
 
-      // Create a file output stream to transfer the data from the url to the temp file
+    // Create a file output stream to transfer the data from the url to the temp file
       try (FileOutputStream fos = new FileOutputStream(file)) {
 
-        // transfer the data
-        fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
+    // transfer the data
+      fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
 
       } catch (FileNotFoundException e) {
         throw new RuntimeException("Unable to create file output stream", e);
-      } catch (IOException e) {
-        throw new RuntimeException("Unable to transfer from url to temp file", e);
-      }
+    } catch (IOException e) {
+      throw new RuntimeException("Unable to transfer from url to temp file", e);
+    }
 
     } catch (IOException e) {
       throw new RuntimeException("Unable to create readable byte channel", e);
@@ -506,14 +504,14 @@ public class XmlDataSetProducer implements DataSetProducer {
       // Read the meta data for the specified table
       InputStream inputStream = xmlStreamProvider.openInputStreamForTable(name);
       try {
-        XmlPullParser xmlPullParser = openPullParser(inputStream);
-        XmlPullProcessor.readTag(xmlPullParser, XmlDataSetNode.TABLE_NODE);
+        XMLStreamReader xmlStreamReader = openPullParser(inputStream);
+        XmlPullProcessor.readTag(xmlStreamReader, XmlDataSetNode.TABLE_NODE);
 
-        String version = xmlPullParser.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.VERSION_ATTRIBUTE);
+        String version = xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.VERSION_ATTRIBUTE);
         if (StringUtils.isNotEmpty(version)) {
-          return new PullProcessorTableMetaData(xmlPullParser, Integer.parseInt(version));
+          return new PullProcessorTableMetaData(xmlStreamReader, Integer.parseInt(version));
         } else {
-          return new PullProcessorTableMetaData(xmlPullParser, 1);
+          return new PullProcessorTableMetaData(xmlStreamReader, 1);
         }
       } finally {
         // abandon any remaining content
@@ -626,8 +624,8 @@ public class XmlDataSetProducer implements DataSetProducer {
      * @param xmlPullParser pull parser that provides the xml data
      * @param xmlFormatVersion The format version.
      */
-    public PullProcessorTableMetaData(XmlPullParser xmlPullParser, int xmlFormatVersion) {
-      super(xmlPullParser);
+    public PullProcessorTableMetaData(XMLStreamReader xmlStreamReader, int xmlFormatVersion) {
+      super(xmlStreamReader);
 
       if (xmlFormatVersion < 2) {
         columns.add(SchemaUtils.idColumn());
@@ -636,7 +634,7 @@ public class XmlDataSetProducer implements DataSetProducer {
 
       // Buffer the meta data
       readTag(XmlDataSetNode.METADATA_NODE);
-      tableName = xmlPullParser.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.NAME_ATTRIBUTE);
+      tableName = xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.NAME_ATTRIBUTE);
 
       try {
         for (String nextTag = readNextTagInsideParent(XmlDataSetNode.METADATA_NODE); nextTag != null; nextTag = readNextTagInsideParent(XmlDataSetNode.METADATA_NODE)) {
@@ -734,16 +732,16 @@ public class XmlDataSetProducer implements DataSetProducer {
        */
       public PullProcessorColumn() {
         super();
-        columnName = xmlPullParser.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.NAME_ATTRIBUTE);
-        dataType = DataType.valueOf(xmlPullParser.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.TYPE_ATTRIBUTE));
-        defaultValue = StringUtils.defaultString(xmlPullParser.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.DEFAULT_ATTRIBUTE));
+        columnName = xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.NAME_ATTRIBUTE);
+        dataType = DataType.valueOf(xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.TYPE_ATTRIBUTE));
+        defaultValue = StringUtils.defaultString(xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.DEFAULT_ATTRIBUTE));
 
         try {
           // not all datatypes need a width
           if (dataType.hasWidth()) {
             // The use of null indicates that although a scale should exist none
             // was provided.
-            String widthString = xmlPullParser.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.WIDTH_ATTRIBUTE);
+            String widthString = xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.WIDTH_ATTRIBUTE);
             width = StringUtils.isEmpty(widthString) ? null : Integer.valueOf(widthString);
           } else {
             width = 0;
@@ -753,19 +751,19 @@ public class XmlDataSetProducer implements DataSetProducer {
           if (dataType.hasScale()) {
             // The use of null indicates that although a scale should exist none
             // was provided.
-            String scaleString = xmlPullParser.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.SCALE_ATTRIBUTE);
+            String scaleString = xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.SCALE_ATTRIBUTE);
             scale = StringUtils.isEmpty(scaleString) ? null : Integer.valueOf(scaleString);
           } else {
             scale = 0;
           }
 
-          String nullableString = xmlPullParser.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.NULLABLE_ATTRIBUTE);
+          String nullableString = xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.NULLABLE_ATTRIBUTE);
           nullable = StringUtils.isEmpty(nullableString) ? null : Boolean.valueOf(nullableString);
 
-          String primaryKeyString = xmlPullParser.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.PRIMARYKEY_ATTRIBUTE);
+          String primaryKeyString = xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.PRIMARYKEY_ATTRIBUTE);
           primaryKey = StringUtils.isEmpty(primaryKeyString) ? null : Boolean.valueOf(primaryKeyString);
 
-          String autoNumString = xmlPullParser.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.AUTONUMBER_ATTRIBUTE);
+          String autoNumString = xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.AUTONUMBER_ATTRIBUTE);
           autonumbered = StringUtils.isNotEmpty(autoNumString);
           autonumberStart = autonumbered ? Integer.valueOf(autoNumString) : null;
 
@@ -889,10 +887,10 @@ public class XmlDataSetProducer implements DataSetProducer {
        */
       public PullProcessorIndex() {
         super();
-        indexName = xmlPullParser.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.NAME_ATTRIBUTE);
-        isUnique = Boolean.parseBoolean(xmlPullParser.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.UNIQUE_ATTRIBUTE));
+        indexName = xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.NAME_ATTRIBUTE);
+        isUnique = Boolean.parseBoolean(xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.UNIQUE_ATTRIBUTE));
 
-        String columnsNamesCombined = xmlPullParser.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.COLUMNS_ATTRIBUTE);
+        String columnsNamesCombined = xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.COLUMNS_ATTRIBUTE);
 
         for (String columnName : StringUtils.split(columnsNamesCombined, ",")) {
           columnNames.add(columnName.trim());
@@ -961,19 +959,19 @@ public class XmlDataSetProducer implements DataSetProducer {
     /**
      * @param xmlPullParser Input stream containing the source XML data.
      */
-    public PullProcessorRecordIterator(XmlPullParser xmlPullParser) {
-      super(xmlPullParser);
+    public PullProcessorRecordIterator(XMLStreamReader xmlStreamReader) {
+      super(xmlStreamReader);
 
       // Store the column names and get to the first record
       readTag(XmlDataSetNode.TABLE_NODE);
 
       // read the meta data
       Table table;
-      String version = xmlPullParser.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.VERSION_ATTRIBUTE);
+      String version = xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.VERSION_ATTRIBUTE);
       if (StringUtils.isNotEmpty(version)) {
-        table = new PullProcessorTableMetaData(xmlPullParser, Integer.parseInt(version));
+        table = new PullProcessorTableMetaData(xmlStreamReader, Integer.parseInt(version));
       } else {
-        table = new PullProcessorTableMetaData(xmlPullParser, 1);
+        table = new PullProcessorTableMetaData(xmlStreamReader, 1);
       }
 
       for (Column column : table.columns()) {
@@ -1003,7 +1001,7 @@ public class XmlDataSetProducer implements DataSetProducer {
         // Buffer this record
         RecordBuilder result = DataSetUtils.record();
         for (String columnName : columnNames) {
-          result.setString(columnName.toUpperCase(), xmlPullParser.getAttributeValue(XmlDataSetNode.URI, columnName));
+          result.setString(columnName.toUpperCase(), xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, columnName));
         }
 
         // Is there another

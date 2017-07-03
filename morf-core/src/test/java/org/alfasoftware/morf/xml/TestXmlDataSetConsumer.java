@@ -35,6 +35,7 @@ import java.util.List;
 import org.alfasoftware.morf.dataset.DataSetConsumer;
 import org.alfasoftware.morf.dataset.DataSetConsumer.CloseState;
 import org.alfasoftware.morf.dataset.Record;
+import org.alfasoftware.morf.metadata.DataSetUtils;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.xml.XmlDataSetConsumer.ClearDestinationBehaviour;
