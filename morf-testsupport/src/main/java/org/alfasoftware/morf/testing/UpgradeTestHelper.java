@@ -189,6 +189,7 @@ public class UpgradeTestHelper {
     // Check the upgrade step has a description
     final String description = upgradeStep.getDescription();
     assertTrue("Should have a description", StringUtils.isNotEmpty(description));
+    assertTrue("Description must not be more than 200 characters", description.length() <= 200);
 
     // Descriptions should not end with full-stops
     if (description.endsWith(".")) {
