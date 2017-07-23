@@ -137,6 +137,7 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
 
   /**
    * Returns the database schema name. May be null.
+   * @return The schema name
    */
   public String getSchemaName() {
     return schemaName;
@@ -231,17 +232,17 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
    *
    * @param table table on which the index exists
    * @param fromIndexName The index to rename
-   * @param toIndex The new index name
+   * @param toIndexName The new index name
    * @return SQL Statements required to rename an index
    */
   public abstract Collection<String> renameIndexStatements(Table table, String fromIndexName, String toIndexName);
 
 
   /**
-   * @param tableName - name of table to perform this action on
+   * @param table - table to perform this action on
    * @param oldPrimaryKeyColumns - the existing primary key columns
    * @param newPrimaryKeyColumns - the new primary key columns
-   * @return
+   * @return SQL Statements required to change the primary key columns
    */
   public abstract Collection<String> changePrimaryKeyColumns(Table table, List<String> oldPrimaryKeyColumns,
       List<String> newPrimaryKeyColumns);
@@ -260,6 +261,7 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
    * Creates SQL to execute prior to bulk-inserting to a table.
    *
    * @param table {@link Table} to be inserted to.
+   * @param insertingUnderAutonumLimit  Determines whether we are inserting under an auto-numbering limit.
    * @return SQL statements to be executed prior to insert.
    */
   @SuppressWarnings("unused")
@@ -272,7 +274,9 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
    * Creates SQL to execute after bulk-inserting to a table.
    *
    * @param table The table that was populated.
-   * @return SQL statements to execute once the table has been populated.
+   * @param executor The executor to use
+   * @param connection The connection to use
+   * @param insertingUnderAutonumLimit  Determines whether we are inserting under an auto-numbering limit.
    */
   @SuppressWarnings("unused")
   public void postInsertWithPresetAutonumStatements(Table table,SqlScriptExecutor executor,Connection connection, boolean insertingUnderAutonumLimit) {
@@ -285,7 +289,8 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
    * <p>Generally databases do not need to do anything special here, but MySQL can lose the value.</p>
    *
    * @param table The table to repair.
-   * @return SQL statements to execute
+   * @param executor The executor to use
+   * @param connection The connection to use
    */
   @SuppressWarnings("unused")
   public void repairAutoNumberStartPosition(Table table,SqlScriptExecutor executor,Connection connection) {
@@ -686,6 +691,7 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
 
 
   /**
+   * @param tableRef The table reference from which the schema name will be extracted
    * @return The schema prefix of the specified table (including the dot), the
    *         dialect's schema prefix or blank if neither is specified (in that
    *         order).
@@ -819,6 +825,7 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
 
   /**
    * Default behaviour for FOR UPDATE. Can be overridden.
+   * @return The String representation of the FOR UPDATE clause.
    */
   protected String getForUpdateSql() {
     return " FOR UPDATE";
@@ -867,6 +874,8 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
    *
    * @param result joins will be appended here
    * @param stmt statement with joins clauses
+   * @param innerJoinKeyword The keyword for INNER JOIN
+   * @param <T> The type of {@link AbstractSelectStatement}
    */
   protected <T extends AbstractSelectStatement<T>> void appendJoins(StringBuilder result, AbstractSelectStatement<T> stmt, String innerJoinKeyword) {
     for (Join currentJoin : stmt.getJoins()) {
@@ -880,6 +889,7 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
    *
    * @param result order by clause will be appended here
    * @param stmt statement with order by clause
+   * @param <T> The type of AbstractSelectStatement
    */
   protected <T extends AbstractSelectStatement<T>> void appendOrderBy(StringBuilder result, AbstractSelectStatement<T> stmt) {
     if (!stmt.getOrderBys().isEmpty()) {
@@ -963,6 +973,7 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
    *
    * @param result where clause will be appended here
    * @param stmt statement with where clause
+   * @param <T> The type of AbstractSelectStatement
    */
   protected <T extends AbstractSelectStatement<T>> void appendWhere(StringBuilder result, AbstractSelectStatement<T> stmt) {
     if (stmt.getWhereCriterion() != null) {
@@ -977,6 +988,7 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
    *
    * @param result from clause will be appended here
    * @param stmt statement with from clause
+   * @param <T> The type of AbstractSelectStatement
    */
   protected <T extends AbstractSelectStatement<T>> void appendFrom(StringBuilder result, AbstractSelectStatement<T> stmt) {
     if (stmt.getTable() != null) {
@@ -1072,8 +1084,9 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
 
   /**
    * Get the SQL expression for NULL values handling.
-   * @param orderByField
-   * @param result
+   * @param orderByField The order by clause
+   * @return The resulting SQL String
+   *
    */
   protected String getSqlForOrderByFieldNullValueHandling(FieldReference orderByField) {
 
@@ -1095,7 +1108,7 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
 
   /**
    * An additional clause to use in SELECT statements where there is no select
-   * source, which allows us to include "FROM <dummy table>" on RDBMSes such as
+   * source, which allows us to include "FROM &lt;dummy table&gt;" on RDBMSes such as
    * Oracle where selecting from no table is not allowed but the RDBMS provides
    * a dummy table (such as "dual").
    *
@@ -1163,6 +1176,7 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
 
 
   /**
+   * @param stmt The statement.
    * @return The keyword to use for an inner join on the specified statement.  This only differs
    *         in response to hints.
    */
@@ -1174,7 +1188,7 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
   /**
    * Converts a {@link UnionSetOperator} into SQL.
    *
-   * @param field the field to convert.
+   * @param operator the union to convert.
    * @return a string representation of the field.
    */
   private String getSqlFrom(UnionSetOperator operator) {
@@ -1436,8 +1450,8 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
   /**
    * Converts a list of values on a criterion into a comma-separated list.
    *
-   * @param criterion
-   * @return
+   * @param criterion The criterion to convert
+   * @return The converted criterion as a String
    */
   @SuppressWarnings("unchecked")
   protected String getSqlForCriterionValueList(Criterion criterion) {
@@ -1919,7 +1933,7 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
 
 
   /**
-   * @return
+   * @return The name of the coalesce function
    */
   protected String getCoalesceFunctionName() {
     return "COALESCE";
@@ -2020,7 +2034,7 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
 
   /**
    * Converts the DateToYyyymmdd function into SQL. Assumes an 8 digit date is
-   * supplied in YYYYMMDD using the {@linkplain DataType.STRING} format. TODO:
+   * supplied in YYYYMMDD using the {@linkplain DataType#STRING} format. TODO:
    * does it?
    *
    * @param function the function to convert.
@@ -2032,7 +2046,7 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
   /**
    * Converts the DateToYyyymmddHHmmss function into SQL. Assumes an 8 digit
    * date concatenated with a 6 digit time is supplied in YYYYMMDDHHmmss using
-   * the {@linkplain DataType.STRING} format.
+   * the {@linkplain DataType#STRING} format.
    *
    * @param function the function to convert.
    * @return a string representation of the SQL.
@@ -2042,7 +2056,7 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
 
   /**
    * Converts the YYYYMMDDToDate function into SQL. Assumes an 8 digit date is
-   * supplied in YYYYMMDD using the {@linkplain DataType.STRING} format.
+   * supplied in YYYYMMDD using the {@linkplain DataType#STRING} format.
    *
    * @param function the function to convert.
    * @return a string representation of the SQL.
@@ -2081,7 +2095,9 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
    * Converts the LEFT_PAD function into SQL. This is the same format used for
    * H2, MySQL and Oracle. SqlServer implementation overrides this function.
    *
-   * @param function to convert
+   * @param field The field to pad
+   * @param length The length of the padding
+   * @param character The character to use for the padding
    * @return string representation of the SQL.
    */
   protected String getSqlForLeftPad(AliasedField field, AliasedField length, AliasedField character) {
@@ -2110,7 +2126,6 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
   /**
    * Converts the RANDOM function into SQL. This returns a random number between 0 and 1.
    *
-   * @param function the function to convert.
    * @return a string representation of the SQL.
    */
   protected String getSqlForRandom() {
@@ -2835,7 +2850,7 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
    * @param dataTable the table to update for.
    * @param generatedFieldName Name of the field which has a generated value to
    *          build an update statement for.
-   * @param tableName the table to insert the autonumber to.
+   * @param autoNumberTable the table to insert the autonumber to.
    * @param nameColumn the name of the name column.
    * @param valueColumn the name of the value column.
    * @return SQL allowing the repair of the AutoNumber table.
@@ -3023,6 +3038,8 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
    *          include nullability of the column.
    * @param includeDefaultValue Indicates whether or not the produced SQL should
    *          include the default value of the column.
+   * @param includeColumnType ndicates whether or not the produced SQL should
+   *          include the type of the column.
    * @return The SQL representation for the column type.
    */
   protected String sqlRepresentationOfColumnType(Column column, boolean includeNullability, boolean includeDefaultValue, boolean includeColumnType) {
@@ -3048,6 +3065,7 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
 
   /**
    * Creates the representation of the default clause literal value.
+   * @param column The column whose default will be converted.
    *
    * @return An SQL fragment representing the literal in a DEFAULT clause in an SQL statement
    */
@@ -3063,7 +3081,7 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
    * @param includeNullability Indicates whether or not the produced SQL should
    *          include nullability of the column.
    * @return The SQL representation for the column type.
-   * @see #sqlRepresentationOfColumnType(Column, boolean, boolean)
+   * @see #sqlRepresentationOfColumnType(Column, boolean, boolean, boolean)
    */
   protected String sqlRepresentationOfColumnType(Column column, boolean includeNullability) {
     return sqlRepresentationOfColumnType(column, includeNullability, true, true);
@@ -3075,7 +3093,7 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
    *
    * @param column The column to map.
    * @return The SQL representation for the column type.
-   * @see #sqlRepresentationOfColumnType(Column, boolean, boolean)
+   * @see #sqlRepresentationOfColumnType(Column, boolean, boolean, boolean)
    */
   protected String sqlRepresentationOfColumnType(Column column) {
     StringBuilder defaultSqlRepresentation = new StringBuilder(sqlRepresentationOfColumnType(column, false, true, true));
@@ -3123,6 +3141,7 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
    * Generate the SQL to run analysis on a table.
    *
    * @param table The table to run the analysis on.
+   * @return The SQL statements to analyse the table.
    */
   public abstract Collection<String> getSqlForAnalyseTable(Table table);
 
@@ -3266,11 +3285,8 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
    * from a {@link Record}.
    *
    * @param statement The {@link PreparedStatement} to set up
-   * @param column The {@link Column} definition on the target table
    * @param parameter The name of the parameter.
    * @param value The value, expressed as a string
-   * @throws {@link RuntimeException} if the data type is not supported or if the
-   *         supplied string value cannot be converted to the column data type.
    */
   public void prepareStatementParameter(NamedParameterPreparedStatement statement, SqlParameter parameter, String value) {
     try {
@@ -3383,7 +3399,7 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
   /**
    * Convert a string to an SQL comment
    *
-   * @param The comment string
+   * @param string The comment string
    * @return An SQL comment containing the comment string
    */
   public String convertCommentToSQL(String string) {
@@ -3403,10 +3419,6 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
   /**
    * @see org.alfasoftware.morf.jdbc.DatabaseSafeStringToRecordValueConverter#databaseSafeStringtoRecordValue(org.alfasoftware.morf.metadata.DataType,
    *      java.sql.ResultSet, int, java.lang.String)
-   * @throws {@link RuntimeSqlException} if the specified value cannot be fetched
-   *         (is missing or the incorrect type is specified)
-   * @throws {@link RuntimeException} if the specified field is a binary stream
-   *         and an error occurs accessing it.
    */
   @Override
   public String databaseSafeStringtoRecordValue(DataType type, ResultSet resultSet, int columnIndex, String columnName) {
@@ -3495,7 +3507,7 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
    * @param aliasedFields an iterable of aliased fields.
    * @param selectAlias the alias of the select statement of a merge statement.
    * @param targetTableName the name of the target table into which to merge.
-   * @return
+   * @return The corresponding SQL
    */
   protected String matchConditionSqlForMergeFields(final Iterable<AliasedField> aliasedFields, final String selectAlias,
       final String targetTableName) {
@@ -3511,7 +3523,7 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
    * @param aliasedFields an iterable of aliased fields.
    * @param selectAlias the alias of the select statement of a merge statement.
    * @param targetTableName the name of the target table into which to merge.
-   * @return
+   * @return The resulting SQL
    */
   protected String assignmentSqlForMergeFields(final Iterable<AliasedField> aliasedFields, final String selectAlias,
       final String targetTableName) {
@@ -3541,7 +3553,7 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
   /**
    * Formats decimal values as strings
    *
-   * @param decimalString Value to format.
+   * @param decimal Value to format.
    * @return The decimal value as a string.
    */
   private String formatDecimal(BigDecimal decimal) {
@@ -3572,6 +3584,11 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
 
   /**
    * Construct the old table for a change column
+   * @param table The table to change
+   * @param oldColumn The old column
+   * @param newColumn The new column
+   * @return The 'old' table
+   *
    */
   protected Table oldTableForChangeColumn(Table table, final Column oldColumn, Column newColumn) {
     return new ChangeColumn(table.getName(), oldColumn, newColumn).reverse(schema(table)).getTable(table.getName());
@@ -3598,7 +3615,7 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
 
 
    /**
-   * Returns true if the dialect supports window functions (e.g. PARTITION BY).
+   * @return true if the dialect supports window functions (e.g. PARTITION BY).
    *
    **/
    public abstract boolean supportsWindowFunctions();
@@ -3606,6 +3623,8 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
 
   /**
    * Convert a {@link WindowFunction} into standards compliant SQL.
+   * @param windowFunctionField The field to convert
+   * @return The resulting SQL
    **/
   protected String getSqlFrom(final WindowFunction windowFunctionField) {
 

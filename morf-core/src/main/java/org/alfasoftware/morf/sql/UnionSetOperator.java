@@ -80,7 +80,8 @@ public class UnionSetOperator implements SetOperator{
   /**
    * Constructor used to create a deep copy of a union statement.
    *
-   * @param sourceUnion the union statement to create the deep copy from
+   * @param unionStrategy the union strategy to use
+   * @param childSelect the second part of the UNION statement
    */
   private UnionSetOperator(UnionStrategy unionStrategy, SelectStatement childSelect) {
     this.selectStatement = childSelect;
@@ -163,7 +164,7 @@ public class UnionSetOperator implements SetOperator{
 
 
   /**
-   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(org.alfasoftware.morf.sql.ObjectTreeTraverser.VisitorDispatcher)
+   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(ObjectTreeTraverser)
    */
   @Override
   public void drive(ObjectTreeTraverser traverser) {

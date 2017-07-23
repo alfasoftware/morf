@@ -54,6 +54,7 @@ public class CaseStatement extends AliasedField implements Driver {
    * Constructor used for deep copying
    *
    * @param caseStatement case statement.
+   * @param transformer The transformer operation to perform during the copy
    */
   private CaseStatement(CaseStatement caseStatement,DeepCopyTransformation transformer) {
     super();
@@ -66,8 +67,7 @@ public class CaseStatement extends AliasedField implements Driver {
 
 
   /**
-   * {@inheritDoc}
-   * @see org.alfasoftware.morf.sql.element.AliasedField#deepCopyInternal()
+   * @see org.alfasoftware.morf.sql.element.AliasedField#deepCopyInternal(DeepCopyTransformation)
    */
   @Override
   protected AliasedField deepCopyInternal(DeepCopyTransformation transformer) {
@@ -92,7 +92,7 @@ public class CaseStatement extends AliasedField implements Driver {
 
 
   /**
-   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(org.alfasoftware.morf.util.ObjectTreeTraverser, org.alfasoftware.morf.sql.ObjectTreeTraverser.Visitor)
+   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(ObjectTreeTraverser)
    */
   @Override
   public void drive(ObjectTreeTraverser traverser) {

@@ -17,6 +17,7 @@ package org.alfasoftware.morf.testing;
 
 import javax.sql.DataSource;
 
+import com.google.inject.Binder;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.ConnectionResourcesBean;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -40,7 +41,7 @@ public class TestingDataSourceModule extends AbstractModule {
   private static volatile DataSource dataSource;
 
   /**
-   * @see com.google.inject.Module#configure()
+   * @see com.google.inject.Module#configure(Binder)
    */
   @Override
   public void configure() {

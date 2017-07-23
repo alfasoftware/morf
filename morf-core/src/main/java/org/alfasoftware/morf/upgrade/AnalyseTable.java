@@ -25,11 +25,11 @@ import org.alfasoftware.morf.sql.Statement;
  *
  * <p><strong>This class is a very tenuous implementation of {@link SchemaChange}
  * since it does not strictly represent a change to the schema, really it is analysing the
- * data in the schema, collecting and managing statistics for a Table in the schema. 
+ * data in the schema, collecting and managing statistics for a Table in the schema.
  * It always returns true for {@link #isApplied(Schema, ConnectionResources)}
  * so that the upgrade tooling does not constantly attempt to rerun any upgrade
  * that contains a data upgrade step.</strong></p>
- * 
+ *
  * @author Copyright (c) Alfa Financial Software 2017
  */
 public class AnalyseTable implements SchemaChange {
@@ -39,7 +39,7 @@ public class AnalyseTable implements SchemaChange {
 
 
   /**
-   * @param The table to analyse.
+   * @param tableName The table to analyse.
    */
   public AnalyseTable(String tableName) {
     super();
@@ -72,8 +72,8 @@ public class AnalyseTable implements SchemaChange {
 
   /**
    * {@inheritDoc}
-   * 
-   * @see org.alfasoftware.morf.upgrade.SchemaChange#reverse(org.alfasoftware.morf.upgrade.SchemaChangeVisitor)
+   *
+   * @see org.alfasoftware.morf.upgrade.SchemaChange#reverse(Schema)
    */
   @Override
   public Schema reverse(Schema schema) {
@@ -83,8 +83,8 @@ public class AnalyseTable implements SchemaChange {
 
   /**
    * {@inheritDoc}
-   * 
-   * @see org.alfasoftware.morf.upgrade.SchemaChange#isApplied(org.alfasoftware.morf.upgrade.SchemaChangeVisitor)
+   *
+   * @see org.alfasoftware.morf.upgrade.SchemaChange#isApplied(Schema, ConnectionResources)
    */
   @Override
   public boolean isApplied(Schema schema, ConnectionResources database) {

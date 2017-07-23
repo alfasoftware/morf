@@ -23,7 +23,7 @@ import com.google.inject.Singleton;
  * Injectable singleton to provide validation against SQL entity names.
  * </p>
  * <p>
- * The service provides the ability to vertify if a word is an SQL Reserved word
+ * The service provides the ability to verify if a word is an SQL Reserved word
  * and if a string follows the correct naming convention for an SQL entity and
  * is within the allowed length.
  * </p>
@@ -31,17 +31,15 @@ import com.google.inject.Singleton;
  * Class uses {@link Singleton} annotation as the SQL Reserved Words are loaded
  * from a text file (in {@link SchemaValidator}) which is expensive.
  * </p>
- * <p>
  *
- * @see {@link SchemaValidator} for further SQL Schema Validation.
- *      </p>
+ * <p>Please see  {@link SchemaValidator} for further SQL Schema Validation.</p>
  * @author Copyright (c) Alfa Financial Software 2016
  */
 @Singleton
 public class SQLEntityNameValidationService {
 
   /**
-   * Delgate work to {@link SchemaValidator} to keep code maintance in one place.
+   * Delegate work to {@link SchemaValidator} to keep code maintance in one place.
    */
   private final SchemaValidator schemaValidator;
 
@@ -89,7 +87,7 @@ public class SQLEntityNameValidationService {
    * the allowed length of charchaters.
    *
    * @see SchemaValidator#MAX_LENGTH
-   * @param word the string to establish if its within the allowed length
+   * @param name the string to establish if its within the allowed length
    * @return true if its within the allowed length otherwise false.
    */
   public boolean isEntityNameLengthValid(String name) {

@@ -35,9 +35,9 @@ import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
  * <p>The class structure imitates the end SQL and is structured as follows:</p>
  *
  * <blockquote><pre>
- *   new UpdateStatement([table])                     = UPDATE TABLE
- *             |----> .set([field], ...)              = UPDATE TABLE SET ([field], ...)
- *             |----> .where([criterion])             = UPDATE TABLE SET ([field], ...) WHERE [criterion] </pre></blockquote>
+ *   new UpdateStatement([table])                        = UPDATE TABLE
+ *             |----&gt; .set([field], ...)              = UPDATE TABLE SET ([field], ...)
+ *             |----&gt; .where([criterion])             = UPDATE TABLE SET ([field], ...) WHERE [criterion] </pre></blockquote>
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
@@ -172,7 +172,7 @@ public class UpdateStatement implements Statement ,  DeepCopyableWithTransformat
 
 
   /**
-   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(org.alfasoftware.morf.sql.ObjectTreeTraverser.VisitorDispatcher)
+   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(ObjectTreeTraverser)
    */
   @Override
   public void drive(ObjectTreeTraverser traverser) {

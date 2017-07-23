@@ -44,6 +44,11 @@ public class SqlQueryDataSetProducer implements DataSetProducer {
 
   /**
    * Constructs an instance for the provided {@link Table}.
+   *
+   * @param table The metadata returned by the query.
+   * @param query The query to execute.
+   * @param dataSource The data source.
+   * @param sqlDialect The SQL dialect.
    */
   public SqlQueryDataSetProducer(Table table, String query, DataSource dataSource, SqlDialect sqlDialect) {
     this.schema = new TableSetSchema(Collections.singleton(table));

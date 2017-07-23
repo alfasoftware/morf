@@ -37,6 +37,7 @@ public class SqlScriptExecutorProvider implements Provider<SqlScriptExecutor> {
    *
    * @param dataSource The {@link DataSource} to instantiate the
    *          {@link SqlScriptExecutorProvider} for
+   * @param sqlDialect The dialect to use
    */
   @Inject
   public SqlScriptExecutorProvider(final DataSource dataSource, Provider<SqlDialect> sqlDialect) {
@@ -66,7 +67,8 @@ public class SqlScriptExecutorProvider implements Provider<SqlScriptExecutor> {
 
 
   /**
-   * @param dataSource
+   * @param dataSource The {@link DataSource} to instantiate the
+   *          {@link SqlScriptExecutorProvider} for
    * @deprecated This constructor does not work for all uses. Use {@link #SqlScriptExecutorProvider(DataSource, SqlDialect)}
    */
   @Deprecated

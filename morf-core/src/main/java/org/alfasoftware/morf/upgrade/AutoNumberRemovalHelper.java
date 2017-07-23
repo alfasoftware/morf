@@ -34,8 +34,8 @@ public class AutoNumberRemovalHelper {
   /**
    * Removes the row, referring to a {@linkplain Table}, from the AutoNumber table.
    *
-   * @param dataEditor
-   * @param table
+   * @param dataEditor Executor of statements
+   * @param table The table for which autonumbering will be rmeoved
    */
   public static void removeAutonumber(DataEditor dataEditor, Table table) {
     dataEditor.executeStatement(delete(tableRef("AutoNumber")).where(eq(field("name"), literal(table.getName()))));

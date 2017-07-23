@@ -310,6 +310,10 @@ public class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Sorts a list of columns so that the primary key columns appear first in key order.
+   * @param primaryKeys The list of the primary key column names
+   * @param rawColumns The list of columns to re-arrange
+   * @return A list containing all the {@link Column} instances in the supplied list re-arranged so that the primary
+   * key columns appear first.
    */
   protected List<Column> sortByPrimaryKey(List<String> primaryKeys, List<Column> rawColumns) {
     // Map allowing retrieval of columns by name
@@ -349,7 +353,7 @@ public class DatabaseMetaDataProvider implements Schema {
    * @param columnBuilder The column under construction.
    * @param columnMetaData The JDBC column metdata, if required.
    * @return The modified column
-   * @throws SQLException
+   * @throws SQLException when a problem in retrieving information from the database is encountered.
    */
   @SuppressWarnings("unused")
   protected ColumnBuilder setAdditionalColumnMetadata(String tableName, ColumnBuilder columnBuilder, ResultSet columnMetaData) throws SQLException {

@@ -16,12 +16,13 @@
 package org.alfasoftware.morf.jdbc;
 
 import org.alfasoftware.morf.dataset.Record;
+import org.alfasoftware.morf.dataset.RecordHelper;
 import org.alfasoftware.morf.metadata.Column;
 
 /**
  * Provides a method by which to convert the string value on a {@link Record}
  * to a database-compatible value.  Generally implemented by a {@link SqlDialect}
- * and passed to {@link RecordHelper#joinRecordValues(Table, Record, Collection, String).
+ * and passed to {@link RecordHelper}.
  *
  * @author Copyright (c) Alfa Financial Software 2013
  */

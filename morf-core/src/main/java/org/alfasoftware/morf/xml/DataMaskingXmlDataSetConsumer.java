@@ -39,7 +39,7 @@ public class DataMaskingXmlDataSetConsumer extends XmlDataSetConsumer {
    * specified by <var>file</var>.
    *
    * <p>The serialised output can be written to a single archive or multiple data files:</p>
-   * <p><ul>
+   * <ul>
    * <li>If <var>file</var> identifies a directory then each table in the data set is
    * serialised to a separate XML file within that directory.</li>
    * <li>If <var>file</var> identifies a file name then the file will be created or replaced with

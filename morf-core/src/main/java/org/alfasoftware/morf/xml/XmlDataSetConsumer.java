@@ -48,7 +48,8 @@ import org.alfasoftware.morf.xml.XmlStreamProvider.XmlOutputStreamProvider;
  * <p>The output from this class can be sent directly to the file system by using the
  * constructor {@link #XmlDataSetConsumer(File)}. Alternatively the output from this
  * class can be sent to one or many streams by calling the constructor
- * {@link #XmlDataSetConsumer(XmlOutputStreamProvider)}.</p>
+ * accepting the {@link XmlOutputStreamProvider}.
+ * </p>
  *
  * @author Copyright (c) Alfa Financial Software 2009
  */
@@ -89,7 +90,7 @@ public class XmlDataSetConsumer implements DataSetConsumer {
    * specified by <var>file</var>.
    *
    * <p>The serialised output can be written to a single archive or multiple data files:</p>
-   * <p><ul>
+   * <ul>
    * <li>If <var>file</var> identifies a directory then each table in the data set is
    * serialised to a separate XML file within that directory.</li>
    * <li>If <var>file</var> identifies a file name then the file will be created or replaced with
@@ -108,7 +109,7 @@ public class XmlDataSetConsumer implements DataSetConsumer {
    * specified by <var>file</var>.
    *
    * <p>The serialised output can be written to a single archive or multiple data files:</p>
-   * <p><ul>
+   * <ul>
    * <li>If <var>file</var> identifies a directory then each table in the data set is
    * serialised to a separate XML file within that directory.</li>
    * <li>If <var>file</var> identifies a file name then the file will be created or replaced with
@@ -147,6 +148,7 @@ public class XmlDataSetConsumer implements DataSetConsumer {
    *
    * @param xmlOutputStreamProvider Provides streams to receive the XML content
    * for the data in the data set.
+   * @param clearDestinationBehaviour The behaviour of the consumer when running against a directory.
    */
   public XmlDataSetConsumer(XmlOutputStreamProvider xmlOutputStreamProvider, ClearDestinationBehaviour clearDestinationBehaviour) {
     super();

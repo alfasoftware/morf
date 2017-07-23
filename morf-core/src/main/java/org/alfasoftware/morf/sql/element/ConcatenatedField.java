@@ -57,6 +57,7 @@ public class ConcatenatedField extends AliasedField implements Driver {
    * Private constructor used to carry out a deep copy.
    *
    * @param concatenatedField the concatenated field to deep copy
+   * @param transformer The transformation to be executed during the copy
    */
   private ConcatenatedField(ConcatenatedField concatenatedField,DeepCopyTransformation transformer) {
     super();
@@ -70,8 +71,7 @@ public class ConcatenatedField extends AliasedField implements Driver {
 
 
   /**
-   * {@inheritDoc}
-   * @see org.alfasoftware.morf.sql.element.AliasedField#deepCopyInternal()
+   * @see org.alfasoftware.morf.sql.element.AliasedField#deepCopyInternal(DeepCopyTransformation)
    */
   @Override
   protected AliasedField deepCopyInternal(DeepCopyTransformation transformer) {
@@ -90,7 +90,7 @@ public class ConcatenatedField extends AliasedField implements Driver {
 
 
   /**
-   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(org.alfasoftware.morf.util.ObjectTreeTraverser, org.alfasoftware.morf.sql.ObjectTreeTraverser.Visitor)
+   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(ObjectTreeTraverser)
    */
   @Override
   public void drive(ObjectTreeTraverser traverser) {

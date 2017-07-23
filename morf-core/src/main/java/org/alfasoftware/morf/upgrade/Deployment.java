@@ -89,7 +89,6 @@ public class Deployment {
    * Creates deployment statements using the supplied source meta data.
    *
    * @param targetSchema Schema that is to be deployed.
-   * @param sqlDialect Used to create deployment SQL statements.
    * @param sqlStatementWriter Recipient for the deployment statements.
    */
   private void writeStatements(Schema targetSchema, SqlStatementWriter sqlStatementWriter) {
@@ -135,7 +134,6 @@ public class Deployment {
   /**
    * Creates deployment statements using the supplied source meta data.
    *
-   * @param dialect Database sql dialect.
    * @param upgradeSteps All available upgrade steps.
    * @param targetSchema Schema that is to be deployed.
    */
@@ -171,9 +169,8 @@ public class Deployment {
    * ensure that the upgrade steps that were used to create are in written so that next time the application is run the upgrader
    * doesn't try to recreate/upgrade them.</p>
    *
-   * @param sqlDialect Database sql dialect.
    * @param upgradeSteps All available upgrade steps.
-   * @param sqlStatementWriter Recipient for the deployment statements.
+   * @param upgradePath Recipient for the deployment statements.
    */
   private void writeUpgradeSteps(Collection<Class<? extends UpgradeStep>> upgradeSteps, UpgradePath upgradePath) {
     for(Class<? extends UpgradeStep> upgradeStep : upgradeSteps) {
@@ -195,7 +192,7 @@ public class Deployment {
     /**
      * Creates an instance of {@link Deployment}.
      *
-     * @param sqlScriptExecutorProvider Provides {@link SqlScriptExecutor}s.
+     * @param connectionResources The connection to use.
      * @return The resulting deployment.
      */
     public Deployment create(ConnectionResources connectionResources);

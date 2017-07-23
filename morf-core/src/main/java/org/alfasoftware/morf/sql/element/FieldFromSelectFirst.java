@@ -37,6 +37,7 @@ public class FieldFromSelectFirst extends AliasedField implements Driver {
    * Constructor used to create the deep copy of this field from select
    *
    * @param sourceField the field from select to copy from
+   * @param transformer The transformation to execute during the copy
    */
   private FieldFromSelectFirst(FieldFromSelectFirst sourceField,DeepCopyTransformation transformer) {
     super();
@@ -70,8 +71,7 @@ public class FieldFromSelectFirst extends AliasedField implements Driver {
 
 
   /**
-   * {@inheritDoc}
-   * @see org.alfasoftware.morf.sql.element.AliasedField#deepCopyInternal()
+   * @see org.alfasoftware.morf.sql.element.AliasedField#deepCopyInternal(DeepCopyTransformation)
    */
   @Override
   protected AliasedField deepCopyInternal(DeepCopyTransformation transformer) {
@@ -80,7 +80,7 @@ public class FieldFromSelectFirst extends AliasedField implements Driver {
 
 
   /**
-   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(org.alfasoftware.morf.sql.ObjectTreeTraverser.VisitorDispatcher)
+   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(ObjectTreeTraverser)
    */
   @Override
   public void drive(ObjectTreeTraverser traverser) {

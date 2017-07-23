@@ -36,7 +36,7 @@ public interface SchemaEditor {
    * Causes an add column schema change to be added to the change sequence.
    * <p>
    * This default does <em>not</em> end up on the database column definition,
-   * unlike {@link Column#defaultValue(String)}. Use this in preference to
+   * unlike {@link Column#getDefaultValue()}. Use this in preference to
    * having a separate {@link UpdateStatement}, if a single constant value will
    * be used for all rows.
    * </p>
@@ -122,7 +122,7 @@ public interface SchemaEditor {
    * <p>If you have more than one column to remove, this method gives the underlying implementations the chance to combine and optimise the removals.</p>
    *
    * @param tableName name of table on which the column exists
-   * @param definition the definition of the columns to remove
+   * @param definitions the definition of the columns to remove
    */
   public void removeColumns(String tableName, Column... definitions);
 

@@ -43,10 +43,10 @@ import com.google.common.collect.Lists;
  *
  * <blockquote><pre>
  *   new InsertStatement()
- *        |----> .into([table])                       = INSERT INTO [table]
- *                |----> .fields([field], ...)        = INSERT INTO [table] ([field], ...)
- *                |----> .from([selectStatement])     = INSERT INTO [table] (SELECT * FROM ...)
- *                |----> .from([table])               = INSERT INTO [table] (SELECT * FROM [table])
+ *        |----&gt; .into([table])                       = INSERT INTO [table]
+ *                |----&gt; .fields([field], ...)        = INSERT INTO [table] ([field], ...)
+ *                |----&gt; .from([selectStatement])     = INSERT INTO [table] (SELECT * FROM ...)
+ *                |----&gt; .from([table])               = INSERT INTO [table] (SELECT * FROM [table])
  * </pre></blockquote>
  *
  * <p>To insert a specific set of values (e.g. a new transaction code row) do the following:</p>
@@ -274,7 +274,7 @@ public class InsertStatement implements Statement, DeepCopyableWithTransformatio
 
   /**
    * Identifies whether this insert will use specified
-   * {@link #values(AliasedField...)} instead of a source
+   * {@link #values(AliasedFieldBuilder...)} instead of a source
    * table or select.
    *
    * @return true if the insert is using specified actual values to insert into the columns.
@@ -375,7 +375,7 @@ public class InsertStatement implements Statement, DeepCopyableWithTransformatio
 
 
   /**
-   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(org.alfasoftware.morf.sql.ObjectTreeTraverser.VisitorDispatcher)
+   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(ObjectTreeTraverser)
    */
   @Override
   public void drive(ObjectTreeTraverser traverser) {

@@ -27,8 +27,7 @@ import org.apache.commons.lang.StringUtils;
 public class NullFieldLiteral extends FieldLiteral {
 
   /**
-   * {@inheritDoc}
-   * @see org.alfasoftware.morf.sql.element.AliasedField#deepCopyInternal()
+   * @see org.alfasoftware.morf.sql.element.AliasedField#deepCopyInternal(DeepCopyTransformation)
    */
   @Override
   protected AliasedField deepCopyInternal(DeepCopyTransformation transformer) {

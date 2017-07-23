@@ -36,8 +36,8 @@ public class CorrectPrimaryKeyColumns extends ChangePrimaryKeyColumns {
   private List<String> oldPrimaryKeyColumns;
 
   /**
-   * @param tableName
-   * @param newPrimaryKeyColumns
+   * @param tableName The target table
+   * @param newPrimaryKeyColumns The new primary key columns
    */
   public CorrectPrimaryKeyColumns(String tableName, List<String> newPrimaryKeyColumns) {
     super(tableName, Collections.<String> emptyList(), newPrimaryKeyColumns);
