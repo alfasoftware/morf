@@ -24,7 +24,7 @@ import com.google.inject.Provider;
 
 /**
  * API to compare two {@link String} objects according to the locale of the
- * backing database. {@link Comparable<?>} objects are passed and if both are
+ * backing database. {@link Comparable} objects are passed and if both are
  * not {@link String} objects then implementations should fall back to
  * left.compareTo(right).
  *
@@ -35,12 +35,13 @@ public interface DatabaseEquivalentStringComparator extends Comparator<String> {
 
   /**
    * Overloaded method for API convenience. If both provided {@link Comparable}
-   * objects are Strings then {@link #compare(String, String)} will be used to
+   * objects are Strings then  compare(String, String) will be used to
    * perform a database equivalent string comparison.  Otherwise left will be
    * compared to right using the {@link Comparable#compareTo(Object)} method of left.
    *
-   * @param left
-   * @param right
+   * @param left The left member of the comparison
+   * @param right The right side of the comparison
+   * @return  an int as per contract in {@link Comparator#compare(Object, Object)}
    * @see java.util.Comparator#compare(java.lang.Object, java.lang.Object)
    */
   int compare(Comparable<?> left, Comparable<?> right);

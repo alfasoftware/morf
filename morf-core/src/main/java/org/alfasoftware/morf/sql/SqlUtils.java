@@ -116,7 +116,7 @@ public class SqlUtils {
   /**
    * Constructs a Select First Statement
    *
-   * @param fields an array of fields that should be selected
+   * @param field the field that should be selected
    * @return {@link SelectStatement}
    */
   public static SelectFirstStatement selectFirst(AliasedFieldBuilder field) {
@@ -174,12 +174,12 @@ public class SqlUtils {
    * For example, in order to generate "(a + b) / c" SQL Math expression, we
    * need to put first two elements (first subexpression) into a bracket. That
    * could be achieved by the following DSL statement.
+   * </p>
    *
    * <pre>
    * bracket(field(&quot;a&quot;).plus(field(&quot;b&quot;))).divideBy(field(&quot;c&quot;))
    * </pre>
    *
-   * </p>
    *
    * @param expression the input Math expression that will be wrapped with
    *          brackets in output SQL
@@ -300,7 +300,7 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
   /**
    * Constructs a new SQL named parameter from a column.
    *
-   * @param name the parameter column.
+   * @param column the parameter column.
    * @return {@link SqlParameter}
    */
   public static SqlParameter parameter(Column column) {
@@ -666,10 +666,10 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
    * <p>The call structure imitates the end SQL and is structured as follows:</p>
    *
    * <blockquote><pre>
-   *   SqlUtils.windowFunction([function])                      = [function]
-   *        |----> .partitionBy([fields]...)                    = [function] OVER (PARTITION BY [fields])
-   *                |----> .orderBy([fields]...)                = [function] OVER (PARTITION BY [fields] ORDER BY [fields])
-   *        |----> .orderBy([fields]...)                        = [function] OVER (ORDER BY [fields])
+   *   SqlUtils.windowFunction([function])                         = [function]
+   *        |----&gt; .partitionBy([fields]...)                    = [function] OVER (PARTITION BY [fields])
+   *                |----&gt; .orderBy([fields]...)                = [function] OVER (PARTITION BY [fields] ORDER BY [fields])
+   *        |----&gt; .orderBy([fields]...)                        = [function] OVER (ORDER BY [fields])
    *  </pre></blockquote>
    *
    * Restrictions:
@@ -679,6 +679,8 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
    * <li>The default direction for fields in orderBy(..) is ASC.</li>
    * </ul>
    * @author Copyright (c) Alfa Financial Software 2017
+   * @param function The function
+   * @return The windowing function builder
    */
   public static WindowFunction.Builder windowFunction(Function function) {
     return WindowFunction.over(function);
@@ -700,7 +702,7 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
     /**
      * Specifies the data type for the parameter.
      *
-     * @param dataType
+     * @param dataType The data type
      * @return the next phase of the parameter builder.
      */
     public SqlParameterWidthBuilder type(DataType dataType) {
@@ -726,7 +728,7 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
      * Specifies the width of the parameter and
      * returns the constructed parameter.
      *
-     * @param width
+     * @param width The width
      * @return the {@link SqlParameter}.
      */
     public SqlParameter width(int width) {
@@ -737,8 +739,8 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
      * Specifies the width and scale of the parameter and
      * returns the constructed parameter.
      *
-     * @param width
-     * @param scale
+     * @param width The width
+     * @param scale The scale
      * @return the {@link SqlParameter}.
      */
     public SqlParameter width(int width, int scale) {

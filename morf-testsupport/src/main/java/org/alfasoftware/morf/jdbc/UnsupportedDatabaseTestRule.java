@@ -45,6 +45,8 @@ public class UnsupportedDatabaseTestRule implements TestRule {
   /**
    * Creates a new {@link UnsupportedDatabaseTestRule} based on the specified
    * named test methods.
+   *
+   * @param unsupportedTests The test method names
    */
   public UnsupportedDatabaseTestRule(final Set<String> unsupportedTests) {
     super();
@@ -55,6 +57,7 @@ public class UnsupportedDatabaseTestRule implements TestRule {
   /**
    * Creates a new {@link UnsupportedDatabaseTestRule} based on the specified
    * named test methods.
+   * @param unsupportedTests The test method names
    */
   public UnsupportedDatabaseTestRule(String... unsupportedTests) {
     this(ImmutableSet.copyOf(unsupportedTests));

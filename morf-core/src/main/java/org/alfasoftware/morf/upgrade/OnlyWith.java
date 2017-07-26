@@ -24,20 +24,20 @@ import java.lang.annotation.Target;
 /**
  * Puts a restriction on an upgrade step so that it can only be executed along with another upgrade step.
  *
+ * <p>
  * The annotated step can come either earlier or later in the sequence of upgrade steps than the referenced
  * upgrade step. The ordering of upgrade steps is fully respected, there are no restrictions
  * on sequence numbers of upgrade steps liked together with this annotation.</p>
  *
  * <p>
  * Examples:
+ *</p>
  *  <ul>
- *   <li>given two steps, unapplied A and unapplied B, and step B annotated with {@link OnlyWith("UUID_of_step_A")},
+ *   <li>given two steps, unapplied A and unapplied B, and step B annotated with <code>OnlyWith("UUID_of_step_A")</code>,
  *   when one runs the database upgrade, then both steps will be applied</li>
- *   <li>given two steps, applied A and unapplied B, and step B annotated with {@link OnlyWith("UUID_of_step_A")},
+ *   <li>given two steps, applied A and unapplied B, and step B annotated with <code>OnlyWith("UUID_of_step_A")</code>,
  *   when one runs the database upgrade, none of the steps will be applied</li>
  *  </ul>
- * </p>
- * <p>
  *
  * The safe uses of the {@link OnlyWith}:
  *  <ul>
@@ -46,7 +46,6 @@ import java.lang.annotation.Target;
  *   <li>moving tables from core to optional modules
  *    - split the existing core upgrade step into its core and optional parts, annotate the optional part to be executed only with its core part.</li>
  *  </ul>
- * </p>
  *
  * @author Copyright (c) Alfa Financial Software 2017
  */

@@ -47,7 +47,7 @@ public final class H2 extends AbstractDatabaseType {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.DatabaseType#formatJdbcUrl(org.alfasoftware.morf.jdbc.JdbcUrlElements)
+   * @see org.alfasoftware.morf.jdbc.DatabaseType#formatJdbcUrl(JdbcUrlElements)
    */
   @Override
   public String formatJdbcUrl(JdbcUrlElements jdbcUrlElements) {
@@ -90,7 +90,7 @@ public final class H2 extends AbstractDatabaseType {
   }
 
   /**
-   * @see org.alfasoftware.morf.jdbc.DatabaseTypes#openSchema(java.sql.Connection, java.lang.String, java.lang.String)
+   * @see org.alfasoftware.morf.jdbc.DatabaseType#openSchema(Connection, String, String)
    */
   @Override
   public Schema openSchema(Connection connection, String databaseName, String schemaName) {

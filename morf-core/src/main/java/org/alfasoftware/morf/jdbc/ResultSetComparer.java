@@ -258,8 +258,7 @@ public class ResultSetComparer {
    *          If this is empty, the result sets must return only one record.
    * @param left The left hand data set.
    * @param right The right hand data set.
-   * @param connection a database connection
-   * @param callback the mismatch callback interface implementation.
+   * @param callBack the mismatch callback interface implementation.
    * @return the number of mismatches between the two data sets.
    */
   public int compare(int[] keyColumns, ResultSet left, ResultSet right, CompareCallback callBack) {

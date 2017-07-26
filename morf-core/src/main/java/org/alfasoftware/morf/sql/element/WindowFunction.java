@@ -31,10 +31,10 @@ import com.google.common.collect.Lists;
  * Encapsulates the generation of an PARTITION BY SQL statement. <blockquote>
  *
  * <pre>
- *   SqlUtils.windowFunction([function])                      = [function]
- *        |----> .partitionBy([fields]...)                    = [function] OVER (PARTITION BY [fields])
- *                |----> .orderBy([fields]...)                = [function] OVER (PARTITION BY [fields] ORDER BY [fields])
- *        |----> .orderBy([fields]...)                        = [function] OVER (ORDER BY [fields])
+ *   SqlUtils.windowFunction([function])                         = [function]
+ *        |----&gt; .partitionBy([fields]...)                    = [function] OVER (PARTITION BY [fields])
+ *                |----&gt; .orderBy([fields]...)                = [function] OVER (PARTITION BY [fields] ORDER BY [fields])
+ *        |----&gt; .orderBy([fields]...)                        = [function] OVER (ORDER BY [fields])
  * </pre>
  *
  * </blockquote> Restrictions:
@@ -67,6 +67,7 @@ public final class WindowFunction extends AliasedField implements Driver {
   /**
    * Starts a new window function Builder.
    * @param function the function to construct the window function over.
+   * @return the window function builder
    */
   public static Builder over(Function function) {
     return new BuilderImpl(function);
@@ -110,6 +111,7 @@ public final class WindowFunction extends AliasedField implements Driver {
      * used.
      *
      * @param orderByFields the fields to order by.
+     * @return The window function builder
      */
     Builder orderBy(AliasedField... orderByFields);
 
@@ -120,6 +122,7 @@ public final class WindowFunction extends AliasedField implements Driver {
      * used.
      *
      * @param orderByFields the fields to order by.
+     * @return the window function builder
      */
     Builder orderBy(Iterable<? extends AliasedField> orderByFields);
 
@@ -128,6 +131,7 @@ public final class WindowFunction extends AliasedField implements Driver {
      * Specifies the fields to partition by.
      *
      * @param partitionByFields the fields to partition by.
+     * @return the window function builder
      */
     Builder partitionBy(AliasedField... partitionByFields);
 
@@ -136,6 +140,7 @@ public final class WindowFunction extends AliasedField implements Driver {
      * Specifies the fields to partition by.
      *
      * @param partitionByFields the fields to partition by.
+     * @return the window function builder
      */
     Builder partitionBy(Iterable<? extends AliasedField> partitionByFields);
   }
@@ -230,7 +235,7 @@ public final class WindowFunction extends AliasedField implements Driver {
 
 
   /**
-   * @see org.alfasoftware.morf.sql.element.AliasedField#deepCopyInternal()
+   * @see org.alfasoftware.morf.sql.element.AliasedField#deepCopyInternal(DeepCopyTransformation)
    */
   @Override
   protected AliasedField deepCopyInternal(DeepCopyTransformation transformer) {
@@ -243,7 +248,7 @@ public final class WindowFunction extends AliasedField implements Driver {
 
 
   /**
-   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(org.alfasoftware.morf.sql.ObjectTreeTraverser.VisitorDispatcher)
+   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(ObjectTreeTraverser)
    */
   @Override
   public void drive(ObjectTreeTraverser traverser) {

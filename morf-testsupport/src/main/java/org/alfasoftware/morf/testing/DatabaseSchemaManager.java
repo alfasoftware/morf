@@ -86,6 +86,9 @@ public class DatabaseSchemaManager {
 
   /**
    * Injected constructor.
+   * @param connectionResources The connection to use
+   * @param dataSource The data source
+   * @param executor The script executor
    */
   @Inject
   protected DatabaseSchemaManager(ConnectionResources connectionResources, DataSource dataSource, SqlScriptExecutorProvider executor) {

@@ -72,6 +72,7 @@ public class FieldReference extends AliasedField implements Driver {
    * Constructor used to create the deep copy of this field reference
    *
    * @param sourceField the field reference to create the copy from
+   * @param transformer The transformation to be executed during the copy
    */
   protected FieldReference(FieldReference sourceField, DeepCopyTransformation transformer) {
     super();
@@ -89,6 +90,7 @@ public class FieldReference extends AliasedField implements Driver {
    * @param table the table on which the field exists
    * @param name the name of the field
    * @param direction the sort direction of the field
+   * @param nullValueHandling how to handle nulls
    */
   public FieldReference(TableReference table, String name, Direction direction, NullValueHandling nullValueHandling) {
     this(table, name, direction, Optional.of(nullValueHandling));
@@ -200,7 +202,7 @@ public class FieldReference extends AliasedField implements Driver {
 
   /**
    * {@inheritDoc}
-   * @see org.alfasoftware.morf.sql.element.AliasedField#deepCopyInternal()
+   * @see org.alfasoftware.morf.sql.element.AliasedField#deepCopyInternal(DeepCopyTransformation)
    */
   @Override
   protected AliasedField deepCopyInternal(DeepCopyTransformation transformer) {
@@ -209,7 +211,7 @@ public class FieldReference extends AliasedField implements Driver {
 
 
   /**
-   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(org.alfasoftware.morf.sql.ObjectTreeTraverser.VisitorDispatcher)
+   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(ObjectTreeTraverser)
    */
   @Override
   public void drive(ObjectTreeTraverser traverser) {

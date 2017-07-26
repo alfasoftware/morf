@@ -83,8 +83,7 @@ public class MathsField extends AliasedField implements Driver {
 
 
   /**
-   * {@inheritDoc}
-   * @see org.alfasoftware.morf.sql.element.AliasedField#deepCopyInternal()
+   * @see org.alfasoftware.morf.sql.element.AliasedField#deepCopyInternal(DeepCopyTransformation)
    */
   @Override
   protected AliasedField deepCopyInternal(DeepCopyTransformation transformer) {
@@ -94,6 +93,9 @@ public class MathsField extends AliasedField implements Driver {
 
   /**
    * Provides the plus operation for SQL.
+   * @param leftField left addendum
+   * @param rightField right addendum
+   * @return The function representing the sum
    */
   public static MathsField plus(AliasedField leftField, AliasedField rightField ) {
     AliasedField rightOperand = rightField instanceof MathsField ? new BracketedExpression((MathsField)rightField) : rightField;
@@ -103,6 +105,9 @@ public class MathsField extends AliasedField implements Driver {
 
   /**
    * Provides the multiply operation for SQL.
+   * @param leftField left multiplier
+   * @param rightField right multiplier
+   * @return The function representing the product
    */
   public static MathsField multiply(AliasedField leftField, AliasedField rightField ) {
     AliasedField rightOperand = rightField instanceof MathsField ? new BracketedExpression((MathsField)rightField) : rightField;
@@ -111,7 +116,7 @@ public class MathsField extends AliasedField implements Driver {
 
 
   /**
-   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(org.alfasoftware.morf.sql.ObjectTreeTraverser.VisitorDispatcher)
+   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(ObjectTreeTraverser)
    */
   @Override
   public void drive(ObjectTreeTraverser traverser) {

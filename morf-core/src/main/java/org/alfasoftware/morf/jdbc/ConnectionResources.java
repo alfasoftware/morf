@@ -53,7 +53,7 @@ public interface ConnectionResources {
 
   /**
    * Access an SQL statement generator for the database described by this object.
-   * This is a shortcut to calling {@link DatabaseType#sqlDialect(String))} with
+   * This is a shortcut to calling {@link DatabaseType#sqlDialect(String)}  with
    * {@link #getSchemaName()} as the parameter.
    *
    * @return An sql generator that will adhere to syntax rules for the specified database.

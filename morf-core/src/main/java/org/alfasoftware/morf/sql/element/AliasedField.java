@@ -103,7 +103,7 @@ public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableW
   /**
    * Creates a deep copy of a descendant of {@link AliasedField},
    * populating properties in the descendant class
-   *
+   * @param transformer the transformation to execute during the copy
    * @return deep copy of the field
    */
   protected abstract AliasedFieldBuilder deepCopyInternal(DeepCopyTransformation transformer);
@@ -287,7 +287,7 @@ public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableW
 
   /**
    * @param values values for comparison
-   * @return A {@link Criterion#in(AliasedField, Object...))}.
+   * @return A {@link Criterion#in(AliasedField, Object...)}.
    */
   public Criterion in(Object... values) {
     return Criterion.in(this, values);

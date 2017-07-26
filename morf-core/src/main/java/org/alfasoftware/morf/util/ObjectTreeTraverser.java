@@ -45,6 +45,8 @@ public final class ObjectTreeTraverser {
 
   /**
    * Creates a new traverser for a callback.
+   * @param callback The callback
+   * @return the resulting traverser
    */
   public static ObjectTreeTraverser forCallback(Callback callback) {
     return new ObjectTreeTraverser(callback);
@@ -58,6 +60,7 @@ public final class ObjectTreeTraverser {
    *
    * @param object the object node in the object graph.
    * @return this, for method chaining.
+   * @param <T> the type of object to traverse
    */
   public <T> ObjectTreeTraverser dispatch(T object) {
     if (object == null) {
@@ -96,6 +99,7 @@ public final class ObjectTreeTraverser {
      * Any class implementing this method will use the
      * {@link ObjectTreeTraverser} to parse its contents through the
      * {@link Callback}.
+     * @param dispatcher The strategy to parse content
      */
     void drive(ObjectTreeTraverser dispatcher);
   }

@@ -51,7 +51,7 @@ public class ChangelogBuilder {
    * Set whether to include data changes in the log output. The default is to
    * omit data changes.
    *
-   * @param includeDataChanges
+   * @param includeDataChanges Indicates whether data changes should be included or not.
    * @return This builder for chaining
    */
   public ChangelogBuilder withIncludeDataChanges(boolean includeDataChanges) {
@@ -64,7 +64,7 @@ public class ChangelogBuilder {
    * Set which SQL dialect to use for data change statements that cannot be
    * converted to a human- readable form. The default is ORACLE.
    *
-   * @param preferredSQLDialect
+   * @param preferredSQLDialect The SQL dialect to use
    * @return This builder for chaining
    */
   public ChangelogBuilder withPreferredSQLDialect(String preferredSQLDialect) {
@@ -77,7 +77,7 @@ public class ChangelogBuilder {
    * Add to the collection of {@link UpgradeStep}'s to include in this
    * changelog.
    *
-   * @param upgradeSteps
+   * @param upgradeSteps The upgrade steps to add
    * @return This builder for chaining
    */
   public ChangelogBuilder withUpgradeSteps(Collection<Class<? extends UpgradeStep>> upgradeSteps) {

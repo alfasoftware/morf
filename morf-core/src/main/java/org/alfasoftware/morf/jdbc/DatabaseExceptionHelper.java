@@ -22,8 +22,8 @@ import org.apache.commons.lang.exception.ExceptionUtils;
 import com.google.inject.Singleton;
 
 /**
- * Helper which provides methods for database related {@link Throwable}
- * analysis. <br/>
+ * <p>Helper which provides methods for database related {@link Throwable}
+ * analysis. </p>
  * Stateless singleton service class.
  *
  * @author Copyright (c) Alfa Financial Software 2017
@@ -39,7 +39,7 @@ public class DatabaseExceptionHelper {
 
 
   /**
-   * Checks if the throwable was caused by timeout exception. <br/>
+   * <p>Checks if the throwable was caused by timeout exception.</p>
    * <b>This method has been tested for Oracle and MySQL only and might not work
    * for other DB engines.</b>
    *

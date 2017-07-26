@@ -62,7 +62,7 @@ public final class SqlServer extends AbstractDatabaseType {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.DatabaseTypes#openSchema(java.sql.Connection,
+   * @see org.alfasoftware.morf.jdbc.DatabaseType#openSchema(java.sql.Connection,
    *      java.lang.String, java.lang.String)
    */
   @Override

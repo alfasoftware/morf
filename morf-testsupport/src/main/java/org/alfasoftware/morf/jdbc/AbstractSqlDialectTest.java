@@ -124,12 +124,12 @@ import com.google.common.collect.Lists;
 /**
  * Abstract test case that defines behaviour for an implementation of {@link SqlDialect}.
  *
- * <p>Tests are based on meta data from the following tables:
+ * <p>Tests are based on meta data from the following tables:</p>
  * <ul>
  * <li>Test - variety of fields and indexes.</li>
  * <li>Alternate - simple alternate table when a second table is required.</li>
  * <li>Other - yet another alternate table for testing really complex stuff.</li>
- * </ul></p>
+ * </ul>
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
@@ -1227,7 +1227,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Returns decimal representation of a literal for testing
+   * @return The decimal representation of a literal for testing
    */
   protected String expectedSelectMaximumWithExpression() {
     return "SELECT MAX(intField + 1) FROM " + tableName("Test");
@@ -1245,7 +1245,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Returns decimal representation of a literal for testing
+   * @return the decimal representation of a literal for testing
    */
   protected String expectedSelectMinimumWithExpression() {
     return "SELECT MIN(intField - 1) FROM " + tableName("Test");
@@ -1263,7 +1263,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Returns decimal representation of a literal for testing
+   * @return the decimal representation of a literal for testing
    */
   protected String expectedSelectSumWithExpression() {
     return "SELECT SUM(intField * 2 / 3) FROM " + tableName("Test");
@@ -1319,7 +1319,8 @@ public abstract class AbstractSqlDialectTest {
   }
 
   /**
-   * Returns decimal representation of a literal for testing
+   * @param literal The literal whose decimal representation will be returned
+   * @return the decimal representation of a literal for testing
    */
   protected String expectedDecimalRepresentationOfLiteral(String literal) {
     return literal;
@@ -1769,7 +1770,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Tests for {@link SqlDialect#repairAutoNumberStartPosition(Table)}
+   * Tests for {@link SqlDialect#repairAutoNumberStartPosition(Table, SqlScriptExecutor, Connection)}
    */
   @Test
   public void testRepairAutoNumberStartPositionOverRepairLimit() {
@@ -1783,7 +1784,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Tests for {@link SqlDialect#repairAutoNumberStartPosition(Table)}
+   * Tests for {@link SqlDialect#repairAutoNumberStartPosition(Table, SqlScriptExecutor, Connection)}
    */
   @Test
   public void testRepairAutoNumberStartPositionUnderRepairLimit() {
@@ -1797,7 +1798,10 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Method to override in dialet specific tests to set the max id value on the autonumber table for use during testRepairAutoNumberStartPosition
+   * Method to override in dialect specific tests to set the max id value on the autonumber table for use during
+   * testRepairAutoNumberStartPosition
+   *
+   * @param id  The max id
    */
   protected void setMaxIdOnAutonumberTable(@SuppressWarnings("unused") long id) {
 
@@ -1806,6 +1810,8 @@ public abstract class AbstractSqlDialectTest {
 
   /**
    * Verify on the expected SQL statements to be run on repairing the autonumber start position.
+   * @param sqlScriptExecutor The script executor
+   * @param connection The connection to use
    */
   @SuppressWarnings("unused")
   protected void verifyRepairAutoNumberStartPosition(SqlScriptExecutor sqlScriptExecutor,Connection connection) {
@@ -2350,7 +2356,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Returns expected SQL for math operation 1
+   * @return expected SQL for math operation 1
    */
   protected String expectedSqlForMathOperations1() {
     return "a / b + c";
@@ -2373,7 +2379,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Returns expected SQL for math operation 2
+   * @return expected SQL for math operation 2
    */
   protected String expectedSqlForMathOperations2() {
     return "a / b + 100";
@@ -2395,7 +2401,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Returns expected SQL for math operation 3
+   * @return expected SQL for math operation 3
    */
   protected String expectedSqlForMathOperations3() {
     return "a / (b + c)";
@@ -2417,7 +2423,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Returns expected SQL for math operation 4
+   * @return expected SQL for math operation 4
    */
   protected String expectedSqlForMathOperations4() {
     return "a / (b + 100)";
@@ -2436,7 +2442,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Returns expected SQL for math operation 5
+   * @return expected SQL for math operation 5
    */
   protected String expectedSqlForMathOperations5() {
     return "a * (b + c)";
@@ -2461,7 +2467,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Returns expected SQL for math operation 6
+   * @return expected SQL for math operation 6
    */
   protected String expectedSqlForMathOperations6() {
     return "a + b / (c - d)";
@@ -2487,7 +2493,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Returns expected SQL for math operation 7
+   * @return expected SQL for math operation 7
    */
   protected String expectedSqlForMathOperations7() {
     return "(a + b) / (c - d)";
@@ -2505,7 +2511,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Returns expected SQL for math operation 8
+   * @return expected SQL for math operation 8
    */
   protected String expectedSqlForMathOperations8() {
     return "a + b + c + d + e";
@@ -2529,7 +2535,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Returns expected SQL for math operation 9
+   * @return expected SQL for math operation 9
    */
   protected String expectedSqlForMathOperations9() {
     return "a + b + (c / d) + e + 100 + f / 5";
@@ -2551,7 +2557,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Returns expected SQL for math operation 10
+   * @return expected SQL for math operation 10
    */
   protected String expectedSqlForMathOperations10() {
     return "(a + b + (c / d) + e + 100 + f) / 5";
@@ -2571,7 +2577,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Returns expected SQL for math operation 11
+   * @return expected SQL for math operation 11
    */
   protected String expectedSqlForMathOperations11() {
     return "(a / 100 + 1) / b + 100";
@@ -2590,7 +2596,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Returns expected SQL for math operation 12
+   * @return expected SQL for math operation 12
    */
   protected String expectedSqlForMathOperations12() {
     return "(a + b) / c";
@@ -2608,7 +2614,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Returns expected SQL for math operation 13
+   * @return expected SQL for math operation 13
    */
   protected String expectedSqlForMathOperations13() {
     return "a + b + c / 2";
@@ -2630,7 +2636,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Returns expected SQL for math operation 14
+   * @return expected SQL for math operation 14
    */
   protected String expectedSqlForMathOperations14() {
     return "a + (b + c) / 2";
@@ -2649,7 +2655,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Returns expected SQL for math operation 15
+   * @return expected SQL for math operation 15
    */
   protected String expectedSqlForMathOperations15() {
     return "a + (b + c) / 2";
@@ -2667,7 +2673,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Returns expected SQL for math operation 16
+   * @return expected SQL for math operation 16
    */
   protected String expectedSqlForMathOperations16() {
     return "a + b + c / 2 + z";
@@ -2686,7 +2692,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Returns expected SQL for math operation for existing data fix 1
+   * @return expected SQL for math operation for existing data fix 1
    */
   protected String expectedSqlForMathOperationsForExistingDataFix1() {
     return "ROUND(doublevalue / 1000 * doublevalue, 2)";
@@ -2706,7 +2712,8 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Returns expected SQL for math operation for existing data fix 2
+   * @param sqlForRandom SQL to create a random number
+   * @return expected SQL for math operation for existing data fix 2
    */
   protected String expectedSqlForMathOperationsForExistingDataFix2(String sqlForRandom) {
     return "FLOOR(" + sqlForRandom + " * 999999.0)";
@@ -2726,7 +2733,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Returns expected SQL for math operation for existing data fix 3
+   * @return the expected SQL for math operation for existing data fix 3
    */
   protected String expectedSqlForMathOperationsForExistingDataFix3() {
     return "MAX(assetLocationDate * 100000 + assetLocationTime)";
@@ -2734,11 +2741,8 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Regression test that checks if the DSL with Math expressions, that is used
-   * in
-   * {@link com.chpconsulting.alfa.domain.upgrade.v5_2_18.AddColumnsToStoreTaxAgainstPayments}
-   * module produces expected SQL.
-   * <p>
+   * Regression test that checks if the DSL with Math expressions produces expected SQL.
+   *
    * Calling:
    *
    * <pre>
@@ -2749,7 +2753,6 @@ public abstract class AbstractSqlDialectTest {
    * expected SQL below. Since
    * {@link org.alfasoftware.morf.sql.SqlUtils#bracket(MathsField)} is
    * available, it should be use to achieve the SQL bracketing.
-   * </p>
    */
   @Test
   public void shouldGenerateCorrectSqlForMathOperationsForExistingDataFix4() {
@@ -2760,7 +2763,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Returns expected SQL for math operation for existing data fix 4
+   * @return the expected SQL for math operation for existing data fix 4
    */
   protected String expectedSqlForMathOperationsForExistingDataFix4() {
     return "invoiceLineReceived * vatRate / (vatRate + 100)";
@@ -3921,19 +3924,19 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * @return Expected SQL for {@link #testIndexDeploymentStatementsOnSingleColumn()}
+   * @return Expected SQL for {@link #testAddIndexStatementsOnSingleColumn()}
    */
   protected abstract List<String> expectedAddIndexStatementsOnSingleColumn();
 
 
   /**
-   * @return Expected SQL for {@link #testIndexDeploymnetStatementsOnMultipleColumns()}
+   * @return Expected SQL for {@link #testAddIndexStatementsOnMultipleColumns()}
    */
   protected abstract List<String> expectedAddIndexStatementsOnMultipleColumns();
 
 
   /**
-   * @return Expected SQL for {@link #testIndexDeploymnetStatementsUnique()}
+   * @return Expected SQL for {@link #testAddIndexStatementsUnique()}
    */
   protected abstract List<String> expectedAddIndexStatementsUnique();
 
@@ -4082,7 +4085,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Returns expected SQL for Insert Into Values With Complex Field
+   * @return The expected SQL for Insert Into Values With Complex Field
    */
   protected List<String> expectedSqlInsertIntoValuesWithComplexField() {
     return Arrays.asList("INSERT INTO " + tableName("TableOne") + " (id, value) VALUES (3, 1 + 2)");
@@ -4104,6 +4107,8 @@ public abstract class AbstractSqlDialectTest {
   /**
    * Tests the logic used for transferring a boolean {@link Record} value to a
    * {@link PreparedStatement}.  For overriding in specific DB tests
+   *
+   * @throws SQLException when a database access error occurs
    */
   protected void verifyBooleanPrepareStatementParameter() throws SQLException {
     final SqlParameter booleanColumn = parameter("booleanColumn").type(DataType.BOOLEAN);
@@ -4118,7 +4123,7 @@ public abstract class AbstractSqlDialectTest {
    * Tests the logic used for transferring a {@link Record} value to a
    * {@link PreparedStatement}.
    *
-   * @throws SQLException
+   * @throws SQLException when a database access error occurs
    */
   @Test
   public void testPrepareStatementParameter() throws SQLException {
@@ -4183,8 +4188,7 @@ public abstract class AbstractSqlDialectTest {
    * Calls callPrepareStatementParameter with a mock {@link PreparedStatement} and returns
    * the mock for analysis.
    *
-   * @param column The {@link Column} to set
-   * @param index The column index
+   * @param parameter The SQL parameter
    * @param value The value to set
    * @return The mocked {@link PreparedStatement}
    */
@@ -4383,6 +4387,8 @@ public abstract class AbstractSqlDialectTest {
 
   /**
    * Verify on the expected SQL statements to be run after insert for the test database table.
+   * @param sqlScriptExecutor The script executor to use
+   * @param connection The connection to use
    */
   @SuppressWarnings("unused")
   protected void verifyPostInsertStatementsInsertingUnderAutonumLimit(SqlScriptExecutor sqlScriptExecutor,Connection connection) {
@@ -4400,6 +4406,8 @@ public abstract class AbstractSqlDialectTest {
 
   /**
    * Verify on the expected SQL statements to be run after insert for the test database table.
+   * @param sqlScriptExecutor The script executor to use
+   * @param connection The connection to use
    */
   @SuppressWarnings("unused")
   protected void verifyPostInsertStatementsNotInsertingUnderAutonumLimit(SqlScriptExecutor sqlScriptExecutor,Connection connection) {
@@ -4770,11 +4778,13 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * @param rowCount The number of rows for which to optimise the query plan.
    * @return The expected SQL for the {@link SelectStatement#optimiseForRowCount(int)} directive.
    */
   protected abstract String expectedHints1(int rowCount);
 
   /**
+   * @param rowCount The number of rows for which to optimise the query plan.
    * @return The expected SQL for the {@link SelectStatement#optimiseForRowCount(int)} directive.
    */
   protected String expectedHints2(@SuppressWarnings("unused") int rowCount) {
@@ -4805,7 +4815,7 @@ public abstract class AbstractSqlDialectTest {
   /**
    * Tests formatting of numerical values in a {@link ResultSetRecord}.
    *
-   * @throws SQLException
+   * @throws SQLException when a database access error occurs
    */
   @Test
   public void testDecimalFormatter() throws SQLException {
@@ -4830,7 +4840,7 @@ public abstract class AbstractSqlDialectTest {
   /**
    * Tests formatting of binary values in a {@link ResultSetRecord}.
    *
-   * @throws SQLException
+   * @throws SQLException when a database access error occurs
    */
   @Test
   public void testBinaryFormatter() throws SQLException {
@@ -4888,7 +4898,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Tests the {@link SqlDialect#getSqlStatementSeparator(String)} performs
+   * Tests the {@link SqlDialect#formatSqlStatement(String)} performs
    * correctly.
    */
   @Test
@@ -4957,13 +4967,13 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Returns true if the dialect under test should claim to support window functions.
+   * @return true if the dialect under test should claim to support window functions.
    */
   protected abstract boolean supportsWindowFunctions();
 
 
   /**
-   * The expected SQL statements resulting from converting the elements of windowFunctions()
+   * @return The expected SQL statements resulting from converting the elements of windowFunctions()
    */
   protected List<String> expectedWindowFunctionStatements(){
     String paddedNullOrder = StringUtils.isEmpty(nullOrder())? StringUtils.EMPTY : " "+nullOrder();
@@ -4997,6 +5007,7 @@ public abstract class AbstractSqlDialectTest {
 
   /**
    * Override to set the expected NVARCHAR behaviour.
+   * @return whether to use NVARCHAR for strings or not
    */
   protected boolean expectedUsesNVARCHARforStrings() {
     return false;

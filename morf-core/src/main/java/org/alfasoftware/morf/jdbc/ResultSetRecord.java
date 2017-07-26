@@ -63,6 +63,7 @@ public class ResultSetRecord implements Record {
   /**
    * @param table Meta data for the database table.
    * @param resultSet The result set from which to provide record values.
+   * @param databaseSafeStringToRecordValueConverter method to convert a value to a String
    */
   public ResultSetRecord(Table table, ResultSet resultSet, DatabaseSafeStringToRecordValueConverter databaseSafeStringToRecordValueConverter) {
     super();

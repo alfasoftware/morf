@@ -67,7 +67,7 @@ public class UpgradePath implements SqlStatementWriter {
 
   /**
    * Create a new complete deployment.
-   *
+   * @param upgradeScriptAdditions The SQL to be appended to the upgrade.
    * @param sqlDialect the SQL dialect being used for this upgrade path
    */
   public UpgradePath(Set<UpgradeScriptAddition> upgradeScriptAdditions, SqlDialect sqlDialect) {
@@ -78,6 +78,7 @@ public class UpgradePath implements SqlStatementWriter {
   /**
    * Create a new upgrade for the given list of steps.
    *
+   * @param upgradeScriptAdditions The SQL to be appended to the upgrade.
    * @param steps the upgrade steps to run
    * @param sqlDialect the SQL dialect being used for this upgrade path
    */
@@ -101,7 +102,6 @@ public class UpgradePath implements SqlStatementWriter {
 
 
   /**
-   * {@inheritDoc}
    *
    * @see org.alfasoftware.morf.upgrade.SqlStatementWriter#writeSql(Collection)
    */

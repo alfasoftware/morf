@@ -78,6 +78,8 @@ public class UpgradeTestHelper {
 
   /**
    * Test the upgrade step.
+   * @param finalSchema The resulting schema
+   * @param upgradeSteps The sequence of upgrade steps
    */
   public void testUpgrades(Schema finalSchema, Iterable<Class<? extends UpgradeStep>> upgradeSteps) {
     Collection<Class<? extends UpgradeStep>> orderedSteps = new UpgradeGraph(upgradeSteps).orderedSteps();
@@ -147,7 +149,8 @@ public class UpgradeTestHelper {
 
 
   /**
-   * Optionally validate that the upgrades are package-visible.
+   * Validate that the upgrades are package-visible.
+   * @param upgradeSteps The sequence of upgrade steps
    */
   public void validateStepsArePackageVisible(Iterable<Class<? extends UpgradeStep>> upgradeSteps) {
     for (Class<? extends UpgradeStep> upgradeStepClass : upgradeSteps) {

@@ -36,9 +36,9 @@ import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
  *
  * <blockquote><pre>
  *   new MergeStatement()
- *        |----> .into([table])
- *                |----> .tableUniqueKey([field]...)
- *                |----> .fromSelect([SelectStatement])
+ *        |----&gt; .into([table])
+ *                |----&gt; .tableUniqueKey([field]...)
+ *                |----&gt; .fromSelect([SelectStatement])
  * </pre></blockquote>
  *
  * <p>A Merge statement takes a target table and merges (INSERTS or UPDATES) data from a source table.
@@ -216,7 +216,7 @@ public class MergeStatement implements Statement,DeepCopyableWithTransformation<
 
 
   /**
-   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(org.alfasoftware.morf.sql.ObjectTreeTraverser.VisitorDispatcher)
+   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(ObjectTreeTraverser)
    */
   @Override
   public void drive(ObjectTreeTraverser traverser) {

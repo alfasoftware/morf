@@ -60,10 +60,9 @@ public final class Oracle extends AbstractDatabaseType {
     return "jdbc:oracle:thin:@" + jdbcUrlElements.getHostName() + (jdbcUrlElements.getPort() == 0 ? "" : ":" + jdbcUrlElements.getPort()) + "/" + jdbcUrlElements.getInstanceName();
   }
 
-
   /**
-  * @see org.alfasoftware.morf.jdbc.DatabaseTypes#formatJdbcUrl(java.lang.String, int, java.lang.String, java.lang.String, java.lang.String)
-  */
+   *  @see org.alfasoftware.morf.jdbc.DatabaseType#openSchema(Connection, String, String)
+   */
   @Override
   public Schema openSchema(Connection connection, String databaseName, String schemaName) {
     if (StringUtils.isEmpty(schemaName)) throw new IllegalStateException("No schema name has been provided, but a schema name is required when connecting to Oracle");
@@ -72,7 +71,7 @@ public final class Oracle extends AbstractDatabaseType {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.DatabaseTypes#canTrace()
+   * @see org.alfasoftware.morf.jdbc.DatabaseType#canTrace()
    */
   @Override
   public boolean canTrace() {

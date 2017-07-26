@@ -101,7 +101,7 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
   /**
    * Construct from a {@link JdbcUrlElements}.
    *
-   * @param The URL elements.
+   * @param e The URL elements.
    */
   public ConnectionResourcesBean(JdbcUrlElements e) {
     super();
@@ -205,7 +205,7 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
 
 
   /**
-   * @see com.chpconsulting.database.jdbc.BaseConnectionResources#getDatabaseType()
+   * @see org.alfasoftware.morf.jdbc.ConnectionResources#getDatabaseType()
    */
   @Override
   public String getDatabaseType() {
@@ -214,7 +214,7 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
 
 
   /**
-   * @see com.chpconsulting.database.jdbc.BaseConnectionResources#setDatabaseType(java.lang.String)
+   * @see org.alfasoftware.morf.jdbc.AbstractConnectionResources#setDatabaseType(java.lang.String)
    */
   @Override
   public void setDatabaseType(String databaseType) {
@@ -223,7 +223,7 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
 
 
   /**
-   * @see com.chpconsulting.database.jdbc.BaseConnectionResources#getStatementPoolingMaxStatements()
+   * @see org.alfasoftware.morf.jdbc.ConnectionResources#getStatementPoolingMaxStatements()
    */
   @Override
   public int getStatementPoolingMaxStatements() {
@@ -232,7 +232,7 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
 
 
   /**
-   * @see com.chpconsulting.database.jdbc.BaseConnectionResources#setStatementPoolingMaxStatements(int)
+   * @see org.alfasoftware.morf.jdbc.AbstractConnectionResources#setStatementPoolingMaxStatements(int)
    */
   @Override
   public void setStatementPoolingMaxStatements(int statementPoolingMaxStatements) {
@@ -241,7 +241,7 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
 
 
   /**
-   * @see com.chpconsulting.database.jdbc.BaseConnectionResources#getHostName()
+   * @see org.alfasoftware.morf.jdbc.AbstractConnectionResources#getHostName()
    */
   @Override
   public String getHostName() {
@@ -250,7 +250,7 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
 
 
   /**
-   * @see com.chpconsulting.database.jdbc.BaseConnectionResources#setHostName(java.lang.String)
+   * @see org.alfasoftware.morf.jdbc.AbstractConnectionResources#setHostName(java.lang.String)
    */
   @Override
   public void setHostName(String hostName) {
@@ -259,7 +259,7 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
 
 
   /**
-   * @see com.chpconsulting.database.jdbc.BaseConnectionResources#getPort()
+   * @see org.alfasoftware.morf.jdbc.AbstractConnectionResources#getPort()
    */
   @Override
   public int getPort() {
@@ -268,7 +268,7 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
 
 
   /**
-   * @see com.chpconsulting.database.jdbc.BaseConnectionResources#setPort(int)
+   * @see org.alfasoftware.morf.jdbc.AbstractConnectionResources#setPort(int)
    */
   @Override
   public void setPort(int port) {
@@ -277,7 +277,7 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
 
 
   /**
-   * @see com.chpconsulting.database.jdbc.BaseConnectionResources#getInstanceName()
+   * @see org.alfasoftware.morf.jdbc.AbstractConnectionResources#getInstanceName()
    */
   @Override
   public String getInstanceName() {
@@ -286,7 +286,7 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
 
 
   /**
-   * @see com.chpconsulting.database.jdbc.BaseConnectionResources#setInstanceName(java.lang.String)
+   * @see org.alfasoftware.morf.jdbc.AbstractConnectionResources#setInstanceName(java.lang.String)
    */
   @Override
   public void setInstanceName(String instanceName) {
@@ -295,7 +295,7 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
 
 
   /**
-   * @see com.chpconsulting.database.jdbc.BaseConnectionResources#getDatabaseName()
+   * @see org.alfasoftware.morf.jdbc.ConnectionResources#getDatabaseName()
    */
   @Override
   public String getDatabaseName() {
@@ -304,7 +304,7 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
 
 
   /**
-   * @see com.chpconsulting.database.jdbc.BaseConnectionResources#setDatabaseName(java.lang.String)
+   * @see org.alfasoftware.morf.jdbc.AbstractConnectionResources#setDatabaseName(java.lang.String)
    */
   @Override
   public void setDatabaseName(String databaseName) {
@@ -313,7 +313,7 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
 
 
   /**
-   * @see com.chpconsulting.database.jdbc.BaseConnectionResources#getSchemaName()
+   * @see org.alfasoftware.morf.jdbc.ConnectionResources#getSchemaName()
    */
   @Override
   public String getSchemaName() {
@@ -322,7 +322,7 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
 
 
   /**
-   * @see com.chpconsulting.database.jdbc.BaseConnectionResources#setSchemaName(java.lang.String)
+   * @see org.alfasoftware.morf.jdbc.AbstractConnectionResources#setSchemaName(java.lang.String)
    */
   @Override
   public void setSchemaName(String schemaName) {
@@ -331,7 +331,7 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
 
 
   /**
-   * @see com.chpconsulting.database.jdbc.BaseConnectionResources#getUserName()
+   * @see org.alfasoftware.morf.jdbc.AbstractConnectionResources#getUserName()
    */
   @Override
   public String getUserName() {
@@ -340,7 +340,7 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
 
 
   /**
-   * @see com.chpconsulting.database.jdbc.BaseConnectionResources#setUserName(java.lang.String)
+   * @see org.alfasoftware.morf.jdbc.AbstractConnectionResources#setUserName(java.lang.String)
    */
   @Override
   public void setUserName(String userName) {
@@ -349,7 +349,7 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
 
 
   /**
-   * @see com.chpconsulting.database.jdbc.BaseConnectionResources#getPassword()
+   * @see org.alfasoftware.morf.jdbc.AbstractConnectionResources#getPassword()
    */
   @Override
   public String getPassword() {
@@ -358,7 +358,7 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
 
 
   /**
-   * @see com.chpconsulting.database.jdbc.BaseConnectionResources#setPassword(java.lang.String)
+   * @see org.alfasoftware.morf.jdbc.AbstractConnectionResources#setPassword(java.lang.String)
    */
   @Override
   public void setPassword(String password) {

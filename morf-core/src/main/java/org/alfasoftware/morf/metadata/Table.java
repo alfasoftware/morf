@@ -23,12 +23,10 @@ import java.util.List;
  * It is assumed that all database tables start with two columns which should
  * not be included in the column list returned by {@link #columns()}:
  * </p>
- * <p>
  * <ol>
  * <li>Id - An auto incrementing big integer that is the primary key.</li>
  * <li>Version - An integer that is used for record locking.</li>
  * </ol>
- * </p>
  *
  * @author Copyright (c) Alfa Financial Software 2009
  */

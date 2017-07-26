@@ -41,6 +41,7 @@ public interface Builder<T> {
      * Function to call build() on all Builders.
      *
      * @return a Function to be used with FluentIterables.transform()
+     * @param <T> The type of instance built by the builders
      */
     public static <T> com.google.common.base.Function<Builder<? extends  T>,T> buildAll() {
       return new com.google.common.base.Function<Builder<? extends T>, T>() {
@@ -57,6 +58,7 @@ public interface Builder<T> {
      *
      * @param builders a list of AliasedFieldBuilder
      * @return the result of calling build() on each builder
+     * @param <T> The type of instance built by the builders
      */
     public static <T> ImmutableList<T> buildAll(Iterable<? extends Builder<? extends T>> builders) {
       return FluentIterable.from(builders)

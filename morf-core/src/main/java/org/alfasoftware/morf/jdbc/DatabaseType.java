@@ -90,6 +90,9 @@ public interface DatabaseType {
 
 
   /**
+   * @param jdbcUrl The JDBC URL
+   * @param  username The user name
+   * @param password  The password
    * @return {@link XADataSource} implementation specific for this {@link DatabaseType}
    */
   public XADataSource getXADataSource(String jdbcUrl, String username, String password);
@@ -121,9 +124,9 @@ public interface DatabaseType {
   /**
    * Returns true if the JDBC product description corresponds to this database type.
    *
-   * @param productDescription The JDBC product description
+   * @param product The JDBC product description
    * @return true if the JDBC product description corresponds to this database type.
-   * @see DatabaseMetaData#getDatabaseProductName()
+   * @see java.sql.DatabaseMetaData#getDatabaseProductName()
    */
   public boolean matchesProduct(String product);
 

@@ -197,6 +197,7 @@ public class ViewChanges {
 
 
   /**
+   * @param extraViewsToDrop Additional views to drop
    * @return a new {@link ViewChanges} which also drops the specified views.
    */
   public ViewChanges droppingAlso(Collection<View> extraViewsToDrop) {
@@ -216,6 +217,7 @@ public class ViewChanges {
 
 
   /**
+   * @param extraViewsToDeploy Additional views to deploy
    * @return a new {@link ViewChanges} which also deploys the specified views.
    */
   public ViewChanges deployingAlso(Collection<View> extraViewsToDeploy) {

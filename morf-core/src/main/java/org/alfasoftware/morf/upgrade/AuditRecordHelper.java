@@ -56,6 +56,7 @@ public class AuditRecordHelper {
    *
    * @param uuid The UUID of the step which has been applied
    * @param description The description of the step.
+   * @return The insert statement
    */
   public static InsertStatement createAuditInsertStatement(UUID uuid, String description) {
     InsertStatement auditRecord = new InsertStatement().into(

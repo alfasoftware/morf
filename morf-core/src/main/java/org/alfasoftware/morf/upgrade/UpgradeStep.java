@@ -22,7 +22,7 @@ package org.alfasoftware.morf.upgrade;
  *
  * <p>Implementations must support no argument constructors.</p>
  *
- * <p>The following annotations must used on implementations of this interface:
+ * <p>The following annotations must used on implementations of this interface:</p>
  * <dl>
  * <dt>{@link UUID}</dt><dd>A unique identifier for this upgrade, which must never
  * change. Generate using {@link java.util.UUID#randomUUID()}</dd>
@@ -31,7 +31,7 @@ package org.alfasoftware.morf.upgrade;
  * since the epoch works well. This is sufficient in most cases to ensure that
  * mutually dependent upgrades are run in their dependency order.</dd>
  * </dl>
- * </p>
+ *
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
