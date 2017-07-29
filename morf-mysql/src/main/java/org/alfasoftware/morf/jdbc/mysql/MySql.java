@@ -60,7 +60,7 @@ public final class MySql extends AbstractDatabaseType {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.DatabaseTypes#formatJdbcUrl(java.lang.String, int, java.lang.String, java.lang.String, java.lang.String)
+   * @see org.alfasoftware.morf.jdbc.DatabaseType#openSchema(Connection, String, String) 
    */
   @Override
   public Schema openSchema(Connection connection, String databaseName, String schemaName) {

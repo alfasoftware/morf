@@ -22,6 +22,7 @@ package org.alfasoftware.morf.util;
  *
  * @author Copyright (c) Alfa Financial Software 2017
  * @param <T> The input and output type.
+ * @param <U> The resulting builder type
  */
 public interface DeepCopyableWithTransformation<T, U extends Builder<T>>
 {
@@ -30,7 +31,7 @@ public interface DeepCopyableWithTransformation<T, U extends Builder<T>>
    * Deep copies this object and all child objects. The deep copy operation can be intercepted by the transformation
    * to re-write the tree during the copy.
    *
-   * @param transformer A transformation that can intercept the deep copy operations on child objects.
+   * @param transformation A transformation that can intercept the deep copy operations on child objects.
    * @return a builder for the copied instance.
    */
    U deepCopy(DeepCopyTransformation transformation);

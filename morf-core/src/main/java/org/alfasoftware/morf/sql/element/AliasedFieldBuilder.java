@@ -27,7 +27,7 @@ public interface AliasedFieldBuilder extends Builder<AliasedField> {
   /**
    * Specifies the alias to use for the field.
    *
-   * @param aliasName the name of the alias
+   * @param alias the name of the alias
    * @return an updated {@link AliasedFieldBuilder}
    */
   public AliasedFieldBuilder as(String alias);

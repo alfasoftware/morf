@@ -71,7 +71,7 @@ public class TableDataHomology {
    * Create with ordering comparators and assuming that id and version columns will be
    * excluded from the comparison.
    *
-   * @param orderComparators The comparators to use for ordering the rows, before their are checked for equality.
+   * @param orderComparator The comparator to use for ordering the rows, before their are checked for equality.
    */
   public TableDataHomology(Comparator<Record> orderComparator) {
     this(Optional.of(orderComparator), Optional.<Collection<String>>absent());
@@ -81,7 +81,7 @@ public class TableDataHomology {
   /**
    * Full constructor.
    *
-   * @param orderComparators The comparators to use for ordering the rows, before their are checked for equality.
+   * @param orderComparator The comparator to use for ordering the rows, before their are checked for equality.
    * @param columnsToExclude The column names which will not be subject to comparison.  If absent we will assume that
    *                         we should exclude id and version.
    */

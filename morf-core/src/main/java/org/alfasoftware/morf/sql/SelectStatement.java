@@ -43,15 +43,15 @@ import com.google.common.collect.Lists;
  *
  * <blockquote><pre>
  *   new SelectStatement([field], ...)
- *        |----> .from([table])                               = SELECT [fields] FROM [table]
- *                |----> .innerJoin([table], [criterion])     = SELECT [fields] FROM [table] INNER JOIN [table] ON [criterion]
- *                |----> .leftOuterJoin(...)
- *                |----> .where([criterion])                  = SELECT [fields] FROM [table] WHERE [criterion]
- *                |----> .orderBy([fields])                   = SELECT [fields] FROM [table] ORDER BY [fields]
- *                |----> .groupBy([fields])                   = SELECT [fields] FROM [table] GROUP BY [fields]
- *                        |----> having([criterion])          = SELECT [fields] FROM [table] GROUP BY [fields] HAVING [criterion]
- *                |----> .union([SelectStatement])            = SELECT [fields] FROM [table] UNION [SelectStatement]
- *                |----> .unionAll([SelectStatement])         = SELECT [fields] FROM [table] UNION ALL [SelectStatement]
+ *        |----&gt; .from([table])                               = SELECT [fields] FROM [table]
+ *                |----&gt; .innerJoin([table], [criterion])     = SELECT [fields] FROM [table] INNER JOIN [table] ON [criterion]
+ *                |----&gt; .leftOuterJoin(...)
+ *                |----&gt; .where([criterion])                  = SELECT [fields] FROM [table] WHERE [criterion]
+ *                |----&gt; .orderBy([fields])                   = SELECT [fields] FROM [table] ORDER BY [fields]
+ *                |----&gt; .groupBy([fields])                   = SELECT [fields] FROM [table] GROUP BY [fields]
+ *                        |----&gt; having([criterion])          = SELECT [fields] FROM [table] GROUP BY [fields] HAVING [criterion]
+ *                |----&gt; .union([SelectStatement])            = SELECT [fields] FROM [table] UNION [SelectStatement]
+ *                |----&gt; .unionAll([SelectStatement])         = SELECT [fields] FROM [table] UNION ALL [SelectStatement]
  *  </pre></blockquote>
  *
  * <p>This class does not accept string references to field or table names. Instead, you must provide
@@ -135,8 +135,8 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement> im
    * Constructs a distinct Select Statement which optionally selects on a subset of fields.
    * If no fields are specified then this is equivalent of selecting all fields (i.e. "SELECT DISTINCT * FROM x")
    *
-   * @param fields
-   * @param isDistinct
+   * @param fields The fields in the select clause
+   * @param isDistinct Determines whether the DISTINCT clause should be added or not
    */
   public SelectStatement(AliasedFieldBuilder[] fields, boolean isDistinct) {
     super();
@@ -149,8 +149,8 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement> im
    * Constructs a distinct Select Statement which optionally selects on a subset of fields.
    * If no fields are specified then this is equivalent of selecting all fields (i.e. "SELECT DISTINCT * FROM x")
    *
-   * @param fields
-   * @param isDistinct
+   * @param fields The fields in the select clause
+   * @param isDistinct Determines whether the DISTINCT clause should be added or not
    */
   public SelectStatement(List<? extends AliasedFieldBuilder> fields, boolean isDistinct) {
     super();
@@ -444,7 +444,7 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement> im
 
 
   /**
-   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(org.alfasoftware.morf.sql.ObjectTreeTraverser.VisitorDispatcher)
+   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(ObjectTreeTraverser)
    */
   @Override
   public void drive(ObjectTreeTraverser traverser) {

@@ -107,7 +107,7 @@ public class Criterion  implements Driver,DeepCopyableWithTransformation<Criteri
    * This is commonly used for the "AND" and "OR" operators.
    *
    * @param operator the operator to use in the criterion
-   * @param criterion the criteria
+   * @param criteria the criteria
    */
   public Criterion(Operator operator, Iterable<Criterion> criteria) {
     if (criteria == null || Iterables.isEmpty(criteria)) {
@@ -506,7 +506,7 @@ public class Criterion  implements Driver,DeepCopyableWithTransformation<Criteri
 
 
   /**
-   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(org.alfasoftware.morf.sql.ObjectTreeTraverser.VisitorDispatcher)
+   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(ObjectTreeTraverser)
    */
   @Override
   public void drive(ObjectTreeTraverser traverser) {

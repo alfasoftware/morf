@@ -229,7 +229,7 @@ public class SqlScriptExecutor {
   /**
    * Runs a single SQL statment.
    *
-   * @param sqlStatement The single SQL statment to run
+   * @param sqlStatement The single SQL statement to run
    * @return The number of rows updated/affected by this statement
    */
   public int execute(final String sqlStatement) {
@@ -282,6 +282,10 @@ public class SqlScriptExecutor {
 
 
   /**
+   * @param sqlStatement The SQL statement to execute
+   * @param parameterMetadata The metadata of the parameters being supplied.
+   * @param parameterData The values of the parameters.
+   * @return The number of rows updated/affected by this statement
    * @see #execute(String, Connection, Iterable, DataValueLookup)
    */
   public int execute(final String sqlStatement, final Iterable<SqlParameter> parameterMetadata, final DataValueLookup parameterData) {
@@ -402,8 +406,8 @@ public class SqlScriptExecutor {
    *
    * @param sql the sql statement to run.
    * @param processor the code to be run to process the {@link ResultSet}.
+   * @param <T> the type of results processed
    * @return the result from {@link ResultSetProcessor#process(ResultSet)}.
-   * @throws SQLException throws an exception for statement errors.
    */
   public <T> T executeQuery(String sql, ResultSetProcessor<T> processor) {
     return executeQuery(sql).processWith(processor);
@@ -419,8 +423,9 @@ public class SqlScriptExecutor {
    * <p>Usage example:</p>
    *
    * <blockquote><pre>
-   * boolean found = executor.executeQuery(sqlToCheckIfRecordExists, new ResultSetProcessor<Boolean>() {
-   *   @Override
+   *
+   *   {@code boolean found = executor.executeQuery(sqlToCheckIfRecordExists, new ResultSetProcessor<Boolean>}() {
+   *   &#064;Override
    *   public Boolean process(ResultSet resultSet) throws SQLException {
    *     return resultSet.next();
    *   }
@@ -428,13 +433,14 @@ public class SqlScriptExecutor {
    * if (!found) {
    *   insertRecord();
    * }
+   *
    * </pre></blockquote>
 
    * @param sql the sql statement to run.
    * @param connection the connection to use.
    * @param processor the code to be run to process the {@link ResultSet}.
+   * @param <T> the type of results processed
    * @return the result from {@link ResultSetProcessor#process(ResultSet)}.
-   * @throws SQLException throws an exception for statement errors.
    */
   public <T> T executeQuery(String sql, Connection connection, ResultSetProcessor<T> processor) {
     return executeQuery(sql).withConnection(connection).processWith(processor);
@@ -448,12 +454,13 @@ public class SqlScriptExecutor {
    * can return a value of any type, which will form the return value of this
    * method.
    *
-   * @param selectStatement the select statement to run.
+   * @param query the select statement to run.
    * @param parameterMetadata the metadata describing the parameters.
    * @param parameterData the values to insert.
    * @param connection the connection to use.
    * @param resultSetProcessor the code to be run to process the
    *          {@link ResultSet}.
+   * @param <T> the type of results processed
    * @return the result from {@link ResultSetProcessor#process(ResultSet)}.
    */
   public <T> T executeQuery(SelectStatement query, Iterable<SqlParameter> parameterMetadata,
@@ -481,6 +488,7 @@ public class SqlScriptExecutor {
    *          this.
    * @param queryTimeout the timeout in <b>seconds</b> after which the query
    *          will time out on the database side
+   * @param <T> the type of results processed
    * @return the result from {@link ResultSetProcessor#process(ResultSet)}.
    */
   private <T> T executeQuery(String sql, Iterable<SqlParameter> parameterMetadata,
@@ -535,6 +543,7 @@ public class SqlScriptExecutor {
    * @param parameterMetadata the metadata describing the parameters.
    * @param parameterData the values to insert.
    * @param connection the JDBC connection to use.
+   * @param explicitCommit Determine if an explicit commit should be invoked after executing the supplied batch
    */
   public void executeStatementBatch(String sqlStatement, Iterable<SqlParameter> parameterMetadata, Iterable<? extends DataValueLookup> parameterData, Connection connection, boolean explicitCommit) {
     try {
@@ -563,6 +572,7 @@ public class SqlScriptExecutor {
    * @param parameterMetadata the metadata describing the parameters.
    * @param parameterData the values to insert.
    * @param connection the JDBC connection to use.
+   * @param explicitCommit Determine if an explicit commit should be invoked after executing the supplied batch
    */
   public void executeStatementBatch(NamedParameterPreparedStatement preparedStatement, Iterable<SqlParameter> parameterMetadata, Iterable<? extends DataValueLookup> parameterData, Connection connection, boolean explicitCommit) {
     if (sqlDialect == null) {
@@ -650,11 +660,11 @@ public class SqlScriptExecutor {
 
     /**
      * Process a {@link ResultSet}, returning a result to be returned by a call
-     * to {@link SqlScriptExecutor#executeQuery(String, ResultSetProcessor).}
+     * to {@link SqlScriptExecutor#executeQuery(String, ResultSetProcessor)}.
      *
      * @param resultSet The result set.
      * @return A value, which will be the return value of {@link SqlScriptExecutor#executeQuery(String, ResultSetProcessor)}
-     * @throws SQLException
+     * @throws SQLException when an error occurs when processing the supplied {@link ResultSet}
      */
     public T process(ResultSet resultSet) throws SQLException;
   }
@@ -776,7 +786,7 @@ public class SqlScriptExecutor {
     /**
      * Specifies the time in <b>seconds</b> after which the query will time out.
      *
-     * @param queryTimeout
+     * @param queryTimeout time out length in seconds
      * @return this
      */
     QueryBuilder withQueryTimeout(int queryTimeout);
@@ -787,6 +797,7 @@ public class SqlScriptExecutor {
      * processor, and returns the result of the processor.
      *
      * @param resultSetProcessor The result set processor
+     * @param <T> the type of results processed
      * @return The result of the processor.
      */
     <T> T processWith(ResultSetProcessor<T> resultSetProcessor);

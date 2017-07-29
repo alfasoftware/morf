@@ -31,8 +31,8 @@ import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
  *
  * <blockquote><pre>
  *   new DeleteStatement()
- *        |----> .from([table])                               = DELETE FROM [table]
- *                |----> .where([criterion])                  = DELETE FROM [table] WHERE [criterion]
+ *        |----&gt; .from([table])                               = DELETE FROM [table]
+ *                |----&gt; .where([criterion])                  = DELETE FROM [table] WHERE [criterion]
  *  </pre></blockquote>
  *
  * <p>This class does not accept string references to table names. Instead, you must provide
@@ -61,6 +61,7 @@ public class DeleteStatement  implements Statement, DeepCopyableWithTransformati
    * Constructor to create a deep copy.
    *
    * @param sourceStatement {@link DeleteStatement} to create a deep copy from.
+   * @param transformer A transformation that can intercept a deep copy operation.
    */
   private DeleteStatement(DeleteStatement sourceStatement, DeepCopyTransformation transformer) {
     this.table = transformer.deepCopy(sourceStatement.table);
@@ -131,7 +132,7 @@ public class DeleteStatement  implements Statement, DeepCopyableWithTransformati
 
 
   /**
-   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(org.alfasoftware.morf.sql.ObjectTreeTraverser.VisitorDispatcher)
+   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(ObjectTreeTraverser)
    */
   @Override
   public void drive(ObjectTreeTraverser traverser) {

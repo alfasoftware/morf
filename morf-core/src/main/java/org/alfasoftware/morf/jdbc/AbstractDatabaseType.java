@@ -98,8 +98,8 @@ public abstract class AbstractDatabaseType implements DatabaseType {
    * Creates a new {@link JdbcUrlElements.Builder}, prepopulating it with
    * the host and port from a stack returned by {@link #splitJdbcUrl(String)}.
    *
-   * @param splitURL
-   * @return
+   * @param splitURL Stack containing the host name and optionally a colon and the port number
+   * @return Builder for chaining.
    */
   protected final JdbcUrlElements.Builder extractHostAndPort(Stack<String> splitURL) {
     JdbcUrlElements.Builder builder = JdbcUrlElements.forDatabaseType(identifier());
@@ -122,7 +122,7 @@ public abstract class AbstractDatabaseType implements DatabaseType {
    * {@link #splitJdbcUrl(String)}.  Assumes that the stack has already
    * had the preceding components (e.g. protocol, host and port) popped.
    *
-   * @param splitURL
+   * @param splitURL A stack containing the remaining portions of a JDBC URL.
    * @return The path.
    */
   protected final String extractPath(Stack<String> splitURL) {

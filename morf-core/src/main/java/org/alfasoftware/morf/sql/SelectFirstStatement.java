@@ -36,9 +36,9 @@ import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
  *
  * <blockquote><pre>
  *   new SelectFirstStatement([field])                        = SELECT [fields]
- *        |----> .from([table])                               FROM [table]
- *                |----> .where([criterion])                  WHERE [criterion]
- *                |----> .orderBy([fields])                   ORDER BY [fields]
+ *        |----&gt; .from([table])                               FROM [table]
+ *                |----&gt; .where([criterion])                  WHERE [criterion]
+ *                |----&gt; .orderBy([fields])                   ORDER BY [fields]
  *  </pre></blockquote>
  *
  * <p>This class accepts only one {@link FieldReference} reference in the constructor.</p>
@@ -46,7 +46,7 @@ import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
  * <p>This class does not accept string references to field or table names. Instead, you must provide
  * the methods with a {@link TableReference} or {@link FieldReference} reference.</p>
  *
- * <p>The must be a {@link #orderBy(org.alfasoftware.morf.sql.element.AliasedField...) expression on the statement</p>
+ * <p>There must be a {@link #orderBy(org.alfasoftware.morf.sql.element.AliasedField...)} expression on the statement</p>
  *
  * <p>The first row encountered in the table with the given order by will be returned. If there is an ambiguous first row the result is undocumented. One of the rows will be returned.</p>
  *
@@ -57,7 +57,7 @@ import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
 public class SelectFirstStatement extends AbstractSelectStatement<SelectFirstStatement> implements DeepCopyableWithTransformation<SelectFirstStatement,Builder<SelectFirstStatement>>,Driver{
 
   /**
-   * @param field
+   * @param field The field in the select statemenr
    */
   public SelectFirstStatement(AliasedFieldBuilder field) {
     super(field);
@@ -74,7 +74,6 @@ public class SelectFirstStatement extends AbstractSelectStatement<SelectFirstSta
 
 
   /**
-   * {@inheritDoc}
    *
    * @see org.alfasoftware.morf.sql.Statement#deepCopy()
    */

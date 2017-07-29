@@ -74,8 +74,7 @@ public class FieldFromSelect extends AliasedField implements Driver{
 
 
   /**
-   * {@inheritDoc}
-   * @see org.alfasoftware.morf.sql.element.AliasedField#deepCopyInternal()
+   * @see org.alfasoftware.morf.sql.element.AliasedField#deepCopyInternal(DeepCopyTransformation)
    */
   @Override
   protected AliasedField deepCopyInternal(DeepCopyTransformation transformer) {
@@ -84,7 +83,7 @@ public class FieldFromSelect extends AliasedField implements Driver{
 
 
   /**
-   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(org.alfasoftware.morf.sql.ObjectTreeTraverser.VisitorDispatcher, org.alfasoftware.morf.sql.ObjectTreeTraverser.Visitor)
+   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(ObjectTreeTraverser)
    */
   @Override
   public void drive(ObjectTreeTraverser traverser) {

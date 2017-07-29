@@ -169,7 +169,8 @@ public class RecordHelper {
    * type.
    *
    * @param stringValue The value retrieved from a {@link Record}.
-   * @param type The Java type to use for the result.
+   * @param type The Java type class to use for the result.
+   * @param <T> The Java type corresponding to the supplied Class
    * @return The typed java value.
    */
   @SuppressWarnings("unchecked")

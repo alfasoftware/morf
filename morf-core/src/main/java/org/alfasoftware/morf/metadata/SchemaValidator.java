@@ -54,15 +54,15 @@ import com.google.common.collect.Sets;
  *
  * <p>Usage: create a new instance of this class and call {@link #validate(Schema)}.</p>
  *
- * <p>The current database rules are:
+ * <p>The current database rules are:</p>
  * <ul>
- * <li>An object (table, column, index) name must not be > 30 characters long (an Oracle restriction)</li>
+ * <li>An object (table, column, index) name must not be &gt; 30 characters long (an Oracle restriction)</li>
  * <li>An object name must not be an SQL reserved word</li>
  * <li>Table, column and index names must match [a-zA-Z][a-zA-Z0-9_]* (any letters or numbers or underscores, but must start with a letter)</li>
  * <li>Indexes may not be simply by 'id'. This would duplicate the primary key and is superfluous.</li>
  * <li>No duplicated indexes are allowed.</li>
  * </ul>
- * </p>
+ *
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
@@ -177,9 +177,9 @@ public class SchemaValidator {
 
 
   /**
-   * Validate a {@link Table} meets the rules
+   * Validate a {@link View} meets the rules
    *
-   * @param table The {@link Table} to validate
+   * @param view The {@link View} to validate
    */
   public void validate(View view) {
     validateView(view);

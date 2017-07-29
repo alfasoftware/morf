@@ -26,6 +26,7 @@ import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
 import org.apache.commons.lang.StringUtils;
+import org.joda.time.LocalDate;
 import org.joda.time.Months;
 
 /**
@@ -107,6 +108,8 @@ public class Function extends AliasedField implements Driver {
 
   /**
    * Helper method to create an instance of the "count" SQL function.
+   *
+   * @param field the field to evaluate in the count function.
    *
    * @return an instance of a count function
    */
@@ -257,7 +260,7 @@ public class Function extends AliasedField implements Driver {
   /**
    * Helper method to create an instance of the "addDays" SQL function.
    *
-   * @param dateExpression the expression to evaluate
+   * @param expression the expression to evaluate
    * @param number an expression evaluating to the number of days to add (or if negative, subtract)
    * @return an instance of the addDays function
    */
@@ -272,7 +275,7 @@ public class Function extends AliasedField implements Driver {
   /**
    * Helper method to create an instance of the "addMonths" SQL function.
    *
-   * @param dateExpression the expression to evaluate
+   * @param expression the expression to evaluate
    * @param number an expression evaluating to the number of months to add (or if negative, subtract)
    * @return an instance of the addMonths function
    */
@@ -292,7 +295,7 @@ public class Function extends AliasedField implements Driver {
    *
    * <p>Example : 3.2 rounds to 3 and 3.5 rounds to 4.</p>
    *
-   * <table border='1'>
+   * <table border='1' summary=''>
    * <tr><th>Database</th><th>Database Manual</th></tr>
    * <tr><td>Oracle</td><td>http://docs.oracle.com/cd/B19306_01/server.102/b14200/functions135.htm</td></tr>
    * <tr><td>MySQL</td><td>http://dev.mysql.com/doc/refman/5.0/en/mathematical-functions.html#function_round</td></tr>
@@ -418,7 +421,7 @@ public class Function extends AliasedField implements Driver {
 
 
   /**
-   * Find the last day of the month from a given date, SQL equivalent of {@link org.joda.time.LocalDate.Property.withMaximumValue()}
+   * Find the last day of the month from a given date, SQL equivalent of {@link LocalDate.Property#withMinimumValue()}
    *
    * @param date field to evaluate containing a date
    * @return an instance of a function to find the last day of the month
@@ -434,7 +437,7 @@ public class Function extends AliasedField implements Driver {
    * Helper method to create an instance of the "leftTrim" SQL function,
    * which will result in argument having leading spaces removed.
    *
-   * @param field the field to evaluate.
+   * @param expression the field to evaluate.
    * @return an instance of the leftTrim function.
    */
   public static Function leftTrim(AliasedField expression) {
@@ -448,7 +451,7 @@ public class Function extends AliasedField implements Driver {
    * Helper method to create an instance of the "rightTrim" SQL function,
    * which will result in argument having trailing spaces removed.
    *
-   * @param field the field to evaluate.
+   * @param expression the field to evaluate.
    * @return an instance of the rightTrim function.
    */
   public static Function rightTrim(AliasedField expression) {
@@ -471,6 +474,7 @@ public class Function extends AliasedField implements Driver {
   /**
    * Helper method to create a function for generating random strings via SQL.
    *
+   * @param length The length of the generated string
    * @return an instance of the randomString function.
    */
   public static Function randomString(AliasedField length) {
@@ -485,6 +489,8 @@ public class Function extends AliasedField implements Driver {
    *<p>
    * Example : power(10,3) would become 1000
    *</p>
+   * @param operand1 the base
+   * @param operand2 the exponent
    * @return an instance of the multiply function.
    */
   public static Function power(AliasedField operand1, AliasedField operand2) {
@@ -573,8 +579,7 @@ public class Function extends AliasedField implements Driver {
   }
 
   /**
-   * {@inheritDoc}
-   * @see org.alfasoftware.morf.sql.element.AliasedField#deepCopyInternal()
+   * @see org.alfasoftware.morf.sql.element.AliasedField#deepCopyInternal(DeepCopyTransformation)
    */
   @Override
   protected AliasedField deepCopyInternal(DeepCopyTransformation transformer) {
@@ -583,7 +588,7 @@ public class Function extends AliasedField implements Driver {
 
 
   /**
-   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(org.alfasoftware.morf.sql.ObjectTreeTraverser.VisitorDispatcher)
+   * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(ObjectTreeTraverser)
    */
   @Override
   public void drive(ObjectTreeTraverser traverser) {

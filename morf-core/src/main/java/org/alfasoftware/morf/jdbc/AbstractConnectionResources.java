@@ -43,7 +43,7 @@ public abstract class AbstractConnectionResources implements ConnectionResources
 
 
   /**
-   * @see com.chpconsulting.database.jdbc.ConnectionResources#sqlDialect()
+   * @see org.alfasoftware.morf.jdbc.ConnectionResources#sqlDialect()
    */
   @Override
   public final SqlDialect sqlDialect() {
@@ -59,7 +59,7 @@ public abstract class AbstractConnectionResources implements ConnectionResources
   /**
    * {@inheritDoc}
    *
-   * @see com.chpconsulting.database.jdbc.ConnectionResources#getDataSource()
+   * @see org.alfasoftware.morf.jdbc.ConnectionResources#getDataSource()
    */
   @Override
   public DataSource getDataSource() {
@@ -68,7 +68,7 @@ public abstract class AbstractConnectionResources implements ConnectionResources
 
 
   /**
-   * @return {@link XADataSource} created for this {@link BeanConnectionDetails}
+   * @return {@link XADataSource} created for this {@link ConnectionResources}
    */
   public final XADataSource getXADataSource() {
     Preconditions.checkNotNull(getDatabaseType(), "Cannot create XADataSource without defined DatabaseType");
@@ -77,7 +77,7 @@ public abstract class AbstractConnectionResources implements ConnectionResources
 
 
   /**
-   * @see com.chpconsulting.database.jdbc.ConnectionResources#openSchemaResource()
+   * @see org.alfasoftware.morf.jdbc.ConnectionResources#openSchemaResource()
    */
   @Override
   public final SchemaResource openSchemaResource() {
@@ -86,7 +86,7 @@ public abstract class AbstractConnectionResources implements ConnectionResources
 
 
   /**
-   * @see com.chpconsulting.database.jdbc.ConnectionResources#openSchemaResource(DataSource)
+   * @see org.alfasoftware.morf.jdbc.ConnectionResources#openSchemaResource(DataSource)
    */
   @Override
   public final SchemaResource openSchemaResource(DataSource dataSource) {
@@ -108,7 +108,7 @@ public abstract class AbstractConnectionResources implements ConnectionResources
 
 
   /**
-   * @see com.chpconsulting.database.jdbc.ConnectionResources#getStatementPoolingMaxStatements()
+   * @see org.alfasoftware.morf.jdbc.ConnectionResources#getStatementPoolingMaxStatements()
    */
   @Override
   public abstract int getStatementPoolingMaxStatements();
@@ -172,7 +172,7 @@ public abstract class AbstractConnectionResources implements ConnectionResources
    * <ul>
    * <li>On Oracle, this is the SID and it is mandatory.</li>
    * <li>On SQL Server, this is the instance name and can be blank for the default instance.</li>
-   * <ul>
+   * </ul>
    *
    * @return the name of the instance to connect to.
    */
@@ -187,7 +187,7 @@ public abstract class AbstractConnectionResources implements ConnectionResources
    * <ul>
    * <li>On Oracle, this is the SID and it is mandatory.</li>
    * <li>On SQL Server, this is the instance name and can be blank for the default instance.</li>
-   * <ul>
+   * </ul>
    *
    * @param instanceName the name of the instance to connect to.
    */
@@ -195,7 +195,7 @@ public abstract class AbstractConnectionResources implements ConnectionResources
 
 
   /**
-   * @see com.chpconsulting.database.jdbc.ConnectionResources#getDatabaseName()
+   * @see org.alfasoftware.morf.jdbc.ConnectionResources#getDatabaseName()
    */
   @Override
   public abstract String getDatabaseName();
@@ -255,7 +255,7 @@ public abstract class AbstractConnectionResources implements ConnectionResources
 
 
   /**
-   * Implementation of data source based on this {@link BaseConnectionResources}.
+   * Implementation of data source based on this {@link ConnectionResources}.
    *
    * @author Copyright (c) Alfa Financial Software 2010
    */

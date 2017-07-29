@@ -74,6 +74,10 @@ public class ChangePrimaryKeyColumns implements SchemaChange {
 
   /**
    * Applies the change
+   * @param schema The target schema
+   * @param from the old primary key
+   * @param to the new primary key
+   * @return The resulting schema
    */
   protected Schema applyChange(Schema schema, List<String> from, List<String> to) {
 
@@ -128,6 +132,8 @@ public class ChangePrimaryKeyColumns implements SchemaChange {
 
   /**
    * Verify that the "from" position actually matches the schema we have been given
+   * @param from The from position
+   * @param table The target table
    */
   protected void assertExistingPrimaryKey(List<String> from, Table table) {
     List<String> fromUpperCase = toUpperCase(from);

@@ -27,6 +27,7 @@ public interface DeepCopyTransformation{
    *
    * <strong> Note that the element may be null.</strong> This is to create a cleaner API for the elements.
    * @param element The element to transform, which may be null.
+   * @param <T> The type of instance built by the builder
    * @return The transformed element which <strong>must</strong> be a new object.
    */
   <T> T deepCopy(DeepCopyableWithTransformation<T,? extends Builder<T>> element);

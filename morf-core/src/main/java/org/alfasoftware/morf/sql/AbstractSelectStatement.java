@@ -46,8 +46,8 @@ import com.google.common.collect.Lists;
  * This abstraction is aware of subclasses type.
  * </p>
  *
- * @see {@link SelectFirstStatement}
- * @see {@link SelectStatement}
+ * @see  SelectFirstStatement
+ * @see SelectStatement
  * @author Copyright (c) Alfa Financial Software 2014
  */
 public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<T>>  implements Statement,Driver{
@@ -98,6 +98,9 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
 
   /**
    * Deep copy constructor
+   * @param sourceStatement The source to copy from
+   * @param transformation Intercepts the deep copy to transform instead of mere copying
+   *
    */
   protected AbstractSelectStatement(AbstractSelectStatement<T> sourceStatement,DeepCopyTransformation transformation) {
     this.alias = sourceStatement.alias;
@@ -111,7 +114,7 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
 
 
   /**
-   * @param aliasedFields
+   * @param aliasedFields The fields to add
    */
   protected void addFields(AliasedFieldBuilder... aliasedFields) {
     addFields(Arrays.asList(aliasedFields));
@@ -119,7 +122,7 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
 
 
   /**
-   * @param aliasedFields
+   * @param aliasedFields The fields to add
    */
   protected void addFields(List<? extends AliasedFieldBuilder> aliasedFields) {
     fields.addAll(FluentIterable.from(aliasedFields)
@@ -310,7 +313,6 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
    * </blockquote>
    *
    * @param toTable the table to join to
-   * @param criterion the criteria on which to join the tables
    * @return the updated SelectStatement (this will not be a new object)
    */
   public T innerJoin(TableReference toTable) {
@@ -402,6 +404,7 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
    * </blockquote>
    *
    * @param subSelect the sub select statement to join on to
+   * @param criterion the criteria on which to join the tables
    * @return the updated SelectStatement (this will not be a new object)
    */
   public T leftOuterJoin(SelectStatement subSelect, Criterion criterion) {
@@ -437,7 +440,7 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
    * Specifies the where criteria. For use in code where the criteria are being generated dynamically.
    * The iterable can be empty but not null.
    *
-   * @param criteria the criteria to filter the results by. They will be <i>AND<i>ed together.
+   * @param criteria the criteria to filter the results by. They will be <i>AND</i>ed together.
    * @return the updated SelectStatement (this will not be a new object)
    */
   public T where(Iterable<Criterion> criteria) {

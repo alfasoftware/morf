@@ -22,7 +22,7 @@ import java.util.Collection;
  * Defines configuration tables within a module which are not created via Domain classes,
  * and any upgrade steps on them.
  *
- * <p>This interface is used in place of {@link @ConfigurationData} for tables which are
+ * <p>This interface is used for tables which are
  * not represented by Domain classes.</p>
  *
  * <p>Note that not all tables specified via {@link TableContribution#tables()} must be

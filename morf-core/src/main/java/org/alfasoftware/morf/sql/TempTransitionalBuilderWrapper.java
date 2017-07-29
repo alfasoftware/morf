@@ -32,6 +32,7 @@ public class TempTransitionalBuilderWrapper {
    *
    * @param instance the instance to wrap.
    * @return a builder that wraps the given instance.
+   * @param <T> the type of the instance being wrapped
    */
   public static <T> Builder<T> wrapper(final T instance){
     return new BuilderWrapper<>(instance);

@@ -33,6 +33,7 @@ import com.google.common.collect.Lists;
  * <p>
  * The utility methods within this class afford the methods required to create
  * representations of the following objects:
+ * </p>
  * <ul>
  * <li>{@link Schema}</li>
  * <li>{@link Table}</li>
@@ -40,7 +41,6 @@ import com.google.common.collect.Lists;
  * <li>{@link Column}</li>
  * <li>{@link Index}</li>
  * </ul>
- * </p>
  *
  * @author Copyright (c) Alfa Financial Software 2011
  */
@@ -117,7 +117,7 @@ public final class SchemaUtils {
 
 
   /**
-   * Build a {@link Schema} from a list of {@link Views}s.
+   * Build a {@link Schema} from a list of {@link View}s.
    *
    * @param views The views to use.
    * @return A {@link Schema} implementation
@@ -254,8 +254,7 @@ public final class SchemaUtils {
    * Use the methods on {@link ColumnBuilder} to provide optional properties.
    * </p>
    *
-   * @param name The column name.
-   * @param type The column type.
+   * @param column The column to copy.
    * @return A new {@link ColumnBuilder} for the column.
    */
   public static ColumnBuilder column(Column column) {
@@ -447,6 +446,7 @@ public final class SchemaUtils {
 
     /**
      * Mark this column as autonumbered, with the specified starting value
+     * @param from the starting value
      *
      * @return this, for method chaining.
      */

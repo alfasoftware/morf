@@ -17,7 +17,7 @@ package org.alfasoftware.morf.sql.element;
 
 
 /**
- * An enumeration of the possible nulls position in ordering. This is primarly used
+ * An enumeration of the possible nulls position in ordering. This is primarily used
  * by the "ORDER BY" clause of an SQL statement.
  *
  * @author Copyright (c) Alfa Financial Software 2014

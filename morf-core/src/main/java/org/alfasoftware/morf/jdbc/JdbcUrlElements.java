@@ -192,7 +192,7 @@ public final class JdbcUrlElements {
     /**
      * Sets the host. Defaults to null (no host specified).
      *
-     * @param host
+     * @param host The host name.
      * @return this
      */
     public Builder withHost(String host) {
@@ -204,7 +204,7 @@ public final class JdbcUrlElements {
     /**
      * Sets the port. Defaults to 0 (no port specified).
      *
-     * @param port
+     * @param port The port number.
      * @return this
      */
     public Builder withPort(int port) {
@@ -216,7 +216,7 @@ public final class JdbcUrlElements {
     /**
      * Sets the instance name. Defaults to null (no instance specified).
      *
-     * @param instanceName
+     * @param instanceName The instance name.
      * @return this
      */
     public Builder withInstanceName(String instanceName) {
@@ -228,7 +228,7 @@ public final class JdbcUrlElements {
     /**
      * Sets the database name. Defaults to null (no database specified).
      *
-     * @param databaseName
+     * @param databaseName The database name
      * @return this
      */
     public Builder withDatabaseName(String databaseName) {
@@ -240,7 +240,7 @@ public final class JdbcUrlElements {
     /**
      * Sets the schema name. Defaults to null (no schema specified).
      *
-     * @param schemaName
+     * @param schemaName The schema name
      * @return this
      */
     public Builder withSchemaName(String schemaName) {

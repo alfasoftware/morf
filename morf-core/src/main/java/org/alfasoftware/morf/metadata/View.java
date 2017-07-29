@@ -23,7 +23,7 @@ import org.alfasoftware.morf.sql.SelectStatement;
  * <p>Instead of implementing this class to define a view, use the DSL provided by
  * {@link SchemaUtils}.
  *
- * @see SchemaUtils#view(String, SelectStatement)
+ * @see SchemaUtils#view(String, SelectStatement, String...)
  * @author Copyright (c) Alfa Financial Software 2012
  */
 public interface View {
@@ -51,7 +51,7 @@ public interface View {
   public String[] getDependencies();
 
   /**
-   * @return whether {@link #getDependencies())} will return something useful? If the view
+   * @return whether {@link #getDependencies()} will return something useful? If the view
    *   has been loaded from an external store, this may not be the case.
    */
   public boolean knowsDependencies();

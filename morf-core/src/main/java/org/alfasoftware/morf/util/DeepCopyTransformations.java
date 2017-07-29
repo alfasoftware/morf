@@ -27,8 +27,9 @@ import com.google.common.collect.ImmutableList;
 public class DeepCopyTransformations {
 
   /**
-   * Returns a DeepCopyTransformation that delegates always delegates the copy
+   * Returns a DeepCopyTransformation that always delegates the copy
    * to the element.
+   * @return A no-op transformation (just deep-copy)
    */
   public static DeepCopyTransformation noTransformation() {
     return new NoTransformDeepCopyTransformer();
@@ -37,6 +38,12 @@ public class DeepCopyTransformations {
 
   /**
    * Convenience method to transform all items in a list.
+   * @param transformables The target of the transformation
+   * @param transformation The tranformation to be applied during the copy
+   * @param <T> The type of transformation
+   * @param <U> The type of the results of the transformation
+   * @param <L> The type of iterable containing the targets
+   * @return The transformations
    */
   public static <T extends DeepCopyableWithTransformation<T, ? extends U>, U extends Builder<T>, L extends Iterable<T>> ImmutableList<T> transformIterable(
       L transformables, final DeepCopyTransformation transformation) {

@@ -34,10 +34,10 @@ public class DatabaseTypeIdentifierTestUtils {
   /**
    * Create a mock data source reporting the correct {@link DatabaseMetaData}.
    *
-   * @param product {@see DatabaseMetaData#getDatabaseProductName()}
-   * @param versionString {@see DatabaseMetaData#getDatabaseProductVersion()}
-   * @param versionMajor {@see DatabaseMetaData#getDatabaseMajorVersion()}
-   * @param versionMinor {@see DatabaseMetaData#getDatabaseMinorVersion()}
+   * @param product {@link DatabaseMetaData#getDatabaseProductName()}
+   * @param versionString {@link DatabaseMetaData#getDatabaseProductVersion()}
+   * @param versionMajor {@link DatabaseMetaData#getDatabaseMajorVersion()}
+   * @param versionMinor {@link DatabaseMetaData#getDatabaseMinorVersion()}
    * @return A data source which will report the above (and nothing else).
    * @throws SQLException as part of mocked signature.
    */
