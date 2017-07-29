@@ -12,7 +12,7 @@ script:
 matrix:
   fast_finish: true
   include:
-    - jdk: oraclejdk7
+    - jdk: openjdk7
       env: GOALS="clean package"
     - jdk: oraclejdk8
       env: GOALS="clean org.jacoco:jacoco-maven-plugin:prepare-agent package sonar:sonar -Pcoverage-per-test"
