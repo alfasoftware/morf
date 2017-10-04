@@ -51,6 +51,7 @@ import org.alfasoftware.morf.sql.element.NullFieldLiteral;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.sql.element.WhenCondition;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 
 /**
  * Tests that the string generation for human readable upgrade paths is correct.
@@ -497,6 +498,7 @@ public class TestHumanReadableStatementHelper {
     final Criterion gte = Criterion.greaterThanOrEqualTo(new FieldReference("c"), 42);
     final Criterion inValues = Criterion.in(new FieldReference("d"), 1, 2, 3);
     final Criterion inSelect = Criterion.in(new FieldReference("e"), new SelectStatement(new FieldReference("foo")).from("Bar"));
+    final Criterion inList = Criterion.in(new FieldReference("f"), Lists.newArrayList(1, 2, 3));
     final Criterion isNotNull = Criterion.isNotNull(new FieldReference("g"));
     final Criterion isNull = Criterion.isNull(new FieldReference("h"));
     final Criterion like = Criterion.like(new FieldReference("i"), "%x%");
@@ -512,6 +514,7 @@ public class TestHumanReadableStatementHelper {
     assertEquals("GTE", "c is greater than or equal to 42", HumanReadableStatementHelper.generateCriterionString(gte));
     assertEquals("IN", "d is in (1, 2, 3)", HumanReadableStatementHelper.generateCriterionString(inValues));
     assertEquals("IN", "e is in Bar", HumanReadableStatementHelper.generateCriterionString(inSelect));
+    assertEquals("IN", "f is in (1, 2, 3)", HumanReadableStatementHelper.generateCriterionString(inList));
     assertEquals("ISNOTNULL", "g is not null", HumanReadableStatementHelper.generateCriterionString(isNotNull));
     assertEquals("ISNULL", "h is null", HumanReadableStatementHelper.generateCriterionString(isNull));
     assertEquals("LIKE", "i is like '%x%'", HumanReadableStatementHelper.generateCriterionString(like));
@@ -528,6 +531,7 @@ public class TestHumanReadableStatementHelper {
     assertEquals("!GTE", "c is less than 42", HumanReadableStatementHelper.generateCriterionString(Criterion.not(gte)));
     assertEquals("!IN", "d is not in (1, 2, 3)", HumanReadableStatementHelper.generateCriterionString(Criterion.not(inValues)));
     assertEquals("!IN", "e is not in Bar", HumanReadableStatementHelper.generateCriterionString(Criterion.not(inSelect)));
+    assertEquals("!IN", "f is not in (1, 2, 3)", HumanReadableStatementHelper.generateCriterionString(Criterion.not(inList)));
     assertEquals("!ISNOTNULL", "g is null", HumanReadableStatementHelper.generateCriterionString(Criterion.not(isNotNull)));
     assertEquals("!ISNULL", "h is not null", HumanReadableStatementHelper.generateCriterionString(Criterion.not(isNull)));
     assertEquals("!LIKE", "i is not like '%x%'", HumanReadableStatementHelper.generateCriterionString(Criterion.not(like)));

@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.xml;
 
+import static com.google.common.io.ByteStreams.toByteArray;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.idColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
@@ -26,6 +27,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,7 +38,6 @@ import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.xml.XmlDataSetConsumer.ClearDestinationBehaviour;
-import org.apache.commons.io.IOUtils;
 import org.junit.Test;
 
 /**
@@ -182,7 +183,7 @@ public class TestXmlDataSetConsumer {
 
     String expectedXML;
     try (InputStream resourceAsStream = getClass().getResourceAsStream("testIndexOrdering.xml")) {
-      expectedXML = IOUtils.toString(resourceAsStream, "UTF-8").trim();
+      expectedXML = new String(toByteArray(resourceAsStream), StandardCharsets.UTF_8).trim();
     }
 
     String actualXML = dummyXmlOutputStreamProvider.getXmlString().trim();

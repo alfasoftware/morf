@@ -133,6 +133,14 @@ public interface SchemaChangeVisitor {
 
 
   /**
+   * Perform visit operation on a {@link AnalyseTable} instance.
+   * 
+   * @param analyseTable instance of {@link AnalyseTable} to visit.
+   */
+  public void visit(AnalyseTable analyseTable);
+
+
+  /**
    * Add the UUID audit record.
    *
    * @param uuid The UUID of the step which has been applied

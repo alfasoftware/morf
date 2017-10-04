@@ -15,9 +15,12 @@
 
 package org.alfasoftware.morf.jdbc.nuodb;
 
+import static org.alfasoftware.morf.metadata.DataType.BOOLEAN;
+import static org.alfasoftware.morf.metadata.DataType.INTEGER;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
 import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
+import static org.alfasoftware.morf.sql.SqlUtils.parameter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,20 +32,25 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
+import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.sql.Hint;
 import org.alfasoftware.morf.sql.MergeStatement;
+import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.sql.UseImplicitJoinOrder;
+import org.alfasoftware.morf.sql.UseIndex;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
-import org.alfasoftware.morf.sql.element.MathsField;
 import org.alfasoftware.morf.sql.element.NullValueHandling;
+import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
@@ -54,6 +62,7 @@ import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 
 /**
  * Implements database specific statement generation for NuoDB.
@@ -201,9 +210,8 @@ class NuoDBDialect extends SqlDialect {
       }
     }
 
-    //NuoDB doesn't seem to always drop the indexes when dropping the tables.
-    //We need to explicitly have these statements to prevent index clashes.
-    //TODO WEB-57648
+    // TODO Alfa internal ref WEB-57648 NuoDB doesn't seem to always drop the indexes when dropping the tables.
+    // We need to explicitly have these statements to prevent index clashes.
     for (Index index : table.indexes()) {
       dropList.add(optionalDropIndexStatement(table, index));
     }
@@ -247,7 +255,8 @@ class NuoDBDialect extends SqlDialect {
         return "DATE";
 
       case BOOLEAN:
-        return "BOOLEAN";
+        //NuoDB has a BOOLEAN data type but for consistency with the other dialects, we store a smallint
+        return "SMALLINT";
 
       case BIG_INTEGER:
         return "BIGINT";
@@ -268,11 +277,34 @@ class NuoDBDialect extends SqlDialect {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#prepareStatementParameter(NamedParameterPreparedStatement, SqlParameter, int, java.lang.String)
+   */
+  @Override
+  public void prepareStatementParameter(NamedParameterPreparedStatement statement, SqlParameter parameter, String value) {
+    if (parameter.getMetadata().getType() == BOOLEAN) {
+      SqlParameter integerVersion = parameter(parameter.getImpliedName()).type(INTEGER);
+      super.prepareStatementParameter(statement, integerVersion, convertColumnValueToDatabaseSafeString(parameter.getMetadata(), value, null));
+    } else {
+      super.prepareStatementParameter(statement, parameter, value);
+    }
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#useInsertBatching()
    */
   @Override
   public boolean useInsertBatching() {
     return true;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#fetchSizeForBulkSelects()
+   */
+  @Override
+  public int fetchSizeForBulkSelects() {
+    return 1000;
   }
 
 
@@ -311,8 +343,8 @@ class NuoDBDialect extends SqlDialect {
 
   /**
    * We need to cast decimals as DECIMAL in NuoDB otherwise they're treated as strings.
-   * TODO WEB-56758 - contacted NuoDB support on this point, issue ref: Request #6593
-   * TODO WEB-58717 - A further fix to this is required to specify the correct precision and scale.
+   * TODO Alfa internal ref WEB-56758 - contacted NuoDB support on this point, issue ref: Request #6593
+   * TODO Alfa internal ref WEB-58717 - A further fix to this is required to specify the correct precision and scale.
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.element.FieldLiteral)
    */
   @Override
@@ -436,7 +468,8 @@ class NuoDBDialect extends SqlDialect {
     result.addAll(changeColumnNullability(table, oldColumn, newColumn));
 
     if (oldColumn.isAutoNumbered() != newColumn.isAutoNumbered()) {
-      // TODO we should also copy the data right?!
+      // FIXME this is obviously wrong since we're losing the data in the column. Nuo support
+      // is under construction. To be resolved.
       result.addAll(alterTableDropColumnStatements(table, oldColumn));
       result.addAll(alterTableAddColumnStatements(table, newColumn));
     }
@@ -712,7 +745,7 @@ class NuoDBDialect extends SqlDialect {
   @Override
   protected String getSqlForYYYYMMDDToDate(Function function) {
     AliasedField field = function.getArguments().get(0);
-    return "DATE_FROM_STR(" + getSqlFrom(field) + ", 'yyyyMMdd')";
+    return "DATE(SUBSTRING(" + getSqlFrom(field) + ", 1, 4)||'-'||SUBSTRING(" + getSqlFrom(field) + ", 5, 2)||'-'||SUBSTRING(" + getSqlFrom(field) + ", 7, 2))";
   }
 
 
@@ -753,7 +786,12 @@ class NuoDBDialect extends SqlDialect {
    */
   @Override
   protected String getSqlForDaysBetween(AliasedField toDate, AliasedField fromDate) {
-    return "CAST(" + getSqlFrom(toDate) + " AS DATE) - CAST(" + getSqlFrom(fromDate) + " AS DATE)";
+    //To avoid potential TIMESTAMP/DATE type mismatches, we need to ensure DATEDIFF
+    //is passed a correctly formatted string of 'yyyy-MM-dd'. The following approach will
+    //ensure that the source date/string is always correctly formatted.
+    String fromDateSql = String.format("DATE_TO_STR(%1$s, 'yyyy-MM-dd')", getSqlFrom(fromDate));
+    String toDateSql = String.format("DATE_TO_STR(%1$s, 'yyyy-MM-dd')", getSqlFrom(toDate));
+    return "DATEDIFF(DAY," + fromDateSql + ", " + toDateSql + ")";
   }
 
 
@@ -961,14 +999,41 @@ class NuoDBDialect extends SqlDialect {
 
 
   /**
-   * NuoDB returns the type from a MathsFields as a String. We therefore need an explicit cast to NUMERIC.
-   * This a fix for WEB-56829 and should be removed once NuoDB has been fixed.
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(MathsField)
-   * @param field the MathsField to get the name of
-   * @return a string which is the name of the function
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#selectStatementPreFieldDirectives(org.alfasoftware.morf.sql.SelectStatement)
    */
   @Override
-  protected String getSqlFrom(MathsField field) {
-    return String.format("CAST((%s %s %s) AS NUMBER)", getSqlFrom(field.getLeftField()), field.getOperator(), getSqlFrom(field.getRightField()));
+  protected String selectStatementPreFieldDirectives(SelectStatement selectStatement) {
+    if (selectStatement.getHints().isEmpty()) {
+      return super.selectStatementPreFieldDirectives(selectStatement);
+    }
+
+    // http://doc.nuodb.com/Latest/Content/Using-Optimizer-Hints.htm
+
+    List<String> hintTexts = Lists.newArrayList();
+    for (Hint hint : selectStatement.getHints()) {
+      if (hint instanceof UseIndex) {
+        UseIndex useIndex = (UseIndex)hint;
+        TableReference table = useIndex.getTable();
+        hintTexts.add(
+          String.format("USE_INDEX(%s, %s)",
+            StringUtils.isEmpty(table.getAlias()) ? qualifiedTableName(table) : table.getAlias(),
+            useIndex.getIndexName()));
+
+      }
+      if (hint instanceof UseImplicitJoinOrder) {
+        hintTexts.add("ORDERED");
+      }
+    }
+
+    return "/*+ " + Joiner.on(", ").join(hintTexts) + " */ ";
+  };
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect.getSqlForAnalyseTable(Table)
+   */
+  @Override
+  public Collection<String> getSqlForAnalyseTable(Table table) {
+    return SqlDialect.NO_STATEMENTS;
   }
 }

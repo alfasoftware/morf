@@ -32,11 +32,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mockito;
-
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Column;
@@ -48,6 +43,10 @@ import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.sql.UpdateStatement;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 
 /**
  *
@@ -380,4 +379,18 @@ public class TestInlineTableUpgrader {
     verify(sqlStatementWriter).writeSql(anyCollectionOf(String.class));
   }
 
+
+  @Test
+  public void testAnalyseTableStatment(){
+    // given
+    AnalyseTable analyseTable = mock(AnalyseTable.class);
+    given(analyseTable.apply(schema)).willReturn(schema);
+
+    // when
+    upgrader.visit(analyseTable);
+
+    // then
+    verify(sqlDialect).getSqlForAnalyseTable(any(Table.class));
+    verify(sqlStatementWriter).writeSql(anyCollectionOf(String.class));
+  }
 }

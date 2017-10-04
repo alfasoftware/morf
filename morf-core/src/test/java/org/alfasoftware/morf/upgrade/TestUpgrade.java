@@ -47,12 +47,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
-import org.apache.commons.lang.StringUtils;
-import org.junit.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
-
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.MockDialect;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -72,6 +66,12 @@ import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.ChangeCar;
 import org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.ChangeDriver;
 import org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.CreateDeployedViews;
+import org.apache.commons.lang.StringUtils;
+import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
+
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -110,14 +110,17 @@ public class TestUpgrade {
         column("address", DataType.STRING, 10).nullable(),
         column("postCode", DataType.STRING, 8).nullable()
       );
+    //... this table should be excluded when findPath is invoked. If not it will be found in the trial upgrade schema and not in the target.
+    Table excludedTable = table("Drivers");
+    Table prefixExcludeTable1 = table("EXCLUDE_TABLE1");
+    Table prefixExcludeTable2 = table("EXCLUDE_TABLE2");
 
     Schema targetSchema = schema(upgradeAudit, carUpgraded, driverUpgraded);
     Collection<Class<? extends UpgradeStep>> upgradeSteps = new ArrayList<>();
     upgradeSteps.add(ChangeCar.class);
     upgradeSteps.add(ChangeDriver.class);
 
-    List<Table> tables = Arrays.asList(upgradeAudit, car, driver);
-
+    List<Table> tables = Arrays.asList(upgradeAudit, car, driver, excludedTable, prefixExcludeTable1, prefixExcludeTable2);
     ConnectionResources mockConnectionResources = MockConnectionResources.build();
 
     SchemaResource schemaResource = mock(SchemaResource.class);
@@ -125,7 +128,7 @@ public class TestUpgrade {
     when(schemaResource.tables()).thenReturn(tables);
 
     UpgradePath results = new Upgrade(mockConnectionResources, mockConnectionResources.getDataSource(), upgradePathFactory()).findPath(targetSchema,
-      upgradeSteps, new HashSet<String>());
+      upgradeSteps, Lists.newArrayList("^Drivers$", "^EXCLUDE_.*$"));
 
     assertEquals("Should be two steps.", 2, results.getSteps().size());
     assertEquals("Number of SQL statements", 18, results.getSql().size()); // Includes statements to create, truncate and then drop temp table, also 2 comments

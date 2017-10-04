@@ -15,15 +15,17 @@
 
 package org.alfasoftware.morf.upgrade.adapt;
 
+import static com.google.common.base.Predicates.not;
+
 import java.util.Collections;
 import java.util.Set;
 import java.util.TreeSet;
 
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.collections.Predicate;
-
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
+
+import com.google.common.base.Predicate;
+import com.google.common.collect.Collections2;
 
 /**
  * A {@link Schema} adapted from a base schema by selective exclusion (i.e. filtering
@@ -41,16 +43,15 @@ public class FilteredSchema extends TableSetSchema {
    * @param baseSchema base schema to adapt.
    * @param removedTables names of tables to remove.
    */
-  @SuppressWarnings("unchecked")
   public FilteredSchema(final Schema baseSchema, final String... removedTables) {
-    super(CollectionUtils.selectRejected(baseSchema.tables(), new Predicate() {
+    super(Collections2.filter(baseSchema.tables(), not(new Predicate<Table>() {
       @Override
-      public boolean evaluate(Object table) {
+      public boolean apply(Table table) {
         // String.CASE_INSENSITIVE_ORDER lets you use case-insensitive .contains(Object)
-        Set<String> caseInsensitiveSet = new TreeSet<String>(String.CASE_INSENSITIVE_ORDER);
+        Set<String> caseInsensitiveSet = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         Collections.addAll(caseInsensitiveSet, removedTables);
-        return caseInsensitiveSet.contains(((Table)table).getName());
+        return caseInsensitiveSet.contains(table.getName());
       }
-    }));
+    })));
   }
 }

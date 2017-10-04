@@ -15,13 +15,17 @@
 
 package org.alfasoftware.morf.upgrade.adapt;
 
-import java.util.Arrays;
+import static com.google.common.base.Predicates.not;
 
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.collections.Predicate;
+import java.util.Arrays;
 
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
+
+import com.google.common.base.Predicate;
+import com.google.common.collect.Collections2;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 
 /**
  * {@link Schema} which adapts an existing schema by overriding a single table definition.
@@ -37,19 +41,18 @@ public class TableOverrideSchema extends TableSetSchema {
    * @param baseSchema base schema to adapt via a single table override.
    * @param overridingTable table to take the place of its namesake in <var>baseSchema</var>.
    */
-  @SuppressWarnings("unchecked")
   public TableOverrideSchema(final Schema baseSchema, final Table overridingTable) {
     super(
-      CollectionUtils.union(
+      Lists.newArrayList(Iterables.concat(
         // all except the overridden table
-        CollectionUtils.selectRejected(baseSchema.tables(), new Predicate() {
+        Collections2.filter(baseSchema.tables(), not(new Predicate<Table>() {
           @Override
-          public boolean evaluate(Object table) {
-            return ((Table)table).getName().toUpperCase().equals(overridingTable.getName().toUpperCase());
+          public boolean apply(Table table) {
+            return table.getName().toUpperCase().equals(overridingTable.getName().toUpperCase());
           }
-        }),
+        })),
         // plus the override
         Arrays.asList(new Table[] {overridingTable})
-      ));
+      )));
   }
 }

@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.metadata;
 
+import static com.google.common.collect.FluentIterable.from;
 import static org.alfasoftware.morf.metadata.DataType.BIG_INTEGER;
 
 import java.util.Arrays;
@@ -148,6 +149,42 @@ public final class SchemaUtils {
    */
   public static Schema copy(Schema schema) {
     return new SchemaBean(schema);
+  }
+
+
+  /**
+   * Copy a {@link Schema} and exclude.
+   *
+   * @param schema The schema to copy.
+   * @param exclusionRegExes A list of table/view regexs to exclude.
+   * @return A {@link Schema} implementation copied from the provided
+   *         {@link Schema} with excluded tables/views removed.
+   */
+  public static Schema copy(Schema schema, Collection<String> exclusionRegExes) {
+    return schema(
+      schema(from(schema.tables())
+        .filter(table -> !isMatching(exclusionRegExes, table.getName()))
+        .transform(SchemaUtils::copy)
+        .toList()),
+      schema(from(schema.views())
+        .filter(view -> !isMatching(exclusionRegExes, view.getName()))
+        .transform(SchemaUtils::copy)
+        .toList()));
+  }
+
+
+  /**
+   * Match table/view  name against a list of exclusion regexs
+   *
+   * @param exclusionRegExes A list of tables/views to exclude
+   * @param name Table/View name
+   * @return boolean for filter
+   */
+  private static boolean isMatching(Collection<String> exclusionRegExes, String name) {
+    return exclusionRegExes.stream()
+        .filter(regex -> name.matches(regex))
+        .findFirst()
+        .isPresent();
   }
 
 

@@ -19,10 +19,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.SystemUtils;
-import org.apache.commons.lang.math.NumberUtils;
-
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
@@ -54,6 +50,10 @@ import org.alfasoftware.morf.sql.element.NullFieldLiteral;
 import org.alfasoftware.morf.sql.element.Operator;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.sql.element.WhenCondition;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.SystemUtils;
+import org.apache.commons.lang.math.NumberUtils;
+
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -362,6 +362,16 @@ class HumanReadableStatementHelper {
 
     return addTableBuilder
             .toString();
+  }
+
+
+  /**
+   * Generates human-readable "Analyse Table" string.
+   * 
+   * @param The table to analyse. 
+   */
+  public static String generateAnalyseTableFromString(String tableName) {
+    return String.format("Analyse table %s", tableName);
   }
 
 

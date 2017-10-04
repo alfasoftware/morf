@@ -22,6 +22,7 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Table;
+
 import com.google.inject.ImplementedBy;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
@@ -96,6 +97,13 @@ public interface TableLoaderBuilder {
   TableLoaderBuilder insertingUnderAutonumLimit();
 
   /**
+   * Sets how many records we will include in each JDBC batch. Defaults to 1000.
+   *
+   * @param recordsPerBatch
+   */
+  TableLoaderBuilder withBatchSize(int recordsPerBatch);
+
+  /**
    * Build the table loader for the specified table.
    *
    * @param table The table.
@@ -115,6 +123,7 @@ public interface TableLoaderBuilder {
     private boolean insertingWithPresetAutonums;
     private boolean insertingUnderAutonumLimit;
     private Provider<SqlDialect> sqlDialect;
+    private int batchSize = 1000;
 
     TableLoaderBuilderImpl() {
       super();
@@ -180,6 +189,12 @@ public interface TableLoaderBuilder {
     }
 
     @Override
+    public TableLoaderBuilder withBatchSize(int recordsPerBatch) {
+      this.batchSize = recordsPerBatch;
+      return this;
+    }
+
+    @Override
     public TableLoader forTable(Table table) {
       SqlScriptExecutor executor = sqlScriptExecutor;
       if (executor == null) {
@@ -196,7 +211,8 @@ public interface TableLoaderBuilder {
         table,
         insertingWithPresetAutonums,
         insertingUnderAutonumLimit,
-        truncateBeforeLoad);
+        truncateBeforeLoad,
+        batchSize);
     }
   }
 }

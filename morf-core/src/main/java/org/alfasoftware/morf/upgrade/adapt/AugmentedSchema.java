@@ -17,10 +17,11 @@ package org.alfasoftware.morf.upgrade.adapt;
 
 import java.util.Arrays;
 
-import org.apache.commons.collections.CollectionUtils;
-
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
+
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 
 /**
  * {@link Schema} which adapts an existing schema by adding new
@@ -37,8 +38,7 @@ public class AugmentedSchema extends TableSetSchema {
    * @param baseSchema the schema to adapt through the addition of new tables
    * @param newTables to add over and above those in baseSchema.
    */
-  @SuppressWarnings("unchecked")
   public AugmentedSchema(Schema baseSchema, Table... newTables) {
-    super(CollectionUtils.union(baseSchema.tables(), Arrays.asList(newTables)));
+    super(Lists.newArrayList(Iterables.concat(baseSchema.tables(), Arrays.asList(newTables))));
   }
 }

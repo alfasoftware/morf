@@ -1425,7 +1425,7 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testInsertFromSelectWithSomeDefaults() {
     InsertStatement stmt = new InsertStatement().into(new TableReference("Test")).from(new TableReference("Other")).withDefaults(new FieldLiteral(20010101).as("dateField"), new FieldLiteral(0).as("booleanField"), new NullFieldLiteral().as("blobField"));
-    // TODO The default of '' for a charField is WRONG. This should probably be one of NULL or ' '. Not an empty string, which is an invalid character!
+    // FIXME The default of '' for a charField is WRONG. This should probably be one of NULL or ' '. Not an empty string, which is an invalid character!
     String expectedSql = "INSERT INTO " + tableName("Test") + " (id, version, stringField, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) SELECT id, version, stringField, intField, floatField, 20010101 AS dateField, 0 AS booleanField, NULL AS charField, null AS blobField, 12345 AS bigIntegerField, null AS clobField FROM " + tableName("Other");
 
     List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName("idvalues"));
@@ -3620,6 +3620,14 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * Tests that the analyse table statement
+   */
+  @Test
+  public void testAnalyseTableStatement() {
+    assertEquals("Analyse table scripts are not the same ", expectedAnalyseTableSql(), testDialect.getSqlForAnalyseTable(testTempTable));
+  }
+
+  /**
    * Tests a simple merge.
    */
   @Test
@@ -3954,6 +3962,12 @@ public abstract class AbstractSqlDialectTest {
    * @return Expected SQL for {@link #testRenameIndexStatements()}
    */
   protected abstract List<String> expectedRenameIndexStatements();
+
+
+  /**
+   * @return Expected SQL for {@link #testAnalyseTableStatement()}
+   */
+  protected abstract Collection<String> expectedAnalyseTableSql();
 
 
   /**
@@ -5092,5 +5106,4 @@ public abstract class AbstractSqlDialectTest {
      * Removal
      */
     DROP }
-
 }

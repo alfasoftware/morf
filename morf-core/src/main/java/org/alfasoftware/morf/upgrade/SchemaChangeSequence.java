@@ -43,7 +43,7 @@ public class SchemaChangeSequence {
 
   private final List<UpgradeStep>            upgradeSteps;
 
-  private final Set<String> tableAdditions = new HashSet<String>();
+  private final Set<String> tableAdditions = new HashSet<>();
 
   private final List<UpgradeStepWithChanges> allChanges     = Lists.newArrayList();
 
@@ -319,6 +319,15 @@ public class SchemaChangeSequence {
 
       visitor.visit(new AddTableFrom(table, select));
     }
+
+
+    /**
+     * @see org.alfasoftware.morf.upgrade.SchemaEditor#analyseTable(org.alfasoftware.morf.metadata.Table)
+     */
+    @Override
+    public void analyseTable(String tableName) {
+      visitor.visit(new AnalyseTable(tableName));
+    }
   }
 
 
@@ -474,6 +483,12 @@ public class SchemaChangeSequence {
     @Override
     public void visit(AddTableFrom addTableFrom) {
       changes.add(addTableFrom);
+    }
+
+
+    @Override
+    public void visit(AnalyseTable analyseTable) {
+      changes.add(analyseTable);
     }
   }
 }

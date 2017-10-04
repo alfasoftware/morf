@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.alfasoftware.morf.sql.element.SqlParameter;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -39,7 +40,7 @@ import com.google.common.collect.Maps;
  *
  * @see http://www.javaworld.com/article/2077706/core-java/named-parameters-for-preparedstatement.html
  */
-public class NamedParameterPreparedStatement {
+public class NamedParameterPreparedStatement implements AutoCloseable {
 
   /** The statement this object is wrapping. */
   private final PreparedStatement statement;
@@ -113,6 +114,7 @@ public class NamedParameterPreparedStatement {
   /**
    * @see PreparedStatement#close()
    */
+  @Override
   public void close() throws SQLException {
     statement.close();
   }

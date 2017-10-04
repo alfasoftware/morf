@@ -6,3 +6,7 @@ target
 .classpath
 .fbExcludeFilterFile
 .checkstyle
+/build.xml
+/genantbuild
+/antbuild
+/ivy.xml

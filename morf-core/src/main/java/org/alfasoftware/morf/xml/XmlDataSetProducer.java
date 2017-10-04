@@ -51,12 +51,6 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
-import org.xmlpull.mxp1.MXParser;
-import org.xmlpull.v1.XmlPullParser;
-import org.xmlpull.v1.XmlPullParserException;
-
 import org.alfasoftware.morf.dataset.DataSetProducer;
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.Column;
@@ -67,7 +61,14 @@ import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.xml.XmlStreamProvider.XmlInputStreamProvider;
+import org.apache.commons.lang.StringUtils;
+import org.xmlpull.mxp1.MXParser;
+import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserException;
+
+import com.google.common.io.ByteStreams;
 import com.google.common.io.CharSource;
+import com.google.common.io.Closeables;
 import com.google.common.io.Files;
 
 /**
@@ -210,7 +211,7 @@ public class XmlDataSetProducer implements DataSetProducer {
       PullProcessorRecordIterator pullProcessorRecordIterator = new PullProcessorRecordIterator(pullParser);
       return !pullProcessorRecordIterator.hasNext();
     } finally {
-      IOUtils.closeQuietly(inputStream);
+      Closeables.closeQuietly(inputStream);
     }
   }
 
@@ -296,7 +297,7 @@ public class XmlDataSetProducer implements DataSetProducer {
                 }
                 OutputStream output = new BufferedOutputStream(new FileOutputStream(target));
                 try {
-                  IOUtils.copy(input, output);
+                  ByteStreams.copy(input, output);
                 } finally {
                   output.close();
                 }
@@ -307,7 +308,7 @@ public class XmlDataSetProducer implements DataSetProducer {
             InputStream input = url.openStream();
             OutputStream output = new BufferedOutputStream(new FileOutputStream(result));
             try {
-              IOUtils.copy(input, output);
+              ByteStreams.copy(input, output);
             } finally {
               output.close();
               input.close();
@@ -526,7 +527,7 @@ public class XmlDataSetProducer implements DataSetProducer {
         }
       } finally {
         // abandon any remaining content
-        IOUtils.closeQuietly(inputStream);
+        Closeables.closeQuietly(inputStream);
       }
     }
 

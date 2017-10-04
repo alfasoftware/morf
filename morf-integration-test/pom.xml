@@ -77,10 +77,4 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
-  
-  <scm>
-    <connection>scm:svn:https://data.svn.chpglobal.net/Personal/venushkap/Morf/trunk/morf-integration-test</connection>
-    <developerConnection>scm:svn:https://data.svn.chpglobal.net/Personal/venushkap/Morf/trunk/morf-integration-test</developerConnection>
-    <url>https://data.svn.chpglobal.net/Personal/venushkap/Morf/trunk/morf-integration-test</url>
-  </scm>
 </project>

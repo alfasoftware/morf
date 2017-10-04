@@ -23,9 +23,9 @@ import java.io.OutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import org.apache.commons.io.IOUtils;
-
 import org.alfasoftware.morf.xml.XmlStreamProvider.XmlOutputStreamProvider;
+
+import com.google.common.io.ByteStreams;
 
 /**
  * Allows reading of data sets based on an archive (zip) file.
@@ -84,7 +84,7 @@ class ArchiveDataSetWriter implements XmlOutputStreamProvider {
       // Put the read me entry in
       ZipEntry entry = new ZipEntry("_ReadMe.txt");
       zipOutput.putNextEntry(entry);
-      IOUtils.copy(new ByteArrayInputStream(READ_ME.getBytes("UTF-8")), zipOutput);
+      ByteStreams.copy(new ByteArrayInputStream(READ_ME.getBytes("UTF-8")), zipOutput);
     } catch (Exception e) {
       throw new RuntimeException("Error opening zip archive [" + file + "]", e);
     }

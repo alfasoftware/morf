@@ -43,10 +43,4 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
-  
-  <scm>
-    <connection>scm:svn:https://data.svn.chpglobal.net/Personal/venushkap/Morf/trunk/morf-sqlserver</connection>
-    <developerConnection>scm:svn:https://data.svn.chpglobal.net/Personal/venushkap/Morf/trunk/morf-sqlserver</developerConnection>
-    <url>https://data.svn.chpglobal.net/Personal/venushkap/Morf/trunk/morf-sqlserver</url>
-  </scm>
 </project>

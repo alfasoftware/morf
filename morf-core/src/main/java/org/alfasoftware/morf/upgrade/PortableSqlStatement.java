@@ -17,14 +17,17 @@ package org.alfasoftware.morf.upgrade;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.StringWriter;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.sql.Statement;
-import org.apache.commons.io.IOUtils;
 import org.omg.CORBA.portable.Streamable;
+
+import com.google.common.io.CharStreams;
+import com.google.common.io.Closeables;
 
 /**
  * A {@link Statement} that allows free format SQL to be run over a database.
@@ -75,17 +78,16 @@ public class PortableSqlStatement implements Statement {
    * @return This {@link PortableSqlStatement}.
    */
   public PortableSqlStatement add(String databaseTypeIdentifier, InputStream stream) {
-    StringWriter writer = null;
+    InputStreamReader streamReader = null;
     try {
-      writer = new StringWriter();
-      IOUtils.copy(stream, writer);
-      statements.put(databaseTypeIdentifier, writer.toString());
+      streamReader = new InputStreamReader(stream, StandardCharsets.UTF_8);
+      statements.put(databaseTypeIdentifier, CharStreams.toString(streamReader));
     } catch (IOException e) {
       throw new RuntimeException(
         "Error loading SQL upgrade script from server.", e);
     } finally {
-      IOUtils.closeQuietly(stream);
-      IOUtils.closeQuietly(writer);
+      Closeables.closeQuietly(stream);
+      Closeables.closeQuietly(streamReader);
     }
     return this;
   }

@@ -15,14 +15,28 @@
 
 package org.alfasoftware.morf.jdbc.nuodb;
 
+import static org.alfasoftware.morf.sql.SqlUtils.parameter;
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.verify;
+
+import java.math.BigDecimal;
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
+import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.sql.element.SqlParameter;
+import org.mockito.ArgumentCaptor;
 
 import com.google.common.collect.ImmutableList;
 
@@ -57,7 +71,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
   protected List<String> expectedCreateTableStatements() {
     return Arrays
         .asList(
-          "CREATE TABLE SCM.Test (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), intField DECIMAL(8,0), floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField BOOLEAN, charField VARCHAR(1), blobField BLOB, bigIntegerField BIGINT DEFAULT 12345, clobField NCLOB, PRIMARY KEY (id))",
+          "CREATE TABLE SCM.Test (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), intField DECIMAL(8,0), floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField SMALLINT, charField VARCHAR(1), blobField BLOB, bigIntegerField BIGINT DEFAULT 12345, clobField NCLOB, PRIMARY KEY (id))",
           "DROP INDEX IF EXISTS SCM.Test_NK",
           "CREATE UNIQUE INDEX Test_NK ON SCM.Test (stringField)",
           "DROP INDEX IF EXISTS SCM.Test_1",
@@ -65,7 +79,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
           "CREATE TABLE SCM.Alternate (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), PRIMARY KEY (id))",
           "DROP INDEX IF EXISTS SCM.Alternate_1",
           "CREATE INDEX Alternate_1 ON SCM.Alternate (stringField)",
-          "CREATE TABLE SCM.NonNull (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3) NOT NULL, intField DECIMAL(8,0) NOT NULL, booleanField BOOLEAN NOT NULL, dateField DATE NOT NULL, blobField BLOB NOT NULL, PRIMARY KEY (id))",
+          "CREATE TABLE SCM.NonNull (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3) NOT NULL, intField DECIMAL(8,0) NOT NULL, booleanField SMALLINT NOT NULL, dateField DATE NOT NULL, blobField BLOB NOT NULL, PRIMARY KEY (id))",
           "CREATE TABLE SCM.CompositePrimaryKey (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3) NOT NULL, secondPrimaryKey VARCHAR(3) NOT NULL, PRIMARY KEY (id, secondPrimaryKey))",
           "DROP SEQUENCE IF EXISTS SCM.AutoNumber_IDS_5",
           "CREATE SEQUENCE SCM.AutoNumber_IDS_5 START WITH 5",
@@ -81,7 +95,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
   protected List<String> expectedCreateTemporaryTableStatements() {
     return Arrays
         .asList(
-          "CREATE TEMPORARY TABLE TEMP_TempTest (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), intField DECIMAL(8,0), floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField BOOLEAN, charField VARCHAR(1), blobField BLOB, bigIntegerField BIGINT DEFAULT 12345, clobField NCLOB, PRIMARY KEY (id))",
+          "CREATE TEMPORARY TABLE TEMP_TempTest (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), intField DECIMAL(8,0), floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField SMALLINT, charField VARCHAR(1), blobField BLOB, bigIntegerField BIGINT DEFAULT 12345, clobField NCLOB, PRIMARY KEY (id))",
           "DROP INDEX IF EXISTS TempTest_NK",
           "CREATE UNIQUE INDEX TempTest_NK ON TEMP_TempTest (stringField)",
           "DROP INDEX IF EXISTS TempTest_1",
@@ -89,7 +103,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
           "CREATE TEMPORARY TABLE TEMP_TempAlternate (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), PRIMARY KEY (id))",
           "DROP INDEX IF EXISTS TempAlternate_1",
           "CREATE INDEX TempAlternate_1 ON TEMP_TempAlternate (stringField)",
-          "CREATE TEMPORARY TABLE TEMP_TempNonNull (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3) NOT NULL, intField DECIMAL(8,0) NOT NULL, booleanField BOOLEAN NOT NULL, dateField DATE NOT NULL, blobField BLOB NOT NULL, PRIMARY KEY (id))"
+          "CREATE TEMPORARY TABLE TEMP_TempNonNull (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3) NOT NULL, intField DECIMAL(8,0) NOT NULL, booleanField SMALLINT NOT NULL, dateField DATE NOT NULL, blobField BLOB NOT NULL, PRIMARY KEY (id))"
           );
   }
 
@@ -102,7 +116,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
     return Arrays
         .asList("CREATE TABLE "
             + "SCM."+ TABLE_WITH_VERY_LONG_NAME
-            + " (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), intField DECIMAL(8,0), floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField BOOLEAN, charField VARCHAR(1), PRIMARY KEY (id))",
+            + " (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), intField DECIMAL(8,0), floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField SMALLINT, charField VARCHAR(1), PRIMARY KEY (id))",
             "DROP INDEX IF EXISTS SCM.Test_NK",
             "CREATE UNIQUE INDEX Test_NK ON SCM." + TABLE_WITH_VERY_LONG_NAME + " (stringField)",
             "DROP INDEX IF EXISTS SCM.Test_1",
@@ -181,8 +195,8 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
   protected List<String> expectedAutoGenerateIdStatement() {
     return ImmutableList.of(
       "DELETE FROM idvalues where name = 'Test'",
-      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(CAST((MAX(id) + 1) AS NUMBER), 1)  AS CurrentValue FROM SCM.Test))",
-      "INSERT INTO SCM.Test (version, stringField, id) SELECT version, stringField, CAST(((SELECT COALESCE(value, 0)  FROM SCM.idvalues WHERE (name = 'Test')) + Other.id) AS NUMBER) FROM SCM.Other"
+      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1)  AS CurrentValue FROM SCM.Test))",
+      "INSERT INTO SCM.Test (version, stringField, id) SELECT version, stringField, (SELECT COALESCE(value, 0)  FROM SCM.idvalues WHERE (name = 'Test')) + Other.id FROM SCM.Other"
     );
   }
 
@@ -194,8 +208,8 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
   protected List<String> expectedInsertWithIdAndVersion() {
     return Arrays.asList(
       "DELETE FROM idvalues where name = 'Test'",
-      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(CAST((MAX(id) + 1) AS NUMBER), 1)  AS CurrentValue FROM SCM.Test))",
-      "INSERT INTO SCM.Test (stringField, id, version) SELECT stringField, CAST(((SELECT COALESCE(value, 0)  FROM SCM.idvalues WHERE (name = 'Test')) + Other.id) AS NUMBER), 0 AS version FROM SCM.Other"
+      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1)  AS CurrentValue FROM SCM.Test))",
+      "INSERT INTO SCM.Test (stringField, id, version) SELECT stringField, (SELECT COALESCE(value, 0)  FROM SCM.idvalues WHERE (name = 'Test')) + Other.id, 0 AS version FROM SCM.Other"
     );
   }
 
@@ -205,7 +219,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected void verifyPostInsertStatementsInsertingUnderAutonumLimit(SqlScriptExecutor sqlScriptExecutor, Connection connection) {
-//  throw new RuntimeException("need to implement");    //TODO
+//  throw new RuntimeException("need to implement");    //FIXME Nuo support in progress
   }
 
 
@@ -214,7 +228,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected void verifyRepairAutoNumberStartPosition(SqlScriptExecutor sqlScriptExecutor, Connection connection) {
-//  throw new RuntimeException("need to implement");    //TODO
+//  throw new RuntimeException("need to implement");    //FIXME Nuo support in progress
   }
 
 
@@ -223,7 +237,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected void verifyPostInsertStatementsNotInsertingUnderAutonumLimit(SqlScriptExecutor sqlScriptExecutor, Connection connection) {
-//  throw new RuntimeException("need to implement");    //TODO
+//  throw new RuntimeException("need to implement");    //FIXME Nuo support in progress
   }
 
 
@@ -232,7 +246,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSelectMinimumWithExpression() {
-    return "SELECT MIN(CAST((intField - 1) AS NUMBER)) FROM " + tableName("Test");
+    return "SELECT MIN(intField - 1) FROM " + tableName("Test");
   }
 
 
@@ -241,7 +255,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSqlForMathOperations1() {
-    return "CAST((CAST((a / b) AS NUMBER) + c) AS NUMBER)";
+    return "a / b + c";
   }
 
 
@@ -250,7 +264,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSqlForMathOperations2() {
-    return "CAST((CAST((a / b) AS NUMBER) + 100) AS NUMBER)";
+    return "a / b + 100";
   }
 
 
@@ -259,7 +273,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSqlForMathOperations3() {
-    return "CAST((a / (CAST((b + c) AS NUMBER))) AS NUMBER)";
+    return "a / (b + c)";
   }
 
 
@@ -268,7 +282,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSqlForMathOperations4() {
-    return "CAST((a / (CAST((b + 100) AS NUMBER))) AS NUMBER)";
+    return "a / (b + 100)";
   }
 
 
@@ -277,7 +291,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSqlForMathOperations5() {
-    return "CAST((a * (CAST((b + c) AS NUMBER))) AS NUMBER)";
+    return "a * (b + c)";
   }
 
 
@@ -286,7 +300,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSqlForMathOperations6() {
-    return "CAST((CAST((a + b) AS NUMBER) / (CAST((c - d) AS NUMBER))) AS NUMBER)";
+    return "a + b / (c - d)";
   }
 
 
@@ -295,7 +309,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSqlForMathOperations7() {
-    return "CAST(((CAST((a + b) AS NUMBER)) / (CAST((c - d) AS NUMBER))) AS NUMBER)";
+    return "(a + b) / (c - d)";
   }
 
 
@@ -304,7 +318,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSqlForMathOperations8() {
-    return "CAST((CAST((CAST((CAST((a + b) AS NUMBER) + c) AS NUMBER) + d) AS NUMBER) + e) AS NUMBER)";
+    return "a + b + c + d + e";
   }
 
 
@@ -313,7 +327,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSqlForMathOperations9() {
-    return "CAST((CAST((CAST((CAST((CAST((CAST((a + b) AS NUMBER) + (CAST((c / d) AS NUMBER))) AS NUMBER) + e) AS NUMBER) + 100) AS NUMBER) + f) AS NUMBER) / 5) AS NUMBER)";
+    return "a + b + (c / d) + e + 100 + f / 5";
   }
 
 
@@ -322,7 +336,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSqlForMathOperations10() {
-    return "CAST(((CAST((CAST((CAST((CAST((CAST((a + b) AS NUMBER) + (CAST((c / d) AS NUMBER))) AS NUMBER) + e) AS NUMBER) + 100) AS NUMBER) + f) AS NUMBER)) / 5) AS NUMBER)";
+    return "(a + b + (c / d) + e + 100 + f) / 5";
   }
 
 
@@ -331,7 +345,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSqlForMathOperations11() {
-    return "CAST((CAST(((CAST((CAST((a / 100) AS NUMBER) + 1) AS NUMBER)) / b) AS NUMBER) + 100) AS NUMBER)";
+    return "(a / 100 + 1) / b + 100";
   }
 
 
@@ -340,7 +354,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSqlForMathOperations12() {
-    return "CAST(((CAST((a + b) AS NUMBER)) / c) AS NUMBER)";
+    return "(a + b) / c";
   }
 
 
@@ -349,7 +363,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSqlForMathOperations13() {
-    return "CAST((CAST((CAST((a + b) AS NUMBER) + c) AS NUMBER) / 2) AS NUMBER)";
+    return "a + b + c / 2";
   }
 
 
@@ -358,7 +372,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSqlForMathOperations14() {
-    return "CAST((CAST((a + (CAST((b + c) AS NUMBER))) AS NUMBER) / 2) AS NUMBER)";
+    return "a + (b + c) / 2";
   }
 
 
@@ -367,16 +381,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSqlForMathOperations15() {
-    return "CAST((CAST((a + (CAST((b + c) AS NUMBER))) AS NUMBER) / 2) AS NUMBER)";
-  }
-
-
-  /**
-   * Returns expected SQL for math operation 16
-   */
-  @Override
-  protected String expectedSqlForMathOperations16() {
-    return "CAST((CAST((CAST((CAST((a + b) AS NUMBER) + c) AS NUMBER) / 2) AS NUMBER) + z) AS NUMBER)";
+    return "a + (b + c) / 2";
   }
 
 
@@ -385,7 +390,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSqlForMathOperationsForExistingDataFix1() {
-    return "ROUND(CAST((CAST((doublevalue / 1000) AS NUMBER) * doublevalue) AS NUMBER), 2)";
+    return "ROUND(doublevalue / 1000 * doublevalue, 2)";
   }
 
 
@@ -395,7 +400,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSqlForMathOperationsForExistingDataFix2(String sqlForRandom) {
-    return "FLOOR(CAST((" + sqlForRandom + " * " + expectedDecimalRepresentationOfLiteral("999999.0") + ") AS NUMBER))";
+    return "FLOOR(" + sqlForRandom + " * " + expectedDecimalRepresentationOfLiteral("999999.0") + ")";
   }
 
 
@@ -405,7 +410,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSqlForMathOperationsForExistingDataFix3() {
-    return "MAX(CAST((CAST((assetLocationDate * 100000) AS NUMBER) + assetLocationTime) AS NUMBER))";
+    return "MAX(assetLocationDate * 100000 + assetLocationTime)";
   }
 
 
@@ -414,7 +419,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSqlForMathOperationsForExistingDataFix4() {
-    return "CAST((invoiceLineReceived * vatRate / (vatRate + 100)) AS NUMBER)";
+    return "invoiceLineReceived * vatRate / (vatRate + 100)";
   }
 
 
@@ -423,7 +428,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSelectSumWithExpression() {
-    return "SELECT SUM(CAST((CAST((intField * 2) AS NUMBER) / 3) AS NUMBER)) FROM " + tableName("Test");
+    return "SELECT SUM(intField * 2 / 3) FROM " + tableName("Test");
   }
 
 
@@ -432,7 +437,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedSqlInsertIntoValuesWithComplexField() {
-    return Arrays.asList("INSERT INTO " + tableName("TableOne") + " (id, value) VALUES (3, CAST((1 + 2) AS NUMBER))");
+    return Arrays.asList("INSERT INTO " + tableName("TableOne") + " (id, value) VALUES (3, 1 + 2)");
   }
 
 
@@ -441,7 +446,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSelectMaximumWithExpression() {
-    return "SELECT MAX(CAST((intField + 1) AS NUMBER)) FROM " + tableName("Test");
+    return "SELECT MAX(intField + 1) FROM " + tableName("Test");
   }
 
 
@@ -452,7 +457,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
   protected List<String> expectedSpecifiedValueInsert() {
     return Arrays.asList(
       "DELETE FROM idvalues where name = 'Test'",
-      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(CAST((MAX(id) + 1) AS NUMBER), 1)  AS CurrentValue FROM SCM.Test))",
+      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1)  AS CurrentValue FROM SCM.Test))",
       "INSERT INTO SCM.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, CAST ('11.25' AS DECIMAL(4,2)), 20100405, 1, 'X', (SELECT COALESCE(value, 1)  FROM SCM.idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
     );
   }
@@ -465,7 +470,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
   protected List<String> expectedSpecifiedValueInsertWithTableInDifferentSchema() {
     return Arrays.asList(
       "DELETE FROM idvalues where name = 'Test'",
-      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(CAST((MAX(id) + 1) AS NUMBER), 1)  AS CurrentValue FROM MYSCHEMA.Test))",
+      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1)  AS CurrentValue FROM MYSCHEMA.Test))",
       "INSERT INTO MYSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, CAST ('11.25' AS DECIMAL(4,2)), 20100405, 1, 'X', (SELECT COALESCE(value, 1)  FROM SCM.idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
     );
   }
@@ -557,7 +562,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMathsPlus() {
-    return "CAST((1 + 1) AS NUMBER)";
+    return "1 + 1";
   }
 
 
@@ -566,7 +571,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMathsMinus() {
-    return "CAST((1 - 1) AS NUMBER)";
+    return "1 - 1";
   }
 
 
@@ -575,7 +580,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMathsDivide() {
-    return "CAST((1 / 1) AS NUMBER)";
+    return "1 / 1";
   }
 
 
@@ -584,7 +589,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMathsMultiply() {
-    return "CAST((1 * 1) AS NUMBER)";
+    return "1 * 1";
   }
 
 
@@ -620,7 +625,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedBooleanCast() {
-    return "CAST(value AS BOOLEAN)";
+    return "CAST(value AS SMALLINT)";
   }
 
 
@@ -725,7 +730,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAddBooleanColumnStatement() {
-    return Arrays.asList("ALTER TABLE SCM.Test ADD COLUMN booleanField_new BOOLEAN NULL");
+    return Arrays.asList("ALTER TABLE SCM.Test ADD COLUMN booleanField_new SMALLINT NULL");
   }
 
 
@@ -734,7 +739,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAlterBooleanColumnStatement() {
-    return Arrays.asList("ALTER TABLE SCM.Test ALTER COLUMN booleanField TYPE BOOLEAN");
+    return Arrays.asList("ALTER TABLE SCM.Test ALTER COLUMN booleanField TYPE SMALLINT");
   }
 
 
@@ -936,6 +941,32 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * Overrides the standard behaviour to ensure that the prepared statement is
+   * set up with an integer for booleans
+   *
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#verifyBooleanPrepareStatementParameter()
+   */
+  @Override
+  protected void verifyBooleanPrepareStatementParameter() throws SQLException {
+
+    final SqlParameter booleanColumn = parameter(SchemaUtils.column("a", DataType.BOOLEAN));
+    BigDecimal nullCheck = null;
+    verify(callPrepareStatementParameter(booleanColumn, null)).setObject(any(SqlParameter.class), eq(nullCheck));
+
+    NamedParameterPreparedStatement mockStatement = callPrepareStatementParameter(booleanColumn, "true");
+    ArgumentCaptor<Integer>intCapture = ArgumentCaptor.forClass(Integer.class);
+    verify(mockStatement).setInt(any(SqlParameter.class), intCapture.capture());
+    assertEquals("Integer not correctly set on statement", 1, intCapture.getValue().intValue());
+
+    mockStatement = callPrepareStatementParameter(booleanColumn, "false");
+    intCapture = ArgumentCaptor.forClass(Integer.class);
+    verify(mockStatement).setInt(any(SqlParameter.class), intCapture.capture());
+    assertEquals("Integer not correctly set on statement", 0, intCapture.getValue().intValue());
+
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedIndexDropStatements()
    */
   @Override
@@ -1033,7 +1064,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAutonumberUpdate() {
-    return Arrays.asList("INSERT INTO SCM.Autonumber (id, value) VALUES('TestTable', (SELECT COALESCE(CAST((MAX(id) + 1) AS NUMBER), 1)  AS CurrentValue FROM SCM.TestTable)) ON DUPLICATE KEY UPDATE nextValue = GREATEST(nextValue, VALUES(nextValue))");
+    return Arrays.asList("INSERT INTO SCM.Autonumber (id, value) VALUES('TestTable', (SELECT COALESCE(MAX(id) + 1, 1)  AS CurrentValue FROM SCM.TestTable)) ON DUPLICATE KEY UPDATE nextValue = GREATEST(nextValue, VALUES(nextValue))");
   }
 
 
@@ -1064,7 +1095,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedYYYYMMDDToDate() {
-    return "DATE_FROM_STR('20100101', 'yyyyMMdd')";
+    return "DATE(SUBSTRING('20100101', 1, 4)||'-'||SUBSTRING('20100101', 5, 2)||'-'||SUBSTRING('20100101', 7, 2))";
   }
 
 
@@ -1118,7 +1149,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedDaysBetween() {
-    return "SELECT CAST(dateTwo AS DATE) - CAST(dateOne AS DATE) FROM SCM.MyTable";
+    return "SELECT DATEDIFF(DAY,DATE_TO_STR(dateOne, 'yyyy-MM-dd'), DATE_TO_STR(dateTwo, 'yyyy-MM-dd')) FROM SCM.MyTable";
   }
 
 
@@ -1127,7 +1158,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAutonumberUpdateForNonIdColumn() {
-    return Arrays.asList("INSERT INTO SCM.Autonumber (id, value) VALUES('TestTable', (SELECT COALESCE(CAST((MAX(generatedColumn) + 1) AS NUMBER), 1)  AS CurrentValue FROM SCM.TestTable)) ON DUPLICATE KEY UPDATE nextValue = GREATEST(nextValue, VALUES(nextValue))");
+    return Arrays.asList("INSERT INTO SCM.Autonumber (id, value) VALUES('TestTable', (SELECT COALESCE(MAX(generatedColumn) + 1, 1)  AS CurrentValue FROM SCM.TestTable)) ON DUPLICATE KEY UPDATE nextValue = GREATEST(nextValue, VALUES(nextValue))");
   }
 
 
@@ -1321,13 +1352,19 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
 
 
   /**
-   * We only support {@link SelectStatement#useImplicitJoinOrder()}, and only to a limited extent.
-   *
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints1(int)
    */
   @Override
   protected String expectedHints1(int rowCount) {
-    return "SELECT * FROM SCHEMA2.Foo INNER JOIN SCM.Bar ON (a = b) LEFT OUTER JOIN SCM.Fo ON (a = b) INNER JOIN SCM.Fum Fumble ON (a = b) ORDER BY a";
+    return "SELECT /*+ ORDERED, USE_INDEX(SCHEMA2.Foo, Foo_1), USE_INDEX(aliased, Foo_2) */ * FROM SCHEMA2.Foo INNER JOIN SCM.Bar ON (a = b) LEFT OUTER JOIN SCM.Fo ON (a = b) INNER JOIN SCM.Fum Fumble ON (a = b) ORDER BY a";
+  }
+
+  /**
+   * @return The expected SQL for the {@link SelectStatement#optimiseForRowCount(int)} directive.
+   */
+  @Override
+  protected String expectedHints2(int rowCount) {
+    return "SELECT /*+ USE_INDEX(SCM.Foo, Foo_1), ORDERED */ a, b FROM " + tableName("Foo") + " ORDER BY a FOR UPDATE";
   }
 
 
@@ -1346,5 +1383,14 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
   @Override
   protected String likeEscapeSuffix() {
     return "";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAnalyseTableSql()
+   */
+  @Override
+  protected Collection<String> expectedAnalyseTableSql() {
+    return SqlDialect.NO_STATEMENTS;
   }
 }

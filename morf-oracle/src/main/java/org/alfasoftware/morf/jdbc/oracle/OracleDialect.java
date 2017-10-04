@@ -387,14 +387,7 @@ class OracleDialect extends SqlDialect implements RecordValueToDatabaseSafeStrin
     if (insertingUnderAutonumLimit) {
       return;
     }
-
-    Column sequence = getAutoIncrementColumnForTable(table);
-
-    if(sequence == null) {
-      return;
-    }
-
-    executor.execute(rebuildSequenceAndTrigger(table,sequence),connection);
+    executor.execute(rebuildSequenceAndTrigger(table,getAutoIncrementColumnForTable(table)),connection);
   }
 
 
@@ -406,12 +399,16 @@ class OracleDialect extends SqlDialect implements RecordValueToDatabaseSafeStrin
    */
   private Collection<String> rebuildSequenceAndTrigger(Table table,Column sequence) {
     // This requires drop/create trigger/sequence privileges so we avoid where we can.
-      List<String> statements = new ArrayList<>();
-      statements.add(dropTrigger(table));
-      statements.add(dropSequence(table));
-      statements.add(createSequenceStartingFromExistingData(table, sequence));
-      statements.addAll(createTrigger(table, sequence));
-      return statements;
+    if(sequence == null) {
+      return Lists.newArrayList(dropTrigger(table));
+    }
+
+    List<String> statements = new ArrayList<>();
+    statements.add(dropTrigger(table));
+    statements.add(dropSequence(table));
+    statements.add(createSequenceStartingFromExistingData(table, sequence));
+    statements.addAll(createTrigger(table, sequence));
+    return statements;
   }
 
 
@@ -1327,14 +1324,7 @@ class OracleDialect extends SqlDialect implements RecordValueToDatabaseSafeStrin
    */
   @Override
   public Collection<String> rebuildTriggers(Table table) {
-
-    Column sequence = getAutoIncrementColumnForTable(table);
-
-    if(sequence == null) {
-      return SqlDialect.NO_STATEMENTS;
-    }
-
-    return rebuildSequenceAndTrigger(table,sequence);
+    return rebuildSequenceAndTrigger(table,getAutoIncrementColumnForTable(table));
   }
 
 
@@ -1373,5 +1363,19 @@ class OracleDialect extends SqlDialect implements RecordValueToDatabaseSafeStrin
   @Override
   protected String getSqlForLastDayOfMonth(AliasedField date) {
     return "LAST_DAY(" + getSqlFrom(date) + ")";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect.getSqlForAnalyseTable(Table)
+   */
+  @Override
+  public Collection<String> getSqlForAnalyseTable(Table table) {
+    return ImmutableList.of(
+                     "BEGIN \n" +
+                       "DBMS_STATS.GATHER_TABLE_STATS(ownname=> '" + getSchemaName() + "', "
+                          + "tabname=>'" + table.getName() + "', "
+                          + "cascade=>true, degree=>DBMS_STATS.AUTO_DEGREE, no_invalidate=>false); \n"
+                   + "END;");
   }
 }

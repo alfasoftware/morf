@@ -23,6 +23,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import java.sql.Connection;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
@@ -1225,5 +1226,14 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected boolean supportsWindowFunctions() {
     return false;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAnalyseTableSql()
+   */
+  @Override
+  protected Collection<String> expectedAnalyseTableSql() {
+    return SqlDialect.NO_STATEMENTS;
   }
 }

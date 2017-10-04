@@ -39,6 +39,7 @@ import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.upgrade.ExistingViewStateLoader.Result;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
+
 import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 
@@ -75,14 +76,14 @@ public class Upgrade {
    * @return The upgrade path available
    */
   public UpgradePath findPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, Collection<String> exceptionRegexes) {
-    final List<String> upgradeStatements = new ArrayList<String>();
+    final List<String> upgradeStatements = new ArrayList<>();
 
     // -- Validate the target schema...
     //
     new SchemaValidator().validate(targetSchema);
 
     // Get access to the schema we are starting from
-    Schema sourceSchema = copySourceSchema(connectionResources, dataSource);
+    Schema sourceSchema = copySourceSchema(connectionResources, dataSource, exceptionRegexes);
     SqlDialect dialect = connectionResources.sqlDialect();
 
     // -- Get the current UUIDs and deployed views...
@@ -114,7 +115,7 @@ public class Upgrade {
 
     // -- Upgrade path...
     //
-    List<UpgradeStep> upgradesToApply = new ArrayList<UpgradeStep>(schemaChangeSequence.getUpgradeSteps());
+    List<UpgradeStep> upgradesToApply = new ArrayList<>(schemaChangeSequence.getUpgradeSteps());
 
     // Placeholder upgrade step if no other upgrades - or we drop & recreate everything
     if (upgradesToApply.isEmpty() && !viewChanges.isEmpty()) {
@@ -191,12 +192,13 @@ public class Upgrade {
    *
    * @param database the database to connect to.
    * @param dataSource the dataSource to use.
+   * @param exceptionRegexes
    * @return the schema.
    */
-  private Schema copySourceSchema(ConnectionResources database, DataSource dataSource) {
+  private Schema copySourceSchema(ConnectionResources database, DataSource dataSource, Collection<String> exceptionRegexes) {
     SchemaResource databaseSchemaResource = database.openSchemaResource(dataSource);
     try {
-      return copy(databaseSchemaResource);
+      return copy(databaseSchemaResource, exceptionRegexes);
     } finally {
       databaseSchemaResource.close();
     }

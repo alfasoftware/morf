@@ -43,10 +43,4 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
-  
-  <scm>
-    <connection>scm:svn:https://data.svn.chpglobal.net/Personal/venushkap/Morf/trunk/morf-oracle</connection>
-    <developerConnection>scm:svn:https://data.svn.chpglobal.net/Personal/venushkap/Morf/trunk/morf-oracle</developerConnection>
-    <url>https://data.svn.chpglobal.net/Personal/venushkap/Morf/trunk/morf-oracle</url>
-  </scm>
 </project>

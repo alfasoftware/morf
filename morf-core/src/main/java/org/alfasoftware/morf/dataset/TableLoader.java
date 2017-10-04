@@ -18,9 +18,6 @@ package org.alfasoftware.morf.dataset;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import org.alfasoftware.morf.dataset.TableLoaderBuilder.TableLoaderBuilderImpl;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -30,6 +27,8 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 
 /**
@@ -41,7 +40,6 @@ public class TableLoader {
 
   private static final Log log = LogFactory.getLog(TableLoader.class);
 
-
   private final Connection connection;
   private final SqlDialect sqlDialect;
   private final boolean explicitCommit;
@@ -50,6 +48,8 @@ public class TableLoader {
   private final boolean insertingWithPresetAutonums;
   private final boolean insertingUnderAutonumLimit;
   private final boolean truncateBeforeLoad;
+  private final String insertStatement;
+  private final int batchSize;
 
 
   /**
@@ -70,7 +70,8 @@ public class TableLoader {
                      Table table,
                      boolean insertingWithPresetAutonums,
                      boolean insertingUnderAutonumLimit,
-                     boolean truncateBeforeLoad) {
+                     boolean truncateBeforeLoad,
+                     int batchSize) {
     super();
     this.connection = connection;
     this.sqlExecutor = sqlScriptExecutor;
@@ -80,6 +81,11 @@ public class TableLoader {
     this.insertingWithPresetAutonums = insertingWithPresetAutonums;
     this.insertingUnderAutonumLimit = insertingUnderAutonumLimit;
     this.truncateBeforeLoad = truncateBeforeLoad;
+    this.batchSize = batchSize;
+    this.insertStatement = sqlDialect.convertStatementToSQL(
+      new InsertStatement().into(new TableReference(table.getName())),
+      SchemaUtils.schema(table)
+    );
   }
 
 
@@ -147,14 +153,8 @@ public class TableLoader {
    * @param connection The connection.
    */
   private void sqlInsertLoad(Table table, Iterable<Record> records, Connection connection) {
-
-    String sqlStatement = sqlDialect.convertStatementToSQL(
-      new InsertStatement().into(new TableReference(table.getName())),
-      SchemaUtils.schema(table)
-    );
-
     try {
-      sqlExecutor.executeStatementBatch(sqlStatement, SqlParameter.parametersFromColumns(table.columns()), records, connection, explicitCommit);
+      sqlExecutor.executeStatementBatch(insertStatement, SqlParameter.parametersFromColumns(table.columns()), records, connection, explicitCommit, batchSize);
     } catch (Exception e) {
       throw new RuntimeException(String.format("Failure in batch insert for table [%s]", table.getName()), e);
     }

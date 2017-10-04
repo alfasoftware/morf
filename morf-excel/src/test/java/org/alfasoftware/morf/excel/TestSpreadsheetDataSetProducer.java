@@ -25,10 +25,10 @@ import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.List;
 
-import org.apache.commons.collections.IteratorUtils;
+import org.alfasoftware.morf.dataset.Record;
 import org.junit.Test;
 
-import org.alfasoftware.morf.dataset.Record;
+import com.google.common.collect.Lists;
 
 /**
  * Ensure that the {@link SpreadsheetDataSetProducer} works correctly.
@@ -48,12 +48,9 @@ public class TestSpreadsheetDataSetProducer {
 
     // Check that the table names were picked up correctly
     Collection<String> tableNames = producer.getSchema().tableNames();
-    assertEquals("Number of tables found [" + tableNames + "]", 12, tableNames.size()); // FIXME Not currently +1 for translations
+    assertEquals("Number of tables found [" + tableNames + "]", 12, tableNames.size());
     assertTrue("Tables correctly populated [" + tableNames + "]", tableNames.contains("AssetType"));
     assertTrue("Tables correctly populated [" + tableNames + "]", tableNames.contains("Allowance"));
-
-    // Check that the translations table was added - FIXME disabled.
-    // assertTrue("Tables correctly populated [" + tableNames + "]", tableNames.contains("ParameterTranslation"));
   }
 
 
@@ -62,13 +59,12 @@ public class TestSpreadsheetDataSetProducer {
    *
    * @throws URISyntaxException ...
    */
-  @SuppressWarnings("unchecked")
   @Test
   public void testGetRecords() throws URISyntaxException {
     final SpreadsheetDataSetProducer producer = produceTestSpreadsheet();
 
     // Check that the table names were picked up correctly
-    List<Record> records = IteratorUtils.toList(producer.records("UsageMeterType").iterator());
+    List<Record> records = Lists.newArrayList(producer.records("UsageMeterType"));
     assertEquals("Number of rows [" + records + "]", 2, records.size());
     Record record = records.get(0);
     assertEquals("Usage Meter", "KM", record.getValue("usageMeter"));

@@ -301,9 +301,8 @@ class SqlServerDialect extends SqlDialect {
     // the current (next - 1) value to the start value minus one, then lets SQL server correct it to the highest
     // value in the table if it is too low.
 
-    // TODO WEB-23969 if we're running on SQL Server 2012, this bug no longer exists so we can just reseed as for an empty
-    // table (i.e. autonumber.getAutoNumberStart()).  Need to implement this (although we need SQL Server 2012 to test
-    // against first.
+    // TODO Alfa internal ref WEB-23969 if we're running on SQL Server 2012, this bug no longer exists so we can
+    // just reseed as for an empty table (i.e. autonumber.getAutoNumberStart()).  Need to implement this.
     executor.execute(ImmutableList.of(
       "SET IDENTITY_INSERT " + schemaNamePrefix() + table.getName() + " OFF",
 
@@ -560,7 +559,8 @@ class SqlServerDialect extends SqlDialect {
   public Collection<String> alterTableAddColumnStatements(Table table, Column column) {
     List<String> statements = new ArrayList<>();
 
-    //TODO looks like if we're adding to an existing PK we should drop the PK first here...
+    // TODO looks like if we're adding to an existing PK we should drop the PK first here. SQL
+    // server is currently hard to test so need to investigate further.
 
     StringBuilder statement = new StringBuilder()
       .append("ALTER TABLE ")
@@ -1273,5 +1273,14 @@ class SqlServerDialect extends SqlDialect {
   @Override
   protected String getSqlForLastDayOfMonth(AliasedField date) {
     return "DATEADD(s,-1,DATEADD(mm, DATEDIFF(m,0," + getSqlFrom(date) + ")+1,0))";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect.getSqlForAnalyseTable(Table)
+   */
+  @Override
+  public Collection<String> getSqlForAnalyseTable(Table table) {
+    return SqlDialect.NO_STATEMENTS;
   }
 }

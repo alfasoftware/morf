@@ -23,6 +23,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
@@ -30,6 +31,7 @@ import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -331,8 +333,17 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected void verifyPostInsertStatementsNotInsertingUnderAutonumLimit(SqlScriptExecutor sqlScriptExecutor, Connection connection) {
-    verify(sqlScriptExecutor).execute(listCaptor.capture(),eq(connection));
-    assertThat(listCaptor.getValue(),contains("DECLARE \n" +
+    verify(sqlScriptExecutor,times(2)).execute(listCaptor.capture(),eq(connection));
+    assertThat(listCaptor.getAllValues().get(0),contains("DECLARE \n" +
+        "  e exception; \n" +
+        "  pragma exception_init(e,-4080); \n" +
+        "BEGIN \n" +
+        "  EXECUTE IMMEDIATE 'DROP TRIGGER TESTSCHEMA.TEST_TG'; \n" +
+        "EXCEPTION \n" +
+        "  WHEN e THEN \n" +
+        "    null; \n" +
+        "END;"));
+    assertThat(listCaptor.getAllValues().get(1),contains("DECLARE \n" +
         "  e exception; \n" +
         "  pragma exception_init(e,-4080); \n" +
         "BEGIN \n" +
@@ -1273,6 +1284,19 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
     assertEquals("The statement separator should be [END;" + System.getProperty("line.separator") + "/]" , "END;" + System.getProperty("line.separator") + "/", statement1);
     assertEquals("The statement separator should be [BEGIN;]" , "BEGIN;", statement2);
     assertLengthOfLinesInStringLessThan2500Characters(statement3);
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAnalyseTableSql()
+   */
+  @Override
+  protected Collection<String> expectedAnalyseTableSql() {
+    return ImmutableList.of("BEGIN \n" +
+        "DBMS_STATS.GATHER_TABLE_STATS(ownname=> 'testschema', "
+        + "tabname=>'TempTest', "
+            + "cascade=>true, degree=>DBMS_STATS.AUTO_DEGREE, no_invalidate=>false); \n"
+            + "END;");
   }
 
 

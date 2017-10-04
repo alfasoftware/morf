@@ -21,7 +21,6 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.StringWriter;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -33,7 +32,6 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.alfasoftware.morf.sql.element.AliasedField;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.ObjectUtils;
 
 import com.google.common.base.Function;
@@ -45,6 +43,7 @@ import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
+import com.google.common.io.CharStreams;
 
 /**
  * Class that validates {@link Schema} objects meet the rules.
@@ -93,14 +92,13 @@ public class SchemaValidator {
   private static final Supplier<Set<String>> sqlReservedWords = Suppliers.memoize(new Supplier<Set<String>>() {
     @Override
     public Set<String> get() {
-      StringWriter writer = new StringWriter();
       try {
         try (InputStream inputStream = getClass().getResourceAsStream("SQL_RESERVED_WORDS.txt")) {
           if (inputStream == null) {
             throw new RuntimeException("Could not find resource: [SQL_RESERVED_WORDS.txt] near [" + getClass() + "]");
           }
-          IOUtils.copy(new InputStreamReader(inputStream, "UTF-8"), writer);
-          HashSet<String> sqlReservedWords = Sets.newHashSet(Splitter.on("\r\n").split(writer.toString()));
+          InputStreamReader streamReader = new InputStreamReader(inputStream, "UTF-8");
+          HashSet<String> sqlReservedWords = Sets.newHashSet(Splitter.on("\r\n").split(CharStreams.toString(streamReader)));
 
           // temporary removal of words we currently have to allow
           sqlReservedWords.remove("TYPE");  // DB2

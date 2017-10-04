@@ -15,6 +15,8 @@
 
 package org.alfasoftware.morf.jdbc;
 
+import static org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement.parse;
+
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -25,6 +27,7 @@ import java.util.List;
 
 import javax.sql.DataSource;
 
+import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement.ParseResult;
 import org.alfasoftware.morf.metadata.DataSetUtils;
 import org.alfasoftware.morf.metadata.DataValueLookup;
 import org.alfasoftware.morf.sql.SelectStatement;
@@ -45,13 +48,6 @@ import com.google.common.base.Optional;
 public class SqlScriptExecutor {
   /** Standard logger */
   private static final Log log = LogFactory.getLog(SqlScriptExecutor.class);
-
-  /**
-   * Size of batches used within
-   * {@link #executeStatementBatch(String, Iterable, Iterable, Connection, boolean)}
-   * to bundle up insert statements.
-   */
-  private static final int BATCH_SIZE = 1000;
 
   /**
    * Visitor to be notified about SQL execution.
@@ -481,12 +477,23 @@ public class SqlScriptExecutor {
    *          this.
    * @param queryTimeout the timeout in <b>seconds</b> after which the query
    *          will time out on the database side
+   * @param standalone whether the query being executed is stand-alone.
    * @return the result from {@link ResultSetProcessor#process(ResultSet)}.
    */
-  private <T> T executeQuery(String sql, Iterable<SqlParameter> parameterMetadata,
-      DataValueLookup parameterData, Connection connection, ResultSetProcessor<T> resultSetProcessor, Optional<Integer> maxRows, Optional<Integer> queryTimeout) {
+  private <T> T executeQuery(String sql, Iterable<SqlParameter> parameterMetadata, DataValueLookup parameterData,
+      Connection connection, ResultSetProcessor<T> resultSetProcessor, Optional<Integer> maxRows, Optional<Integer> queryTimeout,
+      boolean standalone) {
     try {
-      NamedParameterPreparedStatement preparedStatement = NamedParameterPreparedStatement.parse(sql).createFor(connection);
+      ParseResult parseResult = parse(sql);
+      NamedParameterPreparedStatement preparedStatement;
+      if (standalone) {
+        preparedStatement = parseResult.createForQueryOn(connection);
+        preparedStatement.setFetchSize(sqlDialect.fetchSizeForBulkSelects());
+      } else {
+        preparedStatement = parseResult.createFor(connection);
+        preparedStatement.setFetchSize(sqlDialect.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming());
+      }
+
       try {
         return executeQuery(preparedStatement, parameterMetadata, parameterData, resultSetProcessor, maxRows, queryTimeout);
       } finally {
@@ -498,6 +505,25 @@ public class SqlScriptExecutor {
   }
 
 
+  /**
+   * Runs a {@link NamedParameterPreparedStatement} (with parameters), allowing
+   * its {@link ResultSet} to be processed by the supplied implementation of
+   * {@link ResultSetProcessor}. {@link ResultSetProcessor#process(ResultSet)}
+   * can return a value of any type, which will form the return value of this
+   * method.
+   *
+   * @param preparedStatement Prepared statement to run.
+   * @param parameterMetadata the metadata describing the parameters.
+   * @param parameterData the values to insert.
+   * @param connection the connection to use.
+   * @param processor the code to be run to process the {@link ResultSet}.
+   * @param maxRows The maximum number of rows to be returned. Will inform the
+   *          JDBC driver to tell the server not to return any more rows than
+   *          this.
+   * @param queryTimeout the timeout in <b>seconds</b> after which the query
+   *          will time out on the database side
+   * @return the result from {@link ResultSetProcessor#process(ResultSet)}.
+   */
   private <T> T executeQuery(NamedParameterPreparedStatement preparedStatement, Iterable<SqlParameter> parameterMetadata,
       DataValueLookup parameterData, ResultSetProcessor<T> processor, Optional<Integer> maxRows, Optional<Integer> queryTimeout) {
     if (sqlDialect == null) {
@@ -508,7 +534,7 @@ public class SqlScriptExecutor {
       if (maxRows.isPresent()) {
         preparedStatement.setMaxRows(maxRows.get());
       }
-      if(queryTimeout.isPresent()) {
+      if (queryTimeout.isPresent()) {
         preparedStatement.setQueryTimeout(queryTimeout.get());
       }
       ResultSet resultSet = preparedStatement.executeQuery();
@@ -525,6 +551,7 @@ public class SqlScriptExecutor {
     }
   }
 
+
   /**
    * Runs the specified SQL statement (which should contain parameters), repeatedly for
    * each record, mapping the contents of the records into the statement parameters in
@@ -535,17 +562,17 @@ public class SqlScriptExecutor {
    * @param parameterMetadata the metadata describing the parameters.
    * @param parameterData the values to insert.
    * @param connection the JDBC connection to use.
+   * @param statementsPerFlush the number of statements to execute between JDBC batch flushes. Higher numbers have higher memory cost
+   *   but reduce the number of I/O round-trips to the database.
    */
-  public void executeStatementBatch(String sqlStatement, Iterable<SqlParameter> parameterMetadata, Iterable<? extends DataValueLookup> parameterData, Connection connection, boolean explicitCommit) {
+  public void executeStatementBatch(String sqlStatement, Iterable<SqlParameter> parameterMetadata, Iterable<? extends DataValueLookup> parameterData, Connection connection, boolean explicitCommit, int statementsPerFlush) {
     try {
-      NamedParameterPreparedStatement preparedStatement = NamedParameterPreparedStatement.parse(sqlStatement).createFor(connection);
-      try {
-        executeStatementBatch(preparedStatement, parameterMetadata, parameterData, connection, explicitCommit);
+      try (NamedParameterPreparedStatement preparedStatement = NamedParameterPreparedStatement.parse(sqlStatement).createFor(connection)) {
+        executeStatementBatch(preparedStatement, parameterMetadata, parameterData, connection, explicitCommit, statementsPerFlush);
       } finally {
         if (explicitCommit) {
           connection.commit();
         }
-        preparedStatement.close();
       }
     } catch (SQLException e) {
       throw new RuntimeSqlException("SQL exception executing batch", e);
@@ -553,18 +580,7 @@ public class SqlScriptExecutor {
   }
 
 
-  /**
-   * Runs the specified prepared statement (which should contain parameters), repeatedly for
-   * each record, mapping the contents of the records into the statement parameters in
-   * their defined order.  Use to insert, merge or update a large batch of records
-   * efficiently.
-   *
-   * @param preparedStatement the prepared statement.
-   * @param parameterMetadata the metadata describing the parameters.
-   * @param parameterData the values to insert.
-   * @param connection the JDBC connection to use.
-   */
-  public void executeStatementBatch(NamedParameterPreparedStatement preparedStatement, Iterable<SqlParameter> parameterMetadata, Iterable<? extends DataValueLookup> parameterData, Connection connection, boolean explicitCommit) {
+  private void executeStatementBatch(NamedParameterPreparedStatement preparedStatement, Iterable<SqlParameter> parameterMetadata, Iterable<? extends DataValueLookup> parameterData, Connection connection, boolean explicitCommit, int statementsPerFlush) {
     if (sqlDialect == null) {
       throw new IllegalStateException("Must construct with dialect");
     }
@@ -579,7 +595,7 @@ public class SqlScriptExecutor {
         if (sqlDialect.useInsertBatching()) {
           preparedStatement.addBatch();
           count++;
-          if (count % BATCH_SIZE == 0) {
+          if (count % statementsPerFlush == 0) {
             try {
               preparedStatement.executeBatch();
               preparedStatement.clearBatch();
@@ -606,7 +622,7 @@ public class SqlScriptExecutor {
 
       // Clear up any remaining batch statements if in batch mode and
       // have un-executed statements
-      if (sqlDialect.useInsertBatching() && count % BATCH_SIZE > 0) {
+      if (sqlDialect.useInsertBatching() && count % statementsPerFlush > 0) {
         preparedStatement.executeBatch();
       }
     } catch (SQLException e) {
@@ -783,6 +799,16 @@ public class SqlScriptExecutor {
 
 
     /**
+     * Specifies that the query being built is stand-alone. This is used to
+     * indicate that the connection used by the query won't be used while the
+     * query results are being read.
+     *
+     * @return this
+     */
+    QueryBuilder standalone();
+
+
+    /**
      * Executes the query, passing the results to the supplied result set
      * processor, and returns the result of the processor.
      *
@@ -806,6 +832,7 @@ public class SqlScriptExecutor {
     private Connection connection;
     private Optional<Integer> maxRows = Optional.absent();
     private Optional<Integer> queryTimeout = Optional.absent();
+    private boolean standalone;
 
 
     QueryBuilderImpl(String query) {
@@ -861,13 +888,20 @@ public class SqlScriptExecutor {
       return this;
     }
 
-
+    /**
+     * @see org.alfasoftware.morf.jdbc.SqlScriptExecutor.QueryBuilder#withQueryTimeout(int)
+     */
     @Override
     public QueryBuilder withQueryTimeout(int queryTimeout) {
       this.queryTimeout  = Optional.of(queryTimeout);
       return this;
     }
 
+    @Override
+    public QueryBuilder standalone() {
+      this.standalone = true;
+      return this;
+    }
 
     /**
      * @see org.alfasoftware.morf.jdbc.SqlScriptExecutor.QueryBuilder#processWith(org.alfasoftware.morf.jdbc.SqlScriptExecutor.ResultSetProcessor)
@@ -880,7 +914,7 @@ public class SqlScriptExecutor {
         Work work = new Work() {
           @Override
           public void execute(Connection innerConnection) throws SQLException {
-            holder.set(executeQuery(query, parameterMetadata, parameterData, innerConnection, resultSetProcessor, maxRows, queryTimeout));
+            holder.set(executeQuery(query, parameterMetadata, parameterData, innerConnection, resultSetProcessor, maxRows, queryTimeout, standalone));
           }
         };
 

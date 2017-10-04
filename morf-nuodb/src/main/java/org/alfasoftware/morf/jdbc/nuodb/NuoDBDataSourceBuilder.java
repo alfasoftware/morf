@@ -30,7 +30,10 @@ import com.google.common.collect.ImmutableSortedMap;
 
 /**
  * NuoDBDataSourceBuilder.
- * TODO Once Database supports Java 8, the references to com.nuodb.jdbc can be returned.
+ *
+ * TODO Once we (Alfa) build 100% using the public Maven build *and* when/if the Nuo driver is publicly
+ * available, we can use hard refs to com.nuodb.jdbc.
+ *
  * @author Copyright (c) Alfa Financial Software 2017
  */
 public class NuoDBDataSourceBuilder {

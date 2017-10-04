@@ -672,4 +672,13 @@ public class MockDialect extends SqlDialect {
   public boolean supportsWindowFunctions() {
     return false;
   }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForAnalyseTable
+   */
+  @Override
+  public Collection<String> getSqlForAnalyseTable(Table table) {
+    return SqlDialect.NO_STATEMENTS;
+  }
 }

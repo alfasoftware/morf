@@ -15,10 +15,10 @@
 
 package org.alfasoftware.morf.jdbc;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Lists.transform;
 import static com.google.common.collect.Maps.uniqueIndex;
+import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -34,9 +34,6 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
@@ -45,6 +42,9 @@ import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Ordering;
@@ -117,7 +117,7 @@ public class DatabaseMetaDataProvider implements Schema {
     if (tableNameMappings == null) {
       // Create a TreeMap instead of a HashMap so that the contents are sorted
       // alphabetically rather than being in a random order
-      tableNameMappings = new TreeMap<String, String>();
+      tableNameMappings = new TreeMap<>();
       readTableNames();
     }
     return tableNameMappings;
@@ -135,7 +135,7 @@ public class DatabaseMetaDataProvider implements Schema {
       return viewMap;
     }
 
-    viewMap = new TreeMap<String, View>(String.CASE_INSENSITIVE_ORDER);
+    viewMap = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     populateViewMap(viewMap);
     return viewMap;
   }
@@ -218,7 +218,7 @@ public class DatabaseMetaDataProvider implements Schema {
    * @param tableName the table to query for.
    * @return a collection of the primary keys.
    */
-  private List<String> getPrimaryKeys(String tableName) {
+  protected List<String> getPrimaryKeys(String tableName) {
     List<PrimaryKeyColumn> columns = newArrayList();
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
@@ -268,7 +268,7 @@ public class DatabaseMetaDataProvider implements Schema {
         ResultSet columnResults = databaseMetaData.getColumns(null, schemaName, tableName, null);
         try {
 
-          List<Column> rawColumns = new LinkedList<Column>();
+          List<Column> rawColumns = new LinkedList<>();
 
           while (columnResults.next()) {
             String columnName = columnResults.getString(COLUMN_NAME);
@@ -369,9 +369,9 @@ public class DatabaseMetaDataProvider implements Schema {
 
       ResultSet indexResultSet = databaseMetaData.getIndexInfo(null, schemaName, tableName, false, false);
       try {
-        List<Index> indexes = new LinkedList<Index>();
+        List<Index> indexes = new LinkedList<>();
 
-        SortedMap<String, List<String>> columnsByIndexName = new TreeMap<String, List<String>>();
+        SortedMap<String, List<String>> columnsByIndexName = new TreeMap<>();
 
         // there's one entry for each column in the index
         // the results are sorted by ordinal position already
@@ -397,7 +397,7 @@ public class DatabaseMetaDataProvider implements Schema {
           List<String> columnNames = columnsByIndexName.get(indexName);
           // maybe create a new one
           if (columnNames == null) {
-            columnNames = new LinkedList<String>();
+            columnNames = new LinkedList<>();
             boolean unique = !indexResultSet.getBoolean(4);
 
             indexes.add(new IndexImpl(indexName, unique, columnNames));
@@ -568,7 +568,7 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   @Override
   public Collection<Table> tables() {
-    List<Table> result = new ArrayList<Table>();
+    List<Table> result = new ArrayList<>();
     for (String tableName : tableNames()) {
       result.add(getTable(tableName));
     }

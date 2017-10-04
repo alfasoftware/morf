@@ -298,6 +298,32 @@ public class Criterion  implements Driver,DeepCopyableWithTransformation<Criteri
 
 
   /**
+   * Helper method to create a new "IN" expression.
+   *
+   * <blockquote>
+   * <pre>
+   * SelectStatement stmt = select()
+   *   .from(tableRef("Schedule"))
+   *   .where(
+   *     Criterion.in(field("chargeType"), 1, 2, 3)
+   *   )
+   * </pre>
+   * </blockquote>
+   *
+   * <strong>Any null values returned by {@code selectStatement}
+   * that are compared to {@code field} can produce unexpected
+   * results.</strong>
+   *
+   * @param field the field to evaluate (the left-hand side of the expression)
+   * @param values the list of values (the right-hand side of the expression)
+   * @return a new Criterion object
+   */
+  public static Criterion in(AliasedField field, List<Object> values) {
+    return new Criterion(Operator.IN, field, values);
+  }
+
+
+  /**
    * Helper method to create a new "EQUALS" expression.
    *
    * <blockquote><pre>

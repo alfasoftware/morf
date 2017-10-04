@@ -15,6 +15,9 @@
 
 package org.alfasoftware.morf.metadata;
 
+import static org.alfasoftware.morf.metadata.SchemaUtils.copy;
+import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -22,6 +25,9 @@ import static org.junit.Assert.assertTrue;
 import java.util.Arrays;
 
 import org.junit.Test;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 
 
 /**
@@ -54,6 +60,33 @@ public class TestSchemaUtils {
     assertTrue("ColumnType width incorrect", columnType.getWidth() == 10);
     assertTrue("ColumnType scale incorrect", columnType.getScale() == 0);
     assertTrue("ColumnType should be nullable", columnType.isNullable());
+  }
+
+
+  /**
+   * Test {@link SchemaUtils#copy()} excludes tables and views that match the given regex.
+   */
+  @Test
+  public void testCopySchemaWithExclusions() {
+    String excludePrefix = "^EXCLUDE_.*$";
+    String excludeMatch= "^Drivers$";
+
+    Schema schema  = new SchemaBean(ImmutableList.<Table>of(table("EXCLUDE_Boo"), table("EXCLUDE_Foo"), table("table1"), table("table2")),
+      ImmutableList.of(SchemaUtils.view("Driver", select()), SchemaUtils.view("Drivers", select())));
+
+    assertEquals("4 tables should exist", 4, schema.tables().size());
+    assertEquals("2 views should exist", 2, schema.views().size());
+    assertTrue(schema.tables().stream().anyMatch(t -> t.getName().equals("EXCLUDE_Boo")));
+    assertTrue(schema.views().stream().anyMatch(t -> t.getName().equals("Drivers")));
+
+    //method under test
+    schema = copy(schema, Lists.newArrayList(excludePrefix, excludeMatch));
+
+    //...assert during the copy excluded tables and views are being removed
+    assertEquals("2 tables should exist", 2, schema.tables().size());
+    assertEquals("1 view should exist", 1, schema.views().size());
+    assertFalse(schema.tables().stream().anyMatch(t -> t.getName() == excludePrefix));
+    assertFalse(schema.views().stream().anyMatch(t -> t.getName() == excludeMatch));
   }
 
 

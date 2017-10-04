@@ -25,7 +25,6 @@ import static org.alfasoftware.morf.sql.UnionSetOperator.UnionStrategy.ALL;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.StringWriter;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -89,7 +88,6 @@ import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.binary.Base64InputStream;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
@@ -103,6 +101,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.google.common.io.CharStreams;
 
 /**
  * Provides functionality for generating SQL statements.
@@ -3121,6 +3120,14 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
 
 
   /**
+   * Generate the SQL to run analysis on a table.
+   *
+   * @param table The table to run the analysis on.
+   */
+  public abstract Collection<String> getSqlForAnalyseTable(Table table);
+
+
+  /**
    * Generate the SQL to change an existing column on a table.
    *
    * @param table The table to change the column definition on. (The column will
@@ -3156,13 +3163,30 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
 
 
   /**
-   * Creates a qualified (with schema prefix) table name string, from a table reference.
+   * Creates a qualified (with schema prefix) table name string, from a table object.
    *
    * @param table The table metadata.
    * @return The table's qualified name.
    */
   protected String qualifiedTableName(Table table) {
     return schemaNamePrefix() + table.getName();
+  }
+
+
+  /**
+   * Creates a qualified (with schema prefix) table name string, from a table reference.
+   *
+   * <p>If the reference has a schema specified, that schema is used. Otherwise, the default schema is used.</p>
+   *
+   * @param table The table metadata.
+   * @return The table's qualified name.
+   */
+  protected String qualifiedTableName(TableReference table) {
+    if (StringUtils.isBlank(table.getSchemaName())) {
+      return schemaNamePrefix() + table.getName();
+    } else {
+      return table.getSchemaName() + "." + table.getName();
+    }
   }
 
 
@@ -3403,9 +3427,7 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
                 new byte[] {} /* line terminator (none) */
               ),
               Charsets.UTF_8)) {
-            StringWriter stringWriter = new StringWriter();
-            IOUtils.copy(reader, stringWriter);
-            return stringWriter.toString();
+            return CharStreams.toString(reader);
           }
         }
       } else if (type == DataType.DECIMAL) {

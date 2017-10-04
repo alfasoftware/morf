@@ -993,4 +993,13 @@ class MySqlDialect extends SqlDialect implements RecordValueToDatabaseSafeString
   protected String getSqlForLastDayOfMonth(AliasedField date) {
     return "LAST_DAY(" + getSqlFrom(date) + ")";
   }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect.getSqlForAnalyseTable(Table)
+   */
+  @Override
+  public Collection<String> getSqlForAnalyseTable(Table table) {
+    return SqlDialect.NO_STATEMENTS;
+  }
 }

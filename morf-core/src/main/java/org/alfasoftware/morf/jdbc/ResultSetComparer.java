@@ -45,7 +45,9 @@ import java.util.List;
 import java.util.Set;
 
 import org.alfasoftware.morf.jdbc.ResultSetMismatch.MismatchType;
+import org.alfasoftware.morf.metadata.StatementParameters;
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.stringcomparator.DatabaseEquivalentStringComparator;
 import org.apache.commons.lang.ArrayUtils;
 
@@ -245,6 +247,61 @@ public class ResultSetComparer {
       }
     } catch (SQLException e) {
       throw new RuntimeSqlException("Error comparing SQL statements [" + leftSql + ", " + rightSql + "]", e);
+    }
+  }
+
+
+  /**
+   * Given 2 data sets, return the number of mismatches between them, and
+   * callback with the details of any mismatches as they are found. This method
+   * will generate the result sets itself by executing two select statements
+   * using the supplied connection, using the provided statement parameters.
+   *
+   * Avoid using this method if it is known that there are no parameters in the statements.
+   *
+   * See {@link ResultSetMismatch} for definition of a mismatch.
+   *
+   * @param keyColumns The indexes of the key columns common to both data sets.
+   *          If this is empty, the result sets must return only one record.
+   * @param left The left hand data set {@link SelectStatement}
+   * @param right The right hand data set {@link SelectStatement}
+   * @param leftConnection a database connection to use for the left statement.
+   * @param rightConnection a database connection to use for the right statement.
+   * @param callback the mismatch callback interface implementation.
+   * @param leftStatementParameters the statement parameters to use for the left statement.
+   * @param rightStatementParameters the statement parameters to use for the right statement.
+   * @return the number of mismatches between the two data sets.
+   */
+  public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback,
+                     StatementParameters leftStatementParameters, StatementParameters rightStatementParameters) {
+    ResultSet rsLeft = null;
+    ResultSet rsRight = null;
+    NamedParameterPreparedStatement statementLeft = null;
+    NamedParameterPreparedStatement statementRight = null;
+    try {
+      try {
+        statementLeft = NamedParameterPreparedStatement.parse(leftSqlDialect.convertStatementToSQL(left)).createForQueryOn(leftConnection);
+        statementRight = NamedParameterPreparedStatement.parse(rightSqlDialect.convertStatementToSQL(right)).createForQueryOn(rightConnection);
+
+        for(SqlParameter param : leftSqlDialect.extractParameters(left)) {
+          leftSqlDialect.prepareStatementParameter(statementLeft, param, leftStatementParameters.getValue(param.getImpliedName()));
+        }
+
+        for(SqlParameter param : rightSqlDialect.extractParameters(right)) {
+          rightSqlDialect.prepareStatementParameter(statementRight, param, rightStatementParameters.getValue(param.getImpliedName()));
+        }
+
+        rsLeft = statementLeft.executeQuery();
+        rsRight = statementRight.executeQuery();
+        return compare(keyColumns, rsLeft, rsRight, callback);
+      } finally {
+        if (statementLeft != null) statementLeft.close();
+        if (statementRight != null) statementRight.close();
+        if (rsLeft != null) rsLeft.close();
+        if (rsRight != null) rsRight.close();
+      }
+    } catch (SQLException e) {
+      throw new RuntimeSqlException("Error comparing SQL statements [" + left + ", " + right + "]", e);
     }
   }
 

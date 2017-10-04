@@ -203,4 +203,17 @@ public interface SchemaEditor {
    */
   @Deprecated
   public void correctPrimaryKeyColumns(String tableName, List<String> newPrimaryKeyColumns);
+
+
+  /**
+   * Instructs the database to analyse the characteristics of a table provided to allow the database to choose
+   * the most efficient method of executing queries on that table. This is typically used after bulk data changes that may have
+   * significantly altered the structure of the table.
+   *
+   * <p>In Oracle, this will result in the gathering of table and index level Database (or Optimizer) Statistics.</p>
+   *
+   * @param tableName name of table
+   */
+  public void analyseTable(String tableName);
+
 }

@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.jdbc.h2;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -997,5 +998,14 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   @Override
   protected boolean supportsWindowFunctions() {
     return false;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAnalyseTableSql()
+   */
+  @Override
+  protected Collection<String> expectedAnalyseTableSql() {
+    return SqlDialect.NO_STATEMENTS;
   }
 }

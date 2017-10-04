@@ -235,6 +235,12 @@ public class HumanReadableStatementProducer {
       public void addTableFrom(Table table, SelectStatement select) {
         consumer.schemaChange(HumanReadableStatementHelper.generateAddTableFromString(table, select));
       }
+
+      /** @see org.alfasoftware.morf.upgrade.SchemaEditor#analyseTable(org.alfasoftware.morf.metadata.Table) **/
+      @Override
+      public void analyseTable(String tableName) {
+        consumer.schemaChange(HumanReadableStatementHelper.generateAnalyseTableFromString(tableName));
+      }
     };
 
     //Similarly, we need a proxy DataEditor

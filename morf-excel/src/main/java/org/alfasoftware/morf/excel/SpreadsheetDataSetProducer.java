@@ -28,13 +28,12 @@ import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.commons.lang.StringUtils;
-
 import org.alfasoftware.morf.dataset.DataSetProducer;
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
+import org.apache.commons.lang.StringUtils;
 
 import jxl.Cell;
 import jxl.Hyperlink;
@@ -77,10 +76,6 @@ public class SpreadsheetDataSetProducer implements DataSetProducer {
     for (InputStream stream : excelFiles) {
       parseWorkbook(stream);
     }
-
-    // Add on the translations
-    // FIXME - Translation support removed pending further improvements.
-    //tables.put("ParameterTranslation", translations);
   }
 
 

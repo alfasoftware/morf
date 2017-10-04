@@ -47,10 +47,4 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
-  
-  <scm>
-    <connection>scm:svn:https://data.svn.chpglobal.net/Personal/venushkap/Morf/trunk/morf-excel</connection>
-    <developerConnection>scm:svn:https://data.svn.chpglobal.net/Personal/venushkap/Morf/trunk/morf-excel</developerConnection>
-    <url>https://data.svn.chpglobal.net/Personal/venushkap/Morf/trunk/morf-excel</url>
-  </scm>
 </project>

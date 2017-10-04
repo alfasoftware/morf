@@ -21,9 +21,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.collections.Predicate;
-
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
@@ -45,7 +42,7 @@ public class TableSetSchema implements Schema {
    * @param tables that constitute this schema.
    */
   public TableSetSchema(Collection<Table> tables) {
-    this.tables = new HashSet<Table>();
+    this.tables = new HashSet<>();
     this.tables.addAll(tables);
   }
 
@@ -64,17 +61,10 @@ public class TableSetSchema implements Schema {
    */
   @Override
   public Table getTable(final String name) {
-    Table table = (Table)CollectionUtils.find(tables, new Predicate() {
-      @Override
-      public boolean evaluate(Object table) {
-        return ((Table)table).getName().equalsIgnoreCase(name);
-      }
-    });
-    if (table == null) {
-      throw new IllegalArgumentException(String.format("Requested table [%s] does not exist.", name));
-    } else {
-      return table;
-    }
+    return tables.stream()
+        .filter(table -> table.getName().equalsIgnoreCase(name))
+        .findFirst()
+        .orElseThrow(() -> new IllegalArgumentException(String.format("Requested table [%s] does not exist.", name)));
   }
 
 
@@ -92,12 +82,7 @@ public class TableSetSchema implements Schema {
    */
   @Override
   public boolean tableExists(final String name) {
-    return CollectionUtils.exists(tables, new Predicate() {
-      @Override
-      public boolean evaluate(Object table) {
-        return ((Table)table).getName().equalsIgnoreCase(name);
-      }
-    });
+    return tables.stream().anyMatch(table -> table.getName().equalsIgnoreCase(name));
   }
 
 
@@ -106,7 +91,7 @@ public class TableSetSchema implements Schema {
    */
   @Override
   public Collection<String> tableNames() {
-    ArrayList<String> names = new ArrayList<String>();
+    ArrayList<String> names = new ArrayList<>();
     for (Table table : tables) {
       names.add(table.getName());
     }

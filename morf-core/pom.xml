@@ -37,10 +37,6 @@
       <artifactId>commons-codec</artifactId>
     </dependency>
     <dependency>
-      <groupId>commons-collections</groupId>
-      <artifactId>commons-collections</artifactId>
-    </dependency>
-    <dependency>
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>
     </dependency>
@@ -114,10 +110,4 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
-  
-  <scm>
-    <connection>scm:svn:https://data.svn.chpglobal.net/Personal/venushkap/Morf/trunk/morf-core</connection>
-    <developerConnection>scm:svn:https://data.svn.chpglobal.net/Personal/venushkap/Morf/trunk/morf-core</developerConnection>
-    <url>https://data.svn.chpglobal.net/Personal/venushkap/Morf/trunk/morf-core</url>
-  </scm>
 </project>

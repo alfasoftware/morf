@@ -26,8 +26,8 @@
   </modules>
   
   <properties>
-    <maven.compiler.source>1.7</maven.compiler.source>
-    <maven.compiler.target>1.7</maven.compiler.target>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
     <!-- plugin versions -->
@@ -44,12 +44,11 @@
 
     <!-- dependency versions -->
     <commons-codec.version>1.9</commons-codec.version>
-    <commons-collections.version>3.2.1</commons-collections.version>
     <commons-io.version>2.0.1</commons-io.version>
     <commons-lang.version>2.6</commons-lang.version>
     <commons-logging.version>1.2</commons-logging.version>
     <guava.version>20.0</guava.version>
-    <guice.version>3.0</guice.version>
+    <guice.version>4.1.0</guice.version>
     <h2.version>1.3.176</h2.version>
     <hamcrest.version>1.3</hamcrest.version>
     <joda-time.version>2.1</joda-time.version>
@@ -63,7 +62,7 @@
     <sonar-jacoco-listeners.version>3.8</sonar-jacoco-listeners.version>
     <slf4j.version>1.5.0</slf4j.version>
     <xmlpull.version>1.1.3.1</xmlpull.version>
-    <xpp3.version>1.1.3.4.O</xpp3.version>
+    <xpp3.version>1.1.4c</xpp3.version>
   </properties>
   
   <build>
@@ -226,11 +225,6 @@
         <groupId>commons-codec</groupId>
         <artifactId>commons-codec</artifactId>
         <version>${commons-codec.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>commons-collections</groupId>
-        <artifactId>commons-collections</artifactId>
-        <version>${commons-collections.version}</version>
       </dependency>
       <dependency>
         <groupId>commons-io</groupId>
