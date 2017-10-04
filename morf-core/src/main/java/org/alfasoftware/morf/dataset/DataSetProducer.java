@@ -37,7 +37,7 @@ public interface DataSetProducer {
 
   /**
    * Closes the data set once reading is complete. Implementations should expect to receive
-   * exactly one call to this method at the start of processing.
+   * exactly one call to this method at the end of processing.
    */
   public void close();
 
