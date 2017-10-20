@@ -97,6 +97,7 @@
           <version>${maven-javadoc-plugin.version}</version>
           <configuration>
             <failOnError>true</failOnError>
+            <quiet>true</quiet>
           </configuration>
           <executions>
             <execution>
