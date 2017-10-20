@@ -364,6 +364,9 @@
                   <value>org.sonar.java.jacoco.JUnitListener</value>
                 </property>
               </properties>
+              <systemPropertyVariables>
+                <log4j.configuration>file:${basedir}/../etc/log4j-maven.properties</log4j.configuration>
+              </systemPropertyVariables>
             </configuration>
           </plugin>
         </plugins>
