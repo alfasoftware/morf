@@ -17,19 +17,20 @@ package org.alfasoftware.morf.dataset;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.Collection;
 
+import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.ColumnType;
+import org.alfasoftware.morf.metadata.DataSetUtils;
+import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.DataValueLookup;
+import org.apache.commons.lang.StringUtils;
 import org.joda.time.LocalDate;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
-import org.alfasoftware.morf.jdbc.RecordValueToDatabaseSafeStringConverter;
-import org.alfasoftware.morf.metadata.Column;
-import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.TableHelper;
-import com.google.common.base.Function;
-import com.google.common.collect.Collections2;
+import com.google.common.base.Joiner;
+import com.google.common.collect.FluentIterable;
 
 /**
  * A helper class for {@link Record}s.
@@ -45,69 +46,69 @@ public class RecordHelper {
 
 
   /**
-   * Joins the values of a record associated with a table with a specified delimiter. Where
-   * a null occurs, the <code>valueForNull</code> string will be used in the output.
+   * Creates a copy of a {@link Record}.  Since {@link Record} does not guarantee immutability, use
+   * this for safety when holding onto records.
    *
-   * @param table the table from which the record is sourced
-   * @param record the record to join
-   * @param columnNames the names of the columns in the order in which they should appear in the output
-   * @param delimiter the value to use to delimit columns in the record
-   * @param converter an implementation of {@link RecordValueToDatabaseSafeStringConverter} which can convert the {@link Record}
-   *                  field values into database-compatible ones.
-   * @return a string representation of the record's values
+   * @param record The record to copy.
+   * @param columns The columns in the record.
+   * @return The copy.
    */
-  public static String joinRecordValues(Table table, Record record, Collection<String> columnNames, String delimiter, RecordValueToDatabaseSafeStringConverter converter) {
-    StringBuilder dataSetBuilder = new StringBuilder();
-
-    boolean firstIteration = true;
-
-    for (String currentColumnName : columnNames) {
-      if (!firstIteration) {
-        // Tab delimit the column data
-        dataSetBuilder.append(delimiter);
-      }
-
-      firstIteration = false;
-
-      // Add the safe version of the value to the output
-      dataSetBuilder.append(
-        converter.recordValueToDatabaseSafeString(
-          TableHelper.columnWithName(table, currentColumnName),
-          record.getValue(currentColumnName)
-        )
-      );
+  public static Record copy(Record record, Iterable<Column> columns) {
+    RecordBuilder result = DataSetUtils.record();
+    for (Column column : columns) {
+      result.setObject(column.getName(), record.getObject(column));
     }
-
-    return dataSetBuilder.toString();
+    return result;
   }
 
 
   /**
-   * Joins the values of a record associated with a table with a comma delimeter and direct string
-   * conversion. Where a null occurs, the <code>valueForNull</code> string will be used in the
+   * Joins the values of a record  with a specified delimiter and direct string conversion.
+   * Where a null occurs, the <code>valueForNull</code> string will be used in the
    * output.
    *
-   * @param table the table from which the record is sourced
+   * @param columns The columns from the record which should be joined.
    * @param record the record to join
+   * @param delimiter The delimiter to use.
+   * @param valueForNull The value to use in the output string instead of {@code null}.
    * @return a string representation of the record's values
    */
-  public static String joinRecordValues(Table table, Record record) {
-    return joinRecordValues(
-      table,
-      record,
-      Collections2.transform(table.columns(), new Function<Column, String>() {
-        @Override public String apply(Column column) {
-          return column.getName();
-        }
-      }),
-      ",",
-      new RecordValueToDatabaseSafeStringConverter() {
-        @Override
-        public String recordValueToDatabaseSafeString(Column column, String sourceValue) {
-          return sourceValue;
-        }
-      }
-    );
+  public static String joinRecordValues(Iterable<Column> columns, Record record, String delimiter, String valueForNull) {
+    return FluentIterable.from(columns)
+        .transform(Column::getName)
+        .transform(record::getString)
+        .transform(v -> StringUtils.isEmpty(v) ? valueForNull : v)
+        .join(Joiner.on(delimiter));
+  }
+
+
+  /**
+   * Convert a string record value to a type which is safe for comparisons.
+   *
+   * @param column The column source of the data
+   * @param record The record containing the value.
+   * @return A type-converted value.
+   */
+  public static Comparable<?> convertToComparableType(Column column, DataValueLookup record) {
+    switch (column.getType()) {
+      case STRING:
+        // Because of Oracle's empty string handling, relegate all empty strings to null for consistency...
+        String string = record.getString(column.getName());
+        return StringUtils.isEmpty(string) ? null : string;
+      case BLOB:
+      case DATE: // TODO can probably just return a LocalDate now, or just use record.getObject, or move this into Record. To consider.
+      case CLOB:
+        return record.getString(column.getName());
+      case BOOLEAN:
+        return record.getBoolean(column.getName());
+      case DECIMAL:
+      case BIG_INTEGER:
+      case INTEGER:
+        BigDecimal value = record.getBigDecimal(column.getName());
+        return value == null ? null : value.setScale(column.getScale(), RoundingMode.HALF_UP); // if the data contains more decimal places than the column allows, we round them off
+      default:
+        throw new UnsupportedOperationException("Unexpected DataType [" + column.getType() + "] on column [" + column.getName() + "] - Cannot parse value [" + record.getString(column.getName()) + "]");
+    }
   }
 
 
@@ -117,8 +118,10 @@ public class RecordHelper {
    * @param column The column source of the data
    * @param stringValue The value
    * @return A type-converted value.
+   * @deprecated Use {@link #convertToComparableType(Column, DataValueLookup)}
    */
-  public static Comparable<?> convertToComparableType(Column column, String stringValue) {
+  @Deprecated
+  public static Comparable<?> convertToComparableType(ColumnType column, String stringValue) {
 
     if (stringValue == null) {
       return null;
@@ -143,7 +146,7 @@ public class RecordHelper {
       case INTEGER:
         return new BigDecimal(stringValue).setScale(column.getScale(), RoundingMode.HALF_UP); // if the data contains more decimal places than the column allows, we round them off
       default:
-        throw new UnsupportedOperationException("Unexpected DataType [" + column.getType() + "] on column [" + column.getName() + "] - Cannot parse value [" + stringValue + "]");
+        throw new UnsupportedOperationException("Unexpected DataType [" + column.getType() + "] on column [" + (column instanceof Column ? ((Column) column).getName() : "?") + "] - Cannot parse value [" + stringValue + "]");
     }
   }
 

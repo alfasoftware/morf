@@ -31,6 +31,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -216,63 +217,63 @@ public class TestDatabaseUpgradeIntegration {
   private final DataSetProducer dataSet = dataSetProducer(schema)
     .table("BasicTable",
       record()
-        .value("stringCol", "hello world AA")
-        .value("nullableStringCol", "not null")
-        .value("decimalTenZeroCol", "9817236")
-        .value("decimalNineFiveCol", "278.231")
-        .value("bigIntegerCol", "1234567890123456")
-        .value("nullableBigIntegerCol", "56732"),
+        .setString("stringCol", "hello world AA")
+        .setString("nullableStringCol", "not null")
+        .setBigDecimal("decimalTenZeroCol", new BigDecimal("9817236"))
+        .setBigDecimal("decimalNineFiveCol", new BigDecimal("278.231"))
+        .setLong("bigIntegerCol", 1234567890123456L)
+        .setLong("nullableBigIntegerCol", 56732L),
       record()
-        .value("stringCol", "hello world BB")
-        .value("nullableStringCol", "sd")
-        .value("decimalTenZeroCol", "32")
-        .value("decimalNineFiveCol", "378.231")
-        .value("bigIntegerCol", "98237")
-        .value("nullableBigIntegerCol", "892375")
+        .setString("stringCol", "hello world BB")
+        .setString("nullableStringCol", "sd")
+        .setBigDecimal("decimalTenZeroCol", new BigDecimal("32"))
+        .setBigDecimal("decimalNineFiveCol", new BigDecimal("378.231"))
+        .setLong("bigIntegerCol", 98237L)
+        .setLong("nullableBigIntegerCol", 892375L)
     )
     .table("WithDefaultValue",
       record()
-        .value("id", "1")
-        .value("version", "6"),
+        .setString("id", "1")
+        .setInteger("version", 6),
       record()
-        .value("id", "2")
-        .value("version", "6")
+        .setString("id", "2")
+        .setInteger("version", 6)
     )
     .table("CompositeKeyTable",
       record()
-        .value("keyCol1", "1")
-        .value("keyCol2", "2")
-        .value("valCol",  "x"),
+        .setString("keyCol1", "1")
+        .setString("keyCol2", "2")
+        .setString("valCol",  "x"),
       record()
-        .value("keyCol1", "2")
-        .value("keyCol2", "3")
-        .value("valCol",  "y")
+        .setString("keyCol1", "2")
+        .setString("keyCol2", "3")
+        .setString("valCol",  "y")
     )
     .table("KeylessTable",
       record()
-        .value("keyCol1", "1")
-        .value("keyCol2", "2")
-        .value("valCol",  "x"),
+        .setString("keyCol1", "1")
+        .setString("keyCol2", "2")
+        .setString("valCol",  "x"),
       record()
-        .value("keyCol1", "2")
-        .value("keyCol2", "3")
-        .value("valCol",  "y")
+        .setString("keyCol1", "2")
+        .setString("keyCol2", "3")
+        .setString("valCol",  "y")
     )
     .table("BasicTableWithIndex",
       record()
-        .value("stringCol", "hello world AA")
-        .value("nullableStringCol", "not null")
-        .value("decimalTenZeroCol", "9817236")
-        .value("decimalNineFiveCol", "278.231")
-        .value("bigIntegerCol", "1234567890123456")
-        .value("nullableBigIntegerCol", "56732"),
+        .setString("stringCol", "hello world AA")
+        .setString("nullableStringCol", "not null")
+        .setBigDecimal("decimalTenZeroCol", new BigDecimal("9817236"))
+        .setBigDecimal("decimalNineFiveCol", new BigDecimal("278.231"))
+        .setLong("bigIntegerCol", 1234567890123456L)
+        .setLong("nullableBigIntegerCol", 56732L),
       record()
-        .value("stringCol", "hello world BB")
-        .value("nullableStringCol", "sd")
-        .value("decimalTenZeroCol", "32")
-        .value("decimalNineFiveCol", "378.231")
-        .value("bigIntegerCol", "98237")
-        .value("nullableBigIntegerCol", "892375")
+        .setString("stringCol", "hello world BB")
+        .setString("nullableStringCol", "sd")
+        .setBigDecimal("decimalTenZeroCol", new BigDecimal("32"))
+        .setBigDecimal("decimalNineFiveCol", new BigDecimal("378.231"))
+        .setLong("bigIntegerCol", 98237L)
+        .setLong("nullableBigIntegerCol", 892375L)
     ).table("AutoNumTable")
      .table("IdTable");
 
@@ -784,15 +785,15 @@ public class TestDatabaseUpgradeIntegration {
     DataSetProducer expectedRecords = dataSetProducer(schema(tables))
         .table("TableAsSelect",
           record()
-          .value("stringCol", "hello world AA")
-          .value("stringColNullable", "hello world AA")
-          .value("decimalTenZeroCol", "9817236")
-          .value("nullableBigIntegerCol", "56732"),
+          .setString("stringCol", "hello world AA")
+          .setString("stringColNullable", "hello world AA")
+          .setBigDecimal("decimalTenZeroCol", new BigDecimal("9817236"))
+          .setBigDecimal("nullableBigIntegerCol", new BigDecimal("56732")),
         record()
-          .value("stringCol", "hello world BB")
-          .value("stringColNullable", "hello world BB")
-          .value("decimalTenZeroCol", "32")
-          .value("nullableBigIntegerCol", "892375")
+          .setString("stringCol", "hello world BB")
+          .setString("stringColNullable", "hello world BB")
+          .setBigDecimal("decimalTenZeroCol", new BigDecimal("32"))
+          .setBigDecimal("nullableBigIntegerCol", new BigDecimal("892375"))
         );
 
     compareTableRecords("TableAsSelect", expectedRecords.records("TableAsSelect"));

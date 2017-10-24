@@ -34,12 +34,12 @@ class TableBean implements Table {
   /**
    * Stores an ordered list of columns in the meta data.
    */
-  private final List<Column> columns = new ArrayList<Column>();
+  private final List<Column> columns = new ArrayList<>();
 
   /**
    * Stores the ordered list of indexes.
    */
-  private final List<Index>  indexes = new ArrayList<Index>();
+  private final List<Index>  indexes = new ArrayList<>();
 
   /**
    * Indicates whether the table is temporary.
@@ -88,12 +88,16 @@ class TableBean implements Table {
    * Creates a table bean.
    *
    * @param toCopy Table to copy.
+   * @throws RuntimeException Thrown when {@link UnexpectedDataTypeException} is caught.
    */
   TableBean(Table toCopy) {
     this(toCopy.getName());
-
     for (Column column : toCopy.columns()) {
-      columns.add(new ColumnBean(column));
+      try {
+        columns.add(new ColumnBean(column));
+      } catch (RuntimeException e) {
+        throw new RuntimeException("Exception copying table [" + toCopy.getName() + "]", e);
+      }
     }
 
     for (Index index : toCopy.indexes()) {

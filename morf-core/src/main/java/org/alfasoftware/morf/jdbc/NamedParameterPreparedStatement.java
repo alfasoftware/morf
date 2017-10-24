@@ -411,7 +411,7 @@ public class NamedParameterPreparedStatement implements AutoCloseable {
       public void apply(int parameterIndex) throws SQLException {
         Blob blob = statement.getConnection().createBlob();
         int written = blob.setBytes(1 /* odd position thing */, value);
-        if (written != value.length) throw new IllegalStateException("Failed to write all bytes to BLOB");
+        if (written != value.length) throw new IllegalStateException("Failed to write all bytes to BLOB (written = " + written + ", actual = " + value.length + ")");
         statement.setBlob(parameterIndex, blob);
       }
     });

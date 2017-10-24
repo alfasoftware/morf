@@ -22,13 +22,11 @@ import static org.alfasoftware.morf.sql.SqlUtils.insert;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.UnionSetOperator.UnionStrategy.ALL;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.math.BigDecimal;
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,9 +41,11 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.alfasoftware.morf.dataset.Record;
-import org.alfasoftware.morf.dataset.RecordHelper;
 import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.DataSetUtils;
+import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
 import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.DataValueLookup;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
@@ -85,8 +85,6 @@ import org.alfasoftware.morf.sql.element.WhenCondition;
 import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.alfasoftware.morf.upgrade.ChangeColumn;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
-import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.codec.binary.Base64InputStream;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang.StringEscapeUtils;
@@ -94,21 +92,19 @@ import org.apache.commons.lang.StringUtils;
 import org.joda.time.LocalDate;
 import org.joda.time.Months;
 
-import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
-import com.google.common.io.CharStreams;
 
 /**
  * Provides functionality for generating SQL statements.
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConverter {
+public abstract class SqlDialect {
 
   /**
    *
@@ -3281,106 +3277,104 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
 
 
   /**
-   * Sets up a parameter on a {@link NamedParameterPreparedStatement} with the specified value
-   * from a {@link Record}.
+   * Sets up a parameters on a {@link NamedParameterPreparedStatement} with a set of values.
    *
    * @param statement The {@link PreparedStatement} to set up
-   * @param parameter The name of the parameter.
-   * @param value The value, expressed as a string
+   * @param parameters The parameters.
+   * @param values The values.
+   * @throws RuntimeException if a data type is not supported or if a
+   *         supplied string value cannot be converted to the column data type.
    */
-  public void prepareStatementParameter(NamedParameterPreparedStatement statement, SqlParameter parameter, String value) {
-    try {
-      switch (parameter.getMetadata().getType()) {
-        case BOOLEAN:
-          if (value != null) {
-            statement.setBoolean(parameter, Boolean.valueOf(value));
-          } else {
-            statement.setObject(parameter, null);
-          }
-          break;
-        case DATE:
-          if (value != null) {
-            statement.setDate(parameter, java.sql.Date.valueOf(value));
-          } else {
-            statement.setObject(parameter, null);
-          }
-          break;
-        case DECIMAL:
-          // this avoids mis-parsing 123.45 when we're in a
-          // comma-for-decimal-point locale
-          // (BigDecimal always expects a period)
-          statement.setBigDecimal(parameter, value == null ? null : new BigDecimal(value));
-          break;
-        case STRING:
-          // since web-9161 for *ALL* databases
-          // - we are using EmptyStringHQLAssistant
-          // - and store empty strings as null
-          if (value == null || value.equals("")) {
-            statement.setString(parameter, null);
-          } else {
-            statement.setString(parameter, value);
-          }
-          break;
-        case INTEGER:
-          if (value != null) {
-            statement.setInt(parameter, Integer.parseInt(value));
-          } else {
-            statement.setObject(parameter, null);
-          }
-          break;
-        case BIG_INTEGER:
-          if (value != null) {
-            statement.setLong(parameter, Long.parseLong(value));
-          } else {
-            statement.setObject(parameter, null);
-          }
-          break;
-        case BLOB:
-          if (value == null || value.equals("")) {
-            statement.setBlob(parameter, new byte[] {});
-          } else {
-            statement.setBlob(parameter, /* Replace with java.util.Base64.Encoder once we have Java 8 */ Base64.decodeBase64(value));
-          }
-          break;
-        case CLOB:
-          if (value == null || value.equals("")) {
-            statement.setString(parameter, null);
-          } else {
-            statement.setString(parameter, value);
-          }
-          break;
-
-        default:
-          throw new RuntimeException(String.format("Unexpected DataType [%s]", parameter.getMetadata().getType()));
+  public void prepareStatementParameters(NamedParameterPreparedStatement statement, Iterable<SqlParameter> parameters, DataValueLookup values) {
+    parameters.forEach(parameter -> {
+      try {
+        switch (parameter.getMetadata().getType()) {
+          case BIG_INTEGER:
+            Long longVal = values.getLong(parameter.getImpliedName());
+            if (longVal == null) {
+              statement.setObject(parameter, null);
+            } else {
+              statement.setLong(parameter, longVal);
+            }
+            break;
+          case BLOB:
+            byte[] blobVal = values.getByteArray(parameter.getImpliedName());
+            if (blobVal == null) {
+              statement.setBlob(parameter, new byte[] {});
+            } else {
+              statement.setBlob(parameter, blobVal);
+            }
+            break;
+          case BOOLEAN:
+            prepareBooleanParameter(statement, values.getBoolean(parameter.getImpliedName()), parameter);
+            break;
+          case DATE:
+            Date dateVal = values.getDate(parameter.getImpliedName());
+            if (dateVal == null) {
+              statement.setObject(parameter, null);
+            } else {
+              statement.setDate(parameter, new java.sql.Date(dateVal.getTime()));
+            }
+            break;
+          case DECIMAL:
+            statement.setBigDecimal(parameter, values.getBigDecimal(parameter.getImpliedName()));
+            break;
+          case INTEGER:
+            prepareIntegerParameter(statement, values.getInteger(parameter.getImpliedName()), parameter);
+            break;
+          case CLOB:
+          case STRING:
+            String stringVal = values.getString(parameter.getImpliedName());
+            if (stringVal == null || stringVal.equals("")) {
+              // since web-9161 for *ALL* databases
+              // - we are using EmptyStringHQLAssistant
+              // - and store empty strings as null
+              statement.setString(parameter, null);
+            } else {
+              statement.setString(parameter, stringVal);
+            }
+            break;
+          default:
+            throw new RuntimeException(String.format("Unexpected DataType [%s]", parameter.getMetadata().getType()));
+        }
+      } catch (Exception e) {
+        throw new RuntimeException(String.format("Error setting parameter value, column [%s], value [%s] on prepared statement",
+          parameter.getMetadata().getName(), values.getObject(parameter.getMetadata())), e);
       }
-    } catch (SQLException e) {
-      throw new RuntimeException(String.format("Error setting parameter value, column [%s], value [%s] on prepared statement",
-        parameter.getMetadata().getName(), value), e);
+    });
+  }
+
+
+  /**
+   * Overridable behaviour for mapping an integer parameter to a prepared statement.
+   *
+   * @param statement The statement.
+   * @param integerVal The integer value.
+   * @param parameter The parameter to map to.
+   * @throws SQLException If an exception occurs setting the parameter.
+   */
+  protected void prepareIntegerParameter(NamedParameterPreparedStatement statement, Integer integerVal, SqlParameter parameter) throws SQLException {
+    if (integerVal == null) {
+      statement.setObject(parameter, null);
+    } else {
+      statement.setInt(parameter, integerVal);
     }
   }
 
 
   /**
-   * Converts a column's value to a safe string. The code will replace nulls
-   * with the supplied <code>valueForNull</code> and convert decimals into a
-   * database safe representation.
+   * Overridable behaviour for mapping a boolean parameter to a prepared statement.
    *
-   * @param column the column that the source value applies to
-   * @param sourceValue the value of the column
-   * @param valueForNull the value to use when the column is null
-   * @return a safe string representation of the column's value
+   * @param statement The statement.
+   * @param boolVal The boolean value.
+   * @param parameter The parameter to map to.
+   * @throws SQLException If an exception occurs setting the parameter.
    */
-  protected String convertColumnValueToDatabaseSafeString(Column column, String sourceValue, String valueForNull) {
-
-    Comparable<?> comparableType = RecordHelper.convertToComparableType(column, sourceValue);
-
-    // Return the valueForNull if the comparableType was null.
-    if (comparableType == null) {
-      return valueForNull;
-    } else if (comparableType instanceof Boolean) {
-      return (Boolean) comparableType ? "1" : "0";
+  protected void prepareBooleanParameter(NamedParameterPreparedStatement statement, Boolean boolVal, SqlParameter parameter) throws SQLException {
+    if (boolVal == null) {
+      statement.setObject(parameter, null);
     } else {
-      return comparableType.toString();
+      statement.setBoolean(parameter, boolVal);
     }
   }
 
@@ -3417,65 +3411,83 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.DatabaseSafeStringToRecordValueConverter#databaseSafeStringtoRecordValue(org.alfasoftware.morf.metadata.DataType,
-   *      java.sql.ResultSet, int, java.lang.String)
+   * Given an ordered list of columns and a {@link ResultSet}, creates a
+   * {@link Record} from the current row.
+   *
+   * @param resultSet The {@link ResultSet}. Must have been advanced (using
+   *          {@link ResultSet#next()}) to the appropriate row.
+   * @param columns The columns, ordered according to their appearance in the
+   *          {@link ResultSet}. Use {@link ResultSetMetadataSorter} to pre-sort
+   *          your columns according to the {@link ResultSetMetaData} if you
+   *          can't be sure that the SQL will return the columns in the precise
+   *          order that you are expecting.
+   * @return A {@link Record} representation of the current {@link ResultSet}
+   *         row.
    */
-  @Override
-  public String databaseSafeStringtoRecordValue(DataType type, ResultSet resultSet, int columnIndex, String columnName) {
-    try {
-      if (type == DataType.BLOB) {
+  public Record resultSetToRecord(ResultSet resultSet, Iterable<Column> columns) {
 
-        try (InputStream inputStream = resultSet.getBinaryStream(columnIndex)) {
-          if (inputStream == null) {
-            return null;
-          }
-          try (
-            InputStreamReader reader = new InputStreamReader(
-              // Replace with java.util.Base64.Encoder once we have Java 8
-              new Base64InputStream(
-                inputStream,
-                true /* encode */,
-                -1 /* line length (unlimited) */,
-                new byte[] {} /* line terminator (none) */
-              ),
-              Charsets.UTF_8)) {
-            return CharStreams.toString(reader);
-          }
+    // Provide initial sizing hint to the array. This potentially means double-traversal
+    // of the columns if the column list is not a simple list, but it's almost certainly
+    // worth it to minimise the array size and prevent resizing.
+    RecordBuilder recordBuilder = DataSetUtils.record()
+        .withInitialColumnCount(Iterables.size(columns));
+
+    int idx = 1;
+    for (Column column : columns) {
+      try {
+        switch (column.getType()) {
+          case BIG_INTEGER:
+            long longVal = resultSet.getLong(idx);
+            if (resultSet.wasNull()) {
+              recordBuilder.setObject(column.getName(), null);
+            } else {
+              recordBuilder.setLong(column.getName(), longVal);
+            }
+            break;
+          case BOOLEAN:
+            boolean boolVal = resultSet.getBoolean(idx);
+            if (resultSet.wasNull()) {
+              recordBuilder.setObject(column.getName(), null);
+            } else {
+              recordBuilder.setBoolean(column.getName(), boolVal);
+            }
+            break;
+          case INTEGER:
+            int intVal = resultSet.getInt(idx);
+            if (resultSet.wasNull()) {
+              recordBuilder.setObject(column.getName(), null);
+            } else {
+              recordBuilder.setInteger(column.getName(), intVal);
+            }
+            break;
+          case DATE:
+            Date date = resultSet.getDate(idx);
+            if (date == null) {
+              recordBuilder.setObject(column.getName(), null);
+            } else {
+              recordBuilder.setLocalDate(column.getName(), LocalDate.fromDateFields(date));
+            }
+            break;
+          case DECIMAL:
+            recordBuilder.setBigDecimal(column.getName(), resultSet.getBigDecimal(idx));
+            break;
+          case BLOB:
+            recordBuilder.setByteArray(column.getName(), resultSet.getBytes(idx));
+            break;
+          case CLOB:
+          case STRING:
+            recordBuilder.setString(column.getName(), resultSet.getString(idx));
+            break;
+          default:
+            recordBuilder.setObject(column.getName(), resultSet.getObject(idx));
+            break;
         }
-      } else if (type == DataType.DECIMAL) {
-
-        BigDecimal decimal = resultSet.getBigDecimal(columnIndex);
-
-        if (decimal == null) {
-          return null;
-        }
-        return formatDecimal(decimal);
-
-      } else if (type == DataType.BOOLEAN) {
-
-        // All implementations of boolean use a numeric type which should safely
-        // cast to a boolean
-        if (resultSet.getString(columnIndex) == null) {
-          return null;
-        }
-        return String.valueOf(resultSet.getBoolean(columnIndex));
-
-      } else if (type == DataType.DATE) {
-
-        if (resultSet.getString(columnIndex) == null) {
-          return null;
-        }
-        return LocalDate.fromDateFields(resultSet.getDate(columnIndex)).toString("yyyy-MM-dd");
-
-      } else {
-        return resultSet.getString(columnIndex);
+        idx++;
+      } catch (SQLException e) {
+        throw new RuntimeSqlException("Error retrieving value from result set with name [" + column.getName() + "]", e);
       }
-
-    } catch (SQLException e) {
-      throw new RuntimeSqlException("Error retrieving value from result set with name [" + columnName + "]", e);
-    } catch (IOException e) {
-      throw new RuntimeException("Error converting binary value from result set with name [" + columnName + "]", e);
     }
+    return recordBuilder;
   }
 
 
@@ -3547,38 +3559,6 @@ public abstract class SqlDialect implements DatabaseSafeStringToRecordValueConve
         return String.format("%s.%s = %s.%s", targetTableName, field.getImpliedName(), selectAlias, field.getImpliedName());
       }
     });
-  }
-
-
-  /**
-   * Formats decimal values as strings
-   *
-   * @param decimal Value to format.
-   * @return The decimal value as a string.
-   */
-  private String formatDecimal(BigDecimal decimal) {
-
-    String decimalString = decimal.toPlainString();
-
-    // remove trailing zeros and clean up decimal point
-    int decimalPointIdx = decimalString.indexOf('.');
-
-    if (decimalPointIdx == -1) {
-      return decimalString;
-    }
-
-    int idx;
-    // Work back from the end of the string, looking for zeros, stopping when we find anything that isn't...
-    for (idx = decimalString.length()-1; idx>=decimalPointIdx; idx--) {
-      if (decimalString.charAt(idx) != '0') break;
-    }
-
-    // If the last thing is now the decimal point, step past that...
-    if (idx == decimalPointIdx) {
-      idx--;
-    }
-
-    return decimalString.substring(0, idx+1);
   }
 
 

@@ -15,16 +15,16 @@
 
 package org.alfasoftware.morf.dataset;
 
+import static org.alfasoftware.morf.metadata.DataSetUtils.record;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.idColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.metadata.SchemaUtils.versionColumn;
 import static org.junit.Assert.assertEquals;
 
-import org.junit.Test;
-
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Table;
+import org.junit.Test;
 
 /**
  * Test that the data set connector works.
@@ -57,7 +57,11 @@ public class TestDataSetConnector {
         column("bar", DataType.STRING, 10),
         column("baz", DataType.STRING, 10)
       );
-    testProducer.addTable(metaData, new MockRecord(metaData, "1", "1", "val1", "val2"));
+    testProducer.addTable(metaData, record()
+      .setInteger(idColumn().getName(), 1)
+      .setInteger(versionColumn().getName(), 1)
+      .setString("bar", "val1")
+      .setString("baz", "val2"));
 
     new DataSetConnector(testProducer, testConsumer).connect();
 

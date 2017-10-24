@@ -16,6 +16,13 @@
 package org.alfasoftware.morf.metadata;
 
 
+import java.math.BigDecimal;
+import java.sql.ResultSet;
+
+import org.apache.commons.codec.binary.Base64;
+import org.joda.time.LocalDate;
+
+
 /**
  * Defines a set of values for columns.
  *
@@ -24,24 +31,216 @@ package org.alfasoftware.morf.metadata;
 public interface DataValueLookup {
 
   /**
-   * Returns the value of the column with the given name.
-   *
-   * <p>Implementations should ensure that values are formatted appropriately
-   * for the data type of the column as follows:</p>
-   *
-   * <ul>
-   * <li>{@link DataType#STRING} is represented as the string value.</li>
-   * <li>{@link DataType#DECIMAL} must be represented as a string using "." as the decimal separator and no thousand separator.</li>
-   * <li>{@link DataType#BOOLEAN} must be represented as "1" for true and "0" for false.</li>
-   * <li>{@link DataType#DATE} must be represented in the format "YYYY-MM-DD".</li>
-   * <li>{@link DataType#BLOB} must be represented in base-64 encoding.</li>
-   * </ul>
-   *
-   * <p>Importantly, implementations of this should be case insensitive to column names (e.g.
-   * <code>getValue("agreementNumber")</code> is equivalent to <code>getValue("AGREEMENTNUMBER")</code>)</p>
+   * Returns the value of the column with the given name as a generic formatted
+   * string.
    *
    * @param name of the column.
    * @return the value of the named column.
+   * @deprecated Use the getter method for the type you require.  Avoid the temptation to use {@link #getString(String)}
+   *             for all cases (although that does work as a straight replacement for {@link #getValue(String)}), since
+   *             you are potentially doing unnecessary string conversion.  If you need an integer, use
+   *             {@link #getInteger(String)}.  If you need a boolean, use {@link #getBoolean(String)}.  This will skip
+   *             conversion if possible and thus be more efficient.
    */
+  @Deprecated
   public String getValue(String name);
+
+
+  /**
+   * Gets the value as an integer.  Will attempt conversion where possible
+   * and throw a suitable conversion exception if the conversion fails.
+   * May return {@code null} if the value is not set or is explicitly set
+   * to {@code null}.
+   *
+   * @param name The column name.
+   * @return The value.
+   */
+  public default Integer getInteger(String name) {
+    String value = getValue(name);
+    return value == null ? null : Integer.valueOf(value);
+  }
+
+
+  /**
+   * Gets the value as a long.  Will attempt conversion where possible
+   * and throw a suitable conversion exception if the conversion fails.
+   * May return {@code null} if the value is not set or is explicitly set
+   * to {@code null}.
+   *
+   * @param name The column name.
+   * @return The value.
+   */
+  public default Long getLong(String name) {
+    String value = getValue(name);
+    return value == null ? null : Long.valueOf(value);
+  }
+
+
+  /**
+   * Gets the value as a boolean.  Will attempt conversion where possible
+   * and throw a suitable conversion exception if the conversion fails.
+   * May return {@code null} if the value is not set or is explicitly set
+   * to {@code null}.
+   *
+   * @param name The column name.
+   * @return The value.
+   */
+  public default Boolean getBoolean(String name) {
+    String value = getValue(name);
+    return value == null ? null : Boolean.valueOf(value);
+  }
+
+
+  /**
+   * Gets the value as a Joda {@link LocalDate}.  Will attempt conversion where possible
+   * and throw a suitable conversion exception if the conversion fails.
+   * May return {@code null} if the value is not set or is explicitly set
+   * to {@code null}.
+   *
+   * @param name The column name.
+   * @return The value.
+   */
+  public default org.joda.time.LocalDate getLocalDate(String name) {
+    String value = getValue(name);
+    return value == null ? null : org.joda.time.LocalDate.parse(value, DataValueLookupHelper.FROM_YYYY_MM_DD);
+  }
+
+
+  /**
+   * Gets the value as a {@link java.sql.Date}.  Will attempt conversion where possible
+   * and throw a suitable conversion exception if the conversion fails.
+   * May return {@code null} if the value is not set or is explicitly set
+   * to {@code null}.
+   *
+   * @param name The column name.
+   * @return The value.
+   */
+  public default java.sql.Date getDate(String name) {
+    String value = getValue(name);
+    return value == null ? null : java.sql.Date.valueOf(value);
+  }
+
+
+  /**
+   * Gets the value as a double. Will attempt conversion where possible and
+   * throw a suitable conversion exception if the conversion fails. May return
+   * {@code null} if the value is not set or is explicitly set to {@code null}.
+   * <p>
+   * Warning: this returns a floating-point value which cannot represent values
+   * precisely. Use for scaling factors or measurements but not use for precise
+   * decimal amounts such as monetary amounts. Use
+   * {@link DataValueLookup#getBigDecimal(String)} in those cases.
+   * </p>
+   *
+   * @param name The column name.
+   * @return The value.
+   */
+  public default Double getDouble(String name) {
+    String value = getValue(name);
+    return value == null ? null : Double.valueOf(value);
+  }
+
+
+  /**
+   * Gets the value as a {@link BigDecimal}.  Will attempt conversion where possible
+   * and throw a suitable conversion exception if the conversion fails.
+   * May return {@code null} if the value is not set or is explicitly set
+   * to {@code null}.
+   *
+   * @param name The column name.
+   * @return The value.
+   */
+  public default BigDecimal getBigDecimal(String name) {
+    String value = getValue(name);
+    return value == null ? null : new BigDecimal(value);
+  }
+
+
+  /**
+   * Gets the value as a byte array.  If the original data is a byte array,
+   * it is returned verbatim.  Otherwise a conversion is attempted.
+   * If converted to or from a string, the value will be converted to or
+   * from a base 64-encoded string to preserve the content.  That is:
+   *
+   * <pre><code>// Equal: Byte arrays are preserved as-is
+Arrays.equals(myString.getBytes(), DataSetUtils.record().setByteArray("foo", myString.getBytes()).getByteArray("foo"));
+
+// Not equal: The string gets base64 encoded when read as a byte array
+!Arrays.equals(myString.getBytes(), DataSetUtils.record().setString("foo", myString).getByteArray("foo"));
+
+// Equal:
+Arrays.equals(Base64.encode(myString), DataSetUtils.record().setString("foo", myString).getByteArray("foo"));</code></pre>
+   *
+   * @param name The column name.
+   * @return The value.
+   */
+  public default byte[] getByteArray(String name) {
+    String value = getValue(name);
+    return value == null ? null : Base64.decodeBase64(value);
+  }
+
+
+  /**
+   * Gets the value as a string. Intended to allow the record to be easily serialised.
+   * Always succeeds, and uses the following conversions from the underlying type:
+   *
+   * <dl>
+   *  <dt>BigDecimal</dt><dd>Uses {@link BigDecimal#toPlainString()}</dd>
+   *  <dt>Byte Array</dt><dd>Converted to a MIME Base 64 string</dd>
+   *  <dt>Others</dt><dd>Use {@link Object#toString()}</dd>
+   * </dl>
+   *
+   * @param name The column name.
+   * @return The value.
+   */
+  public default String getString(String name) {
+    return getValue(name);
+  }
+
+
+  /**
+   * Gets the value as either a long, integer, boolean, date, local date, big decimal,
+   * byte array or string according to the type definition when called.
+   *
+   * <p>Just dispatches to the corresponding typed method (e.g. {@link #getBoolean(String)}).
+   *
+   * <p>Most useful when interacting with {@link ResultSet}. In order to facilitate this
+   * use, dates are always returned as a {@link java.sql.Date} rather than a {@link org.joda.time.LocalDate}</p>
+   *
+   * @param column The column.
+   * @return The value.
+   */
+  public default Object getObject(Column column) {
+    switch (column.getType()) {
+      case BIG_INTEGER:
+        return getLong(column.getName());
+      case BOOLEAN:
+        return getBoolean(column.getName());
+      case INTEGER:
+        return getInteger(column.getName());
+      case DATE:
+        return getDate(column.getName());
+      case DECIMAL:
+        BigDecimal result = getBigDecimal(column.getName());
+        try {
+          return result == null ? null : result.setScale(column.getScale());
+        } catch (ArithmeticException e) {
+          throw new IllegalStateException(String.format(
+            "Value of decimal column [%s] has a value of [%s] which must be rounded to fit into (%d,%d). " +
+            "To read it with this precision, ensure it is written with rounding pre-applied.",
+            column.getName(),
+            result.toPlainString(),
+            column.getWidth(),
+            column.getScale()
+          ), e);
+        }
+      case BLOB:
+        return getByteArray(column.getName());
+      case CLOB:
+      case STRING:
+        return getString(column.getName());
+      default:
+        throw new UnsupportedOperationException("Column [" + column.getName() + "] type [" + column.getType() + "] not known");
+    }
+  }
 }

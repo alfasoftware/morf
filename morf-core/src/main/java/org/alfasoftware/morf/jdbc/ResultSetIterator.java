@@ -5,6 +5,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -33,7 +34,7 @@ class ResultSetIterator implements Iterator<Record>, AutoCloseable {
   /**
    * A record implementation based on the result set.
    */
-  private final ResultSetRecord resultSetRecord;
+  private Record nextRecord;
 
   /**
    * The jdbc statement opened to supply the result set.
@@ -50,6 +51,16 @@ class ResultSetIterator implements Iterator<Record>, AutoCloseable {
    */
   private final Table table;
 
+  /**
+   * The metadata for the query result, sorted in the order in which the columns appear.
+   */
+  private Collection<Column> sortedMetadata;
+
+  /**
+   * The SQL dialect.
+   */
+  private final SqlDialect sqlDialect;
+
 
   /**
    * Creates a {@link ResultSetIterator} using the supplied SQL query,
@@ -63,6 +74,7 @@ class ResultSetIterator implements Iterator<Record>, AutoCloseable {
   public ResultSetIterator(Table table, String query, Connection connection, SqlDialect sqlDialect) {
     super();
     this.table = table;
+    this.sqlDialect = sqlDialect;
 
     if (connection == null) {
       throw new IllegalStateException("Dataset has not been opened");
@@ -73,7 +85,7 @@ class ResultSetIterator implements Iterator<Record>, AutoCloseable {
       this.statement.setFetchDirection(ResultSet.FETCH_FORWARD);
       this.statement.setFetchSize(sqlDialect.fetchSizeForBulkSelects());
       this.resultSet = statement.executeQuery(query);
-      this.resultSetRecord = new ResultSetRecord(table, this.resultSet, sqlDialect);
+      this.sortedMetadata = ResultSetMetadataSorter.sortedCopy(table.columns(), resultSet);
       advanceResultSet();
     } catch (SQLException e) {
       throw new RuntimeSqlException("Error running statement for table [" + table.getName() + "]: " + query, e);
@@ -138,13 +150,12 @@ class ResultSetIterator implements Iterator<Record>, AutoCloseable {
     if (!hasNext) {
       throw new NoSuchElementException();
     }
-
-    resultSetRecord.cacheValues();
+    Record result = nextRecord;
 
     // Attempt to advance
     advanceResultSet();
 
-    return resultSetRecord;
+    return result;
   }
 
   /**
@@ -162,6 +173,11 @@ class ResultSetIterator implements Iterator<Record>, AutoCloseable {
   private void advanceResultSet() {
     try {
       hasNext = this.resultSet.next();
+      if (hasNext) {
+        nextRecord = sqlDialect.resultSetToRecord(resultSet, sortedMetadata);
+      } else {
+        close();
+      }
     } catch (SQLException e) {
       throw new RuntimeSqlException("Error advancing result set", e);
     }
@@ -180,8 +196,8 @@ class ResultSetIterator implements Iterator<Record>, AutoCloseable {
    * @see java.lang.AutoCloseable#close()
    */
   @Override
-  public void close() throws SQLException {
-    resultSet.close();
-    statement.close();
+  public final void close() throws SQLException {
+    this.resultSet.close();
+    this.statement.close();
   }
 }

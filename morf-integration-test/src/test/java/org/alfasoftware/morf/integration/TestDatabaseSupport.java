@@ -23,6 +23,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Random;
 
@@ -40,6 +41,7 @@ import org.alfasoftware.morf.metadata.SchemaHomology.DifferenceWriter;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager;
 import org.alfasoftware.morf.testing.TestingDataSourceModule;
 import org.apache.commons.lang.StringUtils;
+import org.joda.time.LocalDate;
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.Test;
@@ -112,45 +114,73 @@ public class TestDatabaseSupport {
    */
   private final DataSetProducer dataSet = dataSetProducer(schema)
     .table("SimpleTypes",
-      record()
-        .value("stringCol", "hello world AA")
-        .value("nullableStringCol", "not null")
-        .value("decimalTenZeroCol", "9876543210")
-        .value("decimalNineFiveCol", "9234.12345")
-        .value("bigIntegerCol", "9234567890123456")
-        .value("nullableBigIntegerCol", "56732")
-        .value("booleanCol", "true")
-        .value("nullableBooleanCol", "false")
-        .value("dateCol", "2011-02-03")
-        .value("nullableDateCol", "2013-04-05"),
-      record()
-        .value("stringCol", "hello world ZZ")
+      record() /* Use string conversion */
+        .setString("stringCol", "hello world AA")
+        .setString("nullableStringCol", "not null")
+        .setString("decimalTenZeroCol", "9876543210")
+        .setString("decimalNineFiveCol", "9234.12345")
+        .setString("bigIntegerCol", "9234567890123456")
+        .setString("nullableBigIntegerCol", "56732")
+        .setString("booleanCol", "true")
+        .setString("nullableBooleanCol", "false")
+        .setString("dateCol", "2011-02-03")
+        .setString("nullableDateCol", "2013-04-05"),
+      record() /* Use actual types */
+        .setString("stringCol", "hello world AB")
+        .setString("nullableStringCol", "not null")
+        .setBigDecimal("decimalTenZeroCol", new BigDecimal("9876543210"))
+        .setBigDecimal("decimalNineFiveCol", new BigDecimal("9234.12345"))
+        .setLong("bigIntegerCol", 9234567890123456L)
+        .setInteger("nullableBigIntegerCol", 56732)
+        .setBoolean("booleanCol", true)
+        .setBoolean("nullableBooleanCol", false)
+        .setDate("dateCol", java.sql.Date.valueOf("2011-02-03"))
+        .setLocalDate("nullableDateCol", new LocalDate(2013, 4, 5)),
+      record() /* Use string conversion */
+        .setString("stringCol", "hello world ZY")
         // nullableStringCol is null
-        .value("decimalTenZeroCol", "-1")
-        .value("decimalNineFiveCol", "1.0")
-        .value("bigIntegerCol", "1")
+        .setString("decimalTenZeroCol", "-1")
+        .setString("decimalNineFiveCol", "1.0")
+        .setString("bigIntegerCol", "1")
         // nullableBigIntegerCol is null
-        .value("booleanCol", "true")
+        .setString("booleanCol", "true")
         // nullableBooleanCol is null
-        .value("dateCol", "2012-03-04")
+        .setString("dateCol", "2012-03-04"),
+        // nullableDateCol is null
+      record() /* Use actual types */
+        .setString("stringCol", "hello world ZZ")
+        // nullableStringCol is null
+        .setBigDecimal("decimalTenZeroCol", BigDecimal.ONE.negate())
+        .setBigDecimal("decimalNineFiveCol", BigDecimal.ONE.setScale(1))
+        .setLong("bigIntegerCol", 1L)
+        // nullableBigIntegerCol is null
+        .setBoolean("booleanCol", true)
+        // nullableBooleanCol is null
+        .setDate("dateCol", java.sql.Date.valueOf("2012-03-04"))
         // nullableDateCol is null
     ).table("WithABlob",
       record()
-        .value("id", "123")
-        .value("blobColumn", "aGVsbG8gd29ybGQ="), // "hello world" base 64 encoded
+        .setInteger("id", 123)
+        .setString("blobColumn", "aGVsbG8gd29ybGQ="), // "hello world" base 64 encoded
       record()
-        .value("id", "456")
-        .value("blobColumn", "Zm9v") // "foo" base 64 encoded
+        .setInteger("id", 124)
+        .setByteArray("blobColumn", "hello world".getBytes()),
+      record()
+        .setLong("id", 456L)
+        .setString("blobColumn", "Zm9v"), // "foo" base 64 encoded
+      record()
+        .setLong("id", 457L)
+        .setByteArray("blobColumn", "foo".getBytes())
     ).table("WithAClob",
       record()
-        .value("id", "124")
-        .value("clobColumn", randomLongString(1024)),
+        .setBigDecimal("id", new BigDecimal(124))
+        .setString("clobColumn", randomLongString(1024)),
       record()
-        .value("id", "457")
-        .value("clobColumn", randomLongString(1024))
+        .setString("id", "457")
+        .setString("clobColumn", randomLongString(1024))
     ).table("WithAutoNum",
       record()
-        .value("autonumfield", "5")
+        .setLong("autonumfield", 5L)
     );
 
 
@@ -184,17 +214,20 @@ public class TestDatabaseSupport {
     DataSetProducer dataSetWithInvalidValue = dataSetProducer(schema)
         .table("SimpleTypes",
           record()
-            .value("stringCol", "A")
-            .value("nullableStringCol", "A")
-            .value("decimalTenZeroCol", "1")
-            .value("decimalNineFiveCol", "27832.231")  // This value has too many digits
-            .value("bigIntegerCol", "1")
-            .value("nullableBigIntegerCol", "1")
-            .value("booleanCol", "false")
-            .value("nullableBooleanCol", "true")
-            .value("dateCol", "2011-02-03")
-            .value("nullableDateCol", "2013-04-05")
-        );
+            .setString("stringCol", "A")
+            .setString("nullableStringCol", "A")
+            .setInteger("decimalTenZeroCol", 1)
+            .setBigDecimal("decimalNineFiveCol", new BigDecimal("27832.231"))  // This value has too many digits
+            .setInteger("bigIntegerCol", 1)
+            .setInteger("nullableBigIntegerCol", 1)
+            .setBoolean("booleanCol", false)
+            .setBoolean("nullableBooleanCol", true)
+            .setDate("dateCol", java.sql.Date.valueOf("2011-02-03"))
+            .setDate("nullableDateCol", java.sql.Date.valueOf("2013-04-05"))
+         )
+        .table("WithABlob")
+        .table("WithAClob")
+        .table("WithAutoNum");
 
     doConnectAndCompare(schema, dataSetWithInvalidValue, databaseDataSetConsumer.get());
   }

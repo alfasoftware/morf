@@ -27,18 +27,17 @@ import java.net.URL;
 import java.util.Arrays;
 import java.util.Collection;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-
 import org.alfasoftware.morf.dataset.DataSetConnector;
 import org.alfasoftware.morf.dataset.DataSetConsumer;
 import org.alfasoftware.morf.dataset.DataSetProducer;
 import org.alfasoftware.morf.dataset.MockDataSetConsumer;
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.xml.XmlStreamProvider.XmlInputStreamProvider;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 /**
  * Test cases to check XML can be parsed to a data set consumer.
@@ -114,9 +113,9 @@ public class TestXmlDataSetProducer {
     assertEquals("exactly 1 table expected in schema", 1, producer.getSchema().tables().size());
     assertEquals("exactly 5 columns expected in table", 5, producer.getSchema().getTable("Test").columns().size());
     for (Record record : producer.records("Test")) {
-      assertEquals("record value incorrect", "noel", record.getValue("noel"));
-      assertEquals("record value incorrect", "edmonds", record.getValue("edmonds"));
-      assertEquals("record value incorrect", "YmxvYmJ5", record.getValue("blobby"));
+      assertEquals("record value incorrect", "noel", record.getString("noel"));
+      assertEquals("record value incorrect", "edmonds", record.getString("edmonds"));
+      assertEquals("record value incorrect", "YmxvYmJ5", record.getString("blobby"));
     }
   }
 

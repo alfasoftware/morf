@@ -15,13 +15,13 @@
 
 package org.alfasoftware.morf.jdbc.nuodb;
 
-import static org.alfasoftware.morf.metadata.DataType.BOOLEAN;
 import static org.alfasoftware.morf.metadata.DataType.INTEGER;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
 import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
 import static org.alfasoftware.morf.sql.SqlUtils.parameter;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -277,16 +277,12 @@ class NuoDBDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#prepareStatementParameter(NamedParameterPreparedStatement, SqlParameter, int, java.lang.String)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#prepareBooleanParameter(org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement, java.lang.Boolean, org.alfasoftware.morf.sql.element.SqlParameter)
    */
   @Override
-  public void prepareStatementParameter(NamedParameterPreparedStatement statement, SqlParameter parameter, String value) {
-    if (parameter.getMetadata().getType() == BOOLEAN) {
-      SqlParameter integerVersion = parameter(parameter.getImpliedName()).type(INTEGER);
-      super.prepareStatementParameter(statement, integerVersion, convertColumnValueToDatabaseSafeString(parameter.getMetadata(), value, null));
-    } else {
-      super.prepareStatementParameter(statement, parameter, value);
-    }
+  protected void prepareBooleanParameter(NamedParameterPreparedStatement statement, Boolean boolVal, SqlParameter parameter) throws SQLException {
+    Integer intValue = boolVal == null ? null : boolVal ? 1 : 0;
+    super.prepareIntegerParameter(statement, intValue, parameter(parameter.getImpliedName()).type(INTEGER));
   }
 
 

@@ -161,17 +161,16 @@ public final class SchemaUtils {
    *         {@link Schema} with excluded tables/views removed.
    */
   public static Schema copy(Schema schema, Collection<String> exclusionRegExes) {
-    return schema(
-      schema(from(schema.tables())
-        .filter(table -> !isMatching(exclusionRegExes, table.getName()))
-        .transform(SchemaUtils::copy)
-        .toList()),
-      schema(from(schema.views())
-        .filter(view -> !isMatching(exclusionRegExes, view.getName()))
-        .transform(SchemaUtils::copy)
-        .toList()));
+      return schema(
+        schema(from(schema.tables())
+          .filter(table -> !isMatching(exclusionRegExes, table.getName()))
+          .transform(SchemaUtils::copy)
+          .toList()),
+        schema(from(schema.views())
+          .filter(view -> !isMatching(exclusionRegExes, view.getName()))
+          .transform(SchemaUtils::copy)
+            .toList()));
   }
-
 
   /**
    * Match table/view  name against a list of exclusion regexs

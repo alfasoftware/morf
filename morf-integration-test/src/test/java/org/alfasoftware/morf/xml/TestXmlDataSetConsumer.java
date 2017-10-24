@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.xml;
 
 import static com.google.common.io.ByteStreams.toByteArray;
+import static org.alfasoftware.morf.metadata.DataSetUtils.record;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.idColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
@@ -33,7 +34,6 @@ import java.util.List;
 
 import org.alfasoftware.morf.dataset.DataSetConsumer;
 import org.alfasoftware.morf.dataset.DataSetConsumer.CloseState;
-import org.alfasoftware.morf.dataset.MockRecord;
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Table;
@@ -66,7 +66,12 @@ public class TestXmlDataSetConsumer {
 
     testConsumer.open();
     List<Record> mockRecords = new ArrayList<>();
-    mockRecords.add(new MockRecord(metaData, "1", "1", "abc", "123", "456.78"));
+    mockRecords.add(record()
+      .setInteger(idColumn().getName(), 1)
+      .setInteger(versionColumn().getName(), 1)
+      .setString("bar", "abc")
+      .setString("baz", "123")
+      .setString("bob", "456.78"));
     testConsumer.table(metaData, mockRecords);
     testConsumer.close(CloseState.COMPLETE);
 
@@ -92,7 +97,12 @@ public class TestXmlDataSetConsumer {
 
     testConsumer.open();
     List<Record> mockRecords = new ArrayList<>();
-    mockRecords.add(new MockRecord(metaData, "1", "1", "noel", "edmonds", "YmxvYmJ5"));
+    mockRecords.add(record()
+      .setInteger(idColumn().getName(), 1)
+      .setInteger(versionColumn().getName(), 1)
+      .setString("noel", "noel")
+      .setString("edmonds", "edmonds")
+      .setString("blobby", "YmxvYmJ5"));
     testConsumer.table(metaData, mockRecords);
     testConsumer.close(CloseState.COMPLETE);
 

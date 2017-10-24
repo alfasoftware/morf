@@ -15,11 +15,14 @@
 
 package org.alfasoftware.morf.jdbc;
 
+import static org.alfasoftware.morf.metadata.DataSetUtils.record;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.idColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.metadata.SchemaUtils.versionColumn;
-import static org.junit.Assert.assertEquals;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.equalTo;
+import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
@@ -35,17 +38,21 @@ import java.util.List;
 import javax.sql.DataSource;
 
 import org.alfasoftware.morf.dataset.DataSetConsumer.CloseState;
-import org.alfasoftware.morf.dataset.MockRecord;
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.DataValueLookup;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.element.SqlParameter;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
+import com.google.common.collect.FluentIterable;
 import com.google.inject.util.Providers;
 
 /**
@@ -54,6 +61,15 @@ import com.google.inject.util.Providers;
  * @author Copyright (c) Alfa Financial Software 2011
  */
 public class TestDatabaseDataSetConsumer {
+
+  @Captor private ArgumentCaptor<? extends Iterable<SqlParameter>> parametersCaptor;
+  @Captor private ArgumentCaptor<DataValueLookup> valuesCaptor;
+
+  @Before
+  public void setup() {
+    MockitoAnnotations.initMocks(this);
+  }
+
 
   /**
    * Tests that blob fields are added to the the prepared insert statement in correct decoded form.
@@ -70,10 +86,14 @@ public class TestDatabaseDataSetConsumer {
     final Connection connection = Mockito.mock(Connection.class);
     final SqlDialect dialect = Mockito.mock(SqlDialect.class);
     final PreparedStatement statement = Mockito.mock(PreparedStatement.class);
+    final java.sql.Blob blob = Mockito.mock(java.sql.Blob.class);
+    Mockito.when(statement.getConnection()).thenReturn(connection);
+    Mockito.when(connection.createBlob()).thenReturn(blob);
+    Mockito.when(blob.setBytes(eq(1L), any(byte[].class))).thenAnswer(invocation -> ((byte[]) invocation.getArguments()[1]).length);
     Mockito.when(connectionResources.getDataSource()).thenReturn(dataSource);
     Mockito.when(dataSource.getConnection()).thenReturn(connection);
     Mockito.when(connectionResources.sqlDialect()).thenReturn(dialect);
-    Mockito.when(dialect.convertStatementToSQL(Mockito.any(InsertStatement.class), Mockito.any(Schema.class))).thenReturn("");
+    Mockito.when(dialect.convertStatementToSQL(Mockito.any(InsertStatement.class), Mockito.any(Schema.class))).thenReturn("Foo :id :version :blob");
     Mockito.when(connection.prepareStatement(Mockito.anyString())).thenReturn(statement);
 
     // Create our consumer
@@ -88,24 +108,23 @@ public class TestDatabaseDataSetConsumer {
         column("blob", DataType.BLOB)
       );
     final List<Record> records = new ArrayList<>();
-    records.add(new MockRecord(table,"1","2","QUJD"));
+    records.add(record().setInteger(idColumn().getName(), 1).setInteger(versionColumn().getName(), 2).setString("blob", "QUJD"));
 
     // consume the records
     consumer.table(table, records);
 
     // Verify dialect is requested to write the values to the statement
 
-    ArgumentCaptor<SqlParameter> parameterCaptor = ArgumentCaptor.forClass(SqlParameter.class);
-    Mockito.verify(dialect).prepareStatementParameter(any(NamedParameterPreparedStatement.class), parameterCaptor.capture(), eq("1"));
-    assertEquals("Name of parameter 0", idColumn().getName(), parameterCaptor.getValue().getImpliedName());
+    Mockito.verify(dialect).prepareStatementParameters(any(NamedParameterPreparedStatement.class), parametersCaptor.capture(), valuesCaptor.capture());
 
-    parameterCaptor = ArgumentCaptor.forClass(SqlParameter.class);
-    Mockito.verify(dialect).prepareStatementParameter(any(NamedParameterPreparedStatement.class), parameterCaptor.capture(), eq("2"));
-    assertEquals("Name of parameter 1", versionColumn().getName(), parameterCaptor.getValue().getImpliedName());
-
-    parameterCaptor = ArgumentCaptor.forClass(SqlParameter.class);
-    Mockito.verify(dialect).prepareStatementParameter(any(NamedParameterPreparedStatement.class), parameterCaptor.capture(), eq("QUJD"));
-    assertEquals("Name of parameter 2", "blob", parameterCaptor.getValue().getImpliedName());
+    assertThat(FluentIterable.from(parametersCaptor.getValue()).transform(SqlParameter::getImpliedName), contains(
+      idColumn().getName(),
+      versionColumn().getName(),
+      "blob")
+    );
+    assertThat(valuesCaptor.getValue().getInteger(idColumn().getName()), equalTo(1));
+    assertThat(valuesCaptor.getValue().getInteger(versionColumn().getName()), equalTo(2));
+    assertThat(valuesCaptor.getValue().getString("blob"), equalTo("QUJD"));
   }
 
 

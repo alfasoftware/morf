@@ -25,13 +25,13 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.junit.Test;
-
 import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.DataSetUtils;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
+import org.junit.Test;
 
 /**
  * Ensure that {@link DataSetProducer}s can be augmented with meta data from
@@ -72,9 +72,9 @@ public class TestWithMetaDataAdapter {
     // Check that the records are correctly pulled out
     final Iterable<Record> records = adapter.records("bob");
     final Record record = records.iterator().next();
-    assertEquals("Version of record", "10", record.getValue("version"));
-    assertEquals("ID of record", "1", record.getValue("id"));
-    assertEquals("Random value from record", "Bob", record.getValue("Alan"));
+    assertEquals("Version of record", 10L, record.getLong("version").longValue());
+    assertEquals("ID of record", 1L, record.getLong("id").longValue());
+    assertEquals("Random value from record", "Bob", record.getString("Alan"));
   }
 
 
@@ -260,33 +260,13 @@ public class TestWithMetaDataAdapter {
    * @author Copyright (c) Alfa Financial Software 2010
    */
   private static class MockDataProducer extends MockProducer {
-
-    /**
-     * {@inheritDoc}
-     *
-     * @see org.alfasoftware.morf.dataset.DataSetProducer#records(java.lang.String)
-     */
     @Override
     public Iterable<Record> records(String tableName) {
-      Record record = new Record() {
-
-        /**
-         * {@inheritDoc}
-         *
-         * @see org.alfasoftware.morf.dataset.Record#getValue(java.lang.String)
-         */
-        @Override
-        public String getValue(String name) {
-          if (name.equals("id")) {
-            return "1";
-          } else if (name.equals("version")) {
-            return "10";
-          }
-
-          return "Bob";
-        }
-      };
-      return Arrays.asList(record);
+      return Arrays.asList(DataSetUtils.record()
+        .setLong("id", 1L)
+        .setLong("version", 10L)
+        .setString("Alan", "Bob")
+      );
     }
   }
 

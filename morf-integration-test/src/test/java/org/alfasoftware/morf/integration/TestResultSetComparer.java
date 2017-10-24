@@ -210,148 +210,148 @@ public class TestResultSetComparer {
   private final DataSetProducer dataSet = dataSetProducer(schema)
     .table("SingleKeyLeft",
       record()
-        .value("stringKey", "keyA")
-        .value("nullableDateCol", "20140101")
-        .value("nullableDecimalCol", "10.11")
-        .value("booleanCol", "false"),
+        .setString("stringKey", "keyA")
+        .setInteger("nullableDateCol", 20140101)
+        .setString("nullableDecimalCol", "10.11")
+        .setBoolean("booleanCol", false),
       record()
-        .value("stringKey", "keyB")
-        .value("nullableDateCol", "20140201")
-        .value("nullableDecimalCol", "10.2")
-        .value("booleanCol", "true"),
+        .setString("stringKey", "keyB")
+        .setInteger("nullableDateCol", 20140201)
+        .setString("nullableDecimalCol", "10.2")
+        .setBoolean("booleanCol", true),
       record()
-        .value("stringKey", "keyC")
-        .value("nullableDateCol", "20140301")
-        .value("nullableDecimalCol", "10.3")
-        .value("booleanCol", "false")
+        .setString("stringKey", "keyC")
+        .setInteger("nullableDateCol", 20140301)
+        .setString("nullableDecimalCol", "10.3")
+        .setBoolean("booleanCol", false)
     )
     .table("SingleKeyMatchRight",
       record()
-        .value("stringKey", "keyA")
-        .value("nullableDateCol", "20140101")
-        .value("nullableDecimalCol", "10.11"),
+        .setString("stringKey", "keyA")
+        .setInteger("nullableDateCol", 20140101)
+        .setString("nullableDecimalCol", "10.11"),
       record()
-        .value("stringKey", "keyB")
-        .value("nullableDateCol", "20140201")
-        .value("nullableDecimalCol", "10.2"),
+        .setString("stringKey", "keyB")
+        .setInteger("nullableDateCol", 20140201)
+        .setString("nullableDecimalCol", "10.2"),
       record()
-        .value("stringKey", "keyC")
-        .value("nullableDateCol", "20140301")
-        .value("nullableDecimalCol", "10.3")
+        .setString("stringKey", "keyC")
+        .setInteger("nullableDateCol", 20140301)
+        .setString("nullableDecimalCol", "10.3")
     )
     .table("SingleKeyMismatchRight",
       record()
-        .value("stringKey", "keyA")
-        .value("nullableDateCol", "20141101")
-        .value("nullableDecimalCol", "11.1"),
+        .setString("stringKey", "keyA")
+        .setInteger("nullableDateCol", 20141101)
+        .setString("nullableDecimalCol", "11.1"),
       record()
-        .value("stringKey", "keyB")
-        .value("nullableDateCol", "20140201")
-        .value("nullableDecimalCol", "10.2")
+        .setString("stringKey", "keyB")
+        .setInteger("nullableDateCol", 20140201)
+        .setString("nullableDecimalCol", "10.2")
     )
     .table("SingleKeyNullMismatchRight",
       record()
-        .value("stringKey", "keyA")
-        .value("nullableDateCol", "20141101")
-        .value("nullableDecimalCol", null),
+        .setString("stringKey", "keyA")
+        .setInteger("nullableDateCol", 20141101)
+        .setString("nullableDecimalCol", null),
       record()
-        .value("stringKey", "keyB")
-        .value("nullableDateCol", "20140201")
-        .value("nullableDecimalCol", "10.2")
+        .setString("stringKey", "keyB")
+        .setInteger("nullableDateCol", 20140201)
+        .setString("nullableDecimalCol", "10.2")
     )
     .table("SingleKeyMissingRight",
       record()
-        .value("stringKey", "keyB")
-        .value("nullableDateCol", "20140201")
-        .value("nullableDecimalCol", "10.2"),
+        .setString("stringKey", "keyB")
+        .setInteger("nullableDateCol", 20140201)
+        .setString("nullableDecimalCol", "10.2"),
       record()
-        .value("stringKey", "keyC")
-        .value("nullableDateCol", "20140301")
-        .value("nullableDecimalCol", "10.3"),
+        .setString("stringKey", "keyC")
+        .setInteger("nullableDateCol", 20140301)
+        .setString("nullableDecimalCol", "10.3"),
       record()
-        .value("stringKey", "keyD")
-        .value("nullableDateCol", "20140401")
-        .value("nullableDecimalCol", "10.4")
+        .setString("stringKey", "keyD")
+        .setInteger("nullableDateCol", 20140401)
+        .setString("nullableDecimalCol", "10.4")
     )
     .table("MultiKeyLeft",
       record()
-        .value("stringKey", "keyA")
-        .value("intKey", "1")
-        .value("nullableStringCol", "valueA")
-        .value("nullableIntCol", "1"),
+        .setString("stringKey", "keyA")
+        .setInteger("intKey", 1)
+        .setString("nullableStringCol", "valueA")
+        .setInteger("nullableIntCol", 1),
       record()
-        .value("stringKey", "keyB")
-        .value("intKey", "2")
-        .value("nullableStringCol", null)
-        .value("nullableIntCol", "2"),
+        .setString("stringKey", "keyB")
+        .setInteger("intKey", 2)
+        .setString("nullableStringCol", null)
+        .setInteger("nullableIntCol", 2),
       record()
-        .value("stringKey", "keyC")
-        .value("intKey", "3")
-        .value("nullableStringCol", "valueC")
-        .value("nullableIntCol", "3")
+        .setString("stringKey", "keyC")
+        .setInteger("intKey", 3)
+        .setString("nullableStringCol", "valueC")
+        .setInteger("nullableIntCol", 3)
     )
     .table("MultiKeyMatchRight",
       record()
-        .value("stringKey", "keyA")
-        .value("intKey", "1")
-        .value("nullableStringCol", "valueA")
-        .value("nullableIntCol", "1"),
+        .setString("stringKey", "keyA")
+        .setInteger("intKey", 1)
+        .setString("nullableStringCol", "valueA")
+        .setInteger("nullableIntCol", 1),
       record()
-        .value("stringKey", "keyB")
-        .value("intKey", "2")
-        .value("nullableStringCol", null)
-        .value("nullableIntCol", "2"),
+        .setString("stringKey", "keyB")
+        .setInteger("intKey", 2)
+        .setString("nullableStringCol", null)
+        .setInteger("nullableIntCol", 2),
       record()
-        .value("stringKey", "keyC")
-        .value("intKey", "3")
-        .value("nullableStringCol", "valueC")
-        .value("nullableIntCol", "3")
+        .setString("stringKey", "keyC")
+        .setInteger("intKey", 3)
+        .setString("nullableStringCol", "valueC")
+        .setInteger("nullableIntCol", 3)
     )
     .table("MultiKeyMismatchRight",
       record()
-        .value("stringKey", "keyA")
-        .value("intKey", "1")
-        .value("nullableStringCol", "valueA")
-        .value("nullableIntCol", "1"),
+        .setString("stringKey", "keyA")
+        .setInteger("intKey", 1)
+        .setString("nullableStringCol", "valueA")
+        .setInteger("nullableIntCol", 1),
       record()
-        .value("stringKey", "keyB")
-        .value("intKey", "2")
-        .value("nullableStringCol", "valueFlopB")
-        .value("nullableIntCol", "2"),
+        .setString("stringKey", "keyB")
+        .setInteger("intKey", 2)
+        .setString("nullableStringCol", "valueFlopB")
+        .setInteger("nullableIntCol", 2),
       record()
-        .value("stringKey", "keyC")
-        .value("intKey", "3")
-        .value("nullableStringCol", null)
-        .value("nullableIntCol", "3")
+        .setString("stringKey", "keyC")
+        .setInteger("intKey", 3)
+        .setString("nullableStringCol", null)
+        .setInteger("nullableIntCol", 3)
     )
     .table("MultiKeyMissingRight",
       record()
-        .value("stringKey", "keyA")
-        .value("intKey", "1")
-        .value("nullableStringCol", "valueA")
-        .value("nullableIntCol", "1"),
+        .setString("stringKey", "keyA")
+        .setInteger("intKey", 1)
+        .setString("nullableStringCol", "valueA")
+        .setInteger("nullableIntCol", 1),
       record()
-        .value("stringKey", "keyB")
-        .value("intKey", "3")
-        .value("nullableStringCol", "valueB3")
-        .value("nullableIntCol", "3"),
+        .setString("stringKey", "keyB")
+        .setInteger("intKey", 3)
+        .setString("nullableStringCol", "valueB3")
+        .setInteger("nullableIntCol", 3),
       record()
-        .value("stringKey", "keyC")
-        .value("intKey", "4")
-        .value("nullableStringCol", "valueC4")
-        .value("nullableIntCol", "4")
+        .setString("stringKey", "keyC")
+        .setInteger("intKey", 4)
+        .setString("nullableStringCol", "valueC4")
+        .setInteger("nullableIntCol", 4)
     )
     .table("ComparableNumericalColumns",
       record()
-        .value("stringKey", "keyA")
-        .value("intCol", "5")
-        .value("zeroScaleDecimalCol", "1")
+        .setString("stringKey", "keyA")
+        .setInteger("intCol", 5)
+        .setString("zeroScaleDecimalCol", "1")
     )
     .table("UnComparableNumericalColumns",
       record()
-        .value("stringKey", "keyA")
-        .value("intCol", "5")
-        .value("decimalCol", "1.00")
+        .setString("stringKey", "keyA")
+        .setInteger("intCol", 5)
+        .setString("decimalCol", "1.00")
     );
 
 
@@ -780,8 +780,8 @@ public class TestResultSetComparer {
     SelectStatement left = select(count()).from(tableRef("MultiKeyLeft")).where(field("intKey").eq(parameter("param1").type(INTEGER)));
     SelectStatement right = select(count()).from(tableRef("MultiKeyMatchRight")).where(field("stringKey").eq(parameter("param2").type(STRING)));
 
-    StatementParameters leftParams = DataSetUtils.statementParameters().value("param1", "2"); // <-- Exists
-    StatementParameters rightParams = DataSetUtils.statementParameters().value("param2", "NonExistent"); // <-- Does not exist
+    StatementParameters leftParams = DataSetUtils.statementParameters().setInteger("param1", 2); // <-- Exists
+    StatementParameters rightParams = DataSetUtils.statementParameters().setString("param2", "NonExistent"); // <-- Does not exist
 
     CompareCallback callBackMock = mock(CompareCallback.class);
     ArgumentCaptor<ResultSetMismatch> rsMismatchCaptor = ArgumentCaptor.forClass(ResultSetMismatch.class);
@@ -802,7 +802,7 @@ public class TestResultSetComparer {
     SelectStatement left = select(count()).from(tableRef("MultiKeyLeft")).where(field("intKey").eq(parameter("param1").type(INTEGER)));
     SelectStatement right = select(count()).from(tableRef("MultiKeyMatchRight"));
 
-    StatementParameters leftParams = DataSetUtils.statementParameters().value("param1", "2"); // <-- Exists
+    StatementParameters leftParams = DataSetUtils.statementParameters().setInteger("param1", 2); // <-- Exists
     StatementParameters rightParams = DataSetUtils.statementParameters();
 
     CompareCallback callBackMock = mock(CompareCallback.class);

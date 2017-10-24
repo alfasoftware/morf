@@ -278,7 +278,7 @@ public class SqlScriptExecutor {
     try {
       try {
         try (NamedParameterPreparedStatement preparedStatement = NamedParameterPreparedStatement.parse(sqlStatement).createFor(connection)) {
-          prepareParameters(preparedStatement, parameterMetadata, parameterData);
+          sqlDialect.prepareStatementParameters(preparedStatement, parameterMetadata, parameterData);
           numberOfRowsUpdated = preparedStatement.executeUpdate();
         }
       } catch (SQLException e) {
@@ -543,7 +543,7 @@ public class SqlScriptExecutor {
       throw new IllegalStateException("Must construct with dialect");
     }
     try {
-      prepareParameters(preparedStatement, parameterMetadata, parameterData);
+      sqlDialect.prepareStatementParameters(preparedStatement, parameterMetadata, parameterData);
       if (maxRows.isPresent()) {
         preparedStatement.setMaxRows(maxRows.get());
       }
@@ -603,7 +603,7 @@ public class SqlScriptExecutor {
       long count = 0;
       for (DataValueLookup data : parameterData) {
 
-        prepareParameters(preparedStatement, parameterMetadata, data);
+        sqlDialect.prepareStatementParameters(preparedStatement, parameterMetadata, data);
 
         // Use batching or just execute directly
         if (sqlDialect.useInsertBatching()) {
@@ -627,7 +627,7 @@ public class SqlScriptExecutor {
           } catch (SQLException e) {
             List<String> inserts = new ArrayList<>();
             for (SqlParameter parameter : parameterMetadata) {
-              inserts.add(data.getValue(parameter.getImpliedName()));
+              inserts.add(data.getString(parameter.getImpliedName()));
             }
             throw new RuntimeSqlException("Error executing batch with values " + inserts, e);
           }
@@ -641,28 +641,6 @@ public class SqlScriptExecutor {
       }
     } catch (SQLException e) {
       throw new RuntimeSqlException("SQLException executing batch. Prepared Statements: [" + preparedStatement + "]", e);
-    }
-  }
-
-
-  /**
-   * Prepare the statement parameters by parsing them into the right type and
-   * assigning to preparedStatement
-   *
-   * @param preparedStatement
-   * @param parameterMetadata
-   * @param data
-   */
-  private void prepareParameters(NamedParameterPreparedStatement preparedStatement, Iterable<SqlParameter> parameterMetadata,
-      DataValueLookup data) {
-    for (SqlParameter parameter : parameterMetadata) {
-      String value = null;
-      try {
-        value = data.getValue(parameter.getImpliedName());
-        sqlDialect.prepareStatementParameter(preparedStatement, parameter, value);
-      } catch (Exception e) {
-        throw new RuntimeException(String.format("Failed to parse value [%s] for column [%s]", value, parameter.getImpliedName()), e);
-      }
     }
   }
 

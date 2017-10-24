@@ -67,14 +67,14 @@ public class TestSpreadsheetDataSetProducer {
     List<Record> records = Lists.newArrayList(producer.records("UsageMeterType"));
     assertEquals("Number of rows [" + records + "]", 2, records.size());
     Record record = records.get(0);
-    assertEquals("Usage Meter", "KM", record.getValue("usageMeter"));
-    assertEquals("Description", "Kilometers", record.getValue("description"));
-    assertEquals("Usage Meter Type", "M", record.getValue("usageMeterType"));
+    assertEquals("Usage Meter", "KM", record.getString("usageMeter"));
+    assertEquals("Description", "Kilometers", record.getString("description"));
+    assertEquals("Usage Meter Type", "M", record.getString("usageMeterType"));
 
     record = records.get(1);
-    assertEquals("Usage Meter", "HOUR", record.getValue("usageMeter"));
-    assertEquals("Description", "Hours", record.getValue("description"));
-    assertEquals("Usage Meter Type", "", record.getValue("usageMeterType"));
+    assertEquals("Usage Meter", "HOUR", record.getString("usageMeter"));
+    assertEquals("Description", "Hours", record.getString("description"));
+    assertEquals("Usage Meter Type", "", record.getString("usageMeterType"));
   }
 
 

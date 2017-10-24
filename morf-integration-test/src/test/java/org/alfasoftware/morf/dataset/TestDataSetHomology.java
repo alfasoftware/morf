@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.dataset;
 
+import static org.alfasoftware.morf.metadata.DataSetUtils.record;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.idColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
@@ -24,19 +25,20 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
+import java.math.BigDecimal;
 import java.net.URL;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.xml.XmlDataSetProducer;
 import org.apache.commons.lang.StringUtils;
 import org.hamcrest.Matchers;
 import org.junit.Test;
 
-import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.xml.XmlDataSetProducer;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -95,7 +97,11 @@ public class TestDataSetHomology {
         column("bar", DataType.STRING, 10),
         column("baz", DataType.STRING, 10)
       );
-    testProducer1.addTable(metadata1, new MockRecord(metadata1, "1", "1", "val1", "val2"));
+    testProducer1.addTable(metadata1, record()
+      .setInteger(idColumn().getName(), 1)
+      .setInteger(versionColumn().getName(), 1)
+      .setString("bar", "val1")
+      .setString("baz", "val2"));
 
     MockDataSetProducer testProducer2 = new MockDataSetProducer();
     Table metadata2 = table("FOO").columns(
@@ -104,7 +110,11 @@ public class TestDataSetHomology {
         column("bar", DataType.STRING, 10),
         column("baz", DataType.STRING, 10)
       );
-    testProducer2.addTable(metadata2, new MockRecord(metadata2, "1", "1", "val1", "val2"));
+    testProducer2.addTable(metadata2, record()
+      .setInteger(idColumn().getName(), 1)
+      .setInteger(versionColumn().getName(), 1)
+      .setString("bar", "val1")
+      .setString("baz", "val2"));
 
     DataSetHomology dataSetHomology = new DataSetHomology();
     boolean result = dataSetHomology.dataSetProducersMatch(testProducer1, testProducer2);
@@ -126,7 +136,11 @@ public class TestDataSetHomology {
         column("bar", DataType.STRING, 10),
         column("baz", DataType.STRING, 10)
       );
-    testProducer1.addTable(metadata1, new MockRecord(metadata1, "1", "1", "val1", "val2"));
+    testProducer1.addTable(metadata1, record()
+      .setInteger(idColumn().getName(), 1)
+      .setInteger(versionColumn().getName(), 1)
+      .setString("bar", "val1")
+      .setString("baz", "val2"));
 
     MockDataSetProducer testProducer2 = new MockDataSetProducer();
     Table metadata2 = table("foo").columns(
@@ -135,7 +149,11 @@ public class TestDataSetHomology {
         column("BAR", DataType.STRING, 10),
         column("bAz", DataType.STRING, 10)
       );
-    testProducer2.addTable(metadata2, new MockRecord(metadata2, "1", "1", "val1", "val2"));
+    testProducer2.addTable(metadata2, record()
+      .setInteger(idColumn().getName(), 1)
+      .setInteger(versionColumn().getName(), 1)
+      .setString("bar", "val1")
+      .setString("baz", "val2"));
 
     DataSetHomology dataSetHomology = new DataSetHomology();
     boolean result = dataSetHomology.dataSetProducersMatch(testProducer1, testProducer2);
@@ -157,7 +175,11 @@ public class TestDataSetHomology {
         column("string", DataType.STRING, 10),
         column("Decimal", DataType.DECIMAL, 10)
       );
-    testProducer1.addTable(metadata1, new MockRecord(metadata1, "1", "1", "", null));
+    testProducer1.addTable(metadata1, record()
+      .setInteger(idColumn().getName(), 1)
+      .setInteger(versionColumn().getName(), 1)
+      .setString("string", "")
+      .setBigDecimal("Decimal", null));
 
     MockDataSetProducer testProducer2 = new MockDataSetProducer();
     Table metadata2 = table("foo").columns(
@@ -166,7 +188,11 @@ public class TestDataSetHomology {
         column("string", DataType.STRING, 10),
         column("Decimal", DataType.DECIMAL, 10)
       );
-    testProducer2.addTable(metadata2, new MockRecord(metadata1, "1", "1", "", null));
+    testProducer2.addTable(metadata2, record()
+      .setInteger(idColumn().getName(), 1)
+      .setInteger(versionColumn().getName(), 1)
+      .setString("string", "")
+      .setBigDecimal("Decimal", null));
 
     DataSetHomology dataSetHomology = new DataSetHomology();
     boolean result = dataSetHomology.dataSetProducersMatch(testProducer1, testProducer2);
@@ -188,7 +214,11 @@ public class TestDataSetHomology {
         column("string", DataType.STRING, 10),
         column("Decimal", DataType.DECIMAL, 10)
       );
-    testProducer1.addTable(metadata1, new MockRecord(metadata1, "1", "1", "", "2"));
+    testProducer1.addTable(metadata1, record()
+      .setInteger(idColumn().getName(), 1)
+      .setInteger(versionColumn().getName(), 1)
+      .setString("string", "")
+      .setString("Decimal", "2"));
 
     MockDataSetProducer testProducer2 = new MockDataSetProducer();
     Table metadata2 = table("foo").columns(
@@ -197,7 +227,11 @@ public class TestDataSetHomology {
         column("string", DataType.STRING, 10),
         column("Decimal", DataType.DECIMAL, 10)
       );
-    testProducer2.addTable(metadata2, new MockRecord(metadata1, "1", "1", "", null));
+    testProducer2.addTable(metadata2, record()
+      .setInteger(idColumn().getName(), 1)
+      .setInteger(versionColumn().getName(), 1)
+      .setString("string", "")
+      .setBigDecimal("Decimal", null));
 
     DataSetHomology dataSetHomology = new DataSetHomology();
     boolean result = dataSetHomology.dataSetProducersMatch(testProducer1, testProducer2);
@@ -223,8 +257,16 @@ public class TestDataSetHomology {
         column("string", DataType.STRING, 10),
         column("Decimal", DataType.DECIMAL, 10)
       );
-    testProducer1.addTable(metadata1, new MockRecord(metadata1, "1", "1", "FOO", "2"));
-    testProducer1.addTable(metadata1, new MockRecord(metadata1, "2", "2", "BAR", "3"));
+    testProducer1.addTable(metadata1, record()
+      .setInteger(idColumn().getName(), 1)
+      .setInteger(versionColumn().getName(), 1)
+      .setString("string", "FOO")
+      .setInteger("Decimal", 2));
+    testProducer1.addTable(metadata1, record()
+      .setInteger(idColumn().getName(), 2)
+      .setInteger(versionColumn().getName(), 2)
+      .setString("string", "BAR")
+      .setInteger("Decimal", 3));
 
     MockDataSetProducer testProducer2 = new MockDataSetProducer();
     Table metadata2 = table("foo").columns(
@@ -233,8 +275,16 @@ public class TestDataSetHomology {
         column("string", DataType.STRING, 10),
         column("Decimal", DataType.DECIMAL, 10)
       );
-    testProducer2.addTable(metadata2, new MockRecord(metadata2, "2", "2", "FOO", "2"));
-    testProducer2.addTable(metadata2, new MockRecord(metadata2, "4", "4", "BAR", "3"));
+    testProducer2.addTable(metadata2, record()
+      .setInteger(idColumn().getName(), 2)
+      .setInteger(versionColumn().getName(), 2)
+      .setString("string", "FOO")
+      .setInteger("Decimal", 2));
+    testProducer2.addTable(metadata2, record()
+      .setInteger(idColumn().getName(), 4)
+      .setInteger(versionColumn().getName(), 4)
+      .setString("string", "BAR")
+      .setInteger("Decimal", 3));
 
     DataSetHomology dataSetHomology = new DataSetHomology();
     boolean result = dataSetHomology.dataSetProducersMatch(testProducer1, testProducer2);
@@ -254,8 +304,16 @@ public class TestDataSetHomology {
         column("string", DataType.STRING, 10),
         column("Decimal", DataType.DECIMAL, 10)
       );
-    testProducer1.addTable(metadata1, new MockRecord(metadata1, "1", "1", "FOO", "2"));
-    testProducer1.addTable(metadata1, new MockRecord(metadata1, "2", "2", "BAR", "3"));
+    testProducer1.addTable(metadata1, record()
+      .setInteger(idColumn().getName(), 1)
+      .setInteger(versionColumn().getName(), 1)
+      .setString("string", "FOO")
+      .setInteger("Decimal", 2));
+    testProducer1.addTable(metadata1, record()
+      .setInteger(idColumn().getName(), 2)
+      .setInteger(versionColumn().getName(), 2)
+      .setString("string", "BAR")
+      .setInteger("Decimal", 3));
 
     MockDataSetProducer testProducer2 = new MockDataSetProducer();
     Table metadata2 = table("foo").columns(
@@ -264,8 +322,16 @@ public class TestDataSetHomology {
         column("string", DataType.STRING, 10),
         column("Decimal", DataType.DECIMAL, 10)
       );
-    testProducer2.addTable(metadata2, new MockRecord(metadata2, "1", "1", "FOO", "2"));
-    testProducer2.addTable(metadata2, new MockRecord(metadata2, "2", "2", "BAR", "3"));
+    testProducer2.addTable(metadata2, record()
+      .setInteger(idColumn().getName(), 1)
+      .setInteger(versionColumn().getName(), 1)
+      .setString("string", "FOO")
+      .setInteger("Decimal", 2));
+    testProducer2.addTable(metadata2, record()
+      .setInteger(idColumn().getName(), 2)
+      .setInteger(versionColumn().getName(), 2)
+      .setString("string", "BAR")
+      .setInteger("Decimal", 3));
 
     assertTrue(new DataSetHomology(ImmutableMap.<String, Comparator<Record>>of(), Optional.<Collection<String>>of(ImmutableSet.<String>of())).dataSetProducersMatch(testProducer1, testProducer2));
   }
@@ -283,8 +349,16 @@ public class TestDataSetHomology {
         column("string", DataType.STRING, 10),
         column("Decimal", DataType.DECIMAL, 10)
       );
-    testProducer1.addTable(metadata1, new MockRecord(metadata1, "1", "1", "FOO", "2"));
-    testProducer1.addTable(metadata1, new MockRecord(metadata1, "3", "2", "BAR", "3"));
+    testProducer1.addTable(metadata1, record()
+      .setInteger(idColumn().getName(), 1)
+      .setInteger(versionColumn().getName(), 1)
+      .setString("string", "FOO")
+      .setInteger("Decimal", 2));
+    testProducer1.addTable(metadata1, record()
+      .setInteger(idColumn().getName(), 3)
+      .setInteger(versionColumn().getName(), 2)
+      .setString("string", "BAR")
+      .setInteger("Decimal", 3));
 
     MockDataSetProducer testProducer2 = new MockDataSetProducer();
     Table metadata2 = table("foo").columns(
@@ -293,8 +367,16 @@ public class TestDataSetHomology {
         column("string", DataType.STRING, 10),
         column("Decimal", DataType.DECIMAL, 10)
       );
-    testProducer2.addTable(metadata2, new MockRecord(metadata2, "1", "1", "FOO", "2"));
-    testProducer2.addTable(metadata2, new MockRecord(metadata2, "2", "2", "BAR", "3"));
+    testProducer2.addTable(metadata2, record()
+      .setInteger(idColumn().getName(), 1)
+      .setInteger(versionColumn().getName(), 1)
+      .setString("string", "FOO")
+      .setInteger("Decimal", 2));
+    testProducer2.addTable(metadata2, record()
+      .setInteger(idColumn().getName(), 2)
+      .setInteger(versionColumn().getName(), 2)
+      .setString("string", "BAR")
+      .setInteger("Decimal", 3));
 
     assertFalse(new DataSetHomology(ImmutableMap.<String, Comparator<Record>>of(), Optional.<Collection<String>>of(ImmutableSet.<String>of())).dataSetProducersMatch(testProducer1, testProducer2));
   }
@@ -311,10 +393,10 @@ public class TestDataSetHomology {
     );
 
     MockDataSetProducer testProducer1 = new MockDataSetProducer()
-      .addTable(table, new MockRecord(table, "10.00"));
+      .addTable(table, record().setBigDecimal("Decimal", new BigDecimal("10.00")));
 
     MockDataSetProducer testProducer2 = new MockDataSetProducer()
-    .addTable(table, new MockRecord(table, "10"));
+      .addTable(table, record().setBigDecimal("Decimal", new BigDecimal("10")));
 
     DataSetHomology dataSetHomology = new DataSetHomology();
     boolean result = dataSetHomology.dataSetProducersMatch(testProducer1, testProducer2);
@@ -337,27 +419,27 @@ public class TestDataSetHomology {
 
     MockDataSetProducer testProducer1 = new MockDataSetProducer()
       .addTable(table,
-        new MockRecord(table, "aaa", "1"),
-        new MockRecord(table, "bbb", "1"),
-        new MockRecord(table, "aaa", "5"),
-        new MockRecord(table, "bbb", "5"),
-        new MockRecord(table, "aaa", "10"),
-        new MockRecord(table, "bbb", "20")
+        record().setString("foo", "aaa").setInteger("bar", 1),
+        record().setString("foo", "bbb").setInteger("bar", 1),
+        record().setString("foo", "aaa").setInteger("bar", 5),
+        record().setString("foo", "bbb").setInteger("bar", 5),
+        record().setString("foo", "aaa").setInteger("bar", 10),
+        record().setString("foo", "bbb").setInteger("bar", 20)
       );
 
     MockDataSetProducer testProducer2 = new MockDataSetProducer()
       .addTable(table,
-        new MockRecord(table, "aaa", "5"),
-        new MockRecord(table, "aaa", "1"),
-        new MockRecord(table, "bbb", "20"),
-        new MockRecord(table, "aaa", "10"),
-        new MockRecord(table, "bbb", "1"),
-        new MockRecord(table, "bbb", "5")
+        record().setString("foo", "aaa").setInteger("bar", 5),
+        record().setString("foo", "aaa").setInteger("bar", 1),
+        record().setString("foo", "bbb").setInteger("bar", 20),
+        record().setString("foo", "aaa").setInteger("bar", 10),
+        record().setString("foo", "bbb").setInteger("bar", 1),
+        record().setString("foo", "bbb").setInteger("bar", 5)
       );
 
     RecordComparator recordComparator = new RecordComparator(table, "foo", "bar");
 
-    Map<String, Comparator<Record>> map = new HashMap<String, Comparator<Record>>();
+    Map<String, Comparator<Record>> map = new HashMap<>();
     map.put("foo", recordComparator);
 
     DataSetHomology dataSetHomology = new DataSetHomology(map);
@@ -381,22 +463,22 @@ public class TestDataSetHomology {
 
     MockDataSetProducer testProducer1 = new MockDataSetProducer()
       .addTable(table,
-        new MockRecord(table, "aaa", "1"),
-        new MockRecord(table, "ccc", "3"),
-        new MockRecord(table, "ddd", "4"),
-        new MockRecord(table, "eee", "5"),
-        new MockRecord(table, "fff", "6")
+        record().setString("foo", "aaa").setInteger("bar", 1),
+        record().setString("foo", "ccc").setInteger("bar", 3),
+        record().setString("foo", "ddd").setInteger("bar", 4),
+        record().setString("foo", "eee").setInteger("bar", 5),
+        record().setString("foo", "fff").setInteger("bar", 6)
       );
 
     MockDataSetProducer testProducer2 = new MockDataSetProducer()
       .addTable(table,
-        new MockRecord(table, "eee", "5"),
-        new MockRecord(table, "aaa", "1"),
-        new MockRecord(table, "bbb", "2"),
-        new MockRecord(table, "ddd", "4")
+        record().setString("foo", "eee").setInteger("bar", 5),
+        record().setString("foo", "aaa").setInteger("bar", 1),
+        record().setString("foo", "bbb").setInteger("bar", 2),
+        record().setString("foo", "ddd").setInteger("bar", 4)
       );
 
-    Map<String, Comparator<Record>> map = new HashMap<String, Comparator<Record>>();
+    Map<String, Comparator<Record>> map = new HashMap<>();
     map.put("foo", new RecordComparator(table, "foo"));
 
     DataSetHomology dataSetHomology = new DataSetHomology(map);

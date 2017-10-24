@@ -111,7 +111,7 @@ public class TestSqlQueryDataSetProducer {
       .willReturn(connection);
     ResultSet resultSet = mock(ResultSet.class);
     given(statement.executeQuery(query)).willReturn(resultSet);
-    given(resultSet.findColumn("column")).willReturn(0);
+    given(resultSet.findColumn("Column")).willReturn(1);
 
     // When
     SqlQueryDataSetProducer producer = new SqlQueryDataSetProducer(table, query, dataSource, sqlDialect);

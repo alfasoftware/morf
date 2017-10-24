@@ -20,6 +20,9 @@ import static org.hamcrest.Matchers.equalTo;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.alfasoftware.morf.metadata.Column;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
@@ -32,7 +35,14 @@ import org.hamcrest.Matcher;
  */
 public final class RecordMatcher extends BaseMatcher<Record> {
 
-  private final Map<String, Matcher<String>> fieldValues = new HashMap<>();
+  private static final Log log = LogFactory.getLog(RecordMatcher.class);
+
+  // If you find yourself wondering why we store these separately, it's so that we can
+  // check the matches using getValue() and getObject().  getObject() will not have been
+  // uniformly implemented on mocks in code dating from before the method was created.
+  // Until we completely refactor all use of getValue(), this is safest.
+  private final Map<String, Matcher<String>> stringValues = new HashMap<>();
+  private final Map<Column, Matcher<?>> objectValues = new HashMap<>();
 
 
   public static RecordMatcher create() {
@@ -45,13 +55,25 @@ public final class RecordMatcher extends BaseMatcher<Record> {
 
 
   public RecordMatcher withValue(String field, Matcher<String> value) {
-    fieldValues.put(field, value);
+    stringValues.put(field, value);
     return this;
   }
 
 
   public RecordMatcher withValue(String field, String value) {
-    fieldValues.put(field, equalTo(value));
+    stringValues.put(field, equalTo(value));
+    return this;
+  }
+
+
+  public RecordMatcher withObject(Column column, Matcher<Object> value) {
+    objectValues.put(column, value);
+    return this;
+  }
+
+
+  public RecordMatcher withObject(Column column, Object value) {
+    objectValues.put(column, equalTo(value));
     return this;
   }
 
@@ -62,8 +84,26 @@ public final class RecordMatcher extends BaseMatcher<Record> {
       return false;
     }
     final Record record = (Record)item;
-    for (Map.Entry<String, Matcher<String>> matcher : fieldValues.entrySet()) {
-      if (!matcher.getValue().matches(record.getValue(matcher.getKey()))) {
+
+    // Check values using getValue(), because we know they will have been mocked
+    // on mock Record implementations dating to before the creation of getObject().
+    // When getValue() is removed, we can remove this
+    for (Map.Entry<String, Matcher<String>> entry : stringValues.entrySet()) {
+      Matcher<String> expected = entry.getValue();
+      @SuppressWarnings("deprecation")
+      String actual = record.getValue(entry.getKey());
+      if (!expected.matches(actual)) {
+        log.warn(actual + " mismatches " + expected);
+        return false;
+      }
+    }
+
+    // This bit will stay though.
+    for (Map.Entry<Column, Matcher<?>> entry : objectValues.entrySet()) {
+      Matcher<?> expected = entry.getValue();
+      Object actual = record.getObject(entry.getKey());
+      if (!expected.matches(actual)) {
+        log.warn(actual + " mismatches " + expected);
         return false;
       }
     }
@@ -73,10 +113,28 @@ public final class RecordMatcher extends BaseMatcher<Record> {
 
   @Override
   public void describeTo(Description description) {
-    description
-      .appendText("is a Record");
-    for (Map.Entry<String, Matcher<String>> matcher : fieldValues.entrySet()) {
-      description.appendText(" with value of [" + matcher.getKey() + "] that ").appendDescriptionOf(matcher.getValue());
+    description.appendText("is a Record[");
+    boolean first = true;
+    for (Map.Entry<String, Matcher<String>> matcher : stringValues.entrySet()) {
+      if (!first) {
+        description.appendText(", ");
+      }
+      description
+        .appendText(matcher.getKey())
+        .appendText(" matches ")
+        .appendDescriptionOf(matcher.getValue());
+      first = false;
     }
+    for (Map.Entry<Column, Matcher<?>> matcher : objectValues.entrySet()) {
+      if (!first) {
+        description.appendText(", ");
+      }
+      description
+        .appendText(matcher.getKey().getName())
+        .appendText(" matches ")
+        .appendDescriptionOf(matcher.getValue());
+      first = false;
+    }
+    description.appendText("]");
   }
 }

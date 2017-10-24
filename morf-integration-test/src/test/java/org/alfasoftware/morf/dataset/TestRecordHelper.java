@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.dataset;
 
+import static org.alfasoftware.morf.metadata.DataSetUtils.record;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.idColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
@@ -22,34 +23,25 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.versionColumn;
 import static org.junit.Assert.assertEquals;
 
 import java.math.BigDecimal;
-import java.util.List;
 
-import org.joda.time.LocalDate;
-import org.junit.Test;
-
-import org.alfasoftware.morf.jdbc.RecordValueToDatabaseSafeStringConverter;
-import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Table;
-import com.google.common.collect.ImmutableList;
+import org.joda.time.LocalDate;
+import org.junit.Test;
 
 /**
  * A testcase for the record helper.
  *
  *  @author Copyright (c) Alfa Financial Software 2011
  */
-public class TestRecordHelper implements RecordValueToDatabaseSafeStringConverter {
+public class TestRecordHelper {
 
   /**
    * Test that the helper joins the values for the record correctly
    */
   @Test
   public void testJoinRecordValues() {
-    // We will need a list of column names
-    List<String> columnNames = ImmutableList.<String> of("nonEmptyStringField", "emptyStringField", "nullStringField",
-      "floatField", "dateField", "booleanField");
 
-    // And a table with those fields
     Table table = table("fooTable")
       .columns(
         idColumn(),
@@ -62,21 +54,45 @@ public class TestRecordHelper implements RecordValueToDatabaseSafeStringConverte
         column("booleanField", DataType.BOOLEAN, 10)        // converted to lowercase
       );
 
-    // Tab delimiter will do
     String delimiter = "\t";
+    String valueForNull = "\\N";
 
-    // ... now a record with some interesting values for the columns
-    // Need to defer the translation to the dialect!
     assertEquals(
-      "Joined record", "bar\t\\N\t\\N\t123.45\t20100101\t1",
-      RecordHelper.joinRecordValues(table, new MockRecord(table, "1", "1", "bar", "", null, "123.45", "20100101", "True"),
-        columnNames, delimiter, this));
+      "Joined record", "1\t1\tbar\t\\N\t\\N\t123.45\t2010-01-01\ttrue",
+      RecordHelper.joinRecordValues(
+        table.columns(),
+        record()
+          .setInteger(idColumn().getName(), 1)
+          .setInteger(versionColumn().getName(), 1)
+          .setString("nonEmptyStringField", "bar")
+          .setString("emptyStringField", "")
+          .setString("nullStringField", null)
+          .setString("floatField", "123.45")
+          .setDate("dateField", java.sql.Date.valueOf("2010-01-01"))
+          .setBoolean("booleanField", true),
+        delimiter,
+        valueForNull
+      )
+    );
 
-    // a single space needs to be handled too, and falses
+    // Also check a single space and falses
     assertEquals(
-      "Joined record", "bar\t \t\\N\t123.45\t20100101\t0",
-      RecordHelper.joinRecordValues(table, new MockRecord(table, "1", "1", "bar", " ", null, "123.45", "20100101", "False"),
-        columnNames, delimiter, this));
+      "Joined record", "1\t1\tbar\t \t\\N\t123.45\t2010-01-01\tfalse",
+      RecordHelper.joinRecordValues(
+        table.columns(),
+        record()
+          .setInteger(idColumn().getName(), 1)
+          .setInteger(versionColumn().getName(), 1)
+          .setString("nonEmptyStringField", "bar")
+          .setString("emptyStringField", " ")
+          .setString("nullStringField", null)
+          .setString("floatField", "123.45")
+          .setDate("dateField", java.sql.Date.valueOf("2010-01-01"))
+          .setBoolean("booleanField", false),
+        delimiter,
+        valueForNull
+      )
+    );
   }
 
 
@@ -85,6 +101,20 @@ public class TestRecordHelper implements RecordValueToDatabaseSafeStringConverte
    */
   @Test
   public void testConvertToComparableType() {
+
+    assertEquals("foo", RecordHelper.convertToComparableType(column("blah", DataType.STRING, 10), record().setString("blah", "foo")));
+
+    assertEquals(new BigDecimal("123"), RecordHelper.convertToComparableType(column("blah", DataType.DECIMAL, 10, 0), record().setString("blah", "123")));
+    assertEquals(new BigDecimal("123.00"), RecordHelper.convertToComparableType(column("blah", DataType.DECIMAL, 13, 2), record().setString("blah", "123")));
+    assertEquals(new BigDecimal("123.46"), RecordHelper.convertToComparableType(column("blah", DataType.DECIMAL, 13, 2), record().setString("blah", "123.456")));
+  }
+
+  /**
+   * Test that the data type conversion returns
+   */
+  @SuppressWarnings("deprecation")
+  @Test
+  public void testConvertToComparableTypeOld() {
 
     assertEquals("foo", RecordHelper.convertToComparableType(column("blah", DataType.STRING, 10), "foo"));
 
@@ -121,21 +151,5 @@ public class TestRecordHelper implements RecordValueToDatabaseSafeStringConverte
     assertEquals("false", RecordHelper.javaTypeToRecordValue(false));
     assertEquals("5.2232", RecordHelper.javaTypeToRecordValue(5.2232D));
     assertEquals("2041-12-31", RecordHelper.javaTypeToRecordValue(new LocalDate(2041, 12, 31)));
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.dataset.RecordHelper.RecordValueToDatabaseSafeStringConverter#recordValueToDatabaseSafeString(org.alfasoftware.morf.metadata.Column, java.lang.String)
-   */
-  @Override
-  public String recordValueToDatabaseSafeString(Column column, String sourceValue) {
-    Comparable<?> comparableType = RecordHelper.convertToComparableType(column, sourceValue);
-    if (comparableType == null) {
-      return "\\N";
-    } else if (comparableType instanceof Boolean) {
-      return (Boolean)comparableType ? "1" : "0";
-    } else {
-      return comparableType.toString();
-    }
   }
 }

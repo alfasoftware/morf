@@ -36,7 +36,7 @@ public class MockDataSetConsumer implements DataSetConsumer {
   /**
    * Store events as they are received.
    */
-  protected final List<String> events = new ArrayList<String>();
+  protected final List<String> events = new ArrayList<>();
 
   /**
    * @see org.alfasoftware.morf.dataset.DataSetConsumer#open()
@@ -60,16 +60,16 @@ public class MockDataSetConsumer implements DataSetConsumer {
   @Override
   public void table(Table table, Iterable<Record> records) {
     currentTable = table;
-    List<String> columnNames = new ArrayList<String>();
+    List<String> columnNames = new ArrayList<>();
     for (Column column : currentTable.columns()) {
       columnNames.add("column " + column.getName());
     }
     events.add("table " + currentTable.getName() + " " + columnNames.toString());
 
     for (Record record : records) {
-      List<String> recordValues = new ArrayList<String>();
+      List<String> recordValues = new ArrayList<>();
       for (Column column : currentTable.columns()) {
-        recordValues.add(record.getValue(column.getName()));
+        recordValues.add(record.getString(column.getName()));
       }
       events.add(recordValues.toString());
     }

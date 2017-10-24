@@ -15,22 +15,21 @@
 
 package org.alfasoftware.morf.jdbc.oracle;
 
-import static org.alfasoftware.morf.metadata.DataType.BOOLEAN;
 import static org.alfasoftware.morf.metadata.DataType.DECIMAL;
 import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
 import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
 import static org.alfasoftware.morf.sql.SqlUtils.parameter;
 
+import java.math.BigDecimal;
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
-import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
-import org.alfasoftware.morf.jdbc.RecordValueToDatabaseSafeStringConverter;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.metadata.Column;
@@ -68,7 +67,7 @@ import com.google.common.collect.Lists;
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-class OracleDialect extends SqlDialect implements RecordValueToDatabaseSafeStringConverter {
+class OracleDialect extends SqlDialect {
 
   private static final Log log = LogFactory.getLog(OracleDialect.class);
 
@@ -525,16 +524,14 @@ class OracleDialect extends SqlDialect implements RecordValueToDatabaseSafeStrin
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#prepareStatementParameter(NamedParameterPreparedStatement, SqlParameter, int, java.lang.String)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#prepareBooleanParameter(org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement, java.lang.Boolean, org.alfasoftware.morf.sql.element.SqlParameter)
    */
   @Override
-  public void prepareStatementParameter(NamedParameterPreparedStatement statement, SqlParameter parameter, String value) {
-    if (parameter.getMetadata().getType() == BOOLEAN) {
-      SqlParameter decimalVersion = parameter(parameter.getImpliedName()).type(DECIMAL).width(1, 0);
-      super.prepareStatementParameter(statement, decimalVersion, convertColumnValueToDatabaseSafeString(parameter.getMetadata(), value, null));
-    } else {
-      super.prepareStatementParameter(statement, parameter, value);
-    }
+  protected void prepareBooleanParameter(NamedParameterPreparedStatement statement, Boolean boolVal, SqlParameter parameter) throws SQLException {
+    statement.setBigDecimal(
+      parameter(parameter.getImpliedName()).type(DECIMAL).width(1),
+      boolVal == null ? null : boolVal ? BigDecimal.ONE : BigDecimal.ZERO
+    );
   }
 
 
@@ -588,18 +585,6 @@ class OracleDialect extends SqlDialect implements RecordValueToDatabaseSafeStrin
   @Override
   protected String getSqlForIsNull(Function function) {
     return "nvl(" + getSqlFrom(function.getArguments().get(0)) + ", " + getSqlFrom(function.getArguments().get(1)) + ") ";
-  }
-
-
-  /**
-   * Converts the {@link Record} value to an Oracle-compatible SQL expression,
-   * using an empty string for nulls.
-   *
-   * @see org.alfasoftware.morf.dataset.RecordHelper.RecordValueToDatabaseSafeStringConverter#recordValueToDatabaseSafeString(org.alfasoftware.morf.metadata.Column, java.lang.String)
-   */
-  @Override
-  public String recordValueToDatabaseSafeString(Column column, String sourceValue) {
-    return convertColumnValueToDatabaseSafeString(column, sourceValue, "");
   }
 
 

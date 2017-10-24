@@ -17,7 +17,6 @@ package org.alfasoftware.morf.jdbc.mysql;
 
 import static com.google.common.base.Predicates.instanceOf;
 import static com.google.common.collect.Iterables.tryFind;
-import static org.alfasoftware.morf.metadata.DataType.BOOLEAN;
 import static org.alfasoftware.morf.metadata.DataType.INTEGER;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
@@ -35,10 +34,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
-import org.alfasoftware.morf.jdbc.RecordValueToDatabaseSafeStringConverter;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor.ResultSetProcessor;
@@ -74,7 +71,7 @@ import com.google.common.collect.Lists;
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-class MySqlDialect extends SqlDialect implements RecordValueToDatabaseSafeStringConverter {
+class MySqlDialect extends SqlDialect {
 
   private static final long AUTONUMBER_LIMIT = 1000;
 
@@ -298,10 +295,7 @@ class MySqlDialect extends SqlDialect implements RecordValueToDatabaseSafeString
    */
   @Override
   public Collection<String> truncateTableStatements(Table table) {
-    // Truncate is actually slower on MySQL. This is bizarre. We should retest when we take a new
-    // version of MySQL other than 5.0.18 [StevenN - 20101105]
-
-    return deleteAllFromTableStatements(table);
+    return Arrays.asList("TRUNCATE " + table.getName());
   }
 
 
@@ -454,16 +448,12 @@ class MySqlDialect extends SqlDialect implements RecordValueToDatabaseSafeString
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#prepareStatementParameter(NamedParameterPreparedStatement, SqlParameter, int, java.lang.String)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#prepareBooleanParameter(org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement, java.lang.Boolean, org.alfasoftware.morf.sql.element.SqlParameter)
    */
   @Override
-  public void prepareStatementParameter(NamedParameterPreparedStatement statement, SqlParameter parameter, String value) {
-    if (parameter.getMetadata().getType() == BOOLEAN) {
-      SqlParameter integerVersion = parameter(parameter.getImpliedName()).type(INTEGER);
-      super.prepareStatementParameter(statement, integerVersion, convertColumnValueToDatabaseSafeString(parameter.getMetadata(), value, null));
-    } else {
-      super.prepareStatementParameter(statement, parameter, value);
-    }
+  protected void prepareBooleanParameter(NamedParameterPreparedStatement statement, Boolean boolVal, SqlParameter parameter) throws SQLException {
+    Integer intValue = boolVal == null ? null : boolVal ? 1 : 0;
+    super.prepareIntegerParameter(statement, intValue, parameter(parameter.getImpliedName()).type(INTEGER));
   }
 
 
@@ -551,18 +541,6 @@ class MySqlDialect extends SqlDialect implements RecordValueToDatabaseSafeString
     }
 
     return result.toString().trim();
-  }
-
-
-  /**
-   * Converts the {@link Record} value to a MySQL-compatible SQL expression,
-   * using "\N" for nulls.
-   *
-   * @see org.alfasoftware.morf.dataset.RecordHelper.RecordValueToDatabaseSafeStringConverter#recordValueToDatabaseSafeString(org.alfasoftware.morf.metadata.Column, java.lang.String)
-   */
-  @Override
-  public String recordValueToDatabaseSafeString(Column column, String sourceValue) {
-    return convertColumnValueToDatabaseSafeString(column, sourceValue, "\\N");
   }
 
 

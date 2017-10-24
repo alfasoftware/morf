@@ -29,7 +29,7 @@ import org.alfasoftware.morf.metadata.Table;
  */
 public class RecordComparator implements Comparator<Record> {
 
-  private final List<Column> columnSortOrder = new ArrayList<Column>();
+  private final List<Column> columnSortOrder = new ArrayList<>();
 
   /**
    * @param table The table being compared.
@@ -58,8 +58,8 @@ public class RecordComparator implements Comparator<Record> {
 
     for (Column column : columnSortOrder) {
 
-      Comparable value1 = RecordHelper.convertToComparableType(column, o1.getValue(column.getName()));
-      Comparable value2 = RecordHelper.convertToComparableType(column, o2.getValue(column.getName()));
+      Comparable value1 = RecordHelper.convertToComparableType(column, o1);
+      Comparable value2 = RecordHelper.convertToComparableType(column, o2);
 
       if (value1 == null && value2 == null) {
         continue; // next column

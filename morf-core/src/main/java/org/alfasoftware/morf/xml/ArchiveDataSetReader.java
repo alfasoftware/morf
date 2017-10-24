@@ -18,6 +18,7 @@ package org.alfasoftware.morf.xml;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -73,12 +74,24 @@ class ArchiveDataSetReader extends BaseDataSetReader implements XmlInputStreamPr
       throw new RuntimeException("Error opening zip archive [" + file + "]", e);
     }
 
+    ArrayList<? extends ZipEntry> list = Collections.list(zipFile.entries());
+
+    if (list.isEmpty()) {
+      throw new IllegalArgumentException("Archive file [" + file + "] is empty");
+    }
+
+    boolean tableAdded = false;
     // add all the table names
     for (ZipEntry entry : Collections.list(zipFile.entries())) {
       Matcher matcher = filenamePattern.matcher(entry.getName());
       if (matcher.matches()) {
         addTableName(matcher.group(1), entry.getName());
+        tableAdded = true;
       }
+    }
+
+    if (!tableAdded) {
+      throw new IllegalArgumentException("Archive file [" + file + "] contains no tables in root directory");
     }
   }
 
@@ -119,7 +132,7 @@ class ArchiveDataSetReader extends BaseDataSetReader implements XmlInputStreamPr
     ZipEntry entry = zipFile.getEntry(fileName);
 
     if (entry == null) {
-      throw new IllegalArgumentException("Could not find zip entry ["+fileName+"] for table [" + tableName + "]");
+      throw new IllegalArgumentException("Could not find zip entry [" + fileName + "] for table [" + tableName + "]");
     }
 
     try {

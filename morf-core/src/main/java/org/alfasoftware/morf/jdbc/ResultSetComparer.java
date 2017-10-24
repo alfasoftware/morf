@@ -47,7 +47,6 @@ import java.util.Set;
 import org.alfasoftware.morf.jdbc.ResultSetMismatch.MismatchType;
 import org.alfasoftware.morf.metadata.StatementParameters;
 import org.alfasoftware.morf.sql.SelectStatement;
-import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.stringcomparator.DatabaseEquivalentStringComparator;
 import org.apache.commons.lang.ArrayUtils;
 
@@ -270,15 +269,8 @@ public class ResultSetComparer {
       try {
         statementLeft = NamedParameterPreparedStatement.parse(leftSqlDialect.convertStatementToSQL(left)).createForQueryOn(leftConnection);
         statementRight = NamedParameterPreparedStatement.parse(rightSqlDialect.convertStatementToSQL(right)).createForQueryOn(rightConnection);
-
-        for(SqlParameter param : leftSqlDialect.extractParameters(left)) {
-          leftSqlDialect.prepareStatementParameter(statementLeft, param, leftStatementParameters.getValue(param.getImpliedName()));
-        }
-
-        for(SqlParameter param : rightSqlDialect.extractParameters(right)) {
-          rightSqlDialect.prepareStatementParameter(statementRight, param, rightStatementParameters.getValue(param.getImpliedName()));
-        }
-
+        leftSqlDialect.prepareStatementParameters(statementLeft, leftSqlDialect.extractParameters(left), leftStatementParameters);
+        rightSqlDialect.prepareStatementParameters(statementRight, rightSqlDialect.extractParameters(right), rightStatementParameters);
         rsLeft = statementLeft.executeQuery();
         rsRight = statementRight.executeQuery();
         return compare(keyColumns, rsLeft, rsRight, callback);

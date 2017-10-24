@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.xml;
 
+import static org.alfasoftware.morf.metadata.DataSetUtils.record;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
@@ -26,14 +27,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.junit.Test;
-
 import org.alfasoftware.morf.dataset.DataSetConsumer;
 import org.alfasoftware.morf.dataset.DataSetConsumer.CloseState;
-import org.alfasoftware.morf.dataset.MockRecord;
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Table;
+import org.junit.Test;
+
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
@@ -69,8 +69,13 @@ public class TestDataMaskingXmlDataSetConsumer {
       );
 
     testConsumer.open();
-    List<Record> mockRecords = new ArrayList<Record>();
-    mockRecords.add(new MockRecord(metaData, "1", "1", "abc", "123", "456.78"));
+    List<Record> mockRecords = new ArrayList<>();
+    mockRecords.add(record()
+      .setInteger("id", 1)
+      .setInteger("version", 1)
+      .setString("bar", "abc")
+      .setString("baz", "123")
+      .setString("bob", "456.78"));
     testConsumer.table(metaData, mockRecords);
     testConsumer.close(CloseState.COMPLETE);
 

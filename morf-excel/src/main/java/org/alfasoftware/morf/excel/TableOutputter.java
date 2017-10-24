@@ -20,6 +20,7 @@ import static org.alfasoftware.morf.metadata.DataType.DECIMAL;
 import static org.alfasoftware.morf.metadata.DataType.INTEGER;
 import static org.alfasoftware.morf.metadata.DataType.STRING;
 
+import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -483,36 +484,35 @@ class TableOutputter {
   private void createCell(final WritableSheet currentWorkSheet, Column column, int columnNumber, int rowIndex, Record record, WritableCellFormat format) {
     WritableCell writableCell = null;
 
-    String rowValue = null;
-    rowValue = record.getValue(column.getName());
     switch (column.getType()) {
       case STRING:
-        writableCell = new Label(columnNumber, rowIndex, rowValue);
+        writableCell = new Label(columnNumber, rowIndex, record.getString(column.getName()));
         break;
 
       case DECIMAL:
-
+        BigDecimal decimalValue = record.getBigDecimal(column.getName());
         try {
-          if (rowValue == null) {
+          if (decimalValue == null) {
             writableCell = new jxl.write.Blank(columnNumber, rowIndex);
           } else {
-            writableCell = new jxl.write.Number(columnNumber, rowIndex, Double.parseDouble(rowValue));
+            writableCell = new jxl.write.Number(columnNumber, rowIndex, decimalValue.doubleValue());
           }
         } catch (Exception e) {
-          throw new UnsupportedOperationException("Cannot generate Excel cell (parseDouble) for data [" + rowValue + "] in column [" + column.getName() + "] of table [" + currentWorkSheet.getName() + "]", e);
+          throw new UnsupportedOperationException("Cannot generate Excel cell (parseDouble) for data [" + decimalValue + "] in column [" + column.getName() + "] of table [" + currentWorkSheet.getName() + "]", e);
         }
         break;
 
       case BIG_INTEGER:
       case INTEGER:
+        Long longValue = record.getLong(column.getName());
         try {
-          if (rowValue == null) {
+          if (longValue == null) {
             writableCell = new jxl.write.Blank(columnNumber, rowIndex);
           } else {
-            writableCell = new jxl.write.Number(columnNumber, rowIndex, Integer.parseInt(rowValue));
+            writableCell = new jxl.write.Number(columnNumber, rowIndex, longValue);
           }
         } catch (Exception e) {
-          throw new UnsupportedOperationException("Cannot generate Excel cell (parseInt) for data [" + rowValue + "] in column [" + column.getName() + "] of table [" + currentWorkSheet.getName() + "]", e);
+          throw new UnsupportedOperationException("Cannot generate Excel cell (parseInt) for data [" + longValue + "] in column [" + column.getName() + "] of table [" + currentWorkSheet.getName() + "]", e);
         }
         break;
 

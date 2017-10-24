@@ -55,6 +55,8 @@ import javax.net.ssl.X509TrustManager;
 import org.alfasoftware.morf.dataset.DataSetProducer;
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.DataSetUtils;
+import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
@@ -999,7 +1001,10 @@ public class XmlDataSetProducer implements DataSetProducer {
     public Record next() {
       if (hasNext()) {
         // Buffer this record
-        Record result = new PullProcessorRecord();
+        RecordBuilder result = DataSetUtils.record();
+        for (String columnName : columnNames) {
+          result.setString(columnName.toUpperCase(), xmlPullParser.getAttributeValue(XmlDataSetNode.URI, columnName));
+        }
 
         // Is there another
         currentTagName = readNextTagInsideParent(XmlDataSetNode.DATA_NODE);
@@ -1018,42 +1023,5 @@ public class XmlDataSetProducer implements DataSetProducer {
     public void remove() {
       throw new UnsupportedOperationException("Cannot remove item from a record iterator");
     }
-
-    /**
-     * Implementation of {@link Record} that reads attribute values from the
-     * pull parser.
-     *
-     * @author Copyright (c) Alfa Financial Software 2009
-     */
-    private final class PullProcessorRecord implements Record {
-
-      /**
-       * Buffers the record values so the pull parser can move on.
-       */
-      private final Map<String, String> values = new HashMap<>();
-
-
-      /**
-       * Buffers the record values.
-       */
-      public PullProcessorRecord() {
-        super();
-
-        for (String columnName : columnNames) {
-          values.put(columnName.toUpperCase(), xmlPullParser.getAttributeValue(XmlDataSetNode.URI, columnName));
-        }
-      }
-
-
-      /**
-       * @see org.alfasoftware.morf.dataset.Record#getValue(java.lang.String)
-       */
-      @Override
-      public String getValue(String name) {
-        return values.get(name.toUpperCase());
-      }
-
-    }
   }
-
 }

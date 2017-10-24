@@ -12,7 +12,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
-import java.util.NoSuchElementException;
 
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
@@ -56,15 +55,18 @@ public class TestResultSetIterator {
     String query = "select column from table";
     ResultSet resultSet = mock(ResultSet.class);
     given(statement.executeQuery(query)).willReturn(resultSet);
-    given(resultSet.findColumn("column")).willReturn(0);
+    given(resultSet.findColumn("Column")).willReturn(1);
 
     // When
-    try (ResultSetIterator resultSetIterator = new ResultSetIterator(table, query, connection, sqlDialect)) {
+    @SuppressWarnings("resource") /* Resources are closed in ResultSetIterator.close()
+                                     automatically when caller attempts to advance past
+                                     the last row in the result set. */
+    ResultSetIterator resultSetIterator = new ResultSetIterator(table, query, connection, sqlDialect);
 
-      // Then
-      assertFalse(resultSetIterator.hasNext());
-
-    }
+    // Then
+    assertFalse(resultSetIterator.hasNext());
+    verify(statement).close();
+    verify(resultSet).close();
   }
 
 
@@ -79,29 +81,21 @@ public class TestResultSetIterator {
     String query = "select column from table";
     ResultSet resultSet = mock(ResultSet.class);
     given(statement.executeQuery(query)).willReturn(resultSet);
-    given(resultSet.findColumn("column")).willReturn(0);
+    given(resultSet.findColumn("Column")).willReturn(1);
     given(resultSet.next()).willReturn(true).willReturn(true).willReturn(false);
 
     // When
-    try (ResultSetIterator resultSetIterator = new ResultSetIterator(table, query, connection, sqlDialect)) {
-
-      // Then
-      assertTrue(resultSetIterator.hasNext());
-      resultSetIterator.next();
-      resultSetIterator.next();
-      assertFalse(resultSetIterator.hasNext());
-
-      boolean gotException = false;
-      try {
-        resultSetIterator.next();
-      } catch (NoSuchElementException e) {
-        gotException = true;
-      }
-      assertTrue(gotException);
-
-    }
+    @SuppressWarnings("resource") /* Resources are closed in ResultSetIterator.close()
+                                     automatically when caller attempts to advance past
+                                     the last row in the result set. */
+    ResultSetIterator resultSetIterator = new ResultSetIterator(table, query, connection, sqlDialect);
 
     // Then
+    assertTrue(resultSetIterator.hasNext());
+    resultSetIterator.next();
+    resultSetIterator.next();
+    resultSetIterator.next();
+    assertFalse(resultSetIterator.hasNext());
     verify(resultSet).close();
     verify(statement).close();
   }
@@ -118,7 +112,7 @@ public class TestResultSetIterator {
     String query = "select column from table";
     ResultSet resultSet = mock(ResultSet.class);
     given(statement.executeQuery(query)).willReturn(resultSet);
-    given(resultSet.findColumn("column")).willReturn(0);
+    given(resultSet.findColumn("Column")).willReturn(1);
 
     // When
     ResultSetIterator resultSetIterator = new ResultSetIterator(table, query, connection, sqlDialect);
@@ -145,20 +139,18 @@ public class TestResultSetIterator {
     Table table = buildTable();
     String query = "select column from table";
     ResultSet resultSet = mock(ResultSet.class);
-    given(resultSet.findColumn("column")).willReturn(0);
+    given(resultSet.findColumn("Column")).willReturn(1);
     given(sqlDialect.convertStatementToSQL(any(SelectStatement.class))).willReturn(query);
     given(statement.executeQuery(query)).willReturn(resultSet);
 
     // When
+    @SuppressWarnings("resource") /* Resources are closed in ResultSetIterator.close()
+                                     automatically when caller attempts to advance past
+                                     the last row in the result set. */
     ResultSetIterator resultSetIterator = new ResultSetIterator(table, Lists.newArrayList(), connection, sqlDialect);
 
     // Then
     assertFalse(resultSetIterator.hasNext());
-
-    // When
-    resultSetIterator.close();
-
-    // Then
     verify(resultSet).close();
     verify(statement).close();
   }
@@ -174,24 +166,23 @@ public class TestResultSetIterator {
     Table table = buildTable();
     String query = "select column from table";
     ResultSet resultSet = mock(ResultSet.class);
-    given(resultSet.findColumn("column")).willReturn(0);
+    given(resultSet.findColumn("Column")).willReturn(1);
     given(sqlDialect.convertStatementToSQL(any(SelectStatement.class))).willReturn(query);
     given(statement.executeQuery(query)).willReturn(resultSet);
-    given(resultSet.findColumn("column")).willReturn(0);
     given(resultSet.next()).willReturn(true).willReturn(true).willReturn(false);
 
     // When
-    try (ResultSetIterator resultSetIterator = new ResultSetIterator(table, Lists.newArrayList(), connection, sqlDialect)) {
-
-      // Then
-      assertTrue(resultSetIterator.hasNext());
-      resultSetIterator.next();
-      resultSetIterator.next();
-      assertFalse(resultSetIterator.hasNext());
-
-    }
+    @SuppressWarnings("resource") /* Resources are closed in ResultSetIterator.close()
+                                     automatically when caller attempts to advance past
+                                     the last row in the result set. */
+    ResultSetIterator resultSetIterator = new ResultSetIterator(table, Lists.newArrayList(), connection, sqlDialect);
 
     // Then
+    assertTrue(resultSetIterator.hasNext());
+    resultSetIterator.next();
+    resultSetIterator.next();
+    resultSetIterator.next();
+    assertFalse(resultSetIterator.hasNext());
     verify(resultSet).close();
     verify(statement).close();
   }

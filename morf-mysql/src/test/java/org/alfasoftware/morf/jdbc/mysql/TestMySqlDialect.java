@@ -164,7 +164,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedTruncateTableStatements() {
-    return Arrays.asList("delete from Test");
+    return Arrays.asList("TRUNCATE Test");
   }
 
 
@@ -173,7 +173,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedTruncateTempTableStatements() {
-    return Arrays.asList("delete from TempTest");
+    return Arrays.asList("TRUNCATE TempTest");
   }
 
 

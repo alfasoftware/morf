@@ -24,6 +24,13 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Properties;
 
+import org.alfasoftware.morf.dataset.DataSetConsumer;
+import org.alfasoftware.morf.dataset.Record;
+import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.xml.XmlStreamProvider.XmlOutputStreamProvider;
 import org.apache.commons.lang.StringUtils;
 import org.apache.xml.serializer.Method;
 import org.apache.xml.serializer.OutputPropertiesFactory;
@@ -33,14 +40,6 @@ import org.xml.sax.Attributes;
 import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.AttributesImpl;
-
-import org.alfasoftware.morf.dataset.DataSetConsumer;
-import org.alfasoftware.morf.dataset.Record;
-import org.alfasoftware.morf.metadata.Column;
-import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.Index;
-import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.xml.XmlStreamProvider.XmlOutputStreamProvider;
 
 /**
  * Serialises data sets to XML.
@@ -238,7 +237,7 @@ public class XmlDataSetConsumer implements DataSetConsumer {
    * @return the value of column from record
    */
   protected String getValue(Record record, Column column, @SuppressWarnings("unused") String table) {
-    return record.getValue(column.getName());
+    return record.getString(column.getName());
   }
 
 
@@ -276,7 +275,7 @@ public class XmlDataSetConsumer implements DataSetConsumer {
     }
 
     // we need to sort the indexes by name to ensure consistency, since indexes don't have an explicit "sequence" in databases.
-    List<Index> indexes = new ArrayList<Index>(table.indexes());
+    List<Index> indexes = new ArrayList<>(table.indexes());
     Collections.sort(indexes, new Comparator<Index>() {
       @Override
       public int compare(Index o1, Index o2) {

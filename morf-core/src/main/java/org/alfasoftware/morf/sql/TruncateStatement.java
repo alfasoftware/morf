@@ -62,7 +62,7 @@ public class TruncateStatement implements Statement,  DeepCopyableWithTransforma
    */
   @Override
   public String toString() {
-    return "SQL TRUNCATE TABLE [ + table + ]";
+    return "SQL TRUNCATE TABLE [ " + table + " ]";
   }
 
 

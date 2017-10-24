@@ -423,8 +423,9 @@ public class OracleMetaDataProvider implements Schema {
    * @param dataTypeName The Oracle type name.
    * @param commentType the type of the column stored in a comment.
    * @return The DataType.
+   * @throws UnexpectedDataTypeException If data type cannot be parsed.
    */
-  private static DataType dataTypeForColumn(String dataTypeName, String commentType) {
+  private static DataType dataTypeForColumn(String columnName, String dataTypeName, String commentType) {
     /*
      * Oracle stores all numeric types as 'NUMBER', so we have no easy way of
      * identifying fields such as 'int' or 'big int'. As such, the actual data
@@ -457,7 +458,7 @@ public class OracleMetaDataProvider implements Schema {
       return DataType.DATE;
     }
     else {
-      throw new RuntimeException("Unexpected Oracle datatype: ["+dataTypeName+"]");
+      throw new UnexpectedDataTypeException("Unsupported data type [" + dataTypeName + "]" + " in [" + columnName + "]");
     }
   }
 
@@ -625,6 +626,15 @@ public class OracleMetaDataProvider implements Schema {
 
 
   /**
+   * {@inheritDoc}
+   *
+   * <p>The {@link Table} implementation returned may contain {@link Column} implementations
+   * which evaluate the metadata elements ({@link Column#getType()}, {@link Column#getWidth()}
+   * etc.) lazily.  If the database column type is not supported, this may throw an
+   * {@link UnexpectedDataTypeException} when evaluated.  This allows tables with unsupported
+   * data types to be enumerated (and thus co-exist in the database schema) but not be supported
+   * by the application.</p>
+   *
    * @see org.alfasoftware.morf.metadata.Schema#getTable(java.lang.String)
    */
   @Override
@@ -643,6 +653,15 @@ public class OracleMetaDataProvider implements Schema {
 
 
   /**
+   * {@inheritDoc}
+   *
+   * <p>The {@link Table} implementation returned may contain {@link Column} implementations
+   * which evaluate the metadata elements ({@link Column#getType()}, {@link Column#getWidth()}
+   * etc.) lazily.  If the database column type is not supported, this may throw an
+   * {@link UnexpectedDataTypeException} when evaluated.  This allows tables with unsupported
+   * data types to be enumerated (and thus co-exist in the database schema) but not be supported
+   * by the application.</p>
+   *
    * @see org.alfasoftware.morf.metadata.Schema#tables()
    */
   @Override
@@ -748,7 +767,7 @@ public class OracleMetaDataProvider implements Schema {
    * Morf to be included in a schema. Exceptions regarding the incompatibility
    * will only be thrown if the data type is queried.
    */
-  private static final class DeferredTypeColumn implements Column {
+  private static final class DeferredTypeColumn implements Column{
 
     private final String columnName;
     private final boolean nullable;
@@ -770,7 +789,7 @@ public class OracleMetaDataProvider implements Schema {
       this.defaultValue = defaultValue;
       this.properties = Suppliers.memoize(() -> {
         ColumnProperties columnProperties = new ColumnProperties();
-        DataType dataType = dataTypeForColumn(dataTypeName, commentType);
+        DataType dataType = dataTypeForColumn(columnName, dataTypeName, commentType);
 
         if (commentType == null && dataType == DataType.DECIMAL) {
           // Oracle doesn't store the precision for integer columns - so it's
@@ -834,6 +853,17 @@ public class OracleMetaDataProvider implements Schema {
     @Override
     public int getScale() {
       return properties.get().scale;
+    }
+  }
+
+
+  /**
+   * Exception thrown when data type evaluated is unsupported.
+   */
+  public static final class UnexpectedDataTypeException extends RuntimeException {
+
+    private UnexpectedDataTypeException(String string) {
+      super(string);
     }
   }
 }

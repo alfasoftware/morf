@@ -16,6 +16,9 @@
 package org.alfasoftware.morf.jdbc;
 
 import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toList;
+import static org.alfasoftware.morf.metadata.DataSetUtils.statementParameters;
+import static org.alfasoftware.morf.metadata.DataType.BLOB;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.idColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
@@ -44,6 +47,7 @@ import static org.alfasoftware.morf.sql.element.Function.max;
 import static org.alfasoftware.morf.sql.element.Function.min;
 import static org.alfasoftware.morf.sql.element.Function.random;
 import static org.alfasoftware.morf.sql.element.Function.sum;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -58,7 +62,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-import java.io.ByteArrayInputStream;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -157,6 +160,54 @@ public abstract class AbstractSqlDialectTest {
   private static final String FLOAT_FIELD = "floatField";
   private static final String INT_FIELD = "intField";
   private static final String STRING_FIELD = "stringField";
+
+
+  private static final byte[] BYTE_ARRAY = new byte[] { 2, 1, (byte) 164, 3, 14, 4, 9, 0, 0, 0, 48, 111, 114, 103, 46, 105, 110, 102, 105,
+    110, 105, 115, 112, 97, 110, 46, 117, 116, 105, 108, 46, 99, 111, 110, 99, 117, 114, 114, 101, 110, 116, 46, 67, 111, 110,
+    99, 117, 114, 114, 101, 110, 116, 72, 97, 115, 104, 83, 101, 116, 73, (byte) 186, 42, 14, (byte) 206, 6, (byte) 195,
+    (byte) 157, 0, 0, 0, 1, 0, 0, 0, 3, 109, 97, 112, 114, 0, 110, 4, 114, 0, 0, 0, 15, 0, 0, 0, 28, 66, 16, 9, 0, 0, 0, 46,
+    106, 97, 118, 97, 46, 117, 116, 105, 108, 46, 99, 111, 110, 99, 117, 114, 114, 101, 110, 116, 46, 67, 111, 110, 99, 117,
+    114, 114, 101, 110, 116, 72, 97, 115, 104, 77, 97, 112, 36, 83, 101, 103, 109, 101, 110, 116, 31, 54, 76, (byte) 144, 88,
+    (byte) 147, 41, 61, 0, 0, 0, 1, 0, 0, 0, 10, 108, 111, 97, 100, 70, 97, 99, 116, 111, 114, 38, 0, 9, 0, 0, 0, 40, 106, 97,
+    118, 97, 46, 117, 116, 105, 108, 46, 99, 111, 110, 99, 117, 114, 114, 101, 110, 116, 46, 108, 111, 99, 107, 115, 46, 82,
+    101, 101, 110, 116, 114, 97, 110, 116, 76, 111, 99, 107, 102, 85, (byte) 168, 44, 44, (byte) 200, 106, (byte) 235, 0, 0, 0,
+    1, 0, 0, 0, 4, 115, 121, 110, 99, 9, 0, 0, 0, 45, 106, 97, 118, 97, 46, 117, 116, 105, 108, 46, 99, 111, 110, 99, 117, 114,
+    114, 101, 110, 116, 46, 108, 111, 99, 107, 115, 46, 82, 101, 101, 110, 116, 114, 97, 110, 116, 76, 111, 99, 107, 36, 83,
+    121, 110, 99, (byte) 184, 30, (byte) 162, (byte) 148, (byte) 170, 68, 90, 124, 0, 0, 0, 0, 9, 0, 0, 0, 53, 106, 97, 118,
+    97, 46, 117, 116, 105, 108, 46, 99, 111, 110, 99, 117, 114, 114, 101, 110, 116, 46, 108, 111, 99, 107, 115, 46, 65, 98,
+    115, 116, 114, 97, 99, 116, 81, 117, 101, 117, 101, 100, 83, 121, 110, 99, 104, 114, 111, 110, 105, 122, 101, 114, 102, 85,
+    (byte) 168, 67, 117, 63, 82, (byte) 227, 0, 0, 0, 1, 0, 0, 0, 5, 115, 116, 97, 116, 101, 35, 0, 9, 0, 0, 0, 54, 106, 97,
+    118, 97, 46, 117, 116, 105, 108, 46, 99, 111, 110, 99, 117, 114, 114, 101, 110, 116, 46, 108, 111, 99, 107, 115, 46, 65,
+    98, 115, 116, 114, 97, 99, 116, 79, 119, 110, 97, 98, 108, 101, 83, 121, 110, 99, 104, 114, 111, 110, 105, 122, 101, 114,
+    51, (byte) 223, (byte) 175, (byte) 185, (byte) 173, 109, 111, (byte) 169, 0, 0, 0, 0, 22, 0, 22, 4, 59, (byte) 251, 4, 9,
+    0, 0, 0, 52, 106, 97, 118, 97, 46, 117, 116, 105, 108, 46, 99, 111, 110, 99, 117, 114, 114, 101, 110, 116, 46, 108, 111,
+    99, 107, 115, 46, 82, 101, 101, 110, 116, 114, 97, 110, 116, 76, 111, 99, 107, 36, 78, 111, 110, 102, 97, 105, 114, 83,
+    121, 110, 99, 101, (byte) 136, 50, (byte) 231, 83, 123, (byte) 191, 11, 0, 0, 0, 0, 59, (byte) 252, 0, 0, 0, 0, 63, 64, 0,
+    0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63,
+    64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0,
+    63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0,
+    0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255,
+    0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59,
+    (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4,
+    59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59,
+    (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0,
+    62, 6, 95, 48, 46, 116, 105, 105, 75, 0, 0, 0, 0, 62, 6, 95, 48, 46, 116, 105, 115, 75, 0, 0, 0, 0, 62, 6, 95, 48, 46, 110,
+    114, 109, 75, 0, 0, 0, 0, 62, 12, 115, 101, 103, 109, 101, 110, 116, 115, 46, 103, 101, 110, 75, 0, 0, 0, 0, 62, 6, 95, 48,
+    46, 112, 114, 120, 75, 0, 0, 0, 0, 62, 6, 95, 48, 46, 102, 100, 116, 75, 0, 0, 0, 0, 62, 6, 95, 48, 46, 102, 114, 113, 75,
+    0, 0, 0, 0, 62, 6, 95, 48, 46, 102, 110, 109, 75, 0, 0, 0, 0, 62, 10, 115, 101, 103, 109, 101, 110, 116, 115, 95, 50, 75,
+    0, 0, 0, 0, 62, 6, 95, 48, 46, 102, 100, 120, 75, 0, 0, 0, 0, 1, 1, 53 };
+
+  private static final String BASE64_ENCODED = "AgGkAw4ECQAAADBvcmcuaW5maW5pc3Bhbi51dGlsLmNvbmN1cnJlbnQuQ29uY3VycmVudEhhc2hTZXRJuioOzgbDnQAAAAEAAAADbWFwcgBuBHIAAAAPAAAAH"
+      + "EIQCQAAAC5qYXZhLnV0aWwuY29uY3VycmVudC5Db25jdXJyZW50SGFzaE1hcCRTZWdtZW50HzZMkFiTKT0AAAABAAAACmxvYWRGYWN0b3ImAAkAAAAoa"
+      + "mF2YS51dGlsLmNvbmN1cnJlbnQubG9ja3MuUmVlbnRyYW50TG9ja2ZVqCwsyGrrAAAAAQAAAARzeW5jCQAAAC1qYXZhLnV0aWwuY29uY3VycmVudC5sb"
+      + "2Nrcy5SZWVudHJhbnRMb2NrJFN5bmO4HqKUqkRafAAAAAAJAAAANWphdmEudXRpbC5jb25jdXJyZW50LmxvY2tzLkFic3RyYWN0UXVldWVkU3luY2hyb"
+      + "25pemVyZlWoQ3U/UuMAAAABAAAABXN0YXRlIwAJAAAANmphdmEudXRpbC5jb25jdXJyZW50LmxvY2tzLkFic3RyYWN0T3duYWJsZVN5bmNocm9uaXplcj"
+      + "Pfr7mtbW+pAAAAABYAFgQ7+wQJAAAANGphdmEudXRpbC5jb25jdXJyZW50LmxvY2tzLlJlZW50cmFudExvY2skTm9uZmFpclN5bmNliDLnU3u/CwAAAAA"
+      + "7/AAAAAA/QAAABDv6BDv/AAAAAD9AAAAEO/oEO/8AAAAAP0AAAAQ7+gQ7/wAAAAA/QAAABDv6BDv/AAAAAD9AAAAEO/oEO/8AAAAAP0AAAAQ7+gQ7/wAA"
+      + "AAA/QAAABDv6BDv/AAAAAD9AAAAEO/oEO/8AAAAAP0AAAAQ7+gQ7/wAAAAA/QAAABDv6BDv/AAAAAD9AAAAEO/oEO/8AAAAAP0AAAAQ7+gQ7/wAAAAA/"
+      + "QAAABDv6BDv/AAAAAD9AAAAEO/oEO/8AAAAAP0AAAAQ7+gQ7/wAAAAA/QAAAPgZfMC50aWlLAAAAAD4GXzAudGlzSwAAAAA+Bl8wLm5ybUsAAAAAPgxz"
+      + "ZWdtZW50cy5nZW5LAAAAAD4GXzAucHJ4SwAAAAA+Bl8wLmZkdEsAAAAAPgZfMC5mcnFLAAAAAD4GXzAuZm5tSwAAAAA+CnNlZ21lbnRzXzJLAAAAAD4GX"
+      + "zAuZmR4SwAAAAABATU=";
 
 
   /**
@@ -4220,6 +4271,49 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * Tests SQL date conversion to string via databaseSafeStringtoRecordValue
+   *
+   * @throws SQLException If a SQL exception is thrown.
+   */
+  @Test
+  public void testSqlDateConversion() throws SQLException {
+    ResultSet rs = mock(ResultSet.class);
+
+    LocalDate localDate1 = new LocalDate(2010, 1, 1);
+    LocalDate localDate2 = new LocalDate(2010, 12, 21);
+    LocalDate localDate3 = new LocalDate(100, 1, 1);
+    LocalDate localDate4 = new LocalDate(9999, 12, 31);
+
+    java.sql.Date date1 = new java.sql.Date(localDate1.toDate().getTime());
+    java.sql.Date date2 = new java.sql.Date(localDate2.toDate().getTime());
+    java.sql.Date date3 = new java.sql.Date(localDate3.toDate().getTime());
+    java.sql.Date date4 = new java.sql.Date(localDate4.toDate().getTime());
+
+    when(rs.getDate(1)).thenReturn(date1);
+    when(rs.getDate(2)).thenReturn(date2);
+    when(rs.getDate(3)).thenReturn(date3);
+    when(rs.getDate(4)).thenReturn(date4);
+
+    Record record = testDialect.resultSetToRecord(rs, ImmutableList.of(
+      column("Date1", DataType.DATE),
+      column("Date2", DataType.DATE),
+      column("Date3", DataType.DATE),
+      column("Date4", DataType.DATE)
+    ));
+
+    assertEquals(localDate1, record.getLocalDate("Date1"));
+    assertEquals(localDate2, record.getLocalDate("Date2"));
+    assertEquals(localDate3, record.getLocalDate("Date3"));
+    assertEquals(localDate4, record.getLocalDate("Date4"));
+
+    assertEquals(date1, record.getDate("Date1"));
+    assertEquals(date2, record.getDate("Date2"));
+    assertEquals(date3, record.getDate("Date3"));
+    assertEquals(date4, record.getDate("Date4"));
+  }
+
+
+  /**
    * Calls callPrepareStatementParameter with a mock {@link PreparedStatement} and returns
    * the mock for analysis.
    *
@@ -4229,7 +4323,7 @@ public abstract class AbstractSqlDialectTest {
    */
   protected NamedParameterPreparedStatement callPrepareStatementParameter(SqlParameter parameter, String value) {
     NamedParameterPreparedStatement mockStatement = mock(NamedParameterPreparedStatement.class);
-    testDialect.prepareStatementParameter(mockStatement, parameter, value);
+    testDialect.prepareStatementParameters(mockStatement, ImmutableList.of(parameter), statementParameters().setString(parameter.getImpliedName(), value));
     return mockStatement;
   }
 
@@ -4848,32 +4942,27 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Tests formatting of numerical values in a {@link ResultSetRecord}.
+   * Tests formatting of numerical values in a {@link Record}.
    *
    * @throws SQLException when a database access error occurs
    */
   @Test
   public void testDecimalFormatter() throws SQLException {
-    assertEquals("Do nothing if no trailing zeroes", "123.123",
-      checkDatabaseSafeStringToRecordValue(DataType.DECIMAL, "test", "123.123"));
-    assertEquals("Remove trailing zeroes from genuine decimal", "123.123",
-      checkDatabaseSafeStringToRecordValue(DataType.DECIMAL, "test", "123.12300"));
-    assertEquals("Ignore zeroes that are not trailing", "0.00003",
-      checkDatabaseSafeStringToRecordValue(DataType.DECIMAL, "test", "000.00003"));
-    assertEquals("Remove trailing zeroes from zero value decimal", "0",
-      checkDatabaseSafeStringToRecordValue(DataType.DECIMAL, "test", "0.0000"));
-    assertNull("Nulls get passed through even for BigDecimals",
-      checkDatabaseSafeStringToRecordValue(DataType.DECIMAL, "test", null));
-    assertEquals("Do nothing to zero value integer", "0", checkDatabaseSafeStringToRecordValue(DataType.DECIMAL, "test", "0"));
-    assertEquals("Do nothing to zero ending integer", "200", checkDatabaseSafeStringToRecordValue(DataType.DECIMAL, "test", "200"));
-    assertEquals("Boolean: 0 --> false", "false", checkDatabaseSafeStringToRecordValue(DataType.BOOLEAN, "boolVal", "0"));
-    assertEquals("Boolean: 1 --> true", "true", checkDatabaseSafeStringToRecordValue(DataType.BOOLEAN, "boolVal", "1"));
-    assertEquals("Boolean: null --> null", null, checkDatabaseSafeStringToRecordValue(DataType.BOOLEAN, "boolVal", null));
+    assertEquals("Do nothing if no trailing zeroes", "123.123", checkDatabaseSafeStringToRecordValue(DataType.DECIMAL, "123.123"));
+    assertEquals("Remove trailing zeroes from genuine decimal", "123.123", checkDatabaseSafeStringToRecordValue(DataType.DECIMAL, "123.12300"));
+    assertEquals("Ignore zeroes that are not trailing", "0.00003", checkDatabaseSafeStringToRecordValue(DataType.DECIMAL, "000.00003"));
+    assertEquals("Remove trailing zeroes from zero value decimal", "0", checkDatabaseSafeStringToRecordValue(DataType.DECIMAL, "0.0000"));
+    assertNull("Nulls get passed through even for BigDecimals", checkDatabaseSafeStringToRecordValue(DataType.DECIMAL, null));
+    assertEquals("Do nothing to zero value integer", "0", checkDatabaseSafeStringToRecordValue(DataType.DECIMAL, "0"));
+    assertEquals("Do nothing to zero ending integer", "200", checkDatabaseSafeStringToRecordValue(DataType.DECIMAL, "200"));
+    assertEquals("Boolean: 0 --> false", "false", checkDatabaseSafeStringToRecordValue(DataType.BOOLEAN, "0"));
+    assertEquals("Boolean: 1 --> true", "true", checkDatabaseSafeStringToRecordValue(DataType.BOOLEAN, "1"));
+    assertEquals("Boolean: null --> null", null, checkDatabaseSafeStringToRecordValue(DataType.BOOLEAN, null));
   }
 
 
   /**
-   * Tests formatting of binary values in a {@link ResultSetRecord}.
+   * Tests formatting of binary values in record derived from a {@link ResultSet}.
    *
    * @throws SQLException when a database access error occurs
    */
@@ -4884,51 +4973,8 @@ public abstract class AbstractSqlDialectTest {
     assertNull("Null should result in null value", checkDatabaseByteArrayToRecordValue(null));
     assertEquals(
       "Value not transformed into Base64",
-      "AgGkAw4ECQAAADBvcmcuaW5maW5pc3Bhbi51dGlsLmNvbmN1cnJlbnQuQ29uY3VycmVudEhhc2hTZXRJuioOzgbDnQAAAAEAAAADbWFwcgBuBHIAAAAPAAAAH"
-          + "EIQCQAAAC5qYXZhLnV0aWwuY29uY3VycmVudC5Db25jdXJyZW50SGFzaE1hcCRTZWdtZW50HzZMkFiTKT0AAAABAAAACmxvYWRGYWN0b3ImAAkAAAAoa"
-          + "mF2YS51dGlsLmNvbmN1cnJlbnQubG9ja3MuUmVlbnRyYW50TG9ja2ZVqCwsyGrrAAAAAQAAAARzeW5jCQAAAC1qYXZhLnV0aWwuY29uY3VycmVudC5sb"
-          + "2Nrcy5SZWVudHJhbnRMb2NrJFN5bmO4HqKUqkRafAAAAAAJAAAANWphdmEudXRpbC5jb25jdXJyZW50LmxvY2tzLkFic3RyYWN0UXVldWVkU3luY2hyb"
-          + "25pemVyZlWoQ3U/UuMAAAABAAAABXN0YXRlIwAJAAAANmphdmEudXRpbC5jb25jdXJyZW50LmxvY2tzLkFic3RyYWN0T3duYWJsZVN5bmNocm9uaXplcj"
-          + "Pfr7mtbW+pAAAAABYAFgQ7+wQJAAAANGphdmEudXRpbC5jb25jdXJyZW50LmxvY2tzLlJlZW50cmFudExvY2skTm9uZmFpclN5bmNliDLnU3u/CwAAAAA"
-          + "7/AAAAAA/QAAABDv6BDv/AAAAAD9AAAAEO/oEO/8AAAAAP0AAAAQ7+gQ7/wAAAAA/QAAABDv6BDv/AAAAAD9AAAAEO/oEO/8AAAAAP0AAAAQ7+gQ7/wAA"
-          + "AAA/QAAABDv6BDv/AAAAAD9AAAAEO/oEO/8AAAAAP0AAAAQ7+gQ7/wAAAAA/QAAABDv6BDv/AAAAAD9AAAAEO/oEO/8AAAAAP0AAAAQ7+gQ7/wAAAAA/"
-          + "QAAABDv6BDv/AAAAAD9AAAAEO/oEO/8AAAAAP0AAAAQ7+gQ7/wAAAAA/QAAAPgZfMC50aWlLAAAAAD4GXzAudGlzSwAAAAA+Bl8wLm5ybUsAAAAAPgxz"
-          + "ZWdtZW50cy5nZW5LAAAAAD4GXzAucHJ4SwAAAAA+Bl8wLmZkdEsAAAAAPgZfMC5mcnFLAAAAAD4GXzAuZm5tSwAAAAA+CnNlZ21lbnRzXzJLAAAAAD4GX"
-          + "zAuZmR4SwAAAAABATU=",
-          checkDatabaseByteArrayToRecordValue(new byte[] { 2, 1, (byte) 164, 3, 14, 4, 9, 0, 0, 0, 48, 111, 114, 103, 46, 105, 110, 102, 105,
-            110, 105, 115, 112, 97, 110, 46, 117, 116, 105, 108, 46, 99, 111, 110, 99, 117, 114, 114, 101, 110, 116, 46, 67, 111, 110,
-            99, 117, 114, 114, 101, 110, 116, 72, 97, 115, 104, 83, 101, 116, 73, (byte) 186, 42, 14, (byte) 206, 6, (byte) 195,
-            (byte) 157, 0, 0, 0, 1, 0, 0, 0, 3, 109, 97, 112, 114, 0, 110, 4, 114, 0, 0, 0, 15, 0, 0, 0, 28, 66, 16, 9, 0, 0, 0, 46,
-            106, 97, 118, 97, 46, 117, 116, 105, 108, 46, 99, 111, 110, 99, 117, 114, 114, 101, 110, 116, 46, 67, 111, 110, 99, 117,
-            114, 114, 101, 110, 116, 72, 97, 115, 104, 77, 97, 112, 36, 83, 101, 103, 109, 101, 110, 116, 31, 54, 76, (byte) 144, 88,
-            (byte) 147, 41, 61, 0, 0, 0, 1, 0, 0, 0, 10, 108, 111, 97, 100, 70, 97, 99, 116, 111, 114, 38, 0, 9, 0, 0, 0, 40, 106, 97,
-            118, 97, 46, 117, 116, 105, 108, 46, 99, 111, 110, 99, 117, 114, 114, 101, 110, 116, 46, 108, 111, 99, 107, 115, 46, 82,
-            101, 101, 110, 116, 114, 97, 110, 116, 76, 111, 99, 107, 102, 85, (byte) 168, 44, 44, (byte) 200, 106, (byte) 235, 0, 0, 0,
-            1, 0, 0, 0, 4, 115, 121, 110, 99, 9, 0, 0, 0, 45, 106, 97, 118, 97, 46, 117, 116, 105, 108, 46, 99, 111, 110, 99, 117, 114,
-            114, 101, 110, 116, 46, 108, 111, 99, 107, 115, 46, 82, 101, 101, 110, 116, 114, 97, 110, 116, 76, 111, 99, 107, 36, 83,
-            121, 110, 99, (byte) 184, 30, (byte) 162, (byte) 148, (byte) 170, 68, 90, 124, 0, 0, 0, 0, 9, 0, 0, 0, 53, 106, 97, 118,
-            97, 46, 117, 116, 105, 108, 46, 99, 111, 110, 99, 117, 114, 114, 101, 110, 116, 46, 108, 111, 99, 107, 115, 46, 65, 98,
-            115, 116, 114, 97, 99, 116, 81, 117, 101, 117, 101, 100, 83, 121, 110, 99, 104, 114, 111, 110, 105, 122, 101, 114, 102, 85,
-            (byte) 168, 67, 117, 63, 82, (byte) 227, 0, 0, 0, 1, 0, 0, 0, 5, 115, 116, 97, 116, 101, 35, 0, 9, 0, 0, 0, 54, 106, 97,
-            118, 97, 46, 117, 116, 105, 108, 46, 99, 111, 110, 99, 117, 114, 114, 101, 110, 116, 46, 108, 111, 99, 107, 115, 46, 65,
-            98, 115, 116, 114, 97, 99, 116, 79, 119, 110, 97, 98, 108, 101, 83, 121, 110, 99, 104, 114, 111, 110, 105, 122, 101, 114,
-            51, (byte) 223, (byte) 175, (byte) 185, (byte) 173, 109, 111, (byte) 169, 0, 0, 0, 0, 22, 0, 22, 4, 59, (byte) 251, 4, 9,
-            0, 0, 0, 52, 106, 97, 118, 97, 46, 117, 116, 105, 108, 46, 99, 111, 110, 99, 117, 114, 114, 101, 110, 116, 46, 108, 111,
-            99, 107, 115, 46, 82, 101, 101, 110, 116, 114, 97, 110, 116, 76, 111, 99, 107, 36, 78, 111, 110, 102, 97, 105, 114, 83,
-            121, 110, 99, 101, (byte) 136, 50, (byte) 231, 83, 123, (byte) 191, 11, 0, 0, 0, 0, 59, (byte) 252, 0, 0, 0, 0, 63, 64, 0,
-            0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63,
-            64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0,
-            63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0,
-            0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255,
-            0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59,
-            (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4,
-            59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59,
-            (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0,
-            62, 6, 95, 48, 46, 116, 105, 105, 75, 0, 0, 0, 0, 62, 6, 95, 48, 46, 116, 105, 115, 75, 0, 0, 0, 0, 62, 6, 95, 48, 46, 110,
-            114, 109, 75, 0, 0, 0, 0, 62, 12, 115, 101, 103, 109, 101, 110, 116, 115, 46, 103, 101, 110, 75, 0, 0, 0, 0, 62, 6, 95, 48,
-            46, 112, 114, 120, 75, 0, 0, 0, 0, 62, 6, 95, 48, 46, 102, 100, 116, 75, 0, 0, 0, 0, 62, 6, 95, 48, 46, 102, 114, 113, 75,
-            0, 0, 0, 0, 62, 6, 95, 48, 46, 102, 110, 109, 75, 0, 0, 0, 0, 62, 10, 115, 101, 103, 109, 101, 110, 116, 115, 95, 50, 75,
-            0, 0, 0, 0, 62, 6, 95, 48, 46, 102, 100, 120, 75, 0, 0, 0, 0, 1, 1, 53 }));
+      BASE64_ENCODED,
+      checkDatabaseByteArrayToRecordValue(BYTE_ARRAY));
   }
 
 
@@ -5055,19 +5101,17 @@ public abstract class AbstractSqlDialectTest {
    * @param value The value to format.
    * @return The formatted value.
    */
-  private String checkDatabaseSafeStringToRecordValue(DataType dataType, String columnName, final String value) throws SQLException {
+  private String checkDatabaseSafeStringToRecordValue(DataType dataType, String value) throws SQLException {
     ResultSet resultSet = mock(ResultSet.class);
-    when(resultSet.getString(anyInt())).thenReturn(value);
+
     when(resultSet.getBigDecimal(anyInt())).thenReturn(value == null ? null : new BigDecimal(value));
-    if (value != null) {
+    if (value == null) {
+      when(resultSet.wasNull()).thenReturn(true);
+    } else {
       when(resultSet.getBoolean(anyInt())).thenReturn(value.equals("1"));
     }
-    when(resultSet.findColumn("id")).thenReturn(1);
-    when(resultSet.findColumn("version")).thenReturn(2);
-    when(resultSet.findColumn("test")).thenReturn(3);
-    when(resultSet.findColumn("boolVal")).thenReturn(4);
 
-    return testDialect.databaseSafeStringtoRecordValue(dataType, resultSet, resultSet.findColumn(columnName), columnName);
+    return testDialect.resultSetToRecord(resultSet, ImmutableList.of(column("a", dataType))).getString("a");
   }
 
 
@@ -5079,12 +5123,77 @@ public abstract class AbstractSqlDialectTest {
    */
   private String checkDatabaseByteArrayToRecordValue(final byte[] value) throws SQLException {
     ResultSet resultSet = mock(ResultSet.class);
-    when(resultSet.getBinaryStream(anyInt())).thenReturn(value == null ? null : new ByteArrayInputStream(value));
-    when(resultSet.findColumn("id")).thenReturn(1);
-    when(resultSet.findColumn("version")).thenReturn(2);
-    when(resultSet.findColumn("blobtest")).thenReturn(3);
 
-    return testDialect.databaseSafeStringtoRecordValue(DataType.BLOB, resultSet, 3, "blobtest");
+    when(resultSet.getBytes(anyInt())).thenReturn(value == null ? null : value);
+
+    return testDialect.resultSetToRecord(resultSet, ImmutableList.of(column("a", BLOB))).getString("a");
+  }
+
+
+  /**
+   * Tests non-null values are returned correctly from resultsets
+   *
+   * @throws SQLException If a SQL exception is thrown.
+   */
+  @Test
+  public void testResultSetToRecord() throws SQLException {
+    ResultSet resultSet = mock(ResultSet.class);
+
+    List<DataType> dataTypes = Arrays.asList(DataType.values());
+    List<Column> columns = dataTypes
+        .stream()
+        .filter(d -> !d.equals(DataType.NULL))
+        .map(d -> column(d.name() + "Test", d))
+        .collect(toList());
+
+    when(resultSet.getLong(dataTypes.indexOf(DataType.BIG_INTEGER) + 1)).thenReturn(1L);
+    when(resultSet.getBytes(dataTypes.indexOf(DataType.BLOB) + 1)).thenReturn(BYTE_ARRAY);
+    when(resultSet.getString(dataTypes.indexOf(DataType.STRING) + 1)).thenReturn("test");
+    when(resultSet.getBoolean(dataTypes.indexOf(DataType.BOOLEAN) + 1)).thenReturn(true);
+    when(resultSet.getInt(dataTypes.indexOf(DataType.INTEGER) + 1)).thenReturn(3);
+    when(resultSet.getBigDecimal(dataTypes.indexOf(DataType.DECIMAL) + 1)).thenReturn(new BigDecimal("1.23"));
+    when(resultSet.getDate(dataTypes.indexOf(DataType.DATE) + 1)).thenReturn(java.sql.Date.valueOf("2010-07-02"));
+
+    Record record = testDialect.resultSetToRecord(resultSet, columns);
+
+    assertEquals(1, record.getLong(DataType.BIG_INTEGER.name() + "Test").longValue());
+    assertEquals("test", record.getString(DataType.STRING.name() + "Test"));
+    assertEquals(true, record.getBoolean(DataType.BOOLEAN.name() + "Test"));
+    assertEquals(3, record.getInteger(DataType.INTEGER.name() + "Test").intValue());
+    assertEquals(1.23D, record.getDouble(DataType.DECIMAL.name() + "Test").doubleValue(), 0.0001);
+
+    assertEquals(new BigDecimal("1.23"), record.getBigDecimal(DataType.DECIMAL.name() + "Test"));
+    assertEquals(new BigDecimal("1.23"), record.getObject(column(DataType.DECIMAL.name() + "Test", DataType.DECIMAL, 13, 2)));
+
+    assertEquals(BASE64_ENCODED, record.getString(DataType.BLOB.name() + "Test"));
+    assertArrayEquals(BYTE_ARRAY, record.getByteArray(DataType.BLOB.name() + "Test"));
+    assertArrayEquals(BYTE_ARRAY, (byte[])record.getObject(column(DataType.BLOB.name() + "Test", DataType.BLOB)));
+
+    assertEquals(java.sql.Date.valueOf("2010-07-02"), record.getDate(DataType.DATE.name() + "Test"));
+    assertEquals(new LocalDate(2010, 7, 2), record.getLocalDate(DataType.DATE.name() + "Test"));
+    assertEquals(java.sql.Date.valueOf("2010-07-02"), record.getObject(column(DataType.DATE.name() + "Test", DataType.DATE)));
+  }
+
+
+  /**
+   * Checks that we return all nulls in the resulting record if the result set returns all nulls.
+   *
+   * @throws SQLException If a SQL exception is thrown.
+   */
+  @Test
+  public void testResultSetToRecordNulls() throws SQLException {
+    List<Column> columns = Arrays.asList(DataType.values())
+        .stream()
+        .filter(d -> !d.equals(DataType.NULL))
+        .map(d -> column(d.name() + "Test", d))
+        .collect(toList());
+
+    ResultSet resultSet = mock(ResultSet.class);
+    when(resultSet.wasNull()).thenReturn(true);
+
+    Record record = testDialect.resultSetToRecord(resultSet, columns);
+
+    columns.forEach(c -> assertNull(record.getObject(c)));
   }
 
 

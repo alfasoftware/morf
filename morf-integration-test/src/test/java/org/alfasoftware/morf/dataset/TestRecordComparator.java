@@ -15,16 +15,17 @@
 
 package org.alfasoftware.morf.dataset;
 
+import static org.alfasoftware.morf.metadata.DataSetUtils.record;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.junit.Assert.assertEquals;
 
+import java.math.BigDecimal;
 import java.util.Comparator;
-
-import org.junit.Test;
 
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Table;
+import org.junit.Test;
 
 /**
  * Tests for {@link RecordComparator}.
@@ -51,77 +52,159 @@ public class TestRecordComparator {
     // sanity check the way comparators work
     assertEquals(1, "y".compareTo("x"));
 
+    // EQUALS
+
     assertEquals(0,
       recordComparator.compare(
-        new MockRecord(table, "x", "1", "2"),
-        new MockRecord(table, "x", "1", "2")
+        record().setString("foo", "x").setInteger("bar", 1).setInteger("baz", 2),
+        record().setString("foo", "x").setInteger("bar", 1).setInteger("baz", 2)
+      )
+    );
+
+    assertEquals(0,
+      recordComparator.compare(
+        record().setString("foo", "x").setInteger("bar", 1).setString("baz", "2"),
+        record().setString("foo", "x").setString("bar", "1").setInteger("baz", 2)
+      )
+    );
+
+    assertEquals(0,
+      recordComparator.compare(
+        record().setString("foo", "x").setInteger("bar", -1).setString("baz", "-2"),
+        record().setString("foo", "x").setString("bar", "-1").setInteger("baz", -2)
+      )
+    );
+
+    // GREATER THAN - FIELD 1
+
+    assertEquals(1,
+      recordComparator.compare(
+        record().setString("foo", "y").setInteger("bar", 1).setInteger("baz", 2),
+        record().setString("foo", "x").setInteger("bar", 1).setInteger("baz", 2)
+      )
+    );
+
+    // LESS THAN - FIELD 1
+
+    assertEquals(-1,
+      recordComparator.compare(
+        record().setString("foo", "x").setInteger("bar", 1).setInteger("baz", 2),
+        record().setString("foo", "y").setInteger("bar", 1).setInteger("baz", 2)
+      )
+    );
+
+    // GREATER THAN - FIELD 2
+
+    assertEquals(1,
+      recordComparator.compare(
+        record().setString("foo", "x").setInteger("bar", 2).setInteger("baz", 2),
+        record().setString("foo", "x").setInteger("bar", 1).setInteger("baz", 2)
       )
     );
 
     assertEquals(1,
       recordComparator.compare(
-        new MockRecord(table, "y", "1", "2"),
-        new MockRecord(table, "x", "1", "2")
+        record().setString("foo", "x").setString("bar", "2").setInteger("baz", 2),
+        record().setString("foo", "x").setInteger("bar", 1).setInteger("baz", 2)
       )
     );
-
-    assertEquals(-1,
-      recordComparator.compare(
-        new MockRecord(table, "x", "1", "2"),
-        new MockRecord(table, "y", "1", "2")
-      )
-    );
-
 
     assertEquals(1,
       recordComparator.compare(
-        new MockRecord(table, "x", "2", "2"),
-        new MockRecord(table, "x", "1", "2")
+        record().setString("foo", "x").setString("bar", "0").setInteger("baz", 2),
+        record().setString("foo", "x").setInteger("bar", -1).setInteger("baz", 2)
+      )
+    );
+
+    // LESS THAN - FIELD 2
+
+    assertEquals(-1,
+      recordComparator.compare(
+        record().setString("foo", "x").setInteger("bar", 1).setInteger("baz", 2),
+        record().setString("foo", "x").setInteger("bar", 2).setInteger("baz", 2)
       )
     );
 
     assertEquals(-1,
       recordComparator.compare(
-        new MockRecord(table, "x", "1", "2"),
-        new MockRecord(table, "x", "2", "2")
+        record().setString("foo", "x").setString("bar", "1").setInteger("baz", 2),
+        record().setString("foo", "x").setString("bar", "2").setInteger("baz", 2)
+      )
+    );
+
+    assertEquals(-1,
+      recordComparator.compare(
+        record().setString("foo", "x").setString("bar", "-1").setInteger("baz", 2),
+        record().setString("foo", "x").setString("bar", "0").setInteger("baz", 2)
       )
     );
 
     // check integers are compared with numeric logic
+
     assertEquals(1,
       recordComparator.compare(
-        new MockRecord(table, "x", "10", "2"),
-        new MockRecord(table, "x", "2", "2")
+        record().setString("foo", "x").setInteger("bar", 10).setInteger("baz", 2),
+        record().setString("foo", "x").setInteger("bar", 2).setInteger("baz", 2)
+      )
+    );
+
+    assertEquals(1,
+      recordComparator.compare(
+        record().setString("foo", "x").setString("bar", "10").setInteger("baz", 2),
+        record().setString("foo", "x").setString("bar", "2").setInteger("baz", 2)
       )
     );
 
     assertEquals(-1,
       recordComparator.compare(
-        new MockRecord(table, "x", "2", "2"),
-        new MockRecord(table, "x", "10", "2")
+        record().setString("foo", "x").setInteger("bar", 2).setInteger("baz", 2),
+        record().setString("foo", "x").setInteger("bar", 10).setInteger("baz", 2)
+      )
+    );
+
+    assertEquals(-1,
+      recordComparator.compare(
+        record().setString("foo", "x").setString("bar", "2").setInteger("baz", 2),
+        record().setString("foo", "x").setString("bar", "10").setInteger("baz", 2)
       )
     );
 
     // check decimals are compared with numeric logic
+
     assertEquals(1,
       recordComparator.compare(
-        new MockRecord(table, "x", "1.2", "2"),
-        new MockRecord(table, "x", "1.1", "2")
+        record().setString("foo", "x").setBigDecimal("bar", new BigDecimal("1.2")).setInteger("baz", 2),
+        record().setString("foo", "x").setBigDecimal("bar", new BigDecimal("1.1")).setInteger("baz", 2)
+      )
+    );
+
+    assertEquals(1,
+      recordComparator.compare(
+        record().setString("foo", "x").setString("bar", "1.2").setInteger("baz", 2),
+        record().setString("foo", "x").setString("bar", "1.1").setInteger("baz", 2)
       )
     );
 
     assertEquals(-1,
       recordComparator.compare(
-        new MockRecord(table, "x", "1.1", "2"),
-        new MockRecord(table, "x", "1.2", "2")
+        record().setString("foo", "x").setBigDecimal("bar", new BigDecimal("1.1")).setInteger("baz", 2),
+        record().setString("foo", "x").setBigDecimal("bar", new BigDecimal("1.2")).setInteger("baz", 2)
       )
     );
 
+    assertEquals(-1,
+      recordComparator.compare(
+        record().setString("foo", "x").setString("bar", "1.1").setInteger("baz", 2),
+        record().setString("foo", "x").setString("bar", "1.2").setInteger("baz", 2)
+      )
+    );
+
+    // Make sure we're ignoring the last column
 
     assertEquals(0,
       recordComparator.compare(
-        new MockRecord(table, "x", "1", "XXX"),
-        new MockRecord(table, "x", "1", "YYY")
+        record().setString("foo", "x").setString("bar", "1.1").setInteger("baz", 2),
+        record().setString("foo", "x").setString("bar", "1.1").setInteger("baz", 3)
       )
     );
   }
