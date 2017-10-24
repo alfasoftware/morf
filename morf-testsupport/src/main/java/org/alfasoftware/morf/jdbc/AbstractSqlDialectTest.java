@@ -209,6 +209,54 @@ public abstract class AbstractSqlDialectTest {
       + "zAuZmR4SwAAAAABATU=";
 
 
+  private static final byte[] BYTE_ARRAY = new byte[] { 2, 1, (byte) 164, 3, 14, 4, 9, 0, 0, 0, 48, 111, 114, 103, 46, 105, 110, 102, 105,
+    110, 105, 115, 112, 97, 110, 46, 117, 116, 105, 108, 46, 99, 111, 110, 99, 117, 114, 114, 101, 110, 116, 46, 67, 111, 110,
+    99, 117, 114, 114, 101, 110, 116, 72, 97, 115, 104, 83, 101, 116, 73, (byte) 186, 42, 14, (byte) 206, 6, (byte) 195,
+    (byte) 157, 0, 0, 0, 1, 0, 0, 0, 3, 109, 97, 112, 114, 0, 110, 4, 114, 0, 0, 0, 15, 0, 0, 0, 28, 66, 16, 9, 0, 0, 0, 46,
+    106, 97, 118, 97, 46, 117, 116, 105, 108, 46, 99, 111, 110, 99, 117, 114, 114, 101, 110, 116, 46, 67, 111, 110, 99, 117,
+    114, 114, 101, 110, 116, 72, 97, 115, 104, 77, 97, 112, 36, 83, 101, 103, 109, 101, 110, 116, 31, 54, 76, (byte) 144, 88,
+    (byte) 147, 41, 61, 0, 0, 0, 1, 0, 0, 0, 10, 108, 111, 97, 100, 70, 97, 99, 116, 111, 114, 38, 0, 9, 0, 0, 0, 40, 106, 97,
+    118, 97, 46, 117, 116, 105, 108, 46, 99, 111, 110, 99, 117, 114, 114, 101, 110, 116, 46, 108, 111, 99, 107, 115, 46, 82,
+    101, 101, 110, 116, 114, 97, 110, 116, 76, 111, 99, 107, 102, 85, (byte) 168, 44, 44, (byte) 200, 106, (byte) 235, 0, 0, 0,
+    1, 0, 0, 0, 4, 115, 121, 110, 99, 9, 0, 0, 0, 45, 106, 97, 118, 97, 46, 117, 116, 105, 108, 46, 99, 111, 110, 99, 117, 114,
+    114, 101, 110, 116, 46, 108, 111, 99, 107, 115, 46, 82, 101, 101, 110, 116, 114, 97, 110, 116, 76, 111, 99, 107, 36, 83,
+    121, 110, 99, (byte) 184, 30, (byte) 162, (byte) 148, (byte) 170, 68, 90, 124, 0, 0, 0, 0, 9, 0, 0, 0, 53, 106, 97, 118,
+    97, 46, 117, 116, 105, 108, 46, 99, 111, 110, 99, 117, 114, 114, 101, 110, 116, 46, 108, 111, 99, 107, 115, 46, 65, 98,
+    115, 116, 114, 97, 99, 116, 81, 117, 101, 117, 101, 100, 83, 121, 110, 99, 104, 114, 111, 110, 105, 122, 101, 114, 102, 85,
+    (byte) 168, 67, 117, 63, 82, (byte) 227, 0, 0, 0, 1, 0, 0, 0, 5, 115, 116, 97, 116, 101, 35, 0, 9, 0, 0, 0, 54, 106, 97,
+    118, 97, 46, 117, 116, 105, 108, 46, 99, 111, 110, 99, 117, 114, 114, 101, 110, 116, 46, 108, 111, 99, 107, 115, 46, 65,
+    98, 115, 116, 114, 97, 99, 116, 79, 119, 110, 97, 98, 108, 101, 83, 121, 110, 99, 104, 114, 111, 110, 105, 122, 101, 114,
+    51, (byte) 223, (byte) 175, (byte) 185, (byte) 173, 109, 111, (byte) 169, 0, 0, 0, 0, 22, 0, 22, 4, 59, (byte) 251, 4, 9,
+    0, 0, 0, 52, 106, 97, 118, 97, 46, 117, 116, 105, 108, 46, 99, 111, 110, 99, 117, 114, 114, 101, 110, 116, 46, 108, 111,
+    99, 107, 115, 46, 82, 101, 101, 110, 116, 114, 97, 110, 116, 76, 111, 99, 107, 36, 78, 111, 110, 102, 97, 105, 114, 83,
+    121, 110, 99, 101, (byte) 136, 50, (byte) 231, 83, 123, (byte) 191, 11, 0, 0, 0, 0, 59, (byte) 252, 0, 0, 0, 0, 63, 64, 0,
+    0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63,
+    64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0,
+    63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0,
+    0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255,
+    0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59,
+    (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4,
+    59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59,
+    (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0, 4, 59, (byte) 250, 4, 59, (byte) 255, 0, 0, 0, 0, 63, 64, 0, 0,
+    62, 6, 95, 48, 46, 116, 105, 105, 75, 0, 0, 0, 0, 62, 6, 95, 48, 46, 116, 105, 115, 75, 0, 0, 0, 0, 62, 6, 95, 48, 46, 110,
+    114, 109, 75, 0, 0, 0, 0, 62, 12, 115, 101, 103, 109, 101, 110, 116, 115, 46, 103, 101, 110, 75, 0, 0, 0, 0, 62, 6, 95, 48,
+    46, 112, 114, 120, 75, 0, 0, 0, 0, 62, 6, 95, 48, 46, 102, 100, 116, 75, 0, 0, 0, 0, 62, 6, 95, 48, 46, 102, 114, 113, 75,
+    0, 0, 0, 0, 62, 6, 95, 48, 46, 102, 110, 109, 75, 0, 0, 0, 0, 62, 10, 115, 101, 103, 109, 101, 110, 116, 115, 95, 50, 75,
+    0, 0, 0, 0, 62, 6, 95, 48, 46, 102, 100, 120, 75, 0, 0, 0, 0, 1, 1, 53 };
+
+  private static final String BASE64_ENCODED = "AgGkAw4ECQAAADBvcmcuaW5maW5pc3Bhbi51dGlsLmNvbmN1cnJlbnQuQ29uY3VycmVudEhhc2hTZXRJuioOzgbDnQAAAAEAAAADbWFwcgBuBHIAAAAPAAAAH"
+      + "EIQCQAAAC5qYXZhLnV0aWwuY29uY3VycmVudC5Db25jdXJyZW50SGFzaE1hcCRTZWdtZW50HzZMkFiTKT0AAAABAAAACmxvYWRGYWN0b3ImAAkAAAAoa"
+      + "mF2YS51dGlsLmNvbmN1cnJlbnQubG9ja3MuUmVlbnRyYW50TG9ja2ZVqCwsyGrrAAAAAQAAAARzeW5jCQAAAC1qYXZhLnV0aWwuY29uY3VycmVudC5sb"
+      + "2Nrcy5SZWVudHJhbnRMb2NrJFN5bmO4HqKUqkRafAAAAAAJAAAANWphdmEudXRpbC5jb25jdXJyZW50LmxvY2tzLkFic3RyYWN0UXVldWVkU3luY2hyb"
+      + "25pemVyZlWoQ3U/UuMAAAABAAAABXN0YXRlIwAJAAAANmphdmEudXRpbC5jb25jdXJyZW50LmxvY2tzLkFic3RyYWN0T3duYWJsZVN5bmNocm9uaXplcj"
+      + "Pfr7mtbW+pAAAAABYAFgQ7+wQJAAAANGphdmEudXRpbC5jb25jdXJyZW50LmxvY2tzLlJlZW50cmFudExvY2skTm9uZmFpclN5bmNliDLnU3u/CwAAAAA"
+      + "7/AAAAAA/QAAABDv6BDv/AAAAAD9AAAAEO/oEO/8AAAAAP0AAAAQ7+gQ7/wAAAAA/QAAABDv6BDv/AAAAAD9AAAAEO/oEO/8AAAAAP0AAAAQ7+gQ7/wAA"
+      + "AAA/QAAABDv6BDv/AAAAAD9AAAAEO/oEO/8AAAAAP0AAAAQ7+gQ7/wAAAAA/QAAABDv6BDv/AAAAAD9AAAAEO/oEO/8AAAAAP0AAAAQ7+gQ7/wAAAAA/"
+      + "QAAABDv6BDv/AAAAAD9AAAAEO/oEO/8AAAAAP0AAAAQ7+gQ7/wAAAAA/QAAAPgZfMC50aWlLAAAAAD4GXzAudGlzSwAAAAA+Bl8wLm5ybUsAAAAAPgxz"
+      + "ZWdtZW50cy5nZW5LAAAAAD4GXzAucHJ4SwAAAAA+Bl8wLmZkdEsAAAAAPgZfMC5mcnFLAAAAAD4GXzAuZm5tSwAAAAA+CnNlZ21lbnRzXzJLAAAAAD4GX"
+      + "zAuZmR4SwAAAAABATU=";
+
+
   /**
    * Exception verifier.
    */
