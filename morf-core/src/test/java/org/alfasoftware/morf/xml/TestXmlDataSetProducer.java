@@ -24,36 +24,37 @@ import static org.mockito.Mockito.mock;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.internal.invocation.ArgumentsComparator;
 import org.alfasoftware.morf.dataset.DataSetConnector;
 import org.alfasoftware.morf.dataset.DataSetConsumer;
 import org.alfasoftware.morf.dataset.DataSetConsumer.CloseState;
-import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.SchemaHomology;
-import org.alfasoftware.morf.metadata.SchemaUtils;
-import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.dataset.DataSetProducer;
 import org.alfasoftware.morf.dataset.Record;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.SchemaHomology;
+import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.xml.XmlStreamProvider.XmlInputStreamProvider;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+import com.google.common.collect.ImmutableList;
 
 /**
  * Test cases to check XML can be parsed to a data set consumer.
@@ -243,6 +244,37 @@ public class TestXmlDataSetProducer {
     assertTrue("last column is primary key", producer.getSchema().getTable("Test").columns().get(3).isPrimaryKey());
     producer.close();
   }
+  
+  
+  /**
+   * Test the reading of xml containing comments.
+   */
+  @Test
+  public void testWithComments() throws IOException {
+
+    String input = SourceXML.readResource("testWithComments.xml");
+    XmlDataSetProducer producer = new XmlDataSetProducer(new TestXmlInputStreamProvider(input, "Foo"));
+    producer.open();
+    
+    Table fooTable = producer.getSchema().getTable("Foo");
+    
+    assertTrue(
+      new SchemaHomology().tablesMatch(
+        fooTable, 
+        table("Foo")
+          .columns(
+            column("id", DataType.BIG_INTEGER).primaryKey())
+          )
+      );
+
+    List<Record> records = ImmutableList.copyOf(producer.records("Foo"));
+    
+    assertEquals("40646", records.get(0).getValue("id"));
+    assertEquals("40641", records.get(3).getValue("id"));
+    
+    producer.close();
+  }
+
 
   /**
    * Testing implementation to catch result XML.
@@ -251,21 +283,31 @@ public class TestXmlDataSetProducer {
    */
   private static final class TestXmlInputStreamProvider implements XmlInputStreamProvider {
 
-    /**
-     * Holds the test data.
-     */
     private final String content;
+    private String tableName;
 
     /**
      * Creates the test instance.
      *
      * @param content Source for test data.
      */
-    public TestXmlInputStreamProvider(String content) {
+    public TestXmlInputStreamProvider(String content, String tableName) {
       super();
       this.content = content;
+      this.tableName = tableName;
     }
 
+    
+    /**
+     * Creates the test instance.
+     *
+     * @param content Source for test data.
+     */
+    public TestXmlInputStreamProvider(String content) {
+      this(content, "Test");
+    }
+
+    
     /**
      * @see org.alfasoftware.morf.xml.XmlStreamProvider#close()
      */
@@ -287,7 +329,7 @@ public class TestXmlDataSetProducer {
      */
     @Override
     public InputStream openInputStreamForTable(String tableName) {
-      assertEquals("Table name", "Test", tableName);
+      assertEquals("Table name", this.tableName, tableName);
       return new ByteArrayInputStream(content.getBytes());
     }
 
@@ -296,7 +338,7 @@ public class TestXmlDataSetProducer {
      */
     @Override
     public Collection<String> availableStreamNames() {
-      return Arrays.asList("Test");
+      return Arrays.asList(tableName);
     }
 
     /**
@@ -304,7 +346,7 @@ public class TestXmlDataSetProducer {
      */
     @Override
     public boolean tableExists(String name) {
-      return name.toUpperCase().equals("TEST");
+      return name.toUpperCase().equals(tableName.toUpperCase());
     }
   }
 

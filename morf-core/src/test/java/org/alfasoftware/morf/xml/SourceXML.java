@@ -15,6 +15,14 @@
 
 package org.alfasoftware.morf.xml;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.stream.Collectors;
+
+import com.google.common.base.Charsets;
+
 /**
  * Test XML strings for the XML dataset testing.
  *
@@ -154,4 +162,18 @@ class SourceXML {
     "  </metadata>\n" +
     "  <data/>\n" +
     "</table>";
+
+  
+  /**
+   * Reads in a static resource as a String.
+   */
+  static String readResource(String resourceName) {
+    try (InputStream inputStream = SourceXML.class.getResourceAsStream(resourceName)) {
+      if (inputStream == null) throw new IllegalArgumentException("No such resource: "+resourceName);
+      BufferedReader bis = new BufferedReader(new InputStreamReader(inputStream, Charsets.UTF_8));
+      return bis.lines().collect(Collectors.joining("\n"));
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
 }

@@ -15,7 +15,6 @@
 
 package org.alfasoftware.morf.xml;
 
-import static com.google.common.io.ByteStreams.toByteArray;
 import static org.alfasoftware.morf.metadata.DataSetUtils.record;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.idColumn;
@@ -27,8 +26,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -192,11 +189,7 @@ public class TestXmlDataSetConsumer {
     testConsumer.table(testTable, mockRecords);
     testConsumer.close(CloseState.COMPLETE);
 
-    String expectedXML;
-    try (InputStream resourceAsStream = getClass().getResourceAsStream("testIndexOrdering.xml")) {
-      expectedXML = new String(toByteArray(resourceAsStream), StandardCharsets.UTF_8).trim();
-    }
-
+    String expectedXML = SourceXML.readResource("testIndexOrdering.xml");
     String actualXML = dummyXmlOutputStreamProvider.getXmlString().trim();
 
     assertEquals("Serialised data set", expectedXML, actualXML);

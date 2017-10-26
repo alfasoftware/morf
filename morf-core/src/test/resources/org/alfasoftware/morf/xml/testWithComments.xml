@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<table version="2">
+  <metadata name="Foo">
+        <column name="id" type="BIG_INTEGER" primaryKey="true"/>
+  </metadata>
+  <data>
+    <!-- Comment -->
+    <record id="40646" />
+    <record id="40648" />
+
+    <!-- Comment  -->
+    <record id="40640" />
+    <record id="40641" />
+  </data>
+</table>
