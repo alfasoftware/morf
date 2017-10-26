@@ -26,16 +26,10 @@ import static org.mockito.Mockito.when;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Types;
-import java.util.List;
 import java.util.Map;
-
 import javax.sql.DataSource;
 
 import org.apache.commons.lang.StringUtils;
-import org.h2.tools.SimpleResultSet;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 
 import org.alfasoftware.morf.dataset.SchemaAdapter;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
@@ -44,7 +38,6 @@ import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 
 /**
@@ -57,13 +50,12 @@ public class MockConnectionResources  {
    * @return A mock of {@link ConnectionResources} for upgrade testing.
    */
   public static ConnectionResources build() {
-    return new MockConnectionResources().withResultSet("", ImmutableList.of(new Object[] { "0fde0d93-f57e-405c-81e9-245ef1ba0594" },
-                                                                            new Object[] { "0fde0d93-f57e-405c-81e9-245ef1ba0595" })).create();
+    return new MockConnectionResources().create();
   }
 
   private SqlDialect dialect;
   private Schema schema;
-  private final Map<String, List<Object[]>> resultSets = Maps.newLinkedHashMap();
+  private final Map<String, ResultSet> resultSets = Maps.newLinkedHashMap();
 
 
   /**
@@ -97,8 +89,8 @@ public class MockConnectionResources  {
    * @param result Results.
    * @return this.
    */
-  public MockConnectionResources withResultSet(String query, List<Object[]> result) {
-    resultSets.put(query, result);
+  public MockConnectionResources withResultSet(String query, ResultSet resultSet) {
+    resultSets.put(query, resultSet);
     return this;
   }
 
@@ -128,28 +120,11 @@ public class MockConnectionResources  {
 
       java.sql.Statement statement = mock(java.sql.Statement.class, RETURNS_SMART_NULLS);
       when(connection.createStatement()).thenReturn(statement);
-
+      
       for (String query : resultSets.keySet()) {
-        final List<Object[]> results = resultSets.get(query);
-        when(statement.executeQuery(StringUtils.isEmpty(query) ? anyString() : eq(query))).thenAnswer(new Answer<ResultSet>() {
-          @Override
-          public ResultSet answer(InvocationOnMock invocation) throws Throwable {
-            SimpleResultSet resultSet = new SimpleResultSet();
-            boolean first = true;
-            for (Object[] row : results) {
-              if (first) {
-                for (int i = 0; i < row.length; i++) {
-                  resultSet.addColumn("col#" + i, Types.VARCHAR, 400, 0);
-                }
-                first = false;
-              }
-
-              resultSet.addRow(row);
-            }
-
-            return resultSet;
-          }
-        });
+        ResultSet resultSet = resultSets.get(query);
+        
+        when(statement.executeQuery(StringUtils.isEmpty(query) ? anyString() : eq(query))).thenReturn(resultSet);
       }
 
       return mockConnectionResources;

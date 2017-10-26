@@ -39,6 +39,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -89,7 +90,7 @@ public class TestUpgrade {
    * Test {@link Upgrade}.
    */
   @Test
-  public void testUpgrade() {
+  public void testUpgrade() throws SQLException {
     Table upgradeAudit = upgradeAudit();
 
     Table car = originalCar();
@@ -121,7 +122,19 @@ public class TestUpgrade {
     upgradeSteps.add(ChangeDriver.class);
 
     List<Table> tables = Arrays.asList(upgradeAudit, car, driver, excludedTable, prefixExcludeTable1, prefixExcludeTable2);
-    ConnectionResources mockConnectionResources = MockConnectionResources.build();
+    
+    ResultSet viewResultSet = mock(ResultSet.class);
+    when(viewResultSet.next()).thenReturn(false);
+    
+    ResultSet upgradeResultSet = mock(ResultSet.class);
+    when(upgradeResultSet.next()).thenReturn(true, true, false);
+    when(upgradeResultSet.getString(1)).thenReturn("0fde0d93-f57e-405c-81e9-245ef1ba0594", "0fde0d93-f57e-405c-81e9-245ef1ba0595");
+    when(upgradeResultSet.next()).thenReturn(false);
+    
+    ConnectionResources mockConnectionResources = new MockConnectionResources().
+                                              withResultSet("SELECT upgradeUUID FROM UpgradeAudit", upgradeResultSet).
+                                              withResultSet("SELECT name, hash FROM DeployedViews", viewResultSet).
+                                              create();
 
     SchemaResource schemaResource = mock(SchemaResource.class);
     when(mockConnectionResources.openSchemaResource(eq(mockConnectionResources.getDataSource()))).thenReturn(schemaResource);
@@ -286,7 +299,7 @@ public class TestUpgrade {
    * them all anyway.
    */
   @Test
-  public void testUpgradeWithUpgradeStepsAndViewDeclaredButNotPresent() {
+  public void testUpgradeWithUpgradeStepsAndViewDeclaredButNotPresent() throws SQLException {
     // Given
     View  testView      = view("FooView", select(field("name")).from(tableRef("Foo")));
     Schema sourceSchema = schema(
@@ -322,12 +335,19 @@ public class TestUpgrade {
       }
     });
 
+    ResultSet viewResultSet = mock(ResultSet.class);
+    when(viewResultSet.next()).thenReturn(true, true, false);
+    when(viewResultSet.getString(1)).thenReturn("FooView", "OldView");
+    when(viewResultSet.getString(2)).thenReturn("XXX");
+    
+    ResultSet upgradeResultSet = mock(ResultSet.class);
+    when(upgradeResultSet.next()).thenReturn(false);
+    
     ConnectionResources connection = new MockConnectionResources().
                                               withDialect(sqlDialect).
                                               withSchema(sourceSchema).
-                                              withResultSet("SELECT upgradeUUID FROM UpgradeAudit", new ArrayList<Object[]>()).
-                                              withResultSet("SELECT name, hash FROM DeployedViews", ImmutableList.of(new Object[] { "FooView", "XXX" },
-                                                                                                                     new Object[] { "OldView", "XXX" })).
+                                              withResultSet("SELECT upgradeUUID FROM UpgradeAudit", upgradeResultSet).
+                                              withResultSet("SELECT name, hash FROM DeployedViews", viewResultSet).
                                               create();
 
     // When
@@ -347,7 +367,7 @@ public class TestUpgrade {
    * them all anyway.
    */
   @Test
-  public void testUpgradeWithUpgradeStepsAndViewDeclared() {
+  public void testUpgradeWithUpgradeStepsAndViewDeclared() throws SQLException {
     // Given
     View  testView      = view("FooView", select(field("name")).from(tableRef("Foo")));
     Schema sourceSchema = schema(
@@ -384,12 +404,19 @@ public class TestUpgrade {
       }
     });
 
+    ResultSet viewResultSet = mock(ResultSet.class);
+    when(viewResultSet.next()).thenReturn(true, true, false);
+    when(viewResultSet.getString(1)).thenReturn("FooView", "OldView");
+    when(viewResultSet.getString(2)).thenReturn("XXX");
+    
+    ResultSet upgradeResultSet = mock(ResultSet.class);
+    when(upgradeResultSet.next()).thenReturn(false);
+    
     ConnectionResources connection = new MockConnectionResources().
                                               withDialect(sqlDialect).
                                               withSchema(sourceSchema).
-                                              withResultSet("SELECT upgradeUUID FROM UpgradeAudit", new ArrayList<Object[]>()).
-                                              withResultSet("SELECT name, hash FROM DeployedViews", ImmutableList.of(new Object[] { "FooView", "XXX" },
-                                                                                                                     new Object[] { "OldView", "XXX" })).
+                                              withResultSet("SELECT upgradeUUID FROM UpgradeAudit", upgradeResultSet).
+                                              withResultSet("SELECT name, hash FROM DeployedViews", viewResultSet).
                                               create();
 
     // When
@@ -408,7 +435,7 @@ public class TestUpgrade {
    * {@code DeployedViews}, they are dropped.
    */
   @Test
-  public void testUpgradeWithViewDeclaredButNotPresent() {
+  public void testUpgradeWithViewDeclaredButNotPresent() throws SQLException {
     // Given
     Table upgradeAudit  = upgradeAudit();
     Table deployedViews = deployedViews();
@@ -437,12 +464,19 @@ public class TestUpgrade {
       }
     });
 
+    ResultSet viewResultSet = mock(ResultSet.class);
+    when(viewResultSet.next()).thenReturn(true, true, false);
+    when(viewResultSet.getString(1)).thenReturn("FooView", "OldView");
+    when(viewResultSet.getString(2)).thenReturn("XXX");
+    
+    ResultSet upgradeResultSet = mock(ResultSet.class);
+    when(upgradeResultSet.next()).thenReturn(false);
+    
     ConnectionResources connection = new MockConnectionResources().
                                               withDialect(sqlDialect).
                                               withSchema(sourceSchema).
-                                              withResultSet("SELECT upgradeUUID FROM UpgradeAudit", new ArrayList<Object[]>()).
-                                              withResultSet("SELECT name, hash FROM DeployedViews", ImmutableList.of(new Object[] { "FooView", "XXX" },
-                                                                                                                     new Object[] { "OldView", "XXX" })).
+                                              withResultSet("SELECT upgradeUUID FROM UpgradeAudit", upgradeResultSet).
+                                              withResultSet("SELECT name, hash FROM DeployedViews", viewResultSet).
                                               create();
 
     // When
@@ -545,12 +579,20 @@ public class TestUpgrade {
       }
     });
 
+    
+    ResultSet viewResultSet = mock(ResultSet.class);
+    when(viewResultSet.next()).thenReturn(true, true, false);
+    when(viewResultSet.getString(1)).thenReturn("OtherView", "StaticView");
+    when(viewResultSet.getString(2)).thenReturn("XXX");
+    
+    ResultSet upgradeResultSet = mock(ResultSet.class);
+    when(upgradeResultSet.next()).thenReturn(false);
+    
     ConnectionResources connection = new MockConnectionResources().
                                          withDialect(sqlDialect).
                                          withSchema(sourceSchema).
-                                         withResultSet("SELECT upgradeUUID FROM UpgradeAudit", new ArrayList<Object[]>()).
-                                         withResultSet("SELECT name, hash FROM DeployedViews", ImmutableList.of(new Object[] { "OtherView", "XXX" },
-                                                                                                                new Object[] { "StaticView", "XXX" })).
+                                         withResultSet("SELECT upgradeUUID FROM UpgradeAudit", upgradeResultSet).
+                                         withResultSet("SELECT name, hash FROM DeployedViews", viewResultSet).
                                          create();
 
     // When
@@ -569,7 +611,7 @@ public class TestUpgrade {
    * Test that if there are database steps to apply, then all table triggers will be rebuilt.
    */
   @Test
-  public void testUpgradeWithStepsToApplyRebuildTriggers() {
+  public void testUpgradeWithStepsToApplyRebuildTriggers() throws SQLException {
     Schema sourceSchema = schema(
       schema(upgradeAudit(), deployedViews(), originalCar())
     );
@@ -579,11 +621,18 @@ public class TestUpgrade {
 
     Collection<Class<? extends UpgradeStep>> upgradeSteps = ImmutableSet.<Class<? extends UpgradeStep>>of(ChangeCar.class);
 
+    ResultSet viewResultSet = mock(ResultSet.class);
+    when(viewResultSet.next()).thenReturn(true, true, false);
+    when(viewResultSet.getString(1)).thenReturn("FooView", "OldView");
+    when(viewResultSet.getString(2)).thenReturn("XXX");
+    
+    ResultSet upgradeResultSet = mock(ResultSet.class);
+    when(upgradeResultSet.next()).thenReturn(false);
+    
     ConnectionResources connection = new MockConnectionResources().
                                               withSchema(sourceSchema).
-                                              withResultSet("SELECT upgradeUUID FROM UpgradeAudit", new ArrayList<Object[]>()).
-                                              withResultSet("SELECT name, hash FROM DeployedViews", ImmutableList.of(new Object[] { "FooView", "XXX" },
-                                                new Object[] { "OldView", "XXX" })).
+                                              withResultSet("SELECT upgradeUUID FROM UpgradeAudit", upgradeResultSet).
+                                              withResultSet("SELECT name, hash FROM DeployedViews", viewResultSet).
                                               create();
 
     new Upgrade(connection, connection.getDataSource(), upgradePathFactory()).findPath(targetSchema, upgradeSteps, new HashSet<String>());
