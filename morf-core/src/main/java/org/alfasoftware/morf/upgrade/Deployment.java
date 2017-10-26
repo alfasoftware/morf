@@ -22,6 +22,7 @@ import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
@@ -35,6 +36,8 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
+import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
+import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
 
 import com.google.inject.ImplementedBy;
 import com.google.inject.Inject;
@@ -140,6 +143,19 @@ public class Deployment {
   public void deploy(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps) {
     UpgradePath path = getPath(targetSchema, upgradeSteps);
     sqlScriptExecutorProvider.get().execute(path.getSql());
+  }
+
+
+  /**
+   * Static convenience method which deploys the specified database schema, prepopulating
+   * the upgrade step table with all pre-existing upgrade information.
+   *
+   * @param targetSchema The target database schema.
+   * @param upgradeSteps All upgrade steps which should be deemed to have already run.
+   * @param connectionResources Connection details for the database.
+   */
+  public static void deploySchema(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources) {
+    new Deployment(new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition>emptySet()), connectionResources).deploy(targetSchema, upgradeSteps);
   }
 
 

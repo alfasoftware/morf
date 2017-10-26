@@ -25,6 +25,7 @@ import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import javax.sql.DataSource;
@@ -39,6 +40,8 @@ import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.upgrade.ExistingViewStateLoader.Result;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
+import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
+import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
 
 import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
@@ -64,6 +67,24 @@ public class Upgrade {
     this.connectionResources = connectionResources;
     this.dataSource = dataSource;
     this.factory = factory;
+  }
+
+
+  /**
+   * Static convenience method which creates the required {@link UpgradePath} to take the specified
+   * database and upgrade it to the target schema, using the upgrade steps supplied which have not
+   * already been applied.
+   *
+   * @param targetSchema The target database schema.
+   * @param upgradeSteps All upgrade steps which should be deemed to have already run.
+   * @param connectionResources Connection details for the database.
+   *
+   * @return The required upgrade path.
+   */
+  public static UpgradePath createPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources) {
+    return new Upgrade(connectionResources, connectionResources.getDataSource(),
+        new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition> emptySet())).findPath(targetSchema, upgradeSteps,
+          Collections.<String> emptySet());
   }
 
 

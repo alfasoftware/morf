@@ -99,6 +99,9 @@ public class UpgradeGraph {
 
   //Determine if the package name version is valid
   private boolean isPackageNameValid(Class<? extends UpgradeStep> stepClass) {
+    if (stepClass.getPackage() == null) {
+      return false;
+    }
     return stepClass.getPackage().getName().matches(".*\\.upgrade\\.v[0-9]+_[0-9]+(_[0-9]+[a-z]?)*$");
   }
 
