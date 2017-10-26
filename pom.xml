@@ -97,6 +97,7 @@
           <version>${maven-javadoc-plugin.version}</version>
           <configuration>
             <failOnError>true</failOnError>
+            <quiet>true</quiet>
           </configuration>
           <executions>
             <execution>
@@ -133,7 +134,7 @@
           <artifactId>findbugs-maven-plugin</artifactId>
           <version>${findbugs-maven-plugin.version}</version>
           <configuration>
-            <excludeFilterFile>../findbugs-exclude.xml</excludeFilterFile>
+            <excludeFilterFile>../etc/findbugs-exclude.xml</excludeFilterFile>
           </configuration>
           <executions>
             <execution>
@@ -157,7 +158,7 @@
             </dependency>
           </dependencies>
           <configuration>
-            <configLocation>../checkstyle.xml</configLocation>
+            <configLocation>../etc/checkstyle.xml</configLocation>
             <encoding>UTF-8</encoding>
             <consoleOutput>true</consoleOutput>
             <failsOnError>true</failsOnError>
@@ -363,6 +364,9 @@
                   <value>org.sonar.java.jacoco.JUnitListener</value>
                 </property>
               </properties>
+              <systemPropertyVariables>
+                <log4j.configuration>file:${basedir}/../etc/log4j-maven.properties</log4j.configuration>
+              </systemPropertyVariables>
             </configuration>
           </plugin>
         </plugins>
