@@ -33,8 +33,8 @@ import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.upgrade.ViewChanges;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableList;
@@ -53,7 +53,7 @@ import com.google.inject.Inject;
  * @author Copyright (c) Alfa Financial Software 2011
  */
 public class DatabaseSchemaManager {
-  private static final Log log = LogFactory.getLog(DatabaseSchemaManager.class);
+  private static final Logger log = LoggerFactory.getLogger(DatabaseSchemaManager.class);
 
   /**
    * Controls how truncation happens

@@ -23,8 +23,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
@@ -37,7 +37,7 @@ import com.google.common.base.Optional;
  * @author Copyright (c) Alfa Financial Software 2011 - 2013
  */
 class ExistingViewStateLoader {
-  private static final Log log = LogFactory.getLog(ExistingViewStateLoader.class);
+  private static final Logger log = LoggerFactory.getLogger(ExistingViewStateLoader.class);
 
   private final SqlDialect dialect;
   private final ExistingViewHashLoader existingViewHashLoader;

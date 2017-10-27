@@ -32,8 +32,8 @@ import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Table;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
@@ -62,7 +62,7 @@ import jxl.write.WriteException;
  */
 class TableOutputter {
 
-  private static final Log log = LogFactory.getLog(TableOutputter.class);
+  private static final Logger log = LoggerFactory.getLogger(TableOutputter.class);
 
   /**
    * The number of rows in the title.

@@ -28,8 +28,8 @@ import java.util.Set;
 
 import javax.sql.DataSource;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -42,7 +42,7 @@ import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
  * @author Copyright (c) Alfa Financial Software 2011 - 2013
  */
 class ExistingTableStateLoader {
-  private static final Log log = LogFactory.getLog(ExistingTableStateLoader.class);
+  private static final Logger log = LoggerFactory.getLogger(ExistingTableStateLoader.class);
 
   private final DataSource dataSource;
   private final SqlDialect dialect;

@@ -21,8 +21,8 @@ import com.google.inject.Binder;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.ConnectionResourcesBean;
 import org.alfasoftware.morf.jdbc.SqlDialect;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.io.Resources;
 import com.google.inject.AbstractModule;
@@ -35,7 +35,7 @@ import com.google.inject.Provides;
  */
 public class TestingDataSourceModule extends AbstractModule {
 
-  private static final Log log = LogFactory.getLog(TestingDataSourceModule.class);
+  private static final Logger log = LoggerFactory.getLogger(TestingDataSourceModule.class);
 
   /** Statically cached data source so we don't create a new one for every test. */
   private static volatile DataSource dataSource;

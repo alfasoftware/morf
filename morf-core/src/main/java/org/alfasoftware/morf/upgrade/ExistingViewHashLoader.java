@@ -28,8 +28,8 @@ import java.util.Map;
 
 import javax.sql.DataSource;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -44,7 +44,7 @@ import com.google.common.collect.Maps;
  * @author Copyright (c) Alfa Financial Software 2011 - 2013
  */
 class ExistingViewHashLoader {
-  private static final Log log = LogFactory.getLog(ExistingViewHashLoader.class);
+  private static final Logger log = LoggerFactory.getLogger(ExistingViewHashLoader.class);
 
   private final DataSource dataSource;
   private final SqlDialect dialect;

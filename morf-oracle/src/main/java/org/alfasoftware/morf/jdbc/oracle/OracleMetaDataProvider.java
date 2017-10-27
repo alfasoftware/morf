@@ -45,8 +45,8 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Suppliers;
 
@@ -62,7 +62,7 @@ public class OracleMetaDataProvider implements Schema {
   /**
    * Standard log line.
    */
-  private static final Log log = LogFactory.getLog(OracleMetaDataProvider.class);
+  private static final Logger log = LoggerFactory.getLogger(OracleMetaDataProvider.class);
 
   /**
    * Regex pattern matcher for the real name on column/table comments

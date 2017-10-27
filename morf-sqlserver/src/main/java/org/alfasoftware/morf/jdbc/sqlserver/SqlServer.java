@@ -25,8 +25,8 @@ import org.alfasoftware.morf.jdbc.JdbcUrlElements;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Optional;
 
@@ -38,7 +38,7 @@ import com.google.common.base.Optional;
  */
 public final class SqlServer extends AbstractDatabaseType {
 
-  private static final Log log = LogFactory.getLog(SqlServer.class);
+  private static final Logger log = LoggerFactory.getLogger(SqlServer.class);
 
   public static final String IDENTIFIER = "SQL_SERVER";
 

@@ -21,8 +21,8 @@ import java.sql.SQLException;
 
 import javax.sql.DataSource;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Optional;
 
@@ -32,7 +32,7 @@ import com.google.common.base.Optional;
  * @author Copyright (c) Alfa Financial Software 2013
  */
 public class DatabaseTypeIdentifier {
-  private static final Log log = LogFactory.getLog(DatabaseTypeIdentifier.class);
+  private static final Logger log = LoggerFactory.getLogger(DatabaseTypeIdentifier.class);
 
   private final DataSource dataSource;
 

@@ -42,8 +42,8 @@ import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableMap;
@@ -71,7 +71,7 @@ public class DatabaseMetaDataProvider implements Schema {
   /**
    * Log provider
    */
-  private static final Log      log         = LogFactory.getLog(DatabaseMetaDataProvider.class);
+  private static final Logger log = LoggerFactory.getLogger(DatabaseMetaDataProvider.class);
 
   /**
    * Type names used to query database meta data.

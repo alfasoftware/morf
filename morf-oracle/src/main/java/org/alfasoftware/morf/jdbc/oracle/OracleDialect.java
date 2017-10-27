@@ -53,8 +53,8 @@ import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
@@ -69,7 +69,7 @@ import com.google.common.collect.Lists;
  */
 class OracleDialect extends SqlDialect {
 
-  private static final Log log = LogFactory.getLog(OracleDialect.class);
+  private static final Logger log = LoggerFactory.getLogger(OracleDialect.class);
 
   /**
    * Used as the alias for the select statement in merge statements.

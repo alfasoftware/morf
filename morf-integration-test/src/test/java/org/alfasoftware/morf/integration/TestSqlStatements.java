@@ -127,8 +127,8 @@ import org.alfasoftware.morf.testing.DatabaseSchemaManager.TruncationBehavior;
 import org.alfasoftware.morf.testing.TestingDataSourceModule;
 import org.alfasoftware.morf.upgrade.LoggingSqlScriptVisitor;
 import org.apache.commons.lang.mutable.MutableBoolean;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.joda.time.LocalDate;
 import org.joda.time.Months;
 import org.junit.After;
@@ -168,7 +168,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
 
   private static final String TEST_ONLY_RUN_WITH_WINDOW_FUNCTION_SUPPORT = "This test is only run for dialects that support window functions";
 
-  private static final Log log = LogFactory.getLog(TestSqlStatements.class);
+  private static final Logger log = LoggerFactory.getLogger(TestSqlStatements.class);
 
   @Rule public InjectMembersRule injectMembersRule = new InjectMembersRule(new TestingDataSourceModule());
 

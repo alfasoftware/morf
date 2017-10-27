@@ -27,8 +27,8 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaHomology;
@@ -52,7 +52,7 @@ import com.google.common.collect.Lists;
  */
 public class UpgradePathFinder {
 
-  private static final Log log = LogFactory.getLog(UpgradePathFinder.class);
+  private static final Logger log = LoggerFactory.getLogger(UpgradePathFinder.class);
 
   private final UpgradeGraph upgradeGraph;
 

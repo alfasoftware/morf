@@ -19,8 +19,8 @@ import java.sql.SQLException;
 
 import org.alfasoftware.morf.jdbc.AbstractConnectionResources;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.h2.tools.Server;
 
 import com.google.inject.Inject;
@@ -33,7 +33,7 @@ import com.google.inject.Inject;
  */
 public class H2DatabaseInspector implements DatabaseInspector {
 
-  private static final Log log = LogFactory.getLog(H2DatabaseInspector.class);
+  private static final Logger log = LoggerFactory.getLogger(H2DatabaseInspector.class);
 
   /** Connection information. */
   private final ConnectionResources connectionResources;

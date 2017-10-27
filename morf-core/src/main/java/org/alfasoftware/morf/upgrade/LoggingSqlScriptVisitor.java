@@ -15,8 +15,8 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor.SqlScriptVisitor;
 
@@ -26,7 +26,7 @@ import org.alfasoftware.morf.jdbc.SqlScriptExecutor.SqlScriptVisitor;
  * @author Copyright (c) Alfa Financial Software 2011
  */
 public class LoggingSqlScriptVisitor implements SqlScriptVisitor {
-  private final Log log = LogFactory.getLog(LoggingSqlScriptVisitor.class);
+  private final Logger log = LoggerFactory.getLogger(LoggingSqlScriptVisitor.class);
 
   /**
    * {@inheritDoc}

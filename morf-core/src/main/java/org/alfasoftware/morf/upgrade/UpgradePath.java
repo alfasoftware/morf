@@ -24,8 +24,8 @@ import java.util.Set;
 
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -42,7 +42,7 @@ import com.google.inject.Inject;
  */
 public class UpgradePath implements SqlStatementWriter {
 
-  private static final Log log = LogFactory.getLog(UpgradePath.class);
+  private static final Logger log = LoggerFactory.getLogger(UpgradePath.class);
 
   /**
    * The unmodifiable list of upgrade steps.
@@ -149,7 +149,7 @@ public class UpgradePath implements SqlStatementWriter {
    *
    * @param logger the logger to use.
    */
-  public void logUpgradePathSQL(Log logger) {
+  public void logUpgradePathSQL(Logger logger) {
     if (sql.isEmpty()) {
       logger.info("No upgrade statements to be applied");
     } else {

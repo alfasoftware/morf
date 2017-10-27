@@ -22,8 +22,8 @@ import java.util.ServiceLoader;
 import javax.sql.XADataSource;
 
 import org.alfasoftware.morf.metadata.Schema;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
@@ -138,7 +138,7 @@ public interface DatabaseType {
    */
   public static final class Registry {
 
-    private static final Log log = LogFactory.getLog(DatabaseType.Registry.class);
+    private static final Logger log = LoggerFactory.getLogger(DatabaseType.Registry.class);
 
     private static final ImmutableMap<String, DatabaseType> registeredTypes;
 

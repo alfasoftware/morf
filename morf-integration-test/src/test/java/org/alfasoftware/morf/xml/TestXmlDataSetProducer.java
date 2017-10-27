@@ -33,11 +33,11 @@ import org.alfasoftware.morf.dataset.DataSetProducer;
 import org.alfasoftware.morf.dataset.MockDataSetConsumer;
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.xml.XmlStreamProvider.XmlInputStreamProvider;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Test cases to check XML can be parsed to a data set consumer.
@@ -45,7 +45,7 @@ import org.junit.rules.TemporaryFolder;
  * @author Copyright (c) Alfa Financial Software 2009
  */
 public class TestXmlDataSetProducer {
-  private static final Log log = LogFactory.getLog(TestXmlDataSetProducer.class);
+  private static final Logger log = LoggerFactory.getLogger(TestXmlDataSetProducer.class);
 
   /**
    * Allocate a temporary folder for the tests.
@@ -186,7 +186,7 @@ public class TestXmlDataSetProducer {
    */
   private final void use(Iterable<Record> recordsIterable) {
     for (Record record : recordsIterable) {
-      log.debug(record.hashCode());
+      log.debug(String.valueOf(record.hashCode()));
     }
   }
 

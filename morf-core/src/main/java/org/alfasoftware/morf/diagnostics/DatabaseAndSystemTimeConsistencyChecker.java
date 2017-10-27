@@ -20,14 +20,14 @@ import static org.alfasoftware.morf.sql.SqlUtils.select;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor.ResultSetProcessor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.Function;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.inject.ImplementedBy;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -42,8 +42,7 @@ import com.google.inject.Singleton;
 @Singleton
 public class DatabaseAndSystemTimeConsistencyChecker {
 
-  private static final Log                LOG                              = LogFactory
-                                                                               .getLog(DatabaseAndSystemTimeConsistencyChecker.class);
+  private static final Logger LOG = LoggerFactory.getLogger(DatabaseAndSystemTimeConsistencyChecker.class);
 
   private final ConnectionResources       connectionResources;
   private final SqlScriptExecutorProvider sqlScriptExecutorProvider;

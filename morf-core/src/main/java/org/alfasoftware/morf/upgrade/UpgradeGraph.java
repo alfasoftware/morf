@@ -23,8 +23,8 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Represents the graph of upgrade steps ordered by prerequisite relations.
@@ -36,7 +36,7 @@ import org.apache.commons.logging.LogFactory;
  * @author Copyright (c) Alfa Financial Software 2011
  */
 public class UpgradeGraph {
-  private static final Log log = LogFactory.getLog(UpgradeGraph.class);
+  private static final Logger log = LoggerFactory.getLogger(UpgradeGraph.class);
 
   /**
    * An total ordering preserving the partial ordering in the graph.

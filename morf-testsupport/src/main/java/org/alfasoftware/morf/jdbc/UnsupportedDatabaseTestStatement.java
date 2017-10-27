@@ -15,8 +15,8 @@
 
 package org.alfasoftware.morf.jdbc;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.junit.Assume;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
@@ -32,7 +32,7 @@ import org.junit.runners.model.Statement;
  */
 class UnsupportedDatabaseTestStatement extends Statement {
 
-  private static final Log  log = LogFactory.getLog(UnsupportedDatabaseTestStatement.class);
+  private static final Logger log = LoggerFactory.getLogger(UnsupportedDatabaseTestStatement.class);
 
   private final Description description;
 

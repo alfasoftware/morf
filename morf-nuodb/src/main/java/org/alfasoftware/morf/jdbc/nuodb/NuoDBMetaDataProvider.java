@@ -38,8 +38,8 @@ import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Function;
 import com.google.common.collect.ArrayListMultimap;
@@ -53,7 +53,7 @@ import com.google.common.collect.Multimap;
  */
 class NuoDBMetaDataProvider extends DatabaseMetaDataProvider {
 
-  private static final Log log = LogFactory.getLog(NuoDBMetaDataProvider.class);
+  private static final Logger log = LoggerFactory.getLogger(NuoDBMetaDataProvider.class);
 
   private Multimap<String, ColumnBuilder> columnMetaData;
 

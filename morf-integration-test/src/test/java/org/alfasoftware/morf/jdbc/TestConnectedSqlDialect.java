@@ -31,8 +31,8 @@ import java.util.ArrayList;
 
 import javax.sql.DataSource;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -63,7 +63,7 @@ import com.google.inject.Provider;
  * @author Copyright (c) Alfa Financial Software 2012
  */
 public class TestConnectedSqlDialect {
-  private static final Log log = LogFactory.getLog(TestConnectedSqlDialect.class);
+  private static final Logger log = LoggerFactory.getLogger(TestConnectedSqlDialect.class);
 
   private Connection connection;
   private AliasedField columnARef;

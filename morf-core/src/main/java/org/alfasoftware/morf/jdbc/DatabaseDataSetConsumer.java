@@ -20,8 +20,8 @@ import java.sql.SQLException;
 
 import javax.sql.DataSource;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.alfasoftware.morf.dataset.DataSetConsumer;
 import org.alfasoftware.morf.dataset.Record;
@@ -38,7 +38,7 @@ import com.google.inject.Inject;
  */
 public class DatabaseDataSetConsumer implements DataSetConsumer {
   /** Standard logger */
-  private static final Log log = LogFactory.getLog(DatabaseDataSetConsumer.class);
+  private static final Logger log = LoggerFactory.getLogger(DatabaseDataSetConsumer.class);
 
   /**
    * Database connection resource for the database we are writing to.

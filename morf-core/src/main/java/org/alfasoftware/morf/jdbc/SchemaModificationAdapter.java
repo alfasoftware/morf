@@ -20,8 +20,8 @@ import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.alfasoftware.morf.dataset.DataSetAdapter;
 import org.alfasoftware.morf.dataset.Record;
@@ -37,7 +37,7 @@ import org.alfasoftware.morf.metadata.View;
  */
 public class SchemaModificationAdapter extends DataSetAdapter {
   /** Standard logger */
-  private static final Log log = LogFactory.getLog(SchemaModificationAdapter.class);
+  private static final Logger log = LoggerFactory.getLogger(SchemaModificationAdapter.class);
 
   /**
    * A list of the tables that were in the database when we started and have not been updated.

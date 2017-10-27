@@ -27,8 +27,8 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -38,7 +38,7 @@ import org.apache.commons.logging.LogFactory;
  */
 public class TableLoader {
 
-  private static final Log log = LogFactory.getLog(TableLoader.class);
+  private static final Logger log = LoggerFactory.getLogger(TableLoader.class);
 
   private final Connection connection;
   private final SqlDialect sqlDialect;

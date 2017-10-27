@@ -23,8 +23,8 @@ import javax.sql.DataSource;
 
 import org.alfasoftware.morf.jdbc.AbstractConnectionResources;
 import org.alfasoftware.morf.jdbc.ApplicationConnectionResources;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableSortedMap;
 
@@ -37,7 +37,7 @@ import com.google.common.collect.ImmutableSortedMap;
  * @author Copyright (c) Alfa Financial Software 2017
  */
 public class NuoDBDataSourceBuilder {
-  private static final Log log = LogFactory.getLog(NuoDBDataSourceBuilder.class);
+  private static final Logger log = LoggerFactory.getLogger(NuoDBDataSourceBuilder.class);
 
   public static DataSource build(ApplicationConnectionResources applicationConnectionResources, AbstractConnectionResources connectionDetails) {
     Properties p = new Properties();

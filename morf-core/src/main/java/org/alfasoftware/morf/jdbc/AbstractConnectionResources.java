@@ -24,8 +24,8 @@ import javax.sql.DataSource;
 import javax.sql.XADataSource;
 
 import org.alfasoftware.morf.metadata.SchemaResource;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Preconditions;
 
@@ -39,7 +39,7 @@ import com.google.common.base.Preconditions;
  */
 public abstract class AbstractConnectionResources implements ConnectionResources {
 
-  private static final Log log = LogFactory.getLog(AbstractConnectionResources.class);
+  private static final Logger log = LoggerFactory.getLogger(AbstractConnectionResources.class);
 
 
   /**
