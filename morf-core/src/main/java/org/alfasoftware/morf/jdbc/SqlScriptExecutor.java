@@ -138,9 +138,9 @@ public class SqlScriptExecutor {
   }
 
 
-  public void commitOrRollback(Connection connection, SqlExceptionThrowingRunnable work) throws SQLException {
+  private void commitOrRollback(Connection connection, SqlExceptionThrowingRunnable runnable) throws SQLException {
     try {
-      work.run();
+      runnable.run();
       connection.commit();
     } catch (Exception e) {
       connection.rollback();
@@ -149,11 +149,11 @@ public class SqlScriptExecutor {
   }
 
 
-  private void autoCommitOff(Connection connection, SqlExceptionThrowingRunnable work) throws SQLException {
+  private void autoCommitOff(Connection connection, SqlExceptionThrowingRunnable runnable) throws SQLException {
     boolean wasAutoCommit = connection.getAutoCommit();
     if (wasAutoCommit) connection.setAutoCommit(false);
     try {
-      work.run();
+      runnable.run();
     } finally {
       if (wasAutoCommit) connection.setAutoCommit(true);
     }
