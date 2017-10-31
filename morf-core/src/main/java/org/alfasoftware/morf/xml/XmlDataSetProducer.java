@@ -42,6 +42,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.jar.JarInputStream;
 import java.util.zip.ZipEntry;
@@ -286,32 +287,26 @@ public class XmlDataSetProducer implements DataSetProducer {
               throw new IllegalStateException("Unable to transform [" + result + "] into a temporary directory");
             }
 
-            JarInputStream input = new JarInputStream(jar.getJarFileURL().openStream());
-            String prefix = jar.getJarEntry().getName();
-            ZipEntry entry = null;
-            while ((entry = input.getNextEntry()) != null) { // NOPMD
-              if (entry.getName().startsWith(prefix) && !entry.isDirectory()) {
-                File target = new File(result, entry.getName().substring(prefix.length()));
-                if (!target.getParentFile().exists() && !target.getParentFile().mkdirs()) {
-                  throw new RuntimeException("Could not make directories [" + target.getParentFile() + "]");
-                }
-                OutputStream output = new BufferedOutputStream(new FileOutputStream(target));
-                try {
-                  ByteStreams.copy(input, output);
-                } finally {
-                  output.close();
+            try (JarInputStream input = new JarInputStream(jar.getJarFileURL().openStream())) {
+              String prefix = jar.getJarEntry().getName();
+              ZipEntry entry = null;
+              while ((entry = input.getNextEntry()) != null) { // NOPMD
+                if (entry.getName().startsWith(prefix) && !entry.isDirectory()) {
+                  File target = new File(result, entry.getName().substring(prefix.length()));
+                  if (!target.getParentFile().exists() && !target.getParentFile().mkdirs()) {
+                    throw new RuntimeException("Could not make directories [" + target.getParentFile() + "]");
+                  }
+                  try (OutputStream output = new BufferedOutputStream(new FileOutputStream(target))) {
+                    ByteStreams.copy(input, output);
+                  }
                 }
               }
             }
 
           } else {
-            InputStream input = url.openStream();
-            OutputStream output = new BufferedOutputStream(new FileOutputStream(result));
-            try {
+            try (InputStream input = url.openStream();
+                 OutputStream output = new BufferedOutputStream(new FileOutputStream(result))) {
               ByteStreams.copy(input, output);
-            } finally {
-              output.close();
-              input.close();
             }
           }
         } catch (IOException e) {
@@ -447,27 +442,22 @@ public class XmlDataSetProducer implements DataSetProducer {
     }
 
     // Open a readable byte channel for the url
-    ReadableByteChannel rbc;
-    try {
-      rbc = Channels.newChannel(url.openStream());
+    try (ReadableByteChannel rbc = Channels.newChannel(url.openStream())) {
+
+      // Create a file output stream to transfer the data from the url to the temp file
+      try (FileOutputStream fos = new FileOutputStream(file)) {
+
+        // transfer the data
+        fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
+
+      } catch (FileNotFoundException e) {
+        throw new RuntimeException("Unable to create file output stream", e);
+      } catch (IOException e) {
+        throw new RuntimeException("Unable to transfer from url to temp file", e);
+      }
+
     } catch (IOException e) {
       throw new RuntimeException("Unable to create readable byte channel", e);
-    }
-
-    // Create a file output stream to transfer the data from the url to the temp file
-    FileOutputStream fos;
-    try {
-      fos = new FileOutputStream(file);
-    } catch (FileNotFoundException e) {
-      throw new RuntimeException("Unable to create file output stream", e);
-    }
-
-    // transfer the data
-    try {
-      fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
-      fos.close();
-    } catch (IOException e) {
-      throw new RuntimeException("Unable to transfer from url to temp file", e);
     }
 
     // Remove username and password from being the default authentication
@@ -481,8 +471,6 @@ public class XmlDataSetProducer implements DataSetProducer {
     } catch (Exception e) {
       throw new RuntimeException("Unable to reset the HttpsURLConnection defaultSSLSocketFactory.", e);
     }
-
-
   }
 
 
@@ -1018,7 +1006,7 @@ public class XmlDataSetProducer implements DataSetProducer {
 
         return result;
       } else {
-        throw new IllegalStateException("No more records");
+        throw new NoSuchElementException("No more records");
       }
     }
 
