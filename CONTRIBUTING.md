@@ -1,3 +1,5 @@
+# Contributing to Morf
+
 Thankyou for expressing an interest in helping us create Morf.  It's greatly appreciated.  Please have a read below.
 
 ## Bug reports, feature requests
