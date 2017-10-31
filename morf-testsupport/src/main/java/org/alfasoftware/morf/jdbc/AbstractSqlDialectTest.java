@@ -356,9 +356,7 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testDialectHasNoBespokeTests() {
     for (Method method : getClass().getDeclaredMethods()) {
-      if (method.getName().startsWith("test")) {
-        fail("Descendents of " + AbstractSqlDialectTest.class.getSimpleName() + " must not define tests directly");
-      } else if (method.getAnnotation(Test.class) != null) {
+      if (method.getName().startsWith("test") || method.getAnnotation(Test.class) != null) {
         fail("Descendents of " + AbstractSqlDialectTest.class.getSimpleName() + " must not define tests directly");
       }
     }

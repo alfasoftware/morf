@@ -367,8 +367,8 @@ class HumanReadableStatementHelper {
 
   /**
    * Generates human-readable "Analyse Table" string.
-   * 
-   * @param The table to analyse. 
+   *
+   * @param The table to analyse.
    */
   public static String generateAnalyseTableFromString(String tableName) {
     return String.format("Analyse table %s", tableName);
@@ -970,7 +970,7 @@ class HumanReadableStatementHelper {
       if (comma) {
         sb.append(", ");
       } else {
-        comma = false;
+        comma = true;
         if (sb.length() > 0) {
           sb.append(' ');
         }

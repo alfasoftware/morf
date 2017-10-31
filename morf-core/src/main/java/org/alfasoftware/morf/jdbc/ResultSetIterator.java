@@ -7,6 +7,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.Column;
@@ -134,12 +135,15 @@ class ResultSetIterator implements Iterator<Record>, AutoCloseable {
    */
   @Override
   public Record next() {
-    if (hasNext) {
-      resultSetRecord.cacheValues();
-
-      // Attempt to advance
-      advanceResultSet();
+    if (!hasNext) {
+      throw new NoSuchElementException();
     }
+
+    resultSetRecord.cacheValues();
+
+    // Attempt to advance
+    advanceResultSet();
+
     return resultSetRecord;
   }
 
