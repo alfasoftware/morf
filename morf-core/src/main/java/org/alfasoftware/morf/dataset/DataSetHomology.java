@@ -95,7 +95,6 @@ public class DataSetHomology {
    * @param producer2 The second producer
    * @return Whether the data sets are identical
    */
-  @SuppressWarnings("unchecked")
   public boolean dataSetProducersMatch(DataSetProducer producer1, DataSetProducer producer2) {
 
     producer1.open();

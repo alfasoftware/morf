@@ -125,25 +125,43 @@ public class SqlScriptExecutor {
         // Either initialise this executor with a DataSource or use the execute(Iterable<String>, Connection) method.
         throw new IllegalStateException("No data source found.");
       }
-
-      Connection connection = dataSource.getConnection();
-      boolean wasAutoCommit = connection.getAutoCommit();
-      try {
-        if (wasAutoCommit) connection.setAutoCommit(false);
-
-        work.execute(connection);
-
-        connection.commit();
-      } catch (SQLException e) {
-        connection.rollback();
-        throw e;
-      } finally {
-        if (wasAutoCommit) connection.setAutoCommit(true);
-        connection.close();
+      try (Connection connection = dataSource.getConnection()) {
+        autoCommitOff(connection, () -> {
+          commitOrRollback(connection, () -> {
+            work.execute(connection);
+          });
+        });
       }
     } catch (SQLException e) {
       throw new RuntimeSqlException(e);
     }
+  }
+
+
+  public void commitOrRollback(Connection connection, SqlExceptionThrowingRunnable work) throws SQLException {
+    try {
+      work.run();
+      connection.commit();
+    } catch (Exception e) {
+      connection.rollback();
+      throw e;
+    }
+  }
+
+
+  private void autoCommitOff(Connection connection, SqlExceptionThrowingRunnable work) throws SQLException {
+    boolean wasAutoCommit = connection.getAutoCommit();
+    if (wasAutoCommit) connection.setAutoCommit(false);
+    try {
+      work.run();
+    } finally {
+      if (wasAutoCommit) connection.setAutoCommit(true);
+    }
+  }
+
+
+  private interface SqlExceptionThrowingRunnable {
+    public void run() throws SQLException;
   }
 
 
@@ -259,13 +277,9 @@ public class SqlScriptExecutor {
     int numberOfRowsUpdated = 0;
     try {
       try {
-        NamedParameterPreparedStatement preparedStatement = NamedParameterPreparedStatement.parse(sqlStatement).createFor(
-          connection);
-        try {
+        try (NamedParameterPreparedStatement preparedStatement = NamedParameterPreparedStatement.parse(sqlStatement).createFor(connection)) {
           prepareParameters(preparedStatement, parameterMetadata, parameterData);
           numberOfRowsUpdated = preparedStatement.executeUpdate();
-        } finally {
-          preparedStatement.close();
         }
       } catch (SQLException e) {
         throw new RuntimeSqlException(e);
@@ -313,8 +327,7 @@ public class SqlScriptExecutor {
         return 0;
       }
 
-      Statement statement = connection.createStatement();
-      try {
+      try (Statement statement = connection.createStatement()) {
         if (log.isDebugEnabled())
           log.debug("Executing SQL [" + sql + "]");
 
@@ -330,8 +343,6 @@ public class SqlScriptExecutor {
         throw new RuntimeSqlException("Error executing SQL [" + sql + "]", e);
       } catch (Exception e) {
         throw new RuntimeException("Error executing SQL [" + sql + "]", e);
-      } finally {
-        statement.close();
       }
 
       return numberOfRowsUpdated;
@@ -493,19 +504,13 @@ public class SqlScriptExecutor {
       boolean standalone) {
     try {
       ParseResult parseResult = parse(sql);
-      NamedParameterPreparedStatement preparedStatement;
-      if (standalone) {
-        preparedStatement = parseResult.createForQueryOn(connection);
-        preparedStatement.setFetchSize(sqlDialect.fetchSizeForBulkSelects());
-      } else {
-        preparedStatement = parseResult.createFor(connection);
-        preparedStatement.setFetchSize(sqlDialect.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming());
-      }
-
-      try {
+      try (NamedParameterPreparedStatement preparedStatement = standalone ? parseResult.createForQueryOn(connection) : parseResult.createFor(connection)) {
+        if (standalone) {
+          preparedStatement.setFetchSize(sqlDialect.fetchSizeForBulkSelects());
+        } else {
+          preparedStatement.setFetchSize(sqlDialect.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming());
+        }
         return executeQuery(preparedStatement, parameterMetadata, parameterData, resultSetProcessor, maxRows, queryTimeout);
-      } finally {
-        preparedStatement.close();
       }
     } catch (SQLException e) {
       throw new RuntimeSqlException("SQL exception when executing query", e);
