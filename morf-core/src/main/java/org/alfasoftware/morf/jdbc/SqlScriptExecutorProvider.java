@@ -18,6 +18,7 @@ package org.alfasoftware.morf.jdbc;
 import javax.sql.DataSource;
 
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor.SqlScriptVisitor;
+
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.util.Providers;
@@ -125,6 +126,7 @@ public class SqlScriptExecutorProvider implements Provider<SqlScriptExecutor> {
      */
     @Override
     public void executionStart() {
+      // Defaults to no-op
     }
 
 
@@ -133,6 +135,7 @@ public class SqlScriptExecutorProvider implements Provider<SqlScriptExecutor> {
      */
     @Override
     public void beforeExecute(String sql) {
+      // Defaults to no-op
     }
 
 
@@ -142,6 +145,7 @@ public class SqlScriptExecutorProvider implements Provider<SqlScriptExecutor> {
      */
     @Override
     public void afterExecute(String sql, long numberOfRowsUpdated) {
+      // Defaults to no-op
     }
 
 
@@ -150,6 +154,7 @@ public class SqlScriptExecutorProvider implements Provider<SqlScriptExecutor> {
      */
     @Override
     public void executionEnd() {
+      // Defaults to no-op
     }
   }
 }

@@ -702,6 +702,7 @@ public class SqlScriptExecutor {
      */
     @Override
     public void executionStart() {
+      // Defaults to no-op
     }
 
 
@@ -710,6 +711,7 @@ public class SqlScriptExecutor {
      */
     @Override
     public void beforeExecute(String sql) {
+      // Defaults to no-op
     }
 
 
@@ -719,6 +721,7 @@ public class SqlScriptExecutor {
      */
     @Override
     public void afterExecute(String sql, long numberOfRowsUpdated) {
+      // Defaults to no-op
     }
 
 
@@ -727,6 +730,7 @@ public class SqlScriptExecutor {
      */
     @Override
     public void executionEnd() {
+      // Defaults to no-op
     }
   }
 

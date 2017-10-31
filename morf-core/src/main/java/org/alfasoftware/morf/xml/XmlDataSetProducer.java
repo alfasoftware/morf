@@ -422,12 +422,12 @@ public class XmlDataSetProducer implements DataSetProducer {
               return new java.security.cert.X509Certificate[0];
           }
           @Override
-          public void checkClientTrusted(
-              java.security.cert.X509Certificate[] certs, String authType) {
+          public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) {
+            // Ignore everything
           }
           @Override
-          public void checkServerTrusted(
-              java.security.cert.X509Certificate[] certs, String authType) {
+          public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String authType) {
+            // Ignore everything
           }
       }
     };

@@ -143,7 +143,7 @@ public class Upgrade {
       upgradesToApply.add(new UpgradeStep() {
         @Override public String getJiraId() { return "\u2014"; }
         @Override public String getDescription() { return "Update database views"; }
-        @Override public void execute(SchemaEditor schema, DataEditor data) {}
+        @Override public void execute(SchemaEditor schema, DataEditor data) { /* No changes */ }
       });
 
     } else if (!upgradesToApply.isEmpty()) {
