@@ -45,14 +45,18 @@ class DataSetProducerBuilderImpl implements DataSetProducerBuilder {
    * @see org.alfasoftware.morf.dataset.DataSetProducer#open()
    */
   @Override
-  public void open() {}
+  public void open() {
+    // Nothing to do
+  }
 
 
   /**
    * @see org.alfasoftware.morf.dataset.DataSetProducer#close()
    */
   @Override
-  public void close() {}
+  public void close() {
+    // Nothing to do
+  }
 
 
   /**

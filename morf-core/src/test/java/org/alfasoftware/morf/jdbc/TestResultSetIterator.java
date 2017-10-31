@@ -12,6 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
@@ -92,12 +93,22 @@ public class TestResultSetIterator {
 
     // Then
     assertTrue(resultSetIterator.hasNext());
+
     resultSetIterator.next();
     resultSetIterator.next();
-    resultSetIterator.next();
+
     assertFalse(resultSetIterator.hasNext());
+
     verify(resultSet).close();
     verify(statement).close();
+
+    boolean gotException = false;
+    try {
+      resultSetIterator.next();
+    } catch (NoSuchElementException e) {
+      gotException = true;
+    }
+    assertTrue(gotException);
   }
 
 
@@ -181,10 +192,19 @@ public class TestResultSetIterator {
     assertTrue(resultSetIterator.hasNext());
     resultSetIterator.next();
     resultSetIterator.next();
-    resultSetIterator.next();
+
     assertFalse(resultSetIterator.hasNext());
+
     verify(resultSet).close();
     verify(statement).close();
+
+    boolean gotException = false;
+    try {
+      resultSetIterator.next();
+    } catch (NoSuchElementException e) {
+      gotException = true;
+    }
+    assertTrue(gotException);
   }
 
 
