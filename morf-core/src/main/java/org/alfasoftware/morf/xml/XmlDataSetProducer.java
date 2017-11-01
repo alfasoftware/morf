@@ -297,7 +297,7 @@ public class XmlDataSetProducer implements DataSetProducer {
                   throw new RuntimeException("Could not make directories [" + target.getParentFile() + "]");
                 }
                   try (OutputStream output = new BufferedOutputStream(new FileOutputStream(target))) {
-                    ByteStreams.copy(input, output);
+                  ByteStreams.copy(input, output);
                 }
               }
             }
@@ -945,6 +945,8 @@ public class XmlDataSetProducer implements DataSetProducer {
    */
   private static class PullProcessorRecordIterator extends XmlPullProcessor implements Iterator<Record> {
 
+    private static final CharSequence NULL_CHARACTER = new String(new char[] { 0 /* null */ });
+
     /**
      * Stores the column names we need to provide values for.
      */
@@ -1001,7 +1003,14 @@ public class XmlDataSetProducer implements DataSetProducer {
         // Buffer this record
         RecordBuilder result = DataSetUtils.record();
         for (String columnName : columnNames) {
-          result.setString(columnName.toUpperCase(), xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, columnName));
+          String attributeValue = xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, columnName);
+
+          // deal with escaping...
+          String columnValue = attributeValue
+            .replace("\\\\", "\\")
+            .replace("\\0", NULL_CHARACTER);
+
+          result.setString(columnName.toUpperCase(), columnValue);
         }
 
         // Is there another

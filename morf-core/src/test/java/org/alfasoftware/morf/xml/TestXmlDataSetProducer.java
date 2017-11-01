@@ -17,6 +17,7 @@ package org.alfasoftware.morf.xml;
 
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.alfasoftware.morf.xml.SourceXML.readResource;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -274,7 +275,27 @@ public class TestXmlDataSetProducer {
     
     producer.close();
   }
+  
+  private void validateDataSetProducerWithNullsAndBackslashes(DataSetProducer dataSetProducer) {
+    dataSetProducer.open();
+    ImmutableList<Record> records = ImmutableList.copyOf(dataSetProducer.records("Foo"));
+    assertEquals(new String(new char[] {'A', 0 /*null*/, 'C'}), records.get(0).getValue("val"));
+    assertEquals(new String(new char[] { 0 /*null*/ }), records.get(1).getValue("val"));
+    assertEquals("escape\\it", records.get(2).getValue("val"));
+    dataSetProducer.close();
+  }
+  
+  @Test
+  public void testWithNullCharacterReferencesV2() {
+    validateDataSetProducerWithNullsAndBackslashes(new XmlDataSetProducer(new TestXmlInputStreamProvider(readResource("testWithNullCharacterReferencesV2.xml"), "Foo")));
+  }
 
+  @Test
+  public void testWithNullCharacterReferencesV3() {
+    validateDataSetProducerWithNullsAndBackslashes(new XmlDataSetProducer(new TestXmlInputStreamProvider(readResource("testWithNullCharacterReferencesV3.xml"), "Foo")));
+  }
+  
+  
 
   /**
    * Testing implementation to catch result XML.
@@ -329,7 +350,7 @@ public class TestXmlDataSetProducer {
      */
     @Override
     public InputStream openInputStreamForTable(String tableName) {
-      assertEquals("Table name", this.tableName, tableName);
+      assertEquals("Table name", this.tableName.toUpperCase(), tableName.toUpperCase());
       return new ByteArrayInputStream(content.getBytes());
     }
 
