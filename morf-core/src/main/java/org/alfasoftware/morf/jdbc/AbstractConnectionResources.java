@@ -275,28 +275,37 @@ public abstract class AbstractConnectionResources implements ConnectionResources
     @Override
     public Connection getConnection(String username, String password) throws SQLException {
       log.info("Opening new database connection to [" + AbstractConnectionResources.this.getJdbcUrl() + "] with username [" + username + "]");
+      loadJdbcDriver();
+      return openConnection(username, password);
+    }
 
-      // Load the JDBC driver for this DatabaseType
+
+    private void loadJdbcDriver() {
       String driverClassName = findDatabaseType().driverClassName();
       try {
         Class.forName(driverClassName);
       } catch (ClassNotFoundException e) {
         log.warn("Failed to load JDBC driver [" + driverClassName + "] for DatabaseType [" + AbstractConnectionResources.this.getDatabaseType() + "]", e);
       }
+    }
 
+
+    private Connection openConnection(String username, String password) throws SQLException {
       Connection connection;
-
       try {
         connection = DriverManager.getConnection(AbstractConnectionResources.this.getJdbcUrl(), username, password);
       } catch (SQLException se) {
         log.error(String.format("Unable to connect to URL: %s, with user: %s", AbstractConnectionResources.this.getJdbcUrl(), username));
         throw se;
       }
-
-      // Attempt to switch to read-committed. This is the default on many platforms, but not on MySQL.
-      connection.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
-
-      return connection;
+      try {
+        // Attempt to switch to read-committed. This is the default on many platforms, but not on MySQL.
+        connection.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+        return connection;
+      } catch (Exception e) {
+        connection.close();
+        throw e;
+      }
     }
   }
 }

@@ -261,28 +261,20 @@ public class ResultSetComparer {
    */
   public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback,
                      StatementParameters leftStatementParameters, StatementParameters rightStatementParameters) {
-    ResultSet rsLeft = null;
-    ResultSet rsRight = null;
-    NamedParameterPreparedStatement statementLeft = null;
-    NamedParameterPreparedStatement statementRight = null;
-    try {
-      try {
-        statementLeft = NamedParameterPreparedStatement.parse(leftSqlDialect.convertStatementToSQL(left)).createForQueryOn(leftConnection);
-        statementRight = NamedParameterPreparedStatement.parse(rightSqlDialect.convertStatementToSQL(right)).createForQueryOn(rightConnection);
-        leftSqlDialect.prepareStatementParameters(statementLeft, leftSqlDialect.extractParameters(left), leftStatementParameters);
-        rightSqlDialect.prepareStatementParameters(statementRight, rightSqlDialect.extractParameters(right), rightStatementParameters);
-        rsLeft = statementLeft.executeQuery();
-        rsRight = statementRight.executeQuery();
-        return compare(keyColumns, rsLeft, rsRight, callback);
-      } finally {
-        if (statementLeft != null) statementLeft.close();
-        if (statementRight != null) statementRight.close();
-        if (rsLeft != null) rsLeft.close();
-        if (rsRight != null) rsRight.close();
-      }
+    try (NamedParameterPreparedStatement statementLeft = NamedParameterPreparedStatement.parse(leftSqlDialect.convertStatementToSQL(left)).createForQueryOn(leftConnection);
+         NamedParameterPreparedStatement statementRight = NamedParameterPreparedStatement.parse(rightSqlDialect.convertStatementToSQL(right)).createForQueryOn(rightConnection);
+         ResultSet rsLeft = parameteriseAndExecute(statementLeft, left, leftStatementParameters, leftSqlDialect);
+         ResultSet rsRight = parameteriseAndExecute(statementRight, right, rightStatementParameters, rightSqlDialect)) {
+      return compare(keyColumns, rsLeft, rsRight, callback);
     } catch (SQLException e) {
       throw new RuntimeSqlException("Error comparing SQL statements [" + left + ", " + right + "]", e);
     }
+  }
+
+
+  private static ResultSet parameteriseAndExecute(NamedParameterPreparedStatement statement, SelectStatement select, StatementParameters parameters, SqlDialect dialect) throws SQLException {
+    dialect.prepareStatementParameters(statement, dialect.extractParameters(select), parameters);
+    return statement.executeQuery();
   }
 
 

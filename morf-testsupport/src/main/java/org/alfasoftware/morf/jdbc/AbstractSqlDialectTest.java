@@ -5213,7 +5213,7 @@ public abstract class AbstractSqlDialectTest {
      * @param expectedBytes expected byte value of argument.
      */
     public ByteArrayMatcher(final byte[] expectedBytes) {
-      this.expectedBytes = expectedBytes;
+      this.expectedBytes = Arrays.copyOf(expectedBytes, expectedBytes.length);
     }
 
     /**
