@@ -42,7 +42,7 @@ public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableW
 
 
   /**
-   * deprecated use AliasedField(String)
+   * @deprecated use AliasedField(String)
    */
   @Deprecated
   protected AliasedField() {}

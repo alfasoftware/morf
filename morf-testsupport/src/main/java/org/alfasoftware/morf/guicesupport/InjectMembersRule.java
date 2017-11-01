@@ -61,12 +61,6 @@ public class InjectMembersRule implements MethodRule {
   private final Module[] modules;
 
   /**
-   * The injector created as part of this rule.
-   */
-  private Injector injector;
-
-
-  /**
    * @param modules modules for the guice injector.
    */
   public InjectMembersRule(final Module... modules) {
@@ -86,8 +80,7 @@ public class InjectMembersRule implements MethodRule {
         if (target instanceof Module) {
           moduleWithTarget.add((Module) target);
         }
-        injector = Guice.createInjector(moduleWithTarget);
-        injector.injectMembers(target);
+        Guice.createInjector(moduleWithTarget).injectMembers(target);
         try {
           base.evaluate();
         } finally {

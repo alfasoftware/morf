@@ -51,6 +51,7 @@ public final class RecordMatcher extends BaseMatcher<Record> {
 
 
   private RecordMatcher() {
+    super();
   }
 
 

@@ -232,7 +232,6 @@ public abstract class AbstractSqlDialectTest {
    */
   protected SqlDialect testDialect;
 
-  private Table testTable;
   private Table testTempTable;
   private Table nonNullTempTable;
   private Table alternateTestTempTable;
@@ -252,7 +251,7 @@ public abstract class AbstractSqlDialectTest {
     testDialect = createTestDialect();
 
     // Main test table
-    testTable = table(TEST_TABLE)
+    Table testTable = table(TEST_TABLE)
         .columns(
           idColumn(),
           versionColumn(),
@@ -5213,6 +5212,7 @@ public abstract class AbstractSqlDialectTest {
      * @param expectedBytes expected byte value of argument.
      */
     public ByteArrayMatcher(final byte[] expectedBytes) {
+      super();
       this.expectedBytes = Arrays.copyOf(expectedBytes, expectedBytes.length);
     }
 

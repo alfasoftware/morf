@@ -237,11 +237,27 @@ public final class DataSetUtils {
    * Fluent interface for building a {@link Record}.
    */
   public interface RecordBuilder extends DataValueLookupBuilder, Record {
-    @Override
-    RecordBuilder withInitialColumnCount(int count);
+
+    /**
+     * {inheritDoc}
+     *
+     * @see org.alfasoftware.morf.metadata.DataSetUtils.DataValueLookupBuilder#value(java.lang.String,
+     *      java.lang.String)
+     * @deprecated Use the appropriate setter method for your type (e.g.
+     *             {@link #setBoolean(String, Boolean)} or
+     *             {@link #setBigDecimal(String, BigDecimal)}). Avoid using
+     *             {@link #setString(String, String)} for all cases where
+     *             {@link #value(String, String)} is currently used (despite the
+     *             fact that this will, in fact, work) since if you are storing
+     *             a non string type, you will be forcing the code to perform a
+     *             conversion from a string to your target type later.
+     */
     @Override
     @Deprecated
     RecordBuilder value(String columnName, String value);
+
+    @Override
+    RecordBuilder withInitialColumnCount(int count);
     @Override
     RecordBuilder setObject(String columnName, Object value);
     @Override
@@ -269,11 +285,27 @@ public final class DataSetUtils {
    * Fluent interface for building a {@link StatementParameters}.
    */
   public interface StatementParametersBuilder extends DataValueLookupBuilder, StatementParameters {
-    @Override
-    StatementParametersBuilder withInitialColumnCount(int count);
+
+    /**
+     * {inheritDoc}
+     *
+     * @see org.alfasoftware.morf.metadata.DataSetUtils.DataValueLookupBuilder#value(java.lang.String,
+     *      java.lang.String)
+     * @deprecated Use the appropriate setter method for your type (e.g.
+     *             {@link #setBoolean(String, Boolean)} or
+     *             {@link #setBigDecimal(String, BigDecimal)}). Avoid using
+     *             {@link #setString(String, String)} for all cases where
+     *             {@link #value(String, String)} is currently used (despite the
+     *             fact that this will, in fact, work) since if you are storing
+     *             a non string type, you will be forcing the code to perform a
+     *             conversion from a string to your target type later.
+     */
     @Override
     @Deprecated
     StatementParametersBuilder value(String columnName, String value);
+
+    @Override
+    StatementParametersBuilder withInitialColumnCount(int count);
     @Override
     StatementParametersBuilder setObject(String columnName, Object value);
     @Override

@@ -378,7 +378,7 @@ final class ValueConverters {
   static final class NullValueConverter implements ValueConverter<Object> {
     private static final NullValueConverter INSTANCE = new NullValueConverter();
 
-    static final NullValueConverter instance() {
+    static NullValueConverter instance() {
       return INSTANCE;
     }
 

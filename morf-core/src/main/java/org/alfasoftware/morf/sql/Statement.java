@@ -37,7 +37,7 @@ public interface Statement {
    * Create a deep copy for this statement
    *
    * @return a deep copy of this statement
-   * Deprecated use deepCopy({@link DeepCopyTransformation}) which returns a builder.
+   * @deprecated use deepCopy({@link DeepCopyTransformation}) which returns a builder.
    */
   @Deprecated
   public Statement deepCopy();

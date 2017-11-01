@@ -29,6 +29,7 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 
@@ -301,6 +302,8 @@ public class SchemaChangeSequence {
 
     /**
      * @see org.alfasoftware.morf.upgrade.SchemaEditor#correctPrimaryKeyColumns(java.lang.String, java.util.List)
+     * @deprecated This change step should never be required, use {@link #changePrimaryKeyColumns(String, List, List)}
+     *  instead. This method will be removed when upgrade steps before 5.2.14 are removed.
      */
     @Override
     @Deprecated

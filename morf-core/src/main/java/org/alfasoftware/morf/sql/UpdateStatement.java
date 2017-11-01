@@ -154,6 +154,7 @@ public class UpdateStatement implements Statement ,  DeepCopyableWithTransformat
 
   /**
    * @see org.alfasoftware.morf.sql.Statement#deepCopy()
+   * @deprecated use deepCopy({@link DeepCopyTransformation}) which returns a builder.
    */
   @Override
   @Deprecated

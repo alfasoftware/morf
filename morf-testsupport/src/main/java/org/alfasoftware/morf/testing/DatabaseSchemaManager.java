@@ -213,7 +213,7 @@ public class DatabaseSchemaManager {
   /**
    * Invalidate the cache of database tables. Use when the schema has changed underneath this schema manager.
    */
-  public void invalidateCache() {
+  public final void invalidateCache() {
     if (log.isDebugEnabled()) {
       StackTraceElement stack = new Throwable().getStackTrace()[1];
       log.debug("Cache invalidated at " + stack.getClassName() + "." + stack.getMethodName() + ":" + stack.getLineNumber());
