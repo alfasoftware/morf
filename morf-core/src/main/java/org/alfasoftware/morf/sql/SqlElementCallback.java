@@ -72,18 +72,18 @@ public class SqlElementCallback implements Callback {
     }
   }
 
-  protected void visitUnknown(Object object) { }
-  protected void visit(Join join) {}
-  protected void visit(SelectStatement selectStatement) {}
-  protected void visit(Criterion criterion) { }
-  protected void visit(TableReference tableReference) {}
-  protected void visit(SelectFirstStatement statement) {}
-  protected void visit(AliasedField field) {}
-  protected void visit(UpdateStatement updateStatement) {}
-  protected void visit(TruncateStatement truncateStatement) {}
-  protected void visit(DeleteStatement deleteStatement) {}
-  protected void visit(SetOperator setOperator) {}
-  protected void visit(WhenCondition whenCondition) {}
-  protected void visit(InsertStatement insertStatement) {}
-  protected void visit(MergeStatement mergeStatement) {}
+  protected void visitUnknown(Object object) { /* Defaults to no-op */ }
+  protected void visit(Join join) { /* Defaults to no-op */ }
+  protected void visit(SelectStatement selectStatement) { /* Defaults to no-op */ }
+  protected void visit(Criterion criterion) { /* Defaults to no-op */ }
+  protected void visit(TableReference tableReference) { /* Defaults to no-op */ }
+  protected void visit(SelectFirstStatement statement) { /* Defaults to no-op */ }
+  protected void visit(AliasedField field) { /* Defaults to no-op */ }
+  protected void visit(UpdateStatement updateStatement) { /* Defaults to no-op */ }
+  protected void visit(TruncateStatement truncateStatement) { /* Defaults to no-op */ }
+  protected void visit(DeleteStatement deleteStatement) { /* Defaults to no-op */ }
+  protected void visit(SetOperator setOperator) { /* Defaults to no-op */ }
+  protected void visit(WhenCondition whenCondition) { /* Defaults to no-op */ }
+  protected void visit(InsertStatement insertStatement) { /* Defaults to no-op */ }
+  protected void visit(MergeStatement mergeStatement) { /* Defaults to no-op */ }
 }

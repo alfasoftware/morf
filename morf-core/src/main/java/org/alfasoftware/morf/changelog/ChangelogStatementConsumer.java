@@ -17,11 +17,10 @@ package org.alfasoftware.morf.changelog;
 
 import java.io.PrintWriter;
 
+import org.alfasoftware.morf.upgrade.HumanReadableStatementConsumer;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.SystemUtils;
 import org.apache.commons.lang.WordUtils;
-
-import org.alfasoftware.morf.upgrade.HumanReadableStatementConsumer;
 
 /**
  * Class to consume strings produced by the human readable statement generator and
@@ -103,6 +102,7 @@ class ChangelogStatementConsumer implements HumanReadableStatementConsumer {
 
   @Override
   public void versionEnd(String versionNumber) {
+    // nothing to write
   }
 
 

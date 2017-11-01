@@ -18,12 +18,12 @@ package org.alfasoftware.morf.upgrade;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.alfasoftware.morf.sql.SqlUtils.field;
+import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
-
-import org.junit.Test;
 
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Table;
@@ -50,6 +50,8 @@ import org.alfasoftware.morf.sql.element.MathsOperator;
 import org.alfasoftware.morf.sql.element.NullFieldLiteral;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.sql.element.WhenCondition;
+import org.junit.Test;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 
@@ -115,6 +117,36 @@ public class TestHumanReadableStatementHelper {
       String.format("Create table new_table with 1 column and no indexes" +
       "%n    - A non-null column called column_one [STRING(10)]"),
       HumanReadableStatementHelper.generateAddTableString(newTable)
+    );
+  }
+
+
+  @Test
+  public void testAddTableFromSelectSingleColumn() {
+    Table newTable = table("new_table").columns(
+        column("column_one", DataType.STRING, 10)
+      );
+
+    assertEquals(
+      String.format("Create table new_table with 1 column and no indexes" +
+      "%n    - A non-null column called column_one [STRING(10)] from foo from Wherever where bar is 1"),
+      HumanReadableStatementHelper.generateAddTableFromString(newTable, select(field("foo")).from("Wherever").where(field("bar").eq(1)))
+    );
+  }
+
+
+  @Test
+  public void testAddTableFromSelectMultiColumn() {
+    Table newTable = table("new_table").columns(
+      column("column_one", DataType.STRING, 10),
+      column("column_two", DataType.STRING, 10)
+    );
+
+    assertEquals(
+      String.format("Create table new_table with 2 columns and no indexes" +
+      "%n    - A non-null column called column_one [STRING(10)]" +
+      "%n    - A non-null column called column_two [STRING(10)] from foo, bar from Wherever where bar is 1"),
+      HumanReadableStatementHelper.generateAddTableFromString(newTable, select(field("foo"), field("bar")).from("Wherever").where(field("bar").eq(1)))
     );
   }
 

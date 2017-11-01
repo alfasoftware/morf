@@ -352,7 +352,9 @@ class NuoDBMetaDataProvider extends DatabaseMetaDataProvider {
 
     @Override
     public boolean equals(Object obj) {
-      if (!java.util.Objects.equals(this.getClass(), obj.getClass())) return false;
+      if (this == obj) return true;
+      if (obj == null) return false;
+      if (getClass() != obj.getClass()) return false;
       IndexTuple other = (IndexTuple) obj;
       return Objects.equals(this.indexName, other.indexName)
           && Objects.equals(this.indexType, other.indexType);

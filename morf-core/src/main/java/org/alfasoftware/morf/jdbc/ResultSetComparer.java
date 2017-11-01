@@ -226,25 +226,13 @@ public class ResultSetComparer {
    * @return the number of mismatches between the two data sets.
    */
   public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback) {
-    Statement statementLeft = null;
-    Statement statementRight = null;
-    ResultSet rsLeft = null;
-    ResultSet rsRight = null;
     String leftSql = leftSqlDialect.convertStatementToSQL(left);
     String rightSql = rightSqlDialect.convertStatementToSQL(right);
-    try {
-      try {
-        statementLeft = leftConnection.createStatement();
-        statementRight = rightConnection.createStatement();
-        rsLeft = statementLeft.executeQuery(leftSql);
-        rsRight = statementRight.executeQuery(rightSql);
-        return compare(keyColumns, rsLeft, rsRight, callback);
-      } finally {
-        if (statementLeft != null) statementLeft.close();
-        if (statementRight != null) statementRight.close();
-        if (rsLeft != null) rsLeft.close();
-        if (rsRight != null) rsRight.close();
-      }
+    try (Statement statementLeft = leftConnection.createStatement();
+         Statement statementRight = rightConnection.createStatement();
+         ResultSet rsLeft = statementLeft.executeQuery(leftSql);
+         ResultSet rsRight = statementRight.executeQuery(rightSql)) {
+      return compare(keyColumns, rsLeft, rsRight, callback);
     } catch (SQLException e) {
       throw new RuntimeSqlException("Error comparing SQL statements [" + leftSql + ", " + rightSql + "]", e);
     }

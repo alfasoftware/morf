@@ -12,6 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
@@ -58,10 +59,12 @@ public class TestResultSetIterator {
     given(resultSet.findColumn("column")).willReturn(0);
 
     // When
-    ResultSetIterator resultSetIterator = new ResultSetIterator(table, query, connection, sqlDialect);
+    try (ResultSetIterator resultSetIterator = new ResultSetIterator(table, query, connection, sqlDialect)) {
 
-    // Then
-    assertFalse(resultSetIterator.hasNext());
+      // Then
+      assertFalse(resultSetIterator.hasNext());
+
+    }
   }
 
 
@@ -80,17 +83,23 @@ public class TestResultSetIterator {
     given(resultSet.next()).willReturn(true).willReturn(true).willReturn(false);
 
     // When
-    ResultSetIterator resultSetIterator = new ResultSetIterator(table, query, connection, sqlDialect);
+    try (ResultSetIterator resultSetIterator = new ResultSetIterator(table, query, connection, sqlDialect)) {
 
-    // Then
-    assertTrue(resultSetIterator.hasNext());
-    resultSetIterator.next();
-    resultSetIterator.next();
-    resultSetIterator.next();
-    assertFalse(resultSetIterator.hasNext());
+      // Then
+      assertTrue(resultSetIterator.hasNext());
+      resultSetIterator.next();
+      resultSetIterator.next();
+      assertFalse(resultSetIterator.hasNext());
 
-    // When
-    resultSetIterator.close();
+      boolean gotException = false;
+      try {
+        resultSetIterator.next();
+      } catch (NoSuchElementException e) {
+        gotException = true;
+      }
+      assertTrue(gotException);
+
+    }
 
     // Then
     verify(resultSet).close();
@@ -172,17 +181,15 @@ public class TestResultSetIterator {
     given(resultSet.next()).willReturn(true).willReturn(true).willReturn(false);
 
     // When
-    ResultSetIterator resultSetIterator = new ResultSetIterator(table, Lists.newArrayList(), connection, sqlDialect);
+    try (ResultSetIterator resultSetIterator = new ResultSetIterator(table, Lists.newArrayList(), connection, sqlDialect)) {
 
-    // Then
-    assertTrue(resultSetIterator.hasNext());
-    resultSetIterator.next();
-    resultSetIterator.next();
-    resultSetIterator.next();
-    assertFalse(resultSetIterator.hasNext());
+      // Then
+      assertTrue(resultSetIterator.hasNext());
+      resultSetIterator.next();
+      resultSetIterator.next();
+      assertFalse(resultSetIterator.hasNext());
 
-    // When
-    resultSetIterator.close();
+    }
 
     // Then
     verify(resultSet).close();
