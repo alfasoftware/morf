@@ -15,31 +15,20 @@
 
 package org.alfasoftware.morf.sql.element;
 
-import static org.alfasoftware.morf.sql.element.FieldLiteral.literal;
+import static org.alfasoftware.morf.sql.SqlUtils.literal;
+import static org.alfasoftware.morf.sql.element.ConcatenatedField.concat;
 
-import java.util.Collections;
-import java.util.List;
-
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
+import org.junit.Test;
 
 /**
- * Unit tests {@link NullFieldLiteral}
+ * Tests {@link ConcatenatedField}.
  *
  * @author Copyright (c) Alfa Financial Software 2011
  */
-@RunWith(Parameterized.class)
-public class TestNullFieldLiteral extends AbstractAliasedFieldTest<AliasedField> {
+public class TestConcatenatedFieldDetail {
 
-  @Parameters(name = "{0}")
-  public static List<Object[]> data() {
-    return Collections.singletonList(
-      testCase(
-        "Null",
-        () -> new NullFieldLiteral(),
-        () -> literal(1)
-      )
-    );
+  @Test(expected = IllegalArgumentException.class)
+  public void testRequiresAtLeastOneArgument() {
+    concat(literal(1));
   }
 }

@@ -15,13 +15,14 @@
 
 package org.alfasoftware.morf.sql.element;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
+
+import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableList;
 
 /**
  * Represents a case select statement.
@@ -31,7 +32,7 @@ import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
 public class CaseStatement extends AliasedField implements Driver {
 
   /** When conditions */
-  private List<WhenCondition> whenConditions = new ArrayList<>();
+  private final ImmutableList<WhenCondition> whenConditions;
 
   /** If all the when conditions fail return this default value*/
   private final AliasedField defaultValue;
@@ -45,7 +46,14 @@ public class CaseStatement extends AliasedField implements Driver {
    */
   public CaseStatement(AliasedField defaultValue, WhenCondition... whenConditions) {
     super();
-    this.whenConditions = Arrays.asList(whenConditions);
+    this.whenConditions = ImmutableList.copyOf(whenConditions);
+    this.defaultValue = defaultValue;
+  }
+
+
+  private CaseStatement(String alias, AliasedField defaultValue, ImmutableList<WhenCondition> whenConditions) {
+    super(alias);
+    this.whenConditions = whenConditions;
     this.defaultValue = defaultValue;
   }
 
@@ -56,13 +64,12 @@ public class CaseStatement extends AliasedField implements Driver {
    * @param caseStatement case statement.
    * @param transformer The transformer operation to perform during the copy
    */
-  private CaseStatement(CaseStatement caseStatement,DeepCopyTransformation transformer) {
-    super();
-    for (WhenCondition whenCondition : caseStatement.getWhenConditions()) {
-      whenConditions.add(transformer.deepCopy(whenCondition));
-    }
-
-    defaultValue = transformer.deepCopy(caseStatement.getDefaultValue());
+  private CaseStatement(CaseStatement caseStatement, DeepCopyTransformation transformer) {
+    super(caseStatement.getAlias());
+    this.whenConditions = FluentIterable.from(caseStatement.whenConditions)
+        .transform(transformer::deepCopy)
+        .toList();
+    this.defaultValue = transformer.deepCopy(caseStatement.getDefaultValue());
   }
 
 
@@ -70,8 +77,20 @@ public class CaseStatement extends AliasedField implements Driver {
    * @see org.alfasoftware.morf.sql.element.AliasedField#deepCopyInternal(DeepCopyTransformation)
    */
   @Override
-  protected AliasedField deepCopyInternal(DeepCopyTransformation transformer) {
+  protected CaseStatement deepCopyInternal(DeepCopyTransformation transformer) {
     return new CaseStatement(this,transformer);
+  }
+
+
+  @Override
+  protected CaseStatement shallowCopy(String aliasName) {
+    return new CaseStatement(aliasName, defaultValue, whenConditions);
+  }
+
+
+  @Override
+  protected boolean refactoredForImmutability() {
+    return true;
   }
 
 
@@ -112,8 +131,42 @@ public class CaseStatement extends AliasedField implements Driver {
     for (WhenCondition whenCondition : whenConditions) {
       result.append(whenCondition).append(" ");
     }
+    result.append("ELSE ").append(defaultValue);
     result.append(" END");
     result.append(super.toString());
     return result.toString();
+  }
+
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = super.hashCode();
+    result = prime * result + ((defaultValue == null) ? 0 : defaultValue.hashCode());
+    result = prime * result + ((whenConditions == null) ? 0 : whenConditions.hashCode());
+    return result;
+  }
+
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (!super.equals(obj))
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    CaseStatement other = (CaseStatement) obj;
+    if (defaultValue == null) {
+      if (other.defaultValue != null)
+        return false;
+    } else if (!defaultValue.equals(other.defaultValue))
+      return false;
+    if (whenConditions == null) {
+      if (other.whenConditions != null)
+        return false;
+    } else if (!whenConditions.equals(other.whenConditions))
+      return false;
+    return true;
   }
 }

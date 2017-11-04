@@ -19,16 +19,36 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import org.junit.Test;
+import java.util.List;
 
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
+
+import com.google.common.collect.ImmutableList;
 
 /**
  * Tests for field from select.
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-public class TestFieldFromSelect {
+@RunWith(Parameterized.class)
+public class TestFieldFromSelect extends AbstractAliasedFieldTest<FieldFromSelect> {
+
+  @Parameters(name = "{0}")
+  public static List<Object[]> data() {
+    SelectStatement stmt1 = mockSelectStatement();
+    SelectStatement stmt2 = mockSelectStatement();
+    return ImmutableList.of(
+      testCase(
+        "simple",
+        () -> new FieldFromSelect(stmt1),
+        () -> new FieldFromSelect(stmt2)
+      )
+    );
+  }
 
 
   /**
@@ -53,7 +73,7 @@ public class TestFieldFromSelect {
    * Verify that deep copy works as expected for field from select.
    */
   @Test
-  public void testDeepCopy() {
+  public void testDeepCopyDetail() {
     SelectStatement statementWithTwoFields = new SelectStatement(new FieldReference("agreementNumber")).from(new TableReference("Schedule"))
         .where(Criterion.eq(new FieldReference(new TableReference("Schedule"), "agreementNumber"), "A001003657"));
 

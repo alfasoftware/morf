@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.sql.element;
 
 import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.sql.SqlUtils;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
@@ -45,7 +46,7 @@ public class Cast extends AliasedField implements Driver {
   /**
    * The data type to cast to.
    */
-  private final DataType       dataType;
+  private final DataType dataType;
 
 
   /**
@@ -55,9 +56,20 @@ public class Cast extends AliasedField implements Driver {
    * @param dataType the data type to cast to.
    * @param width the width.
    * @param scale the scale.
+   * @deprecated Use {@link SqlUtils#cast(AliasedField)}.
    */
+  @Deprecated
   public Cast(AliasedField expression, DataType dataType, int width, int scale) {
     super();
+    this.expression = expression;
+    this.dataType = dataType;
+    this.width = width;
+    this.scale = scale;
+  }
+
+
+  private Cast(String alias, AliasedField expression, DataType dataType, int width, int scale) {
+    super(alias);
     this.expression = expression;
     this.dataType = dataType;
     this.width = width;
@@ -82,7 +94,19 @@ public class Cast extends AliasedField implements Driver {
    */
   @Override
   protected AliasedField deepCopyInternal(DeepCopyTransformation transformer) {
-    return new Cast(transformer.deepCopy(expression), dataType, width, scale);
+    return new Cast(getAlias(), transformer.deepCopy(expression), dataType, width, scale);
+  }
+
+
+  @Override
+  protected AliasedField shallowCopy(String aliasName) {
+    return new Cast(aliasName, expression, dataType, width, scale);
+  }
+
+
+  @Override
+  protected boolean refactoredForImmutability() {
+    return true;
   }
 
 
@@ -123,9 +147,7 @@ public class Cast extends AliasedField implements Driver {
    */
   @Override
   public Cast as(String aliasName) {
-    super.as(aliasName);
-
-    return this;
+    return (Cast) super.as(aliasName);
   }
 
 
@@ -144,5 +166,41 @@ public class Cast extends AliasedField implements Driver {
   @Override
   public String toString() {
     return String.format("CAST(%s AS %s(%s, %s))%s", expression, dataType, width, scale, super.toString());
+  }
+
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = super.hashCode();
+    result = prime * result + ((dataType == null) ? 0 : dataType.hashCode());
+    result = prime * result + ((expression == null) ? 0 : expression.hashCode());
+    result = prime * result + scale;
+    result = prime * result + width;
+    return result;
+  }
+
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (!super.equals(obj))
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    Cast other = (Cast) obj;
+    if (dataType != other.dataType)
+      return false;
+    if (expression == null) {
+      if (other.expression != null)
+        return false;
+    } else if (!expression.equals(other.expression))
+      return false;
+    if (scale != other.scale)
+      return false;
+    if (width != other.width)
+      return false;
+    return true;
   }
 }

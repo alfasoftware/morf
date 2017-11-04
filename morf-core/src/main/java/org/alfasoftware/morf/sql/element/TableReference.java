@@ -29,20 +29,21 @@ import org.apache.commons.lang.builder.HashCodeBuilder;
  *
  * @author Copyright (c) Alfa Financial Software 2009
  */
-public class TableReference implements DeepCopyableWithTransformation<TableReference,Builder<TableReference>>{
+public class TableReference implements DeepCopyableWithTransformation<TableReference,
+                                       Builder<TableReference>> {
 
   /**
    * The schema which holds this table (optional).
    */
-  private String schemaName;
+  private final String schemaName;
 
   /**
-   * The name of the table
+   * The name of the table. TODO make final (see {@link #setName(String)).
    */
   private String name;
 
   /**
-   * The alias to use for the table (optional).
+   * The alias to use for the table (optional). TODO make final (see {@link #as(String)}).
    */
   private String alias;
 
@@ -52,11 +53,9 @@ public class TableReference implements DeepCopyableWithTransformation<TableRefer
    *
    * @param sourceTable the source table to copy the values from
    */
-  private TableReference(TableReference sourceTable) {
-    super();
-
+  private TableReference(TableReference sourceTable, String alias) {
     this.name = sourceTable.name;
-    this.alias = sourceTable.alias;
+    this.alias = alias;
     this.schemaName = sourceTable.schemaName;
   }
 
@@ -68,6 +67,7 @@ public class TableReference implements DeepCopyableWithTransformation<TableRefer
   public TableReference(String name) {
     this.name = name;
     this.alias = "";
+    this.schemaName = null;
   }
 
 
@@ -79,8 +79,9 @@ public class TableReference implements DeepCopyableWithTransformation<TableRefer
    * @param tableName the name of the table
    */
   public TableReference(String schemaName, String tableName) {
-    this(tableName);
+    this.name = tableName;
     this.schemaName = schemaName;
+    this.alias = "";
   }
 
 
@@ -91,8 +92,21 @@ public class TableReference implements DeepCopyableWithTransformation<TableRefer
    * @return an updated {@link TableReference} (this will not be a new object)
    */
   public TableReference as(String aliasName) {
-    this.alias = aliasName;
-    return this;
+    if (immutableDslEnabled()) {
+      return new TableReference(this, aliasName);
+    } else {
+      this.alias = aliasName;
+      return this;
+    }
+  }
+
+
+  /**
+   * @return true if immutable builder behaviour is enabled.
+   */
+  private static boolean immutableDslEnabled() {
+    return Boolean.TRUE.toString()
+        .equalsIgnoreCase(System.getProperty("AliasedField.IMMUTABLE_DSL_ENABLED"));
   }
 
 
@@ -128,7 +142,9 @@ public class TableReference implements DeepCopyableWithTransformation<TableRefer
 
   /**
    * @param name the name to set
+   * @deprecated Do not modify {@link TableReference} instances. This will be removed very soon.
    */
+  @Deprecated
   public void setName(String name) {
     this.name = name;
   }
@@ -149,7 +165,7 @@ public class TableReference implements DeepCopyableWithTransformation<TableRefer
    * @return TableReference a deep copy for this table
    */
   public TableReference deepCopy() {
-    return new TableReference(this);
+    return new TableReference(this, TableReference.this.alias);
   }
 
 
@@ -171,7 +187,7 @@ public class TableReference implements DeepCopyableWithTransformation<TableRefer
    * @return reference to a field on this table.
    */
   public FieldReference field(String fieldName) {
-    return new FieldReference(this, fieldName);
+    return FieldReference.field(this, fieldName).build();
   }
 
 
@@ -184,6 +200,7 @@ public class TableReference implements DeepCopyableWithTransformation<TableRefer
       return false;
     if (obj == this)
       return true;
+    // TODO incorrect - permits other types. Can't change this - need to fix existing misuse in subtypes
     if (!(obj instanceof TableReference))
       return false;
     TableReference rhs = (TableReference)obj;

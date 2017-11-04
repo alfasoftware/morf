@@ -20,6 +20,8 @@ import java.math.BigDecimal;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
+import org.apache.commons.lang.builder.EqualsBuilder;
+import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.joda.time.LocalDate;
 
 
@@ -42,15 +44,115 @@ public class FieldLiteral extends AliasedField {
 
 
   /**
-   * Constructor used to create the deep copy of this field literal
-   *
-   * @param sourceField the field literal to create the copy from
+   * @return A literal representing NULL.
    */
-  private FieldLiteral(FieldLiteral sourceField) {
-    super();
+  public static FieldLiteral nullLiteral() {
+    return new FieldLiteral("", null, DataType.NULL);
+  }
 
-    this.value = sourceField.value;
-    this.dataType = sourceField.dataType;
+
+  /**
+   * @param alias The alias for the NULL.
+   * @return A literal representing NULL.
+   */
+  public static FieldLiteral nullLiteral(String alias) {
+    return new FieldLiteral(alias, null, DataType.NULL);
+  }
+
+
+  /**
+   * @param stringValue Any string.
+   * @return A string literal.
+   */
+  public static FieldLiteral literal(final String stringValue) {
+    return new FieldLiteral("", stringValue, DataType.STRING);
+  }
+
+
+  /**
+   * @param value A stringified value.
+   * @param dataType The data type represented by the stringified value.
+   * @return An appropriately typed literal.
+   */
+  public static FieldLiteral literal(final String value, final DataType dataType) {
+    return new FieldLiteral("", value, dataType);
+  }
+
+
+  /**
+   * @param doubleValue Any double.
+   * @return A numeric literal.
+   */
+  public static FieldLiteral literal(final Double doubleValue) {
+    return new FieldLiteral("", doubleValue != null ? doubleValue.toString() : null, DataType.DECIMAL);
+  }
+
+
+  /**
+   * @param bigDecimalValue Any decimal.
+   * @return A numeric literal.
+   */
+  public static FieldLiteral literal(final BigDecimal bigDecimalValue) {
+    return new FieldLiteral("", bigDecimalValue != null ? bigDecimalValue.toPlainString() : null, DataType.DECIMAL);
+  }
+
+
+  /**
+   * @param integerValue Any integer.
+   * @return An integer literal.
+   */
+  public static FieldLiteral literal(final Integer integerValue) {
+    return new FieldLiteral("", integerValue != null ? integerValue.toString() : null, DataType.DECIMAL);
+  }
+
+
+  /**
+   * @param localDateValue Any date.
+   * @return A date literal.
+   */
+  public static FieldLiteral literal(final LocalDate localDateValue) {
+    return new FieldLiteral("", localDateValue != null ? localDateValue.toString("yyyy-MM-dd") : null, DataType.DATE);
+  }
+
+
+  /**
+   * @param longValue Any long.
+   * @return A big integer literal.
+   */
+  public static FieldLiteral literal(final Long longValue) {
+    return new FieldLiteral("", longValue != null ? longValue.toString() : null, DataType.DECIMAL);
+  }
+
+
+  /**
+   * @param charValue Any character.
+   * @return A string literal.
+   */
+  public static FieldLiteral literal(final Character charValue) {
+    return new FieldLiteral("", charValue != null ? charValue.toString() : null, DataType.STRING);
+  }
+
+
+  /**
+   * @param booleanValue Any boolean..
+   * @return A boolean literal.
+   */
+  public static FieldLiteral literal(final Boolean booleanValue) {
+    return new FieldLiteral("", booleanValue != null ? booleanValue.toString() : null, DataType.BOOLEAN);
+  }
+
+
+  /**
+   * TODO make private when {@link NullFieldLiteral} is removed
+   *
+   * @param alias The alias.
+   * @param value The value.
+   * @param dataType The data type.
+   */
+  protected FieldLiteral(final String alias, final String value, final DataType dataType) {
+    super(alias);
+    this.value = value;
+    this.dataType = dataType;
   }
 
 
@@ -58,8 +160,10 @@ public class FieldLiteral extends AliasedField {
    * Constructs a new {@linkplain FieldLiteral} with as string source.
    *
    * @param stringValue the literal value to use
+   * @deprecated Use {@link #literal(String)}
    */
-  public FieldLiteral(String stringValue) {
+  @Deprecated
+  public FieldLiteral(final String stringValue) {
     super();
 
     this.value = stringValue;
@@ -71,8 +175,10 @@ public class FieldLiteral extends AliasedField {
    * Constructs a new {@linkplain FieldLiteral} with as Double source.
    *
    * @param doubleValue the literal value to use
+   * @deprecated Use {@link #literal(Double)}
    */
-  public FieldLiteral(Double doubleValue) {
+  @Deprecated
+  public FieldLiteral(final Double doubleValue) {
     super();
 
     this.value = doubleValue != null ? doubleValue.toString() : null;
@@ -84,8 +190,10 @@ public class FieldLiteral extends AliasedField {
    * Constructs a new {@linkplain FieldLiteral} with a BigDecimal source.
    *
    * @param bigDecimalValue the literal value to use
+   * @deprecated Use {@link #literal(BigDecimal)}
    */
-  public FieldLiteral(BigDecimal bigDecimalValue) {
+  @Deprecated
+  public FieldLiteral(final BigDecimal bigDecimalValue) {
     super();
 
     this.value = bigDecimalValue != null ? bigDecimalValue.toPlainString() : null;
@@ -97,8 +205,10 @@ public class FieldLiteral extends AliasedField {
    * Constructs a new {@linkplain FieldLiteral} with an Integer source.
    *
    * @param integerValue the literal value to use
+   * @deprecated Use {@link #literal(Integer)}
    */
-  public FieldLiteral(Integer integerValue) {
+  @Deprecated
+  public FieldLiteral(final Integer integerValue) {
     super();
 
     this.value = integerValue != null ? integerValue.toString() : null;
@@ -110,8 +220,10 @@ public class FieldLiteral extends AliasedField {
    * Constructs a new {@linkplain FieldLiteral} with a {@link LocalDate} source.
    *
    * @param localDateValue the literal value to use
+   * @deprecated Use {@link #literal(LocalDate)}
    */
-  public FieldLiteral(LocalDate localDateValue) {
+  @Deprecated
+  public FieldLiteral(final LocalDate localDateValue) {
     super();
     this.value = localDateValue != null ? localDateValue.toString("yyyy-MM-dd") : null;
     this.dataType = DataType.DATE;
@@ -122,8 +234,10 @@ public class FieldLiteral extends AliasedField {
    * Constructs a new {@linkplain FieldLiteral} with a Long source.
    *
    * @param longValue the literal value to use
+   * @deprecated Use {@link #literal(Long)}
    */
-  public FieldLiteral(Long longValue) {
+  @Deprecated
+  public FieldLiteral(final Long longValue) {
     super();
 
     this.value = longValue != null ? longValue.toString() : null;
@@ -135,8 +249,10 @@ public class FieldLiteral extends AliasedField {
    * Constructs a new {@linkplain FieldLiteral} with as Character source.
    *
    * @param charValue the literal value to use
+   * @deprecated Use {@link #literal(Character)}
    */
-  public FieldLiteral(Character charValue) {
+  @Deprecated
+  public FieldLiteral(final Character charValue) {
     super();
 
     this.value = charValue != null ? charValue.toString() : null;
@@ -148,8 +264,10 @@ public class FieldLiteral extends AliasedField {
    * Constructs a new {@linkplain FieldLiteral} with as Boolean source.
    *
    * @param booleanValue the literal value to use
+   * @deprecated Use {@link #literal(Boolean)}
    */
-  public FieldLiteral(Boolean booleanValue) {
+  @Deprecated
+  public FieldLiteral(final Boolean booleanValue) {
     super();
 
     this.value = booleanValue != null ? booleanValue.toString() : null;
@@ -161,6 +279,7 @@ public class FieldLiteral extends AliasedField {
    * Constructs a new {@linkplain FieldLiteral} with a Null source.
    *
    */
+  @Deprecated
   protected FieldLiteral() {
     super();
 
@@ -174,8 +293,10 @@ public class FieldLiteral extends AliasedField {
    *
    * @param value The value of the field.
    * @param dataType The data type of the field.
+   * @deprecated Use {@link #literal(String)} and specify the data type using the builder.
    */
-  public FieldLiteral(String value, DataType dataType) {
+  @Deprecated
+  public FieldLiteral(final String value, final DataType dataType) {
     super();
     this.value = value;
     this.dataType = dataType;
@@ -190,22 +311,22 @@ public class FieldLiteral extends AliasedField {
    */
   public static FieldLiteral fromObject(Object object) {
     if (object instanceof String) {
-      return new FieldLiteral((String) object);
+      return literal((String) object);
     }
 
     if (object instanceof Double) {
-      return new FieldLiteral((Double) object);
+      return literal((Double) object);
     }
 
     if (object instanceof Integer) {
-      return new FieldLiteral((Integer) object);
+      return literal((Integer) object);
     }
 
     if (object instanceof Character) {
-      return new FieldLiteral((Character) object);
+      return literal((Character) object);
     }
 
-    return new FieldLiteral(object.toString());
+    return literal(object.toString());
   }
 
 
@@ -229,8 +350,20 @@ public class FieldLiteral extends AliasedField {
    * @see org.alfasoftware.morf.sql.element.AliasedField#deepCopyInternal(DeepCopyTransformation)
    */
   @Override
-  protected AliasedField deepCopyInternal(DeepCopyTransformation transformer) {
-    return new FieldLiteral(this);
+  protected FieldLiteral deepCopyInternal(final DeepCopyTransformation transformer) {
+    return new FieldLiteral(this.getAlias(), this.value, this.dataType);
+  }
+
+
+  @Override
+  protected AliasedField shallowCopy(String aliasName) {
+    return new FieldLiteral(aliasName, this.value, this.dataType);
+  }
+
+
+  @Override
+  protected boolean refactoredForImmutability() {
+    return true;
   }
 
 
@@ -239,8 +372,40 @@ public class FieldLiteral extends AliasedField {
    */
   @Override
   public FieldLiteral as(String aliasName) {
-    super.as(aliasName);
-    return this;
+    return (FieldLiteral) super.as(aliasName);
+  }
+
+
+  /**
+   * @see java.lang.Object#equals(java.lang.Object)
+   */
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    FieldLiteral other = (FieldLiteral) obj;
+    return new EqualsBuilder()
+        .appendSuper(super.equals(obj))
+        .append(this.value, other.value)
+        .append(this.dataType, other.dataType)
+        .isEquals();
+  }
+
+
+  /**
+   * @see java.lang.Object#hashCode()
+   */
+  @Override
+  public int hashCode() {
+    return new HashCodeBuilder()
+        .appendSuper(super.hashCode())
+        .append(this.value)
+        .append(this.dataType)
+        .toHashCode();
   }
 
 
@@ -249,6 +414,8 @@ public class FieldLiteral extends AliasedField {
    */
   @Override
   public String toString() {
-    return dataType.equals(DataType.STRING) ? "\"" + value + "\"" : value;
+    return dataType.equals(DataType.STRING)
+        ? "\"" + value + "\""
+        : value == null ? "NULL" : value;
   }
 }

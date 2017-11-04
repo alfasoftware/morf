@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.sql.element;
 
+import org.alfasoftware.morf.sql.AbstractSelectStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.TempTransitionalBuilderWrapper;
 import org.alfasoftware.morf.util.Builder;
@@ -27,22 +28,20 @@ import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
  * A class which represents an SQL join to a table. It only represents the
  * destination table and not the source table.
  *
- * <p>The class provides static helper methods for the creation of specific
- * types of join. For example, to perform an inner join between the agreement
- * and schedule tables:</p>
+ * <p>Joins are created using join methods such as
+ * {@link AbstractSelectStatement#innerJoin(SelectStatement)}. Example:</p>
  *
  * <blockquote><pre>
- *    Statement stmt = new SelectStatement()
- *                          .from(new Table("agreement"))
- *                          .innerJoin(new Table("schedule"),
- *                                     Criterion.eq(new Field(new Table("agreement"), "agreementnumber"),
- *                                                  new Field(new Table("schedule"), "agreementnumber")
- *                                                 )
+ *    Statement stmt = SqlUtils.select
+ *                          .from(tableRef("agreement"))
+ *                          .innerJoin(tableRef("schedule"),
+ *                                     tableRef("agreement").field("agreementnumber")
+ *                                       .eq(tableRef("schedule").field("agreementnumber"))
  *                                    );</pre></blockquote>
  *
  * @author Copyright (c) Alfa Financial Software 2009
  */
-public class Join implements Driver,DeepCopyableWithTransformation<Join,Builder<Join>>{
+public class Join implements Driver, DeepCopyableWithTransformation<Join,Builder<Join>> {
 
   /**
    * The type of join to use
@@ -57,7 +56,8 @@ public class Join implements Driver,DeepCopyableWithTransformation<Join,Builder<
   private final SelectStatement subSelect;
 
   /**
-   * The criteria to match records in the joined table with
+   * The criteria to match records in the joined table with.
+   * TODO should be final
    */
   private Criterion criterion;
 
@@ -67,7 +67,7 @@ public class Join implements Driver,DeepCopyableWithTransformation<Join,Builder<
    *
    * @param sourceJoin the source {@link Join} to create the deep copy from
    */
-  private Join(Join sourceJoin,DeepCopyTransformation transformer) {
+  private Join(Join sourceJoin, DeepCopyTransformation transformer) {
     super();
     this.criterion =  sourceJoin.criterion == null ? null : transformer.deepCopy(sourceJoin.criterion);
     this.table = sourceJoin.table == null ? null : transformer.deepCopy(sourceJoin.table);
@@ -75,12 +75,17 @@ public class Join implements Driver,DeepCopyableWithTransformation<Join,Builder<
     this.type = sourceJoin.type;
   }
 
+
   /**
    * Construct a new Join object to a specified table on the specified criteria.
    *
    * @param type the type of join
    * @param table the table to join to
+   * @deprecated Use {@link #Join(JoinType, TableReference, Criterion)}.  This constructor
+   *     relies on setting the {@link Criterion} after construction, which it won't be able
+   *     to do once {@link Join} is immutable.
    */
+  @Deprecated
   public Join(JoinType type, TableReference table) {
     super();
     this.type = type;
@@ -90,14 +95,49 @@ public class Join implements Driver,DeepCopyableWithTransformation<Join,Builder<
 
 
   /**
+   * Construct a new Join object to a specified table on the specified criteria.
+   *
+   * @param type The type of join.
+   * @param table The table to join to.
+   * @param criterion The join criterion.
+   */
+  public Join(JoinType type, TableReference table, Criterion criterion) {
+    super();
+    this.type = type;
+    this.table = table;
+    this.criterion = criterion;
+    this.subSelect = null;
+  }
+
+
+  /**
    * Construct a new Join onto a sub select statment. This statement must have an alias
    *
    * @param type the type of join
    * @param subSelect the select to join onto
+   * @deprecated Use {@link #Join(JoinType, SelectStatement, Criterion)}.  This constructor
+   *     relies on setting the {@link Criterion} after construction, which it won't be able
+   *     to do once {@link Join} is immutable.
    */
+  @Deprecated
   public Join(JoinType type, SelectStatement subSelect) {
     this.type = type;
     this.subSelect = subSelect;
+    this.table = null;
+  }
+
+
+  /**
+   * Construct a new Join onto a sub select statment. This statement must have an alias
+   *
+   * @param type The type of join
+   * @param subSelect The select to join onto
+   * @param criterion The join criterion.
+   */
+  public Join(JoinType type, SelectStatement subSelect, Criterion criterion) {
+    this.type = type;
+    this.subSelect = subSelect;
+    this.criterion = criterion;
     this.table = null;
   }
 
@@ -143,7 +183,9 @@ public class Join implements Driver,DeepCopyableWithTransformation<Join,Builder<
    *
    * @param onCondition the criteria
    * @return this
+   * @deprecated Do not use. Will be removed shortly - {@link Join} should be immutable.
    */
+  @Deprecated
   public Join on(Criterion onCondition) {
     this.criterion = onCondition;
     return this;
@@ -159,6 +201,48 @@ public class Join implements Driver,DeepCopyableWithTransformation<Join,Builder<
       .dispatch(getTable())
       .dispatch(getSubSelect())
       .dispatch(getCriterion());
+  }
+
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + ((criterion == null) ? 0 : criterion.hashCode());
+    result = prime * result + ((subSelect == null) ? 0 : subSelect.hashCode());
+    result = prime * result + ((table == null) ? 0 : table.hashCode());
+    result = prime * result + ((type == null) ? 0 : type.hashCode());
+    return result;
+  }
+
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    Join other = (Join) obj;
+    if (criterion == null) {
+      if (other.criterion != null)
+        return false;
+    } else if (!criterion.equals(other.criterion))
+      return false;
+    if (subSelect == null) {
+      if (other.subSelect != null)
+        return false;
+    } else if (!subSelect.equals(other.subSelect))
+      return false;
+    if (table == null) {
+      if (other.table != null)
+        return false;
+    } else if (!table.equals(other.table))
+      return false;
+    if (type != other.type)
+      return false;
+    return true;
   }
 
 

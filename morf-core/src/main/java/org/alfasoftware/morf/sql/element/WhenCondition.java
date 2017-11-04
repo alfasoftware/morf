@@ -34,7 +34,7 @@ public class WhenCondition implements Driver,DeepCopyableWithTransformation<When
   /** Value */
   private final AliasedField value;
 
-  /** Criterion*/
+  /** Criterion */
   private final Criterion criterion;
 
   /**
@@ -83,7 +83,7 @@ public class WhenCondition implements Driver,DeepCopyableWithTransformation<When
    * @return deep copy of the field
    */
   public WhenCondition deepCopy() {
-    return new WhenCondition(this,DeepCopyTransformations.noTransformation());
+    return new WhenCondition(this, DeepCopyTransformations.noTransformation());
   }
 
 
@@ -95,6 +95,39 @@ public class WhenCondition implements Driver,DeepCopyableWithTransformation<When
     traverser
       .dispatch(getCriterion())
       .dispatch(getValue());
+  }
+
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + ((criterion == null) ? 0 : criterion.hashCode());
+    result = prime * result + ((value == null) ? 0 : value.hashCode());
+    return result;
+  }
+
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    WhenCondition other = (WhenCondition) obj;
+    if (criterion == null) {
+      if (other.criterion != null)
+        return false;
+    } else if (!criterion.equals(other.criterion))
+      return false;
+    if (value == null) {
+      if (other.value != null)
+        return false;
+    } else if (!value.equals(other.value))
+      return false;
+    return true;
   }
 
 

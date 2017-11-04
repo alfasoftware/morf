@@ -33,19 +33,9 @@ public class FieldFromSelect extends AliasedField implements Driver{
   private final SelectStatement selectStatement;
 
 
-  /**
-   * Constructor used to create the deep copy of this field from select
-   *
-   * @param sourceField the field from select to copy from
-   */
-  private FieldFromSelect(FieldFromSelect sourceField,DeepCopyTransformation transformer) {
-    super();
-
-    if (sourceField.getAlias() != null) {
-      this.as(sourceField.getAlias());
-    }
-
-    this.selectStatement = transformer.deepCopy(sourceField.selectStatement);
+  private FieldFromSelect(String alias, SelectStatement selectStatement) {
+    super(alias == null ? "" : alias);
+    this.selectStatement = selectStatement;
   }
 
   /**
@@ -78,7 +68,19 @@ public class FieldFromSelect extends AliasedField implements Driver{
    */
   @Override
   protected AliasedField deepCopyInternal(DeepCopyTransformation transformer) {
-    return new FieldFromSelect(this,transformer);
+    return new FieldFromSelect(getAlias(), transformer.deepCopy(selectStatement));
+  }
+
+
+  @Override
+  protected AliasedField shallowCopy(String aliasName) {
+    return new FieldFromSelect(aliasName, selectStatement);
+  }
+
+
+  @Override
+  protected boolean refactoredForImmutability() {
+    return true;
   }
 
 
@@ -97,5 +99,32 @@ public class FieldFromSelect extends AliasedField implements Driver{
   @Override
   public String toString() {
     return selectStatement.toString() + super.toString();
+  }
+
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = super.hashCode();
+    result = prime * result + ((selectStatement == null) ? 0 : selectStatement.hashCode());
+    return result;
+  }
+
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (!super.equals(obj))
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    FieldFromSelect other = (FieldFromSelect) obj;
+    if (selectStatement == null) {
+      if (other.selectStatement != null)
+        return false;
+    } else if (!selectStatement.equals(other.selectStatement))
+      return false;
+    return true;
   }
 }

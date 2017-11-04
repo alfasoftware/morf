@@ -15,31 +15,34 @@
 
 package org.alfasoftware.morf.sql.element;
 
-import static org.alfasoftware.morf.sql.element.FieldLiteral.literal;
-
-import java.util.Collections;
 import java.util.List;
 
+import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+import com.google.common.collect.ImmutableList;
+
 /**
- * Unit tests {@link NullFieldLiteral}
+ * Tests for field from select first.
  *
- * @author Copyright (c) Alfa Financial Software 2011
+ * @author Copyright (c) Alfa Financial Software 2010
  */
 @RunWith(Parameterized.class)
-public class TestNullFieldLiteral extends AbstractAliasedFieldTest<AliasedField> {
+public class TestFieldFromSelectFirst extends AbstractAliasedFieldTest<FieldFromSelectFirst> {
 
   @Parameters(name = "{0}")
   public static List<Object[]> data() {
-    return Collections.singletonList(
+    SelectFirstStatement stmt1 = mockOf(SelectFirstStatement.class);
+    SelectFirstStatement stmt2 = mockOf(SelectFirstStatement.class);
+    return ImmutableList.of(
       testCase(
-        "Null",
-        () -> new NullFieldLiteral(),
-        () -> literal(1)
+        "simple",
+        () -> new FieldFromSelectFirst(stmt1),
+        () -> new FieldFromSelectFirst(stmt2)
       )
     );
   }
+
 }

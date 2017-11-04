@@ -17,7 +17,7 @@ package org.alfasoftware.morf.sql.element;
 
 import static org.alfasoftware.morf.sql.element.FieldLiteral.literal;
 
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.runner.RunWith;
@@ -25,21 +25,21 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 /**
- * Unit tests {@link NullFieldLiteral}
+ * Tests for {@link WhenCondition}.
  *
- * @author Copyright (c) Alfa Financial Software 2011
+ * @author Copyright (c) Alfa Financial Software 2017
  */
 @RunWith(Parameterized.class)
-public class TestNullFieldLiteral extends AbstractAliasedFieldTest<AliasedField> {
+public class TestWhenCondition extends AbstractDeepCopyableTest<WhenCondition> {
 
   @Parameters(name = "{0}")
   public static List<Object[]> data() {
-    return Collections.singletonList(
-      testCase(
-        "Null",
-        () -> new NullFieldLiteral(),
-        () -> literal(1)
-      )
+    Criterion criterion1 = mockOf(Criterion.class);
+    Criterion criterion2 = mockOf(Criterion.class);
+    return Arrays.asList(
+      testCase("1", () -> new WhenCondition(criterion1, literal(1))),
+      testCase("2", () -> new WhenCondition(criterion1, literal(2))),
+      testCase("3", () -> new WhenCondition(criterion2, literal(1)))
     );
   }
 }

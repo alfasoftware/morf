@@ -33,21 +33,11 @@ public class FieldFromSelectFirst extends AliasedField implements Driver {
   private final SelectFirstStatement selectFirstStatement;
 
 
-  /**
-   * Constructor used to create the deep copy of this field from select
-   *
-   * @param sourceField the field from select to copy from
-   * @param transformer The transformation to execute during the copy
-   */
-  private FieldFromSelectFirst(FieldFromSelectFirst sourceField,DeepCopyTransformation transformer) {
-    super();
-
-    if (sourceField.getAlias() != null) {
-      this.as(sourceField.getAlias());
-    }
-
-    this.selectFirstStatement = transformer.deepCopy(sourceField.selectFirstStatement);
+  private FieldFromSelectFirst(String alias, SelectFirstStatement selectFirstStatement) {
+    super(alias == null ? "" : alias);
+    this.selectFirstStatement = selectFirstStatement;
   }
+
 
   /**
    * Constructor to create a field from a {@link SelectFirstStatement}
@@ -57,7 +47,6 @@ public class FieldFromSelectFirst extends AliasedField implements Driver {
    */
   public FieldFromSelectFirst(SelectFirstStatement selectStatement) {
     super();
-
     this.selectFirstStatement = selectStatement;
   }
 
@@ -75,7 +64,19 @@ public class FieldFromSelectFirst extends AliasedField implements Driver {
    */
   @Override
   protected AliasedField deepCopyInternal(DeepCopyTransformation transformer) {
-    return new FieldFromSelectFirst(this,transformer);
+    return new FieldFromSelectFirst(getAlias(), transformer.deepCopy(selectFirstStatement));
+  }
+
+
+  @Override
+  protected AliasedField shallowCopy(String aliasName) {
+    return new FieldFromSelectFirst(aliasName, selectFirstStatement);
+  }
+
+
+  @Override
+  protected boolean refactoredForImmutability() {
+    return true;
   }
 
 
@@ -94,5 +95,32 @@ public class FieldFromSelectFirst extends AliasedField implements Driver {
   @Override
   public String toString() {
     return selectFirstStatement.toString() + super.toString();
+  }
+
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = super.hashCode();
+    result = prime * result + ((selectFirstStatement == null) ? 0 : selectFirstStatement.hashCode());
+    return result;
+  }
+
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (!super.equals(obj))
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    FieldFromSelectFirst other = (FieldFromSelectFirst) obj;
+    if (selectFirstStatement == null) {
+      if (other.selectFirstStatement != null)
+        return false;
+    } else if (!selectFirstStatement.equals(other.selectFirstStatement))
+      return false;
+    return true;
   }
 }

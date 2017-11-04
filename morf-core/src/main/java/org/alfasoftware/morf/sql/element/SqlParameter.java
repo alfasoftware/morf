@@ -16,6 +16,9 @@
 package org.alfasoftware.morf.sql.element;
 
 import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.sql.SqlUtils;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
@@ -31,7 +34,38 @@ import com.google.common.collect.Iterables;
  */
 public class SqlParameter extends AliasedField {
 
-  private final Column metadata;
+  private final String name;
+  private final DataType type;
+  private final int width;
+  private final int scale;
+
+
+  /**
+   * Constructs a new SQL named parameter.  Usage:
+   *
+   * <pre>parameter("name").type(DataType.INTEGER).build();
+parameter("name").type(DataType.STRING).width(10).build();
+parameter("name").type(DataType.DECIMAL).width(13,2).build();</pre>
+   *
+   * @param name the parameter name.
+   * @return Builder.
+   */
+  public static NeedsType parameter(String name) {
+    return new BuilderImpl(name);
+  }
+
+
+  /**
+   * Constructs a new SQL named parameter from a column.
+   *
+   * @param column the parameter column.
+   * @return Builder.
+   */
+  public static Builder parameter(Column column) {
+    return parameter(column.getName())
+        .type(column.getType())
+        .width(column.getWidth(), column.getScale());
+  }
 
 
   /**
@@ -52,12 +86,31 @@ public class SqlParameter extends AliasedField {
 
   /**
    * Constructs a new SQL field parameter.
+   *
    * @param metadata The parameter metadata
+   * @deprecated Use {@link #parameter(String)}.
    */
+  @Deprecated
   public SqlParameter(Column metadata) {
-    super();
-    this.metadata = metadata;
-    super.as(metadata.getName());
+    this(metadata.getName(), metadata.getType(), metadata.getWidth(), metadata.getScale());
+  }
+
+
+  protected SqlParameter(String name, DataType dataType, int width, int scale) {
+    super(name);
+    this.name = name;
+    this.type = dataType;
+    this.width = width;
+    this.scale = scale;
+  }
+
+
+  private SqlParameter(String alias, String name, DataType dataType, int width, int scale) {
+    super(alias);
+    this.name = name;
+    this.type = dataType;
+    this.width = width;
+    this.scale = scale;
   }
 
 
@@ -65,8 +118,33 @@ public class SqlParameter extends AliasedField {
    * @see org.alfasoftware.morf.sql.element.AliasedField#deepCopyInternal(DeepCopyTransformation)
    */
   @Override
-  protected AliasedField deepCopyInternal(DeepCopyTransformation transformer) {
-    return new SqlParameter(metadata);
+  protected SqlParameter deepCopyInternal(DeepCopyTransformation transformer) {
+    return new SqlParameter(name, type, width, scale);
+  }
+
+
+  @Override
+  protected AliasedField shallowCopy(String aliasName) {
+    return new SqlParameter(aliasName, name, type, width, scale);
+  }
+
+
+  /**
+   * Support for {@link SqlUtils#parameter(String)}. Creates
+   * a duplicate with a new width and size.
+   *
+   * @param width The width.
+   * @param scale The scale.
+   * @return The copy.
+   */
+  protected SqlParameter withWidth(int width, int scale) {
+    return new SqlParameter(name, type, width, scale);
+  }
+
+
+  @Override
+  protected boolean refactoredForImmutability() {
+    return true;
   }
 
 
@@ -76,7 +154,7 @@ public class SqlParameter extends AliasedField {
    * @return the field metadata for the parameter.
    */
   public Column getMetadata() {
-    return metadata;
+    return SchemaUtils.column(name, type, width, scale);
   }
 
 
@@ -86,10 +164,10 @@ public class SqlParameter extends AliasedField {
   @Override
   public String toString() {
     return MoreObjects.toStringHelper(this)
-        .add("name", metadata.getName())
-        .add("scale", metadata.getScale())
-        .add("width", metadata.getWidth())
-        .add("type", metadata.getType())
+        .add("name", name)
+        .add("scale", scale)
+        .add("width", width)
+        .add("type", type)
         .toString() + super.toString();
   }
 
@@ -100,30 +178,122 @@ public class SqlParameter extends AliasedField {
   @Override
   public int hashCode() {
     return new HashCodeBuilder()
-      .append(metadata.getName())
-      .append(metadata.getScale())
-      .append(metadata.getWidth())
-      .append(metadata.getType())
-      .toHashCode();
+        .appendSuper(super.hashCode())
+        .append(name)
+        .append(scale)
+        .append(width)
+        .append(type)
+        .toHashCode();
   }
 
 
   /**
-   * Functional equality of SQL parameters depends only on the name and data type.
-   *
    * @see java.lang.Object#equals(java.lang.Object)
    */
   @Override
   public boolean equals(Object obj) {
-    if (this == obj) return true;
-    if (obj == null) return false;
-    if (getClass() != obj.getClass()) return false;
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
     SqlParameter other = (SqlParameter) obj;
     return new EqualsBuilder()
-      .append(this.metadata.getName(), other.metadata.getName())
-      .append(this.metadata.getScale(), other.metadata.getScale())
-      .append(this.metadata.getWidth(), other.metadata.getWidth())
-      .append(this.metadata.getType(), other.metadata.getType())
-      .isEquals();
+        .appendSuper(super.equals(obj))
+        .append(name, other.name)
+        .append(scale, other.scale)
+        .append(width, other.width)
+        .append(type, other.type)
+        .isEquals();
+  }
+
+
+  /**
+   * Builder stage for {@link SqlParameter}.
+   */
+  public interface NeedsType {
+
+    /**
+     * Specifies the data type for the parameter.
+     *
+     * @param dataType The data type
+     * @return the next phase of the parameter builder.
+     */
+    public Builder type(DataType dataType);
+
+  }
+
+
+  /**
+   * Builder stage for {@link SqlParameter}.
+   */
+  public interface Builder extends NeedsType {
+
+    /**
+     * Specifies the width of the parameter.
+     *
+     * @param width The width.
+     * @return Builder.
+     */
+    public Builder width(int width);
+
+    /**
+     * Specifies the width and scale of the parameter.
+     *
+     * @param width The width.
+     * @param scale The scale.
+     * @return Builder.
+     */
+    public Builder width(int width, int scale);
+
+    /**
+     * Builds the {@link SqlParameter}.
+     *
+     * @return The parameter.
+     */
+    public SqlParameter build();
+  }
+
+
+  /**
+   * Builder implementation for {@link SqlParameter}.
+   */
+  private static final class BuilderImpl implements Builder {
+
+    private final String name;
+    private DataType dataType;
+    private int width;
+    private int scale;
+
+    private BuilderImpl(String name) {
+      super();
+      this.name = name;
+    }
+
+    @Override
+    public BuilderImpl type(DataType dataType) {
+      this.dataType = dataType;
+      return this;
+    }
+
+    @Override
+    public BuilderImpl width(int width) {
+      this.width = width;
+      this.scale = 0;
+      return this;
+    }
+
+    @Override
+    public BuilderImpl width(int width, int scale) {
+      this.width = width;
+      this.scale = scale;
+      return this;
+    }
+
+    @Override
+    public SqlParameter build() {
+      return new SqlParameter(name, dataType, width, scale);
+    }
   }
 }

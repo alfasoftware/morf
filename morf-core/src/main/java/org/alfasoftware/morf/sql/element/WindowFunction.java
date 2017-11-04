@@ -56,7 +56,7 @@ public final class WindowFunction extends AliasedField implements Driver {
   private final ImmutableList<AliasedField> orderBys;
   private final ImmutableList<AliasedField> partitionBys;
 
-  private WindowFunction(String alias,Function function, ImmutableList<AliasedField> orderBys, ImmutableList<AliasedField> partitionBy) {
+  private WindowFunction(String alias, Function function, ImmutableList<AliasedField> orderBys, ImmutableList<AliasedField> partitionBy) {
     super(alias);
     this.function = function;
     this.orderBys = orderBys;
@@ -103,7 +103,7 @@ public final class WindowFunction extends AliasedField implements Driver {
    *
    * @author Copyright (c) Alfa Financial Software 2017
    */
-  public interface Builder extends AliasedFieldBuilder {
+  public interface Builder {
 
     /**
      * Specifies the fields to include in the ORDER BY clause of the window
@@ -143,6 +143,23 @@ public final class WindowFunction extends AliasedField implements Driver {
      * @return the window function builder
      */
     Builder partitionBy(Iterable<? extends AliasedField> partitionByFields);
+
+
+    /**
+     * Specifies the alias to use for the field.
+     *
+     * @param alias the name of the alias
+     * @return the window function builder.
+     */
+    Builder as(String alias);
+
+
+    /**
+     * Builds the {@link WindowFunction}.
+     *
+     * @return The window function.
+     */
+    WindowFunction build();
   }
 
 
@@ -208,28 +225,32 @@ public final class WindowFunction extends AliasedField implements Driver {
 
 
     @Override
-    public AliasedField build() {
+    public Builder as(String alias) {
+      this.alias = alias;
+      return this;
+    }
+
+
+    @Override
+    public WindowFunction build() {
       setOrderByAscendingIfUnset();
-      return new WindowFunction(alias,function, ImmutableList.copyOf(orderBys), ImmutableList.copyOf(partitionBy));
+      return new WindowFunction(alias, function, ImmutableList.copyOf(orderBys), ImmutableList.copyOf(partitionBy));
     }
 
 
     private void setOrderByAscendingIfUnset() {
-      for (AliasedField currentField : orderBys) {
-        if (currentField instanceof FieldReference && ((FieldReference) currentField).getDirection() == Direction.NONE) {
-          ((FieldReference) currentField).setDirection(Direction.ASCENDING);
-        }
-      }
-    }
-
-
-    /**
-     * @see org.alfasoftware.morf.sql.element.AliasedFieldBuilder#as(java.lang.String)
-     */
-    @Override
-    public AliasedFieldBuilder as(String alias) {
-      this.alias = alias;
-      return null;
+      List<AliasedField> replacements = FluentIterable
+          .from(orderBys)
+          .transform(f -> {
+            if (f instanceof FieldReference && ((FieldReference) f).getDirection() == Direction.NONE) {
+              return ((FieldReference)f).direction(Direction.ASCENDING);
+            } else {
+              return f;
+            }
+          })
+          .toList();
+      orderBys.clear();
+      orderBys.addAll(replacements);
     }
   }
 
@@ -244,6 +265,77 @@ public final class WindowFunction extends AliasedField implements Driver {
       (Function) transformer.deepCopy(function),
       transformIterable(orderBys, transformer),
       transformIterable(partitionBys, transformer));
+  }
+
+
+  @Override
+  protected AliasedField shallowCopy(String aliasName) {
+    return new WindowFunction(
+        aliasName,
+        function,
+        orderBys,
+        partitionBys);
+  }
+
+
+  @Override
+  protected boolean refactoredForImmutability() {
+    return true;
+  }
+
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = super.hashCode();
+    result = prime * result + ((function == null) ? 0 : function.hashCode());
+    result = prime * result + ((orderBys == null) ? 0 : orderBys.hashCode());
+    result = prime * result + ((partitionBys == null) ? 0 : partitionBys.hashCode());
+    return result;
+  }
+
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (!super.equals(obj))
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    WindowFunction other = (WindowFunction) obj;
+    if (function == null) {
+      if (other.function != null)
+        return false;
+    } else if (!function.equals(other.function))
+      return false;
+    if (orderBys == null) {
+      if (other.orderBys != null)
+        return false;
+    } else if (!orderBys.equals(other.orderBys))
+      return false;
+    if (partitionBys == null) {
+      if (other.partitionBys != null)
+        return false;
+    } else if (!partitionBys.equals(other.partitionBys))
+      return false;
+    return true;
+  }
+
+
+  @Override
+  public String toString() {
+    StringBuilder builder = new StringBuilder();
+    builder.append(function);
+    builder.append(" OVER [");
+    if (!partitionBys.isEmpty()) {
+      builder.append(" PARTITION BY ").append(partitionBys);
+    }
+    if (!orderBys.isEmpty()) {
+      builder.append(" ORDER BY ").append(orderBys);
+    }
+    builder.append(" ]");
+    return builder.toString();
   }
 
 

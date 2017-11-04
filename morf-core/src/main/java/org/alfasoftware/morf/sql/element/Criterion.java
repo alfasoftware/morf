@@ -17,7 +17,6 @@ package org.alfasoftware.morf.sql.element;
 
 import static org.alfasoftware.morf.util.DeepCopyTransformations.noTransformation;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -29,6 +28,8 @@ import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
 
+import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 
 /**
@@ -39,15 +40,18 @@ import com.google.common.collect.Iterables;
  * provides a number of static helper methods which will create criteria that
  * perform common operations.</p>
  *
- * <p>In general, objects of this class should be instantiated throw the
+ * <p>In general, objects of this class should be instantiated through the
  * helper methods. For example:</p>
  *
- * <blockquote><pre>
- *    Criterion.eq(new Field("agreementnumber"), "A0001");</pre></blockquote>
+ * <blockquote><pre>Criterion.eq(SqlUtils.field("agreementnumber"), "A0001");</pre></blockquote>
+ *
+ * <p>Or more fluently:</p>
+ *
+ * <blockquote><pre>field("agreementnumber").eq("A0001");</pre></blockquote>
  *
  * @author Copyright (c) Alfa Financial Software 2009
  */
-public class Criterion  implements Driver,DeepCopyableWithTransformation<Criterion,Builder<Criterion>>{
+public class Criterion implements Driver, DeepCopyableWithTransformation<Criterion,Builder<Criterion>>{
 
   /**
    * Operator to use in the criterion
@@ -58,22 +62,22 @@ public class Criterion  implements Driver,DeepCopyableWithTransformation<Criteri
    * Select statement to use
    * as part of unary statement (e.g. IN)
    */
-  private SelectStatement selectStatement;
+  private final SelectStatement selectStatement;
 
   /**
    * The left hand side field
    */
-  private AliasedField field;
+  private final AliasedField field;
 
   /**
    * The right hand side field or literal
    */
-  private Object value;
+  private final Object value;
 
   /**
    * The additional sub-criteria
    */
-  private final List<Criterion> criteria = new ArrayList<>();
+  private final ImmutableList<Criterion> criteria;
 
 
   /**
@@ -88,11 +92,7 @@ public class Criterion  implements Driver,DeepCopyableWithTransformation<Criteri
 
     this.selectStatement = transformer.deepCopy(sourceCriterion.selectStatement);
     this.field = transformer.deepCopy(sourceCriterion.field);
-
-    // Copy the child criteria
-    for (Criterion currentCriterion : sourceCriterion.criteria) {
-      this.criteria.add(transformer.deepCopy(currentCriterion));
-    }
+    this.criteria = FluentIterable.from(sourceCriterion.criteria).transform(transformer::deepCopy).toList();
 
     // Aliased Fields can be copied, otherwise we just use the same reference
     if (sourceCriterion.value instanceof AliasedField) {
@@ -115,7 +115,10 @@ public class Criterion  implements Driver,DeepCopyableWithTransformation<Criteri
     }
 
     this.operator = operator;
-    Iterables.addAll(this.criteria, criteria);
+    this.criteria = ImmutableList.copyOf(criteria);
+    this.selectStatement = null;
+    this.value = null;
+    this.field = null;
   }
 
   /**
@@ -131,8 +134,13 @@ public class Criterion  implements Driver,DeepCopyableWithTransformation<Criteri
       throw new IllegalArgumentException("Must specify at least one criterion");
 
     this.operator = operator;
-    this.criteria.add(criterion);
-    this.criteria.addAll(Arrays.asList(criteria));
+    this.criteria = ImmutableList.<Criterion>builder()
+        .add(criterion)
+        .addAll(Arrays.asList(criteria))
+        .build();
+    this.selectStatement = null;
+    this.value = null;
+    this.field = null;
   }
 
   /**
@@ -145,6 +153,9 @@ public class Criterion  implements Driver,DeepCopyableWithTransformation<Criteri
   public Criterion(Operator operator, SelectStatement selectStatement) {
     this.operator = operator;
     this.selectStatement = selectStatement;
+    this.criteria = ImmutableList.of();
+    this.value = null;
+    this.field = null;
   }
 
 
@@ -165,9 +176,11 @@ public class Criterion  implements Driver,DeepCopyableWithTransformation<Criteri
     if (operator == Operator.IN && selectStatement.getFields().size() != 1) {
       throw new IllegalArgumentException("Subquery can only contain 1 column");
     }
+    this.criteria = ImmutableList.of();
     this.operator = operator;
     this.field = field;
     this.selectStatement = selectStatement;
+    this.value = null;
   }
 
 
@@ -182,7 +195,8 @@ public class Criterion  implements Driver,DeepCopyableWithTransformation<Criteri
   public Criterion(Operator operator, AliasedField field, Object value) {
     if (field == null)
       throw new IllegalArgumentException("Field cannot be null in a binary criterion");
-
+    this.selectStatement = null;
+    this.criteria = ImmutableList.of();
     this.operator = operator;
     this.field = field;
     this.value = value;
@@ -504,7 +518,7 @@ public class Criterion  implements Driver,DeepCopyableWithTransformation<Criteri
    * @return a deep copy of this criteria
    */
   public Criterion deepCopy() {
-    return new Criterion(this,noTransformation());
+    return new Criterion(this, noTransformation());
   }
 
 
@@ -562,5 +576,53 @@ public class Criterion  implements Driver,DeepCopyableWithTransformation<Criteri
   @Override
   public Builder<Criterion> deepCopy(DeepCopyTransformation transformer) {
     return TempTransitionalBuilderWrapper.wrapper(new Criterion(this,transformer));
+  }
+
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + ((criteria == null) ? 0 : criteria.hashCode());
+    result = prime * result + ((field == null) ? 0 : field.hashCode());
+    result = prime * result + ((operator == null) ? 0 : operator.hashCode());
+    result = prime * result + ((selectStatement == null) ? 0 : selectStatement.hashCode());
+    result = prime * result + ((value == null) ? 0 : value.hashCode());
+    return result;
+  }
+
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    Criterion other = (Criterion) obj;
+    if (criteria == null) {
+      if (other.criteria != null)
+        return false;
+    } else if (!criteria.equals(other.criteria))
+      return false;
+    if (field == null) {
+      if (other.field != null)
+        return false;
+    } else if (!field.equals(other.field))
+      return false;
+    if (operator != other.operator)
+      return false;
+    if (selectStatement == null) {
+      if (other.selectStatement != null)
+        return false;
+    } else if (!selectStatement.equals(other.selectStatement))
+      return false;
+    if (value == null) {
+      if (other.value != null)
+        return false;
+    } else if (!value.equals(other.value))
+      return false;
+    return true;
   }
 }
