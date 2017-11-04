@@ -15,85 +15,77 @@
 
 package org.alfasoftware.morf.sql.element;
 
+import static org.alfasoftware.morf.sql.element.Direction.ASCENDING;
+import static org.alfasoftware.morf.sql.element.Direction.DESCENDING;
+import static org.alfasoftware.morf.sql.element.FieldReference.field;
+import static org.alfasoftware.morf.sql.element.NullValueHandling.FIRST;
+import static org.alfasoftware.morf.sql.element.NullValueHandling.LAST;
+import static org.alfasoftware.morf.sql.element.NullValueHandling.NONE;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
+
+import java.util.List;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
+
+import com.google.common.collect.ImmutableList;
 
 /**
  * Tests for field literals
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-public class TestFieldReference {
+@RunWith(Parameterized.class)
+public class TestFieldReference extends AbstractAliasedFieldTest<FieldReference> {
+
+  @Parameters(name = "{0}")
+  public static List<Object[]> data() {
+    TableReference tableRef1 = mockTableReference();
+    TableReference tableRef2 = mockTableReference();
+    return ImmutableList.of(
+      testCase(
+          "Deprecated constructors",
+          () -> new FieldReference(tableRef1, "date", ASCENDING, FIRST),
+          () -> new FieldReference(tableRef1, "date", ASCENDING, LAST),
+          () -> new FieldReference(tableRef1, "date", ASCENDING, NONE),
+          () -> new FieldReference(tableRef1, "date", DESCENDING, FIRST),
+          () -> new FieldReference(tableRef1, "notDate", ASCENDING, FIRST),
+          () -> new FieldReference(tableRef2, "date", ASCENDING, FIRST)
+      ),
+      testCase(
+          "Builders",
+          () -> field(tableRef1, "date").asc().nullsFirst().build(),
+          () -> field(tableRef1, "date").asc().nullsLast().build(),
+          () -> field(tableRef1, "date").asc().build(),
+          () -> field(tableRef1, "date").desc().nullsFirst().build(),
+          () -> field(tableRef1, "notDate").asc().nullsFirst().build(),
+          () -> field(tableRef2, "date").asc().nullsFirst().build()
+      ),
+      testCase(
+          "No table reference",
+          () -> field("date").asc().nullsFirst().build(),
+          () -> field("date").asc().nullsLast().build(),
+          () -> field("date").asc().build(),
+          () -> field("date").desc().nullsFirst().build(),
+          () -> field("notDate").asc().nullsFirst().build(),
+          () -> field(tableRef1, "date").asc().nullsFirst().build()
+      )
+    );
+  }
 
 
   /**
-   * Verify that deep copy works as expected for string field reference.
+   * Verify that deep copy works as expected with respect to the individual fields.
    */
   @Test
-  public void testDeepCopyWithString() {
-    FieldReference fr = new FieldReference("TEST1");
-    fr.as("testName");
+  public void testDeepCopyDetail() {
+    FieldReference fr = (FieldReference) FieldReference.field(mockTableReference(), "TEST1").build().as("testName");
     FieldReference frCopy = (FieldReference)fr.deepCopy();
-
-    assertEquals("Field reference name matches", fr.getName(), frCopy.getName());
-    assertEquals("Field reference alias type matches", fr.getAlias(), frCopy.getAlias());
-    assertEquals("Field reference direction matches", fr.getDirection(), frCopy.getDirection());
-  }
-
-
-  /**
-   * Verify that deep copy works as expected for Boolean field reference.
-   */
-  @Test
-  public void testDeepCopyWithTable() {
-    FieldReference fr = new FieldReference(new TableReference("Agreement"), "Test1");
-    fr.as("testName");
-    FieldReference frCopy = (FieldReference)fr.deepCopy();
-
-    assertEquals("Field reference name matches", fr.getName(), frCopy.getName());
-    assertEquals("Field reference alias type matches", fr.getAlias(), frCopy.getAlias());
-    assertEquals("Field reference direction matches", fr.getDirection(), frCopy.getDirection());
-    assertEquals("Field reference table matches", fr.getTable().getName(), frCopy.getTable().getName());
-  }
-
-  /**
-   * Confirms that the implied name returns the alias if it is set,
-   * otherwise the name of the source field
-   */
-  @Test
-  public void testImpliedName() {
-    FieldReference fr = new FieldReference(new TableReference("Agreement"), "Test1");
-    assertEquals("Field reference implied name defaults to source field name", fr.getImpliedName(), "Test1");
-    fr.as("testName");
-    assertEquals("Field reference implied name  uses alias if available", fr.getImpliedName(), "testName");
-  }
-  
-  
-  /**
-   * Test the equals method. 
-   */
-  @Test
-  public void testEquals() {
-    final String fieldName = "date";
-    final String anotherFieldName = "amount";
-    final TableReference table = new TableReference("Schedule");
-    final TableReference anotherTable = new TableReference("Asset");
-    
-    FieldReference fOriginal = new FieldReference(table, fieldName, Direction.ASCENDING, NullValueHandling.FIRST);
-    FieldReference fSame = new FieldReference(table, fieldName, Direction.ASCENDING, NullValueHandling.FIRST);
-    
-    FieldReference fDiffTable = new FieldReference(anotherTable, fieldName, Direction.ASCENDING, NullValueHandling.FIRST);
-    FieldReference fDiffField = new FieldReference(table, anotherFieldName, Direction.ASCENDING, NullValueHandling.FIRST);
-    FieldReference fDiffDirection = new FieldReference(table, fieldName, Direction.DESCENDING, NullValueHandling.FIRST);
-    FieldReference fDiffNullHandling = new FieldReference(table, fieldName, Direction.ASCENDING, NullValueHandling.LAST);
-    
-    assertEquals("Fields should be the same", fOriginal, fSame);
-    assertEquals("Fields should be the same", fSame, fOriginal);
-    assertNotEquals("Tables differ", fOriginal,  fDiffTable);
-    assertNotEquals("Fields differ", fOriginal,  fDiffField);
-    assertNotEquals("Directions differ", fOriginal,  fDiffDirection);
-    assertNotEquals("Null handling differs", fOriginal,  fDiffNullHandling);
+    assertEquals(fr.getTable(), frCopy.getTable());
+    assertEquals(fr.getName(), frCopy.getName());
+    assertEquals(fr.getAlias(), frCopy.getAlias());
+    assertEquals(fr.getDirection(), frCopy.getDirection());
   }
 }

@@ -304,7 +304,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
    */
   @Test
   public void testMerge() {
-    final SelectStatement select = select(literal(1), literal(1)).from(two);
+    final SelectStatement select = select(literal(1), literal(2)).from(two);
     final MergeStatement merge = merge().into(three).from(select);
 
     traverser.dispatch(merge);
@@ -397,7 +397,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
   @Test
   public void testInsertFromFieldsAndValues() {
     final SelectStatement select1 = select(literal(1)).from(two);
-    final SelectStatement select2 = select(literal(1)).from(four);
+    final SelectStatement select2 = select(literal(2)).from(four);
 
     final FieldFromSelect select1AsField = (FieldFromSelect) select1.asField().as("a");
     final FieldFromSelect select2AsField = (FieldFromSelect) select2.asField().as("b");
@@ -432,7 +432,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
   @Test
   public void testInsertFromFields() {
     final SelectStatement select1 = select(literal(1)).from(two);
-    final SelectStatement select2 = select(literal(1)).from(four);
+    final SelectStatement select2 = select(literal(2)).from(four);
 
     final FieldFromSelect select1AsField = (FieldFromSelect) select1.asField().as("a");
     final FieldFromSelect select2AsField = (FieldFromSelect) select2.asField().as("b");

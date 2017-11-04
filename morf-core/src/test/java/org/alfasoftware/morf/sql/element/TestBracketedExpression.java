@@ -15,31 +15,54 @@
 
 package org.alfasoftware.morf.sql.element;
 
+import static org.alfasoftware.morf.sql.element.BracketedExpression.bracket;
 import static org.alfasoftware.morf.sql.element.FieldLiteral.literal;
+import static org.alfasoftware.morf.sql.element.MathsField.plus;
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.util.Collections;
 import java.util.List;
 
+import org.alfasoftware.morf.util.ObjectTreeTraverser;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 /**
- * Unit tests {@link NullFieldLiteral}
+ * Tests {@link BracketedExpression}.
  *
  * @author Copyright (c) Alfa Financial Software 2011
  */
 @RunWith(Parameterized.class)
-public class TestNullFieldLiteral extends AbstractAliasedFieldTest<AliasedField> {
+public class TestBracketedExpression extends AbstractAliasedFieldTest<BracketedExpression> {
+
+  public final BracketedExpression onTest = bracket(plus(literal(1), literal(2)));
 
   @Parameters(name = "{0}")
   public static List<Object[]> data() {
     return Collections.singletonList(
       testCase(
-        "Null",
-        () -> new NullFieldLiteral(),
-        () -> literal(1)
+        "Test 1",
+        () -> bracket(plus(literal(1), literal(2))),
+        () -> bracket(plus(literal(1), literal(3)))
       )
     );
+  }
+
+
+  @Test
+  public void testInnerExpression() {
+    assertEquals(plus(literal(1), literal(2)), onTest.getInnerExpression());
+  }
+
+
+  @Test
+  public void testDrive() {
+    ObjectTreeTraverser.Callback callback = mock(ObjectTreeTraverser.Callback.class);
+    onTest.drive(ObjectTreeTraverser.forCallback(callback));
+    verify(callback).visit(onTest.getInnerExpression());
   }
 }

@@ -16,7 +16,6 @@
 package org.alfasoftware.morf.sql.element;
 
 import static org.alfasoftware.morf.sql.SqlUtils.bracket;
-import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.util.DeepCopyTransformations.noTransformation;
 
 import java.util.List;
@@ -25,6 +24,8 @@ import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
 import org.apache.commons.lang.StringUtils;
+
+import com.google.common.annotations.VisibleForTesting;
 
 /**
  * An abstract base class common to all fields, functions
@@ -36,18 +37,24 @@ public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableW
 {
 
   /**
-   * The alias to use for the field
+   * The alias to use for the field. TODO make final (see {@link #as(String)}).
    */
-  private String alias = "";
+  private String alias;
 
 
   /**
    * @deprecated use AliasedField(String)
    */
-  @Deprecated
-  protected AliasedField() {}
+  protected AliasedField() {
+    this.alias = "";
+  }
 
 
+  /**
+   * Inherited constructor.
+   *
+   * @param alias The field alias.
+   */
   protected AliasedField(String alias) {
     this.alias = alias;
   }
@@ -56,13 +63,20 @@ public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableW
   /**
    * Specifies the alias to use for the field.
    *
+   * <p>TODO uses transitional immutable logic.  When this can be removed,
+   * we can make {@code alias final}.</p>
+   *
    * @param aliasName the name of the alias
    * @return an updated {@link AliasedField} (this will not be a new object)
    */
   @Override
   public AliasedField as(String aliasName) {
+    if (refactoredForImmutability() && immutableDslEnabled()) {
+      return shallowCopy(aliasName);
+    } else {
     this.alias = aliasName;
     return this;
+  }
   }
 
 
@@ -83,6 +97,18 @@ public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableW
 
 
   /**
+   * Transitional flag which tells {@link #as(String)} and other similar
+   * pseudo-builder methods whether the implementation has been refactored
+   * to handle these in an immutable fashion.
+   *
+   * @return If the implementation has been refactored to behave immutably.
+   */
+  protected boolean refactoredForImmutability() {
+    return false;
+  }
+
+
+  /**
    * Gets the alias of the field.
    *
    * @return the alias
@@ -93,7 +119,10 @@ public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableW
 
 
   /**
-   * Creates a deep copy of an aliased field
+   * Creates a deep copy of an aliased field.
+   *
+   * <p>This will not be necessary once we complete making all {@link AliasedField}
+   * implementations immutable.</p>
    *
    * @return deep copy of the field
    */
@@ -104,11 +133,12 @@ public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableW
 
   /**
    * Creates a deep copy of a descendant of {@link AliasedField},
-   * populating properties in the descendant class
+   * populating properties in the descendant class.
+   *
    * @param transformer the transformation to execute during the copy
    * @return deep copy of the field
    */
-  protected abstract AliasedFieldBuilder deepCopyInternal(DeepCopyTransformation transformer);
+  protected abstract AliasedField deepCopyInternal(DeepCopyTransformation transformer);
 
 
   /**
@@ -117,12 +147,24 @@ public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableW
   @Override
   public AliasedFieldBuilder deepCopy(DeepCopyTransformation transformer) {
     AliasedFieldBuilder builder =  deepCopyInternal(transformer);
-
-    if(!StringUtils.isBlank(this.alias)) {
+    if (refactoredForImmutability() || StringUtils.isBlank(this.alias)) {
+      return builder;
+    } else {
+      // TODO This should be unnecessary...
       builder.as(this.alias);
     }
-
     return builder;
+  }
+
+
+  /**
+   * Creates a shallow copy of the element, applying the alias.
+   *
+   * @param aliasName New alias.
+   * @return The shallow copy.
+   */
+  protected AliasedField shallowCopy(String aliasName) {
+    throw new UnsupportedOperationException("Not refactored");
   }
 
 
@@ -147,7 +189,7 @@ public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableW
    * @return The value, negated, with the original implied name.
    */
   public AliasedField negated() {
-    return literal(0).minus(this).as(getImpliedName());
+    return FieldLiteral.literal(0).minus(this).as(getImpliedName());
   }
 
 
@@ -311,5 +353,62 @@ public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableW
   @Override
   public String toString() {
     return StringUtils.isEmpty(alias) ? "" : " AS " + alias;
+  }
+
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + ((alias == null) ? 0 : alias.hashCode());
+    return result;
+  }
+
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    AliasedField other = (AliasedField) obj;
+    if (alias == null) {
+      if (other.alias != null)
+        return false;
+    } else if (!alias.equals(other.alias))
+      return false;
+    return true;
+  }
+
+
+  /**
+   * Allows tests to run with immutable building behaviour turned on.
+   * @param runnable The code to run.
+   */
+  @VisibleForTesting
+  static void withImmutableBuildersEnabled(Runnable runnable) {
+    String property = "AliasedField.IMMUTABLE_DSL_ENABLED";
+    String oldSystemProperty = System.getProperty(property);
+    System.setProperty(property, "true");
+    try {
+      runnable.run();
+    } finally {
+      if (oldSystemProperty == null) {
+        System.clearProperty(property);
+      } else {
+        System.setProperty(property, oldSystemProperty);
+      }
+    }
+  }
+
+
+  /**
+   * @return true if immutable builder behaviour is enabled.
+   */
+  protected static boolean immutableDslEnabled() {
+    return Boolean.TRUE.toString()
+        .equalsIgnoreCase(System.getProperty("AliasedField.IMMUTABLE_DSL_ENABLED"));
   }
 }

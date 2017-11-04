@@ -15,39 +15,48 @@
 
 package org.alfasoftware.morf.sql.element;
 
-import static org.alfasoftware.morf.sql.SqlUtils.caseStatement;
+import static org.alfasoftware.morf.metadata.DataType.BIG_INTEGER;
+import static org.alfasoftware.morf.metadata.DataType.DECIMAL;
+import static org.alfasoftware.morf.metadata.DataType.INTEGER;
+import static org.alfasoftware.morf.sql.SqlUtils.cast;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
-import static org.alfasoftware.morf.sql.SqlUtils.when;
 
-import java.util.Collections;
 import java.util.List;
 
-import org.alfasoftware.morf.sql.SqlUtils;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+import com.google.common.collect.ImmutableList;
+
 /**
- * Tests {@link CaseStatement}
+ * Tests {@link Cast}.
  *
  * @author Copyright (c) Alfa Financial Software 2011
  */
 @RunWith(Parameterized.class)
-public class TestCaseStatement extends AbstractAliasedFieldTest<CaseStatement> {
+public class TestCast extends AbstractAliasedFieldTest<Cast> {
 
   @Parameters(name = "{0}")
   public static List<Object[]> data() {
-    return Collections.singletonList(
+    return ImmutableList.of(
       testCase(
-        "Test 1",
-        () -> SqlUtils.caseStatement(SqlUtils.when(literal(1).eq(literal(2))).then(literal(3))).otherwise(literal(4)),
-        () -> caseStatement(when(literal(1).eq(literal(2))).then(literal(3))).otherwise(literal(5)),
-        () -> caseStatement(when(literal(1).eq(literal(2))).then(literal(4))).otherwise(literal(4)),
-        () -> caseStatement(when(literal(1).eq(literal(3))).then(literal(3))).otherwise(literal(4)),
-        () -> caseStatement(
-                when(literal(1).eq(literal(2))).then(literal(3)),
-                when(literal(1).eq(literal(2))).then(literal(3))
-              ).otherwise(literal(4))
+        "asString",
+        () -> cast(literal(1)).asString(1),
+        () -> cast(literal(1)).asString(2),
+        () -> cast(literal(1)).asType(INTEGER)
+      ),
+      testCase(
+        "as decimal",
+        () -> cast(literal(1)).asType(DECIMAL),
+        () -> cast(literal(1)).asType(BIG_INTEGER),
+        () -> cast(literal(1)).asType(DECIMAL, 1)
+      ),
+      testCase(
+        "13,2",
+        () -> cast(literal(1)).asType(DECIMAL, 13, 2),
+        () -> cast(literal(1)).asType(DECIMAL, 13, 1),
+        () -> cast(literal(1)).asType(DECIMAL, 12, 2)
       )
     );
   }

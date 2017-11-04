@@ -15,150 +15,92 @@
 
 package org.alfasoftware.morf.sql.element;
 
+import static org.alfasoftware.morf.sql.element.FieldLiteral.literal;
 import static org.junit.Assert.assertEquals;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import org.joda.time.LocalDate;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
+
+import com.google.common.collect.ImmutableList;
 
 /**
  * Tests for field literals
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-public class TestFieldLiteral {
+@RunWith(Parameterized.class)
+public class TestFieldLiteral extends AbstractAliasedFieldTest<FieldLiteral> {
 
-
-  /**
-   * Verify that deep copy works as expected for string field literal.
-   */
-  @Test
-  public void testDeepCopyWithString() {
-    FieldLiteral fl = new FieldLiteral("TEST1");
-    fl.as("testName");
-    FieldLiteral flCopy = (FieldLiteral)fl.deepCopy();
-
-    assertEquals("Field literal value matches", fl.getValue(), flCopy.getValue());
-    assertEquals("Field literal data type matches", fl.getDataType(), flCopy.getDataType());
-    assertEquals("Field literal alias matches", fl.getAlias(), flCopy.getAlias());
+  @Parameters(name = "{0}")
+  public static List<Object[]> data() {
+    return ImmutableList.of(
+      testCase(
+          "BigDecimal",
+          () -> literal(new BigDecimal("1234567890123456789.0123456789")),
+          () -> literal(BigDecimal.ZERO),
+          () -> literal(true)
+      ),
+      testCase(
+          "String",
+          () -> literal("1"),
+          () -> literal("0"),
+          () -> literal(true),
+          () -> literal(1)
+      ),
+      testCase(
+          "Boolean",
+          () -> literal(true),
+          () -> literal(false),
+          () -> literal(1)
+      ),
+      testCase(
+          "Character",
+          () -> literal('a'),
+          () -> literal('b'),
+          () -> literal(1)
+      ),
+      testCase(
+          "Double",
+          () -> literal(1.23D),
+          () -> literal(1)
+      ),
+      testCase(
+          "Long",
+          () -> literal(1L),
+          () -> literal('b')
+      ),
+      testCase(
+          "LocalDate",
+          () -> literal(new LocalDate(2010,1,2)),
+          () -> literal(new LocalDate(2010,1,1)),
+          () -> literal('b')
+      ),
+      testCase(
+          "Integer",
+          () -> literal(1),
+          () -> literal(2),
+          () -> literal('b')
+      )
+    );
   }
 
 
   /**
-   * Verify that deep copy works as expected for Boolean field literal.
+   * Verify that deep copy actually copies the individual properties.
    */
   @Test
-  public void testDeepCopyWithBoolean() {
-    FieldLiteral fl = new FieldLiteral(true);
-    fl.as("testName");
-    FieldLiteral flCopy = (FieldLiteral)fl.deepCopy();
+  public void testDeepCopyDetail() {
+    FieldLiteral f1 = (FieldLiteral) onTestAliased;
+    FieldLiteral flCopy = (FieldLiteral)onTestAliased.deepCopy();
 
-    assertEquals("Field literal value matches", fl.getValue(), flCopy.getValue());
-    assertEquals("Field literal data type matches", fl.getDataType(), flCopy.getDataType());
-    assertEquals("Field literal alias matches", fl.getAlias(), flCopy.getAlias());
+    assertEquals("Field literal value matches", f1.getValue(), flCopy.getValue());
+    assertEquals("Field literal data type matches", f1.getDataType(), flCopy.getDataType());
+    assertEquals("Field literal alias matches", f1.getAlias(), flCopy.getAlias());
   }
-
-
-  /**
-   * Verify that deep copy works as expected for Character field literal.
-   */
-  @Test
-  public void testDeepCopywithCharacter() {
-    FieldLiteral fl = new FieldLiteral('A');
-    fl.as("testName");
-    FieldLiteral flCopy = (FieldLiteral)fl.deepCopy();
-
-    assertEquals("Field literal value matches", fl.getValue(), flCopy.getValue());
-    assertEquals("Field literal data type matches", fl.getDataType(), flCopy.getDataType());
-    assertEquals("Field literal alias matches", fl.getAlias(), flCopy.getAlias());
-  }
-
-
-  /**
-   * Verify that deep copy works as expected for Double field literal.
-   */
-  @Test
-  public void testDeepCopyWithDouble() {
-    FieldLiteral fl = new FieldLiteral(1.23d);
-    fl.as("testName");
-    FieldLiteral flCopy = (FieldLiteral)fl.deepCopy();
-
-    assertEquals("Field literal value matches", fl.getValue(), flCopy.getValue());
-    assertEquals("Field literal data type matches", fl.getDataType(), flCopy.getDataType());
-    assertEquals("Field literal alias matches", fl.getAlias(), flCopy.getAlias());
-  }
-
-
-  /**
-   * Verify that deep copy works as expected for BigDecimal field literal.
-   */
-  @Test
-  public void testDeepCopyWithBigDecimal() {
-    FieldLiteral fl = new FieldLiteral(new BigDecimal("1234567890123456789.0123456789"));
-    fl.as("testName");
-    FieldLiteral flCopy = (FieldLiteral)fl.deepCopy();
-
-    assertEquals("Field literal value matches", fl.getValue(), flCopy.getValue());
-    assertEquals("Field literal value is correct", "1234567890123456789.0123456789", flCopy.getValue());
-    assertEquals("Field literal data type matches", fl.getDataType(), flCopy.getDataType());
-    assertEquals("Field literal alias matches", fl.getAlias(), flCopy.getAlias());
-  }
-
-
-  /**
-   * Verify that deep copy works as expected for Long field literal.
-   */
-  @Test
-  public void testDeepCopyWithLong() {
-    FieldLiteral fl = new FieldLiteral(234234L);
-    fl.as("testName");
-    FieldLiteral flCopy = (FieldLiteral)fl.deepCopy();
-
-    assertEquals("Field literal value matches", fl.getValue(), flCopy.getValue());
-    assertEquals("Field literal data type matches", fl.getDataType(), flCopy.getDataType());
-    assertEquals("Field literal alias matches", fl.getAlias(), flCopy.getAlias());
-  }
-
-
-  /**
-   * Verify that deep copy works as expected for {@link LocalDate} field literal.
-   */
-  @Test
-  public void testDeepCopyWithLocalDate() {
-    FieldLiteral fl = new FieldLiteral(new LocalDate(2010,1,2));
-    fl.as("testName");
-    FieldLiteral flCopy = (FieldLiteral)fl.deepCopy();
-
-    assertEquals("Field literal value matches", fl.getValue(), flCopy.getValue());
-    assertEquals("Field literal data type matches", fl.getDataType(), flCopy.getDataType());
-    assertEquals("Field literal alias matches", fl.getAlias(), flCopy.getAlias());
-  }
-
-
-  /**
-   * Verify that deep copy works as expected for Double field literal.
-   */
-  @Test
-  public void testDeepCopyWithInteger() {
-    FieldLiteral fl = new FieldLiteral(1);
-    fl.as("testName");
-    FieldLiteral flCopy = (FieldLiteral)fl.deepCopy();
-
-    assertEquals("Field literal value matches", fl.getValue(), flCopy.getValue());
-    assertEquals("Field literal data type matches", fl.getDataType(), flCopy.getDataType());
-    assertEquals("Field literal alias matches", fl.getAlias(), flCopy.getAlias());
-  }
-
-  /**
-   * Confirms that the implied name returns the alias
-   */
-  @Test
-  public void testImpliedName() {
-    FieldLiteral fl = new FieldLiteral(1);
-    assertEquals("Field literal implied name correctly initialised", fl.getImpliedName(), "");
-    fl.as("testName");
-    assertEquals("Field literal implied name matches alias", fl.getImpliedName(), "testName");
-  }
-
 }

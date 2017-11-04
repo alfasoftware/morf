@@ -17,28 +17,30 @@ package org.alfasoftware.morf.sql.element;
 
 import static org.alfasoftware.morf.sql.element.FieldLiteral.literal;
 
-import java.util.Collections;
 import java.util.List;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+import com.google.common.collect.ImmutableList;
+
 /**
- * Unit tests {@link NullFieldLiteral}
+ * Tests {@link MathsField}.
  *
  * @author Copyright (c) Alfa Financial Software 2011
  */
 @RunWith(Parameterized.class)
-public class TestNullFieldLiteral extends AbstractAliasedFieldTest<AliasedField> {
+public class TestMathsField extends AbstractAliasedFieldTest<MathsField> {
 
   @Parameters(name = "{0}")
   public static List<Object[]> data() {
-    return Collections.singletonList(
+    return ImmutableList.of(
       testCase(
-        "Null",
-        () -> new NullFieldLiteral(),
-        () -> literal(1)
+        "Test 1",
+        () -> MathsField.plus(literal(1), literal(2)),
+        () -> MathsField.multiply(literal(1), literal(2)),
+        () -> MathsField.plus(literal(1), literal(3))
       )
     );
   }
