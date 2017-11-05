@@ -361,12 +361,6 @@ public class FieldLiteral extends AliasedField {
   }
 
 
-  @Override
-  protected boolean refactoredForImmutability() {
-    return true;
-  }
-
-
   /**
    * @see org.alfasoftware.morf.sql.element.AliasedField#as(java.lang.String)
    */

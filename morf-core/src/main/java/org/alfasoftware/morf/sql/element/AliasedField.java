@@ -71,7 +71,7 @@ public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableW
    */
   @Override
   public AliasedField as(String aliasName) {
-    if (refactoredForImmutability() && immutableDslEnabled()) {
+    if (immutableDslEnabled()) {
       return shallowCopy(aliasName);
     } else {
     this.alias = aliasName;
@@ -93,18 +93,6 @@ public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableW
   @Override
   public final AliasedField build() {
     return this;
-  }
-
-
-  /**
-   * Transitional flag which tells {@link #as(String)} and other similar
-   * pseudo-builder methods whether the implementation has been refactored
-   * to handle these in an immutable fashion.
-   *
-   * @return If the implementation has been refactored to behave immutably.
-   */
-  protected boolean refactoredForImmutability() {
-    return false;
   }
 
 
@@ -146,14 +134,7 @@ public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableW
    */
   @Override
   public AliasedFieldBuilder deepCopy(DeepCopyTransformation transformer) {
-    AliasedFieldBuilder builder =  deepCopyInternal(transformer);
-    if (refactoredForImmutability() || StringUtils.isBlank(this.alias)) {
-      return builder;
-    } else {
-      // TODO This should be unnecessary...
-      builder.as(this.alias);
-    }
-    return builder;
+    return deepCopyInternal(transformer);
   }
 
 

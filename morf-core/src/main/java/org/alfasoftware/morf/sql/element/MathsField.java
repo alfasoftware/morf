@@ -106,12 +106,6 @@ public class MathsField extends AliasedField implements Driver {
   }
 
 
-  @Override
-  protected boolean refactoredForImmutability() {
-    return true;
-  }
-
-
   /**
    * Provides the plus operation for SQL.
    * @param leftField left addendum

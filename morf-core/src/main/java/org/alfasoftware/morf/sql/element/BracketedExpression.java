@@ -100,12 +100,6 @@ public class BracketedExpression extends AliasedField implements Driver {
 
 
   @Override
-  protected boolean refactoredForImmutability() {
-    return true;
-  }
-
-
-  @Override
   public void drive(ObjectTreeTraverser traverser) {
     traverser.dispatch(getInnerExpression());
   }
