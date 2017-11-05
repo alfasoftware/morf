@@ -104,12 +104,6 @@ public class Cast extends AliasedField implements Driver {
   }
 
 
-  @Override
-  protected boolean refactoredForImmutability() {
-    return true;
-  }
-
-
   /**
    * @return The {@link AliasedField} being casted
    */

@@ -88,12 +88,6 @@ public class ConcatenatedField extends AliasedField implements Driver {
   }
 
 
-  @Override
-  protected boolean refactoredForImmutability() {
-    return true;
-  }
-
-
   /**
    * Get the fields to be concatenated
    *

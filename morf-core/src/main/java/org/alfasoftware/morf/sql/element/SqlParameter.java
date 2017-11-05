@@ -142,12 +142,6 @@ parameter("name").type(DataType.DECIMAL).width(13,2).build();</pre>
   }
 
 
-  @Override
-  protected boolean refactoredForImmutability() {
-    return true;
-  }
-
-
   /**
    * Returns the field metadata for the parameter.
    *

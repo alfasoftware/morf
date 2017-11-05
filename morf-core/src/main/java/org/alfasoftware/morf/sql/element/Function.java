@@ -509,12 +509,6 @@ public final class Function extends AliasedField implements Driver {
   }
 
 
-  @Override
-  protected boolean refactoredForImmutability() {
-    return true;
-  }
-
-
   /**
    * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(ObjectTreeTraverser)
    */

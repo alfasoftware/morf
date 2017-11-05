@@ -88,12 +88,6 @@ public class CaseStatement extends AliasedField implements Driver {
   }
 
 
-  @Override
-  protected boolean refactoredForImmutability() {
-    return true;
-  }
-
-
   /**
    * @return the whenConditions
    */
