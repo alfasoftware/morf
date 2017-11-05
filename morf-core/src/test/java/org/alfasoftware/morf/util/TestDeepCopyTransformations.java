@@ -135,7 +135,7 @@ public class TestDeepCopyTransformations {
    */
   @Test
   public void testTransformation() {
-    Object copy = statementBefore.deepCopy(transformation);
+    Object copy = statementBefore.deepCopy(transformation).build();
 
     assertNotSame(copy,statementAfter);
     assertEquals(statementAfter.toString(),copy.toString());

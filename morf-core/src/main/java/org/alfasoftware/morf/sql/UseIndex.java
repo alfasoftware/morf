@@ -47,4 +47,43 @@ public final class UseIndex implements Hint {
   public String getIndexName() {
     return indexName;
   }
+
+
+  @Override
+  public String toString() {
+    return "UseIndex [table=" + table + ", index=" + indexName + "]";
+  }
+
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + ((indexName == null) ? 0 : indexName.hashCode());
+    result = prime * result + ((table == null) ? 0 : table.hashCode());
+    return result;
+  }
+
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    UseIndex other = (UseIndex) obj;
+    if (indexName == null) {
+      if (other.indexName != null)
+        return false;
+    } else if (!indexName.equals(other.indexName))
+      return false;
+    if (table == null) {
+      if (other.table != null)
+        return false;
+    } else if (!table.equals(other.table))
+      return false;
+    return true;
+  }
 }

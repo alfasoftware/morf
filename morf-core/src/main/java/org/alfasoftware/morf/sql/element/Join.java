@@ -187,6 +187,9 @@ public class Join implements Driver, DeepCopyableWithTransformation<Join,Builder
    */
   @Deprecated
   public Join on(Criterion onCondition) {
+    if (AliasedField.immutableDslEnabled()) {
+      throw new UnsupportedOperationException("Cannot modify a join when immutability is configured.");
+    }
     this.criterion = onCondition;
     return this;
   }

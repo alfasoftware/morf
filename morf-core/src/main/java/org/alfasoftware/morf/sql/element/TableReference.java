@@ -92,21 +92,12 @@ public class TableReference implements DeepCopyableWithTransformation<TableRefer
    * @return an updated {@link TableReference} (this will not be a new object)
    */
   public TableReference as(String aliasName) {
-    if (immutableDslEnabled()) {
+    if (AliasedField.immutableDslEnabled()) {
       return new TableReference(this, aliasName);
     } else {
       this.alias = aliasName;
       return this;
     }
-  }
-
-
-  /**
-   * @return true if immutable builder behaviour is enabled.
-   */
-  private static boolean immutableDslEnabled() {
-    return Boolean.TRUE.toString()
-        .equalsIgnoreCase(System.getProperty("AliasedField.IMMUTABLE_DSL_ENABLED"));
   }
 
 

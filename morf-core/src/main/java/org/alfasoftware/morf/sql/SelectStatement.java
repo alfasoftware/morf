@@ -18,6 +18,7 @@ package org.alfasoftware.morf.sql;
 import static org.alfasoftware.morf.util.DeepCopyTransformations.noTransformation;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.alfasoftware.morf.sql.UnionSetOperator.UnionStrategy;
@@ -25,15 +26,16 @@ import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.FieldFromSelect;
-import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
-import org.alfasoftware.morf.util.DeepCopyTransformations;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
+import org.alfasoftware.morf.util.ShallowCopyable;
+import org.apache.commons.lang.StringUtils;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 
 /**
@@ -42,7 +44,7 @@ import com.google.common.collect.Lists;
  * <p>The class structure imitates the end SQL and is structured as follows:</p>
  *
  * <blockquote><pre>
- *   new SelectStatement([field], ...)
+ *   SqlUtils.select([field], ...)
  *        |----&gt; .from([table])                               = SELECT [fields] FROM [table]
  *                |----&gt; .innerJoin([table], [criterion])     = SELECT [fields] FROM [table] INNER JOIN [table] ON [criterion]
  *                |----&gt; .leftOuterJoin(...)
@@ -54,15 +56,12 @@ import com.google.common.collect.Lists;
  *                |----&gt; .unionAll([SelectStatement])         = SELECT [fields] FROM [table] UNION ALL [SelectStatement]
  *  </pre></blockquote>
  *
- * <p>This class does not accept string references to field or table names. Instead, you must provide
- * the methods with a {@link TableReference} or {@link FieldReference} reference.</p>
- *
- * <p>Each method of this class will return an instance of the SelectStatement class. However, this will always
- * be the same instance rather than a new instance of the class.</p>
- *
  * @author Copyright (c) Alfa Financial Software 2009
  */
-public class SelectStatement extends AbstractSelectStatement<SelectStatement> implements DeepCopyableWithTransformation<SelectStatement,Builder<SelectStatement>> ,Driver  {
+public class SelectStatement extends AbstractSelectStatement<SelectStatement>
+                          implements DeepCopyableWithTransformation<SelectStatement, SelectStatementBuilder>,
+                                     ShallowCopyable<SelectStatement, SelectStatementBuilder>,
+                                     Driver {
 
   /**
    * Indicates whether the select statement is required to return a distinct set of results
@@ -70,42 +69,64 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement> im
   private final boolean distinct;
 
   /**
-   * The fields to group together
+   * The fields to group together.
    */
-  private final List<AliasedField> groupBys = new ArrayList<>();
+  private final List<AliasedField> groupBys;
 
   /**
    * The criteria to use for the group selection
+   *
+   * TODO make final
    */
   private Criterion          having;
 
   /**
    * The set operators to merge with the result set.
    */
-  private final List<SetOperator> setOperators = new ArrayList<>();
+  private final List<SetOperator> setOperators;
 
   /**
    * WITH LOCK
+   *
+   * TODO make final
    */
   private boolean forUpdate;
 
   /**
    * Lists the declared hints in the order they were declared.
    */
-  private final List<Hint> hints = new ArrayList<>();
+  private final List<Hint> hints;
+
+  private int hashCode;
 
 
   /**
-   * Constructor used to create a deep copy for a select statement
-   *
-   * @param sourceStatement the select statement to create the deep copy from
+   * @return A builder.
    */
-  SelectStatement(SelectStatement sourceStatement,DeepCopyTransformation transformation) {
-    super(sourceStatement,transformation);
-    this.distinct = sourceStatement.distinct;
-    this.having = transformation.deepCopy(sourceStatement.having);
-    this.groupBys.addAll(DeepCopyTransformations.transformIterable(sourceStatement.groupBys, transformation));
-    this.setOperators.addAll(DeepCopyTransformations.transformIterable(sourceStatement.setOperators,transformation));
+  public static final SelectStatementBuilder builder() {
+    return new SelectStatementBuilder();
+  }
+
+
+  /**
+   * Builder constructor.
+   *
+   * @param builder The builder.
+   */
+  SelectStatement(SelectStatementBuilder builder) {
+    super(builder);
+    this.distinct = builder.distinct;
+    this.having = builder.having;
+    this.forUpdate = builder.forUpdate;
+    if (AliasedField.immutableDslEnabled()) {
+      this.groupBys = ImmutableList.copyOf(builder.groupBys);
+      this.setOperators = ImmutableList.copyOf(builder.setOperators);
+      this.hints = ImmutableList.copyOf(builder.hints);
+    } else {
+      this.groupBys = new ArrayList<>(builder.groupBys);
+      this.setOperators = new ArrayList<>(builder.setOperators);
+      this.hints = new ArrayList<>(builder.hints);
+    }
   }
 
 
@@ -139,9 +160,7 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement> im
    * @param isDistinct Determines whether the DISTINCT clause should be added or not
    */
   public SelectStatement(AliasedFieldBuilder[] fields, boolean isDistinct) {
-    super();
-    this.distinct = isDistinct;
-    appendFields(fields);
+    this(Arrays.asList(fields), isDistinct);
   }
 
 
@@ -153,9 +172,17 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement> im
    * @param isDistinct Determines whether the DISTINCT clause should be added or not
    */
   public SelectStatement(List<? extends AliasedFieldBuilder> fields, boolean isDistinct) {
-    super();
+    super(fields);
+    if (AliasedField.immutableDslEnabled()) {
+      this.groupBys = ImmutableList.of();
+      this.setOperators = ImmutableList.of();
+      this.hints = ImmutableList.of();
+    } else {
+      this.groupBys = Lists.newArrayList();
+      this.setOperators = Lists.newArrayList();
+      this.hints = Lists.newArrayList();
+    }
     this.distinct = isDistinct;
-    addFields(fields);
   }
 
 
@@ -171,9 +198,17 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement> im
 
   /**
    * @param selectFields Field references to select.
+   * @deprecated Do not use {@link SelectStatement} mutably.  Create a new statement.
    */
+  @Deprecated
   public final void appendFields(AliasedFieldBuilder... selectFields) {
     addFields(selectFields);
+  }
+
+
+  @Override
+  public SelectStatementBuilder shallowCopy() {
+    return new SelectStatementBuilder(this);
   }
 
 
@@ -181,25 +216,29 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement> im
    * Specifies that the records should be grouped by the specified fields.
    *
    * <blockquote><pre>
-   *    new SelectStatement().from(new Table("schedule"))
-   *                         .groupBy(new Field("agreementnumber"));</pre></blockquote>
+   * select()
+   *   .from(tableRef("Foo"))
+   *   .groupBy(field("age"));</pre></blockquote>
    *
    * @param field the first field to group by
    * @param otherFields the remaining fields to group by
-   * @return the updated SelectStatement (this will not be a new object)
+   * @return a new select statement with the change applied.
    */
   public SelectStatement groupBy(AliasedFieldBuilder field, AliasedFieldBuilder... otherFields) {
-    if (field == null) {
-      throw new IllegalArgumentException("Field was null in group by clause");
-    }
+    return copyOnWriteOrMutate(
+        (SelectStatementBuilder b) -> b.groupBy(field, otherFields),
+        () -> {
+          if (field == null) {
+            throw new IllegalArgumentException("Field was null in group by clause");
+          }
 
-    // Add the singleton
-    groupBys.add(field.build());
+          // Add the singleton
+          groupBys.add(field.build());
 
-    // Add the list
-    groupBys.addAll(Builder.Helper.buildAll(Lists.newArrayList(otherFields)));
-
-    return this;
+          // Add the list
+          groupBys.addAll(Builder.Helper.buildAll(Lists.newArrayList(otherFields)));
+        }
+    );
   }
 
 
@@ -207,37 +246,43 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement> im
    * Filters the grouped records by some criteria.
    *
    * <blockquote><pre>
-   *    new SelectStatement().from(new Table("schedule"))
-   *                         .groupBy(new Field("agreementnumber"))
-   *                         .having(Criteria.eq(new Field("agreementnumber"), "A0001"));</pre></blockquote>
+   * select()
+   *   .from(tableRef("Foo"))
+   *   .groupBy(field("age"))
+   *   .having(min(field("age")).greaterThan(20));</pre></blockquote>
    *
    * @param criterion the criteria on which to filter the grouped records
-   * @return the updated SelectStatement (this will not be a new object)
+   * @return a new select statement with the change applied.
    */
   public SelectStatement having(Criterion criterion) {
-    if (criterion == null) {
-      throw new IllegalArgumentException("Criterion was null in having clause");
-    }
+    return copyOnWriteOrMutate(
+        (SelectStatementBuilder b) -> b.having(criterion),
+        () -> {
+          if (criterion == null) {
+            throw new IllegalArgumentException("Criterion was null in having clause");
+          }
 
-    if (having != null) {
-      throw new UnsupportedOperationException("Cannot specify more than one having clause per statement");
-    }
+          if (having != null) {
+            throw new UnsupportedOperationException("Cannot specify more than one having clause per statement");
+          }
 
-    // Add the singleton
-    having = criterion;
-
-    return this;
+          // Add the singleton
+          having = criterion;
+        }
+    );
   }
 
 
   /**
-   * Tells the database to pessimistic lock the tables.
+   * Tells the database to pessimistically lock the tables.
    *
-   * @return the updated SelectStatement (this will not be a new object)
+   * @return a new select statement with the change applied.
    */
   public SelectStatement forUpdate() {
-    this.forUpdate = true;
-    return this;
+    return copyOnWriteOrMutate(
+        (SelectStatementBuilder b) -> b.forUpdate(),
+        () -> this.forUpdate = true
+    );
   }
 
 
@@ -266,11 +311,13 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement> im
    * affects their precedence or relative importance, depending on the platform.</p>
    *
    * @param rowCount The number of rows for which to optimise the query plan.
-   * @return the updated SelectStatement (this will not be a new object)
+   * @return a new select statement with the change applied.
    */
   public SelectStatement optimiseForRowCount(int rowCount) {
-    this.hints.add(new OptimiseForRowCount(rowCount));
-    return this;
+    return copyOnWriteOrMutate(
+        (SelectStatementBuilder b) -> b.optimiseForRowCount(rowCount),
+        () -> this.hints.add(new OptimiseForRowCount(rowCount))
+    );
   }
 
 
@@ -288,11 +335,13 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement> im
    *
    * @param table The table whose index to use.
    * @param indexName The name of the index to use.
-   * @return the updated SelectStatement (this will not be a new object)
+   * @return a new select statement with the change applied.
    */
   public SelectStatement useIndex(TableReference table, String indexName) {
-    this.hints.add(new UseIndex(table, indexName));
-    return this;
+    return copyOnWriteOrMutate(
+        (SelectStatementBuilder b) -> b.useIndex(table, indexName),
+        () -> this.hints.add(new UseIndex(table, indexName))
+    );
   }
 
 
@@ -314,11 +363,13 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement> im
    * applied in the SQL in the order they are called on {@link SelectStatement}.  This usually
    * affects their precedence or relative importance, depending on the platform.</p>
    *
-   * @return the updated SelectStatement (this will not be a new object)
+   * @return a new select statement with the change applied.
    */
   public SelectStatement useImplicitJoinOrder() {
-    this.hints.add(new UseImplicitJoinOrder());
-    return this;
+    return copyOnWriteOrMutate(
+        (SelectStatementBuilder b) -> b.useImplicitJoinOrder(),
+        () -> this.hints.add(new UseImplicitJoinOrder())
+    );
   }
 
 
@@ -328,9 +379,9 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement> im
    *
    * <p>It is possible to have more than one union statement by chaining union calls:</p>
    * <blockquote><pre>
-   * SelectStatement stmtA = new SelectStatement(...).from(...);
-   * SelectStatement stmtB = new SelectStatement(...).from(...);
-   * SelectStatement stmtC = new SelectStatement(...).from(...).union(stmtA).union(stmtB).orderBy(...);
+   * SelectStatement stmtA = select(...).from(...);
+   * SelectStatement stmtB = select(...).from(...);
+   * SelectStatement stmtC = select(...).from(...).union(stmtA).union(stmtB).orderBy(...);
    * </pre></blockquote>
    *
    * <p>If an union operation is performed then all
@@ -339,12 +390,13 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement> im
    * should have an order-by statement (see example above).</p>
    *
    * @param selectStatement the select statement to be united with the current select statement;
-   * @return the updated SelectStatement (this will not be a new object)
+   * @return a new select statement with the change applied.
    */
   public SelectStatement union(SelectStatement selectStatement) {
-    setOperators.add(new UnionSetOperator(UnionStrategy.DISTINCT, this, selectStatement));
-
-    return this;
+    return copyOnWriteOrMutate(
+        (SelectStatementBuilder b) -> b.union(selectStatement),
+        () ->  setOperators.add(new UnionSetOperator(UnionStrategy.DISTINCT, this, selectStatement))
+    );
   }
 
 
@@ -353,13 +405,14 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement> im
    * keeping all duplicate rows.
    *
    * @param selectStatement the other select statement to be united with the current select statement;
-   * @return the updated SelectStatement (this will not be a new object)
+   * @return a new select statement with the change applied.
    * @see #union(SelectStatement)
    */
   public SelectStatement unionAll(SelectStatement selectStatement) {
-    setOperators.add(new UnionSetOperator(UnionStrategy.ALL, this, selectStatement));
-
-    return this;
+    return copyOnWriteOrMutate(
+        (SelectStatementBuilder b) -> b.unionAll(selectStatement),
+        () ->  setOperators.add(new UnionSetOperator(UnionStrategy.ALL, this, selectStatement))
+    );
   }
 
 
@@ -413,7 +466,7 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement> im
    */
   @Override
   public SelectStatement deepCopy() {
-    return new SelectStatement(this,noTransformation());
+    return deepCopy(noTransformation()).build();
   }
 
 
@@ -432,14 +485,86 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement> im
   @Override
   public String toString() {
     StringBuilder result = new StringBuilder("SQL SELECT ");
+    if (distinct) {
+      result.append("DISTINCT ");
+    }
+    if (!hints.isEmpty()) {
+      result.append("with hints: ");
+      result.append(hints);
+      result.append(" ");
+    }
     result.append(super.toString());
     if (!groupBys.isEmpty()) result.append(" GROUP BY ").append(groupBys);
     if (having != null) result.append(" HAVING [").append(having).append("]");
     for (SetOperator setOperator : setOperators) {
       result.append(" ").append(setOperator);
     }
+    if (StringUtils.isNotEmpty(getAlias())) result.append(" AS ").append(getAlias());
     if (forUpdate) result.append(" (FOR UPDATE)");
     return result.toString();
+  }
+
+
+  @Override
+  public int hashCode() {
+    if (hashCode == 0) {
+      hashCode = generateHashCode();
+    }
+    return hashCode;
+  }
+
+
+  private int generateHashCode() {
+    final int prime = 31;
+    int result = super.hashCode();
+    result = prime * result + (distinct ? 1231 : 1237);
+    result = prime * result + (forUpdate ? 1231 : 1237);
+    result = prime * result + ((groupBys == null) ? 0 : groupBys.hashCode());
+    result = prime * result + ((having == null) ? 0 : having.hashCode());
+    result = prime * result + ((hints == null) ? 0 : hints.hashCode());
+    result = prime * result + ((setOperators == null) ? 0 : setOperators.hashCode());
+    return result;
+  }
+
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    if (hashCode() != obj.hashCode())
+      return false;
+    if (!super.equals(obj))
+      return false;
+    SelectStatement other = (SelectStatement) obj;
+    if (distinct != other.distinct)
+      return false;
+    if (forUpdate != other.forUpdate)
+      return false;
+    if (groupBys == null) {
+      if (other.groupBys != null)
+        return false;
+    } else if (!groupBys.equals(other.groupBys))
+      return false;
+    if (having == null) {
+      if (other.having != null)
+        return false;
+    } else if (!having.equals(other.having))
+      return false;
+    if (hints == null) {
+      if (other.hints != null)
+        return false;
+    } else if (!hints.equals(other.hints))
+      return false;
+    if (setOperators == null) {
+      if (other.setOperators != null)
+        return false;
+    } else if (!setOperators.equals(other.setOperators))
+      return false;
+    return true;
   }
 
 
@@ -448,11 +573,12 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement> im
    */
   @Override
   public void drive(ObjectTreeTraverser traverser) {
-   super.drive(traverser);
-   traverser
-    .dispatch(getGroupBys())
-    .dispatch(getHaving())
-    .dispatch(getSetOperators());
+    super.drive(traverser);
+    traverser
+      .dispatch(groupBys)
+      .dispatch(having)
+      .dispatch(setOperators)
+      .dispatch(hints);
   }
 
 
@@ -460,7 +586,7 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement> im
    * @see org.alfasoftware.morf.util.DeepCopyableWithTransformation#deepCopy(org.alfasoftware.morf.util.DeepCopyTransformation)
    */
   @Override
-  public Builder<SelectStatement> deepCopy(DeepCopyTransformation transformer) {
-    return TempTransitionalBuilderWrapper.wrapper(new SelectStatement(this,transformer));
+  public SelectStatementBuilder deepCopy(DeepCopyTransformation transformer) {
+    return new SelectStatementBuilder(this, transformer);
   }
 }

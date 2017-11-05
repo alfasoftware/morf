@@ -16,38 +16,31 @@
 package org.alfasoftware.morf.sql;
 
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.util.DeepCopyTransformations.transformIterable;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
 import org.alfasoftware.morf.sql.element.Criterion;
-import org.alfasoftware.morf.sql.element.Direction;
-import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Join;
 import org.alfasoftware.morf.sql.element.JoinType;
 import org.alfasoftware.morf.sql.element.Operator;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.util.Builder;
-import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
 import org.apache.commons.lang.StringUtils;
 
 import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 
 /**
- * AbstractSelectStatement class for select statements.
- * <p>
- * This abstraction is aware of subclasses type.
- * </p>
+ * Common behaviour of {@link SelectStatement} and {@link SelectFirstStatement}.
  *
- * @see  SelectFirstStatement
- * @see SelectStatement
  * @author Copyright (c) Alfa Financial Software 2014
  */
 public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<T>>  implements Statement,Driver{
@@ -55,9 +48,11 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
   /**
    * The fields to select from the table
    */
-  private final List<AliasedField>    fields = Lists.newArrayList();
+  private final List<AliasedField>    fields;
 
   /**
+   * TODO make final
+   *
    * The primary table to select from
    */
   private TableReference              table;
@@ -65,19 +60,23 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
   /**
    * Select from multiple inner selects.
    */
-  private final List<SelectStatement> fromSelects  = Lists.newArrayList();
+  private final List<SelectStatement> fromSelects;
 
   /**
    * The additional tables to join to
    */
-  private final List<Join>            joins  = Lists.newArrayList();
+  private final List<Join>            joins;
 
   /**
+   * TODO make final
+   *
    * The selection criteria for selecting from the database
    */
   private Criterion                   whereCriterion;
 
   /**
+   * TODO make final
+   *
    * The alias to associate with this select statement. Useful when combining
    * multiple select statements.
    */
@@ -86,36 +85,73 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
   /**
    * The fields to sort the result set by
    */
-  private final List<AliasedField>    orderBys  = Lists.newArrayList();
+  private final List<AliasedField>    orderBys;
 
 
-  protected AbstractSelectStatement() {}
+  protected AbstractSelectStatement() {
+    if (AliasedField.immutableDslEnabled()) {
+      this.fromSelects = ImmutableList.of();
+      this.joins = ImmutableList.of();
+      this.orderBys = ImmutableList.of();
+      this.fields = ImmutableList.of();
+    } else {
+      this.fromSelects = Lists.newArrayList();
+      this.joins = Lists.newArrayList();
+      this.orderBys = Lists.newArrayList();
+      this.fields = Lists.newArrayList();
+    }
+  }
+
+
+  protected AbstractSelectStatement(List<? extends AliasedFieldBuilder> aliasedFields) {
+    if (AliasedField.immutableDslEnabled()) {
+      this.fromSelects = ImmutableList.of();
+      this.joins = ImmutableList.of();
+      this.orderBys = ImmutableList.of();
+      this.fields = FluentIterable.from(aliasedFields).transform(AliasedFieldBuilder::build).toList();
+    } else {
+      this.fromSelects = Lists.newArrayList();
+      this.joins = Lists.newArrayList();
+      this.orderBys = Lists.newArrayList();
+      this.fields = Lists.newArrayList();
+      this.fields.addAll(Builder.Helper.<AliasedField>buildAll(aliasedFields));
+    }
+  }
+
 
   protected AbstractSelectStatement(AliasedFieldBuilder... aliasedFields) {
-    this.fields.addAll(Builder.Helper.<AliasedField>buildAll(Lists.newArrayList(aliasedFields)));
+    this(Arrays.asList(aliasedFields));
   }
 
 
   /**
-   * Deep copy constructor
-   * @param sourceStatement The source to copy from
-   * @param transformation Intercepts the deep copy to transform instead of mere copying
+   * Constructor for use when using the builder.
    *
+   * @param builder The builder.
    */
-  protected AbstractSelectStatement(AbstractSelectStatement<T> sourceStatement,DeepCopyTransformation transformation) {
-    this.alias = sourceStatement.alias;
-    this.table = transformation.deepCopy(sourceStatement.table);
-    this.fields.addAll(transformIterable(sourceStatement.fields, transformation));
-    this.whereCriterion = transformation.deepCopy(sourceStatement.whereCriterion);
-    this.joins.addAll(transformIterable(sourceStatement.joins, transformation));
-    this.fromSelects.addAll(transformIterable(sourceStatement.fromSelects, transformation));
-    this.orderBys.addAll(transformIterable(sourceStatement.orderBys, transformation));
+  AbstractSelectStatement(AbstractSelectStatementBuilder<T, ?> builder) {
+    this.table = builder.getTable();
+    this.whereCriterion = builder.getWhereCriterion();
+    this.alias = builder.getAlias();
+    if (AliasedField.immutableDslEnabled()) {
+      this.fromSelects = ImmutableList.copyOf(builder.getFromSelects());
+      this.joins = ImmutableList.copyOf(builder.getJoins());
+      this.orderBys = ImmutableList.copyOf(builder.getOrderBys());
+      this.fields = ImmutableList.copyOf(builder.getFields());
+    } else {
+      this.fromSelects = Lists.newArrayList(builder.getFromSelects());
+      this.joins = Lists.newArrayList(builder.getJoins());
+      this.orderBys = Lists.newArrayList(builder.getOrderBys());
+      this.fields = Lists.newArrayList(builder.getFields());
+    }
   }
 
 
   /**
    * @param aliasedFields The fields to add
+   * @deprecated Do not use {@link AbstractSelectStatement} mutably. Create a new statement.
    */
+  @Deprecated
   protected void addFields(AliasedFieldBuilder... aliasedFields) {
     addFields(Arrays.asList(aliasedFields));
   }
@@ -125,6 +161,9 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
    * @param aliasedFields The fields to add
    */
   protected void addFields(List<? extends AliasedFieldBuilder> aliasedFields) {
+    if (AliasedField.immutableDslEnabled()) {
+      throw new UnsupportedOperationException("Cannot modify a statement when immutability is configured.");
+    }
     fields.addAll(FluentIterable.from(aliasedFields)
       .transform(Builder.Helper.<AliasedField>buildAll()).toList());
   }
@@ -215,224 +254,301 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
   /**
    * Sets the alias for this select statement. This is useful if you are
    * including multiple select statements in a single select (not to be confused
-   * with a join) and wish to reference the select statement itself. c.f.
-   * WEB-12490
+   * with a join) and wish to reference the select statement itself.
    *
    * @param alias the alias to set.
-   * @return the select statement to allow chaining.
+   * @return the new select statement with the change applied.
    */
   public T alias(String alias) {
-    this.alias = alias;
-
-    return castToChild(this);
+    return copyOnWriteOrMutate(
+        b -> b.alias(alias),
+        () -> this.alias = alias
+    );
   }
 
 
   /**
-   * Selects fields from a specific table. <blockquote>
+   * Selects fields from a specific table:
    *
-   * <pre>
-   * newT().from(new Table(&quot;agreement&quot;));
-   * </pre>
-   *
-   * </blockquote>
+   * <blockquote><pre>
+   * SelectStatement statement = select().from(tableRef(&quot;Foo&quot;));
+   * </pre></blockquote>
    *
    * @param fromTable the table to select from
-   * @return the updated SelectStatement (this will not be a new object)
+   * @return a new select statement with the change applied.
    */
   public T from(TableReference fromTable) {
-    this.table = fromTable;
-    return castToChild(this);
+    return copyOnWriteOrMutate(
+        b -> b.from(fromTable),
+        () -> this.table = fromTable
+    );
   }
 
 
   /**
-   * Selects fields from a specific table. <blockquote>
+   * Either uses {@link #shallowCopy()} and mutates the result, returning it,
+   * or mutates the statement directly, depending on
+   * {@link AliasedField#immutableDslEnabled()}.
    *
-   * <pre>
-   * new SelectStatement().from(&quot;Agreement&quot;);
-   * </pre>
+   * TODO for removal along with mutable behaviour.
    *
-   * </blockquote>
+   * @param transform A transform which modifies the shallow copy builder.
+   * @param mutator Code which applies the local changes instead.
+   * @param <U> The builder type.
+   * @return The result (which may be {@code this}).
+   */
+  @SuppressWarnings({ "unchecked" })
+  protected <U extends AbstractSelectStatementBuilder<T, ?>> T copyOnWriteOrMutate(Function<U, U> transform, Runnable mutator) {
+    if (AliasedField.immutableDslEnabled()) {
+      return transform.apply((U) shallowCopy()).build();
+    } else {
+      mutator.run();
+      return castToChild(this);
+    }
+  }
+
+
+  /**
+   * Performs a shallow copy to a builder, allowing a duplicate
+   * to be created and modified.
+   *
+   * @return A builder, initialised as a duplicate of this statement.
+   */
+  public abstract AbstractSelectStatementBuilder<T, ?> shallowCopy();
+
+
+  /**
+   * Selects fields from a specific table:
+   *
+   * <blockquote><pre>
+   * SelectStatement statement = select().from(&quot;Foo&quot;);
+   * </pre></blockquote>
    *
    * @param tableName the table to select from
-   * @return the updated SelectStatement (this will not be a new object)
+   * @return a new select statement with the change applied.
    */
   public T from(String tableName) {
-    this.table = tableRef(tableName);
-    return castToChild(this);
+    return from(tableRef(tableName));
   }
 
 
   /**
-   * Selects fields from one or more inner selects. <blockquote>
+   * Selects fields from one or more inner selects:
    *
-   * <pre>
-   *    new SelectStatement().from(new SelectStatement(...));
-   * </pre>
-   *
-   * </blockquote>
+   * <blockquote><pre>
+   * SelectStatement statement = select().from(select().from(&quot;Foo&quot;));
+   * </pre></blockquote>
    *
    * @param fromSelect the select statements to select from
-   * @return the updated SelectStatement (this will not be a new object)
+   * @return a new select statement with the change applied.
    */
   public T from(SelectStatement... fromSelect) {
-    fromSelects.addAll(Arrays.asList(fromSelect));
-    return castToChild(this);
+    return copyOnWriteOrMutate(
+        (b) -> b.from(fromSelect),
+        () -> this.fromSelects.addAll(Arrays.asList(fromSelect))
+    );
   }
 
 
   /**
-   * Specifies a table to join to <blockquote>
+   * Specifies a table to join to.
    *
-   * <pre>
-   * new SelectStatement().from(new Table(&quot;agreement&quot;)).innerJoin(new Table(&quot;schedule&quot;),
-   *   Criteria.eq(new Field(&quot;agreementnumber&quot;), &quot;A0001&quot;));
-   * </pre>
-   *
+   * <blockquote><pre>
+   * TableReference foo = tableRef("Foo");
+   * TableReference bar = tableRef("Bar");
+   * SelectStatement statement = select()
+   *     .from(foo)
+   *     .innerJoin(bar, foo.field(&quot;id&quot;).eq(bar.field(&quot;fooId&quot;)));</pre>
    * </blockquote>
    *
    * @param toTable the table to join to
    * @param criterion the criteria on which to join the tables
-   * @return the updated SelectStatement (this will not be a new object)
+   * @return a new select statement with the change applied.
    */
   public T innerJoin(TableReference toTable, Criterion criterion) {
-    joins.add(new Join(JoinType.INNER_JOIN, toTable).on(criterion));
-    return castToChild(this);
+    return copyOnWriteOrMutate(
+        (b) -> b.innerJoin(toTable, criterion),
+        () -> joins.add(new Join(JoinType.INNER_JOIN, toTable).on(criterion))
+    );
   }
 
 
   /**
-   * Specifies a table to join to <blockquote>
+   * Specifies a table to which to perform a cross join/cartesian product.
    *
-   * <pre>
-   * new SelectStatement().from(new Table(&quot;agreement&quot;)).innerJoin(new Table(&quot;schedule&quot;),
-   *   Criteria.eq(new Field(&quot;agreementnumber&quot;), &quot;A0001&quot;));
-   * </pre>
-   *
+   * <blockquote><pre>
+   * TableReference foo = tableRef("Foo");
+   * TableReference bar = tableRef("Bar");
+   * SelectStatement statement = select()
+   *     .from(tableRef("Foo"))
+   *     .innerJoin(tableRef("Bar"));</pre>
    * </blockquote>
    *
    * @param toTable the table to join to
-   * @return the updated SelectStatement (this will not be a new object)
+   * @return a new select statement with the change applied.
    */
   public T innerJoin(TableReference toTable) {
-    joins.add(new Join(JoinType.INNER_JOIN, toTable));
-    return castToChild(this);
+    return copyOnWriteOrMutate(
+        (b) -> b.innerJoin(toTable),
+        () -> joins.add(new Join(JoinType.INNER_JOIN, toTable))
+    );
   }
 
 
   /**
-   * Specifies a table to join to <blockquote>
+   * Specifies an inner join to a subselect:
    *
-   * <pre>
-   *   SelectStatement previousSystemDate = select(field("dataValues").asDate().as("previousSystemDate"))
-   *                                       .from("DataArea")
-   *                                       .where(and(field("dataAreaName").eq("CHPDATDTA"),
-   *                                                  field("dataValueStart").eq("217")));
+   * <blockquote><pre>
+   * TableReference sale = tableRef("Sale");
+   * TableReference customer = tableRef("Customer");
    *
-   *   select(field("daysPassedDue")).from("ScheduleInvoiceDelinquency")
-   *                                 .innerJoin(select(daysBetween(field("previousSystemDate"), field("invoiceDueDate")).as("daysPassedDue"))
-   *                                             .from(invoice)
-   *                                             .innerJoin(previousSystemDate),
-   *                                            field("invoiceId").eq(field("id")))
-   * </pre>
+   * // Define the subselect - a group by showing total sales by age
+   * SelectStatement amountsByAge = select(field("age"), sum(field("amount")))
+   *     .from(sale)
+   *     .innerJoin(customer, sale.field("customerId").eq(customer.field("id")))
+   *     .groupBy(customer.field("age")
+   *     .alias("amountByAge");
    *
-   * </blockquote>
+   * // The outer select, showing each sale as a percentage of the sales to that age
+   * SelectStatement outer = select(
+   *       sale.field("id"),
+   *       sale.field("amount")
+   *          .divideBy(amountByAge.asTable().field("amount"))
+   *          .multiplyBy(literal(100))
+   *     )
+   *     .from(sale)
+   *     .innerJoin(customer, sale.field("customerId").eq(customer.field("id")))
+   *     .innerJoin(amountsByAge, amountsByAge.asTable().field("age").eq(customer.field("age")));
+   * </pre></blockquote>
    *
    * @param subSelect the sub select statement to join on to
    * @param onCondition the criteria on which to join the tables
-   * @return the updated SelectStatement (this will not be a new object)
+   * @return a new select statement with the change applied.
    */
   public T innerJoin(SelectStatement subSelect, Criterion onCondition) {
-    joins.add(new Join(JoinType.INNER_JOIN, subSelect).on(onCondition));
-    return castToChild(this);
+    return copyOnWriteOrMutate(
+        (b) -> b.innerJoin(subSelect, onCondition),
+        () -> joins.add(new Join(JoinType.INNER_JOIN, subSelect).on(onCondition))
+    );
   }
 
 
   /**
-   * Specifies a table to join to <blockquote>
+   * Specifies an cross join to a subselect:
    *
-   * <pre>
-   * SelectStatement previousSystemDate = select(field(&quot;dataValues&quot;).as(&quot;previousSystemDate&quot;)).from(&quot;DataArea&quot;)
-   *     .where(and(field(&quot;dataAreaName&quot;).eq(&quot;CHPDATDTA&quot;), field(&quot;dataValueStart&quot;).eq(&quot;217&quot;))).alias(&quot;D&quot;);
-   *
-   * select(field(&quot;invoiceDueDate&quot;), field(&quot;previousSystemDate&quot;)).from(&quot;Invoice&quot;).innerJoin(previousSystemDate);
-   * </pre>
-   *
-   * </blockquote>
+   * <blockquote><pre>
+   * // Each sale as a percentage of all sales
+   * TableReference sale = tableRef("Sale");
+   * SelectStatement outer = select(
+   *       sale.field("id"),
+   *       sale.field("amount")
+   *          .divideBy(totalSales.asTable().field("amount"))
+   *          .multiplyBy(literal(100))
+   *     )
+   *     .from(sale)
+   *     .innerJoin(
+   *       select(sum(field("amount")))
+   *           .from(sale)
+   *           .alias("totalSales")
+   *     );
+   * </pre></blockquote>
    *
    * @param subSelect the sub select statement to join on to
-   * @return the updated SelectStatement (this will not be a new object)
+   * @return a new select statement with the change applied.
    */
   public T innerJoin(SelectStatement subSelect) {
-    joins.add(new Join(JoinType.INNER_JOIN, subSelect));
-    return castToChild(this);
+    return copyOnWriteOrMutate(
+        (b) -> b.innerJoin(subSelect),
+        () -> joins.add(new Join(JoinType.INNER_JOIN, subSelect))
+    );
   }
 
 
   /**
-   * Specifies a table to join to <blockquote>
+   * Specifies a left outer join to a table:
    *
-   * <pre>
-   * new SelectStatement().from(new Table(&quot;agreement&quot;)).leftOuterJoin(new Table(&quot;schedule&quot;),
-   *   Criteria.eq(new Field(&quot;agreementnumber&quot;), &quot;A0001&quot;));
-   * </pre>
-   *
+   * <blockquote><pre>
+   * TableReference foo = tableRef("Foo");
+   * TableReference bar = tableRef("Bar");
+   * SelectStatement statement = select()
+   *     .from(foo)
+   *     .leftOuterJoin(bar, foo.field(&quot;id&quot;).eq(bar.field(&quot;fooId&quot;)));</pre>
    * </blockquote>
    *
    * @param toTable the table to join to
    * @param criterion the criteria on which to join the tables
-   * @return the updated SelectStatement (this will not be a new object)
+   * @return a new select statement with the change applied.
    */
   public T leftOuterJoin(TableReference toTable, Criterion criterion) {
-    joins.add(new Join(JoinType.LEFT_OUTER_JOIN, toTable).on(criterion));
-    return castToChild(this);
+    return copyOnWriteOrMutate(
+        (b) -> b.leftOuterJoin(toTable, criterion),
+        () -> joins.add(new Join(JoinType.LEFT_OUTER_JOIN, toTable).on(criterion))
+    );
   }
 
 
   /**
-   * Specifies a table to join to <blockquote>
+   * Specifies an left outer join to a subselect:
    *
-   * <pre>
-   * SelectStatement previousSystemDate = select(field(&quot;dataValues&quot;).as(&quot;previousSystemDate&quot;)).from(&quot;DataArea&quot;)
-   *     .where(and(field(&quot;dataAreaName&quot;).eq(&quot;CHPDATDTA&quot;), field(&quot;dataValueStart&quot;).eq(&quot;217&quot;))).alias(&quot;D&quot;);
+   * <blockquote><pre>
+   * TableReference sale = tableRef("Sale");
+   * TableReference customer = tableRef("Customer");
    *
-   * select(field(&quot;invoiceDueDate&quot;)).from(&quot;Invoice&quot;).leftOuterJoin(previousSystemDate,
-   *   eq(field(&quot;invoiceDueDate&quot;), field(&quot;previousSystemDate&quot;)));
-   * </pre>
+   * // Define the subselect - a group by showing total sales by age in the
+   * // previous month.
+   * SelectStatement amountsByAgeLastMonth = select(field("age"), sum(field("amount")))
+   *     .from(sale)
+   *     .innerJoin(customer, sale.field("customerId").eq(customer.field("id")))
+   *     .where(sale.field("month").eq(5))
+   *     .groupBy(customer.field("age")
+   *     .alias("amountByAge");
    *
-   * </blockquote>
+   * // The outer select, showing each sale this month as a percentage of the sales
+   * // to that age the previous month
+   * SelectStatement outer = select(
+   *       sale.field("id"),
+   *       sale.field("amount")
+   *          // May cause division by zero (!)
+   *          .divideBy(isNull(amountsByAgeLastMonth.asTable().field("amount"), 0))
+   *          .multiplyBy(literal(100))
+   *     )
+   *     .from(sale)
+   *     .innerJoin(customer, sale.field("customerId").eq(customer.field("id")))
+   *     .leftOuterJoin(amountsByAgeLastMonth, amountsByAgeLastMonth.asTable().field("age").eq(customer.field("age")));
+   * </pre></blockquote>
    *
    * @param subSelect the sub select statement to join on to
    * @param criterion the criteria on which to join the tables
-   * @return the updated SelectStatement (this will not be a new object)
+   * @return a new select statement with the change applied.
    */
   public T leftOuterJoin(SelectStatement subSelect, Criterion criterion) {
-    joins.add(new Join(JoinType.LEFT_OUTER_JOIN, subSelect).on(criterion));
-    return castToChild(this);
+    return copyOnWriteOrMutate(
+        (b) -> b.leftOuterJoin(subSelect, criterion),
+        () -> joins.add(new Join(JoinType.LEFT_OUTER_JOIN, subSelect).on(criterion))
+    );
   }
 
 
   /**
-   * Specifies the where criteria <blockquote>
+   * Specifies the where criteria:
    *
-   * <pre>
-   * new SelectStatement().from(new Table(&quot;agreement&quot;)).where(Criteria.eq(new Field(&quot;agreementnumber&quot;), &quot;A0001&quot;));
-   * </pre>
-   *
-   * </blockquote>
+   * <blockquote><pre>
+   * SelectStatement statement = select().from("Foo").where(field("name").eq("Dave"));
+   * </pre></blockquote>
    *
    * @param criterion the criteria to filter the results by
-   * @return the updated SelectStatement (this will not be a new object)
+   * @return a new select statement with the change applied.
    */
   public T where(Criterion criterion) {
-    if (criterion == null) {
-      throw new IllegalArgumentException("Criterion was null in where clause");
-    }
-
-    whereCriterion = criterion;
-
-    return castToChild(this);
+    return copyOnWriteOrMutate(
+        (b) -> b.where(criterion),
+        () -> {
+          if (criterion == null) {
+            throw new IllegalArgumentException("Criterion was null in where clause");
+          }
+          whereCriterion = criterion;
+        }
+    );
   }
 
 
@@ -441,32 +557,32 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
    * The iterable can be empty but not null.
    *
    * @param criteria the criteria to filter the results by. They will be <i>AND</i>ed together.
-   * @return the updated SelectStatement (this will not be a new object)
+   * @return a new select statement with the change applied.
    */
   public T where(Iterable<Criterion> criteria) {
-    if (criteria == null) {
-      throw new IllegalArgumentException("No criterion was given in the where clause");
-    }
-
-    if (!Iterables.isEmpty(criteria)) {
-      whereCriterion = new Criterion(Operator.AND, criteria);
-    }
-
-    return castToChild(this);
+    return copyOnWriteOrMutate(
+        (b) -> b.where(criteria),
+        () -> {
+          if (criteria == null) {
+            throw new IllegalArgumentException("No criterion was given in the where clause");
+          }
+          if (!Iterables.isEmpty(criteria)) {
+            whereCriterion = new Criterion(Operator.AND, criteria);
+          }
+        }
+    );
   }
 
 
   /**
-   * Specifies the fields by which to order the result set. <blockquote>
+   * Specifies the fields by which to order the result set:
    *
-   * <pre>
-   * new SelectStatement().from(new Table(&quot;schedule&quot;)).orderBy(new Field(&quot;agreementnumber&quot;, Direction.DESCENDING));
-   * </pre>
-   *
-   * </blockquote>
+   * <blockquote><pre>
+   * SelectStatement statement = select().from("Foo").orderBy(field("name").desc());
+   * </pre></blockquote>
    *
    * @param orderFields the fields to order by
-   * @return the updated SelectStatement (this will not be a new object)
+   * @return a new select statement with the change applied.
    */
   public T orderBy(AliasedField... orderFields) {
     if (orderFields == null) {
@@ -481,24 +597,23 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
    * See {@link #orderBy(AliasedField...)} for the DSL version.
    *
    * @param orderFields the fields to order by
-   * @return the updated SelectStatement (this will not be a new object)
+   * @return a new select statement with the change applied.
    */
   public T orderBy(Iterable<AliasedField> orderFields) {
-    if (orderFields == null) {
-      throw new IllegalArgumentException("Fields were null in order by clause");
-    }
+    return copyOnWriteOrMutate(
+        (b) -> b.orderBy(orderFields),
+        () -> {
+          if (orderFields == null) {
+            throw new IllegalArgumentException("Fields were null in order by clause");
+          }
 
-    // Add the list
-    Iterables.addAll(orderBys, orderFields);
+          // Add the list
+          Iterables.addAll(orderBys, orderFields);
 
-    // Default fields to ascending if no direction has been specified
-    for (AliasedField currentField : orderBys) {
-      if (currentField instanceof FieldReference && ((FieldReference) currentField).getDirection() == Direction.NONE) {
-        ((FieldReference) currentField).setDirection(Direction.ASCENDING);
-      }
-    }
-
-    return castToChild(this);
+          // Default fields to ascending if no direction has been specified
+          SqlInternalUtils.defaultOrderByToAscending(orderBys);
+        }
+    );
   }
 
 
@@ -525,11 +640,12 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
   @Override
   public void drive(ObjectTreeTraverser dispatcher) {
     dispatcher
-    .dispatch(getTable())
-    .dispatch(getFields())
-    .dispatch(getJoins())
-    .dispatch(getFromSelects())
-    .dispatch(getWhereCriterion());
+      .dispatch(table)
+      .dispatch(fields)
+      .dispatch(joins)
+      .dispatch(fromSelects)
+      .dispatch(whereCriterion)
+      .dispatch(orderBys);
   }
 
 
@@ -540,17 +656,19 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
   public String toString() {
 
     StringBuilder result = new StringBuilder();
-    result.append(fields);
-
-    result.append(" FROM [");
-    if (table != null) result.append(table);
-    boolean first = true;
-    for (SelectStatement select : fromSelects) {
-      if (first) result.append(", ");
-      result.append("(").append(select).append(")");
-      first = false;
+    if (fields.isEmpty()) {
+      result.append("*");
+    } else {
+      result.append(fields);
     }
-    result.append("]");
+
+    if (table != null) {
+      result.append(" FROM [").append(table).append("]");
+    }
+
+    if (!fromSelects.isEmpty()) {
+      result.append(" FROM ").append(fromSelects);
+    }
 
     if (!joins.isEmpty()) result.append(" ");
     result.append(StringUtils.join(joins, " "));
@@ -558,5 +676,69 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
     if (whereCriterion != null) result.append(" WHERE [").append(whereCriterion).append("]");
     if (!orderBys.isEmpty()) result.append(" ORDER BY ").append(orderBys);
     return result.toString();
+  }
+
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + ((alias == null) ? 0 : alias.hashCode());
+    result = prime * result + ((fields == null) ? 0 : fields.hashCode());
+    result = prime * result + ((fromSelects == null) ? 0 : fromSelects.hashCode());
+    result = prime * result + ((joins == null) ? 0 : joins.hashCode());
+    result = prime * result + ((orderBys == null) ? 0 : orderBys.hashCode());
+    result = prime * result + ((table == null) ? 0 : table.hashCode());
+    result = prime * result + ((whereCriterion == null) ? 0 : whereCriterion.hashCode());
+    return result;
+  }
+
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    @SuppressWarnings("unchecked")
+    AbstractSelectStatement<T> other = (AbstractSelectStatement<T>) obj;
+    if (alias == null) {
+      if (other.alias != null)
+        return false;
+    } else if (!alias.equals(other.alias))
+      return false;
+    if (fields == null) {
+      if (other.fields != null)
+        return false;
+    } else if (!fields.equals(other.fields))
+      return false;
+    if (fromSelects == null) {
+      if (other.fromSelects != null)
+        return false;
+    } else if (!fromSelects.equals(other.fromSelects))
+      return false;
+    if (joins == null) {
+      if (other.joins != null)
+        return false;
+    } else if (!joins.equals(other.joins))
+      return false;
+    if (orderBys == null) {
+      if (other.orderBys != null)
+        return false;
+    } else if (!orderBys.equals(other.orderBys))
+      return false;
+    if (table == null) {
+      if (other.table != null)
+        return false;
+    } else if (!table.equals(other.table))
+      return false;
+    if (whereCriterion == null) {
+      if (other.whereCriterion != null)
+        return false;
+    } else if (!whereCriterion.equals(other.whereCriterion))
+      return false;
+    return true;
   }
 }

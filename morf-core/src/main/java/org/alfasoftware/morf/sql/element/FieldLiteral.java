@@ -289,8 +289,8 @@ public class FieldLiteral extends AliasedField {
    */
   @Override
   public String toString() {
-    return dataType.equals(DataType.STRING)
+    return (dataType.equals(DataType.STRING)
         ? "\"" + value + "\""
-        : value == null ? "NULL" : value;
+        : value == null ? "NULL" : value) + super.toString();
   }
 }

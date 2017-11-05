@@ -1,3 +1,18 @@
+/* Copyright 2017 Alfa Financial Software
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.alfasoftware.morf.sql.element;
 
 import static org.junit.Assert.assertEquals;
@@ -10,7 +25,10 @@ import static org.mockito.Mockito.when;
 
 import java.util.function.Supplier;
 
+import org.alfasoftware.morf.sql.SelectFirstStatement;
+import org.alfasoftware.morf.sql.SelectFirstStatementBuilder;
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.sql.SelectStatementBuilder;
 import org.alfasoftware.morf.sql.TempTransitionalBuilderWrapper;
 import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
@@ -80,17 +98,34 @@ public abstract class AbstractAliasedFieldTest<T extends AliasedField> {
   }
 
 
-  protected static SelectStatement mockSelectStatement() {
-    return mockOf(SelectStatement.class);
+  protected static SelectFirstStatement mockSelectFirstStatement() {
+    SelectFirstStatement mock = mock(SelectFirstStatement.class);
+    SelectFirstStatementBuilder builder = mock(SelectFirstStatementBuilder.class);
+    when(builder.build()).thenReturn(mock);
+    when(mock.deepCopy(Mockito.any(DeepCopyTransformation.class))).thenReturn(builder);
+    when(mock.toString()).thenReturn("SelectFirstStatement" + mockCounter++);
+    return mock;
   }
+
+
+  protected static SelectStatement mockSelectStatement() {
+    SelectStatement mock = mock(SelectStatement.class);
+    SelectStatementBuilder builder = mock(SelectStatementBuilder.class);
+    when(builder.build()).thenReturn(mock);
+    when(mock.deepCopy(Mockito.any(DeepCopyTransformation.class))).thenReturn(builder);
+    when(mock.toString()).thenReturn("SelectStatement" + mockCounter++);
+    return mock;
+  }
+
 
   protected static TableReference mockTableReference() {
     return mockOf(TableReference.class);
   }
 
-  protected static <T extends DeepCopyableWithTransformation<T, Builder<T>>> T mockOf(Class<T> clazz) {
+  @SuppressWarnings("unchecked")
+  protected static <T extends DeepCopyableWithTransformation<T, U>, U extends Builder<T>> T mockOf(Class<T> clazz) {
     T mock = mock(clazz);
-    when(mock.deepCopy(Mockito.any(DeepCopyTransformation.class))).thenReturn(TempTransitionalBuilderWrapper.wrapper(mock));
+    when(mock.deepCopy(Mockito.any(DeepCopyTransformation.class))).thenReturn((U) TempTransitionalBuilderWrapper.wrapper(mock));
     when(mock.toString()).thenReturn(mock.getClass().getSimpleName() + mockCounter++);
     return mock;
   }

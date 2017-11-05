@@ -26,8 +26,6 @@ import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
 import org.apache.commons.lang.StringUtils;
 
-import com.google.common.annotations.VisibleForTesting;
-
 /**
  * An abstract base class common to all fields, functions
  * and literals used within SQL statements.
@@ -367,10 +365,12 @@ public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableW
 
   /**
    * Allows tests to run with immutable building behaviour turned on.
+   *
+   * TODO remove when we remove the old mutable behaviour
+   *
    * @param runnable The code to run.
    */
-  @VisibleForTesting
-  static void withImmutableBuildersEnabled(Runnable runnable) {
+  public static void withImmutableBuildersEnabled(Runnable runnable) {
     String property = "AliasedField.IMMUTABLE_DSL_ENABLED";
     String oldSystemProperty = System.getProperty(property);
     System.setProperty(property, "true");
@@ -387,9 +387,11 @@ public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableW
 
 
   /**
+   * TODO remove when we remove the old mutable behaviour
+   *
    * @return true if immutable builder behaviour is enabled.
    */
-  protected static boolean immutableDslEnabled() {
+  public static boolean immutableDslEnabled() {
     return Boolean.TRUE.toString()
         .equalsIgnoreCase(System.getProperty("AliasedField.IMMUTABLE_DSL_ENABLED"));
   }

@@ -15,14 +15,17 @@
 
 package org.alfasoftware.morf.sql;
 
+import java.util.function.Function;
+
+import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.TableReference;
-import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyTransformations;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
+import org.alfasoftware.morf.util.ShallowCopyable;
 
 /**
  * Class which encapsulates the generation of a DELETE SQL statement.
@@ -30,7 +33,7 @@ import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
  * <p>The class structure imitates the end SQL and is structured as follows:</p>
  *
  * <blockquote><pre>
- *   new DeleteStatement()
+ *   SqlUtils.delete()
  *        |----&gt; .from([table])                               = DELETE FROM [table]
  *                |----&gt; .where([criterion])                  = DELETE FROM [table] WHERE [criterion]
  *  </pre></blockquote>
@@ -43,7 +46,10 @@ import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
  *
  * @author Copyright (c) Alfa Financial Software 2012
  */
-public class DeleteStatement  implements Statement, DeepCopyableWithTransformation<DeleteStatement, Builder<DeleteStatement>>, Driver {
+public class DeleteStatement implements Statement,
+                                        DeepCopyableWithTransformation<DeleteStatement, DeleteStatementBuilder>,
+                                        ShallowCopyable<DeleteStatement, DeleteStatementBuilder>,
+                                        Driver {
 
   /**
    * The table to update
@@ -52,21 +58,23 @@ public class DeleteStatement  implements Statement, DeepCopyableWithTransformati
 
 
   /**
-   * The selection criteria for selecting from the database
+   * The selection criteria for selecting from the database.
+   *
+   * TODO make final
    */
   private Criterion whereCriterion;
 
 
   /**
-   * Constructor to create a deep copy.
+   * Builder constructor.
    *
-   * @param sourceStatement {@link DeleteStatement} to create a deep copy from.
-   * @param transformer A transformation that can intercept a deep copy operation.
+   * @param deleteStatementBuilder The builder.
    */
-  private DeleteStatement(DeleteStatement sourceStatement, DeepCopyTransformation transformer) {
-    this.table = transformer.deepCopy(sourceStatement.table);
-    this.whereCriterion = transformer.deepCopy(sourceStatement.whereCriterion);
+  DeleteStatement(DeleteStatementBuilder deleteStatementBuilder) {
+    this.table = deleteStatementBuilder.getTable();
+    this.whereCriterion = deleteStatementBuilder.getWhereCriterion();
   }
+
 
   /**
    * Constructs a Delete Statement.
@@ -75,7 +83,6 @@ public class DeleteStatement  implements Statement, DeepCopyableWithTransformati
    */
   public DeleteStatement(TableReference table) {
     super();
-
     this.table = table;
   }
 
@@ -93,20 +100,21 @@ public class DeleteStatement  implements Statement, DeepCopyableWithTransformati
   /**
    * Specifies the where criteria
    *
-   * <blockquote><pre>
-   *    new DeleteStatement([table])
-   *                         .where([criteria]);</pre></blockquote>
+   * <blockquote><pre>delete([table])
+   *    .where([criteria]);</pre></blockquote>
    *
    * @param criterion the criteria to filter the results by
-   * @return the updated DeleteStatement (this will not be a new object)
+   * @return a statement with the change applied.
    */
   public DeleteStatement where(Criterion criterion) {
-    if (criterion == null)
-      throw new IllegalArgumentException("Criterion was null in where clause");
-
-    whereCriterion = criterion;
-
-    return this;
+    return copyOnWriteOrMutate(
+        b -> b.where(criterion),
+        () -> {
+          if (criterion == null)
+            throw new IllegalArgumentException("Criterion was null in where clause");
+          whereCriterion = criterion;
+        }
+    );
   }
 
 
@@ -127,7 +135,7 @@ public class DeleteStatement  implements Statement, DeepCopyableWithTransformati
    */
   @Override
   public DeleteStatement deepCopy() {
-    return new DeleteStatement(this, DeepCopyTransformations.noTransformation());
+    return deepCopy(DeepCopyTransformations.noTransformation()).build();
   }
 
 
@@ -146,7 +154,80 @@ public class DeleteStatement  implements Statement, DeepCopyableWithTransformati
    * @see org.alfasoftware.morf.util.DeepCopyableWithTransformation#deepCopy(org.alfasoftware.morf.util.DeepCopyTransformation)
    */
   @Override
-  public Builder<DeleteStatement> deepCopy(DeepCopyTransformation transformer) {
-    return TempTransitionalBuilderWrapper.wrapper(new DeleteStatement(this,transformer));
+  public DeleteStatementBuilder deepCopy(DeepCopyTransformation transformer) {
+    return new DeleteStatementBuilder(this, transformer);
+  }
+
+
+  /**
+   * Either shallow copies and mutates the result, returning it,
+   * or mutates the statement directly, depending on
+   * {@link AliasedField#immutableDslEnabled()}.
+   *
+   * TODO for removal along with mutable behaviour.
+   *
+   * @param transform A transform which modifies the shallow copy builder.
+   * @param mutator Code which applies the local changes instead.
+   * @return The result (which may be {@code this}).
+   */
+  private DeleteStatement copyOnWriteOrMutate(Function<DeleteStatementBuilder, DeleteStatementBuilder> transform, Runnable mutator) {
+    if (AliasedField.immutableDslEnabled()) {
+      return transform.apply(shallowCopy()).build();
+    } else {
+      mutator.run();
+      return this;
+    }
+  }
+
+
+  /**
+   * Performs a shallow copy to a builder, allowing a duplicate
+   * to be created and modified.
+   *
+   * @return A builder, initialised as a duplicate of this statement.
+   */
+  @Override
+  public DeleteStatementBuilder shallowCopy() {
+    return new DeleteStatementBuilder(this);
+  }
+
+
+  @Override
+  public String toString() {
+    return "SQL DELETE FROM [" + table + "] " +
+    (whereCriterion == null ? "" : ("WHERE " + whereCriterion));
+  }
+
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + ((table == null) ? 0 : table.hashCode());
+    result = prime * result + ((whereCriterion == null) ? 0 : whereCriterion.hashCode());
+    return result;
+  }
+
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    DeleteStatement other = (DeleteStatement) obj;
+    if (table == null) {
+      if (other.table != null)
+        return false;
+    } else if (!table.equals(other.table))
+      return false;
+    if (whereCriterion == null) {
+      if (other.whereCriterion != null)
+        return false;
+    } else if (!whereCriterion.equals(other.whereCriterion))
+      return false;
+    return true;
   }
 }
