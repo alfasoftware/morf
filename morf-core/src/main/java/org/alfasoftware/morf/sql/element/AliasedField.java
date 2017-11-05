@@ -138,7 +138,7 @@ public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableW
    * @param transformer the transformation to execute during the copy
    * @return deep copy of the field
    */
-  protected abstract AliasedField deepCopyInternal(DeepCopyTransformation transformer);
+  protected abstract AliasedFieldBuilder deepCopyInternal(DeepCopyTransformation transformer);
 
 
   /**
