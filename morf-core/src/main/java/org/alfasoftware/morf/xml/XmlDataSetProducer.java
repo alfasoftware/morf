@@ -22,7 +22,9 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.Reader;
 import java.io.UnsupportedEncodingException;
 import java.net.Authenticator;
 import java.net.JarURLConnection;
@@ -70,6 +72,7 @@ import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.xml.XmlStreamProvider.XmlInputStreamProvider;
 import org.apache.commons.lang.StringUtils;
 
+import com.google.common.base.Charsets;
 import com.google.common.io.ByteStreams;
 import com.google.common.io.CharSource;
 import com.google.common.io.Closeables;
@@ -241,7 +244,14 @@ public class XmlDataSetProducer implements DataSetProducer {
    */
   private static XMLStreamReader openPullParser(InputStream inputStream) {
     try {
-      return XMLInputFactory.newFactory().createXMLStreamReader(inputStream, "UTF-8");
+      BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, Charsets.UTF_8));
+      Reader reader;
+      if (Version2to3TranformingReader.shouldApplyTransform(bufferedReader)) {
+        reader = new Version2to3TranformingReader(bufferedReader);
+      } else {
+        reader = bufferedReader;
+      }
+      return XMLInputFactory.newFactory().createXMLStreamReader(reader);
     } catch (XMLStreamException|FactoryConfigurationError e) {
       throw new RuntimeException(e);
     }
