@@ -338,9 +338,6 @@ class NuoDBDialect extends SqlDialect {
 
 
   /**
-   * We need to cast decimals as DECIMAL in NuoDB otherwise they're treated as strings.
-   * TODO Alfa internal ref WEB-56758 - contacted NuoDB support on this point, issue ref: Request #6593
-   * TODO Alfa internal ref WEB-58717 - A further fix to this is required to specify the correct precision and scale.
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.element.FieldLiteral)
    */
   @Override
@@ -348,15 +345,6 @@ class NuoDBDialect extends SqlDialect {
     switch (field.getDataType()) {
       case DATE:
         return String.format("DATE('%s')", field.getValue());
-      case DECIMAL:
-        if (field.getValue().contains(".")) {
-          String value = field.getValue();
-          int scale = value.length() - 1;
-          int precision = scale - value.indexOf('.');
-          return String.format("CAST ('%s' AS DECIMAL(%s,%s))", field.getValue(), scale, precision);
-        } else {
-          return super.getSqlFrom(field);
-        }
       default:
         return super.getSqlFrom(field);
     }
@@ -741,7 +729,9 @@ class NuoDBDialect extends SqlDialect {
   @Override
   protected String getSqlForYYYYMMDDToDate(Function function) {
     AliasedField field = function.getArguments().get(0);
-    return "DATE(SUBSTRING(" + getSqlFrom(field) + ", 1, 4)||'-'||SUBSTRING(" + getSqlFrom(field) + ", 5, 2)||'-'||SUBSTRING(" + getSqlFrom(field) + ", 7, 2))";
+    return "DATE_FROM_STR(" + getSqlFrom(field) + ", 'yyyyMMdd')";
+
+//    return "DATE(SUBSTRING(" + getSqlFrom(field) + ", 1, 4)||'-'||SUBSTRING(" + getSqlFrom(field) + ", 5, 2)||'-'||SUBSTRING(" + getSqlFrom(field) + ", 7, 2))";
   }
 
 
@@ -752,7 +742,7 @@ class NuoDBDialect extends SqlDialect {
   @Override
   protected String getSqlForDateToYyyymmdd(Function function) {
     String sqlExpression = getSqlFrom(function.getArguments().get(0));
-    return String.format("CAST(DATE_TO_STR(%1$s, 'yyyyMMdd') AS INT)", sqlExpression);
+    return String.format("DATE_TO_STR(%1$s, 'yyyyMMdd')", sqlExpression);
   }
 
 
@@ -763,7 +753,7 @@ class NuoDBDialect extends SqlDialect {
   protected String getSqlForDateToYyyymmddHHmmss(Function function) {
     String sqlExpression = getSqlFrom(function.getArguments().get(0));
     // Example for CURRENT_TIMESTAMP() -> 2015-06-23 11:25:08.11
-    return String.format("CAST(DATE_TO_STR(%1$s, 'yyyyMMddHHmmss') AS BIGINT)", sqlExpression);
+    return String.format("DATE_TO_STR(%1$s, 'yyyyMMddHHmmss')", sqlExpression);
   }
 
 

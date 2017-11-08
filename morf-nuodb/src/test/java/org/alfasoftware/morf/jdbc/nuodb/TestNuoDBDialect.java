@@ -458,7 +458,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
     return Arrays.asList(
       "DELETE FROM idvalues where name = 'Test'",
       "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1)  AS CurrentValue FROM SCM.Test))",
-      "INSERT INTO SCM.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, CAST ('11.25' AS DECIMAL(4,2)), 20100405, 1, 'X', (SELECT COALESCE(value, 1)  FROM SCM.idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
+      "INSERT INTO SCM.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, 1, 'X', (SELECT COALESCE(value, 1)  FROM SCM.idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
     );
   }
 
@@ -471,7 +471,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
     return Arrays.asList(
       "DELETE FROM idvalues where name = 'Test'",
       "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1)  AS CurrentValue FROM MYSCHEMA.Test))",
-      "INSERT INTO MYSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, CAST ('11.25' AS DECIMAL(4,2)), 20100405, 1, 'X', (SELECT COALESCE(value, 1)  FROM SCM.idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
+      "INSERT INTO MYSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, 1, 'X', (SELECT COALESCE(value, 1)  FROM SCM.idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
     );
   }
 
@@ -846,7 +846,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAddColumnWithDefaultStatement() {
-    return Arrays.asList("ALTER TABLE SCM.Test ADD COLUMN floatField_new DECIMAL(6,3) DEFAULT CAST ('20.33' AS DECIMAL(4,2)) NULL","UPDATE Test SET floatField_new = CAST ('20.33' AS DECIMAL(4,2))");
+    return Arrays.asList("ALTER TABLE SCM.Test ADD COLUMN floatField_new DECIMAL(6,3) DEFAULT 20.33 NULL","UPDATE Test SET floatField_new = 20.33");
   }
 
 
@@ -895,7 +895,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedDecimalRepresentationOfLiteral(String literal) {
     int length = literal.length() - 1;
-    return String.format("CAST ('%s' AS DECIMAL(%s,%s))", literal, length, length - literal.indexOf("."));
+    return String.format("%s", literal, length, length - literal.indexOf("."));
   }
 
 
@@ -1095,7 +1095,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedYYYYMMDDToDate() {
-    return "DATE(SUBSTRING('20100101', 1, 4)||'-'||SUBSTRING('20100101', 5, 2)||'-'||SUBSTRING('20100101', 7, 2))";
+    return "DATE_FROM_STR('20100101', 'yyyyMMdd')";
   }
 
 
@@ -1104,7 +1104,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedDateToYyyymmdd() {
-    return "CAST(DATE_TO_STR(testField, 'yyyyMMdd') AS INT)";
+    return "DATE_TO_STR(testField, 'yyyyMMdd')";
   }
 
 
@@ -1113,7 +1113,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedDateToYyyymmddHHmmss() {
-    return "CAST(DATE_TO_STR(testField, 'yyyyMMddHHmmss') AS BIGINT)";
+    return "DATE_TO_STR(testField, 'yyyyMMddHHmmss')";
   }
 
 
