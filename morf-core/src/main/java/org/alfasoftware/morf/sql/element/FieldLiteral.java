@@ -62,7 +62,7 @@ public class FieldLiteral extends AliasedField {
    *
    * @param stringValue the literal value to use
    */
-  public FieldLiteral(final String stringValue) {
+  public FieldLiteral(String stringValue) {
     super();
 
     this.value = stringValue;
@@ -75,7 +75,7 @@ public class FieldLiteral extends AliasedField {
    *
    * @param doubleValue the literal value to use
    */
-  public FieldLiteral(final Double doubleValue) {
+  public FieldLiteral(Double doubleValue) {
     super();
 
     this.value = doubleValue != null ? doubleValue.toString() : null;
@@ -88,7 +88,7 @@ public class FieldLiteral extends AliasedField {
    *
    * @param bigDecimalValue the literal value to use
    */
-  public FieldLiteral(final BigDecimal bigDecimalValue) {
+  public FieldLiteral(BigDecimal bigDecimalValue) {
     super();
 
     this.value = bigDecimalValue != null ? bigDecimalValue.toPlainString() : null;
@@ -101,7 +101,7 @@ public class FieldLiteral extends AliasedField {
    *
    * @param integerValue the literal value to use
    */
-  public FieldLiteral(final Integer integerValue) {
+  public FieldLiteral(Integer integerValue) {
     super();
 
     this.value = integerValue != null ? integerValue.toString() : null;
@@ -114,7 +114,7 @@ public class FieldLiteral extends AliasedField {
    *
    * @param localDateValue the literal value to use
    */
-  public FieldLiteral(final LocalDate localDateValue) {
+  public FieldLiteral(LocalDate localDateValue) {
     super();
     this.value = localDateValue != null ? localDateValue.toString("yyyy-MM-dd") : null;
     this.dataType = DataType.DATE;
@@ -126,7 +126,7 @@ public class FieldLiteral extends AliasedField {
    *
    * @param longValue the literal value to use
    */
-  public FieldLiteral(final Long longValue) {
+  public FieldLiteral(Long longValue) {
     super();
 
     this.value = longValue != null ? longValue.toString() : null;
@@ -139,7 +139,7 @@ public class FieldLiteral extends AliasedField {
    *
    * @param charValue the literal value to use
    */
-  public FieldLiteral(final Character charValue) {
+  public FieldLiteral(Character charValue) {
     super();
 
     this.value = charValue != null ? charValue.toString() : null;
@@ -152,7 +152,7 @@ public class FieldLiteral extends AliasedField {
    *
    * @param booleanValue the literal value to use
    */
-  public FieldLiteral(final Boolean booleanValue) {
+  public FieldLiteral(Boolean booleanValue) {
     super();
 
     this.value = booleanValue != null ? booleanValue.toString() : null;
@@ -177,7 +177,7 @@ public class FieldLiteral extends AliasedField {
    * @param value The value of the field.
    * @param dataType The data type of the field.
    */
-  public FieldLiteral(final String value, final DataType dataType) {
+  public FieldLiteral(String value, DataType dataType) {
     super();
     this.value = value;
     this.dataType = dataType;
