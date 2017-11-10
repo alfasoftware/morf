@@ -46,7 +46,6 @@ import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.FunctionType;
 import org.alfasoftware.morf.sql.element.Join;
 import org.alfasoftware.morf.sql.element.MathsField;
-import org.alfasoftware.morf.sql.element.NullFieldLiteral;
 import org.alfasoftware.morf.sql.element.Operator;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.sql.element.WhenCondition;
@@ -1051,9 +1050,7 @@ class HumanReadableStatementHelper {
    * @return a string containing the literal value.
    */
   private static String generateFieldValueString(final AliasedField field) {
-    if (field instanceof NullFieldLiteral) {
-      return "null";
-    } else if (field instanceof CaseStatement) {
+    if (field instanceof CaseStatement) {
       final StringBuilder sb = new StringBuilder("(");
       for (WhenCondition when : ((CaseStatement)field).getWhenConditions()) {
         if (sb.length() > 1) {

@@ -1476,9 +1476,6 @@ public abstract class SqlDialect {
    * @return a string representation of the field
    */
   protected String getSqlFrom(AliasedField field) {
-    if (field instanceof NullFieldLiteral) {
-      return "null";
-    }
 
     if (field instanceof SqlParameter) {
       return String.format(":%s", ((SqlParameter)field).getImpliedName());
@@ -1596,6 +1593,11 @@ public abstract class SqlDialect {
       case BLOB:
       case CLOB:
         return field.getValue();
+      case NULL:
+        if (field.getValue() != null) {
+          throw new UnsupportedOperationException("Literals of type NULL must have a null value. Got [" + field.getValue() + "]");
+        }
+        return "null";
       default:
         throw new UnsupportedOperationException("Cannot convert the specified field literal into an SQL literal: ["
             + field.getValue() + "]");
