@@ -15,7 +15,7 @@
 
 package org.alfasoftware.morf.sql.element;
 
-import static org.alfasoftware.morf.sql.element.BracketedExpression.bracket;
+import static org.alfasoftware.morf.sql.SqlUtils.bracket;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.element.MathsField.plus;
 import static org.junit.Assert.assertEquals;
@@ -39,7 +39,7 @@ import org.junit.runners.Parameterized.Parameters;
 @RunWith(Parameterized.class)
 public class TestBracketedExpression extends AbstractAliasedFieldTest<BracketedExpression> {
 
-  public final BracketedExpression onTest = bracket(plus(literal(1), literal(2)));
+  public final BracketedExpression onTest = (BracketedExpression) bracket(plus(literal(1), literal(2)));
 
   @Parameters(name = "{0}")
   public static List<Object[]> data() {

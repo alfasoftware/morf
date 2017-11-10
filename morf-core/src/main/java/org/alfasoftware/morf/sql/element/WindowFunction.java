@@ -103,7 +103,7 @@ public final class WindowFunction extends AliasedField implements Driver {
    *
    * @author Copyright (c) Alfa Financial Software 2017
    */
-  public interface Builder {
+  public interface Builder extends AliasedFieldBuilder {
 
     /**
      * Specifies the fields to include in the ORDER BY clause of the window
@@ -151,6 +151,7 @@ public final class WindowFunction extends AliasedField implements Driver {
      * @param alias the name of the alias
      * @return the window function builder.
      */
+    @Override
     Builder as(String alias);
 
 
@@ -159,6 +160,7 @@ public final class WindowFunction extends AliasedField implements Driver {
      *
      * @return The window function.
      */
+    @Override
     WindowFunction build();
   }
 

@@ -32,29 +32,6 @@ public class BracketedExpression extends AliasedField implements Driver {
   private final MathsField innerExpression;
 
 
-  /**
-   * Method that wraps a first elements of an (sub)expression with a bracket.
-   * <p>
-   * For example, in order to generate "(a + b) / c" SQL Math expression, we
-   * need to put first two elements (first subexpression) into a bracket. That
-   * could be achieved by the following DSL statement.
-   * </p>
-   *
-   * <pre>
-   * bracket(field(&quot;a&quot;).plus(field(&quot;b&quot;))).divideBy(field(&quot;c&quot;))
-   * </pre>
-   *
-   *
-   * @param expression the input Math expression that will be wrapped with
-   *          brackets in output SQL
-   * @return new expression containing the input expression wrapped with
-   *         brackets
-   */
-  public static BracketedExpression bracket(MathsField expression) {
-    return new BracketedExpression("", expression);
-  }
-
-
   @Override
   public BracketedExpression as(String aliasName) {
     return (BracketedExpression) super.as(aliasName);

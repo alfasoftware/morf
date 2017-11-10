@@ -15,7 +15,7 @@
 
 package org.alfasoftware.morf.sql.element;
 
-import static org.alfasoftware.morf.sql.element.BracketedExpression.bracket;
+import static org.alfasoftware.morf.sql.SqlUtils.bracket;
 
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
