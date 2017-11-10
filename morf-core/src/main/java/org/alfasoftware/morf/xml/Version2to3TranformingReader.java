@@ -12,6 +12,7 @@ class Version2to3TranformingReader extends Reader {
 
   private final BufferedReader sourceReader;
   private char[] temporary;
+  private int charsToSkip;
   private static final char[] nullRefChars = "&#0;".toCharArray();
 
 
@@ -63,7 +64,16 @@ class Version2to3TranformingReader extends Reader {
     // We need to transform &#0; into \0
     int charsRead;
 
-    // if no temporary buffer, read from the main source
+    // skip some characters if we need to
+    while (charsToSkip > 0) {
+      int charsSkipped = sourceReader.read(new char[charsToSkip], 0, charsToSkip);
+      if (charsSkipped < 0) {
+        return 0;
+      }
+      charsToSkip -= charsSkipped;
+    }
+
+    // if there's no temporary buffer from a previous call, read from the main source
     if (temporary == null) {
       charsRead = sourceReader.read(cbuf, off, len);
     } else {
@@ -80,24 +90,26 @@ class Version2to3TranformingReader extends Reader {
     // now search for the string we're replacing
     for (int idx=0; idx<charsRead; idx++) {
       if (cbuf[off+idx] == nullRefChars[0]) {
-        // check whether
+        // check whether the subsequent chars make up the ref
         if (isNullCharacterReference(cbuf, off+idx, charsRead-idx)) {
           // we have a match
-          int charsRemaining = charsRead-idx-nullRefChars.length;
-          if (charsRemaining < 0) {
-            // can be less than zero if we read ahead
-            charsRemaining = 0;
+          int charsRemainingInBuffer = charsRead-idx-nullRefChars.length;
+          if (charsRemainingInBuffer < 0) {
+            // can be less than zero if we read past the end of this buffer and into the next
+            // in this case we need to skip some characters on the next read
+            charsToSkip = -charsRemainingInBuffer;
+            charsRemainingInBuffer = 0;
           }
 
-          temporary = new char[2+charsRemaining];
+          temporary = new char[2+charsRemainingInBuffer];
 
           // write the escaped null
           temporary[0] = '\\';
           temporary[1] = '0';
 
           // copy in what's left
-          if (charsRemaining > 0) {
-            System.arraycopy(cbuf, idx+nullRefChars.length, temporary, 2, charsRemaining);
+          if (charsRemainingInBuffer > 0) {
+            System.arraycopy(cbuf, idx+nullRefChars.length, temporary, 2, charsRemainingInBuffer);
           }
 
           // truncate the output to where we've got to
@@ -123,14 +135,15 @@ class Version2to3TranformingReader extends Reader {
 
       // copy in the remainder, resetting the reader after we've read it
       sourceReader.mark(nullRefChars.length);
-      while (additionalCharsRequired > 0) {
-        int additionalCharsRead = sourceReader.read(bufferToTest, remaining, nullRefChars.length-remaining);
+      int writeIdx = remaining;
+      while (writeIdx < nullRefChars.length) {
+        int additionalCharsRead = sourceReader.read(bufferToTest, writeIdx, nullRefChars.length-writeIdx);
         if (additionalCharsRead < 0) {
           // end of stream
           sourceReader.reset();
           return false;
         }
-        additionalCharsRequired -= additionalCharsRead;
+        writeIdx += additionalCharsRead;
       }
 
       sourceReader.reset();
