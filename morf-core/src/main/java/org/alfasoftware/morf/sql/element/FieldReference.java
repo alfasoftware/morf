@@ -122,9 +122,7 @@ public class FieldReference extends AliasedField implements Driver {
    * @param name the name of the field
    * @param direction the sort direction of the field
    * @param nullValueHandling how to handle nulls
-   * @deprecated Use {@link #field(TableReference, String)}
    */
-  @Deprecated
   public FieldReference(TableReference table, String name, Direction direction, NullValueHandling nullValueHandling) {
     this("", table, name, direction, Optional.of(nullValueHandling));
   }
@@ -145,9 +143,7 @@ public class FieldReference extends AliasedField implements Driver {
    * @param table the table on which the field exists
    * @param name the name of the field
    * @param direction the sort direction of the field
-   * @deprecated Use {@link #field(TableReference, String)}
    */
-  @Deprecated
   public FieldReference(TableReference table, String name, Direction direction) {
     this("", table, name, direction, Optional.<NullValueHandling>absent());
   }
@@ -158,9 +154,7 @@ public class FieldReference extends AliasedField implements Driver {
    *
    * @param table the table on which the field exists
    * @param name the name of the field
-   * @deprecated Use {@link #field(TableReference, String)}
    */
-  @Deprecated
   public FieldReference(TableReference table, String name) {
     this("", table, name, Direction.NONE, Optional.<NullValueHandling>absent());
   }
@@ -170,9 +164,7 @@ public class FieldReference extends AliasedField implements Driver {
    * Constructs a new field with a given name
    *
    * @param name the name of the field
-   * @deprecated Use {@link #field(TableReference, String)}
    */
-  @Deprecated
   public FieldReference(String name) {
     this("", null, name, Direction.NONE, Optional.<NullValueHandling>absent());
   }
@@ -183,9 +175,7 @@ public class FieldReference extends AliasedField implements Driver {
    *
    * @param name the name of the field
    * @param direction the sort direction for the field
-   * @deprecated Use {@link #field(TableReference, String)}
    */
-  @Deprecated
   public FieldReference(String name, Direction direction) {
     this("", null, name, direction, Optional.<NullValueHandling>absent());
   }

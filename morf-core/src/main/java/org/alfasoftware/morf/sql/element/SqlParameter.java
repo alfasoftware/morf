@@ -88,9 +88,7 @@ parameter("name").type(DataType.DECIMAL).width(13,2).build();</pre>
    * Constructs a new SQL field parameter.
    *
    * @param metadata The parameter metadata
-   * @deprecated Use {@link #parameter(String)}.
    */
-  @Deprecated
   public SqlParameter(Column metadata) {
     this(metadata.getName(), metadata.getType(), metadata.getWidth(), metadata.getScale());
   }

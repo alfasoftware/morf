@@ -19,9 +19,8 @@ import static org.alfasoftware.morf.metadata.DataType.STRING;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.sql.element.Criterion.eq;
 
+import java.math.BigDecimal;
 import java.util.List;
-
-import org.joda.time.LocalDate;
 
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
@@ -42,6 +41,7 @@ import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.sql.element.WhenCondition;
 import org.alfasoftware.morf.sql.element.WindowFunction;
+import org.joda.time.LocalDate;
 
 /**
  * Utility methods for creating SQL constructs.
@@ -212,6 +212,17 @@ public class SqlUtils {
    * @return {@link FieldLiteral}
    */
   public static FieldLiteral literal(String value) {
+    return new FieldLiteral(value);
+  }
+
+
+  /**
+   * Constructs a new {@link FieldLiteral} with a {@link BigDecimal} source.
+   *
+   * @param value the literal value to use
+   * @return {@link FieldLiteral}
+   */
+  public static FieldLiteral literal(BigDecimal value) {
     return new FieldLiteral(value);
   }
 

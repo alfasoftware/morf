@@ -16,7 +16,7 @@
 package org.alfasoftware.morf.sql.element;
 
 import static org.alfasoftware.morf.sql.SqlUtils.windowFunction;
-import static org.alfasoftware.morf.sql.element.FieldLiteral.literal;
+import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.element.Function.sum;
 
 import java.util.Collections;

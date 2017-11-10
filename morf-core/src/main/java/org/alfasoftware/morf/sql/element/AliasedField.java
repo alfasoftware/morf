@@ -21,6 +21,7 @@ import static org.alfasoftware.morf.util.DeepCopyTransformations.noTransformatio
 import java.util.List;
 
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.sql.SqlUtils;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
 import org.apache.commons.lang.StringUtils;
@@ -170,7 +171,7 @@ public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableW
    * @return The value, negated, with the original implied name.
    */
   public AliasedField negated() {
-    return FieldLiteral.literal(0).minus(this).as(getImpliedName());
+    return SqlUtils.literal(0).minus(this).as(getImpliedName());
   }
 
 
