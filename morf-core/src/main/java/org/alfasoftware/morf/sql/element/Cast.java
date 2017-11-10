@@ -16,7 +16,6 @@
 package org.alfasoftware.morf.sql.element;
 
 import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.sql.SqlUtils;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
@@ -56,9 +55,7 @@ public class Cast extends AliasedField implements Driver {
    * @param dataType the data type to cast to.
    * @param width the width.
    * @param scale the scale.
-   * @deprecated Use {@link SqlUtils#cast(AliasedField)}.
    */
-  @Deprecated
   public Cast(AliasedField expression, DataType dataType, int width, int scale) {
     super();
     this.expression = expression;

@@ -15,7 +15,7 @@
 
 package org.alfasoftware.morf.sql.element;
 
-import static org.alfasoftware.morf.sql.element.FieldLiteral.literal;
+import static org.alfasoftware.morf.sql.SqlUtils.literal;
 
 import java.util.Collections;
 import java.util.List;

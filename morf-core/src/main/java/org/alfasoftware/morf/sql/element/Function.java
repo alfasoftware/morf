@@ -15,6 +15,8 @@
 
 package org.alfasoftware.morf.sql.element;
 
+import static org.alfasoftware.morf.sql.SqlUtils.literal;
+
 import java.util.List;
 
 import org.alfasoftware.morf.metadata.DataType;
@@ -480,7 +482,7 @@ public final class Function extends AliasedField implements Driver {
    * @return an instance of LPAD function.
    */
   public static Function leftPad(AliasedField field, int length, String character) {
-    return new Function(FunctionType.LEFT_PAD, field, FieldLiteral.literal(length), FieldLiteral.literal(character));
+    return new Function(FunctionType.LEFT_PAD, field, literal(length), literal(character));
   }
 
 

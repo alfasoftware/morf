@@ -63,9 +63,7 @@ public class BracketedExpression extends AliasedField implements Driver {
 
   /**
    * @param innerExpression expression to be wrapped with a bracket.
-   * @deprecated Use {@link #bracket(MathsField)}.
    */
-  @Deprecated
   public BracketedExpression(MathsField innerExpression) {
     super();
     this.innerExpression = innerExpression;

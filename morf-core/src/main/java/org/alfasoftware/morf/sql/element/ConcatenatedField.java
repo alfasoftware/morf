@@ -40,23 +40,10 @@ public class ConcatenatedField extends AliasedField implements Driver {
 
 
   /**
-   * Returns an expression concatenating all the passed expressions.
-   *
-   * @param fields the expressions to concatenate.
-   * @return the expression concatenating the passed expressions.
-   */
-  public static ConcatenatedField concat(AliasedField... fields) {
-    return new ConcatenatedField(fields);
-  }
-
-
-  /**
    * Constructs a ConcatenatedField.
    *
    * @param fields the fields to be concatenated
-   * @deprecated Use {@link #concat(AliasedField...)}
    */
-  @Deprecated
   public ConcatenatedField(AliasedField... fields) {
     super();
     // We need at least two fields to concatenate

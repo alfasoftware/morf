@@ -16,7 +16,7 @@
 package org.alfasoftware.morf.sql.element;
 
 import static org.alfasoftware.morf.sql.element.BracketedExpression.bracket;
-import static org.alfasoftware.morf.sql.element.FieldLiteral.literal;
+import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.element.MathsField.plus;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
