@@ -23,9 +23,7 @@ import org.alfasoftware.morf.util.DeepCopyTransformation;
  * Provides a representation of a null literal field value to be used in a {@link Statement}.
  *
  * @author Copyright (c) Alfa Financial Software 2010
- * @deprecated Use {@link FieldLiteral#nullLiteral()}.
  */
-@Deprecated
 public class NullFieldLiteral extends FieldLiteral {
 
   public NullFieldLiteral() {
@@ -44,5 +42,4 @@ public class NullFieldLiteral extends FieldLiteral {
   protected NullFieldLiteral deepCopyInternal(final DeepCopyTransformation transformer) {
     return new NullFieldLiteral(this.getAlias());
   }
-
 }
