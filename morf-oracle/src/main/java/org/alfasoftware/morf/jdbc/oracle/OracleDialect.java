@@ -544,7 +544,7 @@ class OracleDialect extends SqlDialect {
     // Ensure that a modifier is placed in the query
     String result = super.buildParameterisedInsert(statement, metadata);
 
-    return result.replaceFirst("^\\w+", "insert /*+ append_values */");
+    return result.replaceFirst("^\\w+", "insert /*+ append */");
   }
 
 
