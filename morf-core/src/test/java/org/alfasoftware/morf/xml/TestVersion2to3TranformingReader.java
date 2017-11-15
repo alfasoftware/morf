@@ -20,9 +20,12 @@ public class TestVersion2to3TranformingReader {
   private final Random random = new Random(seed);
 
   /**
-   * Helper to make a reader
+   * Test helper.
+   *
+   * @param responses The String elements to make available for reading
+   * @return The resulting string
    */
-  private String makeOutputReader(LinkedList<String> responses) throws IOException {
+  private String processTest(LinkedList<String> responses) throws IOException {
     BufferedReader sourceReader = Mockito.mock(BufferedReader.class);
 
     final java.util.LinkedList<String> markedResponses = new LinkedList<>();
@@ -60,7 +63,6 @@ public class TestVersion2to3TranformingReader {
 
     Mockito.when(sourceReader.markSupported()).thenReturn(true);
 
-
     char[] buff = new char[128];
     StringBuilder result = new StringBuilder();
     try (Reader readerUnderTest = new Version2to3TranformingReader(sourceReader)) {
@@ -77,6 +79,7 @@ public class TestVersion2to3TranformingReader {
     }
   }
 
+
   /**
    * @param expected The expected ouput
    * @param input The list of fragments to supply from the mock BufferedReader
@@ -85,7 +88,7 @@ public class TestVersion2to3TranformingReader {
     try {
       Assert.assertEquals(
         expected,
-        makeOutputReader(new LinkedList<>(input))
+        processTest(new LinkedList<>(input))
       );
     } catch (AssertionError ae) {
       System.err.println("seed="+seed);
@@ -132,10 +135,18 @@ public class TestVersion2to3TranformingReader {
   public void testShouldApplyTransform() throws IOException {
     try (BufferedReader reader = new BufferedReader(new StringReader(
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+      "<table version=\"1\">\n" +
+      "  <metadata name=\"Foo\">"
+    ))) {
+      Assert.assertTrue("version 1", Version2to3TranformingReader.shouldApplyTransform(reader));
+    }
+
+    try (BufferedReader reader = new BufferedReader(new StringReader(
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
       "<table version=\"2\">\n" +
       "  <metadata name=\"Foo\">"
     ))) {
-      Assert.assertTrue(Version2to3TranformingReader.shouldApplyTransform(reader));
+      Assert.assertTrue("version 2", Version2to3TranformingReader.shouldApplyTransform(reader));
     }
 
     try (BufferedReader reader = new BufferedReader(new StringReader(
@@ -143,7 +154,7 @@ public class TestVersion2to3TranformingReader {
       "<table version=\"3\">\n" +
       "  <metadata name=\"Foo\">"
     ))) {
-      Assert.assertFalse(Version2to3TranformingReader.shouldApplyTransform(reader));
+      Assert.assertFalse("version 3", Version2to3TranformingReader.shouldApplyTransform(reader));
     }
 
     try (BufferedReader reader = new BufferedReader(new StringReader(

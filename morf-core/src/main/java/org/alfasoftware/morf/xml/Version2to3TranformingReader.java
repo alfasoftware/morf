@@ -6,7 +6,8 @@ import java.io.Reader;
 
 /**
  * Tranforms version 2 XML format into version 3.
- * This essentially involves replacing (illegal) &#0; character references with \0 - the v3 representation of a null character.
+ *
+ * <p>This essentially involves replacing (illegal) &#0; character references with \0 - the v3 representation of a null character.</p>
  */
 class Version2to3TranformingReader extends Reader {
 
@@ -16,7 +17,10 @@ class Version2to3TranformingReader extends Reader {
   private static final char[] nullRefChars = "&#0;".toCharArray();
 
 
-  public Version2to3TranformingReader(BufferedReader bufferedReader) {
+  /**
+   * Construct the transform given a buffered reader.
+   */
+  Version2to3TranformingReader(BufferedReader bufferedReader) {
     super();
     this.sourceReader = bufferedReader;
 
@@ -26,6 +30,12 @@ class Version2to3TranformingReader extends Reader {
   }
 
 
+  /**
+   * Tests whether a given input stream contains XML format 2, and therefore should have the transform applied.
+   *
+   * @param bufferedReader The input stream in a buffered reader
+   * @return true if the transform should be applied. (because it's format 2)
+   */
   static boolean shouldApplyTransform(BufferedReader bufferedReader) {
     try {
       bufferedReader.mark(100);
@@ -46,8 +56,8 @@ class Version2to3TranformingReader extends Reader {
             return false;
           }
 
-          // apply the transform if the version number is 2
-          return line.contains("version=\"2\"");
+          // Apply the transform if the version number is 2
+          return line.contains("version=\"2\"") || line.contains("version=\"1\"");
         }
 
       } finally {
@@ -59,6 +69,9 @@ class Version2to3TranformingReader extends Reader {
   }
 
 
+  /**
+   * @see java.io.Reader#read(char[], int, int)
+   */
   @Override
   public int read(char[] cbuf, int off, int len) throws IOException {
     // We need to transform &#0; into \0...
