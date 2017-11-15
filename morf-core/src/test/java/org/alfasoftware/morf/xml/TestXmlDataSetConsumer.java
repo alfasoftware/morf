@@ -24,7 +24,6 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.versionColumn;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -38,6 +37,8 @@ import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.xml.XmlDataSetConsumer.ClearDestinationBehaviour;
 import org.junit.Test;
+
+import com.google.common.collect.ImmutableList;
 
 /**
  * Test that we can convert data sets to xml.
@@ -195,10 +196,33 @@ public class TestXmlDataSetConsumer {
 
     assertEquals("Serialised data set", expectedXML, actualXML);
   }
-  
+
 
   @Test
   public void testWithNullCharacters() {
-    fail();
+    DummyXmlOutputStreamProvider dummyXmlOutputStreamProvider = new DummyXmlOutputStreamProvider();
+    DataSetConsumer testConsumer = new XmlDataSetConsumer(dummyXmlOutputStreamProvider);
+    Table testTable = table("TestTable")
+      .columns(
+        column("x", DataType.STRING, 10)
+      );
+
+    testConsumer.open();
+
+    List<Record> records = ImmutableList.<Record>of(
+      record().value("x", "foo"),
+      record().value("x", new String(new char[] {'a', 0, 'c'})),
+      record().value("x", new String(new char[] {0})),
+      record().value("x", "string with a \\ in it")
+    );
+
+    testConsumer.table(testTable, records);
+    testConsumer.close(CloseState.COMPLETE);
+
+    String actualXML = dummyXmlOutputStreamProvider.getXmlString().trim();
+    String expectedXML = SourceXML.readResource("testWithNullCharacters.xml");
+
+    assertEquals("Serialised data set", expectedXML, actualXML);
+
   }
 }

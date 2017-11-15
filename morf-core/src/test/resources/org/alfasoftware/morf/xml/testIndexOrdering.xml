@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?><table version="2">
+<?xml version="1.0" encoding="UTF-8"?><table version="3">
   <metadata name="TestTable">
     <column name="x" type="DECIMAL" width="10"/>
     <column name="y" type="DECIMAL" width="10"/>

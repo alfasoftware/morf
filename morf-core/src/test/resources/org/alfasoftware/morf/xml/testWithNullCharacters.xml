@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?><table version="3">
+  <metadata name="TestTable">
+    <column name="x" type="STRING" width="10"/>
+  </metadata>
+  <data>
+    <record x="foo"/>
+    <record x="a\0c"/>
+    <record x="\0"/>
+    <record x="string with a \\ in it"/>
+  </data>
+</table>

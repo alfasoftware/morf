@@ -2,9 +2,11 @@ package org.alfasoftware.morf.xml;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.Reader;
+import java.io.StringReader;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Random;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -14,9 +16,13 @@ import com.google.common.collect.ImmutableList;
 
 public class TestVersion2to3TranformingReader {
 
+  private final long seed = 1510515532172L; //System.currentTimeMillis();
+  private final Random random = new Random(seed);
 
-
-  private BufferedReader makeOutputReader(LinkedList<String> responses) throws IOException {
+  /**
+   * Helper to make a reader
+   */
+  private String makeOutputReader(LinkedList<String> responses) throws IOException {
     BufferedReader sourceReader = Mockito.mock(BufferedReader.class);
 
     final java.util.LinkedList<String> markedResponses = new LinkedList<>();
@@ -54,7 +60,21 @@ public class TestVersion2to3TranformingReader {
 
     Mockito.when(sourceReader.markSupported()).thenReturn(true);
 
-    return new BufferedReader(new Version2to3TranformingReader(sourceReader));
+
+    char[] buff = new char[128];
+    StringBuilder result = new StringBuilder();
+    try (Reader readerUnderTest = new Version2to3TranformingReader(sourceReader)) {
+      while (true) {
+        int off = random.nextInt(32);
+        int len = random.nextInt(32);
+
+        int charsRead = readerUnderTest.read(buff, off, len);
+        if (charsRead < 0) {
+          return result.toString();
+        }
+        result.append(buff, off, charsRead);
+      }
+    }
   }
 
   /**
@@ -62,12 +82,21 @@ public class TestVersion2to3TranformingReader {
    * @param input The list of fragments to supply from the mock BufferedReader
    */
   private void runTest(String expected, List<String> input) throws IOException {
-    Assert.assertEquals(
-      expected,
-      makeOutputReader(new LinkedList<>(input)).lines().collect(Collectors.joining())
-    );
+    try {
+      Assert.assertEquals(
+        expected,
+        makeOutputReader(new LinkedList<>(input))
+      );
+    } catch (AssertionError ae) {
+      System.err.println("seed="+seed);
+      throw ae;
+    }
   }
 
+
+  /**
+   * Test some cases where transforms should not occur.
+   */
   @Test
   public void testWithoutTransform() throws IOException {
     runTest("one, two.", ImmutableList.of("one, ", "two."));
@@ -80,6 +109,9 @@ public class TestVersion2to3TranformingReader {
   }
 
 
+  /**
+   * Test some cases where transforms should occur.
+   */
   @Test
   public void testTranform() throws IOException {
     runTest("1 An \\0 should be transformed", ImmutableList.of("1 An &#0; should be transformed"));
@@ -89,7 +121,50 @@ public class TestVersion2to3TranformingReader {
     runTest("5 An \\0 should be transformed", ImmutableList.of("5 An &", "#", "0", ";", " should be transformed"));
     runTest("6 An \\0 should be transformed", ImmutableList.of("6 An &#", "0", ";", " should be transformed"));
     runTest("7 An \\0 should be transformed", ImmutableList.of("7 An &#", "0;", " should be transformed"));
-    runTest("8 Multiple \\0 transforms \\0 needed", ImmutableList.of("8 Multiple &#0; transforms &#0; needed"));
+    runTest("8 Multiple \\0 transforms \\0 needed", ImmutableList.of("8 ", "Multiple &#0; transforms &#0; needed"));
   }
+
+
+  /**
+   * Tests for {@link Version2to3TranformingReader#shouldApplyTransform(BufferedReader)}
+   */
+  @Test
+  public void testShouldApplyTransform() throws IOException {
+    try (BufferedReader reader = new BufferedReader(new StringReader(
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+      "<table version=\"2\">\n" +
+      "  <metadata name=\"Foo\">"
+    ))) {
+      Assert.assertTrue(Version2to3TranformingReader.shouldApplyTransform(reader));
+    }
+
+    try (BufferedReader reader = new BufferedReader(new StringReader(
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+      "<table version=\"3\">\n" +
+      "  <metadata name=\"Foo\">"
+    ))) {
+      Assert.assertFalse(Version2to3TranformingReader.shouldApplyTransform(reader));
+    }
+
+    try (BufferedReader reader = new BufferedReader(new StringReader(
+      "foo"
+    ))) {
+      Assert.assertFalse(Version2to3TranformingReader.shouldApplyTransform(reader));
+    }
+  }
+
+
+  @Test
+  public void testFuzz() throws IOException {
+
+    random.nextInt(1024);
+
+    StringVu
+
+
+    random.nextInt(26)
+
+  }
+
 
 }

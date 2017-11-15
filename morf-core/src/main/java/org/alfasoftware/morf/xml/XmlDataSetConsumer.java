@@ -60,6 +60,11 @@ public class XmlDataSetConsumer implements DataSetConsumer {
   private static final Attributes EMPTY_ATTRIBUTES = new AttributesImpl();
 
   /**
+   * The format version we are writing
+   */
+  private static final String FORMAT_VERSION = "3";
+
+  /**
    * Controls the behaviour of the consumer when running against a directory.
    */
   public enum ClearDestinationBehaviour {
@@ -198,7 +203,7 @@ public class XmlDataSetConsumer implements DataSetConsumer {
 
         contentHandler.startDocument();
         AttributesImpl tableAttributes = new AttributesImpl();
-        tableAttributes.addAttribute(XmlDataSetNode.URI, XmlDataSetNode.VERSION_ATTRIBUTE, XmlDataSetNode.VERSION_ATTRIBUTE, XmlDataSetNode.STRING_TYPE, "2");
+        tableAttributes.addAttribute(XmlDataSetNode.URI, XmlDataSetNode.VERSION_ATTRIBUTE, XmlDataSetNode.VERSION_ATTRIBUTE, XmlDataSetNode.STRING_TYPE, FORMAT_VERSION);
 
         contentHandler.startElement(XmlDataSetNode.URI, XmlDataSetNode.TABLE_NODE, XmlDataSetNode.TABLE_NODE, tableAttributes);
         outputTableMetaData(table, contentHandler);
@@ -208,8 +213,28 @@ public class XmlDataSetConsumer implements DataSetConsumer {
           AttributesImpl rowValueAttributes = new AttributesImpl();
           for (Column column : table.columns()) {
             String value = getValue(record, column, table.getName());
+
             if (value != null) {
-              rowValueAttributes.addAttribute(XmlDataSetNode.URI, column.getName(), column.getName(), XmlDataSetNode.STRING_TYPE, value);
+              // Escape any null characters - these aren't valid XML so in format version 3 we escape these as \0
+              // We also, consequently, have to escape backslashes as \\
+              // can't use String::replace as it doesn't like null characters
+              int last = 0;
+              StringBuilder escapedValue = new StringBuilder();
+              for (int i=0; i<value.length(); i++) {
+                if (value.charAt(i) == 0) {
+                  escapedValue.append(value.substring(last, i));
+                  escapedValue.append("\\0");
+                  last=i+1;
+                }
+                if (value.charAt(i) == '\\') {
+                  escapedValue.append(value.substring(last, i));
+                  escapedValue.append("\\\\");
+                  last=i+1;
+                }
+              }
+              escapedValue.append(value.substring(last, value.length()));
+
+              rowValueAttributes.addAttribute(XmlDataSetNode.URI, column.getName(), column.getName(), XmlDataSetNode.STRING_TYPE, escapedValue.toString());
             }
           }
 

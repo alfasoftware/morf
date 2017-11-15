@@ -5,7 +5,7 @@
     <column name="val" type="STRING" length="10"/>
   </metadata>
   <data>
-    <record id="1" val="A&#0;B" />
+    <record id="1" val="A&#0;C" />
     <record id="2" val="&#0;" />
     <record id="3" val="escape\it" />
   </data>

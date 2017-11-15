@@ -11,7 +11,7 @@ import java.io.Reader;
 class Version2to3TranformingReader extends Reader {
 
   private final BufferedReader sourceReader;
-  private char[] temporary;
+  private char[] temporary = new char[] {};
   private int charsToSkip;
   private static final char[] nullRefChars = "&#0;".toCharArray();
 
@@ -61,7 +61,7 @@ class Version2to3TranformingReader extends Reader {
 
   @Override
   public int read(char[] cbuf, int off, int len) throws IOException {
-    // We need to transform &#0; into \0
+    // We need to transform &#0; into \0...
     int charsRead;
 
     // skip some characters if we need to
@@ -74,23 +74,32 @@ class Version2to3TranformingReader extends Reader {
     }
 
     // if there's no temporary buffer from a previous call, read from the main source
-    if (temporary == null) {
+    if (temporary.length == 0) {
+      // This is the common path
       charsRead = sourceReader.read(cbuf, off, len);
     } else {
-      // there is a temporary buffer, use that
+      // there is a temporary buffer from a previous match, use that
       if (temporary.length > len) {
-        throw new UnsupportedOperationException(); // TODO
+        // The temporary buffer is too big to fit in the buffer that's been supplied. This is an edge case, but we need to deal with it.
+        // Copy out what we can, then create another temporary buffer for the remainder
+        System.arraycopy(temporary, 0, cbuf, off, len);
+        charsRead = len;
+        char[] newTemporary = new char[temporary.length-len];
+        System.arraycopy(temporary, len, newTemporary, 0, temporary.length-len);
+        temporary = newTemporary;
       } else {
+        // copy the entire temporary buffer into the output
         System.arraycopy(temporary, 0, cbuf, off, temporary.length);
         charsRead = temporary.length;
-        temporary = null;
+        temporary = new char[] {};
       }
     }
 
     // now search for the string we're replacing
     for (int idx=0; idx<charsRead; idx++) {
       if (cbuf[off+idx] == nullRefChars[0]) {
-        // check whether the subsequent chars make up the ref
+        // The first char matches.
+        // Check whether the subsequent chars make up the ref
         if (isNullCharacterReference(cbuf, off+idx, charsRead-idx)) {
           // we have a match
           int charsRemainingInBuffer = charsRead-idx-nullRefChars.length;
@@ -101,26 +110,38 @@ class Version2to3TranformingReader extends Reader {
             charsRemainingInBuffer = 0;
           }
 
-          temporary = new char[2+charsRemainingInBuffer];
+          // Create a temporary buffer to hold the remainder of the buffer we haven't yet scanned
+          // There might be an existing temporary buffer, in which case keep that too.
+          char[] newTemporary = new char[2+charsRemainingInBuffer+temporary.length];
 
           // write the escaped null
-          temporary[0] = '\\';
-          temporary[1] = '0';
+          newTemporary[0] = '\\';
+          newTemporary[1] = '0';
 
           // copy in what's left
-          if (charsRemainingInBuffer > 0) {
-            System.arraycopy(cbuf, idx+nullRefChars.length, temporary, 2, charsRemainingInBuffer);
-          }
+          System.arraycopy(cbuf, off+idx+nullRefChars.length, newTemporary, 2, charsRemainingInBuffer);
 
-          // truncate the output to where we've got to
+          // keep any existing buffer
+          System.arraycopy(temporary, 0, newTemporary, 2+charsRemainingInBuffer, temporary.length);
+
+          temporary = newTemporary;
+
+          // truncate the returned output to where we've got to
           return idx;
         }
       }
     }
 
+    // If we got here we found no matches to replace, so we can just return the buffer as read.
+    // This is the common path
     return charsRead;
   }
 
+
+  /**
+   * Tests whether a given index in the buffer is a full null character reference.
+   * Reads forward if required, but resets the position.
+   */
   private boolean isNullCharacterReference(char[] cbuf, int ampersandIndex, int remaining) throws IOException {
     char[] bufferToTest;
     int indexToTest;
@@ -129,7 +150,7 @@ class Version2to3TranformingReader extends Reader {
 
     if (additionalCharsRequired > 0) {
       bufferToTest = new char[nullRefChars.length];
-      // we need to read ahead.
+      // we need to read ahead because we don't have enough chars
       // first copy the remaining chars in
       System.arraycopy(cbuf, ampersandIndex, bufferToTest, 0, remaining);
 
@@ -150,6 +171,7 @@ class Version2to3TranformingReader extends Reader {
 
       indexToTest = 0;
     } else {
+      // The common path - we have enough buffer to work with
       bufferToTest = cbuf;
       indexToTest = ampersandIndex;
     }
