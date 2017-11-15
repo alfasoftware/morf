@@ -11,7 +11,7 @@ import java.io.Reader;
  */
 class Version2to3TranformingReader extends Reader {
 
-  private final BufferedReader sourceReader;
+  private final BufferedReader delegateReader;
   private char[] temporary = new char[] {};
   private int charsToSkip;
   private static final char[] nullRefChars = "&#0;".toCharArray();
@@ -22,23 +22,30 @@ class Version2to3TranformingReader extends Reader {
    */
   Version2to3TranformingReader(BufferedReader bufferedReader) {
     super();
-    this.sourceReader = bufferedReader;
+    this.delegateReader = bufferedReader;
 
-    if (!sourceReader.markSupported()) {
+    if (!delegateReader.markSupported()) {
       throw new UnsupportedOperationException("Mark support is required");
     }
   }
 
 
   /**
-   * Tests whether a given input stream contains XML format 2, and therefore should have the transform applied.
+   * Tests whether a given input stream contains XML format 2, and therefore
+   * should have the transform applied.
+   * <p>
+   * This is designed to match the known output format of
+   * {@link XmlDataSetConsumer} which previously produced invalid XML. It is
+   * deliberately brittle. There is no need for a more intelligent XML parser
+   * here.
+   * </p>
    *
    * @param bufferedReader The input stream in a buffered reader
    * @return true if the transform should be applied. (because it's format 2)
    */
   static boolean shouldApplyTransform(BufferedReader bufferedReader) {
     try {
-      bufferedReader.mark(100);
+      bufferedReader.mark(100); // arbitrary read-ahead limit of 100 - that's enough to get the info we want
       try {
         {
           String line = bufferedReader.readLine();
@@ -51,12 +58,12 @@ class Version2to3TranformingReader extends Reader {
         {
           String line = bufferedReader.readLine();
           // the next line is probably the table element
-          boolean isTableElement = line.startsWith("<table version=\"");
+          boolean isTableElement = line.startsWith("<table version");
           if (!isTableElement) {
             return false;
           }
 
-          // Apply the transform if the version number is 2
+          // Apply the transform if the version number is 2 or 1
           return line.contains("version=\"2\"") || line.contains("version=\"1\"");
         }
 
@@ -77,9 +84,9 @@ class Version2to3TranformingReader extends Reader {
     // We need to transform &#0; into \0...
     int charsRead;
 
-    // skip some characters if we need to
+    // skip some characters if we need to (not the common path)
     while (charsToSkip > 0) {
-      int charsSkipped = sourceReader.read(new char[charsToSkip], 0, charsToSkip);
+      int charsSkipped = delegateReader.read(new char[charsToSkip], 0, charsToSkip);
       if (charsSkipped < 0) {
         return 0;
       }
@@ -89,7 +96,7 @@ class Version2to3TranformingReader extends Reader {
     // if there's no temporary buffer from a previous call, read from the main source
     if (temporary.length == 0) {
       // This is the common path
-      charsRead = sourceReader.read(cbuf, off, len);
+      charsRead = delegateReader.read(cbuf, off, len);
     } else {
       // there is a temporary buffer from a previous match, use that
       if (temporary.length > len) {
@@ -110,7 +117,7 @@ class Version2to3TranformingReader extends Reader {
 
     // now search for the string we're replacing
     for (int idx=0; idx<charsRead; idx++) {
-      if (cbuf[off+idx] == nullRefChars[0]) {
+      if (cbuf[off+idx] == nullRefChars[0]) { // look for the ampersand
         // The first char matches.
         // Check whether the subsequent chars make up the ref
         if (isNullCharacterReference(cbuf, off+idx, charsRead-idx)) {
@@ -168,19 +175,19 @@ class Version2to3TranformingReader extends Reader {
       System.arraycopy(cbuf, ampersandIndex, bufferToTest, 0, remaining);
 
       // copy in the remainder, resetting the reader after we've read it
-      sourceReader.mark(nullRefChars.length);
+      delegateReader.mark(nullRefChars.length);
       int writeIdx = remaining;
       while (writeIdx < nullRefChars.length) {
-        int additionalCharsRead = sourceReader.read(bufferToTest, writeIdx, nullRefChars.length-writeIdx);
+        int additionalCharsRead = delegateReader.read(bufferToTest, writeIdx, nullRefChars.length-writeIdx);
         if (additionalCharsRead < 0) {
           // end of stream
-          sourceReader.reset();
+          delegateReader.reset();
           return false;
         }
         writeIdx += additionalCharsRead;
       }
 
-      sourceReader.reset();
+      delegateReader.reset();
 
       indexToTest = 0;
     } else {
@@ -202,6 +209,6 @@ class Version2to3TranformingReader extends Reader {
 
   @Override
   public void close() throws IOException {
-    sourceReader.close();
+    delegateReader.close();
   }
 }
