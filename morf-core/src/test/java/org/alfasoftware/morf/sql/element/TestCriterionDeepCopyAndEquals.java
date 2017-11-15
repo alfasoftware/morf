@@ -29,12 +29,12 @@ import org.junit.runners.Parameterized.Parameters;
 import com.google.common.collect.ImmutableList;
 
 /**
- * Tests for {@link Criterion}.
+ * Tests for {@link Criterion}'s implementation of deep copy and equals contracts.
  *
  * @author Copyright (c) Alfa Financial Software 2017
  */
 @RunWith(Parameterized.class)
-public class TestCriterion extends AbstractDeepCopyableTest<Criterion> {
+public class TestCriterionDeepCopyAndEquals extends AbstractDeepCopyableTest<Criterion> {
 
   @Parameters(name = "{0}")
   public static List<Object[]> data() {
