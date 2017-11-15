@@ -167,18 +167,20 @@ public class SqlScriptExecutor {
 
   /**
    * Runs a script of SQL statements and commit.
-   *
-   * The statements are executed in the order they are provided
+   * The statements are executed in the order they are provided.
    *
    * @param sqlScript SQL statements to run.
+   * @return The number of rows updated/affected by the statements in total.
    */
-  public void execute(final Iterable<String> sqlScript) {
+  public int execute(final Iterable<String> sqlScript) {
+    final Holder<Integer> holder = new Holder<>(-1);
     doWork(new Work() {
       @Override
       public void execute(Connection connection) throws SQLException {
-        SqlScriptExecutor.this.executeAndCommit(sqlScript, connection);
+        holder.set(SqlScriptExecutor.this.executeAndCommit(sqlScript, connection));
       }
     });
+    return holder.get();
   }
 
 
@@ -187,17 +189,20 @@ public class SqlScriptExecutor {
    *
    * @param sqlScript SQL statements to run.
    * @param connection Database against which to run SQL statements.
+   * @return The number of rows updated/affected by the statements in total.
    */
-  public void execute(Iterable<String> sqlScript, Connection connection) {
+  public int execute(Iterable<String> sqlScript, Connection connection) {
+    int result = 0;
     try {
       visitor.executionStart();
       for (String sql : sqlScript) {
-        executeInternal(sql, connection);
+        result += executeInternal(sql, connection);
       }
       visitor.executionEnd();
     } catch (SQLException e) {
       throw new RuntimeSqlException("Error with statement", e);
     }
+    return result;
   }
 
 
@@ -206,18 +211,21 @@ public class SqlScriptExecutor {
    *
    * @param sqlScript SQL statements to run.
    * @param connection Database against which to run SQL statements.
+   * @return The number of rows updated/affected by the statements in total.
    */
-  public void executeAndCommit(Iterable<String> sqlScript, Connection connection) {
+  public int executeAndCommit(Iterable<String> sqlScript, Connection connection) {
+    int result = 0;
     try {
       visitor.executionStart();
       for (String sql : sqlScript) {
-        executeInternal(sql, connection);
+        result += executeInternal(sql, connection);
         connection.commit();
       }
       visitor.executionEnd();
     } catch (SQLException e) {
       throw new RuntimeSqlException("Error with statement", e);
     }
+    return result;
   }
 
 
