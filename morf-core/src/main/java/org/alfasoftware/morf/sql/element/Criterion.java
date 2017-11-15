@@ -31,6 +31,7 @@ import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 
 /**
  * A representation of a single criterion for use by conditional clauses in an
@@ -77,7 +78,7 @@ public class Criterion implements Driver, DeepCopyableWithTransformation<Criteri
   /**
    * The additional sub-criteria
    */
-  private final ImmutableList<Criterion> criteria;
+  private final List<Criterion> criteria;
 
 
   /**
@@ -85,14 +86,19 @@ public class Criterion implements Driver, DeepCopyableWithTransformation<Criteri
    *
    * @param sourceCriterion the source criterion to create the deep copy from
    */
-  private Criterion(Criterion sourceCriterion,DeepCopyTransformation transformer) {
+  private Criterion(Criterion sourceCriterion, DeepCopyTransformation transformer) {
     super();
 
     this.operator = sourceCriterion.operator;
 
     this.selectStatement = transformer.deepCopy(sourceCriterion.selectStatement);
     this.field = transformer.deepCopy(sourceCriterion.field);
-    this.criteria = FluentIterable.from(sourceCriterion.criteria).transform(transformer::deepCopy).toList();
+
+    if (AliasedField.immutableDslEnabled()) {
+      this.criteria = FluentIterable.from(sourceCriterion.criteria).transform(transformer::deepCopy).toList();
+    } else {
+      this.criteria = Lists.newArrayList(FluentIterable.from(sourceCriterion.criteria).transform(transformer::deepCopy));
+    }
 
     // Aliased Fields can be copied, otherwise we just use the same reference
     if (sourceCriterion.value instanceof AliasedField) {
@@ -113,9 +119,8 @@ public class Criterion implements Driver, DeepCopyableWithTransformation<Criteri
     if (criteria == null || Iterables.isEmpty(criteria)) {
       throw new IllegalArgumentException("Must specify at least one criterion");
     }
-
     this.operator = operator;
-    this.criteria = ImmutableList.copyOf(criteria);
+    this.criteria = AliasedField.immutableDslEnabled() ? ImmutableList.copyOf(criteria) : Lists.newArrayList(criteria);
     this.selectStatement = null;
     this.value = null;
     this.field = null;
@@ -130,17 +135,15 @@ public class Criterion implements Driver, DeepCopyableWithTransformation<Criteri
    * @param criteria subsequent criteria
    */
   public Criterion(Operator operator, Criterion criterion, Criterion...criteria) {
-    if (criterion == null && operator != Operator.EXISTS)
-      throw new IllegalArgumentException("Must specify at least one criterion");
-
-    this.operator = operator;
-    this.criteria = ImmutableList.<Criterion>builder()
-        .add(criterion)
-        .addAll(Arrays.asList(criteria))
-        .build();
-    this.selectStatement = null;
-    this.value = null;
-    this.field = null;
+    this(
+      operator,
+      criterion == null
+        ? Arrays.asList(criteria)
+        : Iterables.concat(
+            ImmutableList.of(criterion),
+            Arrays.asList(criteria)
+          )
+    );
   }
 
   /**
@@ -201,6 +204,7 @@ public class Criterion implements Driver, DeepCopyableWithTransformation<Criteri
     this.field = field;
     this.value = value;
   }
+
 
   /**
    * Helper method to create a new "AND" expression.
@@ -583,11 +587,11 @@ public class Criterion implements Driver, DeepCopyableWithTransformation<Criteri
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result + ((criteria == null) ? 0 : criteria.hashCode());
-    result = prime * result + ((field == null) ? 0 : field.hashCode());
-    result = prime * result + ((operator == null) ? 0 : operator.hashCode());
-    result = prime * result + ((selectStatement == null) ? 0 : selectStatement.hashCode());
-    result = prime * result + ((value == null) ? 0 : value.hashCode());
+    result = prime * result + (criteria == null ? 0 : criteria.hashCode());
+    result = prime * result + (field == null ? 0 : field.hashCode());
+    result = prime * result + (operator == null ? 0 : operator.hashCode());
+    result = prime * result + (selectStatement == null ? 0 : selectStatement.hashCode());
+    result = prime * result + (value == null ? 0 : value.hashCode());
     return result;
   }
 
