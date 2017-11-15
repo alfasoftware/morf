@@ -152,19 +152,4 @@ public class TestVersion2to3TranformingReader {
       Assert.assertFalse(Version2to3TranformingReader.shouldApplyTransform(reader));
     }
   }
-
-
-  @Test
-  public void testFuzz() throws IOException {
-
-    random.nextInt(1024);
-
-    StringVu
-
-
-    random.nextInt(26)
-
-  }
-
-
 }
