@@ -33,6 +33,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -79,7 +80,7 @@ public class TestDeployment {
       new Answer<UpgradePath>() {
         @Override
         public UpgradePath answer(InvocationOnMock invocation) throws Throwable {
-          return new UpgradePath(Sets.<UpgradeScriptAddition>newHashSet(), (SqlDialect)invocation.getArguments()[0]);
+          return new UpgradePath(Sets.<UpgradeScriptAddition>newHashSet(), (SqlDialect)invocation.getArguments()[0], Collections.emptyList(), Collections.emptyList());
         }
       });
     when(executorProvider.get()).thenReturn(executor);
@@ -121,6 +122,7 @@ public class TestDeployment {
 
     // Then
     verify(executor).execute(ImmutableList.of("A", "B", "D", "C"));
+
   }
 
 

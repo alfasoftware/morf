@@ -44,7 +44,20 @@ import com.google.inject.Inject;
 import com.google.inject.assistedinject.Assisted;
 
 /**
- * Deploys a full database schema.
+ * Deploys a full database schema. Once the deployment is complete, the status of
+ * the system will be left in {@link UpgradeStatus#DATA_TRANSFER_REQUIRED}. It is the
+ * responsibility of the application to transfer appropriate data into the database
+ * at this point and, once complete, call {@link UpgradeStatusTableService#writeStatusFromStatus(UpgradeStatus, UpgradeStatus)}.
+ *
+ * <h3>Usage</h3>
+ * <pre><code>
+ * deployment.deploy(targetSchema);
+ * if (upgradeStatusTableService.writeStatusFromStatus(DATA_TRANSFER_REQUIRED, DATA_TRANSFER_IN_PROGRESS) == 1) {
+ *   // Use DatabaseDataSetConsumer etc to populate the database
+ *   upgradeStatus.writeStatusFromStatus(DATA_TRANSFER_IN_PROGRESS, COMPLETE);
+ * }
+ * // Normal start up
+ * </code></pre>
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
@@ -62,11 +75,8 @@ public class Deployment {
 
   private final UpgradePathFactory upgradePathFactory;
 
-
   /**
    * Constructor.
-   *
-   * @param sqlScriptExecutorProvider a provider of {@link SqlScriptExecutor}s.
    */
   @Inject
   Deployment(SqlDialect sqlDialect, SqlScriptExecutorProvider sqlScriptExecutorProvider, UpgradePathFactory upgradePathFactory) {
@@ -153,9 +163,12 @@ public class Deployment {
    * @param targetSchema The target database schema.
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
    * @param connectionResources Connection details for the database.
+   * @param upgradeStatusTableService Service used to manage the upgrade status coordination table.
    */
-  public static void deploySchema(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources) {
-    new Deployment(new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition>emptySet()), connectionResources).deploy(targetSchema, upgradeSteps);
+  public static void deploySchema(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeStatusTableService upgradeStatusTableService) {
+    new Deployment(new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition>emptySet(), upgradeStatusTableService),
+                   connectionResources)
+         .deploy(targetSchema, upgradeSteps);
   }
 
 
@@ -173,7 +186,6 @@ public class Deployment {
     final UpgradePath path = upgradePathFactory.create(sqlDialect);
     writeStatements(targetSchema, path);
     writeUpgradeSteps(upgradeSteps, path);
-
     return path;
   }
 
@@ -182,7 +194,7 @@ public class Deployment {
    * Add an upgrade step for each upgrade step.
    *
    * <p>The {@link Deployment} class ensures that all contributed domain tables are written in the database, but we need to
-   * ensure that the upgrade steps that were used to create are in written so that next time the application is run the upgrader
+   * ensure that the upgrade steps that were used to create are in written so that next time the application is run the upgrade
    * doesn't try to recreate/upgrade them.</p>
    *
    * @param upgradeSteps All available upgrade steps.

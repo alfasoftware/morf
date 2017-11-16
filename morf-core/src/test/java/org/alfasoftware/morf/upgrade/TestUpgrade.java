@@ -122,15 +122,15 @@ public class TestUpgrade {
     upgradeSteps.add(ChangeDriver.class);
 
     List<Table> tables = Arrays.asList(upgradeAudit, car, driver, excludedTable, prefixExcludeTable1, prefixExcludeTable2);
-    
+
     ResultSet viewResultSet = mock(ResultSet.class);
     when(viewResultSet.next()).thenReturn(false);
-    
+
     ResultSet upgradeResultSet = mock(ResultSet.class);
     when(upgradeResultSet.next()).thenReturn(true, true, false);
     when(upgradeResultSet.getString(1)).thenReturn("0fde0d93-f57e-405c-81e9-245ef1ba0594", "0fde0d93-f57e-405c-81e9-245ef1ba0595");
     when(upgradeResultSet.next()).thenReturn(false);
-    
+
     ConnectionResources mockConnectionResources = new MockConnectionResources().
                                               withResultSet("SELECT upgradeUUID FROM UpgradeAudit", upgradeResultSet).
                                               withResultSet("SELECT name, hash FROM DeployedViews", viewResultSet).
@@ -151,18 +151,12 @@ public class TestUpgrade {
   /**
    * @return
    */
+  @SuppressWarnings("unchecked")
   private UpgradePathFactory upgradePathFactory() {
     UpgradePathFactory upgradePathFactory = mock(UpgradePathFactory.class);
-
-    when(upgradePathFactory.create(anyListOf(UpgradeStep.class), any(SqlDialect.class))).thenAnswer(
-      new Answer<UpgradePath>() {
-        @Override
-        public UpgradePath answer(InvocationOnMock invocation) throws Throwable {
-          @SuppressWarnings("unchecked")
-          UpgradePath upgradePath = new UpgradePath(Sets.<UpgradeScriptAddition>newHashSet(), (List<UpgradeStep>)invocation.getArguments()[0], (SqlDialect)invocation.getArguments()[1]);
-          return upgradePath;
-        }
-      });
+    when(upgradePathFactory.create(anyListOf(UpgradeStep.class), any(SqlDialect.class))).thenAnswer((invocation) -> {
+      return new UpgradePath(Sets.<UpgradeScriptAddition>newHashSet(), (List<UpgradeStep>)invocation.getArguments()[0], (SqlDialect)invocation.getArguments()[1], Collections.emptyList(), Collections.emptyList());
+    });
 
     return upgradePathFactory;
   }
@@ -339,10 +333,10 @@ public class TestUpgrade {
     when(viewResultSet.next()).thenReturn(true, true, false);
     when(viewResultSet.getString(1)).thenReturn("FooView", "OldView");
     when(viewResultSet.getString(2)).thenReturn("XXX");
-    
+
     ResultSet upgradeResultSet = mock(ResultSet.class);
     when(upgradeResultSet.next()).thenReturn(false);
-    
+
     ConnectionResources connection = new MockConnectionResources().
                                               withDialect(sqlDialect).
                                               withSchema(sourceSchema).
@@ -408,10 +402,10 @@ public class TestUpgrade {
     when(viewResultSet.next()).thenReturn(true, true, false);
     when(viewResultSet.getString(1)).thenReturn("FooView", "OldView");
     when(viewResultSet.getString(2)).thenReturn("XXX");
-    
+
     ResultSet upgradeResultSet = mock(ResultSet.class);
     when(upgradeResultSet.next()).thenReturn(false);
-    
+
     ConnectionResources connection = new MockConnectionResources().
                                               withDialect(sqlDialect).
                                               withSchema(sourceSchema).
@@ -468,10 +462,10 @@ public class TestUpgrade {
     when(viewResultSet.next()).thenReturn(true, true, false);
     when(viewResultSet.getString(1)).thenReturn("FooView", "OldView");
     when(viewResultSet.getString(2)).thenReturn("XXX");
-    
+
     ResultSet upgradeResultSet = mock(ResultSet.class);
     when(upgradeResultSet.next()).thenReturn(false);
-    
+
     ConnectionResources connection = new MockConnectionResources().
                                               withDialect(sqlDialect).
                                               withSchema(sourceSchema).
@@ -579,15 +573,15 @@ public class TestUpgrade {
       }
     });
 
-    
+
     ResultSet viewResultSet = mock(ResultSet.class);
     when(viewResultSet.next()).thenReturn(true, true, false);
     when(viewResultSet.getString(1)).thenReturn("OtherView", "StaticView");
     when(viewResultSet.getString(2)).thenReturn("XXX");
-    
+
     ResultSet upgradeResultSet = mock(ResultSet.class);
     when(upgradeResultSet.next()).thenReturn(false);
-    
+
     ConnectionResources connection = new MockConnectionResources().
                                          withDialect(sqlDialect).
                                          withSchema(sourceSchema).
@@ -625,10 +619,10 @@ public class TestUpgrade {
     when(viewResultSet.next()).thenReturn(true, true, false);
     when(viewResultSet.getString(1)).thenReturn("FooView", "OldView");
     when(viewResultSet.getString(2)).thenReturn("XXX");
-    
+
     ResultSet upgradeResultSet = mock(ResultSet.class);
     when(upgradeResultSet.next()).thenReturn(false);
-    
+
     ConnectionResources connection = new MockConnectionResources().
                                               withSchema(sourceSchema).
                                               withResultSet("SELECT upgradeUUID FROM UpgradeAudit", upgradeResultSet).

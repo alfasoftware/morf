@@ -60,18 +60,39 @@ public class UpgradePath implements SqlStatementWriter {
   private final Set<UpgradeScriptAddition> upgradeScriptAdditions;
 
   /**
+   * Unmodifiable list of SQL statements to execute before
+   * any other SQL, if there is other SQL to be executed.
+   */
+  private final List<String> initialisationSql;
+
+  /**
    * The SQL to execute.
    */
   private final List<String> sql = new LinkedList<>();
 
+  /**
+   * Unmodifiable list of SQL statements to execute after
+   * all other SQL, if other SQL has been executed.
+   */
+  private final List<String> finalisationSql;
+
+  /**
+   * The status of the upgrade, at the point of creation, if this is a
+   * "placeholder" upgrade path.
+   */
+  private final UpgradeStatus upgradeStatus;
+
 
   /**
    * Create a new complete deployment.
+   *
    * @param upgradeScriptAdditions The SQL to be appended to the upgrade.
    * @param sqlDialect the SQL dialect being used for this upgrade path
+   * @param initialisationSql the SQL to execute before all other, if and only if there is other SQL to execute.
+   * @param finalisationSql the SQL to execute after all other, if and only if there is other SQL to execute.
    */
-  public UpgradePath(Set<UpgradeScriptAddition> upgradeScriptAdditions, SqlDialect sqlDialect) {
-    this(upgradeScriptAdditions, new ArrayList<UpgradeStep>(), sqlDialect);
+  public UpgradePath(Set<UpgradeScriptAddition> upgradeScriptAdditions, SqlDialect sqlDialect, List<String> initialisationSql, List<String> finalisationSql) {
+    this(upgradeScriptAdditions, new ArrayList<UpgradeStep>(), sqlDialect, initialisationSql, finalisationSql);
   }
 
 
@@ -81,12 +102,45 @@ public class UpgradePath implements SqlStatementWriter {
    * @param upgradeScriptAdditions The SQL to be appended to the upgrade.
    * @param steps the upgrade steps to run
    * @param sqlDialect the SQL dialect being used for this upgrade path
+   * @param initialisationSql the SQL to execute before all other, if and only if there is other SQL to execute.
+   * @param finalisationSql the SQL to execute after all other, if and only if there is other SQL to execute.
    */
-  public UpgradePath(Set<UpgradeScriptAddition> upgradeScriptAdditions, List<UpgradeStep> steps, SqlDialect sqlDialect) {
+  public UpgradePath(Set<UpgradeScriptAddition> upgradeScriptAdditions, List<UpgradeStep> steps, SqlDialect sqlDialect, List<String> initialisationSql, List<String> finalisationSql) {
     super();
     this.steps = Collections.unmodifiableList(steps);
     this.sqlDialect = sqlDialect;
     this.upgradeScriptAdditions = upgradeScriptAdditions;
+    this.upgradeStatus = null;
+    this.initialisationSql = initialisationSql;
+    this.finalisationSql = finalisationSql;
+  }
+
+
+  /**
+   * Convenience method for creating placeholder upgrade paths when there
+   * is an upgrade in progress within the application.
+   *
+   * @param status The upgrade status to hold.
+   * @return An upgrade path with only the given upgrade status.
+   */
+  public static UpgradePath forInProgressUpgrade(UpgradeStatus status) {
+    return new UpgradePath(status);
+  }
+
+
+  /**
+   * Used to create an upgrade path with the given upgrade status.
+   *
+   * @param upgradeStatus Upgrade status to hold.
+   */
+  private UpgradePath(UpgradeStatus upgradeStatus) {
+    super();
+    this.steps = Collections.emptyList();
+    this.sqlDialect = null;
+    this.upgradeScriptAdditions = Collections.emptySet();
+    this.upgradeStatus = upgradeStatus;
+    this.initialisationSql = null;
+    this.finalisationSql = null;
   }
 
 
@@ -115,11 +169,18 @@ public class UpgradePath implements SqlStatementWriter {
    * @return the sql
    */
   public List<String> getSql() {
-    List<String> results = Lists.newArrayList(sql);
+    List<String> results = Lists.newLinkedList();
+    if (!sql.isEmpty() || !upgradeScriptAdditions.isEmpty())
+      results.addAll(initialisationSql);
+
+    results.addAll(sql);
 
     for (UpgradeScriptAddition addition : upgradeScriptAdditions) {
       Iterables.addAll(results, addition.sql());
     }
+
+    if (!results.isEmpty())
+      results.addAll(finalisationSql);
 
     return Collections.unmodifiableList(results);
   }
@@ -133,6 +194,17 @@ public class UpgradePath implements SqlStatementWriter {
    */
   public boolean hasStepsToApply() {
     return !getSteps().isEmpty() || !sql.isEmpty();
+  }
+
+
+  /**
+   * Returns whether or not this upgrade knew that an upgrade was in progress
+   * at the point it was created.
+   *
+   * @return true if there was an upgrade in progress.
+   */
+  public boolean upgradeInProgress() {
+    return upgradeStatus != null && upgradeStatus != UpgradeStatus.NONE;
   }
 
 
@@ -208,20 +280,27 @@ public class UpgradePath implements SqlStatementWriter {
   static final class UpgradePathFactoryImpl implements UpgradePathFactory {
 
     private final Set<UpgradeScriptAddition> upgradeScriptAdditions;
+    private final UpgradeStatusTableService upgradeStatusTableService;
 
     @Inject
-    UpgradePathFactoryImpl(Set<UpgradeScriptAddition> upgradeScriptAdditions) {
+    UpgradePathFactoryImpl(Set<UpgradeScriptAddition> upgradeScriptAdditions, UpgradeStatusTableService upgradeStatusTableService) {
+      super();
       this.upgradeScriptAdditions = upgradeScriptAdditions;
+      this.upgradeStatusTableService = upgradeStatusTableService;
     }
 
     @Override
     public UpgradePath create(SqlDialect sqlDialect) {
-      return new UpgradePath(upgradeScriptAdditions, sqlDialect);
+      return new UpgradePath(upgradeScriptAdditions, sqlDialect,
+                             upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS),
+                             upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.DATA_TRANSFER_REQUIRED));
     }
 
     @Override
     public UpgradePath create(List<UpgradeStep> steps, SqlDialect sqlDialect) {
-      return new UpgradePath(upgradeScriptAdditions, steps, sqlDialect);
+      return new UpgradePath(upgradeScriptAdditions, steps, sqlDialect,
+                             upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS),
+                             upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED));
     }
   }
 }

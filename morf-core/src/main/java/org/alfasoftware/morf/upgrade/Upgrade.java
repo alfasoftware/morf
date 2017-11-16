@@ -78,13 +78,14 @@ public class Upgrade {
    * @param targetSchema The target database schema.
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
    * @param connectionResources Connection details for the database.
+   * @param upgradeStatusTableService Service used to manage the upgrade status coordination table.
    *
    * @return The required upgrade path.
    */
-  public static UpgradePath createPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources) {
+  public static UpgradePath createPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeStatusTableService upgradeStatusTableService) {
     return new Upgrade(connectionResources, connectionResources.getDataSource(),
-        new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition> emptySet())).findPath(targetSchema, upgradeSteps,
-          Collections.<String> emptySet());
+                       new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition> emptySet(), upgradeStatusTableService))
+           .findPath(targetSchema, upgradeSteps, Collections.<String> emptySet());
   }
 
 

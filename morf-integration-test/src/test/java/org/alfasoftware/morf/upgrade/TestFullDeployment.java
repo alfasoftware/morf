@@ -29,19 +29,22 @@ import java.sql.Statement;
 
 import javax.sql.DataSource;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
 import org.alfasoftware.morf.guicesupport.MorfModule;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager;
 import org.alfasoftware.morf.testing.TestingDataSourceModule;
 import org.alfasoftware.morf.upgrade.Deployment.DeploymentFactory;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+
 import com.google.common.collect.ImmutableSet;
+import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Inject;
 
@@ -91,7 +94,13 @@ public class TestFullDeployment {
     try {
       // -- Set up the database...
       //
-      DeploymentFactory deploymentFactory = Guice.createInjector(new MorfModule()).getInstance(DeploymentFactory.class);
+      DeploymentFactory deploymentFactory = Guice.createInjector(new MorfModule(), new AbstractModule() {
+        @Override
+        protected void configure() {
+          bind(SqlDialect.class).toInstance(connectionResources.sqlDialect());
+          bind(DataSource.class).toInstance(connectionResources.getDataSource()); // TODO Need to discuss more widely about what we want to do here
+        }
+      }).getInstance(DeploymentFactory.class);
 
       deploymentFactory.create(connectionResources).deploy(targetSchema);
 
