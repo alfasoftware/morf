@@ -37,9 +37,10 @@ import com.google.common.collect.Lists;
  * <p>The class structure imitates the end SQL and is structured as follows:</p>
  *
  * <blockquote><pre>
- *   SqlUtils.update([table])                        = UPDATE TABLE
- *             |----&gt; .set([field], ...)              = UPDATE TABLE SET ([field], ...)
- *             |----&gt; .where([criterion])             = UPDATE TABLE SET ([field], ...) WHERE [criterion] </pre></blockquote>
+ * UpdateStatement.update([table])   = UPDATE TABLE
+ *   .set([field], ...)              = UPDATE TABLE SET ([field], ...)
+ *   .where([criterion])             = UPDATE TABLE SET ([field], ...) WHERE [criterion]
+ *   .build()</pre></blockquote>
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
@@ -65,6 +66,17 @@ public class UpdateStatement implements Statement,
    * TODO make final
    */
   private Criterion whereCriterion;
+
+
+  /**
+   * Constructs an update statement.
+   *
+   * @param tableReference the database table to update
+   * @return Builder.
+   */
+  public static UpdateStatementBuilder update(TableReference tableReference) {
+    return new UpdateStatementBuilder(tableReference);
+  }
 
 
   @Override
@@ -134,6 +146,9 @@ public class UpdateStatement implements Statement,
 
   /**
    * Constructs an Update Statement.
+   *
+   * <p>Usage is discouraged; this method will be deprecated at some point. Use
+   * {@link #update(TableReference)} for preference.</p>
    *
    * @param table the database table to update
    */

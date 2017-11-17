@@ -15,8 +15,8 @@
 
 package org.alfasoftware.morf.sql;
 
+import static org.alfasoftware.morf.sql.MergeStatement.merge;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
-import static org.alfasoftware.morf.sql.SqlUtils.merge;
 
 import java.util.Arrays;
 import java.util.List;
@@ -32,7 +32,7 @@ import org.junit.runners.Parameterized.Parameters;
  * @author Copyright (c) Alfa Financial Software 2017
  */
 @RunWith(Parameterized.class)
-public class TestMergeStatementDeepCopyContract extends AbstractShallowAndDeepCopyableTest<MergeStatement> {
+public class TestMergeStatementDeepCopyContractUsingBuilder extends AbstractShallowAndDeepCopyableTest<MergeStatement> {
 
   private static final SelectStatement SELECT_1 = mockSelectStatement();
   private static final SelectStatement SELECT_2 = mockSelectStatement();
@@ -43,11 +43,11 @@ public class TestMergeStatementDeepCopyContract extends AbstractShallowAndDeepCo
   @Parameters(name = "{0}")
   public static List<Object[]> data() {
     return Arrays.asList(
-      testCase("1", () -> merge().into(TABLE_1).from(SELECT_1).tableUniqueKey(literal(1))),
-      testCase("2", () -> merge().into(TABLE_1).from(SELECT_1).tableUniqueKey(literal(2))),
-      testCase("3", () -> merge().into(TABLE_1).from(SELECT_1).tableUniqueKey(literal(1), literal(1))),
-      testCase("4", () -> merge().into(TABLE_1).from(SELECT_2).tableUniqueKey(literal(1))),
-      testCase("5", () -> merge().into(TABLE_2).from(SELECT_1).tableUniqueKey(literal(1)))
+      testCaseWithBuilder("1", merge().into(TABLE_1).from(SELECT_1).tableUniqueKey(literal(1))),
+      testCaseWithBuilder("2", merge().into(TABLE_1).from(SELECT_1).tableUniqueKey(literal(2))),
+      testCaseWithBuilder("3", merge().into(TABLE_1).from(SELECT_1).tableUniqueKey(literal(1), literal(1))),
+      testCaseWithBuilder("4", merge().into(TABLE_1).from(SELECT_2).tableUniqueKey(literal(1))),
+      testCaseWithBuilder("5", merge().into(TABLE_2).from(SELECT_1).tableUniqueKey(literal(1)))
     );
   }
 }

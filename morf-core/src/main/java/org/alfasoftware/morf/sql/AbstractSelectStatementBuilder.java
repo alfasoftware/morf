@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.Join;
 import org.alfasoftware.morf.sql.element.JoinType;
@@ -166,8 +167,8 @@ public abstract class AbstractSelectStatementBuilder<U extends AbstractSelectSta
    * @param fields The fields to add
    * @return this, for method chaining.
    */
-  public T fields(Iterable<? extends AliasedField> fields) {
-    Iterables.addAll(this.fields, fields);
+  public T fields(Iterable<? extends AliasedFieldBuilder> fields) {
+    Iterables.addAll(this.fields, Builder.Helper.buildAll(fields));
     return castToChild(this);
   }
 
@@ -178,7 +179,7 @@ public abstract class AbstractSelectStatementBuilder<U extends AbstractSelectSta
    * @param fields The fields to add
    * @return this, for method chaining.
    */
-  public T fields(AliasedField... fields) {
+  public T fields(AliasedFieldBuilder... fields) {
     return fields(Arrays.asList(fields));
   }
 
@@ -444,7 +445,7 @@ public abstract class AbstractSelectStatementBuilder<U extends AbstractSelectSta
    * @param orderFields the fields to order by
    * @return this, for method chaining.
    */
-  public T orderBy(AliasedField... orderFields) {
+  public T orderBy(AliasedFieldBuilder... orderFields) {
     if (orderFields == null) {
       throw new IllegalArgumentException("Fields were null in order by clause");
     }
@@ -454,18 +455,18 @@ public abstract class AbstractSelectStatementBuilder<U extends AbstractSelectSta
 
   /**
    * Specifies the fields by which to order the result set. For use in builder code.
-   * See {@link #orderBy(AliasedField...)} for the DSL version.
+   * See {@link #orderBy(AliasedFieldBuilder...)} for the DSL version.
    *
    * @param orderFields the fields to order by
    * @return this, for method chaining.
    */
-  public T orderBy(Iterable<AliasedField> orderFields) {
+  public T orderBy(Iterable<? extends AliasedFieldBuilder> orderFields) {
     if (orderFields == null) {
       throw new IllegalArgumentException("Fields were null in order by clause");
     }
 
     // Add the list
-    Iterables.addAll(orderBys, orderFields);
+    Iterables.addAll(orderBys, Builder.Helper.buildAll(orderFields));
 
     // Default fields to ascending if no direction has been specified
     SqlInternalUtils.defaultOrderByToAscending(orderBys);

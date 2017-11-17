@@ -21,7 +21,8 @@ import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 
 /**
- * Builder for {@link DeleteStatement}.
+ * Builder for {@link DeleteStatement}. Create a new statement Using
+ * {@link DeleteStatement#delete(TableReference)}.
  *
  * @author Copyright (c) Alfa Financial Software 2017
  */
@@ -88,8 +89,9 @@ public class DeleteStatementBuilder implements Builder<DeleteStatement> {
   /**
    * Specifies the where criteria
    *
-   * <blockquote><pre>delete([table])
-   *    .where([criteria]);</pre></blockquote>
+   * <blockquote><pre>DeleteStatement.delete([table])
+   *    .where([criteria])
+   *    .build();</pre></blockquote>
    *
    * @param criterion the criteria to filter the results by
    * @return this, for method chaining.

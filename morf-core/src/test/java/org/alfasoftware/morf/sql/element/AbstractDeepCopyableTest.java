@@ -63,8 +63,18 @@ public abstract class AbstractDeepCopyableTest<T extends DeepCopyableWithTransfo
 
   private static int mockCounter;
 
+  protected static <T extends DeepCopyableWithTransformation<T, U>, U extends Builder<T>> Object[] testCaseWithBuilder(U onTest) {
+    Supplier<T> supplier = () -> onTest.build();
+    return testCase(supplier);
+  }
+
   protected static <T extends DeepCopyableWithTransformation<T, U>, U extends Builder<T>> Object[] testCase(Supplier<T> onTest) {
     return new Object[] { onTest.get().toString(), onTest };
+  }
+
+  protected static <T extends DeepCopyableWithTransformation<T, U>, U extends Builder<T>> Object[] testCaseWithBuilder(String name, U onTest) {
+    Supplier<T> supplier = () -> onTest.build();
+    return testCase(name, supplier);
   }
 
   protected static <T extends DeepCopyableWithTransformation<T, U>, U extends Builder<T>> Object[] testCase(String name, Supplier<T> onTest) {

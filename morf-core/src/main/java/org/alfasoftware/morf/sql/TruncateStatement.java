@@ -37,6 +37,24 @@ public class TruncateStatement implements Statement,
    */
   private final TableReference table;
 
+
+  /**
+   * Constructs a Truncate Statement.
+   *
+   * @param table The table to truncate.
+   * @return Builder.
+   */
+  public static Builder<TruncateStatement> truncate(TableReference table) {
+    return () -> new TruncateStatement(table);
+  }
+
+
+  /**
+   * <p>Usage is discouraged; this constructor will be deprecated at some point. Use
+   * {@link #truncate(TableReference)} for preference.</p>
+   *
+   * @param table
+   */
   public TruncateStatement(TableReference table) {
     this.table = table;
   }

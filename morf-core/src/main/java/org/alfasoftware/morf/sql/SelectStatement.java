@@ -44,17 +44,17 @@ import com.google.common.collect.Lists;
  * <p>The class structure imitates the end SQL and is structured as follows:</p>
  *
  * <blockquote><pre>
- *   SqlUtils.select([field], ...)
- *        |----&gt; .from([table])                               = SELECT [fields] FROM [table]
- *                |----&gt; .innerJoin([table], [criterion])     = SELECT [fields] FROM [table] INNER JOIN [table] ON [criterion]
- *                |----&gt; .leftOuterJoin(...)
- *                |----&gt; .where([criterion])                  = SELECT [fields] FROM [table] WHERE [criterion]
- *                |----&gt; .orderBy([fields])                   = SELECT [fields] FROM [table] ORDER BY [fields]
- *                |----&gt; .groupBy([fields])                   = SELECT [fields] FROM [table] GROUP BY [fields]
- *                        |----&gt; having([criterion])          = SELECT [fields] FROM [table] GROUP BY [fields] HAVING [criterion]
- *                |----&gt; .union([SelectStatement])            = SELECT [fields] FROM [table] UNION [SelectStatement]
- *                |----&gt; .unionAll([SelectStatement])         = SELECT [fields] FROM [table] UNION ALL [SelectStatement]
- *  </pre></blockquote>
+ *  SelectStatement.select([field], ...)
+ *    .from([table])                       = SELECT [fields] FROM [table]
+ *    .innerJoin([table], [criterion])     = SELECT [fields] FROM [table] INNER JOIN [table] ON [criterion]
+ *    .leftOuterJoin(...)
+ *    .where([criterion])                  = SELECT [fields] FROM [table] WHERE [criterion]
+ *    .orderBy([fields])                   = SELECT [fields] FROM [table] ORDER BY [fields]
+ *    .groupBy([fields])                   = SELECT [fields] FROM [table] GROUP BY [fields]
+ *      .having([criterion])               = SELECT [fields] FROM [table] GROUP BY [fields] HAVING [criterion]
+ *    .union([SelectStatement])            = SELECT [fields] FROM [table] UNION [SelectStatement]
+ *    .unionAll([SelectStatement])         = SELECT [fields] FROM [table] UNION ALL [SelectStatement]
+ *    .build()</pre></blockquote>
  *
  * @author Copyright (c) Alfa Financial Software 2009
  */
@@ -101,10 +101,15 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
 
 
   /**
-   * @return A builder.
+   * Constructs a Select Statement which optionally selects on a subset of fields.
+   * If no fields are specified then this is equivalent of selecting all
+   * fields (i.e. {@code SELECT * FROM x}).
+   *
+   * @param fields an array of fields that should be selected
+   * @return Builder.
    */
-  public static final SelectStatementBuilder builder() {
-    return new SelectStatementBuilder();
+  public static SelectStatementBuilder select(AliasedFieldBuilder... fields) {
+    return new SelectStatementBuilder().fields(fields);
   }
 
 
@@ -134,6 +139,9 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
    * Constructs a Select Statement which optionally selects on a subset of fields.
    * If no fields are specified then this is equivalent of selecting all fields (i.e. "SELECT * FROM x")
    *
+   * <p>Usage is discouraged; this constructor will be deprecated at some point. Use
+   * {@link #select(AliasedFieldBuilder...)} for preference.</p>
+   *
    * @param fields an array of fields that should be selected
    */
   public SelectStatement(AliasedFieldBuilder... fields) {
@@ -144,6 +152,12 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
   /**
    * Constructs a Select Statement which optionally selects on a subset of fields.
    * If no fields are specified then this is equivalent of selecting all fields (i.e. "SELECT * FROM x")
+   *
+   * <p>Usage is discouraged; this method will be deprecated at some point. Use
+   * {@link #select(AliasedFieldBuilder...)} for preference. For
+   * example:</p>
+   *
+   * <pre>SelectStatement.select().fields(myFields).from(foo).build();</pre>
    *
    * @param fields an array of fields that should be selected
    */
@@ -156,6 +170,12 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
    * Constructs a distinct Select Statement which optionally selects on a subset of fields.
    * If no fields are specified then this is equivalent of selecting all fields (i.e. "SELECT DISTINCT * FROM x")
    *
+   * <p>Usage is discouraged; this method will be deprecated at some point. Use
+   * {@link #select(AliasedFieldBuilder...)} for preference. For
+   * example:</p>
+   *
+   * <pre>SelectStatement.select(myFields).distinct().from(foo).build();</pre>
+   *
    * @param fields The fields in the select clause
    * @param isDistinct Determines whether the DISTINCT clause should be added or not
    */
@@ -167,6 +187,12 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
   /**
    * Constructs a distinct Select Statement which optionally selects on a subset of fields.
    * If no fields are specified then this is equivalent of selecting all fields (i.e. "SELECT DISTINCT * FROM x")
+   *
+   * <p>Usage is discouraged; this method will be deprecated at some point. Use
+   * {@link #select(AliasedFieldBuilder...)} for preference. For
+   * example:</p>
+   *
+   * <pre>SelectStatement.select().fields(myFields).distinct().from(foo).build();</pre>
    *
    * @param fields The fields in the select clause
    * @param isDistinct Determines whether the DISTINCT clause should be added or not

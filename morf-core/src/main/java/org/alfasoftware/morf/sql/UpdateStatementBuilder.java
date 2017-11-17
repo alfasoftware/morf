@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.util.Builder;
@@ -92,8 +93,8 @@ public class UpdateStatementBuilder implements Builder<UpdateStatement> {
    * @param destinationFields the fields to update in the database table
    * @return this, for method chaining.
    */
-  public UpdateStatementBuilder set(AliasedField... destinationFields) {
-    this.fields.addAll(Arrays.asList(destinationFields));
+  public UpdateStatementBuilder set(AliasedFieldBuilder... destinationFields) {
+    this.fields.addAll(Builder.Helper.buildAll(Arrays.asList(destinationFields)));
     return this;
   }
 

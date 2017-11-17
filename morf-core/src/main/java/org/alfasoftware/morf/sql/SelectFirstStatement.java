@@ -35,11 +35,11 @@ import org.alfasoftware.morf.util.ShallowCopyable;
  * <p>The class structure imitates the end SQL (in Oracle flavour) and is structured as follows:</p>
  *
  * <blockquote><pre>
- *   SqlUtils.selectFirst([field])                        = SELECT [fields]
- *        |----&gt; .from([table])                               FROM [table]
- *                |----&gt; .where([criterion])                  WHERE [criterion]
- *                |----&gt; .orderBy([fields])                   ORDER BY [fields]
- *  </pre></blockquote>
+ *  SelectFirstStatement.selectFirst([field])    = SELECT [fields]
+ *    .from([table])                               FROM [table]
+ *    .where([criterion])                          WHERE [criterion]
+ *    .orderBy([fields])                           ORDER BY [fields]
+ *    .build()</pre></blockquote>
  *
  * <p>This class accepts only one {@link FieldReference} reference in the constructor.</p>
  *
@@ -63,14 +63,20 @@ public class SelectFirstStatement extends AbstractSelectStatement<SelectFirstSta
 
 
   /**
-   * @return A builder.
+   * Constructs a Select First Statement.
+   *
+   * @param field the field that should be selected
+   * @return Builder.
    */
-  public static final SelectFirstStatementBuilder builder() {
-    return new SelectFirstStatementBuilder();
+  public static final SelectFirstStatementBuilder selectFirst(AliasedFieldBuilder field) {
+    return new SelectFirstStatementBuilder(field);
   }
 
 
   /**
+   * <p>Usage is discouraged; this constructor will be deprecated at some point. Use
+   * {@link #selectFirst(AliasedFieldBuilder)} for preference.</p>
+   *
    * @param field The field in the select statemenr
    */
   public SelectFirstStatement(AliasedFieldBuilder field) {

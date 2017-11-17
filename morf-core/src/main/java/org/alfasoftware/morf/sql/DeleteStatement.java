@@ -30,19 +30,16 @@ import org.alfasoftware.morf.util.ShallowCopyable;
 /**
  * Class which encapsulates the generation of a DELETE SQL statement.
  *
- * <p>The class structure imitates the end SQL and is structured as follows:</p>
+ * <p>The class structure imitates the end SQL and is constructed using a builder as follows:</p>
  *
  * <blockquote><pre>
- *   SqlUtils.delete()
- *        |----&gt; .from([table])                               = DELETE FROM [table]
- *                |----&gt; .where([criterion])                  = DELETE FROM [table] WHERE [criterion]
- *  </pre></blockquote>
+ *  DeleteStatement.delete()
+ *    .from([table])             = DELETE FROM [table]
+ *    .where([criterion])        = DELETE FROM [table] WHERE [criterion]
+ *    .build()</pre></blockquote>
  *
- * <p>This class does not accept string references to table names. Instead, you must provide
- * the methods with a {@link TableReference} reference.</p>
- *
- * <p>Each method of this class will return an instance of the {@link DeleteStatement} class. However, this will always
- * be the same instance rather than a new instance of the class.</p>
+ * <p>It is also possible to create instances directly using the constructors or the factory
+ * methods on {@link SqlUtils}.  Both are discouraged and will be deprecated in the future.</p>
  *
  * @author Copyright (c) Alfa Financial Software 2012
  */
@@ -66,6 +63,17 @@ public class DeleteStatement implements Statement,
 
 
   /**
+   * Constructs a Delete Statement. See class-level documentation for usage instructions.
+   *
+   * @param table the database table to delete from.
+   * @return A builder.
+   */
+  public static DeleteStatementBuilder delete(TableReference table) {
+    return new DeleteStatementBuilder(table);
+  }
+
+
+  /**
    * Builder constructor.
    *
    * @param deleteStatementBuilder The builder.
@@ -78,6 +86,9 @@ public class DeleteStatement implements Statement,
 
   /**
    * Constructs a Delete Statement.
+   *
+   * <p>Usage is discouraged; this method will be deprecated at some point. Use
+   * {@link #delete(TableReference)} for preference.</p>
    *
    * @param table the database table to delete from.
    */

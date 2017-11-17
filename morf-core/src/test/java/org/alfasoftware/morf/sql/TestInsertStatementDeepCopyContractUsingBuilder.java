@@ -15,8 +15,9 @@
 
 package org.alfasoftware.morf.sql;
 
+import static org.alfasoftware.morf.sql.InsertStatement.insert;
+import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
-import static org.alfasoftware.morf.sql.SqlUtils.merge;
 
 import java.util.Arrays;
 import java.util.List;
@@ -27,12 +28,13 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 /**
- * Checks that {@link MergeStatement} satisfies equals, hashcode and deep copy contracts.
+ * Checks that {@link InsertStatement} satisfies equals, hashcode and deep copy contracts
+ * when we use the builder construction pattern.
  *
  * @author Copyright (c) Alfa Financial Software 2017
  */
 @RunWith(Parameterized.class)
-public class TestMergeStatementDeepCopyContract extends AbstractShallowAndDeepCopyableTest<MergeStatement> {
+public class TestInsertStatementDeepCopyContractUsingBuilder extends AbstractShallowAndDeepCopyableTest<InsertStatement> {
 
   private static final SelectStatement SELECT_1 = mockSelectStatement();
   private static final SelectStatement SELECT_2 = mockSelectStatement();
@@ -43,11 +45,20 @@ public class TestMergeStatementDeepCopyContract extends AbstractShallowAndDeepCo
   @Parameters(name = "{0}")
   public static List<Object[]> data() {
     return Arrays.asList(
-      testCase("1", () -> merge().into(TABLE_1).from(SELECT_1).tableUniqueKey(literal(1))),
-      testCase("2", () -> merge().into(TABLE_1).from(SELECT_1).tableUniqueKey(literal(2))),
-      testCase("3", () -> merge().into(TABLE_1).from(SELECT_1).tableUniqueKey(literal(1), literal(1))),
-      testCase("4", () -> merge().into(TABLE_1).from(SELECT_2).tableUniqueKey(literal(1))),
-      testCase("5", () -> merge().into(TABLE_2).from(SELECT_1).tableUniqueKey(literal(1)))
+      testCaseWithBuilder(insert().into(TABLE_1)),
+      testCaseWithBuilder(insert().into(TABLE_2)),
+      testCaseWithBuilder(insert().into(TABLE_1).from(SELECT_1)),
+      testCaseWithBuilder(insert().into(TABLE_1).from(SELECT_2)),
+      testCaseWithBuilder(insert().into(TABLE_1).from(TABLE_1)),
+      testCaseWithBuilder(insert().into(TABLE_1).from(TABLE_2)),
+      testCaseWithBuilder(insert().into(TABLE_1).values(literal(1).as("a"))),
+      testCaseWithBuilder(insert().into(TABLE_1).values(literal(2).as("b"))),
+      testCaseWithBuilder(insert().into(TABLE_1).values(literal(1).as("a"), literal(2).as("b"))),
+      testCaseWithBuilder(insert().into(TABLE_1).fields(field("A")).values(literal(1))),
+      testCaseWithBuilder(insert().into(TABLE_1).fields(field("B")).values(literal(1))),
+      testCaseWithBuilder(insert().into(TABLE_1).fields(field("A"), field("B")).values(literal(1), literal(2))),
+      testCaseWithBuilder(insert().into(TABLE_1).fields(field("A")).withDefaults(literal(1).as("A")))
     );
   }
+
 }

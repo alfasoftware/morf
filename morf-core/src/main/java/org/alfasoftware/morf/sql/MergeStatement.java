@@ -37,11 +37,11 @@ import com.google.common.collect.Lists;
  * <p>The class structure imitates the end SQL and is structured as follows:</p>
  *
  * <blockquote><pre>
- *   SqlUtils.merge()
- *        |----&gt; .into([table])
- *                |----&gt; .tableUniqueKey([field]...)
- *                |----&gt; .fromSelect([SelectStatement])
- * </pre></blockquote>
+ *  MergeStatement.merge()
+ *    .into([table])
+ *    .tableUniqueKey([field]...)
+ *    .fromSelect([SelectStatement])
+ *    .build()</pre></blockquote>
  *
  * <p>A Merge statement takes a target table and merges (INSERTS or UPDATES) data from a source table.
  * If a record exists with the same unique key in the target table, the record is updated, otherwise the record
@@ -79,7 +79,22 @@ public class MergeStatement implements Statement,
 
 
   /**
+   * Constructs a Merge Statement which either inserts or updates
+   * a record into a table depending on whether a condition exists in
+   * the table.
+   *
+   * @return Statement builder.
+   */
+  public static MergeStatementBuilder merge() {
+    return new MergeStatementBuilder();
+  }
+
+
+  /**
    * Constructs an Merge Statement.
+   *
+   * <p>Usage is discouraged; this method will be deprecated at some point. Use
+   * {@link #merge()} for preference.</p>
    */
   public MergeStatement() {
     super();

@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.sql;
 
+import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 
 /**
@@ -24,8 +25,14 @@ import org.alfasoftware.morf.util.DeepCopyTransformation;
  */
 public class SelectFirstStatementBuilder extends AbstractSelectStatementBuilder<SelectFirstStatement, SelectFirstStatementBuilder> {
 
-  SelectFirstStatementBuilder() {
+  /**
+   * Constructor for new instances.
+   *
+   * @param field The field to select.
+   */
+  SelectFirstStatementBuilder(AliasedFieldBuilder field) {
     super();
+    fields(field);
   }
 
   /**

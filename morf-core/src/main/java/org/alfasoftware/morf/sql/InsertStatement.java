@@ -41,24 +41,32 @@ import com.google.common.collect.Lists;
 /**
  * Class which encapsulates the generation of an INSERT SQL statement.
  *
- * <p>The class structure imitates the end SQL and is structured as follows:</p>
+ * <p>The class structure imitates the end SQL and is constructed using a builder, as follows:</p>
  *
  * <blockquote><pre>
- *   SqlUtils.insert()
- *        |----&gt; .into([table])                       = INSERT INTO [table]
- *                |----&gt; .fields([field], ...)        = INSERT INTO [table] ([field], ...)
- *                |----&gt; .from([selectStatement])     = INSERT INTO [table] (SELECT * FROM ...)
- *                |----&gt; .from([table])               = INSERT INTO [table] (SELECT * FROM [table])
+ *  InsertStatement.insert()
+ *    .into([table])               = INSERT INTO [table]
+ *    .fields([field], ...)        = INSERT INTO [table] ([field], ...)
+ *    .from([selectStatement])     = INSERT INTO [table] (SELECT * FROM ...)
+ *    .from([table])               = INSERT INTO [table] (SELECT * FROM [table])
+ *    .build()
  * </pre></blockquote>
  *
- * <p>To insert a specific set of values (e.g. a new transaction code row) do the following:</p>
+ * <p>To insert a specific set of values, do the following:</p>
+ *
  * <blockquote><pre>
- *   SqlUtils.insert().into(new TableReference("TableName")).values(
- *     new FieldLiteral("SomeValue").as("TheColumnName"),
- *     new FieldLiteral(11).as("AnIntegerColumnName")
- *     ... etc
- *   );
+ *   InsertStatement.insert()
+ *     .into(tableRef("TableName"))
+ *     .values(
+ *       literal("SomeValue").as("TheColumnName"),
+ *       literal(11).as("AnIntegerColumnName")
+ *       ... etc
+ *     )
+ *     .build();
  * </pre></blockquote>
+ *
+ * <p>It is also possible to create instances directly using the constructors or the factory
+ * methods on {@link SqlUtils}.  Both are discouraged and will be deprecated in the future.</p>
  *
  * @author Copyright (c) Alfa Financial Software 2009
  */
@@ -99,7 +107,7 @@ public class InsertStatement implements Statement,
 
 
   /**
-   * Creates a new insert statement.
+   * Creates a new insert statement. See class-level documentation for usage instructions.
    *
    * @return A builder.
    */
@@ -110,6 +118,9 @@ public class InsertStatement implements Statement,
 
   /**
    * Constructs an Insert Statement.
+   *
+   * <p>Usage is discouraged; this method will be deprecated at some point. Use
+   * {@link #insert()} for preference.</p>
    */
   public InsertStatement() {
     super();

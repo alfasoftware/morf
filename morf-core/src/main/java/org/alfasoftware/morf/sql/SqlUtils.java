@@ -54,7 +54,9 @@ public class SqlUtils {
   /**
    * Constructs an update statement.
    *
-   * @see UpdateStatement#UpdateStatement(TableReference)
+   * <p>Usage is discouraged; this method will be deprecated at some point. Use
+   * {@link UpdateStatement#update(TableReference)} for preference.</p>
+   *
    * @param tableReference the database table to update
    * @return {@link UpdateStatement}
    */
@@ -79,6 +81,9 @@ public class SqlUtils {
    * If no fields are specified then this is equivalent of selecting all
    * fields (i.e. {@code SELECT * FROM x}).
    *
+   * <p>Usage is discouraged; this method will be deprecated at some point. Use
+   * {@link SelectStatement#select(AliasedFieldBuilder...)} for preference.</p>
+   *
    * @param fields an array of fields that should be selected
    * @return {@link SelectStatement}
    */
@@ -91,6 +96,12 @@ public class SqlUtils {
    * Constructs a Select Statement which optionally selects on a subset of fields.
    * If no fields are specified then this is equivalent of selecting all
    * fields (i.e. {@code SELECT * FROM x}).
+   *
+   * <p>Usage is discouraged; this method will be deprecated at some point. Use
+   * {@link SelectStatement#select(AliasedFieldBuilder...)} for preference. For
+   * example:</p>
+   *
+   * <pre>SelectStatement.select().fields(myFields).from(foo).build();</pre>
    *
    * @param fields fields that should be selected
    * @return {@link SelectStatement}
@@ -105,6 +116,12 @@ public class SqlUtils {
    * If no fields are specified then this is equivalent of selecting all
    * fields (i.e. {@code SELECT DISTINCT * FROM x}).
    *
+   * <p>Usage is discouraged; this method will be deprecated at some point. Use
+   * {@link SelectStatement#select(AliasedFieldBuilder...)} for preference. For
+   * example:</p>
+   *
+   * <pre>SelectStatement.select(myFields).distinct().from(foo).build();</pre>
+   *
    * @param fields an array of fields that should be selected
    * @return {@link SelectStatement}
    */
@@ -114,7 +131,10 @@ public class SqlUtils {
 
 
   /**
-   * Constructs a Select First Statement
+   * Constructs a Select First Statement.
+   *
+   * <p>Usage is discouraged; this method will be deprecated at some point. Use
+   * {@link SelectFirstStatement#selectFirst(AliasedFieldBuilder)} for preference.</p>
    *
    * @param field the field that should be selected
    * @return {@link SelectStatement}
@@ -127,6 +147,9 @@ public class SqlUtils {
   /**
    * Constructs an Insert Statement.
    *
+   * <p>Usage is discouraged; this method will be deprecated at some point. Use
+   * {@link InsertStatement#insert()} for preference.</p>
+   *
    * @return {@link InsertStatement}
    */
   public static InsertStatement insert() {
@@ -136,6 +159,9 @@ public class SqlUtils {
 
   /**
    * Constructs a Delete Statement.
+   *
+   * <p>Usage is discouraged; this method will be deprecated at some point. Use
+   * {@link DeleteStatement#delete(TableReference)} for preference.</p>
    *
    * @param table the database table to delete from.
    * @return {@link DeleteStatement}
@@ -150,6 +176,9 @@ public class SqlUtils {
    * a record into a table depending on whether a condition exists in
    * the table.
    *
+   * <p>Usage is discouraged; this method will be deprecated at some point. Use
+   * {@link MergeStatement#merge()} for preference.</p>
+   *
    * @return {@link MergeStatement}
    */
   public static MergeStatement merge() {
@@ -159,6 +188,9 @@ public class SqlUtils {
 
   /**
    * Constructs a Truncate Statement.
+   *
+   * <p>Usage is discouraged; this method will be deprecated at some point. Use
+   * {@link TruncateStatement#truncate(TableReference)} for preference.</p>
    *
    * @param table The table to truncate.
    * @return The statement.

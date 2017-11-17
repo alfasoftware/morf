@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
@@ -35,6 +36,14 @@ public class MergeStatementBuilder implements Builder<MergeStatement> {
   private final List<AliasedField>  tableUniqueKey = new ArrayList<>();
   private TableReference            table;
   private SelectStatement           selectStatement;
+
+
+  /**
+   * Constructor to create a new statement.
+   */
+  MergeStatementBuilder() {
+    super();
+  }
 
 
   /**
@@ -93,7 +102,7 @@ public class MergeStatementBuilder implements Builder<MergeStatement> {
    * @param keyFields the key fields.
    * @return this, for method chaining.
    */
-  public MergeStatementBuilder tableUniqueKey(AliasedField... keyFields) {
+  public MergeStatementBuilder tableUniqueKey(AliasedFieldBuilder... keyFields) {
     return tableUniqueKey(Arrays.asList(keyFields));
   }
 
@@ -113,8 +122,8 @@ public class MergeStatementBuilder implements Builder<MergeStatement> {
    * @param keyFields the key fields.
    * @return this, for method chaining.
    */
-  public MergeStatementBuilder tableUniqueKey(List<AliasedField> keyFields) {
-    this.tableUniqueKey.addAll(keyFields);
+  public MergeStatementBuilder tableUniqueKey(List<? extends AliasedFieldBuilder> keyFields) {
+    this.tableUniqueKey.addAll(Builder.Helper.buildAll(keyFields));
     return this;
   }
 
