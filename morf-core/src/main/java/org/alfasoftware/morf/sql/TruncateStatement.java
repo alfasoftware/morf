@@ -53,7 +53,7 @@ public class TruncateStatement implements Statement,
    * <p>Usage is discouraged; this constructor will be deprecated at some point. Use
    * {@link #truncate(TableReference)} for preference.</p>
    *
-   * @param table
+   * @param table The table to truncate.
    */
   public TruncateStatement(TableReference table) {
     this.table = table;
