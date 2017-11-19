@@ -160,9 +160,21 @@ public abstract class AbstractDeepCopyableTest<T extends DeepCopyableWithTransfo
     for (Object[] data : parameterData()) {
       if (data[0].equals(testName))
         continue;
-      @SuppressWarnings("unchecked")
-      T other = ((Supplier<T>) data[1]).get();
-      assertNotEquals("Must not equal " + other, other, that);
+
+      // Mutably
+      {
+        @SuppressWarnings("unchecked")
+        T other = ((Supplier<T>) data[1]).get();
+        assertNotEquals("Must not equal " + other, other, that);
+      }
+
+      // Or immutably
+      AliasedField.withImmutableBuildersEnabled(() -> {
+        @SuppressWarnings("unchecked")
+        T other = ((Supplier<T>) data[1]).get();
+        assertNotEquals("Must not equal " + other, other, onTest.get());
+      });
+
     }
   }
 
