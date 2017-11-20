@@ -247,7 +247,7 @@ public class XmlDataSetConsumer implements DataSetConsumer {
       } finally {
         outputStream.close();
       }
-    } catch (Exception e) {
+    } catch (RuntimeException|SAXException|IOException e) {
       throw new RuntimeException("Error consuming table [" + table.getName() + "]", e);
     }
   }
