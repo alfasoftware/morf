@@ -13,7 +13,6 @@ class Version2to3TranformingReader extends Reader {
 
   private final BufferedReader delegateReader;
   private char[] temporary = new char[] {};
-  private int charsToSkip;
   private static final char[] nullRefChars = "&#0;".toCharArray();
 
 
@@ -84,15 +83,6 @@ class Version2to3TranformingReader extends Reader {
     // We need to transform &#0; into \0...
     int charsRead;
 
-    // skip some characters if we need to (not the common path)
-    while (charsToSkip > 0) {
-      int charsSkipped = delegateReader.read(new char[charsToSkip], 0, charsToSkip);
-      if (charsSkipped < 0) {
-        return 0;
-      }
-      charsToSkip -= charsSkipped;
-    }
-
     // if there's no temporary buffer from a previous call, read from the main source
     if (temporary.length == 0) {
       // This is the common path
@@ -125,8 +115,6 @@ class Version2to3TranformingReader extends Reader {
           int charsRemainingInBuffer = charsRead-idx-nullRefChars.length;
           if (charsRemainingInBuffer < 0) {
             // can be less than zero if we read past the end of this buffer and into the next
-            // in this case we need to skip some characters on the next read
-            charsToSkip = -charsRemainingInBuffer;
             charsRemainingInBuffer = 0;
           }
 
@@ -167,6 +155,7 @@ class Version2to3TranformingReader extends Reader {
     int indexToTest;
 
     int additionalCharsRequired = nullRefChars.length-remaining;
+    boolean marked = false;
 
     if (additionalCharsRequired > 0) {
       bufferToTest = new char[nullRefChars.length];
@@ -176,6 +165,7 @@ class Version2to3TranformingReader extends Reader {
 
       // copy in the remainder, resetting the reader after we've read it
       delegateReader.mark(nullRefChars.length);
+      marked = true;
       int writeIdx = remaining;
       while (writeIdx < nullRefChars.length) {
         int additionalCharsRead = delegateReader.read(bufferToTest, writeIdx, nullRefChars.length-writeIdx);
@@ -187,8 +177,6 @@ class Version2to3TranformingReader extends Reader {
         writeIdx += additionalCharsRead;
       }
 
-      delegateReader.reset();
-
       indexToTest = 0;
     } else {
       // The common path - we have enough buffer to work with
@@ -199,11 +187,14 @@ class Version2to3TranformingReader extends Reader {
     // now test
     for (int i=0; i<nullRefChars.length; i++) {
       if (bufferToTest[indexToTest+i] != nullRefChars[i]) {
+
+        if (marked) delegateReader.reset();
         return false;
       }
     }
 
     // if we get here, it matches
+    // note we don't reset the stream if we did find a match
     return true;
   }
 
