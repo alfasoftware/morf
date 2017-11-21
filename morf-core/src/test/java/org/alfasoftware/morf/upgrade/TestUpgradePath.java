@@ -68,7 +68,7 @@ public class TestUpgradePath {
    */
   @Test
   public void testForInProgressUpgrade() {
-    UpgradePath result = UpgradePath.forInProgressUpgrade(UpgradeStatus.DATA_TRANSFER_IN_PROGRESS);
+    UpgradePath result = new UpgradePath(UpgradeStatus.DATA_TRANSFER_IN_PROGRESS);
 
     assertEquals("Steps should be empty", Collections.emptyList(), result.getSteps());
     assertEquals("SQL should be empty", Collections.emptyList(), result.getSql());

@@ -117,23 +117,11 @@ public class UpgradePath implements SqlStatementWriter {
 
 
   /**
-   * Convenience method for creating placeholder upgrade paths when there
-   * is an upgrade in progress within the application.
-   *
-   * @param status The upgrade status to hold.
-   * @return An upgrade path with only the given upgrade status.
-   */
-  public static UpgradePath forInProgressUpgrade(UpgradeStatus status) {
-    return new UpgradePath(status);
-  }
-
-
-  /**
    * Used to create an upgrade path with the given upgrade status.
    *
    * @param upgradeStatus Upgrade status to hold.
    */
-  private UpgradePath(UpgradeStatus upgradeStatus) {
+  UpgradePath(UpgradeStatus upgradeStatus) {
     super();
     this.steps = Collections.emptyList();
     this.sqlDialect = null;

@@ -133,7 +133,7 @@ public class Upgrade {
       UpgradeStatus status = upgradeStatusTableService.getStatus();
       if (status == UpgradeStatus.IN_PROGRESS) {
         log.info("Schema differences found, but upgrade in progress - no action required until upgrade is complete");
-        return UpgradePath.forInProgressUpgrade(status);
+        return new UpgradePath(status);
       } else {
         throw e;
       }
