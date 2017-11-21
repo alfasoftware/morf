@@ -17,16 +17,9 @@ package org.alfasoftware.morf.dataset;
 
 import java.sql.Connection;
 
-import org.alfasoftware.morf.dataset.TableLoaderBuilder.TableLoaderBuilderImpl;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
-import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Table;
-
-import com.google.inject.ImplementedBy;
-import com.google.inject.Inject;
-import com.google.inject.Provider;
-import com.google.inject.util.Providers;
 
 /**
  * Builds a {@link TableLoader}.
@@ -39,7 +32,6 @@ import com.google.inject.util.Providers;
  *
  * @author Copyright (c) Alfa Financial Software 2014
  */
-@ImplementedBy(TableLoaderBuilderImpl.class)
 public interface TableLoaderBuilder {
 
   /**
@@ -128,109 +120,4 @@ public interface TableLoaderBuilder {
    * @return A table loader.
    */
   TableLoader forTable(Table table);
-
-  /**
-   * Internal implementation of {@link TableLoaderBuilder}.
-   */
-  class TableLoaderBuilderImpl implements TableLoaderBuilder {
-    private Connection connection;
-    private final SqlScriptExecutorProvider sqlScriptExecutorProvider;
-    private SqlScriptExecutor sqlScriptExecutor;
-    private boolean explicitCommit;
-    private boolean truncateBeforeLoad;
-    private boolean insertingWithPresetAutonums;
-    private boolean insertingUnderAutonumLimit;
-    private Provider<SqlDialect> sqlDialect;
-    private int batchSize = 1000;
-
-    TableLoaderBuilderImpl() {
-      super();
-      // This will need to be provided in withSqlScriptExecutor
-      sqlScriptExecutorProvider = null;
-    }
-
-    @Inject
-    TableLoaderBuilderImpl(
-        SqlScriptExecutorProvider sqlScriptExecutorProvider,
-        Provider<SqlDialect> sqlDialect) {
-      super();
-      this.sqlScriptExecutorProvider = sqlScriptExecutorProvider;
-      this.sqlDialect = sqlDialect;
-    }
-
-    @Override
-    public TableLoaderBuilder withDialect(SqlDialect sqlDialect) {
-      this.sqlDialect = Providers.of(sqlDialect);
-      return this;
-    }
-
-    @Override
-    public TableLoaderBuilder withConnection(Connection connection) {
-      this.connection = connection;
-      return this;
-    }
-
-    @Override
-    public TableLoaderBuilder withSqlScriptExecutor(SqlScriptExecutor sqlScriptExecutor) {
-      this.sqlScriptExecutor = sqlScriptExecutor;
-      return this;
-    }
-
-    @Override
-    public TableLoaderBuilder explicitCommit() {
-      this.explicitCommit = true;
-      return this;
-    }
-
-    @Override
-    public TableLoaderBuilder explicitCommit(boolean explicitCommit) {
-      this.explicitCommit = explicitCommit;
-      return this;
-    }
-
-    @Override
-    public TableLoaderBuilder truncateBeforeLoad() {
-      this.truncateBeforeLoad = true;
-      return this;
-    }
-
-    @Override
-    public TableLoaderBuilder insertingWithPresetAutonums() {
-      this.insertingWithPresetAutonums = true;
-      return this;
-    }
-
-    @Override
-    public TableLoaderBuilder insertingUnderAutonumLimit() {
-      this.insertingUnderAutonumLimit = true;
-      return this;
-    }
-
-    @Override
-    public TableLoaderBuilder withBatchSize(int recordsPerBatch) {
-      this.batchSize = recordsPerBatch;
-      return this;
-    }
-
-    @Override
-    public TableLoader forTable(Table table) {
-      SqlScriptExecutor executor = sqlScriptExecutor;
-      if (executor == null) {
-        if (sqlScriptExecutorProvider == null) {
-          throw new IllegalArgumentException("No SqlScriptExecutor provided");
-        }
-        executor = sqlScriptExecutorProvider.get();
-      }
-      return new TableLoader(
-        connection,
-        executor,
-        sqlDialect.get(),
-        explicitCommit,
-        table,
-        insertingWithPresetAutonums,
-        insertingUnderAutonumLimit,
-        truncateBeforeLoad,
-        batchSize);
-    }
-  }
 }
