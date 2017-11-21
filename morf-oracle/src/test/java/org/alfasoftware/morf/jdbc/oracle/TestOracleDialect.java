@@ -1092,7 +1092,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedNow() {
-    return "SYSDATE";
+    return "SYS_EXTRACT_UTC(SYSTIMESTAMP)";
   }
 
 

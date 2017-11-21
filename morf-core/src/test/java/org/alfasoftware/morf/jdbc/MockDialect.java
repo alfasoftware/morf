@@ -475,7 +475,7 @@ public class MockDialect extends SqlDialect {
    */
   @Override
   protected String getSqlForNow(Function function) {
-    return "CURRENT_TIMESTAMP()";
+    return "UTC_TIMESTAMP()";
   }
 
 

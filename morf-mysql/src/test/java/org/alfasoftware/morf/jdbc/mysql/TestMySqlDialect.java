@@ -875,7 +875,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedNow() {
-    return "NOW()";
+    return "UTC_TIMESTAMP()";
   }
 
 

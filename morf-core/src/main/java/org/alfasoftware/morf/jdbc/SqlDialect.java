@@ -2063,7 +2063,7 @@ public abstract class SqlDialect {
 
 
   /**
-   * Converts the Now function into SQL.
+   * Converts the current time function into SQL and returns the timestamp of the database in UTC.
    *
    * @param function the function to convert.
    * @return a string representation of the SQL.

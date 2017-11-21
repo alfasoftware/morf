@@ -73,7 +73,7 @@ public enum FunctionType {
 
 
   /**
-   * Now function.
+   * Now function (method subject to dialect, returns the current date-time as a UTC timestamp).
    */
   NOW,
 

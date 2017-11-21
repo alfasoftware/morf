@@ -2466,7 +2466,10 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
       @Override
       public Void process(ResultSet resultSet) throws SQLException {
         resultSet.next();
-        assertNotNull("Date value", resultSet.getDate(1));
+        log.info("Current system time: " + System.currentTimeMillis() + ". Current database time: " + resultSet.getTimestamp(1).getTime());
+
+        //Assert that the time of the database and system are accurate within 2 s.
+        assertEquals("Database and system times don't match - this could be because of different timezones.", resultSet.getTimestamp(1).getTime(), System.currentTimeMillis(), 2000);
         assertFalse("More than one record", resultSet.next());
         return null;
       }

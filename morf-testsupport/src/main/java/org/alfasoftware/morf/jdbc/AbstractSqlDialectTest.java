@@ -4620,7 +4620,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * @return The expected SQL for now function
+   * @return The expected SQL for now function returning UTC timestamp.
    */
   protected abstract String expectedNow();
 

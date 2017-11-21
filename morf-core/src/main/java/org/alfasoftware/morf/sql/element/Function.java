@@ -200,9 +200,10 @@ public final class Function extends AliasedField implements Driver {
 
 
   /**
-   * Helper method to create an instance of the "now" SQL function.
+   * Helper method to create an instance of the "now" SQL function that returns the
+   * current timestamp in UTC across all database platforms.
    *
-   * @return an instance of a now function
+   * @return an instance of a now function as a UTC timestamp.
    */
   public static Function now() {
     return new Function(FunctionType.NOW);
@@ -524,8 +525,8 @@ public final class Function extends AliasedField implements Driver {
   public int hashCode() {
     final int prime = 31;
     int result = super.hashCode();
-    result = prime * result + ((arguments == null) ? 0 : arguments.hashCode());
-    result = prime * result + ((type == null) ? 0 : type.hashCode());
+    result = prime * result + (arguments == null ? 0 : arguments.hashCode());
+    result = prime * result + (type == null ? 0 : type.hashCode());
     return result;
   }
 

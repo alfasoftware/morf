@@ -686,7 +686,7 @@ class MySqlDialect extends SqlDialect {
    */
   @Override
   protected String getSqlForNow(Function function) {
-    return "NOW()";
+    return "UTC_TIMESTAMP()";
   }
 
 

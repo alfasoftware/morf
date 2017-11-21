@@ -880,7 +880,7 @@ class SqlServerDialect extends SqlDialect {
    */
   @Override
   protected String getSqlForNow(Function function) {
-    return "GETDATE()";
+    return "GETUTCDATE()";
   }
 
 

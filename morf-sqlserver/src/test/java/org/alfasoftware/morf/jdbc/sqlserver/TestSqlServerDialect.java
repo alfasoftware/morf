@@ -928,7 +928,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedNow() {
-    return "GETDATE()";
+    return "GETUTCDATE()";
   }
 
 
