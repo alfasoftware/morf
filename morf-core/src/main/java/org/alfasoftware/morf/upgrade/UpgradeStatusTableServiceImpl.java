@@ -21,7 +21,6 @@ import static org.alfasoftware.morf.sql.SqlUtils.insert;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.SqlUtils.update;
-import static org.alfasoftware.morf.upgrade.UpgradeStatus.COMPLETED;
 import static org.alfasoftware.morf.upgrade.UpgradeStatus.IN_PROGRESS;
 import static org.alfasoftware.morf.upgrade.UpgradeStatus.NONE;
 
@@ -29,6 +28,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.sql.DataSource;
 
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -80,11 +81,7 @@ class UpgradeStatusTableServiceImpl implements UpgradeStatusTableService {
   public int writeStatusFromStatus(UpgradeStatus fromStatus, UpgradeStatus toStatus) {
     List<String> script = updateTableScript(fromStatus, toStatus);
     try {
-      if (toStatus == COMPLETED) {
-        UpgradeStatus currentStatus = getStatus();
-        if (!fromStatus.equals(currentStatus) && currentStatus != NONE)
-          throw new IllegalStateException("Cannot write status COMPLETED if current status is different: expected = [" + fromStatus + "]  current status = [" + currentStatus + "]");
-      }
+
       return sqlScriptExecutorProvider.get().execute(script);
 
     } catch (RuntimeSqlException e) {
@@ -123,10 +120,6 @@ class UpgradeStatusTableServiceImpl implements UpgradeStatusTableService {
         insert().into(table)
           .values(literal(toStatus.name()).as(STATUS_COLUMN))));
 
-    } else if (toStatus == COMPLETED) {
-      // Drop upgradeStatus table
-      statements.addAll(sqlDialect.dropStatements(table(UpgradeStatusTableService.UPGRADE_STATUS)));
-
     } else {
       UpdateStatement update = update(table)
                                  .set(literal(toStatus.name()).as(STATUS_COLUMN))
@@ -155,6 +148,23 @@ class UpgradeStatusTableServiceImpl implements UpgradeStatusTableService {
     } catch (RuntimeSqlException e) {
       log.debug("Unable to read column " + STATUS_COLUMN + " for upgrade status", e);
       return UpgradeStatus.NONE;
+    }
+  }
+
+
+ /**
+  *
+  * @see org.alfasoftware.morf.upgrade.UpgradeStatusTableService#tidyUp(javax.sql.DataSource)
+  */
+  @Override
+  public void tidyUp(DataSource dataSource) {
+    try {
+      new SqlScriptExecutorProvider(dataSource, sqlDialect).get().execute(sqlDialect.dropStatements(table(UpgradeStatusTableService.UPGRADE_STATUS)));
+    } catch (RuntimeSqlException e) {
+      //Throw exception only if the table still exists
+      if (getStatus() != NONE) {
+        throw e;
+      }
     }
   }
 }

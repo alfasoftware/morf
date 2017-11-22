@@ -33,8 +33,11 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+
+import javax.sql.DataSource;
 
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -176,51 +179,55 @@ public class TestUpgradeStatusTableServiceImpl {
 
   /**
    * Verify that {@link UpgradeStatusTableService#writeStatusFromStatus(UpgradeStatus, UpgradeStatus)}
-   * from {@link UpgradeStatus#DATA_TRANSFER_IN_PROGRESS} to {@link UpgradeStatus#COMPLETED} will delete
-   * the table.
+   * from {@link UpgradeStatus#DATA_TRANSFER_IN_PROGRESS} to {@link UpgradeStatus#COMPLETED} will update the
+   * status of the table.
    */
   @Test
   public void testUpdateFromDataTransferInProgressToCompleted() {
     when(sqlScriptExecutor.executeQuery(any(), any())).thenReturn(UpgradeStatus.DATA_TRANSFER_IN_PROGRESS);
     upgradeStatusTableService.writeStatusFromStatus(UpgradeStatus.DATA_TRANSFER_IN_PROGRESS, UpgradeStatus.COMPLETED);
 
-    ArgumentCaptor<Table> tableCaptor = ArgumentCaptor.forClass(Table.class);
-    verify(sqlDialect).dropStatements(tableCaptor.capture());
-    assertEquals("Table", tableCaptor.getValue().getName(), UPGRADE_STATUS);
+    ArgumentCaptor<UpdateStatement> stmtCaptor = ArgumentCaptor.forClass(UpdateStatement.class);
+    verify(sqlDialect).convertStatementToSQL(stmtCaptor.capture());
+
+    String expectedStmt = update(upgradeStatusTable).set(literal(UpgradeStatus.COMPLETED.name()).as(STATUS_COLUMN))
+         .where(upgradeStatusTable.field(STATUS_COLUMN).eq(UpgradeStatus.DATA_TRANSFER_IN_PROGRESS.name())).toString();
+
+    assertEquals("SQL", expectedStmt, stmtCaptor.getValue().toString());
   }
 
 
   /**
    * Verify that {@link UpgradeStatusTableService#writeStatusFromStatus(UpgradeStatus, UpgradeStatus)}
-   * from {@link UpgradeStatus#DATA_TRANSFER_REQUIRED} to {@link UpgradeStatus#COMPLETED} will delete
-   * the table.
+   * from {@link UpgradeStatus#DATA_TRANSFER_REQUIRED} to {@link UpgradeStatus#COMPLETED} will update
+   * the status of the table.
    */
   @Test
   public void testUpdateFromDataTransferRequiredToCompleted() {
     when(sqlScriptExecutor.executeQuery(any(), any())).thenReturn(UpgradeStatus.DATA_TRANSFER_REQUIRED);
     upgradeStatusTableService.writeStatusFromStatus(UpgradeStatus.DATA_TRANSFER_REQUIRED, UpgradeStatus.COMPLETED);
 
-    ArgumentCaptor<Table> tableCaptor = ArgumentCaptor.forClass(Table.class);
-    verify(sqlDialect).dropStatements(tableCaptor.capture());
-    assertEquals("Table", tableCaptor.getValue().getName(), UPGRADE_STATUS);
+    ArgumentCaptor<UpdateStatement> stmtCaptor = ArgumentCaptor.forClass(UpdateStatement.class);
+    verify(sqlDialect).convertStatementToSQL(stmtCaptor.capture());
+
+    String expectedStmt = update(upgradeStatusTable).set(literal(UpgradeStatus.COMPLETED.name()).as(STATUS_COLUMN))
+         .where(upgradeStatusTable.field(STATUS_COLUMN).eq(UpgradeStatus.DATA_TRANSFER_REQUIRED.name())).toString();
+
+    assertEquals("SQL", expectedStmt, stmtCaptor.getValue().toString());
   }
 
 
   /**
    * Verify that {@link UpgradeStatusTableService#writeStatusFromStatus(UpgradeStatus, UpgradeStatus)}
    * from {@link UpgradeStatus#DATA_TRANSFER_REQUIRED} to {@link UpgradeStatus#COMPLETED}
-   * fails when current status is not DATA_TRANSFER_REQUIRED
+   * returns 0 when current status is not DATA_TRANSFER_REQUIRED
    */
   @Test
   public void testUpdateFromDataTransferRequiredToCompletedFail() {
     when(sqlScriptExecutor.executeQuery(any(), any())).thenReturn(UpgradeStatus.DATA_TRANSFER_IN_PROGRESS);
 
-    try {
-      upgradeStatusTableService.writeStatusFromStatus(UpgradeStatus.DATA_TRANSFER_REQUIRED, UpgradeStatus.COMPLETED);
-      fail("Expected IllegalStateException");
-    } catch (IllegalStateException e) {
-      assertEquals("Message", "Cannot write status COMPLETED if current status is different: expected = [DATA_TRANSFER_REQUIRED]  current status = [DATA_TRANSFER_IN_PROGRESS]", e.getMessage());
-    }
+    int result = upgradeStatusTableService.writeStatusFromStatus(UpgradeStatus.DATA_TRANSFER_REQUIRED, UpgradeStatus.COMPLETED);
+    assertEquals("Result", 0 , result);
   }
 
 
@@ -290,6 +297,23 @@ public class TestUpgradeStatusTableServiceImpl {
       verify(sqlScriptExecutor, times(1)).execute(anyListOf(String.class));
       assertSame("Exception", triggeringException, e);
     }
+  }
+
+
+  /**
+   * Verify that {@link UpgradeStatusTableService#tidyUp(DataSource)} delete {@link UpgradeStatusTableService#UPGRADE_STATUS} table
+   * @throws SQLException if something goes wrong with the mocking.
+   */
+  @Test
+  public void testTidyUp() throws SQLException {
+    DataSource dataSource = mock(DataSource.class);
+    when(dataSource.getConnection()).thenReturn(mock(Connection.class));
+    
+    upgradeStatusTableService.tidyUp(dataSource);
+
+    ArgumentCaptor<Table> tableCaptor = ArgumentCaptor.forClass(Table.class);
+    verify(sqlDialect).dropStatements(tableCaptor.capture());
+    assertEquals("Table", tableCaptor.getValue().getName(), UPGRADE_STATUS);
   }
 }
 

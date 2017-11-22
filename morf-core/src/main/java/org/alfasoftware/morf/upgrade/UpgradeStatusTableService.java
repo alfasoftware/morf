@@ -17,6 +17,8 @@ package org.alfasoftware.morf.upgrade;
 
 import java.util.List;
 
+import javax.sql.DataSource;
+
 import com.google.inject.ImplementedBy;
 
 /**
@@ -47,15 +49,14 @@ public interface UpgradeStatusTableService {
   /**
    * Change the status of the upgrade, recording it in the temporary table.
    * This is performed atomically, and verifies the current status in the
-   * table. If the upgrade is complete, the table will be deleted.
+   * table.
    *
    * @param fromStatus the status that must be the current status for the write
    *          to be performed. If the current status in the transient table is not
    *          {@code fromStatus}, this method will not do anything.
    * @param toStatus the new status.
-   * @return the number of rows updated. Will return 0 if {@code toStatus} is {@link UpgradeStatus#COMPLETED}
-   *          or the current status does not match; and will be 1 if the update of the
-   *          status completed successfully.
+   * @return the number of rows updated. Will return 0 if the current status does not match;
+   *          and will be 1 if the update of the status completed successfully.
    */
   int writeStatusFromStatus(UpgradeStatus fromStatus, UpgradeStatus toStatus);
 
@@ -63,7 +64,7 @@ public interface UpgradeStatusTableService {
   /**
    * Generate the script needed to update the transient
    * <code>{@value UpgradeStatusTableService#UPGRADE_STATUS}</code> table
-   * for the required SQL platform. This may involve creating and dropping the
+   * for the required SQL platform. This may involve creating the
    * table, depending on {@code fromStatus} and {@code toStatus}.
    *
    * @param fromStatus the status that must be the current status for the write
@@ -82,5 +83,16 @@ public interface UpgradeStatusTableService {
    * @return the current status.
    */
   UpgradeStatus getStatus();
+
+
+  /**
+   * Tidy up the upgrade status table. This marks the upgrade procedure as complete, and further
+   * calls to {@link #getStatus()} will return {@code NONE}. As higher privileged connections
+   * may be needed to delete the <code>{@value UpgradeStatusTableService#UPGRADE_STATUS}</code> table,
+   * a data source must be provided.
+   *
+   * @param dataSource Data source to use.
+   */
+  void tidyUp(DataSource dataSource);
 }
 
