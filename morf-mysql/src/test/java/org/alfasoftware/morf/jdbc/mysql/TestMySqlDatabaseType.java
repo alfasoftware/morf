@@ -23,12 +23,12 @@ import java.sql.SQLException;
 
 import javax.sql.DataSource;
 
-import org.junit.Before;
-import org.junit.Test;
-
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.DatabaseTypeIdentifier;
 import org.alfasoftware.morf.jdbc.JdbcUrlElements;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.google.common.base.Optional;
 
 public class TestMySqlDatabaseType {
@@ -49,7 +49,7 @@ public class TestMySqlDatabaseType {
   public void testMySqlUrlFormatting() {
     assertEquals(
       "MySQL database url",
-      "jdbc:mysql://localhost/data?rewriteBatchedStatements=true",
+      "jdbc:mysql://localhost/data?rewriteBatchedStatements=true&useLegacyDatetimeCode=false",
       databaseType.formatJdbcUrl(
         JdbcUrlElements.forDatabaseType(MySql.IDENTIFIER)
           .withHost("localhost")

@@ -55,12 +55,13 @@ public final class MySql extends AbstractDatabaseType {
    */
   @Override
   public String formatJdbcUrl(JdbcUrlElements jdbcUrlElements) {
-    return "jdbc:mysql://" + jdbcUrlElements.getHostName() + (jdbcUrlElements.getPort() == 0 ? "" : ":" + jdbcUrlElements.getPort()) + "/" + jdbcUrlElements.getDatabaseName() + "?rewriteBatchedStatements=true";
+    return "jdbc:mysql://" + jdbcUrlElements.getHostName() + (jdbcUrlElements.getPort() == 0 ? "" : ":" + jdbcUrlElements.getPort()) + "/" + jdbcUrlElements.getDatabaseName()
+            + "?rewriteBatchedStatements=true&useLegacyDatetimeCode=false";
   }
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.DatabaseType#openSchema(Connection, String, String) 
+   * @see org.alfasoftware.morf.jdbc.DatabaseType#openSchema(Connection, String, String)
    */
   @Override
   public Schema openSchema(Connection connection, String databaseName, String schemaName) {
