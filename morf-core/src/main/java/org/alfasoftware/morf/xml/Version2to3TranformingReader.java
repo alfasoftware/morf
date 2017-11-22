@@ -110,7 +110,7 @@ class Version2to3TranformingReader extends Reader {
       if (cbuf[off+idx] == nullRefChars[0]) { // look for the ampersand
         // The first char matches.
         // Check whether the subsequent chars make up the ref
-        if (isNullCharacterReference(cbuf, off+idx, charsRead-idx)) {
+        if (isNullCharacterReference(cbuf, off+idx, charsRead-idx)) { // NOPMD This is more readable as it is.
           // we have a match
           int charsRemainingInBuffer = charsRead-idx-nullRefChars.length;
           if (charsRemainingInBuffer < 0) {

@@ -49,11 +49,6 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 
 import com.google.common.collect.ImmutableList;
 
@@ -117,14 +112,14 @@ public class TestXmlDataSetProducer {
     DataSetConsumer consumer = mock(DataSetConsumer.class);
 
     new DataSetConnector(producer, consumer).connect();
-    
+
     Mockito.verify(consumer).open();
-    
+
     ArgumentCaptor<Table> tableCaptor = ArgumentCaptor.forClass(Table.class);
     ArgumentCaptor<Iterable> iterableCaptor = ArgumentCaptor.forClass(Iterable.class);
-    
+
     Mockito.verify(consumer).table(tableCaptor.capture(), iterableCaptor.capture());
-    
+
     SchemaHomology schemaHomology = new SchemaHomology(new SchemaHomology.ThrowingDifferenceWriter());
     assertTrue(
       schemaHomology.tablesMatch(
@@ -139,7 +134,7 @@ public class TestXmlDataSetProducer {
         )
       )
     );
-    
+
     Mockito.verify(consumer).close(CloseState.COMPLETE);
   }
 
@@ -245,8 +240,8 @@ public class TestXmlDataSetProducer {
     assertTrue("last column is primary key", producer.getSchema().getTable("Test").columns().get(3).isPrimaryKey());
     producer.close();
   }
-  
-  
+
+
   /**
    * Test the reading of xml containing comments.
    */
@@ -256,12 +251,12 @@ public class TestXmlDataSetProducer {
     String input = SourceXML.readResource("testWithComments.xml");
     XmlDataSetProducer producer = new XmlDataSetProducer(new TestXmlInputStreamProvider(input, "Foo"));
     producer.open();
-    
+
     Table fooTable = producer.getSchema().getTable("Foo");
-    
+
     assertTrue(
       new SchemaHomology().tablesMatch(
-        fooTable, 
+        fooTable,
         table("Foo")
           .columns(
             column("id", DataType.BIG_INTEGER).primaryKey())
@@ -269,13 +264,13 @@ public class TestXmlDataSetProducer {
       );
 
     List<Record> records = ImmutableList.copyOf(producer.records("Foo"));
-    
+
     assertEquals("40646", records.get(0).getValue("id"));
     assertEquals("40641", records.get(3).getValue("id"));
-    
+
     producer.close();
   }
-  
+
   private void validateDataSetProducerWithNullsAndBackslashes(DataSetProducer dataSetProducer) {
     dataSetProducer.open();
     ImmutableList<Record> records = ImmutableList.copyOf(dataSetProducer.records("Foo"));
@@ -284,7 +279,7 @@ public class TestXmlDataSetProducer {
     assertEquals("escape\\it", records.get(2).getValue("val"));
     dataSetProducer.close();
   }
-  
+
   @Test
   public void testWithNullCharacterReferencesV2() {
     validateDataSetProducerWithNullsAndBackslashes(new XmlDataSetProducer(new TestXmlInputStreamProvider(readResource("testWithNullCharacterReferencesV2.xml"), "Foo")));
@@ -294,8 +289,8 @@ public class TestXmlDataSetProducer {
   public void testWithNullCharacterReferencesV3() {
     validateDataSetProducerWithNullsAndBackslashes(new XmlDataSetProducer(new TestXmlInputStreamProvider(readResource("testWithNullCharacterReferencesV3.xml"), "Foo")));
   }
-  
-  
+
+
 
   /**
    * Testing implementation to catch result XML.
@@ -305,7 +300,7 @@ public class TestXmlDataSetProducer {
   private static final class TestXmlInputStreamProvider implements XmlInputStreamProvider {
 
     private final String content;
-    private String tableName;
+    private final String tableName;
 
     /**
      * Creates the test instance.
@@ -318,7 +313,7 @@ public class TestXmlDataSetProducer {
       this.tableName = tableName;
     }
 
-    
+
     /**
      * Creates the test instance.
      *
@@ -328,7 +323,7 @@ public class TestXmlDataSetProducer {
       this(content, "Test");
     }
 
-    
+
     /**
      * @see org.alfasoftware.morf.xml.XmlStreamProvider#close()
      */
