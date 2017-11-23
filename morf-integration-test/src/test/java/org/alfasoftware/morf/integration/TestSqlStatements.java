@@ -79,6 +79,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -2466,10 +2469,17 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
       @Override
       public Void process(ResultSet resultSet) throws SQLException {
         resultSet.next();
-        log.info("Current system time: " + System.currentTimeMillis() + ". Current database time: " + resultSet.getTimestamp(1).getTime());
+
+        final long maximumDifferenceMillis = 2000;
+        final Instant currentSystemTime = Clock.systemUTC().instant();
+        final Instant databaseTime = resultSet.getTimestamp(1).toInstant();
+        final long differenceMillis = Duration.between(currentSystemTime, databaseTime).abs().toMillis();
+
+        log.info("Current system time: " + currentSystemTime + ". Current database time: " + databaseTime);
 
         //Assert that the time of the database and system are accurate within 2 s.
-        assertEquals("Database and system times don't match - this could be because of different timezones.", resultSet.getTimestamp(1).getTime(), System.currentTimeMillis(), 2000);
+        assertTrue("Database and system times don't match to within 2 s, the difference is " + differenceMillis + " ms. "
+            + "This could be because of different timezones.", differenceMillis <= maximumDifferenceMillis);
         assertFalse("More than one record", resultSet.next());
         return null;
       }
