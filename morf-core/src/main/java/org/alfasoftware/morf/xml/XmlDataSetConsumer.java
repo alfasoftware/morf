@@ -219,7 +219,7 @@ public class XmlDataSetConsumer implements DataSetConsumer {
               // We also, consequently, have to escape backslashes as \\
               // can't use String::replace as it doesn't like null characters
               int last = 0;
-              StringBuilder escapedValue = new StringBuilder();
+              StringBuilder escapedValue = new StringBuilder(value.length());
               for (int i=0; i<value.length(); i++) {
                 if (value.charAt(i) == 0) {
                   escapedValue.append(value.substring(last, i));
