@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?><table version="3">
+  <metadata name="TestTable">
+    <column name="x" type="STRING" width="10" primaryKey="true"/>
+    <column name="y" type="STRING" width="10" nullable="true"/>
+  </metadata>
+  <data>
+    <record x="1" y="ABC" />
+    <record x="2" />
+  </data>
+</table>

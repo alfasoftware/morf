@@ -265,18 +265,36 @@ public class TestXmlDataSetProducer {
 
     List<Record> records = ImmutableList.copyOf(producer.records("Foo"));
 
-    assertEquals("40646", records.get(0).getValue("id"));
-    assertEquals("40641", records.get(3).getValue("id"));
+    assertEquals(40646L, records.get(0).getLong("id").longValue());
+    assertEquals(40641L, records.get(3).getLong("id").longValue());
 
     producer.close();
   }
 
+  @Test
+  public void testPartialData() throws IOException {
+    String input = SourceXML.readResource("testPartialData.xml");
+    XmlDataSetProducer producer = new XmlDataSetProducer(new TestXmlInputStreamProvider(input, "TestTable"));
+    producer.open();
+
+    List<Record> records = ImmutableList.copyOf(producer.records("TestTable"));
+
+    assertEquals("1", records.get(0).getString("x"));
+    assertEquals("2", records.get(1).getString("x"));
+
+    assertEquals("ABC", records.get(0).getString("y"));
+    assertEquals(null, records.get(1).getString("y"));
+
+    producer.close();
+  }
+
+
   private void validateDataSetProducerWithNullsAndBackslashes(DataSetProducer dataSetProducer) {
     dataSetProducer.open();
     ImmutableList<Record> records = ImmutableList.copyOf(dataSetProducer.records("Foo"));
-    assertEquals(new String(new char[] {'A', 0 /*null*/, 'C'}), records.get(0).getValue("val"));
-    assertEquals(new String(new char[] { 0 /*null*/ }), records.get(1).getValue("val"));
-    assertEquals("escape\\it", records.get(2).getValue("val"));
+    assertEquals(new String(new char[] {'A', 0 /*null*/, 'C'}), records.get(0).getString("val"));
+    assertEquals(new String(new char[] { 0 /*null*/ }), records.get(1).getString("val"));
+    assertEquals("escape\\it", records.get(2).getString("val"));
     dataSetProducer.close();
   }
 
@@ -290,6 +308,13 @@ public class TestXmlDataSetProducer {
     validateDataSetProducerWithNullsAndBackslashes(new XmlDataSetProducer(new TestXmlInputStreamProvider(readResource("testWithNullCharacterReferencesV3.xml"), "Foo")));
   }
 
+
+  @Test
+  public void testUnescapeCharacters() {
+    assertEquals("ABCDEF", XmlDataSetProducer.unescapeCharacters("ABCDEF"));
+    assertEquals(new String(new char[] {'A', 'B', 'C', 0, 'D', 'E', 'F'}), XmlDataSetProducer.unescapeCharacters("ABC\\0DEF"));
+    assertEquals("AB\\CD\\EF", XmlDataSetProducer.unescapeCharacters("AB\\\\CD\\\\EF"));
+  }
 
 
   /**

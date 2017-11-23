@@ -955,8 +955,6 @@ public class XmlDataSetProducer implements DataSetProducer {
    */
   private static class PullProcessorRecordIterator extends XmlPullProcessor implements Iterator<Record> {
 
-    private static final CharSequence NULL_CHARACTER = new String(new char[] { 0 /* null */ });
-
     /**
      * Stores the column names we need to provide values for.
      */
@@ -1013,14 +1011,7 @@ public class XmlDataSetProducer implements DataSetProducer {
         // Buffer this record
         RecordBuilder result = DataSetUtils.record();
         for (String columnName : columnNames) {
-          String attributeValue = xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, columnName);
-
-          // deal with escaping...
-          String columnValue = attributeValue
-            .replace("\\\\", "\\")
-            .replace("\\0", NULL_CHARACTER);
-
-          result.setString(columnName.toUpperCase(), columnValue);
+          result.setString(columnName.toUpperCase(), unescapeCharacters(xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, columnName)));
         }
 
         // Is there another
@@ -1033,6 +1024,8 @@ public class XmlDataSetProducer implements DataSetProducer {
     }
 
 
+
+
     /**
      * @see java.util.Iterator#remove()
      */
@@ -1040,5 +1033,43 @@ public class XmlDataSetProducer implements DataSetProducer {
     public void remove() {
       throw new UnsupportedOperationException("Cannot remove item from a record iterator");
     }
+  }
+
+  /**
+   * Un-  escape strings from XML format back to internal format:
+   * \0 -> 0
+   * \\ -> \
+   */
+  static String unescapeCharacters(String attributeValue) {
+    if (attributeValue == null) return null;
+
+    char[] attributeChars = attributeValue.toCharArray();
+    StringBuilder result = new StringBuilder(attributeChars.length);
+    int from = 0;
+    int len = 0;
+    int i = 0;
+
+    while (i < attributeChars.length) {
+
+      // look for the escape character
+      if (attributeChars[i] == '\\') {
+        result.append(attributeChars, from, len);
+        len = 0;
+        from = i+2;
+
+        switch(attributeChars[i+1]) {
+          case '\\' : result.append('\\'); break;
+          case '0'    : result.append((char) 0); break;
+          default: throw new IllegalStateException("Illegal escape sequence at char [" + i + "] in [" + attributeValue + "]");
+        }
+        i++;
+      } else {
+        len++;
+      }
+      i++;
+    }
+
+    result.append(attributeChars, from, len);
+    return result.toString();
   }
 }

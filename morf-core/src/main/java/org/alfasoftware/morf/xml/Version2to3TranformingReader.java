@@ -7,7 +7,12 @@ import java.io.Reader;
 /**
  * Tranforms version 2 XML format into version 3.
  *
- * <p>This essentially involves replacing (illegal) &#0; character references with \0 - the v3 representation of a null character.</p>
+ * <p>This essentially involves replacing:
+ * <ol>
+ * <li>(illegal) &amp;#0; character references with \0 - the v3 representation of a null character.</li>
+ * <li>Single backslash characters with double backslashes.</li>
+ * </ol>
+ * </p>
  */
 class Version2to3TranformingReader extends Reader {
 

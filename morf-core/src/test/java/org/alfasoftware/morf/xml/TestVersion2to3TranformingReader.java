@@ -125,6 +125,9 @@ public class TestVersion2to3TranformingReader {
     runTest("6 An \\0 should be transformed", ImmutableList.of("6 An &#", "0", ";", " should be transformed"));
     runTest("7 An \\0 should be transformed", ImmutableList.of("7 An &#", "0;", " should be transformed"));
     runTest("8 Multiple \\0 transforms \\0 needed", ImmutableList.of("8 ", "Multiple &#0; transforms &#0; needed"));
+    runTest("9 A single \\\\ should be transformed", ImmutableList.of("9 A single \\ should be transformed"));
+    runTest("9 A single \\\\ should be transformed", ImmutableList.of("9 A single \\", " should be transformed"));
+    runTest("9 A single \\\\ should be transformed", ImmutableList.of("9 A single ", "\\ should be transformed"));
   }
 
 
