@@ -19,7 +19,7 @@ class Version2to3TranformingReader extends Reader {
   private final BufferedReader delegateReader;
   private char[] temporary = new char[] {};
   private static final char[] nullRefChars = "&#0;".toCharArray();
-
+  private int skipChars;
 
   /**
    * Construct the transform given a buffered reader.
@@ -111,43 +111,66 @@ class Version2to3TranformingReader extends Reader {
     }
 
     // now search for the string we're replacing
-    for (int idx=0; idx<charsRead; idx++) {
-      if (cbuf[off+idx] == nullRefChars[0]) { // look for the ampersand
+    for (int idx = 0; idx < charsRead; idx++) {
+      // we need to skip chars if we've put a backslash in the output
+      if (skipChars > 0) {
+        skipChars--;
+        continue;
+      }
+
+      char testChar = cbuf[off + idx];
+
+      if (testChar == nullRefChars[0]) { // look for the ampersand
         // The first char matches.
         // Check whether the subsequent chars make up the ref
-        if (isNullCharacterReference(cbuf, off+idx, charsRead-idx)) { // NOPMD This is more readable as it is.
-          // we have a match
-          int charsRemainingInBuffer = charsRead-idx-nullRefChars.length;
-          if (charsRemainingInBuffer < 0) {
-            // can be less than zero if we read past the end of this buffer and into the next
-            charsRemainingInBuffer = 0;
-          }
-
-          // Create a temporary buffer to hold the remainder of the buffer we haven't yet scanned
-          // There might be an existing temporary buffer, in which case keep that too.
-          char[] newTemporary = new char[2+charsRemainingInBuffer+temporary.length];
-
-          // write the escaped null
-          newTemporary[0] = '\\';
-          newTemporary[1] = '0';
-
-          // copy in what's left
-          System.arraycopy(cbuf, off+idx+nullRefChars.length, newTemporary, 2, charsRemainingInBuffer);
-
-          // keep any existing buffer
-          System.arraycopy(temporary, 0, newTemporary, 2+charsRemainingInBuffer, temporary.length);
-
-          temporary = newTemporary;
-
-          // truncate the returned output to where we've got to
-          return idx;
+        if (isNullCharacterReference(cbuf, off + idx, charsRead - idx)) { // NOPMD This is more readable as it is.
+          return processEscape(cbuf, off, charsRead, idx, nullRefChars.length, '0');
         }
+      }
+
+      if (testChar == '\\') { // this gets escaped to a double-backslash
+        return processEscape(cbuf, off, charsRead, idx, 1, '\\');
       }
     }
 
     // If we got here we found no matches to replace, so we can just return the buffer as read.
     // This is the common path
     return charsRead;
+  }
+
+
+  /**
+   * @param cbuf The output buffer
+   * @param off the current root output
+   * @param charsRead the number of chars read from the input buffer
+   * @param idx The current scan index in the input buffer
+   * @param sequenceLength The length of the sequence we're replacing
+   * @param outputChar The output char in the escape sequence
+   * @return The number of
+   */
+  private int processEscape(char[] cbuf, int off, int charsRead, int idx, int sequenceLength, char outputChar) {
+    // can be less than zero if we read past the end of this buffer and into the next
+    int charsRemainingInBuffer = Math.max(charsRead - idx - sequenceLength, 0);
+
+    // Create a temporary buffer to hold the remainder of the buffer we haven't yet scanned
+    // There might be an existing temporary buffer, in which case keep that too.
+    char[] newTemporary = new char[2 + charsRemainingInBuffer + temporary.length];
+
+    // write the escaped null
+    newTemporary[0] = '\\';
+    newTemporary[1] = outputChar;
+
+    // copy in what's left
+    System.arraycopy(cbuf, off + idx + sequenceLength, newTemporary, 2, charsRemainingInBuffer);
+
+    // keep any existing buffer
+    System.arraycopy(temporary, 0, newTemporary, 2 + charsRemainingInBuffer, temporary.length);
+
+    temporary = newTemporary;
+    skipChars = 2;
+
+    // truncate the returned output to where we've got to
+    return idx;
   }
 
 
