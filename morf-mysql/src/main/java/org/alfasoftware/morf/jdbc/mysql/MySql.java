@@ -56,7 +56,7 @@ public final class MySql extends AbstractDatabaseType {
   @Override
   public String formatJdbcUrl(JdbcUrlElements jdbcUrlElements) {
     return "jdbc:mysql://" + jdbcUrlElements.getHostName() + (jdbcUrlElements.getPort() == 0 ? "" : ":" + jdbcUrlElements.getPort()) + "/" + jdbcUrlElements.getDatabaseName()
-            + "?rewriteBatchedStatements=true&useLegacyDatetimeCode=false";
+            + "?rewriteBatchedStatements=true&useJDBCCompliantTimezoneShift=true";
   }
 
 

@@ -49,7 +49,7 @@ public class TestMySqlDatabaseType {
   public void testMySqlUrlFormatting() {
     assertEquals(
       "MySQL database url",
-      "jdbc:mysql://localhost/data?rewriteBatchedStatements=true&useLegacyDatetimeCode=false",
+      "jdbc:mysql://localhost/data?rewriteBatchedStatements=true&useJDBCCompliantTimezoneShift=true",
       databaseType.formatJdbcUrl(
         JdbcUrlElements.forDatabaseType(MySql.IDENTIFIER)
           .withHost("localhost")
