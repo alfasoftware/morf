@@ -131,7 +131,7 @@ public class Upgrade {
     } catch (NoUpgradePathExistsException e) {
       log.debug("No upgrade path found - checking upgrade status", e);
       UpgradeStatus status = upgradeStatusTableService.getStatus();
-      if (status == UpgradeStatus.IN_PROGRESS) {
+      if (status != UpgradeStatus.NONE) {
         log.info("Schema differences found, but upgrade in progress - no action required until upgrade is complete");
         return new UpgradePath(status);
       } else {

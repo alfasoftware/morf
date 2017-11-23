@@ -654,6 +654,27 @@ public class TestUpgrade {
    */
   @Test
   public void testInProgressUpgrade() throws SQLException {
+    assertInProgressUpgrade(UpgradeStatus.IN_PROGRESS);
+  }
+
+
+  /**
+   * Test that if the upgrade has completed an "in progress" path is returned.
+   */
+  @Test
+  public void testCompletedUpgrade() throws SQLException {
+    assertInProgressUpgrade(UpgradeStatus.COMPLETED);
+  }
+
+
+  /**
+   * Allow verification of an in-progress upgrade. The {@link UpgradePath}
+   * should report no steps to apply and that it is in-progress.
+   *
+   * @param currentStatus Status to be represented.
+   * @throws SQLException if something goes wrong.
+   */
+  private void assertInProgressUpgrade(UpgradeStatus currentStatus) throws SQLException {
     Schema sourceSchema = schema(
       schema(upgradeAudit(), deployedViews(), originalCar())
     );
@@ -677,7 +698,7 @@ public class TestUpgrade {
                                               withResultSet("SELECT name, hash FROM DeployedViews", viewResultSet).
                                               create();
     UpgradeStatusTableService upgradeStatusTableService = mock(UpgradeStatusTableService.class);
-    when(upgradeStatusTableService.getStatus()).thenReturn(UpgradeStatus.IN_PROGRESS);
+    when(upgradeStatusTableService.getStatus()).thenReturn(currentStatus);
 
     UpgradePath path = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService).findPath(targetSchema, upgradeSteps, new HashSet<String>());
     assertFalse("Steps to apply", path.hasStepsToApply());
