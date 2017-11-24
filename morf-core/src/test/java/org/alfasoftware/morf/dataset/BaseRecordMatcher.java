@@ -21,11 +21,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.alfasoftware.morf.metadata.Column;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -35,7 +35,7 @@ import org.hamcrest.Matcher;
  */
 public final class BaseRecordMatcher extends BaseMatcher<Record> {
 
-  private static final Log log = LogFactory.getLog(BaseRecordMatcher.class);
+  private static final Logger log = LoggerFactory.getLogger(BaseRecordMatcher.class);
 
   // If you find yourself wondering why we store these separately, it's so that we can
   // check the matches using getValue() and getObject().  getObject() will not have been

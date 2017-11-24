@@ -18,11 +18,11 @@ import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
 import org.alfasoftware.morf.metadata.DataSetUtils.RecordDecorator;
 import org.apache.commons.lang.math.RandomUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.joda.time.LocalDate;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -40,7 +40,7 @@ public class TestDataSetUtilsVolume {
   private static final int POOL_SIZE = 32;
   private static final int QUEUE_DEPTH = 128;
 
-  private static final Log log = LogFactory.getLog(TestDataSetUtilsVolume.class);
+  private static final Logger log = LoggerFactory.getLogger(TestDataSetUtilsVolume.class);
 
   private static final String INTEGER_COLUMN = "A";
   private static final String STRING_COLUMN = "B";
