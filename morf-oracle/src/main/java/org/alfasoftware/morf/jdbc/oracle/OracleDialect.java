@@ -930,7 +930,7 @@ class OracleDialect extends SqlDialect {
    */
   @Override
   protected String getSqlForNow(Function function) {
-    return "SYS_EXTRACT_UTC(SYSTIMESTAMP)";
+    return "SYSTIMESTAMP AT TIME ZONE 'UTC'";
   }
 
 
