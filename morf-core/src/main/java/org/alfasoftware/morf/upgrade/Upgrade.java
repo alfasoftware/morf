@@ -107,6 +107,12 @@ public class Upgrade {
   public UpgradePath findPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, Collection<String> exceptionRegexes) {
     final List<String> upgradeStatements = new ArrayList<>();
 
+    //Return an upgradePath with the current upgrade status if one is in progress
+    UpgradeStatus status = upgradeStatusTableService.getStatus();
+    if (upgradeStatusTableService.getStatus() != UpgradeStatus.NONE) {
+      return new UpgradePath(status);
+    }
+
     // -- Validate the target schema...
     //
     new SchemaValidator().validate(targetSchema);
@@ -130,7 +136,7 @@ public class Upgrade {
       schemaChangeSequence = pathFinder.determinePath(sourceSchema, targetSchema, exceptionRegexes);
     } catch (NoUpgradePathExistsException e) {
       log.debug("No upgrade path found - checking upgrade status", e);
-      UpgradeStatus status = upgradeStatusTableService.getStatus();
+      status = upgradeStatusTableService.getStatus();
       if (status != UpgradeStatus.NONE) {
         log.info("Schema differences found, but upgrade in progress - no action required until upgrade is complete");
         return new UpgradePath(status);
