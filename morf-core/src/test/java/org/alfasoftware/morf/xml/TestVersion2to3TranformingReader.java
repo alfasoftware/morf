@@ -161,6 +161,13 @@ public class TestVersion2to3TranformingReader {
     }
 
     try (BufferedReader reader = new BufferedReader(new StringReader(
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?><table version=\"2\">\n" +
+      "<metadata name=\"FloatingRateDetail\">\n"
+    ))) {
+      Assert.assertTrue("version 2", Version2to3TranformingReader.shouldApplyTransform(reader));
+    }
+
+    try (BufferedReader reader = new BufferedReader(new StringReader(
       "foo"
     ))) {
       Assert.assertFalse(Version2to3TranformingReader.shouldApplyTransform(reader));

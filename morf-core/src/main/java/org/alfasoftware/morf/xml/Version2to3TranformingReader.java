@@ -49,27 +49,19 @@ class Version2to3TranformingReader extends Reader {
    */
   static boolean shouldApplyTransform(BufferedReader bufferedReader) {
     try {
-      bufferedReader.mark(100); // arbitrary read-ahead limit of 100 - that's enough to get the info we want
+      bufferedReader.mark(1024); // arbitrary read-ahead limit - that's enough to get the info we want
       try {
-        {
-          String line = bufferedReader.readLine();
-          // the first line is probably the xml declaration
-          boolean isXmlDeclaration = line.startsWith("<?xml") && line.endsWith("?>");
-          if (!isXmlDeclaration) {
-            return false;
-          }
-        }
-        {
-          String line = bufferedReader.readLine();
-          // the next line is probably the table element
-          boolean isTableElement = line.startsWith("<table version");
-          if (!isTableElement) {
-            return false;
-          }
+        char[] buffer = new char[1024];
 
-          // Apply the transform if the version number is 2 or 1
-          return line.contains("version=\"2\"") || line.contains("version=\"1\"");
+        int read = bufferedReader.read(buffer);
+        if (read == -1) {
+          return false;
         }
+
+        String content = new String(buffer, 0, read);
+
+        // Apply the transform if the version number is 2 or 1
+        return content.contains("table version=\"2\"") || content.contains("table version=\"1\"");
 
       } finally {
         bufferedReader.reset();
