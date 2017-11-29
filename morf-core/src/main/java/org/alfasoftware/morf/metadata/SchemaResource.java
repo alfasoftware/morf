@@ -18,17 +18,21 @@ package org.alfasoftware.morf.metadata;
 /**
  * Provides database meta data.
  *
- * <p>Like other database resources sche can implement a
+ * <p>Like other database resources, schema can implement a
  * {@link #close()} operation. Consumers of this resource are obliged to
- * call {@link #close()} to guarantee all resources are released.</p>
+ * call {@link #close()} to guarantee all resources are released,
+ * or use try-with-resources.</p>
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-public interface SchemaResource extends Schema {
+public interface SchemaResource extends Schema, AutoCloseable {
 
   /**
    * Closes the resource.
+   *
+   * <p>No specific checked exception is thrown by implementers.</p>
    */
-  public void close();
+  @Override
+  void close();
 
 }
