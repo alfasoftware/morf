@@ -132,6 +132,9 @@ public class Upgrade {
     ExistingTableStateLoader existingTableState = new ExistingTableStateLoader(dataSource, dialect);
     UpgradePathFinder pathFinder = new UpgradePathFinder(upgradeSteps, existingTableState.loadAppliedStepUUIDs());
     SchemaChangeSequence schemaChangeSequence;
+    if (upgradeStatusTableService.getStatus() != UpgradeStatus.NONE) {
+      return new UpgradePath(status);
+    }
     try {
       schemaChangeSequence = pathFinder.determinePath(sourceSchema, targetSchema, exceptionRegexes);
     } catch (NoUpgradePathExistsException e) {
