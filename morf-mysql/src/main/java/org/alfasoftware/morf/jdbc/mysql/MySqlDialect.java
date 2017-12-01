@@ -30,7 +30,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -55,7 +54,6 @@ import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.SqlParameter;
-import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
@@ -541,28 +539,6 @@ class MySqlDialect extends SqlDialect {
     }
 
     return result.toString().trim();
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#buildAutonumberUpdate(org.alfasoftware.morf.sql.element.TableReference, java.lang.String, java.lang.String, java.lang.String, java.lang.String)
-   */
-  @Override
-  public List<String> buildAutonumberUpdate(TableReference dataTable, String fieldName, String idTableName, String nameColumn,
-      String valueColumn) {
-    List<String> sql = new LinkedList<>();
-
-    String existingSelect = getExistingMaxAutoNumberValue(dataTable, fieldName);
-    String tableName = getAutoNumberName(dataTable.getName());
-
-    if (tableName.equals("autonumber")) {
-      return sql;
-    }
-
-    sql.add(String.format("INSERT IGNORE INTO %s%s (%s, %s) VALUES('%s', 1)", schemaNamePrefix(), idTableName, nameColumn, valueColumn, tableName));
-    sql.add(String.format("UPDATE %s%s set %s = (%s) where %s = '%s' and %s < (%s) and (%s) <> 1", schemaNamePrefix(), idTableName, valueColumn, existingSelect, nameColumn, tableName, valueColumn, existingSelect, existingSelect));
-
-    return sql;
   }
 
 

@@ -25,7 +25,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -371,25 +370,6 @@ class NuoDBDialect extends SqlDialect {
   @Override
   protected String getSqlForIsNull(Function function) {
     return "COALESCE(" + getSqlFrom(function.getArguments().get(0)) + ", " + getSqlFrom(function.getArguments().get(1)) + ") ";
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#buildAutonumberUpdate(org.alfasoftware.morf.sql.element.TableReference, java.lang.String, java.lang.String, java.lang.String, java.lang.String)
-   */
-  @Override
-  public List<String> buildAutonumberUpdate(TableReference dataTable, String fieldName, String idTableName, String nameColumn, String valueColumn) {
-    String existingSelect = getExistingMaxAutoNumberValue(dataTable, fieldName);
-    String tableName = getAutoNumberName(dataTable.getName());
-
-    if (tableName.equals("autonumber")) {
-      return Collections.emptyList();
-    }
-
-    return ImmutableList.of(
-      String.format("INSERT INTO %s%s (%s, %s) VALUES('%s', (%s)) ON DUPLICATE KEY UPDATE nextValue = GREATEST(nextValue, VALUES(nextValue))",
-        schemaNamePrefix(), idTableName, nameColumn, valueColumn, tableName, existingSelect)
-    );
   }
 
 

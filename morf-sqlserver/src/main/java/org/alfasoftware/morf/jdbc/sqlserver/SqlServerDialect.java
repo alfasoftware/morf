@@ -48,7 +48,6 @@ import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
-import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.apache.commons.lang.StringUtils;
 import org.joda.time.LocalDate;
@@ -464,49 +463,6 @@ class SqlServerDialect extends SqlDialect {
     } else {
       return name;
     }
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#buildAutonumberUpdate(org.alfasoftware.morf.sql.element.TableReference, java.lang.String, java.lang.String, java.lang.String, java.lang.String)
-   */
-  @Override
-  public List<String> buildAutonumberUpdate(TableReference dataTable, String fieldName, String tableName, String nameColumn,
-    String valueColumn) {
-    String autoNumberName = getAutoNumberName(dataTable.getName());
-
-    if (autoNumberName.equals("autonumber")) {
-      return new ArrayList<>();
-    }
-
-    StringBuilder sql = new StringBuilder();
-    sql.append("MERGE INTO ");
-    sql.append(schemaNamePrefix());
-    sql.append(tableName);
-    sql.append(" A ");
-    sql.append("USING (");
-    sql.append(getExistingMaxAutoNumberValue(dataTable, fieldName));
-    sql.append(") S ");
-    sql.append("ON (A.");
-    sql.append(nameColumn);
-    sql.append(" = '");
-    sql.append(autoNumberName);
-    sql.append("') ");
-    sql.append("WHEN MATCHED THEN UPDATE SET A.");
-    sql.append(valueColumn);
-    sql.append(" = CASE WHEN S.CurrentValue > A.");
-    sql.append(valueColumn);
-    sql.append(" THEN S.CurrentValue ELSE A.");
-    sql.append(valueColumn);
-    sql.append(" END WHEN NOT MATCHED THEN INSERT (");
-    sql.append(nameColumn);
-    sql.append(", ");
-    sql.append(valueColumn);
-    sql.append(") VALUES ('");
-    sql.append(autoNumberName);
-    sql.append("', S.CurrentValue);");
-
-    return ImmutableList.of(sql.toString());
   }
 
 

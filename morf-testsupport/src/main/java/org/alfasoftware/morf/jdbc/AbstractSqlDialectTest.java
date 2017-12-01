@@ -4088,28 +4088,6 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Test the merge statement for repairing autonumbers.
-   */
-  @SuppressWarnings("unchecked")
-  @Test
-  public void testBuildAutonumberUpdate() {
-    List<String> result = testDialect.buildAutonumberUpdate(new TableReference("TestTable"), "id", "Autonumber", "id", "value");
-    compareStatements(expectedAutonumberUpdate(), result);
-  }
-
-
-  /**
-   * Test the merge statement for repairing autonumbers for a column which isn't called 'id'.
-   */
-  @SuppressWarnings("unchecked")
-  @Test
-  public void testBuildAutonumberUpdateForNonIdColumn() {
-    List<String> result = testDialect.buildAutonumberUpdate(new TableReference("TestTable"), "generatedColumn", "Autonumber", "id", "value");
-    compareStatements(expectedAutonumberUpdateForNonIdColumn(), result);
-  }
-
-
-  /**
    * Tests a join with no ON criteria.
    */
   @Test
