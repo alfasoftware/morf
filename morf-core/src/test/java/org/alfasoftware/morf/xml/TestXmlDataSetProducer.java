@@ -21,6 +21,7 @@ import static org.alfasoftware.morf.xml.SourceXML.readResource;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 
 import java.io.ByteArrayInputStream;
@@ -50,6 +51,7 @@ import org.junit.rules.TemporaryFolder;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
+import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
 
 /**
@@ -289,6 +291,23 @@ public class TestXmlDataSetProducer {
   }
 
 
+  @Test
+  public void testFutureFormatFails() throws IOException {
+    String input = SourceXML.readResource("testFutureFormatFails.xml");
+    XmlDataSetProducer producer = new XmlDataSetProducer(new TestXmlInputStreamProvider(input, "TestTable"));
+    producer.open();
+
+    try {
+      ImmutableList.copyOf(producer.records("TestTable"));
+      fail();
+    } catch(IllegalStateException ise) {
+      // ok
+    } finally {
+      producer.close();
+    }
+  }
+
+
   private void validateDataSetProducerWithNullsAndBackslashes(DataSetProducer dataSetProducer) {
     dataSetProducer.open();
     ImmutableList<Record> records = ImmutableList.copyOf(dataSetProducer.records("Foo"));
@@ -298,10 +317,12 @@ public class TestXmlDataSetProducer {
     dataSetProducer.close();
   }
 
+
   @Test
   public void testWithNullCharacterReferencesV2() {
     validateDataSetProducerWithNullsAndBackslashes(new XmlDataSetProducer(new TestXmlInputStreamProvider(readResource("testWithNullCharacterReferencesV2.xml"), "Foo")));
   }
+
 
   @Test
   public void testWithNullCharacterReferencesV3() {
@@ -310,10 +331,26 @@ public class TestXmlDataSetProducer {
 
 
   @Test
-  public void testUnescapeCharacters() {
-    assertEquals("ABCDEF", XmlDataSetProducer.unescapeCharacters("ABCDEF"));
-    assertEquals(new String(new char[] {'A', 'B', 'C', 0, 'D', 'E', 'F'}), XmlDataSetProducer.unescapeCharacters("ABC\\0DEF"));
-    assertEquals("AB\\CD\\EF", XmlDataSetProducer.unescapeCharacters("AB\\\\CD\\\\EF"));
+  public void testWithUnusualCharacters() {
+    XmlDataSetProducer dataSetProducer = new XmlDataSetProducer(new TestXmlInputStreamProvider(readResource("testWithUnusualCharacters.xml"), "testWithUnusualCharacters"));
+    dataSetProducer.open();
+    try {
+      ImmutableList<Record> r = ImmutableList.copyOf(dataSetProducer.records("testWithUnusualCharacters"));
+
+      assertEquals("\u0000", r.get(0).getString("characterValue"));
+      assertEquals("&", r.get(38).getString("characterValue"));
+      assertEquals(">", r.get(62).getString("characterValue"));
+      assertEquals("A", r.get(65).getString("characterValue"));
+      assertEquals("\n", r.get(10).getString("characterValue"));
+      assertEquals("\r", r.get(13).getString("characterValue"));
+
+      assertEquals("\ufffd", r.get(344).getString("characterValue"));
+      assertEquals("\ufffe", r.get(345).getString("characterValue"));
+      assertEquals("\uffff", r.get(346).getString("characterValue"));
+
+    } finally {
+      dataSetProducer.close();
+    }
   }
 
 
@@ -371,7 +408,7 @@ public class TestXmlDataSetProducer {
     @Override
     public InputStream openInputStreamForTable(String tableName) {
       assertEquals("Table name", this.tableName.toUpperCase(), tableName.toUpperCase());
-      return new ByteArrayInputStream(content.getBytes());
+      return new ByteArrayInputStream(content.getBytes(Charsets.UTF_8));
     }
 
     /**

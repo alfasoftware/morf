@@ -212,7 +212,8 @@ public class TestXmlDataSetConsumer {
       record().setString("x", "foo"),
       record().setString("x", new String(new char[] {'a', 0, 'c'})),
       record().setString("x", new String(new char[] {0})),
-      record().setString("x", "string with a \\ in it")
+      record().setString("x", "string with a \\ in it"),
+      record().setString("x", "some \r valid \n things \t in this one")
     );
 
     testConsumer.table(testTable, records);

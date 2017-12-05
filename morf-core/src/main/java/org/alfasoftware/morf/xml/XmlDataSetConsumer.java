@@ -62,7 +62,7 @@ public class XmlDataSetConsumer implements DataSetConsumer {
   /**
    * The format version we are writing
    */
-  private static final String FORMAT_VERSION = "3";
+  private static final String FORMAT_VERSION = "4";
 
   /**
    * Controls the behaviour of the consumer when running against a directory.
@@ -215,26 +215,12 @@ public class XmlDataSetConsumer implements DataSetConsumer {
             String value = getValue(record, column, table.getName());
 
             if (value != null) {
-              // Escape any null characters - these aren't valid XML so in format version 3 we escape these as \0
-              // We also, consequently, have to escape backslashes as \\
-              // can't use String::replace as it doesn't like null characters
-              int last = 0;
-              StringBuilder escapedValue = new StringBuilder(value.length());
-              for (int i=0; i<value.length(); i++) {
-                if (value.charAt(i) == 0) {
-                  escapedValue.append(value.substring(last, i));
-                  escapedValue.append("\\0");
-                  last=i+1;
-                }
-                if (value.charAt(i) == '\\') {
-                  escapedValue.append(value.substring(last, i));
-                  escapedValue.append("\\\\");
-                  last=i+1;
-                }
-              }
-              escapedValue.append(value.substring(last, value.length()));
-
-              rowValueAttributes.addAttribute(XmlDataSetNode.URI, column.getName(), column.getName(), XmlDataSetNode.STRING_TYPE, escapedValue.toString());
+              rowValueAttributes.addAttribute(
+                XmlDataSetNode.URI,
+                column.getName(),
+                column.getName(),
+                XmlDataSetNode.STRING_TYPE,
+                Escaping.escapeCharacters(value));
             }
           }
 

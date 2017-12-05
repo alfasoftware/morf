@@ -36,7 +36,7 @@ class SourceXML {
   public static String FULL_SAMPLE =
 
     "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
-    "<table version=\"3\">\n" +
+    "<table version=\"4\">\n" +
     "  <metadata name=\"Test\">\n" +
     "    <column name=\"id\" type=\"BIG_INTEGER\" primaryKey=\"true\" autoNum=\"123\"/>\n" +
     "    <column name=\"version\" type=\"INTEGER\" default=\"0\" nullable=\"true\"/>\n" +
@@ -57,7 +57,7 @@ class SourceXML {
   public static String MASKED_SAMPLE =
 
     "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
-    "<table version=\"3\">\n" +
+    "<table version=\"4\">\n" +
     "  <metadata name=\"Test\">\n" +
     "    <column name=\"id\" type=\"BIG_INTEGER\" primaryKey=\"true\" autoNum=\"123\"/>\n" +
     "    <column name=\"version\" type=\"INTEGER\" default=\"0\" nullable=\"true\"/>\n" +
@@ -97,7 +97,7 @@ class SourceXML {
   public static String FULL_SAMPLE_V1_UPGRADED =
 
     "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
-        "<table version=\"3\">\n" +
+        "<table version=\"4\">\n" +
         "  <metadata name=\"Test\">\n" +
         "    <column name=\"id\" type=\"BIG_INTEGER\" primaryKey=\"true\"/>\n" +
         "    <column name=\"version\" type=\"INTEGER\" default=\"0\" nullable=\"true\"/>\n" +
@@ -117,7 +117,7 @@ class SourceXML {
   public static String REDUCED_SAMPLE =
 
     "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
-    "<table version=\"2\">\n" +
+    "<table version=\"4\">\n" +
     "  <metadata name=\"Test\">\n" +
     "    <column name=\"id\" type=\"BIG_INTEGER\" primaryKey=\"true\"/>\n" +
     "    <column name=\"version\" type=\"INTEGER\" default=\"0\"/>\n" +
@@ -134,7 +134,7 @@ class SourceXML {
   public static String BLOBBY_SAMPLE =
 
     "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
-    "<table version=\"3\">\n" +
+    "<table version=\"4\">\n" +
     "  <metadata name=\"Test\">\n" +
     "    <column name=\"id\" type=\"BIG_INTEGER\" primaryKey=\"true\"/>\n" +
     "    <column name=\"version\" type=\"INTEGER\" default=\"0\" nullable=\"true\"/>\n" +
@@ -153,7 +153,7 @@ class SourceXML {
   public static String COMPOSITE_PRIMARY_KEY =
 
     "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
-    "<table version=\"3\">\n" +
+    "<table version=\"4\">\n" +
     "  <metadata name=\"Test\">\n" +
     "    <column name=\"id\" type=\"BIG_INTEGER\" primaryKey=\"true\"/>\n" +
     "    <column name=\"version\" type=\"INTEGER\" default=\"0\" nullable=\"true\"/>\n" +

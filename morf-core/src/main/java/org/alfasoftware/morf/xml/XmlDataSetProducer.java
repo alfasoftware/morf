@@ -246,10 +246,16 @@ public class XmlDataSetProducer implements DataSetProducer {
     try {
       BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, Charsets.UTF_8));
       Reader reader;
-      if (Version2to3TranformingReader.shouldApplyTransform(bufferedReader)) {
-        reader = new Version2to3TranformingReader(bufferedReader);
+      int version = Version2to4TransformingReader.readVersion(bufferedReader);
+
+      if (version == 2 || version == 3) {
+        reader = new Version2to4TransformingReader(bufferedReader, version);
       } else {
         reader = bufferedReader;
+      }
+
+      if (version > 4) {
+        throw new IllegalStateException("Unknown XML dataset format: "+version +"  This dataset has been produced by a later version of Morf");
       }
       return XMLInputFactory.newFactory().createXMLStreamReader(reader);
     } catch (XMLStreamException|FactoryConfigurationError e) {
@@ -1011,7 +1017,9 @@ public class XmlDataSetProducer implements DataSetProducer {
         // Buffer this record
         RecordBuilder result = DataSetUtils.record();
         for (String columnName : columnNames) {
-          result.setString(columnName.toUpperCase(), unescapeCharacters(xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, columnName)));
+          result.setString(columnName.toUpperCase(),
+            Escaping.unescapeCharacters(xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, columnName))
+          );
         }
 
         // Is there another
@@ -1024,8 +1032,6 @@ public class XmlDataSetProducer implements DataSetProducer {
     }
 
 
-
-
     /**
      * @see java.util.Iterator#remove()
      */
@@ -1035,41 +1041,4 @@ public class XmlDataSetProducer implements DataSetProducer {
     }
   }
 
-  /**
-   * Un-  escape strings from XML format back to internal format:
-   * \0 -> 0
-   * \\ -> \
-   */
-  static String unescapeCharacters(String attributeValue) {
-    if (attributeValue == null) return null;
-
-    char[] attributeChars = attributeValue.toCharArray();
-    StringBuilder result = new StringBuilder(attributeChars.length);
-    int from = 0;
-    int len = 0;
-    int i = 0;
-
-    while (i < attributeChars.length) {
-
-      // look for the escape character
-      if (attributeChars[i] == '\\') {
-        result.append(attributeChars, from, len);
-        len = 0;
-        from = i+2;
-
-        switch(attributeChars[i+1]) {
-          case '\\' : result.append('\\'); break;
-          case '0'    : result.append((char) 0); break;
-          default: throw new IllegalStateException("Illegal escape sequence at char [" + i + "] in [" + attributeValue + "]");
-        }
-        i++;
-      } else {
-        len++;
-      }
-      i++;
-    }
-
-    result.append(attributeChars, from, len);
-    return result.toString();
-  }
 }

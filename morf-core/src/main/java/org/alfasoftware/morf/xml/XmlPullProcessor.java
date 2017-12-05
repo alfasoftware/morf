@@ -67,7 +67,7 @@ class XmlPullProcessor {
     try {
       do {
         event = xmlStreamReader.next();
-      } while (event == XMLStreamReader.CHARACTERS || event == XMLStreamReader.END_ELEMENT);
+      } while (event == XMLStreamReader.CHARACTERS || event == XMLStreamReader.END_ELEMENT || event == XMLStreamReader.COMMENT);
     } catch (Exception e) {
       throw new RuntimeException("Error reading data from the XML pull parser", e);
     }
