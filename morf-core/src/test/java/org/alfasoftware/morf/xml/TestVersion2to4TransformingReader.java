@@ -75,7 +75,7 @@ public class TestVersion2to4TransformingReader {
     try (Reader readerUnderTest = new Version2to4TransformingReader(sourceReader, inputVersion)) {
       while (true) {
         int off = random.nextInt(32);
-        int len = random.nextInt(32);
+        int len = random.nextInt(31)+1;
 
         int charsRead = readerUnderTest.read(buff, off, len);
         if (charsRead < 0) {

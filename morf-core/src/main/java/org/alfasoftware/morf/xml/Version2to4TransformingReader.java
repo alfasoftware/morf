@@ -197,8 +197,8 @@ class Version2to4TransformingReader extends Reader {
     char[] bufferToTest;
     int indexToTest;
 
-    // the maximum we could need is enough to read &#ffff; so 7 chars, including the ampersand.
-    final int maxRefSize = 7;
+    // the maximum we could need is enough to read &#65535; or &#xffff; so 8 chars, including the ampersand.
+    final int maxRefSize = 8;
     int additionalCharsRequired = maxRefSize-remaining;
 
     if (additionalCharsRequired > 0) {
