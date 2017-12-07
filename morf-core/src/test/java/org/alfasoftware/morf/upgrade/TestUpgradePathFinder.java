@@ -32,11 +32,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.junit.Test;
-
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsException;
 import org.alfasoftware.morf.upgrade.testupgradepathfinder.upgrade.v1_0_0.AddCakeTable;
 import org.alfasoftware.morf.upgrade.testupgradepathfinder.upgrade.v1_0_0.AddDiameter;
 import org.alfasoftware.morf.upgrade.testupgradepathfinder.upgrade.v1_0_0.AddGrams;
@@ -54,6 +53,8 @@ import org.alfasoftware.morf.upgrade.testupgradepathfinder.upgrade.v1_0_0.Insert
 import org.alfasoftware.morf.upgrade.testupgradepathfinder.upgrade.v1_0_0.MockAddUpgradeAudit;
 import org.alfasoftware.morf.upgrade.testupgradepathfinder.upgrade.v1_0_0.MockProvisionHistoryUpgrade;
 import org.alfasoftware.morf.upgrade.testupgradepathfinder.upgrade.v1_0_0.MockWidenIndustryCodeUpgrade;
+import org.junit.Test;
+
 import com.google.common.collect.Sets;
 
 /**
@@ -412,8 +413,9 @@ public class TestUpgradePathFinder {
     try {
       pathFinder.determinePath(current, target, Sets.<String>newHashSet());
       fail("No upgrade path exists so an exception should be thrown");
-    } catch (IllegalStateException e) {
-      assertTrue(e.getMessage().contains("upgrade"));
+    } catch (NoUpgradePathExistsException e) {
+      assertEquals("Message text", "No upgrade path exists", e.getMessage());
+      assertTrue("Message is instance of IllegalStateException", e instanceof IllegalStateException);
     }
   }
 

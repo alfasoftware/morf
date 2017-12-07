@@ -41,7 +41,10 @@ import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.upgrade.ExistingViewStateLoader.Result;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
+import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsException;
 import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
@@ -52,21 +55,24 @@ import com.google.inject.Inject;
  * @author Copyright (c) Alfa Financial Software 2010 - 2013
  */
 public class Upgrade {
+  private static final Log log = LogFactory.getLog(Upgrade.class);
 
   private final UpgradePathFactory factory;
   private final ConnectionResources connectionResources;
   private final DataSource dataSource;
+  private final UpgradeStatusTableService upgradeStatusTableService;
 
 
   /**
    * Injected Constructor.
    */
   @Inject
-  Upgrade(ConnectionResources connectionResources, DataSource dataSource, UpgradePathFactory factory) {
+  Upgrade(ConnectionResources connectionResources, DataSource dataSource, UpgradePathFactory factory, UpgradeStatusTableService upgradeStatusTableService) {
     super();
     this.connectionResources = connectionResources;
     this.dataSource = dataSource;
     this.factory = factory;
+    this.upgradeStatusTableService = upgradeStatusTableService;
   }
 
 
@@ -78,13 +84,15 @@ public class Upgrade {
    * @param targetSchema The target database schema.
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
    * @param connectionResources Connection details for the database.
+   * @param upgradeStatusTableService Service used to manage the upgrade status coordination table.
    *
    * @return The required upgrade path.
    */
-  public static UpgradePath createPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources) {
+  public static UpgradePath createPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeStatusTableService upgradeStatusTableService) {
     return new Upgrade(connectionResources, connectionResources.getDataSource(),
-        new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition> emptySet())).findPath(targetSchema, upgradeSteps,
-          Collections.<String> emptySet());
+                       new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition> emptySet(), upgradeStatusTableService),
+                       upgradeStatusTableService)
+           .findPath(targetSchema, upgradeSteps, Collections.<String> emptySet());
   }
 
 
@@ -98,6 +106,12 @@ public class Upgrade {
    */
   public UpgradePath findPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, Collection<String> exceptionRegexes) {
     final List<String> upgradeStatements = new ArrayList<>();
+
+    //Return an upgradePath with the current upgrade status if one is in progress
+    UpgradeStatus status = upgradeStatusTableService.getStatus();
+    if (upgradeStatusTableService.getStatus() != UpgradeStatus.NONE) {
+      return new UpgradePath(status);
+    }
 
     // -- Validate the target schema...
     //
@@ -117,7 +131,22 @@ public class Upgrade {
     //
     ExistingTableStateLoader existingTableState = new ExistingTableStateLoader(dataSource, dialect);
     UpgradePathFinder pathFinder = new UpgradePathFinder(upgradeSteps, existingTableState.loadAppliedStepUUIDs());
-    SchemaChangeSequence schemaChangeSequence = pathFinder.determinePath(sourceSchema, targetSchema, exceptionRegexes);
+    SchemaChangeSequence schemaChangeSequence;
+    if (upgradeStatusTableService.getStatus() != UpgradeStatus.NONE) {
+      return new UpgradePath(status);
+    }
+    try {
+      schemaChangeSequence = pathFinder.determinePath(sourceSchema, targetSchema, exceptionRegexes);
+    } catch (NoUpgradePathExistsException e) {
+      log.debug("No upgrade path found - checking upgrade status", e);
+      status = upgradeStatusTableService.getStatus();
+      if (status != UpgradeStatus.NONE) {
+        log.info("Schema differences found, but upgrade in progress - no action required until upgrade is complete");
+        return new UpgradePath(status);
+      } else {
+        throw e;
+      }
+    }
 
     // -- Only run the upgrader if there are any steps to apply...
     //

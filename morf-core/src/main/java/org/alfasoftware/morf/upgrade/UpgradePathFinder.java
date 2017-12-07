@@ -26,13 +26,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaHomology;
+import org.alfasoftware.morf.metadata.SchemaHomology.DifferenceWriter;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.SchemaHomology;
-import org.alfasoftware.morf.metadata.SchemaHomology.DifferenceWriter;
 import com.google.common.base.Predicate;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Lists;
@@ -101,15 +101,16 @@ public class UpgradePathFinder {
    * @param target The target schema to upgrade to.
    * @param exceptionRegexes Regular exceptions for the table exceptions.
    * @return An ordered list of upgrade steps between the two schemas.
+   * @throws NoUpgradePathExistsException if no upgrade path exists between the database schema and the application schema.
    */
-  public SchemaChangeSequence determinePath(Schema current, Schema target, Collection<String> exceptionRegexes) {
+  public SchemaChangeSequence determinePath(Schema current, Schema target, Collection<String> exceptionRegexes) throws NoUpgradePathExistsException {
 
     SchemaChangeSequence schemaChangeSequence = getSchemaChangeSequence();
 
     // We have changes to make. Apply them against the current schema to see whether they get us the right position
     Schema trialUpgradedSchema = schemaChangeSequence.applyToSchema(current);
     if (!schemasMatch(target, trialUpgradedSchema, "target domain schema", "trial upgraded schema", exceptionRegexes)) {
-      throw new IllegalStateException("No upgrade path exists");
+      throw new NoUpgradePathExistsException();
     }
 
     // Now reverse-apply those changes to see whether they get us back to where we started
@@ -351,6 +352,25 @@ public class UpgradePathFinder {
     @Override
     public String toString() {
       return getName() + " [" + getUuid() + "]";
+    }
+  }
+
+
+  /**
+   * Represents the illegal state that no upgrade path has been found. This means
+   * that the database and the runtime schema are in an inconsistent state: either the
+   * wrong version of the application is being run; the database is in a partially
+   * upgraded state; or the database has been modified outside of the application.
+   *
+   * @author Copyright (c) Alfa Financial Software 2017
+   */
+  public class NoUpgradePathExistsException extends IllegalStateException {
+
+    /**
+     * Constructor that defaults the message.
+     */
+    public NoUpgradePathExistsException() {
+      super("No upgrade path exists");
     }
   }
 }

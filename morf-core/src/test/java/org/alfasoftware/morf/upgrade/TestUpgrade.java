@@ -25,8 +25,10 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.view;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.alfasoftware.morf.upgrade.UpgradeStatus.NONE;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
@@ -68,6 +70,7 @@ import org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.ChangeCar;
 import org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.ChangeDriver;
 import org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.CreateDeployedViews;
 import org.apache.commons.lang.StringUtils;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.invocation.InvocationOnMock;
@@ -86,6 +89,15 @@ import com.google.common.collect.Sets;
  */
 public class TestUpgrade {
 
+  public UpgradeStatusTableService upgradeStatusTableService;
+
+  @Before
+  public void setUp() {
+    upgradeStatusTableService = mock(UpgradeStatusTableService.class);
+    when(upgradeStatusTableService.getStatus()).thenReturn(NONE);
+  }
+  
+  
   /**
    * Test {@link Upgrade}.
    */
@@ -122,15 +134,15 @@ public class TestUpgrade {
     upgradeSteps.add(ChangeDriver.class);
 
     List<Table> tables = Arrays.asList(upgradeAudit, car, driver, excludedTable, prefixExcludeTable1, prefixExcludeTable2);
-    
+
     ResultSet viewResultSet = mock(ResultSet.class);
     when(viewResultSet.next()).thenReturn(false);
-    
+
     ResultSet upgradeResultSet = mock(ResultSet.class);
     when(upgradeResultSet.next()).thenReturn(true, true, false);
     when(upgradeResultSet.getString(1)).thenReturn("0fde0d93-f57e-405c-81e9-245ef1ba0594", "0fde0d93-f57e-405c-81e9-245ef1ba0595");
     when(upgradeResultSet.next()).thenReturn(false);
-    
+
     ConnectionResources mockConnectionResources = new MockConnectionResources().
                                               withResultSet("SELECT upgradeUUID FROM UpgradeAudit", upgradeResultSet).
                                               withResultSet("SELECT name, hash FROM DeployedViews", viewResultSet).
@@ -140,7 +152,7 @@ public class TestUpgrade {
     when(mockConnectionResources.openSchemaResource(eq(mockConnectionResources.getDataSource()))).thenReturn(schemaResource);
     when(schemaResource.tables()).thenReturn(tables);
 
-    UpgradePath results = new Upgrade(mockConnectionResources, mockConnectionResources.getDataSource(), upgradePathFactory()).findPath(targetSchema,
+    UpgradePath results = new Upgrade(mockConnectionResources, mockConnectionResources.getDataSource(), upgradePathFactory(), upgradeStatusTableService).findPath(targetSchema,
       upgradeSteps, Lists.newArrayList("^Drivers$", "^EXCLUDE_.*$"));
 
     assertEquals("Should be two steps.", 2, results.getSteps().size());
@@ -151,18 +163,12 @@ public class TestUpgrade {
   /**
    * @return
    */
+  @SuppressWarnings("unchecked")
   private UpgradePathFactory upgradePathFactory() {
     UpgradePathFactory upgradePathFactory = mock(UpgradePathFactory.class);
-
-    when(upgradePathFactory.create(anyListOf(UpgradeStep.class), any(SqlDialect.class))).thenAnswer(
-      new Answer<UpgradePath>() {
-        @Override
-        public UpgradePath answer(InvocationOnMock invocation) throws Throwable {
-          @SuppressWarnings("unchecked")
-          UpgradePath upgradePath = new UpgradePath(Sets.<UpgradeScriptAddition>newHashSet(), (List<UpgradeStep>)invocation.getArguments()[0], (SqlDialect)invocation.getArguments()[1]);
-          return upgradePath;
-        }
-      });
+    when(upgradePathFactory.create(anyListOf(UpgradeStep.class), any(SqlDialect.class))).thenAnswer((invocation) -> {
+      return new UpgradePath(Sets.<UpgradeScriptAddition>newHashSet(), (List<UpgradeStep>)invocation.getArguments()[0], (SqlDialect)invocation.getArguments()[1], Collections.emptyList(), Collections.emptyList());
+    });
 
     return upgradePathFactory;
   }
@@ -211,7 +217,7 @@ public class TestUpgrade {
     when(mockConnectionResources.openSchemaResource(eq(mockConnectionResources.getDataSource()))).thenReturn(schemaResource);
     when(schemaResource.tables()).thenReturn(Arrays.asList(upgradeAudit));
 
-    UpgradePath results = new Upgrade(mockConnectionResources, mockConnectionResources.getDataSource(), upgradePathFactory()).findPath(targetSchema,
+    UpgradePath results = new Upgrade(mockConnectionResources, mockConnectionResources.getDataSource(), upgradePathFactory(), upgradeStatusTableService).findPath(targetSchema,
       upgradeSteps, new HashSet<String>());
     assertTrue("No steps to apply", results.getSteps().isEmpty());
     assertTrue("No SQL statements", results.getSql().isEmpty());
@@ -242,7 +248,7 @@ public class TestUpgrade {
     when(connection.openSchemaResource(eq(connection.getDataSource()))).thenReturn(new StubSchemaResource(sourceSchema));
 
     // When
-    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory()).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService).findPath(targetSchema, upgradeSteps, new HashSet<String>());
 
     // Then
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
@@ -282,7 +288,7 @@ public class TestUpgrade {
     when(connection.openSchemaResource(eq(connection.getDataSource()))).thenReturn(new StubSchemaResource(sourceSchema));
 
     // When
-    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory()).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService).findPath(targetSchema, upgradeSteps, new HashSet<String>());
 
     // Then
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
@@ -339,10 +345,10 @@ public class TestUpgrade {
     when(viewResultSet.next()).thenReturn(true, true, false);
     when(viewResultSet.getString(1)).thenReturn("FooView", "OldView");
     when(viewResultSet.getString(2)).thenReturn("XXX");
-    
+
     ResultSet upgradeResultSet = mock(ResultSet.class);
     when(upgradeResultSet.next()).thenReturn(false);
-    
+
     ConnectionResources connection = new MockConnectionResources().
                                               withDialect(sqlDialect).
                                               withSchema(sourceSchema).
@@ -351,7 +357,7 @@ public class TestUpgrade {
                                               create();
 
     // When
-    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory()).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService).findPath(targetSchema, upgradeSteps, new HashSet<String>());
 
     // Then
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
@@ -408,10 +414,10 @@ public class TestUpgrade {
     when(viewResultSet.next()).thenReturn(true, true, false);
     when(viewResultSet.getString(1)).thenReturn("FooView", "OldView");
     when(viewResultSet.getString(2)).thenReturn("XXX");
-    
+
     ResultSet upgradeResultSet = mock(ResultSet.class);
     when(upgradeResultSet.next()).thenReturn(false);
-    
+
     ConnectionResources connection = new MockConnectionResources().
                                               withDialect(sqlDialect).
                                               withSchema(sourceSchema).
@@ -420,7 +426,7 @@ public class TestUpgrade {
                                               create();
 
     // When
-    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory()).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService).findPath(targetSchema, upgradeSteps, new HashSet<String>());
 
     // Then
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
@@ -468,10 +474,10 @@ public class TestUpgrade {
     when(viewResultSet.next()).thenReturn(true, true, false);
     when(viewResultSet.getString(1)).thenReturn("FooView", "OldView");
     when(viewResultSet.getString(2)).thenReturn("XXX");
-    
+
     ResultSet upgradeResultSet = mock(ResultSet.class);
     when(upgradeResultSet.next()).thenReturn(false);
-    
+
     ConnectionResources connection = new MockConnectionResources().
                                               withDialect(sqlDialect).
                                               withSchema(sourceSchema).
@@ -480,7 +486,7 @@ public class TestUpgrade {
                                               create();
 
     // When
-    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory()).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService).findPath(targetSchema, upgradeSteps, new HashSet<String>());
 
     // Then
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
@@ -517,7 +523,7 @@ public class TestUpgrade {
     when(connection.openSchemaResource(eq(connection.getDataSource()))).thenReturn(new StubSchemaResource(sourceSchema));
 
     // When
-    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory()).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService).findPath(targetSchema, upgradeSteps, new HashSet<String>());
 
     // Then
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
@@ -579,15 +585,15 @@ public class TestUpgrade {
       }
     });
 
-    
+
     ResultSet viewResultSet = mock(ResultSet.class);
     when(viewResultSet.next()).thenReturn(true, true, false);
     when(viewResultSet.getString(1)).thenReturn("OtherView", "StaticView");
     when(viewResultSet.getString(2)).thenReturn("XXX");
-    
+
     ResultSet upgradeResultSet = mock(ResultSet.class);
     when(upgradeResultSet.next()).thenReturn(false);
-    
+
     ConnectionResources connection = new MockConnectionResources().
                                          withDialect(sqlDialect).
                                          withSchema(sourceSchema).
@@ -596,7 +602,7 @@ public class TestUpgrade {
                                          create();
 
     // When
-    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory()).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService).findPath(targetSchema, upgradeSteps, new HashSet<String>());
 
     // Then
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
@@ -625,17 +631,17 @@ public class TestUpgrade {
     when(viewResultSet.next()).thenReturn(true, true, false);
     when(viewResultSet.getString(1)).thenReturn("FooView", "OldView");
     when(viewResultSet.getString(2)).thenReturn("XXX");
-    
+
     ResultSet upgradeResultSet = mock(ResultSet.class);
     when(upgradeResultSet.next()).thenReturn(false);
-    
+
     ConnectionResources connection = new MockConnectionResources().
                                               withSchema(sourceSchema).
                                               withResultSet("SELECT upgradeUUID FROM UpgradeAudit", upgradeResultSet).
                                               withResultSet("SELECT name, hash FROM DeployedViews", viewResultSet).
                                               create();
 
-    new Upgrade(connection, connection.getDataSource(), upgradePathFactory()).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+    new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService).findPath(targetSchema, upgradeSteps, new HashSet<String>());
 
     ArgumentCaptor<Table> tableArgumentCaptor = ArgumentCaptor.forClass(Table.class);
     verify(connection.sqlDialect(), times(3)).rebuildTriggers(tableArgumentCaptor.capture());
@@ -650,6 +656,64 @@ public class TestUpgrade {
     });
 
     assertThat("Rebuild trigger table arguments are wrong", rebuildTriggerTableNames, containsInAnyOrder("UpgradeAudit", "Car", "DeployedViews"));
+  }
+
+
+  /**
+   * Test that if there changes in progress - which might be detected through no
+   * upgrade path being found - an "in progress" path is returned.
+   */
+  @Test
+  public void testInProgressUpgrade() throws SQLException {
+    assertInProgressUpgrade(UpgradeStatus.IN_PROGRESS);
+  }
+
+
+  /**
+   * Test that if the upgrade has completed an "in progress" path is returned.
+   */
+  @Test
+  public void testCompletedUpgrade() throws SQLException {
+    assertInProgressUpgrade(UpgradeStatus.COMPLETED);
+  }
+
+
+  /**
+   * Allow verification of an in-progress upgrade. The {@link UpgradePath}
+   * should report no steps to apply and that it is in-progress.
+   *
+   * @param currentStatus Status to be represented.
+   * @throws SQLException if something goes wrong.
+   */
+  private void assertInProgressUpgrade(UpgradeStatus currentStatus) throws SQLException {
+    Schema sourceSchema = schema(
+      schema(upgradeAudit(), deployedViews(), originalCar())
+    );
+    Schema targetSchema = schema(
+      schema(upgradeAudit(), deployedViews(), upgradedCar())
+    );
+
+    Collection<Class<? extends UpgradeStep>> upgradeSteps = Collections.emptySet();
+
+    ResultSet viewResultSet = mock(ResultSet.class);
+    when(viewResultSet.next()).thenReturn(true, true, false);
+    when(viewResultSet.getString(1)).thenReturn("FooView", "OldView");
+    when(viewResultSet.getString(2)).thenReturn("XXX");
+
+    ResultSet upgradeResultSet = mock(ResultSet.class);
+    when(upgradeResultSet.next()).thenReturn(false);
+
+    ConnectionResources connection = new MockConnectionResources().
+                                              withSchema(sourceSchema).
+                                              withResultSet("SELECT upgradeUUID FROM UpgradeAudit", upgradeResultSet).
+                                              withResultSet("SELECT name, hash FROM DeployedViews", viewResultSet).
+                                              create();
+    UpgradeStatusTableService upgradeStatusTableService = mock(UpgradeStatusTableService.class);
+    when(upgradeStatusTableService.getStatus()).thenReturn(currentStatus);
+
+    UpgradePath path = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+    assertFalse("Steps to apply", path.hasStepsToApply());
+    assertTrue("In progress", path.upgradeInProgress());
   }
 
 
