@@ -60,6 +60,11 @@ public class XmlDataSetConsumer implements DataSetConsumer {
   private static final Attributes EMPTY_ATTRIBUTES = new AttributesImpl();
 
   /**
+   * The format version we are writing
+   */
+  private static final String FORMAT_VERSION = "4";
+
+  /**
    * Controls the behaviour of the consumer when running against a directory.
    */
   public enum ClearDestinationBehaviour {
@@ -198,7 +203,7 @@ public class XmlDataSetConsumer implements DataSetConsumer {
 
         contentHandler.startDocument();
         AttributesImpl tableAttributes = new AttributesImpl();
-        tableAttributes.addAttribute(XmlDataSetNode.URI, XmlDataSetNode.VERSION_ATTRIBUTE, XmlDataSetNode.VERSION_ATTRIBUTE, XmlDataSetNode.STRING_TYPE, "2");
+        tableAttributes.addAttribute(XmlDataSetNode.URI, XmlDataSetNode.VERSION_ATTRIBUTE, XmlDataSetNode.VERSION_ATTRIBUTE, XmlDataSetNode.STRING_TYPE, FORMAT_VERSION);
 
         contentHandler.startElement(XmlDataSetNode.URI, XmlDataSetNode.TABLE_NODE, XmlDataSetNode.TABLE_NODE, tableAttributes);
         outputTableMetaData(table, contentHandler);
@@ -208,8 +213,14 @@ public class XmlDataSetConsumer implements DataSetConsumer {
           AttributesImpl rowValueAttributes = new AttributesImpl();
           for (Column column : table.columns()) {
             String value = getValue(record, column, table.getName());
+
             if (value != null) {
-              rowValueAttributes.addAttribute(XmlDataSetNode.URI, column.getName(), column.getName(), XmlDataSetNode.STRING_TYPE, value);
+              rowValueAttributes.addAttribute(
+                XmlDataSetNode.URI,
+                column.getName(),
+                column.getName(),
+                XmlDataSetNode.STRING_TYPE,
+                Escaping.escapeCharacters(value));
             }
           }
 
@@ -222,7 +233,7 @@ public class XmlDataSetConsumer implements DataSetConsumer {
       } finally {
         outputStream.close();
       }
-    } catch (Exception e) {
+    } catch (RuntimeException|SAXException|IOException e) {
       throw new RuntimeException("Error consuming table [" + table.getName() + "]", e);
     }
   }

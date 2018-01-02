@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<table version="3">
+  <metadata name="Foo">
+    <column name="id" type="BIG_INTEGER" primaryKey="true"/>
+    <column name="val" type="STRING" length="10"/>
+  </metadata>
+  <data>
+    <record id="1" val="A\0C" />
+    <record id="2" val="\0" />
+    <record id="3" val="escape\\it" />
+  </data>
+</table>

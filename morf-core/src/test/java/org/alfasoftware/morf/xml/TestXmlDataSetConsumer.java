@@ -15,7 +15,6 @@
 
 package org.alfasoftware.morf.xml;
 
-import static com.google.common.io.ByteStreams.toByteArray;
 import static org.alfasoftware.morf.metadata.DataSetUtils.record;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.idColumn;
@@ -27,8 +26,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,6 +36,8 @@ import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.xml.XmlDataSetConsumer.ClearDestinationBehaviour;
 import org.junit.Test;
+
+import com.google.common.collect.ImmutableList;
 
 /**
  * Test that we can convert data sets to xml.
@@ -191,13 +190,39 @@ public class TestXmlDataSetConsumer {
     testConsumer.table(testTable, mockRecords);
     testConsumer.close(CloseState.COMPLETE);
 
-    String expectedXML;
-    try (InputStream resourceAsStream = getClass().getResourceAsStream("testIndexOrdering.xml")) {
-      expectedXML = new String(toByteArray(resourceAsStream), StandardCharsets.UTF_8).trim();
-    }
-
+    String expectedXML = SourceXML.readResource("testIndexOrdering.xml");
     String actualXML = dummyXmlOutputStreamProvider.getXmlString().trim();
 
     assertEquals("Serialised data set", expectedXML, actualXML);
+  }
+
+
+  @Test
+  public void testWithNullCharacters() {
+    DummyXmlOutputStreamProvider dummyXmlOutputStreamProvider = new DummyXmlOutputStreamProvider();
+    DataSetConsumer testConsumer = new XmlDataSetConsumer(dummyXmlOutputStreamProvider);
+    Table testTable = table("TestTable")
+      .columns(
+        column("x", DataType.STRING, 10)
+      );
+
+    testConsumer.open();
+
+    List<Record> records = ImmutableList.<Record>of(
+      record().setString("x", "foo"),
+      record().setString("x", new String(new char[] {'a', 0, 'c'})),
+      record().setString("x", new String(new char[] {0})),
+      record().setString("x", "string with a \\ in it"),
+      record().setString("x", "some \r valid \n things \t in this one")
+    );
+
+    testConsumer.table(testTable, records);
+    testConsumer.close(CloseState.COMPLETE);
+
+    String actualXML = dummyXmlOutputStreamProvider.getXmlString().trim();
+    String expectedXML = SourceXML.readResource("testWithNullCharacters.xml");
+
+    assertEquals("Serialised data set", expectedXML, actualXML);
+
   }
 }

@@ -15,6 +15,14 @@
 
 package org.alfasoftware.morf.xml;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.stream.Collectors;
+
+import com.google.common.base.Charsets;
+
 /**
  * Test XML strings for the XML dataset testing.
  *
@@ -28,7 +36,7 @@ class SourceXML {
   public static String FULL_SAMPLE =
 
     "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
-    "<table version=\"2\">\n" +
+    "<table version=\"4\">\n" +
     "  <metadata name=\"Test\">\n" +
     "    <column name=\"id\" type=\"BIG_INTEGER\" primaryKey=\"true\" autoNum=\"123\"/>\n" +
     "    <column name=\"version\" type=\"INTEGER\" default=\"0\" nullable=\"true\"/>\n" +
@@ -49,7 +57,7 @@ class SourceXML {
   public static String MASKED_SAMPLE =
 
     "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
-    "<table version=\"2\">\n" +
+    "<table version=\"4\">\n" +
     "  <metadata name=\"Test\">\n" +
     "    <column name=\"id\" type=\"BIG_INTEGER\" primaryKey=\"true\" autoNum=\"123\"/>\n" +
     "    <column name=\"version\" type=\"INTEGER\" default=\"0\" nullable=\"true\"/>\n" +
@@ -89,7 +97,7 @@ class SourceXML {
   public static String FULL_SAMPLE_V1_UPGRADED =
 
     "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
-        "<table version=\"2\">\n" +
+        "<table version=\"4\">\n" +
         "  <metadata name=\"Test\">\n" +
         "    <column name=\"id\" type=\"BIG_INTEGER\" primaryKey=\"true\"/>\n" +
         "    <column name=\"version\" type=\"INTEGER\" default=\"0\" nullable=\"true\"/>\n" +
@@ -109,7 +117,7 @@ class SourceXML {
   public static String REDUCED_SAMPLE =
 
     "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
-    "<table version=\"2\">\n" +
+    "<table version=\"4\">\n" +
     "  <metadata name=\"Test\">\n" +
     "    <column name=\"id\" type=\"BIG_INTEGER\" primaryKey=\"true\"/>\n" +
     "    <column name=\"version\" type=\"INTEGER\" default=\"0\"/>\n" +
@@ -126,7 +134,7 @@ class SourceXML {
   public static String BLOBBY_SAMPLE =
 
     "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
-    "<table version=\"2\">\n" +
+    "<table version=\"4\">\n" +
     "  <metadata name=\"Test\">\n" +
     "    <column name=\"id\" type=\"BIG_INTEGER\" primaryKey=\"true\"/>\n" +
     "    <column name=\"version\" type=\"INTEGER\" default=\"0\" nullable=\"true\"/>\n" +
@@ -145,7 +153,7 @@ class SourceXML {
   public static String COMPOSITE_PRIMARY_KEY =
 
     "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
-    "<table version=\"2\">\n" +
+    "<table version=\"4\">\n" +
     "  <metadata name=\"Test\">\n" +
     "    <column name=\"id\" type=\"BIG_INTEGER\" primaryKey=\"true\"/>\n" +
     "    <column name=\"version\" type=\"INTEGER\" default=\"0\" nullable=\"true\"/>\n" +
@@ -154,4 +162,18 @@ class SourceXML {
     "  </metadata>\n" +
     "  <data/>\n" +
     "</table>";
+
+
+  /**
+   * Reads in a static resource as a String.
+   */
+  static String readResource(String resourceName) {
+    try (InputStream inputStream = SourceXML.class.getResourceAsStream(resourceName)) {
+      if (inputStream == null) throw new IllegalArgumentException("No such resource: "+resourceName);
+      BufferedReader bis = new BufferedReader(new InputStreamReader(inputStream, Charsets.UTF_8));
+      return bis.lines().collect(Collectors.joining("\n"));
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
 }

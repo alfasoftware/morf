@@ -39,6 +39,7 @@ import javax.sql.DataSource;
 
 import org.alfasoftware.morf.dataset.DataSetConsumer.CloseState;
 import org.alfasoftware.morf.dataset.Record;
+import org.alfasoftware.morf.metadata.DataSetUtils;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.DataValueLookup;
 import org.alfasoftware.morf.metadata.Schema;

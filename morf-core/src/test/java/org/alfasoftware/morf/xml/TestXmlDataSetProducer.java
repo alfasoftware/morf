@@ -15,29 +15,44 @@
 
 package org.alfasoftware.morf.xml;
 
+import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.alfasoftware.morf.xml.SourceXML.readResource;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 
 import org.alfasoftware.morf.dataset.DataSetConnector;
 import org.alfasoftware.morf.dataset.DataSetConsumer;
+import org.alfasoftware.morf.dataset.DataSetConsumer.CloseState;
 import org.alfasoftware.morf.dataset.DataSetProducer;
-import org.alfasoftware.morf.dataset.MockDataSetConsumer;
 import org.alfasoftware.morf.dataset.Record;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.SchemaHomology;
+import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.xml.XmlStreamProvider.XmlInputStreamProvider;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
+
+import com.google.common.base.Charsets;
+import com.google.common.collect.ImmutableList;
 
 /**
  * Test cases to check XML can be parsed to a data set consumer.
@@ -91,15 +106,38 @@ public class TestXmlDataSetProducer {
   /**
    * Test we can read the reduced XML format in, the dump it back out to the same xml String.
    */
+  @SuppressWarnings({ "unchecked", "rawtypes" })
   @Test
   public void testReducedXMLRoundTrip() {
     DataSetProducer producer = new XmlDataSetProducer(new TestXmlInputStreamProvider(SourceXML.REDUCED_SAMPLE));
 
-    MockDataSetConsumer mockDataSetConsumer = new MockDataSetConsumer();
+    DataSetConsumer consumer = mock(DataSetConsumer.class);
 
-    new DataSetConnector(producer, mockDataSetConsumer).connect();
+    new DataSetConnector(producer, consumer).connect();
 
-    assertEquals("output should be the same as input", "[open, table Test [column id, column version, column bar, column baz, column bob], end table, close]", mockDataSetConsumer.toString());
+    Mockito.verify(consumer).open();
+
+    ArgumentCaptor<Table> tableCaptor = ArgumentCaptor.forClass(Table.class);
+    ArgumentCaptor<Iterable> iterableCaptor = ArgumentCaptor.forClass(Iterable.class);
+
+    Mockito.verify(consumer).table(tableCaptor.capture(), iterableCaptor.capture());
+
+    SchemaHomology schemaHomology = new SchemaHomology(new SchemaHomology.ThrowingDifferenceWriter());
+    assertTrue(
+      schemaHomology.tablesMatch(
+        tableCaptor.getValue(),
+        table("Test")
+        .columns(
+          column("id", DataType.BIG_INTEGER).primaryKey(),
+          column("version", DataType.INTEGER).defaultValue("0"),
+          column("bar", DataType.STRING),
+          column("baz", DataType.STRING),
+          column("bob", DataType.DECIMAL)
+        )
+      )
+    );
+
+    Mockito.verify(consumer).close(CloseState.COMPLETE);
   }
 
 
@@ -205,6 +243,117 @@ public class TestXmlDataSetProducer {
     producer.close();
   }
 
+
+  /**
+   * Test the reading of xml containing comments.
+   */
+  @Test
+  public void testWithComments() throws IOException {
+
+    String input = SourceXML.readResource("testWithComments.xml");
+    XmlDataSetProducer producer = new XmlDataSetProducer(new TestXmlInputStreamProvider(input, "Foo"));
+    producer.open();
+
+    Table fooTable = producer.getSchema().getTable("Foo");
+
+    assertTrue(
+      new SchemaHomology().tablesMatch(
+        fooTable,
+        table("Foo")
+          .columns(
+            column("id", DataType.BIG_INTEGER).primaryKey())
+          )
+      );
+
+    List<Record> records = ImmutableList.copyOf(producer.records("Foo"));
+
+    assertEquals(40646L, records.get(0).getLong("id").longValue());
+    assertEquals(40641L, records.get(3).getLong("id").longValue());
+
+    producer.close();
+  }
+
+  @Test
+  public void testPartialData() throws IOException {
+    String input = SourceXML.readResource("testPartialData.xml");
+    XmlDataSetProducer producer = new XmlDataSetProducer(new TestXmlInputStreamProvider(input, "TestTable"));
+    producer.open();
+
+    List<Record> records = ImmutableList.copyOf(producer.records("TestTable"));
+
+    assertEquals("1", records.get(0).getString("x"));
+    assertEquals("2", records.get(1).getString("x"));
+
+    assertEquals("ABC", records.get(0).getString("y"));
+    assertEquals(null, records.get(1).getString("y"));
+
+    producer.close();
+  }
+
+
+  @Test
+  public void testFutureFormatFails() throws IOException {
+    String input = SourceXML.readResource("testFutureFormatFails.xml");
+    XmlDataSetProducer producer = new XmlDataSetProducer(new TestXmlInputStreamProvider(input, "TestTable"));
+    producer.open();
+
+    try {
+      ImmutableList.copyOf(producer.records("TestTable"));
+      fail();
+    } catch(IllegalStateException ise) {
+      // ok
+    } finally {
+      producer.close();
+    }
+  }
+
+
+  private void validateDataSetProducerWithNullsAndBackslashes(DataSetProducer dataSetProducer) {
+    dataSetProducer.open();
+    ImmutableList<Record> records = ImmutableList.copyOf(dataSetProducer.records("Foo"));
+    assertEquals(new String(new char[] {'A', 0 /*null*/, 'C'}), records.get(0).getString("val"));
+    assertEquals(new String(new char[] { 0 /*null*/ }), records.get(1).getString("val"));
+    assertEquals("escape\\it", records.get(2).getString("val"));
+    dataSetProducer.close();
+  }
+
+
+  @Test
+  public void testWithNullCharacterReferencesV2() {
+    validateDataSetProducerWithNullsAndBackslashes(new XmlDataSetProducer(new TestXmlInputStreamProvider(readResource("testWithNullCharacterReferencesV2.xml"), "Foo")));
+  }
+
+
+  @Test
+  public void testWithNullCharacterReferencesV3() {
+    validateDataSetProducerWithNullsAndBackslashes(new XmlDataSetProducer(new TestXmlInputStreamProvider(readResource("testWithNullCharacterReferencesV3.xml"), "Foo")));
+  }
+
+
+  @Test
+  public void testWithUnusualCharacters() {
+    XmlDataSetProducer dataSetProducer = new XmlDataSetProducer(new TestXmlInputStreamProvider(readResource("testWithUnusualCharacters.xml"), "testWithUnusualCharacters"));
+    dataSetProducer.open();
+    try {
+      ImmutableList<Record> r = ImmutableList.copyOf(dataSetProducer.records("testWithUnusualCharacters"));
+
+      assertEquals("\u0000", r.get(0).getString("characterValue"));
+      assertEquals("&", r.get(38).getString("characterValue"));
+      assertEquals(">", r.get(62).getString("characterValue"));
+      assertEquals("A", r.get(65).getString("characterValue"));
+      assertEquals("\n", r.get(10).getString("characterValue"));
+      assertEquals("\r", r.get(13).getString("characterValue"));
+
+      assertEquals("\ufffd", r.get(344).getString("characterValue"));
+      assertEquals("\ufffe", r.get(345).getString("characterValue"));
+      assertEquals("\uffff", r.get(346).getString("characterValue"));
+
+    } finally {
+      dataSetProducer.close();
+    }
+  }
+
+
   /**
    * Testing implementation to catch result XML.
    *
@@ -212,10 +361,20 @@ public class TestXmlDataSetProducer {
    */
   private static final class TestXmlInputStreamProvider implements XmlInputStreamProvider {
 
-    /**
-     * Holds the test data.
-     */
     private final String content;
+    private final String tableName;
+
+    /**
+     * Creates the test instance.
+     *
+     * @param content Source for test data.
+     */
+    public TestXmlInputStreamProvider(String content, String tableName) {
+      super();
+      this.content = content;
+      this.tableName = tableName;
+    }
+
 
     /**
      * Creates the test instance.
@@ -223,9 +382,9 @@ public class TestXmlDataSetProducer {
      * @param content Source for test data.
      */
     public TestXmlInputStreamProvider(String content) {
-      super();
-      this.content = content;
+      this(content, "Test");
     }
+
 
     /**
      * @see org.alfasoftware.morf.xml.XmlStreamProvider#close()
@@ -248,8 +407,8 @@ public class TestXmlDataSetProducer {
      */
     @Override
     public InputStream openInputStreamForTable(String tableName) {
-      assertEquals("Table name", "Test", tableName);
-      return new ByteArrayInputStream(content.getBytes());
+      assertEquals("Table name", this.tableName.toUpperCase(), tableName.toUpperCase());
+      return new ByteArrayInputStream(content.getBytes(Charsets.UTF_8));
     }
 
     /**
@@ -257,7 +416,7 @@ public class TestXmlDataSetProducer {
      */
     @Override
     public Collection<String> availableStreamNames() {
-      return Arrays.asList("Test");
+      return Arrays.asList(tableName);
     }
 
     /**
@@ -265,7 +424,7 @@ public class TestXmlDataSetProducer {
      */
     @Override
     public boolean tableExists(String name) {
-      return name.toUpperCase().equals("TEST");
+      return name.toUpperCase().equals(tableName.toUpperCase());
     }
   }
 
