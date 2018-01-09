@@ -25,18 +25,20 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 
 import javax.sql.DataSource;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.sql.SelectStatement;
-import com.google.common.base.Optional;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import com.google.common.collect.Maps;
+
+
 
 /**
  * Loads the hashes for the deployed views.
@@ -64,7 +66,7 @@ class ExistingViewHashLoader {
 
 
   /**
-   * Loads the hashes for the deployed views, or absent if the hashes cannot be loaded
+   * Loads the hashes for the deployed views, or empty if the hashes cannot be loaded
    * (e.g. if the deployed views table does not exist in the existing schema).
    *
    * @param The existing database schema.
@@ -73,7 +75,7 @@ class ExistingViewHashLoader {
   Optional<Map<String, String>> loadViewHashes(Schema schema) {
 
     if (!schema.tableExists(DEPLOYED_VIEWS_NAME)) {
-      return Optional.absent();
+      return Optional.empty();
     }
 
     Map<String, String> result = Maps.newHashMap();

@@ -17,16 +17,15 @@ package org.alfasoftware.morf.jdbc.h2;
 
 import java.io.File;
 import java.sql.Connection;
+import java.util.Optional;
 
 import javax.sql.XADataSource;
-
-import org.apache.commons.lang.StringUtils;
 
 import org.alfasoftware.morf.jdbc.AbstractDatabaseType;
 import org.alfasoftware.morf.jdbc.JdbcUrlElements;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
-import com.google.common.base.Optional;
+import org.apache.commons.lang.StringUtils;
 
 /**
  * Support for H2 database hosts.
@@ -140,6 +139,6 @@ public final class H2 extends AbstractDatabaseType {
    */
   @Override
   public Optional<JdbcUrlElements> extractJdbcUrl(String url) {
-    return Optional.absent();
+    return Optional.empty();
   }
 }

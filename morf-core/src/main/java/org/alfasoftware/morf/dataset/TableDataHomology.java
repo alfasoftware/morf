@@ -22,6 +22,7 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.SchemaHomology;
@@ -29,11 +30,12 @@ import org.alfasoftware.morf.metadata.Table;
 import org.apache.commons.lang.ObjectUtils;
 
 import com.google.common.base.Function;
-import com.google.common.base.Optional;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableSet;
+
+
 
 /**
  * Measures the differences in a single table between {@link DataSetProducer}s.
@@ -59,7 +61,7 @@ public class TableDataHomology {
    * excluded from the comparison.
    */
   public TableDataHomology() {
-    this(Optional.<Comparator<Record>>absent(), Optional.<Collection<String>>absent());
+    this(Optional.<Comparator<Record>>empty(), Optional.<Collection<String>>empty());
   }
 
 
@@ -70,7 +72,7 @@ public class TableDataHomology {
    * @param orderComparator The comparator to use for ordering the rows, before their are checked for equality.
    */
   public TableDataHomology(Comparator<Record> orderComparator) {
-    this(Optional.of(orderComparator), Optional.<Collection<String>>absent());
+    this(Optional.of(orderComparator), Optional.<Collection<String>>empty());
   }
 
 
@@ -78,12 +80,12 @@ public class TableDataHomology {
    * Full constructor.
    *
    * @param orderComparator The comparator to use for ordering the rows, before their are checked for equality.
-   * @param columnsToExclude The column names which will not be subject to comparison.  If absent we will assume that
+   * @param columnsToExclude The column names which will not be subject to comparison.  If empty we will assume that
    *                         we should exclude id and version.
    */
   public TableDataHomology(Optional<Comparator<Record>> orderComparator, Optional<Collection<String>> columnsToExclude) {
     super();
-    this.orderComparator = orderComparator.orNull();
+    this.orderComparator = orderComparator.orElse(null);
     this.columnsToExclude = columnsToExclude.isPresent() ? Collections2.transform(columnsToExclude.get(), new Function<String, String>() {
       @Override
       public String apply(String input) {
@@ -175,7 +177,7 @@ public class TableDataHomology {
 
 
   private Optional<Record> optionalNext(Iterator<Record> iterator) {
-    return iterator.hasNext() ? Optional.of(iterator.next()) : Optional.<Record>absent();
+    return iterator.hasNext() ? Optional.of(iterator.next()) : Optional.<Record>empty();
   }
 
 

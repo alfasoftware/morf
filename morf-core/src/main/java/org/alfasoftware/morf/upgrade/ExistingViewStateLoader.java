@@ -20,6 +20,8 @@ import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Optional;
+
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -29,7 +31,6 @@ import org.apache.commons.logging.LogFactory;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.View;
-import com.google.common.base.Optional;
 
 /**
  * Loads the set of view changes which need to be made to match the target schema.

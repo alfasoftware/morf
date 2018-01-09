@@ -17,14 +17,14 @@ package org.alfasoftware.morf.sql.element;
 
 import static org.alfasoftware.morf.util.DeepCopyTransformations.noTransformation;
 
+import java.util.Optional;
+
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
-
-import com.google.common.base.Optional;
 
 /**
  * A field is used by a query to represent a column within the database. This class
@@ -145,7 +145,7 @@ public class FieldReference extends AliasedField implements Driver {
    * @param direction the sort direction of the field
    */
   public FieldReference(TableReference table, String name, Direction direction) {
-    this("", table, name, direction, Optional.<NullValueHandling>absent());
+    this("", table, name, direction, Optional.<NullValueHandling>empty());
   }
 
 
@@ -156,7 +156,7 @@ public class FieldReference extends AliasedField implements Driver {
    * @param name the name of the field
    */
   public FieldReference(TableReference table, String name) {
-    this("", table, name, Direction.NONE, Optional.<NullValueHandling>absent());
+    this("", table, name, Direction.NONE, Optional.<NullValueHandling>empty());
   }
 
 
@@ -166,7 +166,7 @@ public class FieldReference extends AliasedField implements Driver {
    * @param name the name of the field
    */
   public FieldReference(String name) {
-    this("", null, name, Direction.NONE, Optional.<NullValueHandling>absent());
+    this("", null, name, Direction.NONE, Optional.<NullValueHandling>empty());
   }
 
 
@@ -177,7 +177,7 @@ public class FieldReference extends AliasedField implements Driver {
    * @param direction the sort direction for the field
    */
   public FieldReference(String name, Direction direction) {
-    this("", null, name, direction, Optional.<NullValueHandling>absent());
+    this("", null, name, direction, Optional.<NullValueHandling>empty());
   }
 
 
@@ -413,7 +413,7 @@ public class FieldReference extends AliasedField implements Driver {
 
     private String alias;
     private Direction direction = Direction.NONE;
-    private Optional<NullValueHandling> nullValueHandling = Optional.absent();
+    private Optional<NullValueHandling> nullValueHandling = Optional.empty();
 
     private Builder(DeepCopyTransformation transformer, FieldReference copyOf) {
       this.alias = copyOf.getAlias();

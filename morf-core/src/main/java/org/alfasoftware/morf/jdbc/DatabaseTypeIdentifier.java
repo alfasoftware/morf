@@ -18,13 +18,13 @@ package org.alfasoftware.morf.jdbc;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
+import java.util.Optional;
+
 
 import javax.sql.DataSource;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
-import com.google.common.base.Optional;
 
 /**
  * Allows identification of a database from its metadata.

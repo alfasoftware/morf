@@ -22,13 +22,15 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaHomology;
 
-import com.google.common.base.Optional;
 import com.google.common.collect.Sets;
+
+
 
 /**
  * Measures the differences between {@link DataSetProducer}s.
@@ -65,7 +67,7 @@ public class DataSetHomology {
    * @param orderComparators The comparators to use for ordering the rows, before their are checked for equality.
    */
   public DataSetHomology(Map<String, Comparator<Record>> orderComparators) {
-    this(orderComparators, Optional.<Collection<String>>absent());
+    this(orderComparators, Optional.<Collection<String>>empty());
   }
 
 
@@ -120,7 +122,7 @@ public class DataSetHomology {
 
       // only compare the tables that are common
       for(String tableName : commonTables) {
-        TableDataHomology tableDataHomology = new TableDataHomology(Optional.fromNullable(orderComparators.get(tableName.toUpperCase())), columnsToExclude);
+        TableDataHomology tableDataHomology = new TableDataHomology(Optional.ofNullable(orderComparators.get(tableName.toUpperCase())), columnsToExclude);
         tableDataHomology.compareTable(
           schema1.getTable(tableName),
           producer1.records(tableName),

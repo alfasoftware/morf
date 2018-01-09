@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.jdbc.sqlserver;
 
 import java.sql.Connection;
+import java.util.Optional;
 import java.util.Stack;
 
 import javax.sql.XADataSource;
@@ -27,8 +28,6 @@ import org.alfasoftware.morf.metadata.Schema;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
-import com.google.common.base.Optional;
 
 
 /**
@@ -123,7 +122,7 @@ public final class SqlServer extends AbstractDatabaseType {
     String scheme = splitURL.pop();
 
     if (!scheme.equalsIgnoreCase("sqlserver")) {
-      return Optional.absent();
+      return Optional.empty();
     }
 
     if (!splitURL.pop().equals("://")) {

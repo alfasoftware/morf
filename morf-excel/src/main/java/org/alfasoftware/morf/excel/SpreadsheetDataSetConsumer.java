@@ -20,6 +20,7 @@ import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
+import java.util.Optional;
 
 import org.alfasoftware.morf.dataset.DataSetConsumer;
 import org.alfasoftware.morf.dataset.Record;
@@ -27,8 +28,6 @@ import org.alfasoftware.morf.metadata.Table;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
-import com.google.common.base.Optional;
 
 import jxl.Workbook;
 import jxl.format.Alignment;
@@ -87,7 +86,7 @@ public class SpreadsheetDataSetConsumer implements DataSetConsumer {
    * @param documentOutputStream Stream to which the spreadsheet file should be written.
    */
   public SpreadsheetDataSetConsumer(OutputStream documentOutputStream) {
-    this(documentOutputStream, Optional.<Map<String, Integer>>absent());
+    this(documentOutputStream, Optional.<Map<String, Integer>>empty());
   }
 
 

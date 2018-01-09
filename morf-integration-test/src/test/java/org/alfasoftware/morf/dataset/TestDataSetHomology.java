@@ -31,6 +31,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Table;
@@ -39,7 +40,6 @@ import org.apache.commons.lang.StringUtils;
 import org.hamcrest.Matchers;
 import org.junit.Test;
 
-import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 

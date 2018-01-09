@@ -42,6 +42,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import org.alfasoftware.morf.jdbc.ResultSetMismatch.MismatchType;
@@ -50,13 +51,14 @@ import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.stringcomparator.DatabaseEquivalentStringComparator;
 import org.apache.commons.lang.ArrayUtils;
 
-import com.google.common.base.Optional;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.inject.ImplementedBy;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
+
+
 
 /**
  * Compares two {@link ResultSet}s.
@@ -155,7 +157,7 @@ public class ResultSetComparer {
                     Provider<DatabaseEquivalentStringComparator> databaseEquivalentStringComparator) {
     this.leftSqlDialect = connectionResources.sqlDialect();
     this.rightSqlDialect = connectionResources.sqlDialect();
-    this.terminatePredicate = Optional.absent();
+    this.terminatePredicate = Optional.empty();
     this.databaseEquivalentStringComparator = databaseEquivalentStringComparator;
   }
 
@@ -169,7 +171,7 @@ public class ResultSetComparer {
                     Provider<DatabaseEquivalentStringComparator> databaseEquivalentStringComparator) {
     this.leftSqlDialect = leftConnectionResources.sqlDialect();
     this.rightSqlDialect = rightConnectionResources.sqlDialect();
-    this.terminatePredicate = Optional.absent();
+    this.terminatePredicate = Optional.empty();
     this.databaseEquivalentStringComparator = databaseEquivalentStringComparator;
   }
 
@@ -514,8 +516,8 @@ public class ResultSetComparer {
    */
   @SuppressWarnings({ "rawtypes" })
   private MismatchType compareKeyColumn(ResultSet left, ResultSet right, int keyCol, int columnType, boolean leftHasRow, boolean rightHasRow) throws SQLException {
-    Optional<Comparable> leftValue = leftHasRow ? Optional.fromNullable(columnToValue(left, keyCol, columnType)) : null;
-    Optional<Comparable> rightValue = rightHasRow ? Optional.fromNullable(columnToValue(right, keyCol, columnType)) : null;
+    Optional<Comparable> leftValue = leftHasRow ? Optional.ofNullable(columnToValue(left, keyCol, columnType)) : null;
+    Optional<Comparable> rightValue = rightHasRow ? Optional.ofNullable(columnToValue(right, keyCol, columnType)) : null;
     return compareKeyValue(leftValue, rightValue);
   }
 
@@ -555,7 +557,7 @@ public class ResultSetComparer {
   private Optional<ResultSetMismatch> compareColumnValue(Comparable leftValue, Comparable rightValue, String[] keys, int columnIndex, int columnType, MismatchType mismatchTypeToRaise) {
 
     if (leftValue == null && rightValue == null) {
-      return Optional.absent();
+      return Optional.empty();
     }
 
     if (rightValue == null && leftValue != null) {
@@ -576,7 +578,7 @@ public class ResultSetComparer {
       ));
     }
 
-    return Optional.absent();
+    return Optional.empty();
   }
 
 

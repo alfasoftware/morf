@@ -29,12 +29,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.Map;
-
-import org.hamcrest.Matchers;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
+import java.util.Optional;
 
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
@@ -42,8 +37,15 @@ import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.upgrade.ExistingViewStateLoader.Result;
-import com.google.common.base.Optional;
+import org.hamcrest.Matchers;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
+
 import com.google.common.collect.ImmutableMap;
+
+
 
 /**
  * Tests for {@link ExistingViewStateLoader}.
@@ -121,7 +123,7 @@ public class TestExistingViewStateLoader {
     View targetView3   = view("View3", select(literal("z")).from(tableRef("c")));
     Schema targetSchema = schema(targetView1, targetView2, targetView3);
 
-    when(existingViewHashLoader.loadViewHashes(sourceSchema)).thenReturn(Optional.<Map<String, String>>absent());
+    when(existingViewHashLoader.loadViewHashes(sourceSchema)).thenReturn(Optional.<Map<String, String>>empty());
 
     Result viewChanges = onTest.viewChanges(sourceSchema, targetSchema);
 

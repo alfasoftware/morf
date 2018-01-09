@@ -28,16 +28,18 @@ import static org.mockito.Mockito.when;
 
 import java.io.OutputStream;
 import java.util.Map;
-
-import jxl.write.WritableWorkbook;
-
-import org.junit.Test;
+import java.util.Optional;
 
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.Table;
-import com.google.common.base.Optional;
+import org.junit.Test;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+
+import jxl.write.WritableWorkbook;
+
+
 
 
 /**
@@ -80,7 +82,7 @@ public class TestSpreadsheetDataSetConsumer {
     final SpreadsheetDataSetConsumer consumer =
         new SpreadsheetDataSetConsumer(
           mock(OutputStream.class),
-          Optional.<Map<String, Integer>>absent(),
+          Optional.<Map<String, Integer>>empty(),
           outputter
         );
 

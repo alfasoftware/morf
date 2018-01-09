@@ -24,6 +24,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import javax.sql.DataSource;
 
@@ -34,8 +35,6 @@ import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
-import com.google.common.base.Optional;
 
 /**
  * Executes an SQL script.
@@ -835,8 +834,8 @@ public class SqlScriptExecutor {
     private Iterable<SqlParameter> parameterMetadata = Collections.emptyList();
     private DataValueLookup parameterData = DataSetUtils.record();
     private Connection connection;
-    private Optional<Integer> maxRows = Optional.absent();
-    private Optional<Integer> queryTimeout = Optional.absent();
+    private Optional<Integer> maxRows = Optional.empty();
+    private Optional<Integer> queryTimeout = Optional.empty();
     private boolean standalone;
 
 
@@ -885,7 +884,7 @@ public class SqlScriptExecutor {
     }
 
     /**
-     * @see org.alfasoftware.morf.jdbc.SqlScriptExecutor.QueryBuilder#withMaxRows(com.google.common.base.Optional)
+     * @see org.alfasoftware.morf.jdbc.SqlScriptExecutor.QueryBuilder#withMaxRows(java.util.Optional)
      */
     @Override
     public QueryBuilder withMaxRows(Optional<Integer> maxRows) {

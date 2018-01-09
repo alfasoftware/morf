@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.jdbc.oracle;
 
 import java.sql.Connection;
+import java.util.Optional;
 import java.util.Stack;
 
 import javax.sql.XADataSource;
@@ -27,8 +28,6 @@ import org.alfasoftware.morf.metadata.Schema;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
-import com.google.common.base.Optional;
 
 
 /**
@@ -132,7 +131,7 @@ public final class Oracle extends AbstractDatabaseType {
     String scheme = splitURL.pop();
 
     if (!scheme.equalsIgnoreCase("oracle")) {
-      return Optional.absent();
+      return Optional.empty();
     }
 
     splitURL.pop(); // Remove the "mem" or "thin"

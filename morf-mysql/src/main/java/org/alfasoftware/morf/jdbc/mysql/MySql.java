@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.jdbc.mysql;
 
 import java.sql.Connection;
+import java.util.Optional;
 import java.util.Stack;
 
 import javax.sql.XADataSource;
@@ -26,8 +27,6 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
-import com.google.common.base.Optional;
 
 
 /**
@@ -124,7 +123,7 @@ public final class MySql extends AbstractDatabaseType {
     String scheme = splitURL.pop();
 
     if (!scheme.equalsIgnoreCase("mysql")) {
-      return Optional.absent();
+      return Optional.empty();
     }
 
     if (!splitURL.pop().equals("://")) {
