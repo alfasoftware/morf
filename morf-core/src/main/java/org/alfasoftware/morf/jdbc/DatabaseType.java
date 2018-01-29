@@ -134,6 +134,19 @@ public interface DatabaseType {
 
 
   /**
+   * Reclassifies driver-specific exceptions to standard driver agnostic exceptions, such as those
+   * extending {@link java.sql.SQLException}. This can allow callers to extract error codes from
+   * exceptions which are otherwise opaque.
+   *
+   * @param e the exception to reclassify.
+   * @return The original exception or a reclassified exception.
+   */
+  public default Exception reclassifyException(Exception e) {
+    return e;
+  }
+
+
+  /**
    * Static registry of all supported database types, derived from {@link ServiceLoader}.
    *
    * @author Copyright (c) Alfa Financial Software 2017

@@ -17,9 +17,13 @@ package org.alfasoftware.morf.jdbc.oracle;
 
 import static org.alfasoftware.morf.jdbc.DatabaseTypeIdentifierTestUtils.mockDataSourceFor;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.Mockito.verify;
 
 import java.sql.SQLException;
+import java.sql.SQLTransientException;
 import java.util.Optional;
 
 import javax.sql.DataSource;
@@ -114,6 +118,36 @@ public class TestOracleDatabaseType {
     assertEquals("Should have the correct type", Oracle.IDENTIFIER, result.getDatabaseType());
     assertEquals("Should have the correct host", "anoraclehost.co.uk", result.getHostName());
     assertEquals("Should have the correct instance name", "instance", result.getInstanceName());
+  }
+
+
+  /**
+   * Tests Oracle JDBC driver specific exceptions, if they are available.
+   */
+  @Test
+  public void testOracleDriverSpecificExceptions() throws Exception {
+    assumeTrue(oracleXAExceptionIsOnClasspath());
+
+    // Unmapped OracleXAException
+    Exception invalidNumberOracleXAException = (Exception) Class.forName("oracle.jdbc.xa.OracleXAException").getConstructor(int.class).newInstance(1722);
+    assertSame(invalidNumberOracleXAException, databaseType.reclassifyException(invalidNumberOracleXAException));
+
+    // ORA-02049
+    Exception lockTimeoutOracleXAException = (Exception)  Class.forName("oracle.jdbc.xa.OracleXAException").getConstructor(int.class).newInstance(2049);
+    Exception convertedException = databaseType.reclassifyException(lockTimeoutOracleXAException);
+    assertTrue(convertedException instanceof SQLTransientException);
+    assertEquals(2049, ((SQLTransientException) convertedException).getErrorCode());
+    assertEquals("42000", ((SQLTransientException) convertedException).getSQLState());
+  }
+
+
+  private boolean oracleXAExceptionIsOnClasspath() {
+    try {
+      Class.forName("oracle.jdbc.xa.OracleXAException");
+      return true;
+    } catch (ClassNotFoundException e) {
+      return false;
+    }
   }
 
 

@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.jdbc.oracle;
 
 import java.sql.Connection;
+import java.sql.SQLTransientException;
 import java.util.Optional;
 import java.util.Stack;
 
@@ -121,7 +122,6 @@ public final class Oracle extends AbstractDatabaseType {
 
 
   /**
-   *
    * @see org.alfasoftware.morf.jdbc.AbstractDatabaseType#extractJdbcUrl(java.lang.String)
    */
   @Override
@@ -149,5 +149,38 @@ public final class Oracle extends AbstractDatabaseType {
     connectionDetails.withInstanceName(path);
 
     return Optional.of(connectionDetails.build());
+  }
+
+
+  /**
+   * SqlStates mappings can be found at https://docs.oracle.com/cd/E15817_01/appdev.111/b31228/appd.htm
+   *
+   * @see org.alfasoftware.morf.jdbc.DatabaseType#reclassifyException(java.lang.Exception)
+   */
+  @Override
+  public Exception reclassifyException(Exception e) {
+    int errorCode = getErrorCodeFromOracleXAException(e);
+    if(errorCode == 2049) {
+      // ORA-02049: Distributed Transaction Waiting for Lock
+      return new SQLTransientException(e.getMessage(), "42000", 2049, e);
+    }
+    return super.reclassifyException(e);
+  }
+
+
+  /**
+   * Recursively work through the exception stack and pick the error code from the first OracleXAException, if any are present.
+   */
+  private int getErrorCodeFromOracleXAException(Throwable exception) {
+    if ("oracle.jdbc.xa.OracleXAException".equals(exception.getClass().getName())) {
+      try {
+        return (int) exception.getClass().getMethod("getOracleError").invoke(exception);
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+    } else if (exception.getCause() != null) {
+      return getErrorCodeFromOracleXAException(exception.getCause());
+    }
+    return 0;
   }
 }
