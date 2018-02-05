@@ -29,6 +29,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
@@ -352,15 +353,15 @@ class NuoDBDialect extends SqlDialect {
 
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(ConcatenatedField)
+   * TODO - We don't expect the cast here to be required.
+   * Consulting with NuoDB support under WEB-73667
    */
   @Override
   protected String getSqlFrom(ConcatenatedField concatenatedField) {
-    List<String> sql = new ArrayList<>();
-    for (AliasedField field : concatenatedField.getConcatenationFields()) {
-      // Interpret null values as empty strings
-      sql.add("COALESCE(" + getSqlFrom(field) + ",'')");
-    }
-    return StringUtils.join(sql, " || ");
+    return concatenatedField.getConcatenationFields().stream()
+    .map(this::getSqlFrom)
+    .map(p -> "IFNULL(CAST(" + p + " AS STRING),'')")
+    .collect(Collectors.joining(" || "));
   }
 
 

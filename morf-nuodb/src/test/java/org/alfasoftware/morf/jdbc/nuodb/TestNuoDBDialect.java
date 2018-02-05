@@ -499,7 +499,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedConcatenationWithCase() {
-    return "SELECT COALESCE(assetDescriptionLine1,'') || COALESCE(CASE WHEN (taxVariationIndicator = 'Y') THEN exposureCustomerNumber ELSE invoicingCustomerNumber END,'') AS test FROM SCM.schedule";
+    return "SELECT IFNULL(CAST(assetDescriptionLine1 AS STRING),'') || IFNULL(CAST(CASE WHEN (taxVariationIndicator = 'Y') THEN exposureCustomerNumber ELSE invoicingCustomerNumber END AS STRING),'') AS test FROM SCM.schedule";
   }
 
 
@@ -508,7 +508,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedConcatenationWithFunction() {
-    return "SELECT COALESCE(assetDescriptionLine1,'') || COALESCE(MAX(scheduleStartDate),'') AS test FROM SCM.schedule";
+    return "SELECT IFNULL(CAST(assetDescriptionLine1 AS STRING),'') || IFNULL(CAST(MAX(scheduleStartDate) AS STRING),'') AS test FROM SCM.schedule";
   }
 
 
@@ -517,7 +517,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedConcatenationWithMultipleFieldLiterals() {
-    return "SELECT COALESCE('ABC','') || COALESCE(' ','') || COALESCE('DEF','') AS assetDescription FROM SCM.schedule";
+    return "SELECT IFNULL(CAST('ABC' AS STRING),'') || IFNULL(CAST(' ' AS STRING),'') || IFNULL(CAST('DEF' AS STRING),'') AS assetDescription FROM SCM.schedule";
   }
 
 
@@ -526,7 +526,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedNestedConcatenations() {
-    return "SELECT COALESCE(field1,'') || COALESCE(COALESCE(field2,'') || COALESCE('XYZ',''),'') AS test FROM SCM.schedule";
+    return "SELECT IFNULL(CAST(field1 AS STRING),'') || IFNULL(CAST(IFNULL(CAST(field2 AS STRING),'') || IFNULL(CAST('XYZ' AS STRING),'') AS STRING),'') AS test FROM SCM.schedule";
   }
 
 
@@ -535,7 +535,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSelectWithConcatenation1() {
-    return "SELECT COALESCE(assetDescriptionLine1,'') || COALESCE(' ','') || COALESCE(assetDescriptionLine2,'') AS assetDescription FROM SCM.schedule";
+    return "SELECT IFNULL(CAST(assetDescriptionLine1 AS STRING),'') || IFNULL(CAST(' ' AS STRING),'') || IFNULL(CAST(assetDescriptionLine2 AS STRING),'') AS assetDescription FROM SCM.schedule";
   }
 
 
@@ -544,7 +544,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSelectWithConcatenation2() {
-    return "SELECT COALESCE(assetDescriptionLine1,'') || COALESCE('XYZ','') || COALESCE(assetDescriptionLine2,'') AS assetDescription FROM SCM.schedule";
+    return "SELECT IFNULL(CAST(assetDescriptionLine1 AS STRING),'') || IFNULL(CAST('XYZ' AS STRING),'') || IFNULL(CAST(assetDescriptionLine2 AS STRING),'') AS assetDescription FROM SCM.schedule";
   }
 
 
