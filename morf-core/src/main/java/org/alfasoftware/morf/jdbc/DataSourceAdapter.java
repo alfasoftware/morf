@@ -73,7 +73,7 @@ public abstract class DataSourceAdapter implements DataSource {
    */
   @Override
   public int getLoginTimeout() throws SQLException {
-    throw new UnsupportedOperationException("Login timeout not supported");
+    return 0;
   }
 
 

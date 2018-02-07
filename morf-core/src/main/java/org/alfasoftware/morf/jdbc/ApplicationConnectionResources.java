@@ -45,14 +45,14 @@ public interface ApplicationConnectionResources {
     CONTAINER,
 
     /**
-     * A C3P0 connection pool should be used.
-     */
-    C3P0,
-
-    /**
      * A BoneCP connection pool should be used.
      */
     BONECP,
+
+    /**
+     * A HikariCP connection pool should be used.
+     */
+    HIKARICP,
 
     /**
      * An Atomikos connection pool should be used. Necessary when using Atomikos XA/JTA.
@@ -97,8 +97,7 @@ public interface ApplicationConnectionResources {
 
 
   /**
-   * @return The pooling type to be used. Implementations should return {@link PoolingType#C3P0}
-   *  as a default, if nothing else is configured.
+   * @return The pooling type to be used.
    */
   public PoolingType getPoolingType();
 
