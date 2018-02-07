@@ -229,8 +229,7 @@ public class FieldReference extends AliasedField implements Driver {
    */
   @Deprecated
   public void setDirection(Direction direction) {
-    if (immutableDslEnabled())
-      throw new UnsupportedOperationException("setDirection method not supported when IMMUTABLE_BUILDERS_ENABLED");
+    AliasedField.assetImmutableDslDisabled();
     this.direction = direction;
   }
 

@@ -44,6 +44,7 @@ public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableW
   /**
    * @deprecated use AliasedField(String)
    */
+  @Deprecated
   protected AliasedField() {
     this.alias = "";
   }
@@ -340,7 +341,7 @@ public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableW
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result + ((alias == null) ? 0 : alias.hashCode());
+    result = prime * result + (alias == null ? 0 : alias.hashCode());
     return result;
   }
 
@@ -394,5 +395,15 @@ public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableW
   public static boolean immutableDslEnabled() {
     return Boolean.TRUE.toString()
         .equalsIgnoreCase(System.getProperty("AliasedField.IMMUTABLE_DSL_ENABLED"));
+  }
+
+
+  /**
+   * TODO remove when we remove the old mutable behaviour.
+   */
+  public static void assetImmutableDslDisabled() {
+    if (immutableDslEnabled()) {
+      throw new UnsupportedOperationException("Cannot modify a statement when immutability is configured.");
+    }
   }
 }

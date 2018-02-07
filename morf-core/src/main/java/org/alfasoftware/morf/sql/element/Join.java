@@ -187,9 +187,7 @@ public class Join implements Driver, DeepCopyableWithTransformation<Join,Builder
    */
   @Deprecated
   public Join on(Criterion onCondition) {
-    if (AliasedField.immutableDslEnabled()) {
-      throw new UnsupportedOperationException("Cannot modify a join when immutability is configured.");
-    }
+    AliasedField.assetImmutableDslDisabled();
     this.criterion = onCondition;
     return this;
   }
@@ -211,10 +209,10 @@ public class Join implements Driver, DeepCopyableWithTransformation<Join,Builder
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result + ((criterion == null) ? 0 : criterion.hashCode());
-    result = prime * result + ((subSelect == null) ? 0 : subSelect.hashCode());
-    result = prime * result + ((table == null) ? 0 : table.hashCode());
-    result = prime * result + ((type == null) ? 0 : type.hashCode());
+    result = prime * result + (criterion == null ? 0 : criterion.hashCode());
+    result = prime * result + (subSelect == null ? 0 : subSelect.hashCode());
+    result = prime * result + (table == null ? 0 : table.hashCode());
+    result = prime * result + (type == null ? 0 : type.hashCode());
     return result;
   }
 

@@ -161,9 +161,7 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
    * @param aliasedFields The fields to add
    */
   protected void addFields(List<? extends AliasedFieldBuilder> aliasedFields) {
-    if (AliasedField.immutableDslEnabled()) {
-      throw new UnsupportedOperationException("Cannot modify a statement when immutability is configured.");
-    }
+    AliasedField.assetImmutableDslDisabled();
     fields.addAll(FluentIterable.from(aliasedFields)
       .transform(Builder.Helper.<AliasedField>buildAll()).toList());
   }
@@ -683,13 +681,13 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result + ((alias == null) ? 0 : alias.hashCode());
-    result = prime * result + ((fields == null) ? 0 : fields.hashCode());
-    result = prime * result + ((fromSelects == null) ? 0 : fromSelects.hashCode());
-    result = prime * result + ((joins == null) ? 0 : joins.hashCode());
-    result = prime * result + ((orderBys == null) ? 0 : orderBys.hashCode());
-    result = prime * result + ((table == null) ? 0 : table.hashCode());
-    result = prime * result + ((whereCriterion == null) ? 0 : whereCriterion.hashCode());
+    result = prime * result + (alias == null ? 0 : alias.hashCode());
+    result = prime * result + (fields == null ? 0 : fields.hashCode());
+    result = prime * result + (fromSelects == null ? 0 : fromSelects.hashCode());
+    result = prime * result + (joins == null ? 0 : joins.hashCode());
+    result = prime * result + (orderBys == null ? 0 : orderBys.hashCode());
+    result = prime * result + (table == null ? 0 : table.hashCode());
+    result = prime * result + (whereCriterion == null ? 0 : whereCriterion.hashCode());
     return result;
   }
 
