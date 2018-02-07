@@ -35,12 +35,10 @@ import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
-import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.Hint;
-import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.OptimiseForRowCount;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
@@ -532,19 +530,6 @@ class OracleDialect extends SqlDialect {
       parameter(parameter.getImpliedName()).type(DECIMAL).width(1),
       boolVal == null ? null : boolVal ? BigDecimal.ONE : BigDecimal.ZERO
     );
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#buildParameterisedInsert(org.alfasoftware.morf.sql.InsertStatement,
-   *      org.alfasoftware.morf.metadata.Schema)
-   */
-  @Override
-  public String buildParameterisedInsert(InsertStatement statement, Schema metadata) {
-    // Ensure that a modifier is placed in the query
-    String result = super.buildParameterisedInsert(statement, metadata);
-
-    return result.replaceFirst("^\\w+", "insert /*+ append */");
   }
 
 
