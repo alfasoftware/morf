@@ -17,17 +17,19 @@ package org.alfasoftware.morf.sql;
 
 import static org.alfasoftware.morf.util.DeepCopyTransformations.noTransformation;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.TableReference;
-import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
+import org.alfasoftware.morf.util.ShallowCopyable;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 
 /**
  * <p>Class which encapsulates the generation of an MERGE SQL statement.</p>
@@ -35,11 +37,11 @@ import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
  * <p>The class structure imitates the end SQL and is structured as follows:</p>
  *
  * <blockquote><pre>
- *   new MergeStatement()
- *        |----&gt; .into([table])
- *                |----&gt; .tableUniqueKey([field]...)
- *                |----&gt; .fromSelect([SelectStatement])
- * </pre></blockquote>
+ *  MergeStatement.merge()
+ *    .into([table])
+ *    .tableUniqueKey([field]...)
+ *    .fromSelect([SelectStatement])
+ *    .build()</pre></blockquote>
  *
  * <p>A Merge statement takes a target table and merges (INSERTS or UPDATES) data from a source table.
  * If a record exists with the same unique key in the target table, the record is updated, otherwise the record
@@ -51,47 +53,67 @@ import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
  *
  * @author Copyright (c) Alfa Financial Software 2013
  */
-public class MergeStatement implements Statement,DeepCopyableWithTransformation<MergeStatement,Builder<MergeStatement>>,Driver {
+public class MergeStatement implements Statement,
+                         DeepCopyableWithTransformation<MergeStatement, MergeStatementBuilder>,
+                         ShallowCopyable<MergeStatement, MergeStatementBuilder>,
+                         Driver {
 
   /**
    * The key fields upon which to check if record exists.
    */
-  private final List<AliasedField>  tableUniqueKey = new ArrayList<>();
+  private final List<AliasedField>  tableUniqueKey;
 
   /**
    * The primary table to merge into.
+   *
+   * TODO make final
    */
   private TableReference            table;
 
   /**
    * The select statement to source the data from.
+   *
+   * TODO make final
    */
   private SelectStatement           selectStatement;
 
 
   /**
-   * Constructs an Merge Statement.
+   * Constructs a Merge Statement which either inserts or updates
+   * a record into a table depending on whether a condition exists in
+   * the table.
+   *
+   * @return Statement builder.
    */
-  public MergeStatement() {
-    super();
+  public static MergeStatementBuilder merge() {
+    return new MergeStatementBuilder();
   }
 
 
   /**
-   * Constructor to create a deep copy.
+   * Constructs an Merge Statement.
    *
-   * @param sourceStatement {@link MergeStatement} to create a deep copy from.
+   * <p>Usage is discouraged; this method will be deprecated at some point. Use
+   * {@link #merge()} for preference.</p>
    */
-  private MergeStatement(MergeStatement sourceStatement,DeepCopyTransformation transformer) {
+  public MergeStatement() {
     super();
+    this.tableUniqueKey = AliasedField.immutableDslEnabled() ? ImmutableList.of() : Lists.newArrayList();
+  }
 
-    this.table = transformer.deepCopy(sourceStatement.table);
 
-    for (AliasedField currentField : sourceStatement.tableUniqueKey) {
-      this.tableUniqueKey.add(transformer.deepCopy(currentField.deepCopy()));
-    }
-
-    this.selectStatement = transformer.deepCopy(sourceStatement.selectStatement);
+  /**
+   * Builder constructor.
+   *
+   * @param builder The builder
+   */
+  MergeStatement(MergeStatementBuilder builder) {
+    super();
+    this.table = builder.getTable();
+    this.tableUniqueKey = AliasedField.immutableDslEnabled()
+        ? ImmutableList.copyOf(builder.getTableUniqueKey())
+        : Lists.newArrayList(builder.getTableUniqueKey());
+    this.selectStatement = builder.getSelectStatement();
   }
 
 
@@ -100,22 +122,25 @@ public class MergeStatement implements Statement,DeepCopyableWithTransformation<
    */
   @Override
   public MergeStatement deepCopy() {
-    return new MergeStatement(this,noTransformation());
+    return deepCopy(noTransformation()).build();
   }
 
 
   /**
    * Merges into a specific table.
    *
-   * <blockquote><pre>
-   *    new MergeStatement().into(new TableReference("agreement"));</pre></blockquote>
+   * <blockquote><pre>merge().into(tableRef("agreement"));</pre></blockquote>
    *
    * @param intoTable the table to merge into.
-   * @return the updated MergeStatement (this will not be a new object).
+   * @return a statement with the changes applied.
    */
   public MergeStatement into(TableReference intoTable) {
-    this.table = intoTable;
-    return this;
+    if (AliasedField.immutableDslEnabled()) {
+      return shallowCopy().into(intoTable).build();
+    } else {
+      this.table = intoTable;
+      return this;
+    }
   }
 
 
@@ -132,7 +157,7 @@ public class MergeStatement implements Statement,DeepCopyableWithTransformation<
    * </p>
    *
    * @param keyFields the key fields.
-   * @return the updated MergeStatement (this will not be a new object).
+   * @return a statement with the changes applied.
    */
   public MergeStatement tableUniqueKey(AliasedField... keyFields) {
     return tableUniqueKey(Arrays.asList(keyFields));
@@ -152,11 +177,15 @@ public class MergeStatement implements Statement,DeepCopyableWithTransformation<
    * </p>
    *
    * @param keyFields the key fields.
-   * @return the updated MergeStatement (this will not be a new object).
+   * @return a statement with the changes applied.
    */
   public MergeStatement tableUniqueKey(List<AliasedField> keyFields) {
-    this.tableUniqueKey.addAll(keyFields);
-    return this;
+    if (AliasedField.immutableDslEnabled()) {
+      return shallowCopy().tableUniqueKey(keyFields).build();
+    } else {
+      this.tableUniqueKey.addAll(keyFields);
+      return this;
+    }
   }
 
 
@@ -164,14 +193,18 @@ public class MergeStatement implements Statement,DeepCopyableWithTransformation<
    * Specifies the select statement to use as a source of the data.
    *
    * @param statement the source statement.
-   * @return the updated MergeStatement (this will not be a new object).
+   * @return a statement with the changes applied.
    */
   public MergeStatement from(SelectStatement statement) {
-    if (statement.getOrderBys().size() != 0) {
-      throw new IllegalArgumentException("ORDER BY is not permitted in the SELECT part of a merge statement (SQL Server limitation)");
+    if (AliasedField.immutableDslEnabled()) {
+      return shallowCopy().from(statement).build();
+    } else {
+      if (statement.getOrderBys().size() != 0) {
+        throw new IllegalArgumentException("ORDER BY is not permitted in the SELECT part of a merge statement (SQL Server limitation)");
+      }
+      this.selectStatement = statement;
+      return this;
     }
-    this.selectStatement = statement;
-    return this;
   }
 
 
@@ -215,6 +248,45 @@ public class MergeStatement implements Statement,DeepCopyableWithTransformation<
   }
 
 
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + ((selectStatement == null) ? 0 : selectStatement.hashCode());
+    result = prime * result + ((table == null) ? 0 : table.hashCode());
+    result = prime * result + ((tableUniqueKey == null) ? 0 : tableUniqueKey.hashCode());
+    return result;
+  }
+
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    MergeStatement other = (MergeStatement) obj;
+    if (selectStatement == null) {
+      if (other.selectStatement != null)
+        return false;
+    } else if (!selectStatement.equals(other.selectStatement))
+      return false;
+    if (table == null) {
+      if (other.table != null)
+        return false;
+    } else if (!table.equals(other.table))
+      return false;
+    if (tableUniqueKey == null) {
+      if (other.tableUniqueKey != null)
+        return false;
+    } else if (!tableUniqueKey.equals(other.tableUniqueKey))
+      return false;
+    return true;
+  }
+
+
   /**
    * @see org.alfasoftware.morf.util.ObjectTreeTraverser.Driver#drive(ObjectTreeTraverser)
    */
@@ -230,9 +302,20 @@ public class MergeStatement implements Statement,DeepCopyableWithTransformation<
   /**
    * @see org.alfasoftware.morf.util.DeepCopyableWithTransformation#deepCopy(org.alfasoftware.morf.util.DeepCopyTransformation)
    */
-
   @Override
-  public Builder<MergeStatement> deepCopy(DeepCopyTransformation transformer) {
-    return TempTransitionalBuilderWrapper.wrapper(new MergeStatement(this, transformer));
+  public MergeStatementBuilder deepCopy(DeepCopyTransformation transformer) {
+    return new MergeStatementBuilder(this, transformer);
+  }
+
+
+  /**
+   * Performs a shallow copy to a builder, allowing a duplicate
+   * to be created and modified.
+   *
+   * @return A builder, initialised as a duplicate of this statement.
+   */
+  @Override
+  public MergeStatementBuilder shallowCopy() {
+    return new MergeStatementBuilder(this);
   }
 }

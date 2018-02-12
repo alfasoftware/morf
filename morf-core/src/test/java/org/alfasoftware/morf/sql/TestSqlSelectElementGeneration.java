@@ -15,15 +15,25 @@
 
 package org.alfasoftware.morf.sql;
 
+import static org.alfasoftware.morf.sql.SqlUtils.literal;
+import static org.alfasoftware.morf.sql.SqlUtils.select;
+import static org.alfasoftware.morf.sql.SqlUtils.selectDistinct;
+import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.alfasoftware.morf.sql.element.JoinType.INNER_JOIN;
+import static org.alfasoftware.morf.sql.element.JoinType.LEFT_OUTER_JOIN;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.List;
-
-import org.junit.Test;
 
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Criterion;
@@ -34,6 +44,9 @@ import org.alfasoftware.morf.sql.element.Join;
 import org.alfasoftware.morf.sql.element.JoinType;
 import org.alfasoftware.morf.sql.element.Operator;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.junit.Test;
+
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 
 /**
@@ -977,4 +990,416 @@ public class TestSqlSelectElementGeneration {
 
   }
 
+
+  /**
+   * Mutate the statement lots and make sure we always modify the same instance,
+   * which is our original behaviour.  We need to make sure that while refactoring
+   * fot immutability, we retain this behaviour.
+   *
+   * TODO This test can be removed when we remove mutable capability from the DSL.
+   */
+  @SuppressWarnings("deprecation")
+  @Test
+  public void testMutableBuilder() {
+
+    FieldLiteral field1 = literal(1);
+    FieldLiteral field2 = literal(1);
+    SelectStatement subSelect1 = select(literal(1));
+    SelectStatement subSelect2 = select(literal(1));
+    Criterion criterion1 = literal(1).isNull();
+    Criterion criterion2 = literal(2).isNull();
+    Criterion criterion3 = literal(3).isNull();
+    TableReference table1 = tableRef("A");
+    TableReference table2 = tableRef("B");
+
+    SelectStatement select = select();
+
+    // Fields
+    select.addFields(field1);
+    assertThat(select.getFields(), contains(field1));
+    select.getFields().add(field2);
+    assertThat(select.getFields(), contains(field1, field2));
+
+    // Table
+    select.from("A");
+    assertEquals("A", select.getTable().getName());
+
+    // From select
+    select.from(subSelect1);
+    assertFalse(select.getFromSelects().isEmpty());
+
+    // Joins
+    select.innerJoin(subSelect1);
+    select.innerJoin(tableRef("C"));
+    select.innerJoin(tableRef("B"), field1.eq(field2));
+    select.innerJoin(subSelect1, field1.eq(field2));
+    select.leftOuterJoin(tableRef("B"), field1.eq(field2));
+    select.leftOuterJoin(subSelect2, field1.eq(field2));
+    assertThat(select.getJoins(), contains(
+        new Join(INNER_JOIN, subSelect1, null),
+        new Join(INNER_JOIN, tableRef("C"), null),
+        new Join(INNER_JOIN, tableRef("B"), field1.eq(field2)),
+        new Join(INNER_JOIN, subSelect1, field1.eq(field2)),
+        new Join(LEFT_OUTER_JOIN, tableRef("B"), field1.eq(field2)),
+        new Join(LEFT_OUTER_JOIN, subSelect2, field1.eq(field2))
+    ));
+
+    // Where
+    select.where(ImmutableList.of(criterion2, criterion3));
+    assertThat(select.getWhereCriterion(), equalTo(Criterion.and(criterion2, criterion3)));
+    select.where(criterion1);
+    assertThat(select.getWhereCriterion(), equalTo(criterion1));
+
+    select.orderBy(field1, field2);
+    assertThat(select.getOrderBys(), contains(field1, field2));
+
+    // Group by
+    select.groupBy(field1, field2);
+    assertThat(select.getGroupBys(), contains(field1, field2));
+
+    // Having
+    select.having(criterion1);
+    assertThat(select.getHaving(), equalTo(criterion1));
+
+    // Alias
+    select.alias("A");
+    assertEquals("A", select.getAlias());
+
+    // For update
+    select.forUpdate();
+    assertTrue(select.isForUpdate());
+
+    // Hints
+    select.optimiseForRowCount(1)
+        .useImplicitJoinOrder()
+        .useIndex(table1, "INDEX_1")
+        .useIndex(table2, "INDEX_2");
+    assertThat(select.getHints(), contains(
+        new OptimiseForRowCount(1),
+        new UseImplicitJoinOrder(),
+        new UseIndex(table1, "INDEX_1"),
+        new UseIndex(table2, "INDEX_2")
+    ));
+
+  }
+
+
+  /**
+   * Test that mutation is performed by copy-and-write when we change fields.
+   */
+  @SuppressWarnings("deprecation")
+  @Test
+  public void testFieldsImmutable() {
+    AliasedField.withImmutableBuildersEnabled(() -> {
+      FieldLiteral field1 = literal(1);
+      FieldLiteral field2 = literal(2);
+
+      // Can't mutate
+      SelectStatement select = select();
+      assertUnsupported(() -> select.getFields().add(literal(4)));
+      assertUnsupported(() -> select.appendFields(literal(4)));
+
+      // But we can make a copy and extend that, and the copy is also unmodifiable.
+      SelectStatement copy = select.shallowCopy().fields(field1).build();
+      assertThat(copy.getFields(), contains(field1));
+      assertUnsupported(() -> copy.getFields().add(field2));
+    });
+  }
+
+
+  /**
+   * Test that mutation is performed by copy-and-write when we change the "from"
+   */
+  @Test
+  public void testFromImmutable() {
+    AliasedField.withImmutableBuildersEnabled(() -> {
+
+      SelectStatement subSelect1 = select(literal(1));
+
+      // Implicit copy-on-write
+      SelectStatement select = select(literal(1)).from("A");
+      SelectStatement updated = select.from("B").from(subSelect1);
+      assertEquals("A", select.getTable().getName());
+      assertThat(select.getFromSelects(), empty());
+      assertEquals("B", updated.getTable().getName());
+      assertThat(updated.getFromSelects(), contains(subSelect1));
+      assertNotSame(select, updated);
+      assertUnsupported(() -> select.getFields().add(literal(4)));
+
+      // Explicit copy-on-write
+      SelectStatement copy = select.shallowCopy().from("C").from(subSelect1).build();
+      assertEquals("C", copy.getTable().getName());
+      assertThat(updated.getFromSelects(), contains(subSelect1));
+      assertNotSame(select, copy);
+
+    });
+  }
+
+
+  /**
+   * Test that mutation is performed by copy-and-write when we change joins.
+   */
+  @Test
+  public void testJoinsImmutable() {
+    AliasedField.withImmutableBuildersEnabled(() -> {
+
+      FieldLiteral field1 = literal(1);
+      FieldLiteral field2 = literal(1);
+      SelectStatement subSelect1 = select(literal(1));
+      SelectStatement subSelect2 = select(literal(1));
+
+      // Implicit copy-on-write
+      SelectStatement select = select(literal(1));
+      SelectStatement updated = select
+          .from("B")
+          .innerJoin(subSelect1)
+          .innerJoin(tableRef("C"))
+          .innerJoin(tableRef("B"), field1.eq(field2))
+          .innerJoin(subSelect1, field1.eq(field2))
+          .leftOuterJoin(tableRef("B"), field1.eq(field2))
+          .leftOuterJoin(subSelect2, field1.eq(field2));
+
+      assertThat(select.getJoins(), empty());
+      assertThat(updated.getJoins(), contains(
+          new Join(INNER_JOIN, subSelect1, null),
+          new Join(INNER_JOIN, tableRef("C"), null),
+          new Join(INNER_JOIN, tableRef("B"), field1.eq(field2)),
+          new Join(INNER_JOIN, subSelect1, field1.eq(field2)),
+          new Join(LEFT_OUTER_JOIN, tableRef("B"), field1.eq(field2)),
+          new Join(LEFT_OUTER_JOIN, subSelect2, field1.eq(field2))
+      ));
+
+      assertUnsupported(() -> updated.getJoins().add(new Join(INNER_JOIN, subSelect2, null)));
+
+      // Explicit copy-on-write
+      SelectStatement copy = select.shallowCopy()
+          .innerJoin(subSelect1)
+          .innerJoin(tableRef("C"))
+          .innerJoin(tableRef("B"), field1.eq(field2))
+          .innerJoin(subSelect1, field1.eq(field2))
+          .leftOuterJoin(tableRef("B"), field1.eq(field2))
+          .leftOuterJoin(subSelect2, field1.eq(field2)).build();
+
+      assertThat(copy.getJoins(), contains(
+          new Join(INNER_JOIN, subSelect1, null),
+          new Join(INNER_JOIN, tableRef("C"), null),
+          new Join(INNER_JOIN, tableRef("B"), field1.eq(field2)),
+          new Join(INNER_JOIN, subSelect1, field1.eq(field2)),
+          new Join(LEFT_OUTER_JOIN, tableRef("B"), field1.eq(field2)),
+          new Join(LEFT_OUTER_JOIN, subSelect2, field1.eq(field2))
+      ));
+    });
+  }
+
+
+  /**
+   *  Test that mutation is performed by copy-and-write when we change the where.
+   */
+  @Test
+  public void testWhereImmutable() {
+    AliasedField.withImmutableBuildersEnabled(() -> {
+
+      Criterion criterion1 = literal(1).isNull();
+      Criterion criterion2 = literal(2).isNull();
+      Criterion criterion3 = literal(3).isNull();
+      SelectStatement select = select(literal(1));
+
+      // Explicit copy-on-write
+      assertEquals(criterion1, select.shallowCopy().where(criterion1).build().getWhereCriterion());
+
+      // Implicit copy-on-write
+      SelectStatement updated1 = select.where(criterion1);
+      SelectStatement updated2 = select.where(ImmutableList.of(criterion2, criterion3));
+      assertNull(select.getWhereCriterion());
+      assertThat(updated1.getWhereCriterion(), equalTo(criterion1));
+      assertThat(updated2.getWhereCriterion(), equalTo(Criterion.and(criterion2, criterion3)));
+      assertNotSame(select, updated1);
+      assertNotSame(select, updated2);
+
+    });
+  }
+
+
+  /**
+   *  Test that mutation is performed by copy-and-write when we change the group by.
+   */
+  @Test
+  public void testGroupByImmutable() {
+    AliasedField.withImmutableBuildersEnabled(() -> {
+
+      FieldLiteral field1 = literal(1);
+      FieldLiteral field2 = literal(2);
+      FieldLiteral field3 = literal(3);
+      SelectStatement select = select(literal(1));
+
+      // Explicit copy-on-write
+      assertThat(select.shallowCopy().groupBy(field1, field2).build().getGroupBys(), contains(field1, field2));
+
+      // Implicit copy-on-write
+      SelectStatement updated = select.groupBy(field1, field2);
+      assertThat(select.getGroupBys(), empty());
+      assertThat(updated.getGroupBys(), contains(field1, field2));
+      assertNotSame(select, updated);
+
+      assertUnsupported(() -> updated.getGroupBys().add(field3));
+    });
+  }
+
+
+  /**
+   *  Test that mutation is performed by copy-and-write when we change the having.
+   */
+  @Test
+  public void testHavingImmutable() {
+    AliasedField.withImmutableBuildersEnabled(() -> {
+
+      Criterion criterion1 = literal(1).isNull();
+      SelectStatement select = select(literal(1));
+
+      // Explicit copy-on-write
+      assertEquals(criterion1, select.shallowCopy().having(criterion1).build().getHaving());
+
+      // Implicit copy-on-write
+      SelectStatement updated = select.having(criterion1);
+      assertNull(select.getHaving());
+      assertThat(updated.getHaving(), equalTo(criterion1));
+      assertNotSame(select, updated);
+
+    });
+  }
+
+
+  /**
+   *  Test that mutation is performed by copy-and-write when we change the order by.
+   */
+  @Test
+  public void testOrderByImmutable() {
+    AliasedField.withImmutableBuildersEnabled(() -> {
+
+      FieldLiteral field1 = literal(1);
+      FieldLiteral field2 = literal(2);
+      FieldLiteral field3 = literal(3);
+
+      // Implicit copy-on-write
+      SelectStatement select = select(literal(1));
+      SelectStatement updated = select.orderBy(field1, field2);
+      assertThat(select.getOrderBys(), empty());
+      assertThat(updated.getOrderBys(), contains(field1, field2));
+      assertNotSame(select, updated);
+
+      assertUnsupported(() -> updated.getOrderBys().add(field3));
+
+      // Explicit copy-on-write
+      assertThat(select.shallowCopy().orderBy(field1, field2).build().getOrderBys(), contains(field1, field2));
+
+    });
+  }
+
+
+  /**
+   *  Test that mutation is performed by copy-and-write when we change the alias.
+   */
+  @Test
+  public void testAliasImmutable() {
+    AliasedField.withImmutableBuildersEnabled(() -> {
+
+      // Implicit copy-on-write
+      SelectStatement select = select(literal(1));
+      SelectStatement updated = select.alias("A");
+      assertNull("", select.getAlias());
+      assertEquals("A", updated.getAlias());
+      assertNotSame(select, updated);
+
+      // Explicit copy-on-write
+      assertEquals("A", select.shallowCopy().alias("A").build().getAlias());
+
+    });
+  }
+
+
+  /**
+   *  Test that mutation is performed by copy-and-write when we set for update.
+   */
+  @Test
+  public void testforUpdateImmutable() {
+    AliasedField.withImmutableBuildersEnabled(() -> {
+
+      // Implicit copy-on-write
+      SelectStatement select = select(literal(1));
+      SelectStatement updated = select.forUpdate();
+      assertFalse(select.isForUpdate());
+      assertTrue(updated.isForUpdate());
+      assertNotSame(select, updated);
+
+      // Explicit copy-on-write
+      assertTrue(select.shallowCopy().forUpdate().build().isForUpdate());
+      assertFalse(select.shallowCopy().forUpdate().notForUpdate().build().isForUpdate());
+
+    });
+  }
+
+
+  /**
+   *  Test that distinct is honoured by the shallow copy builder.
+   */
+  @Test
+  public void testSelectDistinctImmutable() {
+    AliasedField.withImmutableBuildersEnabled(() -> {
+
+      SelectStatement select = selectDistinct(literal(1));
+      assertTrue(select.shallowCopy().build().isDistinct());
+      assertFalse(select.shallowCopy().notDistinct().build().isDistinct());
+      assertTrue(select.shallowCopy().notDistinct().distinct().build().isDistinct());
+
+    });
+  }
+
+  @Test
+  public void testHintsImmutable() {
+    AliasedField.withImmutableBuildersEnabled(() -> {
+
+      TableReference table1 = tableRef("A");
+      TableReference table2 = tableRef("B");
+      SelectStatement select = select(literal(1));
+
+      // Explicit copy-on-write
+      assertThat(select.shallowCopy()
+                      .optimiseForRowCount(1)
+                      .useImplicitJoinOrder()
+                      .useIndex(table1, "INDEX_1")
+                      .useIndex(table2, "INDEX_2")
+                      .build()
+                      .getHints(), contains(
+          new OptimiseForRowCount(1),
+          new UseImplicitJoinOrder(),
+          new UseIndex(table1, "INDEX_1"),
+          new UseIndex(table2, "INDEX_2")
+      ));
+
+      // Implicit copy-on-write
+      SelectStatement updated = select.optimiseForRowCount(1)
+          .useImplicitJoinOrder()
+          .useIndex(table1, "INDEX_1")
+          .useIndex(table2, "INDEX_2");
+
+      assertThat(updated.getHints(), contains(
+          new OptimiseForRowCount(1),
+          new UseImplicitJoinOrder(),
+          new UseIndex(table1, "INDEX_1"),
+          new UseIndex(table2, "INDEX_2")
+      ));
+      assertThat(select.getHints(), empty());
+      assertUnsupported(() -> updated.getHints().add(new OptimiseForRowCount(3)));
+    });
+  }
+
+
+  private void assertUnsupported(Runnable runnable) {
+    try {
+      runnable.run();
+    } catch (UnsupportedOperationException w) {
+      return;
+    }
+    fail("Did not catch UnsupportedOperationException");
+  }
 }

@@ -28,13 +28,33 @@ import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
  *
  * @author Copyright (c) Alfa Financial Software 2013
  */
-public class TruncateStatement implements Statement,  DeepCopyableWithTransformation<TruncateStatement,Builder<TruncateStatement>>,Driver {
+public class TruncateStatement implements Statement,
+                                          DeepCopyableWithTransformation<TruncateStatement, Builder<TruncateStatement>>,
+                                          Driver {
 
   /**
    * The table to update
    */
   private final TableReference table;
 
+
+  /**
+   * Constructs a Truncate Statement.
+   *
+   * @param table The table to truncate.
+   * @return Builder.
+   */
+  public static Builder<TruncateStatement> truncate(TableReference table) {
+    return () -> new TruncateStatement(table);
+  }
+
+
+  /**
+   * <p>Usage is discouraged; this constructor will be deprecated at some point. Use
+   * {@link #truncate(TableReference)} for preference.</p>
+   *
+   * @param table The table to truncate.
+   */
   public TruncateStatement(TableReference table) {
     this.table = table;
   }
@@ -62,9 +82,35 @@ public class TruncateStatement implements Statement,  DeepCopyableWithTransforma
    */
   @Override
   public String toString() {
-    return "SQL TRUNCATE TABLE [ " + table + " ]";
+    return "SQL TRUNCATE TABLE [" + table + "]";
   }
 
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + ((table == null) ? 0 : table.hashCode());
+    return result;
+  }
+
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    TruncateStatement other = (TruncateStatement) obj;
+    if (table == null) {
+      if (other.table != null)
+        return false;
+    } else if (!table.equals(other.table))
+      return false;
+    return true;
+  }
 
 
   /**

@@ -22,10 +22,10 @@ import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
 import org.alfasoftware.morf.sql.element.FieldFromSelectFirst;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.TableReference;
-import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
+import org.alfasoftware.morf.util.ShallowCopyable;
 
 /**
  * Class which encapsulates the generation of an SQL statement for first aggregation.
@@ -35,11 +35,11 @@ import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
  * <p>The class structure imitates the end SQL (in Oracle flavour) and is structured as follows:</p>
  *
  * <blockquote><pre>
- *   new SelectFirstStatement([field])                        = SELECT [fields]
- *        |----&gt; .from([table])                               FROM [table]
- *                |----&gt; .where([criterion])                  WHERE [criterion]
- *                |----&gt; .orderBy([fields])                   ORDER BY [fields]
- *  </pre></blockquote>
+ *  SelectFirstStatement.selectFirst([field])    = SELECT [fields]
+ *    .from([table])                               FROM [table]
+ *    .where([criterion])                          WHERE [criterion]
+ *    .orderBy([fields])                           ORDER BY [fields]
+ *    .build()</pre></blockquote>
  *
  * <p>This class accepts only one {@link FieldReference} reference in the constructor.</p>
  *
@@ -54,22 +54,48 @@ import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
  *
  * @author Copyright (c) Alfa Financial Software 2014
  */
-public class SelectFirstStatement extends AbstractSelectStatement<SelectFirstStatement> implements DeepCopyableWithTransformation<SelectFirstStatement,Builder<SelectFirstStatement>>,Driver{
+public class SelectFirstStatement extends AbstractSelectStatement<SelectFirstStatement>
+                               implements DeepCopyableWithTransformation<SelectFirstStatement, SelectFirstStatementBuilder>,
+                                          ShallowCopyable<SelectFirstStatement, SelectFirstStatementBuilder>,
+                                          Driver {
+
+  private int hashCode;
+
 
   /**
+   * Constructs a Select First Statement.
+   *
+   * @param field the field that should be selected
+   * @return Builder.
+   */
+  public static final SelectFirstStatementBuilder selectFirst(AliasedFieldBuilder field) {
+    return new SelectFirstStatementBuilder(field);
+  }
+
+
+  /**
+   * <p>Usage is discouraged; this constructor will be deprecated at some point. Use
+   * {@link #selectFirst(AliasedFieldBuilder)} for preference.</p>
+   *
    * @param field The field in the select statemenr
    */
   public SelectFirstStatement(AliasedFieldBuilder field) {
     super(field);
   }
 
-
   /**
-   * Constructor used for deep copy of the object
-   * @param selectFirstStatement
+   * Builder constructor.
+   *
+   * @param builder The builder.
    */
-  private SelectFirstStatement(SelectFirstStatement selectFirstStatement,DeepCopyTransformation transformer) {
-    super(selectFirstStatement,transformer);
+  SelectFirstStatement(SelectFirstStatementBuilder builder) {
+    super(builder);
+  }
+
+
+  @Override
+  public SelectFirstStatementBuilder shallowCopy() {
+    return new SelectFirstStatementBuilder(this);
   }
 
 
@@ -79,7 +105,7 @@ public class SelectFirstStatement extends AbstractSelectStatement<SelectFirstSta
    */
   @Override
   public SelectFirstStatement deepCopy() {
-    return new SelectFirstStatement(this,noTransformation());
+    return deepCopy(noTransformation()).build();
   }
 
 
@@ -103,11 +129,34 @@ public class SelectFirstStatement extends AbstractSelectStatement<SelectFirstSta
   }
 
 
+  @Override
+  public int hashCode() {
+    if (hashCode == 0) {
+      hashCode = super.hashCode();
+    }
+    return hashCode;
+  }
+
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    if (hashCode() != obj.hashCode())
+      return false;
+    return super.equals(obj);
+  }
+
+
   /**
    * @see org.alfasoftware.morf.util.DeepCopyableWithTransformation#deepCopy(org.alfasoftware.morf.util.DeepCopyTransformation)
    */
   @Override
-  public Builder<SelectFirstStatement> deepCopy(DeepCopyTransformation transformer) {
-    return TempTransitionalBuilderWrapper.wrapper(new SelectFirstStatement(this, transformer));
+  public SelectFirstStatementBuilder deepCopy(DeepCopyTransformation transformer) {
+    return new SelectFirstStatementBuilder(this, transformer);
   }
 }

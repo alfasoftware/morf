@@ -36,24 +36,27 @@ import com.google.common.collect.ImmutableList;
 @RunWith(Parameterized.class)
 public class TestCriterionDeepCopyAndEquals extends AbstractDeepCopyableTest<Criterion> {
 
+  private static final Criterion MOCK_1 = mockOf(Criterion.class);
+  private static final Criterion MOCK_2 = mockOf(Criterion.class);
+  private static final Criterion MOCK_3 = mockOf(Criterion.class);
+  private static final SelectStatement SELECT_1 = mockSelectStatement();
+  private static final SelectStatement SELECT_2 = mockSelectStatement();
+
+  static {
+    when(SELECT_1.getFields()).thenReturn(ImmutableList.of(literal('A')));
+    when(SELECT_2.getFields()).thenReturn(ImmutableList.of(literal('A')));
+  }
+
   @Parameters(name = "{0}")
   public static List<Object[]> data() {
-    Criterion mock1 = mockOf(Criterion.class);
-    Criterion mock2 = mockOf(Criterion.class);
-    Criterion mock3 = mockOf(Criterion.class);
-    SelectStatement selectStatement1 = mockOf(SelectStatement.class);
-    when(selectStatement1.getFields()).thenReturn(ImmutableList.of(literal('A')));
-    SelectStatement selectStatement2 = mockOf(SelectStatement.class);
-    when(selectStatement2.getFields()).thenReturn(ImmutableList.of(literal('A')));
-
     return Arrays.asList(
       testCase("eq 1", () -> Criterion.eq(literal(1), literal(2))),
       testCase("eq 2", () -> Criterion.eq(literal(1), literal(3))),
-      testCase("and 1", () -> Criterion.and(mock1, mock2)),
-      testCase("and 2", () -> Criterion.and(mock1, mock3)),
-      testCase("and 3", () -> Criterion.and(mock1, mock2, mock3)),
-      testCase("exists 1", () -> Criterion.exists(selectStatement1)),
-      testCase("exists 2", () -> Criterion.exists(selectStatement2)),
+      testCase("and 1", () -> Criterion.and(MOCK_1, MOCK_2)),
+      testCase("and 2", () -> Criterion.and(MOCK_1, MOCK_3)),
+      testCase("and 3", () -> Criterion.and(MOCK_1, MOCK_2, MOCK_3)),
+      testCase("exists 1", () -> Criterion.exists(SELECT_1)),
+      testCase("exists 2", () -> Criterion.exists(SELECT_2)),
       testCase("greaterThanInteger 1", () -> Criterion.greaterThan(literal(1), 1)),
       testCase("greaterThanInteger 2", () -> Criterion.greaterThan(literal(1), 2)),
       testCase("greaterThanLiteral 1", () -> Criterion.greaterThan(literal(1), literal(2))),
@@ -62,8 +65,8 @@ public class TestCriterionDeepCopyAndEquals extends AbstractDeepCopyableTest<Cri
       testCase("isNull 2", () -> Criterion.isNull(literal(2))),
       testCase("inList 1", () -> Criterion.in(literal(1), literal(2), literal(3))),
       testCase("inList 2", () -> Criterion.in(literal(1), literal(2), literal(4))),
-      testCase("inSelect 1", () -> Criterion.in(literal(1), selectStatement1)),
-      testCase("inSelect 2", () -> Criterion.in(literal(1), selectStatement2))
+      testCase("inSelect 1", () -> Criterion.in(literal(1), SELECT_1)),
+      testCase("inSelect 2", () -> Criterion.in(literal(1), SELECT_2))
     );
   }
 }

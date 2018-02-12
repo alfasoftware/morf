@@ -554,23 +554,11 @@ public class Criterion implements Driver, DeepCopyableWithTransformation<Criteri
    */
   @Override
   public void drive(ObjectTreeTraverser traverser) {
-    traverser.dispatch(getField());
-    visitValue(traverser,getValue());
     traverser
-      .dispatch(getSelectStatement())
-      .dispatch(getCriteria());
-  }
-
-
-  @SuppressWarnings("rawtypes")
-  private void visitValue(ObjectTreeTraverser traverser,Object value) {
-    if (value instanceof AliasedField) {
-      traverser.dispatch( (AliasedField)value);
-    } else if (value instanceof Iterable) {
-      for (Object child : (Iterable)value) {
-        visitValue(traverser,child);
-      }
-    }
+      .dispatch(field)
+      .dispatch(value)
+      .dispatch(selectStatement)
+      .dispatch(criteria);
   }
 
 

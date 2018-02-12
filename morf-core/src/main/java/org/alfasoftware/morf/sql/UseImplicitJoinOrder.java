@@ -23,4 +23,24 @@ package org.alfasoftware.morf.sql;
  */
 public class UseImplicitJoinOrder implements Hint {
 
+  @Override
+  public String toString() {
+    return "UseImplicitJoinOrder";
+  }
+
+  @Override
+  public int hashCode() {
+    return 234342;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    return true;
+  }
 }

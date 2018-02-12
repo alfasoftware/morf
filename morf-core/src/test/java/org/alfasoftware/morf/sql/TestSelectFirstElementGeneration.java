@@ -15,15 +15,20 @@
 
 package org.alfasoftware.morf.sql;
 
+import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.selectFirst;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.hamcrest.Matchers.contains;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.when;
 
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Criterion;
+import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.junit.Test;
@@ -81,4 +86,49 @@ public class TestSelectFirstElementGeneration {
     assertEquals("criterion should be set",criterion,deepCopy.getWhereCriterion());
   }
 
+
+  /**
+   * We have an immutable and mutable mode - make sure this behaves correctly.
+   */
+  @Test
+  public void testFieldsMutable() {
+    FieldLiteral field1 = literal(1);
+    FieldLiteral field2 = literal(2);
+    SelectFirstStatement select = selectFirst(field1);
+    select.getFields().clear();
+    select.getFields().add(field2);
+    assertThat(select.getFields(), contains(field2));
+  }
+
+
+  /**
+   * We have an immutable and mutable mode - make sure this behaves correctly.
+   */
+  @Test
+  public void testFieldsImmutable() {
+    AliasedField.withImmutableBuildersEnabled(() -> {
+      FieldLiteral field1 = literal(1);
+      FieldLiteral field2 = literal(2);
+      FieldLiteral field3 = literal(3);
+
+      // Can't mutate
+      SelectFirstStatement select = selectFirst(field1);
+      assertUnsupported(() -> select.getFields().add(field2));
+
+      // But we can make a copy and extend that, and the copy is also unmodifiable.
+      SelectFirstStatement copy = select.shallowCopy().fields(field2).build();
+      assertThat(copy.getFields(), contains(field1, field2));
+      assertUnsupported(() -> copy.getFields().add(field3));
+    });
+  }
+
+
+  private void assertUnsupported(Runnable runnable) {
+    try {
+      runnable.run();
+    } catch (UnsupportedOperationException w) {
+      return;
+    }
+    fail("Did not catch UnsupportedOperationException");
+  }
 }

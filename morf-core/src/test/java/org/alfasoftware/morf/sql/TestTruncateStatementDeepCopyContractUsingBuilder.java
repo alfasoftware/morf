@@ -13,36 +13,35 @@
  * limitations under the License.
  */
 
-package org.alfasoftware.morf.sql.element;
+package org.alfasoftware.morf.sql;
 
+import static org.alfasoftware.morf.sql.TruncateStatement.truncate;
+
+import java.util.Arrays;
 import java.util.List;
 
-import org.alfasoftware.morf.sql.SelectFirstStatement;
+import org.alfasoftware.morf.sql.element.AbstractDeepCopyableTest;
+import org.alfasoftware.morf.sql.element.TableReference;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.google.common.collect.ImmutableList;
-
 /**
- * Tests for field from select first.
+ * Checks that {@link SelectStatement} satisfies equals, hashcode and deep copy contracts.
  *
- * @author Copyright (c) Alfa Financial Software 2010
+ * @author Copyright (c) Alfa Financial Software 2017
  */
 @RunWith(Parameterized.class)
-public class TestFieldFromSelectFirst extends AbstractAliasedFieldTest<FieldFromSelectFirst> {
+public class TestTruncateStatementDeepCopyContractUsingBuilder extends AbstractDeepCopyableTest<TruncateStatement> {
+
+  private static final TableReference TABLE_1 = mockOf(TableReference.class);
+  private static final TableReference TABLE_2 = mockOf(TableReference.class);
 
   @Parameters(name = "{0}")
   public static List<Object[]> data() {
-    SelectFirstStatement stmt1 = mockSelectFirstStatement();
-    SelectFirstStatement stmt2 = mockSelectFirstStatement();
-    return ImmutableList.of(
-      testCase(
-        "simple",
-        () -> new FieldFromSelectFirst(stmt1),
-        () -> new FieldFromSelectFirst(stmt2)
-      )
+    return Arrays.asList(
+      testCaseWithBuilder(truncate(TABLE_1)),
+      testCaseWithBuilder(truncate(TABLE_2))
     );
   }
-
 }

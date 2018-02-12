@@ -13,34 +13,40 @@
  * limitations under the License.
  */
 
-package org.alfasoftware.morf.sql.element;
-
-import static org.alfasoftware.morf.sql.SqlUtils.literal;
+package org.alfasoftware.morf.sql;
 
 import java.util.Arrays;
 import java.util.List;
 
+import org.alfasoftware.morf.sql.element.Criterion;
+import org.alfasoftware.morf.sql.element.TableReference;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 /**
- * Tests for {@link WhenCondition}.
+ * Checks that {@link DeleteStatement} satisfies equals, hashcode and deep copy contracts
+ * if we construct one using the builder.
  *
  * @author Copyright (c) Alfa Financial Software 2017
  */
 @RunWith(Parameterized.class)
-public class TestWhenCondition extends AbstractDeepCopyableTest<WhenCondition> {
+public class TestDeleteStatementDeepCopyContractUsingBuilder extends AbstractShallowAndDeepCopyableTest<DeleteStatement> {
 
-  public static final Criterion CRITERION_1 = mockOf(Criterion.class);
-  public static final Criterion CRITERION_2 = mockOf(Criterion.class);
+  private static final Criterion CRITERION_1 = mockOf(Criterion.class);
+  private static final Criterion CRITERION_2 = mockOf(Criterion.class);
+  private static final TableReference TABLE_1 = mockOf(TableReference.class);
+  private static final TableReference TABLE_2 = mockOf(TableReference.class);
+
 
   @Parameters(name = "{0}")
   public static List<Object[]> data() {
     return Arrays.asList(
-      testCase("1", () -> new WhenCondition(CRITERION_1, literal(1))),
-      testCase("2", () -> new WhenCondition(CRITERION_1, literal(2))),
-      testCase("3", () -> new WhenCondition(CRITERION_2, literal(1)))
+      testCaseWithBuilder(DeleteStatement.delete(TABLE_1)),
+      testCaseWithBuilder(DeleteStatement.delete(TABLE_2)),
+      testCaseWithBuilder(DeleteStatement.delete(TABLE_1).where(CRITERION_1)),
+      testCaseWithBuilder(DeleteStatement.delete(TABLE_1).where(CRITERION_2))
     );
   }
+
 }

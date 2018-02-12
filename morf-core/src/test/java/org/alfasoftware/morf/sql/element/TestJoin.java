@@ -31,28 +31,28 @@ import org.junit.runners.Parameterized.Parameters;
 @RunWith(Parameterized.class)
 public class TestJoin extends AbstractDeepCopyableTest<Join> {
 
+  public static final TableReference TABLE_1 = mockOf(TableReference.class);
+  public static final TableReference TABLE_2 = mockOf(TableReference.class);
+  public static final Criterion CRITERION_1 = mockOf(Criterion.class);
+  public static final Criterion CRITERION_2 = mockOf(Criterion.class);
+  public static final SelectStatement SELECT_1 = mockSelectStatement();
+  public static final SelectStatement SELECT_2 = mockSelectStatement();
+
   @Parameters(name = "{0}")
   public static List<Object[]> data() {
-    TableReference table1 = mockOf(TableReference.class);
-    TableReference table2 = mockOf(TableReference.class);
-    Criterion criterion1 = mockOf(Criterion.class);
-    Criterion criterion2 = mockOf(Criterion.class);
-    SelectStatement select1 = mockOf(SelectStatement.class);
-    SelectStatement select2 = mockOf(SelectStatement.class);
-
     return Arrays.asList(
-      testCase("inner table 1", () -> new Join(JoinType.INNER_JOIN, table1, criterion1)),
-      testCase("inner table 2", () -> new Join(JoinType.INNER_JOIN, table1, criterion2)),
-      testCase("inner table 3", () -> new Join(JoinType.INNER_JOIN, table2, criterion1)),
-      testCase("left table 1", () -> new Join(JoinType.LEFT_OUTER_JOIN, table1, criterion1)),
-      testCase("left table 2", () -> new Join(JoinType.LEFT_OUTER_JOIN, table1, criterion2)),
-      testCase("left table 3", () -> new Join(JoinType.LEFT_OUTER_JOIN, table2, criterion1)),
-      testCase("inner select 1", () -> new Join(JoinType.INNER_JOIN, select1, criterion1)),
-      testCase("inner select 2", () -> new Join(JoinType.INNER_JOIN, select1, criterion2)),
-      testCase("inner select 3", () -> new Join(JoinType.INNER_JOIN, select2, criterion1)),
-      testCase("left select 1", () -> new Join(JoinType.LEFT_OUTER_JOIN, select1, criterion1)),
-      testCase("left select 2", () -> new Join(JoinType.LEFT_OUTER_JOIN, select1, criterion2)),
-      testCase("left select 3", () -> new Join(JoinType.LEFT_OUTER_JOIN, select2, criterion1))
+      testCase("inner table 1", () -> new Join(JoinType.INNER_JOIN, TABLE_1, CRITERION_1)),
+      testCase("inner table 2", () -> new Join(JoinType.INNER_JOIN, TABLE_1, CRITERION_2)),
+      testCase("inner table 3", () -> new Join(JoinType.INNER_JOIN, TABLE_2, CRITERION_1)),
+      testCase("left table 1", () -> new Join(JoinType.LEFT_OUTER_JOIN, TABLE_1, CRITERION_1)),
+      testCase("left table 2", () -> new Join(JoinType.LEFT_OUTER_JOIN, TABLE_1, CRITERION_2)),
+      testCase("left table 3", () -> new Join(JoinType.LEFT_OUTER_JOIN, TABLE_2, CRITERION_1)),
+      testCase("inner select 1", () -> new Join(JoinType.INNER_JOIN, SELECT_1, CRITERION_1)),
+      testCase("inner select 2", () -> new Join(JoinType.INNER_JOIN, SELECT_1, CRITERION_2)),
+      testCase("inner select 3", () -> new Join(JoinType.INNER_JOIN, SELECT_2, CRITERION_1)),
+      testCase("left select 1", () -> new Join(JoinType.LEFT_OUTER_JOIN, SELECT_1, CRITERION_1)),
+      testCase("left select 2", () -> new Join(JoinType.LEFT_OUTER_JOIN, SELECT_1, CRITERION_2)),
+      testCase("left select 3", () -> new Join(JoinType.LEFT_OUTER_JOIN, SELECT_2, CRITERION_1))
     );
   }
 }
