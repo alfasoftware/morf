@@ -151,5 +151,6 @@ public class TestRecordHelper {
     assertEquals("false", RecordHelper.javaTypeToRecordValue(false));
     assertEquals("5.2232", RecordHelper.javaTypeToRecordValue(5.2232D));
     assertEquals("2041-12-31", RecordHelper.javaTypeToRecordValue(new LocalDate(2041, 12, 31)));
+    assertEquals("0.00000000001", RecordHelper.javaTypeToRecordValue(new BigDecimal("0.00000000001")));
   }
 }

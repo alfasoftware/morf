@@ -161,6 +161,8 @@ public class RecordHelper {
   public static String javaTypeToRecordValue(Object value) {
     if (value == null) {
       return null;
+    } else if (BigDecimal.class.isInstance(value)) {
+      return BigDecimal.class.cast(value).toPlainString();
     } else {
       return value.toString();
     }
