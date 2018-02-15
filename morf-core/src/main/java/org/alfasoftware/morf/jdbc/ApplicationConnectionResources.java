@@ -45,11 +45,6 @@ public interface ApplicationConnectionResources {
     CONTAINER,
 
     /**
-     * A BoneCP connection pool should be used.
-     */
-    BONECP,
-
-    /**
      * A HikariCP connection pool should be used.
      */
     HIKARICP,
