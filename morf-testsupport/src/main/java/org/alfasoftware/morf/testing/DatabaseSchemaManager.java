@@ -335,6 +335,10 @@ public class DatabaseSchemaManager {
       }
     };
 
+    if (requiredTable.getName().length() > 27) {
+      log.warn("Required table name [" + requiredTable.getName() + "] is [" + requiredTable.getName().length() + "] characters long!");
+    }
+
     // if we have an existing table, check it's identical
     Table existingTable = getTable(producerCache, requiredTable.getName());
     if (existingTable != null) {
