@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.upgrade;
 
 import java.util.List;
+import java.util.Optional;
 
 import javax.sql.DataSource;
 
@@ -80,14 +81,15 @@ public interface UpgradeStatusTableService {
    * Gets the current upgrade status. The non-existence of the transient table
    * corresponds to {@link UpgradeStatus#NONE}.
    *
+   * @param dataSource the dataSource to use to execute the select statement which retrieve the status.
    * @return the current status.
    */
-  UpgradeStatus getStatus();
+  UpgradeStatus getStatus(Optional<DataSource> dataSource);
 
 
   /**
    * Tidy up the upgrade status table. This marks the upgrade procedure as complete, and further
-   * calls to {@link #getStatus()} will return {@code NONE}. As higher privileged connections
+   * calls to {@link #getStatus(Optional)} will return {@code NONE}. As higher privileged connections
    * may be needed to delete the <code>{@value UpgradeStatusTableService#UPGRADE_STATUS}</code> table,
    * a data source must be provided.
    *

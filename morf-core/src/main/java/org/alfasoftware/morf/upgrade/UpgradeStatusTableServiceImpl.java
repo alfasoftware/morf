@@ -24,10 +24,12 @@ import static org.alfasoftware.morf.sql.SqlUtils.update;
 import static org.alfasoftware.morf.upgrade.UpgradeStatus.IN_PROGRESS;
 import static org.alfasoftware.morf.upgrade.UpgradeStatus.NONE;
 
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import javax.sql.DataSource;
 
@@ -85,7 +87,7 @@ class UpgradeStatusTableServiceImpl implements UpgradeStatusTableService {
       return sqlScriptExecutorProvider.get().execute(script);
 
     } catch (RuntimeSqlException e) {
-      UpgradeStatus currentStatus = getStatus();
+      UpgradeStatus currentStatus = getStatus(Optional.empty());
       log.debug("Caught exception trying to move from [" + fromStatus + "] to [" + toStatus + "]; current status = [" + currentStatus + "]", e);
       if (currentStatus.equals(toStatus)) {
         return 0;
@@ -132,23 +134,48 @@ class UpgradeStatusTableServiceImpl implements UpgradeStatusTableService {
 
 
   /**
-   * @see org.alfasoftware.morf.upgrade.UpgradeStatusTableService#getStatus()
+   * @see org.alfasoftware.morf.upgrade.UpgradeStatusTableService#getStatus(javax.sql.DataSource)
    */
   @Override
-  public UpgradeStatus getStatus() {
+  public UpgradeStatus getStatus(Optional<DataSource> dataSource) {
     SelectStatement select = SqlUtils.select(SqlUtils.field(STATUS_COLUMN)).from(tableRef(UpgradeStatusTableService.UPGRADE_STATUS));
+    Connection connection = null;
     try {
-      return sqlScriptExecutorProvider.get().executeQuery(sqlDialect.convertStatementToSQL(select), new ResultSetProcessor<UpgradeStatus>() {
-        @Override
-        public UpgradeStatus process(ResultSet resultSet) throws SQLException {
-          resultSet.next();
-          return UpgradeStatus.valueOf(resultSet.getString(1));
+      if (dataSource.isPresent()) {
+        try {
+          connection = dataSource.get().getConnection();
+          return sqlScriptExecutorProvider.get().executeQuery(sqlDialect.convertStatementToSQL(select), connection, resultSetProcessor());
+        } finally {
+          if (connection != null) connection.close();
         }
-      });
+      } else {
+        // BEWARE: This will turn-off auto-commit and perform a manual commit on the transaction
+        return sqlScriptExecutorProvider.get().executeQuery(sqlDialect.convertStatementToSQL(select), resultSetProcessor());
+      }
+
     } catch (RuntimeSqlException e) {
       log.debug("Unable to read column " + STATUS_COLUMN + " for upgrade status", e);
       return UpgradeStatus.NONE;
+
+    } catch (SQLException e) {
+      log.error("Unable to get a connection to retrieve upgrade status.", e);
+      throw new RuntimeException("Unable to get a connection to retrieve upgrade status.", e);
     }
+  }
+
+
+  /**
+   * Returns a {@link ResultSetProcessor} which converts the first value in the current row of a {@link ResultSet}
+   * to an {@link UpgradeStatus}.
+   */
+  private ResultSetProcessor<UpgradeStatus> resultSetProcessor() {
+    return new ResultSetProcessor<UpgradeStatus>() {
+      @Override
+      public UpgradeStatus process(ResultSet resultSet) throws SQLException {
+        resultSet.next();
+        return UpgradeStatus.valueOf(resultSet.getString(1));
+      }
+    };
   }
 
 
@@ -162,7 +189,7 @@ class UpgradeStatusTableServiceImpl implements UpgradeStatusTableService {
       new SqlScriptExecutorProvider(dataSource, sqlDialect).get().execute(sqlDialect.dropStatements(table(UpgradeStatusTableService.UPGRADE_STATUS)));
     } catch (RuntimeSqlException e) {
       //Throw exception only if the table still exists
-      if (getStatus() != NONE) {
+      if (getStatus(Optional.of(dataSource)) != NONE) {
         throw e;
       }
     }

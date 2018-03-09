@@ -36,6 +36,7 @@ import static org.mockito.Mockito.when;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Optional;
 
 import javax.sql.DataSource;
 
@@ -63,19 +64,23 @@ public class TestUpgradeStatusTableServiceImpl {
   private SqlScriptExecutor                 sqlScriptExecutor;
   private SqlDialect                        sqlDialect;
   private UpgradeStatusTableService         upgradeStatusTableService;
+  private DataSource                        dataSource;
 
   private final TableReference upgradeStatusTable = tableRef(UPGRADE_STATUS);
 
 
   /**
    * Set up mocks.
+   * @throws SQLException
    */
   @Before
-  public void setUp() {
+  public void setUp() throws SQLException {
     sqlScriptExecutorProvider = mock(SqlScriptExecutorProvider.class);
     sqlScriptExecutor = mock(SqlScriptExecutor.class);
     sqlDialect = mock(SqlDialect.class);
+    dataSource = mock(DataSource.class);
 
+    when(dataSource.getConnection()).thenReturn(mock(Connection.class));
     when(sqlScriptExecutorProvider.get()).thenReturn(sqlScriptExecutor);
     upgradeStatusTableService = new UpgradeStatusTableServiceImpl(sqlScriptExecutorProvider, sqlDialect);
   }
@@ -88,8 +93,8 @@ public class TestUpgradeStatusTableServiceImpl {
   @SuppressWarnings("unchecked")
   @Test
   public void testGetStatusWhenTableNotPresent() {
-    when(sqlScriptExecutor.executeQuery(anyString(), any(ResultSetProcessor.class))).thenThrow(RuntimeSqlException.class);
-    assertEquals("Result", UpgradeStatus.NONE, upgradeStatusTableService.getStatus());
+    when(sqlScriptExecutor.executeQuery(anyString(), any(Connection.class), any(ResultSetProcessor.class))).thenThrow(RuntimeSqlException.class);
+    assertEquals("Result", UpgradeStatus.NONE, upgradeStatusTableService.getStatus(Optional.of(dataSource)));
   }
 
 
@@ -103,14 +108,14 @@ public class TestUpgradeStatusTableServiceImpl {
   public void testGetStatusWhenTablePresent() throws SQLException {
     ArgumentCaptor<ResultSetProcessor> captor = ArgumentCaptor.forClass(ResultSetProcessor.class);
     ResultSet resultSet = mock(ResultSet.class);
-    when(sqlScriptExecutor.executeQuery(anyString(), captor.capture())).thenAnswer((invocation) -> {
-      ResultSetProcessor processor = (ResultSetProcessor) invocation.getArguments()[1];
+    when(sqlScriptExecutor.executeQuery(anyString(), any(Connection.class), captor.capture())).thenAnswer((invocation) -> {
+      ResultSetProcessor processor = (ResultSetProcessor) invocation.getArguments()[2];
       assertSame("Processor", captor.getValue(), processor);
 
       when(resultSet.getString(1)).thenReturn("IN_PROGRESS");
       return processor.process(resultSet);
     });
-    assertEquals("Result", UpgradeStatus.IN_PROGRESS, upgradeStatusTableService.getStatus());
+    assertEquals("Result", UpgradeStatus.IN_PROGRESS, upgradeStatusTableService.getStatus(Optional.of(dataSource)));
     verify(resultSet).next();
   }
 
@@ -306,9 +311,6 @@ public class TestUpgradeStatusTableServiceImpl {
    */
   @Test
   public void testTidyUp() throws SQLException {
-    DataSource dataSource = mock(DataSource.class);
-    when(dataSource.getConnection()).thenReturn(mock(Connection.class));
-    
     upgradeStatusTableService.tidyUp(dataSource);
 
     ArgumentCaptor<Table> tableCaptor = ArgumentCaptor.forClass(Table.class);

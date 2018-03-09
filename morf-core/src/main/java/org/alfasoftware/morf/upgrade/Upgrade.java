@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import javax.sql.DataSource;
 
@@ -108,8 +109,8 @@ public class Upgrade {
     final List<String> upgradeStatements = new ArrayList<>();
 
     //Return an upgradePath with the current upgrade status if one is in progress
-    UpgradeStatus status = upgradeStatusTableService.getStatus();
-    if (upgradeStatusTableService.getStatus() != UpgradeStatus.NONE) {
+    UpgradeStatus status = upgradeStatusTableService.getStatus(Optional.of(dataSource));
+    if (status != UpgradeStatus.NONE) {
       return new UpgradePath(status);
     }
 
@@ -132,14 +133,15 @@ public class Upgrade {
     ExistingTableStateLoader existingTableState = new ExistingTableStateLoader(dataSource, dialect);
     UpgradePathFinder pathFinder = new UpgradePathFinder(upgradeSteps, existingTableState.loadAppliedStepUUIDs());
     SchemaChangeSequence schemaChangeSequence;
-    if (upgradeStatusTableService.getStatus() != UpgradeStatus.NONE) {
+    status = upgradeStatusTableService.getStatus(Optional.of(dataSource));
+    if (status != UpgradeStatus.NONE) {
       return new UpgradePath(status);
     }
     try {
       schemaChangeSequence = pathFinder.determinePath(sourceSchema, targetSchema, exceptionRegexes);
     } catch (NoUpgradePathExistsException e) {
       log.debug("No upgrade path found - checking upgrade status", e);
-      status = upgradeStatusTableService.getStatus();
+      status = upgradeStatusTableService.getStatus(Optional.of(dataSource));
       if (status != UpgradeStatus.NONE) {
         log.info("Schema differences found, but upgrade in progress - no action required until upgrade is complete");
         return new UpgradePath(status);
