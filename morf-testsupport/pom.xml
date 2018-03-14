@@ -33,10 +33,6 @@
       <artifactId>morf-core</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.alfasoftware</groupId>
-      <artifactId>morf-guicesupport</artifactId>
-    </dependency>
-    <dependency>
       <groupId>org.hamcrest</groupId>
       <artifactId>hamcrest-all</artifactId>
     </dependency>

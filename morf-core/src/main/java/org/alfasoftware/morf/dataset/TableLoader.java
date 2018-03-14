@@ -18,6 +18,7 @@ package org.alfasoftware.morf.dataset;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 
+import org.alfasoftware.morf.dataset.TableLoaderBuilder.TableLoaderBuilderImpl;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;

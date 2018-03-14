@@ -38,11 +38,6 @@
     </dependency>
     <dependency>
       <groupId>org.alfasoftware</groupId>
-      <artifactId>morf-guicesupport</artifactId>
-      <scope>runtime</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.alfasoftware</groupId>
       <artifactId>morf-excel</artifactId>
       <scope>runtime</scope>
     </dependency>

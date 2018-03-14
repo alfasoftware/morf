@@ -17,7 +17,7 @@ package org.alfasoftware.morf.testing;
 
 import javax.sql.DataSource;
 
-import org.alfasoftware.morf.guicesupport.MorfModule;
+import com.google.inject.Binder;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.ConnectionResourcesBean;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -26,7 +26,6 @@ import org.apache.commons.logging.LogFactory;
 
 import com.google.common.io.Resources;
 import com.google.inject.AbstractModule;
-import com.google.inject.Binder;
 import com.google.inject.Provides;
 
 /**
@@ -46,7 +45,6 @@ public class TestingDataSourceModule extends AbstractModule {
    */
   @Override
   public void configure() {
-    install(new MorfModule());
     bind(ConnectionResources.class).toInstance(new ConnectionResourcesBean(Resources.getResource("morf.properties")));
   }
 

@@ -19,6 +19,7 @@ import javax.sql.DataSource;
 
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor.SqlScriptVisitor;
 
+import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.util.Providers;
 
@@ -39,6 +40,7 @@ public class SqlScriptExecutorProvider implements Provider<SqlScriptExecutor> {
    *          {@link SqlScriptExecutorProvider} for
    * @param sqlDialect The dialect to use
    */
+  @Inject
   public SqlScriptExecutorProvider(final DataSource dataSource, Provider<SqlDialect> sqlDialect) {
     super();
     this.dataSource = dataSource;
