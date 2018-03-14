@@ -74,7 +74,7 @@ public class MorfModule extends AbstractModule {
    * @param sqlScriptExecutorProvider The SQL script executor.
    * @return The {@link TableLoaderBuilder}.
    */
-  @Provides()
+  @Provides
   public TableLoaderBuilder tableLoaderBuilder(TableLoaderBuilderParam param, SqlScriptExecutorProvider sqlScriptExecutorProvider) {
     Preconditions.checkNotNull(param.sqlDialect, "Dialect is null");
     return TableLoader.builder()
