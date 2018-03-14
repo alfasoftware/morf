@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -228,7 +229,27 @@ public class UpgradePath implements SqlStatementWriter {
       sqlOutput.append(sqlDialect.formatSqlStatement(sqlStatement));
       sqlOutput.append(System.getProperty("line.separator"));
     }
+
+    addCommentsToDropUpgradeStatusTable(sqlOutput);
+
     return sqlOutput.toString();
+  }
+
+
+  /**
+   * At the end of the StringBuilder given, add comments to explain how to drop
+   * {@value UpgradeStatusTableService#UPGRADE_STATUS} table if the upgrade is
+   * done manually.
+   */
+  private void addCommentsToDropUpgradeStatusTable(final StringBuilder sqlOutput) {
+    String separator = System.getProperty("line.separator");
+    sqlOutput.append("-- WARNING - This upgrade step creates a temporary table " + UpgradeStatusTableService.UPGRADE_STATUS + "." + separator);
+    sqlOutput.append("-- WARNING - If the upgrade is run automatically, the table will be automatically removed at a later point." + separator);
+    sqlOutput.append("-- WARNING - If this step is being applied manually, the table must be manually removed - to do so, uncomment the following SQL lines." + separator);
+    sqlOutput.append("-- WARNING - Manual removal should not be applied during full deployment of the application to an empty database." + separator);
+    for (String statement : sqlDialect.dropStatements(SchemaUtils.table(UpgradeStatusTableService.UPGRADE_STATUS))) {
+      sqlOutput.append("-- " + statement + separator);
+    }
   }
 
 
