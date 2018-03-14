@@ -7,9 +7,9 @@
     <version>0.1.0-SNAPSHOT</version>
   </parent>
   
-  <name>Morf - Test Support</name>
-  <artifactId>morf-testsupport</artifactId>
-  
+  <name>Morf - Guice Support</name>
+  <artifactId>morf-guicesupport</artifactId>
+
   <build>
     <plugins>
       <plugin>
@@ -26,31 +26,11 @@
       </plugin>
     </plugins>
   </build>
-  
+
   <dependencies>
     <dependency>
       <groupId>org.alfasoftware</groupId>
       <artifactId>morf-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.alfasoftware</groupId>
-      <artifactId>morf-guicesupport</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.hamcrest</groupId>
-      <artifactId>hamcrest-all</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.mockito</groupId>
-      <artifactId>mockito-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.h2database</groupId>
-      <artifactId>h2</artifactId>
     </dependency>
   </dependencies>
 </project>
