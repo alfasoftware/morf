@@ -19,17 +19,19 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.apache.commons.lang.StringUtils;
-
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.NullFieldLiteral;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.apache.commons.lang.StringUtils;
+
+import com.google.common.collect.Lists;
 
 /**
  * Adds field defaults for columns that are missing from an insert statement.
@@ -72,9 +74,7 @@ public class InsertStatementDefaulter {
     }
 
     Set<String> columnsWithValues = getColumnsWithValues(statement);
-    addColumnDefaults(statement, columnsWithValues);
-
-    return statement;
+    return addColumnDefaults(statement, columnsWithValues);
   }
 
 
@@ -85,7 +85,7 @@ public class InsertStatementDefaulter {
    * @return a set of columns for which values have been provided.
    */
   private Set<String> getColumnsWithValues(InsertStatement statement) {
-    Set<String> columnsWithValues = new HashSet<String>();
+    Set<String> columnsWithValues = new HashSet<>();
 
     addColumns(statement.getValues(), columnsWithValues);
 
@@ -142,12 +142,13 @@ public class InsertStatementDefaulter {
    * @param statement the statement to add to.
    * @param columnsWithValues the columns for which we have values.
    */
-  private void addColumnDefaults(InsertStatement statement, Set<String> columnsWithValues) {
+  private InsertStatement addColumnDefaults(InsertStatement statement, Set<String> columnsWithValues) {
     Table table = metadata.getTable(statement.getTable().getName().toUpperCase());
     if (table == null) {
       throw new IllegalArgumentException("Could not find table in schema for: " + statement.getTable().getName());
     }
 
+    List<AliasedFieldBuilder> aliasedFieldBuilders = Lists.newArrayList();
     for (Column currentColumn : table.columns()) {
       // Default date columns to null and skip columns we've already added.
       if (columnsWithValues.contains(currentColumn.getName().toUpperCase())) {
@@ -159,8 +160,17 @@ public class InsertStatementDefaulter {
         continue;
       }
 
-      statement.getFieldDefaults().put(currentColumn.getName(), fieldDefault);
+      if(AliasedField.immutableDslEnabled()) {
+        aliasedFieldBuilders.add(fieldDefault.as(currentColumn.getName()));
+      }
+      else {
+        statement.getFieldDefaults().put(currentColumn.getName(), fieldDefault);
+      }
     }
+    if(AliasedField.immutableDslEnabled()) {
+      return statement.shallowCopy().withDefaults(aliasedFieldBuilders).build();
+    }
+    return statement;
   }
 
 

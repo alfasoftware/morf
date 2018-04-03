@@ -18,6 +18,7 @@ package org.alfasoftware.morf.sql;
 import static org.alfasoftware.morf.util.DeepCopyTransformations.transformIterable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -200,13 +201,24 @@ public class InsertStatementBuilder implements Builder<InsertStatement> {
 
 
   /**
-   * Specifies the defaults to use when inserting new fields
+   * Specifies the defaults to use when inserting new fields.
    *
    * @param defaultValues the list of values to use as defaults
    * @return this, for method chaining.
    */
   public InsertStatementBuilder withDefaults(AliasedFieldBuilder... defaultValues) {
-    for(AliasedField currentValue : Builder.Helper.buildAll(Lists.newArrayList(defaultValues))) {
+    return withDefaults(Arrays.asList(defaultValues));
+  }
+
+
+  /**
+   * Specifies the defaults to use when inserting new fields.
+   *
+   * @param defaultValues the list of values to use as defaults
+   * @return this, for method chaining.
+   */
+  public InsertStatementBuilder withDefaults(List<AliasedFieldBuilder> defaultValues) {
+    for(AliasedField currentValue : Builder.Helper.buildAll(defaultValues)) {
       if (StringUtils.isBlank(currentValue.getAlias())) {
         throw new IllegalArgumentException("Cannot specify a blank alias for a field default");
       }

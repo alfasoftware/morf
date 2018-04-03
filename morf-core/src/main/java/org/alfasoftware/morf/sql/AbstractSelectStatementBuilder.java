@@ -465,12 +465,14 @@ public abstract class AbstractSelectStatementBuilder<U extends AbstractSelectSta
       throw new IllegalArgumentException("Fields were null in order by clause");
     }
 
-    // Add the list
-    Iterables.addAll(orderBys, Builder.Helper.buildAll(orderFields));
-
-    // Default fields to ascending if no direction has been specified
-    SqlInternalUtils.defaultOrderByToAscending(orderBys);
-
+    if(AliasedField.immutableDslEnabled()) {
+      Iterables.addAll(orderBys, SqlInternalUtils.transformOrderByToAscending(Builder.Helper.buildAll(orderFields)));
+    } else {
+      // Add the list
+      Iterables.addAll(orderBys, Builder.Helper.buildAll(orderFields));
+      // Default fields to ascending if no direction has been specified
+      SqlInternalUtils.defaultOrderByToAscending(orderBys);
+    }
     return castToChild(this);
   }
 

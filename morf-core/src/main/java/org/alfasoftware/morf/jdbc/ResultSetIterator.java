@@ -1,5 +1,7 @@
 package org.alfasoftware.morf.jdbc;
 
+import static org.alfasoftware.morf.sql.SelectStatement.select;
+
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -13,7 +15,7 @@ import java.util.NoSuchElementException;
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.sql.SelectStatementBuilder;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Direction;
 import org.alfasoftware.morf.sql.element.FieldReference;
@@ -108,7 +110,7 @@ class ResultSetIterator implements Iterator<Record>, AutoCloseable {
 
 
   private static String buildSqlQuery(Table table, List<String> columnOrdering, SqlDialect sqlDialect) {
-    SelectStatement selectStatement = new SelectStatement();
+    SelectStatementBuilder selectStatementBuilder = select();
 
     if (columnOrdering == null || columnOrdering.isEmpty()) {
       List<AliasedField> orderByPrimaryKey = new ArrayList<>();
@@ -118,19 +120,17 @@ class ResultSetIterator implements Iterator<Record>, AutoCloseable {
         }
       }
       if (!orderByPrimaryKey.isEmpty()) {
-        selectStatement.orderBy(orderByPrimaryKey.toArray(new AliasedField[orderByPrimaryKey.size()]));
+        selectStatementBuilder = select().orderBy(orderByPrimaryKey);
       }
     } else {
       List<AliasedField> orderByList = new ArrayList<>();
       for (String column : columnOrdering) {
         orderByList.add(new FieldReference(column, Direction.ASCENDING));
       }
-
-      selectStatement.orderBy(orderByList.toArray(new AliasedField[orderByList.size()]));
+      selectStatementBuilder = select().orderBy(orderByList);
     }
-
-    selectStatement.from(new TableReference(table.getName()));
-    return sqlDialect.convertStatementToSQL(selectStatement);
+    selectStatementBuilder = selectStatementBuilder.from(new TableReference(table.getName()));
+    return sqlDialect.convertStatementToSQL(selectStatementBuilder.build());
   }
 
 
