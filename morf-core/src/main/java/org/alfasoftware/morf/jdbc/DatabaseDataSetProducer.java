@@ -206,21 +206,12 @@ public class DatabaseDataSetProducer implements DataSetProducer {
       throw new IllegalStateException("Dataset has not been opened");
     }
 
-    try {
-      Statement statement = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
-      try {
-        ResultSet resultSet = statement.executeQuery(sql);
-        try {
-          // the table is empty if there are no rows returned.
-          return !resultSet.next();
-        } finally {
-          resultSet.close();
-        }
-      } finally {
-        statement.close();
-      }
+    try (Statement statement = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+         ResultSet resultSet = statement.executeQuery(sql)) {
+      // the table is empty if there are no rows returned.
+      return !resultSet.next();
 
-    } catch(SQLException sqlException) {
+    } catch (SQLException sqlException) {
       throw new RuntimeSqlException("Failed to execute count of rows in table [" + tableName + "]: [" + sql + "]", sqlException);
     }
   }

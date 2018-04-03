@@ -97,20 +97,21 @@ public class SchemaValidator {
           if (inputStream == null) {
             throw new RuntimeException("Could not find resource: [SQL_RESERVED_WORDS.txt] near [" + getClass() + "]");
           }
-          InputStreamReader streamReader = new InputStreamReader(inputStream, "UTF-8");
-          HashSet<String> sqlReservedWords = Sets.newHashSet(Splitter.on("\r\n").split(CharStreams.toString(streamReader)));
+          try (InputStreamReader streamReader = new InputStreamReader(inputStream, "UTF-8")) {
+            HashSet<String> sqlReservedWords = Sets.newHashSet(Splitter.on("\r\n").split(CharStreams.toString(streamReader)));
 
-          // temporary removal of words we currently have to allow
-          sqlReservedWords.remove("TYPE");  // DB2
-          sqlReservedWords.remove("OPERATION"); // DB2, SQL Server "future", PostGres
-          sqlReservedWords.remove("METHOD"); // PostGres
-          sqlReservedWords.remove("LANGUAGE"); // DB2, ODBC (?), SQL Server "future", PostGres
-          sqlReservedWords.remove("LOCATION"); // PostGres
-          sqlReservedWords.remove("YEAR"); // DB2, ODBC (?), SQL Server "future", PostGres
-          sqlReservedWords.remove("DAY"); // DB2, ODBC (?), SQL Server "future", PostGres
-          sqlReservedWords.remove("SECURITY"); // DB2, PostGres
+            // temporary removal of words we currently have to allow
+            sqlReservedWords.remove("TYPE");  // DB2
+            sqlReservedWords.remove("OPERATION"); // DB2, SQL Server "future", PostGres
+            sqlReservedWords.remove("METHOD"); // PostGres
+            sqlReservedWords.remove("LANGUAGE"); // DB2, ODBC (?), SQL Server "future", PostGres
+            sqlReservedWords.remove("LOCATION"); // PostGres
+            sqlReservedWords.remove("YEAR"); // DB2, ODBC (?), SQL Server "future", PostGres
+            sqlReservedWords.remove("DAY"); // DB2, ODBC (?), SQL Server "future", PostGres
+            sqlReservedWords.remove("SECURITY"); // DB2, PostGres
 
-          return ImmutableSet.copyOf(sqlReservedWords);
+            return ImmutableSet.copyOf(sqlReservedWords);
+          }
         }
       } catch (IOException e) {
         throw new RuntimeException("Failed to load [SQL_RESERVED_WORDS.txt]", e);

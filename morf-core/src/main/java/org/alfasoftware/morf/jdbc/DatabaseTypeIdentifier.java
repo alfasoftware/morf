@@ -20,7 +20,6 @@ import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 import java.util.Optional;
 
-
 import javax.sql.DataSource;
 
 import org.apache.commons.logging.Log;
@@ -55,19 +54,15 @@ public class DatabaseTypeIdentifier {
    */
   public Optional<DatabaseType> identifyFromMetaData() {
     try {
-      Connection connection = dataSource.getConnection();
-      try {
+      try (Connection connection = dataSource.getConnection()) {
         DatabaseMetaData metaData = connection.getMetaData();
         String product = metaData.getDatabaseProductName();
         String versionString = metaData.getDatabaseProductVersion().replaceAll("\n", "\\\\n");
-        int    versionMajor  = metaData.getDatabaseMajorVersion();
-        int    versionMinor  = metaData.getDatabaseMinorVersion();
+        int versionMajor = metaData.getDatabaseMajorVersion();
+        int versionMinor = metaData.getDatabaseMinorVersion();
         log.info(String.format("Database product = [%s], version = [%s], v%d.%d", product, versionString, versionMajor, versionMinor));
 
         return DatabaseType.Registry.findByProductName(product);
-
-      } finally {
-        connection.close();
       }
     } catch (SQLException e) {
       throw new RuntimeException("SQL exception", e);

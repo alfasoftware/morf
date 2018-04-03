@@ -33,6 +33,7 @@ import java.net.PasswordAuthentication;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -458,22 +459,16 @@ public class XmlDataSetProducer implements DataSetProducer {
     }
 
     // Open a readable byte channel for the url
-    try (ReadableByteChannel rbc = Channels.newChannel(url.openStream())) {
-
     // Create a file output stream to transfer the data from the url to the temp file
-      try (FileOutputStream fos = new FileOutputStream(file)) {
-
-    // transfer the data
-      fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
-
-      } catch (FileNotFoundException e) {
-        throw new RuntimeException("Unable to create file output stream", e);
+    try (ReadableByteChannel rbc = Channels.newChannel(url.openStream());
+         FileOutputStream fos = new FileOutputStream(file);
+         FileChannel channel = fos.getChannel()) {
+      // transfer the data
+      channel.transferFrom(rbc, 0, Long.MAX_VALUE);
+    } catch (FileNotFoundException e) {
+      throw new RuntimeException("Unable to create file output stream", e);
     } catch (IOException e) {
       throw new RuntimeException("Unable to transfer from url to temp file", e);
-    }
-
-    } catch (IOException e) {
-      throw new RuntimeException("Unable to create readable byte channel", e);
     }
 
     // Remove username and password from being the default authentication

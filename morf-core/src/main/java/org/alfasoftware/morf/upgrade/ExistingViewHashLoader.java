@@ -69,7 +69,7 @@ class ExistingViewHashLoader {
    * Loads the hashes for the deployed views, or empty if the hashes cannot be loaded
    * (e.g. if the deployed views table does not exist in the existing schema).
    *
-   * @param The existing database schema.
+   * @param schema The existing database schema.
    * @return The deployed view hashes.
    */
   Optional<Map<String, String>> loadViewHashes(Schema schema) {
@@ -86,39 +86,26 @@ class ExistingViewHashLoader {
 
     if (log.isDebugEnabled()) log.debug("Loading " + DEPLOYED_VIEWS_NAME + " with SQL [" + sql + "]");
 
-    try {
-      Connection connection = dataSource.getConnection();
-      try {
-        java.sql.Statement statement = connection.createStatement();
-        try {
-          ResultSet resultSet = statement.executeQuery(sql);
-          try {
-            while (resultSet.next()) {
-              // There was previously a bug in Deployment which wrote records to
-              // the DeployedViews table without upper-casing them first.  Subsequent
-              // Upgrades would write records in upper case but the original records
-              // remained and could potentially be picked up here depending on
-              // DB ordering.  We make sure we ignore records where there are
-              // duplicates and one of them is not uppercased.
-              String dbViewName = resultSet.getString(1);
-              String viewName = dbViewName.toUpperCase();
-              if (!result.containsKey(viewName) || dbViewName.equals(viewName)) {
-                result.put(viewName, resultSet.getString(2));
-              }
-            }
-          } finally {
-            resultSet.close();
-          }
-        } finally {
-          statement.close();
+    try (Connection connection = dataSource.getConnection();
+         java.sql.Statement statement = connection.createStatement();
+         ResultSet resultSet = statement.executeQuery(sql)) {
+      while (resultSet.next()) {
+        // There was previously a bug in Deployment which wrote records to
+        // the DeployedViews table without upper-casing them first.  Subsequent
+        // Upgrades would write records in upper case but the original records
+        // remained and could potentially be picked up here depending on
+        // DB ordering.  We make sure we ignore records where there are
+        // duplicates and one of them is not uppercased.
+        String dbViewName = resultSet.getString(1);
+        String viewName = dbViewName.toUpperCase();
+        if (!result.containsKey(viewName) || dbViewName.equals(viewName)) {
+          result.put(viewName, resultSet.getString(2));
         }
-      } finally {
-        connection.close();
       }
     } catch (SQLException e) {
       throw new RuntimeSqlException("Failed to load deployed views. SQL: [" + sql + "]", e);
     }
 
-    return Optional.<Map<String, String>>of(Collections.unmodifiableMap(result));
+    return Optional.of(Collections.unmodifiableMap(result));
   }
 }

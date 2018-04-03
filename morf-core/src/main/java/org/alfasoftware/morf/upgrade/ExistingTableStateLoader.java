@@ -28,13 +28,12 @@ import java.util.Set;
 
 import javax.sql.DataSource;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * Loads all UUIDs which have previously been applied.
@@ -63,7 +62,7 @@ class ExistingTableStateLoader {
    */
   Set<java.util.UUID> loadAppliedStepUUIDs() {
 
-    Set<java.util.UUID> results = new HashSet<java.util.UUID>();
+    Set<java.util.UUID> results = new HashSet<>();
 
     // Query the database to see if the UpgradeAudit
     SelectStatement upgradeAuditSelect = select(field("upgradeUUID")).from(tableRef(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME));
@@ -71,26 +70,13 @@ class ExistingTableStateLoader {
 
     if (log.isDebugEnabled()) log.debug("Loading UpgradeAudit with SQL [" + sql + "]");
 
-    try {
-      Connection connection = dataSource.getConnection();
-      try {
-        java.sql.Statement statement = connection.createStatement();
-        try {
-          ResultSet resultSet = statement.executeQuery(sql);
-          try {
-            while (resultSet.next()) {
-              String uuidString = fixUUIDs(resultSet.getString(1));
+    try (Connection connection = dataSource.getConnection();
+         java.sql.Statement statement = connection.createStatement();
+         ResultSet resultSet = statement.executeQuery(sql)) {
+      while (resultSet.next()) {
+        String uuidString = fixUUIDs(resultSet.getString(1));
 
-              results.add(java.util.UUID.fromString(uuidString));
-            }
-          } finally {
-            resultSet.close();
-          }
-        } finally {
-          statement.close();
-        }
-      } finally {
-        connection.close();
+        results.add(java.util.UUID.fromString(uuidString));
       }
     } catch (SQLException e) {
       throw new RuntimeSqlException("Failed to load applied UUIDs. SQL: [" + sql + "]", e);

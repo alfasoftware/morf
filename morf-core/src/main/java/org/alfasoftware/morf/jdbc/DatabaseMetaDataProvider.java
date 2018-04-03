@@ -223,14 +223,10 @@ public class DatabaseMetaDataProvider implements Schema {
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
-      ResultSet primaryKeyResults = databaseMetaData.getPrimaryKeys(null, schemaName, tableName);
-
-      try {
+      try (ResultSet primaryKeyResults = databaseMetaData.getPrimaryKeys(null, schemaName, tableName)) {
         while (primaryKeyResults.next()) {
           columns.add(new PrimaryKeyColumn(primaryKeyResults.getShort(5), primaryKeyResults.getString(4)));
         }
-      } finally {
-        primaryKeyResults.close();
       }
     } catch (SQLException sqle) {
       throw new RuntimeSqlException("Error reading primary keys for table [" + tableName + "]", sqle);
@@ -265,8 +261,7 @@ public class DatabaseMetaDataProvider implements Schema {
       try {
         final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
-        ResultSet columnResults = databaseMetaData.getColumns(null, schemaName, tableName, null);
-        try {
+        try (ResultSet columnResults = databaseMetaData.getColumns(null, schemaName, tableName, null)) {
 
           List<Column> rawColumns = new LinkedList<>();
 
@@ -296,8 +291,6 @@ public class DatabaseMetaDataProvider implements Schema {
           }
 
           return sortByPrimaryKey(primaryKeys, rawColumns);
-        } finally {
-          columnResults.close();
         }
       } catch (SQLException sqle) {
         throw new RuntimeSqlException(sqle);
@@ -371,8 +364,7 @@ public class DatabaseMetaDataProvider implements Schema {
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
-      ResultSet indexResultSet = databaseMetaData.getIndexInfo(null, schemaName, tableName, false, false);
-      try {
+      try (ResultSet indexResultSet = databaseMetaData.getIndexInfo(null, schemaName, tableName, false, false)) {
         List<Index> indexes = new LinkedList<>();
 
         SortedMap<String, List<String>> columnsByIndexName = new TreeMap<>();
@@ -411,11 +403,7 @@ public class DatabaseMetaDataProvider implements Schema {
           // add this column to the list
           columnNames.add(columnName);
         }
-
         return indexes;
-
-      } finally {
-        indexResultSet.close();
       }
     } catch (SQLException sqle) {
       throw new RuntimeSqlException("Error reading metadata for table [" + tableName + "]", sqle);
@@ -432,25 +420,37 @@ public class DatabaseMetaDataProvider implements Schema {
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
-      ResultSet views = databaseMetaData.getTables(null, schemaName, null, new String[] { "VIEW" });
-      try {
+      try (ResultSet views = databaseMetaData.getTables(null, schemaName, null, new String[]{"VIEW"})) {
         while (views.next()) {
           final String viewName = views.getString(3);
           log.debug("Found view [" + viewName + "]");
           viewMap.put(viewName, new View() {
-            @Override public String getName() { return viewName; }
-            @Override public boolean knowsSelectStatement() { return false; }
-            @Override public boolean knowsDependencies() { return false; }
-            @Override public SelectStatement getSelectStatement() {
+            @Override
+            public String getName() {
+              return viewName;
+            }
+
+            @Override
+            public boolean knowsSelectStatement() {
+              return false;
+            }
+
+            @Override
+            public boolean knowsDependencies() {
+              return false;
+            }
+
+            @Override
+            public SelectStatement getSelectStatement() {
               throw new UnsupportedOperationException("Cannot return SelectStatement as [" + viewName + "] has been loaded from the database");
             }
-            @Override public String[] getDependencies() {
+
+            @Override
+            public String[] getDependencies() {
               throw new UnsupportedOperationException("Cannot return dependencies as [" + viewName + "] has been loaded from the database");
             }
           });
         }
-      } finally {
-        views.close();
       }
     } catch (SQLException sqle) {
       throw new RuntimeSqlException("Error reading metadata for views", sqle);
@@ -588,8 +588,7 @@ public class DatabaseMetaDataProvider implements Schema {
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
-      ResultSet tables = databaseMetaData.getTables(null, schemaName, null, TABLE_TYPES);
-      try {
+      try (ResultSet tables = databaseMetaData.getTables(null, schemaName, null, TABLE_TYPES)) {
         while (tables.next()) {
           String tableName = tables.getString(3);
           String tableSchemaName = tables.getString(2);
@@ -597,8 +596,6 @@ public class DatabaseMetaDataProvider implements Schema {
 
           foundTable(tableName, tableSchemaName, tableType);
         }
-      } finally {
-        tables.close();
       }
     } catch (SQLException sqle) {
       throw new RuntimeSqlException("SQLException in readTableNames()", sqle);
