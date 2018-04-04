@@ -19,6 +19,7 @@ import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.selectDistinct;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.alfasoftware.morf.sql.element.Direction.ASCENDING;
 import static org.alfasoftware.morf.sql.element.JoinType.INNER_JOIN;
 import static org.alfasoftware.morf.sql.element.JoinType.LEFT_OUTER_JOIN;
 import static org.hamcrest.Matchers.contains;
@@ -628,9 +629,9 @@ public class TestSqlSelectElementGeneration {
    */
   @Test
   public void testSimpleSelectWithOrderByClause() {
-    SelectStatement stmt = new SelectStatement(new FieldReference("agreementNumber"))
+    SelectStatement stmt = SelectStatement.select(new FieldReference("agreementNumber"))
                                               .from(new TableReference("schedule"))
-                                              .orderBy(new FieldReference("agreementNumber"));
+                                              .orderBy(new FieldReference("agreementNumber")).build();
 
     assertEquals("Should have one order by clause", 1, stmt.getOrderBys().size());
 
@@ -638,7 +639,7 @@ public class TestSqlSelectElementGeneration {
 
     assertNotNull("Order by field should be set", orderByField);
     assertEquals("Order by field should be agreement number", "agreementNumber", orderByField.getName());
-    assertEquals("Order by direction should be ascending", Direction.ASCENDING, orderByField.getDirection());
+    assertEquals("Order by direction should be ascending", ASCENDING, orderByField.getDirection());
 
     // Check that no side-effects have occurred
     assertNull("Should have no where clause", stmt.getWhereCriterion());
@@ -1002,85 +1003,87 @@ public class TestSqlSelectElementGeneration {
   @Test
   public void testMutableBuilder() {
 
-    FieldLiteral field1 = literal(1);
-    FieldLiteral field2 = literal(1);
-    SelectStatement subSelect1 = select(literal(1));
-    SelectStatement subSelect2 = select(literal(1));
-    Criterion criterion1 = literal(1).isNull();
-    Criterion criterion2 = literal(2).isNull();
-    Criterion criterion3 = literal(3).isNull();
-    TableReference table1 = tableRef("A");
-    TableReference table2 = tableRef("B");
+    AliasedField.withImmutableBuildersDisabled( () -> {
+      FieldLiteral field1 = literal(1);
+      FieldLiteral field2 = literal(1);
+      SelectStatement subSelect1 = select(literal(1));
+      SelectStatement subSelect2 = select(literal(1));
+      Criterion criterion1 = literal(1).isNull();
+      Criterion criterion2 = literal(2).isNull();
+      Criterion criterion3 = literal(3).isNull();
+      TableReference table1 = tableRef("A");
+      TableReference table2 = tableRef("B");
 
-    SelectStatement select = select();
+      SelectStatement select = select();
 
-    // Fields
-    select.addFields(field1);
-    assertThat(select.getFields(), contains(field1));
-    select.getFields().add(field2);
-    assertThat(select.getFields(), contains(field1, field2));
+      // Fields
+      select.addFields(field1);
+      assertThat(select.getFields(), contains(field1));
+      select.getFields().add(field2);
+      assertThat(select.getFields(), contains(field1, field2));
 
-    // Table
-    select.from("A");
-    assertEquals("A", select.getTable().getName());
+      // Table
+      select.from("A");
+      assertEquals("A", select.getTable().getName());
 
-    // From select
-    select.from(subSelect1);
-    assertFalse(select.getFromSelects().isEmpty());
+      // From select
+      select.from(subSelect1);
+      assertFalse(select.getFromSelects().isEmpty());
 
-    // Joins
-    select.innerJoin(subSelect1);
-    select.innerJoin(tableRef("C"));
-    select.innerJoin(tableRef("B"), field1.eq(field2));
-    select.innerJoin(subSelect1, field1.eq(field2));
-    select.leftOuterJoin(tableRef("B"), field1.eq(field2));
-    select.leftOuterJoin(subSelect2, field1.eq(field2));
-    assertThat(select.getJoins(), contains(
-        new Join(INNER_JOIN, subSelect1, null),
-        new Join(INNER_JOIN, tableRef("C"), null),
-        new Join(INNER_JOIN, tableRef("B"), field1.eq(field2)),
-        new Join(INNER_JOIN, subSelect1, field1.eq(field2)),
-        new Join(LEFT_OUTER_JOIN, tableRef("B"), field1.eq(field2)),
-        new Join(LEFT_OUTER_JOIN, subSelect2, field1.eq(field2))
-    ));
+      // Joins
+      select.innerJoin(subSelect1);
+      select.innerJoin(tableRef("C"));
+      select.innerJoin(tableRef("B"), field1.eq(field2));
+      select.innerJoin(subSelect1, field1.eq(field2));
+      select.leftOuterJoin(tableRef("B"), field1.eq(field2));
+      select.leftOuterJoin(subSelect2, field1.eq(field2));
+      assertThat(select.getJoins(), contains(
+          new Join(INNER_JOIN, subSelect1, null),
+          new Join(INNER_JOIN, tableRef("C"), null),
+          new Join(INNER_JOIN, tableRef("B"), field1.eq(field2)),
+          new Join(INNER_JOIN, subSelect1, field1.eq(field2)),
+          new Join(LEFT_OUTER_JOIN, tableRef("B"), field1.eq(field2)),
+          new Join(LEFT_OUTER_JOIN, subSelect2, field1.eq(field2))
+      ));
 
-    // Where
-    select.where(ImmutableList.of(criterion2, criterion3));
-    assertThat(select.getWhereCriterion(), equalTo(Criterion.and(criterion2, criterion3)));
-    select.where(criterion1);
-    assertThat(select.getWhereCriterion(), equalTo(criterion1));
+      // Where
+      select.where(ImmutableList.of(criterion2, criterion3));
+      assertThat(select.getWhereCriterion(), equalTo(Criterion.and(criterion2, criterion3)));
+      select.where(criterion1);
+      assertThat(select.getWhereCriterion(), equalTo(criterion1));
 
-    select.orderBy(field1, field2);
-    assertThat(select.getOrderBys(), contains(field1, field2));
+      select.orderBy(field1, field2);
+      assertThat(select.getOrderBys(), contains(field1, field2));
 
-    // Group by
-    select.groupBy(field1, field2);
-    assertThat(select.getGroupBys(), contains(field1, field2));
+      // Group by
+      select.groupBy(field1, field2);
+      assertThat(select.getGroupBys(), contains(field1, field2));
 
-    // Having
-    select.having(criterion1);
-    assertThat(select.getHaving(), equalTo(criterion1));
+      // Having
+      select.having(criterion1);
+      assertThat(select.getHaving(), equalTo(criterion1));
 
-    // Alias
-    select.alias("A");
-    assertEquals("A", select.getAlias());
+      // Alias
+      select.alias("A");
+      assertEquals("A", select.getAlias());
 
-    // For update
-    select.forUpdate();
-    assertTrue(select.isForUpdate());
+      // For update
+      select.forUpdate();
+      assertTrue(select.isForUpdate());
 
-    // Hints
-    select.optimiseForRowCount(1)
-        .useImplicitJoinOrder()
-        .useIndex(table1, "INDEX_1")
-        .useIndex(table2, "INDEX_2");
-    assertThat(select.getHints(), contains(
-        new OptimiseForRowCount(1),
-        new UseImplicitJoinOrder(),
-        new UseIndex(table1, "INDEX_1"),
-        new UseIndex(table2, "INDEX_2")
-    ));
+      // Hints
+      select.optimiseForRowCount(1)
+          .useImplicitJoinOrder()
+          .useIndex(table1, "INDEX_1")
+          .useIndex(table2, "INDEX_2");
+      assertThat(select.getHints(), contains(
+          new OptimiseForRowCount(1),
+          new UseImplicitJoinOrder(),
+          new UseIndex(table1, "INDEX_1"),
+          new UseIndex(table2, "INDEX_2")
+      ));
 
+    });
   }
 
 

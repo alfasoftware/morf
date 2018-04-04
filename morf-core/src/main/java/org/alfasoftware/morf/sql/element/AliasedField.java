@@ -372,16 +372,31 @@ public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableW
    * @param runnable The code to run.
    */
   public static void withImmutableBuildersEnabled(Runnable runnable) {
+    withImmutableBuilders(runnable, true);
+  }
+
+  /**
+   * Allows tests to run with immutable building behaviour turned off.
+   *
+   * TODO remove when we remove the old mutable behaviour
+   *
+   * @param runnable The code to run.
+   */
+  public static void withImmutableBuildersDisabled(Runnable runnable) {
+    withImmutableBuilders(runnable, false);
+  }
+
+  private static void withImmutableBuilders(Runnable runnable, boolean enabled) {
     String property = "AliasedField.IMMUTABLE_DSL_ENABLED";
-    String oldSystemProperty = System.getProperty(property);
-    System.setProperty(property, "true");
+    String previousProperty = System.getProperty(property);
+    System.setProperty(property, enabled ? "true": "false");
     try {
       runnable.run();
     } finally {
-      if (oldSystemProperty == null) {
+      if (previousProperty == null) {
         System.clearProperty(property);
       } else {
-        System.setProperty(property, oldSystemProperty);
+        System.setProperty(property, previousProperty);
       }
     }
   }

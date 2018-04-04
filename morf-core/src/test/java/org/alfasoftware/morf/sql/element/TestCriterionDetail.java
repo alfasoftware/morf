@@ -36,13 +36,15 @@ public class TestCriterionDetail {
    */
   @Test
   public void testCanMutateCriteriaWhenMutable() {
-    Criterion criterion = and(isNull(literal(1)), isNull(literal(2)));
-    criterion.getCriteria().add(isNull(literal(3)));
-    assertThat(criterion.getCriteria(), hasSize(3));
+    AliasedField.withImmutableBuildersDisabled(() -> {
+      Criterion criterion = and(isNull(literal(1)), isNull(literal(2)));
+      criterion.getCriteria().add(isNull(literal(3)));
+      assertThat(criterion.getCriteria(), hasSize(3));
 
-    Criterion deepCopy = criterion.deepCopy();
-    deepCopy.getCriteria().add(mock(Criterion.class));
-    assertThat(deepCopy.getCriteria(), hasSize(4));
+      Criterion deepCopy = criterion.deepCopy();
+      deepCopy.getCriteria().add(mock(Criterion.class));
+      assertThat(deepCopy.getCriteria(), hasSize(4));
+    });
   }
 
 

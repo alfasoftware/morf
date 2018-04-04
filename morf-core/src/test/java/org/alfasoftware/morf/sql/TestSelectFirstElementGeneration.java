@@ -92,12 +92,14 @@ public class TestSelectFirstElementGeneration {
    */
   @Test
   public void testFieldsMutable() {
-    FieldLiteral field1 = literal(1);
-    FieldLiteral field2 = literal(2);
-    SelectFirstStatement select = selectFirst(field1);
-    select.getFields().clear();
-    select.getFields().add(field2);
-    assertThat(select.getFields(), contains(field2));
+    AliasedField.withImmutableBuildersDisabled(() -> {
+      FieldLiteral field1 = literal(1);
+      FieldLiteral field2 = literal(2);
+      SelectFirstStatement select = selectFirst(field1);
+      select.getFields().clear();
+      select.getFields().add(field2);
+      assertThat(select.getFields(), contains(field2));
+    });
   }
 
 

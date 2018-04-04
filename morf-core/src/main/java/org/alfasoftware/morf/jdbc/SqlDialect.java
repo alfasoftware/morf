@@ -18,6 +18,7 @@ package org.alfasoftware.morf.jdbc;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.alfasoftware.morf.sql.SelectStatement.select;
 import static org.alfasoftware.morf.sql.SqlUtils.insert;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.UnionSetOperator.UnionStrategy.ALL;
@@ -56,8 +57,10 @@ import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.sql.SelectStatementBuilder;
 import org.alfasoftware.morf.sql.SetOperator;
 import org.alfasoftware.morf.sql.SqlElementCallback;
+import org.alfasoftware.morf.sql.SqlUtils;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.sql.TruncateStatement;
 import org.alfasoftware.morf.sql.UnionSetOperator;
@@ -1311,16 +1314,14 @@ public abstract class SqlDialect {
           stringBuilder.append(", id");
 
           // Augment the select statement
-          sourceStatement = sourceStatement.deepCopy();
-          sourceStatement.appendFields(idValue);
+          sourceStatement = sourceStatement.shallowCopy().fields(idValue).build();
         }
 
         if (!explicitVersionColumn && hasColumnNamed(stmt.getTable().getName(), metadata, "version")) {
           stringBuilder.append(", version");
 
           // Augment the select statement
-          sourceStatement = sourceStatement.deepCopy();
-          sourceStatement.appendFields(new FieldLiteral(0).as("version"));
+          sourceStatement = sourceStatement.shallowCopy().fields(SqlUtils.literal(0).as("version")).build();
         }
       }
 
@@ -2710,34 +2711,29 @@ public abstract class SqlDialect {
    * default for the field type will be used.
    * </p>
    *
-   * @param statement the source statement to expand
+   * @param insertStatement the source statement to expand
    * @param metadata the table metadata from the database
    * @return a new instance of {@link InsertStatement} with an expanded from
    *         table definition
    */
-  protected InsertStatement expandInsertStatement(final InsertStatement statement, Schema metadata) {
+  protected InsertStatement expandInsertStatement(final InsertStatement insertStatement, Schema metadata) {
     // If we're neither specified the source table nor the select statement then
     // throw and exception
-    if (statement.getFromTable() == null && statement.getSelectStatement() == null) {
+    if (insertStatement.getFromTable() == null && insertStatement.getSelectStatement() == null) {
       throw new IllegalArgumentException("Cannot expand insert statement as it has no from table specified");
     }
 
     // If we've already got a select statement then just return a copy of the
     // source insert statement
-    if (statement.getSelectStatement() != null) {
-      return copyInsertStatement(statement);
+    if (insertStatement.getSelectStatement() != null) {
+      return copyInsertStatement(insertStatement);
     }
 
-    Map<String, AliasedField> fieldDefaults = statement.getFieldDefaults();
-
-    InsertStatement result = new InsertStatement();
-
-    // Copy the destination table
-    result.into(statement.getTable());
+    Map<String, AliasedField> fieldDefaults = insertStatement.getFieldDefaults();
 
     // Expand the from table
-    String sourceTableName = statement.getFromTable().getName();
-    String destinationTableName = statement.getTable().getName();
+    String sourceTableName = insertStatement.getFromTable().getName();
+    String destinationTableName = insertStatement.getTable().getName();
 
     // Perform a couple of checks
     if (!metadata.tableExists(sourceTableName)) {
@@ -2758,17 +2754,18 @@ public abstract class SqlDialect {
     }
 
     // Build up the select statement from field list
-    SelectStatement selectStatement = new SelectStatement();
+    SelectStatementBuilder selectStatementBuilder = select();
+    List<AliasedField> resultFields = new ArrayList<>();
 
     for (Column currentColumn : metadata.getTable(destinationTableName).columns()) {
       String currentColumnName = currentColumn.getName();
 
       // Add the destination column
-      result.getFields().add(new FieldReference(currentColumnName));
+      resultFields.add(new FieldReference(currentColumnName));
 
       // If there is a default for this column in the defaults list then use it
       if (fieldDefaults.containsKey(currentColumnName)) {
-        selectStatement.getFields().add(fieldDefaults.get(currentColumnName));
+        selectStatementBuilder = selectStatementBuilder.fields(fieldDefaults.get(currentColumnName));
         continue;
       }
 
@@ -2776,17 +2773,20 @@ public abstract class SqlDialect {
       // them
       // and move on to the next column
       if (sourceColumns.containsKey(currentColumnName.toUpperCase())) {
-        selectStatement.getFields().add(new FieldReference(currentColumnName));
+        selectStatementBuilder = selectStatementBuilder.fields(new FieldReference(currentColumnName));
         continue;
       }
     }
-
     // Set the source table
-    selectStatement.from(statement.getFromTable());
+    SelectStatement selectStatement = selectStatementBuilder
+        .from(insertStatement.getFromTable())
+        .build();
 
-    result.from(selectStatement);
-
-    return result;
+   return InsertStatement.insert()
+               .into(insertStatement.getTable())
+               .fields(resultFields)
+               .from(selectStatement)
+               .build();
   }
 
 
@@ -2797,25 +2797,7 @@ public abstract class SqlDialect {
    * @return a new instance of the {@linkplain InsertStatement}
    */
   protected InsertStatement copyInsertStatement(final InsertStatement statement) {
-    InsertStatement result = new InsertStatement();
-
-    // Copy the destination table
-    result.into(statement.getTable());
-
-    // Copy the fields
-    result.getFields().addAll(statement.getFields());
-
-    // Copy the select statement, if any
-    if (statement.getSelectStatement() != null) {
-      result.from(statement.getSelectStatement().deepCopy());
-    }
-
-    // Copy the source table, if any
-    if (statement.getFromTable() != null) {
-      result.from(statement.getFromTable());
-    }
-
-    return result;
+    return statement.shallowCopy().build();
   }
 
 

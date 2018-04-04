@@ -584,8 +584,9 @@ public class TestHumanReadableStatementHelper {
     final NullFieldLiteral defaultValue = new NullFieldLiteral();
     final WhenCondition when1 = new WhenCondition(Criterion.eq(new FieldReference("foo"), "Y"), new FieldLiteral(1234));
     final WhenCondition when2 = new WhenCondition(Criterion.eq(new FieldReference("foo"), "N"), new FieldLiteral(5678));
-    final CaseStatement field = new CaseStatement(defaultValue, when1, when2);
-    field.as("bar");
+    CaseStatement field = new CaseStatement(defaultValue, when1, when2);
+
+    field = (CaseStatement)field.as("bar");
 
     assertEquals("Incorrect strings generated",
       String.format("%n    - If foo is 'Y' then set bar to 1234" +
@@ -600,10 +601,10 @@ public class TestHumanReadableStatementHelper {
    */
   @Test
   public void testCastField() {
-    final Cast field1 = new Cast(new FieldReference("foo"), DataType.DECIMAL, 10);
-    field1.as("bar");
-    final Cast field2 = new Cast(new FieldLiteral("1234"), DataType.DECIMAL, 10);
-    field2.as("bar");
+     Cast field1 = new Cast(new FieldReference("foo"), DataType.DECIMAL, 10);
+     field1 = field1.as("bar");
+     Cast field2 = new Cast(new FieldLiteral("1234"), DataType.DECIMAL, 10);
+     field2 = field2.as("bar");
 
     assertEquals("Incorrect string generated",
       String.format("%n    - Set bar to foo's value"),
@@ -619,8 +620,9 @@ public class TestHumanReadableStatementHelper {
    */
   @Test
   public void testConcatenatedField() {
-    final ConcatenatedField field = new ConcatenatedField(new FieldReference("foo"), new FieldLiteral(1234), new FieldLiteral("bar"));
-    field.as("bar");
+
+    ConcatenatedField field = new ConcatenatedField(new FieldReference("foo"), new FieldLiteral(1234), new FieldLiteral("bar"));
+    field =  (ConcatenatedField)field.as("bar");
 
     assertEquals("Incorrect string generated",
       String.format("%n    - Set bar to the concatenation of foo, 1234 and 'bar'"),
@@ -634,8 +636,8 @@ public class TestHumanReadableStatementHelper {
   @Test
   public void testFieldFromSelect() {
     final SelectStatement select = new SelectStatement(new FieldReference("foo")).from("ExampleData");
-    final FieldFromSelect field = new FieldFromSelect(select);
-    field.as("bar");
+    FieldFromSelect field = new FieldFromSelect(select);
+    field = (FieldFromSelect)field.as("bar");
 
     assertEquals("Incorrect string generated",
       String.format("%n    - Set bar to foo from ExampleData"),
@@ -649,8 +651,8 @@ public class TestHumanReadableStatementHelper {
   @Test
   public void testFieldFromSelectWithJoin() {
     final SelectStatement select = new SelectStatement(new FieldReference("foo")).from("ExampleData").innerJoin(new TableReference("OtherTable"), Criterion.eq(new FieldReference("x"), new FieldReference("y")));
-    final FieldFromSelect field = new FieldFromSelect(select);
-    field.as("bar");
+    FieldFromSelect field = new FieldFromSelect(select);
+    field = (FieldFromSelect)field.as("bar");
 
     assertEquals("Incorrect string generated",
       String.format("%n    - Set bar to foo from ExampleData and OtherTable, joined on x is y"),
@@ -666,8 +668,8 @@ public class TestHumanReadableStatementHelper {
     final SelectStatement select = new SelectStatement(new FieldReference("foo")).from("ExampleData")
         .innerJoin(new TableReference("OtherTable"), Criterion.eq(new FieldReference("x"), new FieldReference("y")))
         .where(Criterion.eq(new FieldReference("z"), 1));
-    final FieldFromSelect field = new FieldFromSelect(select);
-    field.as("bar");
+    FieldFromSelect field = new FieldFromSelect(select);
+    field = (FieldFromSelect)field.as("bar");
 
     assertEquals("Incorrect string generated",
       String.format("%n    - Set bar to foo from ExampleData and OtherTable, joined on x is y, where z is 1"),
@@ -681,8 +683,8 @@ public class TestHumanReadableStatementHelper {
   @Test
   public void testFieldFromSelectFirst() {
     final SelectFirstStatement select = new SelectFirstStatement(new FieldReference("foo")).from("ExampleData").orderBy(new FieldReference("foo"));
-    final FieldFromSelectFirst field = new FieldFromSelectFirst(select);
-    field.as("bar");
+    FieldFromSelectFirst field = new FieldFromSelectFirst(select);
+    field = (FieldFromSelectFirst)field.as("bar");
 
     assertEquals("Incorrect string generated",
       String.format("%n    - Set bar to first foo from ExampleData ordered by foo"),

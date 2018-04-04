@@ -123,21 +123,20 @@ public class TestWindowFunctionsDetail {
   @Test
   public void testOrderDefaulting() {
 
-    field4NoOrder.setDirection(Direction.NONE);
 
     WindowFunction windowFunction = SqlUtils.windowFunction(sum(field1))
-                                    .orderBy(field2Asc,field3Desc,field4NoOrder)
+                                    .orderBy(field2Asc, field3Desc, field4NoOrder)
                                     .build();
 
 
     assertThat(windowFunction.getOrderBys(),hasSize(3));
-    assertThat(windowFunction.getOrderBys(),contains(fieldReferenceWithNameAndDirection("field2",Direction.ASCENDING),
-                                                    fieldReferenceWithNameAndDirection("field3",Direction.DESCENDING),
-                                                    fieldReferenceWithNameAndDirection("field4",Direction.ASCENDING)));
+    assertThat(windowFunction.getOrderBys(),contains(fieldReferenceWithNameAndDirection("field2", Direction.ASCENDING),
+                                                    fieldReferenceWithNameAndDirection("field3", Direction.DESCENDING),
+                                                    fieldReferenceWithNameAndDirection("field4", Direction.ASCENDING)));
   }
 
 
-  private Matcher<AliasedField> fieldReferenceWithNameAndDirection(final String name,final Direction direction){
+  private Matcher<AliasedField> fieldReferenceWithNameAndDirection(final String name, final Direction direction){
     return new TypeSafeMatcher<AliasedField>() {
 
       @Override

@@ -15,16 +15,17 @@
 
 package org.alfasoftware.morf.sql;
 
+import static org.alfasoftware.morf.sql.InsertStatement.insert;
+import static org.alfasoftware.morf.sql.SelectStatement.select;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import org.junit.Test;
-
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.junit.Test;
 
 /**
  * Tests for Insert Statements
@@ -38,7 +39,7 @@ public class TestSqlInsertElementGeneration {
    */
   @Test
   public void testSimpleInsert() {
-    InsertStatement stmt = new InsertStatement().into(new TableReference("Agreement"));
+    InsertStatement stmt = insert().into(new TableReference("Agreement")).build();
 
     // Check the positives
     assertNotNull("Has a table selected", stmt.getTable());
@@ -57,7 +58,7 @@ public class TestSqlInsertElementGeneration {
    */
   @Test
   public void testSimpleInsertWithSourceTable() {
-    InsertStatement stmt = new InsertStatement().into(new TableReference("Agreement")).from(new TableReference("Agreement2"));
+    InsertStatement stmt = insert().into(new TableReference("Agreement")).from(new TableReference("Agreement2")).build();
 
     // Check the positives
     assertNotNull("Has a table selected", stmt.getTable());
@@ -77,7 +78,7 @@ public class TestSqlInsertElementGeneration {
    */
   @Test
   public void testSimpleInsertWithFields() {
-    InsertStatement stmt = new InsertStatement().into(new TableReference("Agreement")).fields(new FieldReference("A"), new FieldReference("B"), new FieldReference("C"));
+    InsertStatement stmt = insert().into(new TableReference("Agreement")).fields(new FieldReference("A"), new FieldReference("B"), new FieldReference("C")).build();
 
     // Check the positives
     assertNotNull("Has a table selected", stmt.getTable());
@@ -99,22 +100,22 @@ public class TestSqlInsertElementGeneration {
    */
   @Test
   public void testAddBothSourceTableAndSelect() {
-    InsertStatement stmt = new InsertStatement().into(new TableReference("agreement"));
+    InsertStatementBuilder stmtBuilder =  insert().into(new TableReference("agreement"));
 
     try {
-      stmt.from(new TableReference("agreement1"));
-      stmt.from(new SelectStatement().from(new TableReference("agreement1")));
+      stmtBuilder = stmtBuilder.from(new TableReference("agreement1"));
+      stmtBuilder.from(select().from(new TableReference("agreement1")).build());
 
       fail("Should not be able to specify a source table and then a select statement");
     } catch(UnsupportedOperationException e) {
       // OK
     }
 
-    stmt = new InsertStatement().into(new TableReference("agreement"));
+    stmtBuilder = InsertStatement.insert().into(new TableReference("agreement"));
 
     try {
-      stmt.from(new SelectStatement().from(new TableReference("agreement1")));
-      stmt.from(new TableReference("agreement1"));
+      stmtBuilder = stmtBuilder.from(SelectStatement.select().from(new TableReference("agreement1")).build());
+      stmtBuilder.from(new TableReference("agreement1")).build();
 
       fail("Should not be able to specify a select statement and then a source table");
     } catch(UnsupportedOperationException e) {
@@ -128,22 +129,22 @@ public class TestSqlInsertElementGeneration {
    */
   @Test
   public void testAddBothSourceTableAndFieldList() {
-    InsertStatement stmt = new InsertStatement().into(new TableReference("agreement"));
+    InsertStatementBuilder stmtBuilder = insert().into(new TableReference("agreement"));
 
     try {
-      stmt.from(new TableReference("agreement1"));
-      stmt.fields(new FieldReference("test"));
+      stmtBuilder = stmtBuilder.from(new TableReference("agreement1"));
+      stmtBuilder.fields(new FieldReference("test")).build();
 
       fail("Should not be able to specify a source table and then a field list");
     } catch(UnsupportedOperationException e) {
       // OK
     }
 
-    stmt = new InsertStatement().into(new TableReference("agreement"));
+    stmtBuilder = insert().into(new TableReference("agreement"));
 
     try {
-      stmt.fields(new FieldReference("test"));
-      stmt.from(new TableReference("agreement1"));
+      stmtBuilder = stmtBuilder.fields(new FieldReference("test"));
+      stmtBuilder.from(new TableReference("agreement1")).build();
 
       fail("Should not be able to specify a field list and then a source table");
     } catch(UnsupportedOperationException e) {
@@ -156,7 +157,7 @@ public class TestSqlInsertElementGeneration {
    */
   @Test
   public void testDeepCopyForInsertWithFields(){
-    InsertStatement stmt = new InsertStatement().into(new TableReference("Agreement")).fields(new FieldReference("A"), new FieldReference("B"), new FieldReference("C"));
+    InsertStatement stmt = insert().into(new TableReference("Agreement")).fields(new FieldReference("A"), new FieldReference("B"), new FieldReference("C")).build();
     InsertStatement stmtCopy = stmt.deepCopy();
 
     assertTrue("Should be different instance of the table", stmt.getTable() != stmtCopy.getTable());
@@ -173,7 +174,7 @@ public class TestSqlInsertElementGeneration {
    */
   @Test
   public void testDeepCopyForInsertWithSourceTable(){
-    InsertStatement stmt = new InsertStatement().into(new TableReference("Agreement")).from(new TableReference("Agreement2"));
+    InsertStatement stmt = insert().into(new TableReference("Agreement")).from(new TableReference("Agreement2")).build();
     InsertStatement stmtCopy = stmt.deepCopy();
 
     assertTrue("Should be different instance of source table", stmt.getFromTable() != stmtCopy.getFromTable());
@@ -186,7 +187,7 @@ public class TestSqlInsertElementGeneration {
    */
   @Test
   public void testDeepCopyForInsertWithSelect(){
-    InsertStatement stmt = new InsertStatement().into(new TableReference("Agreement")).from(new SelectStatement().from(new TableReference("agreement1")));
+    InsertStatement stmt = insert().into(new TableReference("Agreement")).from(new SelectStatement().from(new TableReference("agreement1"))).build();
     InsertStatement stmtCopy = stmt.deepCopy();
 
     assertTrue("Should be different instance of select statement", stmt.getSelectStatement() != stmtCopy.getSelectStatement());

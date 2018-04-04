@@ -71,10 +71,20 @@ public class TestTableReference {
       assertNotEquals(isEqual.as("A"), onTest.as("B"));
       assertNotSame(onTest, onTest.as("A"));
     });
-
-    // Should get the same object with immutable builders off
-    assertSame(onTest, onTest.as("A"));
   }
+
+
+  /**
+   * Remove this test when immutability is permananently enabled.
+   */
+  @Test
+  public void testAliasMutablity() {
+    AliasedField.withImmutableBuildersDisabled(() -> {
+      // Should get the same object with immutable builders off
+      assertSame(onTest, onTest.as("A"));
+    });
+  }
+
 
   @Test
   public void testDeepCopy() {

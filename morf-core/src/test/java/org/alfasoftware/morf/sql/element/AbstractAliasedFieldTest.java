@@ -139,21 +139,36 @@ public abstract class AbstractAliasedFieldTest<T extends AliasedField> {
     assertEquals(isEqualAliased.hashCode(), onTestAliased.hashCode());
   }
 
+
   /**
-   * Confirms correct behaviour of the "as" method.
+   * Confirms correct behaviour of the "as" method when using immutable builders.
    */
   @Test
-  public void testAs() {
+  public void testAsImmutable() {
     AliasedField.withImmutableBuildersEnabled(() -> {
       assertEquals(isEqual.as("A"), onTest.as("A"));
       assertEquals(isEqual.as("B").as("A"), onTest.as("A"));
       assertNotEquals(isEqual.as("A"), onTest.as("B"));
       assertNotSame(onTest, onTest.as("A"));
     });
-
-    // Should get the same object with immutable builders off
-    assertSame(onTest, onTest.as("A"));
   }
+
+
+  /**
+   * Confirms correct behaviour of the "as" method when using mutable builders.
+   *
+   * This test should be removed when immutable builders are enabled permanently.
+   */
+  @Test
+  public void testAsMutable() {
+    AliasedField.withImmutableBuildersDisabled(() -> {
+      // Should get the same object with immutable builders off
+      // not going to work when immutable builders are on
+      assertSame(onTest, onTest.as("A"));
+    });
+  }
+
+
 
   /**
    * Compares the toString to the default implementation to make sure it's been defined.
@@ -212,14 +227,17 @@ public abstract class AbstractAliasedFieldTest<T extends AliasedField> {
     assertNotSame(deepCopy, onTestAliased);
   }
 
+
   /**
    * Confirms that the implied name returns the alias, assuming we
    * are maintain the old, mutable behaviour of the as method
    */
   @Test
   public void testImpliedNameMutableBehaviour() {
-    onTest.as("QWERTY");
-    assertEquals(onTest.getImpliedName(), "QWERTY");
+    AliasedField.withImmutableBuildersDisabled(() -> {
+      onTest.as("QWERTY");
+      assertEquals(onTest.getImpliedName(), "QWERTY");
+    });
   }
 
 
@@ -232,7 +250,7 @@ public abstract class AbstractAliasedFieldTest<T extends AliasedField> {
     AliasedField.withImmutableBuildersEnabled(() -> {
       String originalImpliedName = onTest.getImpliedName();
       onTest.as("QWERTY");
-      assertEquals(onTest.getImpliedName(), originalImpliedName);
+      assertEquals("Original implied name must not be modified", onTest.getImpliedName(), originalImpliedName);
       assertEquals(onTest.as("QWERTY").getImpliedName(), "QWERTY");
     });
   }

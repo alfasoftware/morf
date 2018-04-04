@@ -20,15 +20,13 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.idColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.metadata.SchemaUtils.versionColumn;
+import static org.alfasoftware.morf.sql.InsertStatement.insert;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 import java.util.Map;
-
-import org.junit.Before;
-import org.junit.Test;
 
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Schema;
@@ -38,6 +36,8 @@ import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.NullFieldLiteral;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.junit.Before;
+import org.junit.Test;
 
 /**
  * Tests the {@link InsertStatementDefaulter}.
@@ -96,8 +96,8 @@ public class TestInsertStatementDefaulter {
   public void testInsertDefaultedDecimalValue() {
     InsertStatementDefaulter defaulter = new InsertStatementDefaulter(schema);
 
-    InsertStatement statement = new InsertStatement().into(new TableReference("Car")).values(new FieldLiteral("bob").as("name"));
-    defaulter.defaultMissingFields(statement);
+    InsertStatement statement = insert().into(new TableReference("Car")).values(new FieldLiteral("bob").as("name")).build();
+    statement = defaulter.defaultMissingFields(statement);
 
     assertEquals("Field default size", 3, statement.getFieldDefaults().size());
     assertFieldValue("engineCapacity", "0", statement.getFieldDefaults());
@@ -111,8 +111,8 @@ public class TestInsertStatementDefaulter {
   public void testInsertDefaultedStringValue() {
     InsertStatementDefaulter defaulter = new InsertStatementDefaulter(schema);
 
-    InsertStatement statement = new InsertStatement().into(new TableReference("Car")).values(new FieldLiteral(1.0).as("engineCapacity"));
-    defaulter.defaultMissingFields(statement);
+    InsertStatement statement = insert().into(new TableReference("Car")).values(new FieldLiteral(1.0).as("engineCapacity")).build();
+    statement = defaulter.defaultMissingFields(statement);
 
     assertEquals("Field default size", 3, statement.getFieldDefaults().size());
     assertFieldValue("name", "", statement.getFieldDefaults());
@@ -126,8 +126,8 @@ public class TestInsertStatementDefaulter {
   public void testInsertDefaultedVersion() {
     InsertStatementDefaulter defaulter = new InsertStatementDefaulter(schema);
 
-    InsertStatement statement = new InsertStatement().into(new TableReference("Car")).values(new FieldLiteral("bob").as("name"));
-    defaulter.defaultMissingFields(statement);
+    InsertStatement statement =  insert().into(new TableReference("Car")).values(new FieldLiteral("bob").as("name")).build();
+    statement = defaulter.defaultMissingFields(statement);
 
     assertEquals("Field default size", 3, statement.getFieldDefaults().size());
     assertFieldValue("version", "0", statement.getFieldDefaults());
@@ -141,8 +141,8 @@ public class TestInsertStatementDefaulter {
   public void testFrom() {
     InsertStatementDefaulter defaulter = new InsertStatementDefaulter(schema);
 
-    InsertStatement statement = new InsertStatement().into(new TableReference("Test")).from(new TableReference("Other"));
-    defaulter.defaultMissingFields(statement);
+    InsertStatement statement = insert().into(new TableReference("Test")).from(new TableReference("Other")).build();
+    statement = defaulter.defaultMissingFields(statement);
 
     assertEquals("Field default size", 4, statement.getFieldDefaults().size());
     assertFieldValue("dateField", null, statement.getFieldDefaults());
