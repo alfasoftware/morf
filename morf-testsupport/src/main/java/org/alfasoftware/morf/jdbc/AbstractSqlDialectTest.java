@@ -907,11 +907,10 @@ public abstract class AbstractSqlDialectTest {
 
     String expectedSql = "SELECT stringField FROM " + tableName(ALTERNATE_TABLE) + " ORDER BY stringField DESC";
     if (!nullOrder().equals(StringUtils.EMPTY)) {
-      expectedSql = expectedSql + " " + nullOrder();
+      expectedSql = expectedSql + " " + nullOrderForDirection(Direction.DESCENDING);
     }
     assertEquals("Select with descending order by", expectedSql, testDialect.convertStatementToSQL(stmt));
   }
-
 
   /**
    * Tests a select with an "order by" clause with nulls last and default direction.
@@ -4368,6 +4367,17 @@ public abstract class AbstractSqlDialectTest {
     return StringUtils.EMPTY;
   }
 
+  /**
+   * A database platform may need to specify the null order by direction.
+   *
+   * <p>If a null order is not required for a SQL dialect descendant classes need to implement this method.</p>
+   *
+   * @return the null order for an SQL dialect
+   */
+  protected String nullOrderForDirection(@SuppressWarnings("unused") Direction descending) {
+    return nullOrder();
+  }
+
 
   /**
    * @return The expected SQL statements for creating the test database tables.
@@ -5034,12 +5044,13 @@ public abstract class AbstractSqlDialectTest {
    */
   protected List<String> expectedWindowFunctionStatements(){
     String paddedNullOrder = StringUtils.isEmpty(nullOrder())? StringUtils.EMPTY : " "+nullOrder();
+    String paddedNullOrderDesc = StringUtils.isEmpty(nullOrder())? StringUtils.EMPTY : " "+nullOrderForDirection(Direction.DESCENDING);
     return Lists.newArrayList(
       "COUNT(*) OVER ()",
       "COUNT(*) OVER (PARTITION BY field1)",
       "SUM(field1) OVER (PARTITION BY field2, field3 ORDER BY field4"+paddedNullOrder+")",
       "MAX(field1) OVER (PARTITION BY field2, field3 ORDER BY field4"+paddedNullOrder+")",
-      "MIN(field1) OVER (PARTITION BY field2, field3 ORDER BY field4 DESC"+paddedNullOrder+", field5"+paddedNullOrder+")",
+      "MIN(field1) OVER (PARTITION BY field2, field3 ORDER BY field4 DESC"+paddedNullOrderDesc+", field5"+paddedNullOrder+")",
       "MIN(field1) OVER ( ORDER BY field2"+paddedNullOrder+")",
       "(SELECT MIN(field1) OVER ( ORDER BY field2"+paddedNullOrder+") AS window FROM "+tableName("srcTable")+")"
     );

@@ -19,6 +19,7 @@ import static org.alfasoftware.morf.metadata.DataType.DECIMAL;
 import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
 import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
 import static org.alfasoftware.morf.sql.SqlUtils.parameter;
+import static org.alfasoftware.morf.sql.element.Direction.ASCENDING;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -47,6 +48,7 @@ import org.alfasoftware.morf.sql.UseImplicitJoinOrder;
 import org.alfasoftware.morf.sql.UseIndex;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
+import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.apache.commons.lang.StringEscapeUtils;
@@ -75,10 +77,20 @@ class OracleDialect extends SqlDialect {
   private static final String MERGE_SOURCE_ALIAS = "xmergesource";
 
   /**
+   * Database platforms may order nulls first or last. This null first.
+   */
+  public static final String NULLS_FIRST = "NULLS FIRST";
+
+  /**
+   * Database platforms may order nulls first or last. This is null last.
+   */
+  public static final String NULLS_LAST = "NULLS LAST";
+
+  /**
    * Database platforms may order nulls first or last. My SQL always orders nulls first, Oracle defaults to ordering nulls last.
    * Fortunately on Oracle it is possible to specify that nulls should be ordered first.
    */
-  public static final String DEFAULT_NULL_ORDER = "NULLS FIRST";
+  public static final String DEFAULT_NULL_ORDER = NULLS_FIRST;
 
 
   /**
@@ -589,6 +601,30 @@ class OracleDialect extends SqlDialect {
   public List<String> buildSQLToStopTracing() {
     return Arrays.asList("ALTER SESSION SET EVENTS '10046 TRACE NAME CONTEXT OFF'");
   }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForOrderByFieldNullValueHandling(org.alfasoftware.morf.sql.element.FieldReference)
+   */
+  @Override
+  protected String getSqlForOrderByFieldNullValueHandling(FieldReference orderByField) {
+    if (orderByField.getNullValueHandling().isPresent()) {
+      switch (orderByField.getNullValueHandling().get()) {
+        case FIRST:
+          return " " + NULLS_FIRST;
+        case LAST:
+          return " " + NULLS_LAST;
+        case NONE:
+        default:
+          return "";
+      }
+    } else if (orderByField.getDirection() != null) {
+      return ASCENDING.equals(orderByField.getDirection()) ? " " + NULLS_FIRST : " " + NULLS_LAST;
+    } else {
+      return " " + defaultNullOrder();
+    }
+  }
+
 
   /**
    * {@inheritDoc}

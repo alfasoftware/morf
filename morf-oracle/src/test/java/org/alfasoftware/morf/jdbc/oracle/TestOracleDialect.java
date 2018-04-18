@@ -15,7 +15,9 @@
 
 package org.alfasoftware.morf.jdbc.oracle;
 
+import static org.alfasoftware.morf.jdbc.oracle.OracleDialect.NULLS_LAST;
 import static org.alfasoftware.morf.sql.SqlUtils.parameter;
+import static org.alfasoftware.morf.sql.element.Direction.ASCENDING;
 import static org.hamcrest.Matchers.contains;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
@@ -41,6 +43,7 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.sql.element.Direction;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.mockito.ArgumentCaptor;
 
@@ -1420,5 +1423,13 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected boolean expectedUsesNVARCHARforStrings() {
     return true; // We do!
+  }
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#nullOrderForDirection(org.alfasoftware.morf.sql.element.Direction)
+   */
+  @Override
+  protected String nullOrderForDirection(Direction descending) {
+    return ASCENDING.equals(descending) ? nullOrder() : NULLS_LAST;
   }
 }
