@@ -142,8 +142,11 @@ public class SqlScriptExecutor {
       runnable.run();
       connection.commit();
     } catch (Exception e) {
-      connection.rollback();
-      throw e;
+      try {
+        connection.rollback();
+      } finally { //NOPMD
+        throw e;
+      }
     }
   }
 
