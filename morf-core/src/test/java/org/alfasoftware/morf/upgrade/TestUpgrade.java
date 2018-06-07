@@ -37,6 +37,7 @@ import static org.mockito.Matchers.eq;
 import static org.mockito.Matchers.same;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -163,6 +164,40 @@ public class TestUpgrade {
 
     assertEquals("Should be two steps.", 2, results.getSteps().size());
     assertEquals("Number of SQL statements", 18, results.getSql().size()); // Includes statements to create, truncate and then drop temp table, also 2 comments
+  }
+
+
+  /**
+   * Test {@link Upgrade} adds the correct trigger rebuild message.
+   */
+  @Test
+  public void testUpgradeWithTriggerMessage() throws SQLException {
+
+    ResultSet viewResultSet = mock(ResultSet.class);
+    when(viewResultSet.next()).thenReturn(true, true, false);
+    when(viewResultSet.getString(1)).thenReturn("FooView", "OldView");
+    when(viewResultSet.getString(2)).thenReturn("XXX");
+
+    ResultSet upgradeResultSet = mock(ResultSet.class);
+    when(upgradeResultSet.next()).thenReturn(false);
+
+    SqlDialect dialect = spy(new MockDialect());
+    when(dialect.rebuildTriggers(any(Table.class))).thenReturn(ImmutableList.of("A"));
+
+    ConnectionResources connection = new MockConnectionResources().
+                                              withSchema(schema(upgradeAudit(), deployedViews(), originalCar())).
+                                              withResultSet("SELECT upgradeUUID FROM UpgradeAudit", upgradeResultSet).
+                                              withResultSet("SELECT name, hash FROM DeployedViews", viewResultSet).
+                                              create();
+    when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
+    when(connection.sqlDialect()).thenReturn(dialect);
+
+    UpgradePath results = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService).findPath(
+      schema(upgradeAudit(), deployedViews(), upgradedCar()),
+      ImmutableSet.<Class<? extends UpgradeStep>>of(ChangeCar.class),
+      new HashSet<String>());
+
+    assertTrue("Trigger rebuild comment is missing.", results.getSql().contains("-- Upgrades executed. Rebuilding all triggers to account for potential changes to autonumbered columns"));
   }
 
 

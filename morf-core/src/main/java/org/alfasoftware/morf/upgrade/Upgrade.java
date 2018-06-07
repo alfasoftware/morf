@@ -28,6 +28,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.sql.DataSource;
 
@@ -36,7 +37,6 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaValidator;
-import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.upgrade.ExistingViewStateLoader.Result;
@@ -230,9 +230,19 @@ public class Upgrade {
     // We will drop-and-recreate triggers whenever there are upgrade steps to execute. Ideally we'd want to do
     // this step once, however there's no easy way to do that with our upgrade framework.
     if (!upgradesToApply.isEmpty()) {
-      for (Table table : targetSchema.tables()) {
-        path.writeSql(dialect.rebuildTriggers(table));
-      }
+
+      AtomicBoolean first = new AtomicBoolean(true);
+      targetSchema.tables().stream()
+        .map(t -> dialect.rebuildTriggers(t))
+        .filter(sql -> !sql.isEmpty())
+        .peek(sql -> {
+            if (first.compareAndSet(true, false)) {
+              path.writeSql(ImmutableList.of(
+                  dialect.convertCommentToSQL("Upgrades executed. Rebuilding all triggers to account for potential changes to autonumbered columns")
+              ));
+            }
+        })
+        .forEach(path::writeSql);
     }
 
     return path;
