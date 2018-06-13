@@ -42,6 +42,7 @@ import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.Hint;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.OptimiseForRowCount;
+import org.alfasoftware.morf.sql.ParallelQueryHint;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.UseImplicitJoinOrder;
@@ -1318,6 +1319,9 @@ class OracleDialect extends SqlDialect {
       }
       if (hint instanceof UseImplicitJoinOrder) {
         builder.append(" ORDERED");
+      }
+      if (hint instanceof ParallelQueryHint) {
+        builder.append(" PARALLEL");
       }
     }
 

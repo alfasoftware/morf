@@ -2981,6 +2981,7 @@ public abstract class AbstractSqlDialectTest {
         .useIndex(tableRef("Foo"), "Foo_1")
         .optimiseForRowCount(1000)
         .useImplicitJoinOrder()
+        .withParallelQueryPlan()
       )
     );
   }

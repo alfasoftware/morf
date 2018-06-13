@@ -1407,7 +1407,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedHints2(int rowCount) {
-    return "SELECT /*+ INDEX(Foo Foo_1) FIRST_ROWS(" + rowCount + ") ORDERED */ a, b FROM " + tableName("Foo") + " ORDER BY a NULLS FIRST FOR UPDATE";
+    return "SELECT /*+ INDEX(Foo Foo_1) FIRST_ROWS(" + rowCount + ") ORDERED PARALLEL */ a, b FROM " + tableName("Foo") + " ORDER BY a NULLS FIRST FOR UPDATE";
   }
 
 

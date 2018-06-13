@@ -372,6 +372,24 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
 
 
   /**
+   * Request that this query is executed with a parallel execution plan. If the database implementation does not support, or is configured to disable parallel query execution, then this request will have no effect.
+   *
+   * <p>For queries that are likely to conduct a full table scan, a parallel execution plan may result in the results being delivered faster, although the exact effect depends on
+   * the underlying database, the nature of the data and the nature of the query.</p>
+   *
+   * <p>Note that the executed use cases of this are rare. Caution is needed because if multiple requests are made by the application to run parallel queries, the resulting resource contention may result in worse performance - this is not intended for queries that are submitted in parallel by the application.</p>
+   *
+   * @return this, for method chaining.
+   */
+  public SelectStatement withParallelQueryPlan() {
+    return copyOnWriteOrMutate(
+      (SelectStatementBuilder b) -> b.withParallelQueryPlan(),
+      () -> this.hints.add(new ParallelQueryHint())
+  );
+  }
+
+
+  /**
    * If supported by the dialect, hints to the database that joins should be applied in the order
    * they are written in the SQL statement.
    *
@@ -545,10 +563,10 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
     int result = super.hashCode();
     result = prime * result + (distinct ? 1231 : 1237);
     result = prime * result + (forUpdate ? 1231 : 1237);
-    result = prime * result + ((groupBys == null) ? 0 : groupBys.hashCode());
-    result = prime * result + ((having == null) ? 0 : having.hashCode());
-    result = prime * result + ((hints == null) ? 0 : hints.hashCode());
-    result = prime * result + ((setOperators == null) ? 0 : setOperators.hashCode());
+    result = prime * result + (groupBys == null ? 0 : groupBys.hashCode());
+    result = prime * result + (having == null ? 0 : having.hashCode());
+    result = prime * result + (hints == null ? 0 : hints.hashCode());
+    result = prime * result + (setOperators == null ? 0 : setOperators.hashCode());
     return result;
   }
 
