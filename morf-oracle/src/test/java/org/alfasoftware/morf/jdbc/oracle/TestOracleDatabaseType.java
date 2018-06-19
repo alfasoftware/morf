@@ -16,10 +16,17 @@
 package org.alfasoftware.morf.jdbc.oracle;
 
 import static org.alfasoftware.morf.jdbc.DatabaseTypeIdentifierTestUtils.mockDataSourceFor;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.Mockito.verify;
 
+import java.lang.reflect.InvocationTargetException;
+import java.sql.BatchUpdateException;
 import java.sql.SQLException;
+import java.sql.SQLTransientException;
 import java.util.Optional;
 
 import javax.sql.DataSource;
@@ -120,6 +127,7 @@ public class TestOracleDatabaseType {
   /**
    * Checks the bidirectionality of our URL split and combine behaviour.
    */
+  @Test
   public void testUrlRoundTrips() {
     comparerUrlRoundtrips(JdbcUrlElements.forDatabaseType(Oracle.IDENTIFIER).withHost("hostname").withPort(1521).withInstanceName("instanceName").build());
     comparerUrlRoundtrips(JdbcUrlElements.forDatabaseType(Oracle.IDENTIFIER).withHost("hostname").withInstanceName("instanceName").build());
@@ -133,5 +141,33 @@ public class TestOracleDatabaseType {
     String jdbcURL = databaseType.formatJdbcUrl(jdbcUrlElements);
     JdbcUrlElements cd = databaseType.extractJdbcUrl(jdbcURL).get();
     assertEquals(jdbcUrlElements, cd);
+  }
+
+
+  /**
+   * Tests exception classification
+   */
+  @Test
+  public void testExceptionReclassification() {
+    SQLException genericSqlException = new SQLException();
+    assertSame(genericSqlException, databaseType.reclassifyException(genericSqlException));
+
+    assertThat(databaseType.reclassifyException(new BatchUpdateException("reason", "state", 1, new int[0])), instanceOf(SQLException.class));
+    assertThat(databaseType.reclassifyException(new BatchUpdateException("reason", "state", 60, new int[0])), instanceOf(SQLTransientException.class));
+    assertThat(databaseType.reclassifyException(new BatchUpdateException("reason", "state", 2049, new int[0])), instanceOf(SQLTransientException.class));
+
+    assumeTrue("Only test further if OracleXAException is on the classpath", oracleXaException(0) != null);
+    assertThat(databaseType.reclassifyException(oracleXaException(1)), instanceOf(SQLException.class));
+    assertThat(databaseType.reclassifyException(oracleXaException(60)), instanceOf(SQLTransientException.class));
+    assertThat(databaseType.reclassifyException(oracleXaException(2049)), instanceOf(SQLTransientException.class));
+  }
+
+
+  private Exception oracleXaException(int code) {
+    try {
+      return (Exception) getClass().getClassLoader().loadClass("oracle.jdbc.xa.OracleXAException").getConstructor(int.class).newInstance(code);
+    } catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | NoSuchMethodException | SecurityException| ClassNotFoundException e) {
+      return null;
+    }
   }
 }

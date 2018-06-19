@@ -132,7 +132,7 @@ public class SqlScriptExecutor {
         });
       }
     } catch (SQLException e) {
-      throw new RuntimeSqlException(e);
+      throw reclassifiedRuntimeException(e, "Error with statement");
     }
   }
 
@@ -202,7 +202,7 @@ public class SqlScriptExecutor {
       }
       visitor.executionEnd();
     } catch (SQLException e) {
-      throw new RuntimeSqlException("Error with statement", e);
+      throw reclassifiedRuntimeException(e, "Error with statement");
     }
     return result;
   }
@@ -225,7 +225,7 @@ public class SqlScriptExecutor {
       }
       visitor.executionEnd();
     } catch (SQLException e) {
-      throw new RuntimeSqlException("Error with statement", e);
+      throw reclassifiedRuntimeException(e, "Error with statement");
     }
     return result;
   }
@@ -245,7 +245,7 @@ public class SqlScriptExecutor {
       visitor.executionEnd();
       return rowsUpdated;
     } catch (SQLException e) {
-      throw new RuntimeSqlException("Error with statement", e);
+      throw reclassifiedRuntimeException(e, "Error with statement");
     }
   }
 
@@ -292,7 +292,7 @@ public class SqlScriptExecutor {
           numberOfRowsUpdated = preparedStatement.executeUpdate();
         }
       } catch (SQLException e) {
-        throw new RuntimeSqlException(e);
+        throw reclassifiedRuntimeException(e, "Error executing SQL [" + sqlStatement + "]");
       }
       return numberOfRowsUpdated;
     } finally {
@@ -349,16 +349,24 @@ public class SqlScriptExecutor {
         if (log.isDebugEnabled())
           log.debug("SQL resulted in [" + numberOfRowsUpdated + "] rows updated");
 
-      } catch (SQLException e) {
-        throw new RuntimeSqlException("Error executing SQL [" + sql + "]", e);
       } catch (Exception e) {
-        throw new RuntimeException("Error executing SQL [" + sql + "]", e);
+        throw reclassifiedRuntimeException(e, "Error executing SQL [" + sql + "]");
       }
 
       return numberOfRowsUpdated;
     } finally {
       visitor.afterExecute(sql, numberOfRowsUpdated);
     }
+  }
+
+
+  /**
+   * Reclassify an exception if it is dialect specific and wrap in a runtime exception.
+   */
+  private RuntimeException reclassifiedRuntimeException(Exception e, String message) {
+    Exception reclassifiedException = sqlDialect.getDatabaseType().reclassifyException(e);
+    return reclassifiedException instanceof SQLException ? new RuntimeSqlException(message, (SQLException) reclassifiedException) :
+                                       new RuntimeException(message, reclassifiedException);
   }
 
 
@@ -523,7 +531,7 @@ public class SqlScriptExecutor {
         return executeQuery(preparedStatement, parameterMetadata, parameterData, resultSetProcessor, maxRows, queryTimeout);
       }
     } catch (SQLException e) {
-      throw new RuntimeSqlException("SQL exception when executing query", e);
+      throw reclassifiedRuntimeException(e, "SQL exception when executing query");
     }
   }
 
@@ -570,7 +578,7 @@ public class SqlScriptExecutor {
       }
 
     } catch (SQLException e) {
-      throw new RuntimeSqlException("SQL exception when executing query: [" + preparedStatement + "]", e);
+      throw reclassifiedRuntimeException(e, "SQL exception when executing query: [" + preparedStatement + "]");
     }
   }
 
@@ -599,7 +607,7 @@ public class SqlScriptExecutor {
         }
       }
     } catch (SQLException e) {
-      throw new RuntimeSqlException("SQL exception executing batch", e);
+      throw reclassifiedRuntimeException(e, "SQL exception executing batch");
     }
   }
 
@@ -624,7 +632,7 @@ public class SqlScriptExecutor {
               preparedStatement.executeBatch();
               preparedStatement.clearBatch();
             } catch (SQLException e) {
-              throw new RuntimeSqlException("Error executing batch", e);
+              throw reclassifiedRuntimeException(e, "Error executing batch");
             }
             // commit each batch for performance reasons
             if (explicitCommit) {
@@ -639,7 +647,7 @@ public class SqlScriptExecutor {
             for (SqlParameter parameter : parameterMetadata) {
               inserts.add(data.getString(parameter.getImpliedName()));
             }
-            throw new RuntimeSqlException("Error executing batch with values " + inserts, e);
+            throw reclassifiedRuntimeException(e, "Error executing batch with values " + inserts);
           }
         }
       }
@@ -650,7 +658,7 @@ public class SqlScriptExecutor {
         preparedStatement.executeBatch();
       }
     } catch (SQLException e) {
-      throw new RuntimeSqlException("SQLException executing batch. Prepared Statements: [" + preparedStatement + "]", e);
+      throw reclassifiedRuntimeException(e, "SQLException executing batch. Prepared Statements: [" + preparedStatement + "]");
     }
   }
 
@@ -935,7 +943,7 @@ public class SqlScriptExecutor {
 
         return holder.get();
       } catch (SQLException e) {
-        throw new RuntimeSqlException("Error with statement", e);
+        throw reclassifiedRuntimeException(e, "Error with statement");
       }
     }
   }

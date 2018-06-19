@@ -16,6 +16,8 @@
 package org.alfasoftware.morf.jdbc.oracle;
 
 import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.SQLTransientException;
 import java.util.Optional;
 import java.util.Stack;
 
@@ -117,6 +119,52 @@ public final class Oracle extends AbstractDatabaseType {
   @Override
   public boolean matchesProduct(String product) {
     return product.equalsIgnoreCase("Oracle");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.DatabaseType#reclassifyException(java.lang.Exception)
+   */
+  @Override
+  public Exception reclassifyException(Exception e) {
+    // Reclassify OracleXA exceptions
+    Optional<Integer> xaErrorCode = getErrorCodeFromOracleXAException(e);
+    if (xaErrorCode.isPresent()) {
+      // ORA-00060: Deadlock detected while waiting for resource
+      // ORA-02049: Distributed transaction waiting for lock
+      if (xaErrorCode.get() == 60 || xaErrorCode.get() == 2049) {
+        return new SQLTransientException(e.getMessage(), null, xaErrorCode.get(), e);
+      }
+      return new SQLException(e.getMessage(), null, xaErrorCode.get(), e);
+    }
+
+    // Reclassify any SQLExceptions which should be SQLTransientExceptions but are not. Specifically this handles BatchUpdateExceptions
+    if(e instanceof SQLException && !(e instanceof SQLTransientException)) {
+      int errorCode = ((SQLException) e).getErrorCode();
+      if(errorCode == 60 || errorCode == 2049) {
+        return new SQLTransientException(e.getMessage(), ((SQLException) e).getSQLState(), errorCode, e);
+      }
+    }
+
+    return e;
+  }
+
+
+  /**
+   * Recursively try and extract the error code from any nested OracleXAException
+   */
+  private Optional<Integer> getErrorCodeFromOracleXAException(Throwable exception) {
+    try {
+      if ("oracle.jdbc.xa.OracleXAException".equals(exception.getClass().getName())) {
+        return Optional.of((Integer) exception.getClass().getMethod("getOracleError").invoke(exception));
+      } else if (exception.getCause() != null) {
+        return getErrorCodeFromOracleXAException(exception.getCause());
+      }
+      return Optional.empty();
+    } catch (Exception e) {
+      log.error("Exception when trying to extract error code", exception);
+      throw new RuntimeException(e);
+    }
   }
 
 
