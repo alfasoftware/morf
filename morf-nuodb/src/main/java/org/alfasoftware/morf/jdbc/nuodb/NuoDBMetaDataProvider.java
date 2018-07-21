@@ -88,7 +88,7 @@ class NuoDBMetaDataProvider extends DatabaseMetaDataProvider {
         return DataType.DATE;
       case "BLOB":
         return DataType.BLOB;
-      case "NCLOB":
+      case "CLOB":
         return DataType.CLOB;
 
       default:

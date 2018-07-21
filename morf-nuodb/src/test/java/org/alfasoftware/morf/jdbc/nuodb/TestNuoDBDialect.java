@@ -71,7 +71,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
   protected List<String> expectedCreateTableStatements() {
     return Arrays
         .asList(
-          "CREATE TABLE SCM.Test (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), intField DECIMAL(8,0), floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField SMALLINT, charField VARCHAR(1), blobField BLOB, bigIntegerField BIGINT DEFAULT 12345, clobField NCLOB, PRIMARY KEY (id))",
+          "CREATE TABLE SCM.Test (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), intField DECIMAL(8,0), floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField SMALLINT, charField VARCHAR(1), blobField BLOB, bigIntegerField BIGINT DEFAULT 12345, clobField CLOB, PRIMARY KEY (id))",
           "DROP INDEX IF EXISTS SCM.Test_NK",
           "CREATE UNIQUE INDEX Test_NK ON SCM.Test (stringField)",
           "DROP INDEX IF EXISTS SCM.Test_1",
@@ -95,7 +95,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
   protected List<String> expectedCreateTemporaryTableStatements() {
     return Arrays
         .asList(
-          "CREATE TEMPORARY TABLE TEMP_TempTest (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), intField DECIMAL(8,0), floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField SMALLINT, charField VARCHAR(1), blobField BLOB, bigIntegerField BIGINT DEFAULT 12345, clobField NCLOB, PRIMARY KEY (id))",
+          "CREATE TEMPORARY TABLE TEMP_TempTest (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), intField DECIMAL(8,0), floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField SMALLINT, charField VARCHAR(1), blobField BLOB, bigIntegerField BIGINT DEFAULT 12345, clobField CLOB, PRIMARY KEY (id))",
           "DROP INDEX IF EXISTS TempTest_NK",
           "CREATE UNIQUE INDEX TempTest_NK ON TEMP_TempTest (stringField)",
           "DROP INDEX IF EXISTS TempTest_1",

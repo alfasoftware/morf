@@ -268,7 +268,7 @@ class NuoDBDialect extends SqlDialect {
         return "BLOB";
 
       case CLOB:
-        return "NCLOB";
+        return "CLOB";
 
       default:
         throw new UnsupportedOperationException("Cannot map column with type [" + dataType + "]");
