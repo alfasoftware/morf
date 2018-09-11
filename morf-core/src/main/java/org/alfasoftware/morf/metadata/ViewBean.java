@@ -46,7 +46,7 @@ class ViewBean implements View {
     this.selectStatement = selectStatement;
     this.knowsSelectStatement = selectStatement != null;
     this.knowsDependencies = true;
-    this.dependencies = dependencies;
+    this.dependencies = dependencies.clone();
   }
 
 

@@ -38,7 +38,7 @@ class CompositeSchema implements Schema {
    */
   CompositeSchema(Schema... schema) {
     super();
-    this.delegates = schema;
+    this.delegates = schema.clone();
   }
 
 

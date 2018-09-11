@@ -544,7 +544,7 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
      * @param whenClauses the {@link WhenCondition} portions of the case statement
      */
     private CaseStatementBuilder(WhenCondition... whenClauses) {
-      this.whenClauses = whenClauses;
+      this.whenClauses = whenClauses.clone();
     }
 
 
