@@ -35,7 +35,7 @@ public class TestVersion2to4TransformingReader {
 
     final java.util.LinkedList<String> markedResponses = new LinkedList<>();
 
-    Mockito.when(sourceReader.read(Mockito.any(char[].class), Mockito.anyInt(), Mockito.anyInt())).thenAnswer((invocation) -> {
+    Mockito.when(sourceReader.read(Mockito.any(char[].class), Mockito.anyInt(), Mockito.anyInt())).thenAnswer(invocation -> {
       char[] inputChars = (char[]) invocation.getArguments()[0];
       int inputOffset = (int) invocation.getArguments()[1];
       int inputLength = (int) invocation.getArguments()[2];
@@ -54,13 +54,13 @@ public class TestVersion2to4TransformingReader {
       return toCopy;
     });
 
-    Mockito.doAnswer((invocation) -> {
+    Mockito.doAnswer(invocation -> {
       assert markedResponses.isEmpty();
       markedResponses.addAll(responses);
       return null;
     }).when(sourceReader).mark(Mockito.anyInt());
 
-    Mockito.doAnswer((invocation) -> {
+    Mockito.doAnswer(invocation -> {
       responses.clear();
       responses.addAll(markedResponses);
       markedResponses.clear();

@@ -108,7 +108,7 @@ public class TestUpgradeStatusTableServiceImpl {
   public void testGetStatusWhenTablePresent() throws SQLException {
     ArgumentCaptor<ResultSetProcessor> captor = ArgumentCaptor.forClass(ResultSetProcessor.class);
     ResultSet resultSet = mock(ResultSet.class);
-    when(sqlScriptExecutor.executeQuery(anyString(), any(Connection.class), captor.capture())).thenAnswer((invocation) -> {
+    when(sqlScriptExecutor.executeQuery(anyString(), any(Connection.class), captor.capture())).thenAnswer(invocation -> {
       ResultSetProcessor processor = (ResultSetProcessor) invocation.getArguments()[2];
       assertSame("Processor", captor.getValue(), processor);
 

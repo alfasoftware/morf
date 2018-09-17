@@ -342,7 +342,7 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
    */
   public T from(SelectStatement... fromSelect) {
     return copyOnWriteOrMutate(
-        (b) -> b.from(fromSelect),
+        b -> b.from(fromSelect),
         () -> this.fromSelects.addAll(Arrays.asList(fromSelect))
     );
   }
@@ -365,7 +365,7 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
    */
   public T innerJoin(TableReference toTable, Criterion criterion) {
     return copyOnWriteOrMutate(
-        (b) -> b.innerJoin(toTable, criterion),
+        b -> b.innerJoin(toTable, criterion),
         () -> joins.add(new Join(JoinType.INNER_JOIN, toTable).on(criterion))
     );
   }
@@ -387,7 +387,7 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
    */
   public T innerJoin(TableReference toTable) {
     return copyOnWriteOrMutate(
-        (b) -> b.innerJoin(toTable),
+        b -> b.innerJoin(toTable),
         () -> joins.add(new Join(JoinType.INNER_JOIN, toTable))
     );
   }
@@ -425,7 +425,7 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
    */
   public T innerJoin(SelectStatement subSelect, Criterion onCondition) {
     return copyOnWriteOrMutate(
-        (b) -> b.innerJoin(subSelect, onCondition),
+        b -> b.innerJoin(subSelect, onCondition),
         () -> joins.add(new Join(JoinType.INNER_JOIN, subSelect).on(onCondition))
     );
   }
@@ -456,7 +456,7 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
    */
   public T innerJoin(SelectStatement subSelect) {
     return copyOnWriteOrMutate(
-        (b) -> b.innerJoin(subSelect),
+        b -> b.innerJoin(subSelect),
         () -> joins.add(new Join(JoinType.INNER_JOIN, subSelect))
     );
   }
@@ -479,7 +479,7 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
    */
   public T leftOuterJoin(TableReference toTable, Criterion criterion) {
     return copyOnWriteOrMutate(
-        (b) -> b.leftOuterJoin(toTable, criterion),
+        b -> b.leftOuterJoin(toTable, criterion),
         () -> joins.add(new Join(JoinType.LEFT_OUTER_JOIN, toTable).on(criterion))
     );
   }
@@ -521,7 +521,7 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
    */
   public T leftOuterJoin(SelectStatement subSelect, Criterion criterion) {
     return copyOnWriteOrMutate(
-        (b) -> b.leftOuterJoin(subSelect, criterion),
+        b -> b.leftOuterJoin(subSelect, criterion),
         () -> joins.add(new Join(JoinType.LEFT_OUTER_JOIN, subSelect).on(criterion))
     );
   }
@@ -539,7 +539,7 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
    */
   public T where(Criterion criterion) {
     return copyOnWriteOrMutate(
-        (b) -> b.where(criterion),
+        b -> b.where(criterion),
         () -> {
           if (criterion == null) {
             throw new IllegalArgumentException("Criterion was null in where clause");
@@ -559,7 +559,7 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
    */
   public T where(Iterable<Criterion> criteria) {
     return copyOnWriteOrMutate(
-        (b) -> b.where(criteria),
+        b -> b.where(criteria),
         () -> {
           if (criteria == null) {
             throw new IllegalArgumentException("No criterion was given in the where clause");
@@ -599,7 +599,7 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
    */
   public T orderBy(Iterable<AliasedField> orderFields) {
     return copyOnWriteOrMutate(
-        (b) -> b.orderBy(orderFields),
+        b -> b.orderBy(orderFields),
         () -> {
           if (orderFields == null) {
             throw new IllegalArgumentException("Fields were null in order by clause");
