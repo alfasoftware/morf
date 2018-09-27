@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.testing;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -137,6 +138,11 @@ public class DatabaseSchemaManager {
       for (View view : changes.getViewsToDrop()) {
         sql.addAll(dropViewIfExists(view));
       }
+
+      for (View view : changes.getViewsToDeploy()) {
+        sql.addAll(dropTableIfPresent(producerCache, view.getName()));
+      }
+
       sql.addAll(ensureTablesExist(schema, truncationBehavior, producerCache));
 
       for (View view: changes.getViewsToDeploy()) {
@@ -228,6 +234,15 @@ public class DatabaseSchemaManager {
     tablesNotNeedingTruncate.clear();
     tablesLoaded = false;
     viewsLoaded = false;
+  }
+
+
+  /**
+   * Drop the specified tables from the schema if they are present.
+   */
+  public Collection<String> dropTableIfPresent(ProducerCache producerCache, String tableName) {
+    Table table = getTable(producerCache, tableName);
+    return table == null ? Collections.emptySet() : dropTable(table);
   }
 
 
