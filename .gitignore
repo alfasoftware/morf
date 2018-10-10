@@ -10,5 +10,6 @@ target
 /genantbuild
 /antbuild
 /ivy.xml
+*/bin/*
 *.iml
 .idea
