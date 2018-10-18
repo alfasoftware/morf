@@ -15,22 +15,20 @@
 
 package org.alfasoftware.morf.changelog;
 
-
-
 import static org.alfasoftware.morf.changelog.ChangelogBuilder.changelogBuilder;
 import static org.junit.Assert.assertTrue;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
-import org.junit.Test;
+import com.google.common.collect.ImmutableList;
 
 import org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.ChangeCar;
 import org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.ChangeDriver;
-import com.google.common.collect.ImmutableList;
+import org.junit.Test;
 
 /**
- * Rests for {@link ChangelogBuilder}
+ * Tests for {@link ChangelogBuilder}.
  *
  * @author Copyright (c) Alfa Financial Software 2016
  */
@@ -90,10 +88,5 @@ public class TestChangelogBuilder {
     assertTrue(changeLog.contains("Set name to 'Dave'"));
     assertTrue(changeLog.contains("Set address to 'Address'"));
     assertTrue(changeLog.contains("Set postCode to 'postCode'"));
-
   }
-
-
-
-
 }
