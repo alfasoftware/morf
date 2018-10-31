@@ -9,8 +9,8 @@
 <!DOCTYPE module PUBLIC "-//Puppy Crawl//DTD Check Configuration 1.2//EN" "http://www.puppycrawl.com/dtds/configuration_1_2.dtd">
 <module name="Checker">
     <property name="severity" value="warning"/>
+    <property name="charset" value="UTF-8"/>
     <module name="TreeWalker">
-        <module name="FileContentsHolder"/>
         <module name="JavadocMethod">
             <property name="severity" value="ignore"/>
         </module>
@@ -141,9 +141,9 @@
             <property name="severity" value="ignore"/>
         </module>
         <module name="RegexpSinglelineJava">
+            <property name="severity" value="ignore"/>
             <property name="format" value="\s+$"/>
             <property name="message" value="Line has trailing spaces."/>
-            <property name="ignoreComments" value="true"/>
         </module>
         <module name="TodoComment">
             <property name="severity" value="ignore"/>
@@ -213,7 +213,7 @@
         <property name="severity" value="ignore"/>
     </module>
     <module name="FileTabCharacter">
-        <property name="eachLine" value="true"/>
+      <property name="eachLine" value="true"/>
     </module>
     <module name="NewlineAtEndOfFile">
         <property name="severity" value="ignore"/>
@@ -221,5 +221,8 @@
     <module name="Translation">
         <property name="severity" value="ignore"/>
     </module>
-    <module name="SuppressionCommentFilter"/>
+    <module name="SuppressWithPlainTextCommentFilter">
+        <property name="offCommentFormat" value="//CHECKSTYLE:OFF"/>
+        <property name="onCommentFormat" value="//CHECKSTYLE:ON"/>
+    </module>
 </module>
