@@ -15,7 +15,7 @@ jobs:
       name: "Deploy"
       script:
         - mvn clean deploy --settings .maven-settings.xml -B -U -Prelease
-    - if: NOT branch = master
+    - if: NOT branch = master OR NOT repo = alfasoftware/morf
       name: "Test"
       script:
         - mvn clean test -B -U
