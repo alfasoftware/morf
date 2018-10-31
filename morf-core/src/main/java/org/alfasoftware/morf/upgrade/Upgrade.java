@@ -85,8 +85,6 @@ public class Upgrade {
    * @param targetSchema The target database schema.
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
    * @param connectionResources Connection details for the database.
-   *
-   * @return The required upgrade path.
    */
   public static void performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources) {
     SqlScriptExecutorProvider sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
