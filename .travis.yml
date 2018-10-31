@@ -14,6 +14,8 @@ jobs:
     - if: branch = master
       name: "Deploy"
       script:
+        - echo $GPG_SECRET_KEYS | base64 --decode | $GPG_EXECUTABLE --import
+        - echo $GPG_OWNERTRUST | base64 --decode | $GPG_EXECUTABLE --import-ownertrust
         - mvn clean deploy --settings .maven-settings.xml -B -U -Prelease
     - if: NOT branch = master OR NOT repo = alfasoftware/morf
       name: "Test"
