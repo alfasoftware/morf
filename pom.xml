@@ -373,12 +373,6 @@
     
     <profile>
       <id>release</id>
-      <activation>
-        <property>
-          <name>release</name>
-        </property>
-      </activation>
-      
       <properties>
         <gpg.executable>gpg2</gpg.executable>
       </properties>
