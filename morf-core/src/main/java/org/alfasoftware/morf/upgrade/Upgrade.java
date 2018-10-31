@@ -34,6 +34,7 @@ import javax.sql.DataSource;
 
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaValidator;
@@ -78,6 +79,27 @@ public class Upgrade {
 
 
   /**
+   * Static convenience method which takes the specified database and upgrades it to the target
+   * schema, using the upgrade steps supplied which have not already been applied.
+   *
+   * @param targetSchema The target database schema.
+   * @param upgradeSteps All upgrade steps which should be deemed to have already run.
+   * @param connectionResources Connection details for the database.
+   *
+   * @return The required upgrade path.
+   */
+  public static void performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources) {
+    SqlScriptExecutorProvider sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
+    UpgradeStatusTableService upgradeStatusTableService = new UpgradeStatusTableServiceImpl(sqlScriptExecutorProvider, connectionResources.sqlDialect());
+    try {
+      sqlScriptExecutorProvider.get().execute(Upgrade.createPath(targetSchema, upgradeSteps, connectionResources, upgradeStatusTableService).getSql());
+    } finally {
+      upgradeStatusTableService.tidyUp(connectionResources.getDataSource());
+    }
+  }
+
+
+  /**
    * Static convenience method which creates the required {@link UpgradePath} to take the specified
    * database and upgrade it to the target schema, using the upgrade steps supplied which have not
    * already been applied.
@@ -91,10 +113,11 @@ public class Upgrade {
    */
   public static UpgradePath createPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeStatusTableService upgradeStatusTableService) {
     return new Upgrade(connectionResources, connectionResources.getDataSource(),
-                       new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition> emptySet(), upgradeStatusTableService),
+        new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition> emptySet(), upgradeStatusTableService),
                        upgradeStatusTableService)
            .findPath(targetSchema, upgradeSteps, Collections.<String> emptySet());
   }
+
 
 
   /**

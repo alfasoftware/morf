@@ -24,6 +24,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.metadata.SchemaUtils.view;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.insert;
+import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deployedViewsTable;
@@ -40,7 +41,6 @@ import org.alfasoftware.morf.dataset.DataSetProducer;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.ConnectionResourcesBean;
 import org.alfasoftware.morf.jdbc.DatabaseDataSetProducer;
-import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.DataEditor;
@@ -104,8 +104,8 @@ public class TestStartHere {
     withCurrentDatabase(connectionResources, dataSetProducer -> {
       Schema schema = dataSetProducer.getSchema();
       assertThat(
-        FluentIterable.from(schema.tables()).transform(Table::getName),
-        containsInAnyOrder(deployedViewsTable().getName(), upgradeAuditTable().getName(), "Test1", "Test2")
+        FluentIterable.from(schema.tables()).transform(Table::getName).transform(String::toLowerCase),
+        containsInAnyOrder(deployedViewsTable().getName().toLowerCase(), upgradeAuditTable().getName().toLowerCase(), "test1", "test2")
       );
     });
 
@@ -127,14 +127,14 @@ public class TestStartHere {
     upgradeSteps.add(CreateTest3.class);
 
     // Run the upgrade
-    new SqlScriptExecutorProvider(connectionResources).get().execute(Upgrade.createPath(targetSchema, upgradeSteps, connectionResources).getSql());
+    Upgrade.performUpgrade(targetSchema, upgradeSteps, connectionResources);
 
     // Confirm that the database has been correctly upgraded
     withCurrentDatabase(connectionResources, dataSetProducer -> {
       Schema schema = dataSetProducer.getSchema();
       assertThat(
-        FluentIterable.from(schema.tables()).transform(Table::getName),
-        containsInAnyOrder(deployedViewsTable().getName(), upgradeAuditTable().getName(), "Test1", "Test2", "Test3")
+        FluentIterable.from(schema.tables()).transform(Table::getName).transform(String::toLowerCase),
+        containsInAnyOrder(deployedViewsTable().getName().toLowerCase(), upgradeAuditTable().getName().toLowerCase(), "test1", "test2", "test3")
       );
       assertThat(
         size(dataSetProducer.records("Test3")),
@@ -145,6 +145,7 @@ public class TestStartHere {
 
   private void withCurrentDatabase(ConnectionResources connectionResources, Consumer<? super DataSetProducer> consumer) {
     DatabaseDataSetProducer databaseDataSetProducer = new DatabaseDataSetProducer(connectionResources);
+    databaseDataSetProducer.open();
     try {
       consumer.accept(databaseDataSetProducer);
     } finally {
@@ -226,6 +227,11 @@ public class TestStartHere {
           column("id", BIG_INTEGER).autoNumbered(1),
           column("val", STRING, 100)
         )
+      );
+      data.executeStatement(
+        insert()
+        .into(tableRef("Test1"))
+        .values(literal("Foo").as("val"))
       );
       data.executeStatement(
         insert()
