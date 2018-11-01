@@ -168,7 +168,7 @@ public class Deployment {
     UpgradeStatusTableServiceImpl upgradeStatusTableService = new UpgradeStatusTableServiceImpl(
       new SqlScriptExecutorProvider(connectionResources), connectionResources.sqlDialect());
     try {
-    new Deployment(
+      new Deployment(
         new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition>emptySet(), upgradeStatusTableService),
         connectionResources
       ).deploy(targetSchema, upgradeSteps);
