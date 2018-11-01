@@ -10,7 +10,7 @@ jobs:
     - if: branch = master AND repo = alfasoftware/morf AND NOT type = pull_request
       name: "Test with coverage"
       script:
-        - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent test sonar:sonar -Pcoverage-per-test -Dsonar.branch.name=master -B -U
+        - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent test sonar:sonar -Pcoverage-per-test -B -U
     - if: branch = master AND repo = alfasoftware/morf AND NOT type = pull_request
       name: "Deploy"
       script:
