@@ -163,12 +163,18 @@ public class Deployment {
    * @param targetSchema The target database schema.
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
    * @param connectionResources Connection details for the database.
-   * @param upgradeStatusTableService Service used to manage the upgrade status coordination table.
    */
-  public static void deploySchema(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeStatusTableService upgradeStatusTableService) {
-    new Deployment(new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition>emptySet(), upgradeStatusTableService),
-                   connectionResources)
-         .deploy(targetSchema, upgradeSteps);
+  public static void deploySchema(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources) {
+    UpgradeStatusTableServiceImpl upgradeStatusTableService = new UpgradeStatusTableServiceImpl(
+      new SqlScriptExecutorProvider(connectionResources), connectionResources.sqlDialect());
+    try {
+      new Deployment(
+        new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition>emptySet(), upgradeStatusTableService),
+        connectionResources
+      ).deploy(targetSchema, upgradeSteps);
+    } finally {
+      upgradeStatusTableService.tidyUp(connectionResources.getDataSource());
+    }
   }
 
 
