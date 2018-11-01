@@ -421,8 +421,98 @@
   
   <developers>
     <developer>
+      <name>Alex Vinall</name>
+      <email>alex.vinall@alfasystems.com</email>
+      <organization>Alfa Financial Software Limited</organization>
+      <organizationUrl>http://alfasystems.com</organizationUrl>
+    </developer>
+    <developer>
+      <name>Andrew Flegg</name>
+      <email>andrew.flegg@alfasystems.com</email>
+      <organization>Alfa Financial Software Limited</organization>
+      <organizationUrl>http://alfasystems.com</organizationUrl>
+    </developer>
+    <developer>
+      <name>Bruno Correia</name>
+      <email>bruno.correia@alfasystems.com</email>
+      <organization>Alfa Financial Software Limited</organization>
+      <organizationUrl>http://alfasystems.com</organizationUrl>
+    </developer>
+    <developer>
+      <name>Charlotte de Grouchy</name>
+      <email>charlotte.degrouchy@alfasystems.com</email>
+      <organization>Alfa Financial Software Limited</organization>
+      <organizationUrl>http://alfasystems.com</organizationUrl>
+    </developer>
+    <developer>
+      <name>Frank Sloan</name>
+      <email>frank.sloan@alfasystems.com</email>
+      <organization>Alfa Financial Software Limited</organization>
+      <organizationUrl>http://alfasystems.com</organizationUrl>
+    </developer>
+    <developer>
       <name>Graham Crockford</name>
       <email>graham.crockford@alfasystems.com</email>
+      <organization>Alfa Financial Software Limited</organization>
+      <organizationUrl>http://alfasystems.com</organizationUrl>
+    </developer>
+    <developer>
+      <name>Harry Austin</name>
+      <email>harry.austin@alfasystems.com</email>
+      <organization>Alfa Financial Software Limited</organization>
+      <organizationUrl>http://alfasystems.com</organizationUrl>
+    </developer>
+    <developer>
+      <name>James Leach</name>
+      <email>james.leach@alfasystems.com</email>
+      <organization>Alfa Financial Software Limited</organization>
+      <organizationUrl>http://alfasystems.com</organizationUrl>
+    </developer>
+    <developer>
+      <name>Joseph Hoare</name>
+      <email>joseph.hoare@alfasystems.com</email>
+      <organization>Alfa Financial Software Limited</organization>
+      <organizationUrl>http://alfasystems.com</organizationUrl>
+    </developer>
+    <developer>
+      <name>Juraj Simlovic</name>
+      <email>juraj.simlovic@alfasystems.com</email>
+      <organization>Alfa Financial Software Limited</organization>
+      <organizationUrl>http://alfasystems.com</organizationUrl>
+    </developer>
+    <developer>
+      <name>Luigi Iannone</name>
+      <email>luigi.iannone@alfasystems.com</email>
+      <organization>Alfa Financial Software Limited</organization>
+      <organizationUrl>http://alfasystems.com</organizationUrl>
+    </developer>
+    <developer>
+      <name>Michal Morzywolek</name>
+      <email>michal.morzywolek@alfasystems.com</email>
+      <organization>Alfa Financial Software Limited</organization>
+      <organizationUrl>http://alfasystems.com</organizationUrl>
+    </developer>
+    <developer>
+      <name>Przemyslaw Stefaniak</name>
+      <email>przemyslaw.stefaniak@alfasystems.com</email>
+      <organization>Alfa Financial Software Limited</organization>
+      <organizationUrl>http://alfasystems.com</organizationUrl>
+    </developer>
+    <developer>
+      <name>Tim Gage</name>
+      <email>tim.gage@alfasystems.com</email>
+      <organization>Alfa Financial Software Limited</organization>
+      <organizationUrl>http://alfasystems.com</organizationUrl>
+    </developer>
+    <developer>
+      <name>Venushka Perera</name>
+      <email>venushka.perera@alfasystems.com</email>
+      <organization>Alfa Financial Software Limited</organization>
+      <organizationUrl>http://alfasystems.com</organizationUrl>
+    </developer>
+    <developer>
+      <name>Will Nicholson</name>
+      <email>will.nicholson@alfasystems.com</email>
       <organization>Alfa Financial Software Limited</organization>
       <organizationUrl>http://alfasystems.com</organizationUrl>
     </developer>
