@@ -22,7 +22,7 @@ jobs:
       script:
         - git fetch --unshallow --quiet
         - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent test sonar:sonar -Pcoverage-per-test -B -U -Dsonar.pullrequest.key=$TRAVIS_PULL_REQUEST -Dsonar.pullrequest.branch=$TRAVIS_PULL_REQUEST_BRANCH -Dsonar.pullrequest.base=$TRAVIS_BRANCH
-    - if: repo = alfasoftware/morf AND branch = master AND NOT type = pull_request
+    - if: repo = alfasoftware/morf AND (branch = master OR tag = true) AND NOT type = pull_request
       name: "Deploy"
       script:
         - echo $GPG_SECRET_KEYS | base64 --decode | $GPG_EXECUTABLE --import
