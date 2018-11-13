@@ -7,6 +7,8 @@
   <packaging>pom</packaging>
 
   <name>Morf</name>
+  <description>Morf is a library for cross-platform evolutionary relational database mechanics, database access and database imaging/cloning.</description>
+  <url>https://github.com/alfasoftware/morf</url>
 
   <organization>
     <name>Alfa Financial Software Limited</name>

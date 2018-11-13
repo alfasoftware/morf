@@ -8,6 +8,9 @@
   </parent>
   
   <name>Morf - Excel</name>
+  <description>Morf is a library for cross-platform evolutionary relational database mechanics, database access and database imaging/cloning.</description>
+  <url>https://github.com/alfasoftware/morf</url>
+
   <artifactId>morf-excel</artifactId>
 
   <build>
