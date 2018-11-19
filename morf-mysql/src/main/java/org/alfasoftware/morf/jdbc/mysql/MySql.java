@@ -24,6 +24,7 @@ import javax.sql.XADataSource;
 import org.alfasoftware.morf.jdbc.AbstractDatabaseType;
 import org.alfasoftware.morf.jdbc.JdbcUrlElements;
 import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.jdbc.UrlConnectionResourcesBean;
 import org.alfasoftware.morf.metadata.Schema;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -143,5 +144,31 @@ public final class MySql extends AbstractDatabaseType {
     connectionDetails.withDatabaseName(databaseName);
 
     return Optional.of(connectionDetails.build());
+  }
+  
+
+  @Override
+  public Optional<UrlConnectionResourcesBean> urlToConnectionResources(String url) {
+    
+    if (!url.startsWith("jdbc:mysql:") && !url.startsWith("mysqlx:"))
+      return Optional.empty();
+    
+    int serverAfter = url.indexOf("//");
+    if (serverAfter == -1)
+      return Optional.empty();
+    if (url.length() <= serverAfter + 4)
+      return Optional.empty();
+    
+    String databaseName = null;
+    int databaseAfter = url.indexOf("/", serverAfter + 4);
+    if (databaseAfter != -1) {
+      databaseName = url.substring(databaseAfter + 1);
+      int paramsAfter = databaseName.indexOf("?");
+      if (paramsAfter != -1) {
+        databaseName = databaseName.substring(0, paramsAfter);
+      }
+    }
+
+    return Optional.of(new UrlConnectionResourcesBean(url, IDENTIFIER, databaseName));
   }
 }

@@ -78,8 +78,26 @@ public interface DatabaseType {
    * @param url The JDBC URL.
    * @return The {@link JdbcUrlElements}, if the URL matches the database type,
    * otherwise empty.
+   * @deprecated This functionality is incomplete. If you want to connect
+   * using just a JDBC URL, use {@link #urlToConnectionResources(String)}.
    */
+  @Deprecated
   public Optional<JdbcUrlElements> extractJdbcUrl(String url);
+  
+  
+  /**
+   * If the JDBC URL matches the database type, returns a
+   * {@link ConnectionResources} for the specified JDBC URL which can be used
+   * immediately to connect to the target database, assuming that it contains the
+   * necessary credentials. Otherwise returns empty to indicate that the URL is
+   * not understood by this database type.
+   * 
+   * @param url The JDBC URL.
+   * @return the {@link ConnectionResources}, if it could be constructed.
+   */
+  public default Optional<UrlConnectionResourcesBean> urlToConnectionResources(String url) {
+    return Optional.empty();
+  }
 
 
   /**
@@ -240,15 +258,47 @@ public interface DatabaseType {
      *           the URL.
      */
     public static JdbcUrlElements parseJdbcUrl(String url) {
-      JdbcUrlElements result = null;
+      Optional<JdbcUrlElements> result = scanForMatchingType(databaseType -> databaseType.extractJdbcUrl(url));
+      if (!result.isPresent()) throw new IllegalArgumentException("[" + url + "] is not a valid JDBC URL");
+      return result.get();
+    }
+    
+    
+    /**
+     * If the JDBC URL matches a registered database type, returns a
+     * {@link ConnectionResources} for the specified JDBC URL which can be used
+     * immediately to connect to the target database, assuming that it contains the
+     * necessary credentials.
+     * 
+     * <p>If the URL is not understood by any registered database type, returns
+     * empty.</p>
+     * 
+     * <p>If there are multiple matches for the protocol, {@link IllegalStateException}
+     * will be thrown.</p>
+     * 
+     * <p>No performance guarantees are made, but it will be <em>at best</em>
+     * <code>O(n),</code>where <code>n</code> is the number of registered
+     * database types.</p>
+     * 
+     * @param url The JDBC URL.
+     * @return the {@link ConnectionResources}, if it could be constructed.
+     */
+    public static UrlConnectionResourcesBean urlToConnectionResources(String url) {
+      Optional<UrlConnectionResourcesBean> result = scanForMatchingType(databaseType -> databaseType.urlToConnectionResources(url));
+      if (!result.isPresent()) throw new IllegalArgumentException("[" + url + "] is not supported by any registered database types");
+      return result.get();
+    }
+    
+    
+    private static <T> Optional<T> scanForMatchingType(Function<DatabaseType, Optional<T>> processor) {
+      Optional<T> result = Optional.empty();
       for (DatabaseType databaseType : registeredTypes.values()) {
-        Optional<JdbcUrlElements> connectionDetails = databaseType.extractJdbcUrl(url);
+        Optional<T> connectionDetails = processor.apply(databaseType);
         if (connectionDetails.isPresent()) {
-          if (result != null) throw new IllegalArgumentException("[" + url + "] matches more than one registered database type");
-          result = connectionDetails.get();
+          if (result.isPresent()) throw new IllegalArgumentException("Search matches more than one registered database type");
+          result = connectionDetails;
         }
       }
-      if (result == null) throw new IllegalArgumentException("[" + url + "] is not a valid JDBC URL");
       return result;
     }
   }

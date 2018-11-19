@@ -16,16 +16,24 @@
 package org.alfasoftware.morf.jdbc.h2;
 
 import java.io.File;
+import java.net.URI;
 import java.sql.Connection;
+import java.util.Iterator;
 import java.util.Optional;
+import java.util.Stack;
 
 import javax.sql.XADataSource;
 
 import org.alfasoftware.morf.jdbc.AbstractDatabaseType;
 import org.alfasoftware.morf.jdbc.JdbcUrlElements;
 import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.jdbc.UrlConnectionResourcesBean;
 import org.alfasoftware.morf.metadata.Schema;
 import org.apache.commons.lang.StringUtils;
+
+import com.google.common.base.Splitter;
+
+import com.google.common.base.Joiner;
 
 /**
  * Support for H2 database hosts.
@@ -145,5 +153,37 @@ public final class H2 extends AbstractDatabaseType {
   @Override
   public Optional<JdbcUrlElements> extractJdbcUrl(String url) {
     return Optional.empty();
+  }
+
+  
+  @Override
+  public Optional<UrlConnectionResourcesBean> urlToConnectionResources(String url) {
+    Iterator<String> split = Splitter.on(':').split(url).iterator();
+    if (!"jdbc".equals(split.next())) {
+      return Optional.empty();
+    }
+    if (!"h2".equals(split.next())) {
+      return Optional.empty();
+    }
+    
+    String databaseName;
+
+    String protocol = split.next();
+    switch (protocol) {
+      case "mem": 
+      case "file":
+        databaseName = Joiner.on(':').join(split);
+        break;
+      case "tcp":
+        URI theRest = URI.create("tcp:" + Joiner.on(':').join(split));
+        if (!theRest.getPath().startsWith("mem:")) {
+          return Optional.empty();
+        }
+        databaseName = theRest.getPath().substring(4);
+        break;
+      default: return Optional.empty();
+    }
+    
+    return Optional.of(new UrlConnectionResourcesBean(url, IDENTIFIER, databaseName));
   }
 }
