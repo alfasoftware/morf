@@ -19,6 +19,7 @@ package org.alfasoftware.morf.jdbc;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.regex.Pattern;
 
 import javax.sql.DataSource;
 import javax.sql.XADataSource;
@@ -40,6 +41,8 @@ import com.google.common.base.Preconditions;
 public class UrlConnectionResourcesBean implements ConnectionResources {
 
   private static final Log log = LogFactory.getLog(UrlConnectionResourcesBean.class);
+  
+  private static final Pattern REMOVE_CREDENTIALS = Pattern.compile("//(.*)@");
   
   private final String url;
   private final String databaseType;
@@ -209,11 +212,16 @@ public class UrlConnectionResourcesBean implements ConnectionResources {
      */
     @Override
     public Connection getConnection(String username, String password) throws SQLException {
-      log.info("Opening new database connection to [" + UrlConnectionResourcesBean.this.getJdbcUrl() + "] with username [" + username + "]");
+      log.info("Opening new database connection to [" + maskUserCredentials(UrlConnectionResourcesBean.this.getJdbcUrl()) + "]");
       loadJdbcDriver();
       return openConnection(username, password);
     }
 
+
+    private String maskUserCredentials(String url) {
+      return REMOVE_CREDENTIALS.matcher(url).replaceAll("//");
+    }
+    
 
     private void loadJdbcDriver() {
       String driverClassName = findDatabaseType().driverClassName();
@@ -232,7 +240,7 @@ public class UrlConnectionResourcesBean implements ConnectionResources {
             ? DriverManager.getConnection(UrlConnectionResourcesBean.this.getJdbcUrl())
             : DriverManager.getConnection(UrlConnectionResourcesBean.this.getJdbcUrl(), username, password);
       } catch (SQLException se) {
-        log.error(String.format("Unable to connect to URL: %s, with user: %s", UrlConnectionResourcesBean.this.getJdbcUrl(), username));
+        log.error(String.format("Unable to connect to URL: %s, with user: %s", maskUserCredentials(UrlConnectionResourcesBean.this.getJdbcUrl()), username));
         throw se;
       }
       try {
