@@ -90,7 +90,10 @@ public class Upgrade {
     SqlScriptExecutorProvider sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
     UpgradeStatusTableService upgradeStatusTableService = new UpgradeStatusTableServiceImpl(sqlScriptExecutorProvider, connectionResources.sqlDialect());
     try {
-      sqlScriptExecutorProvider.get().execute(Upgrade.createPath(targetSchema, upgradeSteps, connectionResources, upgradeStatusTableService).getSql());
+      UpgradePath path = Upgrade.createPath(targetSchema, upgradeSteps, connectionResources, upgradeStatusTableService);
+      if (path.hasStepsToApply()) {
+        sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor()).execute(path.getSql());
+      }
     } finally {
       upgradeStatusTableService.tidyUp(connectionResources.getDataSource());
     }
