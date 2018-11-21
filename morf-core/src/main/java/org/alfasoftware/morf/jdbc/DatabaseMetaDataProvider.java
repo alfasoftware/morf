@@ -223,7 +223,7 @@ public class DatabaseMetaDataProvider implements Schema {
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
-      try (ResultSet primaryKeyResults = databaseMetaData.getPrimaryKeys(null, schemaName, tableName)) {
+      try (ResultSet primaryKeyResults = databaseMetaData.getPrimaryKeys(schemaName, schemaName, tableName)) {
         while (primaryKeyResults.next()) {
           columns.add(new PrimaryKeyColumn(primaryKeyResults.getShort(5), primaryKeyResults.getString(4)));
         }
@@ -588,13 +588,12 @@ public class DatabaseMetaDataProvider implements Schema {
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
-      try (ResultSet tables = databaseMetaData.getTables(null, schemaName, null, TABLE_TYPES)) {
+      try (ResultSet tables = databaseMetaData.getTables(schemaName, schemaName, null, TABLE_TYPES)) {
         while (tables.next()) {
           String tableName = tables.getString(3);
-          String tableSchemaName = tables.getString(2);
           String tableType = tables.getString(4);
 
-          foundTable(tableName, tableSchemaName, tableType);
+          foundTable(tableName, schemaName, tableType);
         }
       }
     } catch (SQLException sqle) {
