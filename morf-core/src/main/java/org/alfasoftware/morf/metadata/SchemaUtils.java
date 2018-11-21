@@ -609,7 +609,7 @@ public final class SchemaUtils {
      */
     @Override
     public ColumnBuilder autoNumbered(int from) {
-      return new ColumnBuilderImpl(this, isNullable(), getDefaultValue(), isPrimaryKey(), true, from);
+      return new ColumnBuilderImpl(this, isNullable(), getDefaultValue(), true, true, from);
     }
 
 
