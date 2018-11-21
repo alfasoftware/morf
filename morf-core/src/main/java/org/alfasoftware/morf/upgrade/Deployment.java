@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.jdbc.DatabaseDataSetConsumer;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
@@ -46,15 +47,18 @@ import com.google.inject.assistedinject.Assisted;
 /**
  * Deploys a full database schema. Once the deployment is complete, the status of
  * the system will be left in {@link UpgradeStatus#DATA_TRANSFER_REQUIRED}. It is the
- * responsibility of the application to transfer appropriate data into the database
- * at this point and, once complete, call {@link UpgradeStatusTableService#writeStatusFromStatus(UpgradeStatus, UpgradeStatus)}.
+ * responsibility of the application to perform any remaining setup the database
+ * at this point (for example, transferring in a start position using
+ * {@link DatabaseDataSetConsumer}) and, once complete, call {@link UpgradeStatusTableService#writeStatusFromStatus(UpgradeStatus, UpgradeStatus)}.
  *
  * <h3>Usage</h3>
  * <pre><code>
  * deployment.deploy(targetSchema);
  * if (upgradeStatusTableService.writeStatusFromStatus(DATA_TRANSFER_REQUIRED, DATA_TRANSFER_IN_PROGRESS) == 1) {
- *   // Use DatabaseDataSetConsumer etc to populate the database
- *   upgradeStatus.writeStatusFromStatus(DATA_TRANSFER_IN_PROGRESS, COMPLETE);
+ *   //
+ *   // Set up the database start position
+ *   //
+ *   upgradeStatusTableService.writeStatusFromStatus(DATA_TRANSFER_IN_PROGRESS, COMPLETED);
  * }
  * // Normal start up
  * </code></pre>
@@ -158,7 +162,9 @@ public class Deployment {
 
   /**
    * Static convenience method which deploys the specified database schema, prepopulating
-   * the upgrade step table with all pre-existing upgrade information.
+   * the upgrade step table with all pre-existing upgrade information. Assumes no initial
+   * start position manipulation is required and the application can start with an empty
+   * database.
    *
    * @param targetSchema The target database schema.
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
