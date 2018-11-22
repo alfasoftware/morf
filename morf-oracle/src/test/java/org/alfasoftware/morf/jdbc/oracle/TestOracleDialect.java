@@ -1011,6 +1011,16 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterColumnChangingLengthAndCase()
+   */
+  @Override
+  protected List<String> expectedAlterColumnChangingLengthAndCase() {
+    return Arrays.asList("ALTER TABLE TESTSCHEMA.Other MODIFY (FloatField DECIMAL(20,3))",
+      "COMMENT ON COLUMN TESTSCHEMA.Other.FloatField IS 'REALNAME:[FloatField]/TYPE:[DECIMAL]'");
+  }
+
+
+  /**
    * It is only necessary to cast for HSQLDB. Returns the value without casting.
    *
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#varCharCast(java.lang.String)

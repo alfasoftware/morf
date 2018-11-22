@@ -805,7 +805,7 @@ class OracleDialect extends SqlDialect {
       }
     }
 
-    if (!newColumn.getName().equals(oldColumn.getName())) {
+    if (!newColumn.getName().equalsIgnoreCase(oldColumn.getName())) {
       result.add("ALTER TABLE " + schemaNamePrefix() + truncatedTableName + " RENAME COLUMN " + oldColumn.getName() + " TO " + newColumn.getName());
     }
 

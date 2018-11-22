@@ -3445,6 +3445,15 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * Test renaming a column, changing the case only (e.g. from columnName to ColumnName).
+   */
+  @Test
+  public void testAlterColumnChangingTypeAndCase() {
+    testAlterTableColumn(OTHER_TABLE, AlterationType.ALTER, getColumn(OTHER_TABLE, FLOAT_FIELD), column("FloatField", DataType.DECIMAL, 20, 3), expectedAlterColumnChangingLengthAndCase());
+  }
+
+
+  /**
    * Test adding a column with default value.
    */
   @Test
@@ -3973,6 +3982,12 @@ public abstract class AbstractSqlDialectTest {
    * @return Expected SQL for {@link #testAlterColumnRenamingAndChangingNullability()}.
    */
   protected abstract List<String> expectedAlterColumnRenamingAndChangingNullability();
+
+
+  /**
+   * @return Expected SQL for {@link #testAlterColumnChangingTypeAndCase()}.
+   */
+  protected abstract List<String> expectedAlterColumnChangingLengthAndCase();
 
 
   /**

@@ -54,6 +54,7 @@ import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddDataToIdColumn;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddPrimaryKeyColumns;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ChangeColumnDataType;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ChangeColumnLengthAndCase;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ChangePrimaryKeyColumnOrder;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ChangePrimaryKeyColumns;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.CorrectPrimaryKeyOrder;
@@ -589,6 +590,27 @@ public class TestDatabaseUpgradeIntegration {
     Schema expected = replaceTablesInSchema(tableWithExtraBigIntegerColumn);
 
     verifyUpgrade(expected, ChangeColumnDataType.class);
+  }
+
+
+  /**
+   * Tests changing a column's size and the case (from decimalNineFiveCol to decimalninefivecol).
+   */
+  @Test
+  public void testChangeColumnTypeAndCase() {
+    Table tableWithUpdatedDecimalNineFiveCol = table("BasicTable")
+        .columns(
+          column("stringCol", DataType.STRING, 20).primaryKey(),
+          column("nullableStringCol", DataType.STRING, 10).nullable(),
+          column("decimalTenZeroCol", DataType.DECIMAL, 10),
+          column("decimalninefivecol", DataType.DECIMAL, 10, 6), // Column being changed
+          column("bigIntegerCol", DataType.BIG_INTEGER, 19),
+          column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
+      );
+
+    Schema expected = replaceTablesInSchema(tableWithUpdatedDecimalNineFiveCol);
+
+    verifyUpgrade(expected, ChangeColumnLengthAndCase.class);
   }
 
 

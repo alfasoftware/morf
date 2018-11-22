@@ -792,6 +792,15 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterColumnChangingLengthAndCase()
+   */
+  @Override
+  protected List<String> expectedAlterColumnChangingLengthAndCase() {
+    return Arrays.asList("ALTER TABLE `Other` CHANGE `floatField` `FloatField` DECIMAL(20,3) NOT NULL");
+  }
+
+
+  /**
    * It is only necessary to cast for HSQLDB. Returns the value without casting.
    *
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#varCharCast(java.lang.String)

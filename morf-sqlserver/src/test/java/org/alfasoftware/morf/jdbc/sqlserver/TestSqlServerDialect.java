@@ -795,7 +795,17 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   protected List<String> expectedAlterColumnRenamingAndChangingNullability() {
     return Arrays.asList(
       "EXEC sp_rename 'TESTSCHEMA.Other.floatField', 'blahField', 'COLUMN'",
-        "ALTER TABLE TESTSCHEMA.Other ALTER COLUMN blahField NUMERIC(20,3)");
+      "ALTER TABLE TESTSCHEMA.Other ALTER COLUMN blahField NUMERIC(20,3)");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterColumnChangingLengthAndCase()
+   */
+  @Override
+  protected List<String> expectedAlterColumnChangingLengthAndCase() {
+    return Arrays.asList("EXEC sp_rename 'TESTSCHEMA.Other.floatField', 'FloatField', 'COLUMN'",
+      "ALTER TABLE TESTSCHEMA.Other ALTER COLUMN FloatField NUMERIC(20,3) NOT NULL");
   }
 
 

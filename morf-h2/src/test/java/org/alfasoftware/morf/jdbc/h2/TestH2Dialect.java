@@ -696,6 +696,16 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterColumnChangingLengthAndCase()
+   */
+  @Override
+  protected List<String> expectedAlterColumnChangingLengthAndCase() {
+    return Arrays.asList("ALTER TABLE Other ALTER COLUMN floatField RENAME TO FloatField",
+      "ALTER TABLE Other ALTER COLUMN FloatField DECIMAL(20,3)");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#varCharCast(java.lang.String)
    */
   @Override
