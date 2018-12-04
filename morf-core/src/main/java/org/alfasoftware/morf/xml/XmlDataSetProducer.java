@@ -18,7 +18,6 @@ package org.alfasoftware.morf.xml;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -26,16 +25,16 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.io.UnsupportedEncodingException;
-import java.net.Authenticator;
 import java.net.JarURLConnection;
 import java.net.MalformedURLException;
-import java.net.PasswordAuthentication;
 import java.net.URL;
+import java.net.URLConnection;
 import java.net.URLDecoder;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -50,10 +49,6 @@ import java.util.Set;
 import java.util.jar.JarInputStream;
 import java.util.zip.ZipEntry;
 
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import javax.xml.stream.FactoryConfigurationError;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
@@ -72,6 +67,8 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.xml.XmlStreamProvider.XmlInputStreamProvider;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import com.google.common.base.Charsets;
 import com.google.common.io.ByteStreams;
@@ -84,6 +81,7 @@ import com.google.common.io.Files;
  * XML efficiently.
  */
 public class XmlDataSetProducer implements DataSetProducer {
+  private static final Log log = LogFactory.getLog(XmlDataSetProducer.class);
 
   /**
    * Source of streams from which to read XMl.
@@ -164,12 +162,14 @@ public class XmlDataSetProducer implements DataSetProducer {
    */
   @Override
   public void close() {
+    xmlStreamProvider.close();
     for (File file : tempFiles) {
-      if (!file.delete()) {
-        throw new RuntimeException("Could not delete file [" + file.getPath() + "]");
+      try {
+        java.nio.file.Files.delete(file.toPath());
+      } catch (Exception e) {
+        throw new RuntimeException("Could not delete file [" + file.getPath() + "]", e);
       }
     }
-    xmlStreamProvider.close();
   }
 
 
@@ -334,80 +334,68 @@ public class XmlDataSetProducer implements DataSetProducer {
       }
 
     } else if (url.getProtocol().equals("https") || url.getProtocol().equals("http")) {
-      // This is an incomplete implementation for handling http(s) urls. It is only setup to work for url start positions in a directory style setup.
-
       if (url.getPath().endsWith(".zip")) {
-        throw new RuntimeException("Currently unable to download zip files over http URL. Please Download the file and point the app to your local copy.");
-      }
+        File dataSet = createTempFile("dataset", ".tmp");
+        downloadFileFromHttpUrl(url, urlUsername, urlPassword, dataSet);
+        tempFiles.add(dataSet);
+        log.info("Successfully downloaded zipped data set [" + url + "] to temp file [" + dataSet + "]");
+        return dataSet;
+      } else {
+        // -- This is an experimental attempt to traverse the file directory and source the relevant XML files. YMMV.
+        //
+        // Create a temp file which will hold the xml files in the data set
+        File directoryFile = createTempFile("urlDirectory", ".tmp");
 
-      // Create a temp file which will hold the xml files in the start position
-      File directoryFile;
-      try {
-        directoryFile = File.createTempFile("urlDirectory", ".tmp");
-      } catch (IOException e) {
-        throw new RuntimeException("Unable to create temp url directory file", e);
-      }
+        // populate file from url
+        downloadFileFromHttpUrl(url, urlUsername, urlPassword, directoryFile);
 
-      // populate file from url
-      downloadFileFromHttpUrl(url, urlUsername, urlPassword, directoryFile);
-
-      // We will now have the directory file with all the links of the xml files so get a list of all the xml files
-      ArrayList<String> xmlFiles = new ArrayList<>();
-      CharSource source = Files.asCharSource(directoryFile, Charset.forName("UTF-8"));
-      try (BufferedReader bufRead = source.openBufferedStream()) {
-        String line = bufRead.readLine();
-        while (line != null)
-        {
-          if (line.contains("file name=")) {
-            int start = line.indexOf('"') + 1;
-            int end = line.indexOf('"', start);
-            String file = line.substring(start, end);
-            if (file.endsWith(".xml")) xmlFiles.add(file);
+        // We will now have the directory file with all the links of the xml files so get a list of all the xml files
+        ArrayList<String> xmlFiles = new ArrayList<>();
+        CharSource source = Files.asCharSource(directoryFile, Charset.forName("UTF-8"));
+        try (BufferedReader bufRead = source.openBufferedStream()) {
+          String line = bufRead.readLine();
+          while (line != null)
+          {
+            if (line.contains("file name=")) {
+              int start = line.indexOf('"') + 1;
+              int end = line.indexOf('"', start);
+              String file = line.substring(start, end);
+              if (file.endsWith(".xml")) xmlFiles.add(file);
+            }
+            line = bufRead.readLine();
           }
-          line = bufRead.readLine();
-        }
-      } catch (IOException e) {
-        throw new RuntimeException("Exception reading file [" + directoryFile+ "]", e);
-      }
-
-      // Download the xml files and place them in a folder
-      File startPosition;
-      try {
-        startPosition = File.createTempFile("TempStartPosition", ".database");
-      } catch (IOException e) {
-        throw new RuntimeException("Unable to create start position directory", e);
-      }
-
-      if (!startPosition.delete() || !startPosition.mkdirs()) {
-        throw new IllegalStateException("Unable to transform [" + startPosition + "] into a temporary directory");
-      }
-
-      for (String xml : xmlFiles) {
-        File target;
-        try {
-          target = File.createTempFile(xml.substring(0,xml.indexOf('.')), ".xml", startPosition);
-          tempFiles.add(target);
         } catch (IOException e) {
-          throw new RuntimeException("Unable to create temp file for: " + xml, e);
+          throw new RuntimeException("Exception reading file [" + directoryFile+ "]", e);
         }
-        if (!target.getParentFile().mkdirs()) {
-          throw new RuntimeException("Unable to create directories for: " + target.getParentFile());
+
+        // Download the xml files and place them in a folder
+        File dataSet = createTempFile("dataset", ".database");
+        if (!dataSet.delete() || !dataSet.mkdirs()) {
+          throw new IllegalStateException("Unable to transform [" + dataSet + "] into a temporary directory");
         }
-        try {
-          downloadFileFromHttpUrl(new URL(url.toString() + xml), urlUsername, urlPassword, target);
-        } catch (MalformedURLException e) {
-          throw new RuntimeException("Unable to create URL: " + url.toString() + xml, e);
+
+        for (String xml : xmlFiles) {
+          File target = createTempFile(xml.substring(0,xml.indexOf('.')), ".xml", dataSet);
+          tempFiles.add(target);
+          if (!target.getParentFile().mkdirs()) {
+            throw new RuntimeException("Unable to create directories for: " + target.getParentFile());
+          }
+          try {
+            downloadFileFromHttpUrl(new URL(url.toString() + xml), urlUsername, urlPassword, target);
+          } catch (MalformedURLException e) {
+            throw new RuntimeException("Unable to create URL: " + url.toString() + xml, e);
+          }
         }
+
+        if (!directoryFile.delete()) {
+          throw new RuntimeException("Unable to delete [" + directoryFile + "]");
+        }
+
+        // add data set directory last so that when we attempt to delete it in the close() method the files it holds will already have been deleted.
+        tempFiles.add(dataSet);
+
+        return dataSet;
       }
-
-      if (!directoryFile.delete()) {
-        throw new RuntimeException("Unable to delete [" + directoryFile + "]");
-      }
-
-      // add start position directory last so that when we attempt to delete it in the close() method the files it holds will already have been deleted.
-      tempFiles.add(startPosition);
-
-      return startPosition;
     } else {
       throw new UnsupportedOperationException("Unsupported URL protocol on [" + url + "]");
     }
@@ -415,72 +403,64 @@ public class XmlDataSetProducer implements DataSetProducer {
 
 
   /**
-   * Method to download file from http url
+   * Wrapper for {@link java.io.File#createTempFile(String, String)} that
+   * wraps any exceptions in a {@link RuntimeException} and propagates it.
+   */
+  private File createTempFile(String prefix, String suffix) {
+    return createTempFile(prefix, suffix, null);
+  }
+
+
+  /**
+   * Wrapper for {@link java.io.File#createTempFile(String, String, File)} that
+   * wraps any exceptions in a {@link RuntimeException} and propagates it.
+   */
+  private File createTempFile(String prefix, String suffix, File file) {
+    try {
+      return File.createTempFile(prefix, suffix, file);
+    } catch (IOException e) {
+      throw new RuntimeException("Unable to create temp file", e);
+    }
+  }
+
+
+  /**
+   * Downloads a file over HTTP/HTTPS.
    *
-   * @param url the url to download from
-   * @param urlUsername the username for the url.
-   * @param urlPassword the password for the url.
-   * @param file the file to populate from the download
+   * @param url The url to download from.
+   * @param urlUsername The username for the url.
+   * @param urlPassword The password for the url.
+   * @param file The file to populate from the download.
    */
   private void downloadFileFromHttpUrl(URL url, final String urlUsername, final String urlPassword, File file) {
-    // Set authentication for the url
-    Authenticator.setDefault (new Authenticator() {
-      @Override
-      protected PasswordAuthentication getPasswordAuthentication() {
-          return new PasswordAuthentication (urlUsername, urlPassword.toCharArray());
-      }
-    });
-
-    // Override the sun certificate trust manager so we ignore all certificate ssl handshake warnings
-    TrustManager[] trustAllCerts = new TrustManager[]{
-      new X509TrustManager() {
-          @Override
-          public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-              return new java.security.cert.X509Certificate[0];
-          }
-          @Override
-          public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) {
-            // Ignore everything
-          }
-          @Override
-          public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String authType) {
-            // Ignore everything
-          }
-      }
-    };
-
-    // Activate the new trust manager
+    // -- Create connection to URL...
+    //
+    URLConnection urlConnection;
     try {
-        SSLContext sc = SSLContext.getInstance("SSL");
-        sc.init(null, trustAllCerts, new java.security.SecureRandom());
-        HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
-    } catch (Exception e) {
-      throw new RuntimeException("Unable to activate the trust manager.", e);
-    }
-
-    // Open a readable byte channel for the url
-    // Create a file output stream to transfer the data from the url to the temp file
-    try (ReadableByteChannel rbc = Channels.newChannel(url.openStream());
-         FileOutputStream fos = new FileOutputStream(file);
-         FileChannel channel = fos.getChannel()) {
-      // transfer the data
-      channel.transferFrom(rbc, 0, Long.MAX_VALUE);
-    } catch (FileNotFoundException e) {
-      throw new RuntimeException("Unable to create file output stream", e);
+      urlConnection = url.openConnection();
     } catch (IOException e) {
-      throw new RuntimeException("Unable to transfer from url to temp file", e);
+      throw new RuntimeException("Error opening connection to URL [" + url + "]", e);
     }
 
-    // Remove username and password from being the default authentication
-    Authenticator.setDefault(null);
+    // -- Set up authentication if required...
+    //
+    if (urlUsername != null && urlPassword != null) {
+      String userpass = urlUsername + ":" + urlPassword;
+      String basicAuth = "Basic " + javax.xml.bind.DatatypeConverter.printBase64Binary(userpass.getBytes(StandardCharsets.UTF_8));
+      urlConnection.setRequestProperty("Authorization", basicAuth);
+    }
 
-    // Remove the overridden trust manager
-    try {
-      SSLContext sc = SSLContext.getInstance("SSL");
-      sc.init(null, null, new java.security.SecureRandom());
-      HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
-    } catch (Exception e) {
-      throw new RuntimeException("Unable to reset the HttpsURLConnection defaultSSLSocketFactory.", e);
+    // -- Download the file...
+    //
+    try (
+      ReadableByteChannel readableByteChannel = Channels.newChannel(urlConnection.getInputStream());
+      FileOutputStream fileOutputStream = new FileOutputStream(file);
+      FileChannel fileChannel = fileOutputStream.getChannel()
+    ) {
+      fileChannel.transferFrom(readableByteChannel, 0, Long.MAX_VALUE);
+      log.debug("Successfully downloaded file [" + url + "] to temp file [" + file + "]");
+    } catch (IOException e) {
+      throw new RuntimeException("Error downloading data set from [" + url + "]", e);
     }
   }
 
