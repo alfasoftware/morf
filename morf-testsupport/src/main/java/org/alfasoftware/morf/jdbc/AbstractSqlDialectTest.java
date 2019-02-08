@@ -1646,7 +1646,7 @@ public abstract class AbstractSqlDialectTest {
           new FieldReference(FLOAT_FIELD))
           .from(sourceStmt);
 
-    String expectedSql = "INSERT INTO " + tableName(OTHER_TABLE) + " (id, version, stringField, intField, floatField) SELECT id, version, stringField, intField, floatField FROM MYSCHEMA.Test";
+    String expectedSql = "INSERT INTO " + tableName(OTHER_TABLE) + " (id, version, stringField, intField, floatField) SELECT id, version, stringField, intField, floatField FROM " + differentSchemaTableName(TEST_TABLE);
 
     List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName("idvalues"));
     assertEquals("Insert with explicit field lists", ImmutableList.of(expectedSql), sql);
@@ -1676,7 +1676,7 @@ public abstract class AbstractSqlDialectTest {
           new FieldReference(FLOAT_FIELD))
           .from(sourceStmt);
 
-    String expectedSql = "INSERT INTO " + tableName(OTHER_TABLE) + " (id, version, stringField, intField, floatField) SELECT id, version, stringField, intField, floatField FROM MYSCHEMA.Test INNER JOIN MYSCHEMA.Alternate ON (Test.stringField = Alternate.stringField)";
+    String expectedSql = "INSERT INTO " + tableName(OTHER_TABLE) + " (id, version, stringField, intField, floatField) SELECT id, version, stringField, intField, floatField FROM " + differentSchemaTableName(TEST_TABLE) + " INNER JOIN " + differentSchemaTableName(ALTERNATE_TABLE) + " ON (Test.stringField = Alternate.stringField)";
 
     List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName("idvalues"));
     assertEquals("Insert with explicit field lists", ImmutableList.of(expectedSql), sql);
@@ -1703,7 +1703,7 @@ public abstract class AbstractSqlDialectTest {
           new FieldReference(FLOAT_FIELD))
           .from(sourceStmt);
 
-    String expectedSql = "INSERT INTO MYSCHEMA.Other (id, version, stringField, intField, floatField) SELECT id, version, stringField, intField, floatField FROM " + tableName(TEST_TABLE);
+    String expectedSql = "INSERT INTO " + differentSchemaTableName(OTHER_TABLE) + " (id, version, stringField, intField, floatField) SELECT id, version, stringField, intField, floatField FROM " + tableName(TEST_TABLE);
 
     List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName("idvalues"));
     assertEquals("Insert with explicit field lists", ImmutableList.of(expectedSql), sql);
@@ -1942,7 +1942,7 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testDeleteWithTableInDifferentSchema() {
     DeleteStatement stmt = new DeleteStatement(new TableReference("MYSCHEMA", TEST_TABLE));
-    String expectedSql = "DELETE FROM MYSCHEMA.Test";
+    String expectedSql = "DELETE FROM " + differentSchemaTableName(TEST_TABLE);
     assertEquals("Simple delete", expectedSql, testDialect.convertStatementToSQL(stmt));
   }
 
@@ -1983,21 +1983,9 @@ public abstract class AbstractSqlDialectTest {
         field("field7").eq("Value"),
         field("field8").eq(literal("Value"))
       ));
-    String value = varCharCast("'Value'");
     assertEquals(
       "Update with literal values",
-      String.format(
-        "UPDATE %s SET stringField = %s%s WHERE ((field1 = 1) AND (field2 = 0) AND (field3 = 1) AND (field4 = 0) AND (field5 = %s) AND (field6 = %s) AND (field7 = %s%s) AND (field8 = %s%s))",
-        tableName(TEST_TABLE),
-        stringLiteralPrefix(),
-        value,
-        expectedDateLiteral(),
-        expectedDateLiteral(),
-        stringLiteralPrefix(),
-        value,
-        stringLiteralPrefix(),
-        value
-      ),
+      expectedUpdateWithLiteralValues(),
       testDialect.convertStatementToSQL(stmt)
     );
   }
@@ -4087,6 +4075,26 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * @return Expected SQL for {@link #testUpdateWithLiteralValues()}
+   */
+  protected String expectedUpdateWithLiteralValues() {
+    String value = varCharCast("'Value'");
+    return String.format(
+        "UPDATE %s SET stringField = %s%s WHERE ((field1 = 1) AND (field2 = 0) AND (field3 = 1) AND (field4 = 0) AND (field5 = %s) AND (field6 = %s) AND (field7 = %s%s) AND (field8 = %s%s))",
+        tableName(TEST_TABLE),
+        stringLiteralPrefix(),
+        value,
+        expectedDateLiteral(),
+        expectedDateLiteral(),
+        stringLiteralPrefix(),
+        value,
+        stringLiteralPrefix(),
+        value
+      );
+  }
+
+
+  /**
    * Tests the generation of a select statement with multiple union statements.
    */
   @Test
@@ -4369,6 +4377,17 @@ public abstract class AbstractSqlDialectTest {
    */
   protected String tableName(String baseName) {
     return baseName;
+  }
+
+
+  /**
+   * For tests using tables from different schema values.
+   * 
+   * @param baseName Base table name.
+   * @return Decorated name.
+   */
+  protected String differentSchemaTableName(String baseName) { 
+   return "MYSCHEMA." + baseName;
   }
 
 
@@ -4758,7 +4777,7 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL for performing an update with a destination table which lives in a different schema.
    */
   protected String expectedUpdateUsingTargetTableInDifferentSchema() {
-    return "UPDATE MYSCHEMA.FloatingRateRate A SET settlementFrequency = (SELECT settlementFrequency FROM " + tableName("FloatingRateDetail") + " B WHERE (A.floatingRateDetailId = B.id))";
+    return "UPDATE " + differentSchemaTableName("FloatingRateRate") + " A SET settlementFrequency = (SELECT settlementFrequency FROM " + tableName("FloatingRateDetail") + " B WHERE (A.floatingRateDetailId = B.id))";
   }
 
 

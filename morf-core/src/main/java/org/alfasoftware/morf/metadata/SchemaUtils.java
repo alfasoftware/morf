@@ -487,6 +487,14 @@ public final class SchemaUtils {
      * @return this, for method chaining.
      */
     public ColumnBuilder autoNumbered(int from);
+
+
+    /**
+     * Set the data type on this column
+     * 
+     * @return this, for method chaining.
+     */
+    public ColumnBuilder dataType(DataType dataType);
   }
 
   /**
@@ -620,6 +628,13 @@ public final class SchemaUtils {
     public ColumnBuilder notPrimaryKey() {
       return new ColumnBuilderImpl(this, isNullable(), getDefaultValue(), false, isAutoNumbered(), getAutoNumberStart());
     }
+
+
+    @Override
+    public ColumnBuilder dataType(DataType dataType) {
+      ColumnBuilderImpl column = new ColumnBuilderImpl(getName(), dataType, getWidth(), getScale());
+      return new ColumnBuilderImpl(column, isNullable(), getDefaultValue(), isPrimaryKey(), isAutoNumbered(), getAutoNumberStart());
+    }
   }
 
   /**
@@ -676,6 +691,23 @@ public final class SchemaUtils {
     List<Column> result = Lists.newArrayList();
     for (Column column : table.columns()) {
       if (column.isPrimaryKey()) {
+        result.add(column);
+      }
+    }
+    return result;
+  }
+
+
+  /**
+   * List auto-numbered columns for a given table.
+   *
+   * @param table The table
+   * @return The primary keys
+   */
+  public static List<Column> autoNumbersForTable(Table table) {
+    List<Column> result = Lists.newArrayList();
+    for (Column column : table.columns()) {
+      if (column.isAutoNumbered()) {
         result.add(column);
       }
     }

@@ -1582,7 +1582,7 @@ public abstract class SqlDialect {
   protected String getSqlFrom(FieldLiteral field) {
     switch (field.getDataType()) {
       case BOOLEAN:
-        return Boolean.valueOf(field.getValue()) ? "1" : "0";
+        return getSqlFrom(Boolean.valueOf(field.getValue()));
       case STRING:
         return makeStringLiteral(field.getValue());
       case DATE:
