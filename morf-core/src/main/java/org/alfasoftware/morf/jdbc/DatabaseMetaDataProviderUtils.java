@@ -35,7 +35,7 @@ public class DatabaseMetaDataProviderUtils {
   /**
    * Regex for extracting the data type from column comments
    */
-  private static final Pattern DATA_TYPE_REGEX = Pattern.compile("TYPE:\\[(\\d+)\\]");
+  private static final Pattern DATA_TYPE_REGEX = Pattern.compile("TYPE:\\[(\\w+)\\]");
 
   /**
    * Get the auto increment start value (if available) from the column comments
@@ -52,8 +52,8 @@ public class DatabaseMetaDataProviderUtils {
     }
     return -1;
   }
-  
-  
+
+
   public static Optional<String> getDataTypeFromColumnComment(String columnComment) {
     if(StringUtils.isNotEmpty(columnComment)) {
       Matcher matcher = DATA_TYPE_REGEX.matcher(columnComment);
