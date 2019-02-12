@@ -1,6 +1,7 @@
 package org.alfasoftware.morf.jdbc.postgresql;
 
 import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
+import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -263,7 +264,7 @@ public class PostgreSQLDialect extends SqlDialect {
 
   @Override
   public Collection<String> dropStatements(View view) {
-    return ImmutableList.of("DROP VIEW " + schemaNamePrefix() + view.getName() + " CASCADE");
+    return ImmutableList.of("DROP VIEW IF EXISTS " + schemaNamePrefix() + view.getName() + " CASCADE");
   }
 
 
@@ -443,8 +444,17 @@ public class PostgreSQLDialect extends SqlDialect {
   public Collection<String> alterTableChangeColumnStatements(Table table, Column oldColumn, Column newColumn) {
     List<String> statements = new ArrayList<>();
 
-    if (oldColumn.isPrimaryKey() != newColumn.isPrimaryKey()) {
+    Table oldTable = oldTableForChangeColumn(table, oldColumn, newColumn);
+
+    boolean recreatePrimaryKey = oldColumn.isPrimaryKey() || newColumn.isPrimaryKey();
+
+    if (recreatePrimaryKey && !primaryKeysForTable(oldTable).isEmpty()) {
       statements.add(dropPrimaryKeyConstraint(table));
+    }
+
+    if (oldColumn.isAutoNumbered() && !newColumn.isAutoNumbered()) {
+      String autoNumberSequenceName = schemaNamePrefix() + table.getName() + "_" + oldColumn.getName() + "_seq";
+      statements.add("DROP SEQUENCE IF EXISTS " + autoNumberSequenceName + " CASCADE");
     }
 
     if(!oldColumn.getName().equalsIgnoreCase(newColumn.getName())) {
@@ -467,7 +477,7 @@ public class PostgreSQLDialect extends SqlDialect {
       statements.add(sqlBuilder.toString());
     }
 
-    if (oldColumn.isPrimaryKey() != newColumn.isPrimaryKey()) {
+    if (recreatePrimaryKey && !primaryKeysForTable(table).isEmpty()) {
       statements.add(addPrimaryKeyConstraint(table));
     }
 

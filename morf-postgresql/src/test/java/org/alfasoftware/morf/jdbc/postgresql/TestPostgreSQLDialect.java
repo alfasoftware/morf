@@ -717,7 +717,9 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterPrimaryKeyColumnCompositeKeyStatements() {
-    return Arrays.asList("ALTER TABLE \"TESTSCHEMA\".CompositePrimaryKey ALTER COLUMN secondPrimaryKey TYPE VARCHAR(5)",
+    return Arrays.asList("ALTER TABLE \"TESTSCHEMA\".CompositePrimaryKey DROP CONSTRAINT CompositePrimaryKey_PK",
+        "ALTER TABLE \"TESTSCHEMA\".CompositePrimaryKey ALTER COLUMN secondPrimaryKey TYPE VARCHAR(5)",
+        "ALTER TABLE \"TESTSCHEMA\".CompositePrimaryKey ADD CONSTRAINT CompositePrimaryKey_PK PRIMARY KEY(id, secondPrimaryKey)",
         "COMMENT ON COLUMN \"TESTSCHEMA\".CompositePrimaryKey.secondPrimaryKey IS 'REALNAME:[secondPrimaryKey]/TYPE:[STRING]'");
   }
 
@@ -742,9 +744,11 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterPrimaryKeyColumnStatements() {
     return Arrays.asList(
-      "ALTER TABLE \"TESTSCHEMA\".Test RENAME id TO renamedId",
-      "ALTER TABLE \"TESTSCHEMA\".Test ALTER COLUMN renamedId TYPE NUMERIC(19)",
-      "COMMENT ON COLUMN \"TESTSCHEMA\".Test.renamedId IS 'REALNAME:[renamedId]/TYPE:[BIG_INTEGER]'"
+        "ALTER TABLE \"TESTSCHEMA\".Test DROP CONSTRAINT Test_PK",
+        "ALTER TABLE \"TESTSCHEMA\".Test RENAME id TO renamedId",
+        "ALTER TABLE \"TESTSCHEMA\".Test ALTER COLUMN renamedId TYPE NUMERIC(19)",
+        "ALTER TABLE \"TESTSCHEMA\".Test ADD CONSTRAINT Test_PK PRIMARY KEY(renamedId)",
+        "COMMENT ON COLUMN \"TESTSCHEMA\".Test.renamedId IS 'REALNAME:[renamedId]/TYPE:[BIG_INTEGER]'"
     );
   }
 
@@ -851,7 +855,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedDropViewStatements() {
-    return Arrays.asList("DROP VIEW " + tableName("TestView") + " CASCADE");
+    return Arrays.asList("DROP VIEW IF EXISTS " + tableName("TestView") + " CASCADE");
   }
 
 

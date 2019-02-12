@@ -6,7 +6,6 @@ import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.getDataTy
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Types;
 import java.util.Optional;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
@@ -34,7 +33,7 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider {
    */
   @Override
   protected boolean isPrimaryKeyIndex(String indexName) {
-    return false; //TODO
+    return indexName.toLowerCase().endsWith("_pk");
   }
 
 
@@ -43,11 +42,8 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider {
    */
   @Override
   protected DataType dataTypeFromSqlType(int sqlType, String typeName, int width) {
-    switch(sqlType) {
-    case Types.NUMERIC: //TODO
-    default:
+    //TODO
       return super.dataTypeFromSqlType(sqlType, typeName, width);
-    }
   }
 
 
@@ -61,13 +57,13 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider {
     // read autonumber from comments
     if (columnBuilder.isAutoNumbered()) {
       int startValue = getAutoIncrementStartValue(columnMetaData.getString(REMARKS));
-      columnBuilder.autoNumbered(startValue == -1 ? 1 : startValue);
+      columnBuilder = columnBuilder.autoNumbered(startValue == -1 ? 1 : startValue);
     }
 
     // read datatype from comments
     Optional<String> dataTypeComment = getDataTypeFromColumnComment(columnMetaData.getString(REMARKS));
     if(dataTypeComment.isPresent() && dataTypeComment.get().equals("BIG_INTEGER")){
-      columnBuilder.dataType(DataType.BIG_INTEGER);
+      columnBuilder = columnBuilder.dataType(DataType.BIG_INTEGER);
     }
 
     return columnBuilder;
