@@ -22,6 +22,18 @@ import com.google.common.collect.ImmutableList;
  */
 public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
 
+  @Override
+  protected String expectedSelectFirstOrderByNullsLastDesc() {
+    return "SELECT stringField FROM \"TESTSCHEMA\".Alternate ORDER BY stringField DESC NULLS LAST LIMIT 1 OFFSET 0";
+  }
+
+
+  @Override
+  protected String expectedRandomFunction() {
+    return "RANDOM()";
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#createTestDialect()
    */
@@ -900,7 +912,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedDaysBetween() {
-    return "SELECT dateOne - dateTwo FROM \"TESTSCHEMA\".MyTable";
+    return "SELECT dateTwo - dateOne FROM \"TESTSCHEMA\".MyTable";
   }
 
 

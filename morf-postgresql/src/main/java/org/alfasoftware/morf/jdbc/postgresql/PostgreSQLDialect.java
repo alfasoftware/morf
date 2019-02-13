@@ -16,6 +16,7 @@ import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.MergeStatement;
+import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Function;
@@ -286,7 +287,7 @@ public class PostgreSQLDialect extends SqlDialect {
 
   @Override
   protected String getSqlForDaysBetween(AliasedField toDate, AliasedField fromDate) {
-    return fromDate.toString() + " - " + toDate.toString();
+    return getSqlFrom(toDate) + " - " + getSqlFrom(fromDate);
   }
 
 
@@ -391,6 +392,12 @@ public class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
+  protected String getSqlForRandom() {
+    return "RANDOM()";
+  }
+
+
+  @Override
   protected String getSqlFrom(MergeStatement statement) {
     if (StringUtils.isBlank(statement.getTable().getName())) {
       throw new IllegalArgumentException("Cannot create SQL for a blank table");
@@ -425,6 +432,23 @@ public class PostgreSQLDialect extends SqlDialect {
               .append(Joiner.on(", ").join(setStatements));
 
     return sqlBuilder.toString();
+  }
+
+
+  @Override
+  protected String getSqlFrom(SelectFirstStatement stmt) {
+    StringBuilder result = new StringBuilder("SELECT ");
+    // Start by adding the field
+    result.append(getSqlFrom(stmt.getFields().get(0)));
+
+    appendFrom(result, stmt);
+    appendJoins(result, stmt, innerJoinKeyword(stmt));
+    appendWhere(result, stmt);
+    appendOrderBy(result, stmt);
+
+    result.append(" LIMIT 1 OFFSET 0");
+
+    return result.toString().trim();
   }
 
 
