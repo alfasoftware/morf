@@ -2391,8 +2391,8 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
 
     SelectStatement testSelect = select(field("alfaDate1"), field("alfaDate2"), literal(123))
                                  .from(tableRef("DateTable")).where(eq(field("alfaDate1"), parameter("firstDateParam").type(DataType.BIG_INTEGER)));;
-    Iterable<SqlParameter> parameterMetadata = ImmutableList.of(parameter(column("firstDateParam", DataType.STRING)));
-    RecordBuilder parameterData = DataSetUtils.record().setString("firstDateParam", "20040609");
+    Iterable<SqlParameter> parameterMetadata = ImmutableList.of(parameter(column("firstDateParam", DataType.DECIMAL)));
+    RecordBuilder parameterData = DataSetUtils.record().setLong("firstDateParam", 20040609L);
     ResultSetProcessor<List<List<String>>> resultSetProcessor = new ResultSetProcessor<List<List<String>>>() {
       /**
        * Takes all rows and puts into two-dimension String array.

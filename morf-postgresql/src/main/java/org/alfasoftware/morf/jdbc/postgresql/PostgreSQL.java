@@ -2,6 +2,7 @@ package org.alfasoftware.morf.jdbc.postgresql;
 
 import java.sql.Connection;
 import java.util.Optional;
+import java.util.Stack;
 
 import javax.sql.XADataSource;
 
@@ -80,6 +81,26 @@ public final class PostgreSQL extends AbstractDatabaseType {
 
   @Override
   public Optional<JdbcUrlElements> extractJdbcUrl(String url) {
-    throw new UnsupportedOperationException("Not yet...");
+    Stack<String> splitURL = splitJdbcUrl(url);
+
+    String scheme = splitURL.pop();
+
+    if (!scheme.equalsIgnoreCase("postgresql")) {
+      return Optional.empty();
+    }
+
+    if (!splitURL.pop().equals("://")) {
+      // If the next characters are not "://" then die
+      throw new IllegalArgumentException("Expected '//' to follow the scheme name in [" + url + "]");
+    }
+
+    JdbcUrlElements.Builder connectionDetails = extractHostAndPort(splitURL);
+
+    // Now get the path
+    String path = extractPath(splitURL);
+
+    connectionDetails.withDatabaseName(path);
+
+    return Optional.of(connectionDetails.build());
   }
 }

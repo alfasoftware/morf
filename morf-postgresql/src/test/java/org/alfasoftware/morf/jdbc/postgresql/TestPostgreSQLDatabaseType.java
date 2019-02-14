@@ -43,6 +43,53 @@ public class TestPostgreSQLDatabaseType {
 
 
   /**
+   * Tests PostgreSQL formatted JDBC URLs.
+   */
+  @Test
+  public void testBuildConnectionDetailsFromMySQL() {
+    JdbcUrlElements result = databaseType.extractJdbcUrl("jdbc:postgresql://localhost:3306/alfa").get();
+
+    assertEquals("Should have the correct type", PostgreSQL.IDENTIFIER, result.getDatabaseType());
+    assertEquals("Should have the correct host", "localhost", result.getHostName());
+    assertEquals("Should have the correct port", 3306, result.getPort());
+    assertEquals("Should have the correct database name", "alfa", result.getDatabaseName());
+  }
+
+
+  /**
+   * Tests PostgreSQL formatted JDBC URLs.
+   */
+  @Test
+  public void testBuildConnectionDetailsFromMySQLNoPort() {
+    JdbcUrlElements result = databaseType.extractJdbcUrl("jdbc:postgresql://localhost/alfa").get();
+
+    assertEquals("Should have the correct type", PostgreSQL.IDENTIFIER, result.getDatabaseType());
+    assertEquals("Should have the correct host", "localhost", result.getHostName());
+    assertEquals("Should have the correct database name", "alfa", result.getDatabaseName());
+  }
+
+
+  /**
+   * Checks the bidirectionality of our URL split and combine behaviour.
+   */
+  @Test
+  public void testUrlRoundTrips() {
+    comparerUrlRoundtrips(JdbcUrlElements.forDatabaseType(PostgreSQL.IDENTIFIER).withHost("hostname").withPort(3306).withDatabaseName("databasename").build());
+    comparerUrlRoundtrips(JdbcUrlElements.forDatabaseType(PostgreSQL.IDENTIFIER).withHost("hostname").withDatabaseName("databasename").build());
+  }
+
+
+  /**
+   * Tests a URL <- split -> URL round-trip.
+   */
+  private void comparerUrlRoundtrips(JdbcUrlElements jdbcUrlElements) {
+    String jdbcURL = databaseType.formatJdbcUrl(jdbcUrlElements);
+    JdbcUrlElements cd = databaseType.extractJdbcUrl(jdbcURL).get();
+    assertEquals(jdbcUrlElements, cd);
+  }
+
+
+  /**
    * Test identification of a database platform.
    */
   @Test
