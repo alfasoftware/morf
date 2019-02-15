@@ -6,6 +6,7 @@ import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.getDataTy
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.Optional;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
@@ -42,8 +43,16 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider {
    */
   @Override
   protected DataType dataTypeFromSqlType(int sqlType, String typeName, int width) {
-    //TODO
-      return super.dataTypeFromSqlType(sqlType, typeName, width);
+    switch (sqlType) {
+      case Types.VARCHAR:
+        if (typeName.equals("text")) {
+          return DataType.CLOB;
+        }
+        return super.dataTypeFromSqlType(sqlType, typeName, width);
+
+      default:
+        return super.dataTypeFromSqlType(sqlType, typeName, width);
+    }
   }
 
 
