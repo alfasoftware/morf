@@ -144,7 +144,7 @@ public class PostgreSQLDialect extends SqlDialect {
         primaryKeys.add(column.getName());
       }
 
-      postStatements.add("COMMENT ON COLUMN " + schemaNamePrefix() + table.getName() + "." + column.getName() + " IS 'REALNAME:[" + column.getName() + "]/TYPE:[" + column.getType().toString() + "]" + (column.isAutoNumbered() ? "/AUTONUMSTART:[" + column.getAutoNumberStart() + "]'" : "'"));
+      postStatements.add(addColumnComment(table, column));
       first = false;
     }
 
@@ -454,7 +454,8 @@ public class PostgreSQLDialect extends SqlDialect {
 
   @Override
   public Collection<String> alterTableAddColumnStatements(Table table, Column column) {
-    return ImmutableList.of("ALTER TABLE " + schemaNamePrefix(table) + table.getName() + " ADD COLUMN " + column.getName() + " " + sqlRepresentationOfColumnType(column, true));
+    return ImmutableList.of("ALTER TABLE " + schemaNamePrefix(table) + table.getName() + " ADD COLUMN " + column.getName() + " " + sqlRepresentationOfColumnType(column, true),
+        addColumnComment(table, column));
   }
 
 
@@ -505,9 +506,19 @@ public class PostgreSQLDialect extends SqlDialect {
       statements.add(addPrimaryKeyConstraint(table));
     }
 
-    statements.add("COMMENT ON COLUMN " + schemaNamePrefix() + table.getName() + "." + newColumn.getName() + " IS 'REALNAME:[" + newColumn.getName() + "]/TYPE:[" + newColumn.getType().toString() + "]" + (newColumn.isAutoNumbered() ? "/AUTONUMSTART:[" + newColumn.getAutoNumberStart() + "]'" : "'"));
+    statements.add(addColumnComment(table, newColumn));
 
     return statements;
+  }
+
+  private String addColumnComment(Table table, Column column) {
+    StringBuilder comment = new StringBuilder ("COMMENT ON COLUMN " + schemaNamePrefix() + table.getName() + "." + column.getName() + " IS 'REALNAME:[" + column.getName() + "]/TYPE:[" + column.getType().toString() + "]");
+    if(column.isAutoNumbered()) {
+      int autoNumberStart = column.getAutoNumberStart() == -1 ? 1 : column.getAutoNumberStart();
+      comment.append("/AUTONUMSTART:[" + autoNumberStart + "]");
+    }
+    comment.append("'");
+    return comment.toString();
   }
 
 

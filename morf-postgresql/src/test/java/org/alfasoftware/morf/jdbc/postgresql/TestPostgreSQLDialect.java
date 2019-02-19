@@ -476,7 +476,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAddBlobColumnStatement() {
-    return Arrays.asList("ALTER TABLE \"TESTSCHEMA\".Test ADD COLUMN blobField_new BYTEA NULL");
+    return Arrays.asList("ALTER TABLE \"TESTSCHEMA\".Test ADD COLUMN blobField_new BYTEA NULL",
+        "COMMENT ON COLUMN \"TESTSCHEMA\".Test.blobField_new IS 'REALNAME:[blobField_new]/TYPE:[BLOB]'");
   }
 
 
@@ -505,7 +506,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAddBooleanColumnStatement() {
-    return Arrays.asList("ALTER TABLE \"TESTSCHEMA\".Test ADD COLUMN booleanField_new BOOLEAN NULL");
+    return Arrays.asList("ALTER TABLE \"TESTSCHEMA\".Test ADD COLUMN booleanField_new BOOLEAN NULL",
+        "COMMENT ON COLUMN \"TESTSCHEMA\".Test.booleanField_new IS 'REALNAME:[booleanField_new]/TYPE:[BOOLEAN]'");
   }
 
 
@@ -514,7 +516,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAddStringColumnStatement() {
-    return Arrays.asList("ALTER TABLE \"TESTSCHEMA\".Test ADD COLUMN stringField_new VARCHAR(6) NULL");
+    return Arrays.asList("ALTER TABLE \"TESTSCHEMA\".Test ADD COLUMN stringField_new VARCHAR(6) NULL",
+        "COMMENT ON COLUMN \"TESTSCHEMA\".Test.stringField_new IS 'REALNAME:[stringField_new]/TYPE:[STRING]'");
   }
 
 
@@ -533,7 +536,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAddIntegerColumnStatement() {
-    return Arrays.asList("ALTER TABLE \"TESTSCHEMA\".Test ADD COLUMN intField_new INTEGER NULL");
+    return Arrays.asList("ALTER TABLE \"TESTSCHEMA\".Test ADD COLUMN intField_new INTEGER NULL",
+        "COMMENT ON COLUMN \"TESTSCHEMA\".Test.intField_new IS 'REALNAME:[intField_new]/TYPE:[INTEGER]'");
   }
 
 
@@ -552,7 +556,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAddDateColumnStatement() {
-    return Arrays.asList("ALTER TABLE \"TESTSCHEMA\".Test ADD COLUMN dateField_new DATE NULL");
+    return Arrays.asList("ALTER TABLE \"TESTSCHEMA\".Test ADD COLUMN dateField_new DATE NULL",
+        "COMMENT ON COLUMN \"TESTSCHEMA\".Test.dateField_new IS 'REALNAME:[dateField_new]/TYPE:[DATE]'");
   }
 
 
@@ -571,7 +576,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAddDecimalColumnStatement() {
-    return Arrays.asList("ALTER TABLE \"TESTSCHEMA\".Test ADD COLUMN floatField_new DECIMAL(6,3) NULL");
+    return Arrays.asList("ALTER TABLE \"TESTSCHEMA\".Test ADD COLUMN floatField_new DECIMAL(6,3) NULL",
+        "COMMENT ON COLUMN \"TESTSCHEMA\".Test.floatField_new IS 'REALNAME:[floatField_new]/TYPE:[DECIMAL]'");
   }
 
 
@@ -590,7 +596,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAddBigIntegerColumnStatement() {
-    return Arrays.asList("ALTER TABLE \"TESTSCHEMA\".Test ADD COLUMN bigIntegerField_new NUMERIC(19) NULL");
+    return Arrays.asList("ALTER TABLE \"TESTSCHEMA\".Test ADD COLUMN bigIntegerField_new NUMERIC(19) NULL",
+        "COMMENT ON COLUMN \"TESTSCHEMA\".Test.bigIntegerField_new IS 'REALNAME:[bigIntegerField_new]/TYPE:[BIG_INTEGER]'");
   }
 
 
@@ -609,7 +616,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAddColumnNotNullableStatement() {
-    return Arrays.asList("ALTER TABLE \"TESTSCHEMA\".Test ADD COLUMN dateField_new DATE DEFAULT DATE '2010-01-01' NOT NULL");
+    return Arrays.asList("ALTER TABLE \"TESTSCHEMA\".Test ADD COLUMN dateField_new DATE DEFAULT DATE '2010-01-01' NOT NULL",
+        "COMMENT ON COLUMN \"TESTSCHEMA\".Test.dateField_new IS 'REALNAME:[dateField_new]/TYPE:[DATE]'");
   }
 
 
@@ -649,7 +657,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAddColumnWithDefaultStatement() {
-    return Arrays.asList("ALTER TABLE \"TESTSCHEMA\".Test ADD COLUMN floatField_new DECIMAL(6,3) DEFAULT 20.33 NULL");
+    return Arrays.asList("ALTER TABLE \"TESTSCHEMA\".Test ADD COLUMN floatField_new DECIMAL(6,3) DEFAULT 20.33 NULL",
+        "COMMENT ON COLUMN \"TESTSCHEMA\".Test.floatField_new IS 'REALNAME:[floatField_new]/TYPE:[DECIMAL]'");
   }
 
 
@@ -781,7 +790,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAddStringColumnWithDefaultStatement() {
-    return Arrays.asList("ALTER TABLE \"TESTSCHEMA\".Test ADD COLUMN stringField_with_default VARCHAR(6) DEFAULT 'N' NOT NULL");
+    return Arrays.asList("ALTER TABLE \"TESTSCHEMA\".Test ADD COLUMN stringField_with_default VARCHAR(6) DEFAULT 'N' NOT NULL",
+        "COMMENT ON COLUMN \"TESTSCHEMA\".Test.stringField_with_default IS 'REALNAME:[stringField_with_default]/TYPE:[STRING]'");
   }
 
 
