@@ -80,6 +80,8 @@ public class Criterion implements Driver, DeepCopyableWithTransformation<Criteri
    */
   private final List<Criterion> criteria;
 
+  private int hashCode;
+
 
   /**
    * Constructor used to create deep copy of a criterion
@@ -573,6 +575,14 @@ public class Criterion implements Driver, DeepCopyableWithTransformation<Criteri
 
   @Override
   public int hashCode() {
+    if (hashCode == 0) {
+      hashCode = generateHashCode();
+    }
+    return hashCode;
+  }
+
+
+  private int generateHashCode() {
     final int prime = 31;
     int result = 1;
     result = prime * result + (criteria == null ? 0 : criteria.hashCode());
@@ -591,6 +601,8 @@ public class Criterion implements Driver, DeepCopyableWithTransformation<Criteri
     if (obj == null)
       return false;
     if (getClass() != obj.getClass())
+      return false;
+    if (hashCode() != obj.hashCode())
       return false;
     Criterion other = (Criterion) obj;
     if (criteria == null) {
