@@ -4075,6 +4075,16 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * Expected outcome for calling {@link callPrepareStatementParameter} with a blob data type in {@link #testPrepareStatementParameter()}
+   * @throws SQLException
+   */
+  protected void verifyBlobColumnCallPrepareStatementParameter(SqlParameter blobColumn) throws SQLException {
+    verify(callPrepareStatementParameter(blobColumn, null)).setBlob(Mockito.eq(blobColumn), Mockito.argThat(new ByteArrayMatcher(new byte[] {})));
+    verify(callPrepareStatementParameter(blobColumn, "QUJD")).setBlob(Mockito.eq(blobColumn), Mockito.argThat(new ByteArrayMatcher(new byte[] {65 , 66 , 67})));
+  }
+
+
+  /**
    * @return Expected SQL for {@link #testUpdateWithLiteralValues()}
    */
   protected String expectedUpdateWithLiteralValues() {
@@ -4258,8 +4268,7 @@ public abstract class AbstractSqlDialectTest {
     assertEquals("Big integer not correctly set on statement", 345345423234234234L, bigIntCapture.getValue().longValue());
 
     // Blob
-    verify(callPrepareStatementParameter(blobColumn, null)).setBlob(Mockito.eq(blobColumn), Mockito.argThat(new ByteArrayMatcher(new byte[] {})));
-    verify(callPrepareStatementParameter(blobColumn, "QUJD")).setBlob(Mockito.eq(blobColumn), Mockito.argThat(new ByteArrayMatcher(new byte[] {65 , 66 , 67})));
+    verifyBlobColumnCallPrepareStatementParameter(blobColumn);
 
     // Clob
     verify(callPrepareStatementParameter(clobColumn, null)).setString(clobColumn, null);
@@ -4382,11 +4391,11 @@ public abstract class AbstractSqlDialectTest {
 
   /**
    * For tests using tables from different schema values.
-   * 
+   *
    * @param baseName Base table name.
    * @return Decorated name.
    */
-  protected String differentSchemaTableName(String baseName) { 
+  protected String differentSchemaTableName(String baseName) {
    return "MYSCHEMA." + baseName;
   }
 

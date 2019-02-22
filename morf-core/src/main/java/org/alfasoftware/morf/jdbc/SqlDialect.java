@@ -3185,7 +3185,7 @@ public abstract class SqlDialect {
 
 
   /**
-   * Sets up a parameters on a {@link NamedParameterPreparedStatement} with a set of values.
+   * Sets up parameters on a {@link NamedParameterPreparedStatement} with a set of values.
    *
    * @param statement The {@link PreparedStatement} to set up
    * @param parameters The parameters.
@@ -3196,60 +3196,73 @@ public abstract class SqlDialect {
   public void prepareStatementParameters(NamedParameterPreparedStatement statement, Iterable<SqlParameter> parameters, DataValueLookup values) {
     parameters.forEach(parameter -> {
       try {
-        switch (parameter.getMetadata().getType()) {
-          case BIG_INTEGER:
-            Long longVal = values.getLong(parameter.getImpliedName());
-            if (longVal == null) {
-              statement.setObject(parameter, null);
-            } else {
-              statement.setLong(parameter, longVal);
-            }
-            break;
-          case BLOB:
-            byte[] blobVal = values.getByteArray(parameter.getImpliedName());
-            if (blobVal == null) {
-              statement.setBlob(parameter, new byte[] {});
-            } else {
-              statement.setBlob(parameter, blobVal);
-            }
-            break;
-          case BOOLEAN:
-            prepareBooleanParameter(statement, values.getBoolean(parameter.getImpliedName()), parameter);
-            break;
-          case DATE:
-            Date dateVal = values.getDate(parameter.getImpliedName());
-            if (dateVal == null) {
-              statement.setObject(parameter, null);
-            } else {
-              statement.setDate(parameter, new java.sql.Date(dateVal.getTime()));
-            }
-            break;
-          case DECIMAL:
-            statement.setBigDecimal(parameter, values.getBigDecimal(parameter.getImpliedName()));
-            break;
-          case INTEGER:
-            prepareIntegerParameter(statement, values.getInteger(parameter.getImpliedName()), parameter);
-            break;
-          case CLOB:
-          case STRING:
-            String stringVal = values.getString(parameter.getImpliedName());
-            if (stringVal == null || stringVal.equals("")) {
-              // since web-9161 for *ALL* databases
-              // - we are using EmptyStringHQLAssistant
-              // - and store empty strings as null
-              statement.setString(parameter, null);
-            } else {
-              statement.setString(parameter, stringVal);
-            }
-            break;
-          default:
-            throw new RuntimeException(String.format("Unexpected DataType [%s]", parameter.getMetadata().getType()));
-        }
+        prepareStatementParameters(statement, values, parameter);
       } catch (Exception e) {
         throw new RuntimeException(String.format("Error setting parameter value, column [%s], value [%s] on prepared statement",
           parameter.getMetadata().getName(), values.getObject(parameter.getMetadata())), e);
       }
     });
+  }
+
+
+  /**
+   * Sets up a parameter on {@link NamedParameterPreparedStatement} with a value.
+   *
+   * @param statement
+   * @param values
+   * @param parameter
+   * @throws SQLException
+   */
+  public void prepareStatementParameters(NamedParameterPreparedStatement statement, DataValueLookup values, SqlParameter parameter) throws SQLException {
+    switch (parameter.getMetadata().getType()) {
+      case BIG_INTEGER:
+        Long longVal = values.getLong(parameter.getImpliedName());
+        if (longVal == null) {
+          statement.setObject(parameter, null);
+        } else {
+          statement.setLong(parameter, longVal);
+        }
+        break;
+      case BLOB:
+        byte[] blobVal = values.getByteArray(parameter.getImpliedName());
+        if (blobVal == null) {
+          statement.setBlob(parameter, new byte[] {});
+        } else {
+          statement.setBlob(parameter, blobVal);
+        }
+        break;
+      case BOOLEAN:
+        prepareBooleanParameter(statement, values.getBoolean(parameter.getImpliedName()), parameter);
+        break;
+      case DATE:
+        Date dateVal = values.getDate(parameter.getImpliedName());
+        if (dateVal == null) {
+          statement.setObject(parameter, null);
+        } else {
+          statement.setDate(parameter, new java.sql.Date(dateVal.getTime()));
+        }
+        break;
+      case DECIMAL:
+        statement.setBigDecimal(parameter, values.getBigDecimal(parameter.getImpliedName()));
+        break;
+      case INTEGER:
+        prepareIntegerParameter(statement, values.getInteger(parameter.getImpliedName()), parameter);
+        break;
+      case CLOB:
+      case STRING:
+        String stringVal = values.getString(parameter.getImpliedName());
+        if (stringVal == null || stringVal.equals("")) {
+          // since web-9161 for *ALL* databases
+          // - we are using EmptyStringHQLAssistant
+          // - and store empty strings as null
+          statement.setString(parameter, null);
+        } else {
+          statement.setString(parameter, stringVal);
+        }
+        break;
+      default:
+        throw new RuntimeException(String.format("Unexpected DataType [%s]", parameter.getMetadata().getType()));
+    }
   }
 
 

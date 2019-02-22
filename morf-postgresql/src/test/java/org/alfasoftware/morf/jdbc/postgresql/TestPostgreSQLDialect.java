@@ -1,5 +1,10 @@
 package org.alfasoftware.morf.jdbc.postgresql;
 
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.verify;
+
+import java.io.InputStream;
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -11,7 +16,9 @@ import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.FieldReference;
+import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.mockito.Mockito;
 
 import com.google.common.collect.ImmutableList;
 
@@ -1125,6 +1132,14 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return Arrays.asList("ALTER TABLE \"TESTSCHEMA\".Other ALTER COLUMN FloatField TYPE DECIMAL(20,3)",
         "COMMENT ON COLUMN \"TESTSCHEMA\".Other.FloatField IS 'REALNAME:[FloatField]/TYPE:[DECIMAL]'");
   }
+
+
+  @Override
+  protected void verifyBlobColumnCallPrepareStatementParameter(SqlParameter blobColumn) throws SQLException {
+    verify(callPrepareStatementParameter(blobColumn, null)).setBinaryStream(Mockito.eq(blobColumn), any(InputStream.class));
+    verify(callPrepareStatementParameter(blobColumn, "QUJD")).setBinaryStream(Mockito.eq(blobColumn), any(InputStream.class));
+  }
+
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#tableName(java.lang.String)

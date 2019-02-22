@@ -3,14 +3,19 @@ package org.alfasoftware.morf.jdbc.postgresql;
 import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
 import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
+import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.DataValueLookup;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
@@ -20,6 +25,7 @@ import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang.StringUtils;
 
@@ -564,6 +570,27 @@ public class PostgreSQLDialect extends SqlDialect {
              .append(")");
 
     return statement.toString();
+  }
+
+
+  @Override
+  public void prepareStatementParameters(NamedParameterPreparedStatement statement, DataValueLookup values, SqlParameter parameter) throws SQLException {
+    switch (parameter.getMetadata().getType()) {
+      case BLOB:
+        byte[] blobVal = values.getByteArray(parameter.getImpliedName());
+        if (blobVal == null) {
+          InputStream inputStream = new ByteArrayInputStream(new byte[]{});
+          statement.setBinaryStream(parameter, inputStream);
+        } else {
+          InputStream inputStream = new ByteArrayInputStream(blobVal);
+          statement.setBinaryStream(parameter, inputStream);
+        }
+        return;
+
+      default:
+        super.prepareStatementParameters(statement, values, parameter);
+        return;
+    }
   }
 
 
