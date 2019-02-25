@@ -319,7 +319,7 @@ public class PostgreSQLDialect extends SqlDialect {
   @Override
   protected String getSqlForLastDayOfMonth(AliasedField date) {
     return String.format(
-        "(DATE_TRUNC('MONTH', (%s)) + INTERVAL '1 MONTH' - INTERVAL '1 DAY')::DATE",
+        "(DATE_TRUNC('MONTH', (%s)) + INTERVAL '1 MONTH' - INTERVAL '1 DAY') :: DATE",
         getSqlFrom(date));
   }
 
@@ -393,7 +393,7 @@ public class PostgreSQLDialect extends SqlDialect {
   protected String getSqlForRandomString(Function function) {
     String lengthSql = getSqlFrom(function.getArguments().get(0));
     String randomString = "(SELECT STRING_AGG(MD5(RANDOM() :: TEXT), ''))";
-    return "UPPER(SUBSTRING(" + randomString + ", 1, " + lengthSql + "))";
+    return "UPPER(SUBSTRING(" + randomString + ", 1, " + lengthSql + " :: INT))";
   }
 
 

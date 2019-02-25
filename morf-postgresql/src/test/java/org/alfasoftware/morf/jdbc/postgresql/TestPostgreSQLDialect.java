@@ -1043,7 +1043,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedRandomString() {
-    return "UPPER(SUBSTRING((SELECT STRING_AGG(MD5(RANDOM() :: TEXT), '')), 1, 10))";
+    return "UPPER(SUBSTRING((SELECT STRING_AGG(MD5(RANDOM() :: TEXT), '')), 1, 10 :: INT))";
   }
 
 
