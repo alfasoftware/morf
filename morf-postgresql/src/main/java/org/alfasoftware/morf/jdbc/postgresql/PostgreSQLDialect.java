@@ -404,6 +404,12 @@ public class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
+  protected String getSqlForRound(Function function) {
+    return "ROUND((" + getSqlFrom(function.getArguments().get(0)) + ") :: NUMERIC, " + getSqlFrom(function.getArguments().get(1)) + ")";
+  }
+
+
+  @Override
   protected String getSqlFrom(MergeStatement statement) {
     if (StringUtils.isBlank(statement.getTable().getName())) {
       throw new IllegalArgumentException("Cannot create SQL for a blank table");

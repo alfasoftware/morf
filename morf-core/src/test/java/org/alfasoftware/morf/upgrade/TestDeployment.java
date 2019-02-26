@@ -212,7 +212,7 @@ public class TestDeployment {
     assertEquals("Number of columns", 3, stmt.getValues().size());
     assertEquals("UUID", "ab1b9f5a-cb3b-473c-8ec6-c6c1134f500f", values.get(0).toString());
     assertEquals("Description", "org.alfasoftware.morf.upgrade.TestDeployment$AddFooTable", values.get(1).toString());
-    assertEquals("Date", 1, from(stmt.getValues()).filter(org.alfasoftware.morf.sql.element.Function.class).toList().size());
+    assertEquals("Date", 1, from(stmt.getValues()).filter(org.alfasoftware.morf.sql.element.Cast.class).toList().size());
 
     // When
     deployment.deploy(targetSchema);

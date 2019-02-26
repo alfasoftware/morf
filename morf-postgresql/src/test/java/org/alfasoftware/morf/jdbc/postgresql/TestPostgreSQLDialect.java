@@ -41,6 +41,18 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   }
 
 
+  @Override
+  protected String expectedRound() {
+    return "SELECT ROUND((field1) :: NUMERIC, 2) FROM " + tableName("schedule");
+  }
+
+
+  @Override
+  protected String expectedSqlForMathOperationsForExistingDataFix1() {
+    return "ROUND((doublevalue / 1000 * doublevalue) :: NUMERIC, 2)";
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#createTestDialect()
    */
