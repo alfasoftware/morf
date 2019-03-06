@@ -503,15 +503,7 @@ public class PostgreSQLDialect extends SqlDialect {
     boolean alterDefaultValue = oldColumn.getDefaultValue() != newColumn.getDefaultValue();
 
     if(alterNullable || alterType || alterDefaultValue) {
-      StringBuilder sqlBuilder = new StringBuilder();
-      sqlBuilder.append("ALTER TABLE " + schemaNamePrefix(table) + table.getName()
-                  + (alterNullable ? " ALTER COLUMN " + newColumn.getName() + (newColumn.isNullable() ? " DROP NOT NULL" : " SET NOT NULL") : "")
-                  + (alterNullable && alterType ? "," : "")
-                  + (alterType ? " ALTER COLUMN " + newColumn.getName() + " TYPE " + sqlRepresentationOfColumnType(newColumn, false, false, true) : "")
-                  + (alterDefaultValue && (alterNullable || alterType) ? "," : "")
-                  + (alterDefaultValue ? " ALTER COLUMN " + newColumn.getName() + (!newColumn.getDefaultValue().isEmpty() ? (" SET DEFAULT " + newColumn.getDefaultValue()) : " DROP DEFAULT") : "")
-          );
-      statements.add(sqlBuilder.toString());
+      statements.add(addAlterTableConstraint(table, newColumn, alterNullable, alterType, alterDefaultValue));
     }
 
     if (recreatePrimaryKey && !primaryKeysForTable(table).isEmpty()) {
@@ -522,6 +514,21 @@ public class PostgreSQLDialect extends SqlDialect {
 
     return statements;
   }
+
+
+  private String addAlterTableConstraint(Table table, Column newColumn, boolean alterNullable, boolean alterType,
+      boolean alterDefaultValue) {
+    StringBuilder sqlBuilder = new StringBuilder();
+    sqlBuilder.append("ALTER TABLE " + schemaNamePrefix(table) + table.getName()
+                + (alterNullable ? " ALTER COLUMN " + newColumn.getName() + (newColumn.isNullable() ? " DROP NOT NULL" : " SET NOT NULL") : "")
+                + (alterNullable && alterType ? "," : "")
+                + (alterType ? " ALTER COLUMN " + newColumn.getName() + " TYPE " + sqlRepresentationOfColumnType(newColumn, false, false, true) : "")
+                + (alterDefaultValue && (alterNullable || alterType) ? "," : "")
+                + (alterDefaultValue ? " ALTER COLUMN " + newColumn.getName() + (!newColumn.getDefaultValue().isEmpty() ? " SET DEFAULT " + newColumn.getDefaultValue() : " DROP DEFAULT") : "")
+        );
+    return sqlBuilder.toString();
+  }
+
 
   private String addColumnComment(Table table, Column column) {
     StringBuilder comment = new StringBuilder ("COMMENT ON COLUMN " + schemaNamePrefix() + table.getName() + "." + column.getName() + " IS 'REALNAME:[" + column.getName() + "]/TYPE:[" + column.getType().toString() + "]");
@@ -604,5 +611,18 @@ public class PostgreSQLDialect extends SqlDialect {
   protected String getSqlFrom(Boolean literalValue) {
     return literalValue ? "TRUE" : "FALSE";
   }
+
+
+  @Override
+  protected String getSqlForSome(AliasedField aliasedField) {
+    return "bool_or(" + getSqlFrom(aliasedField) + ")";
+  }
+
+
+  @Override
+  protected String getSqlForEvery(AliasedField aliasedField) {
+    return "bool_and(" + getSqlFrom(aliasedField) + ")";
+  }
+
 
 }

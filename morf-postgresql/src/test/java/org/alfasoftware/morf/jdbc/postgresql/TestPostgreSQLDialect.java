@@ -1180,4 +1180,24 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected String varCharCast(String value) {
     return value;
   }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectSome()
+   */
+  @Override
+  protected String expectedSelectSome() {
+    return "SELECT bool_or(booleanField) FROM \"TESTSCHEMA\".Test";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectEvery()
+   */
+  @Override
+  protected String expectedSelectEvery() {
+    return "SELECT bool_and(booleanField) FROM \"TESTSCHEMA\".Test";
+  }
+
+
 }
