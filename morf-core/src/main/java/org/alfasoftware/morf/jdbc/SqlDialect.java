@@ -1664,6 +1664,10 @@ public abstract class SqlDialect {
         return "AVG(" + getSqlFrom(function.getArguments().get(0)) + ")";
       case LENGTH:
         return getSqlforLength(function);
+      case SOME:
+        return getSqlForSome(function.getArguments().get(0));
+      case EVERY:
+        return getSqlForEvery(function.getArguments().get(0));
       case MAX:
       case MIN:
       case SUM:
@@ -1868,6 +1872,30 @@ public abstract class SqlDialect {
             + "] function");
     }
   }
+
+
+  /**
+   * Converts the some function into SQL.
+   *
+   * @param aliasedField
+   * @return a string representation of the SQL.
+   * @see org.alfasoftware.morf.sql.element.Function#some(AliasedField)
+   */
+  protected String getSqlForSome(AliasedField aliasedField) {
+    return "MAX(" + getSqlFrom(aliasedField) + ")";
+  }
+
+
+  /**
+   * Converts the every function into SQL.
+   *
+   * @param aliasedField
+   * @return a string representation of the SQL.
+   * @see org.alfasoftware.morf.sql.element.Function#every(AliasedField)
+   */
+  protected String getSqlForEvery(AliasedField aliasedField) {
+    return "MIN(" + getSqlFrom(aliasedField) + ")";
+  };
 
 
   /**

@@ -40,6 +40,16 @@ public enum FunctionType {
   MIN,
 
   /**
+   * Some function. Find the maximum value of a boolean column (e.g. SOME(amount > 0))
+   */
+  SOME,
+
+  /**
+   * Every function. Find the minimum value of a boolean column (e.g. EVERY(amount > 0))
+   */
+  EVERY,
+
+  /**
    * Sum function (e.g. SUM(assetCost))
    */
   SUM,

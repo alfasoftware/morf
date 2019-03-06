@@ -139,6 +139,28 @@ public final class Function extends AliasedField implements Driver {
 
 
   /**
+   * Helper method to create an instance of the "some" SQL function.
+   *
+   * @param fieldToEvaluate the field to evaluate in the some function.
+   * @return an instance of the some function
+   */
+  public static Function some(AliasedField fieldToEvaluate) {
+    return new Function(FunctionType.SOME, fieldToEvaluate);
+  }
+
+
+  /**
+   * Helper method to create an instance of the "every" SQL function.
+   *
+   * @param fieldToEvaluate the field to evaluate in the every function.
+   * @return an instance of the every function
+   */
+  public static Function every(AliasedField fieldToEvaluate) {
+    return new Function(FunctionType.EVERY, fieldToEvaluate);
+  }
+
+
+  /**
    * Helper method to create an instance of the "sum" SQL function.
    *
    * @param fieldToEvaluate the field to evaluate in the sum function. This can be any expression resulting in a single column of data.
