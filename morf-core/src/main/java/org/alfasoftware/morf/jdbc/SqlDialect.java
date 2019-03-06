@@ -1877,7 +1877,7 @@ public abstract class SqlDialect {
   /**
    * Converts the some function into SQL.
    *
-   * @param aliasedField
+   * @param aliasedField the field to get the maximum for.
    * @return a string representation of the SQL.
    * @see org.alfasoftware.morf.sql.element.Function#some(AliasedField)
    */
@@ -1889,7 +1889,7 @@ public abstract class SqlDialect {
   /**
    * Converts the every function into SQL.
    *
-   * @param aliasedField
+   * @param aliasedField the field to get the minimum for.
    * @return a string representation of the SQL.
    * @see org.alfasoftware.morf.sql.element.Function#every(AliasedField)
    */
@@ -3235,11 +3235,12 @@ public abstract class SqlDialect {
 
   /**
    * Sets up a parameter on {@link NamedParameterPreparedStatement} with a value.
-   *
-   * @param statement
-   * @param values
-   * @param parameter
-   * @throws SQLException
+
+   * @param statement The {@link PreparedStatement} to set up
+   * @param values The values.
+   * @param parameter The parameters.
+   * @throws RuntimeException if a data type is not supported or if a
+   *         supplied string value cannot be converted to the column data type.
    */
   public void prepareStatementParameters(NamedParameterPreparedStatement statement, DataValueLookup values, SqlParameter parameter) throws SQLException {
     switch (parameter.getMetadata().getType()) {

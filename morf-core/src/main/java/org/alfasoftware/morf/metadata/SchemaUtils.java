@@ -491,7 +491,8 @@ public final class SchemaUtils {
 
     /**
      * Set the data type on this column
-     * 
+     *
+     * @param dataType the datatype to set.
      * @return this, for method chaining.
      */
     public ColumnBuilder dataType(DataType dataType);

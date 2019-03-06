@@ -43,9 +43,11 @@ import static org.alfasoftware.morf.sql.element.Criterion.and;
 import static org.alfasoftware.morf.sql.element.Function.average;
 import static org.alfasoftware.morf.sql.element.Function.count;
 import static org.alfasoftware.morf.sql.element.Function.daysBetween;
+import static org.alfasoftware.morf.sql.element.Function.every;
 import static org.alfasoftware.morf.sql.element.Function.max;
 import static org.alfasoftware.morf.sql.element.Function.min;
 import static org.alfasoftware.morf.sql.element.Function.random;
+import static org.alfasoftware.morf.sql.element.Function.some;
 import static org.alfasoftware.morf.sql.element.Function.sum;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -1319,6 +1321,26 @@ public abstract class AbstractSqlDialectTest {
   protected String expectedSelectMinimumWithExpression() {
     return "SELECT MIN(intField - 1) FROM " + tableName(TEST_TABLE);
   }
+
+
+  /**
+   * Tests select statement with Some function.
+   */
+  @Test
+  public void testSelectSome() {
+    SelectStatement statement = select(some(field(BOOLEAN_FIELD))).from(tableRef(TEST_TABLE));
+    assertEquals("Select scripts are not the same", expectedSelectSome(), testDialect.convertStatementToSQL(statement));
+  }
+
+
+  /**
+  * Tests select statement with Every function.
+  */
+ @Test
+ public void testSelectEvery() {
+   SelectStatement statement = select(every(field(BOOLEAN_FIELD))).from(tableRef(TEST_TABLE));
+   assertEquals("Select scripts are not the same", expectedSelectEvery(), testDialect.convertStatementToSQL(statement));
+ }
 
 
   /**
@@ -4902,6 +4924,22 @@ public abstract class AbstractSqlDialectTest {
   protected String expectedRandomFunction() {
     return "RAND()";
   }
+
+
+  /**
+   * @return
+   */
+  protected String expectedSelectSome() {
+    return "SELECT MAX(booleanField) FROM " + tableName(TEST_TABLE);
+  };
+
+
+  /**
+   * @return
+   */
+  protected String expectedSelectEvery() {
+    return "SELECT MIN(booleanField) FROM " + tableName(TEST_TABLE);
+  };
 
 
   /**

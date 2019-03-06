@@ -24,6 +24,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.alfasoftware.morf.sql.SqlUtils.cast;
 import static org.alfasoftware.morf.sql.SqlUtils.concat;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.insert;
@@ -37,6 +38,7 @@ import static org.alfasoftware.morf.sql.SqlUtils.selectFirst;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.SqlUtils.truncate;
 import static org.alfasoftware.morf.sql.SqlUtils.update;
+import static org.alfasoftware.morf.sql.SqlUtils.when;
 import static org.alfasoftware.morf.sql.SqlUtils.windowFunction;
 import static org.alfasoftware.morf.sql.element.Criterion.and;
 import static org.alfasoftware.morf.sql.element.Criterion.eq;
@@ -48,6 +50,7 @@ import static org.alfasoftware.morf.sql.element.Function.average;
 import static org.alfasoftware.morf.sql.element.Function.coalesce;
 import static org.alfasoftware.morf.sql.element.Function.count;
 import static org.alfasoftware.morf.sql.element.Function.daysBetween;
+import static org.alfasoftware.morf.sql.element.Function.every;
 import static org.alfasoftware.morf.sql.element.Function.floor;
 import static org.alfasoftware.morf.sql.element.Function.leftPad;
 import static org.alfasoftware.morf.sql.element.Function.leftTrim;
@@ -60,6 +63,7 @@ import static org.alfasoftware.morf.sql.element.Function.power;
 import static org.alfasoftware.morf.sql.element.Function.random;
 import static org.alfasoftware.morf.sql.element.Function.randomString;
 import static org.alfasoftware.morf.sql.element.Function.rightTrim;
+import static org.alfasoftware.morf.sql.element.Function.some;
 import static org.alfasoftware.morf.sql.element.Function.substring;
 import static org.alfasoftware.morf.sql.element.Function.sum;
 import static org.alfasoftware.morf.sql.element.Function.yyyymmddToDate;
@@ -114,9 +118,11 @@ import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.sql.SqlUtils;
 import org.alfasoftware.morf.sql.TruncateStatement;
 import org.alfasoftware.morf.sql.UpdateStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.element.CaseStatement;
 import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
@@ -222,6 +228,11 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         column("column5", DataType.STRING, 20).nullable()
       ),
     table("BooleanTable")
+      .columns(
+        column("column1", DataType.BOOLEAN).nullable(),
+        column("column2", DataType.BOOLEAN).nullable()
+      ),
+    table("AccumulateBooleanTable")
       .columns(
         column("column1", DataType.BOOLEAN).nullable(),
         column("column2", DataType.BOOLEAN).nullable()
@@ -413,6 +424,14 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     .table("BooleanTable",
       record()
         .setBoolean("column1", false)
+        .setBoolean("column2", true)
+    )
+    .table("AccumulateBooleanTable",
+      record()
+        .setBoolean("column1", false)
+        .setBoolean("column2", true),
+      record()
+        .setBoolean("column1", true)
         .setBoolean("column2", true)
     )
     .table("LeftAndRightTrimTable",
@@ -2969,6 +2988,74 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         .from(tableRef("WindowFunctionTable")),
 
       "7-30.3","7-30.3","7-30.3","7-30.3","7-30.3","7-30.3","7-30.3");
+  }
+
+
+  /**
+   * Tests behaviour of the Every function
+   */
+  @Test
+  public void testEveryFunction() {
+    SelectStatement selectEvery =
+        select(
+          every(field("column1")).as("column1Every"),
+          every(field("column2")).as("column2Every"))
+        .from("AccumulateBooleanTable");
+    sqlScriptExecutorProvider.get().executeQuery(selectEvery).processWith(new ResultSetProcessor<Void>() {
+      @Override
+      public Void process(ResultSet resultSet) throws SQLException {
+        while (resultSet.next()) {
+          assertEquals("Aggregated Every value of column1 should be", false, resultSet.getBoolean(1));
+          assertEquals("Aggregated Every value of column2 should be", true, resultSet.getBoolean(2));
+        }
+        return null;
+      }
+    });
+  }
+
+
+  /**
+   * Tests behaviour of the Some function
+   */
+  @Test
+  public void testSomeFunction() {
+    SelectStatement selectSome =
+        select(
+          some(field("column1")).as("column1Every"),
+          some(field("column2")).as("column2Every"))
+        .from("AccumulateBooleanTable");
+    sqlScriptExecutorProvider.get().executeQuery(selectSome).processWith(new ResultSetProcessor<Void>() {
+      @Override
+      public Void process(ResultSet resultSet) throws SQLException {
+        while (resultSet.next()) {
+          assertEquals("Aggregated Some value of column1 should be", true, resultSet.getBoolean(1));
+          assertEquals("Aggregated Some value of column2 should be", true, resultSet.getBoolean(2));
+        }
+        return null;
+      }
+    });
+  }
+
+
+  /**
+   * Tests behaviour of Some function with a case statement as the argument.
+   */
+  @Test
+  public void testSomeFunctionWithACaseStatement() {
+    CaseStatement caseStmt = SqlUtils.caseStatement(
+      when(cast(field("id")).asType(INTEGER).lessThanOrEqualTo(literal(1))).then(true))
+        .otherwise(false);
+    SelectStatement selectComplexSome = select(some(caseStmt), every(caseStmt)).from(tableRef("withDefaultValue"));
+    sqlScriptExecutorProvider.get().executeQuery(selectComplexSome).processWith(new ResultSetProcessor<Void>() {
+      @Override
+      public Void process(ResultSet resultSet) throws SQLException {
+        while (resultSet.next()) {
+        assertEquals("Aggregated value of id should be", true, resultSet.getBoolean(1));
+        assertEquals("Aggregated value of id should be", false, resultSet.getBoolean(2));
+      }
+      return null;
+      }
+    });
   }
 
 
