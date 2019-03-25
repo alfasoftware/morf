@@ -60,17 +60,28 @@ public class PostgreSQLDialect extends SqlDialect {
       return "";
     }
 
-    return "\"" + schemaName.toUpperCase() + "\"" + ".";
+    return schemaName + ".";
   }
 
 
   @Override
   protected String schemaNamePrefix(TableReference tableRef) {
+    if(tableRef.isTemporary()) {
+      return "";
+    }
     if (StringUtils.isEmpty(tableRef.getSchemaName())) {
       return schemaNamePrefix();
-    } else {
-      return "\"" + tableRef.getSchemaName().toUpperCase() + "\"" + ".";
     }
+    return tableRef.getSchemaName() + ".";
+  }
+
+
+  @Override
+  protected String schemaNamePrefix(Table table) {
+    if (table.isTemporary()) {
+      return "";
+    }
+    return schemaNamePrefix();
   }
 
 
@@ -117,14 +128,12 @@ public class PostgreSQLDialect extends SqlDialect {
     createTableStatement.append("CREATE ");
 
     if(table.isTemporary()) {
-      createTableStatement.append("TEMP TABLE ");
+      createTableStatement.append("TEMP ");
     }
-    else {
       createTableStatement.append("TABLE ")
-                          .append(schemaNamePrefix());
-    }
-    createTableStatement.append(table.getName())
-                        .append(" (");
+                          .append(schemaNamePrefix(table))
+                          .append(table.getName())
+                          .append(" (");
 
     List<String> primaryKeys = new ArrayList<>();
     boolean first = true;
@@ -181,10 +190,8 @@ public class PostgreSQLDialect extends SqlDialect {
 
     truncateStatement.append("TRUNCATE TABLE ");
 
-    if(!table.isTemporary()){
-      truncateStatement.append(schemaNamePrefix());
-    }
-    truncateStatement.append(table.getName());
+    truncateStatement.append(schemaNamePrefix(table))
+                     .append(table.getName());
 
     statements.add(truncateStatement.toString());
     return statements;
@@ -193,7 +200,7 @@ public class PostgreSQLDialect extends SqlDialect {
 
   @Override
   public Collection<String> renameTableStatements(Table from, Table to) {
-    Iterable<String> renameTable = ImmutableList.of("ALTER TABLE " + schemaNamePrefix() + from.getName() + " RENAME TO " + to.getName());
+    Iterable<String> renameTable = ImmutableList.of("ALTER TABLE " + schemaNamePrefix(from) + from.getName() + " RENAME TO " + to.getName());
 
     Iterable<String> renamePk = SchemaUtils.primaryKeysForTable(from).isEmpty()
         ? ImmutableList.of()
@@ -240,7 +247,7 @@ public class PostgreSQLDialect extends SqlDialect {
 
   @Override
   public Collection<String> deleteAllFromTableStatements(Table table) {
-    return ImmutableList.of("DELETE FROM " + table.getName());
+    return ImmutableList.of("DELETE FROM " + schemaNamePrefix(table) + table.getName());
   }
 
 
@@ -258,10 +265,8 @@ public class PostgreSQLDialect extends SqlDialect {
 
     dropStatement.append("DROP TABLE ");
 
-    if(!table.isTemporary()){
-      dropStatement.append(schemaNamePrefix());
-    }
-    dropStatement.append(table.getName());
+    dropStatement.append(schemaNamePrefix(table))
+                 .append(table.getName());
 
     statements.add(dropStatement.toString());
 
@@ -473,7 +478,7 @@ public class PostgreSQLDialect extends SqlDialect {
 
   @Override
   public Collection<String> getSqlForAnalyseTable(Table table) {
-    return ImmutableList.of("ANALYZE " + schemaNamePrefix() + table.getName());
+    return ImmutableList.of("ANALYZE " + schemaNamePrefix(table) + table.getName());
   }
 
 
@@ -531,7 +536,7 @@ public class PostgreSQLDialect extends SqlDialect {
 
 
   private String addColumnComment(Table table, Column column) {
-    StringBuilder comment = new StringBuilder ("COMMENT ON COLUMN " + schemaNamePrefix() + table.getName() + "." + column.getName() + " IS 'REALNAME:[" + column.getName() + "]/TYPE:[" + column.getType().toString() + "]");
+    StringBuilder comment = new StringBuilder ("COMMENT ON COLUMN " + schemaNamePrefix(table) + table.getName() + "." + column.getName() + " IS 'REALNAME:[" + column.getName() + "]/TYPE:[" + column.getType().toString() + "]");
     if(column.isAutoNumbered()) {
       int autoNumberStart = column.getAutoNumberStart() == -1 ? 1 : column.getAutoNumberStart();
       comment.append("/AUTONUMSTART:[" + autoNumberStart + "]");
@@ -573,11 +578,9 @@ public class PostgreSQLDialect extends SqlDialect {
     }
     statement.append("INDEX ")
              .append(index.getName())
-             .append(" ON ");
-    if(!table.isTemporary()) {
-      statement.append(schemaNamePrefix());
-    }
-    statement.append(table.getName())
+             .append(" ON ")
+             .append(schemaNamePrefix(table))
+             .append(table.getName())
              .append(" (")
              .append(Joiner.on(",").join(index.columnNames()))
              .append(")");
