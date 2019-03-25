@@ -953,14 +953,32 @@ class NuoDBDialect extends SqlDialect {
 
 
   /**
-   * Override the core method to stop qualification of temporary tables
+   * Creates a qualified (with schema prefix) table name string, from a table object.
+   *
+   * @param table The table metadata.
+   * @return The table's qualified name.
    */
-  @Override
-  protected String qualifiedTableName(Table table) {
+  private String qualifiedTableName(Table table) {
     if (table.isTemporary()) {
       return table.getName(); // temporary tables do not exist in a schema
+    }
+    return schemaNamePrefix() + table.getName();
+  }
+
+
+  /**
+   * Creates a qualified (with schema prefix) table name string, from a table reference.
+   *
+   * <p>If the reference has a schema specified, that schema is used. Otherwise, the default schema is used.</p>
+   *
+   * @param table The table metadata.
+   * @return The table's qualified name.
+   */
+  private String qualifiedTableName(TableReference table) {
+    if (StringUtils.isBlank(table.getSchemaName())) {
+      return schemaNamePrefix() + table.getName();
     } else {
-      return super.qualifiedTableName(table);
+      return table.getSchemaName() + "." + table.getName();
     }
   }
 

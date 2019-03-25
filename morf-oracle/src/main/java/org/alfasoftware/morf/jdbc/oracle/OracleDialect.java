@@ -1153,7 +1153,7 @@ class OracleDialect extends SqlDialect {
         .append(convertStatementToSQL(selectStatement))
         .toString()
       );
-    result.add("ALTER TABLE " + qualifiedTableName(table) + " NOPARALLEL LOGGING");
+    result.add("ALTER TABLE " + schemaNamePrefix() + table.getName()  + " NOPARALLEL LOGGING");
 
     if (!primaryKeysForTable(table).isEmpty()) {
       result.add("ALTER INDEX " + schemaNamePrefix() + primaryKeyConstraintName(table.getName()) + " NOPARALLEL LOGGING");
