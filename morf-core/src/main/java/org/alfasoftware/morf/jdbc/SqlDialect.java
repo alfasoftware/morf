@@ -2872,9 +2872,9 @@ public abstract class SqlDialect {
     }
 
     List<String> sql = new ArrayList<>();
-    sql.add(String.format("DELETE FROM %s where %s = '%s'", qualifiedTableName(autoNumberTable), nameColumn,
+    sql.add(String.format("DELETE FROM %s where %s = '%s'", schemaNamePrefix(autoNumberTable) + autoNumberTable.getName(), nameColumn,
       autoNumberName));
-    sql.add(String.format("INSERT INTO %s (%s, %s) VALUES('%s', (%s))", qualifiedTableName(autoNumberTable),
+    sql.add(String.format("INSERT INTO %s (%s, %s) VALUES('%s', (%s))", schemaNamePrefix(autoNumberTable) + autoNumberTable.getName(),
       nameColumn, valueColumn, autoNumberName, getExistingMaxAutoNumberValue(dataTable, generatedFieldName)));
 
     return sql;
@@ -2917,11 +2917,11 @@ public abstract class SqlDialect {
 
     if (sourceReference == null) {
       return new FieldFromSelect(new SelectStatement(Function.isnull(new FieldReference(valueColumn), new FieldLiteral(1))).from(
-        new TableReference(autoNumberTable.getName())).where(
+        new TableReference(autoNumberTable.getName(), autoNumberTable.isTemporary())).where(
         new Criterion(Operator.EQ, new FieldReference(nameColumn), autoNumberName)));
     } else {
       return new MathsField(new FieldFromSelect(new SelectStatement(Function.isnull(new FieldReference(valueColumn),
-        new FieldLiteral(0))).from(new TableReference(autoNumberTable.getName())).where(
+        new FieldLiteral(0))).from(new TableReference(autoNumberTable.getName(), autoNumberTable.isTemporary())).where(
         new Criterion(Operator.EQ, new FieldReference(nameColumn), autoNumberName))), MathsOperator.PLUS, new FieldReference(
           sourceReference, "id"));
     }
@@ -3110,34 +3110,6 @@ public abstract class SqlDialect {
    */
   public Collection<String> indexDropStatements(@SuppressWarnings("unused") Table table, Index indexToBeRemoved) {
     return Arrays.asList("DROP INDEX " + indexToBeRemoved.getName());
-  }
-
-
-  /**
-   * Creates a qualified (with schema prefix) table name string, from a table object.
-   *
-   * @param table The table metadata.
-   * @return The table's qualified name.
-   */
-  protected String qualifiedTableName(Table table) {
-    return schemaNamePrefix() + table.getName();
-  }
-
-
-  /**
-   * Creates a qualified (with schema prefix) table name string, from a table reference.
-   *
-   * <p>If the reference has a schema specified, that schema is used. Otherwise, the default schema is used.</p>
-   *
-   * @param table The table metadata.
-   * @return The table's qualified name.
-   */
-  protected String qualifiedTableName(TableReference table) {
-    if (StringUtils.isBlank(table.getSchemaName())) {
-      return schemaNamePrefix() + table.getName();
-    } else {
-      return table.getSchemaName() + "." + table.getName();
-    }
   }
 
 
