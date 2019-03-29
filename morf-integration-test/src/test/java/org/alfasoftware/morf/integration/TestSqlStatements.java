@@ -3045,7 +3045,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     CaseStatement caseStmt = SqlUtils.caseStatement(
       when(cast(field("id")).asType(INTEGER).lessThanOrEqualTo(literal(1))).then(true))
         .otherwise(false);
-    SelectStatement selectComplexSome = select(some(caseStmt), every(caseStmt)).from(tableRef("withDefaultValue"));
+    SelectStatement selectComplexSome = select(some(caseStmt), every(caseStmt)).from(tableRef("WithDefaultValue"));
     sqlScriptExecutorProvider.get().executeQuery(selectComplexSome).processWith(new ResultSetProcessor<Void>() {
       @Override
       public Void process(ResultSet resultSet) throws SQLException {
