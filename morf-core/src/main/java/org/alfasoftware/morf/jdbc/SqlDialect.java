@@ -1582,7 +1582,7 @@ public abstract class SqlDialect {
   protected String getSqlFrom(FieldLiteral field) {
     switch (field.getDataType()) {
       case BOOLEAN:
-        return Boolean.valueOf(field.getValue()) ? "1" : "0";
+        return getSqlFrom(Boolean.valueOf(field.getValue()));
       case STRING:
         return makeStringLiteral(field.getValue());
       case DATE:
@@ -1664,6 +1664,10 @@ public abstract class SqlDialect {
         return "AVG(" + getSqlFrom(function.getArguments().get(0)) + ")";
       case LENGTH:
         return getSqlforLength(function);
+      case SOME:
+        return getSqlForSome(function.getArguments().get(0));
+      case EVERY:
+        return getSqlForEvery(function.getArguments().get(0));
       case MAX:
       case MIN:
       case SUM:
@@ -1868,6 +1872,30 @@ public abstract class SqlDialect {
             + "] function");
     }
   }
+
+
+  /**
+   * Converts the some function into SQL.
+   *
+   * @param aliasedField the field to get the maximum for.
+   * @return a string representation of the SQL.
+   * @see org.alfasoftware.morf.sql.element.Function#some(AliasedField)
+   */
+  protected String getSqlForSome(AliasedField aliasedField) {
+    return "MAX(" + getSqlFrom(aliasedField) + ")";
+  }
+
+
+  /**
+   * Converts the every function into SQL.
+   *
+   * @param aliasedField the field to get the minimum for.
+   * @return a string representation of the SQL.
+   * @see org.alfasoftware.morf.sql.element.Function#every(AliasedField)
+   */
+  protected String getSqlForEvery(AliasedField aliasedField) {
+    return "MIN(" + getSqlFrom(aliasedField) + ")";
+  };
 
 
   /**
@@ -2844,9 +2872,9 @@ public abstract class SqlDialect {
     }
 
     List<String> sql = new ArrayList<>();
-    sql.add(String.format("DELETE FROM %s where %s = '%s'", qualifiedTableName(autoNumberTable), nameColumn,
+    sql.add(String.format("DELETE FROM %s where %s = '%s'", schemaNamePrefix(autoNumberTable) + autoNumberTable.getName(), nameColumn,
       autoNumberName));
-    sql.add(String.format("INSERT INTO %s (%s, %s) VALUES('%s', (%s))", qualifiedTableName(autoNumberTable),
+    sql.add(String.format("INSERT INTO %s (%s, %s) VALUES('%s', (%s))", schemaNamePrefix(autoNumberTable) + autoNumberTable.getName(),
       nameColumn, valueColumn, autoNumberName, getExistingMaxAutoNumberValue(dataTable, generatedFieldName)));
 
     return sql;
@@ -2889,11 +2917,11 @@ public abstract class SqlDialect {
 
     if (sourceReference == null) {
       return new FieldFromSelect(new SelectStatement(Function.isnull(new FieldReference(valueColumn), new FieldLiteral(1))).from(
-        new TableReference(autoNumberTable.getName())).where(
+        new TableReference(autoNumberTable.getName(), autoNumberTable.isTemporary())).where(
         new Criterion(Operator.EQ, new FieldReference(nameColumn), autoNumberName)));
     } else {
       return new MathsField(new FieldFromSelect(new SelectStatement(Function.isnull(new FieldReference(valueColumn),
-        new FieldLiteral(0))).from(new TableReference(autoNumberTable.getName())).where(
+        new FieldLiteral(0))).from(new TableReference(autoNumberTable.getName(), autoNumberTable.isTemporary())).where(
         new Criterion(Operator.EQ, new FieldReference(nameColumn), autoNumberName))), MathsOperator.PLUS, new FieldReference(
           sourceReference, "id"));
     }
@@ -3086,34 +3114,6 @@ public abstract class SqlDialect {
 
 
   /**
-   * Creates a qualified (with schema prefix) table name string, from a table object.
-   *
-   * @param table The table metadata.
-   * @return The table's qualified name.
-   */
-  protected String qualifiedTableName(Table table) {
-    return schemaNamePrefix() + table.getName();
-  }
-
-
-  /**
-   * Creates a qualified (with schema prefix) table name string, from a table reference.
-   *
-   * <p>If the reference has a schema specified, that schema is used. Otherwise, the default schema is used.</p>
-   *
-   * @param table The table metadata.
-   * @return The table's qualified name.
-   */
-  protected String qualifiedTableName(TableReference table) {
-    if (StringUtils.isBlank(table.getSchemaName())) {
-      return schemaNamePrefix() + table.getName();
-    } else {
-      return table.getSchemaName() + "." + table.getName();
-    }
-  }
-
-
-  /**
    * Generates the SQL to create a table and insert the data specified in the {@link SelectStatement}.
    *
    * @param table The table to create.
@@ -3185,7 +3185,7 @@ public abstract class SqlDialect {
 
 
   /**
-   * Sets up a parameters on a {@link NamedParameterPreparedStatement} with a set of values.
+   * Sets up parameters on a {@link NamedParameterPreparedStatement} with a set of values.
    *
    * @param statement The {@link PreparedStatement} to set up
    * @param parameters The parameters.
@@ -3196,60 +3196,74 @@ public abstract class SqlDialect {
   public void prepareStatementParameters(NamedParameterPreparedStatement statement, Iterable<SqlParameter> parameters, DataValueLookup values) {
     parameters.forEach(parameter -> {
       try {
-        switch (parameter.getMetadata().getType()) {
-          case BIG_INTEGER:
-            Long longVal = values.getLong(parameter.getImpliedName());
-            if (longVal == null) {
-              statement.setObject(parameter, null);
-            } else {
-              statement.setLong(parameter, longVal);
-            }
-            break;
-          case BLOB:
-            byte[] blobVal = values.getByteArray(parameter.getImpliedName());
-            if (blobVal == null) {
-              statement.setBlob(parameter, new byte[] {});
-            } else {
-              statement.setBlob(parameter, blobVal);
-            }
-            break;
-          case BOOLEAN:
-            prepareBooleanParameter(statement, values.getBoolean(parameter.getImpliedName()), parameter);
-            break;
-          case DATE:
-            Date dateVal = values.getDate(parameter.getImpliedName());
-            if (dateVal == null) {
-              statement.setObject(parameter, null);
-            } else {
-              statement.setDate(parameter, new java.sql.Date(dateVal.getTime()));
-            }
-            break;
-          case DECIMAL:
-            statement.setBigDecimal(parameter, values.getBigDecimal(parameter.getImpliedName()));
-            break;
-          case INTEGER:
-            prepareIntegerParameter(statement, values.getInteger(parameter.getImpliedName()), parameter);
-            break;
-          case CLOB:
-          case STRING:
-            String stringVal = values.getString(parameter.getImpliedName());
-            if (stringVal == null || stringVal.equals("")) {
-              // since web-9161 for *ALL* databases
-              // - we are using EmptyStringHQLAssistant
-              // - and store empty strings as null
-              statement.setString(parameter, null);
-            } else {
-              statement.setString(parameter, stringVal);
-            }
-            break;
-          default:
-            throw new RuntimeException(String.format("Unexpected DataType [%s]", parameter.getMetadata().getType()));
-        }
+        prepareStatementParameters(statement, values, parameter);
       } catch (Exception e) {
         throw new RuntimeException(String.format("Error setting parameter value, column [%s], value [%s] on prepared statement",
           parameter.getMetadata().getName(), values.getObject(parameter.getMetadata())), e);
       }
     });
+  }
+
+
+  /**
+   * Sets up a parameter on {@link NamedParameterPreparedStatement} with a value.
+
+   * @param statement The {@link PreparedStatement} to set up
+   * @param values The values.
+   * @param parameter The parameters.
+   * @throws RuntimeException if a data type is not supported or if a
+   *         supplied string value cannot be converted to the column data type.
+   */
+  public void prepareStatementParameters(NamedParameterPreparedStatement statement, DataValueLookup values, SqlParameter parameter) throws SQLException {
+    switch (parameter.getMetadata().getType()) {
+      case BIG_INTEGER:
+        Long longVal = values.getLong(parameter.getImpliedName());
+        if (longVal == null) {
+          statement.setObject(parameter, null);
+        } else {
+          statement.setLong(parameter, longVal);
+        }
+        break;
+      case BLOB:
+        byte[] blobVal = values.getByteArray(parameter.getImpliedName());
+        if (blobVal == null) {
+          statement.setBlob(parameter, new byte[] {});
+        } else {
+          statement.setBlob(parameter, blobVal);
+        }
+        break;
+      case BOOLEAN:
+        prepareBooleanParameter(statement, values.getBoolean(parameter.getImpliedName()), parameter);
+        break;
+      case DATE:
+        Date dateVal = values.getDate(parameter.getImpliedName());
+        if (dateVal == null) {
+          statement.setObject(parameter, null);
+        } else {
+          statement.setDate(parameter, new java.sql.Date(dateVal.getTime()));
+        }
+        break;
+      case DECIMAL:
+        statement.setBigDecimal(parameter, values.getBigDecimal(parameter.getImpliedName()));
+        break;
+      case INTEGER:
+        prepareIntegerParameter(statement, values.getInteger(parameter.getImpliedName()), parameter);
+        break;
+      case CLOB:
+      case STRING:
+        String stringVal = values.getString(parameter.getImpliedName());
+        if (stringVal == null || stringVal.equals("")) {
+          // since web-9161 for *ALL* databases
+          // - we are using EmptyStringHQLAssistant
+          // - and store empty strings as null
+          statement.setString(parameter, null);
+        } else {
+          statement.setString(parameter, stringVal);
+        }
+        break;
+      default:
+        throw new RuntimeException(String.format("Unexpected DataType [%s]", parameter.getMetadata().getType()));
+    }
   }
 
 

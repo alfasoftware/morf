@@ -25,17 +25,15 @@ import java.text.ParseException;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
-import org.apache.commons.lang.StringUtils;
-import org.junit.Test;
-import org.mockito.ArgumentCaptor;
-
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
-import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.FunctionType;
-import com.google.common.base.Predicate;
+import org.apache.commons.lang.StringUtils;
+import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 
 /**
  * Tests for {@link AuditRecordHelper}.
@@ -89,10 +87,8 @@ public class TestAuditRecordHelper {
     assertEquals("UUID ", uuid.toString(), getValueWithAlias(statement, "upgradeUUID").getValue());
     assertEquals("UUID ", description, getValueWithAlias(statement, "description").getValue());
 
-    Function nowFuncRepresentation = getFunctionWithAlias(statement, "appliedTime");
-    assertEquals("Wraped in integer date function", FunctionType.DATE_TO_YYYYMMDDHHMMSS, nowFuncRepresentation.getType());
-    assertEquals("Now function as argument", 1, nowFuncRepresentation.getArguments().size());
-    assertEquals("Now function", FunctionType.NOW, ((Function) nowFuncRepresentation.getArguments().get(0)).getType());
+    Cast nowCastRepresentation = getCastWithAlias(statement, "appliedTime");
+    assertEquals("Wraped in integer date function with now function as argument", FunctionType.DATE_TO_YYYYMMDDHHMMSS.toString() + "(" + FunctionType.NOW + "())", nowCastRepresentation.getExpression().toString());
   }
 
 
@@ -104,13 +100,10 @@ public class TestAuditRecordHelper {
   }
 
 
-  private static Function getFunctionWithAlias(InsertStatement statement, final String alias) {
-    return from(statement.getValues()).filter(Function.class).filter(new Predicate<Function>() {
-      @Override
-      public boolean apply(Function input) {
-        return StringUtils.equals(alias, input.getAlias());
-      }
-    }).first().get();
+  private static Cast getCastWithAlias(InsertStatement statement, final String alias) {
+    return from(statement.getValues()).filter(Cast.class)
+        .filter(input -> StringUtils.equals(alias, input.getAlias()))
+        .first().get();
   }
 
 }

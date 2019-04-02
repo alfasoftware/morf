@@ -23,6 +23,7 @@
     <module>morf-mysql</module>
     <module>morf-nuodb</module>
     <module>morf-oracle</module>
+    <module>morf-postgresql</module>
     <module>morf-sqlserver</module>
     <module>morf-integration-test</module>
   </modules>
@@ -219,6 +220,11 @@
       <dependency>
         <groupId>org.alfasoftware</groupId>
         <artifactId>morf-oracle</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.alfasoftware</groupId>
+        <artifactId>morf-postgresql</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>

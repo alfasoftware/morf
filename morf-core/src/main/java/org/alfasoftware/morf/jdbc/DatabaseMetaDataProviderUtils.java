@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.jdbc;
 
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -31,7 +32,10 @@ public class DatabaseMetaDataProviderUtils {
    * Regex for extracting the autonum start from column comments
    */
   private static final Pattern AUTONUM_START_REGEX = Pattern.compile("AUTONUMSTART:\\[(\\d+)\\]");
-
+  /**
+   * Regex for extracting the data type from column comments
+   */
+  private static final Pattern DATA_TYPE_REGEX = Pattern.compile("TYPE:\\[(\\w+)\\]");
 
   /**
    * Get the auto increment start value (if available) from the column comments
@@ -47,6 +51,17 @@ public class DatabaseMetaDataProviderUtils {
       }
     }
     return -1;
+  }
+
+
+  public static Optional<String> getDataTypeFromColumnComment(String columnComment) {
+    if(StringUtils.isNotEmpty(columnComment)) {
+      Matcher matcher = DATA_TYPE_REGEX.matcher(columnComment);
+      if(matcher.find()) {
+        return Optional.of(matcher.group(1));
+      }
+    }
+    return Optional.empty();
   }
 
 

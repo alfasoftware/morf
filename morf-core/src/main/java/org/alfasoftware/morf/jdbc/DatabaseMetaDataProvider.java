@@ -338,9 +338,9 @@ public class DatabaseMetaDataProvider implements Schema {
 
 
   /**
-   * Implements the default method for obtaining the information as to whether a column is autonumbered,
-   * and if so, from what start value, from the database.  Optionally overridden in specific RDBMS implementations
-   * where the information is available from different sources.
+   * Implements the default method for obtaining additional column information. For the default method this is only
+   * as to whether a column is autonumbered, and if so, from what start value, from the database.  Optionally overridden in specific RDBMS implementations
+   * where the information is available from different sources and additional column information is available.
    *
    * @param tableName The name of the table.
    * @param columnBuilder The column under construction.
@@ -516,22 +516,19 @@ public class DatabaseMetaDataProvider implements Schema {
       case Types.NUMERIC:
       case Types.DECIMAL:
         return DataType.DECIMAL;
-
       case Types.CHAR:
       case Types.VARCHAR:
       case Types.LONGVARCHAR:
       case Types.LONGNVARCHAR:
       case Types.NVARCHAR:
         return DataType.STRING;
-
       case Types.BOOLEAN:
       case Types.BIT:
-        return DataType.BOOLEAN;
-      case Types.BINARY:
         return DataType.BOOLEAN;
       case Types.DATE:
         return DataType.DATE;
       case Types.BLOB:
+      case Types.BINARY:
       case Types.VARBINARY:
       case Types.LONGVARBINARY:
         return DataType.BLOB;
