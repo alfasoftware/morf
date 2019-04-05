@@ -29,8 +29,8 @@ class RecordBuilderImpl extends DataValueLookupBuilderImpl implements RecordBuil
     super();
   }
 
-  RecordBuilderImpl(DataValueLookupBuilderImpl copyFrom) {
-    super(copyFrom);
+  RecordBuilderImpl(DataValueLookupBuilderImpl copyFrom, int capacity) {
+    super(copyFrom, capacity);
   }
 
   @Override

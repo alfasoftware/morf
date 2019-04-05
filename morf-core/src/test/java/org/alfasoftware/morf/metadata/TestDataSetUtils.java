@@ -245,6 +245,36 @@ public class TestDataSetUtils {
 
 
   /**
+   * Check that a zero capacity decorator is permitted.
+   */
+  @Test
+  public void testIdentityDecoratorWithZeroCapacity() {
+    assertThat(
+      RecordDecorator.ofWithInitialCapacity(BASE_RECORD, 0),
+      originalMatcher()
+    );
+  }
+
+
+  /**
+   * Check that array resizing of decorators works.
+   */
+  @Test
+  public void testDecoratorExpansion() {
+    assertThat(
+      RecordDecorator.ofWithInitialCapacity(BASE_RECORD, 1)
+        .setString("additional1", "TEST1")
+        .setString("additional2", "TEST2")
+        .setString("additional3", "TEST3"),
+      originalMatcher()
+        .withValue("additional1", "TEST1")
+        .withValue("ADDITIONAL2", "TEST2")
+        .withValue("Additional3", "TEST3")
+    );
+  }
+
+
+  /**
    * Ensures that we do indeed get null when there is no value.
    */
   @Test

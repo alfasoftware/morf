@@ -29,8 +29,8 @@ class StatementParametersBuilderImpl extends DataValueLookupBuilderImpl implemen
     super();
   }
 
-  StatementParametersBuilderImpl(DataValueLookupBuilderImpl copyFrom) {
-    super(copyFrom);
+  StatementParametersBuilderImpl(DataValueLookupBuilderImpl copyFrom, int capacity) {
+    super(copyFrom, capacity);
   }
 
   @Override

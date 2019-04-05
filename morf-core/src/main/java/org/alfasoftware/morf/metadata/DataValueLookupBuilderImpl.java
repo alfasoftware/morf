@@ -76,15 +76,15 @@ class DataValueLookupBuilderImpl implements DataValueLookupBuilder {
    * Copy constructor
    *
    * @param copyFrom The object to copy.
+   * @param capacity The additional capacity to reserve.
    */
-  DataValueLookupBuilderImpl(DataValueLookupBuilderImpl copyFrom) {
-    if (copyFrom.data == null) {
-      this.data = null;
-    } else {
-      // Always allocate at least enough space for 8 more rows
-      this.data = Arrays.copyOf(copyFrom.data, Math.min(copyFrom.data.length, copyFrom.metadata.getColumnNames().size() + 8));
-    }
+  DataValueLookupBuilderImpl(DataValueLookupBuilderImpl copyFrom, int capacity) {
     this.metadata = copyFrom.metadata;
+    if (copyFrom.data == null) {
+      this.data = initialiseArray(capacity);
+    } else {
+      this.data = Arrays.copyOf(copyFrom.data, copyFrom.metadata.getColumnNames().size() + capacity);
+    }
   }
 
   @Override

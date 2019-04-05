@@ -17,6 +17,7 @@ package org.alfasoftware.morf.metadata;
 
 import java.math.BigDecimal;
 import java.sql.ResultSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiFunction;
 
@@ -24,6 +25,7 @@ import org.alfasoftware.morf.dataset.DataSetProducer;
 import org.alfasoftware.morf.dataset.Record;
 import org.joda.time.LocalDate;
 
+import com.google.common.base.Preconditions;
 import com.google.inject.spi.TypeConverter;
 
 
@@ -392,6 +394,9 @@ public final class DataSetUtils {
    */
   public static final class RecordDecorator extends RecordBuilderImpl {
 
+    /** The number of additional columns of space to reserve by default */
+    private static final int DEFAULT_CAPACITY = 8;
+
     /**
      * Not instantiatable.
      */
@@ -405,9 +410,29 @@ public final class DataSetUtils {
      * @return A new {@link RecordBuilder}.
      */
     public static RecordBuilder of(Record fallback) {
+      return ofWithInitialCapacity(fallback, DEFAULT_CAPACITY);
+    }
+
+    /**
+     * Creates a new record decorator, which initially contains the values in
+     * the fallback record, but allows values to be added or overridden.
+     *
+     * @param fallback The record to override.
+     * @param capacity The space to reserve for additional fields. Functions
+     *    similarly to {@link ArrayList#ArrayList(int)} in that if the resulting
+     *    content overruns this size, the reserved memory will be expanded, but
+     *    by reserving sufficient capacity unfront, unnecessary resizing can
+     *    be avoided.
+     * @return A new {@link RecordBuilder}.
+     */
+    public static RecordBuilder ofWithInitialCapacity(Record fallback, int capacity) {
+
+      Preconditions.checkNotNull(fallback, "Fallback may not be null");
+      Preconditions.checkArgument(capacity >= 0, "Capacity must be zero or positive");
+
       if (fallback instanceof DataValueLookupBuilderImpl) {
         // Copy the builder if we can
-        return new RecordBuilderImpl((DataValueLookupBuilderImpl) fallback);
+        return new RecordBuilderImpl((DataValueLookupBuilderImpl) fallback, capacity);
       } else {
         // Otherwise fallback to the API
         RecordBuilderImpl result = new RecordBuilderImpl();
