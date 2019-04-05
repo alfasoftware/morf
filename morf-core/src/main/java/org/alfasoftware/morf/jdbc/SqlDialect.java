@@ -3213,6 +3213,7 @@ public abstract class SqlDialect {
    * @param parameter The parameters.
    * @throws RuntimeException if a data type is not supported or if a
    *         supplied string value cannot be converted to the column data type.
+   * @throws SQLException for JDBC errors.
    */
   public void prepareStatementParameters(NamedParameterPreparedStatement statement, DataValueLookup values, SqlParameter parameter) throws SQLException {
     switch (parameter.getMetadata().getType()) {
@@ -3387,7 +3388,7 @@ public abstract class SqlDialect {
             if (date == null) {
               recordBuilder.setObject(column.getName(), null);
             } else {
-              recordBuilder.setLocalDate(column.getName(), LocalDate.fromDateFields(date));
+              recordBuilder.setDate(column.getName(), date);
             }
             break;
           case DECIMAL:

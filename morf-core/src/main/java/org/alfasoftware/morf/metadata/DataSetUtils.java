@@ -385,15 +385,17 @@ public final class DataSetUtils {
     };
   }
 
-
   /**
    * Takes an existing record and adds additional or override values without
-   * copying or modifying the existing record, minimising the need for additional
-   * memory.
+   * copying or modifying the existing record, minimising the need for
+   * additional memory.
    */
-  public static class RecordDecorator extends RecordBuilderImpl {
+  public static final class RecordDecorator extends RecordBuilderImpl {
 
-    private final Record fallback;
+    /**
+     * Not instantiatable.
+     */
+    private RecordDecorator() {}
 
     /**
      * Creates a new record decorator, which initially contains the values in
@@ -403,84 +405,15 @@ public final class DataSetUtils {
      * @return A new {@link RecordBuilder}.
      */
     public static RecordBuilder of(Record fallback) {
-      return new RecordDecorator(fallback);
-    }
-
-    protected RecordDecorator(Record fallback) {
-      super();
-      this.fallback = fallback;
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public String getValue(String name) {
-      int index = indexOf(name);
-      return index > -1 ? getAndConvertByIndex(index, (o, c) -> c.stringValue(o)) : fallback.getValue(name);
-    }
-
-    @Override
-    public BigDecimal getBigDecimal(String name) {
-      int index = indexOf(name);
-      return index > -1 ? getAndConvertByIndex(index, (o, c) -> c.bigDecimalValue(o)) : fallback.getBigDecimal(name);
-    }
-
-    @Override
-    public Boolean getBoolean(String name) {
-      int index = indexOf(name);
-      return index > -1 ? getAndConvertByIndex(index, (o, c) -> c.booleanValue(o)) : fallback.getBoolean(name);
-    }
-
-    @Override
-    public java.sql.Date getDate(String name) {
-      int index = indexOf(name);
-      return index > -1 ? getAndConvertByIndex(index, (o, c) -> c.dateValue(o)) : fallback.getDate(name);
-    }
-
-    @Override
-    public Double getDouble(String name) {
-      int index = indexOf(name);
-      return index > -1 ? getAndConvertByIndex(index, (o, c) -> c.doubleValue(o)) : fallback.getDouble(name);
-    }
-
-    @Override
-    public Integer getInteger(String name) {
-      int index = indexOf(name);
-      return index > -1 ? getAndConvertByIndex(index, (o, c) -> c.integerValue(o)) : fallback.getInteger(name);
-    }
-
-    @Override
-    public LocalDate getLocalDate(String name) {
-      int index = indexOf(name);
-      return index > -1 ? getAndConvertByIndex(index, (o, c) -> c.localDateValue(o)) : fallback.getLocalDate(name);
-    }
-
-    @Override
-    public Long getLong(String name) {
-      int index = indexOf(name);
-      return index > -1 ? getAndConvertByIndex(index, (o, c) -> c.longValue(o)) : fallback.getLong(name);
-    }
-
-    @Override
-    public byte[] getByteArray(String name) {
-      int index = indexOf(name);
-      return index > -1 ? getAndConvertByIndex(index, ValueMapper.OBJECT_TO_BYTE_ARRAY) : fallback.getByteArray(name);
-    }
-
-    @Override
-    public Object getObject(Column column) {
-      int index = indexOf(column.getName());
-      return index > -1 ? super.getObject(column) : fallback.getObject(column);
-    }
-
-    @Override
-    public String getString(String name) {
-      int index = indexOf(name);
-      return index > -1 ? getAndConvertByIndex(index, (o, c) -> c.stringValue(o)) : fallback.getString(name);
-    }
-
-    @Override
-    public String toString() {
-      return fallback.toString() + " + " + super.toString();
+      if (fallback instanceof DataValueLookupBuilderImpl) {
+        // Copy the builder if we can
+        return new RecordBuilderImpl((DataValueLookupBuilderImpl) fallback);
+      } else {
+        // Otherwise fallback to the API
+        RecordBuilderImpl result = new RecordBuilderImpl();
+        fallback.getValues().forEach(dv -> result.setObject(dv.getName().toString(), dv.getObject()));
+        return result;
+      }
     }
   }
 }

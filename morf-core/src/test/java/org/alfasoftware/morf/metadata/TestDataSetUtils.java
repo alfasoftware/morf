@@ -2,6 +2,7 @@ package org.alfasoftware.morf.metadata;
 
 import static org.alfasoftware.morf.metadata.DataSetUtils.record;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -68,6 +69,49 @@ public class TestDataSetUtils {
       .setObject(LONG_COLUMN, LONG)
       .setObject(BLOB_COLUMN, BYTE_ARRAY)
       .setObject(UNTYPED_COLUMN, VALUE);
+
+
+  @Test
+  public void testValues() {
+    assertThat(
+      BASE_RECORD.getValues(),
+      containsInAnyOrder(
+        new DataValueBean(LOCAL_DATE_COLUMN, LOCAL_DATE),
+        new DataValueBean(LONG_COLUMN, LONG),
+        new DataValueBean(BLOB_COLUMN.toLowerCase(), BYTE_ARRAY), // Ensure equals is type insensitive
+        new DataValueBean(UNTYPED_COLUMN, VALUE),
+        new DataValueBean(INTEGER_COLUMN, INTEGER),
+        new DataValueBean(STRING_COLUMN, STRING),
+        new DataValueBean(BIG_DECIMAL_COLUMN, BIG_DECIMAL),
+        new DataValueBean(BOOLEAN_COLUMN, BOOLEAN),
+        new DataValueBean(DATE_COLUMN, DATE)
+      )
+    );
+  }
+
+
+  @Test
+  public void testValuesDecorator() {
+    assertThat(
+      RecordDecorator.of( // Nested decorators
+          RecordDecorator.of(BASE_RECORD)
+              .setString(STRING_COLUMN.toLowerCase(), "Overriden") // Ensure overriding honours case insensitivity
+              .setBoolean(BOOLEAN_COLUMN, !BOOLEAN))
+                  .setLong(LONG_COLUMN, 125123L)
+                  .getValues(),
+      containsInAnyOrder(
+        new DataValueBean(BIG_DECIMAL_COLUMN, BIG_DECIMAL),
+        new DataValueBean(BOOLEAN_COLUMN, !BOOLEAN),
+        new DataValueBean(DATE_COLUMN, DATE),
+        new DataValueBean(LOCAL_DATE_COLUMN, LOCAL_DATE),
+        new DataValueBean(INTEGER_COLUMN, INTEGER),
+        new DataValueBean(STRING_COLUMN, "Overriden"),
+        new DataValueBean(LONG_COLUMN, 125123L),
+        new DataValueBean(BLOB_COLUMN, BYTE_ARRAY),
+        new DataValueBean(UNTYPED_COLUMN, VALUE)
+      )
+    );
+  }
 
 
   /**

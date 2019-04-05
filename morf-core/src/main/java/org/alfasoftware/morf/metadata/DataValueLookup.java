@@ -47,6 +47,17 @@ public interface DataValueLookup {
 
 
   /**
+   * Returns all the key/value pairs stored.
+   *
+   * @return An iterable of data values.
+   */
+  public default Iterable<? extends DataValue> getValues() {
+    throw new UnsupportedOperationException(
+        "Data value lookup type " + getClass().getName() + " currently lacks supported for getValues()");
+  }
+
+
+  /**
    * Gets the value as an integer.  Will attempt conversion where possible
    * and throw a suitable conversion exception if the conversion fails.
    * May return {@code null} if the value is not set or is explicitly set

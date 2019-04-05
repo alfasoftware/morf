@@ -25,6 +25,14 @@ import org.joda.time.LocalDate;
  */
 class RecordBuilderImpl extends DataValueLookupBuilderImpl implements RecordBuilder {
 
+  RecordBuilderImpl() {
+    super();
+  }
+
+  RecordBuilderImpl(DataValueLookupBuilderImpl copyFrom) {
+    super(copyFrom);
+  }
+
   @Override
   public RecordBuilder withInitialColumnCount(int count) {
     return (RecordBuilder) super.withInitialColumnCount(count);

@@ -96,8 +96,8 @@ public class TableReference implements DeepCopyableWithTransformation<TableRefer
    * Constructs a new table with a given name.
    * Specifies whether the table is temporary.
    *
-   * @param tableName
-   * @param temporary
+   * @param tableName The table name
+   * @param temporary true if the table is temporary.
    */
   public TableReference(String tableName, boolean temporary) {
     this.name = tableName;
@@ -155,6 +155,8 @@ public class TableReference implements DeepCopyableWithTransformation<TableRefer
 
   /**
    * Indicates whether the table is temporary.
+   *
+   * @return true if the table is a temporary table.
    */
   public boolean isTemporary() {
     return temporary;

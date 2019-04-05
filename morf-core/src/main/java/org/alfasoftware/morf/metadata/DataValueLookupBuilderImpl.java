@@ -16,11 +16,16 @@
 package org.alfasoftware.morf.metadata;
 
 import java.math.BigDecimal;
+import java.sql.Date;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+
+import javax.annotation.Nullable;
 
 import org.alfasoftware.morf.metadata.DataSetUtils.DataValueLookupBuilder;
-import org.alfasoftware.morf.metadata.DataSetUtils.RecordDecorator;
 import org.alfasoftware.morf.metadata.DataSetUtils.ValueMapper;
 import org.alfasoftware.morf.metadata.ValueConverters.BigDecimalValueConverter;
 import org.alfasoftware.morf.metadata.ValueConverters.BooleanValueConverter;
@@ -37,18 +42,10 @@ import org.joda.time.LocalDate;
 /**
  * Implements {@link DataValueLookupBuilder}.
  * <p>
- * Note that this implementation skirts on the very edge of what could
- * plausibly be called OO. It's closer to C in many ways, using object arrays
- * to simulate node entries, and values combined with method references
- * instead of value types. This is completely deliberate. It used to be lovely
- * clean Java, but as it turns out, this code is called so intensely by batch
- * processing that the overhead of object churn was overwhelming and GC would
- * regularly hit 100% of CPU time. This code attempts to minimise creation of
- * new objects.
- * </p>
- * <p>
- * In normal operation, a new instance creates only a new 96-element object
- * array and nothing else.
+ * This class has been carefully implemented to minimise object churn and
+ * memory usage. In normal operation, a new instance creates only a new
+ * 16-element object array, one object reference, and nothing else. All
+ * metadata is commonised and interned.
  * </p>
  * <p>
  * <strong>Be careful with use of lambdas</strong>. They are used, but are
@@ -63,25 +60,32 @@ class DataValueLookupBuilderImpl implements DataValueLookupBuilder {
    */
   private static final int DEFAULT_INITIAL_SIZE = 16;
 
-  /**
-   * The indexes into our array "Y axis" at which the column name, column value and value converter are
-   * found. Ooh, it's like JS, pre dot-notation.
-   */
-  private static final int NAME = 0;
-  private static final int VALUE = 1;
-  private static final int CONVERTER = 2;
-  private static final int BLOCK_SIZE = 3;
-
-  /** Storage is arranged in groups of BLOCK_SIZE elements, each block representing a column,
-   *  so 0=Name of col 1, 1=Value of col 1, 2=Converter for col 1, 3=Name of col 2 etc. This
-   *  is done to avoid multidimensional arrays which in Java are actually allocated as
-   *  noncontinguous arrays of arrays and thus have a much higher construction and GC cost,
-   *  or use of "node" objects which also have to be independently GCed. */
+  @Nullable
   private Object[] data;
 
-  /** How many columns we have stored. */
-  private int size;
+  /** Describes the record content. Highly interned. */
+  @Nullable
+  protected DataValueLookupMetadata metadata;
 
+  /**
+   * Default no-arg constructor.
+   */
+  DataValueLookupBuilderImpl() {}
+
+  /**
+   * Copy constructor
+   *
+   * @param copyFrom The object to copy.
+   */
+  DataValueLookupBuilderImpl(DataValueLookupBuilderImpl copyFrom) {
+    if (copyFrom.data == null) {
+      this.data = null;
+    } else {
+      // Always allocate at least enough space for 8 more rows
+      this.data = Arrays.copyOf(copyFrom.data, Math.min(copyFrom.data.length, copyFrom.metadata.getColumnNames().size() + 8));
+    }
+    this.metadata = copyFrom.metadata;
+  }
 
   @Override
   public DataValueLookupBuilder withInitialColumnCount(int count) {
@@ -92,54 +96,80 @@ class DataValueLookupBuilderImpl implements DataValueLookupBuilder {
     return this;
   }
 
+  private ValueConverter<?> toConverter(Object value) {
+    if (value == null) {
+      return NullValueConverter.instance();
+    } else if (value instanceof String) {
+      return StringValueConverter.instance();
+    } else if (value instanceof BigDecimal) {
+      return BigDecimalValueConverter.instance();
+    } else if (value instanceof Date) {
+      return DateValueConverter.instance();
+    } else if (value instanceof LocalDate) {
+      return JodaLocalDateValueConverter.instance();
+    } else if (value instanceof Long) {
+      return LongValueConverter.instance();
+    } else if (value instanceof Integer) {
+      return IntegerConverter.instance();
+    } else if (value instanceof Boolean) {
+      return BooleanValueConverter.instance();
+    } else if (value instanceof Double) {
+      return DoubleValueConverter.instance();
+    } else if (value instanceof byte[]) {
+      return ByteArrayValueConverter.instance();
+    } else {
+      throw new UnsupportedOperationException("Type [" + value.getClass().getName() + "] not known");
+    }
+  }
+
   @Override
   public DataValueLookupBuilder setNull(String columnName) {
-    return set(columnName, null, NullValueConverter.instance());
+    return set(columnName, null);
   }
 
   @Override
   public DataValueLookupBuilder setString(String columnName, String value) {
-    return set(columnName, value, StringValueConverter.instance());
+    return set(columnName, value);
   }
 
   @Override
   public DataValueLookupBuilder setInteger(String columnName, Integer value) {
-    return set(columnName, value, IntegerConverter.instance());
+    return set(columnName, value);
   }
 
   @Override
   public DataValueLookupBuilder setBoolean(String columnName, Boolean value) {
-    return set(columnName, value, BooleanValueConverter.instance());
+    return set(columnName, value);
   }
 
   @Override
   public DataValueLookupBuilder setLong(String columnName, Long value) {
-    return set(columnName, value, LongValueConverter.instance());
+    return set(columnName, value);
   }
 
   @Override
   public DataValueLookupBuilder setDouble(String columnName, Double value) {
-    return set(columnName, value, DoubleValueConverter.instance());
+    return set(columnName, value);
   }
 
   @Override
   public DataValueLookupBuilder setBigDecimal(String columnName, BigDecimal value) {
-    return set(columnName, value, BigDecimalValueConverter.instance());
+    return set(columnName, value);
   }
 
   @Override
   public DataValueLookupBuilder setDate(String columnName, java.sql.Date value) {
-    return set(columnName, value, DateValueConverter.instance());
+    return set(columnName, value);
   }
 
   @Override
   public DataValueLookupBuilder setLocalDate(String columnName, LocalDate value) {
-    return set(columnName, value, JodaLocalDateValueConverter.instance());
+    return set(columnName, value);
   }
 
   @Override
   public DataValueLookupBuilder setByteArray(String columnName, byte[] value) {
-    return set(columnName, value, ByteArrayValueConverter.instance());
+    return set(columnName, value);
   }
 
   @Override
@@ -149,34 +179,38 @@ class DataValueLookupBuilderImpl implements DataValueLookupBuilder {
 
   @Override
   public DataValueLookupBuilder setObject(String columnName, Object value) {
-    if (value == null) {
-      return setNull(columnName);
-    } else if (value instanceof String) {
-      return setString(columnName, (String) value);
-    } else if (value instanceof Integer) {
-      return setInteger(columnName, (Integer) value);
-    } else if (value instanceof Long) {
-      return setLong(columnName, (Long) value);
-    } else if (value instanceof BigDecimal) {
-      return setBigDecimal(columnName, (BigDecimal) value);
-    } else if (value instanceof Boolean) {
-      return setBoolean(columnName, (Boolean) value);
-    } else if (value instanceof Double) {
-      return setDouble(columnName, (Double) value);
-    } else if (value instanceof org.joda.time.LocalDate) {
-      return setLocalDate(columnName, (LocalDate) value);
-    } else if (value instanceof java.sql.Date) {
-      return setDate(columnName, (java.sql.Date) value);
-    } else if (value instanceof byte[]) {
-      return setByteArray(columnName, (byte[]) value);
-    } else {
-      throw new IllegalArgumentException("Type [" + value.getClass().getCanonicalName() + "] not supported for values");
-    }
+    return set(columnName, value);
   }
 
   @Override
   public String getValue(String name) {
     return getString(name);
+  }
+
+  @Override
+  public Iterable<? extends DataValue> getValues() {
+
+    if (metadata == null)
+      return Collections.emptyList();
+
+    return () -> new Iterator<DataValue>() {
+
+      private int i;
+      private final Iterator<CaseInsensitiveString> keyIter = metadata.getColumnNames().iterator();
+
+      @Override
+      public boolean hasNext() {
+        return keyIter.hasNext();
+      }
+
+      @Override
+      public DataValue next() {
+        if (!hasNext())
+          throw new NoSuchElementException();
+        return new DataValueBean(keyIter.next(), data[i++]);
+      }
+
+    };
   }
 
   @Override
@@ -227,38 +261,57 @@ class DataValueLookupBuilderImpl implements DataValueLookupBuilder {
   @Override
   public String toString() {
     if (data == null) return "{}";
-    StringBuilder builder = new StringBuilder('{');
-    for (int i = 0 ; i < size ; i++) {
-      if (i > 0) builder.append(", ");
-      int offset = i * BLOCK_SIZE;
-      builder.append(data[offset + NAME]).append("=").append(data[offset + VALUE]);
-    }
-    return builder.append('}').toString();
+    return getValues().toString();
   }
 
   /**
-   * Sets the value of a specified column, along with the converter to get the value
-   * as different types.  Resizes or allocates the array as required.
+   * Sets the value of a specified column. Resizes or allocates the array as required.
    */
-  private DataValueLookupBuilder set(String columnName, Object value, ValueConverter<?> converter) {
-    if (data == null) {
+  private DataValueLookupBuilder set(String columnName, Object value) {
+
+    CaseInsensitiveString key = CaseInsensitiveString.of(columnName);
+
+    // No data yet - initialise
+    if (metadata == null) {
+      metadata = DataValueLookupMetadataRegistry.intern(key);
       data = initialiseArray(DEFAULT_INITIAL_SIZE);
-    } else if (size * BLOCK_SIZE == data.length) {
+      setAtIndex(0, value);
+      return this;
+    }
+
+    // Overwrite the existing value if it exists
+    Integer existingIndex = metadata.getIndexInArray(key);
+    if (existingIndex != null) {
+      setAtIndex(existingIndex, value);
+      return this;
+    }
+
+    // Expand the array if required
+    int newIndex = metadata.getColumnNames().size();
+    if (newIndex == data.length) {
       grow();
     }
-    int offset = size * BLOCK_SIZE;
-    data[offset + NAME] = columnName;
-    data[offset + VALUE] = value;
-    data[offset + CONVERTER] = value == null ? NullValueConverter.instance() : converter;
-    size++;
+
+    // Update the metadata and store
+    metadata = DataValueLookupMetadataRegistry.appendAndIntern(metadata, key);
+    setAtIndex(newIndex, value);
+
     return this;
+  }
+
+  /**
+   * Writes the given value at the specified index. Assumes that the array
+   * has sufficient size.
+   */
+  private void setAtIndex(int index, Object value) {
+    data[index] = value;
   }
 
   /**
    * Creates the storage array.
    */
   private Object[] initialiseArray(int numberOfColumns) {
-    return new Object[numberOfColumns * BLOCK_SIZE];
+    return new Object[numberOfColumns];
   }
 
   /**
@@ -267,52 +320,23 @@ class DataValueLookupBuilderImpl implements DataValueLookupBuilder {
    * that big.
    */
   private void grow() {
-    data = Arrays.copyOf(data, (size + (size >> 1)) * BLOCK_SIZE);
+    int size = metadata.getColumnNames().size();
+    data = Arrays.copyOf(data, size + (size >> 1));
   }
 
   /**
    * Fetches the value of the specified column, converting it to the target
    * type using the associated {@link ValueConverter} to the target type.
    */
-  private final <STORED, RETURNED> RETURNED getAndConvertByName(String key, ValueMapper<STORED, RETURNED> mapper) {
-    return getAndConvertByIndex(indexOf(key), mapper);
+  private final <STORED, RETURNED> RETURNED getAndConvertByName(String columnName, ValueMapper<STORED, RETURNED> mapper) {
+    if (metadata == null) return null;
+    return getAndConvertByIndex(metadata.getIndexInArray(CaseInsensitiveString.of(columnName)), mapper);
   }
 
-  /**
-   * O(n) search implementation.
-   *
-   * <p>We *could* create a hashtable here, but we would need to (a) define a
-   * case-insensitive hash which avoids explicitly upper- or lower- casing the
-   * input strings (because that has a cost in churn) and (b) maintain the
-   * table ourselves, and there's no current evidence that this loop is a
-   * significant cost in real usage. We can always do that if it looks
-   * worthwhile.</p>
-   *
-   * <p>TODO WEB-66337 improve this</p>
-   *
-   * <p>We use -1 to indicate not found to avoid unnecessary boxing.</p>
-   *
-   * <p>Protected as it is used by {@link RecordDecorator}.</p>
-   *
-   * @param key The column name
-   * @return The index at which the column is found.
-   */
-  protected int indexOf(String key) {
-    // Search backwards, so that later values for the same column name override previously
-    // entered values.
-    for (int i = size - 1 ; i >= 0 ; i-- ) {
-      if (key.equalsIgnoreCase((String) data[i * BLOCK_SIZE + NAME])) {
-        return i;
-      }
-    }
-    return -1;
-  }
 
   /**
    * Fetches the value at the specified index, converting it to the target
    * type using the associated {@link ValueConverter} to the target type.
-   *
-   * <p>Protected as it is used by {@link RecordDecorator}.</p>
    *
    * @param <STORED> The type actually stored in the internal array.
    * @param <RETURNED> The type being returned by the API call.
@@ -321,9 +345,9 @@ class DataValueLookupBuilderImpl implements DataValueLookupBuilder {
    * @return The value.
    */
   @SuppressWarnings("unchecked")
-  protected final <STORED, RETURNED> RETURNED getAndConvertByIndex(int i, ValueMapper<STORED, RETURNED> mapper) {
-    if (i == -1) return null;
-    int offset = i * BLOCK_SIZE;
-    return mapper.map((STORED) data[offset + VALUE], (ValueConverter<STORED>) data[offset + CONVERTER]);
+  private final <STORED, RETURNED> RETURNED getAndConvertByIndex(Integer i, ValueMapper<STORED, RETURNED> mapper) {
+    if (i == null) return null;
+    STORED value = (STORED) data[i];
+    return mapper.map(value, (ValueConverter<STORED>) toConverter(value));
   }
 }
