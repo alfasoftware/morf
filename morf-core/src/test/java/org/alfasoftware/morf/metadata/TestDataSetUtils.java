@@ -420,14 +420,14 @@ public class TestDataSetUtils {
 
   private RecordBuilder serializeAndDeserialize(RecordBuilder record) throws IOException, ClassNotFoundException {
     try (ByteArrayOutputStream bao = new ByteArrayOutputStream();
-        ObjectOutputStream oo = new ObjectOutputStream(bao)) {
-     oo.writeObject(record);
-     oo.flush();
-     try (ByteArrayInputStream bai = new ByteArrayInputStream(bao.toByteArray());
-         ObjectInputStream oi = new ObjectInputStream(bai)) {
-       return (RecordBuilder) oi.readObject();
-     }
-   }
+         ObjectOutputStream oo = new ObjectOutputStream(bao)) {
+      oo.writeObject(record);
+      oo.flush();
+      try (ByteArrayInputStream bai = new ByteArrayInputStream(bao.toByteArray());
+           ObjectInputStream oi = new ObjectInputStream(bai)) {
+        return (RecordBuilder) oi.readObject();
+      }
+    }
   }
 
   private BaseRecordMatcher originalMatcher() {

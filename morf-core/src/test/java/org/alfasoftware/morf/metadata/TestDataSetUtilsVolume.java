@@ -153,13 +153,15 @@ public class TestDataSetUtilsVolume {
       ArrayList<Record> batch = new ArrayList<>();
       for (int j = 0 ; j < BATCH_SIZE ; j++) {
         batch.add(
-          RecordDecorator.of(
-            RecordDecorator.of(randomizer.apply(record().withInitialColumnCount(9)))
-              .withInitialColumnCount(2)
+          RecordDecorator.ofWithInitialCapacity(
+            RecordDecorator.ofWithInitialCapacity(
+              randomizer.apply(record().withInitialColumnCount(9)),
+              2
+            )
               .setString("XXX", "werwer")
-              .setString("YYY", "dfsgsf"))
-            .withInitialColumnCount(1)
-            .setString("ZZZ", "sdfsdfs")
+              .setString("YYY", "dfsgsf"),
+            1
+          ).setString("ZZZ", "sdfsdfs")
         );
         if (Thread.currentThread().isInterrupted()) {
           break outer;
