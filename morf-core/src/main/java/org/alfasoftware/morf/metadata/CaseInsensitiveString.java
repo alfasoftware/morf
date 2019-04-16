@@ -1,5 +1,7 @@
 package org.alfasoftware.morf.metadata;
 
+import java.io.Serializable;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -16,16 +18,18 @@ import com.google.common.collect.ImmutableMap;
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2019
  */
-public final class CaseInsensitiveString {
+public final class CaseInsensitiveString implements Serializable {
 
   private static final Log log = LogFactory.getLog(CaseInsensitiveString.class);
+
+  private static final long serialVersionUID = -928749237982340192L;
 
   private static final Object SYNC = new Object();
 
   private static volatile ImmutableMap<String, CaseInsensitiveString> cache = ImmutableMap.of();
 
   private final String string;
-  private final int hash;
+  private final transient int hash; // transient: deserialized instances only exist temporarily before they are deduplicated
 
   /**
    * Returns the string, wrapped as case insensitive.
@@ -95,6 +99,17 @@ public final class CaseInsensitiveString {
         .putAll(cache)
         .put(string, result)
         .build();
+  }
+
+
+  /**
+   * When deserializing, resolve via the static factory. This prevents us getting duplicate
+   * instances.
+   *
+   * @return The interned instance.
+   */
+  private Object readResolve()  {
+    return of(string);
   }
 
 

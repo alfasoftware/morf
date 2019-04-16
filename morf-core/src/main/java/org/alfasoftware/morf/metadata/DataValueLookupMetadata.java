@@ -1,5 +1,6 @@
 package org.alfasoftware.morf.metadata;
 
+import java.io.Serializable;
 import java.util.Iterator;
 import java.util.List;
 
@@ -17,14 +18,21 @@ import com.google.common.collect.ImmutableMap;
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2019
  */
-final class DataValueLookupMetadata {
+final class DataValueLookupMetadata implements Serializable {
 
   private static final Log log = LogFactory.getLog(DataValueLookupMetadata.class);
 
-  private final ImmutableList<CaseInsensitiveString> keys;
-  private final ImmutableMap<CaseInsensitiveString, Integer> lookups;
+  private static final long serialVersionUID = -1238257923874987123L;
 
-  private volatile ImmutableMap<CaseInsensitiveString, DataValueLookupMetadata> children = ImmutableMap.of();
+  private final ImmutableList<CaseInsensitiveString> keys;
+
+  // transient data: deserialized instances only exist temporarily before they are deduplicated, so
+  // we assume we don't need to serialize this data - we'll rebuild it when resolving after
+  // deserialization
+  @Nullable // if size <= USE_MAP_FOR_COUNT_HIGHER_THAN
+  private final transient ImmutableMap<CaseInsensitiveString, Integer> lookups;
+  private transient volatile ImmutableMap<CaseInsensitiveString, DataValueLookupMetadata> children = ImmutableMap.of();
+  private transient volatile int hash;
 
   DataValueLookupMetadata(ImmutableList<CaseInsensitiveString> keys) {
     super();
@@ -40,6 +48,17 @@ final class DataValueLookupMetadata {
       builder.put(iterator.next(), i++);
     }
     this.lookups = builder.build();
+  }
+
+
+  /**
+   * When deserializing, resolve via the static factory. This prevents us getting duplicate
+   * instances.
+   *
+   * @return The interned instance.
+   */
+  private Object readResolve()  {
+    return DataValueLookupMetadataRegistry.deduplicate(this);
   }
 
 
@@ -108,5 +127,31 @@ final class DataValueLookupMetadata {
   @Override
   public String toString() {
     return "DataValueLookupMetadata [columnNames=" + keys + "]";
+  }
+
+
+  /**
+   * @see java.lang.Object#hashCode()
+   */
+  @Override
+  public int hashCode() {
+    int h = hash;
+    if (h != 0) {
+      return h;
+    }
+    final int prime = 31;
+    h = 1;
+    h = prime * h + (keys == null ? 0 : keys.hashCode());
+    hash = h;
+    return h;
+  }
+
+
+  /**
+   * @see java.lang.Object#equals(java.lang.Object)
+   */
+  @Override
+  public boolean equals(Object obj) {
+    return this == obj; // Fully interned
   }
 }

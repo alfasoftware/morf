@@ -388,9 +388,8 @@ public final class DataSetUtils {
   }
 
   /**
-   * Takes an existing record and adds additional or override values without
-   * copying or modifying the existing record, minimising the need for
-   * additional memory.
+   * Copies an existing record and allows the result to be modified. The
+   * original is not affected.
    */
   public static final class RecordDecorator extends RecordBuilderImpl {
 

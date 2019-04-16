@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.metadata;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.util.ArrayList;
@@ -39,6 +40,9 @@ import org.alfasoftware.morf.metadata.ValueConverters.NullValueConverter;
 import org.alfasoftware.morf.metadata.ValueConverters.StringValueConverter;
 import org.joda.time.LocalDate;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Iterables;
+
 /**
  * Implements {@link DataValueLookupBuilder}.
  * <p>
@@ -53,12 +57,14 @@ import org.joda.time.LocalDate;
  * inline them and avoid runtime allocation and GC.
  * </p>
  */
-class DataValueLookupBuilderImpl implements DataValueLookupBuilder {
+class DataValueLookupBuilderImpl implements DataValueLookupBuilder, Serializable {
 
   /** We default storage to 16 columns.  This is more than most applications so as to minimise copying
    *  and resizing, but small enough that it has a relatively small footprint by default.
    */
   private static final int DEFAULT_INITIAL_SIZE = 16;
+
+  private static final long serialVersionUID = -96755592321546764L;
 
   @Nullable
   private Object[] data;
@@ -261,7 +267,17 @@ class DataValueLookupBuilderImpl implements DataValueLookupBuilder {
   @Override
   public String toString() {
     if (data == null) return "{}";
-    return getValues().toString();
+    return Iterables.toString(getValues());
+  }
+
+  @Override
+  public int hashCode() {
+    return DataValueLookup.defaultHashCode(this);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    return DataValueLookup.defaultEquals(this, obj);
   }
 
   /**
@@ -349,5 +365,17 @@ class DataValueLookupBuilderImpl implements DataValueLookupBuilder {
     if (i == null) return null;
     STORED value = (STORED) data[i];
     return mapper.map(value, (ValueConverter<STORED>) toConverter(value));
+  }
+
+
+  /**
+   * Validation method, for testing only.
+   *
+   * @param other The other.
+   * @return true if equivalent metadata.
+   */
+  @VisibleForTesting
+  boolean hasSameMetadata(DataValueLookupBuilderImpl other) {
+    return other.metadata.equals(this.metadata);
   }
 }

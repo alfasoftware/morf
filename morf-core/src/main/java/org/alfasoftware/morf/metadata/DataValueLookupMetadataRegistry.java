@@ -1,5 +1,7 @@
 package org.alfasoftware.morf.metadata;
 
+import java.util.Iterator;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
@@ -114,8 +116,26 @@ final class DataValueLookupMetadataRegistry {
   }
 
 
+  /**
+   * Relatively inefficient internment method for use when deserializing.
+   * Interns the metadata or identifies the existing interned object and returns
+   * the deuplicated result.
+   *
+   * @param potentialDuplicate The potential duplicate of an interned instance,
+   *          to be interned and replaced
+   * @return The interned and deduplicated instance.
+   */
+  static DataValueLookupMetadata deduplicate(DataValueLookupMetadata potentialDuplicate) {
+    Iterator<CaseInsensitiveString> columnsIterator = potentialDuplicate.getColumnNames().iterator();
+    DataValueLookupMetadata result = intern(columnsIterator.next());
+    while (columnsIterator.hasNext()) {
+      result = appendAndIntern(result, columnsIterator.next());
+    }
+    return result;
+  }
+
+
   private static Builder<CaseInsensitiveString, DataValueLookupMetadata> builderPlusOneEntry(ImmutableMap<CaseInsensitiveString, DataValueLookupMetadata> existing) {
     return ImmutableMap.<CaseInsensitiveString, DataValueLookupMetadata>builderWithExpectedSize(existing.size() + 1);
   }
-
 }

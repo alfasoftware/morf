@@ -18,13 +18,22 @@ package org.alfasoftware.morf.metadata;
 
 import java.math.BigDecimal;
 import java.sql.ResultSet;
+import java.util.List;
 
 import org.apache.commons.codec.binary.Base64;
 import org.joda.time.LocalDate;
 
+import com.google.common.collect.Iterables;
+
 
 /**
  * Defines a set of values for columns.
+ *
+ * <p>{@code equals} and {@code hashCode} have a strictly defined behaviour which should hold true
+ * for all implementations, regardless of implementation class, similarly to the Collections classes
+ * such as {@link List}.  These are implemented in {@link #defaultEquals(DataValueLookup, Object)}
+ * and {@link #defaultHashCode(DataValueLookup)} and can simply be called by implementations
+ * in a single line.</p>
  *
  * @author Copyright (c) Alfa Financial Software 2009
  */
@@ -253,5 +262,37 @@ Arrays.equals(Base64.encode(myString), DataSetUtils.record().setString("foo", my
       default:
         throw new UnsupportedOperationException("Column [" + column.getName() + "] type [" + column.getType() + "] not known");
     }
+  }
+
+
+  /**
+   * Default hashCode implementation for instances.
+   *
+   * @param obj The object.
+   * @return The hashCode.
+   */
+  public static int defaultHashCode(DataValueLookup obj) {
+    final int prime = 31;
+    int result = 1;
+    for (DataValue value : obj.getValues()) {
+      result = prime * result + value.hashCode();
+    }
+    return result;
+  }
+
+
+  /**
+   * Default equals implementation for instances.
+   *
+   * @param obj1 this
+   * @param obj2 the other
+   * @return true if equivalent.
+   */
+  public static boolean defaultEquals(DataValueLookup obj1, Object obj2) {
+    if (obj1 == obj2) return true;
+    if (obj2 == null) return false;
+    if (!(obj2 instanceof DataValueLookup)) return false;
+    DataValueLookup other = (DataValueLookup) obj2;
+    return Iterables.elementsEqual(obj1.getValues(), other.getValues());
   }
 }

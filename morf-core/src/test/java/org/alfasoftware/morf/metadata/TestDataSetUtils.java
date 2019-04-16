@@ -3,16 +3,24 @@ package org.alfasoftware.morf.metadata;
 import static org.alfasoftware.morf.metadata.DataSetUtils.record;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.sql.Date;
 
 import org.alfasoftware.morf.dataset.BaseRecordMatcher;
+import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
 import org.alfasoftware.morf.metadata.DataSetUtils.RecordDecorator;
 import org.apache.commons.codec.binary.Base64;
@@ -369,6 +377,58 @@ public class TestDataSetUtils {
     assertEquals("B", record().setString("a", null).value("a", "B").getString("a"));
   }
 
+
+  /**
+   * Ensures that internment works correctly when serialization comes into play,
+   * with the resulting objects showing equivalence.
+   */
+  @Test
+  public void testSerializationDeserialization() throws IOException, ClassNotFoundException {
+    Record copy = serializeAndDeserialize(BASE_RECORD);
+    assertThat(copy, equalTo(BASE_RECORD));
+  }
+
+
+  /**
+   * Ensures that metadata is correctly interned after deserialization.
+   */
+  @Test
+  public void testInternedMetadataAfterDeserialization() throws ClassNotFoundException, IOException {
+
+    RecordBuilderImpl original = (RecordBuilderImpl) record()
+        .setString("one", "1")
+        .setString("two", "2")
+        .setString("three", "3");
+
+    RecordBuilderImpl copy = (RecordBuilderImpl) serializeAndDeserialize(original);
+
+    // Extend the original
+    original.setString("four", "4");
+
+    // We'll get an NPE here if readResolve isn't implemented on DataValueLookupMetadata
+    // The result should share the metadata with original
+    copy.setString("four", "4");
+
+    assertThat(copy, equalTo(original));
+
+    // This will fail if we've not correctly interned the metadata object (e.g.
+    // we've cheated and created a coherent copy)
+    assertTrue(original.hasSameMetadata(copy));
+
+  }
+
+
+  private RecordBuilder serializeAndDeserialize(RecordBuilder record) throws IOException, ClassNotFoundException {
+    try (ByteArrayOutputStream bao = new ByteArrayOutputStream();
+        ObjectOutputStream oo = new ObjectOutputStream(bao)) {
+     oo.writeObject(record);
+     oo.flush();
+     try (ByteArrayInputStream bai = new ByteArrayInputStream(bao.toByteArray());
+         ObjectInputStream oi = new ObjectInputStream(bai)) {
+       return (RecordBuilder) oi.readObject();
+     }
+   }
+  }
 
   private BaseRecordMatcher originalMatcher() {
     return BaseRecordMatcher.create()
