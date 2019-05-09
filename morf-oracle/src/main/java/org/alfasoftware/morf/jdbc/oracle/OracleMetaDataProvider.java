@@ -27,10 +27,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -275,9 +278,22 @@ public class OracleMetaDataProvider implements Schema {
       log.debug("Loading indexes: [" + tableMap.size() + "]");
     }
 
+    Supplier<Map<String, Set<String>>> indexPartitions = Suppliers.memoize(() -> {
+      Map<String, Set<String>> result = new HashMap<>();
+      runSQL("select index_name, status from ALL_IND_PARTITIONS where index_owner=?",
+        resultSet -> {
+          while(resultSet.next()) {
+            result.computeIfAbsent(resultSet.getString(1), k -> new HashSet<>()).add(resultSet.getString(2));
+          }
+        });
+      return result;
+      }
+    );
+
+
     // -- Stage 3: find the index names...
     //
-    final String getIndexNamesSql = "select table_name, index_name, uniqueness from ALL_INDEXES where owner=? order by table_name, index_name";
+    final String getIndexNamesSql = "select table_name, index_name, uniqueness, status from ALL_INDEXES where owner=? order by table_name, index_name";
     runSQL(getIndexNamesSql, new ResultSetHandler() {
       @Override
       public void handle(ResultSet resultSet) throws SQLException {
@@ -286,6 +302,7 @@ public class OracleMetaDataProvider implements Schema {
           String tableName = resultSet.getString(1);
           String indexName = resultSet.getString(2);
           String uniqueness = resultSet.getString(3);
+          String status = resultSet.getString(4);
 
           Table currentTable = tableMap.get(tableName);
 
@@ -300,9 +317,10 @@ public class OracleMetaDataProvider implements Schema {
           }
 
           final boolean unique = "UNIQUE".equals(uniqueness);
+          boolean isValid = isValid(status, indexName, indexPartitions);
 
           // don't output the primary key as an index
-          if(isPrimaryKeyIndex(indexName)) {
+          if(isPrimaryKeyIndex(indexName) && isValid) {
             if (log.isDebugEnabled()) {
               log.debug(String.format("Ignoring index [%s] on table [%s] as it is a primary key index", indexName, tableName));
             }
@@ -312,6 +330,11 @@ public class OracleMetaDataProvider implements Schema {
           // Chop up the index name
           if (indexName.toUpperCase().startsWith(currentTable.getName().toUpperCase())) {
             indexName = currentTable.getName() + indexName.substring(currentTable.getName().length());
+          }
+
+          if (!isValid) {
+            log.fatal("Index [" + indexName + "] is not in a valid state");
+            indexName = indexName + "<UNUSABLE>"; // this will cause the schema checker to find a mismatch and also provide a good hint in the log messages what was wrong
           }
 
           final String indexNameFinal = indexName;
@@ -343,6 +366,8 @@ public class OracleMetaDataProvider implements Schema {
           log.debug(String.format("Loaded %d indexes", indexCount));
         }
       }
+
+
     });
 
     long pointThree = System.currentTimeMillis();
@@ -412,6 +437,27 @@ public class OracleMetaDataProvider implements Schema {
     if (log.isDebugEnabled()) log.debug(String.format("Loaded index column list in %dms", end - pointThree));
 
     log.info(String.format("Read table metadata in %dms", end - start));
+  }
+
+
+  private boolean isValid(String status, String indexName, Supplier<Map<String, Set<String>>> indexPartitions) {
+    if ("VALID".equals(status)
+        || "true".equals(System.getProperty("org.alfasoftware.morf.jdbc.oracle.OracleMetaDataProvider.disableIndexValidation"))) {
+      return true;
+    }
+
+    if ("UNUSABLE".equals(status)) {
+      return false;
+    }
+
+    // if we have another status (usually 'N/A') it is likely because the index is partitioned, so we have to check the status on ALL_IND_PARTITIONS
+    if (indexPartitions.get().containsKey(indexName)) {
+      return !indexPartitions.get().get(indexName).contains("UNUSABLE");
+    }
+
+    log.warn("Unable to determine validity of index [" + indexName + "] based on status [" + status + "]");
+
+    return false;
   }
 
 

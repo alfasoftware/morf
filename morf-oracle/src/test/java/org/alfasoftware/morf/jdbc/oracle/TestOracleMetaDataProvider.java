@@ -31,22 +31,24 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 
 import javax.sql.DataSource;
-
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
+
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 
@@ -176,6 +178,8 @@ public class TestOracleMetaDataProvider {
     final PreparedStatement statement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
     when(connection.prepareStatement(anyString())).thenReturn(statement);
 
+
+
     // This is the list of tables that's returned.
     when(statement.executeQuery()).thenAnswer(new ReturnTablesMockResultSet(1)).thenAnswer(new ReturnTablesMockResultSet(8));
 
@@ -183,6 +187,53 @@ public class TestOracleMetaDataProvider {
     final Schema oracleMetaDataProvider = oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
     assertEquals("Table names", "[AREALTABLE]", oracleMetaDataProvider.tableNames().toString());
     assertFalse("Table names", oracleMetaDataProvider.tableNames().toString().contains("DBMS"));
+  }
+
+
+  /**
+   * Tests that regular and partitioned indexes not in a usable state have the <UNUSABLE> string appended to their name.
+   */
+  @Test
+  public void testInvalidIndexHandling() throws Exception {
+    // Given
+    final PreparedStatement statement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    when(connection.prepareStatement(anyString())).thenReturn(statement);
+    // This is the list of tables that's returned.
+    when(statement.executeQuery()).thenAnswer(new ReturnTablesMockResultSet(1)).thenAnswer(new ReturnTablesMockResultSet(8));
+
+    PreparedStatement statement1 = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    when(connection.prepareStatement("select table_name, index_name, uniqueness, status from ALL_INDEXES where owner=? order by table_name, index_name")).thenReturn(statement1);
+
+    // four indexes, two regular, two partitioned of which one is valid and the other is not
+    when(statement1.executeQuery()).thenAnswer(answer -> {
+      ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
+      when(resultSet.next()).thenReturn(true, true, true, true, false);
+      when(resultSet.getString(1)).thenReturn("AREALTABLE");
+      when(resultSet.getString(2)).thenReturn("AREALTABLE_1", "AREALTABLE_2", "AREALTABLE_3", "AREALTABLE_4");
+      when(resultSet.getString(4)).thenReturn("VALID", "UNUSABLE", "N/A", "N/A");
+      return resultSet;
+    });
+
+
+    PreparedStatement statement2 = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    when(connection.prepareStatement("select index_name, status from ALL_IND_PARTITIONS where index_owner=?")).thenReturn(statement2);
+    when(statement2.executeQuery()).thenAnswer(answer -> {
+      ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
+      when(resultSet.next()).thenReturn(true, true, true, true, false);
+      when(resultSet.getString(1)).thenReturn("AREALTABLE_3", "AREALTABLE_3", "AREALTABLE_4", "AREALTABLE_4");
+      when(resultSet.getString(2)).thenReturn("USABLE", "USABLE", "UNUSABLE", "USABLE");
+      return resultSet;
+    });
+
+    // When
+    final Schema oracleMetaDataProvider = oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
+    assertEquals("Table names", "[AREALTABLE]", oracleMetaDataProvider.tableNames().toString());
+
+    List<Index> indexes = oracleMetaDataProvider.getTable("AREALTABLE").indexes();
+    assertEquals("AREALTABLE_1", indexes.get(0).getName());
+    assertEquals("AREALTABLE_2<UNUSABLE>", indexes.get(1).getName());
+    assertEquals("AREALTABLE_3", indexes.get(2).getName());
+    assertEquals("AREALTABLE_4<UNUSABLE>", indexes.get(3).getName());
   }
 
 
