@@ -148,7 +148,7 @@ public class DatabaseDataSetConsumer implements DataSetConsumer {
       .withConnection(connection)
       .withSqlScriptExecutor(sqlExecutor)
       .withDialect(sqlDialect)
-	  .explicitCommit("H2".equals(connectionResources.getDatabaseType()))
+      .explicitCommit("H2".equals(connectionResources.getDatabaseType()))
       .truncateBeforeLoad()
       .insertingWithPresetAutonums()
       .forTable(table)
