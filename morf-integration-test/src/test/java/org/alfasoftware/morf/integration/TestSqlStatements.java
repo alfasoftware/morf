@@ -255,7 +255,8 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     table("SelectFirstTable")
       .columns(
         column("field1", DataType.INTEGER),
-        column("field2", DataType.STRING, 30).nullable()
+        column("field2", DataType.STRING, 30).nullable(),
+        column("field3", DataType.INTEGER).nullable()
       ),
     table("AutoNumbered")
       .columns(
@@ -287,7 +288,8 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         column("autoNum", DataType.INTEGER).autoNumbered(101).primaryKey(),
         column("column1", DataType.INTEGER),
         column("column2", DataType.INTEGER),
-        column("column3", DataType.STRING, 10).nullable()
+        column("column3", DataType.STRING, 10).nullable(),
+        column("column4", DataType.STRING, 10).nullable()
       )
       .indexes(
         index("Index_1").columns("column1", "column2").unique()
@@ -2245,21 +2247,22 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
           select(
             parameter("column1").type(DataType.INTEGER),
             parameter("column2").type(DataType.INTEGER),
-            parameter("column3").type(DataType.STRING).width(0)
+            parameter("column3").type(DataType.STRING).width(0),
+            parameter("parameterValue").type(DataType.STRING).as("column4")
           )
         );
     NamedParameterPreparedStatement preparedStatement = NamedParameterPreparedStatement.parse(sqlDialect.convertStatementToSQL(merge)).createFor(connection);
     try {
 
       // Put in two records.  The first should merge with the initial data set.
-      preparedStatementRecord(sqlDialect, preparedStatement, 500, 800, "Correct");
-      preparedStatementRecord(sqlDialect, preparedStatement, 101, 201, "301");
+      preparedStatementRecord(sqlDialect, preparedStatement, 500, 800, "Correct", "Updated");
+      preparedStatementRecord(sqlDialect, preparedStatement, 101, 201, "301", "401");
       if (sqlDialect.useInsertBatching()) {
         preparedStatement.executeBatch();
       }
 
       // Check we have what we expect
-      SelectStatement statement = select(field("column1"), field("column2"), field("column3")).from(tableRef("MergeTableMultipleKeys")).orderBy(field("autoNum"));
+      SelectStatement statement = select(field("column1"), field("column2"), field("column3"), field("column4")).from(tableRef("MergeTableMultipleKeys")).orderBy(field("autoNum"));
       String sql = convertStatementToSQL(statement);
       sqlScriptExecutorProvider.get().executeQuery(sql, connection, new ResultSetProcessor<Void>() {
         @Override
@@ -2268,10 +2271,12 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
           assertEquals("Row 1 column 1", 500, resultSet.getInt(1));
           assertEquals("Row 1 column 2", 800, resultSet.getInt(2));
           assertEquals("Row 1 column 3", "Correct", resultSet.getString(3));
+          assertEquals("Row 1 column 4", "Updated", resultSet.getString(4));
           assertTrue("No record 2", resultSet.next());
           assertEquals("Row 2 column 1", 101, resultSet.getInt(1));
           assertEquals("Row 2 column 2", 201, resultSet.getInt(2));
           assertEquals("Row 2 column 3", "301", resultSet.getString(3));
+          assertEquals("Row 2 column 4", "401", resultSet.getString(4));
           assertFalse("Noo many records", resultSet.next());
           return null;
         }
@@ -2293,10 +2298,11 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     SqlParameter column1 = parameter("column1").type(DataType.INTEGER);
     SqlParameter column2 = parameter("column2").type(DataType.INTEGER);
     SqlParameter column3 = parameter("column3").type(DataType.STRING).width(0);
+    AliasedField column4 = parameter("parameterValue").type(DataType.STRING).as("column4");
 
     SqlDialect sqlDialect = connectionResources.sqlDialect();
     UpdateStatement update = update(tableRef("MergeTableMultipleKeys"))
-        .set(column2, column3)
+        .set(column2, column3, column4)
         .where(field("column1").eq(column1));
     ParseResult parsed = NamedParameterPreparedStatement.parse(sqlDialect.convertStatementToSQL(update));
 
@@ -2306,10 +2312,11 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
       preparedStatement.setInt(column1, 500)
                        .setInt(column2, 801)
                        .setString(column3, "Correct")
+                       .setString(parameter("parameterValue").type(DataType.STRING), "Updated")
                        .executeUpdate();
 
       // Check we have what we expect
-      SelectStatement statement = select(field("column1"), field("column2"), field("column3")).from(tableRef("MergeTableMultipleKeys")).orderBy(field("autoNum"));
+      SelectStatement statement = select(field("column1"), field("column2"), field("column3"), field("column4")).from(tableRef("MergeTableMultipleKeys")).orderBy(field("autoNum"));
       String sql = convertStatementToSQL(statement);
       sqlScriptExecutorProvider.get().executeQuery(sql, connection, new ResultSetProcessor<Void>() {
         @Override
@@ -2318,6 +2325,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
           assertEquals("Row 1 column 1", 500, resultSet.getInt(1));
           assertEquals("Row 1 column 2", 801, resultSet.getInt(2));
           assertEquals("Row 1 column 3", "Correct", resultSet.getString(3));
+          assertEquals("Row 1 column 4", "Updated", resultSet.getString(4));
           assertFalse("Noo many records", resultSet.next());
           return null;
         }
@@ -2336,8 +2344,10 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
   public void testParameterisedSelect() throws SQLException {
     SqlDialect sqlDialect = connectionResources.sqlDialect();
     SelectStatement select = select(
-          field("field1"), field("field2"), literal(":justtomesswithyou") // just to confuse it - should be treated
-                                                                          // as a string
+          field("field1"),
+          field("field2"),
+          literal(":justtomesswithyou"), // just to confuse it - should be treated as a string
+          parameter("param3").type(DataType.INTEGER).as("field3")
         )
         .from("SelectFirstTable")
         .where(field("field1").in(
@@ -2354,25 +2364,30 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         preparedStatement,
         ImmutableList.of(
           parameter("param1").type(INTEGER),
-          parameter("param2").type(INTEGER)
+          parameter("param2").type(INTEGER),
+          parameter("param3").type(INTEGER)
         ),
         DataSetUtils.statementParameters()
           .setInteger("param1", 1) // 1 + 1 = 2
           .setInteger("param2", 5)
+          .setInteger("param3", 7)
       );
       ResultSet resultSet = preparedStatement.executeQuery();
       assertTrue("No record 1", resultSet.next());
       assertEquals("Row 1 column 1", 2, resultSet.getInt(1));
       assertEquals("Row 1 column 2", 2, resultSet.getInt(2));
       assertEquals("Row 1 column 3", ":justtomesswithyou", resultSet.getString(3));
+      assertEquals("Row 1 column 4", 7, resultSet.getInt(4));
       assertTrue("No record 2", resultSet.next());
       assertEquals("Row 2 column 1", 2, resultSet.getInt(1));
       assertEquals("Row 2 column 2", 3, resultSet.getInt(2));
       assertEquals("Row 2 column 3", ":justtomesswithyou", resultSet.getString(3));
+      assertEquals("Row 2 column 4", 7, resultSet.getInt(4));
       assertTrue("No record 3", resultSet.next());
       assertEquals("Row 3 column 1", 5, resultSet.getInt(1));
       assertEquals("Row 3 column 2", 4, resultSet.getInt(2));
       assertEquals("Row 3 column 3", ":justtomesswithyou", resultSet.getString(3));
+      assertEquals("Row 3 column 4", 7, resultSet.getInt(4));
       assertFalse("Noo many records", resultSet.next());
     } finally {
       preparedStatement.close();
@@ -2380,18 +2395,20 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
   }
 
 
-  private void preparedStatementRecord(SqlDialect sqlDialect, NamedParameterPreparedStatement preparedStatement, Integer col1Value, Integer col2Value, String col3Value) throws SQLException {
+  private void preparedStatementRecord(SqlDialect sqlDialect, NamedParameterPreparedStatement preparedStatement, Integer col1Value, Integer col2Value, String col3Value, String col4Value) throws SQLException {
     sqlDialect.prepareStatementParameters(
       preparedStatement,
       ImmutableList.of(
         parameter("column1").type(INTEGER),
         parameter("column2").type(INTEGER),
-        parameter("column3").type(STRING)
+        parameter("column3").type(STRING),
+        parameter("parameterValue").type(STRING)
       ),
       DataSetUtils.statementParameters()
         .setInteger("column1", col1Value)
         .setInteger("column2", col2Value)
         .setString("column3", col3Value)
+        .setString("parameterValue", col4Value)
     );
     if (sqlDialect.useInsertBatching()) {
       preparedStatement.addBatch();
