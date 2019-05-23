@@ -1479,7 +1479,7 @@ public abstract class SqlDialect {
   protected String getSqlFrom(AliasedField field) {
 
     if (field instanceof SqlParameter) {
-      return String.format(":%s", ((SqlParameter)field).getImpliedName());
+      return String.format(":%s", ((SqlParameter)field).getMetadata().getName());
     }
 
     if (field instanceof FieldLiteral) {
