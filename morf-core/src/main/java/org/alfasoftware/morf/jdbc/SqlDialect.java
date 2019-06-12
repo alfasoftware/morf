@@ -39,6 +39,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 
 import org.alfasoftware.morf.dataset.Record;
@@ -2616,7 +2617,14 @@ public abstract class SqlDialect {
     StringBuilder sqlBuilder = new StringBuilder();
 
     // Add the preamble
-    sqlBuilder.append("DELETE FROM ");
+    sqlBuilder.append("DELETE ");
+
+    // For appropriate dialects, append the delete limit here
+    if (statement.getLimit().isPresent() && getDeleteLimitPreFromClause(statement.getLimit().get()).isPresent()) {
+      sqlBuilder.append(getDeleteLimitPreFromClause(statement.getLimit().get()).get() + " ");
+    }
+
+    sqlBuilder.append("FROM ");
 
     // Now add the from clause
     sqlBuilder.append(schemaNamePrefix(statement.getTable()));
@@ -2627,14 +2635,65 @@ public abstract class SqlDialect {
       sqlBuilder.append(String.format(" %s", statement.getTable().getAlias()));
     }
 
+    // Prepare to append the where clause or, for appropriate dialects, the delete limit
+    if (statement.getWhereCriterion() != null || statement.getLimit().isPresent() && getDeleteLimitWhereClause(statement.getLimit().get()).isPresent()) {
+      sqlBuilder.append(" WHERE ");
+    }
+
     // Now put the where clause in
     if (statement.getWhereCriterion() != null) {
-      sqlBuilder.append(" WHERE ");
       sqlBuilder.append(getSqlFrom(statement.getWhereCriterion()));
+    }
+
+    // Append the delete limit, for appropriate dialects
+    if (statement.getLimit().isPresent() && getDeleteLimitWhereClause(statement.getLimit().get()).isPresent()) {
+      if (statement.getWhereCriterion() != null) {
+        sqlBuilder.append(" AND ");
+      }
+
+      sqlBuilder.append(getDeleteLimitWhereClause(statement.getLimit().get()).get());
+    }
+
+    // For appropriate dialects, append the delete limit suffix
+    if (statement.getLimit().isPresent() && getDeleteLimitSuffix(statement.getLimit().get()).isPresent()) {
+      sqlBuilder.append(" " + getDeleteLimitSuffix(statement.getLimit().get()).get());
     }
 
     return sqlBuilder.toString();
   }
+
+
+  /**
+   * Returns the SQL that specifies the deletion limit ahead of the FROM clause, if any, for the dialect.
+   *
+   * @param limit The delete limit.
+   * @return The SQL fragment.
+   */
+  protected Optional<String> getDeleteLimitPreFromClause(int limit) {
+    return Optional.empty();
+  };
+
+
+  /**
+   * Returns the SQL that specifies the deletion limit in the WHERE clause, if any, for the dialect.
+   *
+   * @param limit The delete limit.
+   * @return The SQL fragment.
+   */
+  protected Optional<String> getDeleteLimitWhereClause(int limit) {
+    return Optional.empty();
+  };
+
+
+  /**
+   * Returns the SQL that specifies the deletion limit as a suffix, if any, for the dialect.
+   *
+   * @param limit The delete limit.
+   * @return The SQL fragment.
+   */
+  protected Optional<String> getDeleteLimitSuffix(int limit) {
+    return Optional.empty();
+  };
 
 
   /**

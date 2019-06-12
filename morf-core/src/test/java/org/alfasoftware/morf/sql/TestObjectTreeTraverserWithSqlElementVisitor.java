@@ -19,7 +19,6 @@ import static org.alfasoftware.morf.sql.SqlUtils.bracket;
 import static org.alfasoftware.morf.sql.SqlUtils.caseStatement;
 import static org.alfasoftware.morf.sql.SqlUtils.cast;
 import static org.alfasoftware.morf.sql.SqlUtils.concat;
-import static org.alfasoftware.morf.sql.SqlUtils.delete;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.insert;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
@@ -40,6 +39,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+
+import java.util.Optional;
 
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Criterion;
@@ -327,7 +328,8 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
     final SelectStatement select = select().from(two);
     final Criterion crit2 = exists(select);
     final Criterion crit1 = not(crit2);
-    final DeleteStatement delete = delete(three).where(crit1);
+    int limit = 1000;
+    final DeleteStatement delete = DeleteStatement.delete(three).where(crit1).limit(limit).build();
 
     traverser.dispatch(delete);
 
@@ -337,6 +339,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
     verify(callback).visit(select);
     verify(callback).visit(two);
     verify(callback).visit(three);
+    verify(callback).visit(Optional.of(limit));
     verifyNoMoreInteractions(callback);
   }
 

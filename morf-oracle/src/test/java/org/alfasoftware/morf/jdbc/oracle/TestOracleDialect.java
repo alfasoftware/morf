@@ -1442,4 +1442,31 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   protected String nullOrderForDirection(Direction descending) {
     return ASCENDING.equals(descending) ? nullOrder() : NULLS_LAST;
   }
+
+
+  /**
+   * @return The expected SQL for a delete statement with a limit and where criterion.
+   */
+  @Override
+  protected String expectedDeleteWithLimitAndWhere(String value) {
+    return "DELETE FROM " + tableName(TEST_TABLE) + " WHERE (Test.stringField = " + stringLiteralPrefix() + value + ") AND ROWNUM <= 1000";
+  }
+
+
+  /**
+   * @return The expected SQL for a delete statement with a limit and where criterion.
+   */
+  @Override
+  protected String expectedDeleteWithLimitAndComplexWhere(String value1, String value2) {
+    return "DELETE FROM " + tableName(TEST_TABLE) + " WHERE ((Test.stringField = " + stringLiteralPrefix() + value1 + ") OR (Test.stringField = " + stringLiteralPrefix() + value2 + ")) AND ROWNUM <= 1000";
+  }
+
+
+  /**
+   * @return The expected SQL for a delete statement with a limit and where criterion.
+   */
+  @Override
+  protected String expectedDeleteWithLimitWithoutWhere() {
+    return "DELETE FROM " + tableName(TEST_TABLE) + " WHERE ROWNUM <= 1000";
+  }
 }

@@ -28,6 +28,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -1020,5 +1021,14 @@ class NuoDBDialect extends SqlDialect {
   @Override
   public Collection<String> getSqlForAnalyseTable(Table table) {
     return SqlDialect.NO_STATEMENTS;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect.getDeleteLimitSuffixSql(int)
+   */
+  @Override
+  protected Optional<String> getDeleteLimitSuffix(int limit) {
+    return Optional.of("LIMIT " + limit);
   }
 }

@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
@@ -1238,5 +1239,14 @@ class SqlServerDialect extends SqlDialect {
   @Override
   public Collection<String> getSqlForAnalyseTable(Table table) {
     return SqlDialect.NO_STATEMENTS;
+  }
+
+
+  /**
+   * @see SqlDialect#getDeleteLimitPreFromClause(int)
+   */
+  @Override
+  protected Optional<String> getDeleteLimitPreFromClause(int limit) {
+    return Optional.of("TOP (" + limit + ")");
   }
 }

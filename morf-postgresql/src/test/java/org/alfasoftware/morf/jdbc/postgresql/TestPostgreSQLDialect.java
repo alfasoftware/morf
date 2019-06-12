@@ -1191,4 +1191,35 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   }
 
 
+  /**
+   * @return The expected SQL for a delete statement with a limit and where criterion.
+   */
+  @Override
+  protected String expectedDeleteWithLimitAndWhere(String value) {
+    return "DELETE FROM " + tableName(TEST_TABLE) + " WHERE ctid IN (" +
+      "SELECT ctid FROM " + tableName(TEST_TABLE) + " WHERE (" + TEST_TABLE + ".stringField = " + stringLiteralPrefix() + value +
+      ") LIMIT 1000)";
+  };
+
+
+  /**
+   * @return The expected SQL for a delete statement with a limit and where criterion.
+   */
+  @Override
+  protected String expectedDeleteWithLimitAndComplexWhere(String value1, String value2) {
+    return "DELETE FROM " + tableName(TEST_TABLE) + " WHERE ctid IN (" +
+      "SELECT ctid FROM " + tableName(TEST_TABLE) + " WHERE ((Test.stringField = " + stringLiteralPrefix() + value1 + ") OR (Test.stringField = " + stringLiteralPrefix() + value2 + "))" +
+      " LIMIT 1000)";
+  };
+
+
+  /**
+   * @return The expected SQL for a delete statement with a limit and where criterion.
+   */
+  @Override
+  protected String expectedDeleteWithLimitWithoutWhere() {
+    return "DELETE FROM " + tableName(TEST_TABLE) + " WHERE ctid IN (" +
+      "SELECT ctid FROM " + tableName(TEST_TABLE) +
+      " LIMIT 1000)";
+  };
 }

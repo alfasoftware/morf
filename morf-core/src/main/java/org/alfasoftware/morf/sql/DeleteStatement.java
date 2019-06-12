@@ -15,6 +15,8 @@
 
 package org.alfasoftware.morf.sql;
 
+import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Function;
 
 import org.alfasoftware.morf.sql.element.AliasedField;
@@ -55,6 +57,12 @@ public class DeleteStatement implements Statement,
 
 
   /**
+   * The limit.
+   */
+  private final Optional<Integer> limit;
+
+
+  /**
    * The selection criteria for selecting from the database.
    *
    * TODO make final
@@ -81,6 +89,7 @@ public class DeleteStatement implements Statement,
   DeleteStatement(DeleteStatementBuilder deleteStatementBuilder) {
     this.table = deleteStatementBuilder.getTable();
     this.whereCriterion = deleteStatementBuilder.getWhereCriterion();
+    this.limit = deleteStatementBuilder.getLimit();
   }
 
 
@@ -95,6 +104,7 @@ public class DeleteStatement implements Statement,
   public DeleteStatement(TableReference table) {
     super();
     this.table = table;
+    this.limit = Optional.empty();
   }
 
 
@@ -140,6 +150,16 @@ public class DeleteStatement implements Statement,
 
 
   /**
+   * Gets the limit.
+   *
+   * @return the limit on the number of deleted records.
+   */
+  public Optional<Integer> getLimit() {
+    return limit;
+  }
+
+
+  /**
    * {@inheritDoc}
    *
    * @see org.alfasoftware.morf.sql.Statement#deepCopy()
@@ -157,7 +177,8 @@ public class DeleteStatement implements Statement,
   public void drive(ObjectTreeTraverser traverser) {
     traverser
       .dispatch(getTable())
-      .dispatch(getWhereCriterion());
+      .dispatch(getWhereCriterion())
+      .dispatch(getLimit());
   }
 
 
@@ -206,7 +227,8 @@ public class DeleteStatement implements Statement,
   @Override
   public String toString() {
     return "SQL DELETE FROM [" + table + "] " +
-    (whereCriterion == null ? "" : ("WHERE " + whereCriterion));
+      (whereCriterion == null ? "" : ("WHERE " + whereCriterion)) +
+      (limit.isPresent() ? " LIMIT(" + limit.get() + ")" : "");
   }
 
 
@@ -216,6 +238,7 @@ public class DeleteStatement implements Statement,
     int result = 1;
     result = prime * result + ((table == null) ? 0 : table.hashCode());
     result = prime * result + ((whereCriterion == null) ? 0 : whereCriterion.hashCode());
+    result = prime * result + ((!limit.isPresent()) ? 0 : limit.get().hashCode());
     return result;
   }
 
@@ -238,6 +261,8 @@ public class DeleteStatement implements Statement,
       if (other.whereCriterion != null)
         return false;
     } else if (!whereCriterion.equals(other.whereCriterion))
+      return false;
+    if (!Objects.equals(limit, other.limit))
       return false;
     return true;
   }

@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
@@ -1387,5 +1388,14 @@ class OracleDialect extends SqlDialect {
                           + "tabname=>'" + table.getName() + "', "
                           + "cascade=>true, degree=>DBMS_STATS.AUTO_DEGREE, no_invalidate=>false); \n"
                    + "END;");
+  }
+
+
+  /**
+   * @see SqlDialect#getDeleteLimitWhereClause(int)
+   */
+  @Override
+  protected Optional<String> getDeleteLimitWhereClause(int limit) {
+    return Optional.of("ROWNUM <= " + limit);
   }
 }

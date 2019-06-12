@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -670,5 +671,14 @@ class H2Dialect extends SqlDialect {
   @Override
   public Collection<String> getSqlForAnalyseTable(Table table) {
     return SqlDialect.NO_STATEMENTS;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect.getDeleteLimitSuffixSql(int)
+   */
+  @Override
+  protected Optional<String> getDeleteLimitSuffix(int limit) {
+    return Optional.of("LIMIT " + limit);
   }
 }

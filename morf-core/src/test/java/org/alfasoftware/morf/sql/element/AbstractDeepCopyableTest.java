@@ -30,6 +30,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
@@ -237,6 +238,15 @@ public abstract class AbstractDeepCopyableTest<T extends DeepCopyableWithTransfo
       Object value = f.get(instance);
       if (value == null)
         continue;
+
+      if (value instanceof Optional) {
+        if (!((Optional) value).isPresent())
+          continue;
+
+        if (typeIsOfInterest(((Optional) value).get().getClass())) {
+          incAppearanceCount(appearances, ((Optional) value).get());
+        }
+      }
 
       if (value instanceof Iterable) {
         for (Object o : (Iterable<?>) value) {

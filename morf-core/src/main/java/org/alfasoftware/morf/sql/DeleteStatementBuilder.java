@@ -15,6 +15,8 @@
 
 package org.alfasoftware.morf.sql;
 
+import java.util.Optional;
+
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.util.Builder;
@@ -36,10 +38,14 @@ public class DeleteStatementBuilder implements Builder<DeleteStatement> {
 
   /**
    * The selection criteria for selecting from the database.
-   *
-   * TODO make final
    */
   private Criterion whereCriterion;
+
+
+  /**
+   * The limit for the number of rows to be deleted.
+   */
+  private Optional<Integer> limit = Optional.empty();
 
 
   /**
@@ -50,6 +56,7 @@ public class DeleteStatementBuilder implements Builder<DeleteStatement> {
   DeleteStatementBuilder(DeleteStatement sourceStatement) {
     this.table = sourceStatement.getTable();
     this.whereCriterion = sourceStatement.getWhereCriterion();
+    this.limit = sourceStatement.getLimit();
   }
 
 
@@ -62,6 +69,7 @@ public class DeleteStatementBuilder implements Builder<DeleteStatement> {
   DeleteStatementBuilder(DeleteStatement sourceStatement, DeepCopyTransformation transformer) {
     this.table = transformer.deepCopy(sourceStatement.getTable());
     this.whereCriterion = transformer.deepCopy(sourceStatement.getWhereCriterion());
+    this.limit = sourceStatement.getLimit();
   }
 
 
@@ -113,6 +121,33 @@ public class DeleteStatementBuilder implements Builder<DeleteStatement> {
    */
   Criterion getWhereCriterion() {
     return whereCriterion;
+  }
+
+
+  /**
+   * Specifies the limit for the delete statement.
+   *
+   * <blockquote><pre>DeleteStatement.delete([table])
+   *    .where([criteria])
+   *    .limit(1000)
+   *    .build();</pre></blockquote>
+   *
+   * @param limit the limit on the number of deleted records.
+   * @return this, for method chaining.
+   */
+  public DeleteStatementBuilder limit(int limit) {
+    this.limit = Optional.of(limit);
+    return this;
+  }
+
+
+  /**
+   * Gets the limit.
+   *
+   * @return the limit on the number of deleted records.
+   */
+  public Optional<Integer> getLimit() {
+    return limit;
   }
 
 

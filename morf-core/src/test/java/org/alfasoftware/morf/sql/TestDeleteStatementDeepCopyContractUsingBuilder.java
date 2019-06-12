@@ -45,7 +45,9 @@ public class TestDeleteStatementDeepCopyContractUsingBuilder extends AbstractSha
       testCaseWithBuilder(DeleteStatement.delete(TABLE_1)),
       testCaseWithBuilder(DeleteStatement.delete(TABLE_2)),
       testCaseWithBuilder(DeleteStatement.delete(TABLE_1).where(CRITERION_1)),
-      testCaseWithBuilder(DeleteStatement.delete(TABLE_1).where(CRITERION_2))
+      testCaseWithBuilder(DeleteStatement.delete(TABLE_1).where(CRITERION_2)),
+      testCaseWithBuilder(DeleteStatement.delete(TABLE_1).limit(1000)),
+      testCaseWithBuilder(DeleteStatement.delete(TABLE_1).where(CRITERION_2).limit(1000))
     );
   }
 

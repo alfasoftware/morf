@@ -2,6 +2,8 @@ package org.alfasoftware.morf.jdbc.postgresql;
 
 import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
 import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
+import static org.alfasoftware.morf.sql.SelectStatement.select;
+import static org.alfasoftware.morf.sql.SqlUtils.field;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -20,8 +22,11 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.sql.DeleteStatement;
+import org.alfasoftware.morf.sql.DeleteStatementBuilder;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
+import org.alfasoftware.morf.sql.SelectStatementBuilder;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Function;
@@ -628,4 +633,31 @@ public class PostgreSQLDialect extends SqlDialect {
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(DeleteStatement)
+   */
+  @Override
+  protected String getSqlFrom(DeleteStatement statement) {
+    if (!statement.getLimit().isPresent()) {
+      return super.getSqlFrom(statement);
+    }
+
+    StringBuilder sqlBuilder = new StringBuilder();
+
+    DeleteStatementBuilder deleteStatement = DeleteStatement.delete(statement.getTable());
+    sqlBuilder.append(super.getSqlFrom(deleteStatement.build()));
+
+    // Now add the limit clause, using the current table id.
+    sqlBuilder.append(" WHERE ctid IN (");
+
+    SelectStatementBuilder selectStatement = select().fields(field("ctid")).from(statement.getTable());
+    if (statement.getWhereCriterion() != null ) {
+      selectStatement = selectStatement.where(statement.getWhereCriterion());
+    }
+    sqlBuilder.append(getSqlFrom(selectStatement.build()));
+
+    sqlBuilder.append(" LIMIT " + statement.getLimit().get() + ")");
+
+    return sqlBuilder.toString();
+  }
 }

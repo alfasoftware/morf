@@ -140,7 +140,7 @@ import com.google.common.collect.Lists;
  */
 public abstract class AbstractSqlDialectTest {
 
-  private static final String TEST_TABLE = "Test";
+  protected static final String TEST_TABLE = "Test";
   private static final String ALTERNATE_TABLE = "Alternate";
   private static final String OTHER_TABLE = "Other";
   private static final String UPPER_TABLE = "UPPER";
@@ -1955,6 +1955,54 @@ public abstract class AbstractSqlDialectTest {
     String value = varCharCast("'A001003657'");
     String expectedSql = "DELETE FROM " + tableName(TEST_TABLE) + " WHERE (Test.stringField = " + stringLiteralPrefix() + value + ")";
     assertEquals("Simple delete", expectedSql, testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
+   * Tests that a delete string with a limit and a simple where criterion is created correctly.
+   */
+  @Test
+  public void testDeleteWithLimitAndSimpleWhereCriterion() {
+    DeleteStatement stmt = DeleteStatement
+      .delete(new TableReference(TEST_TABLE))
+      .where(Criterion.eq(new FieldReference(new TableReference(TEST_TABLE), STRING_FIELD), "A001003657"))
+      .limit(1000)
+      .build();
+
+    String value = varCharCast("'A001003657'");
+    assertEquals("Delete with simple where clause and limit", expectedDeleteWithLimitAndWhere(value), testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
+   * Tests that a delete string with a limit and a complex where criterion (involving an 'OR') is created correctly (i.e. brackets around the 'OR' are preserved).
+   */
+  @Test
+  public void testDeleteWithLimitAndComplexWhereCriterion() {
+    DeleteStatement stmt = DeleteStatement
+      .delete(new TableReference(TEST_TABLE))
+      .where(Criterion.or(Criterion.eq(new FieldReference(new TableReference(TEST_TABLE), STRING_FIELD), "A001003657"),
+        Criterion.eq(new FieldReference(new TableReference(TEST_TABLE), STRING_FIELD), "A001003658")))
+      .limit(1000)
+      .build();
+
+    String value1 = varCharCast("'A001003657'");
+    String value2 = varCharCast("'A001003658'");
+    assertEquals("Delete with 'OR' where clause and limit - NB do not alter brackets incautiously", expectedDeleteWithLimitAndComplexWhere(value1, value2), testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
+   * Tests that a delete string with a limit and no where criterion is created correctly.
+   */
+  @Test
+  public void testDeleteWithLimitWithoutWhereCriterion() {
+    DeleteStatement stmt = DeleteStatement
+      .delete(new TableReference(TEST_TABLE))
+      .limit(1000)
+      .build();
+
+    assertEquals("Delete with limit", expectedDeleteWithLimitWithoutWhere(), testDialect.convertStatementToSQL(stmt));
   }
 
 
@@ -4972,6 +5020,24 @@ public abstract class AbstractSqlDialectTest {
   private Object expectedPower() {
     return "SELECT POWER(floatField, intField) FROM " + tableName(TEST_TABLE);
   }
+
+
+  /**
+   * @return The expected SQL for a delete statement with a limit and where criterion.
+   */
+  protected abstract String expectedDeleteWithLimitAndWhere(String value);
+
+
+  /**
+   * @return The expected SQL for a delete statement with a limit and where criterion.
+   */
+  protected abstract String expectedDeleteWithLimitAndComplexWhere(String value, String value2);
+
+
+  /**
+   * @return The expected SQL for a delete statement with a limit and where criterion.
+   */
+  protected abstract String expectedDeleteWithLimitWithoutWhere();
 
 
   /**
