@@ -2036,7 +2036,20 @@ public abstract class SqlDialect {
    */
   protected String getSqlFrom(Cast cast) {
     return String.format("CAST(%s AS %s)", getSqlFrom(cast.getExpression()),
-      getColumnRepresentation(cast.getDataType(), cast.getWidth(), cast.getScale()));
+      getDataTypeRepresentation(cast.getDataType(), cast.getWidth(), cast.getScale()));
+  }
+
+
+  /**
+   * Gets the column representation for the datatype, etc.
+   *
+   * @param dataType the column datatype.
+   * @param width the column width.
+   * @param scale the column scale.
+   * @return a string representation of the column definition.
+   */
+  protected String getDataTypeRepresentation(DataType dataType, int width, int scale) {
+    return getColumnRepresentation(dataType, width, scale);
   }
 
 

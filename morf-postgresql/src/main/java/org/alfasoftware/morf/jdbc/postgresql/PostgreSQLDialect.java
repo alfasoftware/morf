@@ -91,7 +91,7 @@ public class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
-  protected String getColumnRepresentation(DataType dataType, int width, int scale) {
+  protected String getDataTypeRepresentation(DataType dataType, int width, int scale) {
     switch (dataType) {
       case STRING:
         return String.format("VARCHAR(%d)", width);
@@ -119,6 +119,18 @@ public class PostgreSQLDialect extends SqlDialect {
 
       default:
         throw new UnsupportedOperationException("Cannot map column with type [" + dataType + "]");
+    }
+  }
+
+
+  @Override
+  protected String getColumnRepresentation(DataType dataType, int width, int scale) {
+    switch (dataType) {
+      case STRING:
+        return getDataTypeRepresentation(dataType, width, scale) + " COLLATE \"und-x-icu\"";
+
+      default:
+        return getDataTypeRepresentation(dataType, width, scale);
     }
   }
 
