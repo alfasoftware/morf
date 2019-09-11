@@ -369,7 +369,7 @@ public class PostgreSQLDialect extends SqlDialect {
   @Override
   protected String getSqlForYYYYMMDDToDate(Function function) {
     AliasedField field = function.getArguments().get(0);
-    return "TO_DATE("+ getSqlFrom(field) + ",'YYYYMMDD')";
+    return "TO_DATE("+ getSqlFrom(field) + " :: TEXT,'YYYYMMDD')";
   }
 
 
@@ -396,7 +396,7 @@ public class PostgreSQLDialect extends SqlDialect {
     AliasedField date = function.getArguments().get(0);
     AliasedField days = function.getArguments().get(1);
     return String.format(
-      "((%s) + (%s) * INTERVAL '1 DAY')",
+      "(((%s) + (%s) * INTERVAL '1 DAY') :: DATE)",
       getSqlFrom(date), getSqlFrom(days));
   }
 
@@ -406,7 +406,7 @@ public class PostgreSQLDialect extends SqlDialect {
     AliasedField date = function.getArguments().get(0);
     AliasedField months = function.getArguments().get(1);
     return String.format(
-      "((%s) + (%s) * INTERVAL '1 MONTH')",
+      "(((%s) + (%s) * INTERVAL '1 MONTH') :: DATE)",
       getSqlFrom(date), getSqlFrom(months));
   }
 
@@ -635,13 +635,13 @@ public class PostgreSQLDialect extends SqlDialect {
 
   @Override
   protected String getSqlForSome(AliasedField aliasedField) {
-    return "bool_or(" + getSqlFrom(aliasedField) + ")";
+    return "BOOL_OR(" + getSqlFrom(aliasedField) + ")";
   }
 
 
   @Override
   protected String getSqlForEvery(AliasedField aliasedField) {
-    return "bool_and(" + getSqlFrom(aliasedField) + ")";
+    return "BOOL_AND(" + getSqlFrom(aliasedField) + ")";
   }
 
 

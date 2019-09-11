@@ -860,7 +860,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedYYYYMMDDToDate() {
-    return "TO_DATE('20100101','YYYYMMDD')";
+    return "TO_DATE('20100101' :: TEXT,'YYYYMMDD')";
   }
 
 
@@ -986,7 +986,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedAddDays() {
-    return "((testField) + (-20) * INTERVAL '1 DAY')";
+    return "(((testField) + (-20) * INTERVAL '1 DAY') :: DATE)";
   }
 
 
@@ -995,7 +995,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedAddMonths() {
-    return "((testField) + (-3) * INTERVAL '1 MONTH')";
+    return "(((testField) + (-3) * INTERVAL '1 MONTH') :: DATE)";
   }
 
 
@@ -1178,7 +1178,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSelectSome() {
-    return "SELECT bool_or(booleanField) FROM testschema.Test";
+    return "SELECT BOOL_OR(booleanField) FROM testschema.Test";
   }
 
 
@@ -1187,7 +1187,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSelectEvery() {
-    return "SELECT bool_and(booleanField) FROM testschema.Test";
+    return "SELECT BOOL_AND(booleanField) FROM testschema.Test";
   }
 
 
