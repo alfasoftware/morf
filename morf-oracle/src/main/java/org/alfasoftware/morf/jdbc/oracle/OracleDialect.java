@@ -46,8 +46,10 @@ import org.alfasoftware.morf.sql.OptimiseForRowCount;
 import org.alfasoftware.morf.sql.ParallelQueryHint;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.sql.UpdateStatement;
 import org.alfasoftware.morf.sql.UseImplicitJoinOrder;
 import org.alfasoftware.morf.sql.UseIndex;
+import org.alfasoftware.morf.sql.UseParallelDml;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldReference;
@@ -1328,6 +1330,20 @@ class OracleDialect extends SqlDialect {
 
     return builder.append(" */ ").toString();
   };
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#updateStatementPreTableDirectives(org.alfasoftware.morf.sql.UpdateStatement)
+   */
+  @Override
+  protected String updateStatementPreTableDirectives(UpdateStatement updateStatement) {
+    for (Hint hint : updateStatement.getHints()) {
+      if (hint instanceof UseParallelDml) {
+        return "/*+ ENABLE_PARALLEL_DML PARALLEL */ "; // only the single hint supported so return immediately
+      }
+    }
+    return "";
+  }
 
 
   /**

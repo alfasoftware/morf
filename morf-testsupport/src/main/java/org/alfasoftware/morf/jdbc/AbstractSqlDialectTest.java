@@ -3042,6 +3042,14 @@ public abstract class AbstractSqlDialectTest {
         .withParallelQueryPlan()
       )
     );
+    assertEquals(
+      expectedHints3(),
+      testDialect.convertStatementToSQL(
+        update(tableRef("Foo"))
+        .set(field("b").as("a"))
+        .useParallelDml()
+      )
+    );
   }
 
 
@@ -5052,6 +5060,14 @@ public abstract class AbstractSqlDialectTest {
    */
   protected String expectedHints2(@SuppressWarnings("unused") int rowCount) {
     return "SELECT a, b FROM " + tableName("Foo") + " ORDER BY a FOR UPDATE";
+  }
+
+
+  /**
+   * @return The expected SQL for the {@link UpdateStatement#useParallelDml()} directive.
+   */
+  protected String expectedHints3() {
+    return "UPDATE " + tableName("Foo") + " SET a = b";
   }
 
 

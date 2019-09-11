@@ -813,6 +813,18 @@ public abstract class SqlDialect {
 
 
   /**
+   * Returns any SQL code which should be added between a <code>UPDATE</code> and the table
+   * for dialect-specific reasons.
+   *
+   * @param updateStatement The update statement
+   * @return Any hint code required.
+   */
+  protected String updateStatementPreTableDirectives(@SuppressWarnings("unused") UpdateStatement updateStatement) {
+    return StringUtils.EMPTY;
+  }
+
+
+  /**
    * Returns any SQL code which should be added at the end of a statement for dialect-specific reasons.
    *
    * @param selectStatement The select statement
@@ -2728,6 +2740,7 @@ public abstract class SqlDialect {
 
     // Add the preamble
     sqlBuilder.append("UPDATE ");
+    sqlBuilder.append(updateStatementPreTableDirectives(statement));
 
     // Now add the from clause
     sqlBuilder.append(schemaNamePrefix(statement.getTable()));

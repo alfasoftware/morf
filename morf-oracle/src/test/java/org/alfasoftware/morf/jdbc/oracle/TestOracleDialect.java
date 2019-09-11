@@ -1422,6 +1422,14 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints3
+   */
+  @Override
+  protected String expectedHints3() {
+    return "UPDATE /*+ ENABLE_PARALLEL_DML PARALLEL */ " + tableName("Foo") + " SET a = b";
+  }
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#supportsWindowFunctions()
    */
   @Override

@@ -61,6 +61,11 @@ public class UpdateStatement implements Statement,
   private final List<AliasedField> fields;
 
   /**
+   * Lists the declared hints in the order they were declared.
+   */
+  private final List<Hint> hints;
+
+  /**
    * The selection criteria for selecting from the database
    *
    * TODO make final
@@ -82,6 +87,9 @@ public class UpdateStatement implements Statement,
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder("SQL UPDATE [");
+    if (!hints.isEmpty()) {
+      builder.append(hints);
+    }
     builder.append(table).append("] SET ").append(fields);
     if (whereCriterion != null) {
       builder.append(" WHERE [" + whereCriterion + "]");
@@ -94,37 +102,32 @@ public class UpdateStatement implements Statement,
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result + ((fields == null) ? 0 : fields.hashCode());
-    result = prime * result + ((table == null) ? 0 : table.hashCode());
-    result = prime * result + ((whereCriterion == null) ? 0 : whereCriterion.hashCode());
+    result = prime * result + (fields == null ? 0 : fields.hashCode());
+    result = prime * result + (hints == null ? 0 : hints.hashCode());
+    result = prime * result + (table == null ? 0 : table.hashCode());
+    result = prime * result + (whereCriterion == null ? 0 : whereCriterion.hashCode());
     return result;
   }
 
 
   @Override
   public boolean equals(Object obj) {
-    if (this == obj)
-      return true;
-    if (obj == null)
-      return false;
-    if (getClass() != obj.getClass())
-      return false;
+    if (this == obj) return true;
+    if (obj == null) return false;
+    if (getClass() != obj.getClass()) return false;
     UpdateStatement other = (UpdateStatement) obj;
     if (fields == null) {
-      if (other.fields != null)
-        return false;
-    } else if (!fields.equals(other.fields))
-      return false;
+      if (other.fields != null) return false;
+    } else if (!fields.equals(other.fields)) return false;
+    if (hints == null) {
+      if (other.hints != null) return false;
+    } else if (!hints.equals(other.hints)) return false;
     if (table == null) {
-      if (other.table != null)
-        return false;
-    } else if (!table.equals(other.table))
-      return false;
+      if (other.table != null) return false;
+    } else if (!table.equals(other.table)) return false;
     if (whereCriterion == null) {
-      if (other.whereCriterion != null)
-        return false;
-    } else if (!whereCriterion.equals(other.whereCriterion))
-      return false;
+      if (other.whereCriterion != null) return false;
+    } else if (!whereCriterion.equals(other.whereCriterion)) return false;
     return true;
   }
 
@@ -139,6 +142,9 @@ public class UpdateStatement implements Statement,
     this.fields = AliasedField.immutableDslEnabled()
         ? ImmutableList.copyOf(builder.getFields())
         : Lists.newArrayList(builder.getFields());
+    this.hints = AliasedField.immutableDslEnabled()
+        ? ImmutableList.copyOf(builder.getHints())
+        : Lists.newArrayList(builder.getHints());
     this.table = builder.getTable();
     this.whereCriterion = builder.getWhereCriterion();
   }
@@ -157,6 +163,9 @@ public class UpdateStatement implements Statement,
     this.fields = AliasedField.immutableDslEnabled()
         ? ImmutableList.of()
         : Lists.newArrayList();
+    this.hints = AliasedField.immutableDslEnabled()
+            ? ImmutableList.of()
+            : Lists.newArrayList();
     this.table = table;
   }
 
@@ -211,6 +220,25 @@ public class UpdateStatement implements Statement,
 
 
   /**
+   * Request that this statement is executed with a parallel execution plan for data manipulation language (DML). This request will have no effect unless the database implementation supports it and the feature is enabled.
+   *
+   * <p>For statement that will affect a high percentage or rows in the table, a parallel execution plan may reduce the execution time, although the exact effect depends on
+   * the underlying database, the nature of the data and the nature of the query.</p>
+   *
+   * <p>Note that the use of parallel DML comes with restrictions, in particular, a table may not be accessed in the same transaction following a parallel DML execution. Please consult the Oracle manual section <em>Restrictions on Parallel DML</em> to check whether this hint is suitable.</p>
+   *    
+   * @return this, for method chaining.
+   */
+  public UpdateStatement useParallelDml() {
+    if (AliasedField.immutableDslEnabled()) {
+      return shallowCopy().useParallelDml().build();
+    } else {
+      hints.add(new UseParallelDml());
+      return this;
+    }
+  }
+
+  /**
    * Gets the where criteria.
    *
    * @return the where criteria
@@ -227,6 +255,14 @@ public class UpdateStatement implements Statement,
    */
   public List<AliasedField> getFields() {
     return fields;
+  }
+
+
+  /**
+   * @return all hints in the order they were declared.
+   */
+  public List<Hint> getHints() {
+    return hints;
   }
 
 
@@ -270,6 +306,7 @@ public class UpdateStatement implements Statement,
     traverser
       .dispatch(getTable())
       .dispatch(getWhereCriterion())
-      .dispatch(getFields());
+      .dispatch(getFields())
+      .dispatch(getHints());
   }
 }
