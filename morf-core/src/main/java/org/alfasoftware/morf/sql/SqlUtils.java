@@ -15,7 +15,6 @@
 
 package org.alfasoftware.morf.sql;
 
-import static org.alfasoftware.morf.metadata.DataType.STRING;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.sql.element.Criterion.eq;
 
@@ -620,7 +619,32 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
      * @return {@link Cast} as string of given length
      */
     public Cast asString(int length) {
-      return asType(STRING, length);
+      return asType(DataType.STRING, length);
+    }
+
+
+    /**
+     * Returns a SQL DSL expression to return the field CASTed to
+     * a decimal of the specified length
+     *
+     * @param length length of the decimal cast
+     * @return {@link Cast} as decimal of given length
+     */
+    public Cast asDecimal(int length) {
+      return asType(DataType.DECIMAL, length);
+    }
+
+
+    /**
+     * Returns a SQL DSL expression to return the field CASTed to
+     * a decimal of the specified length
+     *
+     * @param length length of the decimal cast
+     * @param scale scale of the decimal cast
+     * @return {@link Cast} as decimal of given length
+     */
+    public Cast asDecimal(int length, int scale) {
+      return asType(DataType.DECIMAL, length, scale);
     }
 
 

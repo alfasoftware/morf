@@ -209,6 +209,14 @@ public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableW
 
 
   /**
+   * @return Cast builder over this field.
+   */
+  public SqlUtils.CastBuilder cast() {
+    return SqlUtils.cast(this);
+  }
+
+
+  /**
    * @param value object to compare to (right hand side)
    * @return a {@link Criterion} for a less than or equal to expression of this field.
    */
