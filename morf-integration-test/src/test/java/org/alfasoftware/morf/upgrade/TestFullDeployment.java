@@ -60,6 +60,7 @@ public class TestFullDeployment {
   @Inject private DataSource dataSource;
   @Inject private ConnectionResources connectionResources;
   @Inject private DatabaseSchemaManager databaseSchemaManager;
+  @Inject private UpgradeStatusTableService upgradeStatusTableService;
 
   @Before
   public void before() {
@@ -117,6 +118,7 @@ public class TestFullDeployment {
       assertEquals("Column value", 33, resultSet.getInt("intColumn"));
       assertFalse("Second result set has exactly one record", resultSet.next());
     } finally {
+      upgradeStatusTableService.tidyUp(connectionResources.getDataSource());
       connection.close();
     }
   }
