@@ -93,7 +93,7 @@ public class TestStartHere {
     ConnectionResourcesBean connectionResources = new ConnectionResourcesBean();
     connectionResources.setDatabaseType("H2");
     connectionResources.setHostName("localhost");
-    connectionResources.setDatabaseName("test");
+    connectionResources.setDatabaseName(TestStartHere.class.getName());
     connectionResources.setUserName("test");
     connectionResources.setPassword("test");
 
