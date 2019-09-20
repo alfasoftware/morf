@@ -183,6 +183,17 @@ public final class Function extends AliasedField implements Driver {
 
 
   /**
+   * Helper method to create an instance of the "length-of-BLOB" SQL function.
+   *
+   * @param fieldToEvaluate the field to evaluate in the length function. This can be any expression resulting in a single column of data.
+   * @return an instance of the length function.
+   */
+  public static Function blobLength(AliasedField fieldToEvaluate) {
+    return new Function(FunctionType.BLOB_LENGTH, fieldToEvaluate);
+  }
+
+
+  /**
    * Helper method to create an instance of the "YYYYMMDDToDate" SQL function.
    * {@code expression} must result in a string.
    *

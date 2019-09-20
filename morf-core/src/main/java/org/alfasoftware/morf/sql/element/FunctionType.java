@@ -179,6 +179,11 @@ public enum FunctionType {
   LENGTH,
 
   /**
+   * BLOB Length function.
+   */
+  BLOB_LENGTH,
+
+  /**
    * Average function.
    */
   AVERAGE,

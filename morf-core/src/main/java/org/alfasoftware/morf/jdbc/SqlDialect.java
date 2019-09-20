@@ -1676,6 +1676,7 @@ public abstract class SqlDialect {
       case AVERAGE:
         return "AVG(" + getSqlFrom(function.getArguments().get(0)) + ")";
       case LENGTH:
+      case BLOB_LENGTH:
         return getSqlforLength(function);
       case SOME:
         return getSqlForSome(function.getArguments().get(0));

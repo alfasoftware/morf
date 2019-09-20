@@ -68,6 +68,7 @@ import static org.alfasoftware.morf.sql.element.Function.substring;
 import static org.alfasoftware.morf.sql.element.Function.sum;
 import static org.alfasoftware.morf.sql.element.Function.yyyymmddToDate;
 import static org.alfasoftware.morf.sql.element.MathsOperator.MINUS;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -208,7 +209,8 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         column("decimalTenZeroCol", DataType.DECIMAL, 10),
         column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
         column("bigIntegerCol", DataType.BIG_INTEGER, 19),
-        column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
+        column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable(),
+        column("blobCol", DataType.BLOB, 19).nullable()
       ),
     table("DateTable")
       .columns(
@@ -377,6 +379,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         .setString("decimalNineFiveCol", "278.231")
         .setLong("bigIntegerCol", 1234567890123456L)
         .setLong("nullableBigIntegerCol", 56732L)
+        .setByteArray("blobCol", "hello world BLOB".getBytes())
     )
     .table("DateTable",
       record()
@@ -1053,7 +1056,8 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
       new FieldLiteral(9817236).as("decimalTenZeroCol"),
       new FieldLiteral(278.231).as("decimalNineFiveCol"),
       new FieldLiteral("1234567890123456", DataType.DECIMAL).as("bigIntegerCol"),
-      new FieldLiteral("56732", DataType.DECIMAL).as("nullableBigIntegerCol")
+      new FieldLiteral("56732", DataType.DECIMAL).as("nullableBigIntegerCol"),
+      nullLiteral().as("nullableBlobCol")
     ).from(simpleTypes)
     .where(whereStringCol)
     .groupBy(field("stringCol"))
@@ -2080,6 +2084,35 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         while (resultSet.next()) {
           assertEquals(value, resultSet.getString(1));
           assertEquals(value.length(), resultSet.getInt(2));
+        }
+        return null;
+      }
+
+    });
+  }
+
+
+  /**
+   * Test behaviour of the length-of-blob function
+   *
+   * @throws SQLException
+   */
+  @Test
+  public void testBlobLength() throws SQLException {
+    // Key value
+    final byte[] value = "hello world BLOB".getBytes();
+
+    SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+    String sql = convertStatementToSQL(select(field("blobCol"), length(field("blobCol")).as("lengthResult"))
+                                                                        .from(tableRef("SimpleTypes"))
+                                                                        .orderBy(field("lengthResult")));
+
+    executor.executeQuery(sql, connection, new ResultSetProcessor<Void>(){
+      @Override
+      public Void process(ResultSet resultSet) throws SQLException {
+        while (resultSet.next()) {
+          assertArrayEquals(value, resultSet.getBytes(1));
+          assertEquals(value.length, resultSet.getInt(2));
         }
         return null;
       }

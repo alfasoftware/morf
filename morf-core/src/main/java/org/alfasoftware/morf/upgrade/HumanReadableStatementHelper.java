@@ -117,6 +117,7 @@ class HumanReadableStatementHelper {
       .put(FunctionType.LEFT_PAD, new FunctionTypeMetaData("leftPad(", ")", ", ", false, false))
       .put(FunctionType.LEFT_TRIM, new FunctionTypeMetaData("left trimmed ", "", "", false, false))
       .put(FunctionType.LENGTH, new FunctionTypeMetaData("length of ", "", "", false, false))
+      .put(FunctionType.BLOB_LENGTH, new FunctionTypeMetaData("length of blob ", "", "", false, false))
       .put(FunctionType.LOWER, new FunctionTypeMetaData("lower case ", "", "", false, false))
       .put(FunctionType.MAX, new FunctionTypeMetaData("highest ", "", "", false, false))
       .put(FunctionType.MIN, new FunctionTypeMetaData("lowest ", "", "", false, false))

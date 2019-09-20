@@ -112,6 +112,22 @@ public class TestFunctionDetail {
 
 
   /**
+   * Tests the indirect usage of the length-of-blob function
+   */
+  @Test
+  public void testBlobLength() {
+    Function func = Function.blobLength(new FieldReference("agreementNumber"));
+
+    assertEquals("Function should be of type BLOB_LENGTH", FunctionType.BLOB_LENGTH, func.getType());
+    assertNotNull("Function should have arguments", func.getArguments());
+    assertEquals("Function should have one argument", 1, func.getArguments().size());
+    AliasedField firstArgument = func.getArguments().get(0);
+    assertTrue("First argument should be a field reference", firstArgument instanceof FieldReference);
+    assertEquals("First argument should have correct name", "agreementNumber", ((FieldReference)firstArgument).getName());
+  }
+
+
+  /**
    * Tests indirect usage of the substring function
    */
   @Test
