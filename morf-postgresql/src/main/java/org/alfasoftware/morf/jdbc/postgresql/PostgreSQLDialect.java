@@ -127,7 +127,7 @@ public class PostgreSQLDialect extends SqlDialect {
   protected String getColumnRepresentation(DataType dataType, int width, int scale) {
     switch (dataType) {
       case STRING:
-        return getDataTypeRepresentation(dataType, width, scale) + " COLLATE \"und-x-icu\"";
+        return getDataTypeRepresentation(dataType, width, scale) + " COLLATE \"POSIX\"";
 
       default:
         return getDataTypeRepresentation(dataType, width, scale);
