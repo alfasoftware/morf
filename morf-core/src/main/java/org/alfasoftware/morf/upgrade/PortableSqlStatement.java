@@ -24,7 +24,6 @@ import java.util.Map;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.sql.Statement;
-import org.omg.CORBA.portable.Streamable;
 
 import com.google.common.io.CharStreams;
 import com.google.common.io.Closeables;
@@ -74,7 +73,7 @@ public class PortableSqlStatement implements Statement {
    * Adds an SQL statement to be run for a given db.
    *
    * @param databaseTypeIdentifier The database type identifier ({@link DatabaseType#identifier()}).
-   * @param stream The {@link Streamable} containing the SQL.
+   * @param stream The {@link InputStream} containing the SQL.
    * @return This {@link PortableSqlStatement}.
    */
   public PortableSqlStatement add(String databaseTypeIdentifier, InputStream stream) {
