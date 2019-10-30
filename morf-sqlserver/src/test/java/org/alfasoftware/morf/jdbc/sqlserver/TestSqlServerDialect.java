@@ -1011,7 +1011,11 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeSimple() {
-    return "MERGE INTO TESTSCHEMA.foo USING (SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM TESTSCHEMA.somewhere) AS _mergesource ON foo.id = _mergesource.id WHEN MATCHED THEN UPDATE SET foo.bar = _mergesource.bar WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (_mergesource.id, _mergesource.bar);";
+    return "MERGE INTO TESTSCHEMA.foo"
+        + " USING (SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM TESTSCHEMA.somewhere) AS _mergesource"
+        + " ON foo.id = _mergesource.id"
+        + " WHEN MATCHED THEN UPDATE SET foo.bar = _mergesource.bar"
+        + " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (_mergesource.id, _mergesource.bar)";
   }
 
 
@@ -1020,7 +1024,11 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeComplex() {
-    return "MERGE INTO TESTSCHEMA.foo USING (SELECT somewhere.newId AS id, join.joinBar AS bar FROM TESTSCHEMA.somewhere INNER JOIN TESTSCHEMA.join ON (somewhere.newId = join.joinId)) AS _mergesource ON foo.id = _mergesource.id WHEN MATCHED THEN UPDATE SET foo.bar = _mergesource.bar WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (_mergesource.id, _mergesource.bar);";
+    return "MERGE INTO TESTSCHEMA.foo"
+        + " USING (SELECT somewhere.newId AS id, join.joinBar AS bar FROM TESTSCHEMA.somewhere INNER JOIN TESTSCHEMA.join ON (somewhere.newId = join.joinId)) AS _mergesource"
+        + " ON foo.id = _mergesource.id"
+        + " WHEN MATCHED THEN UPDATE SET foo.bar = _mergesource.bar"
+        + " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (_mergesource.id, _mergesource.bar)";
   }
 
 
@@ -1029,7 +1037,11 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeSourceInDifferentSchema() {
-    return "MERGE INTO TESTSCHEMA.foo USING (SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM MYSCHEMA.somewhere) AS _mergesource ON foo.id = _mergesource.id WHEN MATCHED THEN UPDATE SET foo.bar = _mergesource.bar WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (_mergesource.id, _mergesource.bar);";
+    return "MERGE INTO TESTSCHEMA.foo"
+        + " USING (SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM MYSCHEMA.somewhere) AS _mergesource"
+        + " ON foo.id = _mergesource.id"
+        + " WHEN MATCHED THEN UPDATE SET foo.bar = _mergesource.bar"
+        + " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (_mergesource.id, _mergesource.bar)";
   };
 
 
@@ -1038,7 +1050,23 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeTargetInDifferentSchema() {
-    return "MERGE INTO MYSCHEMA.foo USING (SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM TESTSCHEMA.somewhere) AS _mergesource ON foo.id = _mergesource.id WHEN MATCHED THEN UPDATE SET foo.bar = _mergesource.bar WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (_mergesource.id, _mergesource.bar);";
+    return "MERGE INTO MYSCHEMA.foo"
+        + " USING (SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM TESTSCHEMA.somewhere) AS _mergesource"
+        + " ON foo.id = _mergesource.id"
+        + " WHEN MATCHED THEN UPDATE SET foo.bar = _mergesource.bar"
+        + " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (_mergesource.id, _mergesource.bar)";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedMergeForAllPrimaryKeys()
+   */
+  @Override
+  protected String expectedMergeForAllPrimaryKeys() {
+    return "MERGE INTO TESTSCHEMA.foo"
+        + " USING (SELECT somewhere.newId AS id FROM TESTSCHEMA.somewhere) AS _mergesource"
+        + " ON foo.id = _mergesource.id"
+        + " WHEN NOT MATCHED THEN INSERT (id) VALUES (_mergesource.id)";
   }
 
 
@@ -1098,15 +1126,6 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedRenameIndexStatements() {
     return ImmutableList.of("sp_rename N'TESTSCHEMA.#TempTest.TempTest_1', N'TempTest_2', N'INDEX'");
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedMergeForAllPrimaryKeys()
-   */
-  @Override
-  protected String expectedMergeForAllPrimaryKeys() {
-    return "MERGE INTO TESTSCHEMA.foo USING (SELECT somewhere.newId AS id FROM TESTSCHEMA.somewhere) AS _mergesource ON foo.id = _mergesource.id WHEN NOT MATCHED THEN INSERT (id) VALUES (_mergesource.id);";
   }
 
 

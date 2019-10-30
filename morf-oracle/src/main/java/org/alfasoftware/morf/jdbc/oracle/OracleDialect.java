@@ -1099,7 +1099,7 @@ class OracleDialect extends SqlDialect {
 
     // Add the matching keys
     sqlBuilder.append(" ON (");
-    sqlBuilder.append(matchConditionSqlForMergeFields(statement.getTableUniqueKey(), MERGE_SOURCE_ALIAS, destinationTableName));
+    sqlBuilder.append(matchConditionSqlForMergeFields(statement, MERGE_SOURCE_ALIAS, destinationTableName));
 
     // What to do if matched
     if (getNonKeyFieldsFromMergeStatement(statement).iterator().hasNext()) {
@@ -1111,22 +1111,12 @@ class OracleDialect extends SqlDialect {
 
     // What to do if no match
     sqlBuilder.append(" WHEN NOT MATCHED THEN INSERT (");
-    Iterable<String> insertField = Iterables.transform(statement.getSelectStatement().getFields(), new com.google.common.base.Function<AliasedField, String>() {
-        @Override
-        public String apply(AliasedField field) {
-          return field.getImpliedName();
-        }
-      });
+    Iterable<String> insertField = Iterables.transform(statement.getSelectStatement().getFields(), AliasedField::getImpliedName);
     sqlBuilder.append(Joiner.on(", ").join(insertField));
 
     // Values to insert
     sqlBuilder.append(") VALUES (");
-    Iterable<String> valueFields = Iterables.transform(statement.getSelectStatement().getFields(), new com.google.common.base.Function<AliasedField, String>() {
-      @Override
-      public String apply(AliasedField field) {
-        return MERGE_SOURCE_ALIAS + "." + field.getImpliedName();
-      }
-    });
+    Iterable<String> valueFields = Iterables.transform(statement.getSelectStatement().getFields(), field -> MERGE_SOURCE_ALIAS + "." + field.getImpliedName());
     sqlBuilder.append(Joiner.on(", ").join(valueFields));
 
     sqlBuilder.append(")");

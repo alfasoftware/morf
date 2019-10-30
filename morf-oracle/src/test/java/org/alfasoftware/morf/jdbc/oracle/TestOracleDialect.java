@@ -1190,7 +1190,11 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeSimple() {
-    return "MERGE INTO TESTSCHEMA.foo USING (SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM TESTSCHEMA.somewhere) xmergesource ON (foo.id = xmergesource.id) WHEN MATCHED THEN UPDATE SET foo.bar = xmergesource.bar WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
+    return "MERGE INTO TESTSCHEMA.foo"
+        + " USING (SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM TESTSCHEMA.somewhere) xmergesource"
+        + " ON (foo.id = xmergesource.id)"
+        + " WHEN MATCHED THEN UPDATE SET foo.bar = xmergesource.bar"
+        + " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
   }
 
 
@@ -1199,7 +1203,11 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeComplex() {
-    return "MERGE INTO TESTSCHEMA.foo USING (SELECT somewhere.newId AS id, join.joinBar AS bar FROM TESTSCHEMA.somewhere INNER JOIN TESTSCHEMA.join ON (somewhere.newId = join.joinId)) xmergesource ON (foo.id = xmergesource.id) WHEN MATCHED THEN UPDATE SET foo.bar = xmergesource.bar WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
+    return "MERGE INTO TESTSCHEMA.foo"
+        + " USING (SELECT somewhere.newId AS id, join.joinBar AS bar FROM TESTSCHEMA.somewhere INNER JOIN TESTSCHEMA.join ON (somewhere.newId = join.joinId)) xmergesource"
+        + " ON (foo.id = xmergesource.id)"
+        + " WHEN MATCHED THEN UPDATE SET foo.bar = xmergesource.bar"
+        + " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
   }
 
 
@@ -1208,7 +1216,11 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeSourceInDifferentSchema() {
-    return "MERGE INTO TESTSCHEMA.foo USING (SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM MYSCHEMA.somewhere) xmergesource ON (foo.id = xmergesource.id) WHEN MATCHED THEN UPDATE SET foo.bar = xmergesource.bar WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
+    return "MERGE INTO TESTSCHEMA.foo"
+        + " USING (SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM MYSCHEMA.somewhere) xmergesource"
+        + " ON (foo.id = xmergesource.id)"
+        + " WHEN MATCHED THEN UPDATE SET foo.bar = xmergesource.bar"
+        + " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
   }
 
 
@@ -1217,7 +1229,23 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeTargetInDifferentSchema() {
-    return "MERGE INTO MYSCHEMA.foo USING (SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM TESTSCHEMA.somewhere) xmergesource ON (foo.id = xmergesource.id) WHEN MATCHED THEN UPDATE SET foo.bar = xmergesource.bar WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
+    return "MERGE INTO MYSCHEMA.foo"
+        + " USING (SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM TESTSCHEMA.somewhere) xmergesource"
+        + " ON (foo.id = xmergesource.id)"
+        + " WHEN MATCHED THEN UPDATE SET foo.bar = xmergesource.bar"
+        + " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedMergeForAllPrimaryKeys()
+   */
+  @Override
+  protected String expectedMergeForAllPrimaryKeys() {
+    return "MERGE INTO TESTSCHEMA.foo"
+        + " USING (SELECT somewhere.newId AS id FROM TESTSCHEMA.somewhere) xmergesource"
+        + " ON (foo.id = xmergesource.id)"
+        + " WHEN NOT MATCHED THEN INSERT (id) VALUES (xmergesource.id)";
   }
 
 
@@ -1346,15 +1374,6 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedRandomFunction() {
     return "dbms_random.value";
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedMergeForAllPrimaryKeys()
-   */
-  @Override
-  protected String expectedMergeForAllPrimaryKeys() {
-    return "MERGE INTO TESTSCHEMA.foo USING (SELECT somewhere.newId AS id FROM TESTSCHEMA.somewhere) xmergesource ON (foo.id = xmergesource.id) WHEN NOT MATCHED THEN INSERT (id) VALUES (xmergesource.id)";
   }
 
 

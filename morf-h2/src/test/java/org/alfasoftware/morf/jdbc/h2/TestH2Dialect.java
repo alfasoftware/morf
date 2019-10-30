@@ -859,7 +859,10 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeSimple() {
-    return "MERGE INTO foo(id, bar) KEY(id) SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM somewhere";
+
+
+    return "MERGE INTO foo(id, bar) KEY(id)"
+        + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM somewhere";
   }
 
 
@@ -868,7 +871,10 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeComplex() {
-    return "MERGE INTO foo(id, bar) KEY(id) SELECT somewhere.newId AS id, join.joinBar AS bar FROM somewhere INNER JOIN join ON (somewhere.newId = join.joinId)";
+
+
+    return "MERGE INTO foo(id, bar) KEY(id)"
+        + " SELECT somewhere.newId AS id, join.joinBar AS bar FROM somewhere INNER JOIN join ON (somewhere.newId = join.joinId)";
   }
 
 
@@ -877,7 +883,10 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeSourceInDifferentSchema() {
-    return "MERGE INTO foo(id, bar) KEY(id) SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM MYSCHEMA.somewhere";
+
+
+    return "MERGE INTO foo(id, bar) KEY(id)"
+        + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM MYSCHEMA.somewhere";
   }
 
 
@@ -886,7 +895,22 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeTargetInDifferentSchema() {
-    return "MERGE INTO MYSCHEMA.foo(id, bar) KEY(id) SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM somewhere";
+
+
+    return "MERGE INTO MYSCHEMA.foo(id, bar) KEY(id)"
+        + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM somewhere";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedMergeForAllPrimaryKeys()
+   */
+  @Override
+  protected String expectedMergeForAllPrimaryKeys() {
+
+
+    return "MERGE INTO foo(id) KEY(id)"
+        + " SELECT somewhere.newId AS id FROM somewhere";
   }
 
 
@@ -948,15 +972,6 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedRenameIndexStatements() {
     return ImmutableList.of("ALTER INDEX TempTest_1 RENAME TO TempTest_2");
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedMergeForAllPrimaryKeys()
-   */
-  @Override
-  protected String expectedMergeForAllPrimaryKeys() {
-    return "MERGE INTO foo(id) KEY(id) SELECT somewhere.newId AS id FROM somewhere";
   }
 
 

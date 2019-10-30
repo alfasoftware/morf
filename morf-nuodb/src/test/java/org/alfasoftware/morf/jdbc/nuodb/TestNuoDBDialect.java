@@ -1192,7 +1192,9 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeSimple() {
-    return "INSERT INTO SCM.foo(id, bar) SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM SCM.somewhere ON DUPLICATE KEY UPDATE id = values(id), bar = values(bar)";
+    return "INSERT INTO SCM.foo(id, bar)"
+        + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM SCM.somewhere"
+        + " ON DUPLICATE KEY UPDATE id = values(id), bar = values(bar)";
   }
 
 
@@ -1201,7 +1203,9 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeComplex() {
-    return "INSERT INTO SCM.foo(id, bar) SELECT somewhere.newId AS id, join.joinBar AS bar FROM SCM.somewhere INNER JOIN SCM.join ON (somewhere.newId = join.joinId) ON DUPLICATE KEY UPDATE id = values(id), bar = values(bar)";
+    return "INSERT INTO SCM.foo(id, bar)"
+        + " SELECT somewhere.newId AS id, join.joinBar AS bar FROM SCM.somewhere INNER JOIN SCM.join ON (somewhere.newId = join.joinId)"
+        + " ON DUPLICATE KEY UPDATE id = values(id), bar = values(bar)";
   }
 
 
@@ -1210,7 +1214,9 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeTargetInDifferentSchema() {
-    return "INSERT INTO MYSCHEMA.foo(id, bar) SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM SCM.somewhere ON DUPLICATE KEY UPDATE id = values(id), bar = values(bar)";
+    return "INSERT INTO MYSCHEMA.foo(id, bar)"
+        + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM SCM.somewhere"
+        + " ON DUPLICATE KEY UPDATE id = values(id), bar = values(bar)";
   }
 
 
@@ -1219,7 +1225,20 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeSourceInDifferentSchema() {
-    return "INSERT INTO SCM.foo(id, bar) SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM MYSCHEMA.somewhere ON DUPLICATE KEY UPDATE id = values(id), bar = values(bar)";
+    return "INSERT INTO SCM.foo(id, bar)"
+        + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM MYSCHEMA.somewhere"
+        + " ON DUPLICATE KEY UPDATE id = values(id), bar = values(bar)";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedMergeForAllPrimaryKeys()
+   */
+  @Override
+  protected String expectedMergeForAllPrimaryKeys() {
+    return "INSERT INTO SCM.foo(id)"
+        + " SELECT somewhere.newId AS id FROM SCM.somewhere"
+        + " ON DUPLICATE KEY UPDATE id = values(id)";
   }
 
 
@@ -1281,15 +1300,6 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
       "DROP INDEX TempTest_1",
       "CREATE INDEX TempTest_2 ON TEMP_TempTest (intField,floatField)" // no schema name as temporary
     );
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedMergeForAllPrimaryKeys()
-   */
-  @Override
-  protected String expectedMergeForAllPrimaryKeys() {
-    return "INSERT INTO SCM.foo(id) SELECT somewhere.newId AS id FROM SCM.somewhere ON DUPLICATE KEY UPDATE id = values(id)";
   }
 
 

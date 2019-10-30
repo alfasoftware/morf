@@ -275,8 +275,8 @@ class MySqlDialect extends SqlDialect {
   @Override
   public Collection<String> dropStatements(Table table) {
     return Arrays.asList(
-      "FLUSH TABLES " + table.getName(),
-      "DROP TABLE " + table.getName());
+      "FLUSH TABLES `" + table.getName() + "`",
+      "DROP TABLE `" + table.getName() + "`");
   }
 
 
@@ -285,7 +285,7 @@ class MySqlDialect extends SqlDialect {
    */
   @Override
   public Collection<String> dropStatements(View view) {
-    return Arrays.asList("DROP VIEW IF EXISTS " + view.getName());
+    return Arrays.asList("DROP VIEW IF EXISTS `" + view.getName() + "`");
   }
 
 
@@ -812,12 +812,7 @@ class MySqlDialect extends SqlDialect {
     sqlBuilder.append(schemaNamePrefix(statement.getTable()));
     sqlBuilder.append(destinationTableName);
     sqlBuilder.append("(");
-    Iterable<String> intoFields = Iterables.transform(statement.getSelectStatement().getFields(), new com.google.common.base.Function<AliasedField, String>() {
-      @Override
-      public String apply(AliasedField field) {
-        return field.getImpliedName();
-      }
-    });
+    Iterable<String> intoFields = Iterables.transform(statement.getSelectStatement().getFields(), AliasedField::getImpliedName);
     sqlBuilder.append(Joiner.on(", ").join(intoFields));
     sqlBuilder.append(") ");
 
@@ -827,12 +822,7 @@ class MySqlDialect extends SqlDialect {
     // Note that we use the source select statement's fields here as we assume that they are appropriately
     // aliased to match the target table as part of the API contract (it's needed for other dialects)
     sqlBuilder.append(" ON DUPLICATE KEY UPDATE ");
-    Iterable<String> setStatements = Iterables.transform(statement.getSelectStatement().getFields(), new com.google.common.base.Function<AliasedField, String>() {
-      @Override
-      public String apply(AliasedField field) {
-      return String.format("%s = values(%s)", field.getImpliedName(), field.getImpliedName());
-      }
-    });
+    Iterable<String> setStatements = Iterables.transform(statement.getSelectStatement().getFields(), field -> String.format("%s = values(%s)", field.getImpliedName(), field.getImpliedName()));
     sqlBuilder.append(Joiner.on(", ").join(setStatements));
     return sqlBuilder.toString();
   }
