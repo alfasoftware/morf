@@ -3853,6 +3853,23 @@ public abstract class AbstractSqlDialectTest {
 
 
   @Test
+  public void testMergeWithUpdateExpressions() {
+
+    TableReference foo = new TableReference("foo").as("foo");
+    TableReference somewhere = new TableReference("somewhere");
+
+    SelectStatement sourceStmt = new SelectStatement(somewhere.field("newId").as("id"), somewhere.field("newBar").as("bar")).from(somewhere).alias("somewhere");
+
+    MergeStatement stmt = MergeStatement.merge().into(foo).tableUniqueKey(foo.field("id")).from(sourceStmt)
+        .ifUpdating((overrides, values) -> overrides
+          .set(values.input("bar").plus(values.existing("bar")).as("bar")))
+        .build();
+
+    assertEquals("Select scripts are not the same", expectedMergeWithUpdateExpressions(), testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  @Test
   @SuppressWarnings("unchecked")
   public void testAddTableFromStatements() {
 
@@ -4904,6 +4921,12 @@ public abstract class AbstractSqlDialectTest {
    * @return the expected SQL for performing a merge where all fields are in the primary key
    */
   protected abstract String expectedMergeForAllPrimaryKeys();
+
+
+  /**
+   * @return the expected SQL for performing a merge with explicit update expressions
+   */
+  protected abstract String expectedMergeWithUpdateExpressions();
 
 
   /**

@@ -1194,7 +1194,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
   protected String expectedMergeSimple() {
     return "INSERT INTO SCM.foo(id, bar)"
         + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM SCM.somewhere"
-        + " ON DUPLICATE KEY UPDATE id = values(id), bar = values(bar)";
+        + " ON DUPLICATE KEY UPDATE bar = values(bar)";
   }
 
 
@@ -1205,7 +1205,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
   protected String expectedMergeComplex() {
     return "INSERT INTO SCM.foo(id, bar)"
         + " SELECT somewhere.newId AS id, join.joinBar AS bar FROM SCM.somewhere INNER JOIN SCM.join ON (somewhere.newId = join.joinId)"
-        + " ON DUPLICATE KEY UPDATE id = values(id), bar = values(bar)";
+        + " ON DUPLICATE KEY UPDATE bar = values(bar)";
   }
 
 
@@ -1216,7 +1216,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
   protected String expectedMergeTargetInDifferentSchema() {
     return "INSERT INTO MYSCHEMA.foo(id, bar)"
         + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM SCM.somewhere"
-        + " ON DUPLICATE KEY UPDATE id = values(id), bar = values(bar)";
+        + " ON DUPLICATE KEY UPDATE bar = values(bar)";
   }
 
 
@@ -1227,7 +1227,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
   protected String expectedMergeSourceInDifferentSchema() {
     return "INSERT INTO SCM.foo(id, bar)"
         + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM MYSCHEMA.somewhere"
-        + " ON DUPLICATE KEY UPDATE id = values(id), bar = values(bar)";
+        + " ON DUPLICATE KEY UPDATE bar = values(bar)";
   }
 
 
@@ -1238,7 +1238,18 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
   protected String expectedMergeForAllPrimaryKeys() {
     return "INSERT INTO SCM.foo(id)"
         + " SELECT somewhere.newId AS id FROM SCM.somewhere"
-        + " ON DUPLICATE KEY UPDATE id = values(id)";
+        + " ON DUPLICATE KEY SKIP";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedMergeWithUpdateExpressions()
+   */
+  @Override
+  protected String expectedMergeWithUpdateExpressions() {
+    return "INSERT INTO SCM.foo(id, bar)"
+        + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM SCM.somewhere"
+        + " ON DUPLICATE KEY UPDATE bar = values(bar) + foo.bar";
   }
 
 

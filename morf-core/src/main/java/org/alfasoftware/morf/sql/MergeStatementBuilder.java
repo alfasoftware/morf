@@ -26,6 +26,8 @@ import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyTransformations;
 
+import com.google.common.collect.ImmutableList;
+
 /**
  * Builder for {@link MergeStatement}.
  *
@@ -36,6 +38,7 @@ public class MergeStatementBuilder implements Builder<MergeStatement> {
   private final List<AliasedField>  tableUniqueKey = new ArrayList<>();
   private TableReference            table;
   private SelectStatement           selectStatement;
+  private final List<AliasedField>  ifUpdating = new ArrayList<>();
 
 
   /**
@@ -144,6 +147,116 @@ public class MergeStatementBuilder implements Builder<MergeStatement> {
 
 
   /**
+   * Specifies the merge expressions to be used when updating existing records.
+   *
+   * <pre>
+   * merge()
+   *   .into(tableRef("BalanceAccumulator"))
+   *   .tableUniqueKey(field("id"))
+   *   .from(select()
+   *           .fields(literal(17).as("id"))
+   *           .fields(literal(123.45).as("lastAmount"))
+   *           .fields(literal(123.45).as("balance"))
+   *           .build())
+   *   .ifUpdating((overrider, values) -&gt; overrider
+   *     .set(values.input("lastAmount").as("lastAmount"))                                 // this is optional, since it is the default merge behaviour
+   *     .set(values.input("balance").plus(values.existing("balance")).as("balance")))     // this explicitly defines how "balance" is accumulated via merges
+   * </pre>
+   *
+   * @param mutator Lambda defining the merge expressions.
+   * @return this, for method chaining.
+   */
+  public MergeStatementBuilder ifUpdating(UpdateValuesMutator mutator) {
+    UpdateValuesOverrider overrider = new UpdateValuesOverrider();
+    UpdateValues values = new UpdateValues(table);
+    mutator.mutate(overrider, values);
+    this.ifUpdating.addAll(Builder.Helper.buildAll(overrider.getUpdateExpressions()));
+    return this;
+  }
+
+
+  /**
+   * To be used with {@link MergeStatementBuilder#ifUpdating(UpdateValuesMutator)} as lambda
+   * to define the merge expressions to be used when updating existing records.
+   */
+  @FunctionalInterface
+  public interface UpdateValuesMutator {
+
+    /**
+     * Method to be implemented (ideally via a lambda) to specify the
+     * merge expressions to be used when updating existing records.
+     *
+     * @param overrider to be used in builder pattern to specify the merge expressions.
+     * @param values to be used to reference old and new field values within the merge expressions.
+     */
+    public void mutate(UpdateValuesOverrider overrider, UpdateValues values);
+  }
+
+
+  /**
+   * To be used as a builder pattern in {@link MergeStatementBuilder#ifUpdating(UpdateValuesMutator)}
+   * to specify the merge expressions to be used when updating existing records.
+   */
+  public static final class UpdateValuesOverrider {
+
+    private final ImmutableList.Builder<AliasedField> expressions = ImmutableList.builder();
+
+    /**
+     * Adds a merge expression to be used when updating existing records.
+     *
+     * @param updateExpression the merge expressions, aliased as target field name.
+     * @return this, for method chaining.
+     */
+    public UpdateValuesOverrider set(AliasedFieldBuilder updateExpression) {
+      expressions.add(updateExpression.build());
+      return this;
+    }
+
+
+    private Iterable<AliasedField> getUpdateExpressions() {
+      return expressions.build();
+    }
+  }
+
+
+  /**
+   * @see MergeStatementBuilder#ifUpdating(UpdateValuesMutator)
+   */
+  public static final class UpdateValues {
+
+    private final TableReference destinationTable;
+
+    public UpdateValues(TableReference destinationTable) {
+      this.destinationTable = destinationTable;
+    }
+
+
+    /**
+     * For updating existing records, references the existing field value, i.e. the value before merge.
+     * To reference the new value being merged, use {@link #input(String)}.
+     *
+     * @param name Name of the referenced field.
+     * @return Reference to the existing field value.
+     */
+    public AliasedField existing(String name) {
+      return destinationTable.field(name);
+    }
+
+
+    /**
+     * For updating existing records, references the new field value being merged, i.e. the value provided by the select.
+     * To reference the existing value being replaced, use {@link #existing(String)}.
+     *
+     * @param name Name of the referenced field.
+     * @return Reference to the new field value being merged.
+     */
+    public AliasedField input(String name) {
+      return new MergeStatement.InputField(name);
+    }
+  }
+
+
+  /**
    * Gets the table to merge the data into.
    *
    * @return the table.
@@ -171,6 +284,16 @@ public class MergeStatementBuilder implements Builder<MergeStatement> {
    */
   List<AliasedField> getTableUniqueKey() {
     return tableUniqueKey;
+  }
+
+
+  /**
+   * Gets the list of expressions to be used when updating existing records.
+   *
+   * @return the expressions for updating
+   */
+  Iterable<AliasedField> getIfUpdating() {
+    return ifUpdating;
   }
 
 

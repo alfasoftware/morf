@@ -98,10 +98,12 @@ import org.joda.time.LocalDate;
 import org.joda.time.Months;
 
 import com.google.common.base.Joiner;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 /**
  * Provides functionality for generating SQL statements.
@@ -129,6 +131,11 @@ public abstract class SqlDialect {
    * Empty collection of strings that implementations can return if required.
    */
   public static final Collection<String> NO_STATEMENTS                     = Collections.emptyList();
+
+  /**
+   * Used as the alias for the select statement in merge statements.
+   */
+  private static final String MERGE_SOURCE_ALIAS = "xmergesource";
 
   /**
    * Database schema name.
@@ -1549,6 +1556,10 @@ public abstract class SqlDialect {
       return getSqlFrom((WindowFunction) field);
     }
 
+    if (field instanceof MergeStatement.InputField) {
+      return getSqlFrom((MergeStatement.InputField) field);
+    }
+
     throw new IllegalArgumentException("Aliased Field of type [" + field.getClass().getSimpleName() + "] is not supported");
   }
 
@@ -2782,7 +2793,67 @@ public abstract class SqlDialect {
    * @return a string containing a parameterised insert query for the specified
    *         table.
    */
-  protected abstract String getSqlFrom(MergeStatement statement);
+  protected String getSqlFrom(MergeStatement statement) {
+
+    if (StringUtils.isBlank(statement.getTable().getName())) {
+      throw new IllegalArgumentException("Cannot create SQL for a blank table");
+    }
+
+    checkSelectStatementHasNoHints(statement.getSelectStatement(), "MERGE may not be used with SELECT statement hints");
+
+    final String destinationTableName = statement.getTable().getName();
+    // Add the preamble
+    StringBuilder sqlBuilder = new StringBuilder("MERGE INTO ");
+
+    // Now add the into clause
+    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
+    sqlBuilder.append(destinationTableName);
+
+    // Add USING
+    sqlBuilder.append(" USING (");
+    sqlBuilder.append(getSqlFrom(statement.getSelectStatement()));
+    sqlBuilder.append(") ");
+    sqlBuilder.append(MERGE_SOURCE_ALIAS);
+
+    // Add the matching keys
+    sqlBuilder.append(" ON (");
+    sqlBuilder.append(matchConditionSqlForMergeFields(statement, MERGE_SOURCE_ALIAS, destinationTableName));
+
+    // What to do if matched
+    if (getNonKeyFieldsFromMergeStatement(statement).iterator().hasNext()) {
+      sqlBuilder.append(") WHEN MATCHED THEN UPDATE SET ");
+      Iterable<AliasedField> updateExpressions = getMergeStatementUpdateExpressions(statement);
+      String updateExpressionsSql = getMergeStatementAssignmentsSql(updateExpressions);
+      sqlBuilder.append(updateExpressionsSql);
+    } else {
+      sqlBuilder.append(")");
+    }
+
+    // What to do if no match
+    sqlBuilder.append(" WHEN NOT MATCHED THEN INSERT (");
+    Iterable<String> insertField = Iterables.transform(statement.getSelectStatement().getFields(), AliasedField::getImpliedName);
+    sqlBuilder.append(Joiner.on(", ").join(insertField));
+
+    // Values to insert
+    sqlBuilder.append(") VALUES (");
+    Iterable<String> valueFields = Iterables.transform(statement.getSelectStatement().getFields(), field -> MERGE_SOURCE_ALIAS + "." + field.getImpliedName());
+    sqlBuilder.append(Joiner.on(", ").join(valueFields));
+
+    sqlBuilder.append(")");
+
+    return sqlBuilder.toString();
+  }
+
+
+  /**
+   * Convert a {@link MergeStatement.InputField} into SQL.
+   *
+   * @param field the field to generate SQL for
+   * @return a string representation of the field
+   */
+  protected String getSqlFrom(MergeStatement.InputField field) {
+    return MERGE_SOURCE_ALIAS + "." + field.getName();
+  }
 
 
   /**
@@ -3546,35 +3617,45 @@ public abstract class SqlDialect {
 
 
   /**
-   * Creates assignment SQL for a list of fields used in the SET section of a
-   * Merge Statement. For example:
-   * "table1.fieldA = table2.fieldA, table1.fieldB = table2.fieldB".
+   * Extracts updating expressions from the given merge statement and returns them as aliased fields,
+   * similarly to how update expressions are provided to the update statement. Since updating expressions
+   * are optional in merge statements, uses default expressions for any missing destination fields.
    *
-   * @param aliasedFields an iterable of aliased fields.
-   * @param selectAlias the alias of the select statement of a merge statement.
-   * @param targetTableName the name of the target table into which to merge.
-   * @return The resulting SQL
+   * @param statement a merge statement
+   * @return the updating expressions aliased as destination fields
    */
-  protected String assignmentSqlForMergeFields(Iterable<AliasedField> aliasedFields, String selectAlias, String targetTableName) {
-    return Joiner.on(", ").join(createEqualsSqlForFields(aliasedFields, selectAlias, targetTableName));
+  protected Iterable<AliasedField> getMergeStatementUpdateExpressions(MergeStatement statement) {
+    final Map<String, AliasedField> onUpdateExpressions = Maps.uniqueIndex(statement.getIfUpdating(), AliasedField::getImpliedName);
+    final Iterable<AliasedField> nonKeyFieldsFromMergeStatement = getNonKeyFieldsFromMergeStatement(statement);
+
+    Set<String> keyFields = FluentIterable.from(statement.getTableUniqueKey())
+      .transform(AliasedField::getImpliedName)
+      .toSet();
+
+    List<String> listOfKeyFieldsWithUpdateExpression = FluentIterable.from(onUpdateExpressions.keySet())
+      .filter(a -> keyFields.contains(a))
+      .toList();
+
+    if (!listOfKeyFieldsWithUpdateExpression.isEmpty()) {
+      throw new IllegalArgumentException("MergeStatement tries to update a key field via the update expressions " + listOfKeyFieldsWithUpdateExpression + " in " + statement);
+    }
+
+    // Note that we use the source select statement's fields here as we assume that they are
+    // appropriately aliased to match the target table as part of the API contract
+    return Iterables.transform(nonKeyFieldsFromMergeStatement,
+      field -> onUpdateExpressions.getOrDefault(field.getImpliedName(), new MergeStatement.InputField(field.getImpliedName()).as(field.getImpliedName())));
   }
 
 
   /**
-   * Transforms the entries of a list of Aliased Fields so that each entry
-   * become a String: "fieldName = selectAlias.fieldName".
+   * Returns the assignments for updating part of an SQL MERGE statement
+   * based on the given {@link AliasedField}s.
    *
-   * @param aliasedFields an iterable of aliased fields.
-   * @param selectAlias the alias of the source select of the merge statement
-   * @return an iterable containing strings
+   * @param fields The {@link AliasedField}s to create the assignments from
+   * @return the assignments for the updating part as a string
    */
-  private Iterable<String> createEqualsSqlForFields(Iterable<AliasedField> aliasedFields, String selectAlias, String targetTableName) {
-    return Iterables.transform(aliasedFields, new com.google.common.base.Function<AliasedField, String>() {
-      @Override
-      public String apply(AliasedField field) {
-        return String.format("%s.%s = %s.%s", targetTableName, field.getImpliedName(), selectAlias, field.getImpliedName());
-      }
-    });
+  protected String getMergeStatementAssignmentsSql(Iterable<AliasedField> fields) {
+    return getUpdateStatementAssignmentsSql(fields);
   }
 
 

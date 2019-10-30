@@ -878,12 +878,22 @@ class NuoDBDialect extends SqlDialect {
     // Add select statement
     sqlBuilder.append(getSqlFrom(statement.getSelectStatement()));
 
-    // Note that we use the source select statement's fields here as we assume that they are appropriately
-    // aliased to match the target table as part of the API contract (it's needed for other dialects)
-    sqlBuilder.append(" ON DUPLICATE KEY UPDATE ");
-    Iterable<String> setStatements = Iterables.transform(statement.getSelectStatement().getFields(), field -> String.format("%s = values(%s)", field.getImpliedName(), field.getImpliedName()));
-    sqlBuilder.append(Joiner.on(", ").join(setStatements));
+    // Add the update expressions
+    if (getNonKeyFieldsFromMergeStatement(statement).iterator().hasNext()) {
+      sqlBuilder.append(" ON DUPLICATE KEY UPDATE ");
+      Iterable<AliasedField> updateExpressions = getMergeStatementUpdateExpressions(statement);
+      String updateExpressionsSql = getMergeStatementAssignmentsSql(updateExpressions);
+      sqlBuilder.append(updateExpressionsSql);
+    } else {
+      sqlBuilder.append(" ON DUPLICATE KEY SKIP");
+    }
     return sqlBuilder.toString();
+  }
+
+
+  @Override
+  protected String getSqlFrom(MergeStatement.InputField field) {
+    return "values(" + field.getName() + ")";
   }
 
 

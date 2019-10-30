@@ -443,9 +443,8 @@ class PostgreSQLDialect extends SqlDialect {
         statement.getSelectStatement().getFields(),
         AliasedField::getImpliedName);
 
-    Iterable<String> setStatements = Iterables.transform(
-        statement.getSelectStatement().getFields(),
-        field -> String.format("%s = EXCLUDED.%s", field.getImpliedName(), field.getImpliedName()));
+    Iterable<AliasedField> updateExpressions = getMergeStatementUpdateExpressions(statement);
+    String updateExpressionsSql = getMergeStatementAssignmentsSql(updateExpressions);
 
     Iterable<String> keyFields = Iterables.transform(
         statement.getTableUniqueKey(),
@@ -462,10 +461,22 @@ class PostgreSQLDialect extends SqlDialect {
               .append(getSqlFrom(statement.getSelectStatement()))
               .append(" ON CONFLICT (")
               .append(Joiner.on(",").join(keyFields))
-              .append(") DO UPDATE SET ")
-              .append(Joiner.on(", ").join(setStatements));
+              .append(")");
+
+    if (getNonKeyFieldsFromMergeStatement(statement).iterator().hasNext()) {
+      sqlBuilder.append(" DO UPDATE SET ")
+                .append(updateExpressionsSql);
+    } else {
+      sqlBuilder.append(" DO NOTHING");
+    }
 
     return sqlBuilder.toString();
+  }
+
+
+  @Override
+  protected String getSqlFrom(MergeStatement.InputField field) {
+    return "EXCLUDED." + field.getName();
   }
 
 

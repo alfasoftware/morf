@@ -966,7 +966,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   protected String expectedMergeSimple() {
     return "INSERT INTO foo(id, bar)"
         + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM somewhere"
-        + " ON DUPLICATE KEY UPDATE id = values(id), bar = values(bar)";
+        + " ON DUPLICATE KEY UPDATE bar = values(bar)";
   }
 
 
@@ -977,7 +977,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   protected String expectedMergeComplex() {
     return "INSERT INTO foo(id, bar)"
         + " SELECT somewhere.newId AS id, join.joinBar AS bar FROM somewhere INNER JOIN join ON (somewhere.newId = join.joinId)"
-        + " ON DUPLICATE KEY UPDATE id = values(id), bar = values(bar)";
+        + " ON DUPLICATE KEY UPDATE bar = values(bar)";
   }
 
 
@@ -988,7 +988,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   protected String expectedMergeTargetInDifferentSchema() {
     return "INSERT INTO MYSCHEMA.foo(id, bar)"
         + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM somewhere"
-        + " ON DUPLICATE KEY UPDATE id = values(id), bar = values(bar)";
+        + " ON DUPLICATE KEY UPDATE bar = values(bar)";
   }
 
 
@@ -999,7 +999,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   protected String expectedMergeSourceInDifferentSchema() {
     return "INSERT INTO foo(id, bar)"
         + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM MYSCHEMA.somewhere"
-        + " ON DUPLICATE KEY UPDATE id = values(id), bar = values(bar)";
+        + " ON DUPLICATE KEY UPDATE bar = values(bar)";
   }
 
 
@@ -1008,9 +1008,19 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeForAllPrimaryKeys() {
-    return "INSERT INTO foo(id)"
-        + " SELECT somewhere.newId AS id FROM somewhere"
-        + " ON DUPLICATE KEY UPDATE id = values(id)";
+    return "INSERT IGNORE INTO foo(id)"
+        + " SELECT somewhere.newId AS id FROM somewhere";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedMergeWithUpdateExpressions()
+   */
+  @Override
+  protected String expectedMergeWithUpdateExpressions() {
+    return "INSERT INTO foo(id, bar)"
+        + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM somewhere"
+        + " ON DUPLICATE KEY UPDATE bar = values(bar) + foo.bar";
   }
 
 

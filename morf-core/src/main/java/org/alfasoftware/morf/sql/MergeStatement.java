@@ -21,12 +21,15 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
 import org.alfasoftware.morf.util.ShallowCopyable;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.builder.HashCodeBuilder;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
@@ -40,6 +43,7 @@ import com.google.common.collect.Lists;
  *  MergeStatement.merge()
  *    .into([table])
  *    .tableUniqueKey([field]...)
+ *    .ifUpdating([updateExpression]...)
  *    .fromSelect([SelectStatement])
  *    .build()</pre></blockquote>
  *
@@ -77,6 +81,11 @@ public class MergeStatement implements Statement,
    */
   private SelectStatement           selectStatement;
 
+  /**
+   * Expressions to be used for updating existing records.
+   */
+  private final List<AliasedField>  ifUpdating;
+
 
   /**
    * Constructs a Merge Statement which either inserts or updates
@@ -91,6 +100,64 @@ public class MergeStatement implements Statement,
 
 
   /**
+   * For updating existing records, references the new field value being merged, i.e. the value provided by the select.
+   * This internally implements the {@link MergeStatementBuilder.UpdateValues#input(String)} reference.
+   */
+  public static final class InputField extends AliasedField {
+
+    private final String name;
+
+    public InputField(String name) {
+      super("");
+      this.name = name;
+    }
+
+
+    public String getName() {
+      return name;
+    }
+
+
+    @Override
+    public String getImpliedName() {
+      return StringUtils.isBlank(super.getImpliedName()) ? getName() : super.getImpliedName();
+    }
+
+
+    @Override
+    protected AliasedFieldBuilder deepCopyInternal(DeepCopyTransformation transformer) {
+      return new InputField(name);
+    }
+
+
+    @Override
+    public String toString() {
+      return "newValue(" + name + ")" + super.toString();
+    }
+
+
+    @Override
+    public int hashCode() {
+      return new HashCodeBuilder()
+          .appendSuper(super.hashCode())
+          .append(name)
+          .toHashCode();
+    }
+
+
+    @Override
+    public boolean equals(Object obj) {
+      if (obj == this) return true;
+      if (obj == null) return false;
+      if (obj.getClass() != this.getClass()) return false;
+      InputField that = (InputField) obj;
+      return super.equals(that)
+          && this.name.equals(that.name);
+    }
+  }
+
+
+  /**
    * Constructs an Merge Statement.
    *
    * <p>Usage is discouraged; this method will be deprecated at some point. Use
@@ -99,6 +166,7 @@ public class MergeStatement implements Statement,
   public MergeStatement() {
     super();
     this.tableUniqueKey = AliasedField.immutableDslEnabled() ? ImmutableList.of() : Lists.newArrayList();
+    this.ifUpdating = ImmutableList.of(); // use MergeStatementBuilder to specify ifUpdating() expressions
   }
 
 
@@ -114,6 +182,7 @@ public class MergeStatement implements Statement,
         ? ImmutableList.copyOf(builder.getTableUniqueKey())
         : Lists.newArrayList(builder.getTableUniqueKey());
     this.selectStatement = builder.getSelectStatement();
+    this.ifUpdating = ImmutableList.copyOf(builder.getIfUpdating());
   }
 
 
@@ -240,11 +309,21 @@ public class MergeStatement implements Statement,
 
 
   /**
+   * Gets a list of the expressions to be used upon existing records.
+   *
+   * @return the update expressions.
+   */
+  public List<AliasedField> getIfUpdating() {
+    return ifUpdating;
+  }
+
+
+  /**
    * @see java.lang.Object#toString()
    */
   @Override
   public String toString() {
-    return "SQL MERGE INTO [" + table + "] USING [" + selectStatement + "] KEY " + tableUniqueKey;
+    return "SQL MERGE INTO [" + table + "] USING [" + selectStatement + "] KEY [" + tableUniqueKey + "] IF UPDATING [" + ifUpdating + "]";
   }
 
 
@@ -252,9 +331,10 @@ public class MergeStatement implements Statement,
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result + ((selectStatement == null) ? 0 : selectStatement.hashCode());
-    result = prime * result + ((table == null) ? 0 : table.hashCode());
-    result = prime * result + ((tableUniqueKey == null) ? 0 : tableUniqueKey.hashCode());
+    result = prime * result + (selectStatement == null ? 0 : selectStatement.hashCode());
+    result = prime * result + (table == null ? 0 : table.hashCode());
+    result = prime * result + (tableUniqueKey == null ? 0 : tableUniqueKey.hashCode());
+    result = prime * result + (ifUpdating == null ? 0 : ifUpdating.hashCode());
     return result;
   }
 
@@ -283,6 +363,11 @@ public class MergeStatement implements Statement,
         return false;
     } else if (!tableUniqueKey.equals(other.tableUniqueKey))
       return false;
+    if (ifUpdating == null) {
+      if (other.ifUpdating != null)
+        return false;
+    } else if (!ifUpdating.equals(other.ifUpdating))
+      return false;
     return true;
   }
 
@@ -294,6 +379,7 @@ public class MergeStatement implements Statement,
   public void drive(ObjectTreeTraverser traverser) {
     traverser
       .dispatch(getTableUniqueKey())
+      .dispatch(getIfUpdating())
       .dispatch(getTable())
       .dispatch(getSelectStatement());
   }

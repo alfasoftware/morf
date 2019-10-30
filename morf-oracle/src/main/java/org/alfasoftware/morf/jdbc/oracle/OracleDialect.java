@@ -41,7 +41,6 @@ import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.Hint;
-import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.OptimiseForRowCount;
 import org.alfasoftware.morf.sql.ParallelQueryHint;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
@@ -63,7 +62,6 @@ import org.apache.commons.logging.LogFactory;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 
 /**
@@ -74,11 +72,6 @@ import com.google.common.collect.Lists;
 class OracleDialect extends SqlDialect {
 
   private static final Log log = LogFactory.getLog(OracleDialect.class);
-
-  /**
-   * Used as the alias for the select statement in merge statements.
-   */
-  private static final String MERGE_SOURCE_ALIAS = "xmergesource";
 
   /**
    * Database platforms may order nulls first or last. This null first.
@@ -1068,60 +1061,6 @@ class OracleDialect extends SqlDialect {
     statements.add(commentOnTable(to));
 
     return statements;
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.MergeStatement)
-   */
-  @Override
-  protected String getSqlFrom(final MergeStatement statement) {
-
-    if (StringUtils.isBlank(statement.getTable().getName())) {
-      throw new IllegalArgumentException("Cannot create SQL for a blank table");
-    }
-
-    checkSelectStatementHasNoHints(statement.getSelectStatement(), "MERGE may not be used with SELECT statement hints");
-
-    final String destinationTableName = statement.getTable().getName();
-    // Add the preamble
-    StringBuilder sqlBuilder = new StringBuilder("MERGE INTO ");
-
-    // Now add the into clause
-    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-    sqlBuilder.append(destinationTableName);
-
-    // Add USING
-    sqlBuilder.append(" USING (");
-    sqlBuilder.append(getSqlFrom(statement.getSelectStatement()));
-    sqlBuilder.append(") ");
-    sqlBuilder.append(MERGE_SOURCE_ALIAS);
-
-    // Add the matching keys
-    sqlBuilder.append(" ON (");
-    sqlBuilder.append(matchConditionSqlForMergeFields(statement, MERGE_SOURCE_ALIAS, destinationTableName));
-
-    // What to do if matched
-    if (getNonKeyFieldsFromMergeStatement(statement).iterator().hasNext()) {
-      sqlBuilder.append(") WHEN MATCHED THEN UPDATE SET ");
-      sqlBuilder.append(assignmentSqlForMergeFields(getNonKeyFieldsFromMergeStatement(statement), MERGE_SOURCE_ALIAS, destinationTableName));
-    } else {
-      sqlBuilder.append(")");
-    }
-
-    // What to do if no match
-    sqlBuilder.append(" WHEN NOT MATCHED THEN INSERT (");
-    Iterable<String> insertField = Iterables.transform(statement.getSelectStatement().getFields(), AliasedField::getImpliedName);
-    sqlBuilder.append(Joiner.on(", ").join(insertField));
-
-    // Values to insert
-    sqlBuilder.append(") VALUES (");
-    Iterable<String> valueFields = Iterables.transform(statement.getSelectStatement().getFields(), field -> MERGE_SOURCE_ALIAS + "." + field.getImpliedName());
-    sqlBuilder.append(Joiner.on(", ").join(valueFields));
-
-    sqlBuilder.append(")");
-
-    return sqlBuilder.toString();
   }
 
 

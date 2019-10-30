@@ -30,7 +30,6 @@ import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
-import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Function;
@@ -39,7 +38,6 @@ import org.apache.commons.lang.StringUtils;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
-import com.google.common.collect.Iterables;
 
 /**
  * Dialect, loosely based on H2, to give tests something vaguely realistic to work with.
@@ -52,6 +50,12 @@ public class MockDialect extends SqlDialect {
    * The prefix to add to all temporary tables.
    */
   public static final String TEMPORARY_TABLE_PREFIX = "TEMP_";
+
+  /**
+   * Used as the alias for the select statement in merge statements.
+   */
+  private static final String MERGE_SOURCE_ALIAS = "xmergesource";
+
   private final DatabaseType databaseType = mock(DatabaseType.class);
 
   public MockDialect() {
@@ -556,52 +560,6 @@ public class MockDialect extends SqlDialect {
     }
 
     return builder.build();
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.MergeStatement)
-   */
-  @Override
-  protected String getSqlFrom(MergeStatement statement) {
-
-    if (StringUtils.isBlank(statement.getTable().getName())) {
-      throw new IllegalArgumentException("Cannot create SQL for a blank table");
-    }
-
-    checkSelectStatementHasNoHints(statement.getSelectStatement(), "MERGE may not be used with SELECT statement hints");
-
-    final String destinationTableName = statement.getTable().getName();
-
-    // Add the preamble
-    StringBuilder sqlBuilder = new StringBuilder("MERGE INTO ");
-    // Now add the into clause
-    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-    sqlBuilder.append(destinationTableName);
-    sqlBuilder.append("(");
-    Iterable<String> intoFields = Iterables.transform(statement.getSelectStatement().getFields(), new com.google.common.base.Function<AliasedField, String>() {
-      @Override
-      public String apply(AliasedField field) {
-        return field.getImpliedName();
-      }
-    });
-    sqlBuilder.append(Joiner.on(", ").join(intoFields));
-
-    // Add key fields
-    sqlBuilder.append(") KEY(");
-    Iterable<String> keyFields = Iterables.transform(statement.getTableUniqueKey(), new com.google.common.base.Function<AliasedField, String>() {
-      @Override
-      public String apply(AliasedField field) {
-        return field.getImpliedName();
-      }
-    });
-    sqlBuilder.append(Joiner.on(", ").join(keyFields));
-    sqlBuilder.append(") ");
-
-    // Add select statement
-    sqlBuilder.append(getSqlFrom(statement.getSelectStatement()));
-
-    return sqlBuilder.toString();
   }
 
 

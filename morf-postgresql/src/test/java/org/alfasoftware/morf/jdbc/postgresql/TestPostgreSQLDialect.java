@@ -952,7 +952,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected String expectedMergeSimple() {
     return "INSERT INTO testschema.foo (id, bar)"
         + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM testschema.somewhere"
-        + " ON CONFLICT (id) DO UPDATE SET id = EXCLUDED.id, bar = EXCLUDED.bar";
+        + " ON CONFLICT (id) DO UPDATE SET bar = EXCLUDED.bar";
   }
 
 
@@ -963,7 +963,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected String expectedMergeComplex() {
     return "INSERT INTO testschema.foo (id, bar)"
         + " SELECT somewhere.newId AS id, join.joinBar AS bar FROM testschema.somewhere INNER JOIN testschema.join ON (somewhere.newId = join.joinId)"
-        + " ON CONFLICT (id) DO UPDATE SET id = EXCLUDED.id, bar = EXCLUDED.bar";
+        + " ON CONFLICT (id) DO UPDATE SET bar = EXCLUDED.bar";
   }
 
 
@@ -974,7 +974,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected String expectedMergeSourceInDifferentSchema() {
     return "INSERT INTO testschema.foo (id, bar)"
         + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM MYSCHEMA.somewhere"
-        + " ON CONFLICT (id) DO UPDATE SET id = EXCLUDED.id, bar = EXCLUDED.bar";
+        + " ON CONFLICT (id) DO UPDATE SET bar = EXCLUDED.bar";
   }
 
 
@@ -985,7 +985,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected String expectedMergeTargetInDifferentSchema() {
     return "INSERT INTO MYSCHEMA.foo (id, bar)"
         + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM testschema.somewhere"
-        + " ON CONFLICT (id) DO UPDATE SET id = EXCLUDED.id, bar = EXCLUDED.bar";
+        + " ON CONFLICT (id) DO UPDATE SET bar = EXCLUDED.bar";
   }
 
 
@@ -996,7 +996,18 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected String expectedMergeForAllPrimaryKeys() {
     return "INSERT INTO testschema.foo (id)"
         + " SELECT somewhere.newId AS id FROM testschema.somewhere"
-        + " ON CONFLICT (id) DO UPDATE SET id = EXCLUDED.id";
+        + " ON CONFLICT (id) DO NOTHING";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedMergeWithUpdateExpressions()
+   */
+  @Override
+  protected String expectedMergeWithUpdateExpressions() {
+    return "INSERT INTO testschema.foo (id, bar)"
+        + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM testschema.somewhere"
+        + " ON CONFLICT (id) DO UPDATE SET bar = EXCLUDED.bar + foo.bar";
   }
 
 

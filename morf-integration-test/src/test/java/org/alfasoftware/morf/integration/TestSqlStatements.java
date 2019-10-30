@@ -17,6 +17,7 @@ package org.alfasoftware.morf.integration;
 
 import static org.alfasoftware.morf.metadata.DataSetUtils.dataSetProducer;
 import static org.alfasoftware.morf.metadata.DataSetUtils.record;
+import static org.alfasoftware.morf.metadata.DataType.DECIMAL;
 import static org.alfasoftware.morf.metadata.DataType.INTEGER;
 import static org.alfasoftware.morf.metadata.DataType.STRING;
 import static org.alfasoftware.morf.metadata.SchemaUtils.autonumber;
@@ -2279,7 +2280,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         .from(
           select(
             parameter("column1").type(DataType.INTEGER),
-            parameter("column2").type(DataType.INTEGER),
+            parameter("column2").type(DataType.DECIMAL),
             parameter("column3").type(DataType.STRING).width(0),
             parameter("parameterValue").type(DataType.STRING).as("column4")
           )
@@ -2329,7 +2330,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
   @Test
   public void testParameterisedUpdate() throws SQLException {
     SqlParameter column1 = parameter("column1").type(DataType.INTEGER);
-    SqlParameter column2 = parameter("column2").type(DataType.INTEGER);
+    SqlParameter column2 = parameter("column2").type(DataType.DECIMAL);
     SqlParameter column3 = parameter("column3").type(DataType.STRING).width(0);
     AliasedField column4 = parameter("parameterValue").type(DataType.STRING).as("column4");
 
@@ -2385,7 +2386,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         .from("SelectFirstTable")
         .where(field("field1").in(
           parameter("param1").type(INTEGER).plus(parameter("param1").type(INTEGER)),
-          parameter("param2").type(INTEGER),
+          parameter("param2").type(DECIMAL),
           parameter("param2").type(INTEGER)
         ))
         .orderBy(field("field1"), field("field2"));
@@ -2397,7 +2398,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         preparedStatement,
         ImmutableList.of(
           parameter("param1").type(INTEGER),
-          parameter("param2").type(INTEGER),
+          parameter("param2").type(DECIMAL),
           parameter("param3").type(INTEGER)
         ),
         DataSetUtils.statementParameters()
@@ -2433,7 +2434,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
       preparedStatement,
       ImmutableList.of(
         parameter("column1").type(INTEGER),
-        parameter("column2").type(INTEGER),
+        parameter("column2").type(DECIMAL),
         parameter("column3").type(STRING),
         parameter("parameterValue").type(STRING)
       ),
@@ -2459,7 +2460,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
 
     SelectStatement testSelect = select(field("alfaDate1"), field("alfaDate2"), literal(123))
-                                 .from(tableRef("DateTable")).where(eq(field("alfaDate1"), parameter("firstDateParam").type(DataType.BIG_INTEGER)));;
+                                 .from(tableRef("DateTable")).where(eq(field("alfaDate1"), parameter("firstDateParam").type(DataType.BIG_INTEGER)));
     Iterable<SqlParameter> parameterMetadata = ImmutableList.of(parameter(column("firstDateParam", DataType.DECIMAL)));
     RecordBuilder parameterData = DataSetUtils.record().setLong("firstDateParam", 20040609L);
     ResultSetProcessor<List<List<String>>> resultSetProcessor = new ResultSetProcessor<List<List<String>>>() {

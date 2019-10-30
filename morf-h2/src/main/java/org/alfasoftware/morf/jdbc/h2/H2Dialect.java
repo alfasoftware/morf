@@ -36,6 +36,7 @@ import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.apache.commons.lang.StringUtils;
 
@@ -155,10 +156,10 @@ class H2Dialect extends SqlDialect {
   protected String getColumnRepresentation(DataType dataType, int width, int scale) {
     switch (dataType) {
       case STRING:
-        return String.format("VARCHAR(%d)", width);
+        return width == 0 ? "VARCHAR" : String.format("VARCHAR(%d)", width);
 
       case DECIMAL:
-        return String.format("DECIMAL(%d,%d)", width, scale);
+        return width == 0 ? "DECIMAL" : String.format("DECIMAL(%d,%d)", width, scale);
 
       case DATE:
         return "DATE";
@@ -571,6 +572,29 @@ class H2Dialect extends SqlDialect {
   @Override
   protected String getSqlFrom(MergeStatement statement) {
 
+    // --------------------------------------------------
+    //
+    // TODO WEB-98094
+    // We need to upgrade H2 to version 1.4.199 to be able to use the new Merge syntax.
+    // // In the org.h2.command.Parser referred to as org.h2.command.dml.MergeUsing
+    //
+    // However, since Morf itself is already tested against the upgraded H2, we can already
+    // have the new implementation in here, and being useful, whenever updating expressions
+    // are defined. Of course, if someone  tries to use the updating expressions with old
+    // H2 version, it will naturally lead to unsupported syntax errors.
+    //
+    // As soon as version 1.4.199 is the main supported version across all our dependencies,
+    // we should switch to the new implementation completely, these expressions present or not
+
+    if (!statement.getIfUpdating().isEmpty()) {
+      return super.getSqlFrom(statement);
+    }
+
+    // The old implementation follows
+    // // In the org.h2.command.Parser referred to as org.h2.command.dml.Merge
+    //
+    // --------------------------------------------------
+
     if (StringUtils.isBlank(statement.getTable().getName())) {
       throw new IllegalArgumentException("Cannot create SQL for a blank table");
     }
@@ -608,6 +632,12 @@ class H2Dialect extends SqlDialect {
     sqlBuilder.append(getSqlFrom(statement.getSelectStatement()));
 
     return sqlBuilder.toString();
+  }
+
+
+  @Override
+  protected String getSqlFrom(SqlParameter sqlParameter) {
+    return String.format("CAST(:%s AS %s)", sqlParameter.getMetadata().getName(), sqlRepresentationOfColumnType(sqlParameter.getMetadata(), false));
   }
 
 

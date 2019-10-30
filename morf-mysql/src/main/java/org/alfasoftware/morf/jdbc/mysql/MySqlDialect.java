@@ -804,11 +804,16 @@ class MySqlDialect extends SqlDialect {
 
     checkSelectStatementHasNoHints(statement.getSelectStatement(), "MERGE may not be used with SELECT statement hints");
 
+    final boolean hasNonKeyFields = getNonKeyFieldsFromMergeStatement(statement).iterator().hasNext();
+
     final String destinationTableName = statement.getTable().getName();
 
     // Add the preamble
-    StringBuilder sqlBuilder = new StringBuilder("INSERT INTO ");
-
+    StringBuilder sqlBuilder = new StringBuilder("INSERT ");
+    if (!hasNonKeyFields) {
+      sqlBuilder.append("IGNORE ");
+    }
+    sqlBuilder.append("INTO ");
     sqlBuilder.append(schemaNamePrefix(statement.getTable()));
     sqlBuilder.append(destinationTableName);
     sqlBuilder.append("(");
@@ -819,12 +824,20 @@ class MySqlDialect extends SqlDialect {
     // Add select statement
     sqlBuilder.append(getSqlFrom(statement.getSelectStatement()));
 
-    // Note that we use the source select statement's fields here as we assume that they are appropriately
-    // aliased to match the target table as part of the API contract (it's needed for other dialects)
-    sqlBuilder.append(" ON DUPLICATE KEY UPDATE ");
-    Iterable<String> setStatements = Iterables.transform(statement.getSelectStatement().getFields(), field -> String.format("%s = values(%s)", field.getImpliedName(), field.getImpliedName()));
-    sqlBuilder.append(Joiner.on(", ").join(setStatements));
+    // Add the update expressions
+    if (hasNonKeyFields) {
+      sqlBuilder.append(" ON DUPLICATE KEY UPDATE ");
+      Iterable<AliasedField> updateExpressions = getMergeStatementUpdateExpressions(statement);
+      String updateExpressionsSql = getMergeStatementAssignmentsSql(updateExpressions);
+      sqlBuilder.append(updateExpressionsSql);
+    }
     return sqlBuilder.toString();
+  }
+
+
+  @Override
+  protected String getSqlFrom(MergeStatement.InputField field) {
+    return "values(" + field.getName() + ")";
   }
 
 
