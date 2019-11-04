@@ -53,7 +53,7 @@ public class TestH2DatabaseType {
    */
   @Test
   public void testFormatJdbcUrl() {
-    String suffix = ";DB_CLOSE_DELAY=-1;MVCC=TRUE;DEFAULT_LOCK_TIMEOUT=60000;LOB_TIMEOUT=0;MV_STORE=FALSE";
+    String suffix = ";DB_CLOSE_DELAY=-1;DEFAULT_LOCK_TIMEOUT=60000;LOB_TIMEOUT=0;MV_STORE=FALSE";
 
     assertEquals("jdbc:h2:tcp://foo.com:123/mem:alfa" + suffix, databaseType.formatJdbcUrl(jdbcUrlElementBuilder().withHost("foo.com").withPort(123).withDatabaseName("alfa").build()));
     assertEquals("jdbc:h2:tcp://foo.com/mem:alfa" + suffix, databaseType.formatJdbcUrl(jdbcUrlElementBuilder().withHost("foo.com").withDatabaseName("alfa").build()));
