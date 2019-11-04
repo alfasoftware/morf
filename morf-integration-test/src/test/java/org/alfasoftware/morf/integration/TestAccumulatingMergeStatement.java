@@ -10,6 +10,7 @@ import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.element.Function.coalesce;
+import static org.alfasoftware.morf.sql.element.Function.count;
 import static org.alfasoftware.morf.sql.element.Function.sum;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -68,13 +69,19 @@ public class TestAccumulatingMergeStatement {
   public void before() {
     schemaManager.get().mutateToSupportSchema(
       schema(
-        table("destination")
+        table(destinationTable.getName())
           .columns(
             column("keyColumn", DataType.STRING, 3).primaryKey(),
             column("lastValue", DataType.DECIMAL,12, 2),
             column("totalValue", DataType.DECIMAL,12, 2))
       ),
       TruncationBehavior.ALWAYS);
+
+    Long result = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor())
+      .executeQuery(select().fields(count()).from(destinationTable).build())
+      .processWith(resultSet -> resultSet.next() ? resultSet.getLong(1) : null);
+
+    assertEquals(Long.valueOf(0), result);
 
     /*
      * We have to provide the initial record on Oracle, otherwise we get
