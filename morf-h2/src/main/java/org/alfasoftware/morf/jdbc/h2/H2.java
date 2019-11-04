@@ -79,7 +79,6 @@ public final class H2 extends AbstractDatabaseType {
     }
 
     // The DB_CLOSE_DELAY=-1 prevents the database being lost when the last connection is closed.
-    // The MVCC=TRUE allows higher concurrency - delete, insert and update operations will only issue a shared lock on the table.
     // The DEFAULT_LOCK_TIMEOUT=60000 sets the default lock timeout to 60
     //    seconds. When the value is not set, it takes default
     //    org.h2.engine.Constants.INITIAL_LOCK_TIMEOUT=2000 value
@@ -89,7 +88,7 @@ public final class H2 extends AbstractDatabaseType {
     // The MV_STORE is a flag that governs whether to use the new storage engine (defaulting to true as of H2 version 1.4, false in prior versions).
     //    However, testing reveals that (as of H2 v1.4.196) this engine leaks lob data, specifically when rows containing lob data are deleted, the 
     //    lob data is still retained in memory. This does not occur when the MV_STORE is disabled.
-    builder.append(";DB_CLOSE_DELAY=-1;MVCC=TRUE;DEFAULT_LOCK_TIMEOUT=60000;LOB_TIMEOUT=0;MV_STORE=FALSE");
+    builder.append(";DB_CLOSE_DELAY=-1;DEFAULT_LOCK_TIMEOUT=60000;LOB_TIMEOUT=0;MV_STORE=FALSE");
 
     return builder.toString();
   }
