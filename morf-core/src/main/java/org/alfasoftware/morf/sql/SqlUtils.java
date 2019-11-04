@@ -745,7 +745,6 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
    * <li>orderBy(..) is optional. If not specified the entire partition will be used as the window frame. If specified a range between the first row and the current row of the window is used (i.e. RANGE UNBOUNDED PRECEDING AND CURRENT ROW for Oracle).</li>
    * <li>The default direction for fields in orderBy(..) is ASC.</li>
    * </ul>
-   * @author Copyright (c) Alfa Financial Software 2017
    * @param function The function
    * @return The windowing function builder
    */
