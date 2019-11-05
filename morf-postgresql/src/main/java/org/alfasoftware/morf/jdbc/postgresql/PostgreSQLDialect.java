@@ -28,6 +28,7 @@ import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.SelectStatementBuilder;
 import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.SqlParameter;
@@ -131,6 +132,18 @@ class PostgreSQLDialect extends SqlDialect {
 
       default:
         return getDataTypeRepresentation(dataType, width, scale);
+    }
+  }
+
+
+  @Override
+  protected String getSqlFrom(Cast cast) {
+    switch (cast.getDataType()) {
+      case STRING:
+        return super.getSqlFrom(cast) + " COLLATE \"POSIX\"";
+
+      default:
+        return super.getSqlFrom(cast);
     }
   }
 

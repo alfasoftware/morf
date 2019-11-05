@@ -412,7 +412,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedStringCast() {
-    return "CAST(value AS VARCHAR(10))";
+    return "CAST(value AS VARCHAR(10)) COLLATE \"POSIX\"";
   }
 
 
@@ -932,7 +932,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedStringFunctionCast() {
-    return "CAST(MIN(field) AS VARCHAR(8))";
+    return "CAST(MIN(field) AS VARCHAR(8)) COLLATE \"POSIX\"";
   }
 
 
