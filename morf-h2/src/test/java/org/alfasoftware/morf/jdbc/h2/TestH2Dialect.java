@@ -859,8 +859,6 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeSimple() {
-    if (new Boolean(true)) // TODO see org.alfasoftware.morf.jdbc.h2.H2Dialect.getSqlFrom(MergeStatement)
-    return "MERGE INTO foo(id, bar) KEY(id) SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM somewhere";
     return "MERGE INTO foo"
         + " USING (SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM somewhere) xmergesource"
         + " ON (foo.id = xmergesource.id)"
@@ -874,8 +872,6 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeComplex() {
-    if (new Boolean(true)) // TODO see org.alfasoftware.morf.jdbc.h2.H2Dialect.getSqlFrom(MergeStatement)
-    return "MERGE INTO foo(id, bar) KEY(id) SELECT somewhere.newId AS id, join.joinBar AS bar FROM somewhere INNER JOIN join ON (somewhere.newId = join.joinId)";
     return "MERGE INTO foo"
         + " USING (SELECT somewhere.newId AS id, join.joinBar AS bar FROM somewhere INNER JOIN join ON (somewhere.newId = join.joinId)) xmergesource"
         + " ON (foo.id = xmergesource.id)"
@@ -889,8 +885,6 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeSourceInDifferentSchema() {
-    if (new Boolean(true)) // TODO see org.alfasoftware.morf.jdbc.h2.H2Dialect.getSqlFrom(MergeStatement)
-    return "MERGE INTO foo(id, bar) KEY(id) SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM MYSCHEMA.somewhere";
     return "MERGE INTO foo"
         + " USING (SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM MYSCHEMA.somewhere) xmergesource"
         + " ON (foo.id = xmergesource.id)"
@@ -904,8 +898,6 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeTargetInDifferentSchema() {
-    if (new Boolean(true)) // TODO see org.alfasoftware.morf.jdbc.h2.H2Dialect.getSqlFrom(MergeStatement)
-    return "MERGE INTO MYSCHEMA.foo(id, bar) KEY(id) SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM somewhere";
     return "MERGE INTO MYSCHEMA.foo"
         + " USING (SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM somewhere) xmergesource"
         + " ON (foo.id = xmergesource.id)"
@@ -919,8 +911,6 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeForAllPrimaryKeys() {
-    if (new Boolean(true)) // TODO see org.alfasoftware.morf.jdbc.h2.H2Dialect.getSqlFrom(MergeStatement)
-    return "MERGE INTO foo(id) KEY(id) SELECT somewhere.newId AS id FROM somewhere";
     return "MERGE INTO foo"
         + " USING (SELECT somewhere.newId AS id FROM somewhere) xmergesource"
         + " ON (foo.id = xmergesource.id)"

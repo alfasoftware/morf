@@ -43,7 +43,6 @@ import org.apache.commons.lang.StringUtils;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
-import com.google.common.collect.Iterables;
 
 /**
  * Implements database specific statement generation for MySQL version 5.
@@ -572,66 +571,7 @@ class H2Dialect extends SqlDialect {
   @Override
   protected String getSqlFrom(MergeStatement statement) {
 
-    // --------------------------------------------------
-    //
-    // TODO WEB-98094
-    // We need to upgrade H2 to version 1.4.199 to be able to use the new Merge syntax.
-    // // In the org.h2.command.Parser referred to as org.h2.command.dml.MergeUsing
-    //
-    // However, since Morf itself is already tested against the upgraded H2, we can already
-    // have the new implementation in here, and being useful, whenever updating expressions
-    // are defined. Of course, if someone  tries to use the updating expressions with old
-    // H2 version, it will naturally lead to unsupported syntax errors.
-    //
-    // As soon as version 1.4.199 is the main supported version across all our dependencies,
-    // we should switch to the new implementation completely, these expressions present or not
-
-    if (!statement.getIfUpdating().isEmpty()) {
-      return super.getSqlFrom(statement);
-    }
-
-    // The old implementation follows
-    // // In the org.h2.command.Parser referred to as org.h2.command.dml.Merge
-    //
-    // --------------------------------------------------
-
-    if (StringUtils.isBlank(statement.getTable().getName())) {
-      throw new IllegalArgumentException("Cannot create SQL for a blank table");
-    }
-
-    checkSelectStatementHasNoHints(statement.getSelectStatement(), "MERGE may not be used with SELECT statement hints");
-
-    final String destinationTableName = statement.getTable().getName();
-
-    // Add the preamble
-    StringBuilder sqlBuilder = new StringBuilder("MERGE INTO ");
-    // Now add the into clause
-    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-    sqlBuilder.append(destinationTableName);
-    sqlBuilder.append("(");
-    Iterable<String> intoFields = Iterables.transform(statement.getSelectStatement().getFields(), new com.google.common.base.Function<AliasedField, String>() {
-      @Override
-      public String apply(AliasedField field) {
-        return field.getImpliedName();
-      }
-    });
-    sqlBuilder.append(Joiner.on(", ").join(intoFields));
-
-    // Add key fields
-    sqlBuilder.append(") KEY(");
-    Iterable<String> keyFields = Iterables.transform(statement.getTableUniqueKey(), new com.google.common.base.Function<AliasedField, String>() {
-      @Override
-      public String apply(AliasedField field) {
-        return field.getImpliedName();
-      }
-    });
-    sqlBuilder.append(Joiner.on(", ").join(keyFields));
-    sqlBuilder.append(") ");
-
-    // Add select statement
-    sqlBuilder.append(getSqlFrom(statement.getSelectStatement()));
-
-    return sqlBuilder.toString();
+    return super.getSqlFrom(statement);
   }
 
 

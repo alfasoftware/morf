@@ -79,17 +79,15 @@ public final class H2 extends AbstractDatabaseType {
     }
 
     // The DB_CLOSE_DELAY=-1 prevents the database being lost when the last connection is closed.
-    // The MVCC=TRUE allows higher concurrency - delete, insert and update operations will only issue a shared lock on the table.
     // The DEFAULT_LOCK_TIMEOUT=60000 sets the default lock timeout to 60
     //    seconds. When the value is not set, it takes default
     //    org.h2.engine.Constants.INITIAL_LOCK_TIMEOUT=2000 value
     // The LOB_TIMEOUT defines how long a lob returned from a ResultSet is available post-commit, defaulting to 5 minutes (300000 ms)
-    //    This is disabled because lob data should always be retrieved inside the transaction and 
-    //    there is a signinificant memory overhead of retaining this data, especially in tests where it may build up rapidly.
-    // The MV_STORE is a flag that governs whether to use the new storage engine (defaulting to true as of H2 version 1.4, false in prior versions).
-    //    However, testing reveals that (as of H2 v1.4.196) this engine leaks lob data, specifically when rows containing lob data are deleted, the 
-    //    lob data is still retained in memory. This does not occur when the MV_STORE is disabled.
-    builder.append(";DB_CLOSE_DELAY=-1;MVCC=TRUE;DEFAULT_LOCK_TIMEOUT=60000;LOB_TIMEOUT=0;MV_STORE=FALSE");
+    //    Set this to 2 seconds to allow certain tests using lob fields to work
+    // The MV_STORE is a flag that governs whether to use the new storage engine (defaulting to true as of H2 version 1.4, false in prior versions)
+    //  Note that implementations of H2 prior to version 1.4.199 had an MVCC parameter used to allow higher concurrency.
+    //  This configuration has been removed and the old "PageStore" implementation (MV_STORE=FALSE) is no longer supported.
+    builder.append(";DB_CLOSE_DELAY=-1;DEFAULT_LOCK_TIMEOUT=60000;LOB_TIMEOUT=2000;MV_STORE=TRUE");
 
     return builder.toString();
   }

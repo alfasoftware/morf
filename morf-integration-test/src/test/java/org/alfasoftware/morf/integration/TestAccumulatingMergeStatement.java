@@ -54,8 +54,8 @@ public class TestAccumulatingMergeStatement {
 
   @Rule public InjectMembersRule injectMembersRule = new InjectMembersRule(new TestingDataSourceModule());
 
-  private static final int THREADS = 10;
-  private static final int LOOPS = 10;
+  private static final int THREADS = 2;
+  private static final int LOOPS = 2;
 
   @Inject private Provider<DatabaseSchemaManager> schemaManager;
   @Inject private SqlScriptExecutorProvider sqlScriptExecutorProvider;
@@ -84,10 +84,12 @@ public class TestAccumulatingMergeStatement {
     assertEquals(Long.valueOf(0), result);
 
     /*
-     * We have to provide the initial record on Oracle, otherwise we get
+     * We have to provide the initial record on Oracle or H2, otherwise we get:
      *   ORA-00001: unique constraint (DESTINATION_PK) violated
+     *   or
+     *   org.h2.jdbc.JdbcSQLIntegrityConstraintViolationException: Unique index or primary key violation
      */
-    if (connectionResources.sqlDialect().getDatabaseType().identifier().equals("ORACLE")) {
+    if (connectionResources.sqlDialect().getDatabaseType().identifier().matches("ORACLE|H2")) {
       InsertStatement insertStatement = insert()
         .into(destinationTable)
         .values(literal("A").as("keyColumn"))
