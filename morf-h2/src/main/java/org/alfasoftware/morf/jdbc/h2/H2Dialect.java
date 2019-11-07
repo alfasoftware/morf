@@ -125,7 +125,7 @@ class H2Dialect extends SqlDialect {
    */
   @Override
   public Collection<String> dropStatements(Table table) {
-    return Arrays.asList("drop table " + table.getName());
+    return Arrays.asList("drop table " + table.getName() + " cascade");
   }
 
 

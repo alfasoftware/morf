@@ -98,7 +98,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedDropTableStatements() {
-    return Arrays.asList("drop table Test");
+    return Arrays.asList("drop table Test cascade");
   }
 
 
@@ -107,7 +107,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedDropTempTableStatements() {
-    return Arrays.asList("drop table TEMP_TempTest");
+    return Arrays.asList("drop table TEMP_TempTest cascade");
   }
 
 
