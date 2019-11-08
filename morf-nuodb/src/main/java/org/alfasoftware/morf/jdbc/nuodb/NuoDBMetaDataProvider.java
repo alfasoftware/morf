@@ -143,7 +143,7 @@ class NuoDBMetaDataProvider extends DatabaseMetaDataProvider {
         return primaryKeys.contains(input.getName()) ? input.primaryKey() : input;
       }
     }));
-    return sortByPrimaryKey(primaryKeys, rawColumns);
+    return applyPrimaryKeyOrder(primaryKeys, rawColumns);
   }
 
 

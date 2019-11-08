@@ -290,7 +290,7 @@ public class DatabaseMetaDataProvider implements Schema {
             }
           }
 
-          return sortByPrimaryKey(primaryKeys, rawColumns);
+          return applyPrimaryKeyOrder(primaryKeys, rawColumns);
         }
       } catch (SQLException sqle) {
         throw new RuntimeSqlException(sqle);
@@ -300,40 +300,36 @@ public class DatabaseMetaDataProvider implements Schema {
     }
   }
 
-
   /**
-   * Sorts a list of columns so that the primary key columns appear first in key order.
-   * @param primaryKeys The list of the primary key column names
-   * @param rawColumns The list of columns to re-arrange
-   * @return A list containing all the {@link Column} instances in the supplied list re-arranged so that the primary
-   * key columns appear first.
+   * Apply the sort order of the primary keys to the list of columns, but leave non-primary keys intact.
+   *
+   * @param primaryKeys the sorted primary key column names
+   * @param columns all the columns
+   * @return the partially sorted columns
    */
-  protected List<Column> sortByPrimaryKey(List<String> primaryKeys, List<Column> rawColumns) {
+  protected List<Column> applyPrimaryKeyOrder(List<String> primaryKeys, List<Column> columns) {
     // Map allowing retrieval of columns by name
-    ImmutableMap<String, Column> columnsMap = uniqueIndex(rawColumns, new Function<Column, String>() {
-      @Override
-      public String apply(Column col) {
-        return col.getName();
+    ImmutableMap<String, Column> columnsMap = uniqueIndex(columns, Column::getName);
+
+    List<Column> reorderedColumns = new ArrayList<>();
+    // keep track of the primary keys that have been added
+    int primaryKeyIndex = 0;
+    for (Column column : columns) {
+      if (column.isPrimaryKey()) {
+        // replace whatever primary key is there with the one that should be at that index
+        String pkName = primaryKeys.get(primaryKeyIndex);
+        Column primaryKeyColumn = columnsMap.get(pkName);
+        if (primaryKeyColumn == null) {
+          throw new IllegalStateException("Could not find primary key column [" + pkName + "] in columns [" + columns + "]");
+        }
+        reorderedColumns.add(primaryKeyColumn);
+        primaryKeyIndex++;
+      } else {
+        reorderedColumns.add(column);
       }
-    });
-
-    List<Column> results = newArrayList();
-    List<Column> normalColumns = newArrayList(rawColumns);
-
-    // Add the primary key columns to the results first
-    for(String pk : primaryKeys) {
-      Column pkCol = columnsMap.get(pk);
-      if (pkCol == null) {
-        throw new IllegalStateException("Could not find primary key column [" + pk + "] in columns [" + rawColumns + "]");
-      }
-
-      normalColumns.remove(pkCol);
-      results.add(pkCol);
     }
 
-    // Then add the remaining columns
-    results.addAll(normalColumns);
-    return results;
+    return reorderedColumns;
   }
 
 

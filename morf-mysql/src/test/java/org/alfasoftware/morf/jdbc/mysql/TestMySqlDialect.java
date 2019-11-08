@@ -146,7 +146,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedDropTableStatements() {
-    return Arrays.asList("FLUSH TABLES Test", "DROP TABLE Test");
+    return Arrays.asList("FLUSH TABLES `Test`", "DROP TABLE `Test`");
   }
 
 
@@ -155,7 +155,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedDropTempTableStatements() {
-    return Arrays.asList("FLUSH TABLES TempTest", "DROP TABLE TempTest");
+    return Arrays.asList("FLUSH TABLES `TempTest`", "DROP TABLE `TempTest`");
   }
 
 
@@ -893,7 +893,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedDropViewStatements() {
-    return Arrays.asList("DROP VIEW IF EXISTS " + tableName("TestView")) ;
+    return Arrays.asList("DROP VIEW IF EXISTS `" + tableName("TestView") + "`") ;
   }
 
 
@@ -964,7 +964,9 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeSimple() {
-    return "INSERT INTO foo(id, bar) SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM somewhere ON DUPLICATE KEY UPDATE id = values(id), bar = values(bar)";
+    return "INSERT INTO foo(id, bar)"
+        + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM somewhere"
+        + " ON DUPLICATE KEY UPDATE bar = values(bar)";
   }
 
 
@@ -973,7 +975,9 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeComplex() {
-    return "INSERT INTO foo(id, bar) SELECT somewhere.newId AS id, join.joinBar AS bar FROM somewhere INNER JOIN join ON (somewhere.newId = join.joinId) ON DUPLICATE KEY UPDATE id = values(id), bar = values(bar)";
+    return "INSERT INTO foo(id, bar)"
+        + " SELECT somewhere.newId AS id, join.joinBar AS bar FROM somewhere INNER JOIN join ON (somewhere.newId = join.joinId)"
+        + " ON DUPLICATE KEY UPDATE bar = values(bar)";
   }
 
 
@@ -982,7 +986,9 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeTargetInDifferentSchema() {
-    return "INSERT INTO MYSCHEMA.foo(id, bar) SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM somewhere ON DUPLICATE KEY UPDATE id = values(id), bar = values(bar)";
+    return "INSERT INTO MYSCHEMA.foo(id, bar)"
+        + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM somewhere"
+        + " ON DUPLICATE KEY UPDATE bar = values(bar)";
   }
 
 
@@ -991,7 +997,30 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeSourceInDifferentSchema() {
-    return "INSERT INTO foo(id, bar) SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM MYSCHEMA.somewhere ON DUPLICATE KEY UPDATE id = values(id), bar = values(bar)";
+    return "INSERT INTO foo(id, bar)"
+        + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM MYSCHEMA.somewhere"
+        + " ON DUPLICATE KEY UPDATE bar = values(bar)";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedMergeForAllPrimaryKeys()
+   */
+  @Override
+  protected String expectedMergeForAllPrimaryKeys() {
+    return "INSERT IGNORE INTO foo(id)"
+        + " SELECT somewhere.newId AS id FROM somewhere";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedMergeWithUpdateExpressions()
+   */
+  @Override
+  protected String expectedMergeWithUpdateExpressions() {
+    return "INSERT INTO foo(id, bar)"
+        + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM somewhere"
+        + " ON DUPLICATE KEY UPDATE bar = values(bar) + foo.bar";
   }
 
 
@@ -1049,15 +1078,6 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
       "ALTER TABLE `TempTest` DROP INDEX `TempTest_1`",
       "ALTER TABLE `TempTest` ADD INDEX `TempTest_2` (`intField`, `floatField`)"
     );
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedMergeForAllPrimaryKeys()
-   */
-  @Override
-  protected String expectedMergeForAllPrimaryKeys() {
-    return "INSERT INTO foo(id) SELECT somewhere.newId AS id FROM somewhere ON DUPLICATE KEY UPDATE id = values(id)";
   }
 
 

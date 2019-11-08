@@ -36,7 +36,6 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.Hint;
-import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.OptimiseForRowCount;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
@@ -58,7 +57,6 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterables;
 
 /**
  * Provides SQL Server specific SQL statements.
@@ -84,11 +82,6 @@ class SqlServerDialect extends SqlDialect {
      "    IF @@ROWCOUNT = 0 BREAK\n" +
      "    EXEC (@sql)\n" +
      "END";
-
-  /**
-   * Used as the alias for the select statement in merge statements.
-   */
-  private static final String MERGE_SOURCE_ALIAS = "_mergesource";
 
   /**
    * Used to force collation to be case-sensitive.
@@ -1045,67 +1038,6 @@ class SqlServerDialect extends SqlDialect {
   protected String getSqlFrom(LocalDate literalValue) {
     // SQL server does not support ISO standard date literals.
     return String.format("'%s'", literalValue.toString("yyyy-MM-dd"));
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.MergeStatement)
-   */
-  @Override
-  protected String getSqlFrom(final MergeStatement statement) {
-
-    if (StringUtils.isBlank(statement.getTable().getName())) {
-      throw new IllegalArgumentException("Cannot create SQL for a blank table");
-    }
-
-    final String destinationTableName = statement.getTable().getName();
-
-    checkSelectStatementHasNoHints(statement.getSelectStatement(), "MERGE may not be used with SELECT statement hints");
-
-    // Add the preamble
-    StringBuilder sqlBuilder = new StringBuilder("MERGE INTO ");
-    // Now add the into clause
-    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-    sqlBuilder.append(destinationTableName);
-
-    // Add USING
-    sqlBuilder.append(" USING (");
-    sqlBuilder.append(getSqlFrom(statement.getSelectStatement()));
-    sqlBuilder.append(") AS ");
-    sqlBuilder.append(MERGE_SOURCE_ALIAS);
-
-    // Add the matching keys
-    sqlBuilder.append(" ON ");
-    sqlBuilder.append(matchConditionSqlForMergeFields(statement.getTableUniqueKey(), MERGE_SOURCE_ALIAS, destinationTableName));
-
-    // What to do if matched
-    if (getNonKeyFieldsFromMergeStatement(statement).iterator().hasNext()) {
-      sqlBuilder.append(" WHEN MATCHED THEN UPDATE SET ");
-      sqlBuilder.append(assignmentSqlForMergeFields(getNonKeyFieldsFromMergeStatement(statement), MERGE_SOURCE_ALIAS, destinationTableName));
-    }
-
-    // What to do if no match
-    sqlBuilder.append( " WHEN NOT MATCHED THEN INSERT (");
-    Iterable<String> insertField = Iterables.transform(statement.getSelectStatement().getFields(), new com.google.common.base.Function<AliasedField, String>() {
-      @Override
-      public String apply(AliasedField field) {
-        return field.getImpliedName();
-      }
-    });
-
-    sqlBuilder.append(Joiner.on(", ").join(insertField));
-
-    sqlBuilder.append(") VALUES (");
-    Iterable<String> valueFields = Iterables.transform(statement.getSelectStatement().getFields(), new com.google.common.base.Function<AliasedField, String>() {
-      @Override
-      public String apply(AliasedField field) {
-        return String.format("%s.%s", MERGE_SOURCE_ALIAS, field.getImpliedName());
-      }
-    });
-    sqlBuilder.append(Joiner.on(", ").join(valueFields));
-    sqlBuilder.append(");");
-
-    return sqlBuilder.toString();
   }
 
 

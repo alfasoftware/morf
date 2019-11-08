@@ -36,13 +36,13 @@ import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.apache.commons.lang.StringUtils;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
-import com.google.common.collect.Iterables;
 
 /**
  * Implements database specific statement generation for MySQL version 5.
@@ -125,7 +125,7 @@ class H2Dialect extends SqlDialect {
    */
   @Override
   public Collection<String> dropStatements(Table table) {
-    return Arrays.asList("drop table " + table.getName());
+    return Arrays.asList("drop table " + table.getName() + " cascade");
   }
 
 
@@ -155,10 +155,10 @@ class H2Dialect extends SqlDialect {
   protected String getColumnRepresentation(DataType dataType, int width, int scale) {
     switch (dataType) {
       case STRING:
-        return String.format("VARCHAR(%d)", width);
+        return width == 0 ? "VARCHAR" : String.format("VARCHAR(%d)", width);
 
       case DECIMAL:
-        return String.format("DECIMAL(%d,%d)", width, scale);
+        return width == 0 ? "DECIMAL" : String.format("DECIMAL(%d,%d)", width, scale);
 
       case DATE:
         return "DATE";
@@ -571,43 +571,13 @@ class H2Dialect extends SqlDialect {
   @Override
   protected String getSqlFrom(MergeStatement statement) {
 
-    if (StringUtils.isBlank(statement.getTable().getName())) {
-      throw new IllegalArgumentException("Cannot create SQL for a blank table");
-    }
+    return super.getSqlFrom(statement);
+  }
 
-    checkSelectStatementHasNoHints(statement.getSelectStatement(), "MERGE may not be used with SELECT statement hints");
 
-    final String destinationTableName = statement.getTable().getName();
-
-    // Add the preamble
-    StringBuilder sqlBuilder = new StringBuilder("MERGE INTO ");
-    // Now add the into clause
-    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-    sqlBuilder.append(destinationTableName);
-    sqlBuilder.append("(");
-    Iterable<String> intoFields = Iterables.transform(statement.getSelectStatement().getFields(), new com.google.common.base.Function<AliasedField, String>() {
-      @Override
-      public String apply(AliasedField field) {
-        return field.getImpliedName();
-      }
-    });
-    sqlBuilder.append(Joiner.on(", ").join(intoFields));
-
-    // Add key fields
-    sqlBuilder.append(") KEY(");
-    Iterable<String> keyFields = Iterables.transform(statement.getTableUniqueKey(), new com.google.common.base.Function<AliasedField, String>() {
-      @Override
-      public String apply(AliasedField field) {
-        return field.getImpliedName();
-      }
-    });
-    sqlBuilder.append(Joiner.on(", ").join(keyFields));
-    sqlBuilder.append(") ");
-
-    // Add select statement
-    sqlBuilder.append(getSqlFrom(statement.getSelectStatement()));
-
-    return sqlBuilder.toString();
+  @Override
+  protected String getSqlFrom(SqlParameter sqlParameter) {
+    return String.format("CAST(:%s AS %s)", sqlParameter.getMetadata().getName(), sqlRepresentationOfColumnType(sqlParameter.getMetadata(), false));
   }
 
 

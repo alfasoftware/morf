@@ -66,6 +66,7 @@ import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.xml.XmlStreamProvider.XmlInputStreamProvider;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -446,7 +447,7 @@ public class XmlDataSetProducer implements DataSetProducer {
     //
     if (urlUsername != null && urlPassword != null) {
       String userpass = urlUsername + ":" + urlPassword;
-      String basicAuth = "Basic " + javax.xml.bind.DatatypeConverter.printBase64Binary(userpass.getBytes(StandardCharsets.UTF_8));
+      String basicAuth = "Basic " + Base64.encodeBase64String(userpass.getBytes(StandardCharsets.UTF_8));
       urlConnection.setRequestProperty("Authorization", basicAuth);
     }
 
