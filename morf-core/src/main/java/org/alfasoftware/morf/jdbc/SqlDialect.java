@@ -41,6 +41,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.Column;
@@ -97,11 +98,12 @@ import org.joda.time.LocalDate;
 import org.joda.time.Months;
 
 import com.google.common.base.Joiner;
-import com.google.common.base.Predicate;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 /**
  * Provides functionality for generating SQL statements.
@@ -129,6 +131,11 @@ public abstract class SqlDialect {
    * Empty collection of strings that implementations can return if required.
    */
   public static final Collection<String> NO_STATEMENTS                     = Collections.emptyList();
+
+  /**
+   * Used as the alias for the select statement in merge statements.
+   */
+  private static final String MERGE_SOURCE_ALIAS = "xmergesource";
 
   /**
    * Database schema name.
@@ -244,8 +251,7 @@ public abstract class SqlDialect {
    * @param newPrimaryKeyColumns - the new primary key columns
    * @return SQL Statements required to change the primary key columns
    */
-  public abstract Collection<String> changePrimaryKeyColumns(Table table, List<String> oldPrimaryKeyColumns,
-      List<String> newPrimaryKeyColumns);
+  public abstract Collection<String> changePrimaryKeyColumns(Table table, List<String> oldPrimaryKeyColumns, List<String> newPrimaryKeyColumns);
 
 
   /**
@@ -265,7 +271,7 @@ public abstract class SqlDialect {
    * @return SQL statements to be executed prior to insert.
    */
   @SuppressWarnings("unused")
-  public Collection<String> preInsertWithPresetAutonumStatements(Table table, boolean insertingUnderAutonumLimit){
+  public Collection<String> preInsertWithPresetAutonumStatements(Table table, boolean insertingUnderAutonumLimit) {
     return Collections.emptyList();
   }
 
@@ -279,7 +285,7 @@ public abstract class SqlDialect {
    * @param insertingUnderAutonumLimit  Determines whether we are inserting under an auto-numbering limit.
    */
   @SuppressWarnings("unused")
-  public void postInsertWithPresetAutonumStatements(Table table,SqlScriptExecutor executor,Connection connection, boolean insertingUnderAutonumLimit) {
+  public void postInsertWithPresetAutonumStatements(Table table, SqlScriptExecutor executor, Connection connection, boolean insertingUnderAutonumLimit) {
   }
 
 
@@ -293,7 +299,7 @@ public abstract class SqlDialect {
    * @param connection The connection to use
    */
   @SuppressWarnings("unused")
-  public void repairAutoNumberStartPosition(Table table,SqlScriptExecutor executor,Connection connection) {
+  public void repairAutoNumberStartPosition(Table table, SqlScriptExecutor executor, Connection connection) {
   }
 
 
@@ -750,7 +756,7 @@ public abstract class SqlDialect {
    * @param stmt the select statement to generate SQL for
    * @return a standards compliant SQL SELECT statement
    */
-  protected String getSqlFrom(final SelectStatement stmt) {
+  protected String getSqlFrom(SelectStatement stmt) {
     StringBuilder result = new StringBuilder("SELECT ");
 
     // Any hint directives which should be inserted before the field list
@@ -865,7 +871,7 @@ public abstract class SqlDialect {
    * @param stmt the select statement to generate SQL for
    * @return SQL string specific for database platform
    */
-  protected String getSqlFrom(final SelectFirstStatement stmt) {
+  protected String getSqlFrom(SelectFirstStatement stmt) {
     StringBuilder result = new StringBuilder("SELECT ");
     // Start by adding the field
     result.append(getSqlFrom(stmt.getFields().get(0)));
@@ -1492,7 +1498,7 @@ public abstract class SqlDialect {
   protected String getSqlFrom(AliasedField field) {
 
     if (field instanceof SqlParameter) {
-      return String.format(":%s", ((SqlParameter)field).getMetadata().getName());
+      return getSqlFrom((SqlParameter)field);
     }
 
     if (field instanceof FieldLiteral) {
@@ -1550,7 +1556,22 @@ public abstract class SqlDialect {
       return getSqlFrom((WindowFunction) field);
     }
 
+    if (field instanceof MergeStatement.InputField) {
+      return getSqlFrom((MergeStatement.InputField) field);
+    }
+
     throw new IllegalArgumentException("Aliased Field of type [" + field.getClass().getSimpleName() + "] is not supported");
+  }
+
+
+  /**
+   * Convert {@link SqlParameter} into its SQL representation.
+   *
+   * @param field representing a SQL parameter
+   * @return Returns the SQL representation of {@link SqlParameter}.
+   */
+  protected String getSqlFrom(SqlParameter field) {
+    return String.format(":%s", field.getMetadata().getName());
   }
 
 
@@ -1968,7 +1989,7 @@ public abstract class SqlDialect {
    * @return a string representation of the SQL.
    * @see org.alfasoftware.morf.sql.element.Function#length(AliasedField)
    */
-  protected String getSqlforLength(Function function){
+  protected String getSqlforLength(Function function) {
     return String.format("LENGTH(%s)", getSqlFrom(function.getArguments().get(0)));
   }
 
@@ -2408,7 +2429,7 @@ public abstract class SqlDialect {
    * @return a string containing a parameterised insert query for the specified
    *         table
    */
-  public String buildParameterisedInsert(final InsertStatement statement, Schema metadata) {
+  public String buildParameterisedInsert(InsertStatement statement, Schema metadata) {
     String destinationTableName = statement.getTable().getName();
 
     if (StringUtils.isBlank(destinationTableName)) {
@@ -2483,7 +2504,7 @@ public abstract class SqlDialect {
    * @return a string containing a specific value insert query for the specified
    *         table and column values.
    */
-  protected List<String> buildSpecificValueInsert(final InsertStatement statement, Schema metadata, Table idTable) {
+  protected List<String> buildSpecificValueInsert(InsertStatement statement, Schema metadata, Table idTable) {
     List<String> result = new LinkedList<>();
 
     String destinationTableName = statement.getTable().getName();
@@ -2633,7 +2654,7 @@ public abstract class SqlDialect {
    * @return a string containing a parameterised delete query for the specified
    *         table
    */
-  protected String getSqlFrom(final DeleteStatement statement) {
+  protected String getSqlFrom(DeleteStatement statement) {
     String destinationTableName = statement.getTable().getName();
 
     if (StringUtils.isBlank(destinationTableName)) {
@@ -2695,7 +2716,7 @@ public abstract class SqlDialect {
    * @param limit The delete limit.
    * @return The SQL fragment.
    */
-  protected Optional<String> getDeleteLimitPreFromClause(int limit) {
+  protected Optional<String> getDeleteLimitPreFromClause(@SuppressWarnings("unused") int limit) {
     return Optional.empty();
   };
 
@@ -2706,7 +2727,7 @@ public abstract class SqlDialect {
    * @param limit The delete limit.
    * @return The SQL fragment.
    */
-  protected Optional<String> getDeleteLimitWhereClause(int limit) {
+  protected Optional<String> getDeleteLimitWhereClause(@SuppressWarnings("unused") int limit) {
     return Optional.empty();
   };
 
@@ -2717,7 +2738,7 @@ public abstract class SqlDialect {
    * @param limit The delete limit.
    * @return The SQL fragment.
    */
-  protected Optional<String> getDeleteLimitSuffix(int limit) {
+  protected Optional<String> getDeleteLimitSuffix(@SuppressWarnings("unused") int limit) {
     return Optional.empty();
   };
 
@@ -2730,7 +2751,7 @@ public abstract class SqlDialect {
    * @return a string containing a parameterised insert query for the specified
    *         table
    */
-  protected String getSqlFrom(final UpdateStatement statement) {
+  protected String getSqlFrom(UpdateStatement statement) {
     String destinationTableName = statement.getTable().getName();
 
     if (StringUtils.isBlank(destinationTableName)) {
@@ -2772,7 +2793,67 @@ public abstract class SqlDialect {
    * @return a string containing a parameterised insert query for the specified
    *         table.
    */
-  protected abstract String getSqlFrom(final MergeStatement statement);
+  protected String getSqlFrom(MergeStatement statement) {
+
+    if (StringUtils.isBlank(statement.getTable().getName())) {
+      throw new IllegalArgumentException("Cannot create SQL for a blank table");
+    }
+
+    checkSelectStatementHasNoHints(statement.getSelectStatement(), "MERGE may not be used with SELECT statement hints");
+
+    final String destinationTableName = statement.getTable().getName();
+    // Add the preamble
+    StringBuilder sqlBuilder = new StringBuilder("MERGE INTO ");
+
+    // Now add the into clause
+    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
+    sqlBuilder.append(destinationTableName);
+
+    // Add USING
+    sqlBuilder.append(" USING (");
+    sqlBuilder.append(getSqlFrom(statement.getSelectStatement()));
+    sqlBuilder.append(") ");
+    sqlBuilder.append(MERGE_SOURCE_ALIAS);
+
+    // Add the matching keys
+    sqlBuilder.append(" ON (");
+    sqlBuilder.append(matchConditionSqlForMergeFields(statement, MERGE_SOURCE_ALIAS, destinationTableName));
+
+    // What to do if matched
+    if (getNonKeyFieldsFromMergeStatement(statement).iterator().hasNext()) {
+      sqlBuilder.append(") WHEN MATCHED THEN UPDATE SET ");
+      Iterable<AliasedField> updateExpressions = getMergeStatementUpdateExpressions(statement);
+      String updateExpressionsSql = getMergeStatementAssignmentsSql(updateExpressions);
+      sqlBuilder.append(updateExpressionsSql);
+    } else {
+      sqlBuilder.append(")");
+    }
+
+    // What to do if no match
+    sqlBuilder.append(" WHEN NOT MATCHED THEN INSERT (");
+    Iterable<String> insertField = Iterables.transform(statement.getSelectStatement().getFields(), AliasedField::getImpliedName);
+    sqlBuilder.append(Joiner.on(", ").join(insertField));
+
+    // Values to insert
+    sqlBuilder.append(") VALUES (");
+    Iterable<String> valueFields = Iterables.transform(statement.getSelectStatement().getFields(), field -> MERGE_SOURCE_ALIAS + "." + field.getImpliedName());
+    sqlBuilder.append(Joiner.on(", ").join(valueFields));
+
+    sqlBuilder.append(")");
+
+    return sqlBuilder.toString();
+  }
+
+
+  /**
+   * Convert a {@link MergeStatement.InputField} into SQL.
+   *
+   * @param field the field to generate SQL for
+   * @return a string representation of the field
+   */
+  protected String getSqlFrom(MergeStatement.InputField field) {
+    return MERGE_SOURCE_ALIAS + "." + field.getName();
+  }
 
 
   /**
@@ -2789,28 +2870,28 @@ public abstract class SqlDialect {
 
 
   /**
-   * Returns the SET statement for an SQL UPDATE statement based on the
+   * Returns the SET clause for an SQL UPDATE statement based on the
    * {@link List} of {@link AliasedField}s provided.
    *
    * @param fields The {@link List} of {@link AliasedField}s to create the SET
    *          statement from
-   * @return The SET statement as a string
+   * @return The SET clause as a string
    */
-  protected String getUpdateStatementSetFieldSql(final List<AliasedField> fields) {
-    StringBuilder sqlBuilder = new StringBuilder();
-    sqlBuilder.append(" SET ");
+  protected String getUpdateStatementSetFieldSql(List<AliasedField> fields) {
+    return " SET " + getUpdateStatementAssignmentsSql(fields);
+  }
 
-    Iterable<String> setStatements = Iterables.transform(fields, new com.google.common.base.Function<AliasedField, String>() {
 
-      @Override
-      public String apply(AliasedField field) {
-        return field.getAlias() + " = " + getSqlFrom(field);
-      }
-
-    });
-
-    sqlBuilder.append(Joiner.on(", ").join(setStatements));
-    return sqlBuilder.toString();
+  /**
+   * Returns the assignments for the SET clause of an SQL UPDATE statement
+   * based on the {@link List} of {@link AliasedField}s provided.
+   *
+   * @param fields The {@link List} of {@link AliasedField}s to create the assignments from
+   * @return the assignments for the SET clause as a string
+   */
+  protected String getUpdateStatementAssignmentsSql(Iterable<AliasedField> fields) {
+    Iterable<String> setStatements = Iterables.transform(fields, field -> field.getAlias() + " = " + getSqlFrom(field));
+    return Joiner.on(", ").join(setStatements);
   }
 
 
@@ -2830,7 +2911,7 @@ public abstract class SqlDialect {
    * @return a new instance of {@link InsertStatement} with an expanded from
    *         table definition
    */
-  protected InsertStatement expandInsertStatement(final InsertStatement insertStatement, Schema metadata) {
+  protected InsertStatement expandInsertStatement(InsertStatement insertStatement, Schema metadata) {
     // If we're neither specified the source table nor the select statement then
     // throw and exception
     if (insertStatement.getFromTable() == null && insertStatement.getSelectStatement() == null) {
@@ -2910,7 +2991,7 @@ public abstract class SqlDialect {
    * @param statement the {@linkplain InsertStatement} to copy
    * @return a new instance of the {@linkplain InsertStatement}
    */
-  protected InsertStatement copyInsertStatement(final InsertStatement statement) {
+  protected InsertStatement copyInsertStatement(InsertStatement statement) {
     return statement.shallowCopy().build();
   }
 
@@ -2949,8 +3030,7 @@ public abstract class SqlDialect {
    * @param valueColumn the name of the value column.
    * @return SQL allowing the repair of the AutoNumber table.
    */
-  private List<String> buildSimpleAutonumberUpdate(TableReference dataTable, String generatedFieldName, Table autoNumberTable,
-      String nameColumn, String valueColumn) {
+  private List<String> buildSimpleAutonumberUpdate(TableReference dataTable, String generatedFieldName, Table autoNumberTable, String nameColumn, String valueColumn) {
     String autoNumberName = getAutoNumberName(dataTable.getName());
 
     if (autoNumberName.equals("autonumber")) {
@@ -2997,8 +3077,7 @@ public abstract class SqlDialect {
    * @param valueColumn the name of the column holding the Autonumber value.
    * @return a field reference.
    */
-  public AliasedField nextIdValue(TableReference sourceTable, TableReference sourceReference, Table autoNumberTable,
-      String nameColumn, String valueColumn) {
+  public AliasedField nextIdValue(TableReference sourceTable, TableReference sourceReference, Table autoNumberTable, String nameColumn, String valueColumn) {
     String autoNumberName = getAutoNumberName(sourceTable.getName());
 
     if (sourceReference == null) {
@@ -3394,7 +3473,7 @@ public abstract class SqlDialect {
    * @param sqlStatement The statement to format
    * @return the formatted SQL statement
    */
-  public String formatSqlStatement(final String sqlStatement) {
+  public String formatSqlStatement(String sqlStatement) {
     return sqlStatement + ";";
   }
 
@@ -3506,17 +3585,15 @@ public abstract class SqlDialect {
    * @param statement a merge statement
    * @return the non key fields
    */
-  protected Iterable<AliasedField> getNonKeyFieldsFromMergeStatement(final MergeStatement statement) {
-    return Iterables.filter(statement.getSelectStatement().getFields(), new Predicate<AliasedField>() {
-      @Override
-      public boolean apply(AliasedField input) {
-        boolean keyField = false;
-        for (AliasedField field : statement.getTableUniqueKey()) {
-          if (input.getImpliedName().equals(field.getImpliedName())) keyField = true;
-        }
-        return !keyField;
-      }
-    });
+  protected Iterable<AliasedField> getNonKeyFieldsFromMergeStatement(MergeStatement statement) {
+    Set<String> tableUniqueKey = statement.getTableUniqueKey().stream()
+        .map(AliasedField::getImpliedName)
+        .collect(Collectors.toSet());
+
+    return Iterables.filter(
+      statement.getSelectStatement().getFields(),
+      input -> !tableUniqueKey.contains(input.getImpliedName())
+    );
   }
 
 
@@ -3525,49 +3602,60 @@ public abstract class SqlDialect {
    * of a Merge Statement. For example:
    * "table1.fieldA = table2.fieldA AND table1.fieldB = table2.fieldB".
    *
-   * @param aliasedFields an iterable of aliased fields.
+   * @param statement the merge statement.
    * @param selectAlias the alias of the select statement of a merge statement.
    * @param targetTableName the name of the target table into which to merge.
    * @return The corresponding SQL
    */
-  protected String matchConditionSqlForMergeFields(final Iterable<AliasedField> aliasedFields, final String selectAlias,
-      final String targetTableName) {
-    return Joiner.on(" AND ").join(createEqualsSqlForFields(aliasedFields, selectAlias, targetTableName));
+  protected String matchConditionSqlForMergeFields(MergeStatement statement, String selectAlias, String targetTableName) {
+
+    Iterable<String> expressions = Iterables.transform(statement.getTableUniqueKey(),
+      field -> String.format("%s.%s = %s.%s", targetTableName, field.getImpliedName(), selectAlias, field.getImpliedName()));
+
+    return Joiner.on(" AND ").join(expressions);
   }
 
 
   /**
-   * Creates assignment SQL for a list of fields used in the SET section of a
-   * Merge Statement. For example:
-   * "table1.fieldA = table2.fieldA, table1.fieldB = table2.fieldB".
+   * Extracts updating expressions from the given merge statement and returns them as aliased fields,
+   * similarly to how update expressions are provided to the update statement. Since updating expressions
+   * are optional in merge statements, uses default expressions for any missing destination fields.
    *
-   * @param aliasedFields an iterable of aliased fields.
-   * @param selectAlias the alias of the select statement of a merge statement.
-   * @param targetTableName the name of the target table into which to merge.
-   * @return The resulting SQL
+   * @param statement a merge statement
+   * @return the updating expressions aliased as destination fields
    */
-  protected String assignmentSqlForMergeFields(final Iterable<AliasedField> aliasedFields, final String selectAlias,
-      final String targetTableName) {
-    return Joiner.on(", ").join(createEqualsSqlForFields(aliasedFields, selectAlias, targetTableName));
+  protected Iterable<AliasedField> getMergeStatementUpdateExpressions(MergeStatement statement) {
+    final Map<String, AliasedField> onUpdateExpressions = Maps.uniqueIndex(statement.getIfUpdating(), AliasedField::getImpliedName);
+    final Iterable<AliasedField> nonKeyFieldsFromMergeStatement = getNonKeyFieldsFromMergeStatement(statement);
+
+    Set<String> keyFields = FluentIterable.from(statement.getTableUniqueKey())
+      .transform(AliasedField::getImpliedName)
+      .toSet();
+
+    List<String> listOfKeyFieldsWithUpdateExpression = FluentIterable.from(onUpdateExpressions.keySet())
+      .filter(a -> keyFields.contains(a))
+      .toList();
+
+    if (!listOfKeyFieldsWithUpdateExpression.isEmpty()) {
+      throw new IllegalArgumentException("MergeStatement tries to update a key field via the update expressions " + listOfKeyFieldsWithUpdateExpression + " in " + statement);
+    }
+
+    // Note that we use the source select statement's fields here as we assume that they are
+    // appropriately aliased to match the target table as part of the API contract
+    return Iterables.transform(nonKeyFieldsFromMergeStatement,
+      field -> onUpdateExpressions.getOrDefault(field.getImpliedName(), new MergeStatement.InputField(field.getImpliedName()).as(field.getImpliedName())));
   }
 
 
   /**
-   * Transforms the entries of a list of Aliased Fields so that each entry
-   * become a String: "fieldName = selectAlias.fieldName".
+   * Returns the assignments for updating part of an SQL MERGE statement
+   * based on the given {@link AliasedField}s.
    *
-   * @param aliasedFields an iterable of aliased fields.
-   * @param selectAlias the alias of the source select of the merge statement
-   * @return an iterable containing strings
+   * @param fields The {@link AliasedField}s to create the assignments from
+   * @return the assignments for the updating part as a string
    */
-  private Iterable<String> createEqualsSqlForFields(final Iterable<AliasedField> aliasedFields, final String selectAlias,
-      final String targetTableName) {
-    return Iterables.transform(aliasedFields, new com.google.common.base.Function<AliasedField, String>() {
-      @Override
-      public String apply(AliasedField field) {
-        return String.format("%s.%s = %s.%s", targetTableName, field.getImpliedName(), selectAlias, field.getImpliedName());
-      }
-    });
+  protected String getMergeStatementAssignmentsSql(Iterable<AliasedField> fields) {
+    return getUpdateStatementAssignmentsSql(fields);
   }
 
 
@@ -3579,7 +3667,7 @@ public abstract class SqlDialect {
    * @return The 'old' table
    *
    */
-  protected Table oldTableForChangeColumn(Table table, final Column oldColumn, Column newColumn) {
+  protected Table oldTableForChangeColumn(Table table, Column oldColumn, Column newColumn) {
     return new ChangeColumn(table.getName(), oldColumn, newColumn).reverse(schema(table)).getTable(table.getName());
   }
 
@@ -3615,7 +3703,7 @@ public abstract class SqlDialect {
    * @param windowFunctionField The field to convert
    * @return The resulting SQL
    **/
-  protected String getSqlFrom(final WindowFunction windowFunctionField) {
+  protected String getSqlFrom(WindowFunction windowFunctionField) {
 
     StringBuilder statement = new StringBuilder().append(getSqlFrom(windowFunctionField.getFunction()));
 

@@ -72,12 +72,12 @@ public class TestDatabaseMetaDataProvider {
 
 
   /**
-   * Checks composite primary key indication.
+   * Checks composite primary key indication, where the primary key is defined out of order and has a column in the middle
    *
    * @throws SQLException not really thrown
    */
   @Test
-  public void testCompositePrimaryKey() throws SQLException {
+  public void testCompositePrimaryKeyWithInterleavedColumn() throws SQLException {
 
     ConnectionResourcesBean databaseConnection = new ConnectionResourcesBean();
     databaseConnection.setDatabaseName("database");
@@ -94,10 +94,42 @@ public class TestDatabaseMetaDataProvider {
       assertEquals("Exactly 3 column expected", 3, table.columns().size());
       assertTrue("First column primary key", table.columns().get(0).isPrimaryKey());
       assertEquals("First column should also be first of primary key", "ZID1", table.columns().get(0).getName());
+      assertFalse("Normal column", table.columns().get(1).isPrimaryKey());
+      assertEquals("First normal column should remain in the middle of the primary key columns", "COL", table.columns().get(1).getName());
+      assertTrue("Second column primary key", table.columns().get(2).isPrimaryKey());
+      assertEquals("Second column should also be second of primary key", "AID2", table.columns().get(2).getName());
+    } finally {
+      connection.close();
+    }
+  }
+
+
+  /**
+   * Checks composite primary key indication, where the primary key is defined out of order and has a column at the end.
+   * @throws SQLException
+   */
+  @Test
+  public void testCompositePrimaryKeyWithColumnsAtEnd() throws SQLException {
+
+    ConnectionResourcesBean databaseConnection = new ConnectionResourcesBean();
+    databaseConnection.setDatabaseName("database");
+    databaseConnection.setDatabaseType(H2.IDENTIFIER);
+    Connection connection = databaseConnection.getDataSource().getConnection();
+
+    try {
+      Statement createStatement = connection.createStatement();
+      createStatement.execute("CREATE TABLE CompositePrimaryKeyTest2 ( AID2 VARCHAR(10), ZID1 VARCHAR(10), COL VARCHAR(10), CONSTRAINT CompositePrimaryKeyTest2_PK PRIMARY KEY (ZID1, AID2) )");
+
+      DatabaseMetaDataProvider provider = new DatabaseMetaDataProvider(connection, null);
+
+      Table table = provider.getTable("compositeprimarykeytest2");
+      assertEquals("Exactly 3 column expected", 3, table.columns().size());
+      assertTrue("First column primary key", table.columns().get(0).isPrimaryKey());
+      assertEquals("First column should also be first of primary key", "ZID1", table.columns().get(0).getName());
       assertTrue("Second column primary key", table.columns().get(1).isPrimaryKey());
       assertEquals("Second column should also be second of primary key", "AID2", table.columns().get(1).getName());
       assertFalse("Normal column", table.columns().get(2).isPrimaryKey());
-      assertEquals("First normal column should also appear after primary key columns", "COL", table.columns().get(2).getName());
+      assertEquals("The normal column should remain after the primary key columns", "COL", table.columns().get(2).getName());
     } finally {
       connection.close();
     }

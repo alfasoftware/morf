@@ -871,29 +871,29 @@ class NuoDBDialect extends SqlDialect {
     sqlBuilder.append(schemaNamePrefix(statement.getTable()));
     sqlBuilder.append(destinationTableName);
     sqlBuilder.append("(");
-    Iterable<String> intoFields = Iterables.transform(statement.getSelectStatement().getFields(), new com.google.common.base.Function<AliasedField, String>() {
-      @Override
-      public String apply(AliasedField field) {
-        return field.getImpliedName();
-      }
-    });
+    Iterable<String> intoFields = Iterables.transform(statement.getSelectStatement().getFields(), AliasedField::getImpliedName);
     sqlBuilder.append(Joiner.on(", ").join(intoFields));
     sqlBuilder.append(") ");
 
     // Add select statement
     sqlBuilder.append(getSqlFrom(statement.getSelectStatement()));
 
-    // Note that we use the source select statement's fields here as we assume that they are appropriately
-    // aliased to match the target table as part of the API contract (it's needed for other dialects)
-    sqlBuilder.append(" ON DUPLICATE KEY UPDATE ");
-    Iterable<String> setStatements = Iterables.transform(statement.getSelectStatement().getFields(), new com.google.common.base.Function<AliasedField, String>() {
-      @Override
-      public String apply(AliasedField field) {
-      return String.format("%s = values(%s)", field.getImpliedName(), field.getImpliedName());
-      }
-    });
-    sqlBuilder.append(Joiner.on(", ").join(setStatements));
+    // Add the update expressions
+    if (getNonKeyFieldsFromMergeStatement(statement).iterator().hasNext()) {
+      sqlBuilder.append(" ON DUPLICATE KEY UPDATE ");
+      Iterable<AliasedField> updateExpressions = getMergeStatementUpdateExpressions(statement);
+      String updateExpressionsSql = getMergeStatementAssignmentsSql(updateExpressions);
+      sqlBuilder.append(updateExpressionsSql);
+    } else {
+      sqlBuilder.append(" ON DUPLICATE KEY SKIP");
+    }
     return sqlBuilder.toString();
+  }
+
+
+  @Override
+  protected String getSqlFrom(MergeStatement.InputField field) {
+    return "values(" + field.getName() + ")";
   }
 
 

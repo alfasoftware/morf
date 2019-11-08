@@ -28,6 +28,7 @@ import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.SelectStatementBuilder;
 import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.SqlParameter;
@@ -38,7 +39,7 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 
-public class PostgreSQLDialect extends SqlDialect {
+class PostgreSQLDialect extends SqlDialect {
 
   public PostgreSQLDialect(String schemaName) {
    super(schemaName);
@@ -127,10 +128,22 @@ public class PostgreSQLDialect extends SqlDialect {
   protected String getColumnRepresentation(DataType dataType, int width, int scale) {
     switch (dataType) {
       case STRING:
-        return getDataTypeRepresentation(dataType, width, scale) + " COLLATE \"und-x-icu\"";
+        return getDataTypeRepresentation(dataType, width, scale) + " COLLATE \"POSIX\"";
 
       default:
         return getDataTypeRepresentation(dataType, width, scale);
+    }
+  }
+
+
+  @Override
+  protected String getSqlFrom(Cast cast) {
+    switch (cast.getDataType()) {
+      case STRING:
+        return super.getSqlFrom(cast) + " COLLATE \"POSIX\"";
+
+      default:
+        return super.getSqlFrom(cast);
     }
   }
 
@@ -443,9 +456,8 @@ public class PostgreSQLDialect extends SqlDialect {
         statement.getSelectStatement().getFields(),
         AliasedField::getImpliedName);
 
-    Iterable<String> setStatements = Iterables.transform(
-        statement.getSelectStatement().getFields(),
-        field -> String.format("%s = EXCLUDED.%s", field.getImpliedName(), field.getImpliedName()));
+    Iterable<AliasedField> updateExpressions = getMergeStatementUpdateExpressions(statement);
+    String updateExpressionsSql = getMergeStatementAssignmentsSql(updateExpressions);
 
     Iterable<String> keyFields = Iterables.transform(
         statement.getTableUniqueKey(),
@@ -462,10 +474,22 @@ public class PostgreSQLDialect extends SqlDialect {
               .append(getSqlFrom(statement.getSelectStatement()))
               .append(" ON CONFLICT (")
               .append(Joiner.on(",").join(keyFields))
-              .append(") DO UPDATE SET ")
-              .append(Joiner.on(", ").join(setStatements));
+              .append(")");
+
+    if (getNonKeyFieldsFromMergeStatement(statement).iterator().hasNext()) {
+      sqlBuilder.append(" DO UPDATE SET ")
+                .append(updateExpressionsSql);
+    } else {
+      sqlBuilder.append(" DO NOTHING");
+    }
 
     return sqlBuilder.toString();
+  }
+
+
+  @Override
+  protected String getSqlFrom(MergeStatement.InputField field) {
+    return "EXCLUDED." + field.getName();
   }
 
 

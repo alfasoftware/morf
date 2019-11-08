@@ -98,7 +98,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedDropTableStatements() {
-    return Arrays.asList("drop table Test");
+    return Arrays.asList("drop table Test cascade");
   }
 
 
@@ -107,7 +107,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedDropTempTableStatements() {
-    return Arrays.asList("drop table TEMP_TempTest");
+    return Arrays.asList("drop table TEMP_TempTest cascade");
   }
 
 
@@ -143,7 +143,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedParameterisedInsertStatement() {
-    return "INSERT INTO Test (id, version, stringField, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (5, :version, CAST('Escap''d' AS VARCHAR(7)), 7, :floatField, 20100405, 1, :charField, :blobField, :bigIntegerField, :clobField)";
+    return "INSERT INTO Test (id, version, stringField, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (5, CAST(:version AS INTEGER), CAST('Escap''d' AS VARCHAR(7)), 7, CAST(:floatField AS DECIMAL(13,2)), 20100405, 1, CAST(:charField AS VARCHAR(1)), CAST(:blobField AS LONGVARBINARY), CAST(:bigIntegerField AS BIGINT), CAST(:clobField AS NCLOB))";
   }
 
 
@@ -152,7 +152,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedParameterisedInsertStatementWithTableInDifferentSchema() {
-    return "INSERT INTO MYSCHEMA.Test (id, version, stringField, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (5, :version, CAST('Escap''d' AS VARCHAR(7)), 7, :floatField, 20100405, 1, :charField, :blobField, :bigIntegerField, :clobField)";
+    return "INSERT INTO MYSCHEMA.Test (id, version, stringField, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (5, CAST(:version AS INTEGER), CAST('Escap''d' AS VARCHAR(7)), 7, CAST(:floatField AS DECIMAL(13,2)), 20100405, 1, CAST(:charField AS VARCHAR(1)), CAST(:blobField AS LONGVARBINARY), CAST(:bigIntegerField AS BIGINT), CAST(:clobField AS NCLOB))";
   }
 
 
@@ -213,7 +213,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedParameterisedInsertStatementWithNoColumnValues() {
-    return "INSERT INTO Test (id, version, stringField, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (:id, :version, :stringField, :intField, :floatField, :dateField, :booleanField, :charField, :blobField, :bigIntegerField, :clobField)";
+    return "INSERT INTO Test (id, version, stringField, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (CAST(:id AS BIGINT), CAST(:version AS INTEGER), CAST(:stringField AS VARCHAR(3)), CAST(:intField AS DECIMAL(8,0)), CAST(:floatField AS DECIMAL(13,2)), CAST(:dateField AS DATE), CAST(:booleanField AS BIT), CAST(:charField AS VARCHAR(1)), CAST(:blobField AS LONGVARBINARY), CAST(:bigIntegerField AS BIGINT), CAST(:clobField AS NCLOB))";
   }
 
 
@@ -859,7 +859,11 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeSimple() {
-    return "MERGE INTO foo(id, bar) KEY(id) SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM somewhere";
+    return "MERGE INTO foo"
+        + " USING (SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM somewhere) xmergesource"
+        + " ON (foo.id = xmergesource.id)"
+        + " WHEN MATCHED THEN UPDATE SET bar = xmergesource.bar"
+        + " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
   }
 
 
@@ -868,7 +872,11 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeComplex() {
-    return "MERGE INTO foo(id, bar) KEY(id) SELECT somewhere.newId AS id, join.joinBar AS bar FROM somewhere INNER JOIN join ON (somewhere.newId = join.joinId)";
+    return "MERGE INTO foo"
+        + " USING (SELECT somewhere.newId AS id, join.joinBar AS bar FROM somewhere INNER JOIN join ON (somewhere.newId = join.joinId)) xmergesource"
+        + " ON (foo.id = xmergesource.id)"
+        + " WHEN MATCHED THEN UPDATE SET bar = xmergesource.bar"
+        + " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
   }
 
 
@@ -877,7 +885,11 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeSourceInDifferentSchema() {
-    return "MERGE INTO foo(id, bar) KEY(id) SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM MYSCHEMA.somewhere";
+    return "MERGE INTO foo"
+        + " USING (SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM MYSCHEMA.somewhere) xmergesource"
+        + " ON (foo.id = xmergesource.id)"
+        + " WHEN MATCHED THEN UPDATE SET bar = xmergesource.bar"
+        + " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
   }
 
 
@@ -886,7 +898,36 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedMergeTargetInDifferentSchema() {
-    return "MERGE INTO MYSCHEMA.foo(id, bar) KEY(id) SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM somewhere";
+    return "MERGE INTO MYSCHEMA.foo"
+        + " USING (SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM somewhere) xmergesource"
+        + " ON (foo.id = xmergesource.id)"
+        + " WHEN MATCHED THEN UPDATE SET bar = xmergesource.bar"
+        + " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedMergeForAllPrimaryKeys()
+   */
+  @Override
+  protected String expectedMergeForAllPrimaryKeys() {
+    return "MERGE INTO foo"
+        + " USING (SELECT somewhere.newId AS id FROM somewhere) xmergesource"
+        + " ON (foo.id = xmergesource.id)"
+        + " WHEN NOT MATCHED THEN INSERT (id) VALUES (xmergesource.id)";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedMergeWithUpdateExpressions()
+   */
+  @Override
+  protected String expectedMergeWithUpdateExpressions() {
+    return "MERGE INTO foo"
+        + " USING (SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM somewhere) xmergesource"
+        + " ON (foo.id = xmergesource.id)"
+        + " WHEN MATCHED THEN UPDATE SET bar = xmergesource.bar + foo.bar"
+        + " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
   }
 
 
@@ -948,15 +989,6 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedRenameIndexStatements() {
     return ImmutableList.of("ALTER INDEX TempTest_1 RENAME TO TempTest_2");
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedMergeForAllPrimaryKeys()
-   */
-  @Override
-  protected String expectedMergeForAllPrimaryKeys() {
-    return "MERGE INTO foo(id) KEY(id) SELECT somewhere.newId AS id FROM somewhere";
   }
 
 
