@@ -135,7 +135,7 @@ public abstract class SqlDialect {
   /**
    * Used as the alias for the select statement in merge statements.
    */
-  private static final String MERGE_SOURCE_ALIAS = "xmergesource";
+  protected static final String MERGE_SOURCE_ALIAS = "xmergesource";
 
   /**
    * Database schema name.

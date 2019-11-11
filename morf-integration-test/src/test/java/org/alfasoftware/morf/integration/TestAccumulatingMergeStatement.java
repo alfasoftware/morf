@@ -54,8 +54,8 @@ public class TestAccumulatingMergeStatement {
 
   @Rule public InjectMembersRule injectMembersRule = new InjectMembersRule(new TestingDataSourceModule());
 
-  private static final int THREADS = 2;
-  private static final int LOOPS = 2;
+  private static final int THREADS = 10;
+  private static final int LOOPS = 10;
 
   @Inject private Provider<DatabaseSchemaManager> schemaManager;
   @Inject private SqlScriptExecutorProvider sqlScriptExecutorProvider;

@@ -24,6 +24,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -55,6 +56,8 @@ class H2Dialect extends SqlDialect {
    * The prefix to add to all temporary tables.
    */
   public static final String TEMPORARY_TABLE_PREFIX = "TEMP_";
+
+  private static final Pattern MERGE_SOURCE_REPLACE_PATTERN = Pattern.compile("USING (.*?\\) " + MERGE_SOURCE_ALIAS + ")");
 
   /**
    * @param h2
@@ -571,7 +574,14 @@ class H2Dialect extends SqlDialect {
   @Override
   protected String getSqlFrom(MergeStatement statement) {
 
-    return super.getSqlFrom(statement);
+    String sqlMerge = super.getSqlFrom(statement);
+
+    // TODO
+    // The following is a workaround to a bug in H2 version 1.4.200 whereby the MERGE...USING statement does not release the source select statement
+    // Please remove this once https://github.com/h2database/h2database/issues/2196 has been fixed and H2 upgraded to the fixed version
+    String workaroundSqlMerge = "WITH " + MERGE_SOURCE_ALIAS + " AS (" + getSqlFrom(statement.getSelectStatement()) + ") " + MERGE_SOURCE_REPLACE_PATTERN.matcher(sqlMerge).replaceAll("USING " + MERGE_SOURCE_ALIAS);
+
+    return workaroundSqlMerge;
   }
 
 
