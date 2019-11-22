@@ -47,6 +47,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.google.common.base.Function;
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Ordering;
 
@@ -83,7 +85,7 @@ public class DatabaseMetaDataProvider implements Schema {
   /** Cache table names so we can remember what case the database is using. */
   private Map<String, String>   tableNameMappings;
 
-  private Map<String, List<ColumnBuilder>> columnMappings;
+  private final Supplier<Map<String, List<ColumnBuilder>>> columnMappings = Suppliers.memoize(this::columnMappings);
 
   /**
    * View cache
@@ -262,7 +264,7 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   protected List<Column> readColumns(String tableName, List<String> primaryKeys) {
     List<Column> result = new LinkedList<>();
-    List<ColumnBuilder> rawColumns = columnMappings().get(tableName);
+    List<ColumnBuilder> rawColumns = columnMappings.get().get(tableName);
     for (ColumnBuilder column : rawColumns) {
       result.add(primaryKeys.contains(column.getName()) ? column.primaryKey() : column);
     }
@@ -271,11 +273,7 @@ public class DatabaseMetaDataProvider implements Schema {
 
 
   private Map<String, List<ColumnBuilder>> columnMappings() {
-    if (columnMappings != null) {
-      return columnMappings;
-    }
-
-    columnMappings = new HashMap<>();
+    Map<String, List<ColumnBuilder>> columnMappings = new HashMap<>();
     try {
       try {
         final DatabaseMetaData databaseMetaData = connection.getMetaData();
