@@ -20,15 +20,14 @@ import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import org.alfasoftware.morf.dataset.DataSetAdapter;
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.SchemaHomology;
 import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * Adapts a data set by making sure a target database schema adheres to the schema in the data set being transmitted.
@@ -46,7 +45,7 @@ public class SchemaModificationAdapter extends DataSetAdapter {
    * is stored upper case, to avoid issues with databases which store case insensitive
    * names as all-caps.</p>
    */
-  private final Set<String> remainingTables = new HashSet<String>();
+  private final Set<String> remainingTables = new HashSet<>();
 
   private final SqlDialect sqlDialect;
 
@@ -58,6 +57,8 @@ public class SchemaModificationAdapter extends DataSetAdapter {
   private Connection connection;
 
   private final DatabaseDataSetConsumer databaseDataSetConsumer;
+
+  private boolean viewsDropped;
 
 
   /**
@@ -87,21 +88,21 @@ public class SchemaModificationAdapter extends DataSetAdapter {
       remainingTables.add(tableName.toUpperCase());
     }
 
-    // We will may be modifying the schema on the current database
-    // Any existing views may be invalid or conflict with data import
-    // So we drop them here
-    dropExistingViews();
   }
 
 
   /**
-   * Drops all views from the existing schema
+   * Drops all views from the existing schema if it has not already done so. This should be called whenever tables are dropped or modified to guard against an invalid situation.
    */
-  private void dropExistingViews() {
+  private void dropExistingViewsIfNecessary() {
+    if (viewsDropped) {
+      return;
+    }
     SqlScriptExecutor sqlExecutor = databaseDataSetConsumer.getSqlExecutor();
     for (View view : schemaResource.views()) {
       sqlExecutor.execute(sqlDialect.dropStatements(view), connection);
     }
+    viewsDropped = true;
   }
 
 
@@ -153,6 +154,7 @@ public class SchemaModificationAdapter extends DataSetAdapter {
       if (!new SchemaHomology().tablesMatch(table, databaseTableMetaData)) {
         // there was a difference. Drop and re-deploy
         log.debug("Replacing table [" + table.getName() + "] with different version");
+        dropExistingViewsIfNecessary();
         sqlExecutor.execute(sqlDialect.dropStatements(databaseTableMetaData), connection);
         sqlExecutor.execute(sqlDialect.tableDeploymentStatements(table), connection);
       }
@@ -172,6 +174,7 @@ public class SchemaModificationAdapter extends DataSetAdapter {
 
     for (String tableName : remainingTables) {
       log.debug("Dropping table [" + tableName + "] which was not in the transmitted data set");
+      dropExistingViewsIfNecessary();
       Table table = schemaResource.getTable(tableName);
       sqlExecutor.execute(sqlDialect.dropStatements(table), connection);
     }

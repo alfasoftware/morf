@@ -82,6 +82,9 @@ import com.google.common.io.Files;
  * XML efficiently.
  */
 public class XmlDataSetProducer implements DataSetProducer {
+
+  private static final XMLInputFactory FACTORY = XMLInputFactory.newFactory();
+
   private static final Log log = LogFactory.getLog(XmlDataSetProducer.class);
 
   /**
@@ -259,7 +262,7 @@ public class XmlDataSetProducer implements DataSetProducer {
       if (version > 4) {
         throw new IllegalStateException("Unknown XML dataset format: "+version +"  This dataset has been produced by a later version of Morf");
       }
-      return XMLInputFactory.newFactory().createXMLStreamReader(reader);
+      return FACTORY.createXMLStreamReader(reader);
     } catch (XMLStreamException|FactoryConfigurationError e) {
       throw new RuntimeException(e);
     }
