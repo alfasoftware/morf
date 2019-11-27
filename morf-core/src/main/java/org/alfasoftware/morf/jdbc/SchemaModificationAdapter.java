@@ -17,8 +17,9 @@ package org.alfasoftware.morf.jdbc;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.alfasoftware.morf.dataset.DataSetAdapter;
 import org.alfasoftware.morf.dataset.Record;
@@ -45,7 +46,7 @@ public class SchemaModificationAdapter extends DataSetAdapter {
    * is stored upper case, to avoid issues with databases which store case insensitive
    * names as all-caps.</p>
    */
-  private final Set<String> remainingTables = new HashSet<>();
+  private final Set<String> remainingTables = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   private final SqlDialect sqlDialect;
 
@@ -94,7 +95,7 @@ public class SchemaModificationAdapter extends DataSetAdapter {
   /**
    * Drops all views from the existing schema if it has not already done so. This should be called whenever tables are dropped or modified to guard against an invalid situation.
    */
-  private void dropExistingViewsIfNecessary() {
+  private synchronized void dropExistingViewsIfNecessary() {
     if (viewsDropped) {
       return;
     }
@@ -161,6 +162,7 @@ public class SchemaModificationAdapter extends DataSetAdapter {
 
     } else {
       log.debug("Deploying missing table [" + table.getName() + "]");
+      dropExistingViewsIfNecessary();
       sqlExecutor.execute(sqlDialect.tableDeploymentStatements(table), connection);
     }
   }
