@@ -13,17 +13,17 @@ jobs:
       name: "Test"
       script:
         - git fetch --unshallow --quiet
-        - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent@default-prepare-agent test org.jacoco:jacoco-maven-plugin:report@default-report sonar:sonar -Pcoverage-per-test -B -U
+        - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent@default-prepare-agent test org.jacoco:jacoco-maven-plugin:report-aggregate@default-report sonar:sonar -Pcoverage-per-test -B -U
     - if: repo = alfasoftware/morf AND NOT branch = master AND NOT type = pull_request
       name: "Test"
       script:
         - git fetch --unshallow --quiet
-        - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent@default-prepare-agent test org.jacoco:jacoco-maven-plugin:report@default-report sonar:sonar -Pcoverage-per-test -B -U -Dsonar.branch.name=$TRAVIS_BRANCH
+        - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent@default-prepare-agent test org.jacoco:jacoco-maven-plugin:report-aggregate@default-report sonar:sonar -Pcoverage-per-test -B -U -Dsonar.branch.name=$TRAVIS_BRANCH
     - if: repo = alfasoftware/morf AND head_repo = alfasoftware/morf AND type = pull_request
       name: "Test"
       script:
         - git fetch --unshallow --quiet
-        - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent@default-prepare-agent test org.jacoco:jacoco-maven-plugin:report@default-report sonar:sonar -Pcoverage-per-test -B -U -Dsonar.pullrequest.key=$TRAVIS_PULL_REQUEST -Dsonar.pullrequest.branch=$TRAVIS_PULL_REQUEST_BRANCH -Dsonar.pullrequest.base=$TRAVIS_BRANCH
+        - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent@default-prepare-agent test org.jacoco:jacoco-maven-plugin:report-aggregate@default-report sonar:sonar -Pcoverage-per-test -B -U -Dsonar.pullrequest.key=$TRAVIS_PULL_REQUEST -Dsonar.pullrequest.branch=$TRAVIS_PULL_REQUEST_BRANCH -Dsonar.pullrequest.base=$TRAVIS_BRANCH
     - if: repo = alfasoftware/morf AND (branch = master OR tag IS present) AND NOT type = pull_request
       name: "Deploy"
       script:
