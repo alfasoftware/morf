@@ -28,6 +28,7 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +47,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.google.common.base.Function;
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Ordering;
 
@@ -66,6 +69,7 @@ public class DatabaseMetaDataProvider implements Schema {
   private static final int DATA_TYPE = 5;
   private static final int TYPE_NAME = 6;
   private static final int COLUMN_NAME = 4;
+  private static final int TABLE_NAME = 3;
 
 
   /**
@@ -80,6 +84,8 @@ public class DatabaseMetaDataProvider implements Schema {
 
   /** Cache table names so we can remember what case the database is using. */
   private Map<String, String>   tableNameMappings;
+
+  private final Supplier<Map<String, List<ColumnBuilder>>> columnMappings = Suppliers.memoize(this::columnMappings);
 
   /**
    * View cache
@@ -257,15 +263,29 @@ public class DatabaseMetaDataProvider implements Schema {
    * @return a list of columns
    */
   protected List<Column> readColumns(String tableName, List<String> primaryKeys) {
+    List<Column> result = new LinkedList<>();
+    List<ColumnBuilder> rawColumns = columnMappings.get().get(tableName);
+    for (ColumnBuilder column : rawColumns) {
+      result.add(primaryKeys.contains(column.getName()) ? column.primaryKey() : column);
+    }
+    return applyPrimaryKeyOrder(primaryKeys, result);
+  }
+
+
+  private Map<String, List<ColumnBuilder>> columnMappings() {
+    Map<String, List<ColumnBuilder>> columnMappings = new HashMap<>();
     try {
       try {
         final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
-        try (ResultSet columnResults = databaseMetaData.getColumns(null, schemaName, tableName, null)) {
-
-          List<Column> rawColumns = new LinkedList<>();
+        try (ResultSet columnResults = databaseMetaData.getColumns(null, schemaName, null, null)) {
 
           while (columnResults.next()) {
+            String tableName = columnResults.getString(TABLE_NAME);
+            if (!tableExists(tableName)) {
+              continue;
+            }
+
             String columnName = columnResults.getString(COLUMN_NAME);
 
             try {
@@ -279,25 +299,23 @@ public class DatabaseMetaDataProvider implements Schema {
 
               ColumnBuilder column = column(columnName, dataType, width, scale).defaultValue(defaultValue);
               column = nullable ? column.nullable() : column;
-              column = primaryKeys.contains(columnName) ? column.primaryKey() : column;
               column = setAdditionalColumnMetadata(tableName, column, columnResults);
 
-              rawColumns.add(column);
+              columnMappings.computeIfAbsent(tableName, k -> new LinkedList<>()).add(column);
 
             } catch (Exception e) {
               throw new RuntimeException(
                   String.format("Error reading metadata for column [%s] on table [%s]", columnName, tableName), e);
             }
           }
-
-          return applyPrimaryKeyOrder(primaryKeys, rawColumns);
         }
       } catch (SQLException sqle) {
         throw new RuntimeSqlException(sqle);
       }
     } catch (Exception ex) {
-      throw new RuntimeException("Error reading metadata for table [" + tableName + "]", ex);
+      throw new RuntimeException("Error reading metadata for schema [" + schemaName + "]", ex);
     }
+    return columnMappings;
   }
 
   /**

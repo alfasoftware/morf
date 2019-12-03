@@ -135,7 +135,7 @@ public abstract class SqlDialect {
   /**
    * Used as the alias for the select statement in merge statements.
    */
-  private static final String MERGE_SOURCE_ALIAS = "xmergesource";
+  protected static final String MERGE_SOURCE_ALIAS = "xmergesource";
 
   /**
    * Database schema name.
@@ -2801,45 +2801,42 @@ public abstract class SqlDialect {
 
     checkSelectStatementHasNoHints(statement.getSelectStatement(), "MERGE may not be used with SELECT statement hints");
 
-    final String destinationTableName = statement.getTable().getName();
-    // Add the preamble
-    StringBuilder sqlBuilder = new StringBuilder("MERGE INTO ");
+    final StringBuilder sqlBuilder = new StringBuilder();
 
-    // Now add the into clause
-    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-    sqlBuilder.append(destinationTableName);
+    // MERGE INTO schema.Table
+    sqlBuilder.append("MERGE INTO ")
+              .append(schemaNamePrefix(statement.getTable()))
+              .append(statement.getTable().getName());
 
-    // Add USING
-    sqlBuilder.append(" USING (");
-    sqlBuilder.append(getSqlFrom(statement.getSelectStatement()));
-    sqlBuilder.append(") ");
-    sqlBuilder.append(MERGE_SOURCE_ALIAS);
+    // USING (SELECT ...) xmergesource
+    sqlBuilder.append(" USING (")
+              .append(getSqlFrom(statement.getSelectStatement()))
+              .append(") ")
+              .append(MERGE_SOURCE_ALIAS);
 
-    // Add the matching keys
-    sqlBuilder.append(" ON (");
-    sqlBuilder.append(matchConditionSqlForMergeFields(statement, MERGE_SOURCE_ALIAS, destinationTableName));
+    // ON (Table.id = xmergesource.id)
+    sqlBuilder.append(" ON (")
+              .append(matchConditionSqlForMergeFields(statement, MERGE_SOURCE_ALIAS, statement.getTable().getName()))
+              .append(")");
 
-    // What to do if matched
+    // WHEN MATCHED THEN UPDATE ...
     if (getNonKeyFieldsFromMergeStatement(statement).iterator().hasNext()) {
-      sqlBuilder.append(") WHEN MATCHED THEN UPDATE SET ");
       Iterable<AliasedField> updateExpressions = getMergeStatementUpdateExpressions(statement);
       String updateExpressionsSql = getMergeStatementAssignmentsSql(updateExpressions);
-      sqlBuilder.append(updateExpressionsSql);
-    } else {
-      sqlBuilder.append(")");
+
+      sqlBuilder.append(" WHEN MATCHED THEN UPDATE SET ")
+                .append(updateExpressionsSql);
     }
 
-    // What to do if no match
-    sqlBuilder.append(" WHEN NOT MATCHED THEN INSERT (");
-    Iterable<String> insertField = Iterables.transform(statement.getSelectStatement().getFields(), AliasedField::getImpliedName);
-    sqlBuilder.append(Joiner.on(", ").join(insertField));
+    // WHEN NOT MATCHED THEN INSERT ...
+    String insertFieldsSql = Joiner.on(", ").join(FluentIterable.from(statement.getSelectStatement().getFields()).transform(AliasedField::getImpliedName));
+    String insertValuesSql = Joiner.on(", ").join(FluentIterable.from(statement.getSelectStatement().getFields()).transform(field -> MERGE_SOURCE_ALIAS + "." + field.getImpliedName()));
 
-    // Values to insert
-    sqlBuilder.append(") VALUES (");
-    Iterable<String> valueFields = Iterables.transform(statement.getSelectStatement().getFields(), field -> MERGE_SOURCE_ALIAS + "." + field.getImpliedName());
-    sqlBuilder.append(Joiner.on(", ").join(valueFields));
-
-    sqlBuilder.append(")");
+    sqlBuilder.append(" WHEN NOT MATCHED THEN INSERT (")
+              .append(insertFieldsSql)
+              .append(") VALUES (")
+              .append(insertValuesSql)
+              .append(")");
 
     return sqlBuilder.toString();
   }

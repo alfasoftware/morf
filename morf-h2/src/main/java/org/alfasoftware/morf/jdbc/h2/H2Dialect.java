@@ -43,6 +43,7 @@ import org.apache.commons.lang.StringUtils;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
+import com.google.common.collect.Iterables;
 
 /**
  * Implements database specific statement generation for MySQL version 5.
@@ -566,12 +567,71 @@ class H2Dialect extends SqlDialect {
 
 
   /**
+   *  TODO
+   * The following is a workaround to a bug in H2 version 1.4.200 whereby the MERGE...USING statement does not release the source select statement
+   * Please remove this method once https://github.com/h2database/h2database/issues/2196 has been fixed and H2 upgraded to the fixed version
+   * This workaround uses the following alternative syntax, which fortunately does not lead to the same bug:
+   *
+   * <pre>
+   *   WITH xmergesource AS (SELECT ...)
+   *   MERGE INTO Table
+   *     USING xmergesource
+   *     ON (Table.id = xmergesource.id)
+   *     WHEN MATCHED THEN UPDATE ...
+   *     WHEN NOT MATCHED THEN INSERT ...
+   * </pre>
+   *
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.MergeStatement)
    */
   @Override
   protected String getSqlFrom(MergeStatement statement) {
 
-    return super.getSqlFrom(statement);
+    // --- TODO
+    // call the original implementation which performs various consistency checks
+    super.getSqlFrom(statement);
+
+    // --- TODO
+    // but ignore whatever it produces, and create a slightly different variant
+    final StringBuilder sqlBuilder = new StringBuilder();
+
+    // WITH xmergesource AS (SELECT ...)
+    sqlBuilder.append("WITH ")
+              .append(MERGE_SOURCE_ALIAS)
+              .append(" AS (")
+              .append(getSqlFrom(statement.getSelectStatement()))
+              .append(") ");
+
+    // MERGE INTO Table USING xmergesource
+    sqlBuilder.append("MERGE INTO ")
+              .append(schemaNamePrefix(statement.getTable()))
+              .append(statement.getTable().getName())
+              .append(" USING ")
+              .append(MERGE_SOURCE_ALIAS);
+
+    // ON (Table.id = xmergesource.id)
+    sqlBuilder.append(" ON (")
+              .append(matchConditionSqlForMergeFields(statement, MERGE_SOURCE_ALIAS, statement.getTable().getName()))
+              .append(")");
+
+    // WHEN MATCHED THEN UPDATE ...
+    if (getNonKeyFieldsFromMergeStatement(statement).iterator().hasNext()) {
+      Iterable<AliasedField> updateExpressions = getMergeStatementUpdateExpressions(statement);
+      String updateExpressionsSql = getMergeStatementAssignmentsSql(updateExpressions);
+      sqlBuilder.append(" WHEN MATCHED THEN UPDATE SET ")
+                .append(updateExpressionsSql);
+    }
+
+    // WHEN NOT MATCHED THEN INSERT ...
+    Iterable<String> insertField = Iterables.transform(statement.getSelectStatement().getFields(), AliasedField::getImpliedName);
+    Iterable<String> valueFields = Iterables.transform(statement.getSelectStatement().getFields(), field -> MERGE_SOURCE_ALIAS + "." + field.getImpliedName());
+
+    sqlBuilder.append(" WHEN NOT MATCHED THEN INSERT (")
+              .append(Joiner.on(", ").join(insertField))
+              .append(") VALUES (")
+              .append(Joiner.on(", ").join(valueFields))
+              .append(")");
+
+    return sqlBuilder.toString();
   }
 
 
