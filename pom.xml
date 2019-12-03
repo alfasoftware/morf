@@ -68,7 +68,6 @@
     <!-- Sonar -->
     <sonar.java.coveragePlugin>jacoco</sonar.java.coveragePlugin>
     <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
-    <sonar.jacoco.reportPaths>${project.basedir}/../target/jacoco.exec</sonar.jacoco.reportPaths>
     <sonar.language>java</sonar.language>
   </properties>
   
@@ -383,19 +382,14 @@
                   <goal>prepare-agent</goal>
                 </goals>
                 <configuration>
-                  <destFile>${sonar.jacoco.reportPaths}</destFile>
                   <propertyName>surefireArgLine</propertyName>
-                  <append>true</append>
                 </configuration>
               </execution>
               <execution>
                 <id>default-report</id>
                 <goals>
-                  <goal>report</goal>
+                  <goal>report-aggregate</goal>
                 </goals>
-                <configuration>
-                  <dataFile>${sonar.jacoco.reportPaths}</dataFile>
-                </configuration>
               </execution>
             </executions>
           </plugin>
