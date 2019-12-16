@@ -775,7 +775,7 @@ public class TestUpgrade {
           versionColumn(),
           column("upgradeUUID", DataType.STRING, 100).nullable(),
           column("description", DataType.STRING, 200).nullable(),
-          column("appliedTime", DataType.BIG_INTEGER, 14).nullable()
+          column("appliedTime", DataType.BIG_INTEGER).nullable()
         );
   }
 

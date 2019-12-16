@@ -159,13 +159,13 @@ public class TestDatabaseUpgradeIntegration {
           column("nullableStringCol", DataType.STRING, 10).nullable(),
           column("decimalTenZeroCol", DataType.DECIMAL, 10),
           column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
-          column("bigIntegerCol", DataType.BIG_INTEGER, 19),
-          column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
+          column("bigIntegerCol", DataType.BIG_INTEGER),
+          column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()
       ),
       table("WithDefaultValue")
         .columns(
           column("id", DataType.STRING, 3).primaryKey(),
-          column("version", DataType.INTEGER, 3).defaultValue("0")
+          column("version", DataType.INTEGER).defaultValue("0")
       ),
       table("CompositeKeyTable")
         .columns(
@@ -185,8 +185,8 @@ public class TestDatabaseUpgradeIntegration {
           column("nullableStringCol", DataType.STRING, 10).nullable(),
           column("decimalTenZeroCol", DataType.DECIMAL, 10),
           column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
-          column("bigIntegerCol", DataType.BIG_INTEGER, 19),
-          column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
+          column("bigIntegerCol", DataType.BIG_INTEGER),
+          column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()
       ).indexes(
         index("WrongIndexName_1").columns("bigIntegerCol")
       ),
@@ -330,8 +330,8 @@ public class TestDatabaseUpgradeIntegration {
       column("nullableStringCol", DataType.STRING, 10).nullable(),
       column("decimalTenZeroCol", DataType.DECIMAL, 10),
       column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
-      column("bigIntegerCol", DataType.BIG_INTEGER, 19),
-      column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
+      column("bigIntegerCol", DataType.BIG_INTEGER),
+      column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()
     );
 
     Map<String, Table> newTables = Maps.newHashMap();
@@ -386,8 +386,8 @@ public class TestDatabaseUpgradeIntegration {
       column("nullableStringCol", DataType.STRING, 10).nullable(),
       column("decimalTenZeroCol", DataType.DECIMAL, 10).primaryKey(),
       column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
-      column("bigIntegerCol", DataType.BIG_INTEGER, 19).primaryKey(),
-      column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
+      column("bigIntegerCol", DataType.BIG_INTEGER).primaryKey(),
+      column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()
     );
 
     Schema expected = replaceTablesInSchema(newTable);
@@ -426,8 +426,8 @@ public class TestDatabaseUpgradeIntegration {
       column("nullableStringCol", DataType.STRING, 10).nullable(),
       column("decimalTenZeroCol", DataType.DECIMAL, 10),
       column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
-      column("bigIntegerCol", DataType.BIG_INTEGER, 19),
-      column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
+      column("bigIntegerCol", DataType.BIG_INTEGER),
+      column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()
     );
 
     Schema removed = replaceTablesInSchema(tableWithNoPrimaryKey);
@@ -489,8 +489,8 @@ public class TestDatabaseUpgradeIntegration {
         column("decimalTenZeroCol", DataType.DECIMAL, 10).primaryKey(),
         column("nullableStringCol", DataType.STRING, 10).nullable(),
         column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
-        column("bigIntegerCol", DataType.BIG_INTEGER, 19),
-        column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
+        column("bigIntegerCol", DataType.BIG_INTEGER),
+        column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()
       )
     );
 
@@ -510,8 +510,8 @@ public class TestDatabaseUpgradeIntegration {
         column("stringCol", DataType.STRING, 20).primaryKey(),
         column("nullableStringCol", DataType.STRING, 10).nullable(),
         column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
-        column("bigIntegerCol", DataType.BIG_INTEGER, 19),
-        column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
+        column("bigIntegerCol", DataType.BIG_INTEGER),
+        column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()
       )
     );
 
@@ -561,8 +561,8 @@ public class TestDatabaseUpgradeIntegration {
       column("nullableStringCol", DataType.STRING, 10).nullable(),
       column("decimalTenZeroCol", DataType.DECIMAL, 10),
       column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
-      column("bigIntegerCol", DataType.BIG_INTEGER, 19),
-      column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
+      column("bigIntegerCol", DataType.BIG_INTEGER),
+      column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()
     );
 
     List<Table> tables = Lists.newArrayList(schema.tables());
@@ -581,10 +581,10 @@ public class TestDatabaseUpgradeIntegration {
     Table tableWithExtraBigIntegerColumn = table("BasicTable")
     .columns(
       column("nullableStringCol", DataType.STRING, 10).nullable(),
-      column("decimalTenZeroCol", DataType.BIG_INTEGER, 20).primaryKey(),
+      column("decimalTenZeroCol", DataType.BIG_INTEGER).primaryKey(),
       column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
-      column("bigIntegerCol", DataType.BIG_INTEGER, 19),
-      column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
+      column("bigIntegerCol", DataType.BIG_INTEGER),
+      column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()
     );
 
     Schema expected = replaceTablesInSchema(tableWithExtraBigIntegerColumn);
@@ -604,8 +604,8 @@ public class TestDatabaseUpgradeIntegration {
           column("nullableStringCol", DataType.STRING, 10).nullable(),
           column("decimalTenZeroCol", DataType.DECIMAL, 10),
           column("decimalninefivecol", DataType.DECIMAL, 10, 6), // Column being changed
-          column("bigIntegerCol", DataType.BIG_INTEGER, 19),
-          column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
+          column("bigIntegerCol", DataType.BIG_INTEGER),
+          column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()
       );
 
     Schema expected = replaceTablesInSchema(tableWithUpdatedDecimalNineFiveCol);
@@ -620,7 +620,7 @@ public class TestDatabaseUpgradeIntegration {
   @Test
   public void testDropPrimaryKey() {
     Table tableWithExtraBigIntegerColumn = table("WithDefaultValue")
-        .columns(column("version", DataType.INTEGER, 3).defaultValue("0"));
+        .columns(column("version", DataType.INTEGER).defaultValue("0"));
 
     Schema expected = replaceTablesInSchema(tableWithExtraBigIntegerColumn);
 
@@ -639,8 +639,8 @@ public class TestDatabaseUpgradeIntegration {
         column("nullableStringCol", DataType.STRING, 8).nullable(),  // <-- this is the one we are changing
         column("decimalTenZeroCol", DataType.DECIMAL, 10),
         column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
-        column("bigIntegerCol", DataType.BIG_INTEGER, 19),
-        column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
+        column("bigIntegerCol", DataType.BIG_INTEGER),
+        column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()
       );
     Schema expected = replaceTablesInSchema(tableWithReducedWidth);
 
@@ -659,8 +659,8 @@ public class TestDatabaseUpgradeIntegration {
           column("nullableStringCol", DataType.STRING, 10).nullable(),
           column("decimalTenZeroCol", DataType.DECIMAL, 10),
           column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
-          column("bigIntegerCol", DataType.BIG_INTEGER, 19),
-          column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
+          column("bigIntegerCol", DataType.BIG_INTEGER),
+          column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()
       ).indexes(
         index("BasicTableWithIndex_1").columns("bigIntegerCol")
       );

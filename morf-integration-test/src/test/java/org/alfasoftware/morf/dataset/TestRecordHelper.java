@@ -50,8 +50,8 @@ public class TestRecordHelper {
         column("emptyStringField", DataType.STRING, 10),    // empty strings stored as null
         column("nullStringField", DataType.STRING, 10),     // null values are handled independently of data type
         column("floatField", DataType.DECIMAL, 13, 2),      // as is
-        column("dateField", DataType.DATE, 8),              // as is
-        column("booleanField", DataType.BOOLEAN, 10)        // converted to lowercase
+        column("dateField", DataType.DATE),                 // as is
+        column("booleanField", DataType.BOOLEAN)            // converted to lowercase
       );
 
     String delimiter = "\t";

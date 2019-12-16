@@ -3815,7 +3815,7 @@ public abstract class SqlDialect {
     public List<Column> columns() {
       List<Column> columns = new ArrayList<>();
       columns.add(column(ID_INCREMENTOR_TABLE_COLUMN_NAME, DataType.STRING, 132).primaryKey());
-      columns.add(column(ID_INCREMENTOR_TABLE_COLUMN_VALUE, DataType.BIG_INTEGER, 19));
+      columns.add(column(ID_INCREMENTOR_TABLE_COLUMN_VALUE, DataType.BIG_INTEGER));
 
       return columns;
     }

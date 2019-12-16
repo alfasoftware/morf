@@ -55,7 +55,7 @@ public class TestXmlDataSetConsumer {
     DummyXmlOutputStreamProvider dummyXmlOutputStreamProvider = new DummyXmlOutputStreamProvider();
     DataSetConsumer testConsumer = new XmlDataSetConsumer(dummyXmlOutputStreamProvider);
     Table metaData = table("Test").columns(
-        column("id", DataType.BIG_INTEGER, 19, 0).primaryKey().autoNumbered(123),
+        column("id", DataType.BIG_INTEGER).primaryKey().autoNumbered(123),
         versionColumn(),
         column("bar", DataType.STRING, 10).nullable(),
         column("baz", DataType.STRING, 10).nullable(),
@@ -91,7 +91,7 @@ public class TestXmlDataSetConsumer {
         versionColumn(),
         column("noel", DataType.STRING, 10).nullable(),
         column("edmonds", DataType.STRING, 10).nullable(),
-        column("blobby", DataType.BLOB, 100, 0).nullable()
+        column("blobby", DataType.BLOB).nullable()
       );
 
     testConsumer.open();

@@ -27,15 +27,14 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import org.junit.Before;
-import org.junit.Test;
-
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaHomology;
 import org.alfasoftware.morf.metadata.SchemaHomology.ThrowingDifferenceWriter;
 import org.alfasoftware.morf.metadata.Table;
+import org.junit.Before;
+import org.junit.Test;
 
 /**
  * Tests that {@link ChangeColumn} works
@@ -576,7 +575,7 @@ public class TestChangeColumn {
   @Test
   public void testChangePrimaryKey() {
     Schema testSchema = schema(appleTable);
-    ChangeColumn changeColumn = new ChangeColumn("Apple", column("id", DataType.BIG_INTEGER, 19, 0).primaryKey(), column("id", DataType.BIG_INTEGER, 19, 0));
+    ChangeColumn changeColumn = new ChangeColumn("Apple", column("id", DataType.BIG_INTEGER).primaryKey(), column("id", DataType.BIG_INTEGER));
     Schema updatedSchema = changeColumn.apply(testSchema);
 
     Table resultTable = updatedSchema.getTable("Apple");

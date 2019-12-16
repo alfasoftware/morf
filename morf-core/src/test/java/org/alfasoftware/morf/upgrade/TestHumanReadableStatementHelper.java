@@ -154,7 +154,7 @@ public class TestHumanReadableStatementHelper {
   @Test
   public void testAddTableOneColumnOneIndex() {
     Table newTable = table("new_table").columns(
-      column("column_one", DataType.STRING, 10, 0)
+      column("column_one", DataType.STRING, 10)
     ).indexes(
       index("new_table_1").unique().columns("column_one")
     );
@@ -170,7 +170,7 @@ public class TestHumanReadableStatementHelper {
   @Test
   public void testAddTableTwoColumnsNoIndex() {
     Table newTable = table("new_table").columns(
-        column("column_one", DataType.STRING, 10, 0),
+        column("column_one", DataType.STRING, 10),
         column("column_two", DataType.DECIMAL, 9, 5).nullable()
       );
 
@@ -186,7 +186,7 @@ public class TestHumanReadableStatementHelper {
   @Test
   public void testAddTableTwoColumnsOneIndex() {
     Table newTable = table("new_table").columns(
-        column("column_one", DataType.STRING, 10, 0),
+        column("column_one", DataType.STRING, 10),
         column("column_two", DataType.DECIMAL, 9, 5).nullable()
       ).indexes(
         index("new_table_1").unique().columns("column_one")
@@ -204,7 +204,7 @@ public class TestHumanReadableStatementHelper {
   @Test
   public void testAddTableTwoColumnsTwoIndexes() {
     Table newTable = table("new_table").columns(
-        column("column_one", DataType.STRING, 10, 0),
+        column("column_one", DataType.STRING, 10),
         column("column_two", DataType.DECIMAL, 9, 5).nullable()
       ).indexes(
       index("new_table_1").unique().columns("column_one"),
@@ -223,7 +223,7 @@ public class TestHumanReadableStatementHelper {
   @Test
   public void testAddTableTenColumns() {
     Table newTable = table("new_table").columns(
-      column("column_one", DataType.STRING, 10, 0).defaultValue("Foo"),
+      column("column_one", DataType.STRING, 10).defaultValue("Foo"),
       column("column_two", DataType.STRING, 1).nullable(),
       column("column_three", DataType.DECIMAL, 9, 5),
       column("column_four", DataType.DECIMAL, 15, 0).nullable(),
