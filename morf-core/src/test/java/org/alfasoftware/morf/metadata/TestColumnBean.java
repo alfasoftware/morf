@@ -40,6 +40,8 @@ public class TestColumnBean {
     assertEquals("Test 1 default value successful",col2.getDefaultValue(), col.getDefaultValue());
     assertEquals("Test 1 is key successful",col2.isPrimaryKey(), col.isPrimaryKey());
 
+    assertEquals("toString() correct", "Column-a-DECIMAL-1-2-null-pk--0-z", col.toString());
+
     col = new ColumnBean("b", DataType.STRING, 10);
     assertEquals("Test 2 name successful", "b", col.getName());
     assertEquals("Test 2 type successful", DataType.STRING, col.getType());
@@ -49,6 +51,8 @@ public class TestColumnBean {
     assertEquals("Test 2 default value successful", "", col.getDefaultValue());
     assertEquals("Test 2 is key successful", false, col.isPrimaryKey());
 
+    assertEquals("toString() correct", "Column-b-STRING-10--null---0-", col.toString());
+
     col = new ColumnBean(col2, false, "y", false);
     assertEquals("Test 3 name successful",col2.getName(), col.getName());
     assertEquals("Test 3 type successful",col2.getType(), col.getType());
@@ -57,6 +61,8 @@ public class TestColumnBean {
     assertEquals("Test 3 nullable successful", false, col.isNullable());
     assertEquals("Test 3 default value successful", "y", col.getDefaultValue());
     assertEquals("Test 3 is key successful", false, col.isPrimaryKey());
+
+    assertEquals("toString() correct", "Column-a-DECIMAL-1-2-notNull---0-y", col.toString());
 
     col = new ColumnBean(col3, true, "q", true);
     assertEquals("Test 4 name successful",col2.getName(), col.getName());
@@ -69,6 +75,8 @@ public class TestColumnBean {
     assertEquals("Test 4 is autonumbered successful", true, col.isAutoNumbered());
     assertEquals("Test 4 autonumber start successful", 3, col.getAutoNumberStart());
 
+    assertEquals("toString() correct", "Column-a-DECIMAL-1-2-null-pk-autonum-3-q", col.toString());
+
     col = new ColumnBean("c", DataType.DECIMAL, 6, 7, false);
     assertEquals("Test 5 name successful", "c", col.getName());
     assertEquals("Test 5 type successful", DataType.DECIMAL, col.getType());
@@ -77,6 +85,8 @@ public class TestColumnBean {
     assertEquals("Test 5 nullable successful", false, col.isNullable());
     assertEquals("Test 5 default value successful", "", col.getDefaultValue());
     assertEquals("Test 5 is key successful", false, col.isPrimaryKey());
+
+    assertEquals("toString() correct", "Column-c-DECIMAL-6-7-notNull---0-", col.toString());
 
     col = new ColumnBean("d", DataType.DECIMAL, 8, 9, true, "u");
     assertEquals("Test 6 name successful", "d", col.getName());
@@ -87,7 +97,7 @@ public class TestColumnBean {
     assertEquals("Test 6 default value successful", "u", col.getDefaultValue());
     assertEquals("Test 6 is key successful", false, col.isPrimaryKey());
 
-    assertEquals("toString() correct", "Column-d-DECIMAL-8-9-true-u-false-false-0", col.toString());
+    assertEquals("toString() correct", "Column-d-DECIMAL-8-9-null---0-u", col.toString());
 
   }
 
