@@ -227,26 +227,38 @@ public class TestHumanReadableStatementHelper {
       column("column_two", DataType.STRING, 1).nullable(),
       column("column_three", DataType.DECIMAL, 9, 5),
       column("column_four", DataType.DECIMAL, 15, 0).nullable(),
-      column("column_five", DataType.INTEGER, 10).defaultValue("42"),
-      column("column_six", DataType.INTEGER, 10).nullable(),
-      column("column_seven", DataType.BIG_INTEGER, 20),
-      column("column_eight", DataType.BIG_INTEGER, 20).nullable(),
-      column("column_nine", DataType.BLOB, 32768),
-      column("column_ten", DataType.BLOB, 32768).nullable()
+      column("column_five", DataType.INTEGER).defaultValue("42"),
+      column("column_six", DataType.INTEGER).nullable(),
+      column("column_seven", DataType.BIG_INTEGER),
+      column("column_eight", DataType.BIG_INTEGER).nullable(),
+      column("column_bool", DataType.BOOLEAN),
+      column("column_nullbool", DataType.BOOLEAN).nullable(),
+      column("column_date", DataType.DATE),
+      column("column_nulldate", DataType.DATE).nullable(),
+      column("column_clob", DataType.CLOB),
+      column("column_nullclob", DataType.CLOB).nullable(),
+      column("column_nine", DataType.BLOB),
+      column("column_ten", DataType.BLOB).nullable()
     );
 
     assertEquals(
-      String.format("Create table new_table with 10 columns and no indexes" +
+      String.format("Create table new_table with 16 columns and no indexes" +
           "%n    - A non-null column called column_one [STRING(10)], set to 'Foo'" +
           "%n    - A nullable column called column_two [STRING(1)]" +
           "%n    - A non-null column called column_three [DECIMAL(9,5)]" +
           "%n    - A nullable column called column_four [DECIMAL(15,0)]" +
-          "%n    - A non-null column called column_five [INTEGER(10)], set to 42" +
-          "%n    - A nullable column called column_six [INTEGER(10)]" +
-          "%n    - A non-null column called column_seven [BIG_INTEGER(20)]" +
-          "%n    - A nullable column called column_eight [BIG_INTEGER(20)]" +
-          "%n    - A non-null column called column_nine [BLOB(32768)]" +
-          "%n    - A nullable column called column_ten [BLOB(32768)]"),
+          "%n    - A non-null column called column_five [INTEGER], set to 42" +
+          "%n    - A nullable column called column_six [INTEGER]" +
+          "%n    - A non-null column called column_seven [BIG_INTEGER]" +
+          "%n    - A nullable column called column_eight [BIG_INTEGER]" +
+          "%n    - A non-null column called column_bool [BOOLEAN]" +
+          "%n    - A nullable column called column_nullbool [BOOLEAN]" +
+          "%n    - A non-null column called column_date [DATE]" +
+          "%n    - A nullable column called column_nulldate [DATE]" +
+          "%n    - A non-null column called column_clob [CLOB]" +
+          "%n    - A nullable column called column_nullclob [CLOB]" +
+          "%n    - A non-null column called column_nine [BLOB]" +
+          "%n    - A nullable column called column_ten [BLOB]"),
       HumanReadableStatementHelper.generateAddTableString(newTable)
     );
   }
