@@ -63,7 +63,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   protected List<String> expectedCreateTableStatements() {
     return Arrays
         .asList(
-          "CREATE TABLE TESTSCHEMA.Test ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT Test_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS, [intField] NUMERIC(8,0), [floatField] NUMERIC(13,2) NOT NULL, [dateField] DATE, [booleanField] BIT, [charField] NVARCHAR(1) COLLATE SQL_Latin1_General_CP1_CS_AS, [blobField] IMAGE, [bigIntegerField] BIGINT CONSTRAINT Test_bigIntegerField_DF DEFAULT 12345, [clobField] NVARCHAR(MAX) COLLATE SQL_Latin1_General_CP1_CS_AS, CONSTRAINT [Test_PK] PRIMARY KEY ([id]))",
+          "CREATE TABLE TESTSCHEMA.Test ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT Test_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS, [intField] INTEGER, [floatField] NUMERIC(13,2) NOT NULL, [dateField] DATE, [booleanField] BIT, [charField] NVARCHAR(1) COLLATE SQL_Latin1_General_CP1_CS_AS, [blobField] IMAGE, [bigIntegerField] BIGINT CONSTRAINT Test_bigIntegerField_DF DEFAULT 12345, [clobField] NVARCHAR(MAX) COLLATE SQL_Latin1_General_CP1_CS_AS, CONSTRAINT [Test_PK] PRIMARY KEY ([id]))",
           "CREATE UNIQUE NONCLUSTERED INDEX Test_NK ON TESTSCHEMA.Test ([stringField])",
           "CREATE INDEX Test_1 ON TESTSCHEMA.Test ([intField], [floatField])",
           "CREATE TABLE TESTSCHEMA.Alternate ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT Alternate_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS, CONSTRAINT [Alternate_PK] PRIMARY KEY ([id]))",
@@ -85,7 +85,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   protected List<String> expectedCreateTemporaryTableStatements() {
     return Arrays
         .asList(
-          "CREATE TABLE TESTSCHEMA.#TempTest ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT #TempTest_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS, [intField] NUMERIC(8,0), [floatField] NUMERIC(13,2) NOT NULL, [dateField] DATE, [booleanField] BIT, [charField] NVARCHAR(1) COLLATE SQL_Latin1_General_CP1_CS_AS, [blobField] IMAGE, [bigIntegerField] BIGINT CONSTRAINT #TempTest_bigIntegerField_DF DEFAULT 12345, [clobField] NVARCHAR(MAX) COLLATE SQL_Latin1_General_CP1_CS_AS, CONSTRAINT [TempTest_PK] PRIMARY KEY ([id]))",
+          "CREATE TABLE TESTSCHEMA.#TempTest ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT #TempTest_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS, [intField] INTEGER, [floatField] NUMERIC(13,2) NOT NULL, [dateField] DATE, [booleanField] BIT, [charField] NVARCHAR(1) COLLATE SQL_Latin1_General_CP1_CS_AS, [blobField] IMAGE, [bigIntegerField] BIGINT CONSTRAINT #TempTest_bigIntegerField_DF DEFAULT 12345, [clobField] NVARCHAR(MAX) COLLATE SQL_Latin1_General_CP1_CS_AS, CONSTRAINT [TempTest_PK] PRIMARY KEY ([id]))",
           "CREATE UNIQUE NONCLUSTERED INDEX TempTest_NK ON TESTSCHEMA.#TempTest ([stringField])",
           "CREATE INDEX TempTest_1 ON TESTSCHEMA.#TempTest ([intField], [floatField])",
           "CREATE TABLE TESTSCHEMA.#TempAlternate ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT #TempAlternate_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS, CONSTRAINT [TempAlternate_PK] PRIMARY KEY ([id]))",
@@ -573,7 +573,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAlterBlobColumnStatement() {
     return Arrays.asList(
-        "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN blobField IMAGE");
+        "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN blobField IMAGE NOT NULL");
   }
 
 
@@ -606,7 +606,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAlterBooleanColumnStatement() {
     return Arrays.asList(
-        "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN booleanField BIT");
+        "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN booleanField BIT NOT NULL");
   }
 
 
@@ -635,7 +635,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   protected List<String> expectedAlterTableAlterIntegerColumnStatement() {
     return Arrays.asList(
       "DROP INDEX Test_1 ON TESTSCHEMA.Test",
-      "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN intField NUMERIC(10,0)",
+      "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN intField INTEGER NOT NULL",
       "CREATE INDEX Test_1 ON TESTSCHEMA.Test ([intField], [floatField])"
     );
   }
@@ -656,7 +656,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAlterDateColumnStatement() {
     return Arrays.asList(
-        "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN dateField DATE");
+        "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN dateField DATE NOT NULL");
   }
 
 
@@ -850,7 +850,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
       "CREATE INDEX Test_1 ON TESTSCHEMA.Test ([intField])",
       // changeColumnStatements
       "DROP INDEX Test_1 ON TESTSCHEMA.Test",
-      "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN intField NUMERIC(11,0)",
+      "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN intField INTEGER NOT NULL",
       "CREATE INDEX Test_1 ON TESTSCHEMA.Test ([INTFIELD])");
   }
 

@@ -49,7 +49,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   protected List<String> expectedCreateTableStatements() {
     return Arrays
         .asList(
-          "CREATE TABLE Test (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), intField DECIMAL(8,0), floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField BIT, charField VARCHAR(1), blobField LONGVARBINARY, bigIntegerField BIGINT DEFAULT 12345, clobField NCLOB, CONSTRAINT Test_PK PRIMARY KEY (id))",
+          "CREATE TABLE Test (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), intField INTEGER, floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField BIT, charField VARCHAR(1), blobField LONGVARBINARY, bigIntegerField BIGINT DEFAULT 12345, clobField NCLOB, CONSTRAINT Test_PK PRIMARY KEY (id))",
           "CREATE UNIQUE INDEX Test_NK ON Test (stringField)",
           "CREATE INDEX Test_1 ON Test (intField,floatField)",
           "CREATE TABLE Alternate (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), CONSTRAINT Alternate_PK PRIMARY KEY (id))",
@@ -68,7 +68,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   protected List<String> expectedCreateTemporaryTableStatements() {
     return Arrays
         .asList(
-          "CREATE TEMPORARY TABLE TEMP_TempTest (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), intField DECIMAL(8,0), floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField BIT, charField VARCHAR(1), blobField LONGVARBINARY, bigIntegerField BIGINT DEFAULT 12345, clobField NCLOB, CONSTRAINT TEMP_TempTest_PK PRIMARY KEY (id))",
+          "CREATE TEMPORARY TABLE TEMP_TempTest (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), intField INTEGER, floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField BIT, charField VARCHAR(1), blobField LONGVARBINARY, bigIntegerField BIGINT DEFAULT 12345, clobField NCLOB, CONSTRAINT TEMP_TempTest_PK PRIMARY KEY (id))",
           "CREATE UNIQUE INDEX TempTest_NK ON TEMP_TempTest (stringField)",
           "CREATE INDEX TempTest_1 ON TEMP_TempTest (intField,floatField)",
           "CREATE TEMPORARY TABLE TEMP_TempAlternate (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), CONSTRAINT TEMP_TempAlternate_PK PRIMARY KEY (id))",
@@ -213,7 +213,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedParameterisedInsertStatementWithNoColumnValues() {
-    return "INSERT INTO Test (id, version, stringField, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (CAST(:id AS BIGINT), CAST(:version AS INTEGER), CAST(:stringField AS VARCHAR(3)), CAST(:intField AS DECIMAL(8,0)), CAST(:floatField AS DECIMAL(13,2)), CAST(:dateField AS DATE), CAST(:booleanField AS BIT), CAST(:charField AS VARCHAR(1)), CAST(:blobField AS LONGVARBINARY), CAST(:bigIntegerField AS BIGINT), CAST(:clobField AS NCLOB))";
+    return "INSERT INTO Test (id, version, stringField, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (CAST(:id AS BIGINT), CAST(:version AS INTEGER), CAST(:stringField AS VARCHAR(3)), CAST(:intField AS INTEGER), CAST(:floatField AS DECIMAL(13,2)), CAST(:dateField AS DATE), CAST(:booleanField AS BIT), CAST(:charField AS VARCHAR(1)), CAST(:blobField AS LONGVARBINARY), CAST(:bigIntegerField AS BIGINT), CAST(:clobField AS NCLOB))";
   }
 
 
@@ -422,7 +422,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAlterBlobColumnStatement() {
-    return Arrays.asList("ALTER TABLE Test ALTER COLUMN blobField LONGVARBINARY");
+    return Arrays.asList("ALTER TABLE Test ALTER COLUMN blobField SET NOT NULL");
   }
 
 
@@ -431,7 +431,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAlterBooleanColumnStatement() {
-    return Arrays.asList("ALTER TABLE Test ALTER COLUMN booleanField BIT");
+    return Arrays.asList("ALTER TABLE Test ALTER COLUMN booleanField SET NOT NULL");
   }
 
 
@@ -476,7 +476,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAlterIntegerColumnStatement() {
-    return Arrays.asList("ALTER TABLE Test ALTER COLUMN intField DECIMAL(10,0)");
+    return Arrays.asList("ALTER TABLE Test ALTER COLUMN intField SET NOT NULL");
   }
 
 
@@ -494,7 +494,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAlterDateColumnStatement() {
-    return Arrays.asList("ALTER TABLE Test ALTER COLUMN dateField DATE");
+    return Arrays.asList("ALTER TABLE Test ALTER COLUMN dateField SET NOT NULL");
   }
 
 
@@ -601,7 +601,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
       "DROP INDEX Test_1",
       "CREATE INDEX Test_1 ON Test (intField)",
       // changeColumnStatements
-      "ALTER TABLE Test ALTER COLUMN intField DECIMAL(11,0)");
+      "ALTER TABLE Test ALTER COLUMN intField SET NOT NULL");
   }
 
 
@@ -679,8 +679,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterPrimaryKeyColumnStatements() {
     return Arrays.asList(
-      "ALTER TABLE Test ALTER COLUMN id RENAME TO renamedId",
-      "ALTER TABLE Test ALTER COLUMN renamedId BIGINT"
+      "ALTER TABLE Test ALTER COLUMN id RENAME TO renamedId"
     );
   }
 

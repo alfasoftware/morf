@@ -69,11 +69,11 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected List<String> expectedCreateTableStatements() {
     return Arrays
         .asList(
-          "CREATE TABLE testschema.Test (id NUMERIC(19) NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3) COLLATE \"POSIX\", intField DECIMAL(8,0), floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField BOOLEAN, charField VARCHAR(1) COLLATE \"POSIX\", blobField BYTEA, bigIntegerField NUMERIC(19) DEFAULT 12345, clobField TEXT, CONSTRAINT Test_PK PRIMARY KEY(id))",
+          "CREATE TABLE testschema.Test (id NUMERIC(19) NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3) COLLATE \"POSIX\", intField INTEGER, floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField BOOLEAN, charField VARCHAR(1) COLLATE \"POSIX\", blobField BYTEA, bigIntegerField NUMERIC(19) DEFAULT 12345, clobField TEXT, CONSTRAINT Test_PK PRIMARY KEY(id))",
           "COMMENT ON COLUMN testschema.Test.id IS 'REALNAME:[id]/TYPE:[BIG_INTEGER]'",
           "COMMENT ON COLUMN testschema.Test.version IS 'REALNAME:[version]/TYPE:[INTEGER]'",
           "COMMENT ON COLUMN testschema.Test.stringField IS 'REALNAME:[stringField]/TYPE:[STRING]'",
-          "COMMENT ON COLUMN testschema.Test.intField IS 'REALNAME:[intField]/TYPE:[DECIMAL]'",
+          "COMMENT ON COLUMN testschema.Test.intField IS 'REALNAME:[intField]/TYPE:[INTEGER]'",
           "COMMENT ON COLUMN testschema.Test.floatField IS 'REALNAME:[floatField]/TYPE:[DECIMAL]'",
           "COMMENT ON COLUMN testschema.Test.dateField IS 'REALNAME:[dateField]/TYPE:[DATE]'",
           "COMMENT ON COLUMN testschema.Test.booleanField IS 'REALNAME:[booleanField]/TYPE:[BOOLEAN]'",
@@ -116,11 +116,11 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected List<String> expectedCreateTemporaryTableStatements() {
     return Arrays
         .asList(
-            "CREATE TEMP TABLE TempTest (id NUMERIC(19) NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3) COLLATE \"POSIX\", intField DECIMAL(8,0), floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField BOOLEAN, charField VARCHAR(1) COLLATE \"POSIX\", blobField BYTEA, bigIntegerField NUMERIC(19) DEFAULT 12345, clobField TEXT, CONSTRAINT TempTest_PK PRIMARY KEY(id))",
+            "CREATE TEMP TABLE TempTest (id NUMERIC(19) NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3) COLLATE \"POSIX\", intField INTEGER, floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField BOOLEAN, charField VARCHAR(1) COLLATE \"POSIX\", blobField BYTEA, bigIntegerField NUMERIC(19) DEFAULT 12345, clobField TEXT, CONSTRAINT TempTest_PK PRIMARY KEY(id))",
             "COMMENT ON COLUMN TempTest.id IS 'REALNAME:[id]/TYPE:[BIG_INTEGER]'",
             "COMMENT ON COLUMN TempTest.version IS 'REALNAME:[version]/TYPE:[INTEGER]'",
             "COMMENT ON COLUMN TempTest.stringField IS 'REALNAME:[stringField]/TYPE:[STRING]'",
-            "COMMENT ON COLUMN TempTest.intField IS 'REALNAME:[intField]/TYPE:[DECIMAL]'",
+            "COMMENT ON COLUMN TempTest.intField IS 'REALNAME:[intField]/TYPE:[INTEGER]'",
             "COMMENT ON COLUMN TempTest.floatField IS 'REALNAME:[floatField]/TYPE:[DECIMAL]'",
             "COMMENT ON COLUMN TempTest.dateField IS 'REALNAME:[dateField]/TYPE:[DATE]'",
             "COMMENT ON COLUMN TempTest.booleanField IS 'REALNAME:[booleanField]/TYPE:[BOOLEAN]'",
@@ -505,7 +505,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAlterBlobColumnStatement() {
-    return Arrays.asList("ALTER TABLE testschema.Test ALTER COLUMN blobField TYPE BYTEA",
+    return Arrays.asList("ALTER TABLE testschema.Test ALTER COLUMN blobField SET NOT NULL",
         "COMMENT ON COLUMN testschema.Test.blobField IS 'REALNAME:[blobField]/TYPE:[BLOB]'");
   }
 
@@ -515,7 +515,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAlterBooleanColumnStatement() {
-    return Arrays.asList("ALTER TABLE testschema.Test ALTER COLUMN booleanField TYPE BOOLEAN",
+    return Arrays.asList("ALTER TABLE testschema.Test ALTER COLUMN booleanField SET NOT NULL",
         "COMMENT ON COLUMN testschema.Test.booleanField IS 'REALNAME:[booleanField]/TYPE:[BOOLEAN]'");
   }
 
@@ -565,8 +565,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAlterIntegerColumnStatement() {
-    return Arrays.asList("ALTER TABLE testschema.Test ALTER COLUMN intField TYPE DECIMAL(10,0)",
-        "COMMENT ON COLUMN testschema.Test.intField IS 'REALNAME:[intField]/TYPE:[DECIMAL]'");
+    return Arrays.asList("ALTER TABLE testschema.Test ALTER COLUMN intField SET NOT NULL",
+        "COMMENT ON COLUMN testschema.Test.intField IS 'REALNAME:[intField]/TYPE:[INTEGER]'");
   }
 
 
@@ -585,7 +585,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAlterDateColumnStatement() {
-    return Arrays.asList("ALTER TABLE testschema.Test ALTER COLUMN dateField TYPE DATE",
+    return Arrays.asList("ALTER TABLE testschema.Test ALTER COLUMN dateField SET NOT NULL",
         "COMMENT ON COLUMN testschema.Test.dateField IS 'REALNAME:[dateField]/TYPE:[DATE]'");
   }
 
@@ -625,7 +625,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAlterBigIntegerColumnStatement() {
-    return Arrays.asList("ALTER TABLE testschema.Test ALTER COLUMN bigIntegerField TYPE NUMERIC(19), ALTER COLUMN bigIntegerField DROP DEFAULT",
+    return Arrays.asList("ALTER TABLE testschema.Test ALTER COLUMN bigIntegerField DROP DEFAULT",
         "COMMENT ON COLUMN testschema.Test.bigIntegerField IS 'REALNAME:[bigIntegerField]/TYPE:[BIG_INTEGER]'");
   }
 
@@ -686,7 +686,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAlterColumnWithDefaultStatement() {
-    return Arrays.asList("ALTER TABLE testschema.Test ALTER COLUMN bigIntegerField TYPE NUMERIC(19), ALTER COLUMN bigIntegerField SET DEFAULT 54321",
+    return Arrays.asList("ALTER TABLE testschema.Test ALTER COLUMN bigIntegerField SET DEFAULT 54321",
         "COMMENT ON COLUMN testschema.Test.bigIntegerField IS 'REALNAME:[bigIntegerField]/TYPE:[BIG_INTEGER]'"
       );
   }
@@ -700,8 +700,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return Arrays.asList(
       "DROP INDEX Test_1",
       "CREATE INDEX Test_1 ON testschema.Test (intField)",
-      "ALTER TABLE testschema.Test ALTER COLUMN intField TYPE DECIMAL(11,0)",
-      "COMMENT ON COLUMN testschema.Test.intField IS 'REALNAME:[intField]/TYPE:[DECIMAL]'");
+      "ALTER TABLE testschema.Test ALTER COLUMN intField SET NOT NULL",
+      "COMMENT ON COLUMN testschema.Test.intField IS 'REALNAME:[intField]/TYPE:[INTEGER]'");
   }
 
 
@@ -786,7 +786,6 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return Arrays.asList(
         "ALTER TABLE testschema.Test DROP CONSTRAINT Test_PK",
         "ALTER TABLE testschema.Test RENAME id TO renamedId",
-        "ALTER TABLE testschema.Test ALTER COLUMN renamedId TYPE NUMERIC(19)",
         "ALTER TABLE testschema.Test ADD CONSTRAINT Test_PK PRIMARY KEY(renamedId)",
         "COMMENT ON COLUMN testschema.Test.renamedId IS 'REALNAME:[renamedId]/TYPE:[BIG_INTEGER]'"
     );

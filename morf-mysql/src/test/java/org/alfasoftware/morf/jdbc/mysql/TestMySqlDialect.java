@@ -97,7 +97,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   protected List<String> expectedCreateTableStatements() {
     return Arrays
         .asList(
-          "CREATE TABLE `Test` (`id` BIGINT NOT NULL, `version` INTEGER DEFAULT 0, `stringField` VARCHAR(3), `intField` DECIMAL(8,0), `floatField` DECIMAL(13,2) NOT NULL, `dateField` DATE, `booleanField` TINYINT(1), `charField` VARCHAR(1), `blobField` LONGBLOB, `bigIntegerField` BIGINT DEFAULT 12345, `clobField` LONGTEXT, CONSTRAINT `Test_PK` PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin",
+          "CREATE TABLE `Test` (`id` BIGINT NOT NULL, `version` INTEGER DEFAULT 0, `stringField` VARCHAR(3), `intField` INTEGER, `floatField` DECIMAL(13,2) NOT NULL, `dateField` DATE, `booleanField` TINYINT(1), `charField` VARCHAR(1), `blobField` LONGBLOB, `bigIntegerField` BIGINT DEFAULT 12345, `clobField` LONGTEXT, CONSTRAINT `Test_PK` PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin",
           "ALTER TABLE `Test` ADD UNIQUE INDEX `Test_NK` (`stringField`)",
           "ALTER TABLE `Test` ADD INDEX `Test_1` (`intField`, `floatField`)",
           "CREATE TABLE `Alternate` (`id` BIGINT NOT NULL, `version` INTEGER DEFAULT 0, `stringField` VARCHAR(3), CONSTRAINT `Alternate_PK` PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin",
@@ -116,7 +116,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   protected List<String> expectedCreateTemporaryTableStatements() {
     return Arrays
         .asList(
-          "CREATE TEMPORARY TABLE `TempTest` (`id` BIGINT NOT NULL, `version` INTEGER DEFAULT 0, `stringField` VARCHAR(3), `intField` DECIMAL(8,0), `floatField` DECIMAL(13,2) NOT NULL, `dateField` DATE, `booleanField` TINYINT(1), `charField` VARCHAR(1), `blobField` LONGBLOB, `bigIntegerField` BIGINT DEFAULT 12345, `clobField` LONGTEXT, CONSTRAINT `TempTest_PK` PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin",
+          "CREATE TEMPORARY TABLE `TempTest` (`id` BIGINT NOT NULL, `version` INTEGER DEFAULT 0, `stringField` VARCHAR(3), `intField` INTEGER, `floatField` DECIMAL(13,2) NOT NULL, `dateField` DATE, `booleanField` TINYINT(1), `charField` VARCHAR(1), `blobField` LONGBLOB, `bigIntegerField` BIGINT DEFAULT 12345, `clobField` LONGTEXT, CONSTRAINT `TempTest_PK` PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin",
           "ALTER TABLE `TempTest` ADD UNIQUE INDEX `TempTest_NK` (`stringField`)",
           "ALTER TABLE `TempTest` ADD INDEX `TempTest_1` (`intField`, `floatField`)",
           "CREATE TEMPORARY TABLE `TempAlternate` (`id` BIGINT NOT NULL, `version` INTEGER DEFAULT 0, `stringField` VARCHAR(3), CONSTRAINT `TempAlternate_PK` PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin",
@@ -510,7 +510,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAlterIntegerColumnStatement() {
-    return Arrays.asList("ALTER TABLE `Test` CHANGE `intField` `intField` DECIMAL(10,0)");
+    return Arrays.asList("ALTER TABLE `Test` CHANGE `intField` `intField` INTEGER NOT NULL");
   }
 
 
@@ -546,7 +546,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAlterBooleanColumnStatement() {
-    return Arrays.asList("ALTER TABLE `Test` CHANGE `booleanField` `booleanField` TINYINT(1)");
+    return Arrays.asList("ALTER TABLE `Test` CHANGE `booleanField` `booleanField` TINYINT(1) NOT NULL");
   }
 
 
@@ -564,7 +564,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAlterDateColumnStatement() {
-    return Arrays.asList("ALTER TABLE `Test` CHANGE `dateField` `dateField` DATE");
+    return Arrays.asList("ALTER TABLE `Test` CHANGE `dateField` `dateField` DATE NOT NULL");
   }
 
 
@@ -618,7 +618,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAlterBlobColumnStatement() {
-    return Arrays.asList("ALTER TABLE `Test` CHANGE `blobField` `blobField` LONGBLOB");
+    return Arrays.asList("ALTER TABLE `Test` CHANGE `blobField` `blobField` LONGBLOB NOT NULL");
   }
 
 
@@ -676,7 +676,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
       "ALTER TABLE `Test` DROP INDEX `Test_1`",
       "ALTER TABLE `Test` ADD INDEX `Test_1` (`intField`)",
       // changeColumnStatements
-      "ALTER TABLE `Test` CHANGE `intField` `intField` DECIMAL(11,0)");
+      "ALTER TABLE `Test` CHANGE `intField` `intField` INTEGER NOT NULL");
   }
 
 
