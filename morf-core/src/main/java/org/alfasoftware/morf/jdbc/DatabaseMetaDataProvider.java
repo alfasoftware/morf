@@ -719,7 +719,7 @@ public class DatabaseMetaDataProvider implements Schema {
      */
     @Override
     public String toString() {
-      return "Index " + name + " on " + columnNames + (isUnique ? " (Unique)" : "");
+      return this.toStringHelper();
     }
   }
 

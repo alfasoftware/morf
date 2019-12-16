@@ -17,6 +17,8 @@ package org.alfasoftware.morf.metadata;
 
 import java.util.List;
 
+import com.google.common.base.Joiner;
+
 /**
  * Defines an index on a table.
  *
@@ -38,4 +40,16 @@ public interface Index {
    * @return True if the index is unique.
    */
   public boolean isUnique();
+
+
+  /**
+   * Helper for {@link #toString()} implementations.
+   */
+  public default String toStringHelper() {
+    return new StringBuilder()
+        .append("Index-").append(getName())
+        .append("-").append(isUnique() ? "unique" : "")
+        .append("-").append(Joiner.on(',').join(columnNames()))
+        .toString();
+  }
 }

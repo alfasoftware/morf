@@ -857,6 +857,12 @@ public class XmlDataSetProducer implements DataSetProducer {
       public int getAutoNumberStart() {
         return autonumberStart == null ? 0 : autonumberStart;
       }
+
+
+      @Override
+      public String toString() {
+        return this.toStringHelper();
+      }
     }
 
     /**
@@ -917,6 +923,12 @@ public class XmlDataSetProducer implements DataSetProducer {
       @Override
       public List<String> columnNames() {
         return columnNames;
+      }
+
+
+      @Override
+      public String toString() {
+        return this.toStringHelper();
       }
     }
 

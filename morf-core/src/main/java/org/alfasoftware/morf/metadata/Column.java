@@ -65,4 +65,22 @@ public interface Column extends ColumnType {
    * @return the value from which autonumber assignment should start.
    */
   public int getAutoNumberStart();
+
+
+  /**
+   * Helper for {@link #toString()} implementations.
+   */
+  public default String toStringHelper() {
+    return new StringBuilder()
+        .append("Column-").append(getName())
+        .append("-").append(getType())
+        .append("-").append(getWidth())
+        .append("-").append(getScale())
+        .append("-").append(isNullable() ? "null" : "notNull")
+        .append("-").append(isPrimaryKey() ? "pk" : "")
+        .append("-").append(isAutoNumbered() ? "autonum" : "")
+        .append("-").append(getAutoNumberStart())
+        .append("-").append(getDefaultValue())
+        .toString();
+  }
 }

@@ -679,6 +679,11 @@ public final class SchemaUtils {
       return new IndexBuilderImpl(getName(), true, columnNames());
     }
 
+
+    @Override
+    public String toString() {
+      return this.toStringHelper();
+    }
   }
 
 

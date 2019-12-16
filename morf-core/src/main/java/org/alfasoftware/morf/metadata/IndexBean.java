@@ -109,5 +109,10 @@ class IndexBean implements Index {
     return unique;
   }
 
+
+  @Override
+  public String toString() {
+    return this.toStringHelper();
+  }
 }
 
