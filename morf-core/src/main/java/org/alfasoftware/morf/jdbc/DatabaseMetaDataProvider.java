@@ -59,28 +59,33 @@ import com.google.common.collect.Ordering;
  */
 public class DatabaseMetaDataProvider implements Schema {
 
-  // Column numbers for indexing the ResultSet returned by DatabaseMetaData.getColumns()
-  // See http://docs.oracle.com/javase/6/docs/api/java/sql/DatabaseMetaData.html#getColumns%28java.lang.String,%20java.lang.String,%20java.lang.String,%20java.lang.String%29
-  private static final int IS_AUTOINCREMENT = 23;
-  protected static final int REMARKS = 12;
-  private static final int IS_NULLABLE = 18;
-  private static final int DECIMAL_DIGITS = 9;
-  private static final int COLUMN_SIZE = 7;
-  private static final int DATA_TYPE = 5;
-  private static final int TYPE_NAME = 6;
-  private static final int COLUMN_NAME = 4;
-  private static final int TABLE_NAME = 3;
+  // Column numbers for DatabaseMetaData.getColumns() ResultSet
+  protected static final int COLUMN_TABLE_NAME = 3;
+  protected static final int COLUMN_NAME = 4;
+  protected static final int COLUMN_DATA_TYPE = 5;
+  protected static final int COLUMN_TYPE_NAME = 6;
+  protected static final int COLUMN_SIZE = 7;
+  protected static final int COLUMN_DECIMAL_DIGITS = 9;
+  protected static final int COLUMN_REMARKS = 12;
+  protected static final int COLUMN_IS_NULLABLE = 18;
+  protected static final int COLUMN_IS_AUTOINCREMENT = 23;
 
+  // Column numbers for DatabaseMetaData.getTables() ResultSet
+  protected static final int TABLE_SCHEM = 2;
+  protected static final int TABLE_NAME = 3;
+  protected static final int TABLE_TYPE = 4;
+  protected static final int TABLE_REMARKS = 5;
 
-  /**
-   * Log provider
-   */
-  private static final Log      log         = LogFactory.getLog(DatabaseMetaDataProvider.class);
+  // Column numbers for DatabaseMetaData.getIndexInfo() ResultSet
+  protected static final int INDEX_NON_UNIQUE = 4;
+  protected static final int INDEX_NAME = 6;
+  protected static final int INDEX_COLUMN_NAME = 9;
 
-  /**
-   * Type names used to query database meta data.
-   */
-  private static final String[] TABLE_TYPES = new String[] { "TABLE" };
+  // Column numbers for DatabaseMetaData.getPrimaryKeys() ResultSet
+  protected static final int PRIMARY_COLUMN_NAME = 4;
+  protected static final int PRIMARY_KEY_SEQ = 5;
+
+  private static final Log log = LogFactory.getLog(DatabaseMetaDataProvider.class);
 
   /** Cache table names so we can remember what case the database is using. */
   private Map<String, String>   tableNameMappings;
@@ -231,7 +236,7 @@ public class DatabaseMetaDataProvider implements Schema {
 
       try (ResultSet primaryKeyResults = databaseMetaData.getPrimaryKeys(null, schemaName, tableName)) {
         while (primaryKeyResults.next()) {
-          columns.add(new PrimaryKeyColumn(primaryKeyResults.getShort(5), primaryKeyResults.getString(4)));
+          columns.add(new PrimaryKeyColumn(primaryKeyResults.getShort(PRIMARY_KEY_SEQ), primaryKeyResults.getString(PRIMARY_COLUMN_NAME)));
         }
       }
     } catch (SQLException sqle) {
@@ -281,7 +286,7 @@ public class DatabaseMetaDataProvider implements Schema {
         try (ResultSet columnResults = databaseMetaData.getColumns(null, schemaName, null, null)) {
 
           while (columnResults.next()) {
-            String tableName = columnResults.getString(TABLE_NAME);
+            String tableName = columnResults.getString(COLUMN_TABLE_NAME);
             if (!tableExists(tableName)) {
               continue;
             }
@@ -289,12 +294,12 @@ public class DatabaseMetaDataProvider implements Schema {
             String columnName = columnResults.getString(COLUMN_NAME);
 
             try {
-              String typeName = columnResults.getString(TYPE_NAME);
-              int typeCode = columnResults.getInt(DATA_TYPE);
+              String typeName = columnResults.getString(COLUMN_TYPE_NAME);
+              int typeCode = columnResults.getInt(COLUMN_DATA_TYPE);
               int width = columnResults.getInt(COLUMN_SIZE);
               DataType dataType = dataTypeFromSqlType(typeCode, typeName, width);
-              int scale = columnResults.getInt(DECIMAL_DIGITS);
-              boolean nullable = columnResults.getString(IS_NULLABLE).equals("YES");
+              int scale = columnResults.getInt(COLUMN_DECIMAL_DIGITS);
+              boolean nullable = columnResults.getString(COLUMN_IS_NULLABLE).equals("YES");
               String defaultValue = determineDefaultValue(columnName);
 
               ColumnBuilder column = column(columnName, dataType, width, scale).defaultValue(defaultValue);
@@ -364,7 +369,7 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   @SuppressWarnings("unused")
   protected ColumnBuilder setAdditionalColumnMetadata(String tableName, ColumnBuilder columnBuilder, ResultSet columnMetaData) throws SQLException {
-    return "YES".equals(columnMetaData.getString(IS_AUTOINCREMENT)) ? columnBuilder.autoNumbered(-1) : columnBuilder;
+    return "YES".equals(columnMetaData.getString(COLUMN_IS_AUTOINCREMENT)) ? columnBuilder.autoNumbered(-1) : columnBuilder;
   }
 
 
@@ -386,7 +391,7 @@ public class DatabaseMetaDataProvider implements Schema {
         // there's one entry for each column in the index
         // the results are sorted by ordinal position already
         while (indexResultSet.next()) {
-          String indexName = indexResultSet.getString(6);
+          String indexName = indexResultSet.getString(INDEX_NAME);
 
           if (indexName == null) {
             continue;
@@ -402,13 +407,13 @@ public class DatabaseMetaDataProvider implements Schema {
             continue;
           }
 
-          String columnName = indexResultSet.getString(9);
+          String columnName = indexResultSet.getString(INDEX_COLUMN_NAME);
 
           List<String> columnNames = columnsByIndexName.get(indexName);
           // maybe create a new one
           if (columnNames == null) {
             columnNames = new LinkedList<>();
-            boolean unique = !indexResultSet.getBoolean(4);
+            boolean unique = !indexResultSet.getBoolean(INDEX_NON_UNIQUE);
 
             indexes.add(new IndexImpl(indexName, unique, columnNames));
             columnsByIndexName.put(indexName, columnNames);
@@ -434,9 +439,9 @@ public class DatabaseMetaDataProvider implements Schema {
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
-      try (ResultSet views = databaseMetaData.getTables(null, schemaName, null, new String[]{"VIEW"})) {
+      try (ResultSet views = databaseMetaData.getTables(null, schemaName, null, getTableTypesForViews())) {
         while (views.next()) {
-          final String viewName = views.getString(3);
+          final String viewName = views.getString(TABLE_NAME);
           log.debug("Found view [" + viewName + "]");
           viewMap.put(viewName, new View() {
             @Override
@@ -469,6 +474,15 @@ public class DatabaseMetaDataProvider implements Schema {
     } catch (SQLException sqle) {
       throw new RuntimeSqlException("Error reading metadata for views", sqle);
     }
+  }
+
+
+  /**
+   * Types for {@link DatabaseMetaData#getTables(String, String, String, String[])}
+   * used by {@link #populateViewMap()}.
+   */
+  protected String[] getTableTypesForViews() {
+    return new String[] { "VIEW" };
   }
 
 
@@ -599,11 +613,11 @@ public class DatabaseMetaDataProvider implements Schema {
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
-      try (ResultSet tables = databaseMetaData.getTables(null, schemaName, null, TABLE_TYPES)) {
+      try (ResultSet tables = databaseMetaData.getTables(null, schemaName, null, getTableTypesForTables())) {
         while (tables.next()) {
-          String tableName = tables.getString(3);
-          String tableSchemaName = tables.getString(2);
-          String tableType = tables.getString(4);
+          String tableName = tables.getString(TABLE_NAME);
+          String tableSchemaName = tables.getString(TABLE_SCHEM);
+          String tableType = tables.getString(TABLE_TYPE);
 
           foundTable(tableName, tableSchemaName, tableType);
         }
@@ -611,6 +625,15 @@ public class DatabaseMetaDataProvider implements Schema {
     } catch (SQLException sqle) {
       throw new RuntimeSqlException("SQLException in readTableNames()", sqle);
     }
+  }
+
+
+  /**
+   * Types for {@link DatabaseMetaData#getTables(String, String, String, String[])}
+   * used by {@link #readTableNames()}.
+   */
+  protected String[] getTableTypesForTables() {
+    return new String[] { "TABLE" };
   }
 
 

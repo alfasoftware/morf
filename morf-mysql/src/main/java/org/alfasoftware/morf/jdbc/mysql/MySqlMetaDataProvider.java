@@ -69,7 +69,7 @@ class MySqlMetaDataProvider extends DatabaseMetaDataProvider {
   protected ColumnBuilder setAdditionalColumnMetadata(String tableName, ColumnBuilder columnBuilder, ResultSet columnMetaData) throws SQLException {
     columnBuilder = super.setAdditionalColumnMetadata(tableName, columnBuilder, columnMetaData);
     if (columnBuilder.isAutoNumbered()) {
-      int startValue = getAutoIncrementStartValue(columnMetaData.getString(REMARKS));
+      int startValue = getAutoIncrementStartValue(columnMetaData.getString(COLUMN_REMARKS));
       return columnBuilder.autoNumbered(startValue == -1 ? 1 : startValue);
     } else {
       return columnBuilder;

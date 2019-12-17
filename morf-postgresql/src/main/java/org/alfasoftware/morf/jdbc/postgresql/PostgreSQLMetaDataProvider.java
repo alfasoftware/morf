@@ -65,12 +65,12 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider {
 
     // read autonumber from comments
     if (columnBuilder.isAutoNumbered()) {
-      int startValue = getAutoIncrementStartValue(columnMetaData.getString(REMARKS));
+      int startValue = getAutoIncrementStartValue(columnMetaData.getString(COLUMN_REMARKS));
       columnBuilder = columnBuilder.autoNumbered(startValue == -1 ? 1 : startValue);
     }
 
     // read datatype from comments
-    Optional<String> dataTypeComment = getDataTypeFromColumnComment(columnMetaData.getString(REMARKS));
+    Optional<String> dataTypeComment = getDataTypeFromColumnComment(columnMetaData.getString(COLUMN_REMARKS));
     if(dataTypeComment.isPresent() && dataTypeComment.get().equals("BIG_INTEGER")){
       columnBuilder = columnBuilder.dataType(DataType.BIG_INTEGER);
     }
