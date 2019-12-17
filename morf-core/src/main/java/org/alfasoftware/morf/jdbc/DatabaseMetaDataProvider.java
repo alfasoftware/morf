@@ -59,6 +59,8 @@ import com.google.common.collect.Ordering;
  */
 public class DatabaseMetaDataProvider implements Schema {
 
+  private static final Log log = LogFactory.getLog(DatabaseMetaDataProvider.class);
+
   // Column numbers for DatabaseMetaData.getColumns() ResultSet
   protected static final int COLUMN_TABLE_NAME = 3;
   protected static final int COLUMN_NAME = 4;
@@ -85,7 +87,6 @@ public class DatabaseMetaDataProvider implements Schema {
   protected static final int PRIMARY_COLUMN_NAME = 4;
   protected static final int PRIMARY_KEY_SEQ = 5;
 
-  private static final Log log = LogFactory.getLog(DatabaseMetaDataProvider.class);
 
   /** Cache table names so we can remember what case the database is using. */
   private Map<String, String>   tableNameMappings;
@@ -291,7 +292,7 @@ public class DatabaseMetaDataProvider implements Schema {
               continue;
             }
 
-            String columnName = columnResults.getString(COLUMN_NAME);
+            String columnName = getColumnName(columnResults);
 
             try {
               String typeName = columnResults.getString(COLUMN_TYPE_NAME);
@@ -322,6 +323,14 @@ public class DatabaseMetaDataProvider implements Schema {
     }
     return columnMappings;
   }
+
+  /**
+   * Retrieves column name from a result set.
+   */
+  protected String getColumnName(ResultSet columnResultSet) throws SQLException {
+    return columnResultSet.getString(COLUMN_NAME);
+  }
+
 
   /**
    * Apply the sort order of the primary keys to the list of columns, but leave non-primary keys intact.
@@ -391,7 +400,7 @@ public class DatabaseMetaDataProvider implements Schema {
         // there's one entry for each column in the index
         // the results are sorted by ordinal position already
         while (indexResultSet.next()) {
-          String indexName = indexResultSet.getString(INDEX_NAME);
+          String indexName = getIndexName(indexResultSet);
 
           if (indexName == null) {
             continue;
@@ -431,6 +440,14 @@ public class DatabaseMetaDataProvider implements Schema {
 
 
   /**
+   * Retrieves index name from a result set.
+   */
+  protected String getIndexName(ResultSet indexResultSet) throws SQLException {
+    return indexResultSet.getString(INDEX_NAME);
+  }
+
+
+  /**
    * Populate the given map with information on the views in the database.
    *
    * @param viewMap Map to populate.
@@ -441,7 +458,7 @@ public class DatabaseMetaDataProvider implements Schema {
 
       try (ResultSet views = databaseMetaData.getTables(null, schemaName, null, getTableTypesForViews())) {
         while (views.next()) {
-          final String viewName = views.getString(TABLE_NAME);
+          final String viewName = getViewName(views);
           log.debug("Found view [" + viewName + "]");
           viewMap.put(viewName, new View() {
             @Override
@@ -483,6 +500,14 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   protected String[] getTableTypesForViews() {
     return new String[] { "VIEW" };
+  }
+
+
+  /**
+   * Retrieves view name from a result set.
+   */
+  protected String getViewName(ResultSet viewResultSet) throws SQLException {
+    return viewResultSet.getString(TABLE_NAME);
   }
 
 
@@ -615,7 +640,7 @@ public class DatabaseMetaDataProvider implements Schema {
 
       try (ResultSet tables = databaseMetaData.getTables(null, schemaName, null, getTableTypesForTables())) {
         while (tables.next()) {
-          String tableName = tables.getString(TABLE_NAME);
+          String tableName = getTableName(tables);
           String tableSchemaName = tables.getString(TABLE_SCHEM);
           String tableType = tables.getString(TABLE_TYPE);
 
@@ -634,6 +659,14 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   protected String[] getTableTypesForTables() {
     return new String[] { "TABLE" };
+  }
+
+
+  /**
+   * Retrieves table name from a result set.
+   */
+  protected String getTableName(ResultSet tableResultSet) throws SQLException {
+    return tableResultSet.getString(TABLE_NAME);
   }
 
 
