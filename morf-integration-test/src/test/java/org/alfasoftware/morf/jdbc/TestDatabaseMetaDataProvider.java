@@ -229,6 +229,13 @@ public class TestDatabaseMetaDataProvider {
           column("nullableDateCol", DataType.DATE).nullable()))
       ));
 
+      assertThat(table.primaryKey(), contains(ImmutableList.of(
+        columnMatcher(
+          column("primaryStringCol", DataType.STRING, 15).primaryKey()),
+        columnMatcher(
+          column("primaryBigIntegerCol", DataType.BIG_INTEGER).primaryKey()))
+      ));
+
       assertThat(table.indexes(), containsInAnyOrder(ImmutableList.of(
         indexMatcher(
           index("WithTypes_1").columns("booleanCol", "dateCol")),
@@ -255,6 +262,11 @@ public class TestDatabaseMetaDataProvider {
           column("blobColumn", DataType.BLOB)),
         columnMatcher(
           column("clobColumn", DataType.CLOB)))
+      ));
+
+      assertThat(table.primaryKey(), contains(ImmutableList.of(
+        columnMatcher(
+          SchemaUtils.autonumber("autonumfield", 17)))
       ));
 
       assertThat(table.indexes(), empty());
@@ -288,6 +300,11 @@ public class TestDatabaseMetaDataProvider {
           column("integerTenCol", DataType.INTEGER).defaultValue("")),
         columnMatcher(
           column("dateCol", DataType.DATE).defaultValue("")))
+      ));
+
+      assertThat(table.primaryKey(), contains(ImmutableList.of(
+        columnMatcher(
+          SchemaUtils.idColumn()))
       ));
 
       assertThat(table.indexes(), empty());
