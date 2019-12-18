@@ -479,6 +479,10 @@ public class DatabaseMetaDataProvider implements Schema {
           columns.put(columnName.toUpperCase(), sequenceNumber);
         }
 
+        if (log.isDebugEnabled()) {
+          log.debug("Found primary key [" + columns.build() + "] on table [" + tableName + "]");
+        }
+
         return columns.build();
       }
     }
@@ -552,6 +556,10 @@ public class DatabaseMetaDataProvider implements Schema {
             String realColumnName = allColumns.get().get(tableName.toUpperCase()).get(columnName.toUpperCase()).getName();
             boolean unique = !indexResultSet.getBoolean(INDEX_NON_UNIQUE);
 
+            if (log.isDebugEnabled()) {
+              log.debug("Found index column [" + realColumnName + "] for index [" + indexName  + ", unique: " + unique + "] on table [" + tableName + "]");
+            }
+
             indexUniqueness.put(indexName, unique);
 
             indexColumns.computeIfAbsent(indexName, k -> ImmutableList.builder())
@@ -611,6 +619,10 @@ public class DatabaseMetaDataProvider implements Schema {
       try (ResultSet viewResultSet = databaseMetaData.getTables(null, schemaName, null, tableTypesForViews())) {
         while (viewResultSet.next()) {
           final String viewName = readViewName(viewResultSet);
+
+          if (log.isDebugEnabled()) {
+            log.debug("Found view [" + viewName + "]");
+          }
 
           viewNameMappings.put(viewName.toUpperCase(), viewName);
         }
