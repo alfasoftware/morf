@@ -51,10 +51,10 @@ class H2MetaDataProvider extends DatabaseMetaDataProvider {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#shouldIgnoreTable(java.lang.String)
+   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isIgnoredTable(java.lang.String)
    */
   @Override
-  protected boolean shouldIgnoreTable(String tableName) {
+  protected boolean isIgnoredTable(String tableName) {
     // Ignore temporary tables
     return tableName.toUpperCase().startsWith(H2Dialect.TEMPORARY_TABLE_PREFIX);
   }

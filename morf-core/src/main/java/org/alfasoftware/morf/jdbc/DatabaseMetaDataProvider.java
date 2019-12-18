@@ -49,6 +49,9 @@ import org.apache.commons.logging.LogFactory;
 import com.google.common.base.Function;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Ordering;
@@ -93,9 +96,10 @@ public class DatabaseMetaDataProvider implements Schema {
   protected final String schemaName;
 
 
-  private final Supplier<Map<String, String>> tableNameMappings = Suppliers.memoize(this::tableNameMappings);
+  private final Supplier<Map<String, Map<String, ColumnBuilder>>> allColumns = Suppliers.memoize(this::loadAllColumns);
 
-  private final Supplier<Map<String, Map<String, ColumnBuilder>>> columnMappings = Suppliers.memoize(this::columnMappings);
+  private final Supplier<Map<String, String>> tableNames = Suppliers.memoize(this::loadAllTableNames);
+  private final LoadingCache<String, Table> tableCache = CacheBuilder.newBuilder().build(CacheLoader.from(this::loadTable));
 
   private final Supplier<Map<String, View>> viewMappings = Suppliers.memoize(this::viewMappings);
 
@@ -112,10 +116,55 @@ public class DatabaseMetaDataProvider implements Schema {
 
 
   /**
+   * @see org.alfasoftware.morf.metadata.Schema#isEmptyDatabase()
+   */
+  @Override
+  public boolean isEmptyDatabase() {
+    return tableNames.get().isEmpty();
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#tableExists(java.lang.String)
+   */
+  @Override
+  public boolean tableExists(String tableName) {
+    return tableNames.get().containsKey(tableName.toUpperCase());
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#getTable(java.lang.String)
+   */
+  @Override
+  public Table getTable(String tableName) {
+    return tableCache.getUnchecked(tableName.toUpperCase());
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#tableNames()
+   */
+  @Override
+  public Collection<String> tableNames() {
+    return tableNames.get().values();
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#tables()
+   */
+  @Override
+  public Collection<Table> tables() {
+    return tableNames().stream().map(this::getTable).collect(toList());
+  }
+
+
+  /**
    * Creates a map of all table names,
    * indexed by their upper-case names.
    */
-  protected Map<String, String> tableNameMappings() {
+  protected Map<String, String> loadAllTableNames() {
     final ImmutableMap.Builder<String, String> tableNameMappings = ImmutableMap.builder();
 
     try {
@@ -128,15 +177,15 @@ public class DatabaseMetaDataProvider implements Schema {
             String tableSchemaName = tableResultSet.getString(TABLE_SCHEM);
             String tableType = tableResultSet.getString(TABLE_TYPE);
 
-            boolean tableIsSystemTable = isSystemTable(tableName);
-            boolean tableShouldBeIgnored = shouldIgnoreTable(tableName);
+            boolean systemTable = isSystemTable(tableName);
+            boolean ignoredTable = isIgnoredTable(tableName);
 
             if (log.isDebugEnabled()) {
               log.debug("Found table [" + tableName + "] of type [" + tableType + "] in schema [" + tableSchemaName + "]"
-                  + (tableIsSystemTable ? " - SYSTEM TABLE" : "") + (tableShouldBeIgnored ? " - IGNORED" : ""));
+                  + (systemTable ? " - SYSTEM TABLE" : "") + (ignoredTable ? " - IGNORED" : ""));
             }
 
-            if (!tableIsSystemTable && !tableShouldBeIgnored) {
+            if (!systemTable && !ignoredTable) {
               tableNameMappings.put(tableName.toUpperCase(), tableName);
             }
           }
@@ -156,7 +205,7 @@ public class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Types for {@link DatabaseMetaData#getTables(String, String, String, String[])}
-   * used by {@link #tableNameMappings()}.
+   * used by {@link #loadAllTableNames()}.
    */
   protected String[] tableTypesForTables() {
     return new String[] { "TABLE" };
@@ -191,7 +240,7 @@ public class DatabaseMetaDataProvider implements Schema {
    * @param tableName The table which we are accessing.
    * @return <var>true</var> if the table should be ignored, false otherwise.
    */
-  protected boolean shouldIgnoreTable(@SuppressWarnings("unused") String tableName) {
+  protected boolean isIgnoredTable(@SuppressWarnings("unused") String tableName) {
     return false;
   }
 
@@ -201,8 +250,8 @@ public class DatabaseMetaDataProvider implements Schema {
    * first indexed by their upper-case table names,
    * and then indexed by their upper-case column names.
    */
-  protected Map<String, Map<String, ColumnBuilder>> columnMappings() {
-    final Map<String, ImmutableMap.Builder<String, ColumnBuilder>> columnMappingBuilders = Maps.toMap(tableNameMappings.get().keySet(), k -> ImmutableMap.builder());
+  protected Map<String, Map<String, ColumnBuilder>> loadAllColumns() {
+    final Map<String, ImmutableMap.Builder<String, ColumnBuilder>> columnMappingBuilders = Maps.toMap(tableNames.get().keySet(), k -> ImmutableMap.builder());
 
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
@@ -344,22 +393,13 @@ public class DatabaseMetaDataProvider implements Schema {
 
 
   /**
-   * @see org.alfasoftware.morf.metadata.Schema#isEmptyDatabase()
-   */
-  @Override
-  public boolean isEmptyDatabase() {
-    return tableNameMappings.get().isEmpty();
-  }
-
-
-  /**
    * Return a {@link Table} implementation. Note the metadata is read lazily.
    *
    * @see org.alfasoftware.morf.metadata.Schema#getTable(java.lang.String)
    */
-  @Override
-  public Table getTable(String name) {
-    final String adjustedTableName = tableNameMappings.get().get(name.toUpperCase());
+  //@Override
+  protected Table loadTable(String name) {
+    final String adjustedTableName = tableNames.get().get(name.toUpperCase());
 
     final List<String> primaryKeys = getPrimaryKeys(adjustedTableName);
 
@@ -461,7 +501,7 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   protected List<Column> readColumns(String tableName, List<String> primaryKeys) {
     List<Column> result = new LinkedList<>();
-    Iterable<ColumnBuilder> rawColumns = columnMappings.get().get(tableName.toUpperCase()).values();
+    Iterable<ColumnBuilder> rawColumns = allColumns.get().get(tableName.toUpperCase()).values();
     for (ColumnBuilder column : rawColumns) {
       result.add(primaryKeys.contains(column.getName()) ? column.primaryKey() : column);
     }
@@ -637,41 +677,6 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   protected boolean isPrimaryKeyIndex(String indexName) {
     return "PRIMARY".equals(indexName);
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.metadata.Schema#tableExists(java.lang.String)
-   */
-  @Override
-  public boolean tableExists(String name) {
-    return tableNameMappings.get().containsKey(name.toUpperCase());
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.metadata.Schema#tableNames()
-   */
-  @Override
-  public Collection<String> tableNames() {
-    if (log.isDebugEnabled()) {
-      log.debug("Find tables in schema [" + schemaName + "]");
-    }
-
-    return tableNameMappings.get().values();
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.metadata.Schema#tables()
-   */
-  @Override
-  public Collection<Table> tables() {
-    List<Table> result = new ArrayList<>();
-    for (String tableName : tableNames()) {
-      result.add(getTable(tableName));
-    }
-    return result;
   }
 
 
