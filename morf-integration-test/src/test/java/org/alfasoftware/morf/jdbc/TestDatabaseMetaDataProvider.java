@@ -190,7 +190,7 @@ public class TestDatabaseMetaDataProvider {
       assertThat(table.isTemporary(), is(false));
       assertThat(table.getName(), tableNameEqualTo("WithTypes"));
 
-      assertThat(table.columns(), containsInAnyOrder(ImmutableList.of(
+      assertThat(table.columns(), containsColumns(ImmutableList.of(
           // strings
         columnMatcher(
           column("stringCol", DataType.STRING, 20)),
@@ -255,7 +255,7 @@ public class TestDatabaseMetaDataProvider {
       assertThat(table.isTemporary(), is(false));
       assertThat(table.getName(), tableNameEqualTo("WithLobs"));
 
-      assertThat(table.columns(), containsInAnyOrder(ImmutableList.of(
+      assertThat(table.columns(), containsColumns(ImmutableList.of(
         columnMatcher(
           SchemaUtils.autonumber("autonumfield", 17)),
         columnMatcher(
@@ -283,7 +283,7 @@ public class TestDatabaseMetaDataProvider {
       assertThat(table.isTemporary(), is(false));
       assertThat(table.getName(), tableNameEqualTo("WithDefaults"));
 
-      assertThat(table.columns(), containsInAnyOrder(ImmutableList.of(
+      assertThat(table.columns(), containsColumns(ImmutableList.of(
         columnMatcher(
           SchemaUtils.idColumn()),
         columnMatcher(
@@ -413,6 +413,16 @@ public class TestDatabaseMetaDataProvider {
         return propertyExtractor.apply(actual);
       }
     };
+  }
+
+
+  private static Matcher<Iterable<? extends Column>> containsColumns(List<Matcher<? super Column>> columnMatchers) {
+    switch (databaseType) {
+      case "ORACLE":
+        return containsInAnyOrder(columnMatchers);
+      default:
+        return contains(columnMatchers);
+    }
   }
 
 
