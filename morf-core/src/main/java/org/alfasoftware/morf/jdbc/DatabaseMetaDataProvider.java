@@ -15,12 +15,6 @@
 
 package org.alfasoftware.morf.jdbc;
 
-import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Lists.transform;
-import static com.google.common.collect.Maps.uniqueIndex;
-import static java.util.stream.Collectors.toList;
-import static org.alfasoftware.morf.metadata.SchemaUtils.column;
-
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
@@ -28,33 +22,35 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
-import java.util.LinkedList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.SortedMap;
-import java.util.TreeMap;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
+import org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import com.google.common.base.Function;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Ordering;
 
 /**
  * Provides meta data based on a database connection.
@@ -157,7 +153,7 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   @Override
   public Collection<Table> tables() {
-    return tableNames().stream().map(this::getTable).collect(toList());
+    return tableNames().stream().map(this::getTable).collect(Collectors.toList());
   }
 
 
@@ -193,7 +189,7 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   @Override
   public Collection<View> views() {
-    return viewNames().stream().map(this::getView).collect(toList());
+    return viewNames().stream().map(this::getView).collect(Collectors.toList());
   }
 
 
@@ -308,7 +304,7 @@ public class DatabaseMetaDataProvider implements Schema {
             int scale = columnResultSet.getInt(COLUMN_DECIMAL_DIGITS);
             DataType dataType = dataTypeFromSqlType(typeCode, typeName, width);
 
-            ColumnBuilder column = column(columnName, dataType, width, scale);
+            ColumnBuilder column = SchemaUtils.column(columnName, dataType, width, scale);
             column = setColumnNullability(tableName, column, columnResultSet);
             column = setColumnAutonumbered(tableName, column, columnResultSet);
             column = setColumnDefaultValue(tableName, column, columnResultSet);
@@ -430,6 +426,179 @@ public class DatabaseMetaDataProvider implements Schema {
 
 
   /**
+   * Loads a table.
+   */
+  protected Table loadTable(String tableNameKey) {
+    final String realTableName = tableNames.get().get(tableNameKey);
+    if (realTableName == null) {
+      throw new IllegalArgumentException("Table [" + tableNameKey + "] not found.");
+    }
+
+    final Map<String, Integer> primaryKey = loadTablePrimaryKey(realTableName);
+    final Supplier<List<Column>> columns = Suppliers.memoize(() -> loadTableColumns(realTableName, primaryKey));
+    final Supplier<List<Index>> indexes = Suppliers.memoize(() -> loadTableIndexes(realTableName));
+
+    return new Table() {
+      @Override
+      public String getName() {
+        return realTableName;
+      }
+
+      @Override
+      public List<Column> columns() {
+        return columns.get();
+      }
+
+      @Override
+      public List<Index> indexes() {
+        return indexes.get();
+      }
+
+      @Override
+      public boolean isTemporary() {
+        return false;
+      }
+    };
+  }
+
+
+  /**
+   * Loads the primary key column names for the given table name,
+   * as a map of upper-case names and respective positions within the key.
+   */
+  protected Map<String, Integer> loadTablePrimaryKey(String tableName) {
+    final ImmutableMap.Builder<String, Integer> columns = ImmutableMap.builder();
+
+    try {
+      final DatabaseMetaData databaseMetaData = connection.getMetaData();
+
+      try (ResultSet primaryKeyResultSet = databaseMetaData.getPrimaryKeys(null, schemaName, tableName)) {
+        while (primaryKeyResultSet.next()) {
+          int sequenceNumber = primaryKeyResultSet.getShort(PRIMARY_KEY_SEQ) - 1;
+          String columnName = primaryKeyResultSet.getString(PRIMARY_COLUMN_NAME);
+          columns.put(columnName.toUpperCase(), sequenceNumber);
+        }
+
+        return columns.build();
+      }
+    }
+    catch (SQLException e) {
+      throw new RuntimeSqlException("Error reading primary keys for table [" + tableName + "]", e);
+    }
+  }
+
+
+  /**
+   * Loads the columns for the given table name.
+   */
+  protected List<Column> loadTableColumns(String tableName, Map<String, Integer> primaryKey) {
+    final Collection<ColumnBuilder> originalColumns = allColumns.get().get(tableName.toUpperCase()).values();
+    return createColumnsFrom(originalColumns, primaryKey);
+  }
+
+
+  /**
+   * Creates a list of table columns from given columns and map of primary key columns.
+   * Also reorders the primary key columns between themselves to reflect the order of columns within the primary key.
+   */
+  protected static List<Column> createColumnsFrom(Collection<ColumnBuilder> originalColumns, Map<String, Integer> primaryKey) {
+    final List<Column> primaryKeyColumns = new ArrayList<>(Collections.nCopies(primaryKey.size(), null));
+    final List<Supplier<Column>> results = new ArrayList<>(originalColumns.size());
+
+    // Reorder primary-key columns between themselves according to their ordering within provided reference
+    // All non-primary-key columns simply keep their original positions
+    Iterator<Integer> numberer = IntStream.rangeClosed(0, primaryKey.size()).iterator();
+    for (ColumnBuilder column : originalColumns) {
+      String columnName = column.getName().toUpperCase();
+      if (primaryKey.containsKey(columnName)) {
+        Integer primaryKeyPosition = primaryKey.get(columnName);
+        primaryKeyColumns.set(primaryKeyPosition, column.primaryKey());
+        results.add(() -> primaryKeyColumns.get(numberer.next()));
+      }
+      else {
+        results.add(Suppliers.ofInstance(column));
+      }
+    }
+
+    return results.stream().map(Supplier::get).collect(Collectors.toList());
+  }
+
+
+  /**
+   * Loads the indexes for the given table name, except for the primary key index.
+   */
+  protected List<Index> loadTableIndexes(String tableName) {
+    final Map<String, ImmutableList.Builder<String>> indexColumns = new HashMap<>();
+    final Map<String, Boolean> indexUniqueness = new HashMap<>();
+
+    try {
+      final DatabaseMetaData databaseMetaData = connection.getMetaData();
+
+      try (ResultSet indexResultSet = databaseMetaData.getIndexInfo(null, schemaName, tableName, false, false)) {
+        while (indexResultSet.next()) {
+          String indexName = readIndexName(indexResultSet);
+          try {
+            if (indexName == null) {
+              continue;
+            }
+            if (isPrimaryKeyIndex(indexName)) {
+              continue;
+            }
+            if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName)) {
+              continue;
+            }
+
+            String columnName = indexResultSet.getString(INDEX_COLUMN_NAME);
+            String realColumnName = allColumns.get().get(tableName.toUpperCase()).get(columnName.toUpperCase()).getName();
+            boolean unique = !indexResultSet.getBoolean(INDEX_NON_UNIQUE);
+
+            indexUniqueness.put(indexName, unique);
+
+            indexColumns.computeIfAbsent(indexName, k -> ImmutableList.builder())
+                .add(realColumnName);
+          }
+          catch (SQLException e) {
+            throw new RuntimeSqlException("Error reading metadata for index ["+indexName+"] on table ["+tableName+"]", e);
+          }
+        }
+
+        return indexColumns.entrySet().stream()
+            .map(e -> createIndexFrom(e.getKey(), indexUniqueness.get(e.getKey()), e.getValue().build()))
+            .collect(Collectors.toList());
+      }
+    }
+    catch (SQLException e) {
+      throw new RuntimeSqlException("Error reading metadata for table [" + tableName + "]", e);
+    }
+  }
+
+
+  /**
+   * Retrieves index name from a result set.
+   */
+  protected String readIndexName(ResultSet indexResultSet) throws SQLException {
+    return indexResultSet.getString(INDEX_NAME);
+  }
+
+
+  /**
+   * Identify whether this is the primary key for this table.
+   */
+  protected boolean isPrimaryKeyIndex(String indexName) {
+    return "PRIMARY".equals(indexName);
+  }
+
+
+  /**
+   * Creates an index from given info.
+   */
+  protected static Index createIndexFrom(String indexName, boolean isUnique, List<String> columnNames) {
+    IndexBuilder index = SchemaUtils.index(indexName).columns(columnNames);
+    return isUnique ? index.unique() : index;
+  }
+
+
+  /**
    * Creates a map of all view names,
    * indexed by their upper-case names.
    */
@@ -506,309 +675,5 @@ public class DatabaseMetaDataProvider implements Schema {
         throw new UnsupportedOperationException("Cannot return dependencies as [" + realViewName + "] has been loaded from the database");
       }
     };
-  }
-
-
-  /**
-   * Return a {@link Table} implementation. Note the metadata is read lazily.
-   *
-   * @see org.alfasoftware.morf.metadata.Schema#getTable(java.lang.String)
-   */
-  //@Override
-  protected Table loadTable(String name) {
-    final String adjustedTableName = tableNames.get().get(name.toUpperCase());
-
-    final List<String> primaryKeys = getPrimaryKeys(adjustedTableName);
-
-    if (adjustedTableName == null) {
-      throw new IllegalArgumentException("Table [" + name + "] not found.");
-    }
-
-    return new Table() {
-
-      private List<Column> columns;
-      private List<Index>  indexes;
-
-
-      /**
-       * @see org.alfasoftware.morf.metadata.Table#getName()
-       */
-      @Override
-      public String getName() {
-        return adjustedTableName;
-      }
-
-
-      /**
-       * @see org.alfasoftware.morf.metadata.Table#columns()
-       */
-      @Override
-      public List<Column> columns() {
-        if (columns == null) {
-          columns = readColumns(adjustedTableName, primaryKeys);
-        }
-        return columns;
-      }
-
-
-      /**
-       * @see org.alfasoftware.morf.metadata.Table#indexes()
-       */
-      @Override
-      public List<Index> indexes() {
-        if (indexes == null) {
-          indexes = readIndexes(adjustedTableName);
-        }
-        return indexes;
-      }
-
-
-      @Override
-      public boolean isTemporary() {
-        return false;
-      }
-
-    };
-  }
-
-
-  /**
-   * Finds the primary keys for the {@code tableName}.
-   *
-   * @param tableName the table to query for.
-   * @return a collection of the primary keys.
-   */
-  protected List<String> getPrimaryKeys(String tableName) {
-    List<PrimaryKeyColumn> columns = newArrayList();
-    try {
-      final DatabaseMetaData databaseMetaData = connection.getMetaData();
-
-      try (ResultSet primaryKeyResults = databaseMetaData.getPrimaryKeys(null, schemaName, tableName)) {
-        while (primaryKeyResults.next()) {
-          columns.add(new PrimaryKeyColumn(primaryKeyResults.getShort(PRIMARY_KEY_SEQ), primaryKeyResults.getString(PRIMARY_COLUMN_NAME)));
-        }
-      }
-    } catch (SQLException sqle) {
-      throw new RuntimeSqlException("Error reading primary keys for table [" + tableName + "]", sqle);
-    }
-
-    List<PrimaryKeyColumn> sortedColumns = Ordering.from(new Comparator<PrimaryKeyColumn>() {
-      @Override
-      public int compare(PrimaryKeyColumn o1, PrimaryKeyColumn o2) {
-        return o1.sequence.compareTo(o2.sequence);
-      }
-    }).sortedCopy(columns);
-
-    // Convert to String before returning
-    return transform(sortedColumns, new Function<PrimaryKeyColumn, String>() {
-      @Override
-      public String apply(PrimaryKeyColumn input) {
-        return input.name;
-      }
-    });
-  }
-
-
-  /**
-   * Read out the columns for a particular table.
-   *
-   * @param tableName The source table
-   * @param primaryKeys the primary keys for the table.
-   * @return a list of columns
-   */
-  protected List<Column> readColumns(String tableName, List<String> primaryKeys) {
-    List<Column> result = new LinkedList<>();
-    Iterable<ColumnBuilder> rawColumns = allColumns.get().get(tableName.toUpperCase()).values();
-    for (ColumnBuilder column : rawColumns) {
-      result.add(primaryKeys.contains(column.getName()) ? column.primaryKey() : column);
-    }
-    return applyPrimaryKeyOrder(primaryKeys, result);
-  }
-
-
-
-
-  /**
-   * Apply the sort order of the primary keys to the list of columns, but leave non-primary keys intact.
-   *
-   * @param primaryKeys the sorted primary key column names
-   * @param columns all the columns
-   * @return the partially sorted columns
-   */
-  protected List<Column> applyPrimaryKeyOrder(List<String> primaryKeys, List<Column> columns) {
-    // Map allowing retrieval of columns by name
-    ImmutableMap<String, Column> columnsMap = uniqueIndex(columns, Column::getName);
-
-    List<Column> reorderedColumns = new ArrayList<>();
-    // keep track of the primary keys that have been added
-    int primaryKeyIndex = 0;
-    for (Column column : columns) {
-      if (column.isPrimaryKey()) {
-        // replace whatever primary key is there with the one that should be at that index
-        String pkName = primaryKeys.get(primaryKeyIndex);
-        Column primaryKeyColumn = columnsMap.get(pkName);
-        if (primaryKeyColumn == null) {
-          throw new IllegalStateException("Could not find primary key column [" + pkName + "] in columns [" + columns + "]");
-        }
-        reorderedColumns.add(primaryKeyColumn);
-        primaryKeyIndex++;
-      } else {
-        reorderedColumns.add(column);
-      }
-    }
-
-    return reorderedColumns;
-  }
-
-
-  /**
-   * Read out the indexes for a particular table
-   *
-   * @param tableName The source table
-   * @return The indexes for the table
-   */
-  protected List<Index> readIndexes(String tableName) {
-    try {
-      final DatabaseMetaData databaseMetaData = connection.getMetaData();
-
-      try (ResultSet indexResultSet = databaseMetaData.getIndexInfo(null, schemaName, tableName, false, false)) {
-        List<Index> indexes = new LinkedList<>();
-
-        SortedMap<String, List<String>> columnsByIndexName = new TreeMap<>();
-
-        // there's one entry for each column in the index
-        // the results are sorted by ordinal position already
-        while (indexResultSet.next()) {
-          String indexName = getIndexName(indexResultSet);
-
-          if (indexName == null) {
-            continue;
-          }
-
-          // don't output the primary key as an index
-          if (isPrimaryKeyIndex(indexName)) {
-            continue;
-          }
-
-          // some indexes should be ignored anyway
-          if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName)) {
-            continue;
-          }
-
-          String columnName = indexResultSet.getString(INDEX_COLUMN_NAME);
-
-          List<String> columnNames = columnsByIndexName.get(indexName);
-          // maybe create a new one
-          if (columnNames == null) {
-            columnNames = new LinkedList<>();
-            boolean unique = !indexResultSet.getBoolean(INDEX_NON_UNIQUE);
-
-            indexes.add(new IndexImpl(indexName, unique, columnNames));
-            columnsByIndexName.put(indexName, columnNames);
-          }
-
-          // add this column to the list
-          columnNames.add(columnName);
-        }
-        return indexes;
-      }
-    } catch (SQLException sqle) {
-      throw new RuntimeSqlException("Error reading metadata for table [" + tableName + "]", sqle);
-    }
-  }
-
-
-  /**
-   * Retrieves index name from a result set.
-   */
-  protected String getIndexName(ResultSet indexResultSet) throws SQLException {
-    return indexResultSet.getString(INDEX_NAME);
-  }
-
-
-  /**
-   * @param indexName The index name
-   * @return Whether this is the primary key for this table
-   */
-  protected boolean isPrimaryKeyIndex(String indexName) {
-    return "PRIMARY".equals(indexName);
-  }
-
-
-  /**
-   * Implementation of {@link Index} for database meta data
-   */
-  protected static final class IndexImpl implements Index {
-
-    /**
-     * index name
-     */
-    private final String       name;
-    /**
-     * index is unique
-     */
-    private final boolean      isUnique;
-    /**
-     * index columns
-     */
-    private final List<String> columnNames;
-
-
-    /**
-     * @param name The name of the index
-     * @param isUnique Whether the index is unique
-     * @param columnNames The index column names
-     */
-    public IndexImpl(String name, boolean isUnique, List<String> columnNames) {
-      super();
-      this.name = name;
-      this.isUnique = isUnique;
-      this.columnNames = columnNames;
-    }
-
-
-    /**
-     * @see org.alfasoftware.morf.metadata.Index#columnNames()
-     */
-    @Override
-    public List<String> columnNames() {
-      return columnNames;
-    }
-
-
-    /**
-     * @see org.alfasoftware.morf.metadata.Index#getName()
-     */
-    @Override
-    public String getName() {
-      return name;
-    }
-
-
-    /**
-     * @see org.alfasoftware.morf.metadata.Index#isUnique()
-     */
-    @Override
-    public boolean isUnique() {
-      return isUnique;
-    }
-
-
-    /**
-     * @see java.lang.Object#toString()
-     */
-    @Override
-    public String toString() {
-      return this.toStringHelper();
-    }
-  }
-
-  private static class PrimaryKeyColumn {
-    final Short sequence;
-    final String name;
-    PrimaryKeyColumn(Short sequence, String name) {
-      this.sequence = sequence;
-      this.name = name;
-    }
   }
 }
