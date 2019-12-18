@@ -8,16 +8,14 @@ Morf is a library for cross-platform evolutionary relational database mechanics,
 
 ## Status
 
-Morf is a brand-new open source project.
+Morf is proven technology and has been used in mission-critical production applications for many years as part of our flagship product.  **However**, as an open source project, it is in an early **pre-alpha** state, as we go through the process of disentangling it from parts of the rest of our stack, tidying up the code for long-term support, and making it easier and more convenient to use in other projects. Until then, consider the API unstable.
 
-It is proven technology and has been in mission-critical production applications for many years as part of our flagship product.  **However**, as an open source project, it is in a very early **pre-alpha** state, as we go through the process of disentangling it from parts of the rest of our stack and tidying up the code for long-term support. Until then, consider the API unstable.
-
-We are doing this tidying work in the open, because we believe this is the right thing to do.  Please [get involved](https://github.com/alfasoftware/morf/wiki/Contributing) if you would like to help steer the project at this early stage.
+We are maintaining Morf in the open, because we believe this is the right thing to do. Please [get involved](https://github.com/alfasoftware/morf/wiki/Contributing) if you would like to help steer the project.
 
 See the [Roadmap](https://github.com/alfasoftware/morf/wiki/Roadmap) for more information.
 
 ## Getting Started
-Documentation is currently extremely sparse, not least because the APIs are not quite _ready_ to document.  One of the first items on the [roadmap](https://github.com/alfasoftware/morf/wiki/Roadmap) is to agree our new user "hello world" user stories, write them up and make sure the necessary APIs are in place to support them.
+Documentation is somewhat sparse, not least because the APIs are not quite _ready_ to document.  One of the first items on the [roadmap](https://github.com/alfasoftware/morf/wiki/Roadmap) is to agree our new user "hello world" user stories, write them up and make sure the necessary APIs are in place to support them.
 
 As we work on those, we will be expanding the [Start here](https://github.com/alfasoftware/morf/wiki/Start-Here) part of the Wiki.
 
@@ -41,7 +39,7 @@ As we work on those, we will be expanding the [Start here](https://github.com/al
 ### Cross-platform Snapshots and Cloning
 - Clone or dump a full database, including schema and data
 - Create a dump of a MySQL database as XML, restore to Oracle
-- Copy a live NuoDB database directly into in-memory H2
+- Copy a live PostgreSQL database directly into in-memory H2
 - Run a JUnit test over an in-memory H2 database using a snapshot from a live Oracle environment
 - Automatically run missing upgrades after restoring from a snapshot
 
