@@ -88,8 +88,7 @@ public class DatabaseMetaDataProvider implements Schema {
   protected static final int PRIMARY_KEY_SEQ = 5;
 
 
-  /** Cache table names so we can remember what case the database is using. */
-  private Map<String, String>   tableNameMappings;
+  private final Supplier<Map<String, String>> tableNameMappings = Suppliers.memoize(this::tableNameMappings);
 
   private final Supplier<Map<String, List<ColumnBuilder>>> columnMappings = Suppliers.memoize(this::columnMappings);
 
@@ -123,20 +122,6 @@ public class DatabaseMetaDataProvider implements Schema {
 
 
   /**
-   * @return a mapping of uppercase table names to database table names.
-   */
-  private Map<String, String> tableNameMappings() {
-    if (tableNameMappings == null) {
-      // Create a TreeMap instead of a HashMap so that the contents are sorted
-      // alphabetically rather than being in a random order
-      tableNameMappings = new TreeMap<>();
-      readTableNames();
-    }
-    return tableNameMappings;
-  }
-
-
-  /**
    * Use to access the metadata for the views in the specified connection.
    * Lazily initialises the metadata, and only loads it once.
    *
@@ -157,7 +142,7 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   @Override
   public boolean isEmptyDatabase() {
-    return tableNameMappings().isEmpty();
+    return tableNameMappings.get().isEmpty();
   }
 
 
@@ -168,7 +153,7 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   @Override
   public Table getTable(String name) {
-    final String adjustedTableName = tableNameMappings().get(name.toUpperCase());
+    final String adjustedTableName = tableNameMappings.get().get(name.toUpperCase());
 
     final List<String> primaryKeys = getPrimaryKeys(adjustedTableName);
 
@@ -600,7 +585,7 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   @Override
   public boolean tableExists(String name) {
-    return tableNameMappings().containsKey(name.toUpperCase());
+    return tableNameMappings.get().containsKey(name.toUpperCase());
   }
 
 
@@ -613,7 +598,7 @@ public class DatabaseMetaDataProvider implements Schema {
       log.debug("Find tables in schema [" + schemaName + "]");
     }
 
-    return tableNameMappings().values();
+    return tableNameMappings.get().values();
   }
 
 
@@ -630,11 +615,9 @@ public class DatabaseMetaDataProvider implements Schema {
   }
 
 
-  /**
-   * Reads the table names and makes sure we are case insensitive for future
-   * requests.
-   */
-  protected void readTableNames() {
+  private Map<String, String> tableNameMappings() {
+    final ImmutableMap.Builder<String, String> tableNameMappings = ImmutableMap.builder();
+
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
@@ -644,12 +627,24 @@ public class DatabaseMetaDataProvider implements Schema {
           String tableSchemaName = tables.getString(TABLE_SCHEM);
           String tableType = tables.getString(TABLE_TYPE);
 
-          foundTable(tableName, tableSchemaName, tableType);
+          boolean tableIsSystemTable = isSystemTable(tableName);
+          boolean tableShouldBeIgnored = shouldIgnoreTable(tableName);
+
+          if (log.isDebugEnabled()) {
+            log.debug("Found table [" + tableName + "] of type [" + tableType + "] in schema [" + tableSchemaName + "]"
+                + (tableIsSystemTable ? " - SYSTEM TABLE" : "") + (tableShouldBeIgnored ? " - IGNORED" : ""));
+          }
+
+          if (!tableIsSystemTable && !tableShouldBeIgnored) {
+            tableNameMappings.put(tableName.toUpperCase(), tableName);
+          }
         }
       }
     } catch (SQLException sqle) {
       throw new RuntimeSqlException("SQLException in readTableNames()", sqle);
     }
+
+    return tableNameMappings.build();
   }
 
 
@@ -667,30 +662,6 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   protected String getTableName(ResultSet tableResultSet) throws SQLException {
     return tableResultSet.getString(TABLE_NAME);
-  }
-
-
-  /**
-   * Declare a table that has been found in the metadata.
-   *
-   * @param tableName The name of the table
-   * @param tableSchemaName The schema of the table
-   * @param tableType The type of the table.
-   */
-  protected void foundTable(String tableName, String tableSchemaName, String tableType) {
-    boolean tableIsSystemTable = isSystemTable(tableName);
-    boolean tableShouldBeIgnored = shouldIgnoreTable(tableName);
-
-    if (log.isDebugEnabled()) {
-      log.debug("Found table [" + tableName + "] of type [" + tableType + "] in schema [" + tableSchemaName + "]"
-          + (tableIsSystemTable ? " - SYSTEM TABLE" : "") + (tableShouldBeIgnored ? " - IGNORED" : ""));
-    }
-
-    // If this is not a system table and the schema name matches the requested
-    // schema then add the table
-    if (!tableIsSystemTable && !tableShouldBeIgnored) {
-      tableNameMappings.put(tableName.toUpperCase(), tableName);
-    }
   }
 
 
