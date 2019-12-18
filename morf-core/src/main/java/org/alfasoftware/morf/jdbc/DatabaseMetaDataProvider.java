@@ -29,7 +29,6 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +50,7 @@ import com.google.common.base.Function;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Ordering;
 
 /**
@@ -95,7 +95,7 @@ public class DatabaseMetaDataProvider implements Schema {
 
   private final Supplier<Map<String, String>> tableNameMappings = Suppliers.memoize(this::tableNameMappings);
 
-  private final Supplier<Map<String, List<ColumnBuilder>>> columnMappings = Suppliers.memoize(this::columnMappings);
+  private final Supplier<Map<String, Map<String, ColumnBuilder>>> columnMappings = Suppliers.memoize(this::columnMappings);
 
   private final Supplier<Map<String, View>> viewMappings = Suppliers.memoize(this::viewMappings);
 
@@ -193,6 +193,153 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   protected boolean shouldIgnoreTable(@SuppressWarnings("unused") String tableName) {
     return false;
+  }
+
+
+  /**
+   * Creates a map of maps of all table columns,
+   * first indexed by their upper-case table names,
+   * and then indexed by their upper-case column names.
+   */
+  protected Map<String, Map<String, ColumnBuilder>> columnMappings() {
+    final Map<String, ImmutableMap.Builder<String, ColumnBuilder>> columnMappingBuilders = Maps.toMap(tableNameMappings.get().keySet(), k -> ImmutableMap.builder());
+
+    try {
+      final DatabaseMetaData databaseMetaData = connection.getMetaData();
+
+      try (ResultSet columnResultSet = databaseMetaData.getColumns(null, schemaName, null, null)) {
+        while (columnResultSet.next()) {
+          String tableName = columnResultSet.getString(COLUMN_TABLE_NAME);
+          if (!columnMappingBuilders.containsKey(tableName.toUpperCase())) {
+            continue;
+          }
+
+          String columnName = readColumnName(columnResultSet);
+          try {
+            String typeName = columnResultSet.getString(COLUMN_TYPE_NAME);
+            int typeCode = columnResultSet.getInt(COLUMN_DATA_TYPE);
+            int width = columnResultSet.getInt(COLUMN_SIZE);
+            int scale = columnResultSet.getInt(COLUMN_DECIMAL_DIGITS);
+            DataType dataType = dataTypeFromSqlType(typeCode, typeName, width);
+
+            ColumnBuilder column = column(columnName, dataType, width, scale);
+            column = setColumnNullability(tableName, column, columnResultSet);
+            column = setColumnAutonumbered(tableName, column, columnResultSet);
+            column = setColumnDefaultValue(tableName, column, columnResultSet);
+            column = setAdditionalColumnMetadata(tableName, column, columnResultSet);
+
+            if (log.isDebugEnabled()) {
+              log.debug("Found column [" + column + "] on table [" + tableName + "]");
+            }
+
+            columnMappingBuilders.get(tableName.toUpperCase()).put(columnName.toUpperCase(), column);
+          }
+          catch (SQLException e) {
+            throw new RuntimeSqlException("Error reading metadata for column ["+columnName+"] on table ["+tableName+"]", e);
+          }
+        }
+
+        // Maps.transformValues creates a view over the given map of builders
+        // Therefore we need to make a copy to avoid building the builders repeatedly
+        return ImmutableMap.copyOf(Maps.transformValues(columnMappingBuilders, v -> v.build()));
+      }
+    }
+    catch (SQLException e) {
+      throw new RuntimeSqlException(e);
+    }
+  }
+
+
+  /**
+   * Retrieves column name from a result set.
+   */
+  protected String readColumnName(ResultSet columnResultSet) throws SQLException {
+    return columnResultSet.getString(COLUMN_NAME);
+  }
+
+
+  /**
+   * Converts a given SQL data type to a {@link DataType}.
+   */
+  protected DataType dataTypeFromSqlType(int typeCode, String typeName, int width) {
+    switch (typeCode) {
+      case Types.TINYINT:
+      case Types.SMALLINT:
+      case Types.INTEGER:
+        return DataType.INTEGER;
+      case Types.BIGINT:
+        return DataType.BIG_INTEGER;
+      case Types.FLOAT:
+      case Types.REAL:
+      case Types.DOUBLE:
+      case Types.NUMERIC:
+      case Types.DECIMAL:
+        return DataType.DECIMAL;
+      case Types.CHAR:
+      case Types.VARCHAR:
+      case Types.LONGVARCHAR:
+      case Types.LONGNVARCHAR:
+      case Types.NVARCHAR:
+        return DataType.STRING;
+      case Types.BOOLEAN:
+      case Types.BIT:
+        return DataType.BOOLEAN;
+      case Types.DATE:
+        return DataType.DATE;
+      case Types.BLOB:
+      case Types.BINARY:
+      case Types.VARBINARY:
+      case Types.LONGVARBINARY:
+        return DataType.BLOB;
+      case Types.NCLOB:
+      case Types.CLOB:
+        return DataType.CLOB;
+      default:
+        throw new IllegalArgumentException("Unknown SQL data type [" + typeName + "] (type " + typeCode + " width " + width + ")");
+    }
+  }
+
+
+  /**
+   * Sets column nullability from a result set.
+   */
+  @SuppressWarnings("unused")
+  protected ColumnBuilder setColumnNullability(String tableName, ColumnBuilder column, ResultSet columnResultSet) throws SQLException {
+    boolean nullable = "YES".equals(columnResultSet.getString(COLUMN_IS_NULLABLE));
+    return nullable ? column.nullable() : column;
+  }
+
+
+  /**
+   * Sets column being autonumbered from a result set.
+   */
+  @SuppressWarnings("unused")
+  protected ColumnBuilder setColumnAutonumbered(String tableName, ColumnBuilder column, ResultSet columnResultSet) throws SQLException {
+    boolean autoNumbered = "YES".equals(columnResultSet.getString(COLUMN_IS_AUTOINCREMENT));
+    return autoNumbered ? column.autoNumbered(-1) : column;
+  }
+
+
+  /**
+   * Sets column default value.
+   *
+   * Note: Uses an empty string for any column other than version.
+   * Database-schema level default values are not supported by ALFA's domain model
+   * hence we don't want to include a default value in the definition of tables.
+   */
+  @SuppressWarnings("unused")
+  protected ColumnBuilder setColumnDefaultValue(String tableName, ColumnBuilder column, ResultSet columnResultSet) {
+    String defaultValue = "version".equalsIgnoreCase(column.getName()) ? "0" : "";
+    return column.defaultValue(defaultValue);
+  }
+
+
+  /**
+   * Sets additional column information.
+   */
+  @SuppressWarnings("unused")
+  protected ColumnBuilder setAdditionalColumnMetadata(String tableName, ColumnBuilder column, ResultSet columnResultSet) throws SQLException {
+    return column;
   }
 
 
@@ -314,7 +461,7 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   protected List<Column> readColumns(String tableName, List<String> primaryKeys) {
     List<Column> result = new LinkedList<>();
-    List<ColumnBuilder> rawColumns = columnMappings.get().get(tableName);
+    Iterable<ColumnBuilder> rawColumns = columnMappings.get().get(tableName.toUpperCase()).values();
     for (ColumnBuilder column : rawColumns) {
       result.add(primaryKeys.contains(column.getName()) ? column.primaryKey() : column);
     }
@@ -322,58 +469,6 @@ public class DatabaseMetaDataProvider implements Schema {
   }
 
 
-  private Map<String, List<ColumnBuilder>> columnMappings() {
-    final Map<String, List<ColumnBuilder>> columnMappings = new HashMap<>();
-    try {
-      try {
-        final DatabaseMetaData databaseMetaData = connection.getMetaData();
-
-        try (ResultSet columnResults = databaseMetaData.getColumns(null, schemaName, null, null)) {
-
-          while (columnResults.next()) {
-            String tableName = columnResults.getString(COLUMN_TABLE_NAME);
-            if (!tableExists(tableName)) {
-              continue;
-            }
-
-            String columnName = getColumnName(columnResults);
-
-            try {
-              String typeName = columnResults.getString(COLUMN_TYPE_NAME);
-              int typeCode = columnResults.getInt(COLUMN_DATA_TYPE);
-              int width = columnResults.getInt(COLUMN_SIZE);
-              DataType dataType = dataTypeFromSqlType(typeCode, typeName, width);
-              int scale = columnResults.getInt(COLUMN_DECIMAL_DIGITS);
-              boolean nullable = columnResults.getString(COLUMN_IS_NULLABLE).equals("YES");
-              String defaultValue = determineDefaultValue(columnName);
-
-              ColumnBuilder column = column(columnName, dataType, width, scale).defaultValue(defaultValue);
-              column = nullable ? column.nullable() : column;
-              column = setAdditionalColumnMetadata(tableName, column, columnResults);
-
-              columnMappings.computeIfAbsent(tableName, k -> new LinkedList<>()).add(column);
-
-            } catch (Exception e) {
-              throw new RuntimeException(
-                  String.format("Error reading metadata for column [%s] on table [%s]", columnName, tableName), e);
-            }
-          }
-        }
-      } catch (SQLException sqle) {
-        throw new RuntimeSqlException(sqle);
-      }
-    } catch (Exception ex) {
-      throw new RuntimeException("Error reading metadata for schema [" + schemaName + "]", ex);
-    }
-    return columnMappings;
-  }
-
-  /**
-   * Retrieves column name from a result set.
-   */
-  protected String getColumnName(ResultSet columnResultSet) throws SQLException {
-    return columnResultSet.getString(COLUMN_NAME);
-  }
 
 
   /**
@@ -406,23 +501,6 @@ public class DatabaseMetaDataProvider implements Schema {
     }
 
     return reorderedColumns;
-  }
-
-
-  /**
-   * Implements the default method for obtaining additional column information. For the default method this is only
-   * as to whether a column is autonumbered, and if so, from what start value, from the database.  Optionally overridden in specific RDBMS implementations
-   * where the information is available from different sources and additional column information is available.
-   *
-   * @param tableName The name of the table.
-   * @param columnBuilder The column under construction.
-   * @param columnMetaData The JDBC column metdata, if required.
-   * @return The modified column
-   * @throws SQLException when a problem in retrieving information from the database is encountered.
-   */
-  @SuppressWarnings("unused")
-  protected ColumnBuilder setAdditionalColumnMetadata(String tableName, ColumnBuilder columnBuilder, ResultSet columnMetaData) throws SQLException {
-    return "YES".equals(columnMetaData.getString(COLUMN_IS_AUTOINCREMENT)) ? columnBuilder.autoNumbered(-1) : columnBuilder;
   }
 
 
@@ -563,55 +641,6 @@ public class DatabaseMetaDataProvider implements Schema {
 
 
   /**
-   * Converts a given SQL data type to a {@link DataType}.
-   *
-   * @param sqlType The jdbc data type to convert.
-   * @param typeName The (potentially database specific) type name
-   * @param width The width of the column
-   * @return The Cryo DataType that represents the sql connection data type
-   *         given in <var>sqlType</var>.
-   */
-  protected DataType dataTypeFromSqlType(int sqlType, String typeName, @SuppressWarnings("unused") int width) {
-    switch (sqlType) {
-      case Types.TINYINT:
-      case Types.SMALLINT:
-      case Types.INTEGER:
-        return DataType.INTEGER;
-      case Types.BIGINT:
-        return DataType.BIG_INTEGER;
-      case Types.FLOAT:
-      case Types.REAL:
-      case Types.DOUBLE:
-      case Types.NUMERIC:
-      case Types.DECIMAL:
-        return DataType.DECIMAL;
-      case Types.CHAR:
-      case Types.VARCHAR:
-      case Types.LONGVARCHAR:
-      case Types.LONGNVARCHAR:
-      case Types.NVARCHAR:
-        return DataType.STRING;
-      case Types.BOOLEAN:
-      case Types.BIT:
-        return DataType.BOOLEAN;
-      case Types.DATE:
-        return DataType.DATE;
-      case Types.BLOB:
-      case Types.BINARY:
-      case Types.VARBINARY:
-      case Types.LONGVARBINARY:
-        return DataType.BLOB;
-      case Types.NCLOB:
-      case Types.CLOB:
-        return DataType.CLOB;
-
-      default:
-        throw new IllegalArgumentException("Unknown SQL data type [" + typeName + "] (" + sqlType + ")");
-    }
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.metadata.Schema#tableExists(java.lang.String)
    */
   @Override
@@ -645,23 +674,6 @@ public class DatabaseMetaDataProvider implements Schema {
     return result;
   }
 
-
-  /**
-   * Sets the default value to an empty string for any column other than
-   * version. Database-schema level default values are not supported by ALFA's
-   * domain model hence we don't want to include a default value in the xml
-   * definition of a table.
-   *
-   * @param columnName the name of the column
-   * @return the default value
-   */
-  protected String determineDefaultValue(String columnName) {
-    if (columnName.equals("version") || columnName.equals("version".toUpperCase())) {
-      return "0";
-    }
-
-    return "";
-  }
 
   /**
    * Implementation of {@link Index} for database meta data

@@ -177,7 +177,7 @@ class NuoDBMetaDataProvider extends DatabaseMetaDataProvider {
           DataType dataType = dataTypeFromDeclaredType(declaredDataType.replaceFirst("^([a-z ]+).*$", "$1"));
 
           ColumnBuilder nuoDBFieldMetaData = column(fieldName, dataType, columnQueryResult.getInt("PRECISION"), columnQueryResult.getInt("SCALE"));
-          nuoDBFieldMetaData = nuoDBFieldMetaData.defaultValue(determineDefaultValue(fieldName));
+          nuoDBFieldMetaData = nuoDBFieldMetaData.defaultValue("version".equalsIgnoreCase(fieldName) ? "0" : "");
           nuoDBFieldMetaData = columnQueryResult.getInt("FLAGS") == 0 ? nuoDBFieldMetaData.nullable() : nuoDBFieldMetaData;
 
           if (StringUtils.isNotBlank(columnQueryResult.getString("GENERATOR_SEQUENCE"))) {
