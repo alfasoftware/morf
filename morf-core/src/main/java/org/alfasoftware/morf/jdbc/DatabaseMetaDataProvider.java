@@ -101,7 +101,8 @@ public class DatabaseMetaDataProvider implements Schema {
   private final Supplier<Map<String, String>> tableNames = Suppliers.memoize(this::loadAllTableNames);
   private final LoadingCache<String, Table> tableCache = CacheBuilder.newBuilder().build(CacheLoader.from(this::loadTable));
 
-  private final Supplier<Map<String, View>> viewMappings = Suppliers.memoize(this::viewMappings);
+  private final Supplier<Map<String, String>> viewNames = Suppliers.memoize(this::loadAllViewNames);
+  private final LoadingCache<String, View> viewCache = CacheBuilder.newBuilder().build(CacheLoader.from(this::loadView));
 
 
   /**
@@ -157,6 +158,42 @@ public class DatabaseMetaDataProvider implements Schema {
   @Override
   public Collection<Table> tables() {
     return tableNames().stream().map(this::getTable).collect(toList());
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#viewExists(java.lang.String)
+   */
+  @Override
+  public boolean viewExists(String viewName) {
+    return viewNames.get().containsKey(viewName.toUpperCase());
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#getView(java.lang.String)
+   */
+  @Override
+  public View getView(String viewName) {
+    return viewCache.getUnchecked(viewName.toUpperCase());
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#viewNames()
+   */
+  @Override
+  public Collection<String> viewNames() {
+    return viewNames.get().values();
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#views()
+   */
+  @Override
+  public Collection<View> views() {
+    return viewNames().stream().map(this::getView).collect(toList());
   }
 
 
@@ -393,6 +430,86 @@ public class DatabaseMetaDataProvider implements Schema {
 
 
   /**
+   * Creates a map of all view names,
+   * indexed by their upper-case names.
+   */
+  protected Map<String, String> loadAllViewNames() {
+    final ImmutableMap.Builder<String, String> viewNameMappings = ImmutableMap.builder();
+
+    try {
+      final DatabaseMetaData databaseMetaData = connection.getMetaData();
+
+      try (ResultSet viewResultSet = databaseMetaData.getTables(null, schemaName, null, tableTypesForViews())) {
+        while (viewResultSet.next()) {
+          final String viewName = readViewName(viewResultSet);
+
+          viewNameMappings.put(viewName.toUpperCase(), viewName);
+        }
+
+        return viewNameMappings.build();
+      }
+    } catch (SQLException e) {
+      throw new RuntimeSqlException("Error reading metadata for views", e);
+    }
+  }
+
+
+  /**
+   * Types for {@link DatabaseMetaData#getTables(String, String, String, String[])}
+   * used by {@link #loadAllViewNames()}.
+   */
+  protected String[] tableTypesForViews() {
+    return new String[] { "VIEW" };
+  }
+
+
+  /**
+   * Retrieves view name from a result set.
+   */
+  protected String readViewName(ResultSet viewResultSet) throws SQLException {
+    return viewResultSet.getString(TABLE_NAME);
+  }
+
+
+  /**
+   * Loads a view.
+   */
+  protected View loadView(String viewNameKey) {
+    final String realViewName = viewNames.get().get(viewNameKey);
+    if (realViewName == null) {
+      throw new IllegalArgumentException("View [" + viewNameKey + "] not found.");
+    }
+
+    return new View() {
+      @Override
+      public String getName() {
+        return realViewName;
+      }
+
+      @Override
+      public boolean knowsSelectStatement() {
+        return false;
+      }
+
+      @Override
+      public boolean knowsDependencies() {
+        return false;
+      }
+
+      @Override
+      public SelectStatement getSelectStatement() {
+        throw new UnsupportedOperationException("Cannot return SelectStatement as [" + realViewName + "] has been loaded from the database");
+      }
+
+      @Override
+      public String[] getDependencies() {
+        throw new UnsupportedOperationException("Cannot return dependencies as [" + realViewName + "] has been loaded from the database");
+      }
+    };
+  }
+
+
+  /**
    * Return a {@link Table} implementation. Note the metadata is read lazily.
    *
    * @see org.alfasoftware.morf.metadata.Schema#getTable(java.lang.String)
@@ -609,68 +726,6 @@ public class DatabaseMetaDataProvider implements Schema {
   }
 
 
-  private Map<String, View> viewMappings() {
-    final ImmutableMap.Builder<String, View> viewMappings = ImmutableMap.builder();
-    try {
-      final DatabaseMetaData databaseMetaData = connection.getMetaData();
-
-      try (ResultSet views = databaseMetaData.getTables(null, schemaName, null, getTableTypesForViews())) {
-        while (views.next()) {
-          final String viewName = getViewName(views);
-          log.debug("Found view [" + viewName + "]");
-          viewMappings.put(viewName.toUpperCase(), new View() {
-            @Override
-            public String getName() {
-              return viewName;
-            }
-
-            @Override
-            public boolean knowsSelectStatement() {
-              return false;
-            }
-
-            @Override
-            public boolean knowsDependencies() {
-              return false;
-            }
-
-            @Override
-            public SelectStatement getSelectStatement() {
-              throw new UnsupportedOperationException("Cannot return SelectStatement as [" + viewName + "] has been loaded from the database");
-            }
-
-            @Override
-            public String[] getDependencies() {
-              throw new UnsupportedOperationException("Cannot return dependencies as [" + viewName + "] has been loaded from the database");
-            }
-          });
-        }
-
-        return viewMappings.build();
-      }
-    } catch (SQLException sqle) {
-      throw new RuntimeSqlException("Error reading metadata for views", sqle);
-    }
-  }
-
-
-  /**
-   * Types for {@link DatabaseMetaData#getTables(String, String, String, String[])}
-   * used by {@link #populateViewMap()}.
-   */
-  protected String[] getTableTypesForViews() {
-    return new String[] { "VIEW" };
-  }
-
-
-  /**
-   * Retrieves view name from a result set.
-   */
-  protected String getViewName(ResultSet viewResultSet) throws SQLException {
-    return viewResultSet.getString(TABLE_NAME);
-  }
-
-
   /**
    * @param indexName The index name
    * @return Whether this is the primary key for this table
@@ -746,41 +801,6 @@ public class DatabaseMetaDataProvider implements Schema {
     public String toString() {
       return this.toStringHelper();
     }
-  }
-
-  /**
-   * @see org.alfasoftware.morf.metadata.Schema#viewExists(java.lang.String)
-   */
-  @Override
-  public boolean viewExists(String name) {
-    return viewMappings.get().containsKey(name.toUpperCase());
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.metadata.Schema#getView(java.lang.String)
-   */
-  @Override
-  public View getView(String name) {
-    return viewMappings.get().get(name.toUpperCase());
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.metadata.Schema#viewNames()
-   */
-  @Override
-  public Collection<String> viewNames() {
-    return viewMappings.get().values().stream().map(View::getName).collect(toList());
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.metadata.Schema#views()
-   */
-  @Override
-  public Collection<View> views() {
-    return viewMappings.get().values();
   }
 
   private static class PrimaryKeyColumn {
