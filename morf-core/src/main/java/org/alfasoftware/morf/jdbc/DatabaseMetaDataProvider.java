@@ -18,6 +18,7 @@ package org.alfasoftware.morf.jdbc;
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Lists.transform;
 import static com.google.common.collect.Maps.uniqueIndex;
+import static java.util.stream.Collectors.toList;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 
 import java.sql.Connection;
@@ -88,24 +89,15 @@ public class DatabaseMetaDataProvider implements Schema {
   protected static final int PRIMARY_KEY_SEQ = 5;
 
 
+  protected final Connection connection;
+  protected final String schemaName;
+
+
   private final Supplier<Map<String, String>> tableNameMappings = Suppliers.memoize(this::tableNameMappings);
 
   private final Supplier<Map<String, List<ColumnBuilder>>> columnMappings = Suppliers.memoize(this::columnMappings);
 
-  /**
-   * View cache
-   */
-  private Map<String, View> viewMap;
-
-  /**
-   * The connection from which meta data is provided.
-   */
-  protected final Connection    connection;
-
-  /**
-   * The database schema name, used in meta data queries.
-   */
-  protected final String        schemaName;
+  private final Supplier<Map<String, View>> viewMappings = Suppliers.memoize(this::viewMappings);
 
 
   /**
@@ -118,23 +110,6 @@ public class DatabaseMetaDataProvider implements Schema {
     super();
     this.connection = connection;
     this.schemaName = schemaName;
-  }
-
-
-  /**
-   * Use to access the metadata for the views in the specified connection.
-   * Lazily initialises the metadata, and only loads it once.
-   *
-   * @return View metadata.
-   */
-  protected final Map<String, View> viewMap() {
-    if (viewMap != null) {
-      return viewMap;
-    }
-
-    viewMap = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-    populateViewMap(viewMap);
-    return viewMap;
   }
 
   /**
@@ -264,7 +239,7 @@ public class DatabaseMetaDataProvider implements Schema {
 
 
   private Map<String, List<ColumnBuilder>> columnMappings() {
-    Map<String, List<ColumnBuilder>> columnMappings = new HashMap<>();
+    final Map<String, List<ColumnBuilder>> columnMappings = new HashMap<>();
     try {
       try {
         final DatabaseMetaData databaseMetaData = connection.getMetaData();
@@ -432,12 +407,8 @@ public class DatabaseMetaDataProvider implements Schema {
   }
 
 
-  /**
-   * Populate the given map with information on the views in the database.
-   *
-   * @param viewMap Map to populate.
-   */
-  protected void populateViewMap(Map<String, View> viewMap) {
+  private Map<String, View> viewMappings() {
+    final ImmutableMap.Builder<String, View> viewMappings = ImmutableMap.builder();
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
@@ -445,7 +416,7 @@ public class DatabaseMetaDataProvider implements Schema {
         while (views.next()) {
           final String viewName = getViewName(views);
           log.debug("Found view [" + viewName + "]");
-          viewMap.put(viewName, new View() {
+          viewMappings.put(viewName.toUpperCase(), new View() {
             @Override
             public String getName() {
               return viewName;
@@ -472,6 +443,8 @@ public class DatabaseMetaDataProvider implements Schema {
             }
           });
         }
+
+        return viewMappings.build();
       }
     } catch (SQLException sqle) {
       throw new RuntimeSqlException("Error reading metadata for views", sqle);
@@ -755,7 +728,7 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   @Override
   public boolean viewExists(String name) {
-    return viewMap().containsKey(name.toUpperCase());
+    return viewMappings.get().containsKey(name.toUpperCase());
   }
 
 
@@ -764,7 +737,7 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   @Override
   public View getView(String name) {
-    return viewMap().get(name.toUpperCase());
+    return viewMappings.get().get(name.toUpperCase());
   }
 
 
@@ -773,7 +746,7 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   @Override
   public Collection<String> viewNames() {
-    return viewMap().keySet();
+    return viewMappings.get().values().stream().map(View::getName).collect(toList());
   }
 
 
@@ -782,7 +755,7 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   @Override
   public Collection<View> views() {
-    return viewMap().values();
+    return viewMappings.get().values();
   }
 
   private static class PrimaryKeyColumn {
