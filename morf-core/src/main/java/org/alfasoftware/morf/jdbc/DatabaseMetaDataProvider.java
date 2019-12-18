@@ -101,16 +101,100 @@ public class DatabaseMetaDataProvider implements Schema {
 
 
   /**
-   * @param connection The database connection from which meta data should be
-   *          provided.
-   * @param schemaName The name of the schema in which the data is stored. This
-   *          might be null.
+   * @param connection The database connection from which meta data should be provided.
+   * @param schemaName The name of the schema in which the data is stored. This might be null.
    */
   protected DatabaseMetaDataProvider(Connection connection, String schemaName) {
     super();
     this.connection = connection;
     this.schemaName = schemaName;
   }
+
+
+  /**
+   * Creates a map of all table names,
+   * indexed by their upper-case names.
+   */
+  protected Map<String, String> tableNameMappings() {
+    final ImmutableMap.Builder<String, String> tableNameMappings = ImmutableMap.builder();
+
+    try {
+      final DatabaseMetaData databaseMetaData = connection.getMetaData();
+
+      try (ResultSet tableResultSet = databaseMetaData.getTables(null, schemaName, null, tableTypesForTables())) {
+        while (tableResultSet.next()) {
+          String tableName = readTableName(tableResultSet);
+          try {
+            String tableSchemaName = tableResultSet.getString(TABLE_SCHEM);
+            String tableType = tableResultSet.getString(TABLE_TYPE);
+
+            boolean tableIsSystemTable = isSystemTable(tableName);
+            boolean tableShouldBeIgnored = shouldIgnoreTable(tableName);
+
+            if (log.isDebugEnabled()) {
+              log.debug("Found table [" + tableName + "] of type [" + tableType + "] in schema [" + tableSchemaName + "]"
+                  + (tableIsSystemTable ? " - SYSTEM TABLE" : "") + (tableShouldBeIgnored ? " - IGNORED" : ""));
+            }
+
+            if (!tableIsSystemTable && !tableShouldBeIgnored) {
+              tableNameMappings.put(tableName.toUpperCase(), tableName);
+            }
+          }
+          catch (SQLException e) {
+            throw new RuntimeSqlException("Error reading metadata for table ["+tableName+"]", e);
+          }
+        }
+
+        return tableNameMappings.build();
+      }
+    }
+    catch (SQLException e) {
+      throw new RuntimeSqlException(e);
+    }
+  }
+
+
+  /**
+   * Types for {@link DatabaseMetaData#getTables(String, String, String, String[])}
+   * used by {@link #tableNameMappings()}.
+   */
+  protected String[] tableTypesForTables() {
+    return new String[] { "TABLE" };
+  }
+
+
+  /**
+   * Retrieves table name from a result set.
+   */
+  protected String readTableName(ResultSet tableResultSet) throws SQLException {
+    return tableResultSet.getString(TABLE_NAME);
+  }
+
+
+  /**
+   * Identify whether or not the table is one owned by the system, or owned by
+   * our application. The default implementation assumes that all tables we can
+   * access in the schema are under our control.
+   *
+   * @param tableName The table which we are accessing.
+   * @return <var>true</var> if the table is owned by the system
+   */
+  protected boolean isSystemTable(@SuppressWarnings("unused") String tableName) {
+    return false;
+  }
+
+
+  /**
+   * Identify whether or not the specified table should be ignored in the metadata. This is
+   * typically used to filter temporary tables.
+   *
+   * @param tableName The table which we are accessing.
+   * @return <var>true</var> if the table should be ignored, false otherwise.
+   */
+  protected boolean shouldIgnoreTable(@SuppressWarnings("unused") String tableName) {
+    return false;
+  }
+
 
   /**
    * @see org.alfasoftware.morf.metadata.Schema#isEmptyDatabase()
@@ -479,32 +563,6 @@ public class DatabaseMetaDataProvider implements Schema {
 
 
   /**
-   * Identify whether or not the table is one owned by the system, or owned by
-   * our application. The default implementation assumes that all tables we can
-   * access in the schema are under our control.
-   *
-   * @param tableName The table which we are accessing.
-   * @return <var>true</var> if the table is owned by the system, and should not
-   *         be managed by this code.
-   */
-  protected boolean isSystemTable(@SuppressWarnings("unused") String tableName) {
-    return false;
-  }
-
-
-  /**
-   * Identify whether or not the specified table should be ignored in the metadata. This is
-   * typically used to filter temporary tables.
-   *
-   * @param tableName The table which we are accessing.
-   * @return <var>true</var> if the table should be ignored, false otherwise.
-   */
-  protected boolean shouldIgnoreTable(@SuppressWarnings("unused") String tableName) {
-    return false;
-  }
-
-
-  /**
    * Converts a given SQL data type to a {@link DataType}.
    *
    * @param sqlType The jdbc data type to convert.
@@ -585,56 +643,6 @@ public class DatabaseMetaDataProvider implements Schema {
       result.add(getTable(tableName));
     }
     return result;
-  }
-
-
-  private Map<String, String> tableNameMappings() {
-    final ImmutableMap.Builder<String, String> tableNameMappings = ImmutableMap.builder();
-
-    try {
-      final DatabaseMetaData databaseMetaData = connection.getMetaData();
-
-      try (ResultSet tables = databaseMetaData.getTables(null, schemaName, null, getTableTypesForTables())) {
-        while (tables.next()) {
-          String tableName = getTableName(tables);
-          String tableSchemaName = tables.getString(TABLE_SCHEM);
-          String tableType = tables.getString(TABLE_TYPE);
-
-          boolean tableIsSystemTable = isSystemTable(tableName);
-          boolean tableShouldBeIgnored = shouldIgnoreTable(tableName);
-
-          if (log.isDebugEnabled()) {
-            log.debug("Found table [" + tableName + "] of type [" + tableType + "] in schema [" + tableSchemaName + "]"
-                + (tableIsSystemTable ? " - SYSTEM TABLE" : "") + (tableShouldBeIgnored ? " - IGNORED" : ""));
-          }
-
-          if (!tableIsSystemTable && !tableShouldBeIgnored) {
-            tableNameMappings.put(tableName.toUpperCase(), tableName);
-          }
-        }
-      }
-    } catch (SQLException sqle) {
-      throw new RuntimeSqlException("SQLException in readTableNames()", sqle);
-    }
-
-    return tableNameMappings.build();
-  }
-
-
-  /**
-   * Types for {@link DatabaseMetaData#getTables(String, String, String, String[])}
-   * used by {@link #readTableNames()}.
-   */
-  protected String[] getTableTypesForTables() {
-    return new String[] { "TABLE" };
-  }
-
-
-  /**
-   * Retrieves table name from a result set.
-   */
-  protected String getTableName(ResultSet tableResultSet) throws SQLException {
-    return tableResultSet.getString(TABLE_NAME);
   }
 
 
