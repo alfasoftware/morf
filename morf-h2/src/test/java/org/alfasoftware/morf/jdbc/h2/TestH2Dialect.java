@@ -755,11 +755,11 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedCreateViewStatement()
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedCreateViewStatements()
    */
   @Override
-  protected String expectedCreateViewStatement() {
-    return "CREATE VIEW " + tableName("TestView") + " AS (SELECT stringField FROM " + tableName("Test") + " WHERE (stringField = " + varCharCast("'blah'") + "))";
+  protected List<String> expectedCreateViewStatements() {
+    return Arrays.asList("CREATE VIEW " + tableName("TestView") + " AS (SELECT stringField FROM " + tableName("Test") + " WHERE (stringField = " + varCharCast("'blah'") + "))");
   }
 
 

@@ -432,7 +432,6 @@ public class TestDatabaseMetaDataProvider {
       case "ORACLE":
         return equalTo(viewName.toUpperCase());
       case "MY_SQL":
-      case "PGSQL":
         return equalTo(viewName.toLowerCase());
       default:
         return equalTo(viewName);
@@ -445,7 +444,6 @@ public class TestDatabaseMetaDataProvider {
       case "H2":
         return equalTo(tableName.toUpperCase());
       case "MY_SQL":
-      case "PGSQL":
         return equalTo(tableName.toLowerCase());
       default:
         return equalTo(tableName);

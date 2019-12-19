@@ -207,8 +207,14 @@ class PostgreSQLDialect extends SqlDialect {
     return ImmutableList.<String>builder()
         .addAll(preStatements)
         .add(createTableStatement.toString())
+        .add(addTableComment(table.getName()))
         .addAll(postStatements)
         .build();
+  }
+
+
+  private String addTableComment(String tableName) {
+    return "COMMENT ON TABLE " + schemaNamePrefix() + tableName + " IS 'REALNAME:[" + tableName + "]'";
   }
 
 
@@ -244,6 +250,7 @@ class PostgreSQLDialect extends SqlDialect {
         .addAll(renameTable)
         .addAll(renamePk)
         .addAll(renameSeq)
+        .add(addTableComment(to.getName()))
         .build();
   }
 
@@ -278,6 +285,20 @@ class PostgreSQLDialect extends SqlDialect {
   @Override
   public Collection<String> deleteAllFromTableStatements(Table table) {
     return ImmutableList.of("DELETE FROM " + schemaNamePrefix(table) + table.getName());
+  }
+
+
+  @Override
+  public Collection<String> viewDeploymentStatements(View view) {
+    return ImmutableList.<String>builder()
+        .addAll(super.viewDeploymentStatements(view))
+        .add(addViewComment(view.getName()))
+        .build();
+  }
+
+
+  private String addViewComment(String viewName) {
+    return "COMMENT ON VIEW " + viewName + " IS 'REALNAME:[" + viewName + "]'";
   }
 
 
@@ -628,7 +649,13 @@ class PostgreSQLDialect extends SqlDialect {
 
     return ImmutableList.<String>builder()
       .add(statement.toString())
+      .add(addIndexComment(index.getName()))
       .build();
+  }
+
+
+  private String addIndexComment(String indexName) {
+    return "COMMENT ON INDEX " + indexName + " IS 'REALNAME:[" + indexName + "]'";
   }
 
 

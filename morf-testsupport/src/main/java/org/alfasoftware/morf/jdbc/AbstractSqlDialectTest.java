@@ -462,10 +462,11 @@ public abstract class AbstractSqlDialectTest {
   /**
    * Tests the SQL for creating views.
    */
+  @SuppressWarnings("unchecked")
   @Test
   public void testCreateViewStatements() {
     compareStatements(
-      expectedCreateViewStatement(),
+      expectedCreateViewStatements(),
       testDialect.viewDeploymentStatements(testView));
   }
 
@@ -4526,8 +4527,8 @@ public abstract class AbstractSqlDialectTest {
   /**
    * @return The expected SQL statements for creating the test database view.
    */
-  protected String expectedCreateViewStatement() {
-    return "CREATE VIEW " + tableName("TestView") + " AS (SELECT stringField FROM " + tableName(TEST_TABLE) + " WHERE (stringField = " + stringLiteralPrefix() + "'blah'))";
+  protected List<String> expectedCreateViewStatements() {
+    return Arrays.asList("CREATE VIEW " + tableName("TestView") + " AS (SELECT stringField FROM " + tableName(TEST_TABLE) + " WHERE (stringField = " + stringLiteralPrefix() + "'blah'))");
   }
 
 
