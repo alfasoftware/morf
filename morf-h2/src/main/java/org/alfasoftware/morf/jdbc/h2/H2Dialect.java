@@ -360,7 +360,7 @@ class H2Dialect extends SqlDialect {
    *      org.alfasoftware.morf.metadata.Index)
    */
   @Override
-  public String indexDeploymentStatement(Table table, Index index) {
+  protected Collection<String> indexDeploymentStatements(Table table, Index index) {
     StringBuilder statement = new StringBuilder();
 
     statement.append("CREATE ");
@@ -370,7 +370,7 @@ class H2Dialect extends SqlDialect {
     statement.append("INDEX ").append(index.getName()).append(" ON ").append(table.getName()).append(" (")
         .append(Joiner.on(',').join(index.columnNames())).append(")");
 
-    return statement.toString();
+    return Collections.singletonList(statement.toString());
   }
 
 

@@ -172,7 +172,7 @@ public abstract class SqlDialect {
     statements.addAll(internalTableDeploymentStatements(table));
 
     for (Index index : table.indexes()) {
-      statements.add(indexDeploymentStatement(table, index));
+      statements.addAll(indexDeploymentStatements(table, index));
     }
 
     return statements.build();
@@ -3302,7 +3302,7 @@ public abstract class SqlDialect {
    * @return A collection of SQL statements.
    */
   public Collection<String> addIndexStatements(Table table, Index index) {
-    return Collections.singletonList(indexDeploymentStatement(table, index));
+    return indexDeploymentStatements(table, index);
   }
 
 
@@ -3313,7 +3313,7 @@ public abstract class SqlDialect {
    * @param index The index to deploy on the table.
    * @return The SQL to deploy the index on the table.
    */
-  protected String indexDeploymentStatement(Table table, Index index) {
+  protected Collection<String> indexDeploymentStatements(Table table, Index index) {
     StringBuilder statement = new StringBuilder();
 
     statement.append("CREATE ");
@@ -3330,7 +3330,7 @@ public abstract class SqlDialect {
       .append(Joiner.on(", ").join(index.columnNames()))
       .append(')');
 
-    return statement.toString();
+    return Collections.singletonList(statement.toString());
   }
 
 

@@ -564,7 +564,7 @@ class MySqlDialect extends SqlDialect {
    * @see org.alfasoftware.morf.jdbc.SqlDialect#indexDeploymentStatements(org.alfasoftware.morf.metadata.Table, org.alfasoftware.morf.metadata.Index)
    */
   @Override
-  public String indexDeploymentStatement(Table table, Index index) {
+  protected Collection<String> indexDeploymentStatements(Table table, Index index) {
     StringBuilder statement = new StringBuilder();
 
     statement.append("ALTER TABLE `");
@@ -579,7 +579,7 @@ class MySqlDialect extends SqlDialect {
              .append(Joiner.on("`, `").join(index.columnNames()))
              .append("`)");
 
-    return statement.toString();
+    return Collections.singletonList(statement.toString());
   }
 
 
@@ -875,7 +875,7 @@ class MySqlDialect extends SqlDialect {
 
     return ImmutableList.<String>builder()
       .addAll(indexDropStatements(table, existingIndex))
-      .add(indexDeploymentStatement(table, newIndex))
+      .addAll(indexDeploymentStatements(table, newIndex))
       .build();
   }
 

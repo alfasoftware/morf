@@ -27,6 +27,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -62,6 +63,7 @@ import org.apache.commons.logging.LogFactory;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 
 /**
@@ -640,7 +642,7 @@ class OracleDialect extends SqlDialect {
   public Collection<String> addIndexStatements(Table table, Index index) {
     return ImmutableList.of(
       // when adding indexes to existing tables, use PARALLEL NOLOGGING to efficiently build the index
-      indexDeploymentStatement(table, index) + " PARALLEL NOLOGGING",
+      Iterables.getOnlyElement(indexDeploymentStatements(table, index)) + " PARALLEL NOLOGGING",
       indexPostDeploymentStatements(index)
     );
   }
@@ -650,7 +652,7 @@ class OracleDialect extends SqlDialect {
    * @see org.alfasoftware.morf.jdbc.SqlDialect#indexDeploymentStatements(org.alfasoftware.morf.metadata.Table, org.alfasoftware.morf.metadata.Index)
    */
   @Override
-  protected String indexDeploymentStatement(Table table, Index index) {
+  protected Collection<String> indexDeploymentStatements(Table table, Index index) {
     StringBuilder createIndexStatement = new StringBuilder();
 
     // Specify the preamble
@@ -675,7 +677,7 @@ class OracleDialect extends SqlDialect {
       .append(Joiner.on(", ").join(index.columnNames()))
       .append(")");
 
-    return createIndexStatement.toString();
+    return Collections.singletonList(createIndexStatement.toString());
   }
 
 

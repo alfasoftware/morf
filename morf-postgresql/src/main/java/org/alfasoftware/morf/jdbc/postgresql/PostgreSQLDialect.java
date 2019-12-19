@@ -160,10 +160,11 @@ class PostgreSQLDialect extends SqlDialect {
     if(table.isTemporary()) {
       createTableStatement.append("TEMP ");
     }
-      createTableStatement.append("TABLE ")
-                          .append(schemaNamePrefix(table))
-                          .append(table.getName())
-                          .append(" (");
+
+    createTableStatement.append("TABLE ")
+                        .append(schemaNamePrefix(table))
+                        .append(table.getName())
+                        .append(" (");
 
     List<String> primaryKeys = new ArrayList<>();
     boolean first = true;
@@ -188,7 +189,6 @@ class PostgreSQLDialect extends SqlDialect {
       if (column.isPrimaryKey()) {
         primaryKeys.add(column.getName());
       }
-
       postStatements.add(addColumnComment(table, column));
       first = false;
     }
@@ -610,7 +610,7 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
-  public String indexDeploymentStatement(Table table, Index index) {
+  protected Collection<String> indexDeploymentStatements(Table table, Index index) {
     StringBuilder statement = new StringBuilder();
 
     statement.append("CREATE ");
@@ -626,7 +626,9 @@ class PostgreSQLDialect extends SqlDialect {
              .append(Joiner.on(",").join(index.columnNames()))
              .append(")");
 
-    return statement.toString();
+    return ImmutableList.<String>builder()
+      .add(statement.toString())
+      .build();
   }
 
 

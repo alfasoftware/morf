@@ -23,6 +23,7 @@ import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -197,7 +198,7 @@ class SqlServerDialect extends SqlDialect {
    *      org.alfasoftware.morf.metadata.Index)
    */
   @Override
-  public String indexDeploymentStatement(Table table, Index index) {
+  protected Collection<String> indexDeploymentStatements(Table table, Index index) {
     StringBuilder createIndexStatement = new StringBuilder();
     createIndexStatement.append("CREATE ");
     if (index.isUnique()) {
@@ -220,7 +221,7 @@ class SqlServerDialect extends SqlDialect {
     }
     createIndexStatement.append(")");
 
-    return createIndexStatement.toString();
+    return Collections.singletonList(createIndexStatement.toString());
   }
 
 
