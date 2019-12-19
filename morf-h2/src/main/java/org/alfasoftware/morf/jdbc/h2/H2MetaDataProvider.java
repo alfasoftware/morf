@@ -45,8 +45,8 @@ class H2MetaDataProvider extends DatabaseMetaDataProvider {
    * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isPrimaryKeyIndex(java.lang.String)
    */
   @Override
-  protected boolean isPrimaryKeyIndex(String indexName) {
-    return indexName.startsWith("PRIMARY_KEY");
+  protected boolean isPrimaryKeyIndex(RealName indexName) {
+    return indexName.getDbName().startsWith("PRIMARY_KEY");
   }
 
 
@@ -54,9 +54,9 @@ class H2MetaDataProvider extends DatabaseMetaDataProvider {
    * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isIgnoredTable(java.lang.String)
    */
   @Override
-  protected boolean isIgnoredTable(String tableName) {
+  protected boolean isIgnoredTable(RealName tableName) {
     // Ignore temporary tables
-    return tableName.toUpperCase().startsWith(H2Dialect.TEMPORARY_TABLE_PREFIX);
+    return tableName.getDbName().startsWith(H2Dialect.TEMPORARY_TABLE_PREFIX);
   }
 
 
@@ -66,7 +66,7 @@ class H2MetaDataProvider extends DatabaseMetaDataProvider {
    * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#setAdditionalColumnMetadata(java.lang.String, org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder, java.sql.ResultSet)
    */
   @Override
-  protected ColumnBuilder setAdditionalColumnMetadata(String tableName, ColumnBuilder columnBuilder, ResultSet columnMetaData) throws SQLException {
+  protected ColumnBuilder setAdditionalColumnMetadata(RealName tableName, ColumnBuilder columnBuilder, ResultSet columnMetaData) throws SQLException {
     columnBuilder = super.setAdditionalColumnMetadata(tableName, columnBuilder, columnMetaData);
     if (columnBuilder.isAutoNumbered()) {
       int startValue = getAutoIncrementStartValue(columnMetaData.getString(COLUMN_REMARKS));

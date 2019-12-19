@@ -92,13 +92,13 @@ public class DatabaseMetaDataProvider implements Schema {
   protected final String schemaName;
 
 
-  private final Supplier<Map<String, Map<String, ColumnBuilder>>> allColumns = Suppliers.memoize(this::loadAllColumns);
+  private final Supplier<Map<AName, Map<AName, ColumnBuilder>>> allColumns = Suppliers.memoize(this::loadAllColumns);
 
-  private final Supplier<Map<String, String>> tableNames = Suppliers.memoize(this::loadAllTableNames);
-  private final LoadingCache<String, Table> tableCache = CacheBuilder.newBuilder().build(CacheLoader.from(this::loadTable));
+  private final Supplier<Map<AName, RealName>> tableNames = Suppliers.memoize(this::loadAllTableNames);
+  private final LoadingCache<AName, Table> tableCache = CacheBuilder.newBuilder().build(CacheLoader.from(this::loadTable));
 
-  private final Supplier<Map<String, String>> viewNames = Suppliers.memoize(this::loadAllViewNames);
-  private final LoadingCache<String, View> viewCache = CacheBuilder.newBuilder().build(CacheLoader.from(this::loadView));
+  private final Supplier<Map<AName, RealName>> viewNames = Suppliers.memoize(this::loadAllViewNames);
+  private final LoadingCache<AName, View> viewCache = CacheBuilder.newBuilder().build(CacheLoader.from(this::loadView));
 
 
   /**
@@ -126,7 +126,7 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   @Override
   public boolean tableExists(String tableName) {
-    return tableNames.get().containsKey(tableName.toUpperCase());
+    return tableNames.get().containsKey(named(tableName));
   }
 
 
@@ -135,7 +135,7 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   @Override
   public Table getTable(String tableName) {
-    return tableCache.getUnchecked(tableName.toUpperCase());
+    return tableCache.getUnchecked(named(tableName));
   }
 
 
@@ -144,7 +144,7 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   @Override
   public Collection<String> tableNames() {
-    return tableNames.get().values();
+    return tableNames.get().values().stream().map(RealName::getRealName).collect(Collectors.toList());
   }
 
 
@@ -153,7 +153,7 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   @Override
   public Collection<Table> tables() {
-    return tableNames().stream().map(this::getTable).collect(Collectors.toList());
+    return tableNames.get().values().stream().map(RealName::getRealName).map(this::getTable).collect(Collectors.toList());
   }
 
 
@@ -162,7 +162,7 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   @Override
   public boolean viewExists(String viewName) {
-    return viewNames.get().containsKey(viewName.toUpperCase());
+    return viewNames.get().containsKey(named(viewName));
   }
 
 
@@ -171,7 +171,7 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   @Override
   public View getView(String viewName) {
-    return viewCache.getUnchecked(viewName.toUpperCase());
+    return viewCache.getUnchecked(named(viewName));
   }
 
 
@@ -180,7 +180,7 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   @Override
   public Collection<String> viewNames() {
-    return viewNames.get().values();
+    return viewNames.get().values().stream().map(RealName::getRealName).collect(Collectors.toList());
   }
 
 
@@ -189,7 +189,7 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   @Override
   public Collection<View> views() {
-    return viewNames().stream().map(this::getView).collect(Collectors.toList());
+    return viewNames.get().values().stream().map(RealName::getRealName).map(this::getView).collect(Collectors.toList());
   }
 
 
@@ -197,15 +197,15 @@ public class DatabaseMetaDataProvider implements Schema {
    * Creates a map of all table names,
    * indexed by their upper-case names.
    */
-  protected Map<String, String> loadAllTableNames() {
-    final ImmutableMap.Builder<String, String> tableNameMappings = ImmutableMap.builder();
+  protected Map<AName, RealName> loadAllTableNames() {
+    final ImmutableMap.Builder<AName, RealName> tableNameMappings = ImmutableMap.builder();
 
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
       try (ResultSet tableResultSet = databaseMetaData.getTables(null, schemaName, null, tableTypesForTables())) {
         while (tableResultSet.next()) {
-          String tableName = readTableName(tableResultSet);
+          RealName tableName = readTableName(tableResultSet);
           try {
             String tableSchemaName = tableResultSet.getString(TABLE_SCHEM);
             String tableType = tableResultSet.getString(TABLE_TYPE);
@@ -219,7 +219,7 @@ public class DatabaseMetaDataProvider implements Schema {
             }
 
             if (!systemTable && !ignoredTable) {
-              tableNameMappings.put(tableName.toUpperCase(), tableName);
+              tableNameMappings.put(tableName, tableName);
             }
           }
           catch (SQLException e) {
@@ -248,8 +248,9 @@ public class DatabaseMetaDataProvider implements Schema {
   /**
    * Retrieves table name from a result set.
    */
-  protected String readTableName(ResultSet tableResultSet) throws SQLException {
-    return tableResultSet.getString(TABLE_NAME);
+  protected RealName readTableName(ResultSet tableResultSet) throws SQLException {
+    String tableName = tableResultSet.getString(TABLE_NAME);
+    return createRealName(tableName, tableName);
   }
 
 
@@ -261,7 +262,7 @@ public class DatabaseMetaDataProvider implements Schema {
    * @param tableName The table which we are accessing.
    * @return <var>true</var> if the table is owned by the system
    */
-  protected boolean isSystemTable(@SuppressWarnings("unused") String tableName) {
+  protected boolean isSystemTable(@SuppressWarnings("unused") RealName tableName) {
     return false;
   }
 
@@ -273,7 +274,7 @@ public class DatabaseMetaDataProvider implements Schema {
    * @param tableName The table which we are accessing.
    * @return <var>true</var> if the table should be ignored, false otherwise.
    */
-  protected boolean isIgnoredTable(@SuppressWarnings("unused") String tableName) {
+  protected boolean isIgnoredTable(@SuppressWarnings("unused") RealName tableName) {
     return false;
   }
 
@@ -283,8 +284,8 @@ public class DatabaseMetaDataProvider implements Schema {
    * first indexed by their upper-case table names,
    * and then indexed by their upper-case column names.
    */
-  protected Map<String, Map<String, ColumnBuilder>> loadAllColumns() {
-    final Map<String, ImmutableMap.Builder<String, ColumnBuilder>> columnMappingBuilders = Maps.toMap(tableNames.get().keySet(), k -> ImmutableMap.builder());
+  protected Map<AName, Map<AName, ColumnBuilder>> loadAllColumns() {
+    final Map<AName, ImmutableMap.Builder<AName, ColumnBuilder>> columnMappingBuilders = Maps.toMap(tableNames.get().keySet(), k -> ImmutableMap.builder());
 
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
@@ -292,11 +293,12 @@ public class DatabaseMetaDataProvider implements Schema {
       try (ResultSet columnResultSet = databaseMetaData.getColumns(null, schemaName, null, null)) {
         while (columnResultSet.next()) {
           String tableName = columnResultSet.getString(COLUMN_TABLE_NAME);
-          if (!columnMappingBuilders.containsKey(tableName.toUpperCase())) {
-            continue;
+          RealName realTableName = tableNames.get().get(named(tableName));
+          if (realTableName == null) {
+            continue; // ignore columns of unknown tables
           }
 
-          String columnName = readColumnName(columnResultSet);
+          RealName columnName = readColumnName(columnResultSet);
           try {
             String typeName = columnResultSet.getString(COLUMN_TYPE_NAME);
             int typeCode = columnResultSet.getInt(COLUMN_DATA_TYPE);
@@ -304,17 +306,17 @@ public class DatabaseMetaDataProvider implements Schema {
             int scale = columnResultSet.getInt(COLUMN_DECIMAL_DIGITS);
             DataType dataType = dataTypeFromSqlType(typeCode, typeName, width);
 
-            ColumnBuilder column = SchemaUtils.column(columnName, dataType, width, scale);
-            column = setColumnNullability(tableName, column, columnResultSet);
-            column = setColumnAutonumbered(tableName, column, columnResultSet);
-            column = setColumnDefaultValue(tableName, column, columnResultSet);
-            column = setAdditionalColumnMetadata(tableName, column, columnResultSet);
+            ColumnBuilder column = SchemaUtils.column(columnName.getRealName(), dataType, width, scale);
+            column = setColumnNullability(realTableName, column, columnResultSet);
+            column = setColumnAutonumbered(realTableName, column, columnResultSet);
+            column = setColumnDefaultValue(realTableName, column, columnResultSet);
+            column = setAdditionalColumnMetadata(realTableName, column, columnResultSet);
 
             if (log.isDebugEnabled()) {
               log.debug("Found column [" + column + "] on table [" + tableName + "]");
             }
 
-            columnMappingBuilders.get(tableName.toUpperCase()).put(columnName.toUpperCase(), column);
+            columnMappingBuilders.get(realTableName).put(columnName, column);
           }
           catch (SQLException e) {
             throw new RuntimeSqlException("Error reading metadata for column ["+columnName+"] on table ["+tableName+"]", e);
@@ -335,8 +337,9 @@ public class DatabaseMetaDataProvider implements Schema {
   /**
    * Retrieves column name from a result set.
    */
-  protected String readColumnName(ResultSet columnResultSet) throws SQLException {
-    return columnResultSet.getString(COLUMN_NAME);
+  protected RealName readColumnName(ResultSet columnResultSet) throws SQLException {
+    String columnName = columnResultSet.getString(COLUMN_NAME);
+    return createRealName(columnName, columnName);
   }
 
 
@@ -386,7 +389,7 @@ public class DatabaseMetaDataProvider implements Schema {
    * Sets column nullability from a result set.
    */
   @SuppressWarnings("unused")
-  protected ColumnBuilder setColumnNullability(String tableName, ColumnBuilder column, ResultSet columnResultSet) throws SQLException {
+  protected ColumnBuilder setColumnNullability(RealName tableName, ColumnBuilder column, ResultSet columnResultSet) throws SQLException {
     boolean nullable = "YES".equals(columnResultSet.getString(COLUMN_IS_NULLABLE));
     return nullable ? column.nullable() : column;
   }
@@ -396,7 +399,7 @@ public class DatabaseMetaDataProvider implements Schema {
    * Sets column being autonumbered from a result set.
    */
   @SuppressWarnings("unused")
-  protected ColumnBuilder setColumnAutonumbered(String tableName, ColumnBuilder column, ResultSet columnResultSet) throws SQLException {
+  protected ColumnBuilder setColumnAutonumbered(RealName tableName, ColumnBuilder column, ResultSet columnResultSet) throws SQLException {
     boolean autoNumbered = "YES".equals(columnResultSet.getString(COLUMN_IS_AUTOINCREMENT));
     return autoNumbered ? column.autoNumbered(-1) : column;
   }
@@ -410,7 +413,7 @@ public class DatabaseMetaDataProvider implements Schema {
    * hence we don't want to include a default value in the definition of tables.
    */
   @SuppressWarnings("unused")
-  protected ColumnBuilder setColumnDefaultValue(String tableName, ColumnBuilder column, ResultSet columnResultSet) {
+  protected ColumnBuilder setColumnDefaultValue(RealName tableName, ColumnBuilder column, ResultSet columnResultSet) {
     String defaultValue = "version".equalsIgnoreCase(column.getName()) ? "0" : "";
     return column.defaultValue(defaultValue);
   }
@@ -420,7 +423,7 @@ public class DatabaseMetaDataProvider implements Schema {
    * Sets additional column information.
    */
   @SuppressWarnings("unused")
-  protected ColumnBuilder setAdditionalColumnMetadata(String tableName, ColumnBuilder column, ResultSet columnResultSet) throws SQLException {
+  protected ColumnBuilder setAdditionalColumnMetadata(RealName tableName, ColumnBuilder column, ResultSet columnResultSet) throws SQLException {
     return column;
   }
 
@@ -428,20 +431,21 @@ public class DatabaseMetaDataProvider implements Schema {
   /**
    * Loads a table.
    */
-  protected Table loadTable(String tableNameKey) {
-    final String realTableName = tableNames.get().get(tableNameKey);
+  protected Table loadTable(AName tableName) {
+    final RealName realTableName = tableNames.get().get(tableName);
+
     if (realTableName == null) {
-      throw new IllegalArgumentException("Table [" + tableNameKey + "] not found.");
+      throw new IllegalArgumentException("Table [" + tableName + "] not found.");
     }
 
-    final Map<String, Integer> primaryKey = loadTablePrimaryKey(realTableName);
+    final Map<AName, Integer> primaryKey = loadTablePrimaryKey(realTableName);
     final Supplier<List<Column>> columns = Suppliers.memoize(() -> loadTableColumns(realTableName, primaryKey));
     final Supplier<List<Index>> indexes = Suppliers.memoize(() -> loadTableIndexes(realTableName));
 
     return new Table() {
       @Override
       public String getName() {
-        return realTableName;
+        return realTableName.getRealName();
       }
 
       @Override
@@ -466,17 +470,17 @@ public class DatabaseMetaDataProvider implements Schema {
    * Loads the primary key column names for the given table name,
    * as a map of upper-case names and respective positions within the key.
    */
-  protected Map<String, Integer> loadTablePrimaryKey(String tableName) {
-    final ImmutableMap.Builder<String, Integer> columns = ImmutableMap.builder();
+  protected Map<AName, Integer> loadTablePrimaryKey(RealName tableName) {
+    final ImmutableMap.Builder<AName, Integer> columns = ImmutableMap.builder();
 
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
-      try (ResultSet primaryKeyResultSet = databaseMetaData.getPrimaryKeys(null, schemaName, tableName)) {
+      try (ResultSet primaryKeyResultSet = databaseMetaData.getPrimaryKeys(null, schemaName, tableName.getDbName())) {
         while (primaryKeyResultSet.next()) {
           int sequenceNumber = primaryKeyResultSet.getShort(PRIMARY_KEY_SEQ) - 1;
           String columnName = primaryKeyResultSet.getString(PRIMARY_COLUMN_NAME);
-          columns.put(columnName.toUpperCase(), sequenceNumber);
+          columns.put(named(columnName), sequenceNumber);
         }
 
         if (log.isDebugEnabled()) {
@@ -495,8 +499,8 @@ public class DatabaseMetaDataProvider implements Schema {
   /**
    * Loads the columns for the given table name.
    */
-  protected List<Column> loadTableColumns(String tableName, Map<String, Integer> primaryKey) {
-    final Collection<ColumnBuilder> originalColumns = allColumns.get().get(tableName.toUpperCase()).values();
+  protected List<Column> loadTableColumns(RealName tableName, Map<AName, Integer> primaryKey) {
+    final Collection<ColumnBuilder> originalColumns = allColumns.get().get(tableName).values();
     return createColumnsFrom(originalColumns, primaryKey);
   }
 
@@ -505,7 +509,7 @@ public class DatabaseMetaDataProvider implements Schema {
    * Creates a list of table columns from given columns and map of primary key columns.
    * Also reorders the primary key columns between themselves to reflect the order of columns within the primary key.
    */
-  protected static List<Column> createColumnsFrom(Collection<ColumnBuilder> originalColumns, Map<String, Integer> primaryKey) {
+  protected static List<Column> createColumnsFrom(Collection<ColumnBuilder> originalColumns, Map<AName, Integer> primaryKey) {
     final List<Column> primaryKeyColumns = new ArrayList<>(Collections.nCopies(primaryKey.size(), null));
     final List<Supplier<Column>> results = new ArrayList<>(originalColumns.size());
 
@@ -513,9 +517,8 @@ public class DatabaseMetaDataProvider implements Schema {
     // All non-primary-key columns simply keep their original positions
     Iterator<Integer> numberer = IntStream.rangeClosed(0, primaryKey.size()).iterator();
     for (ColumnBuilder column : originalColumns) {
-      String columnName = column.getName().toUpperCase();
-      if (primaryKey.containsKey(columnName)) {
-        Integer primaryKeyPosition = primaryKey.get(columnName);
+      if (primaryKey.containsKey(named(column.getName()))) {
+        Integer primaryKeyPosition = primaryKey.get(named(column.getName()));
         primaryKeyColumns.set(primaryKeyPosition, column.primaryKey());
         results.add(() -> primaryKeyColumns.get(numberer.next()));
       }
@@ -531,16 +534,16 @@ public class DatabaseMetaDataProvider implements Schema {
   /**
    * Loads the indexes for the given table name, except for the primary key index.
    */
-  protected List<Index> loadTableIndexes(String tableName) {
-    final Map<String, ImmutableList.Builder<String>> indexColumns = new HashMap<>();
-    final Map<String, Boolean> indexUniqueness = new HashMap<>();
+  protected List<Index> loadTableIndexes(RealName tableName) {
+    final Map<RealName, ImmutableList.Builder<RealName>> indexColumns = new HashMap<>();
+    final Map<RealName, Boolean> indexUniqueness = new HashMap<>();
 
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
-      try (ResultSet indexResultSet = databaseMetaData.getIndexInfo(null, schemaName, tableName, false, false)) {
+      try (ResultSet indexResultSet = databaseMetaData.getIndexInfo(null, schemaName, tableName.getDbName(), false, false)) {
         while (indexResultSet.next()) {
-          String indexName = readIndexName(indexResultSet);
+          RealName indexName = readIndexName(indexResultSet);
           try {
             if (indexName == null) {
               continue;
@@ -548,22 +551,23 @@ public class DatabaseMetaDataProvider implements Schema {
             if (isPrimaryKeyIndex(indexName)) {
               continue;
             }
-            if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName)) {
+            if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName.getDbName())) {
               continue;
             }
 
-            String columnName = indexResultSet.getString(INDEX_COLUMN_NAME);
-            String realColumnName = allColumns.get().get(tableName.toUpperCase()).get(columnName.toUpperCase()).getName();
+            String dbColumnName = indexResultSet.getString(INDEX_COLUMN_NAME);
+            String realColumnName = allColumns.get().get(tableName).get(named(dbColumnName)).getName();
+            RealName columnName = createRealName(dbColumnName, realColumnName);
             boolean unique = !indexResultSet.getBoolean(INDEX_NON_UNIQUE);
 
             if (log.isDebugEnabled()) {
-              log.debug("Found index column [" + realColumnName + "] for index [" + indexName  + ", unique: " + unique + "] on table [" + tableName + "]");
+              log.debug("Found index column [" + columnName + "] for index [" + indexName  + ", unique: " + unique + "] on table [" + tableName + "]");
             }
 
             indexUniqueness.put(indexName, unique);
 
             indexColumns.computeIfAbsent(indexName, k -> ImmutableList.builder())
-                .add(realColumnName);
+                .add(columnName);
           }
           catch (SQLException e) {
             throw new RuntimeSqlException("Error reading metadata for index ["+indexName+"] on table ["+tableName+"]", e);
@@ -584,24 +588,26 @@ public class DatabaseMetaDataProvider implements Schema {
   /**
    * Retrieves index name from a result set.
    */
-  protected String readIndexName(ResultSet indexResultSet) throws SQLException {
-    return indexResultSet.getString(INDEX_NAME);
+  protected RealName readIndexName(ResultSet indexResultSet) throws SQLException {
+    String indexName = indexResultSet.getString(INDEX_NAME);
+    return createRealName(indexName, indexName);
   }
 
 
   /**
    * Identify whether this is the primary key for this table.
    */
-  protected boolean isPrimaryKeyIndex(String indexName) {
-    return "PRIMARY".equals(indexName);
+  protected boolean isPrimaryKeyIndex(RealName indexName) {
+    return "PRIMARY".equals(indexName.getDbName());
   }
 
 
   /**
    * Creates an index from given info.
    */
-  protected static Index createIndexFrom(String indexName, boolean isUnique, List<String> columnNames) {
-    IndexBuilder index = SchemaUtils.index(indexName).columns(columnNames);
+  protected static Index createIndexFrom(RealName indexName, boolean isUnique, List<RealName> columnNames) {
+    List<String> realColumnNames = columnNames.stream().map(RealName::getRealName).collect(Collectors.toList());
+    IndexBuilder index = SchemaUtils.index(indexName.getRealName()).columns(realColumnNames);
     return isUnique ? index.unique() : index;
   }
 
@@ -610,21 +616,21 @@ public class DatabaseMetaDataProvider implements Schema {
    * Creates a map of all view names,
    * indexed by their upper-case names.
    */
-  protected Map<String, String> loadAllViewNames() {
-    final ImmutableMap.Builder<String, String> viewNameMappings = ImmutableMap.builder();
+  protected Map<AName, RealName> loadAllViewNames() {
+    final ImmutableMap.Builder<AName, RealName> viewNameMappings = ImmutableMap.builder();
 
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
       try (ResultSet viewResultSet = databaseMetaData.getTables(null, schemaName, null, tableTypesForViews())) {
         while (viewResultSet.next()) {
-          final String viewName = readViewName(viewResultSet);
+          RealName viewName = readViewName(viewResultSet);
 
           if (log.isDebugEnabled()) {
             log.debug("Found view [" + viewName + "]");
           }
 
-          viewNameMappings.put(viewName.toUpperCase(), viewName);
+          viewNameMappings.put(viewName, viewName);
         }
 
         return viewNameMappings.build();
@@ -647,24 +653,26 @@ public class DatabaseMetaDataProvider implements Schema {
   /**
    * Retrieves view name from a result set.
    */
-  protected String readViewName(ResultSet viewResultSet) throws SQLException {
-    return viewResultSet.getString(TABLE_NAME);
+  protected RealName readViewName(ResultSet viewResultSet) throws SQLException {
+    String viewName = viewResultSet.getString(TABLE_NAME);
+    return createRealName(viewName, viewName);
   }
 
 
   /**
    * Loads a view.
    */
-  protected View loadView(String viewNameKey) {
-    final String realViewName = viewNames.get().get(viewNameKey);
+  protected View loadView(AName viewName) {
+    final RealName realViewName = viewNames.get().get(viewName);
+
     if (realViewName == null) {
-      throw new IllegalArgumentException("View [" + viewNameKey + "] not found.");
+      throw new IllegalArgumentException("View [" + viewName + "] not found.");
     }
 
     return new View() {
       @Override
       public String getName() {
-        return realViewName;
+        return realViewName.getRealName();
       }
 
       @Override
@@ -679,13 +687,148 @@ public class DatabaseMetaDataProvider implements Schema {
 
       @Override
       public SelectStatement getSelectStatement() {
-        throw new UnsupportedOperationException("Cannot return SelectStatement as [" + realViewName + "] has been loaded from the database");
+        throw new UnsupportedOperationException("Cannot return SelectStatement as [" + realViewName.getRealName() + "] has been loaded from the database");
       }
 
       @Override
       public String[] getDependencies() {
-        throw new UnsupportedOperationException("Cannot return dependencies as [" + realViewName + "] has been loaded from the database");
+        throw new UnsupportedOperationException("Cannot return dependencies as [" + realViewName.getRealName() + "] has been loaded from the database");
       }
     };
+  }
+
+
+  /**
+   * Creates {@link AName} for searching the maps within this metadata provider.
+   *
+   * <p>
+   * Metadata providers need to use case insensitive keys for lookup maps, since
+   * database object name are considered case insensitive. While the same could
+   * be achieved by simply upper-casing all database object names, such approach
+   * can lead to mistakes.
+   *
+   * <p>
+   * On top of that, using {@link AName} instead of upper-cased strings has the
+   * advantage of strongly typed map keys, as opposed to maps of strings.
+   *
+   * @param name Case insensitive name of the object.
+   * @return {@link AName} instance suitable for use as a key in the lookup maps.
+   */
+  protected static AName named(String name) {
+    return new AName(name);
+  }
+
+
+  /**
+   * Creates {@link RealName}, which contractually remembers two versions of a
+   * database object name: the name as retrieved by the JDBC driver, and also
+   * the user-friendly camel-case name of that same object, often derived by
+   * looking at the comment of that object, or in schema descriptions.
+   *
+   * <p>
+   * Note: Any {@link RealName} is also {@link AName}, and thus can be used as a
+   * key in the lookup maps for convenience, just like any other {@link AName}.
+   *
+   * <p>
+   * However,
+   * the distinction beetween {@link RealName} and {@link AName} is important.
+   * Strongly typed {@link RealName} is used in places where the two versions
+   * of a database object name are known, as opposed to {@link AName} being used
+   * in places where case insensitive map lookup keys are good enough. Method
+   * signatures for example use {@link RealName} if they need a specific version
+   * of the database object name, and use {@link AName} if they do not really
+   * care (or cannot be expected to care) about the true letter case.
+   *
+   * <p>
+   * Never create an instance of {@link RealName} without knowing true values of
+   * the two versions of a database object name.
+   *
+   * @param dbName the name as retrieved by the JDBC driver
+   * @param realName the user-friendly camel-case name of that same object,
+   *                 often derived by looking at the comment of that object,
+   *                 or in schema descriptions.
+   * @return {@link RealName} instance holding the two name versions.
+   *         Can also be used as a key in the lookup maps, like {@link AName}.
+   */
+  protected static RealName createRealName(String dbName, String realName) {
+    return new RealName(dbName, realName);
+  }
+
+
+  /**
+   * Case insensitive name of a database object.
+   * Used as keys in the maps within this metadata provider.
+   * Also used for referencing database objects without worrying about letter case.
+   *
+   * <p>For more info,
+   * see {@link DatabaseMetaDataProvider#named(String)}
+   * and {@link DatabaseMetaDataProvider#createRealName(String)}
+   */
+  protected static class AName {
+    private final String aName;
+    private final int hashCode;
+
+    protected AName(String aName) {
+      this.aName = aName;
+      this.hashCode = aName.toLowerCase().hashCode();
+    }
+
+    protected String getAName() {
+      return aName;
+    }
+
+    @Override
+    public String toString() {
+      return aName + "/*";
+    }
+
+    @Override
+    public int hashCode() {
+      return hashCode;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (this == obj) return true;
+      if (obj == null) return false;
+      if (!(obj instanceof AName)) return false; // instanceof is fine as we actually want to consider children
+      AName that = (AName) obj;
+      return this.aName.equalsIgnoreCase(that.aName);
+    }
+  }
+
+
+  /**
+   * Two case sensitive names of a database object: the name as retrieved by the JDBC driver,
+   * and also the user-friendly camel-case name of that same object, often derived by looking
+   * at the comment of that object, or in schema descriptions.
+   *
+   * <p>Can also be used as {@link AName}, for convenience.
+   *
+   * <p>For more info,
+   * see {@link DatabaseMetaDataProvider#named(String)}
+   * and {@link DatabaseMetaDataProvider#createRealName(String)}
+   */
+  protected static final class RealName extends AName {
+
+    private final String realName;
+
+    private RealName(String dbName, String realName) {
+      super(dbName);
+      this.realName = realName;
+    }
+
+    public String getRealName() {
+      return realName;
+    }
+
+    public String getDbName() {
+      return getAName();
+    }
+
+    @Override
+    public String toString() {
+      return getDbName() + "/" + getRealName();
+    }
   }
 }

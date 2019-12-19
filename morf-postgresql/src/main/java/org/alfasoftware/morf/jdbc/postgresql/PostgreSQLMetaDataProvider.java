@@ -33,8 +33,8 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider {
    * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isPrimaryKeyIndex(java.lang.String)
    */
   @Override
-  protected boolean isPrimaryKeyIndex(String indexName) {
-    return indexName.toLowerCase().endsWith("_pk");
+  protected boolean isPrimaryKeyIndex(RealName indexName) {
+    return indexName.getDbName().endsWith("_pk");
   }
 
 
@@ -60,7 +60,7 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider {
    * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#setAdditionalColumnMetadata(java.lang.String, org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder, java.sql.ResultSet)
    */
   @Override
-  protected ColumnBuilder setAdditionalColumnMetadata(String tableName, ColumnBuilder columnBuilder, ResultSet columnMetaData) throws SQLException {
+  protected ColumnBuilder setAdditionalColumnMetadata(RealName tableName, ColumnBuilder columnBuilder, ResultSet columnMetaData) throws SQLException {
     columnBuilder = super.setAdditionalColumnMetadata(tableName, columnBuilder, columnMetaData);
 
     // read autonumber from comments

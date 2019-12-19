@@ -105,10 +105,10 @@ class NuoDBMetaDataProvider extends DatabaseMetaDataProvider {
 
 
   @Override
-  protected Map<String, Integer> loadTablePrimaryKey(String tableName) {
-    List<String> primaryKey = getPrimaryKeys(tableName);
+  protected Map<AName, Integer> loadTablePrimaryKey(RealName tableName) {
+    List<String> primaryKey = getPrimaryKeys(tableName.getDbName());
     Iterator<Integer> numberer = IntStream.rangeClosed(1, primaryKey.size()).iterator();
-    return Maps.toMap(primaryKey, k -> numberer.next());
+    return Maps.toMap(primaryKey.stream().map(k -> named(k)).iterator(), k -> numberer.next());
   }
 
 
@@ -122,24 +122,24 @@ class NuoDBMetaDataProvider extends DatabaseMetaDataProvider {
 
 
   @Override
-  protected List<Index> loadTableIndexes(String tableName) {
+  protected List<Index> loadTableIndexes(RealName tableName) {
     if (indexMetaData == null) {
       log.info("Initialising index metadata cache for schema [" + schemaName + "]");
       retrieveIndexMetaData(connection, schemaName);
     }
 
-    return indexMetaData.get(tableName);
+    return indexMetaData.get(tableName.getDbName());
   }
 
 
   @Override
-  protected List<Column> loadTableColumns(String tableName, Map<String, Integer> primaryKey) {
+  protected List<Column> loadTableColumns(RealName tableName, Map<AName, Integer> primaryKey) {
     if (columnMetaData == null) {
       log.info("Initialising column metadata cache for schema [" + schemaName + "]");
       columnMetaData = retrieveColumnMetaData(connection, schemaName);
     }
 
-    Collection<ColumnBuilder> originalColumns = columnMetaData.get(tableName);
+    Collection<ColumnBuilder> originalColumns = columnMetaData.get(tableName.getDbName());
     return createColumnsFrom(originalColumns, primaryKey);
   }
 
@@ -198,8 +198,8 @@ class NuoDBMetaDataProvider extends DatabaseMetaDataProvider {
    * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isPrimaryKeyIndex(java.lang.String)
    */
   @Override
-  protected boolean isPrimaryKeyIndex(String indexName) {
-    return indexName.endsWith("..PRIMARY_KEY");
+  protected boolean isPrimaryKeyIndex(RealName indexName) {
+    return indexName.getDbName().endsWith("..PRIMARY_KEY");
   }
 
 
@@ -207,9 +207,9 @@ class NuoDBMetaDataProvider extends DatabaseMetaDataProvider {
    * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isIgnoredTable(java.lang.String)
    */
   @Override
-  protected boolean isIgnoredTable(String tableName) {
+  protected boolean isIgnoredTable(RealName tableName) {
     // Ignore temporary tables
-    return tableName.toUpperCase().startsWith(NuoDBDialect.TEMPORARY_TABLE_PREFIX);
+    return tableName.getDbName().startsWith(NuoDBDialect.TEMPORARY_TABLE_PREFIX);
   }
 
 

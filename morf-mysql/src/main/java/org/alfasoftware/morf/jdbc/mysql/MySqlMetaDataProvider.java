@@ -66,7 +66,7 @@ class MySqlMetaDataProvider extends DatabaseMetaDataProvider {
    * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#setAdditionalColumnMetadata(java.lang.String, org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder, java.sql.ResultSet)
    */
   @Override
-  protected ColumnBuilder setAdditionalColumnMetadata(String tableName, ColumnBuilder columnBuilder, ResultSet columnMetaData) throws SQLException {
+  protected ColumnBuilder setAdditionalColumnMetadata(RealName tableName, ColumnBuilder columnBuilder, ResultSet columnMetaData) throws SQLException {
     columnBuilder = super.setAdditionalColumnMetadata(tableName, columnBuilder, columnMetaData);
     if (columnBuilder.isAutoNumbered()) {
       int startValue = getAutoIncrementStartValue(columnMetaData.getString(COLUMN_REMARKS));
