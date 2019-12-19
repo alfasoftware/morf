@@ -8,10 +8,13 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
+import org.apache.commons.lang.StringUtils;
 
 /**
  * Provides meta data from a PostgreSQL database connection.
@@ -20,27 +23,19 @@ import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
  */
 public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider {
 
-  /**
-   * @param connection The database connection from which meta data should be provided.
-   * @param schemaName The name of the schema in which the data is stored.
-   */
+  private static final Pattern REALNAME_COMMENT_MATCHER = Pattern.compile(".*REALNAME:\\[([^\\]]*)\\](/TYPE:\\[([^\\]]*)\\])?.*");
+
   public PostgreSQLMetaDataProvider(Connection connection, String schemaName) {
     super(connection, schemaName);
   }
 
 
-  /**
-   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isPrimaryKeyIndex(java.lang.String)
-   */
   @Override
   protected boolean isPrimaryKeyIndex(RealName indexName) {
     return indexName.getDbName().endsWith("_pk");
   }
 
 
-  /**
-   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#dataTypeFromSqlType(int, java.lang.String, int)
-   */
   @Override
   protected DataType dataTypeFromSqlType(int sqlType, String typeName, int width) {
     switch (sqlType) {
@@ -56,9 +51,6 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider {
   }
 
 
-  /**
-   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#setAdditionalColumnMetadata(java.lang.String, org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder, java.sql.ResultSet)
-   */
   @Override
   protected ColumnBuilder setAdditionalColumnMetadata(RealName tableName, ColumnBuilder columnBuilder, ResultSet columnMetaData) throws SQLException {
     columnBuilder = super.setAdditionalColumnMetadata(tableName, columnBuilder, columnMetaData);
@@ -76,5 +68,56 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider {
     }
 
     return columnBuilder;
+  }
+
+
+  @Override
+  protected RealName readColumnName(ResultSet columnResultSet) throws SQLException {
+    String columnName = columnResultSet.getString(COLUMN_NAME);
+    String comment = columnResultSet.getString(COLUMN_REMARKS);
+    String realName = matchComment(comment);
+    return StringUtils.isNotBlank(realName)
+        ? createRealName(columnName, realName)
+        : super.readColumnName(columnResultSet);
+  }
+
+
+  @Override
+  protected RealName readTableName(ResultSet tableResultSet) throws SQLException {
+    String tableName = tableResultSet.getString(TABLE_NAME);
+    String comment = tableResultSet.getString(TABLE_REMARKS);
+    String realName = matchComment(comment);
+    return StringUtils.isNotBlank(realName)
+        ? createRealName(tableName, realName)
+        : super.readTableName(tableResultSet);
+  }
+
+
+  @Override
+  protected RealName readViewName(ResultSet viewResultSet) throws SQLException {
+    String viewName = viewResultSet.getString(TABLE_NAME);
+    String comment = viewResultSet.getString(TABLE_REMARKS);
+    String realName = matchComment(comment);
+    return StringUtils.isNotBlank(realName)
+        ? createRealName(viewName, realName)
+        : super.readViewName(viewResultSet);
+  }
+
+
+  @Override
+  protected RealName readIndexName(ResultSet indexResultSet) throws SQLException {
+    // note: there is no INDEX_REMARKS field provided by the JDBC for indexes
+    return super.readIndexName(indexResultSet);
+  }
+
+
+  private String matchComment(String comment) {
+    if (StringUtils.isNotBlank(comment)) {
+      Matcher matcher = REALNAME_COMMENT_MATCHER.matcher(comment);
+      if (matcher.matches()) {
+        return matcher.group(1);
+      }
+    }
+    return null;
   }
 }

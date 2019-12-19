@@ -457,8 +457,6 @@ public class TestDatabaseMetaDataProvider {
     switch (databaseType) {
       case "H2":
         return equalTo(columnName.toUpperCase());
-      case "PGSQL":
-        return equalTo(columnName.toLowerCase());
       default:
         return equalTo(columnName);
     }
@@ -483,8 +481,6 @@ public class TestDatabaseMetaDataProvider {
     switch (databaseType) {
       case "H2":
         return equalTo(columnName.toUpperCase());
-      case "PGSQL":
-        return equalTo(columnName.toLowerCase());
       default:
         return equalTo(columnName);
     }
