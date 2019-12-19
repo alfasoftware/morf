@@ -6,15 +6,24 @@ import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.getDataTy
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Types;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
+import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import com.google.common.base.Suppliers;
+import com.google.common.collect.ImmutableMap;
 
 /**
  * Provides meta data from a PostgreSQL database connection.
@@ -23,7 +32,11 @@ import org.apache.commons.lang.StringUtils;
  */
 public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider {
 
+  private static final Log log = LogFactory.getLog(PostgreSQLMetaDataProvider.class);
+
   private static final Pattern REALNAME_COMMENT_MATCHER = Pattern.compile(".*REALNAME:\\[([^\\]]*)\\](/TYPE:\\[([^\\]]*)\\])?.*");
+
+  private final Supplier<Map<AName, RealName>> allIndexNames = Suppliers.memoize(this::loadAllIndexNames);
 
   public PostgreSQLMetaDataProvider(Connection connection, String schemaName) {
     super(connection, schemaName);
@@ -104,10 +117,49 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider {
   }
 
 
+  protected Map<AName, RealName> loadAllIndexNames() {
+    final ImmutableMap.Builder<AName, RealName> indexNames = ImmutableMap.builder();
+
+    String schema = StringUtils.isNotBlank(schemaName)
+        ? " JOIN pg_catalog.pg_namespace n ON n.oid = ci.relnamespace AND n.nspname = '" + schemaName + "'"
+        : "";
+
+    String sql = "SELECT ci.relname AS indexName, d.description AS indexRemark"
+                + " FROM pg_catalog.pg_index i"
+                + " JOIN pg_catalog.pg_class ci ON ci.oid = i.indexrelid"
+                + schema
+                + " JOIN pg_description d ON d.objoid = ci.oid";
+
+    try (Statement createStatement = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
+      try (ResultSet indexResultSet = createStatement.executeQuery(sql)) {
+        while (indexResultSet.next()) {
+          String indexName = indexResultSet.getString(1);
+          String comment = indexResultSet.getString(2);
+          String realName = matchComment(comment);
+
+          if (log.isDebugEnabled()) {
+            log.debug("Found index [" + indexName + "] with remark [" + comment + "] parsed as [" + realName + "] in schema [" + schemaName + "]");
+          }
+
+          if (StringUtils.isNotBlank(realName)) {
+            RealName realIndexName = createRealName(indexName, realName);
+            indexNames.put(realIndexName, realIndexName);
+          }
+        }
+
+        return indexNames.build();
+      }
+    }
+    catch (SQLException e) {
+      throw new RuntimeSqlException(e);
+    }
+  }
+
+
   @Override
   protected RealName readIndexName(ResultSet indexResultSet) throws SQLException {
-    // note: there is no INDEX_REMARKS field provided by the JDBC for indexes
-    return super.readIndexName(indexResultSet);
+    RealName readIndexName = super.readIndexName(indexResultSet);
+    return allIndexNames.get().getOrDefault(readIndexName, readIndexName);
   }
 
 

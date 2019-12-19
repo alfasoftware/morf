@@ -257,7 +257,8 @@ class PostgreSQLDialect extends SqlDialect {
 
   @Override
   public Collection<String> renameIndexStatements(Table table, String fromIndexName, String toIndexName) {
-    return ImmutableList.of("ALTER INDEX " + schemaNamePrefix() + fromIndexName + " RENAME TO " + toIndexName);
+    return ImmutableList.of("ALTER INDEX " + schemaNamePrefix() + fromIndexName + " RENAME TO " + toIndexName,
+      addIndexComment(toIndexName));
   }
 
 

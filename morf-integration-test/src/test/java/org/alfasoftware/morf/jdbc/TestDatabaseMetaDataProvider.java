@@ -465,8 +465,6 @@ public class TestDatabaseMetaDataProvider {
     switch (databaseType) {
       case "H2":
         return equalTo(indexName.toUpperCase());
-      case "PGSQL":
-        return equalTo(indexName.toLowerCase());
       case "ORACLE":
         return either(equalTo(indexName)).or(equalTo(indexName.toUpperCase()));
       default:

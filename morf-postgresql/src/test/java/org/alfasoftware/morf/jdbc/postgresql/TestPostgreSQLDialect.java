@@ -1067,6 +1067,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return ImmutableList.of(
       "ALTER TABLE testschema.Test RENAME TO Renamed",
       "ALTER INDEX testschema.Test_pk RENAME TO Renamed_pk",
+      "COMMENT ON INDEX Renamed_pk IS 'REALNAME:[Renamed_pk]'",
       "COMMENT ON TABLE testschema.Renamed IS 'REALNAME:[Renamed]'");
   }
 
@@ -1079,6 +1080,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return ImmutableList.of(
       "ALTER TABLE testschema.123456789012345678901234567890XXX RENAME TO Blah",
       "ALTER INDEX testschema.123456789012345678901234567890XXX_pk RENAME TO Blah_pk",
+      "COMMENT ON INDEX Blah_pk IS 'REALNAME:[Blah_pk]'",
       "COMMENT ON TABLE testschema.Blah IS 'REALNAME:[Blah]'"
         );
   }
@@ -1089,7 +1091,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedRenameIndexStatements() {
-    return ImmutableList.of("ALTER INDEX testschema.TempTest_1 RENAME TO TempTest_2");
+    return ImmutableList.of("ALTER INDEX testschema.TempTest_1 RENAME TO TempTest_2",
+                            "COMMENT ON INDEX TempTest_2 IS 'REALNAME:[TempTest_2]'");
   }
 
 
