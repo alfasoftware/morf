@@ -27,10 +27,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.alfasoftware.morf.metadata.View;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import org.alfasoftware.morf.metadata.View;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Collections2;
@@ -193,6 +193,14 @@ public class ViewChanges {
    */
   public boolean isEmpty() {
     return dropSet.isEmpty() && deploySet.isEmpty();
+  }
+
+
+  @Override
+  public String toString() {
+    return this.getClass().getSimpleName()
+        + "; drop " + dropSet
+        + "; add " + deploySet;
   }
 
 

@@ -831,4 +831,10 @@ public class DatabaseMetaDataProvider implements Schema {
       return getDbName() + "/" + getRealName();
     }
   }
+
+
+  @Override
+  public String toString() {
+    return "Schema[" + tables().size() + " tables, " + views().size() + " views]";
+  }
 }

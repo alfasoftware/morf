@@ -111,4 +111,9 @@ class ViewBean implements View {
   public String[] getDependencies() {
     return Arrays.copyOf(dependencies, dependencies.length);
   }
+
+  @Override
+  public String toString() {
+    return "View-" + getName();
+  }
 }

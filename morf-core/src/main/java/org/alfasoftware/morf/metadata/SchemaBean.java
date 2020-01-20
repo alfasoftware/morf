@@ -37,12 +37,12 @@ class SchemaBean implements Schema {
   /**
    * Holds all the tables represented in this schema.
    */
-  private final Map<String, Table> tables = new HashMap<String, Table>();
+  private final Map<String, Table> tables = new HashMap<>();
 
   /**
    * Holds all the views represented in this schema.
    */
-  private final Map<String, View> views = new HashMap<String, View>();
+  private final Map<String, View> views = new HashMap<>();
 
 
   /**
@@ -161,7 +161,7 @@ class SchemaBean implements Schema {
   @Override
   public Collection<String> tableNames() {
     // Implemented like this rather than tables.keySet() to retain case
-    Set<String> names = new HashSet<String>();
+    Set<String> names = new HashSet<>();
     for (Table table : tables.values()) {
       names.add(table.getName());
     }
@@ -204,7 +204,7 @@ class SchemaBean implements Schema {
   @Override
   public Collection<String> viewNames() {
     // Implemented like this rather than views.keySet() to retain case
-    Set<String> names = new HashSet<String>();
+    Set<String> names = new HashSet<>();
     for (View view : views.values()) {
       names.add(view.getName());
     }
@@ -218,5 +218,11 @@ class SchemaBean implements Schema {
   @Override
   public Collection<View> views() {
     return views.values();
+  }
+
+
+  @Override
+  public String toString() {
+    return "Schema[" + tables().size() + " tables, " + views().size() + " views]";
   }
 }

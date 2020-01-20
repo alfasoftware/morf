@@ -21,16 +21,14 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
-
 import java.util.Set;
 import java.util.TreeMap;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.View;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * Loads the set of view changes which need to be made to match the target schema.
@@ -151,6 +149,14 @@ class ExistingViewStateLoader {
      */
     public boolean isEmpty() {
       return viewsToDrop.isEmpty() && viewsToDeploy.isEmpty();
+    }
+
+
+    @Override
+    public String toString() {
+      return this.getClass().getSimpleName()
+          + "; drop " + viewsToDrop
+          + "; add " + viewsToDeploy;
     }
   }
 }
