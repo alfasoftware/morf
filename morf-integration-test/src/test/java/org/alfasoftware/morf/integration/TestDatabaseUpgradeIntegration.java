@@ -15,6 +15,9 @@
 
 package org.alfasoftware.morf.integration;
 
+import static com.google.common.base.Predicates.compose;
+import static com.google.common.base.Predicates.equalTo;
+import static com.google.common.base.Predicates.not;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toSet;
 import static org.alfasoftware.morf.metadata.DataSetUtils.dataSetProducer;
@@ -27,6 +30,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.metadata.SchemaUtils.view;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
+import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deployedViewsTable;
@@ -73,6 +77,7 @@ import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RenameTable;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RepeatedAdditionOfTable;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ReplacePrimaryKey;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ReplaceTableWithView;
 import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.DatabaseDataSetConsumer;
@@ -81,6 +86,7 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor.ResultSetProcessor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
+import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaHomology;
@@ -100,6 +106,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -207,7 +214,8 @@ public class TestDatabaseUpgradeIntegration {
       view("view4", select(field("valCol"), field("keyCol1")).from("view2"), "view3"),
       view("view1", select(field("valCol"), field("keyCol1")).from("BasicTable").innerJoin(tableRef("KeylessTable"))),
       view("view3", select(field("valCol"), field("keyCol1")).from("view2"), "view2"),
-      view("view2", select(field("valCol"), field("keyCol1")).from("view1"), "view1")
+      view("view2", select(field("valCol"), field("keyCol1")).from("view1"), "view1"),
+      view("viewId", select(field("id"), field("someValue")).from("IdTable"))
     )
   );
 
@@ -810,6 +818,35 @@ public class TestDatabaseUpgradeIntegration {
         );
 
     compareTableRecords("TableAsSelect", expectedRecords.records("TableAsSelect"));
+  }
+
+
+  /**
+   * Test that renaming a table works
+   */
+  @Test
+  public void testReplaceTableWithView() {
+
+    Table originalTable = schema.getTable("BasicTable");
+
+    Table newTable = table("BasicTableTmp")
+      .columns(originalTable.columns().toArray(new Column[0]));
+
+    View newView = view("BasicTable", select(literal(1).as("one")).from("BasicTableTmp"), "viewId"); // add dependency to entangle the new view with the old views, to engage in topology sorting
+
+    FluentIterable<Table> newSchemaTables = FluentIterable.from(schema.tables())
+      .filter(compose(not(equalTo("BasicTable")), Table::getName))
+      .append(newTable);
+
+    List<View> newSchemaViews = FluentIterable.from(schema.views())
+      .filter(v -> !v.getName().equalsIgnoreCase("view1")) // re-add view1 now dependent on BasicTable view
+      .append(view("view1", select(field("valCol"), field("keyCol1")).from("BasicTable").innerJoin(tableRef("KeylessTable")), "BasicTable"))
+      .append(newView) // and add the new BasicTable view
+      .toList();
+
+    Schema expectedSchema = schema(schema(newSchemaTables), schema(newSchemaViews));
+
+    verifyUpgrade(expectedSchema, ReplaceTableWithView.class);
   }
 
 
