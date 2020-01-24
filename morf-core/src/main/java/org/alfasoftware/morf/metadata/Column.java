@@ -68,7 +68,9 @@ public interface Column extends ColumnType {
 
 
   /**
-   * Helper for {@link #toString()} implementations.
+   * Helper for {@link Object#toString()} implementations.
+   *
+   * @return String representation of the column.
    */
   public default String toStringHelper() {
     return new StringBuilder()
