@@ -405,8 +405,8 @@ public class TestUpgrade {
     // Then
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
     assertEquals("Upgrade class", ChangeCar.class, result.getSteps().get(0).getClass());
-
-    assertEquals("SQL", "[X, G, IdTable, CM, A, C]", result.getSql().toString());
+    // no drop view, only delete from DeployedViews
+    assertEquals("SQL", "[G, IdTable, CM, A, C]", result.getSql().toString());
   }
 
 
@@ -537,8 +537,8 @@ public class TestUpgrade {
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
     assertEquals("Marker step JIRA ID", "\u2014", result.getSteps().get(0).getJiraId());
     assertEquals("Marker step description", "Update database views", result.getSteps().get(0).getDescription());
-
-    assertEquals("SQL", "[X, D, A, C]", result.getSql().toString());
+    // no drop view, only delete from DeployedViews
+    assertEquals("SQL", "[D, A, C]", result.getSql().toString());
   }
 
 
@@ -775,7 +775,7 @@ public class TestUpgrade {
           versionColumn(),
           column("upgradeUUID", DataType.STRING, 100).nullable(),
           column("description", DataType.STRING, 200).nullable(),
-          column("appliedTime", DataType.BIG_INTEGER, 14).nullable()
+          column("appliedTime", DataType.BIG_INTEGER).nullable()
         );
   }
 

@@ -20,13 +20,13 @@ import java.sql.SQLException;
 
 import javax.sql.DataSource;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import org.alfasoftware.morf.dataset.DataSetConsumer;
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.dataset.TableLoader;
 import org.alfasoftware.morf.metadata.Table;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import com.google.inject.Inject;
 
 
@@ -148,7 +148,7 @@ public class DatabaseDataSetConsumer implements DataSetConsumer {
       .withConnection(connection)
       .withSqlScriptExecutor(sqlExecutor)
       .withDialect(sqlDialect)
-      .explicitCommit("H2".equals(connectionResources.getDatabaseType()))
+      .explicitCommit(true)
       .truncateBeforeLoad()
       .insertingWithPresetAutonums()
       .forTable(table)

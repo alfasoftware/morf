@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.alfasoftware.morf.metadata.Column;
-import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.AbstractSelectStatement;
@@ -153,11 +152,13 @@ class HumanReadableStatementHelper {
    * @return the column definition as a string
    */
   private static String generateColumnDefinitionString(final Column definition) {
-    if (definition.getType() == DataType.DECIMAL) {
+    if (definition.getType().hasScale()) {
       return String.format("%s(%d,%d)", definition.getType(), definition.getWidth(), definition.getScale());
     }
-
-    return String.format("%s(%d)", definition.getType(), definition.getWidth());
+    if (definition.getType().hasWidth()) {
+      return String.format("%s(%d)", definition.getType(), definition.getWidth());
+    }
+    return String.format("%s", definition.getType());
   }
 
 

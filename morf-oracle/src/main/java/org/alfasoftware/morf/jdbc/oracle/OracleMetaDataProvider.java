@@ -41,9 +41,11 @@ import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.ColumnType;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
@@ -244,7 +246,7 @@ public class OracleMetaDataProvider implements Schema {
 
         int autoIncrementFrom = getAutoIncrementStartValue(columnComment);
         boolean isAutoIncrement = autoIncrementFrom != -1;
-        autoIncrementFrom = autoIncrementFrom == -1 ? 1 : autoIncrementFrom;
+        autoIncrementFrom = autoIncrementFrom == -1 ? 0 : autoIncrementFrom;
 
         // Deferred type column required as tables not yet excluded will be processed at this stage.
         currentTable.columns().add(
@@ -357,6 +359,12 @@ public class OracleMetaDataProvider implements Schema {
             @Override
             public List<String> columnNames() {
               return columnNames;
+            }
+
+
+            @Override
+            public String toString() {
+              return this.toStringHelper();
             }
           });
           indexCount++;
@@ -798,22 +806,12 @@ public class OracleMetaDataProvider implements Schema {
 
 
   /**
-   * Holds a column's properties.
-   */
-  private static final class ColumnProperties {
-    DataType dataType;
-    int width;
-    int scale;
-  }
-
-
-  /**
    * This implementation of {@link Column} defers determining the data type of
    * the column to allow for tables which may use data types not supported by
    * Morf to be included in a schema. Exceptions regarding the incompatibility
    * will only be thrown if the data type is queried.
    */
-  private static final class DeferredTypeColumn implements Column{
+  private static final class DeferredTypeColumn implements Column {
 
     private final String columnName;
     private final boolean nullable;
@@ -822,7 +820,7 @@ public class OracleMetaDataProvider implements Schema {
     private final int autoIncrementFrom;
     private final String defaultValue;
 
-    private final com.google.common.base.Supplier<ColumnProperties> properties;
+    private final com.google.common.base.Supplier<ColumnType> columnType;
 
     DeferredTypeColumn(String dataTypeName, int dataLength, int precision, int scale, String commentType, String columName,
         boolean nullable, boolean primaryKey, boolean autoIncrement, int autoIncrementFrom, String defaultValue) {
@@ -833,25 +831,21 @@ public class OracleMetaDataProvider implements Schema {
       this.autoIncrement = autoIncrement;
       this.autoIncrementFrom = autoIncrementFrom;
       this.defaultValue = defaultValue;
-      this.properties = Suppliers.memoize(() -> {
-        ColumnProperties columnProperties = new ColumnProperties();
+      this.columnType = Suppliers.memoize(() -> {
         DataType dataType = dataTypeForColumn(columnName, dataTypeName, commentType);
 
         if (commentType == null && dataType == DataType.DECIMAL) {
-          // Oracle doesn't store the precision for integer columns - so it's
-          // the version
+          // Oracle doesn't store the precision for integer columns - so it's the version
           if (precision == 0) {
             dataType = DataType.INTEGER;
-            // Only the ID column can be the primary key
-          } else if (precision == 19 && columnName.equalsIgnoreCase("id")) {
+          }
+          // Only the ID column can be the BIG_INTEGER primary key
+          else if (precision == 19 && columnName.equalsIgnoreCase("id")) {
             dataType = DataType.BIG_INTEGER;
           }
         }
 
-        columnProperties.scale = DataType.STRING.equals(dataType) ? 0 : scale;
-        columnProperties.width = DataType.STRING == dataType ? dataLength : precision;
-        columnProperties.dataType = dataType;
-        return columnProperties;
+        return SchemaUtils.type(dataType, DataType.STRING == dataType ? dataLength : precision, scale);
       });
     }
 
@@ -888,17 +882,22 @@ public class OracleMetaDataProvider implements Schema {
 
     @Override
     public DataType getType() {
-      return properties.get().dataType;
+      return columnType.get().getType();
     }
 
     @Override
     public int getWidth() {
-      return properties.get().width;
+      return columnType.get().getWidth();
     }
 
     @Override
     public int getScale() {
-      return properties.get().scale;
+      return columnType.get().getScale();
+    }
+
+    @Override
+    public String toString() {
+      return this.toStringHelper();
     }
   }
 

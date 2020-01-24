@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.metadata;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Defines a database table.
@@ -42,6 +43,16 @@ public interface Table {
    * @return The column definitions for the table.
    */
   public List<Column> columns();
+
+
+  /**
+   * @return The column definitions of the columns in the primary key.
+   */
+  public default List<Column> primaryKey() {
+    return columns().stream()
+        .filter(Column::isPrimaryKey)
+        .collect(Collectors.toList());
+  }
 
 
   /**

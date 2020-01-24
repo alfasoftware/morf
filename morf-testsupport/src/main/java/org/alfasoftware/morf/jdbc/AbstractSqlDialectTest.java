@@ -18,7 +18,6 @@ package org.alfasoftware.morf.jdbc;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static org.alfasoftware.morf.metadata.DataSetUtils.statementParameters;
-import static org.alfasoftware.morf.metadata.DataType.BLOB;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.idColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
@@ -258,13 +257,13 @@ public abstract class AbstractSqlDialectTest {
           idColumn(),
           versionColumn(),
           column(STRING_FIELD, DataType.STRING, 3).nullable(),
-          column(INT_FIELD, DataType.DECIMAL, 8).nullable(),
+          column(INT_FIELD, DataType.INTEGER).nullable(),
           column(FLOAT_FIELD, DataType.DECIMAL, 13, 2),
           column(DATE_FIELD, DataType.DATE).nullable(),
           column(BOOLEAN_FIELD, DataType.BOOLEAN).nullable(),
           column(CHAR_FIELD, DataType.STRING, 1).nullable(),
-          column(BLOB_FIELD, DataType.BLOB, 16384).nullable(),
-          column(BIG_INTEGER_FIELD, DataType.BIG_INTEGER, 0, 0).nullable().defaultValue("12345"),
+          column(BLOB_FIELD, DataType.BLOB).nullable(),
+          column(BIG_INTEGER_FIELD, DataType.BIG_INTEGER).nullable().defaultValue("12345"),
           column(CLOB_FIELD, DataType.CLOB).nullable()
             ).indexes(
               index("Test_NK").unique().columns(STRING_FIELD),
@@ -277,13 +276,13 @@ public abstract class AbstractSqlDialectTest {
           idColumn(),
           versionColumn(),
           column(STRING_FIELD, DataType.STRING, 3).nullable(),
-          column(INT_FIELD, DataType.DECIMAL, 8).nullable(),
+          column(INT_FIELD, DataType.INTEGER).nullable(),
           column(FLOAT_FIELD, DataType.DECIMAL, 13, 2),
           column(DATE_FIELD, DataType.DATE).nullable(),
           column(BOOLEAN_FIELD, DataType.BOOLEAN).nullable(),
           column(CHAR_FIELD, DataType.STRING, 1).nullable(),
-          column(BLOB_FIELD, DataType.BLOB, 16384).nullable(),
-          column(BIG_INTEGER_FIELD, DataType.BIG_INTEGER, 0, 0).nullable().defaultValue("12345"),
+          column(BLOB_FIELD, DataType.BLOB).nullable(),
+          column(BIG_INTEGER_FIELD, DataType.BIG_INTEGER).nullable().defaultValue("12345"),
           column(CLOB_FIELD, DataType.CLOB).nullable()
             ).indexes(
               index("TempTest_NK").unique().columns(STRING_FIELD),
@@ -355,11 +354,11 @@ public abstract class AbstractSqlDialectTest {
         .columns(
           idColumn(),
           versionColumn(),
-          column(STRING_FIELD, DataType.STRING, 3, 0),
-          column(INT_FIELD, DataType.DECIMAL, 8, 0),
-          column(BOOLEAN_FIELD, DataType.BOOLEAN, 0, 0),
-          column(DATE_FIELD, DataType.DATE, 0, 0),
-          column(BLOB_FIELD, DataType.BLOB, 16384, 0)
+          column(STRING_FIELD, DataType.STRING, 3),
+          column(INT_FIELD, DataType.DECIMAL, 8),
+          column(BOOLEAN_FIELD, DataType.BOOLEAN),
+          column(DATE_FIELD, DataType.DATE),
+          column(BLOB_FIELD, DataType.BLOB)
             );
 
     // Temporary version of the test table with non null columns
@@ -367,11 +366,11 @@ public abstract class AbstractSqlDialectTest {
         .columns(
           idColumn(),
           versionColumn(),
-          column(STRING_FIELD, DataType.STRING, 3, 0),
-          column(INT_FIELD, DataType.DECIMAL, 8, 0),
-          column(BOOLEAN_FIELD, DataType.BOOLEAN, 0, 0),
-          column(DATE_FIELD, DataType.DATE, 0, 0),
-          column(BLOB_FIELD, DataType.BLOB, 16384, 0)
+          column(STRING_FIELD, DataType.STRING, 3),
+          column(INT_FIELD, DataType.DECIMAL, 8),
+          column(BOOLEAN_FIELD, DataType.BOOLEAN),
+          column(DATE_FIELD, DataType.DATE),
+          column(BLOB_FIELD, DataType.BLOB)
             );
 
     // Test table with composite primary key
@@ -379,7 +378,7 @@ public abstract class AbstractSqlDialectTest {
         .columns(
           idColumn(),
           versionColumn(),
-          column(STRING_FIELD, DataType.STRING, 3, 0),
+          column(STRING_FIELD, DataType.STRING, 3),
           column(SECOND_PRIMARY_KEY, DataType.STRING, 3).primaryKey()
             );
 
@@ -396,19 +395,19 @@ public abstract class AbstractSqlDialectTest {
 
     Table inner = table("Inner")
         .columns(
-          column(INNER_FIELD_A, DataType.STRING, 3, 0),
-          column(INNER_FIELD_B, DataType.STRING, 3, 0)
+          column(INNER_FIELD_A, DataType.STRING, 3),
+          column(INNER_FIELD_B, DataType.STRING, 3)
             );
 
     Table insertAB = table("InsertAB")
         .columns(
-          column(INNER_FIELD_A, DataType.STRING, 3, 0),
-          column(INNER_FIELD_B, DataType.STRING, 3, 0)
+          column(INNER_FIELD_A, DataType.STRING, 3),
+          column(INNER_FIELD_B, DataType.STRING, 3)
             );
 
     Table insertA = table("InsertA")
         .columns(
-          column(INNER_FIELD_A, DataType.STRING, 3, 0)
+          column(INNER_FIELD_A, DataType.STRING, 3)
             );
 
     // Builds a test schema
@@ -463,10 +462,11 @@ public abstract class AbstractSqlDialectTest {
   /**
    * Tests the SQL for creating views.
    */
+  @SuppressWarnings("unchecked")
   @Test
   public void testCreateViewStatements() {
     compareStatements(
-      expectedCreateViewStatement(),
+      expectedCreateViewStatements(),
       testDialect.viewDeploymentStatements(testView));
   }
 
@@ -3336,7 +3336,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testAddIntegerColumn() {
-    testAlterTableColumn(AlterationType.ADD, column("intField_new", DataType.INTEGER, 6).nullable(), expectedAlterTableAddIntegerColumnStatement());
+    testAlterTableColumn(AlterationType.ADD, column("intField_new", DataType.INTEGER).nullable(), expectedAlterTableAddIntegerColumnStatement());
   }
 
 
@@ -3345,7 +3345,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testAlterIntegerColumn() {
-    testAlterTableColumn(TEST_TABLE, AlterationType.ALTER, getColumn(TEST_TABLE, INT_FIELD), column(INT_FIELD, DataType.DECIMAL, 10).nullable(), expectedAlterTableAlterIntegerColumnStatement());
+    testAlterTableColumn(TEST_TABLE, AlterationType.ALTER, getColumn(TEST_TABLE, INT_FIELD), column(INT_FIELD, DataType.INTEGER), expectedAlterTableAlterIntegerColumnStatement());
   }
 
 
@@ -3380,7 +3380,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testAddBooleanColumn() {
-    testAlterTableColumn(AlterationType.ADD, column("booleanField_new", DataType.BOOLEAN, 6).nullable(), expectedAlterTableAddBooleanColumnStatement());
+    testAlterTableColumn(AlterationType.ADD, column("booleanField_new", DataType.BOOLEAN).nullable(), expectedAlterTableAddBooleanColumnStatement());
   }
 
 
@@ -3389,7 +3389,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testAlterBooleanColumn() {
-    testAlterTableColumn(TEST_TABLE, AlterationType.ALTER, getColumn(TEST_TABLE, BOOLEAN_FIELD), column(BOOLEAN_FIELD, DataType.BOOLEAN, 6).nullable(), expectedAlterTableAlterBooleanColumnStatement());
+    testAlterTableColumn(TEST_TABLE, AlterationType.ALTER, getColumn(TEST_TABLE, BOOLEAN_FIELD), column(BOOLEAN_FIELD, DataType.BOOLEAN), expectedAlterTableAlterBooleanColumnStatement());
   }
 
 
@@ -3398,7 +3398,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testAddDateColumn() {
-    testAlterTableColumn(AlterationType.ADD, column("dateField_new", DataType.DATE, 6).nullable(), expectedAlterTableAddDateColumnStatement());
+    testAlterTableColumn(AlterationType.ADD, column("dateField_new", DataType.DATE).nullable(), expectedAlterTableAddDateColumnStatement());
   }
 
 
@@ -3407,7 +3407,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testAlterDateColumn() {
-    testAlterTableColumn(TEST_TABLE, AlterationType.ALTER, getColumn(TEST_TABLE, DATE_FIELD), column(DATE_FIELD, DataType.DATE, 6).nullable(), expectedAlterTableAlterDateColumnStatement());
+    testAlterTableColumn(TEST_TABLE, AlterationType.ALTER, getColumn(TEST_TABLE, DATE_FIELD), column(DATE_FIELD, DataType.DATE), expectedAlterTableAlterDateColumnStatement());
   }
 
 
@@ -3434,7 +3434,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testAddBigIntegerColumn() {
-    testAlterTableColumn(AlterationType.ADD, column("bigIntegerField_new", DataType.BIG_INTEGER, 6).nullable(), expectedAlterTableAddBigIntegerColumnStatement());
+    testAlterTableColumn(AlterationType.ADD, column("bigIntegerField_new", DataType.BIG_INTEGER).nullable(), expectedAlterTableAddBigIntegerColumnStatement());
   }
 
 
@@ -3443,7 +3443,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testAlterBigIntegerColumn() {
-    testAlterTableColumn(TEST_TABLE, AlterationType.ALTER, getColumn(TEST_TABLE, BIG_INTEGER_FIELD), column(BIG_INTEGER_FIELD, DataType.BIG_INTEGER, 6).nullable(), expectedAlterTableAlterBigIntegerColumnStatement());
+    testAlterTableColumn(TEST_TABLE, AlterationType.ALTER, getColumn(TEST_TABLE, BIG_INTEGER_FIELD), column(BIG_INTEGER_FIELD, DataType.BIG_INTEGER).nullable(), expectedAlterTableAlterBigIntegerColumnStatement());
   }
 
 
@@ -3452,7 +3452,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testAddBlobColumn() {
-    testAlterTableColumn(AlterationType.ADD, column("blobField_new", DataType.BLOB, 6).nullable(), expectedAlterTableAddBlobColumnStatement());
+    testAlterTableColumn(AlterationType.ADD, column("blobField_new", DataType.BLOB).nullable(), expectedAlterTableAddBlobColumnStatement());
   }
 
 
@@ -3461,7 +3461,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testAlterBlobColumn() {
-    testAlterTableColumn(TEST_TABLE, AlterationType.ALTER, getColumn(TEST_TABLE, BLOB_FIELD), column(BLOB_FIELD, DataType.BLOB, 6).nullable(), expectedAlterTableAlterBlobColumnStatement());
+    testAlterTableColumn(TEST_TABLE, AlterationType.ALTER, getColumn(TEST_TABLE, BLOB_FIELD), column(BLOB_FIELD, DataType.BLOB), expectedAlterTableAlterBlobColumnStatement());
   }
 
 
@@ -3470,7 +3470,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testAddColumnNotNullable() {
-    testAlterTableColumn(AlterationType.ADD, column("dateField_new", DataType.DATE, 0).defaultValue("2010-01-01"), expectedAlterTableAddColumnNotNullableStatement());
+    testAlterTableColumn(AlterationType.ADD, column("dateField_new", DataType.DATE).defaultValue("2010-01-01"), expectedAlterTableAddColumnNotNullableStatement());
   }
 
 
@@ -3479,7 +3479,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testAlterColumnFromNullableToNotNullable() {
-    testAlterTableColumn(TEST_TABLE, AlterationType.ALTER, getColumn(TEST_TABLE, DATE_FIELD), column(DATE_FIELD, DataType.DATE, 0), expectedAlterTableAlterColumnFromNullableToNotNullableStatement());
+    testAlterTableColumn(TEST_TABLE, AlterationType.ALTER, getColumn(TEST_TABLE, DATE_FIELD), column(DATE_FIELD, DataType.DATE), expectedAlterTableAlterColumnFromNullableToNotNullableStatement());
   }
 
 
@@ -3533,7 +3533,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testAlterColumnWithDefault() {
-    testAlterTableColumn(TEST_TABLE, AlterationType.ALTER, getColumn(TEST_TABLE, BIG_INTEGER_FIELD), column(BIG_INTEGER_FIELD, DataType.BIG_INTEGER, 6, 3).nullable().defaultValue("54321"), expectedAlterTableAlterColumnWithDefaultStatement());
+    testAlterTableColumn(TEST_TABLE, AlterationType.ALTER, getColumn(TEST_TABLE, BIG_INTEGER_FIELD), column(BIG_INTEGER_FIELD, DataType.BIG_INTEGER).nullable().defaultValue("54321"), expectedAlterTableAlterColumnWithDefaultStatement());
   }
 
 
@@ -3566,13 +3566,13 @@ public abstract class AbstractSqlDialectTest {
 
     // then alter a column in that index
     ChangeColumn changeColumn = new ChangeColumn(TEST_TABLE,
-      column(INT_FIELD, DataType.DECIMAL, 8).nullable(),
-      column(INT_FIELD, DataType.DECIMAL, 11).nullable());
+      column(INT_FIELD, DataType.INTEGER).nullable(),
+      column(INT_FIELD, DataType.INTEGER));
     schema = changeColumn.apply(schema);
     Table tableAfterModifyColumn = schema.getTable(TEST_TABLE);
     Collection<String> changeColumnStatements = testDialect.alterTableChangeColumnStatements(tableAfterModifyColumn,
-      column(INT_FIELD, DataType.DECIMAL, 8).nullable(),
-      column(INT_FIELD, DataType.DECIMAL, 11).nullable());
+      column(INT_FIELD, DataType.INTEGER).nullable(),
+      column(INT_FIELD, DataType.INTEGER));
 
     compareStatements(expectedChangeIndexFollowedByChangeOfAssociatedColumnStatement(),
       dropIndexStatements, addIndexStatements, changeColumnStatements);
@@ -3584,7 +3584,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testAlterColumnMakePrimary() {
-    testAlterTableColumn(TEST_TABLE, AlterationType.ALTER, getColumn(TEST_TABLE, DATE_FIELD), column(DATE_FIELD, DataType.DATE, 0).nullable().primaryKey(), expectedAlterColumnMakePrimaryStatements());
+    testAlterTableColumn(TEST_TABLE, AlterationType.ALTER, getColumn(TEST_TABLE, DATE_FIELD), column(DATE_FIELD, DataType.DATE).nullable().primaryKey(), expectedAlterColumnMakePrimaryStatements());
   }
 
 
@@ -3707,8 +3707,8 @@ public abstract class AbstractSqlDialectTest {
       column(DATE_FIELD, DataType.DATE).nullable(),
       column(BOOLEAN_FIELD, DataType.BOOLEAN).nullable(),
       column(CHAR_FIELD, DataType.STRING, 1).nullable(),
-      column(BLOB_FIELD, DataType.BLOB, 16384).nullable(),
-      column(BIG_INTEGER_FIELD, DataType.BIG_INTEGER, 0, 0).nullable().defaultValue("12345"),
+      column(BLOB_FIELD, DataType.BLOB).nullable(),
+      column(BIG_INTEGER_FIELD, DataType.BIG_INTEGER).nullable().defaultValue("12345"),
       column(CLOB_FIELD, DataType.CLOB).nullable()
         ).indexes(
           index("Test_NK").unique().columns(STRING_FIELD),
@@ -4527,8 +4527,8 @@ public abstract class AbstractSqlDialectTest {
   /**
    * @return The expected SQL statements for creating the test database view.
    */
-  protected String expectedCreateViewStatement() {
-    return "CREATE VIEW " + tableName("TestView") + " AS (SELECT stringField FROM " + tableName(TEST_TABLE) + " WHERE (stringField = " + stringLiteralPrefix() + "'blah'))";
+  protected List<String> expectedCreateViewStatements() {
+    return Arrays.asList("CREATE VIEW " + tableName("TestView") + " AS (SELECT stringField FROM " + tableName(TEST_TABLE) + " WHERE (stringField = " + stringLiteralPrefix() + "'blah'))");
   }
 
 
@@ -5300,7 +5300,7 @@ public abstract class AbstractSqlDialectTest {
 
     when(resultSet.getBytes(anyInt())).thenReturn(value == null ? null : value);
 
-    return testDialect.resultSetToRecord(resultSet, ImmutableList.of(column("a", BLOB))).getString("a");
+    return testDialect.resultSetToRecord(resultSet, ImmutableList.of(column("a", DataType.BLOB))).getString("a");
   }
 
 

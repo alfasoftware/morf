@@ -140,17 +140,19 @@ public class Upgrade {
     new SchemaValidator().validate(targetSchema);
 
     // Get access to the schema we are starting from
+    log.info("Reading current schema");
     Schema sourceSchema = copySourceSchema(connectionResources, dataSource, exceptionRegexes);
     SqlDialect dialect = connectionResources.sqlDialect();
 
     // -- Get the current UUIDs and deployed views...
-    //
+    log.info("Examining current views");    //
     ExistingViewStateLoader existingViewState = new ExistingViewStateLoader(dialect, new ExistingViewHashLoader(dataSource, dialect));
     Result viewChangeInfo = existingViewState.viewChanges(sourceSchema, targetSchema);
     ViewChanges viewChanges = new ViewChanges(targetSchema.views(), viewChangeInfo.getViewsToDrop(), viewChangeInfo.getViewsToDeploy());
 
     // -- Determine if an upgrade path exists between the two schemas...
     //
+    log.info("Searching for upgrade path from [" + sourceSchema + "] to [" + targetSchema + "]");
     ExistingTableStateLoader existingTableState = new ExistingTableStateLoader(dataSource, dialect);
     UpgradePathFinder pathFinder = new UpgradePathFinder(upgradeSteps, existingTableState.loadAppliedStepUUIDs());
     SchemaChangeSequence schemaChangeSequence;
@@ -223,7 +225,12 @@ public class Upgrade {
 
     UpgradePath path = factory.create(upgradesToApply, dialect);
     for (View view : viewChanges.getViewsToDrop()) {
-      path.writeSql(dialect.dropStatements(view));
+      // non-present views can be listed amongst ViewsToDrop due to how we calculate dependencies
+      if (sourceSchema.viewExists(view.getName())) {
+        path.writeSql(dialect.dropStatements(view));
+      } else if (log.isDebugEnabled()) {
+        log.debug("View " + view.getName() + " not present; skipping drop statement");
+      }
       if (sourceSchema.tableExists(DEPLOYED_VIEWS_NAME) && targetSchema.tableExists(DEPLOYED_VIEWS_NAME)) {
         path.writeSql(ImmutableList.of(
           dialect.convertStatementToSQL(

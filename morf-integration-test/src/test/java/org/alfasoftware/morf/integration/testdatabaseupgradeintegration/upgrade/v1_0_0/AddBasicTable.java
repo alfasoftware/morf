@@ -15,15 +15,14 @@
 
 package org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0;
 
+import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.upgrade.DataEditor;
 import org.alfasoftware.morf.upgrade.SchemaEditor;
 import org.alfasoftware.morf.upgrade.Sequence;
 import org.alfasoftware.morf.upgrade.UUID;
-
-import static org.alfasoftware.morf.metadata.SchemaUtils.column;
-
-import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 
 @Sequence(2)
 @UUID("1ade56c0-b1d7-11e2-9e96-1234200c9a66")
@@ -36,8 +35,8 @@ public class AddBasicTable extends AbstractTestUpgradeStep {
         column("nullableStringCol", DataType.STRING, 10).nullable(),
         column("decimalTenZeroCol", DataType.DECIMAL, 10),
         column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
-        column("bigIntegerCol", DataType.BIG_INTEGER, 19),
-        column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
+        column("bigIntegerCol", DataType.BIG_INTEGER),
+        column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()
       )
     );
   }

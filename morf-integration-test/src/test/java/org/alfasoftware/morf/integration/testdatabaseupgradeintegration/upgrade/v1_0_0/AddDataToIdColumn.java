@@ -16,15 +16,13 @@
 package org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0;
 
 import static org.alfasoftware.morf.sql.SqlUtils.insert;
+import static org.alfasoftware.morf.sql.SqlUtils.literal;
+import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 
 import org.alfasoftware.morf.upgrade.DataEditor;
 import org.alfasoftware.morf.upgrade.SchemaEditor;
 import org.alfasoftware.morf.upgrade.Sequence;
 import org.alfasoftware.morf.upgrade.UUID;
-
-import static org.alfasoftware.morf.sql.SqlUtils.literal;
-
-import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 
 @Sequence(1)
 @UUID("1ade56c0-b1d7-11e2-9e96-080020011111")
@@ -34,17 +32,17 @@ public class AddDataToIdColumn extends AbstractTestUpgradeStep {
     data.executeStatement(
         insert()
                 .into(tableRef("IdTable"))
-                .values(literal("blaa1").as("value"))
+                .values(literal("blaa1").as("someValue"))
         );
     data.executeStatement(
         insert()
                 .into(tableRef("IdTable"))
-                .values(literal("blaa2").as("value"))
+                .values(literal("blaa2").as("someValue"))
         );
     data.executeStatement(
         insert()
                 .into(tableRef("IdTable"))
-                .values(literal("blaa3").as("value"))
+                .values(literal("blaa3").as("someValue"))
         );
   }
 }

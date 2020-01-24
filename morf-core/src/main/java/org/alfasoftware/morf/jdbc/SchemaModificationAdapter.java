@@ -118,6 +118,9 @@ public class SchemaModificationAdapter extends DataSetAdapter {
     }
     schemaResource.close();
     try {
+      if (!connection.getAutoCommit()) {
+        connection.commit();
+      }
       connection.close();
     } catch (SQLException e) {
       throw new RuntimeSqlException("Error closing connection", e);

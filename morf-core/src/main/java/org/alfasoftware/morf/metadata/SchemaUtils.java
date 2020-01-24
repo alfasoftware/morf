@@ -60,7 +60,7 @@ public final class SchemaUtils {
    * @return an ID Column.
    */
   public static Column idColumn() {
-    return new ColumnBean("id", DataType.BIG_INTEGER, 19, 0, false, "", true);
+    return new ColumnBean("id", DataType.BIG_INTEGER, 0, 0, false, "", true);
   }
 
 
@@ -70,7 +70,7 @@ public final class SchemaUtils {
    * @return a version Column.
    */
   public static Column versionColumn() {
-    return new ColumnBean("version", DataType.INTEGER, 10, 0, true, "0");
+    return new ColumnBean("version", DataType.INTEGER, 0, 0, true, "0");
   }
 
 
@@ -679,6 +679,11 @@ public final class SchemaUtils {
       return new IndexBuilderImpl(getName(), true, columnNames());
     }
 
+
+    @Override
+    public String toString() {
+      return this.toStringHelper();
+    }
   }
 
 

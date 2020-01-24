@@ -15,13 +15,13 @@
 
 package org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0;
 
+import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.upgrade.DataEditor;
 import org.alfasoftware.morf.upgrade.SchemaEditor;
 import org.alfasoftware.morf.upgrade.Sequence;
 import org.alfasoftware.morf.upgrade.UUID;
-
-import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 
 @Sequence(1)
 @UUID("1ade56c0-b1d7-11e2-9e96-080020011111")
@@ -29,7 +29,7 @@ public class RemoveColumnWithDefault extends AbstractTestUpgradeStep {
   @Override
   public void execute(SchemaEditor schema, DataEditor data) {
     schema.removeColumn("WithDefaultValue",
-      column("version", DataType.INTEGER, 7).defaultValue("0")
+      column("version", DataType.INTEGER).defaultValue("0")
     );
   }
 }

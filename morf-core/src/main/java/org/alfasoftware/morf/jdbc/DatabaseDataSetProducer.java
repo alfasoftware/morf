@@ -154,8 +154,10 @@ public class DatabaseDataSetProducer implements DataSetProducer {
         resultSetIterator.close();
       }
       openResultSets.clear();
+      schema = null;
 
       // restore the auto-commit flag.
+      connection.commit();
       connection.setAutoCommit(wasAutoCommit);
       connection.close();
       connection = null;

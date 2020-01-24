@@ -38,7 +38,7 @@ public class AddColumnToTableUpgradeStep implements UpgradeStep {
   @Override
   public void execute(SchemaEditor schema, DataEditor data) {
     schema.addColumn("table_one", column("column_one", DataType.STRING, 10).nullable(), new FieldLiteral("A"));
-    schema.addColumn("table_two", column("column_two", DataType.STRING, 10, 0), new FieldLiteral("A"));
+    schema.addColumn("table_two", column("column_two", DataType.STRING, 10), new FieldLiteral("A"));
     schema.addColumn("table_three", column("column_three", DataType.DECIMAL, 9, 5).nullable(), new FieldLiteral(10d));
     schema.addColumn("table_four", column("column_four", DataType.DECIMAL, 9, 5), new FieldLiteral(10d));
   }

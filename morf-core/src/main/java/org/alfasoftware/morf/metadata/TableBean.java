@@ -161,4 +161,10 @@ class TableBean implements Table {
   public boolean isTemporary() {
     return isTemporary;
   }
+
+
+  @Override
+  public String toString() {
+    return "Table-" + getName();
+  }
 }

@@ -82,7 +82,7 @@ public class TestInsertStatementDefaulter {
         column("dateField", DataType.DATE).nullable(),
         column("booleanField", DataType.BOOLEAN).nullable(),
         column("charField", DataType.STRING, 1).nullable(),
-        column("blobField", DataType.BLOB, 16384).nullable()
+        column("blobField", DataType.BLOB).nullable()
       );
 
     schema = schema(car, otherTable, testTable);
