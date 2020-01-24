@@ -43,7 +43,7 @@ public class TestRecordComparator {
     Table table = table("x").columns(
       column("foo", DataType.STRING, 10),
       column("bar", DataType.DECIMAL, 10, 2),
-      column("baz", DataType.INTEGER, 10)
+      column("baz", DataType.INTEGER)
     );
 
     // compare the first two columns

@@ -209,9 +209,9 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         column("nullableStringCol", DataType.STRING, 10).nullable(),
         column("decimalTenZeroCol", DataType.DECIMAL, 10),
         column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
-        column("bigIntegerCol", DataType.BIG_INTEGER, 19),
-        column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable(),
-        column("blobCol", DataType.BLOB, 19).nullable()
+        column("bigIntegerCol", DataType.BIG_INTEGER),
+        column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable(),
+        column("blobCol", DataType.BLOB).nullable()
       ),
     table("DateTable")
       .columns(
@@ -353,7 +353,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         table("NumericTable")
         .columns(
           column("decimalColumn", DataType.DECIMAL, 13, 2),
-          column("integerColumn", DataType.INTEGER, 14)),
+          column("integerColumn", DataType.INTEGER)),
      table("InsertTargetTable")
         .columns(
           column("id", DataType.INTEGER).primaryKey(),

@@ -22,28 +22,30 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
+import org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import com.google.common.base.Function;
 import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.Collections2;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 
 /**
@@ -97,15 +99,19 @@ class NuoDBMetaDataProvider extends DatabaseMetaDataProvider {
   }
 
 
-  /**
-   * @param connection DataSource to provide meta data for.
-   */
   public NuoDBMetaDataProvider(Connection connection, String schemaName) {
     super(connection, schemaName);
   }
 
 
   @Override
+  protected Map<AName, Integer> loadTablePrimaryKey(RealName tableName) {
+    List<String> primaryKey = getPrimaryKeys(tableName.getDbName());
+    Iterator<Integer> numberer = IntStream.rangeClosed(1, primaryKey.size()).iterator();
+    return Maps.toMap(primaryKey.stream().map(k -> named(k)).iterator(), k -> numberer.next());
+  }
+
+
   protected List<String> getPrimaryKeys(String tableName) {
     if (primaryKeyMetaData == null) {
       log.info("Initialising index metadata cache for schema [" + schemaName + "]");
@@ -116,34 +122,25 @@ class NuoDBMetaDataProvider extends DatabaseMetaDataProvider {
 
 
   @Override
-  protected List<Index> readIndexes(String tableName) {
+  protected List<Index> loadTableIndexes(RealName tableName) {
     if (indexMetaData == null) {
       log.info("Initialising index metadata cache for schema [" + schemaName + "]");
       retrieveIndexMetaData(connection, schemaName);
     }
 
-    return indexMetaData.get(tableName);
+    return indexMetaData.get(tableName.getDbName());
   }
 
 
-  /**
-   * Cache the column metadata on the first column read for the whole schema for efficiency in NuoDB.
-   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#readColumns(java.lang.String, java.util.List)
-   */
   @Override
-  protected List<Column> readColumns(String tableName, final List<String> primaryKeys) {
+  protected List<Column> loadTableColumns(RealName tableName, Map<AName, Integer> primaryKey) {
     if (columnMetaData == null) {
       log.info("Initialising column metadata cache for schema [" + schemaName + "]");
       columnMetaData = retrieveColumnMetaData(connection, schemaName);
     }
 
-    List<Column> rawColumns = new LinkedList<>(Collections2.transform(columnMetaData.get(tableName), new Function<ColumnBuilder, Column>() {
-      @Override
-      public Column apply(ColumnBuilder input) {
-        return primaryKeys.contains(input.getName()) ? input.primaryKey() : input;
-      }
-    }));
-    return applyPrimaryKeyOrder(primaryKeys, rawColumns);
+    Collection<ColumnBuilder> originalColumns = columnMetaData.get(tableName.getDbName());
+    return createColumnsFrom(originalColumns, primaryKey);
   }
 
 
@@ -177,7 +174,7 @@ class NuoDBMetaDataProvider extends DatabaseMetaDataProvider {
           DataType dataType = dataTypeFromDeclaredType(declaredDataType.replaceFirst("^([a-z ]+).*$", "$1"));
 
           ColumnBuilder nuoDBFieldMetaData = column(fieldName, dataType, columnQueryResult.getInt("PRECISION"), columnQueryResult.getInt("SCALE"));
-          nuoDBFieldMetaData = nuoDBFieldMetaData.defaultValue(determineDefaultValue(fieldName));
+          nuoDBFieldMetaData = nuoDBFieldMetaData.defaultValue("version".equalsIgnoreCase(fieldName) ? "0" : "");
           nuoDBFieldMetaData = columnQueryResult.getInt("FLAGS") == 0 ? nuoDBFieldMetaData.nullable() : nuoDBFieldMetaData;
 
           if (StringUtils.isNotBlank(columnQueryResult.getString("GENERATOR_SEQUENCE"))) {
@@ -201,18 +198,18 @@ class NuoDBMetaDataProvider extends DatabaseMetaDataProvider {
    * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isPrimaryKeyIndex(java.lang.String)
    */
   @Override
-  protected boolean isPrimaryKeyIndex(String indexName) {
-    return indexName.endsWith("..PRIMARY_KEY");
+  protected boolean isPrimaryKeyIndex(RealName indexName) {
+    return indexName.getDbName().endsWith("..PRIMARY_KEY");
   }
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#shouldIgnoreTable(java.lang.String)
+   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isIgnoredTable(java.lang.String)
    */
   @Override
-  protected boolean shouldIgnoreTable(String tableName) {
+  protected boolean isIgnoredTable(RealName tableName) {
     // Ignore temporary tables
-    return tableName.toUpperCase().startsWith(NuoDBDialect.TEMPORARY_TABLE_PREFIX);
+    return tableName.getDbName().startsWith(NuoDBDialect.TEMPORARY_TABLE_PREFIX);
   }
 
 
@@ -312,8 +309,14 @@ class NuoDBMetaDataProvider extends DatabaseMetaDataProvider {
       .entrySet()
       .stream()
       .filter(p -> p.getKey().indexType != 0)
-      .map(p -> new IndexImpl(p.getKey().indexName, p.getKey().indexType == 1, Arrays.asList(p.getValue())))
+      .map(p -> createIndex(p.getKey().indexName, p.getKey().indexType == 1, p.getValue()))
       .collect(Collectors.toList());
+  }
+
+
+  private Index createIndex(String indexName, boolean isUnique, String[] columnNames) {
+    IndexBuilder index = SchemaUtils.index(indexName).columns(columnNames);
+    return isUnique ? index.unique() : index;
   }
 
 

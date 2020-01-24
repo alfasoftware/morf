@@ -25,6 +25,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -121,7 +122,7 @@ class NuoDBDialect extends SqlDialect {
 
     for (Index index : table.indexes()) {
       statements.add(optionalDropIndexStatement(table, index));
-      statements.add(indexDeploymentStatement(table, index));
+      statements.addAll(indexDeploymentStatements(table, index));
     }
 
     return statements.build();
@@ -447,7 +448,7 @@ class NuoDBDialect extends SqlDialect {
     }
 
     for(Index index : indexesToRebuild) {
-      result.add(indexDeploymentStatement(table, index));
+      result.addAll(indexDeploymentStatements(table, index));
     }
 
     return result;
@@ -567,7 +568,10 @@ class NuoDBDialect extends SqlDialect {
    */
   @Override
   public Collection<String> addIndexStatements(Table table, Index index) {
-    return Arrays.asList(optionalDropIndexStatement(table, index), indexDeploymentStatement(table, index));
+    return ImmutableList.<String>builder()
+        .add(optionalDropIndexStatement(table, index))
+        .addAll(indexDeploymentStatements(table, index))
+        .build();
   }
 
   /**
@@ -575,14 +579,15 @@ class NuoDBDialect extends SqlDialect {
    *      org.alfasoftware.morf.metadata.Index)
    */
   @Override
-  protected String indexDeploymentStatement(Table table, Index index) {
+  protected Collection<String> indexDeploymentStatements(Table table, Index index) {
     StringBuilder statement = new StringBuilder();
 
     statement.append("CREATE ");
     if (index.isUnique()) {
       statement.append("UNIQUE ");
     }
-    return statement
+    return Collections.singletonList(
+      statement
       .append("INDEX ")
       .append(index.getName()) // we don't specify the schema - it's implicit
       .append(" ON ")
@@ -590,7 +595,7 @@ class NuoDBDialect extends SqlDialect {
       .append(" (")
       .append(Joiner.on(',').join(index.columnNames()))
       .append(")")
-      .toString();
+      .toString());
   }
 
 
@@ -643,7 +648,7 @@ class NuoDBDialect extends SqlDialect {
 
     return ImmutableList.<String>builder()
       .addAll(indexDropStatements(table, existingIndex))
-      .add(indexDeploymentStatement(table, newIndex))
+      .addAll(indexDeploymentStatements(table, newIndex))
       .build();
   }
 

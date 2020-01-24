@@ -101,10 +101,10 @@ public class DataSetHomology {
 
     producer1.open();
     producer2.open();
-    Schema schema1 = producer1.getSchema();
-    Schema schema2 = producer2.getSchema();
-
     try {
+      Schema schema1 = producer1.getSchema();
+      Schema schema2 = producer2.getSchema();
+
       Set<String> tables1 = convertToUppercase(schema1.tableNames());
       Set<String> tables2 = convertToUppercase(schema2.tableNames());
 

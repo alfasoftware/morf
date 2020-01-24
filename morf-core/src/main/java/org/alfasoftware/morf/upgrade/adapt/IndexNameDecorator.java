@@ -65,5 +65,11 @@ public class IndexNameDecorator implements Index {
   public String getName() {
     return name;
   }
+
+
+  @Override
+  public String toString() {
+    return this.toStringHelper();
+  }
 }
 

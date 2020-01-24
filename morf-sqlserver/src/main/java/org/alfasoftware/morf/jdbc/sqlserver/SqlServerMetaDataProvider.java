@@ -96,8 +96,8 @@ class SqlServerMetaDataProvider extends DatabaseMetaDataProvider {
    * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isPrimaryKeyIndex(java.lang.String)
    */
   @Override
-  protected boolean isPrimaryKeyIndex(String indexName) {
-    return indexName.endsWith("_PK");
+  protected boolean isPrimaryKeyIndex(RealName indexName) {
+    return indexName.getDbName().endsWith("_PK");
   }
 
 
@@ -126,10 +126,10 @@ class SqlServerMetaDataProvider extends DatabaseMetaDataProvider {
    * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#setAdditionalColumnMetadata(java.lang.String, org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder, java.sql.ResultSet)
    */
   @Override
-  protected ColumnBuilder setAdditionalColumnMetadata(String tableName, ColumnBuilder columnBuilder, ResultSet columnMetaData)
+  protected ColumnBuilder setAdditionalColumnMetadata(RealName tableName, ColumnBuilder columnBuilder, ResultSet columnMetaData)
       throws SQLException {
-    if (identityColumns.containsKey(tableName)) {
-      Map<String, Integer> tableAutoNumStarts = identityColumns.get(tableName);
+    if (identityColumns.containsKey(tableName.getDbName())) {
+      Map<String, Integer> tableAutoNumStarts = identityColumns.get(tableName.getDbName());
       if (tableAutoNumStarts.containsKey(columnBuilder.getName())) {
         return columnBuilder.autoNumbered(tableAutoNumStarts.get(columnBuilder.getName()));
       }

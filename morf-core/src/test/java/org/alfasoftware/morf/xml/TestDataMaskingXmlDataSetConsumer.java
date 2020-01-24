@@ -30,7 +30,6 @@ import java.util.Set;
 import org.alfasoftware.morf.dataset.DataSetConsumer;
 import org.alfasoftware.morf.dataset.DataSetConsumer.CloseState;
 import org.alfasoftware.morf.dataset.Record;
-import org.alfasoftware.morf.metadata.DataSetUtils;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Table;
 import org.junit.Test;
@@ -60,7 +59,7 @@ public class TestDataMaskingXmlDataSetConsumer {
     DataSetConsumer testConsumer = new DataMaskingXmlDataSetConsumer(dummyXmlOutputStreamProvider, toMask);
 
     Table metaData = table("Test").columns(
-        column("id", DataType.BIG_INTEGER, 19, 0).primaryKey().autoNumbered(123),
+        column("id", DataType.BIG_INTEGER).primaryKey().autoNumbered(123),
         versionColumn(),
         column("bar", DataType.STRING, 10).nullable(),
         column("baz", DataType.STRING, 10).nullable(),

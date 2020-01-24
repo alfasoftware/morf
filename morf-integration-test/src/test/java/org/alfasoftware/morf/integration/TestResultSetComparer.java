@@ -164,30 +164,30 @@ public class TestResultSetComparer {
     table("MultiKeyLeft")
       .columns(
         column("stringKey", DataType.STRING, 10).primaryKey(),
-        column("intKey", DataType.INTEGER, 10).primaryKey(),
+        column("intKey", DataType.INTEGER).primaryKey(),
         column("nullableStringCol", DataType.STRING, 20).nullable(),
-        column("nullableIntCol", DataType.INTEGER, 10).nullable()
+        column("nullableIntCol", DataType.INTEGER).nullable()
       ),
     table("MultiKeyMatchRight")
       .columns(
         column("stringKey", DataType.STRING, 10).primaryKey(),
-        column("intKey", DataType.INTEGER, 10).primaryKey(),
+        column("intKey", DataType.INTEGER).primaryKey(),
         column("nullableStringCol", DataType.STRING, 20).nullable(),
-        column("nullableIntCol", DataType.INTEGER, 10).nullable()
+        column("nullableIntCol", DataType.INTEGER).nullable()
       ),
     table("MultiKeyMismatchRight")
       .columns(
         column("stringKey", DataType.STRING, 10).primaryKey(),
-        column("intKey", DataType.INTEGER, 10).primaryKey(),
+        column("intKey", DataType.INTEGER).primaryKey(),
         column("nullableStringCol", DataType.STRING, 20).nullable(),
-        column("nullableIntCol", DataType.INTEGER, 10).nullable()
+        column("nullableIntCol", DataType.INTEGER).nullable()
       ),
     table("MultiKeyMissingRight")
       .columns(
         column("stringKey", DataType.STRING, 10).primaryKey(),
-        column("intKey", DataType.INTEGER, 10).primaryKey(),
+        column("intKey", DataType.INTEGER).primaryKey(),
         column("nullableStringCol", DataType.STRING, 20).nullable(),
-        column("nullableIntCol", DataType.INTEGER, 10).nullable()
+        column("nullableIntCol", DataType.INTEGER).nullable()
       ),
       table("ComparableNumericalColumns")
       .columns(

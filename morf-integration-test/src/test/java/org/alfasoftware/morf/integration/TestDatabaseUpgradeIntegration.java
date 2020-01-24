@@ -15,6 +15,11 @@
 
 package org.alfasoftware.morf.integration;
 
+import static com.google.common.base.Predicates.compose;
+import static com.google.common.base.Predicates.equalTo;
+import static com.google.common.base.Predicates.not;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toSet;
 import static org.alfasoftware.morf.metadata.DataSetUtils.dataSetProducer;
 import static org.alfasoftware.morf.metadata.DataSetUtils.record;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
@@ -25,8 +30,11 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.metadata.SchemaUtils.view;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
+import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deployedViewsTable;
+import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.upgradeAuditTable;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -35,12 +43,9 @@ import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import javax.sql.DataSource;
 
@@ -72,6 +77,7 @@ import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RenameTable;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RepeatedAdditionOfTable;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ReplacePrimaryKey;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ReplaceTableWithView;
 import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.DatabaseDataSetConsumer;
@@ -80,31 +86,30 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor.ResultSetProcessor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
+import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaHomology;
+import org.alfasoftware.morf.metadata.SchemaHomology.CollectingDifferenceWriter;
 import org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder;
 import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager.TruncationBehavior;
 import org.alfasoftware.morf.testing.TestingDataSourceModule;
-import org.alfasoftware.morf.upgrade.InlineTableUpgrader;
 import org.alfasoftware.morf.upgrade.LoggingSqlScriptVisitor;
-import org.alfasoftware.morf.upgrade.SchemaChangeSequence;
-import org.alfasoftware.morf.upgrade.SqlStatementWriter;
-import org.alfasoftware.morf.upgrade.UpgradePathFinder;
+import org.alfasoftware.morf.upgrade.Upgrade;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 
@@ -153,61 +158,64 @@ public class TestDatabaseUpgradeIntegration {
    */
   private final Schema schema = schema(
     schema(
+      deployedViewsTable(),
+      upgradeAuditTable(),
+
       table("BasicTable")
         .columns(
           column("stringCol", DataType.STRING, 20).primaryKey(),
           column("nullableStringCol", DataType.STRING, 10).nullable(),
           column("decimalTenZeroCol", DataType.DECIMAL, 10),
           column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
-          column("bigIntegerCol", DataType.BIG_INTEGER, 19),
-          column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
-      ),
+          column("bigIntegerCol", DataType.BIG_INTEGER),
+          column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()),
+
       table("WithDefaultValue")
         .columns(
           column("id", DataType.STRING, 3).primaryKey(),
-          column("version", DataType.INTEGER, 3).defaultValue("0")
-      ),
+          column("version", DataType.INTEGER).defaultValue("0")),
+
       table("CompositeKeyTable")
         .columns(
           column("keyCol1", DataType.STRING, 20).primaryKey(),
           column("keyCol2", DataType.STRING, 20).primaryKey(),
-          column("valCol", DataType.STRING, 20)
-      ),
+          column("valCol", DataType.STRING, 20)),
+
       table("KeylessTable")
         .columns(
           column("keyCol1", DataType.STRING, 20),
           column("keyCol2", DataType.STRING, 20),
-          column("valCol", DataType.STRING, 20)
-      ),
+          column("valCol", DataType.STRING, 20)),
+
       table("BasicTableWithIndex")
         .columns(
           column("stringCol", DataType.STRING, 20).primaryKey(),
           column("nullableStringCol", DataType.STRING, 10).nullable(),
           column("decimalTenZeroCol", DataType.DECIMAL, 10),
           column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
-          column("bigIntegerCol", DataType.BIG_INTEGER, 19),
-          column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
-      ).indexes(
-        index("WrongIndexName_1").columns("bigIntegerCol")
-      ),
+          column("bigIntegerCol", DataType.BIG_INTEGER),
+          column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable())
+        .indexes(
+          index("WrongIndexName_1").columns("bigIntegerCol")),
+
       table("AutoNumTable")
-      .columns(
-        column("autonum", DataType.BIG_INTEGER).primaryKey().autoNumbered(123),
-        column("keyCol1", DataType.STRING, 20),
-        column("keyCol2", DataType.STRING, 20),
-        column("valCol", DataType.STRING, 20)
-      ),
+        .columns(
+          column("autonum", DataType.BIG_INTEGER).primaryKey().autoNumbered(123),
+          column("keyCol1", DataType.STRING, 20),
+          column("keyCol2", DataType.STRING, 20),
+          column("valCol", DataType.STRING, 20)),
+
       table("IdTable")
-      .columns(
-        idColumn(),
-        column("value", DataType.STRING, 20)
-      )
+        .columns(
+          idColumn(),
+          column("someValue", DataType.STRING, 20))
     ),
     schema(
       view("view4", select(field("valCol"), field("keyCol1")).from("view2"), "view3"),
       view("view1", select(field("valCol"), field("keyCol1")).from("BasicTable").innerJoin(tableRef("KeylessTable"))),
       view("view3", select(field("valCol"), field("keyCol1")).from("view2"), "view2"),
-      view("view2", select(field("valCol"), field("keyCol1")).from("view1"), "view1")
+      view("view2", select(field("valCol"), field("keyCol1")).from("view1"), "view1"),
+      view("viewId", select(field("id"), field("someValue")).from("IdTable"))
     )
   );
 
@@ -216,6 +224,8 @@ public class TestDatabaseUpgradeIntegration {
    * The test dataset
    */
   private final DataSetProducer dataSet = dataSetProducer(schema)
+    .table(deployedViewsTable().getName())
+    .table(upgradeAuditTable().getName())
     .table("BasicTable",
       record()
         .setString("stringCol", "hello world AA")
@@ -275,8 +285,9 @@ public class TestDatabaseUpgradeIntegration {
         .setBigDecimal("decimalNineFiveCol", new BigDecimal("378.231"))
         .setLong("bigIntegerCol", 98237L)
         .setLong("nullableBigIntegerCol", 892375L)
-    ).table("AutoNumTable")
-     .table("IdTable");
+    )
+    .table("AutoNumTable")
+    .table("IdTable");
 
 
   /**
@@ -330,8 +341,8 @@ public class TestDatabaseUpgradeIntegration {
       column("nullableStringCol", DataType.STRING, 10).nullable(),
       column("decimalTenZeroCol", DataType.DECIMAL, 10),
       column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
-      column("bigIntegerCol", DataType.BIG_INTEGER, 19),
-      column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
+      column("bigIntegerCol", DataType.BIG_INTEGER),
+      column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()
     );
 
     Map<String, Table> newTables = Maps.newHashMap();
@@ -386,8 +397,8 @@ public class TestDatabaseUpgradeIntegration {
       column("nullableStringCol", DataType.STRING, 10).nullable(),
       column("decimalTenZeroCol", DataType.DECIMAL, 10).primaryKey(),
       column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
-      column("bigIntegerCol", DataType.BIG_INTEGER, 19).primaryKey(),
-      column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
+      column("bigIntegerCol", DataType.BIG_INTEGER).primaryKey(),
+      column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()
     );
 
     Schema expected = replaceTablesInSchema(newTable);
@@ -426,8 +437,8 @@ public class TestDatabaseUpgradeIntegration {
       column("nullableStringCol", DataType.STRING, 10).nullable(),
       column("decimalTenZeroCol", DataType.DECIMAL, 10),
       column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
-      column("bigIntegerCol", DataType.BIG_INTEGER, 19),
-      column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
+      column("bigIntegerCol", DataType.BIG_INTEGER),
+      column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()
     );
 
     Schema removed = replaceTablesInSchema(tableWithNoPrimaryKey);
@@ -489,8 +500,8 @@ public class TestDatabaseUpgradeIntegration {
         column("decimalTenZeroCol", DataType.DECIMAL, 10).primaryKey(),
         column("nullableStringCol", DataType.STRING, 10).nullable(),
         column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
-        column("bigIntegerCol", DataType.BIG_INTEGER, 19),
-        column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
+        column("bigIntegerCol", DataType.BIG_INTEGER),
+        column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()
       )
     );
 
@@ -510,8 +521,8 @@ public class TestDatabaseUpgradeIntegration {
         column("stringCol", DataType.STRING, 20).primaryKey(),
         column("nullableStringCol", DataType.STRING, 10).nullable(),
         column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
-        column("bigIntegerCol", DataType.BIG_INTEGER, 19),
-        column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
+        column("bigIntegerCol", DataType.BIG_INTEGER),
+        column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()
       )
     );
 
@@ -536,18 +547,6 @@ public class TestDatabaseUpgradeIntegration {
 
 
   /**
-   * Test renaming the same table repeatedly. This flushes out name collisions between the renamed table and the schema manager's cached tables.
-   */
-  @Test
-  public void testRepeatedRenameOfTable() {
-    testRenameTable();
-    schemaManager.get().invalidateCache();
-    schemaManager.get().mutateToSupportSchema(schema, TruncationBehavior.ALWAYS);
-    testRenameTable();
-  }
-
-
-  /**
    * Test:
    *   1. Rename BasicTable to BasicTableRenamed
    *   2. Add BasicTable
@@ -561,8 +560,8 @@ public class TestDatabaseUpgradeIntegration {
       column("nullableStringCol", DataType.STRING, 10).nullable(),
       column("decimalTenZeroCol", DataType.DECIMAL, 10),
       column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
-      column("bigIntegerCol", DataType.BIG_INTEGER, 19),
-      column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
+      column("bigIntegerCol", DataType.BIG_INTEGER),
+      column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()
     );
 
     List<Table> tables = Lists.newArrayList(schema.tables());
@@ -581,10 +580,10 @@ public class TestDatabaseUpgradeIntegration {
     Table tableWithExtraBigIntegerColumn = table("BasicTable")
     .columns(
       column("nullableStringCol", DataType.STRING, 10).nullable(),
-      column("decimalTenZeroCol", DataType.BIG_INTEGER, 20).primaryKey(),
+      column("decimalTenZeroCol", DataType.BIG_INTEGER).primaryKey(),
       column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
-      column("bigIntegerCol", DataType.BIG_INTEGER, 19),
-      column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
+      column("bigIntegerCol", DataType.BIG_INTEGER),
+      column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()
     );
 
     Schema expected = replaceTablesInSchema(tableWithExtraBigIntegerColumn);
@@ -604,8 +603,8 @@ public class TestDatabaseUpgradeIntegration {
           column("nullableStringCol", DataType.STRING, 10).nullable(),
           column("decimalTenZeroCol", DataType.DECIMAL, 10),
           column("decimalninefivecol", DataType.DECIMAL, 10, 6), // Column being changed
-          column("bigIntegerCol", DataType.BIG_INTEGER, 19),
-          column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
+          column("bigIntegerCol", DataType.BIG_INTEGER),
+          column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()
       );
 
     Schema expected = replaceTablesInSchema(tableWithUpdatedDecimalNineFiveCol);
@@ -620,7 +619,7 @@ public class TestDatabaseUpgradeIntegration {
   @Test
   public void testDropPrimaryKey() {
     Table tableWithExtraBigIntegerColumn = table("WithDefaultValue")
-        .columns(column("version", DataType.INTEGER, 3).defaultValue("0"));
+        .columns(column("version", DataType.INTEGER).defaultValue("0"));
 
     Schema expected = replaceTablesInSchema(tableWithExtraBigIntegerColumn);
 
@@ -639,8 +638,8 @@ public class TestDatabaseUpgradeIntegration {
         column("nullableStringCol", DataType.STRING, 8).nullable(),  // <-- this is the one we are changing
         column("decimalTenZeroCol", DataType.DECIMAL, 10),
         column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
-        column("bigIntegerCol", DataType.BIG_INTEGER, 19),
-        column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
+        column("bigIntegerCol", DataType.BIG_INTEGER),
+        column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()
       );
     Schema expected = replaceTablesInSchema(tableWithReducedWidth);
 
@@ -659,8 +658,8 @@ public class TestDatabaseUpgradeIntegration {
           column("nullableStringCol", DataType.STRING, 10).nullable(),
           column("decimalTenZeroCol", DataType.DECIMAL, 10),
           column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
-          column("bigIntegerCol", DataType.BIG_INTEGER, 19),
-          column("nullableBigIntegerCol", DataType.BIG_INTEGER, 19).nullable()
+          column("bigIntegerCol", DataType.BIG_INTEGER),
+          column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()
       ).indexes(
         index("BasicTableWithIndex_1").columns("bigIntegerCol")
       );
@@ -823,6 +822,35 @@ public class TestDatabaseUpgradeIntegration {
 
 
   /**
+   * Test that renaming a table works
+   */
+  @Test
+  public void testReplaceTableWithView() {
+
+    Table originalTable = schema.getTable("BasicTable");
+
+    Table newTable = table("BasicTableTmp")
+      .columns(originalTable.columns().toArray(new Column[0]));
+
+    View newView = view("BasicTable", select(literal(1).as("one")).from("BasicTableTmp"), "viewId"); // add dependency to entangle the new view with the old views, to engage in topology sorting
+
+    FluentIterable<Table> newSchemaTables = FluentIterable.from(schema.tables())
+      .filter(compose(not(equalTo("BasicTable")), Table::getName))
+      .append(newTable);
+
+    List<View> newSchemaViews = FluentIterable.from(schema.views())
+      .filter(v -> !v.getName().equalsIgnoreCase("view1")) // re-add view1 now dependent on BasicTable view
+      .append(view("view1", select(field("valCol"), field("keyCol1")).from("BasicTable").innerJoin(tableRef("KeylessTable")), "BasicTable"))
+      .append(newView) // and add the new BasicTable view
+      .toList();
+
+    Schema expectedSchema = schema(schema(newSchemaTables), schema(newSchemaViews));
+
+    verifyUpgrade(expectedSchema, ReplaceTableWithView.class);
+  }
+
+
+  /**
    * Helper to manipulate the test schema - replaces the tables in it with the ones provided. (By name)
    *
    * @param replacementTables The tables to use as replacements.
@@ -849,7 +877,7 @@ public class TestDatabaseUpgradeIntegration {
    * @param upgradeStep The upgrade step to test
    */
   private void verifyUpgrade(Schema expectedSchema, Class<? extends UpgradeStep> upgradeStep) {
-    verifyUpgrade(expectedSchema, Collections.<Class<? extends UpgradeStep>>singletonList(upgradeStep));
+    verifyUpgrade(expectedSchema, singletonList(upgradeStep));
   }
 
 
@@ -860,54 +888,28 @@ public class TestDatabaseUpgradeIntegration {
    * @param upgradeSteps The upgrade steps to test
    */
   private void verifyUpgrade(Schema expectedSchema, List<Class<? extends UpgradeStep>> upgradeSteps) {
+    Upgrade.performUpgrade(expectedSchema, upgradeSteps, connectionResources);
+    compareSchema(expectedSchema);
+  }
 
-    SchemaChangeSequence schemaChangeSequence = new UpgradePathFinder(
-        upgradeSteps,
-        ImmutableSet.<java.util.UUID> of()
-    ).determinePath(schema, expectedSchema, new HashSet<String>());
 
-    final List<String> statements = Lists.newLinkedList();
-
-    InlineTableUpgrader upgrader = new InlineTableUpgrader(schema, connectionResources.sqlDialect(), new SqlStatementWriter() {
-      @Override
-      public void writeSql(Collection<String> sql) {
-        statements.addAll(sql);
-      }
-    }, SqlDialect.IdTable.withPrefix(connectionResources.sqlDialect(), "temp_id_"));
-
-    upgrader.preUpgrade();
-    schemaChangeSequence.applyTo(upgrader);
-    upgrader.postUpgrade();
-
-    schemaManager.get().dropAllViews();
-
-    Set<String> tablesToDrop = Sets.newHashSet(schemaChangeSequence.tableAdditions());
-    tablesToDrop.removeAll(schema.tableNames());
-
-    schemaManager.get().dropTablesIfPresent(tablesToDrop);
-
-    sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor()).execute(statements);
-
-    // we changed the schema, so tell the manager
-    schemaManager.get().invalidateCache();
-
-    final List<String> differences = Lists.newArrayList();
-    SchemaHomology schemaHomology = new SchemaHomology(new SchemaHomology.DifferenceWriter() {
-
-      @Override
-      public void difference(String message) {
-        differences.add(message);
-      }
-    }, "expected", "actual");
+  private void compareSchema(Schema expectedSchema) {
 
     DatabaseDataSetProducer producer = databaseDataSetProducer.get();
     producer.open();
     try {
-      Schema actual = producer.getSchema();
+      Schema actualSchema = producer.getSchema();
 
-      boolean match = schemaHomology.schemasMatch(expectedSchema, actual, new HashSet<String>());
+      CollectingDifferenceWriter differences = new CollectingDifferenceWriter();
+      SchemaHomology schemaHomology = new SchemaHomology(differences, "expected", "actual");
 
-      assertTrue(differences.toString(), match);
+      boolean schemasMatch = schemaHomology.schemasMatch(expectedSchema, actualSchema, Collections.emptySet());
+
+      assertTrue(differences.differences().toString(), schemasMatch);
+
+      assertEquals(
+        expectedSchema.views().stream().map(View::getName).map(String::toLowerCase).collect(toSet()),
+        actualSchema.views().stream().map(View::getName).map(String::toLowerCase).collect(toSet()));
 
     } finally {
       producer.close();

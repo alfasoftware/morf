@@ -15,11 +15,6 @@
 
 package org.alfasoftware.morf.jdbc;
 
-import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Lists.transform;
-import static com.google.common.collect.Maps.uniqueIndex;
-import static org.alfasoftware.morf.metadata.SchemaUtils.column;
-
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
@@ -27,30 +22,35 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.SortedMap;
-import java.util.TreeMap;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
+import org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import com.google.common.base.Function;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Ordering;
+import com.google.common.collect.Maps;
 
 /**
  * Provides meta data based on a database connection.
@@ -59,55 +59,51 @@ import com.google.common.collect.Ordering;
  */
 public class DatabaseMetaDataProvider implements Schema {
 
-  // Column numbers for indexing the ResultSet returned by DatabaseMetaData.getColumns()
-  // See http://docs.oracle.com/javase/6/docs/api/java/sql/DatabaseMetaData.html#getColumns%28java.lang.String,%20java.lang.String,%20java.lang.String,%20java.lang.String%29
-  private static final int IS_AUTOINCREMENT = 23;
-  protected static final int REMARKS = 12;
-  private static final int IS_NULLABLE = 18;
-  private static final int DECIMAL_DIGITS = 9;
-  private static final int COLUMN_SIZE = 7;
-  private static final int DATA_TYPE = 5;
-  private static final int TYPE_NAME = 6;
-  private static final int COLUMN_NAME = 4;
-  private static final int TABLE_NAME = 3;
+  private static final Log log = LogFactory.getLog(DatabaseMetaDataProvider.class);
+
+  // Column numbers for DatabaseMetaData.getColumns() ResultSet
+  protected static final int COLUMN_TABLE_NAME = 3;
+  protected static final int COLUMN_NAME = 4;
+  protected static final int COLUMN_DATA_TYPE = 5;
+  protected static final int COLUMN_TYPE_NAME = 6;
+  protected static final int COLUMN_SIZE = 7;
+  protected static final int COLUMN_DECIMAL_DIGITS = 9;
+  protected static final int COLUMN_REMARKS = 12;
+  protected static final int COLUMN_IS_NULLABLE = 18;
+  protected static final int COLUMN_IS_AUTOINCREMENT = 23;
+
+  // Column numbers for DatabaseMetaData.getTables() ResultSet
+  protected static final int TABLE_SCHEM = 2;
+  protected static final int TABLE_NAME = 3;
+  protected static final int TABLE_TYPE = 4;
+  protected static final int TABLE_REMARKS = 5;
+
+  // Column numbers for DatabaseMetaData.getIndexInfo() ResultSet
+  protected static final int INDEX_NON_UNIQUE = 4;
+  protected static final int INDEX_NAME = 6;
+  protected static final int INDEX_COLUMN_NAME = 9;
+
+  // Column numbers for DatabaseMetaData.getPrimaryKeys() ResultSet
+  protected static final int PRIMARY_COLUMN_NAME = 4;
+  protected static final int PRIMARY_KEY_SEQ = 5;
+
+
+  protected final Connection connection;
+  protected final String schemaName;
+
+
+  private final Supplier<Map<AName, Map<AName, ColumnBuilder>>> allColumns = Suppliers.memoize(this::loadAllColumns);
+
+  private final Supplier<Map<AName, RealName>> tableNames = Suppliers.memoize(this::loadAllTableNames);
+  private final LoadingCache<AName, Table> tableCache = CacheBuilder.newBuilder().build(CacheLoader.from(this::loadTable));
+
+  private final Supplier<Map<AName, RealName>> viewNames = Suppliers.memoize(this::loadAllViewNames);
+  private final LoadingCache<AName, View> viewCache = CacheBuilder.newBuilder().build(CacheLoader.from(this::loadView));
 
 
   /**
-   * Log provider
-   */
-  private static final Log      log         = LogFactory.getLog(DatabaseMetaDataProvider.class);
-
-  /**
-   * Type names used to query database meta data.
-   */
-  private static final String[] TABLE_TYPES = new String[] { "TABLE" };
-
-  /** Cache table names so we can remember what case the database is using. */
-  private Map<String, String>   tableNameMappings;
-
-  private final Supplier<Map<String, List<ColumnBuilder>>> columnMappings = Suppliers.memoize(this::columnMappings);
-
-  /**
-   * View cache
-   */
-  private Map<String, View> viewMap;
-
-  /**
-   * The connection from which meta data is provided.
-   */
-  protected final Connection    connection;
-
-  /**
-   * The database schema name, used in meta data queries.
-   */
-  protected final String        schemaName;
-
-
-  /**
-   * @param connection The database connection from which meta data should be
-   *          provided.
-   * @param schemaName The name of the schema in which the data is stored. This
-   *          might be null.
+   * @param connection The database connection from which meta data should be provided.
+   * @param schemaName The name of the schema in which the data is stored. This might be null.
    */
   protected DatabaseMetaDataProvider(Connection connection, String schemaName) {
     super();
@@ -117,367 +113,144 @@ public class DatabaseMetaDataProvider implements Schema {
 
 
   /**
-   * @return a mapping of uppercase table names to database table names.
-   */
-  private Map<String, String> tableNameMappings() {
-    if (tableNameMappings == null) {
-      // Create a TreeMap instead of a HashMap so that the contents are sorted
-      // alphabetically rather than being in a random order
-      tableNameMappings = new TreeMap<>();
-      readTableNames();
-    }
-    return tableNameMappings;
-  }
-
-
-  /**
-   * Use to access the metadata for the views in the specified connection.
-   * Lazily initialises the metadata, and only loads it once.
-   *
-   * @return View metadata.
-   */
-  protected final Map<String, View> viewMap() {
-    if (viewMap != null) {
-      return viewMap;
-    }
-
-    viewMap = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-    populateViewMap(viewMap);
-    return viewMap;
-  }
-
-  /**
    * @see org.alfasoftware.morf.metadata.Schema#isEmptyDatabase()
    */
   @Override
   public boolean isEmptyDatabase() {
-    return tableNameMappings().isEmpty();
+    return tableNames.get().isEmpty();
   }
 
 
   /**
-   * Return a {@link Table} implementation. Note the metadata is read lazily.
-   *
+   * @see org.alfasoftware.morf.metadata.Schema#tableExists(java.lang.String)
+   */
+  @Override
+  public boolean tableExists(String tableName) {
+    return tableNames.get().containsKey(named(tableName));
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.metadata.Schema#getTable(java.lang.String)
    */
   @Override
-  public Table getTable(String name) {
-    final String adjustedTableName = tableNameMappings().get(name.toUpperCase());
-
-    final List<String> primaryKeys = getPrimaryKeys(adjustedTableName);
-
-    if (adjustedTableName == null) {
-      throw new IllegalArgumentException("Table [" + name + "] not found.");
-    }
-
-    return new Table() {
-
-      private List<Column> columns;
-      private List<Index>  indexes;
-
-
-      /**
-       * @see org.alfasoftware.morf.metadata.Table#getName()
-       */
-      @Override
-      public String getName() {
-        return adjustedTableName;
-      }
-
-
-      /**
-       * @see org.alfasoftware.morf.metadata.Table#columns()
-       */
-      @Override
-      public List<Column> columns() {
-        if (columns == null) {
-          columns = readColumns(adjustedTableName, primaryKeys);
-        }
-        return columns;
-      }
-
-
-      /**
-       * @see org.alfasoftware.morf.metadata.Table#indexes()
-       */
-      @Override
-      public List<Index> indexes() {
-        if (indexes == null) {
-          indexes = readIndexes(adjustedTableName);
-        }
-        return indexes;
-      }
-
-
-      @Override
-      public boolean isTemporary() {
-        return false;
-      }
-
-    };
+  public Table getTable(String tableName) {
+    return tableCache.getUnchecked(named(tableName));
   }
 
 
   /**
-   * Finds the primary keys for the {@code tableName}.
-   *
-   * @param tableName the table to query for.
-   * @return a collection of the primary keys.
+   * @see org.alfasoftware.morf.metadata.Schema#tableNames()
    */
-  protected List<String> getPrimaryKeys(String tableName) {
-    List<PrimaryKeyColumn> columns = newArrayList();
+  @Override
+  public Collection<String> tableNames() {
+    return tableNames.get().values().stream().map(RealName::getRealName).collect(Collectors.toList());
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#tables()
+   */
+  @Override
+  public Collection<Table> tables() {
+    return tableNames.get().values().stream().map(RealName::getRealName).map(this::getTable).collect(Collectors.toList());
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#viewExists(java.lang.String)
+   */
+  @Override
+  public boolean viewExists(String viewName) {
+    return viewNames.get().containsKey(named(viewName));
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#getView(java.lang.String)
+   */
+  @Override
+  public View getView(String viewName) {
+    return viewCache.getUnchecked(named(viewName));
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#viewNames()
+   */
+  @Override
+  public Collection<String> viewNames() {
+    return viewNames.get().values().stream().map(RealName::getRealName).collect(Collectors.toList());
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#views()
+   */
+  @Override
+  public Collection<View> views() {
+    return viewNames.get().values().stream().map(RealName::getRealName).map(this::getView).collect(Collectors.toList());
+  }
+
+
+  /**
+   * Creates a map of all table names,
+   * indexed by their upper-case names.
+   */
+  protected Map<AName, RealName> loadAllTableNames() {
+    final ImmutableMap.Builder<AName, RealName> tableNameMappings = ImmutableMap.builder();
+
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
-      try (ResultSet primaryKeyResults = databaseMetaData.getPrimaryKeys(null, schemaName, tableName)) {
-        while (primaryKeyResults.next()) {
-          columns.add(new PrimaryKeyColumn(primaryKeyResults.getShort(5), primaryKeyResults.getString(4)));
-        }
-      }
-    } catch (SQLException sqle) {
-      throw new RuntimeSqlException("Error reading primary keys for table [" + tableName + "]", sqle);
-    }
+      try (ResultSet tableResultSet = databaseMetaData.getTables(null, schemaName, null, tableTypesForTables())) {
+        while (tableResultSet.next()) {
+          RealName tableName = readTableName(tableResultSet);
+          try {
+            String tableSchemaName = tableResultSet.getString(TABLE_SCHEM);
+            String tableType = tableResultSet.getString(TABLE_TYPE);
 
-    List<PrimaryKeyColumn> sortedColumns = Ordering.from(new Comparator<PrimaryKeyColumn>() {
-      @Override
-      public int compare(PrimaryKeyColumn o1, PrimaryKeyColumn o2) {
-        return o1.sequence.compareTo(o2.sequence);
-      }
-    }).sortedCopy(columns);
+            boolean systemTable = isSystemTable(tableName);
+            boolean ignoredTable = isIgnoredTable(tableName);
 
-    // Convert to String before returning
-    return transform(sortedColumns, new Function<PrimaryKeyColumn, String>() {
-      @Override
-      public String apply(PrimaryKeyColumn input) {
-        return input.name;
-      }
-    });
-  }
-
-
-  /**
-   * Read out the columns for a particular table.
-   *
-   * @param tableName The source table
-   * @param primaryKeys the primary keys for the table.
-   * @return a list of columns
-   */
-  protected List<Column> readColumns(String tableName, List<String> primaryKeys) {
-    List<Column> result = new LinkedList<>();
-    List<ColumnBuilder> rawColumns = columnMappings.get().get(tableName);
-    for (ColumnBuilder column : rawColumns) {
-      result.add(primaryKeys.contains(column.getName()) ? column.primaryKey() : column);
-    }
-    return applyPrimaryKeyOrder(primaryKeys, result);
-  }
-
-
-  private Map<String, List<ColumnBuilder>> columnMappings() {
-    Map<String, List<ColumnBuilder>> columnMappings = new HashMap<>();
-    try {
-      try {
-        final DatabaseMetaData databaseMetaData = connection.getMetaData();
-
-        try (ResultSet columnResults = databaseMetaData.getColumns(null, schemaName, null, null)) {
-
-          while (columnResults.next()) {
-            String tableName = columnResults.getString(TABLE_NAME);
-            if (!tableExists(tableName)) {
-              continue;
+            if (log.isDebugEnabled()) {
+              log.debug("Found table [" + tableName + "] of type [" + tableType + "] in schema [" + tableSchemaName + "]"
+                  + (systemTable ? " - SYSTEM TABLE" : "") + (ignoredTable ? " - IGNORED" : ""));
             }
 
-            String columnName = columnResults.getString(COLUMN_NAME);
-
-            try {
-              String typeName = columnResults.getString(TYPE_NAME);
-              int typeCode = columnResults.getInt(DATA_TYPE);
-              int width = columnResults.getInt(COLUMN_SIZE);
-              DataType dataType = dataTypeFromSqlType(typeCode, typeName, width);
-              int scale = columnResults.getInt(DECIMAL_DIGITS);
-              boolean nullable = columnResults.getString(IS_NULLABLE).equals("YES");
-              String defaultValue = determineDefaultValue(columnName);
-
-              ColumnBuilder column = column(columnName, dataType, width, scale).defaultValue(defaultValue);
-              column = nullable ? column.nullable() : column;
-              column = setAdditionalColumnMetadata(tableName, column, columnResults);
-
-              columnMappings.computeIfAbsent(tableName, k -> new LinkedList<>()).add(column);
-
-            } catch (Exception e) {
-              throw new RuntimeException(
-                  String.format("Error reading metadata for column [%s] on table [%s]", columnName, tableName), e);
+            if (!systemTable && !ignoredTable) {
+              tableNameMappings.put(tableName, tableName);
             }
           }
+          catch (SQLException e) {
+            throw new RuntimeSqlException("Error reading metadata for table ["+tableName+"]", e);
+          }
         }
-      } catch (SQLException sqle) {
-        throw new RuntimeSqlException(sqle);
-      }
-    } catch (Exception ex) {
-      throw new RuntimeException("Error reading metadata for schema [" + schemaName + "]", ex);
-    }
-    return columnMappings;
-  }
 
-  /**
-   * Apply the sort order of the primary keys to the list of columns, but leave non-primary keys intact.
-   *
-   * @param primaryKeys the sorted primary key column names
-   * @param columns all the columns
-   * @return the partially sorted columns
-   */
-  protected List<Column> applyPrimaryKeyOrder(List<String> primaryKeys, List<Column> columns) {
-    // Map allowing retrieval of columns by name
-    ImmutableMap<String, Column> columnsMap = uniqueIndex(columns, Column::getName);
-
-    List<Column> reorderedColumns = new ArrayList<>();
-    // keep track of the primary keys that have been added
-    int primaryKeyIndex = 0;
-    for (Column column : columns) {
-      if (column.isPrimaryKey()) {
-        // replace whatever primary key is there with the one that should be at that index
-        String pkName = primaryKeys.get(primaryKeyIndex);
-        Column primaryKeyColumn = columnsMap.get(pkName);
-        if (primaryKeyColumn == null) {
-          throw new IllegalStateException("Could not find primary key column [" + pkName + "] in columns [" + columns + "]");
-        }
-        reorderedColumns.add(primaryKeyColumn);
-        primaryKeyIndex++;
-      } else {
-        reorderedColumns.add(column);
+        return tableNameMappings.build();
       }
     }
-
-    return reorderedColumns;
-  }
-
-
-  /**
-   * Implements the default method for obtaining additional column information. For the default method this is only
-   * as to whether a column is autonumbered, and if so, from what start value, from the database.  Optionally overridden in specific RDBMS implementations
-   * where the information is available from different sources and additional column information is available.
-   *
-   * @param tableName The name of the table.
-   * @param columnBuilder The column under construction.
-   * @param columnMetaData The JDBC column metdata, if required.
-   * @return The modified column
-   * @throws SQLException when a problem in retrieving information from the database is encountered.
-   */
-  @SuppressWarnings("unused")
-  protected ColumnBuilder setAdditionalColumnMetadata(String tableName, ColumnBuilder columnBuilder, ResultSet columnMetaData) throws SQLException {
-    return "YES".equals(columnMetaData.getString(IS_AUTOINCREMENT)) ? columnBuilder.autoNumbered(-1) : columnBuilder;
-  }
-
-
-  /**
-   * Read out the indexes for a particular table
-   *
-   * @param tableName The source table
-   * @return The indexes for the table
-   */
-  protected List<Index> readIndexes(String tableName) {
-    try {
-      final DatabaseMetaData databaseMetaData = connection.getMetaData();
-
-      try (ResultSet indexResultSet = databaseMetaData.getIndexInfo(null, schemaName, tableName, false, false)) {
-        List<Index> indexes = new LinkedList<>();
-
-        SortedMap<String, List<String>> columnsByIndexName = new TreeMap<>();
-
-        // there's one entry for each column in the index
-        // the results are sorted by ordinal position already
-        while (indexResultSet.next()) {
-          String indexName = indexResultSet.getString(6);
-
-          if (indexName == null) {
-            continue;
-          }
-
-          // don't output the primary key as an index
-          if (isPrimaryKeyIndex(indexName)) {
-            continue;
-          }
-
-          // some indexes should be ignored anyway
-          if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName)) {
-            continue;
-          }
-
-          String columnName = indexResultSet.getString(9);
-
-          List<String> columnNames = columnsByIndexName.get(indexName);
-          // maybe create a new one
-          if (columnNames == null) {
-            columnNames = new LinkedList<>();
-            boolean unique = !indexResultSet.getBoolean(4);
-
-            indexes.add(new IndexImpl(indexName, unique, columnNames));
-            columnsByIndexName.put(indexName, columnNames);
-          }
-
-          // add this column to the list
-          columnNames.add(columnName);
-        }
-        return indexes;
-      }
-    } catch (SQLException sqle) {
-      throw new RuntimeSqlException("Error reading metadata for table [" + tableName + "]", sqle);
+    catch (SQLException e) {
+      throw new RuntimeSqlException(e);
     }
   }
 
 
   /**
-   * Populate the given map with information on the views in the database.
-   *
-   * @param viewMap Map to populate.
+   * Types for {@link DatabaseMetaData#getTables(String, String, String, String[])}
+   * used by {@link #loadAllTableNames()}.
    */
-  protected void populateViewMap(Map<String, View> viewMap) {
-    try {
-      final DatabaseMetaData databaseMetaData = connection.getMetaData();
-
-      try (ResultSet views = databaseMetaData.getTables(null, schemaName, null, new String[]{"VIEW"})) {
-        while (views.next()) {
-          final String viewName = views.getString(3);
-          log.debug("Found view [" + viewName + "]");
-          viewMap.put(viewName, new View() {
-            @Override
-            public String getName() {
-              return viewName;
-            }
-
-            @Override
-            public boolean knowsSelectStatement() {
-              return false;
-            }
-
-            @Override
-            public boolean knowsDependencies() {
-              return false;
-            }
-
-            @Override
-            public SelectStatement getSelectStatement() {
-              throw new UnsupportedOperationException("Cannot return SelectStatement as [" + viewName + "] has been loaded from the database");
-            }
-
-            @Override
-            public String[] getDependencies() {
-              throw new UnsupportedOperationException("Cannot return dependencies as [" + viewName + "] has been loaded from the database");
-            }
-          });
-        }
-      }
-    } catch (SQLException sqle) {
-      throw new RuntimeSqlException("Error reading metadata for views", sqle);
-    }
+  protected String[] tableTypesForTables() {
+    return new String[] { "TABLE" };
   }
 
 
   /**
-   * @param indexName The index name
-   * @return Whether this is the primary key for this table
+   * Retrieves table name from a result set.
    */
-  protected boolean isPrimaryKeyIndex(String indexName) {
-    return "PRIMARY".equals(indexName);
+  protected RealName readTableName(ResultSet tableResultSet) throws SQLException {
+    String tableName = tableResultSet.getString(TABLE_NAME);
+    return createRealName(tableName, tableName);
   }
 
 
@@ -487,10 +260,9 @@ public class DatabaseMetaDataProvider implements Schema {
    * access in the schema are under our control.
    *
    * @param tableName The table which we are accessing.
-   * @return <var>true</var> if the table is owned by the system, and should not
-   *         be managed by this code.
+   * @return <var>true</var> if the table is owned by the system
    */
-  protected boolean isSystemTable(@SuppressWarnings("unused") String tableName) {
+  protected boolean isSystemTable(@SuppressWarnings("unused") RealName tableName) {
     return false;
   }
 
@@ -502,22 +274,80 @@ public class DatabaseMetaDataProvider implements Schema {
    * @param tableName The table which we are accessing.
    * @return <var>true</var> if the table should be ignored, false otherwise.
    */
-  protected boolean shouldIgnoreTable(@SuppressWarnings("unused") String tableName) {
+  protected boolean isIgnoredTable(@SuppressWarnings("unused") RealName tableName) {
     return false;
   }
 
 
   /**
-   * Converts a given SQL data type to a {@link DataType}.
-   *
-   * @param sqlType The jdbc data type to convert.
-   * @param typeName The (potentially database specific) type name
-   * @param width The width of the column
-   * @return The Cryo DataType that represents the sql connection data type
-   *         given in <var>sqlType</var>.
+   * Creates a map of maps of all table columns,
+   * first indexed by their upper-case table names,
+   * and then indexed by their upper-case column names.
    */
-  protected DataType dataTypeFromSqlType(int sqlType, String typeName, @SuppressWarnings("unused") int width) {
-    switch (sqlType) {
+  protected Map<AName, Map<AName, ColumnBuilder>> loadAllColumns() {
+    final Map<AName, ImmutableMap.Builder<AName, ColumnBuilder>> columnMappingBuilders = Maps.toMap(tableNames.get().keySet(), k -> ImmutableMap.builder());
+
+    try {
+      final DatabaseMetaData databaseMetaData = connection.getMetaData();
+
+      try (ResultSet columnResultSet = databaseMetaData.getColumns(null, schemaName, null, null)) {
+        while (columnResultSet.next()) {
+          String tableName = columnResultSet.getString(COLUMN_TABLE_NAME);
+          RealName realTableName = tableNames.get().get(named(tableName));
+          if (realTableName == null) {
+            continue; // ignore columns of unknown tables
+          }
+
+          RealName columnName = readColumnName(columnResultSet);
+          try {
+            String typeName = columnResultSet.getString(COLUMN_TYPE_NAME);
+            int typeCode = columnResultSet.getInt(COLUMN_DATA_TYPE);
+            int width = columnResultSet.getInt(COLUMN_SIZE);
+            int scale = columnResultSet.getInt(COLUMN_DECIMAL_DIGITS);
+            DataType dataType = dataTypeFromSqlType(typeCode, typeName, width);
+
+            ColumnBuilder column = SchemaUtils.column(columnName.getRealName(), dataType, width, scale);
+            column = setColumnNullability(realTableName, column, columnResultSet);
+            column = setColumnAutonumbered(realTableName, column, columnResultSet);
+            column = setColumnDefaultValue(realTableName, column, columnResultSet);
+            column = setAdditionalColumnMetadata(realTableName, column, columnResultSet);
+
+            if (log.isDebugEnabled()) {
+              log.debug("Found column [" + column + "] on table [" + tableName + "]");
+            }
+
+            columnMappingBuilders.get(realTableName).put(columnName, column);
+          }
+          catch (SQLException e) {
+            throw new RuntimeSqlException("Error reading metadata for column ["+columnName+"] on table ["+tableName+"]", e);
+          }
+        }
+
+        // Maps.transformValues creates a view over the given map of builders
+        // Therefore we need to make a copy to avoid building the builders repeatedly
+        return ImmutableMap.copyOf(Maps.transformValues(columnMappingBuilders, v -> v.build()));
+      }
+    }
+    catch (SQLException e) {
+      throw new RuntimeSqlException(e);
+    }
+  }
+
+
+  /**
+   * Retrieves column name from a result set.
+   */
+  protected RealName readColumnName(ResultSet columnResultSet) throws SQLException {
+    String columnName = columnResultSet.getString(COLUMN_NAME);
+    return createRealName(columnName, columnName);
+  }
+
+
+  /**
+   * Converts a given SQL data type to a {@link DataType}.
+   */
+  protected DataType dataTypeFromSqlType(int typeCode, String typeName, int width) {
+    switch (typeCode) {
       case Types.TINYINT:
       case Types.SMALLINT:
       case Types.INTEGER:
@@ -549,221 +379,462 @@ public class DatabaseMetaDataProvider implements Schema {
       case Types.NCLOB:
       case Types.CLOB:
         return DataType.CLOB;
-
       default:
-        throw new IllegalArgumentException("Unknown SQL data type [" + typeName + "] (" + sqlType + ")");
+        throw new IllegalArgumentException("Unknown SQL data type [" + typeName + "] (type " + typeCode + " width " + width + ")");
     }
   }
 
 
   /**
-   * @see org.alfasoftware.morf.metadata.Schema#tableExists(java.lang.String)
+   * Sets column nullability from a result set.
    */
-  @Override
-  public boolean tableExists(String name) {
-    return tableNameMappings().containsKey(name.toUpperCase());
+  @SuppressWarnings("unused")
+  protected ColumnBuilder setColumnNullability(RealName tableName, ColumnBuilder column, ResultSet columnResultSet) throws SQLException {
+    boolean nullable = "YES".equals(columnResultSet.getString(COLUMN_IS_NULLABLE));
+    return nullable ? column.nullable() : column;
   }
 
 
   /**
-   * @see org.alfasoftware.morf.metadata.Schema#tableNames()
+   * Sets column being autonumbered from a result set.
    */
-  @Override
-  public Collection<String> tableNames() {
-    if (log.isDebugEnabled()) {
-      log.debug("Find tables in schema [" + schemaName + "]");
+  @SuppressWarnings("unused")
+  protected ColumnBuilder setColumnAutonumbered(RealName tableName, ColumnBuilder column, ResultSet columnResultSet) throws SQLException {
+    boolean autoNumbered = "YES".equals(columnResultSet.getString(COLUMN_IS_AUTOINCREMENT));
+    return autoNumbered ? column.autoNumbered(-1) : column;
+  }
+
+
+  /**
+   * Sets column default value.
+   *
+   * Note: Uses an empty string for any column other than version.
+   * Database-schema level default values are not supported by ALFA's domain model
+   * hence we don't want to include a default value in the definition of tables.
+   */
+  @SuppressWarnings("unused")
+  protected ColumnBuilder setColumnDefaultValue(RealName tableName, ColumnBuilder column, ResultSet columnResultSet) {
+    String defaultValue = "version".equalsIgnoreCase(column.getName()) ? "0" : "";
+    return column.defaultValue(defaultValue);
+  }
+
+
+  /**
+   * Sets additional column information.
+   */
+  @SuppressWarnings("unused")
+  protected ColumnBuilder setAdditionalColumnMetadata(RealName tableName, ColumnBuilder column, ResultSet columnResultSet) throws SQLException {
+    return column;
+  }
+
+
+  /**
+   * Loads a table.
+   */
+  protected Table loadTable(AName tableName) {
+    final RealName realTableName = tableNames.get().get(tableName);
+
+    if (realTableName == null) {
+      throw new IllegalArgumentException("Table [" + tableName + "] not found.");
     }
 
-    return tableNameMappings().values();
+    final Map<AName, Integer> primaryKey = loadTablePrimaryKey(realTableName);
+    final Supplier<List<Column>> columns = Suppliers.memoize(() -> loadTableColumns(realTableName, primaryKey));
+    final Supplier<List<Index>> indexes = Suppliers.memoize(() -> loadTableIndexes(realTableName));
+
+    return new Table() {
+      @Override
+      public String getName() {
+        return realTableName.getRealName();
+      }
+
+      @Override
+      public List<Column> columns() {
+        return columns.get();
+      }
+
+      @Override
+      public List<Index> indexes() {
+        return indexes.get();
+      }
+
+      @Override
+      public boolean isTemporary() {
+        return false;
+      }
+    };
   }
 
 
   /**
-   * @see org.alfasoftware.morf.metadata.Schema#tables()
+   * Loads the primary key column names for the given table name,
+   * as a map of upper-case names and respective positions within the key.
    */
-  @Override
-  public Collection<Table> tables() {
-    List<Table> result = new ArrayList<>();
-    for (String tableName : tableNames()) {
-      result.add(getTable(tableName));
-    }
-    return result;
-  }
+  protected Map<AName, Integer> loadTablePrimaryKey(RealName tableName) {
+    final ImmutableMap.Builder<AName, Integer> columns = ImmutableMap.builder();
 
-
-  /**
-   * Reads the table names and makes sure we are case insensitive for future
-   * requests.
-   */
-  protected void readTableNames() {
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
-      try (ResultSet tables = databaseMetaData.getTables(null, schemaName, null, TABLE_TYPES)) {
-        while (tables.next()) {
-          String tableName = tables.getString(3);
-          String tableSchemaName = tables.getString(2);
-          String tableType = tables.getString(4);
-
-          foundTable(tableName, tableSchemaName, tableType);
+      try (ResultSet primaryKeyResultSet = databaseMetaData.getPrimaryKeys(null, schemaName, tableName.getDbName())) {
+        while (primaryKeyResultSet.next()) {
+          int sequenceNumber = primaryKeyResultSet.getShort(PRIMARY_KEY_SEQ) - 1;
+          String columnName = primaryKeyResultSet.getString(PRIMARY_COLUMN_NAME);
+          columns.put(named(columnName), sequenceNumber);
         }
+
+        if (log.isDebugEnabled()) {
+          log.debug("Found primary key [" + columns.build() + "] on table [" + tableName + "]");
+        }
+
+        return columns.build();
       }
-    } catch (SQLException sqle) {
-      throw new RuntimeSqlException("SQLException in readTableNames()", sqle);
+    }
+    catch (SQLException e) {
+      throw new RuntimeSqlException("Error reading primary keys for table [" + tableName + "]", e);
     }
   }
 
 
   /**
-   * Declare a table that has been found in the metadata.
+   * Loads the columns for the given table name.
+   */
+  protected List<Column> loadTableColumns(RealName tableName, Map<AName, Integer> primaryKey) {
+    final Collection<ColumnBuilder> originalColumns = allColumns.get().get(tableName).values();
+    return createColumnsFrom(originalColumns, primaryKey);
+  }
+
+
+  /**
+   * Creates a list of table columns from given columns and map of primary key columns.
+   * Also reorders the primary key columns between themselves to reflect the order of columns within the primary key.
+   */
+  protected static List<Column> createColumnsFrom(Collection<ColumnBuilder> originalColumns, Map<AName, Integer> primaryKey) {
+    final List<Column> primaryKeyColumns = new ArrayList<>(Collections.nCopies(primaryKey.size(), null));
+    final List<Supplier<Column>> results = new ArrayList<>(originalColumns.size());
+
+    // Reorder primary-key columns between themselves according to their ordering within provided reference
+    // All non-primary-key columns simply keep their original positions
+    Iterator<Integer> numberer = IntStream.rangeClosed(0, primaryKey.size()).iterator();
+    for (ColumnBuilder column : originalColumns) {
+      if (primaryKey.containsKey(named(column.getName()))) {
+        Integer primaryKeyPosition = primaryKey.get(named(column.getName()));
+        primaryKeyColumns.set(primaryKeyPosition, column.primaryKey());
+        results.add(() -> primaryKeyColumns.get(numberer.next()));
+      }
+      else {
+        results.add(Suppliers.ofInstance(column));
+      }
+    }
+
+    return results.stream().map(Supplier::get).collect(Collectors.toList());
+  }
+
+
+  /**
+   * Loads the indexes for the given table name, except for the primary key index.
+   */
+  protected List<Index> loadTableIndexes(RealName tableName) {
+    final Map<RealName, ImmutableList.Builder<RealName>> indexColumns = new HashMap<>();
+    final Map<RealName, Boolean> indexUniqueness = new HashMap<>();
+
+    try {
+      final DatabaseMetaData databaseMetaData = connection.getMetaData();
+
+      try (ResultSet indexResultSet = databaseMetaData.getIndexInfo(null, schemaName, tableName.getDbName(), false, false)) {
+        while (indexResultSet.next()) {
+          RealName indexName = readIndexName(indexResultSet);
+          try {
+            if (indexName == null) {
+              continue;
+            }
+            if (isPrimaryKeyIndex(indexName)) {
+              continue;
+            }
+            if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName.getDbName())) {
+              continue;
+            }
+
+            String dbColumnName = indexResultSet.getString(INDEX_COLUMN_NAME);
+            String realColumnName = allColumns.get().get(tableName).get(named(dbColumnName)).getName();
+            RealName columnName = createRealName(dbColumnName, realColumnName);
+            boolean unique = !indexResultSet.getBoolean(INDEX_NON_UNIQUE);
+
+            if (log.isDebugEnabled()) {
+              log.debug("Found index column [" + columnName + "] for index [" + indexName  + ", unique: " + unique + "] on table [" + tableName + "]");
+            }
+
+            indexUniqueness.put(indexName, unique);
+
+            indexColumns.computeIfAbsent(indexName, k -> ImmutableList.builder())
+                .add(columnName);
+          }
+          catch (SQLException e) {
+            throw new RuntimeSqlException("Error reading metadata for index ["+indexName+"] on table ["+tableName+"]", e);
+          }
+        }
+
+        return indexColumns.entrySet().stream()
+            .map(e -> createIndexFrom(e.getKey(), indexUniqueness.get(e.getKey()), e.getValue().build()))
+            .collect(Collectors.toList());
+      }
+    }
+    catch (SQLException e) {
+      throw new RuntimeSqlException("Error reading metadata for table [" + tableName + "]", e);
+    }
+  }
+
+
+  /**
+   * Retrieves index name from a result set.
+   */
+  protected RealName readIndexName(ResultSet indexResultSet) throws SQLException {
+    String indexName = indexResultSet.getString(INDEX_NAME);
+    return createRealName(indexName, indexName);
+  }
+
+
+  /**
+   * Identify whether this is the primary key for this table.
+   */
+  protected boolean isPrimaryKeyIndex(RealName indexName) {
+    return "PRIMARY".equals(indexName.getDbName());
+  }
+
+
+  /**
+   * Creates an index from given info.
+   */
+  protected static Index createIndexFrom(RealName indexName, boolean isUnique, List<RealName> columnNames) {
+    List<String> realColumnNames = columnNames.stream().map(RealName::getRealName).collect(Collectors.toList());
+    IndexBuilder index = SchemaUtils.index(indexName.getRealName()).columns(realColumnNames);
+    return isUnique ? index.unique() : index;
+  }
+
+
+  /**
+   * Creates a map of all view names,
+   * indexed by their upper-case names.
+   */
+  protected Map<AName, RealName> loadAllViewNames() {
+    final ImmutableMap.Builder<AName, RealName> viewNameMappings = ImmutableMap.builder();
+
+    try {
+      final DatabaseMetaData databaseMetaData = connection.getMetaData();
+
+      try (ResultSet viewResultSet = databaseMetaData.getTables(null, schemaName, null, tableTypesForViews())) {
+        while (viewResultSet.next()) {
+          RealName viewName = readViewName(viewResultSet);
+
+          if (log.isDebugEnabled()) {
+            log.debug("Found view [" + viewName + "]");
+          }
+
+          viewNameMappings.put(viewName, viewName);
+        }
+
+        return viewNameMappings.build();
+      }
+    } catch (SQLException e) {
+      throw new RuntimeSqlException("Error reading metadata for views", e);
+    }
+  }
+
+
+  /**
+   * Types for {@link DatabaseMetaData#getTables(String, String, String, String[])}
+   * used by {@link #loadAllViewNames()}.
+   */
+  protected String[] tableTypesForViews() {
+    return new String[] { "VIEW" };
+  }
+
+
+  /**
+   * Retrieves view name from a result set.
+   */
+  protected RealName readViewName(ResultSet viewResultSet) throws SQLException {
+    String viewName = viewResultSet.getString(TABLE_NAME);
+    return createRealName(viewName, viewName);
+  }
+
+
+  /**
+   * Loads a view.
+   */
+  protected View loadView(AName viewName) {
+    final RealName realViewName = viewNames.get().get(viewName);
+
+    if (realViewName == null) {
+      throw new IllegalArgumentException("View [" + viewName + "] not found.");
+    }
+
+    return new View() {
+      @Override
+      public String getName() {
+        return realViewName.getRealName();
+      }
+
+      @Override
+      public boolean knowsSelectStatement() {
+        return false;
+      }
+
+      @Override
+      public boolean knowsDependencies() {
+        return false;
+      }
+
+      @Override
+      public SelectStatement getSelectStatement() {
+        throw new UnsupportedOperationException("Cannot return SelectStatement as [" + realViewName.getRealName() + "] has been loaded from the database");
+      }
+
+      @Override
+      public String[] getDependencies() {
+        throw new UnsupportedOperationException("Cannot return dependencies as [" + realViewName.getRealName() + "] has been loaded from the database");
+      }
+    };
+  }
+
+
+  /**
+   * Creates {@link AName} for searching the maps within this metadata provider.
    *
-   * @param tableName The name of the table
-   * @param tableSchemaName The schema of the table
-   * @param tableType The type of the table.
-   */
-  protected void foundTable(String tableName, String tableSchemaName, String tableType) {
-    boolean tableIsSystemTable = isSystemTable(tableName);
-    boolean tableShouldBeIgnored = shouldIgnoreTable(tableName);
-
-    if (log.isDebugEnabled()) {
-      log.debug("Found table [" + tableName + "] of type [" + tableType + "] in schema [" + tableSchemaName + "]"
-          + (tableIsSystemTable ? " - SYSTEM TABLE" : "") + (tableShouldBeIgnored ? " - IGNORED" : ""));
-    }
-
-    // If this is not a system table and the schema name matches the requested
-    // schema then add the table
-    if (!tableIsSystemTable && !tableShouldBeIgnored) {
-      tableNameMappings.put(tableName.toUpperCase(), tableName);
-    }
-  }
-
-
-  /**
-   * Sets the default value to an empty string for any column other than
-   * version. Database-schema level default values are not supported by ALFA's
-   * domain model hence we don't want to include a default value in the xml
-   * definition of a table.
+   * <p>
+   * Metadata providers need to use case insensitive keys for lookup maps, since
+   * database object name are considered case insensitive. While the same could
+   * be achieved by simply upper-casing all database object names, such approach
+   * can lead to mistakes.
    *
-   * @param columnName the name of the column
-   * @return the default value
+   * <p>
+   * On top of that, using {@link AName} instead of upper-cased strings has the
+   * advantage of strongly typed map keys, as opposed to maps of strings.
+   *
+   * @param name Case insensitive name of the object.
+   * @return {@link AName} instance suitable for use as a key in the lookup maps.
    */
-  protected String determineDefaultValue(String columnName) {
-    if (columnName.equals("version") || columnName.equals("version".toUpperCase())) {
-      return "0";
-    }
-
-    return "";
+  protected static AName named(String name) {
+    return new AName(name);
   }
 
+
   /**
-   * Implementation of {@link Index} for database meta data
+   * Creates {@link RealName}, which contractually remembers two versions of a
+   * database object name: the name as retrieved by the JDBC driver, and also
+   * the user-friendly camel-case name of that same object, often derived by
+   * looking at the comment of that object, or in schema descriptions.
+   *
+   * <p>
+   * Note: Any {@link RealName} is also {@link AName}, and thus can be used as a
+   * key in the lookup maps for convenience, just like any other {@link AName}.
+   *
+   * <p>
+   * However,
+   * the distinction beetween {@link RealName} and {@link AName} is important.
+   * Strongly typed {@link RealName} is used in places where the two versions
+   * of a database object name are known, as opposed to {@link AName} being used
+   * in places where case insensitive map lookup keys are good enough. Method
+   * signatures for example use {@link RealName} if they need a specific version
+   * of the database object name, and use {@link AName} if they do not really
+   * care (or cannot be expected to care) about the true letter case.
+   *
+   * <p>
+   * Never create an instance of {@link RealName} without knowing true values of
+   * the two versions of a database object name.
+   *
+   * @param dbName the name as retrieved by the JDBC driver
+   * @param realName the user-friendly camel-case name of that same object,
+   *                 often derived by looking at the comment of that object,
+   *                 or in schema descriptions.
+   * @return {@link RealName} instance holding the two name versions.
+   *         Can also be used as a key in the lookup maps, like {@link AName}.
    */
-  protected static final class IndexImpl implements Index {
-
-    /**
-     * index name
-     */
-    private final String       name;
-    /**
-     * index is unique
-     */
-    private final boolean      isUnique;
-    /**
-     * index columns
-     */
-    private final List<String> columnNames;
+  protected static RealName createRealName(String dbName, String realName) {
+    return new RealName(dbName, realName);
+  }
 
 
-    /**
-     * @param name The name of the index
-     * @param isUnique Whether the index is unique
-     * @param columnNames The index column names
-     */
-    public IndexImpl(String name, boolean isUnique, List<String> columnNames) {
-      super();
-      this.name = name;
-      this.isUnique = isUnique;
-      this.columnNames = columnNames;
+  /**
+   * Case insensitive name of a database object.
+   * Used as keys in the maps within this metadata provider.
+   * Also used for referencing database objects without worrying about letter case.
+   *
+   * <p>For more info,
+   * see {@link DatabaseMetaDataProvider#named(String)}
+   * and {@link DatabaseMetaDataProvider#createRealName(String)}
+   */
+  protected static class AName {
+    private final String aName;
+    private final int hashCode;
+
+    protected AName(String aName) {
+      this.aName = aName;
+      this.hashCode = aName.toLowerCase().hashCode();
     }
 
-
-    /**
-     * @see org.alfasoftware.morf.metadata.Index#columnNames()
-     */
-    @Override
-    public List<String> columnNames() {
-      return columnNames;
+    protected String getAName() {
+      return aName;
     }
 
-
-    /**
-     * @see org.alfasoftware.morf.metadata.Index#getName()
-     */
-    @Override
-    public String getName() {
-      return name;
-    }
-
-
-    /**
-     * @see org.alfasoftware.morf.metadata.Index#isUnique()
-     */
-    @Override
-    public boolean isUnique() {
-      return isUnique;
-    }
-
-
-    /**
-     * @see java.lang.Object#toString()
-     */
     @Override
     public String toString() {
-      return "Index " + name + " on " + columnNames + (isUnique ? " (Unique)" : "");
+      return aName + "/*";
+    }
+
+    @Override
+    public int hashCode() {
+      return hashCode;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (this == obj) return true;
+      if (obj == null) return false;
+      if (!(obj instanceof AName)) return false; // instanceof is fine as we actually want to consider children
+      AName that = (AName) obj;
+      return this.aName.equalsIgnoreCase(that.aName);
     }
   }
 
-  /**
-   * @see org.alfasoftware.morf.metadata.Schema#viewExists(java.lang.String)
-   */
-  @Override
-  public boolean viewExists(String name) {
-    return viewMap().containsKey(name.toUpperCase());
-  }
-
 
   /**
-   * @see org.alfasoftware.morf.metadata.Schema#getView(java.lang.String)
+   * Two case sensitive names of a database object: the name as retrieved by the JDBC driver,
+   * and also the user-friendly camel-case name of that same object, often derived by looking
+   * at the comment of that object, or in schema descriptions.
+   *
+   * <p>Can also be used as {@link AName}, for convenience.
+   *
+   * <p>For more info,
+   * see {@link DatabaseMetaDataProvider#named(String)}
+   * and {@link DatabaseMetaDataProvider#createRealName(String)}
    */
-  @Override
-  public View getView(String name) {
-    return viewMap().get(name.toUpperCase());
-  }
+  protected static final class RealName extends AName {
 
+    private final String realName;
 
-  /**
-   * @see org.alfasoftware.morf.metadata.Schema#viewNames()
-   */
-  @Override
-  public Collection<String> viewNames() {
-    return viewMap().keySet();
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.metadata.Schema#views()
-   */
-  @Override
-  public Collection<View> views() {
-    return viewMap().values();
-  }
-
-  private static class PrimaryKeyColumn {
-    final Short sequence;
-    final String name;
-    PrimaryKeyColumn(Short sequence, String name) {
-      this.sequence = sequence;
-      this.name = name;
+    private RealName(String dbName, String realName) {
+      super(dbName);
+      this.realName = realName;
     }
+
+    public String getRealName() {
+      return realName;
+    }
+
+    public String getDbName() {
+      return getAName();
+    }
+
+    @Override
+    public String toString() {
+      return getDbName() + "/" + getRealName();
+    }
+  }
+
+
+  @Override
+  public String toString() {
+    return "Schema[" + tables().size() + " tables, " + views().size() + " views]";
   }
 }

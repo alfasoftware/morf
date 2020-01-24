@@ -24,12 +24,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
-import org.junit.Before;
-import org.junit.Test;
-
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
+import org.junit.Before;
+import org.junit.Test;
 
 /**
  * Tests removing columns from a schema.
@@ -80,7 +79,7 @@ public class TestRemoveColumn {
   @Test
   public void testRemovePrimaryKey() {
     Schema testSchema = schema(appleTable);
-    RemoveColumn removeIdColumn = new RemoveColumn("Apple", column("id", DataType.BIG_INTEGER, 19, 0).primaryKey());
+    RemoveColumn removeIdColumn = new RemoveColumn("Apple", column("id", DataType.BIG_INTEGER).primaryKey());
     Schema updatedSchema = removeIdColumn.apply(testSchema);
     Table resultTable = updatedSchema.getTable("Apple");
     assertNotNull(resultTable);

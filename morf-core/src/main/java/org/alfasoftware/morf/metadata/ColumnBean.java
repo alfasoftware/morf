@@ -201,6 +201,6 @@ class ColumnBean extends ColumnTypeBean implements Column {
    */
   @Override
   public String toString() {
-    return String.format("Column-%s-%s-%d-%d-%s-%s-%s-%s-%s", name, this.getType(), this.getWidth(), this.getScale(), this.isNullable(), defaultValue, primaryKey, autoNumber, autoNumberStart);
+    return this.toStringHelper();
   }
 }

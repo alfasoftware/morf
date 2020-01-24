@@ -15,13 +15,13 @@
 
 package org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0;
 
+import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.upgrade.DataEditor;
 import org.alfasoftware.morf.upgrade.SchemaEditor;
 import org.alfasoftware.morf.upgrade.Sequence;
 import org.alfasoftware.morf.upgrade.UUID;
-
-import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 
 @Sequence(1)
 @UUID("94c5e6bc-e65b-477c-bee2-71f9e4378105")
@@ -29,6 +29,6 @@ public class ChangeColumnDataType extends AbstractTestUpgradeStep {
   @Override
   public void execute(SchemaEditor schema, DataEditor data) {
     schema.removeColumn("BasicTable", column("stringCol", DataType.STRING, 20).primaryKey());
-    schema.changeColumn("BasicTable", column("decimalTenZeroCol", DataType.DECIMAL, 10, 0), column("decimalTenZeroCol", DataType.BIG_INTEGER, 20, 0).primaryKey());
+    schema.changeColumn("BasicTable", column("decimalTenZeroCol", DataType.DECIMAL, 10, 0), column("decimalTenZeroCol", DataType.BIG_INTEGER).primaryKey());
   }
 }

@@ -55,8 +55,8 @@ class ColumnTypeBean implements ColumnType {
   ColumnTypeBean(DataType type, int width, int scale, boolean nullable) {
     super();
     this.type = type;
-    this.width = width;
-    this.scale = scale;
+    this.width = type.hasWidth() ? width : 0;
+    this.scale = type.hasScale() ? scale : 0;
     this.nullable = nullable;
   }
 
@@ -102,7 +102,6 @@ class ColumnTypeBean implements ColumnType {
    */
   @Override
   public String toString() {
-    return String.format("Column-%s-%d-%d-%s", type, width, scale, nullable);
+    return String.format("ColumnType-%s-%d-%d-%s", type, width, scale, nullable);
   }
-
 }

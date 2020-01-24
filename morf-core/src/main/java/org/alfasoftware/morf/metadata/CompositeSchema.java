@@ -181,4 +181,10 @@ class CompositeSchema implements Schema {
 
     return result;
   }
+
+
+  @Override
+  public String toString() {
+    return "Schema[" + tables().size() + " tables, " + views().size() + " views]";
+  }
 }

@@ -71,6 +71,7 @@ public final class SchemaResourceImpl extends SchemaAdapter implements SchemaRes
   public void close() {
     try {
       // restore auto-commit state
+      connection.commit();
       connection.setAutoCommit(wasAutoCommit);
       connection.close();
     } catch (SQLException e) {

@@ -71,7 +71,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
   protected List<String> expectedCreateTableStatements() {
     return Arrays
         .asList(
-          "CREATE TABLE SCM.Test (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), intField DECIMAL(8,0), floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField SMALLINT, charField VARCHAR(1), blobField BLOB, bigIntegerField BIGINT DEFAULT 12345, clobField CLOB, PRIMARY KEY (id))",
+          "CREATE TABLE SCM.Test (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), intField INTEGER, floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField SMALLINT, charField VARCHAR(1), blobField BLOB, bigIntegerField BIGINT DEFAULT 12345, clobField CLOB, PRIMARY KEY (id))",
           "DROP INDEX IF EXISTS SCM.Test_NK",
           "CREATE UNIQUE INDEX Test_NK ON SCM.Test (stringField)",
           "DROP INDEX IF EXISTS SCM.Test_1",
@@ -95,7 +95,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
   protected List<String> expectedCreateTemporaryTableStatements() {
     return Arrays
         .asList(
-          "CREATE TEMPORARY TABLE TEMP_TempTest (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), intField DECIMAL(8,0), floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField SMALLINT, charField VARCHAR(1), blobField BLOB, bigIntegerField BIGINT DEFAULT 12345, clobField CLOB, PRIMARY KEY (id))",
+          "CREATE TEMPORARY TABLE TEMP_TempTest (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), intField INTEGER, floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField SMALLINT, charField VARCHAR(1), blobField BLOB, bigIntegerField BIGINT DEFAULT 12345, clobField CLOB, PRIMARY KEY (id))",
           "DROP INDEX IF EXISTS TempTest_NK",
           "CREATE UNIQUE INDEX TempTest_NK ON TEMP_TempTest (stringField)",
           "DROP INDEX IF EXISTS TempTest_1",
@@ -691,7 +691,8 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAlterIntegerColumnStatement() {
     return Arrays.asList("DROP INDEX SCM.Test_1",
-                         "ALTER TABLE SCM.Test ALTER COLUMN intField TYPE DECIMAL(10,0)",
+                         "ALTER TABLE SCM.Test ALTER COLUMN intField NOT NULL DEFAULT 0",
+                         "ALTER TABLE SCM.Test ALTER COLUMN intField DROP DEFAULT",
                          "CREATE INDEX Test_1 ON SCM.Test (intField,floatField)");
   }
 
@@ -739,7 +740,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAlterBooleanColumnStatement() {
-    return Arrays.asList("ALTER TABLE SCM.Test ALTER COLUMN booleanField TYPE SMALLINT");
+    return Arrays.asList("ALTER TABLE SCM.Test ALTER COLUMN booleanField NOT NULL DEFAULT 0", "ALTER TABLE SCM.Test ALTER COLUMN booleanField DROP DEFAULT");
   }
 
 
@@ -757,7 +758,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAlterDateColumnStatement() {
-    return Arrays.asList("ALTER TABLE SCM.Test ALTER COLUMN dateField TYPE DATE");
+    return Arrays.asList("ALTER TABLE SCM.Test ALTER COLUMN dateField NOT NULL DEFAULT 0", "ALTER TABLE SCM.Test ALTER COLUMN dateField DROP DEFAULT");
   }
 
 
@@ -798,8 +799,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAlterBigIntegerColumnStatement() {
-    return Arrays.asList("ALTER TABLE SCM.Test ALTER COLUMN bigIntegerField TYPE BIGINT",
-                         "ALTER TABLE SCM.Test ALTER COLUMN bigIntegerField DROP DEFAULT",
+    return Arrays.asList("ALTER TABLE SCM.Test ALTER COLUMN bigIntegerField DROP DEFAULT",
                          "ALTER TABLE SCM.Test ALTER COLUMN bigIntegerField NULL");
   }
 
@@ -818,7 +818,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAlterBlobColumnStatement() {
-    return Arrays.asList("ALTER TABLE SCM.Test ALTER COLUMN blobField TYPE BLOB");
+    return Arrays.asList("ALTER TABLE SCM.Test ALTER COLUMN blobField NOT NULL DEFAULT 0", "ALTER TABLE SCM.Test ALTER COLUMN blobField DROP DEFAULT");
   }
 
 
@@ -855,7 +855,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAlterTableAlterColumnWithDefaultStatement() {
-    return Arrays.asList("ALTER TABLE SCM.Test ALTER COLUMN bigIntegerField TYPE BIGINT","ALTER TABLE SCM.Test ALTER COLUMN bigIntegerField NOT NULL DEFAULT 54321");
+    return Arrays.asList("ALTER TABLE SCM.Test ALTER COLUMN bigIntegerField NOT NULL DEFAULT 54321");
   }
 
   /**
@@ -879,7 +879,8 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
       "DROP INDEX IF EXISTS SCM.Test_1",
       "CREATE INDEX Test_1 ON SCM.Test (intField)",
       // changeColumnStatements
-      "ALTER TABLE SCM.Test ALTER COLUMN intField TYPE DECIMAL(11,0)");
+      "ALTER TABLE SCM.Test ALTER COLUMN intField NOT NULL DEFAULT 0",
+      "ALTER TABLE SCM.Test ALTER COLUMN intField DROP DEFAULT");
   }
 
 
@@ -1020,7 +1021,6 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
     return Arrays.asList(
       "DROP INDEX IF EXISTS SCM.\"TEST..PRIMARY_KEY\"",
       "ALTER TABLE SCM.Test RENAME COLUMN id TO renamedId",
-      "ALTER TABLE SCM.Test ALTER COLUMN renamedId TYPE BIGINT",
       "ALTER TABLE SCM.Test ADD PRIMARY KEY (renamedId)"
       );
   }

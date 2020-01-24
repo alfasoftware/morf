@@ -15,23 +15,54 @@
 
 package org.alfasoftware.morf.jdbc;
 
-import static org.junit.Assert.assertEquals;
+import static java.util.stream.Collectors.toList;
+import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
+import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
+import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.alfasoftware.morf.metadata.SchemaUtils.view;
+import static org.alfasoftware.morf.sql.SqlUtils.field;
+import static org.alfasoftware.morf.sql.SqlUtils.select;
+import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.either;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.equalToIgnoringCase;
+import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.Statement;
+import java.util.List;
+import java.util.function.Function;
 
-import org.alfasoftware.morf.jdbc.h2.H2;
+import org.alfasoftware.morf.guicesupport.InjectMembersRule;
+import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaResource;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.testing.DatabaseSchemaManager;
+import org.alfasoftware.morf.testing.DatabaseSchemaManager.TruncationBehavior;
+import org.alfasoftware.morf.testing.TestingDataSourceModule;
+import org.hamcrest.FeatureMatcher;
+import org.hamcrest.Matcher;
+import org.hamcrest.Matchers;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
-import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableList;
+import com.google.inject.Inject;
 
 /**
  * Tests for {@link DatabaseMetaDataProvider}.
@@ -40,172 +71,414 @@ import com.google.common.collect.ImmutableSet;
  */
 public class TestDatabaseMetaDataProvider {
 
-  /**
-   * Checks the blob type columns have the correct type
-   *
-   * @throws SQLException not really thrown
-   */
+  @Rule public InjectMembersRule injectMembersRule = new InjectMembersRule(new TestingDataSourceModule());
+
+  @Inject
+  private DatabaseSchemaManager schemaManager;
+
+  @Inject
+  private ConnectionResources database;
+
+
+  private final Schema schema = schema(
+    schema(
+      table("WithTypes")
+        .columns(
+          // strings
+          column("stringCol", DataType.STRING, 20),
+          column("primaryStringCol", DataType.STRING, 15).primaryKey(),
+          column("nullableStringCol", DataType.STRING, 10).nullable(),
+          // decimals
+          column("decimalElevenCol", DataType.DECIMAL, 11),
+          column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
+          column("nullableDecimalFiveTwoCol", DataType.DECIMAL, 5, 2).nullable(),
+          // bigint
+          column("bigIntegerCol", DataType.BIG_INTEGER),
+          column("primaryBigIntegerCol", DataType.BIG_INTEGER).primaryKey(),
+          column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable(),
+          // bool
+          column("booleanCol", DataType.BOOLEAN),
+          column("nullableBooleanCol", DataType.BOOLEAN).nullable(),
+          // integer
+          column("integerTenCol", DataType.INTEGER),
+          column("nullableIntegerCol", DataType.INTEGER).nullable(),
+          // date
+          column("dateCol", DataType.DATE),
+          column("nullableDateCol", DataType.DATE).nullable())
+        .indexes(
+          index("WithTypes_1").columns("booleanCol", "dateCol"),
+          index("NaturalKey").columns("decimalElevenCol").unique()),
+      table("WithLobs")
+        .columns(
+          SchemaUtils.autonumber("autonumfield", 17),
+          column("blobColumn", DataType.BLOB),
+          column("clobColumn", DataType.CLOB)),
+      table("WithDefaults")
+        .columns(
+          SchemaUtils.idColumn(),
+          SchemaUtils.versionColumn(),
+          column("stringCol", DataType.STRING, 20).defaultValue("one"),
+          column("decimalNineFiveCol", DataType.DECIMAL, 9, 5).defaultValue("11.7"),
+          column("bigIntegerCol", DataType.BIG_INTEGER).defaultValue("8"),
+          column("booleanCol", DataType.BOOLEAN).defaultValue("1"),
+          column("integerTenCol", DataType.INTEGER).defaultValue("17"),
+          column("dateCol", DataType.DATE).defaultValue("2020-01-01"))
+    ),
+    schema(
+      view("ViewWithTypes", select(field("primaryStringCol"), field("id")).from("WithTypes").innerJoin(tableRef("WithDefaults"))),
+      view("View2", select(field("primaryStringCol"), field("id")).from("ViewWithTypes"), "ViewWithTypes")
+    )
+  );
+
+  private static String databaseType;
+
+
+  @Before
+  public void before() {
+    databaseType = database.getDatabaseType();
+
+    schemaManager.dropAllViews();
+    schemaManager.dropAllTables();
+    schemaManager.mutateToSupportSchema(schema, TruncationBehavior.ALWAYS);
+  }
+
+  @After
+  public void after() {
+    schemaManager.invalidateCache();
+  }
+
+
   @Test
-  public void testBlobType() throws SQLException {
+  public void testViewsAndTables() throws SQLException {
+    try(SchemaResource schemaResource = database.openSchemaResource()) {
 
-    ConnectionResourcesBean databaseConnection = new ConnectionResourcesBean();
-    databaseConnection.setDatabaseName("database");
-    databaseConnection.setDatabaseType(H2.IDENTIFIER);
-    Connection connection = databaseConnection.getDataSource().getConnection();
+      assertFalse(schemaResource.isEmptyDatabase());
 
-    try {
-      Statement createStatement = connection.createStatement();
-      createStatement.execute("CREATE TABLE test ( BLOBCOL longvarbinary )");
+      assertThat(schemaResource.viewNames(), containsInAnyOrder(ImmutableList.of(
+        viewNameEqualTo("ViewWithTypes"),
+        viewNameEqualTo("View2")
+      )));
 
-      DatabaseMetaDataProvider provider = new DatabaseMetaDataProvider(connection, null);
 
-      Table table = provider.getTable("test");
-      assertEquals("Exactly 1 column expected", 1, table.columns().size());
-      assertEquals("Column name not correct", "BLOBCOL", table.columns().get(0).getName());
-      assertEquals("Column type not correct", DataType.BLOB, table.columns().get(0).getType());
-      assertEquals("Column width not correct", 2147483647, table.columns().get(0).getWidth());
-      assertEquals("Column scale not correct", 0, table.columns().get(0).getScale());
-    } finally {
-      connection.close();
+      assertThat(schemaResource.views(), containsInAnyOrder(ImmutableList.of(
+        viewNameMatcher("ViewWithTypes"),
+        viewNameMatcher("View2")
+      )));
+
+
+      assertThat(schemaResource.tableNames(), containsInAnyOrder(ImmutableList.of(
+        tableNameEqualTo("WithTypes"),
+        tableNameEqualTo("WithDefaults"),
+        tableNameEqualTo("WithLobs")
+      )));
+
+
+      assertThat(schemaResource.tables(), containsInAnyOrder(ImmutableList.of(
+        tableNameMatcher("WithTypes"),
+        tableNameMatcher("WithDefaults"),
+        tableNameMatcher("WithLobs")
+      )));
+    }
+  }
+
+  @Test
+  public void testTableWithTypes() throws SQLException {
+    try(SchemaResource schemaResource = database.openSchemaResource()) {
+      assertTrue(schemaResource.tableExists("WithTypes"));
+      Table table = schemaResource.getTable("WithTypes");
+
+      assertThat(table.isTemporary(), is(false));
+      assertThat(table.getName(), tableNameEqualTo("WithTypes"));
+
+      assertThat(table.columns(), containsColumns(ImmutableList.of(
+          // strings
+        columnMatcher(
+          column("stringCol", DataType.STRING, 20)),
+        columnMatcher(
+          column("primaryStringCol", DataType.STRING, 15).primaryKey()),
+        columnMatcher(
+          column("nullableStringCol", DataType.STRING, 10).nullable()),
+          // decimals
+        columnMatcher(
+          column("decimalElevenCol", DataType.DECIMAL, 11)),
+        columnMatcher(
+          column("decimalNineFiveCol", DataType.DECIMAL, 9, 5)),
+        columnMatcher(
+          column("nullableDecimalFiveTwoCol", DataType.DECIMAL, 5, 2).nullable()),
+          // bigint
+        columnMatcher(
+          column("bigIntegerCol", DataType.BIG_INTEGER)),
+        columnMatcher(
+          column("primaryBigIntegerCol", DataType.BIG_INTEGER).primaryKey()),
+        columnMatcher(
+          column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable()),
+          // bool
+        columnMatcher(
+          column("booleanCol", DataType.BOOLEAN)),
+        columnMatcher(
+          column("nullableBooleanCol", DataType.BOOLEAN).nullable()),
+          // integer
+        columnMatcher(
+          column("integerTenCol", DataType.INTEGER)),
+        columnMatcher(
+          column("nullableIntegerCol", DataType.INTEGER).nullable()),
+          // date
+        columnMatcher(
+          column("dateCol", DataType.DATE)),
+        columnMatcher(
+          column("nullableDateCol", DataType.DATE).nullable()))
+      ));
+
+      assertThat(table.primaryKey(), contains(ImmutableList.of(
+        columnMatcher(
+          column("primaryStringCol", DataType.STRING, 15).primaryKey()),
+        columnMatcher(
+          column("primaryBigIntegerCol", DataType.BIG_INTEGER).primaryKey()))
+      ));
+
+      assertThat(table.indexes(), containsInAnyOrder(ImmutableList.of(
+        indexMatcher(
+          index("WithTypes_1").columns("booleanCol", "dateCol")),
+        indexMatcher(
+          index("NaturalKey").columns("decimalElevenCol").unique()))
+      ));
     }
   }
 
 
-  /**
-   * Checks composite primary key indication, where the primary key is defined out of order and has a column in the middle
-   *
-   * @throws SQLException not really thrown
-   */
   @Test
-  public void testCompositePrimaryKeyWithInterleavedColumn() throws SQLException {
+  public void testTableWithLobs() throws SQLException {
+    try(SchemaResource schemaResource = database.openSchemaResource()) {
+      assertTrue(schemaResource.tableExists("WithLobs"));
+      Table table = schemaResource.getTable("WithLobs");
 
-    ConnectionResourcesBean databaseConnection = new ConnectionResourcesBean();
-    databaseConnection.setDatabaseName("database");
-    databaseConnection.setDatabaseType(H2.IDENTIFIER);
-    Connection connection = databaseConnection.getDataSource().getConnection();
+      assertThat(table.isTemporary(), is(false));
+      assertThat(table.getName(), tableNameEqualTo("WithLobs"));
 
-    try {
-      Statement createStatement = connection.createStatement();
-      createStatement.execute("CREATE TABLE CompositePrimaryKeyTest ( AID2 VARCHAR(10), COL VARCHAR(10), ZID1 VARCHAR(10), CONSTRAINT CompositePrimaryKeyTest_PK PRIMARY KEY (ZID1, AID2) )");
+      assertThat(table.columns(), containsColumns(ImmutableList.of(
+        columnMatcher(
+          SchemaUtils.autonumber("autonumfield", 17)),
+        columnMatcher(
+          column("blobColumn", DataType.BLOB)),
+        columnMatcher(
+          column("clobColumn", DataType.CLOB)))
+      ));
 
-      DatabaseMetaDataProvider provider = new DatabaseMetaDataProvider(connection, null);
+      assertThat(table.primaryKey(), contains(ImmutableList.of(
+        columnMatcher(
+          SchemaUtils.autonumber("autonumfield", 17)))
+      ));
 
-      Table table = provider.getTable("compositeprimarykeytest");
-      assertEquals("Exactly 3 column expected", 3, table.columns().size());
-      assertTrue("First column primary key", table.columns().get(0).isPrimaryKey());
-      assertEquals("First column should also be first of primary key", "ZID1", table.columns().get(0).getName());
-      assertFalse("Normal column", table.columns().get(1).isPrimaryKey());
-      assertEquals("First normal column should remain in the middle of the primary key columns", "COL", table.columns().get(1).getName());
-      assertTrue("Second column primary key", table.columns().get(2).isPrimaryKey());
-      assertEquals("Second column should also be second of primary key", "AID2", table.columns().get(2).getName());
-    } finally {
-      connection.close();
+      assertThat(table.indexes(), empty());
     }
   }
 
 
-  /**
-   * Checks composite primary key indication, where the primary key is defined out of order and has a column at the end.
-   * @throws SQLException
-   */
   @Test
-  public void testCompositePrimaryKeyWithColumnsAtEnd() throws SQLException {
+  public void testTableWithDefaults() throws SQLException {
+    try(SchemaResource schemaResource = database.openSchemaResource()) {
+      assertTrue(schemaResource.tableExists("WithDefaults"));
+      Table table = schemaResource.getTable("WithDefaults");
 
-    ConnectionResourcesBean databaseConnection = new ConnectionResourcesBean();
-    databaseConnection.setDatabaseName("database");
-    databaseConnection.setDatabaseType(H2.IDENTIFIER);
-    Connection connection = databaseConnection.getDataSource().getConnection();
+      assertThat(table.isTemporary(), is(false));
+      assertThat(table.getName(), tableNameEqualTo("WithDefaults"));
 
-    try {
-      Statement createStatement = connection.createStatement();
-      createStatement.execute("CREATE TABLE CompositePrimaryKeyTest2 ( AID2 VARCHAR(10), ZID1 VARCHAR(10), COL VARCHAR(10), CONSTRAINT CompositePrimaryKeyTest2_PK PRIMARY KEY (ZID1, AID2) )");
+      assertThat(table.columns(), containsColumns(ImmutableList.of(
+        columnMatcher(
+          SchemaUtils.idColumn()),
+        columnMatcher(
+          SchemaUtils.versionColumn()),
+        columnMatcher(
+          column("stringCol", DataType.STRING, 20).defaultValue("")),
+        columnMatcher(
+          column("decimalNineFiveCol", DataType.DECIMAL, 9, 5).defaultValue("")),
+        columnMatcher(
+          column("bigIntegerCol", DataType.BIG_INTEGER).defaultValue("")),
+        columnMatcher(
+          column("booleanCol", DataType.BOOLEAN).defaultValue("")),
+        columnMatcher(
+          column("integerTenCol", DataType.INTEGER).defaultValue("")),
+        columnMatcher(
+          column("dateCol", DataType.DATE).defaultValue("")))
+      ));
 
-      DatabaseMetaDataProvider provider = new DatabaseMetaDataProvider(connection, null);
+      assertThat(table.primaryKey(), contains(ImmutableList.of(
+        columnMatcher(
+          SchemaUtils.idColumn()))
+      ));
 
-      Table table = provider.getTable("compositeprimarykeytest2");
-      assertEquals("Exactly 3 column expected", 3, table.columns().size());
-      assertTrue("First column primary key", table.columns().get(0).isPrimaryKey());
-      assertEquals("First column should also be first of primary key", "ZID1", table.columns().get(0).getName());
-      assertTrue("Second column primary key", table.columns().get(1).isPrimaryKey());
-      assertEquals("Second column should also be second of primary key", "AID2", table.columns().get(1).getName());
-      assertFalse("Normal column", table.columns().get(2).isPrimaryKey());
-      assertEquals("The normal column should remain after the primary key columns", "COL", table.columns().get(2).getName());
-    } finally {
-      connection.close();
+      assertThat(table.indexes(), empty());
     }
   }
 
 
-  /**
-   * Checks that we ignore schema-level default values.
-   *
-   * @throws SQLException not really thrown
-   */
   @Test
-  public void testDefaultValueIgnored() throws SQLException {
+  public void testViewWithTypes() throws SQLException {
+    try(SchemaResource schemaResource = database.openSchemaResource()) {
+      assertTrue(schemaResource.viewExists("ViewWithTypes"));
+      View view = schemaResource.getView("ViewWithTypes");
 
-    ConnectionResourcesBean databaseConnection = new ConnectionResourcesBean();
-    databaseConnection.setDatabaseName("database");
-    databaseConnection.setDatabaseType(H2.IDENTIFIER);
-    Connection connection = databaseConnection.getDataSource().getConnection();
+      assertThat(view.getName(), viewNameEqualTo("ViewWithTypes"));
 
-    try {
-      Statement createStatement = connection.createStatement();
-      createStatement.execute("CREATE TABLE TestOther ( version integer )");
-      createStatement.execute("ALTER TABLE TestOther ADD COLUMN stringField_with_default VARCHAR(6) DEFAULT 'N' NOT NULL");
+      assertThat(view.knowsSelectStatement(), equalTo(false));
+      assertThat(view.knowsDependencies(), equalTo(false));
 
-      DatabaseMetaDataProvider provider = new DatabaseMetaDataProvider(connection, null);
-
-      Table table = provider.getTable("testother");
-      assertEquals("Exactly 2 column expected", 2, table.columns().size());
-      assertTrue("Default value is empty if not version", table.columns().get(0).getName().equals("VERSION")?table.columns().get(0).getDefaultValue().equals("0"):table.columns().get(0).getDefaultValue().isEmpty());
-      assertTrue("Default value is empty if not version", table.columns().get(1).getName().equals("VERSION")?table.columns().get(1).getDefaultValue().equals("0"):table.columns().get(1).getDefaultValue().isEmpty());
-    } finally {
-      connection.close();
-    }
-  }
-
-
-  /**
-   * Checks view metadata can be read.
-   *
-   * @throws SQLException if something goes wrong.
-   */
-  @Test
-  public void testViews() throws SQLException {
-    ConnectionResourcesBean databaseConnection = new ConnectionResourcesBean();
-    databaseConnection.setDatabaseName("database");
-    databaseConnection.setDatabaseType(H2.IDENTIFIER);
-    Connection connection = databaseConnection.getDataSource().getConnection();
-
-    try {
-      Statement createStatement = connection.createStatement();
-      createStatement.execute("CREATE TABLE TestForView ( version integer )");
-      createStatement.execute("CREATE VIEW TestView AS (SELECT version + 1 AS Foo FROM TestForView)");
-
-      DatabaseMetaDataProvider provider = new DatabaseMetaDataProvider(connection, null);
-      View view = provider.getView("testview");
-      assertEquals("Name", "TESTVIEW", view.getName());
       try {
         SelectStatement selectStatement = view.getSelectStatement();
         fail("Expected UnsupportedOperationException, got " + selectStatement);
       } catch (UnsupportedOperationException e) {
-        assertEquals("Message", "Cannot return SelectStatement as [TESTVIEW] has been loaded from the database", e.getMessage());
+        assertThat(e.getMessage(), equalToIgnoringCase("Cannot return SelectStatement as [ViewWithTypes] has been loaded from the database"));
       }
 
       try {
         String[] dependencies = view.getDependencies();
         fail("Expected UnsupportedOperationException, got " + dependencies);
       } catch (UnsupportedOperationException e) {
-        assertEquals("Message", "Cannot return dependencies as [TESTVIEW] has been loaded from the database", e.getMessage());
+        assertThat(e.getMessage(), equalToIgnoringCase("Cannot return dependencies as [ViewWithTypes] has been loaded from the database"));
       }
+    }
+  }
 
-      assertEquals("View names", "[TESTVIEW]", provider.viewNames().toString());
-      assertEquals("Views", ImmutableSet.of(view), ImmutableSet.copyOf(provider.views()));
-      assertTrue("View exists", provider.viewExists("TestVIEW"));
 
-    } finally {
-      connection.close();
+  @Test
+  public void testView2() throws SQLException {
+    try(SchemaResource schemaResource = database.openSchemaResource()) {
+      assertTrue(schemaResource.viewExists("View2"));
+      View view = schemaResource.getView("View2");
+
+      assertThat(view.getName(), viewNameEqualTo("View2"));
+
+      assertThat(view.knowsSelectStatement(), equalTo(false));
+      assertThat(view.knowsDependencies(), equalTo(false));
+    }
+  }
+
+
+  private static Matcher<? super Table> tableNameMatcher(String tableName) {
+    Matcher<Table> subMatchers = Matchers.allOf(ImmutableList.of(
+      propertyMatcher(Table::getName, "name", tableNameEqualTo(tableName))
+    ));
+
+    return Matchers.describedAs("%0", subMatchers, tableName);
+  }
+
+
+  private static Matcher<? super View> viewNameMatcher(String viewName) {
+    Matcher<View> subMatchers = Matchers.allOf(ImmutableList.of(
+      propertyMatcher(View::getName, "name", viewNameEqualTo(viewName))
+    ));
+
+    return Matchers.describedAs("%0", subMatchers, viewName);
+  }
+
+
+  private static Matcher<? super Column> columnMatcher(Column column) {
+    Matcher<Column> subMatchers = Matchers.allOf(ImmutableList.of(
+      propertyMatcher(Column::getName, "name", columnNameEqualTo(column.getName())),
+      propertyMatcher(Column::getType, "type", equalTo(column.getType())),
+      propertyMatcher(Column::getWidth, "width", equalTo(column.getWidth())),
+      propertyMatcher(Column::getScale, "scale", equalTo(column.getScale())),
+      propertyMatcher(Column::isNullable, "null", equalTo(column.isNullable())),
+      propertyMatcher(Column::isPrimaryKey, "PK", equalTo(column.isPrimaryKey())),
+      propertyMatcher(Column::getDefaultValue, "default", equalTo(column.getDefaultValue())),
+      propertyMatcher(Column::isAutoNumbered, "autonum", equalTo(column.isAutoNumbered())),
+      propertyMatcher(Column::getAutoNumberStart, "from", equalTo(column.getAutoNumberStart()))
+    ));
+
+    return Matchers.describedAs("%0", subMatchers, column.toString());
+  }
+
+
+  private static Matcher<? super Index> indexMatcher(Index index) {
+    Matcher<Index> subMatchers = Matchers.allOf(ImmutableList.of(
+      propertyMatcher(Index::getName, "name", indexNameEqualTo(index.getName())),
+      propertyMatcher(Index::columnNames, "columns", contains(indexColumnNamesEqualTo(index.columnNames()))),
+      propertyMatcher(Index::isUnique, "unique", equalTo(index.isUnique()))
+    ));
+
+    return Matchers.describedAs("%0", subMatchers, index.toString());
+  }
+
+  private static List<Matcher<? super String>> indexColumnNamesEqualTo(List<String> columnNames) {
+    return columnNames.stream()
+        .map(columnName -> indexColumnNameEqualTo(columnName))
+        .collect(toList());
+  }
+
+
+  private static <T,U> Matcher<T> propertyMatcher(Function<T,U> propertyExtractor, String propertyName, Matcher<? super U> propertyMatcher) {
+    return new FeatureMatcher<T,U> (propertyMatcher, "expected " + propertyName, propertyName) {
+      @Override
+      protected U featureValueOf(T actual) {
+        return propertyExtractor.apply(actual);
+      }
+    };
+  }
+
+
+  private static Matcher<Iterable<? extends Column>> containsColumns(List<Matcher<? super Column>> columnMatchers) {
+    switch (databaseType) {
+      case "ORACLE":
+        return containsInAnyOrder(columnMatchers);
+      default:
+        return contains(columnMatchers);
+    }
+  }
+
+
+  private static Matcher<String> viewNameEqualTo(String viewName) {
+    switch (databaseType) {
+      case "H2":
+      case "ORACLE":
+        return equalTo(viewName.toUpperCase());
+      case "MY_SQL":
+        return equalTo(viewName.toLowerCase());
+      default:
+        return equalTo(viewName);
+    }
+  }
+
+
+  private static Matcher<String> tableNameEqualTo(String tableName) {
+    switch (databaseType) {
+      case "H2":
+        return equalTo(tableName.toUpperCase());
+      case "MY_SQL":
+        return equalTo(tableName.toLowerCase());
+      default:
+        return equalTo(tableName);
+    }
+  }
+
+
+  private static Matcher<String> columnNameEqualTo(String columnName) {
+    switch (databaseType) {
+      case "H2":
+        return equalTo(columnName.toUpperCase());
+      default:
+        return equalTo(columnName);
+    }
+  }
+
+
+  private static Matcher<String> indexNameEqualTo(String indexName) {
+    switch (databaseType) {
+      case "H2":
+        return equalTo(indexName.toUpperCase());
+      case "ORACLE":
+        return either(equalTo(indexName)).or(equalTo(indexName.toUpperCase()));
+      default:
+        return equalTo(indexName);
+    }
+  }
+
+
+  private static Matcher<String> indexColumnNameEqualTo(String columnName) {
+    switch (databaseType) {
+      case "H2":
+        return equalTo(columnName.toUpperCase());
+      default:
+        return equalTo(columnName);
     }
   }
 }
