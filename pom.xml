@@ -242,6 +242,7 @@
         <artifactId>morf-sqlserver</artifactId>
         <version>${project.version}</version>
       </dependency>
+
       <dependency>
         <groupId>commons-codec</groupId>
         <artifactId>commons-codec</artifactId>
@@ -394,15 +395,6 @@
         <gpg.executable>gpg2</gpg.executable>
       </properties>
       <build>
-        <resources>
-          <resource>
-            <directory>${project.basedir}/..</directory>
-            <includes>
-              <include>LICENSE</include>
-            </includes>
-            <targetPath>META-INF/</targetPath>
-          </resource>
-        </resources>
         <plugins>
           <plugin>
             <groupId>org.sonatype.plugins</groupId>
