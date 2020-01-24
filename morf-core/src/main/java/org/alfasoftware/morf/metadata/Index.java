@@ -43,7 +43,9 @@ public interface Index {
 
 
   /**
-   * Helper for {@link #toString()} implementations.
+   * Helper for {@link Object#toString()} implementations.
+   *
+   * @return String representation of the index.
    */
   public default String toStringHelper() {
     return new StringBuilder()

@@ -195,7 +195,9 @@ public class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Creates a map of all table names,
-   * indexed by their upper-case names.
+   * indexed by their case-agnostic names.
+   *
+   * @return Map of real table names.
    */
   protected Map<AName, RealName> loadAllTableNames() {
     final ImmutableMap.Builder<AName, RealName> tableNameMappings = ImmutableMap.builder();
@@ -239,6 +241,8 @@ public class DatabaseMetaDataProvider implements Schema {
   /**
    * Types for {@link DatabaseMetaData#getTables(String, String, String, String[])}
    * used by {@link #loadAllTableNames()}.
+   *
+   * @return Array of relevant JDBC types.
    */
   protected String[] tableTypesForTables() {
     return new String[] { "TABLE" };
@@ -247,6 +251,10 @@ public class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Retrieves table name from a result set.
+   *
+   * @param tableResultSet Result set to be read.
+   * @return Name of the table.
+   * @throws SQLException Upon errors.
    */
   protected RealName readTableName(ResultSet tableResultSet) throws SQLException {
     String tableName = tableResultSet.getString(TABLE_NAME);
@@ -281,8 +289,10 @@ public class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Creates a map of maps of all table columns,
-   * first indexed by their upper-case table names,
-   * and then indexed by their upper-case column names.
+   * first indexed by their case-agnostic table names,
+   * and then indexed by their case-agnostic column names.
+   *
+   * @return Map of table columns by table names and column names.
    */
   protected Map<AName, Map<AName, ColumnBuilder>> loadAllColumns() {
     final Map<AName, ImmutableMap.Builder<AName, ColumnBuilder>> columnMappingBuilders = Maps.toMap(tableNames.get().keySet(), k -> ImmutableMap.builder());
@@ -336,6 +346,10 @@ public class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Retrieves column name from a result set.
+   *
+   * @param columnResultSet Result set to be read.
+   * @return Name of the column.
+   * @throws SQLException Upon errors.
    */
   protected RealName readColumnName(ResultSet columnResultSet) throws SQLException {
     String columnName = columnResultSet.getString(COLUMN_NAME);
@@ -345,6 +359,11 @@ public class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Converts a given SQL data type to a {@link DataType}.
+   *
+   * @param typeCode JDBC data type.
+   * @param typeName JDBC type name.
+   * @param width JDBC column size.
+   * @return Morf data type.
    */
   protected DataType dataTypeFromSqlType(int typeCode, String typeName, int width) {
     switch (typeCode) {
@@ -387,6 +406,12 @@ public class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Sets column nullability from a result set.
+   *
+   * @param tableName Name of the table.
+   * @param column Column builder to set to.
+   * @param columnResultSet Result set to be read.
+   * @return Resulting column builder.
+   * @throws SQLException Upon errors.
    */
   @SuppressWarnings("unused")
   protected ColumnBuilder setColumnNullability(RealName tableName, ColumnBuilder column, ResultSet columnResultSet) throws SQLException {
@@ -397,6 +422,12 @@ public class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Sets column being autonumbered from a result set.
+   *
+   * @param tableName Name of the table.
+   * @param column Column builder to set to.
+   * @param columnResultSet Result set to be read.
+   * @return Resulting column builder.
+   * @throws SQLException Upon errors.
    */
   @SuppressWarnings("unused")
   protected ColumnBuilder setColumnAutonumbered(RealName tableName, ColumnBuilder column, ResultSet columnResultSet) throws SQLException {
@@ -411,9 +442,15 @@ public class DatabaseMetaDataProvider implements Schema {
    * Note: Uses an empty string for any column other than version.
    * Database-schema level default values are not supported by ALFA's domain model
    * hence we don't want to include a default value in the definition of tables.
+   *
+   * @param tableName Name of the table.
+   * @param column Column builder to set to.
+   * @param columnResultSet Result set to be read.
+   * @return Resulting column builder.
+   * @throws SQLException Upon errors.
    */
   @SuppressWarnings("unused")
-  protected ColumnBuilder setColumnDefaultValue(RealName tableName, ColumnBuilder column, ResultSet columnResultSet) {
+  protected ColumnBuilder setColumnDefaultValue(RealName tableName, ColumnBuilder column, ResultSet columnResultSet) throws SQLException {
     String defaultValue = "version".equalsIgnoreCase(column.getName()) ? "0" : "";
     return column.defaultValue(defaultValue);
   }
@@ -421,6 +458,12 @@ public class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Sets additional column information.
+   *
+   * @param tableName Name of the table.
+   * @param column Column builder to set to.
+   * @param columnResultSet Result set to be read.
+   * @return Resulting column builder.
+   * @throws SQLException Upon errors.
    */
   @SuppressWarnings("unused")
   protected ColumnBuilder setAdditionalColumnMetadata(RealName tableName, ColumnBuilder column, ResultSet columnResultSet) throws SQLException {
@@ -430,6 +473,9 @@ public class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Loads a table.
+   *
+   * @param tableName Name of the table.
+   * @return The table metadata.
    */
   protected Table loadTable(AName tableName) {
     final RealName realTableName = tableNames.get().get(tableName);
@@ -468,7 +514,10 @@ public class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Loads the primary key column names for the given table name,
-   * as a map of upper-case names and respective positions within the key.
+   * as a map of case-agnostic names and respective positions within the key.
+   *
+   * @param tableName Name of the table.
+   * @return Map of respective positions by column names.
    */
   protected Map<AName, Integer> loadTablePrimaryKey(RealName tableName) {
     final ImmutableMap.Builder<AName, Integer> columns = ImmutableMap.builder();
@@ -498,6 +547,10 @@ public class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Loads the columns for the given table name.
+   *
+   * @param tableName Name of the table.
+   * @param primaryKey Map of respective positions by column names.
+   * @return List of table columns.
    */
   protected List<Column> loadTableColumns(RealName tableName, Map<AName, Integer> primaryKey) {
     final Collection<ColumnBuilder> originalColumns = allColumns.get().get(tableName).values();
@@ -508,6 +561,10 @@ public class DatabaseMetaDataProvider implements Schema {
   /**
    * Creates a list of table columns from given columns and map of primary key columns.
    * Also reorders the primary key columns between themselves to reflect the order of columns within the primary key.
+   *
+   * @param originalColumns Collection of table columns to work with.
+   * @param primaryKey Map of respective positions by column names.
+   * @return List of table columns.
    */
   protected static List<Column> createColumnsFrom(Collection<ColumnBuilder> originalColumns, Map<AName, Integer> primaryKey) {
     final List<Column> primaryKeyColumns = new ArrayList<>(Collections.nCopies(primaryKey.size(), null));
@@ -533,6 +590,9 @@ public class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Loads the indexes for the given table name, except for the primary key index.
+   *
+   * @param tableName Name of the table.
+   * @return List of table indexes.
    */
   protected List<Index> loadTableIndexes(RealName tableName) {
     final Map<RealName, ImmutableList.Builder<RealName>> indexColumns = new HashMap<>();
@@ -587,6 +647,10 @@ public class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Retrieves index name from a result set.
+   *
+   * @param indexResultSet Result set to be read.
+   * @return Name of the index.
+   * @throws SQLException Upon errors.
    */
   protected RealName readIndexName(ResultSet indexResultSet) throws SQLException {
     String indexName = indexResultSet.getString(INDEX_NAME);
@@ -596,6 +660,9 @@ public class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Identify whether this is the primary key for this table.
+   *
+   * @param indexName Name of the index.
+   * @return true for primary key, false otherwise.
    */
   protected boolean isPrimaryKeyIndex(RealName indexName) {
     return "PRIMARY".equals(indexName.getDbName());
@@ -604,6 +671,11 @@ public class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Creates an index from given info.
+   *
+   * @param indexName The name of the index.
+   * @param isUnique Whether to mark this index as unique.
+   * @param columnNames The column names for the index.
+   * @return An {@link IndexBuilder} for the index.
    */
   protected static Index createIndexFrom(RealName indexName, boolean isUnique, List<RealName> columnNames) {
     List<String> realColumnNames = columnNames.stream().map(RealName::getRealName).collect(Collectors.toList());
@@ -614,7 +686,9 @@ public class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Creates a map of all view names,
-   * indexed by their upper-case names.
+   * indexed by their case-agnostic names.
+   *
+   * @return Map of real view names.
    */
   protected Map<AName, RealName> loadAllViewNames() {
     final ImmutableMap.Builder<AName, RealName> viewNameMappings = ImmutableMap.builder();
@@ -644,6 +718,8 @@ public class DatabaseMetaDataProvider implements Schema {
   /**
    * Types for {@link DatabaseMetaData#getTables(String, String, String, String[])}
    * used by {@link #loadAllViewNames()}.
+   *
+   * @return Array of relevant JDBC types.
    */
   protected String[] tableTypesForViews() {
     return new String[] { "VIEW" };
@@ -652,6 +728,10 @@ public class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Retrieves view name from a result set.
+   *
+   * @param viewResultSet Result set to be read.
+   * @return Name of the view.
+   * @throws SQLException Upon errors.
    */
   protected RealName readViewName(ResultSet viewResultSet) throws SQLException {
     String viewName = viewResultSet.getString(TABLE_NAME);
@@ -661,6 +741,9 @@ public class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Loads a view.
+   *
+   * @param viewName Name of the view.
+   * @return The view metadata.
    */
   protected View loadView(AName viewName) {
     final RealName realViewName = viewNames.get().get(viewName);
@@ -762,7 +845,7 @@ public class DatabaseMetaDataProvider implements Schema {
    *
    * <p>For more info,
    * see {@link DatabaseMetaDataProvider#named(String)}
-   * and {@link DatabaseMetaDataProvider#createRealName(String)}
+   * and {@link DatabaseMetaDataProvider#createRealName(String, String)}
    */
   protected static class AName {
     private final String aName;
@@ -807,7 +890,7 @@ public class DatabaseMetaDataProvider implements Schema {
    *
    * <p>For more info,
    * see {@link DatabaseMetaDataProvider#named(String)}
-   * and {@link DatabaseMetaDataProvider#createRealName(String)}
+   * and {@link DatabaseMetaDataProvider#createRealName(String, String)}
    */
   protected static final class RealName extends AName {
 
