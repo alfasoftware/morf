@@ -866,7 +866,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedDateToYyyymmdd() {
-    return "DATE_FORMAT(testField, '%Y%m%d')";
+    return "CAST(DATE_FORMAT(testField, '%Y%m%d') AS DECIMAL(8))";
   }
 
 
@@ -875,7 +875,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedDateToYyyymmddHHmmss() {
-    return "DATE_FORMAT(testField, '%Y%m%d%H%i%s')";
+    return "CAST(DATE_FORMAT(testField, '%Y%m%d%H%i%s') AS DECIMAL(14))";
   }
 
 

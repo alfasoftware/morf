@@ -645,7 +645,7 @@ class MySqlDialect extends SqlDialect {
    */
   @Override
   protected String getSqlForDateToYyyymmdd(Function function) {
-    return String.format("DATE_FORMAT(%s, '%%Y%%m%%d')",getSqlFrom(function.getArguments().get(0)));
+    return String.format("CAST(DATE_FORMAT(%s, '%%Y%%m%%d') AS DECIMAL(8))",getSqlFrom(function.getArguments().get(0)));
   }
 
 
@@ -654,7 +654,7 @@ class MySqlDialect extends SqlDialect {
    */
   @Override
   protected String getSqlForDateToYyyymmddHHmmss(Function function) {
-    return String.format("DATE_FORMAT(%s, '%%Y%%m%%d%%H%%i%%s')",getSqlFrom(function.getArguments().get(0)));
+    return String.format("CAST(DATE_FORMAT(%s, '%%Y%%m%%d%%H%%i%%s') AS DECIMAL(14))",getSqlFrom(function.getArguments().get(0)));
   }
 
 

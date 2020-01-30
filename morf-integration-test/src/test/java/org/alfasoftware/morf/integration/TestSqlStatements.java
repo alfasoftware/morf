@@ -69,15 +69,21 @@ import static org.alfasoftware.morf.sql.element.Function.substring;
 import static org.alfasoftware.morf.sql.element.Function.sum;
 import static org.alfasoftware.morf.sql.element.Function.yyyymmddToDate;
 import static org.alfasoftware.morf.sql.element.MathsOperator.MINUS;
+import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -526,7 +532,11 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         .setDate("actualDate", java.sql.Date.valueOf("1899-01-01"))
         .setDate("actualDateNullable", java.sql.Date.valueOf("9999-12-31")),
       record()
-        .setDate("actualDate", java.sql.Date.valueOf("1995-10-23"))
+        .setDate("actualDate", java.sql.Date.valueOf("1995-10-23")),
+      record()
+        .setDate("actualDate", java.sql.Date.valueOf("2020-01-31")),
+      record()
+        .setDate("actualDate", java.sql.Date.valueOf("2100-12-31"))
         )
     .table("MergeSource",
       record()
@@ -1390,7 +1400,14 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
   @Test
   public void JtestDateFields() throws SQLException {
 
-    SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+    SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor() {
+      @Override
+      public void afterExecute(String sql, long numberOfRowsUpdated) {
+        // we run some huge queries in this test, and loggers do not like that very much
+        String substring = sql.length() > 2048 ? sql.substring(0, 2048) + "..." : sql;
+        super.afterExecute(substring, numberOfRowsUpdated);
+      }
+    });
 
     // Set up queries
     InsertStatement insertStatement = insert()
@@ -1437,7 +1454,15 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
               assertEquals("actualDate date value not correctly set/returned after insert", java.sql.Date.valueOf("1999-12-31"), resultSet.getDate(1));
               assertNull("actualDateNullable date value not correctly set/returned after insert", resultSet.getDate(2));
               break;
-            default: fail("Should be exactly 3 records");
+            case 4:
+              assertEquals("actualDate row 4 date value not correctly set/returned after dataset load", java.sql.Date.valueOf("2020-01-31"), resultSet.getDate(1));
+              assertNull("actualDateNullable row 4 date value not correctly set/returned after dataset load", resultSet.getDate(2));
+              break;
+            case 5:
+              assertEquals("actualDate row 5 date value not correctly set/returned after dataset load", java.sql.Date.valueOf("2100-12-31"), resultSet.getDate(1));
+              assertNull("actualDateNullable row 5 date value not correctly set/returned after dataset load", resultSet.getDate(2));
+              break;
+            default: fail("Should be exactly 5 records");
           }
         }
         return null;
@@ -1467,7 +1492,15 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
               assertEquals("actualDate date value not correctly set/returned after update", java.sql.Date.valueOf("2000-01-01"), resultSet.getDate(1));
               assertEquals("actualDateNullable date value not correctly set/returned after update", java.sql.Date.valueOf("1998-01-01"), resultSet.getDate(2));
               break;
-            default: fail("Should be exactly 3 records");
+            case 4:
+              assertEquals("actualDate row 4 date value not correctly set/returned after dataset load", java.sql.Date.valueOf("2020-01-31"), resultSet.getDate(1));
+              assertNull("actualDateNullable row 4 date value not correctly set/returned after dataset load", resultSet.getDate(2));
+              break;
+            case 5:
+              assertEquals("actualDate row 5 date value not correctly set/returned after dataset load", java.sql.Date.valueOf("2100-12-31"), resultSet.getDate(1));
+              assertNull("actualDateNullable row 5 date value not correctly set/returned after dataset load", resultSet.getDate(2));
+              break;
+            default: fail("Should be exactly 5 records");
           }
         }
         return null;
@@ -1476,13 +1509,14 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
 
     // Month between tests
     ImmutableList.Builder<LocalDate> fromDates = ImmutableList.builder();
-    fromDates.add(new LocalDate(1995, 10, 31)).add(new LocalDate(1995, 9, 30))
-            .add(new LocalDate(2007, 6, 10)).add(new LocalDate(2021, 7, 27))
-            .add(LocalDate.now().plusYears(new Random().nextInt(10)).plusMonths(new Random().nextInt(20)).plusDays(new Random().nextInt(40)))
-            .add(LocalDate.now().plusYears(new Random().nextInt(10)).plusMonths(new Random().nextInt(20)).plusDays(new Random().nextInt(40)))
-            .add(LocalDate.now().plusYears(new Random().nextInt(10)).plusMonths(new Random().nextInt(20)).plusDays(new Random().nextInt(40)))
-            .add(LocalDate.now().plusYears(new Random().nextInt(10)).plusMonths(new Random().nextInt(20)).plusDays(new Random().nextInt(40)))
-            .add(LocalDate.now().plusYears(new Random().nextInt(10)).plusMonths(new Random().nextInt(20)).plusDays(new Random().nextInt(40)));
+    fromDates.add(new LocalDate(1995, 10, 31))
+             .add(new LocalDate(2021, 7, 27))
+             .add(new LocalDate(2101, 11, 1))
+             .add(LocalDate.now().plusYears(new Random().nextInt(10)).plusMonths(new Random().nextInt(20)).plusDays(new Random().nextInt(40)))
+             .add(LocalDate.now().plusYears(new Random().nextInt(20)).plusMonths(new Random().nextInt(20)).plusDays(new Random().nextInt(40)))
+             .add(LocalDate.now().plusYears(new Random().nextInt(40)).plusMonths(new Random().nextInt(20)).plusDays(new Random().nextInt(40)))
+             .add(LocalDate.now().plusYears(new Random().nextInt(70)).plusMonths(new Random().nextInt(20)).plusDays(new Random().nextInt(40)))
+             .add(LocalDate.now().plusYears(new Random().nextInt(100)).plusMonths(new Random().nextInt(20)).plusDays(new Random().nextInt(40)));
    for (final LocalDate fromDate : fromDates.build()) {
 
     final List<Function> monthBetweenListSql = new ArrayList<>();
@@ -1864,15 +1898,29 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
             java.sql.Date.valueOf("1996-10-22"),
             java.sql.Date.valueOf("1995-10-28"),
             java.sql.Date.valueOf("1995-10-18")
+          ),
+          ImmutableList.of(
+            java.sql.Date.valueOf("2020-01-30"),
+            java.sql.Date.valueOf("2020-02-01"),
+            java.sql.Date.valueOf("2020-01-31"),
+            java.sql.Date.valueOf("2021-01-30"),
+            java.sql.Date.valueOf("2020-02-05"),
+            java.sql.Date.valueOf("2020-01-26")
+          ),
+          ImmutableList.of(
+            java.sql.Date.valueOf("2100-12-30"),
+            java.sql.Date.valueOf("2101-01-01"),
+            java.sql.Date.valueOf("2100-12-31"),
+            java.sql.Date.valueOf("2101-12-31"),
+            java.sql.Date.valueOf("2101-01-05"),
+            java.sql.Date.valueOf("2100-12-26")
           )
         );
-        int counter = 0;
-        while (resultSet.next()) {
-          assertEquals(expected.get(counter).get(0), resultSet.getDate(1));
-          assertEquals(expected.get(counter).get(1), resultSet.getDate(2));
-          assertEquals(expected.get(counter).get(2), resultSet.getDate(3));
-          assertEquals(expected.get(counter).get(3), resultSet.getDate(4));
-          counter++;
+        for (int counter = 0; resultSet.next(); counter++) {
+          assertEquals(expected.get(counter).size(), resultSet.getMetaData().getColumnCount());
+          for (int i = 0; i < expected.get(counter).size(); i++) {
+            assertEquals(expected.get(counter).get(i), resultSet.getDate(i + 1));
+          }
         }
         return null;
       }
@@ -2188,12 +2236,16 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     sqlScriptExecutorProvider.get().executeQuery(sql, new ResultSetProcessor<Void>() {
       @Override
       public Void process(ResultSet resultSet) throws SQLException {
-        List<Integer> expectedAlfaDates = ImmutableList.of(18990101, 19951023);
+        List<Integer> expectedAlfaDates = ImmutableList.of(18990101, 19951023, 20200131, 21001231);
         int counter = 0;
         while (resultSet.next()) {
+          assertThat(resultSet.getObject(1), instanceOf(Number.class));
           assertEquals(expectedAlfaDates.get(counter).intValue(), resultSet.getInt(1));
+          assertEquals(expectedAlfaDates.get(counter).longValue(), resultSet.getLong(1));
+          assertEquals(BigDecimal.valueOf(expectedAlfaDates.get(counter).longValue()), resultSet.getBigDecimal(1));
           counter++;
         }
+        assertEquals(expectedAlfaDates.size(), counter);
         return null;
       }
     });
@@ -2206,24 +2258,23 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testDateToYyyymmddHHmmss() {
-    SelectStatement statement = select(Function.dateToYyyyMMddHHmmss(Function.now()));
+    SelectStatement statement = select(Function.dateToYyyyMMddHHmmss(Function.now()), Function.dateToYyyymmdd(Function.now()), Function.dateToYyyymmdd(Function.addDays(Function.now(), literal(1))));
 
     String sql = convertStatementToSQL(statement);
     sqlScriptExecutorProvider.get().executeQuery(sql, new ResultSetProcessor<Void>() {
       @Override
       public Void process(ResultSet resultSet) throws SQLException {
         resultSet.next();
-        long numericDateTime = resultSet.getLong(1);
-        assertTrue("Long value", numericDateTime > 0);
-        assertFalse("More than one record", resultSet.next());
+        assertThat(resultSet.getObject(1), instanceOf(Number.class));
+        assertThat(resultSet.getLong(1), allOf(greaterThanOrEqualTo(resultSet.getLong(2) * 1_000_000), lessThanOrEqualTo(resultSet.getLong(3) * 1_000_000)));
+        assertThat(resultSet.getBigDecimal(1), allOf(greaterThanOrEqualTo(resultSet.getBigDecimal(2).multiply(BigDecimal.valueOf(1_000_000))), lessThanOrEqualTo(resultSet.getBigDecimal(3).multiply(BigDecimal.valueOf(1_000_000)))));
 
         try {
           SimpleDateFormat dateTimeFormatter = new SimpleDateFormat("yyyyMMddhhmmss");
-          Date dateTimeInstance = dateTimeFormatter.parse(String.valueOf(numericDateTime));
+          Date dateTimeInstance = dateTimeFormatter.parse(String.valueOf(resultSet.getLong(1)));
           assertNotNull("Invalid numeric date time", dateTimeInstance);
-
         } catch (ParseException e) {
-          fail("Invalid numeric date time");
+          throw new RuntimeException("Invalid numeric date time", e);
         }
         return null;
       }

@@ -390,14 +390,14 @@ class PostgreSQLDialect extends SqlDialect {
   @Override
   protected String getSqlForDateToYyyymmdd(Function function) {
     AliasedField field = function.getArguments().get(0);
-    return "TO_CHAR("+ getSqlFrom(field) + ",'YYYYMMDD')";
+    return "TO_CHAR("+ getSqlFrom(field) + ",'YYYYMMDD') :: NUMERIC";
   }
 
 
   @Override
   protected String getSqlForDateToYyyymmddHHmmss(Function function) {
     AliasedField field = function.getArguments().get(0);
-    return "TO_CHAR("+ getSqlFrom(field) + ",'YYYYMMDDHH24MISS')";
+    return "TO_CHAR("+ getSqlFrom(field) + ",'YYYYMMDDHH24MISS') :: NUMERIC";
   }
 
 

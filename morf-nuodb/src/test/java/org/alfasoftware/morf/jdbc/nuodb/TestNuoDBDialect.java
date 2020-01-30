@@ -1114,7 +1114,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedDateToYyyymmdd() {
-    return "DATE_TO_STR(testField, 'yyyyMMdd')";
+    return "CAST(DATE_TO_STR(testField, 'yyyyMMdd') AS DECIMAL(8))";
   }
 
 
@@ -1123,7 +1123,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedDateToYyyymmddHHmmss() {
-    return "DATE_TO_STR(testField, 'yyyyMMddHHmmss')";
+    return "CAST(DATE_TO_STR(testField, 'yyyyMMddHHmmss') AS DECIMAL(14))";
   }
 
 

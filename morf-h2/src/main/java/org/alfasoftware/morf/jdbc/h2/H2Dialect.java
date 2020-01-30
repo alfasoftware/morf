@@ -438,7 +438,7 @@ class H2Dialect extends SqlDialect {
   @Override
   protected String getSqlForDateToYyyymmdd(Function function) {
     String sqlExpression = getSqlFrom(function.getArguments().get(0));
-    return String.format("CAST(SUBSTRING(%1$s, 1, 4)||SUBSTRING(%1$s, 6, 2)||SUBSTRING(%1$s, 9, 2) AS INT)",sqlExpression);
+    return String.format("CAST(SUBSTRING(%1$s, 1, 4)||SUBSTRING(%1$s, 6, 2)||SUBSTRING(%1$s, 9, 2) AS DECIMAL(8))",sqlExpression);
   }
 
 
@@ -449,7 +449,7 @@ class H2Dialect extends SqlDialect {
   protected String getSqlForDateToYyyymmddHHmmss(Function function) {
     String sqlExpression = getSqlFrom(function.getArguments().get(0));
     // Example for CURRENT_TIMESTAMP() -> 2015-06-23 11:25:08.11
-    return String.format("CAST(SUBSTRING(%1$s, 1, 4)||SUBSTRING(%1$s, 6, 2)||SUBSTRING(%1$s, 9, 2)||SUBSTRING(%1$s, 12, 2)||SUBSTRING(%1$s, 15, 2)||SUBSTRING(%1$s, 18, 2) AS BIGINT)", sqlExpression);
+    return String.format("CAST(SUBSTRING(%1$s, 1, 4)||SUBSTRING(%1$s, 6, 2)||SUBSTRING(%1$s, 9, 2)||SUBSTRING(%1$s, 12, 2)||SUBSTRING(%1$s, 15, 2)||SUBSTRING(%1$s, 18, 2) AS DECIMAL(14))", sqlExpression);
   }
 
 

@@ -890,7 +890,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedDateToYyyymmdd() {
-    return "TO_CHAR(testField,'YYYYMMDD')";
+    return "TO_CHAR(testField,'YYYYMMDD') :: NUMERIC";
   }
 
 
@@ -899,7 +899,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedDateToYyyymmddHHmmss() {
-    return "TO_CHAR(testField,'YYYYMMDDHH24MISS')";
+    return "TO_CHAR(testField,'YYYYMMDDHH24MISS') :: NUMERIC";
   }
 
 

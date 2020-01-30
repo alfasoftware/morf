@@ -729,7 +729,7 @@ class NuoDBDialect extends SqlDialect {
   @Override
   protected String getSqlForDateToYyyymmdd(Function function) {
     String sqlExpression = getSqlFrom(function.getArguments().get(0));
-    return String.format("DATE_TO_STR(%1$s, 'yyyyMMdd')", sqlExpression);
+    return String.format("CAST(DATE_TO_STR(%1$s, 'yyyyMMdd') AS DECIMAL(8))", sqlExpression);
   }
 
 
@@ -740,7 +740,7 @@ class NuoDBDialect extends SqlDialect {
   protected String getSqlForDateToYyyymmddHHmmss(Function function) {
     String sqlExpression = getSqlFrom(function.getArguments().get(0));
     // Example for CURRENT_TIMESTAMP() -> 2015-06-23 11:25:08.11
-    return String.format("DATE_TO_STR(%1$s, 'yyyyMMddHHmmss')", sqlExpression);
+    return String.format("CAST(DATE_TO_STR(%1$s, 'yyyyMMddHHmmss') AS DECIMAL(14))", sqlExpression);
   }
 
 
