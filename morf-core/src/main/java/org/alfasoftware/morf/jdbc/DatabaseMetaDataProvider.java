@@ -913,6 +913,16 @@ public class DatabaseMetaDataProvider implements Schema {
     public String toString() {
       return getDbName() + "/" + getRealName();
     }
+
+    @Override
+    public boolean equals(Object obj) {
+      return super.equals(obj); // explicitly re-using the parent implementation
+    }
+
+    @Override
+    public int hashCode() {
+      return super.hashCode(); // explicitly re-using the parent implementation
+    }
   }
 
 
