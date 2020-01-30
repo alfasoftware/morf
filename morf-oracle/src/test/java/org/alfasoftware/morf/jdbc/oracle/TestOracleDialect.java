@@ -1086,7 +1086,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedDateToYyyymmdd() {
-    return "to_number(to_char(testField, 'yyyymmdd'))";
+    return "TO_NUMBER(TO_CHAR(testField, 'yyyymmdd'))";
   }
 
 
@@ -1095,7 +1095,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedDateToYyyymmddHHmmss() {
-    return "to_number(to_char(testField, 'yyyymmddHH24MISS'))";
+    return "TO_NUMBER(TO_CHAR(testField, 'yyyymmddHH24MISS'))";
   }
 
 

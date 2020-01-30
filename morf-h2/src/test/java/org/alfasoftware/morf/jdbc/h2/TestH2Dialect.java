@@ -777,7 +777,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedDateToYyyymmdd() {
-    return "CAST(SUBSTRING(testField, 1, 4)||SUBSTRING(testField, 6, 2)||SUBSTRING(testField, 9, 2) AS INT)";
+    return "CAST(SUBSTRING(testField, 1, 4)||SUBSTRING(testField, 6, 2)||SUBSTRING(testField, 9, 2) AS DECIMAL(8))";
   }
 
 
@@ -786,7 +786,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedDateToYyyymmddHHmmss() {
-    return "CAST(SUBSTRING(testField, 1, 4)||SUBSTRING(testField, 6, 2)||SUBSTRING(testField, 9, 2)||SUBSTRING(testField, 12, 2)||SUBSTRING(testField, 15, 2)||SUBSTRING(testField, 18, 2) AS BIGINT)";
+    return "CAST(SUBSTRING(testField, 1, 4)||SUBSTRING(testField, 6, 2)||SUBSTRING(testField, 9, 2)||SUBSTRING(testField, 12, 2)||SUBSTRING(testField, 15, 2)||SUBSTRING(testField, 18, 2) AS DECIMAL(14))";
   }
 
 

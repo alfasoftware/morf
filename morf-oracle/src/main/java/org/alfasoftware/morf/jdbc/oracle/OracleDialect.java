@@ -932,7 +932,7 @@ class OracleDialect extends SqlDialect {
    */
   @Override
   protected String getSqlForDateToYyyymmdd(Function function) {
-    return String.format("to_number(to_char(%s, 'yyyymmdd'))",getSqlFrom(function.getArguments().get(0)));
+    return String.format("TO_NUMBER(TO_CHAR(%s, 'yyyymmdd'))",getSqlFrom(function.getArguments().get(0)));
   }
 
 
@@ -941,7 +941,7 @@ class OracleDialect extends SqlDialect {
    */
   @Override
   protected String getSqlForDateToYyyymmddHHmmss(Function function) {
-    return String.format("to_number(to_char(%s, 'yyyymmddHH24MISS'))",getSqlFrom(function.getArguments().get(0)));
+    return String.format("TO_NUMBER(TO_CHAR(%s, 'yyyymmddHH24MISS'))",getSqlFrom(function.getArguments().get(0)));
   }
 
 
