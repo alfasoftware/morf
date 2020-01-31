@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.alfasoftware</groupId>
     <artifactId>morf-parent</artifactId>
-    <version>1.1.1</version>
+    <version>1.1.2-SNAPSHOT</version>
   </parent>
   
   <name>Morf - NuoDB</name>
