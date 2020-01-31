@@ -34,8 +34,6 @@ jobs:
       name: "Test"
       script:
         - mvn clean test -B -U
-matrix:
-  fast_finish: true
 cache:
   directories:
     - '$HOME/.m2/repository'
