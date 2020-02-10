@@ -38,7 +38,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected SqlDialect createTestDialect() {
-    return new H2Dialect();
+    return new H2Dialect("MYSCHEMA");
   }
 
 

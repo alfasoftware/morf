@@ -15,6 +15,8 @@
 
 package org.alfasoftware.morf.jdbc.h2;
 
+import static com.google.common.base.MoreObjects.firstNonNull;
+
 import java.io.File;
 import java.sql.Connection;
 import java.util.Optional;
@@ -62,6 +64,8 @@ public final class H2 extends AbstractDatabaseType {
         .append(jdbcUrlElements.getPort() == 0 ? "" : ":" + jdbcUrlElements.getPort())
         .append("/mem:") // this means we're going to use a remote in-memory DB which isn't ideal
         .append(jdbcUrlElements.getDatabaseName());
+
+        builder.append(";INIT=CREATE SCHEMA IF NOT EXISTS " + firstNonNull(jdbcUrlElements.getSchemaName(), jdbcUrlElements.getDatabaseName()));
     } else {
       // no host, try the instanceName
       if (StringUtils.isBlank(jdbcUrlElements.getInstanceName())) {
@@ -82,12 +86,7 @@ public final class H2 extends AbstractDatabaseType {
     // The DEFAULT_LOCK_TIMEOUT=60000 sets the default lock timeout to 60
     //    seconds. When the value is not set, it takes default
     //    org.h2.engine.Constants.INITIAL_LOCK_TIMEOUT=2000 value
-    // The LOB_TIMEOUT defines how long a lob returned from a ResultSet is available post-commit, defaulting to 5 minutes (300000 ms)
-    //    Set this to 2 seconds to allow certain tests using lob fields to work
-    // The MV_STORE is a flag that governs whether to use the new storage engine (defaulting to true as of H2 version 1.4, false in prior versions)
-    //  Note that implementations of H2 prior to version 1.4.199 had an MVCC parameter used to allow higher concurrency.
-    //  This configuration has been removed and the old "PageStore" implementation (MV_STORE=FALSE) is no longer supported.
-    builder.append(";DB_CLOSE_DELAY=-1;DEFAULT_LOCK_TIMEOUT=60000;LOB_TIMEOUT=2000;MV_STORE=TRUE");
+    builder.append(";DB_CLOSE_DELAY=-1;DEFAULT_LOCK_TIMEOUT=60000");
 
     return builder.toString();
   }
@@ -122,7 +121,7 @@ public final class H2 extends AbstractDatabaseType {
    */
   @Override
   public SqlDialect sqlDialect(String schemaName) {
-    return new H2Dialect();
+    return new H2Dialect(schemaName);
   }
 
 

@@ -23,7 +23,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -36,7 +35,6 @@ import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Function;
-import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.apache.commons.lang.StringUtils;
 
@@ -61,8 +59,8 @@ class H2Dialect extends SqlDialect {
    * @param h2
    *
    */
-  public H2Dialect() {
-    super(null);
+  public H2Dialect(String schemaName) {
+    super(schemaName);
   }
 
 
@@ -82,6 +80,7 @@ class H2Dialect extends SqlDialect {
     }
 
     createTableStatement.append("TABLE ");
+    createTableStatement.append(schemaNamePrefix(table));
     createTableStatement.append(table.getName());
     createTableStatement.append(" (");
 
@@ -126,7 +125,7 @@ class H2Dialect extends SqlDialect {
    */
   @Override
   public Collection<String> dropStatements(Table table) {
-    return Arrays.asList("drop table " + table.getName() + " cascade");
+    return Arrays.asList("drop table " + schemaNamePrefix(table) + table.getName() + " cascade");
   }
 
 
@@ -135,7 +134,17 @@ class H2Dialect extends SqlDialect {
    */
   @Override
   public Collection<String> truncateTableStatements(Table table) {
-    return Arrays.asList("truncate table " + table.getName());
+    List<String> statements = new ArrayList<>();
+
+    StringBuilder truncateStatement = new StringBuilder();
+
+    truncateStatement.append("TRUNCATE TABLE ");
+
+    truncateStatement.append(schemaNamePrefix(table))
+                     .append(table.getName());
+
+    statements.add(truncateStatement.toString());
+    return statements;
   }
 
 
@@ -144,7 +153,7 @@ class H2Dialect extends SqlDialect {
    */
   @Override
   public Collection<String> deleteAllFromTableStatements(Table table) {
-    return Arrays.asList("delete from " + table.getName());
+    return Arrays.asList("delete from "  + schemaNamePrefix(table) + table.getName());
   }
 
 
@@ -156,10 +165,10 @@ class H2Dialect extends SqlDialect {
   protected String getColumnRepresentation(DataType dataType, int width, int scale) {
     switch (dataType) {
       case STRING:
-        return width == 0 ? "VARCHAR" : String.format("VARCHAR(%d)", width);
+        return String.format("VARCHAR(%d)", width);
 
       case DECIMAL:
-        return width == 0 ? "DECIMAL" : String.format("DECIMAL(%d,%d)", width, scale);
+        return String.format("DECIMAL(%d,%d)", width, scale);
 
       case DATE:
         return "DATE";
@@ -249,7 +258,7 @@ class H2Dialect extends SqlDialect {
    */
   @Override
   public Collection<String> alterTableAddColumnStatements(Table table, Column column) {
-    StringBuilder statement = new StringBuilder().append("ALTER TABLE ").append(table.getName()).append(" ADD COLUMN ")
+    StringBuilder statement = new StringBuilder().append("ALTER TABLE ").append(schemaNamePrefix(table)).append(table.getName()).append(" ADD COLUMN ")
         .append(column.getName()).append(' ').append(sqlRepresentationOfColumnType(column, true));
 
     return Collections.singletonList(statement.toString());
@@ -276,12 +285,12 @@ class H2Dialect extends SqlDialect {
     // Now do column operations on the new
     if (StringUtils.isNotEmpty(newColumn.getDefaultValue())) {
       String escape = newColumn.getType() == DataType.STRING ? "'" : "";
-      result.add("ALTER TABLE " + table.getName() + " ALTER COLUMN " + newColumn.getName() + " SET DEFAULT " + escape
+      result.add("ALTER TABLE " + schemaNamePrefix() + table.getName() + " ALTER COLUMN " + newColumn.getName() + " SET DEFAULT " + escape
           + newColumn.getDefaultValue() + escape);
     }
 
     if (oldColumn.isNullable() != newColumn.isNullable()) {
-      result.add("ALTER TABLE " + table.getName() + " ALTER COLUMN " + newColumn.getName() + " SET "
+      result.add("ALTER TABLE " + schemaNamePrefix() + table.getName() + " ALTER COLUMN " + newColumn.getName() + " SET "
           + (newColumn.isNullable() ? "NULL" : "NOT NULL"));
     }
 
@@ -290,7 +299,7 @@ class H2Dialect extends SqlDialect {
         oldColumn.getWidth() != newColumn.getWidth() ||
         !StringUtils.equals(oldColumn.getDefaultValue(), newColumn.getDefaultValue()) ||
         oldColumn.isAutoNumbered() != newColumn.isAutoNumbered()) {
-      result.add("ALTER TABLE " + table.getName() + " ALTER COLUMN " + newColumn.getName() + " " +
+      result.add("ALTER TABLE " + schemaNamePrefix() + table.getName() + " ALTER COLUMN " + newColumn.getName() + " " +
         sqlRepresentationOfColumnType(newColumn, false, false, true));
     }
 
@@ -309,7 +318,7 @@ class H2Dialect extends SqlDialect {
   @Override
   public Collection<String> alterTableDropColumnStatements(Table table, Column column) {
     StringBuilder statement = new StringBuilder()
-      .append("ALTER TABLE ").append(table.getName())
+      .append("ALTER TABLE ").append(schemaNamePrefix(table)).append(table.getName())
       .append(" DROP COLUMN ").append(column.getName());
 
     return Collections.singletonList(statement.toString());
@@ -324,7 +333,7 @@ class H2Dialect extends SqlDialect {
     List<String> result = new ArrayList<>();
 
     if (!oldPrimaryKeyColumns.isEmpty()) {
-      result.add("ALTER TABLE " + table.getName() + " DROP PRIMARY KEY");
+      result.add("ALTER TABLE " + schemaNamePrefix() + table.getName() + " DROP PRIMARY KEY");
     }
 
     if (!newPrimaryKeyColumns.isEmpty()) {
@@ -342,7 +351,7 @@ class H2Dialect extends SqlDialect {
    * @return The statement
    */
   private String addPrimaryKeyConstraintStatement(Table table, List<String> primaryKeyColumnNames) {
-    return "ALTER TABLE " + table.getName() + " ADD CONSTRAINT " + table.getName() + "_PK PRIMARY KEY (" + Joiner.on(", ").join(primaryKeyColumnNames) + ")";
+    return "ALTER TABLE " + schemaNamePrefix() + table.getName() + " ADD CONSTRAINT " + table.getName() + "_PK PRIMARY KEY (" + Joiner.on(", ").join(primaryKeyColumnNames) + ")";
   }
 
 
@@ -351,7 +360,7 @@ class H2Dialect extends SqlDialect {
    * @return The statement
    */
   private String dropPrimaryKeyConstraintStatement(Table table) {
-    return "ALTER TABLE " + table.getName() + " DROP CONSTRAINT " + table.getName() + "_PK";
+    return "ALTER TABLE " + schemaNamePrefix() + table.getName() + " DROP CONSTRAINT " + table.getName() + "_PK";
   }
 
 
@@ -367,8 +376,8 @@ class H2Dialect extends SqlDialect {
     if (index.isUnique()) {
       statement.append("UNIQUE ");
     }
-    statement.append("INDEX ").append(index.getName()).append(" ON ").append(table.getName()).append(" (")
-        .append(Joiner.on(',').join(index.columnNames())).append(")");
+    statement.append("INDEX ").append(index.getName()).append(" ON ").append(schemaNamePrefix(table)).append(table.getName())
+        .append(" (").append(Joiner.on(',').join(index.columnNames())).append(")");
 
     return Collections.singletonList(statement.toString());
   }
@@ -417,7 +426,7 @@ class H2Dialect extends SqlDialect {
    */
   @Override
   public Collection<String> dropStatements(View view) {
-    return Arrays.asList("DROP VIEW " + view.getName() + " IF EXISTS CASCADE");
+    return Arrays.asList("DROP VIEW " + schemaNamePrefix() + view.getName() + " IF EXISTS CASCADE");
   }
 
 
@@ -438,7 +447,7 @@ class H2Dialect extends SqlDialect {
   @Override
   protected String getSqlForDateToYyyymmdd(Function function) {
     String sqlExpression = getSqlFrom(function.getArguments().get(0));
-    return String.format("CAST(SUBSTRING(%1$s, 1, 4)||SUBSTRING(%1$s, 6, 2)||SUBSTRING(%1$s, 9, 2) AS DECIMAL(8))",sqlExpression);
+    return String.format("CAST(SUBSTRING(%1$s, 1, 4)||SUBSTRING(%1$s, 6, 2)||SUBSTRING(%1$s, 9, 2) AS INT)",sqlExpression);
   }
 
 
@@ -449,7 +458,7 @@ class H2Dialect extends SqlDialect {
   protected String getSqlForDateToYyyymmddHHmmss(Function function) {
     String sqlExpression = getSqlFrom(function.getArguments().get(0));
     // Example for CURRENT_TIMESTAMP() -> 2015-06-23 11:25:08.11
-    return String.format("CAST(SUBSTRING(%1$s, 1, 4)||SUBSTRING(%1$s, 6, 2)||SUBSTRING(%1$s, 9, 2)||SUBSTRING(%1$s, 12, 2)||SUBSTRING(%1$s, 15, 2)||SUBSTRING(%1$s, 18, 2) AS DECIMAL(14))", sqlExpression);
+    return String.format("CAST(SUBSTRING(%1$s, 1, 4)||SUBSTRING(%1$s, 6, 2)||SUBSTRING(%1$s, 9, 2)||SUBSTRING(%1$s, 12, 2)||SUBSTRING(%1$s, 15, 2)||SUBSTRING(%1$s, 18, 2) AS BIGINT)", sqlExpression);
   }
 
 
@@ -556,7 +565,7 @@ class H2Dialect extends SqlDialect {
       builder.add(dropPrimaryKeyConstraintStatement(from));
     }
 
-    builder.add("ALTER TABLE " + from.getName() + " RENAME TO " + to.getName());
+    builder.add("ALTER TABLE " + schemaNamePrefix(from) + from.getName() + " RENAME TO " + to.getName());
 
     if (!primaryKeysForTable(to).isEmpty()) {
       builder.add(addPrimaryKeyConstraintStatement(to, namesOfColumns(primaryKeysForTable(to))));
@@ -567,77 +576,48 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   *  TODO
-   * The following is a workaround to a bug in H2 version 1.4.200 whereby the MERGE...USING statement does not release the source select statement
-   * Please remove this method once https://github.com/h2database/h2database/issues/2196 has been fixed and H2 upgraded to the fixed version
-   * This workaround uses the following alternative syntax, which fortunately does not lead to the same bug:
-   *
-   * <pre>
-   *   WITH xmergesource AS (SELECT ...)
-   *   MERGE INTO Table
-   *     USING xmergesource
-   *     ON (Table.id = xmergesource.id)
-   *     WHEN MATCHED THEN UPDATE ...
-   *     WHEN NOT MATCHED THEN INSERT ...
-   * </pre>
-   *
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.MergeStatement)
    */
   @Override
   protected String getSqlFrom(MergeStatement statement) {
 
-    // --- TODO
-    // call the original implementation which performs various consistency checks
-    super.getSqlFrom(statement);
-
-    // --- TODO
-    // but ignore whatever it produces, and create a slightly different variant
-    final StringBuilder sqlBuilder = new StringBuilder();
-
-    // WITH xmergesource AS (SELECT ...)
-    sqlBuilder.append("WITH ")
-              .append(MERGE_SOURCE_ALIAS)
-              .append(" AS (")
-              .append(getSqlFrom(statement.getSelectStatement()))
-              .append(") ");
-
-    // MERGE INTO Table USING xmergesource
-    sqlBuilder.append("MERGE INTO ")
-              .append(schemaNamePrefix(statement.getTable()))
-              .append(statement.getTable().getName())
-              .append(" USING ")
-              .append(MERGE_SOURCE_ALIAS);
-
-    // ON (Table.id = xmergesource.id)
-    sqlBuilder.append(" ON (")
-              .append(matchConditionSqlForMergeFields(statement, MERGE_SOURCE_ALIAS, statement.getTable().getName()))
-              .append(")");
-
-    // WHEN MATCHED THEN UPDATE ...
-    if (getNonKeyFieldsFromMergeStatement(statement).iterator().hasNext()) {
-      Iterable<AliasedField> updateExpressions = getMergeStatementUpdateExpressions(statement);
-      String updateExpressionsSql = getMergeStatementAssignmentsSql(updateExpressions);
-      sqlBuilder.append(" WHEN MATCHED THEN UPDATE SET ")
-                .append(updateExpressionsSql);
+    if (StringUtils.isBlank(statement.getTable().getName())) {
+      throw new IllegalArgumentException("Cannot create SQL for a blank table");
     }
 
-    // WHEN NOT MATCHED THEN INSERT ...
-    Iterable<String> insertField = Iterables.transform(statement.getSelectStatement().getFields(), AliasedField::getImpliedName);
-    Iterable<String> valueFields = Iterables.transform(statement.getSelectStatement().getFields(), field -> MERGE_SOURCE_ALIAS + "." + field.getImpliedName());
+    checkSelectStatementHasNoHints(statement.getSelectStatement(), "MERGE may not be used with SELECT statement hints");
 
-    sqlBuilder.append(" WHEN NOT MATCHED THEN INSERT (")
-              .append(Joiner.on(", ").join(insertField))
-              .append(") VALUES (")
-              .append(Joiner.on(", ").join(valueFields))
-              .append(")");
+    final String destinationTableName = statement.getTable().getName();
+
+    // Add the preamble
+    StringBuilder sqlBuilder = new StringBuilder("MERGE INTO ");
+    // Now add the into clause
+    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
+    sqlBuilder.append(destinationTableName);
+    sqlBuilder.append("(");
+    Iterable<String> intoFields = Iterables.transform(statement.getSelectStatement().getFields(), new com.google.common.base.Function<AliasedField, String>() {
+      @Override
+      public String apply(AliasedField field) {
+        return field.getImpliedName();
+      }
+    });
+    sqlBuilder.append(Joiner.on(", ").join(intoFields));
+
+    // Add key fields
+    sqlBuilder.append(") KEY(");
+    Iterable<String> keyFields = Iterables.transform(statement.getTableUniqueKey(), new com.google.common.base.Function<AliasedField, String>() {
+      @Override
+      public String apply(AliasedField field) {
+        return field.getImpliedName();
+      }
+    });
+    sqlBuilder.append(Joiner.on(", ").join(keyFields));
+    sqlBuilder.append(") ");
+
+    // Add select statement
+    sqlBuilder.append(getSqlFrom(statement.getSelectStatement()));
 
     return sqlBuilder.toString();
-  }
-
-
-  @Override
-  protected String getSqlFrom(SqlParameter sqlParameter) {
-    return String.format("CAST(:%s AS %s)", sqlParameter.getMetadata().getName(), sqlRepresentationOfColumnType(sqlParameter.getMetadata(), false));
   }
 
 
@@ -701,14 +681,5 @@ class H2Dialect extends SqlDialect {
   @Override
   public Collection<String> getSqlForAnalyseTable(Table table) {
     return SqlDialect.NO_STATEMENTS;
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect.getDeleteLimitSuffixSql(int)
-   */
-  @Override
-  protected Optional<String> getDeleteLimitSuffix(int limit) {
-    return Optional.of("LIMIT " + limit);
   }
 }
