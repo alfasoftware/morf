@@ -53,10 +53,11 @@ public class TestH2DatabaseType {
    */
   @Test
   public void testFormatJdbcUrl() {
+    String createSchemaSuffix = ";INIT=CREATE SCHEMA IF NOT EXISTS alfa";
     String suffix = ";DB_CLOSE_DELAY=-1;DEFAULT_LOCK_TIMEOUT=60000;LOB_TIMEOUT=2000;MV_STORE=TRUE";
 
-    assertEquals("jdbc:h2:tcp://foo.com:123/mem:alfa" + suffix, databaseType.formatJdbcUrl(jdbcUrlElementBuilder().withHost("foo.com").withPort(123).withDatabaseName("alfa").build()));
-    assertEquals("jdbc:h2:tcp://foo.com/mem:alfa" + suffix, databaseType.formatJdbcUrl(jdbcUrlElementBuilder().withHost("foo.com").withDatabaseName("alfa").build()));
+    assertEquals("jdbc:h2:tcp://foo.com:123/mem:alfa" + createSchemaSuffix + suffix, databaseType.formatJdbcUrl(jdbcUrlElementBuilder().withHost("foo.com").withPort(123).withDatabaseName("alfa").build()));
+    assertEquals("jdbc:h2:tcp://foo.com/mem:alfa" + createSchemaSuffix + suffix, databaseType.formatJdbcUrl(jdbcUrlElementBuilder().withHost("foo.com").withDatabaseName("alfa").build()));
 
     assertEquals("jdbc:h2:mem:alfa" + suffix, databaseType.formatJdbcUrl(jdbcUrlElementBuilder().withDatabaseName("alfa").build()));
 
