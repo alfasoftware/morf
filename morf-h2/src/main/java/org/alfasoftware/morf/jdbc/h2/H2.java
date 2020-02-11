@@ -15,8 +15,6 @@
 
 package org.alfasoftware.morf.jdbc.h2;
 
-import static com.google.common.base.MoreObjects.firstNonNull;
-
 import java.io.File;
 import java.sql.Connection;
 import java.util.Optional;
@@ -65,7 +63,6 @@ public final class H2 extends AbstractDatabaseType {
         .append("/mem:") // this means we're going to use a remote in-memory DB which isn't ideal
         .append(jdbcUrlElements.getDatabaseName());
 
-        builder.append(";INIT=CREATE SCHEMA IF NOT EXISTS " + firstNonNull(jdbcUrlElements.getSchemaName(), jdbcUrlElements.getDatabaseName()));
     } else {
       // no host, try the instanceName
       if (StringUtils.isBlank(jdbcUrlElements.getInstanceName())) {
