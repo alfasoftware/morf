@@ -67,15 +67,6 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#createSchemaStatement()
-   */
-  @Override
-  public String createSchemaStatement() {
-    return "create schema if not exists " + getSchemaName();
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#tableDeploymentStatements(org.alfasoftware.morf.metadata.Table)
    */
   @Override

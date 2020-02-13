@@ -214,16 +214,6 @@ public abstract class SqlDialect {
 
 
   /**
-   * Creates SQL to create a schema in the database.
-   *
-   * @return SQL statement to create a schema.
-   */
-  public String createSchemaStatement() {
-    return "";
-  }
-
-
-  /**
    * Creates SQL to truncate a table (may require DBA rights on some databases
    * e.g. Oracle).
    *
