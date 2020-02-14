@@ -61,8 +61,8 @@ class H2Dialect extends SqlDialect {
    * @param h2
    *
    */
-  public H2Dialect() {
-    super(null);
+  public H2Dialect(String schemaName) {
+    super(schemaName);
   }
 
 
@@ -82,6 +82,7 @@ class H2Dialect extends SqlDialect {
     }
 
     createTableStatement.append("TABLE ");
+    createTableStatement.append(schemaNamePrefix());
     createTableStatement.append(table.getName());
     createTableStatement.append(" (");
 
@@ -126,7 +127,7 @@ class H2Dialect extends SqlDialect {
    */
   @Override
   public Collection<String> dropStatements(Table table) {
-    return Arrays.asList("drop table " + table.getName() + " cascade");
+    return Arrays.asList("drop table " + schemaNamePrefix() + table.getName() + " cascade");
   }
 
 
@@ -135,7 +136,7 @@ class H2Dialect extends SqlDialect {
    */
   @Override
   public Collection<String> truncateTableStatements(Table table) {
-    return Arrays.asList("truncate table " + table.getName());
+    return Arrays.asList("truncate table " + schemaNamePrefix() + table.getName());
   }
 
 
@@ -144,7 +145,7 @@ class H2Dialect extends SqlDialect {
    */
   @Override
   public Collection<String> deleteAllFromTableStatements(Table table) {
-    return Arrays.asList("delete from " + table.getName());
+    return Arrays.asList("delete from " + schemaNamePrefix() + table.getName());
   }
 
 
@@ -249,7 +250,7 @@ class H2Dialect extends SqlDialect {
    */
   @Override
   public Collection<String> alterTableAddColumnStatements(Table table, Column column) {
-    StringBuilder statement = new StringBuilder().append("ALTER TABLE ").append(table.getName()).append(" ADD COLUMN ")
+    StringBuilder statement = new StringBuilder().append("ALTER TABLE ").append(schemaNamePrefix()).append(table.getName()).append(" ADD COLUMN ")
         .append(column.getName()).append(' ').append(sqlRepresentationOfColumnType(column, true));
 
     return Collections.singletonList(statement.toString());
@@ -276,12 +277,12 @@ class H2Dialect extends SqlDialect {
     // Now do column operations on the new
     if (StringUtils.isNotEmpty(newColumn.getDefaultValue())) {
       String escape = newColumn.getType() == DataType.STRING ? "'" : "";
-      result.add("ALTER TABLE " + table.getName() + " ALTER COLUMN " + newColumn.getName() + " SET DEFAULT " + escape
+      result.add("ALTER TABLE " + schemaNamePrefix() + table.getName() + " ALTER COLUMN " + newColumn.getName() + " SET DEFAULT " + escape
           + newColumn.getDefaultValue() + escape);
     }
 
     if (oldColumn.isNullable() != newColumn.isNullable()) {
-      result.add("ALTER TABLE " + table.getName() + " ALTER COLUMN " + newColumn.getName() + " SET "
+      result.add("ALTER TABLE " + schemaNamePrefix() + table.getName() + " ALTER COLUMN " + newColumn.getName() + " SET "
           + (newColumn.isNullable() ? "NULL" : "NOT NULL"));
     }
 
@@ -290,7 +291,7 @@ class H2Dialect extends SqlDialect {
         oldColumn.getWidth() != newColumn.getWidth() ||
         !StringUtils.equals(oldColumn.getDefaultValue(), newColumn.getDefaultValue()) ||
         oldColumn.isAutoNumbered() != newColumn.isAutoNumbered()) {
-      result.add("ALTER TABLE " + table.getName() + " ALTER COLUMN " + newColumn.getName() + " " +
+      result.add("ALTER TABLE " + schemaNamePrefix() + table.getName() + " ALTER COLUMN " + newColumn.getName() + " " +
         sqlRepresentationOfColumnType(newColumn, false, false, true));
     }
 
@@ -309,7 +310,7 @@ class H2Dialect extends SqlDialect {
   @Override
   public Collection<String> alterTableDropColumnStatements(Table table, Column column) {
     StringBuilder statement = new StringBuilder()
-      .append("ALTER TABLE ").append(table.getName())
+      .append("ALTER TABLE ").append(schemaNamePrefix()).append(table.getName())
       .append(" DROP COLUMN ").append(column.getName());
 
     return Collections.singletonList(statement.toString());
@@ -324,7 +325,7 @@ class H2Dialect extends SqlDialect {
     List<String> result = new ArrayList<>();
 
     if (!oldPrimaryKeyColumns.isEmpty()) {
-      result.add("ALTER TABLE " + table.getName() + " DROP PRIMARY KEY");
+      result.add("ALTER TABLE " + schemaNamePrefix() + table.getName() + " DROP PRIMARY KEY");
     }
 
     if (!newPrimaryKeyColumns.isEmpty()) {
@@ -342,7 +343,7 @@ class H2Dialect extends SqlDialect {
    * @return The statement
    */
   private String addPrimaryKeyConstraintStatement(Table table, List<String> primaryKeyColumnNames) {
-    return "ALTER TABLE " + table.getName() + " ADD CONSTRAINT " + table.getName() + "_PK PRIMARY KEY (" + Joiner.on(", ").join(primaryKeyColumnNames) + ")";
+    return "ALTER TABLE " + schemaNamePrefix() + table.getName() + " ADD CONSTRAINT " + table.getName() + "_PK PRIMARY KEY (" + Joiner.on(", ").join(primaryKeyColumnNames) + ")";
   }
 
 
@@ -351,7 +352,7 @@ class H2Dialect extends SqlDialect {
    * @return The statement
    */
   private String dropPrimaryKeyConstraintStatement(Table table) {
-    return "ALTER TABLE " + table.getName() + " DROP CONSTRAINT " + table.getName() + "_PK";
+    return "ALTER TABLE " + schemaNamePrefix() + table.getName() + " DROP CONSTRAINT " + table.getName() + "_PK";
   }
 
 
@@ -367,7 +368,7 @@ class H2Dialect extends SqlDialect {
     if (index.isUnique()) {
       statement.append("UNIQUE ");
     }
-    statement.append("INDEX ").append(index.getName()).append(" ON ").append(table.getName()).append(" (")
+    statement.append("INDEX ").append(index.getName()).append(" ON ").append(schemaNamePrefix()).append(table.getName()).append(" (")
         .append(Joiner.on(',').join(index.columnNames())).append(")");
 
     return Collections.singletonList(statement.toString());
@@ -417,7 +418,7 @@ class H2Dialect extends SqlDialect {
    */
   @Override
   public Collection<String> dropStatements(View view) {
-    return Arrays.asList("DROP VIEW " + view.getName() + " IF EXISTS CASCADE");
+    return Arrays.asList("DROP VIEW " + schemaNamePrefix() + view.getName() + " IF EXISTS CASCADE");
   }
 
 
@@ -556,7 +557,7 @@ class H2Dialect extends SqlDialect {
       builder.add(dropPrimaryKeyConstraintStatement(from));
     }
 
-    builder.add("ALTER TABLE " + from.getName() + " RENAME TO " + to.getName());
+    builder.add("ALTER TABLE " + schemaNamePrefix() + from.getName() + " RENAME TO " + to.getName());
 
     if (!primaryKeysForTable(to).isEmpty()) {
       builder.add(addPrimaryKeyConstraintStatement(to, namesOfColumns(primaryKeysForTable(to))));
@@ -603,7 +604,7 @@ class H2Dialect extends SqlDialect {
 
     // MERGE INTO Table USING xmergesource
     sqlBuilder.append("MERGE INTO ")
-              .append(schemaNamePrefix(statement.getTable()))
+              .append(schemaNamePrefix())
               .append(statement.getTable().getName())
               .append(" USING ")
               .append(MERGE_SOURCE_ALIAS);

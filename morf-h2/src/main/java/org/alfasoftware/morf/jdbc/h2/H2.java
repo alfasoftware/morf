@@ -62,6 +62,7 @@ public final class H2 extends AbstractDatabaseType {
         .append(jdbcUrlElements.getPort() == 0 ? "" : ":" + jdbcUrlElements.getPort())
         .append("/mem:") // this means we're going to use a remote in-memory DB which isn't ideal
         .append(jdbcUrlElements.getDatabaseName());
+
     } else {
       // no host, try the instanceName
       if (StringUtils.isBlank(jdbcUrlElements.getInstanceName())) {
@@ -122,7 +123,7 @@ public final class H2 extends AbstractDatabaseType {
    */
   @Override
   public SqlDialect sqlDialect(String schemaName) {
-    return new H2Dialect();
+    return new H2Dialect(schemaName);
   }
 
 
