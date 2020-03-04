@@ -131,6 +131,7 @@ public class TestDatabaseMetaDataProvider {
   );
 
   private static String databaseType;
+  private static boolean tableNameInCamelCase;
 
 
   @Before
@@ -140,6 +141,11 @@ public class TestDatabaseMetaDataProvider {
     schemaManager.dropAllViews();
     schemaManager.dropAllTables();
     schemaManager.mutateToSupportSchema(schema, TruncationBehavior.ALWAYS);
+
+    try(SchemaResource schemaResource = database.openSchemaResource()) {
+      Table tableWithTypes = schemaResource.getTable("WithTypes");
+      tableNameInCamelCase = tableWithTypes.getName().equals("WithTypes");
+    }
   }
 
   @After
@@ -444,7 +450,9 @@ public class TestDatabaseMetaDataProvider {
       case "H2":
         return equalTo(tableName.toUpperCase());
       case "MY_SQL":
-        return equalTo(tableName.toLowerCase());
+        return tableNameInCamelCase
+            ? equalTo(tableName)
+            : equalTo(tableName.toLowerCase());
       default:
         return equalTo(tableName);
     }
