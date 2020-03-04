@@ -86,10 +86,9 @@ public class TestAccumulatingMergeStatement {
     assertEquals(Long.valueOf(0), result);
 
     /*
-     * We have to provide the initial record on Oracle or H2, otherwise we get:
-     *   ORA-00001: unique constraint (DESTINATION_PK) violated
-     *   or
-     *   org.h2.jdbc.JdbcSQLIntegrityConstraintViolationException: Unique index or primary key violation
+     * We have to provide the initial record on Oracle or H2, otherwise we get one of these:
+     * - ORA-00001: unique constraint (DESTINATION_PK) violated
+     * - org.h2.jdbc.JdbcSQLIntegrityConstraintViolationException: Unique index or primary key violation
      */
     if (connectionResources.sqlDialect().getDatabaseType().identifier().matches("ORACLE|H2")) {
       InsertStatement insertStatement = insert()
