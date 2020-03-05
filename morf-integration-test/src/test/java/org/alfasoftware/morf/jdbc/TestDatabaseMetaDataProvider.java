@@ -36,7 +36,10 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.List;
 import java.util.function.Function;
 
@@ -131,21 +134,18 @@ public class TestDatabaseMetaDataProvider {
   );
 
   private static String databaseType;
-  private static boolean tableNameInCamelCase;
+  private static Boolean mysqlLowerCaseTableNames;
 
 
   @Before
-  public void before() {
+  public void before() throws SQLException {
     databaseType = database.getDatabaseType();
 
     schemaManager.dropAllViews();
     schemaManager.dropAllTables();
     schemaManager.mutateToSupportSchema(schema, TruncationBehavior.ALWAYS);
 
-    try(SchemaResource schemaResource = database.openSchemaResource()) {
-      Table tableWithTypes = schemaResource.getTable("WithTypes");
-      tableNameInCamelCase = tableWithTypes.getName().equals("WithTypes");
-    }
+    mysqlLowerCaseTableNames = readMysqlLowerCaseTableNames();
   }
 
   @After
@@ -450,9 +450,9 @@ public class TestDatabaseMetaDataProvider {
       case "H2":
         return equalTo(tableName.toUpperCase());
       case "MY_SQL":
-        return tableNameInCamelCase
-            ? equalTo(tableName)
-            : equalTo(tableName.toLowerCase());
+        return mysqlLowerCaseTableNames
+            ? equalTo(tableName.toLowerCase())
+            : equalTo(tableName);
       default:
         return equalTo(tableName);
     }
@@ -488,5 +488,36 @@ public class TestDatabaseMetaDataProvider {
       default:
         return equalTo(columnName);
     }
+  }
+
+
+  /**
+   * For MySQL only, reads the value of the "lower_case_table_names" database system variable.
+   * Returns null for non-MySQL calls, to ensure the value is not used for other database types.
+   */
+  private Boolean readMysqlLowerCaseTableNames() throws SQLException {
+    if ("MY_SQL".equals(databaseType)) {
+      try(Connection connection = database.getDataSource().getConnection(); Statement statement = connection.createStatement()) {
+        try (ResultSet result = statement.executeQuery("SELECT @@GLOBAL.lower_case_table_names")) {
+          if (result.next()) {
+            switch (result.getInt(1)) {
+              case 1: // converts to lower case
+                return true;
+
+              case 0: // preserves case
+              case 2: // preserves case
+                return false;
+
+              default:
+                throw new IllegalStateException("Unknown lower_case_table_names value " + result.getInt(1));
+            }
+          }
+        }
+      }
+      throw new IllegalStateException("Unknown lower_case_table_names config");
+    }
+
+    // intentional "I don't know" value
+    return null;
   }
 }
