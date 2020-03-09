@@ -40,6 +40,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 
@@ -73,7 +74,8 @@ public class TestAccumulatingMergeStatement {
           .columns(
             column("keyColumn", DataType.STRING, 3).primaryKey(),
             column("lastValue", DataType.DECIMAL,12, 2),
-            column("totalValue", DataType.DECIMAL,12, 2))
+            column("totalValue1", DataType.DECIMAL,12, 2),
+            column("totalValue2", DataType.DECIMAL,12, 2))
       ),
       TruncationBehavior.ALWAYS);
 
@@ -84,17 +86,17 @@ public class TestAccumulatingMergeStatement {
     assertEquals(Long.valueOf(0), result);
 
     /*
-     * We have to provide the initial record on Oracle or H2, otherwise we get:
-     *   ORA-00001: unique constraint (DESTINATION_PK) violated
-     *   or
-     *   org.h2.jdbc.JdbcSQLIntegrityConstraintViolationException: Unique index or primary key violation
+     * We have to provide the initial record on Oracle or H2, otherwise we get one of these:
+     * - ORA-00001: unique constraint (DESTINATION_PK) violated
+     * - org.h2.jdbc.JdbcSQLIntegrityConstraintViolationException: Unique index or primary key violation
      */
     if (connectionResources.sqlDialect().getDatabaseType().identifier().matches("ORACLE|H2")) {
       InsertStatement insertStatement = insert()
         .into(destinationTable)
         .values(literal("A").as("keyColumn"))
         .values(literal(0).as("lastValue"))
-        .values(literal(0).as("totalValue"))
+        .values(literal(0).as("totalValue1"))
+        .values(literal(0).as("totalValue2"))
         .build();
 
       sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor())
@@ -117,7 +119,7 @@ public class TestAccumulatingMergeStatement {
 
     // create all workers
     for (int i = 0; i < THREADS; i++) {
-      workers.add(new Worker());
+      workers.add(new Worker(i));
     }
 
     // start all workers
@@ -133,23 +135,30 @@ public class TestAccumulatingMergeStatement {
     // check the results
     SelectStatement selectStatement =
         select()
-          .fields(field("totalValue"))
+          .fields(field("totalValue1"))
+          .fields(field("totalValue2"))
           .from(destinationTable)
           .where(field("keyColumn").eq("A"))
           .build();
 
-    Long result = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor())
+    List<Long> result = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor())
       .executeQuery(selectStatement)
-      .processWith(resultSet -> resultSet.next() ? resultSet.getLong(1) : null);
+      .processWith(resultSet -> resultSet.next() ? ImmutableList.of(resultSet.getLong(1), resultSet.getLong(2)) : null);
 
-    assertEquals("Aggregated value", Long.valueOf((LOOPS-1) * LOOPS * THREADS / 2), result);
+    assertEquals("Aggregated totalValue1", Long.valueOf((LOOPS-1) * LOOPS * THREADS / 2), result.get(0));
+    assertEquals("Aggregated totalValue2", Long.valueOf((LOOPS-1) * LOOPS * THREADS / 2), result.get(1));
   }
 
   private final class Worker implements Callable<Boolean> {
 
     private final SqlScriptExecutor sqlExecutor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
 
+    private final int threadNumber;
     private Thread currentThread;
+
+    public Worker(int threadNumber) {
+      this.threadNumber = threadNumber;
+    }
 
     private void release() {
       if (currentThread != null) {
@@ -162,11 +171,11 @@ public class TestAccumulatingMergeStatement {
       currentThread = Thread.currentThread();
 
       for(int i = 0; i < LOOPS; i++) {
-        double random = Math.random();
-        if (random > 0.5)
-          newLambdaSolution(i);
+        // alternate between two ways of accumulation
+        if (i % 2 == 0)
+          newLambdaSolution(threadNumber, i, LOOPS - i - 1);
         else
-          oldLockingSolution(i);
+          oldLockingSolution(threadNumber, i, LOOPS - i - 1);
 
         if (Thread.interrupted()) {
           return false;
@@ -176,31 +185,33 @@ public class TestAccumulatingMergeStatement {
     }
 
 
-    private void newLambdaSolution(int addValue) {
+    private void newLambdaSolution(int addValue0, int addValue1, int addValue2) {
       MergeStatement mergeStatement =
           merge()
            .into(destinationTable)
            .tableUniqueKey(field("keyColumn"))
            .from(select()
                    .fields(literal("A").as("keyColumn"))
-                   .fields(literal(addValue).as("lastValue"))
-                   .fields(literal(addValue).as("totalValue"))
+                   .fields(literal(addValue0).as("lastValue"))
+                   .fields(literal(addValue1).as("totalValue1"))
+                   .fields(literal(addValue2).as("totalValue2"))
                    .build())
            .ifUpdating((overrides, values) -> overrides
              .set(values.input("lastValue").as("lastValue"))
-             .set(values.input("totalValue").plus(values.existing("totalValue")).as("totalValue")))
+             .set(values.input("totalValue1").plus(values.existing("totalValue1")).as("totalValue1"))
+             .set(values.input("totalValue2").plus(values.existing("totalValue2")).as("totalValue2")))
            .build();
 
       sqlExecutor.execute(connectionResources.sqlDialect().convertStatementToSQL(mergeStatement));
     }
 
 
-    private void oldLockingSolution(int addValue) {
+    private void oldLockingSolution(int addValue0, int addValue1, int addValue2) {
       MergeStatement mergeStatement =
           merge()
            .into(destinationTable)
            .tableUniqueKey(field("keyColumn"))
-           .from(oldSolutionSelectStatement(addValue))
+           .from(oldSolutionSelectStatement(addValue0, addValue1, addValue2))
            .build();
 
       sqlExecutor.execute(connectionResources.sqlDialect().convertStatementToSQL(mergeStatement));
@@ -213,37 +224,56 @@ public class TestAccumulatingMergeStatement {
      * - MySQL needs explicit FOR UPDATE, and it can be on the summing main select
      * - H2 and PgSQL need explicit FOR UPDATE, but on a non-aggregating sub-select
      */
-    private SelectStatement oldSolutionSelectStatement(int addValue) {
+    private SelectStatement oldSolutionSelectStatement(int addValue0, int addValue1, int addValue2) {
       switch(connectionResources.sqlDialect().getDatabaseType().identifier()) {
         case "H2":
         case "MY_SQL":
         case "PGSQL":
-          AliasedField originalValue =
-              select(field("totalValue"))
+          AliasedField originalValue1 =
+              select(field("totalValue1"))
                 .from(destinationTable)
                 .where(field("keyColumn").eq("A"))
                 .forUpdate() // row locking to prevent race conditions
                 .build().asField();
 
-          AliasedField accumulatedScalarValue =
-              coalesce(sum(originalValue), literal(0))
-                .plus(literal(addValue));
+          AliasedField originalValue2 =
+              select(field("totalValue2"))
+                .from(destinationTable)
+                .where(field("keyColumn").eq("A"))
+                .forUpdate() // row locking to prevent race conditions
+                .build().asField();
+
+
+          AliasedField accumulatedScalarValue1 =
+              coalesce(sum(originalValue1), literal(0))
+                .plus(literal(addValue1));
+
+          AliasedField accumulatedScalarValue2 =
+              coalesce(sum(originalValue2), literal(0))
+                .plus(literal(addValue2));
 
           return select()
                   .fields(literal("A").as("keyColumn"))
-                  .fields(literal(addValue).as("lastValue"))
-                  .fields(accumulatedScalarValue.as("totalValue"))
+                  .fields(literal(addValue0).as("lastValue"))
+                  .fields(accumulatedScalarValue1.as("totalValue1"))
+                  .fields(accumulatedScalarValue2.as("totalValue2"))
                   .build();
 
         default:
-          AliasedField accumulatedFieldValue =
-              coalesce(sum(destinationTable.field("totalValue")), literal(0))
-                .plus(literal(addValue));
+          AliasedField accumulatedFieldValue1 =
+              coalesce(sum(destinationTable.field("totalValue1")), literal(0))
+                .plus(literal(addValue1));
+
+          AliasedField accumulatedFieldValue2 =
+              coalesce(sum(destinationTable.field("totalValue2")), literal(0))
+                .plus(literal(addValue2));
+
 
           return select()
                   .fields(literal("A").as("keyColumn"))
-                  .fields(literal(addValue).as("lastValue"))
-                  .fields(accumulatedFieldValue.as("totalValue"))
+                  .fields(literal(addValue0).as("lastValue"))
+                  .fields(accumulatedFieldValue1.as("totalValue1"))
+                  .fields(accumulatedFieldValue2.as("totalValue2"))
                   .from(destinationTable)
                   .where(field("keyColumn").eq("A"))
                   .build();
