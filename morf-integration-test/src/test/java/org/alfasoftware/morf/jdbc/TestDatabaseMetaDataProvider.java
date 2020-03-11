@@ -36,10 +36,7 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.List;
 import java.util.function.Function;
 
@@ -135,6 +132,7 @@ public class TestDatabaseMetaDataProvider {
 
   private static String databaseType;
   private static Boolean mysqlLowerCaseTableNames;
+  private static Boolean mysqlLowerCaseViewNames;
 
 
   @Before
@@ -145,7 +143,7 @@ public class TestDatabaseMetaDataProvider {
     schemaManager.dropAllTables();
     schemaManager.mutateToSupportSchema(schema, TruncationBehavior.ALWAYS);
 
-    mysqlLowerCaseTableNames = readMysqlLowerCaseTableNames();
+    readMysqlLowerCaseTableNames();
   }
 
   @After
@@ -438,7 +436,9 @@ public class TestDatabaseMetaDataProvider {
       case "ORACLE":
         return equalTo(viewName.toUpperCase());
       case "MY_SQL":
-        return equalTo(viewName.toLowerCase());
+        return mysqlLowerCaseViewNames
+            ? equalTo(viewName.toLowerCase())
+            : equalTo(viewName);
       default:
         return equalTo(viewName);
     }
@@ -492,32 +492,21 @@ public class TestDatabaseMetaDataProvider {
 
 
   /**
-   * For MySQL only, reads the value of the "lower_case_table_names" database system variable.
-   * Returns null for non-MySQL calls, to ensure the value is not used for other database types.
+   * For MySQL only, tries to determine whether table names and view names keep their CamelCase names.
+   *
+   * Originally, this was determined via a simple "SELECT @@GLOBAL.lower_case_table_names", however,
+   * different versions and different distributions ended up providing rather unreliable answers. As
+   * far as this test is concerned, what we really need is some form of consistency.
    */
-  private Boolean readMysqlLowerCaseTableNames() throws SQLException {
+  private void readMysqlLowerCaseTableNames() throws SQLException {
     if ("MY_SQL".equals(databaseType)) {
-      try(Connection connection = database.getDataSource().getConnection(); Statement statement = connection.createStatement()) {
-        try (ResultSet result = statement.executeQuery("SELECT @@GLOBAL.lower_case_table_names")) {
-          if (result.next()) {
-            switch (result.getInt(1)) {
-              case 1: // converts to lower case
-                return true;
+      try(SchemaResource schemaResource = database.openSchemaResource()) {
+        Table table = schemaResource.getTable("WithTypes");
+        mysqlLowerCaseTableNames = table.getName().equals("withtypes");
 
-              case 0: // preserves case
-              case 2: // preserves case
-                return false;
-
-              default:
-                throw new IllegalStateException("Unknown lower_case_table_names value " + result.getInt(1));
-            }
-          }
-        }
+        View view = schemaResource.getView("ViewWithTypes");
+        mysqlLowerCaseViewNames = view.getName().equals("viewwithtypes");
       }
-      throw new IllegalStateException("Unknown lower_case_table_names config");
     }
-
-    // intentional "I don't know" value
-    return null;
   }
 }
