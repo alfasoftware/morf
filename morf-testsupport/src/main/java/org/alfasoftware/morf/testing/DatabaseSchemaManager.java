@@ -80,7 +80,7 @@ public class DatabaseSchemaManager {
   private static final ThreadLocal<Map<String, Table>> tables = ThreadLocal.withInitial(HashMap::new);
   private static final ThreadLocal<Map<String, View>> views = ThreadLocal.withInitial(HashMap::new);
   private static final ThreadLocal<Set<String>> tablesNotNeedingTruncate = ThreadLocal.withInitial(HashSet::new);
-  private static final ThreadLocal<Boolean> tablesLoaded = ThreadLocal.withInitial(() -> false);;
+  private static final ThreadLocal<Boolean> tablesLoaded = ThreadLocal.withInitial(() -> false);
   private static final ThreadLocal<Boolean> viewsLoaded = ThreadLocal.withInitial(() -> false);
 
   private final DataSource dataSource;
