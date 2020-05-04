@@ -17,6 +17,8 @@ package org.alfasoftware.morf.testing;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,7 +44,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import com.google.inject.Inject;
 
 /**
@@ -73,13 +74,14 @@ public class DatabaseSchemaManager {
   // All our cached information about the database is static, because the underlying database is static.
   // If we are ever initialised with a different set of connection details, meaning we're connecting to
   // a different underlying database, we invalidate the cache and start again.
-  private static ConnectionResources connectionResources;
-  private static SqlDialect dialect;
-  private static final Map<String, Table> tables = Maps.newHashMap();
-  private static final Map<String, View> views = Maps.newHashMap();
-  private static final Set<String> tablesNotNeedingTruncate = Sets.newHashSet();
-  private static boolean tablesLoaded;
-  private static boolean viewsLoaded;
+  // All details are stored as ThreadLocals to enable multithreaded testing where each Thread has its own database connection.
+  private static final ThreadLocal<ConnectionResources> connectionResources = new ThreadLocal<>();
+  private static final ThreadLocal<SqlDialect> dialect = new ThreadLocal<>();
+  private static final ThreadLocal<Map<String, Table>> tables = ThreadLocal.withInitial(HashMap::new);
+  private static final ThreadLocal<Map<String, View>> views = ThreadLocal.withInitial(HashMap::new);
+  private static final ThreadLocal<Set<String>> tablesNotNeedingTruncate = ThreadLocal.withInitial(HashSet::new);
+  private static final ThreadLocal<Boolean> tablesLoaded = ThreadLocal.withInitial(() -> false);
+  private static final ThreadLocal<Boolean> viewsLoaded = ThreadLocal.withInitial(() -> false);
 
   private final DataSource dataSource;
   private final SqlScriptExecutorProvider executor;
@@ -97,12 +99,12 @@ public class DatabaseSchemaManager {
 
     // Allow for the possibility that we might be connecting to a different database, so will
     // need to invalidate and refetch the schema.
-    if (!connectionResources.equals(DatabaseSchemaManager.connectionResources)) {
+    if (!connectionResources.equals(DatabaseSchemaManager.connectionResources.get())) {
       if (log.isDebugEnabled()) {
         log.debug("New connection details. Refreshing schema: " + connectionResources);
       }
-      DatabaseSchemaManager.connectionResources = connectionResources;
-      DatabaseSchemaManager.dialect = connectionResources.sqlDialect();
+      DatabaseSchemaManager.connectionResources.set(connectionResources);
+      DatabaseSchemaManager.dialect.set(connectionResources.sqlDialect());
       invalidateCache();
     }
 
@@ -167,23 +169,23 @@ public class DatabaseSchemaManager {
    * Returns the cached set of tables in the database.
    */
   private Map<String, Table> tableCache(ProducerCache producerCache) {
-    if (!tablesLoaded) {
+    if (!tablesLoaded.get()) {
       cacheTables(producerCache.get().getSchema().tables());
     }
-    return tables;
+    return tables.get();
   }
 
 
   private void cacheTables(Iterable<Table> newTables) {
     // Create disconnected copies of the tables in case we run across connections/data sources
     Iterable<Table> copies = Iterables.transform(newTables, new CopyTables());
-    tables.putAll(Maps.uniqueIndex(copies, new Function<Table, String>() {
+    tables.get().putAll(Maps.uniqueIndex(copies, new Function<Table, String>() {
       @Override
       public String apply(Table table) {
         return table.getName().toUpperCase();
       }
     }));
-    tablesLoaded = true;
+    tablesLoaded.set(true);
   }
 
 
@@ -191,23 +193,23 @@ public class DatabaseSchemaManager {
    * Returns the cached set of views in the database.
    */
   private Map<String, View> viewCache(ProducerCache producerCache) {
-    if (!viewsLoaded) {
+    if (!viewsLoaded.get()) {
       cacheViews(producerCache.get().getSchema().views());
     }
-    return views;
+    return views.get();
   }
 
 
   private void cacheViews(Iterable<View> newViews) {
     // Create disconnected copies of the views in case we run across connections/data sources
     Iterable<View> copies = Iterables.transform(newViews, new CopyViews());
-    views.putAll(Maps.uniqueIndex(copies, new Function<View, String>() {
+    views.get().putAll(Maps.uniqueIndex(copies, new Function<View, String>() {
       @Override
       public String apply(View view) {
         return view.getName().toUpperCase();
       }
     }));
-    viewsLoaded = true;
+    viewsLoaded.set(true);
   }
 
 
@@ -229,11 +231,11 @@ public class DatabaseSchemaManager {
 
 
   private void clearCache() {
-    tables.clear();
-    views.clear();
-    tablesNotNeedingTruncate.clear();
-    tablesLoaded = false;
-    viewsLoaded = false;
+    tables.get().clear();
+    views.get().clear();
+    tablesNotNeedingTruncate.get().clear();
+    tablesLoaded.set(false);
+    viewsLoaded.set(false);
   }
 
 
@@ -278,7 +280,7 @@ public class DatabaseSchemaManager {
       ImmutableList<Table> tablesToDrop = ImmutableList.copyOf(databaseSchema.tables());
       List<String> script = Lists.newArrayList();
       for (Table table : tablesToDrop) {
-        for (String sql : dialect.dropStatements(table)) {
+        for (String sql : dialect.get().dropStatements(table)) {
           script.add(sql);
         }
       }
@@ -286,8 +288,8 @@ public class DatabaseSchemaManager {
     } finally {
       producerCache.close();
     }
-    tables.clear();
-    tablesNotNeedingTruncate.clear();
+    tables.get().clear();
+    tablesNotNeedingTruncate.get().clear();
   }
 
 
@@ -308,7 +310,7 @@ public class DatabaseSchemaManager {
       ImmutableList<View> viewsToDrop = ImmutableList.copyOf(databaseSchema.views());
       List<String> script = Lists.newArrayList();
       for (View view : viewsToDrop) {
-        for (String sql : dialect.dropStatements(view)) {
+        for (String sql : dialect.get().dropStatements(view)) {
           script.add(sql);
         }
       }
@@ -316,7 +318,7 @@ public class DatabaseSchemaManager {
     } finally {
       producerCache.close();
     }
-    views.clear();
+    views.get().clear();
   }
 
 
@@ -361,12 +363,12 @@ public class DatabaseSchemaManager {
         // they match - it's identical, so we can re-use it
         dropRequired = false;
         deployRequired = false;
-        if (tablesNotNeedingTruncate.contains(requiredTable.getName().toUpperCase())) {
+        if (tablesNotNeedingTruncate.get().contains(requiredTable.getName().toUpperCase())) {
           truncateRequired =  TruncationBehavior.ALWAYS.equals(truncationBehavior);
         } else {
           // if we didn't find it in the cache we don't know what state it is in, so truncate it
           truncateRequired = true;
-          tablesNotNeedingTruncate.add(requiredTable.getName().toUpperCase());
+          tablesNotNeedingTruncate.get().add(requiredTable.getName().toUpperCase());
         }
       } else {
         // they don't match
@@ -407,9 +409,9 @@ public class DatabaseSchemaManager {
   private Collection<String> deployTable(Table table) {
     if (log.isDebugEnabled()) log.debug("Deploying table [" + table.getName() + "]");
     String upperCase = table.getName().toUpperCase();
-    tables.put(upperCase, SchemaUtils.copy(table));
-    tablesNotNeedingTruncate.add(upperCase);
-    return dialect.tableDeploymentStatements(table);
+    tables.get().put(upperCase, SchemaUtils.copy(table));
+    tablesNotNeedingTruncate.get().add(upperCase);
+    return dialect.get().tableDeploymentStatements(table);
   }
 
 
@@ -422,8 +424,8 @@ public class DatabaseSchemaManager {
    */
   private Collection<String> dropViewIfExists(View view) {
     if (log.isDebugEnabled()) log.debug("Dropping any existing view [" + view.getName() + "]");
-    views.remove(view.getName().toUpperCase());
-    return dialect.dropStatements(view);
+    views.get().remove(view.getName().toUpperCase());
+    return dialect.get().dropStatements(view);
   }
 
 
@@ -435,8 +437,8 @@ public class DatabaseSchemaManager {
    */
   private Collection<String> deployView(View view) {
     if (log.isDebugEnabled()) log.debug("Deploying view [" + view.getName() + "]");
-    views.put(view.getName().toUpperCase(), SchemaUtils.copy(view));
-    return dialect.viewDeploymentStatements(view);
+    views.get().put(view.getName().toUpperCase(), SchemaUtils.copy(view));
+    return dialect.get().viewDeploymentStatements(view);
   }
 
 
@@ -450,9 +452,9 @@ public class DatabaseSchemaManager {
   private Collection<String> dropTable(Table table) {
     if (log.isDebugEnabled()) log.debug("Dropping table [" + table.getName() + "]");
     String upperCase = table.getName().toUpperCase();
-    tables.remove(upperCase);
-    tablesNotNeedingTruncate.remove(upperCase);
-    return dialect.dropStatements(table);
+    tables.get().remove(upperCase);
+    tablesNotNeedingTruncate.get().remove(upperCase);
+    return dialect.get().dropStatements(table);
   }
 
 
@@ -466,7 +468,7 @@ public class DatabaseSchemaManager {
     if (log.isDebugEnabled()) log.debug("Truncating table [" + table.getName() + "]");
 
     // use delete-all rather than truncate, because at least on Oracle this is a lot faster when the table is small.
-    return dialect.deleteAllFromTableStatements(table);
+    return dialect.get().deleteAllFromTableStatements(table);
   }
 
 
@@ -478,7 +480,7 @@ public class DatabaseSchemaManager {
 
     DatabaseDataSetProducer get() {
       if (producer == null) {
-        producer = new DatabaseDataSetProducer(connectionResources, dataSource);
+        producer = new DatabaseDataSetProducer(connectionResources.get(), dataSource);
         producer.open();
       }
       return producer;
