@@ -15,6 +15,8 @@
 
 package org.alfasoftware.morf.testing;
 
+import static java.util.stream.Collectors.toList;
+
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -80,6 +82,7 @@ public class DatabaseSchemaManager {
   private static final ThreadLocal<Map<String, Table>> tables = ThreadLocal.withInitial(HashMap::new);
   private static final ThreadLocal<Map<String, View>> views = ThreadLocal.withInitial(HashMap::new);
   private static final ThreadLocal<Set<String>> tablesNotNeedingTruncate = ThreadLocal.withInitial(HashSet::new);
+  private static final ThreadLocal<Set<String>> viewsDeployedByThis = ThreadLocal.withInitial(HashSet::new);
   private static final ThreadLocal<Boolean> tablesLoaded = ThreadLocal.withInitial(() -> false);
   private static final ThreadLocal<Boolean> viewsLoaded = ThreadLocal.withInitial(() -> false);
 
@@ -128,11 +131,19 @@ public class DatabaseSchemaManager {
     ProducerCache producerCache = new ProducerCache();
     try {
 
+      Collection<String> tableStatements = ensureTablesExist(schema, truncationBehavior, producerCache);
+      if (!tableStatements.isEmpty()) {
+        viewsDeployedByThis.get().clear(); // this will force a drop and redeploy, needed in case the views are affected.
+      }
+
       // Drop all views in the schema and create the ones we need.
+      // note that if this class deployed the view already, then leave it alone as it means the view must be based on the current definition
+      Collection<View> viewsToDrop = viewCache(producerCache).values().stream().filter(v->!viewsDeployedByThis.get().contains(v.getName().toUpperCase())).collect(toList());
+      Collection<View> viewToDeploy = schema.views().stream().filter(v->!viewsDeployedByThis.get().contains(v.getName().toUpperCase())).collect(toList());;
       ViewChanges changes = new ViewChanges(
         schema.views(),
-        viewCache(producerCache).values(),
-        schema.views()
+        viewsToDrop,
+        viewToDeploy
       );
 
       Collection<String> sql = Lists.newLinkedList();
@@ -145,7 +156,8 @@ public class DatabaseSchemaManager {
         sql.addAll(dropTableIfPresent(producerCache, view.getName()));
       }
 
-      sql.addAll(ensureTablesExist(schema, truncationBehavior, producerCache));
+
+      sql.addAll(tableStatements);
 
       for (View view: changes.getViewsToDeploy()) {
         sql.addAll(deployView(view));
@@ -236,6 +248,7 @@ public class DatabaseSchemaManager {
     tablesNotNeedingTruncate.get().clear();
     tablesLoaded.set(false);
     viewsLoaded.set(false);
+    viewsDeployedByThis.get().clear();
   }
 
 
@@ -305,11 +318,13 @@ public class DatabaseSchemaManager {
    */
   public void dropAllViews() {
     ProducerCache producerCache = new ProducerCache();
+    log.debug("Dropping all views");
     try {
       Schema databaseSchema = producerCache.get().getSchema();
       ImmutableList<View> viewsToDrop = ImmutableList.copyOf(databaseSchema.views());
       List<String> script = Lists.newArrayList();
       for (View view : viewsToDrop) {
+
         for (String sql : dialect.get().dropStatements(view)) {
           script.add(sql);
         }
@@ -319,6 +334,7 @@ public class DatabaseSchemaManager {
       producerCache.close();
     }
     views.get().clear();
+    viewsDeployedByThis.get().clear();
   }
 
 
@@ -438,6 +454,7 @@ public class DatabaseSchemaManager {
   private Collection<String> deployView(View view) {
     if (log.isDebugEnabled()) log.debug("Deploying view [" + view.getName() + "]");
     views.get().put(view.getName().toUpperCase(), SchemaUtils.copy(view));
+    viewsDeployedByThis.get().add(view.getName().toUpperCase());
     return dialect.get().viewDeploymentStatements(view);
   }
 
