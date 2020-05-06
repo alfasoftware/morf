@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.alfasoftware</groupId>
     <artifactId>morf-parent</artifactId>
-    <version>1.1.5</version>
+    <version>1.1.5-SNAPSHOT</version>
   </parent>
   
   <name>Morf - SQL Server</name>
