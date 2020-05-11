@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?><table version="4">
+  <metadata name="AGREEMENT">
+    <column name="ID" type="BIG_INTEGER" primaryKey="true"/>
+    <column name="VERSION" type="INTEGER" default="0" nullable="true"/>
+    <column name="AGREEMENTNUMBER" type="STRING" width="20" nullable="true"/>
+    <column name="PRODUCTCODE" type="STRING" width="10" nullable="true"/>
+    <column name="BRANCHCODE" type="STRING" width="10" nullable="true"/>
+    <column name="COMPANYNUMBER" type="DECIMAL" width="3"/>
+    <column name="INVOICINGCOMPANYNUMBER" type="DECIMAL" width="3"/>
+    <column name="AGREEMENTTYPE" type="STRING" width="3" nullable="true"/>
+    <column name="TAXVARIATIONTYPECODE" type="STRING" width="1" nullable="true"/>
+    <column name="INTERESTVARIATION" type="STRING" width="1"/>
+    <column name="PAYMENTCODE" type="STRING" width="2" nullable="true"/>
+    <column name="INVOICECOMBINATIONINDICATOR" type="STRING" width="1"/>
+    <column name="EXPOSURECUSTOMERNUMBER" type="STRING" width="10" nullable="true"/>
+    <column name="EXPOSURECUSTOMERSEQNO" type="DECIMAL" width="3"/>
+    <column name="INVOICINGCUSTOMERNUMBER" type="STRING" width="10" nullable="true"/>
+    <column name="INVOICINGCUSTOMERSEQNO" type="DECIMAL" width="3"/>
+    <column name="CUSTOMERREFERENCE" type="STRING" width="25" nullable="true"/>
+    <column name="DEALERNUMBER" type="STRING" width="10" nullable="true"/>
+    <column name="DEALERSEQNO" type="DECIMAL" width="3"/>
+    <column name="DEALERREFERENCE" type="STRING" width="50" nullable="true"/>
+    <column name="RENTALINCOMERECOGNITION" type="STRING" width="1"/>
+    <column name="RENTALREBATEPERCENTAGE" type="DECIMAL" width="9" scale="5"/>
+    <column name="TERMINATIONQUOTATIONMETHOD" type="STRING" width="2" nullable="true"/>
+    <column name="HEADAGREEMENTNUMBER" type="STRING" width="10" nullable="true"/>
+    <column name="DIRECTIONINDICATOR" type="STRING" width="1"/>
+    <column name="DISCOUNTRATE" type="DECIMAL" width="9" scale="5"/>
+    <column name="CCAREGULATED" type="STRING" width="1"/>
+    <column name="SALESPERSONCODE" type="STRING" width="6" nullable="true"/>
+    <column name="SANCTIONOFFICERUSERSIGNON" type="STRING" width="50" nullable="true"/>
+    <column name="AGREEMENTOVERPAYMENTSUSPENSE" type="DECIMAL" width="13" scale="2"/>
+    <column name="VENDORPROGRAMMENUMBER" type="DECIMAL" width="3"/>
+    <column name="DAYSAHEADTOINVOICE" type="DECIMAL" width="3"/>
+    <column name="SALESADMINISTRATOR" type="STRING" width="6" nullable="true"/>
+    <column name="GENERATEPAYABLESFLAG" type="STRING" width="1"/>
+    <column name="INTRODUCERCODE" type="STRING" width="5" nullable="true"/>
+    <column name="AMASSETSONAGREEMENTINDICATOR" type="STRING" width="1"/>
+    <column name="DOCUMENTCODE" type="STRING" width="30" nullable="true"/>
+    <column name="SPLITCAPITALANDINTEREST" type="STRING" width="1"/>
+    <column name="INVOICEFEECLASS" type="STRING" width="4" nullable="true"/>
+    <column name="INTERESTBASIS" type="STRING" width="1"/>
+    <column name="INVOICEGROUPCODE" type="STRING" width="3" nullable="true"/>
+    <column name="INVOICEFEEOVERRIDEAMOUNT" type="DECIMAL" width="13" scale="2"/>
+    <column name="FIXCAPITALONCEINVOICED" type="STRING" width="1"/>
+    <column name="LATEPAYMENTINTERESTSETTINGSID" type="BIG_INTEGER" nullable="true"/>
+    <column name="PROVISIONINGORDERTYPE" type="STRING" width="1" nullable="true"/>
+    <column name="RECOVERYRATE" type="DECIMAL" width="9" scale="5" nullable="true"/>
+    <column name="MANUALEXPECTEDRECOVERYVALUE" type="DECIMAL" width="13" scale="2" nullable="true"/>
+    <column name="LINKEDRATESZEROLIMITED" type="STRING" width="1"/>
+    <column name="ASSETPAYABLECHARGETYPECODE" type="DECIMAL" width="3" nullable="true"/>
+    <column name="PURGED" type="STRING" width="1"/>
+    <column name="ENTITYID" type="STRING" width="36"/>
+    <index name="AGREEMENT_1" unique="false" columns="HEADAGREEMENTNUMBER"/>
+    <index name="AGREEMENT_3" unique="false" columns="INVOICINGCUSTOMERNUMBER,INVOICINGCUSTOMERSEQNO,AGREEMENTNUMBER"/>
+    <index name="AGREEMENT_4" unique="false" columns="EXPOSURECUSTOMERNUMBER,EXPOSURECUSTOMERSEQNO,AGREEMENTNUMBER"/>
+    <index name="AGREEMENT_5" unique="false" columns="DEALERNUMBER,DEALERSEQNO,AGREEMENTNUMBER"/>
+    <index name="AGREEMENT_6" unique="false" columns="COMPANYNUMBER,AGREEMENTNUMBER"/>
+    <index name="AGREEMENT_7" unique="false" columns="BRANCHCODE"/>
+    <index name="AGREEMENT_L1" unique="false" columns="AGREEMENTNUMBER,ID,INVOICINGCUSTOMERNUMBER,INVOICINGCUSTOMERSEQNO,EXPOSURECUSTOMERNUMBER,EXPOSURECUSTOMERSEQNO,DEALERNUMBER,DEALERSEQNO"/>
+    <index name="AGREEMENT_N2" unique="true" columns="ENTITYID"/>
+    <index name="AGREEMENT_NK" unique="true" columns="AGREEMENTNUMBER"/>
+  </metadata>
+  <data>
+    <record ID="4001" VERSION="0" AGREEMENTNUMBER="000000005001" PRODUCTCODE="RETAILFFP" BRANCHCODE="000001" COMPANYNUMBER="101" INVOICINGCOMPANYNUMBER="101" AGREEMENTTYPE="HIP" INTERESTVARIATION="Y" PAYMENTCODE="CI" INVOICECOMBINATIONINDICATOR="B" EXPOSURECUSTOMERNUMBER="0000009246" EXPOSURECUSTOMERSEQNO="1" INVOICINGCUSTOMERNUMBER="0000009245" INVOICINGCUSTOMERSEQNO="1" DEALERNUMBER="S000009003" DEALERSEQNO="1" RENTALINCOMERECOGNITION="D" RENTALREBATEPERCENTAGE="100" TERMINATIONQUOTATIONMETHOD="3" DIRECTIONINDICATOR=" " DISCOUNTRATE="0" CCAREGULATED="N" AGREEMENTOVERPAYMENTSUSPENSE="0" VENDORPROGRAMMENUMBER="0" DAYSAHEADTOINVOICE="19" GENERATEPAYABLESFLAG="Y" AMASSETSONAGREEMENTINDICATOR="Y" DOCUMENTCODE="R_201407" SPLITCAPITALANDINTEREST="N" INTERESTBASIS="L" INVOICEFEEOVERRIDEAMOUNT="0" FIXCAPITALONCEINVOICED="N" LATEPAYMENTINTERESTSETTINGSID="5002" LINKEDRATESZEROLIMITED="N" ASSETPAYABLECHARGETYPECODE="51" PURGED="N" ENTITYID="ae850158-aafc-40fe-9c26-06069c182511"/>
+  </data>
+</table>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?><table version="4">
+  <metadata name="FloorplanOrigCurtProfItem">
+    <column name="agreementNumber" type="STRING" width="20" primaryKey="true"/>
+    <column name="scheduleNumber" type="DECIMAL" width="5" primaryKey="true"/>
+    <column name="offsetCount" type="DECIMAL" width="3" primaryKey="true"/>
+    <column name="percentage" type="DECIMAL" width="9" scale="5"/>
+    <column name="version" type="INTEGER" default="0" nullable="true"/>
+  </metadata>
+  <data>
+    <record agreementNumber="000000275002" scheduleNumber="1" offsetCount="1" percentage="10" version="0"/>
+    <record agreementNumber="000000275002" scheduleNumber="1" offsetCount="2" percentage="10" version="0"/>
+    <record agreementNumber="000000275002" scheduleNumber="1" offsetCount="3" percentage="10" version="0"/>
+    <record agreementNumber="000000275002" scheduleNumber="1" offsetCount="4" percentage="10" version="0"/>
+    <record agreementNumber="000000275002" scheduleNumber="1" offsetCount="5" percentage="10" version="0"/>
+    <record agreementNumber="000000275002" scheduleNumber="1" offsetCount="6" percentage="10" version="0"/>
+    <record agreementNumber="000000275002" scheduleNumber="1" offsetCount="7" percentage="10" version="0"/>
+    <record agreementNumber="000000275002" scheduleNumber="1" offsetCount="8" percentage="10" version="0"/>
+    <record agreementNumber="000000275002" scheduleNumber="1" offsetCount="9" percentage="10" version="0"/>
+  </data>
+</table>
