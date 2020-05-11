@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?><table version="4">
+  <metadata name="NameDetail">
+    <column name="id" type="BIG_INTEGER" primaryKey="true"/>
+    <column name="version" type="INTEGER" default="0" nullable="true"/>
+    <column name="thirdPartyNumber" type="STRING" width="10"/>
+    <column name="billingAddressNumber" type="DECIMAL" width="3"/>
+    <column name="title" type="STRING" width="30" nullable="true"/>
+    <column name="firstName" type="STRING" width="50"/>
+    <column name="middleName" type="STRING" width="50" nullable="true"/>
+    <column name="lastName" type="STRING" width="50"/>
+    <column name="nameSuffixCode" type="STRING" width="3" nullable="true"/>
+    <index name="NameDetail_NK" unique="true" columns="thirdPartyNumber,billingAddressNumber"/>
+  </metadata>
+  <data>
+    <record id="4001" version="0" thirdPartyNumber="0000013003" billingAddressNumber="1" firstName="X" lastName="X"/>
+    <record id="4002" version="0" thirdPartyNumber="0000013003" billingAddressNumber="2" firstName="X" lastName="X"/>
+    <record id="6001" version="9" thirdPartyNumber="0000015003" billingAddressNumber="1" firstName="X" lastName="X"/>
+  </data>
+</table>
