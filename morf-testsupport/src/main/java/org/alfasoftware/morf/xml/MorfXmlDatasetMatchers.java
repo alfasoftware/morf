@@ -34,10 +34,13 @@ public class MorfXmlDatasetMatchers {
   /**
    * Matches two cryo/morf extract if they have the same xml files and each of them have the same row count.
    *
-   * <p>Given the current structure of cryo/morf extracts it ignores folders.</p>
-   * <p>Implementation note: didn't choose </p>
-   * @param model the Folder containing the control morf extrct
-   * @return a Matcher which will check that
+   * <p>Given the current structure of morf extracts it ignores folders.</p>
+   *
+   * <p><b>Limits</b>: currently the comparison demands the same order for records in a table between the model and the extract to check.
+   * Also, attribute names are case sensitive.</p>
+   *
+   * @param model the Folder containing the control morf extract
+   * @return a Matcher which will check the provided extract is xml content equal to the model
    */
   public static Matcher<File> sameXmlFileAndLengths(File model) {
     if (!model.isDirectory()) {
@@ -52,6 +55,30 @@ public class MorfXmlDatasetMatchers {
       private final Map<String, Long> fileToSize = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
       private final List<String> mismatches = new ArrayList<>();
+
+      /**
+       * @param file a morf extract in the from of a folder or a file
+       * @return true if the file matches by XML content the control file
+       */
+      @Override
+      protected boolean matchesSafely(File file) {
+        fileToSize.clear();
+        mismatches.clear();
+
+        stream(model.listFiles()).filter(f -> isFileToBeConsidered(f.getName())).forEach(f -> fileToSize.put(f.getName(), f.length()));
+
+        if (file.isDirectory()) {
+          stream(model.listFiles()).filter(f -> isFileToBeConsidered(f.getName())).forEach(f -> checkForMismatches(f.getName(), toInputStream(f)));
+        } else {
+          forEachXmlEntry(file, (z,e) -> checkForMismatches(e.getName(), toInputStream(z, e)));
+        }
+
+        for (Map.Entry unmatchedControlFiles : fileToSize.entrySet()) {
+          mismatches.add(unmatchedControlFiles.getKey() + " file from control extract has not been matched by the extract under test");
+        }
+
+        return mismatches.isEmpty();
+      }
 
       /**
        * Checks whether the table provided as a file exists in the control model and has equivalent XML content.
@@ -89,30 +116,6 @@ public class MorfXmlDatasetMatchers {
       }
 
       /**
-       * @param file a morf extract in the from of a folder or a file
-       * @return true if the file matches by XML content the control file
-       */
-      @Override
-      protected boolean matchesSafely(File file) {
-        fileToSize.clear();
-        mismatches.clear();
-
-        stream(model.listFiles()).filter(f -> isFileToBeConsidered(f.getName())).forEach(f -> fileToSize.put(f.getName(), f.length()));
-
-        if (file.isDirectory()) {
-          stream(model.listFiles()).filter(f -> isFileToBeConsidered(f.getName())).forEach(f -> checkForMismatches(f.getName(), toInputStream(f)));
-        } else {
-          forEachXmlEntry(file, (z,e) -> checkForMismatches(e.getName(), toInputStream(z, e)));
-        }
-
-        for (Map.Entry unmatchedControlFiles : fileToSize.entrySet()) {
-          mismatches.add(unmatchedControlFiles.getKey() + " file from control extract has not been matched by the extract under test");
-        }
-
-        return mismatches.isEmpty();
-      }
-
-      /**
        * Applies a Consumer to each xml file contained in the root folder of the provided zip.
        * @param extract the zip file containing the cryo/morf extract
        * @param action the action to perform on each xml file in the root folder of the extract
@@ -146,11 +149,6 @@ public class MorfXmlDatasetMatchers {
 
 
   static class IgnoreMetadataAttributesCaseOnNameAndColumnsDifferenceEvaluator implements DifferenceEvaluator {
-
-    private String attributeName;
-
-    public IgnoreMetadataAttributesCaseOnNameAndColumnsDifferenceEvaluator() {
-    }
 
     @Override
     public ComparisonResult evaluate(Comparison comparison, ComparisonResult outcome) {

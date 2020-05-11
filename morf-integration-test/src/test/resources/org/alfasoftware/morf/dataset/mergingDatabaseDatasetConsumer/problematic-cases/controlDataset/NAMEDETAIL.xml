@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?><table version="4">
+  <metadata name="NAMEDETAIL">
+    <column name="ID" type="BIG_INTEGER" primaryKey="true"/>
+    <column name="VERSION" type="INTEGER" default="0" nullable="true"/>
+    <column name="THIRDPARTYNUMBER" type="STRING" width="10"/>
+    <column name="BILLINGADDRESSNUMBER" type="DECIMAL" width="3"/>
+    <column name="TITLE" type="STRING" width="30" nullable="true"/>
+    <column name="FIRSTNAME" type="STRING" width="50"/>
+    <column name="MIDDLENAME" type="STRING" width="50" nullable="true"/>
+    <column name="LASTNAME" type="STRING" width="50"/>
+    <column name="NAMESUFFIXCODE" type="STRING" width="3" nullable="true"/>
+    <index name="NAMEDETAIL_NK" unique="true" columns="THIRDPARTYNUMBER,BILLINGADDRESSNUMBER"/>
+  </metadata>
+  <data>
+    <record ID="1231" VERSION="0" THIRDPARTYNUMBER="0000009245" BILLINGADDRESSNUMBER="1" FIRSTNAME="X" LASTNAME="X"/>
+    <record ID="1232" VERSION="0" THIRDPARTYNUMBER="0000009246" BILLINGADDRESSNUMBER="1" FIRSTNAME="X" LASTNAME="X"/>
+    <record ID="2001" VERSION="1" THIRDPARTYNUMBER="0000010003" BILLINGADDRESSNUMBER="1" FIRSTNAME="X" LASTNAME="X"/>
+    <record ID="3001" VERSION="0" THIRDPARTYNUMBER="0000010003" BILLINGADDRESSNUMBER="2" FIRSTNAME="X" LASTNAME="X"/>
+    <record ID="4001" VERSION="0" THIRDPARTYNUMBER="0000013003" BILLINGADDRESSNUMBER="1" FIRSTNAME="X" LASTNAME="X"/>
+    <record ID="4002" VERSION="0" THIRDPARTYNUMBER="0000013003" BILLINGADDRESSNUMBER="2" FIRSTNAME="X" LASTNAME="X"/>
+    <record ID="6001" VERSION="9" THIRDPARTYNUMBER="0000015003" BILLINGADDRESSNUMBER="1" FIRSTNAME="X" LASTNAME="X"/>
+  </data>
+</table>
