@@ -44,7 +44,7 @@ public class TestMergingDatabaseDataSetConsumer {
   }
 
 
-  private File cryoTargetDatabaseIntoFile() throws IOException {
+  private File getDatabaseAsFile() throws IOException {
     DatabaseDataSetProducer databaseDataSetProducer = new DatabaseDataSetProducer(connectionResources);
     File mergedExtractAsFile = temporaryFolder.newFile("merged-extract.zip");
     mergedExtractAsFile.createNewFile();
@@ -56,8 +56,8 @@ public class TestMergingDatabaseDataSetConsumer {
   }
 
   /**
-   * Verifies that merging two extracts containing a single agreement results in the same contents as the extract
-   * produced by extracting the two agreements at once.
+   * Verifies that merging two extracts containing both overlapping and non-overlapping records results in having the overlapping records
+   * overwrite the already-present ones and the non-overlapping to be inserted.
    */
   @Test
   @Parameters(method = "mergeParameters")
@@ -78,19 +78,19 @@ public class TestMergingDatabaseDataSetConsumer {
 
     // WHEN
 
-    // ... we merge a datasource having overlapping tables and records into it
+    // ... we merge a datasource having both overlapping and non-overlapping tables and records into it
 
     DataSetConsumer mergingDatabaseDatasetConsumer = new MergingDatabaseDataSetConsumer(connectionResources, sqlScriptExecutorProvider);
     new DataSetConnector(toDataSetProducer(datasetToMerge), mergingDatabaseDatasetConsumer).connect();
 
-    // ... and we cryo to target schema into a zip
+    // ... and we pipe the result into a zip file
     log.info("Creating an XML extract from the merged database tables.");
-    File mergedExtractsAsFile = cryoTargetDatabaseIntoFile();
+    File mergedExtractsAsFile = getDatabaseAsFile();
     log.info("Merged XML file creation complete.");
 
     // THEN
 
-    // ... the resulting dataset matches the control one.
+    // ... the resulting dataset matches the control one
     assertThat("the merged dataset should match the control one", mergedExtractsAsFile, sameXmlFileAndLengths(controlExtract));
   }
 
@@ -111,15 +111,12 @@ public class TestMergingDatabaseDataSetConsumer {
    */
   private Object[] mergeParameters() {
     return new Object[] {
-        new File[] { // merge two extract with only non-overlapping content in agreement.xml and both overlapping and non overlapping records in thirdparty.xml
+        new File[] {
+            // merge two extract with only non-overlapping content in role.xml and both overlapping and non overlapping records in employee.xml
+            // especially employee#1 shall be "Richard Willbourne" from sourceDataset2, while "Andrew Rogers" from sourceDataset1 should disappear
             new File(getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/simple/controlDataset").getFile()),
             new File(getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/simple/sourceDataset1").getFile()),
             new File(getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/simple/sourceDataset2").getFile())
-        },
-        new File[] { // cases which revealed problematic when merging two extracts from allydev
-            new File(getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/problematic-cases/controlDataset").getFile()),
-            new File(getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/problematic-cases/sourceDataset1").getFile()),
-            new File(getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/problematic-cases/sourceDataset2").getFile())
         }
     };
   }
