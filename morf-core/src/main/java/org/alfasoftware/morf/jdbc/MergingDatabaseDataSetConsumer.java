@@ -1,4 +1,4 @@
-/* Copyright 2017 Alfa Financial Software
+/* Copyright 2020 Alfa Financial Software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,10 +27,10 @@ import com.google.inject.Inject;
 
 /**
  * Implementation of {@link DataSetConsumer} that pipes records into a JDBC
- * database connection wihout truncating tables and merging duplicate records.
+ * database connection without truncating tables and merging duplicate records.
  *
  *
- * @author Copyright (c) Alfa Financial Software 2009
+ * @author Copyright (c) Alfa Financial Software 2020
  */
 public class MergingDatabaseDataSetConsumer extends DatabaseDataSetConsumer implements DataSetConsumer {
 
@@ -71,7 +71,7 @@ public class MergingDatabaseDataSetConsumer extends DatabaseDataSetConsumer impl
       .withSqlScriptExecutor(sqlExecutor)
       .withDialect(sqlDialect)
       .explicitCommit(true)
-      .ignoreDuplicateKeys(true)
+      .merge(true)
       .insertingWithPresetAutonums()
       .forTable(table)
       .load(records);

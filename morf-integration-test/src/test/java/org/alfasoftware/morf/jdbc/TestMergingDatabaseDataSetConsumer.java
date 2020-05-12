@@ -1,6 +1,7 @@
 package org.alfasoftware.morf.jdbc;
 
-import static org.hamcrest.collection.IsEmptyCollection.empty;
+import static com.google.common.io.Resources.getResource;
+import static org.alfasoftware.morf.xml.MorfXmlDatasetMatchers.sameXmlFileAndLengths;
 import static org.junit.Assert.assertThat;
 
 import java.io.File;
@@ -9,7 +10,6 @@ import java.net.MalformedURLException;
 
 import org.alfasoftware.morf.dataset.DataSetConnector;
 import org.alfasoftware.morf.dataset.DataSetConsumer;
-import org.alfasoftware.morf.dataset.DataSetHomology;
 import org.alfasoftware.morf.dataset.DataSetProducer;
 import org.alfasoftware.morf.xml.XmlDataSetConsumer;
 import org.alfasoftware.morf.xml.XmlDataSetProducer;
@@ -36,31 +36,15 @@ public class TestMergingDatabaseDataSetConsumer {
   @Rule
   public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-  /**
-   * Resource path for the extract of agreemnt 000000005001
-   */
-  private static final String AGREEMENT_000000005001_PATH = "/000000005001.zip";
-
-  /**
-   * Resource path for the extract of agreemnt 000000022001
-   */
-  private static final String AGREEMENT_000000022001_PATH = "/000000022001.zip";
-
-  /**
-   * Resource path for the extract of both agreement 000000005001 and 000000022001
-   */
-  private static final String AGREEMENT_000000005001_AND_000000022001_PATH = "/000000005001_AND_000000022001.zip";
-
   ConnectionResourcesBean connectionResources;
 
   @Before
   public void setup() {
-    connectionResources = new ConnectionResourcesBean();
-    connectionResources.setDatabaseType("H2");
+    connectionResources = new ConnectionResourcesBean(getResource("morf.properties"));
   }
 
 
-  private File cryoTargetDatabaseIntoFile() throws IOException {
+  private File getDatabaseAsFile() throws IOException {
     DatabaseDataSetProducer databaseDataSetProducer = new DatabaseDataSetProducer(connectionResources);
     File mergedExtractAsFile = temporaryFolder.newFile("merged-extract.zip");
     mergedExtractAsFile.createNewFile();
@@ -72,8 +56,8 @@ public class TestMergingDatabaseDataSetConsumer {
   }
 
   /**
-   * Verifies that merging two extracts containing a single agreement results in the same contents as the extract
-   * produced by extracting the two agreements at once.
+   * Verifies that merging two extracts containing both overlapping and non-overlapping records results in having the overlapping records
+   * overwrite the already-present ones and the non-overlapping to be inserted.
    */
   @Test
   @Parameters(method = "mergeParameters")
@@ -94,23 +78,20 @@ public class TestMergingDatabaseDataSetConsumer {
 
     // WHEN
 
-    // ... we merge a datasource having overlapping tables and records into it
+    // ... we merge a datasource having both overlapping and non-overlapping tables and records into it
 
     DataSetConsumer mergingDatabaseDatasetConsumer = new MergingDatabaseDataSetConsumer(connectionResources, sqlScriptExecutorProvider);
     new DataSetConnector(toDataSetProducer(datasetToMerge), mergingDatabaseDatasetConsumer).connect();
 
-    // ... and we cryo to target schema into a zip
+    // ... and we pipe the result into a zip file
     log.info("Creating an XML extract from the merged database tables.");
-    File mergedExtractsAsFile = cryoTargetDatabaseIntoFile();
+    File mergedExtractsAsFile = getDatabaseAsFile();
     log.info("Merged XML file creation complete.");
 
     // THEN
 
-    // ... the resulting dataset matches the control one.
-    // CAVEAT: requires H2 and the merged extract to have the same record order
-    DataSetHomology dataSetHomology = new DataSetHomology();
-    dataSetHomology.dataSetProducersMatch(new DatabaseDataSetProducer(connectionResources), toDataSetProducer(mergedExtractsAsFile));
-    assertThat("the merged dataset should match the control one", dataSetHomology.getDifferences(), empty());
+    // ... the resulting dataset matches the control one
+    assertThat("the merged dataset should match the control one", mergedExtractsAsFile, sameXmlFileAndLengths(controlExtract));
   }
 
 
@@ -130,15 +111,12 @@ public class TestMergingDatabaseDataSetConsumer {
    */
   private Object[] mergeParameters() {
     return new Object[] {
-        new File[] { // merge two extract with only non-overlapping content in agreement.xml and both overlapping and non overlapping records in thirdparty.xml
-            new File(getClass().getClassLoader().getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/simple/controlDataset").getFile()),
-            new File(getClass().getClassLoader().getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/simple/sourceDataset1").getFile()),
-            new File(getClass().getClassLoader().getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/simple/sourceDataset2").getFile())
-        },
-        new File[] { // cases which revealed problematic when merging two extracts from allydev
-            new File(getClass().getClassLoader().getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/problematic-cases/controlDataset").getFile()),
-            new File(getClass().getClassLoader().getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/problematic-cases/sourceDataset1").getFile()),
-            new File(getClass().getClassLoader().getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/problematic-cases/sourceDataset2").getFile())
+        new File[] {
+            // merge two extract with only non-overlapping content in role.xml and both overlapping and non overlapping records in employee.xml
+            // especially employee#1 shall be "Richard Willbourne" from sourceDataset2, while "Andrew Rogers" from sourceDataset1 should disappear
+            new File(getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/simple/controlDataset").getFile()),
+            new File(getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/simple/sourceDataset1").getFile()),
+            new File(getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/simple/sourceDataset2").getFile())
         }
     };
   }

@@ -82,6 +82,16 @@ public interface TableLoaderBuilder {
    */
   TableLoaderBuilder explicitCommit(boolean explicitCommit);
 
+
+  /**
+   * Should we merge records rather than inserting?
+   *
+   * <p>Merging will overwrite records matched by primary key with the new data.</p>
+   *
+   * <p>Defaults to false if not specified.</p>
+   */
+  TableLoaderBuilder merge(boolean ignoreDuplicateKeys);
+
   /**
    * Should the table be truncated before the load?
    *
@@ -142,6 +152,7 @@ public interface TableLoaderBuilder {
     private boolean insertingUnderAutonumLimit;
     private Provider<SqlDialect> sqlDialect;
     private int batchSize = 1000;
+    private boolean merge;
 
     TableLoaderBuilderImpl() {
       super();
@@ -189,6 +200,12 @@ public interface TableLoaderBuilder {
     }
 
     @Override
+    public TableLoaderBuilder merge(boolean merge) {
+      this.merge = merge;
+      return this;
+    }
+
+    @Override
     public TableLoaderBuilder truncateBeforeLoad() {
       this.truncateBeforeLoad = true;
       return this;
@@ -222,15 +239,16 @@ public interface TableLoaderBuilder {
         executor = sqlScriptExecutorProvider.get();
       }
       return new TableLoader(
-        connection,
-        executor,
-        sqlDialect.get(),
-        explicitCommit,
-        table,
-        insertingWithPresetAutonums,
-        insertingUnderAutonumLimit,
-        truncateBeforeLoad,
-        batchSize);
+          connection,
+          executor,
+          sqlDialect.get(),
+          explicitCommit,
+          merge,
+          table,
+          insertingWithPresetAutonums,
+          insertingUnderAutonumLimit,
+          truncateBeforeLoad,
+          batchSize);
     }
   }
 }

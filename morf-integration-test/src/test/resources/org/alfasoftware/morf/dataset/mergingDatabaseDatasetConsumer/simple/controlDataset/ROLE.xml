@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?><table version="4">
+  <metadata name="ROLE">
+    <column name="ID" type="INTEGER" primaryKey="true"/>
+    <column name="DESCRIPTION" type="STRING" width="255" nullable="true"/>
+  </metadata>
+  <data>
+    <record ID="1" DESCRIPTION="Clerk"/>
+    <record ID="2" DESCRIPTION="Manager"/>
+    <record ID="3" DESCRIPTION="Concierge"/>
+    <record ID="4" DESCRIPTION="Lawyer"/>
+  </data>
+</table>
