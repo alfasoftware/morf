@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.alfasoftware</groupId>
     <artifactId>morf-parent</artifactId>
-    <version>1.1.6-SNAPSHOT</version>
+    <version>1.1.4</version>
   </parent>
   
   <name>Morf - Test Support</name>
@@ -46,6 +46,14 @@
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.xmlunit</groupId>
+      <artifactId>xmlunit-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.xmlunit</groupId>
+      <artifactId>xmlunit-matchers</artifactId>
     </dependency>
     <dependency>
       <groupId>com.h2database</groupId>
