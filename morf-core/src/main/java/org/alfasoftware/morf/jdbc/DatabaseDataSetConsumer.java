@@ -48,17 +48,17 @@ public class DatabaseDataSetConsumer implements DataSetConsumer {
   /**
    * Database connection to which the data is written.
    */
-  private Connection connection;
+  protected Connection connection;
 
   /**
    * The SQL dialect
    */
-  private SqlDialect sqlDialect;
+  protected SqlDialect sqlDialect;
 
   /**
    * Used to run SQL statements.
    */
-  private final SqlScriptExecutor sqlExecutor;
+  protected final SqlScriptExecutor sqlExecutor;
 
   /**
    * DataSource providing database connections.

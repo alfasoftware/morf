@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?><table version="4">
+  <metadata name="EMPLOYEE">
+    <column name="ID" type="INTEGER" primaryKey="true"/>
+    <column name="LASTNAME" type="STRING" width="255" nullable="true"/>
+    <column name="FIRSTNAME" type="STRING" width="255" nullable="true"/>
+    <column name="ROLE" type="INTEGER" nullable="true"/>
+  </metadata>
+  <data>
+    <record ID="1" LASTNAME="Richard" FIRSTNAME="Willbourne" ROLE="3"/>
+    <record ID="2" LASTNAME="Robert" FIRSTNAME="Ferguson" ROLE="1"/>
+    <record ID="3" LASTNAME="Alex" FIRSTNAME="Mansfield" ROLE="2"/>
+    <record ID="4" LASTNAME="Larry" FIRSTNAME="Johnson" ROLE="4"/>
+  </data>
+</table>

@@ -15,6 +15,10 @@
 
 package org.alfasoftware.morf.dataset;
 
+import static java.util.stream.Collectors.toList;
+import static org.alfasoftware.morf.sql.SqlUtils.parameter;
+import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 
@@ -25,8 +29,9 @@ import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.InsertStatement;
+import org.alfasoftware.morf.sql.MergeStatement;
+import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.SqlParameter;
-import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -43,12 +48,12 @@ public class TableLoader {
   private final Connection connection;
   private final SqlDialect sqlDialect;
   private final boolean explicitCommit;
+  private final boolean merge;
   private final SqlScriptExecutor sqlExecutor;
   private final Table table;
   private final boolean insertingWithPresetAutonums;
   private final boolean insertingUnderAutonumLimit;
   private final boolean truncateBeforeLoad;
-  private final String insertStatement;
   private final int batchSize;
 
 
@@ -64,28 +69,26 @@ public class TableLoader {
    * Constructor.
    */
   TableLoader(Connection connection,
-                     SqlScriptExecutor sqlScriptExecutor,
-                     SqlDialect dialect,
-                     boolean explicitCommit,
-                     Table table,
-                     boolean insertingWithPresetAutonums,
-                     boolean insertingUnderAutonumLimit,
-                     boolean truncateBeforeLoad,
-                     int batchSize) {
+              SqlScriptExecutor sqlScriptExecutor,
+              SqlDialect dialect,
+              boolean explicitCommit,
+              boolean merge,
+              Table table,
+              boolean insertingWithPresetAutonums,
+              boolean insertingUnderAutonumLimit,
+              boolean truncateBeforeLoad,
+              int batchSize) {
     super();
     this.connection = connection;
     this.sqlExecutor = sqlScriptExecutor;
     this.sqlDialect = dialect;
     this.explicitCommit = explicitCommit;
+    this.merge = merge;
     this.table = table;
     this.insertingWithPresetAutonums = insertingWithPresetAutonums;
     this.insertingUnderAutonumLimit = insertingUnderAutonumLimit;
     this.truncateBeforeLoad = truncateBeforeLoad;
     this.batchSize = batchSize;
-    this.insertStatement = sqlDialect.convertStatementToSQL(
-      new InsertStatement().into(new TableReference(table.getName())),
-      SchemaUtils.schema(table)
-    );
   }
 
 
@@ -100,7 +103,7 @@ public class TableLoader {
       truncate(table, connection);
     }
 
-    insertRecords(records);
+    insertOrMergeRecords(records);
   }
 
 
@@ -131,13 +134,13 @@ public class TableLoader {
    * @param records The records to insert
    * @param bulk Indicates if we should call {@link SqlDialect#preInsertStatements(Table)} and {@link SqlDialect#postInsertStatements(Table)}
    */
-  private void insertRecords(Iterable<Record> records) {
+  private void insertOrMergeRecords(Iterable<Record> records) {
 
     if (insertingWithPresetAutonums) {
       sqlExecutor.execute(sqlDialect.preInsertWithPresetAutonumStatements(table, insertingUnderAutonumLimit), connection);
     }
 
-    sqlInsertLoad(table, records, connection);
+    sqlInsertOrMergeLoad(table, records, connection);
 
     if (insertingWithPresetAutonums) {
       sqlDialect.postInsertWithPresetAutonumStatements(table, sqlExecutor, connection,insertingUnderAutonumLimit);
@@ -152,11 +155,26 @@ public class TableLoader {
    * @param records The data to insert.
    * @param connection The connection.
    */
-  private void sqlInsertLoad(Table table, Iterable<Record> records, Connection connection) {
+  private void sqlInsertOrMergeLoad(Table table, Iterable<Record> records, Connection connection) {
     try {
-      sqlExecutor.executeStatementBatch(insertStatement, SqlParameter.parametersFromColumns(table.columns()), records, connection, explicitCommit, batchSize);
-    } catch (Exception e) {
-      throw new RuntimeException(String.format("Failure in batch insert for table [%s]", table.getName()), e);
+      if (merge && !table.primaryKey().isEmpty()) { // if the table has no primary we don't have a merge ON criterion
+        SelectStatement selectStatement = SelectStatement.select()
+            .fields(table.columns().stream().filter(c -> !c.isAutoNumbered()).map(c -> parameter(c)).collect(toList()))
+            .build();
+        MergeStatement mergeStatement = MergeStatement.merge()
+            .from(selectStatement)
+            .into(tableRef(table.getName()))
+            .tableUniqueKey(table.primaryKey().stream().map(c -> parameter(c)).collect(toList()))
+            .build();
+        String mergeSQL = sqlDialect.convertStatementToSQL(mergeStatement);
+        sqlExecutor.executeStatementBatch(mergeSQL, SqlParameter.parametersFromColumns(table.columns()), records, connection, explicitCommit, batchSize);
+      } else {
+        InsertStatement insertStatement = InsertStatement.insert().into(tableRef(table.getName())).build();
+        String insertSQL = sqlDialect.convertStatementToSQL(insertStatement, SchemaUtils.schema(table));
+        sqlExecutor.executeStatementBatch(insertSQL, SqlParameter.parametersFromColumns(table.columns()), records, connection, explicitCommit, batchSize);
+      }
+    } catch (Exception exceptionOnBatch) {
+      throw new RuntimeException(String.format("Failure in batch insert for table [%s]", table.getName()), exceptionOnBatch);
     }
   }
 }
