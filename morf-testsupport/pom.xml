@@ -12,6 +12,10 @@
   <url>https://github.com/alfasoftware/morf</url>
 
   <artifactId>morf-testsupport</artifactId>
+
+  <properties>
+    <sonar.coverage.jacoco.xmlReportPaths>${basedir}/../${aggregate.report.dir}</sonar.coverage.jacoco.xmlReportPaths>
+  </properties>
   
   <build>
     <plugins>
