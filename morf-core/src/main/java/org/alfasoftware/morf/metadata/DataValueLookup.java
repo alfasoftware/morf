@@ -18,9 +18,9 @@ package org.alfasoftware.morf.metadata;
 
 import java.math.BigDecimal;
 import java.sql.ResultSet;
+import java.util.Base64;
 import java.util.List;
 
-import org.apache.commons.codec.binary.Base64;
 import org.joda.time.LocalDate;
 
 import com.google.common.collect.Iterables;
@@ -196,7 +196,7 @@ Arrays.equals(Base64.encode(myString), DataSetUtils.record().setString("foo", my
    */
   public default byte[] getByteArray(String name) {
     String value = getValue(name);
-    return value == null ? null : Base64.decodeBase64(value);
+    return value == null ? null : Base64.getDecoder().decode(value);
   }
 
 

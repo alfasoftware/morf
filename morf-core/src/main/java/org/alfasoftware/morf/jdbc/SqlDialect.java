@@ -23,6 +23,8 @@ import static org.alfasoftware.morf.sql.SqlUtils.insert;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.UnionSetOperator.UnionStrategy.ALL;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.PreparedStatement;
@@ -90,7 +92,6 @@ import org.alfasoftware.morf.sql.element.WhenCondition;
 import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.alfasoftware.morf.upgrade.ChangeColumn;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
@@ -104,6 +105,8 @@ import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.hash.Hashing;
+import com.google.common.io.CharSource;
 
 /**
  * Provides functionality for generating SQL statements.
@@ -2405,8 +2408,9 @@ public abstract class SqlDialect {
    * @return A hash representation of {@code statement}.
    */
   public String convertStatementToHash(SelectStatement statement) {
-    return DigestUtils.md5Hex(convertStatementToSQL(statement));
+    return md5HashHexEncoded(convertStatementToSQL(statement));
   }
+
 
 
   /**
@@ -2416,7 +2420,21 @@ public abstract class SqlDialect {
    * @return A hash representation of {@code statement}.
    */
   public String convertStatementToHash(SelectFirstStatement statement) {
-    return DigestUtils.md5Hex(convertStatementToSQL(statement));
+    return md5HashHexEncoded(convertStatementToSQL(statement));
+  }
+
+
+  /**
+   * @param toHash the String to convert
+   * @return the md5 hash of the string.
+   */
+  @SuppressWarnings("deprecation")
+  private String md5HashHexEncoded(String toHash) {
+    try {
+      return CharSource.wrap(toHash).asByteSource(StandardCharsets.UTF_8).hash(Hashing.md5()).toString();
+    } catch (IOException e) {
+      throw new RuntimeException("error when hashing string [" + toHash + "]", e);
+    }
   }
 
 

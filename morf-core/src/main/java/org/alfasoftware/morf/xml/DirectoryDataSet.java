@@ -19,11 +19,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-
-import org.apache.commons.io.FileUtils;
+import java.nio.file.Files;
+import java.util.Arrays;
 
 import org.alfasoftware.morf.xml.XmlStreamProvider.XmlInputStreamProvider;
 import org.alfasoftware.morf.xml.XmlStreamProvider.XmlOutputStreamProvider;
@@ -68,15 +67,24 @@ class DirectoryDataSet extends BaseDataSetReader implements XmlInputStreamProvid
    */
   @Override
   public void clearDestination() {
-    try {
-      for (File file : directory.listFiles()) {
-        // skip files/folders that start with . such as .svn
-        if (file.getName().startsWith(".")) continue;
+    for (File file : directory.listFiles()) {
+      // skip files/folders that start with . such as .svn
+      if (file.getName().startsWith(".")) continue;
 
-        FileUtils.forceDelete(file);
+      deleteFileOrDirectory(file);
+    }
+  }
+
+
+  private void deleteFileOrDirectory(File file) {
+    if (file.isDirectory()) {
+      // clear it out (recursively) if needed...
+      if (!Files.isSymbolicLink(file.toPath())) {
+        Arrays.stream(file.listFiles()).forEach(this::deleteFileOrDirectory);
       }
-    } catch (IOException e) {
-      throw new RuntimeException("Exception cleaning output directory [" + directory + "]", e);
+    }
+    if (!file.delete()) {
+      throw new RuntimeException("Exception cleaning output directory, file [" + file + "]");
     }
   }
 

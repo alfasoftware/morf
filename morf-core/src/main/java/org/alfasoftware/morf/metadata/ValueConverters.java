@@ -16,8 +16,8 @@
 package org.alfasoftware.morf.metadata;
 
 import java.math.BigDecimal;
+import java.util.Base64;
 
-import org.apache.commons.codec.binary.Base64;
 import org.joda.time.LocalDate;
 
 /**
@@ -285,7 +285,7 @@ final class ValueConverters {
     }
     @Override
     public String stringValue(byte[] value) {
-      return Base64.encodeBase64String(value);
+      return new String(Base64.getEncoder().encode(value));
     }
   }
 
@@ -365,7 +365,7 @@ final class ValueConverters {
 
     @Override
     public byte[] byteArrayValue(String value) {
-      return Base64.decodeBase64(value);
+      return Base64.getDecoder().decode(value);
     }
   }
 
