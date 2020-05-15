@@ -32,6 +32,7 @@
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <aggregate.report.dir>morf-integration-test/target/site/jacoco-aggregate/jacoco.xml</aggregate.report.dir>
 
     <!-- plugin versions -->
     <maven-compiler-plugin.version>3.6.1</maven-compiler-plugin.version>
@@ -63,7 +64,6 @@
     <ognl.version>2.6.9</ognl.version>
     <serializer.version>2.7.1</serializer.version>
 	<xmlunit.version>2.6.4</xmlunit.version>
-    <sonar-jacoco-listeners.version>3.8</sonar-jacoco-listeners.version>
     <slf4j.version>1.5.0</slf4j.version>
   </properties>
   
@@ -216,6 +216,16 @@
               </goals>
             </execution>
           </executions>
+        </plugin>
+        <plugin>
+          <groupId>org.sonarsource.scanner.maven</groupId>
+          <artifactId>sonar-maven-plugin</artifactId>
+          <version>3.7.0.1746</version>
+        </plugin>
+        <plugin>
+          <groupId>org.jacoco</groupId>
+          <artifactId>jacoco-maven-plugin</artifactId>
+          <version>0.8.5</version>
         </plugin>
       </plugins>
     </pluginManagement>
@@ -374,11 +384,6 @@
         <version>${slf4j.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.sonarsource.java</groupId>
-        <artifactId>sonar-jacoco-listeners</artifactId>
-        <version>${sonar-jacoco-listeners.version}</version>
-      </dependency>
-      <dependency>
         <groupId>xalan</groupId>
         <artifactId>serializer</artifactId>
         <version>${serializer.version}</version>
@@ -398,31 +403,27 @@
 
   <profiles>
     <profile>
-      <id>coverage-per-test</id>
+      <id>coverage</id>
       <build>
         <plugins>
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-surefire-plugin</artifactId>
-            <configuration>
-              <properties>
-                <property>
-                  <name>listener</name>
-                  <value>org.sonar.java.jacoco.JUnitListener</value>
-                </property>
-              </properties>
-            </configuration>
+          </plugin>
+          <plugin>
+            <groupId>org.jacoco</groupId>
+            <artifactId>jacoco-maven-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>prepare-agent</id>
+                <goals>
+                  <goal>prepare-agent</goal>
+                </goals>
+              </execution>
+            </executions>
           </plugin>
         </plugins>
       </build>
-
-      <dependencies>
-        <dependency>
-          <groupId>org.sonarsource.java</groupId>
-          <artifactId>sonar-jacoco-listeners</artifactId>
-          <scope>test</scope>
-        </dependency>
-      </dependencies>
     </profile>
     
     <profile>
