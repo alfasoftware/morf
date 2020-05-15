@@ -49,7 +49,7 @@ import org.alfasoftware.morf.jdbc.ResultSetMismatch.MismatchType;
 import org.alfasoftware.morf.metadata.StatementParameters;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.stringcomparator.DatabaseEquivalentStringComparator;
-import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.ArrayUtils;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.Lists;

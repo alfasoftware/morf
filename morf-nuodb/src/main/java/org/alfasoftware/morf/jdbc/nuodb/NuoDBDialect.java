@@ -54,8 +54,7 @@ import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.NullValueHandling;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
-import org.apache.commons.lang.StringEscapeUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.joda.time.LocalDate;
 
 import com.google.common.base.Joiner;
@@ -680,7 +679,7 @@ class NuoDBDialect extends SqlDialect {
 
   @Override
   protected String escapeSql(String literalValue) {
-    String escaped = StringEscapeUtils.escapeSql(literalValue);
+    String escaped = super.escapeSql(literalValue);
     // we need to deal with a strange design with the \' escape but no \\ escape
     return StringUtils.replace(escaped, "\\'", "'||TRIM('\\ ')||''");
   }

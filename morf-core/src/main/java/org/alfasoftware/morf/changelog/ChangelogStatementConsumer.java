@@ -18,9 +18,9 @@ package org.alfasoftware.morf.changelog;
 import java.io.PrintWriter;
 
 import org.alfasoftware.morf.upgrade.HumanReadableStatementConsumer;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.SystemUtils;
-import org.apache.commons.lang.WordUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.SystemUtils;
+import org.apache.commons.lang3.text.WordUtils;
 
 /**
  * Class to consume strings produced by the human readable statement generator and

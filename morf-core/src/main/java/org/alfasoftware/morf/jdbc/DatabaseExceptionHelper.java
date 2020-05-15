@@ -17,7 +17,7 @@ package org.alfasoftware.morf.jdbc;
 
 import java.sql.SQLTimeoutException;
 
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import com.google.inject.Singleton;
 

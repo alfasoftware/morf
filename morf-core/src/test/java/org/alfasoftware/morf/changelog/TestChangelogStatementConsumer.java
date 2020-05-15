@@ -22,7 +22,7 @@ import static org.junit.Assert.assertArrayEquals;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
-import org.apache.commons.lang.SystemUtils;
+import org.apache.commons.lang3.SystemUtils;
 import org.junit.Test;
 
 

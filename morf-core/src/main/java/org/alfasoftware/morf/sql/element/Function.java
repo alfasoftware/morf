@@ -19,11 +19,10 @@ import static org.alfasoftware.morf.sql.SqlUtils.literal;
 
 import java.util.List;
 
-import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.joda.time.Months;
 
 import com.google.common.collect.FluentIterable;

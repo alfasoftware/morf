@@ -24,7 +24,7 @@ import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.SqlUtils;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * An abstract base class common to all fields, functions

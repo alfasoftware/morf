@@ -15,7 +15,7 @@
 
 package org.alfasoftware.morf.excel;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import org.alfasoftware.morf.metadata.Table;
 

@@ -22,12 +22,13 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.SchemaHomology;
 import org.alfasoftware.morf.metadata.Table;
-import org.apache.commons.lang.ObjectUtils;
+import org.apache.commons.lang3.ObjectUtils;
 
 import com.google.common.base.Function;
 import com.google.common.base.Predicate;
@@ -192,8 +193,11 @@ public class TableDataHomology {
       return -1;
     }
     for (Column keyCol : primaryKeys) {
-      Comparable<?> value1 = convertToComparableType(keyCol, record1.get());
-      Comparable<?> value2 = convertToComparableType(keyCol, record2.get());
+      @SuppressWarnings({ "rawtypes" })
+      Comparable value1 = convertToComparableType(keyCol, record1.get());
+      @SuppressWarnings({ "rawtypes" })
+      Comparable value2 = convertToComparableType(keyCol, record2.get());
+      @SuppressWarnings("unchecked")
       int result = ObjectUtils.compare(value1, value2);
       if (result != 0) {
         return result;
@@ -230,7 +234,7 @@ public class TableDataHomology {
       Object value1 = convertToComparableType(column, record1);
       Object value2 = convertToComparableType(column, record2);
 
-      if (!ObjectUtils.equals(value1, value2)) {
+      if (!Objects.equals(value1, value2)) {
         differences.add(String.format(
           "Table [%s]: Mismatch on key %s column [%s] row [%d]: [%s]<>[%s]",
           table.getName(),

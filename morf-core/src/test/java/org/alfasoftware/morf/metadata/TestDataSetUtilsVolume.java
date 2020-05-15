@@ -17,7 +17,7 @@ import java.util.stream.IntStream;
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
 import org.alfasoftware.morf.metadata.DataSetUtils.RecordDecorator;
-import org.apache.commons.lang.math.RandomUtils;
+import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.joda.time.LocalDate;

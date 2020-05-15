@@ -109,7 +109,7 @@ import org.alfasoftware.morf.upgrade.AddColumn;
 import org.alfasoftware.morf.upgrade.ChangeColumn;
 import org.alfasoftware.morf.upgrade.ChangeIndex;
 import org.alfasoftware.morf.upgrade.RemoveColumn;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.joda.time.LocalDate;
 import org.junit.Assert;
 import org.junit.Before;

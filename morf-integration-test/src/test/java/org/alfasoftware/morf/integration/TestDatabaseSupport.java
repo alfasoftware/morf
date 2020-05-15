@@ -40,7 +40,7 @@ import org.alfasoftware.morf.metadata.SchemaHomology;
 import org.alfasoftware.morf.metadata.SchemaHomology.DifferenceWriter;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager;
 import org.alfasoftware.morf.testing.TestingDataSourceModule;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.joda.time.LocalDate;
 import org.junit.After;
 import org.junit.Rule;

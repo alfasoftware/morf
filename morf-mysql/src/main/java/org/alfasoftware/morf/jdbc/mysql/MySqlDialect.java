@@ -56,8 +56,7 @@ import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.WindowFunction;
-import org.apache.commons.lang.StringEscapeUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
@@ -788,7 +787,7 @@ class MySqlDialect extends SqlDialect {
     if (StringUtils.isEmpty(literalValue)) {
       return "NULL";
     }
-    return String.format("'%s'", StringUtils.replace(StringEscapeUtils.escapeSql(literalValue), "\\", "\\\\"));
+    return String.format("'%s'", StringUtils.replace(super.escapeSql(literalValue), "\\", "\\\\"));
   }
 
 
