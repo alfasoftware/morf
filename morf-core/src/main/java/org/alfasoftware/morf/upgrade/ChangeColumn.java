@@ -32,7 +32,7 @@ import org.alfasoftware.morf.metadata.SchemaHomology.CollectingDifferenceWriter;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.adapt.AlteredTable;
 import org.alfasoftware.morf.upgrade.adapt.TableOverrideSchema;
-import com.google.common.base.Objects;
+import java.util.Objects;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
 
@@ -155,7 +155,7 @@ public class ChangeColumn implements SchemaChange {
    */
   private void verifyDataTypeChanges() {
     // if there's no change, there's no problem
-    if (Objects.equal(fromColumn.getType(), toColumn.getType())) {
+    if (Objects.equals(fromColumn.getType(), toColumn.getType())) {
       return;
     }
 
@@ -174,7 +174,7 @@ public class ChangeColumn implements SchemaChange {
   private void verifyWidthAndScaleChanges() {
 
     // Reductions in width of Strings are permitted, although they will only work if the data fits in the narrower column
-    if (Objects.equal(toColumn.getType(), fromColumn.getType()) && DataType.STRING.equals(fromColumn.getType())) {
+    if (Objects.equals(toColumn.getType(), fromColumn.getType()) && DataType.STRING.equals(fromColumn.getType())) {
       // don't do a check
       return;
     }

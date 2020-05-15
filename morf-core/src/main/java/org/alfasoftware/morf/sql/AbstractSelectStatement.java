@@ -31,7 +31,7 @@ import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;

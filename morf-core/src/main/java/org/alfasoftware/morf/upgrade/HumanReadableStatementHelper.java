@@ -48,9 +48,9 @@ import org.alfasoftware.morf.sql.element.MathsField;
 import org.alfasoftware.morf.sql.element.Operator;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.sql.element.WhenCondition;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.SystemUtils;
-import org.apache.commons.lang.math.NumberUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.SystemUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;

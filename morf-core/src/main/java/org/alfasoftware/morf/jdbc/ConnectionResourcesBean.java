@@ -24,7 +24,7 @@ import java.net.URL;
 import java.util.Objects;
 import java.util.Properties;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.io.Resources;
 

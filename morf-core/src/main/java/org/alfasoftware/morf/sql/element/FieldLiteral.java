@@ -20,8 +20,8 @@ import java.math.BigDecimal;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
-import org.apache.commons.lang.builder.EqualsBuilder;
-import org.apache.commons.lang.builder.HashCodeBuilder;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.joda.time.LocalDate;
 
 

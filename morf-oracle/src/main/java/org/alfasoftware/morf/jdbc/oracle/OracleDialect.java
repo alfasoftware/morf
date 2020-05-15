@@ -55,8 +55,7 @@ import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.SqlParameter;
-import org.apache.commons.lang.StringEscapeUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -489,7 +488,7 @@ class OracleDialect extends SqlDialect {
       return "NULL";
     }
 
-    return String.format("N'%s'", StringEscapeUtils.escapeSql(literalValue));
+    return String.format("N'%s'", super.escapeSql(literalValue));
   }
 
   /**

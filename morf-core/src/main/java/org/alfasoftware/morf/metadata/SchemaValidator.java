@@ -28,11 +28,11 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.alfasoftware.morf.sql.element.AliasedField;
-import org.apache.commons.lang.ObjectUtils;
 
 import com.google.common.base.Function;
 import com.google.common.base.Predicate;
@@ -434,7 +434,7 @@ public class SchemaValidator {
 
       IndexSignature other = (IndexSignature) obj;
 
-      return ObjectUtils.equals(other.index.columnNames(), index.columnNames()) && other.index.isUnique() == index.isUnique();
+      return Objects.equals(other.index.columnNames(), index.columnNames()) && other.index.isUnique() == index.isUnique();
     }
   }
 }

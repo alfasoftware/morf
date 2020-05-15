@@ -15,7 +15,7 @@
 
 package org.alfasoftware.morf.metadata;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * Implements {@link ColumnBean} as a bean.
