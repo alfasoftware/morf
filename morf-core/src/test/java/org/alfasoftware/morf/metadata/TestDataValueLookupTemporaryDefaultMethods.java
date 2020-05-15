@@ -10,7 +10,6 @@ import static org.junit.Assert.assertTrue;
 import java.math.BigDecimal;
 import java.util.Arrays;
 
-import org.apache.commons.codec.binary.Base64;
 import org.joda.time.LocalDate;
 import org.junit.Test;
 
@@ -155,12 +154,12 @@ public class TestDataValueLookupTemporaryDefaultMethods {
   @Test
   public void testGetByteArray() {
     byte[] data = new byte[]{ -127, -126, -125, 125, 126, 127 };
-    DataValueLookup dataValueLookup = newDataValueLookup(Base64.encodeBase64String(data));
+    DataValueLookup dataValueLookup = newDataValueLookup(encodeToBase64String(data));
     assertThat(dataValueLookup.getByteArray("B"), nullValue());
     assertTrue(Arrays.equals(dataValueLookup.getByteArray(FIELD), data));
     assertTrue(Arrays.equals(dataValueLookup.getByteArray(FIELD.toUpperCase()), data));
     assertTrue(Arrays.equals((byte[])dataValueLookup.getObject(SchemaUtils.column(FIELD, DataType.BLOB)), data));
-    assertEquals(dataValueLookup.getObject(column(FIELD, DataType.STRING)), Base64.encodeBase64String(data));
+    assertEquals(dataValueLookup.getObject(column(FIELD, DataType.STRING)), encodeToBase64String(data));
   }
 
 
@@ -172,5 +171,10 @@ public class TestDataValueLookupTemporaryDefaultMethods {
       }
     };
     return dataValueLookup;
+  }
+
+
+  private String encodeToBase64String(byte[] toEncode) {
+    return new String(java.util.Base64.getEncoder().encode(toEncode));
   }
 }

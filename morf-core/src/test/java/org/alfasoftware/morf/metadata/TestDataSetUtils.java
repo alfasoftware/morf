@@ -23,7 +23,6 @@ import org.alfasoftware.morf.dataset.BaseRecordMatcher;
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
 import org.alfasoftware.morf.metadata.DataSetUtils.RecordDecorator;
-import org.apache.commons.codec.binary.Base64;
 import org.joda.time.LocalDate;
 import org.junit.Test;
 
@@ -203,8 +202,8 @@ public class TestDataSetUtils {
     assertEquals(false, record().setString(col, "tru")  .getBoolean(col));
 
     byte[] blobValue = new byte[] { 1, 2, 3, 4, 5 };
-    assertEquals(Base64.encodeBase64String(blobValue), record().setString(col, Base64.encodeBase64String(blobValue)).getString(col));
-    assertArrayEquals(blobValue,                       record().setString(col, Base64.encodeBase64String(blobValue)).getByteArray(col));
+    assertEquals(encodeToBase64String(blobValue), record().setString(col, encodeToBase64String(blobValue)).getString(col));
+    assertArrayEquals(blobValue,                       record().setString(col, encodeToBase64String(blobValue)).getByteArray(col));
   }
 
 
@@ -324,7 +323,7 @@ public class TestDataSetUtils {
         .value(DATE_COLUMN, "1990-01-01")
         .value(LOCAL_DATE_COLUMN, "1990-01-02")
         .value(LONG_COLUMN, "2")
-        .value(BLOB_COLUMN, Base64.encodeBase64String(new byte[] { -126, 126 })),
+        .value(BLOB_COLUMN, encodeToBase64String(new byte[] { -126, 126 })),
       mutatedMatcher()
     );
   }
@@ -446,7 +445,7 @@ public class TestDataSetUtils {
       .withObject(column(LOCAL_DATE_COLUMN, DataType.DATE), java.sql.Date.valueOf(LOCAL_DATE.toString()))
       .withValue(LONG_COLUMN, LONG.toString())
       .withObject(column(LONG_COLUMN, DataType.BIG_INTEGER), LONG)
-      .withValue(BLOB_COLUMN, Base64.encodeBase64String(BYTE_ARRAY))
+      .withValue(BLOB_COLUMN, encodeToBase64String(BYTE_ARRAY))
       .withObject(column(BLOB_COLUMN, DataType.BLOB), BYTE_ARRAY)
       .withValue(UNTYPED_COLUMN, VALUE)
       .withObject(column(UNTYPED_COLUMN, DataType.STRING), VALUE);
@@ -469,9 +468,15 @@ public class TestDataSetUtils {
       .withObject(column(LOCAL_DATE_COLUMN, DataType.DATE), java.sql.Date.valueOf("1990-01-02"))
       .withValue(LONG_COLUMN, "2")
       .withObject(column(LONG_COLUMN, DataType.BIG_INTEGER), 2L)
-      .withValue(BLOB_COLUMN, Base64.encodeBase64String(new byte[] { -126, 126 }))
+      .withValue(BLOB_COLUMN, encodeToBase64String(new byte[] { -126, 126 }))
       .withObject(column(BLOB_COLUMN, DataType.BLOB), new byte[] { -126, 126 })
       .withValue(UNTYPED_COLUMN, VALUE)
       .withObject(column(UNTYPED_COLUMN, DataType.STRING), VALUE);
   }
+
+
+  private String encodeToBase64String(byte[] toEncode) {
+    return new String(java.util.Base64.getEncoder().encode(toEncode));
+  }
+
 }

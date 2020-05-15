@@ -36,6 +36,7 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -66,7 +67,6 @@ import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.xml.XmlStreamProvider.XmlInputStreamProvider;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -450,7 +450,7 @@ public class XmlDataSetProducer implements DataSetProducer {
     //
     if (urlUsername != null && urlPassword != null) {
       String userpass = urlUsername + ":" + urlPassword;
-      String basicAuth = "Basic " + Base64.encodeBase64String(userpass.getBytes(StandardCharsets.UTF_8));
+      String basicAuth = "Basic " + new String(Base64.getEncoder().encode(userpass.getBytes(StandardCharsets.UTF_8)));
       urlConnection.setRequestProperty("Authorization", basicAuth);
     }
 
