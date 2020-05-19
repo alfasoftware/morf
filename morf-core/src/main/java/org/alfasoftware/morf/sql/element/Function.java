@@ -492,7 +492,7 @@ public final class Function extends AliasedField implements Driver {
   /**
    * Helper method to create an instance of the <code>LPAD</code> SQL function.
    * <p>Pads the <code>character</code> on the left of <code>field</code> so that the size equals <code>length</code></p>
-   * <p>The field should be of type {@link DataType#STRING}</p>
+   * <p>The field should be of type {@link org.alfasoftware.morf.metadata.DataType#STRING}</p>
    *
    * @param field     String field to pad.
    * @param length    target length.
@@ -507,7 +507,7 @@ public final class Function extends AliasedField implements Driver {
   /**
    * Convenience helper method to create an instance of the <code>LPAD</code> SQL function.
    * <p>Pads the <code>character</code> on the left of <code>field</code> so that the size equals <code>length</code></p>
-   * <p>The field should be of type {@link DataType#STRING}</p>
+   * <p>The field should be of type {@link org.alfasoftware.morf.metadata.DataType#STRING}</p>
    *
    * @param field     String field to pad.
    * @param length    target length.

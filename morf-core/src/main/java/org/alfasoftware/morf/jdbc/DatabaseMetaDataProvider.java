@@ -29,6 +29,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -926,6 +927,20 @@ public class DatabaseMetaDataProvider implements Schema {
     @Override
     public String toString() {
       return getDbName() + "/" + getRealName();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      if (!super.equals(o)) return false;
+      RealName realName1 = (RealName) o;
+      return Objects.equals(realName, realName1.realName);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(super.hashCode(), realName);
     }
   }
 

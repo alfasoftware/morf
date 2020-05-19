@@ -254,8 +254,12 @@ public class DatabaseSchemaManager {
 
   /**
    * Drop the specified tables from the schema if they are present.
+   *
+   * @param producerCache database dataset producer cache
+   * @param tableName table name to drop
+   * @return sql statements
    */
-  public Collection<String> dropTableIfPresent(ProducerCache producerCache, String tableName) {
+   public Collection<String> dropTableIfPresent(ProducerCache producerCache, String tableName) {
     Table table = getTable(producerCache, tableName);
     return table == null ? Collections.emptySet() : dropTable(table);
   }
@@ -463,8 +467,7 @@ public class DatabaseSchemaManager {
    * Drops a table and all its dependencies (e.g. indexes).
    *
    * @param table the table to drop
-   * @param connectionResources the database to drop it from
-   * @return
+   * @return sql statements
    */
   private Collection<String> dropTable(Table table) {
     if (log.isDebugEnabled()) log.debug("Dropping table [" + table.getName() + "]");

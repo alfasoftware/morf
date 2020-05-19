@@ -4170,8 +4170,9 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Expected outcome for calling {@link callPrepareStatementParameter} with a blob data type in {@link #testPrepareStatementParameter()}
-   * @throws SQLException
+   * Expected outcome for calling {@link #callPrepareStatementParameter} with a blob data type in {@link #testPrepareStatementParameter()}
+   * @param blobColumn the parameter to verify
+   * @throws SQLException exception
    */
   protected void verifyBlobColumnCallPrepareStatementParameter(SqlParameter blobColumn) throws SQLException {
     verify(callPrepareStatementParameter(blobColumn, null)).setBlob(Mockito.eq(blobColumn), Mockito.argThat(new ByteArrayMatcher(new byte[] {})));
@@ -4511,6 +4512,7 @@ public abstract class AbstractSqlDialectTest {
    *
    * <p>If a null order is not required for a SQL dialect descendant classes need to implement this method.</p>
    *
+   * @param descending the order direction
    * @return the null order for an SQL dialect
    */
   protected String nullOrderForDirection(@SuppressWarnings("unused") Direction descending) {
@@ -5006,7 +5008,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * @return
+   * @return The expected sql.
    */
   protected String expectedSelectSome() {
     return "SELECT MAX(booleanField) FROM " + tableName(TEST_TABLE);
@@ -5014,7 +5016,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * @return
+   * @return The expected sql.
    */
   protected String expectedSelectEvery() {
     return "SELECT MIN(booleanField) FROM " + tableName(TEST_TABLE);
@@ -5054,12 +5056,15 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * @param value for the where criterion
    * @return The expected SQL for a delete statement with a limit and where criterion.
    */
   protected abstract String expectedDeleteWithLimitAndWhere(String value);
 
 
   /**
+   * @param value for the where criterion
+   * @param value2 for the where criterion
    * @return The expected SQL for a delete statement with a limit and where criterion.
    */
   protected abstract String expectedDeleteWithLimitAndComplexWhere(String value, String value2);
