@@ -1642,7 +1642,7 @@ public abstract class SqlDialect {
   /**
    * Turn a string value into an SQL string literal which has that value.
    * <p>
-   * We use {@linkplain StringUtils#isEmpty(String)} because we want to
+   * We use {@linkplain StringUtils#isEmpty(CharSequence)} because we want to
    * differentiate between a single space and an empty string.
    * </p>
    * <p>
@@ -1665,6 +1665,8 @@ public abstract class SqlDialect {
   /**
   * Turn a string value into an SQL string literal which has that value.
   * This escapes single quotes as double-single quotes.
+   * @param literalValue the value to escape
+   * @return escaped value
   */
   protected String escapeSql(String literalValue) {
     if (literalValue == null) {

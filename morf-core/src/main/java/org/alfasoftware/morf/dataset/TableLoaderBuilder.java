@@ -89,8 +89,11 @@ public interface TableLoaderBuilder {
    * <p>Merging will overwrite records matched by primary key with the new data.</p>
    *
    * <p>Defaults to false if not specified.</p>
+   *
+   * @param merge Determines whether to merge or insert
+   * @return This builder for chaining
    */
-  TableLoaderBuilder merge(boolean ignoreDuplicateKeys);
+  TableLoaderBuilder merge(boolean merge);
 
   /**
    * Should the table be truncated before the load?
