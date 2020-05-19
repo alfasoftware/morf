@@ -18,6 +18,7 @@ package org.alfasoftware.morf.jdbc;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.ArrayList;
@@ -25,6 +26,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -314,19 +316,31 @@ public class DatabaseMetaDataProvider implements Schema {
             int typeCode = columnResultSet.getInt(COLUMN_DATA_TYPE);
             int width = columnResultSet.getInt(COLUMN_SIZE);
             int scale = columnResultSet.getInt(COLUMN_DECIMAL_DIGITS);
-            DataType dataType = dataTypeFromSqlType(typeCode, typeName, width);
 
-            ColumnBuilder column = SchemaUtils.column(columnName.getRealName(), dataType, width, scale);
-            column = setColumnNullability(realTableName, column, columnResultSet);
-            column = setColumnAutonumbered(realTableName, column, columnResultSet);
-            column = setColumnDefaultValue(realTableName, column, columnResultSet);
-            column = setAdditionalColumnMetadata(realTableName, column, columnResultSet);
+            try {
+              DataType dataType = dataTypeFromSqlType(typeCode, typeName, width);
 
-            if (log.isDebugEnabled()) {
-              log.debug("Found column [" + column + "] on table [" + tableName + "]");
+              ColumnBuilder column = SchemaUtils.column(columnName.getRealName(), dataType, width, scale);
+              column = setColumnNullability(realTableName, column, columnResultSet);
+              column = setColumnAutonumbered(realTableName, column, columnResultSet);
+              column = setColumnDefaultValue(realTableName, column, columnResultSet);
+              column = setAdditionalColumnMetadata(realTableName, column, columnResultSet);
+
+              if (log.isDebugEnabled()) {
+                log.debug("Found column [" + column + "] on table [" + tableName + "]: " + column);
+              }
+
+              columnMappingBuilders.get(realTableName).put(columnName, column);
             }
+            catch (UnexpectedDataTypeException e) {
+              ColumnBuilder column = new UnsupportedDataTypeColumn(columnName, typeName, typeCode, width, scale, columnResultSet);
 
-            columnMappingBuilders.get(realTableName).put(columnName, column);
+              if (log.isDebugEnabled()) {
+                log.debug("Found unsupported column [" + column + "] on table [" + tableName + "]: " + column);
+              }
+
+              columnMappingBuilders.get(realTableName).put(columnName, column);
+            }
           }
           catch (SQLException e) {
             throw new RuntimeSqlException("Error reading metadata for column ["+columnName+"] on table ["+tableName+"]", e);
@@ -399,7 +413,7 @@ public class DatabaseMetaDataProvider implements Schema {
       case Types.CLOB:
         return DataType.CLOB;
       default:
-        throw new IllegalArgumentException("Unknown SQL data type [" + typeName + "] (type " + typeCode + " width " + width + ")");
+        throw new UnexpectedDataTypeException("Unsupported data type [" + typeName + "] (type " + typeCode + " width " + width + ")");
     }
   }
 
@@ -919,5 +933,137 @@ public class DatabaseMetaDataProvider implements Schema {
   @Override
   public String toString() {
     return "Schema[" + tables().size() + " tables, " + views().size() + " views]";
+  }
+
+
+  /**
+   * Exception for unsupported data types.
+   */
+  public static final class UnexpectedDataTypeException extends RuntimeException {
+
+    public UnexpectedDataTypeException(String string) {
+      super(string);
+    }
+  }
+
+  /**
+   * This implementation of {@link Column} describing an unsupportable column.
+   * Reading most of this column's data will result in exceptions being thrown.
+   */
+  protected static final class UnsupportedDataTypeColumn implements ColumnBuilder {
+
+    private final RealName columnName;
+    private final String typeName;
+    private final int typeCode;
+    private final int width;
+    private final int scale;
+    private final Map<String, Object> columnResultSet;
+
+    UnsupportedDataTypeColumn(RealName columnName, String typeName, int typeCode, int width, int scale, ResultSet columnResultSet) throws SQLException {
+      this.columnName = columnName;
+      this.typeName = typeName;
+      this.typeCode = typeCode;
+      this.width = width;
+      this.scale = scale;
+
+      Map<String, Object> values = new LinkedHashMap<>();
+      ResultSetMetaData metaData = columnResultSet.getMetaData();
+      for (int i = 1; i <= metaData.getColumnCount(); i++) {
+        String label = metaData.getColumnLabel(i);
+        Object value = columnResultSet.getObject(1);
+        values.put(i+"-"+label, value);
+      }
+      this.columnResultSet = values;
+    }
+
+    @Override
+    public String getName() {
+      return columnName.getRealName();
+    }
+
+
+    @Override
+    public DataType getType() {
+      throw new UnexpectedDataTypeException(this.toString());
+    }
+
+    @Override
+    public int getWidth() {
+      throw new UnexpectedDataTypeException(this.toString());
+    }
+
+    @Override
+    public int getScale() {
+      throw new UnexpectedDataTypeException(this.toString());
+    }
+
+    @Override
+    public boolean isNullable() {
+      throw new UnexpectedDataTypeException(this.toString());
+    }
+
+    @Override
+    public boolean isPrimaryKey() {
+      throw new UnexpectedDataTypeException(this.toString());
+    }
+
+    @Override
+    public boolean isAutoNumbered() {
+      throw new UnexpectedDataTypeException(this.toString());
+    }
+
+    @Override
+    public int getAutoNumberStart() {
+      throw new UnexpectedDataTypeException(this.toString());
+    }
+
+    @Override
+    public String getDefaultValue() {
+      throw new UnexpectedDataTypeException(this.toString());
+    }
+
+
+    @Override
+    public String toString() {
+      return new StringBuilder()
+          .append("Column-").append(columnName)
+          .append("-").append("UNSUPPORTED")
+          .append("-").append(typeName)
+          .append("-").append(typeCode)
+          .append("-").append(width)
+          .append("-").append(scale)
+          .append("-").append(columnResultSet)
+          .toString();
+    }
+
+    @Override
+    public ColumnBuilder nullable() {
+      return this;
+    }
+
+    @Override
+    public ColumnBuilder defaultValue(String value) {
+      return this;
+    }
+
+    @Override
+    public ColumnBuilder primaryKey() {
+      return this;
+    }
+
+    @Override
+    public ColumnBuilder notPrimaryKey() {
+      return this;
+    }
+
+    @Override
+    public ColumnBuilder autoNumbered(int from) {
+      return this;
+    }
+
+    @Override
+    public ColumnBuilder dataType(DataType dataType) {
+      return this;
+    }
   }
 }
