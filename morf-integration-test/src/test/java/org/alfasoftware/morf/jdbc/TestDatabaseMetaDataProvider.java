@@ -155,7 +155,13 @@ public class TestDatabaseMetaDataProvider {
   }
 
   @After
-  public void after() {
+  public void after() throws SQLException {
+    // must cleanup, otherwise other tests could try to read this table and fail
+    try (Connection connection = database.getDataSource().getConnection()) {
+      String schema = Strings.isNullOrEmpty(database.getSchemaName()) ? "" : database.getSchemaName() + ".";
+      connection.createStatement().executeUpdate("DROP TABLE " + schema + "WithTimestamp");
+    }
+
     schemaManager.invalidateCache();
   }
 
