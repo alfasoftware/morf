@@ -38,6 +38,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
+import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider.UnexpectedDataTypeException;
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.metadata.Column;
@@ -49,7 +50,7 @@ import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -512,7 +513,7 @@ public class OracleMetaDataProvider implements Schema {
       return DataType.DATE;
     }
     else {
-      throw new UnexpectedDataTypeException("Unsupported data type [" + dataTypeName + "]" + " in [" + columnName + "]");
+      throw new DatabaseMetaDataProvider.UnexpectedDataTypeException("Unsupported data type [" + dataTypeName + "]" + " in [" + columnName + "]");
     }
   }
 
@@ -898,17 +899,6 @@ public class OracleMetaDataProvider implements Schema {
     @Override
     public String toString() {
       return this.toStringHelper();
-    }
-  }
-
-
-  /**
-   * Exception thrown when data type evaluated is unsupported.
-   */
-  public static final class UnexpectedDataTypeException extends RuntimeException {
-
-    private UnexpectedDataTypeException(String string) {
-      super(string);
     }
   }
 }

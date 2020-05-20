@@ -73,7 +73,7 @@ public class MorfXmlDatasetMatchers {
           forEachXmlEntry(file, (z,e) -> checkForMismatches(e.getName(), toInputStream(z, e)));
         }
 
-        for (Map.Entry unmatchedControlFiles : fileToSize.entrySet()) {
+        for (Map.Entry<String, Long> unmatchedControlFiles : fileToSize.entrySet()) {
           mismatches.add(unmatchedControlFiles.getKey() + " file from control extract has not been matched by the extract under test");
         }
 

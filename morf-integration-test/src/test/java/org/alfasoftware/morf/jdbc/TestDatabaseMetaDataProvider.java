@@ -36,6 +36,7 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.function.Function;
@@ -61,7 +62,9 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import com.google.inject.Inject;
 
 /**
@@ -143,11 +146,22 @@ public class TestDatabaseMetaDataProvider {
     schemaManager.dropAllTables();
     schemaManager.mutateToSupportSchema(schema, TruncationBehavior.ALWAYS);
 
+    try (Connection connection = database.getDataSource().getConnection()) {
+      String schema = Strings.isNullOrEmpty(database.getSchemaName()) ? "" : database.getSchemaName() + ".";
+      connection.createStatement().executeUpdate("CREATE TABLE " + schema + "WithTimestamp (special TIMESTAMP)");
+    }
+
     readMysqlLowerCaseTableNames();
   }
 
   @After
-  public void after() {
+  public void after() throws SQLException {
+    // must cleanup, otherwise other tests could try to read this table and fail
+    try (Connection connection = database.getDataSource().getConnection()) {
+      String schema = Strings.isNullOrEmpty(database.getSchemaName()) ? "" : database.getSchemaName() + ".";
+      connection.createStatement().executeUpdate("DROP TABLE " + schema + "WithTimestamp");
+    }
+
     schemaManager.invalidateCache();
   }
 
@@ -173,14 +187,16 @@ public class TestDatabaseMetaDataProvider {
       assertThat(schemaResource.tableNames(), containsInAnyOrder(ImmutableList.of(
         tableNameEqualTo("WithTypes"),
         tableNameEqualTo("WithDefaults"),
-        tableNameEqualTo("WithLobs")
+        tableNameEqualTo("WithLobs"),
+        equalToIgnoringCase("WithTimestamp") // can read table names even if they contain unsupported columns
       )));
 
 
       assertThat(schemaResource.tables(), containsInAnyOrder(ImmutableList.of(
         tableNameMatcher("WithTypes"),
         tableNameMatcher("WithDefaults"),
-        tableNameMatcher("WithLobs")
+        tableNameMatcher("WithLobs"),
+        propertyMatcher(Table::getName, "name", equalToIgnoringCase("WithTimestamp")) // can read table names even if they contain unsupported columns
       )));
     }
   }
@@ -312,6 +328,30 @@ public class TestDatabaseMetaDataProvider {
       ));
 
       assertThat(table.indexes(), empty());
+    }
+  }
+
+
+  @Test
+  public void testTableWithTimestamp() throws SQLException {
+    try(SchemaResource schemaResource = database.openSchemaResource()) {
+      assertTrue(schemaResource.tableExists("WithTimestamp"));
+      Table table = schemaResource.getTable("WithTimestamp");
+
+      assertThat(table.isTemporary(), is(false));
+      assertThat(table.getName(), equalToIgnoringCase("WithTimestamp"));
+
+      assertThat(table.columns(), containsColumns(ImmutableList.of(
+        propertyMatcher(Column::getName, "name", equalToIgnoringCase("special")) // can read column names even if they contain unsupported data types
+      )));
+
+      try {
+        Iterables.getOnlyElement(table.columns()).getType();
+        fail("Exception expected");
+      }
+      catch (DatabaseMetaDataProvider.UnexpectedDataTypeException e) { /* expected*/ }
+
+      assertThat(table.indexes(), empty()); // can read indexes, as long as unsupported data types are not involved
     }
   }
 

@@ -42,7 +42,7 @@ import org.alfasoftware.morf.upgrade.SqlStatementWriter;
 import org.alfasoftware.morf.upgrade.UUID;
 import org.alfasoftware.morf.upgrade.UpgradeGraph;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;

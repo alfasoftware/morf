@@ -92,9 +92,8 @@ import org.alfasoftware.morf.sql.element.WhenCondition;
 import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.alfasoftware.morf.upgrade.ChangeColumn;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
-import org.apache.commons.lang.RandomStringUtils;
-import org.apache.commons.lang.StringEscapeUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.joda.time.LocalDate;
 import org.joda.time.Months;
 
@@ -1666,8 +1665,15 @@ public abstract class SqlDialect {
   }
 
 
+  /**
+  * Turn a string value into an SQL string literal which has that value.
+  * This escapes single quotes as double-single quotes.
+  */
   protected String escapeSql(String literalValue) {
-    return StringEscapeUtils.escapeSql(literalValue);
+    if (literalValue == null) {
+      return null;
+    }
+    return StringUtils.replace(literalValue, "'", "''");
   }
 
 
