@@ -29,7 +29,6 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -881,15 +880,15 @@ public class DatabaseMetaDataProvider implements Schema {
     }
 
     @Override
-    public int hashCode() {
+    public final int hashCode() { // final intentional!
       return hashCode;
     }
 
     @Override
-    public boolean equals(Object obj) {
+    public final boolean equals(Object obj) { // final intentional!
       if (this == obj) return true;
       if (obj == null) return false;
-      if (!(obj instanceof AName)) return false; // instanceof is fine as we actually want to consider children
+      if (!(obj instanceof AName)) return false; // instanceof intentional!
       AName that = (AName) obj;
       return this.aName.equalsIgnoreCase(that.aName);
     }
@@ -927,20 +926,6 @@ public class DatabaseMetaDataProvider implements Schema {
     @Override
     public String toString() {
       return getDbName() + "/" + getRealName();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      if (!super.equals(o)) return false;
-      RealName realName1 = (RealName) o;
-      return Objects.equals(realName, realName1.realName);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(super.hashCode(), realName);
     }
   }
 
