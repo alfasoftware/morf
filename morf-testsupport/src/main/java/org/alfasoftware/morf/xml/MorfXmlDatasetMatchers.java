@@ -8,6 +8,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
@@ -39,15 +40,15 @@ public class MorfXmlDatasetMatchers {
    * <p><b>Limits</b>: currently the comparison demands the same order for records in a table between the model and the extract to check.
    * Also, attribute names are case sensitive.</p>
    *
-   * @param model the Folder containing the control morf extract
+   * @param modelURL URL of the Folder containing the control morf extract
    * @return a Matcher which will check the provided extract is xml content equal to the model
    */
-  public static Matcher<File> sameXmlFileAndLengths(File model) {
-    if (!model.isDirectory()) {
-      throw new IllegalArgumentException("the model can be only a directory");
-    }
+  public static Matcher<File> sameXmlFileAndLengths(URL modelURL) {
 
     return new TypeSafeMatcher<File>() {
+      private ViewURLAsFile urlHandler = new ViewURLAsFile();
+      private File model = urlHandler.getFile(modelURL, null, null);
+
 
       /**
        * Keeps track of the size of each file of the model extract.
@@ -144,6 +145,19 @@ public class MorfXmlDatasetMatchers {
         description.appendText("cryo/morf extract with same-sized xml files outputted");
         mismatches.forEach(m -> description.appendText("\n" + m));
       }
+
+
+      @Override
+      protected void finalize() throws Throwable {
+        try {
+          urlHandler.close();
+        } catch(Throwable th) {
+          throw th;
+        } finally {
+          super.finalize();
+        }
+      }
+
     };
   }
 
