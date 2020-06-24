@@ -398,6 +398,26 @@ public class TestDatabaseMetaDataProvider {
   }
 
 
+  @Test
+  public void testCopySchema() throws SQLException {
+    try(SchemaResource schemaResource = database.openSchemaResource()) {
+      SchemaUtils.copy(schemaResource, ImmutableList.of("(?i:WithTimestamp)"));
+    }
+  }
+
+
+  @Test
+  public void testCopySchemaFailure() throws SQLException {
+    try(SchemaResource schemaResource = database.openSchemaResource()) {
+      SchemaUtils.copy(schemaResource, ImmutableList.of(""));
+      fail("Exception expected");
+    }
+    catch (RuntimeException e) {
+      assertThat(e.getMessage(), equalToIgnoringCase("Exception copying table [WITHTIMESTAMP]"));
+    }
+  }
+
+
   private static Matcher<? super Table> tableNameMatcher(String tableName) {
     Matcher<Table> subMatchers = Matchers.allOf(ImmutableList.of(
       propertyMatcher(Table::getName, "name", tableNameEqualTo(tableName))
