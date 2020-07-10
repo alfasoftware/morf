@@ -2,6 +2,7 @@ package org.alfasoftware.morf.xml;
 
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -41,7 +42,7 @@ import com.google.common.io.Files;
  * clients should call #close on this object in order o clean up the
  * temporary files it generated.</p>
  */
-class ViewURLAsFile {
+class ViewURLAsFile implements Closeable {
   private static final Log log = LogFactory.getLog(ViewURLAsFile.class);
 
   /**
@@ -206,7 +207,7 @@ class ViewURLAsFile {
   /**
    * Closes all the temporary files opened.
    */
-  void close() {
+  public void close() {
     for (File file : tempFiles) {
       try {
         java.nio.file.Files.delete(file.toPath());
@@ -247,7 +248,7 @@ class ViewURLAsFile {
    * @param urlPassword The password for the url.
    * @param file The file to populate from the download.
    */
-  private void downloadFileFromHttpUrl(URL url, final String urlUsername, final String urlPassword, File file) {
+  private void downloadFileFromHttpUrl(final URL url, final String urlUsername, final String urlPassword, File file) {
     // -- Create connection to URL...
     //
     URLConnection urlConnection;

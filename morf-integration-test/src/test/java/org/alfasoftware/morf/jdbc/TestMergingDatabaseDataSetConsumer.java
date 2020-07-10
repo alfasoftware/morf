@@ -63,7 +63,7 @@ public class TestMergingDatabaseDataSetConsumer {
    */
   @Test
   @Parameters(method = "mergeParameters")
-  public void testMergeTwoExtracts(URL controlExtract, URL initialDataset, URL datasetToMerge) throws IOException {
+  public void testMergeTwoExtracts(final URL controlExtract, final URL initialDataset, final URL datasetToMerge) throws IOException {
     log.info("initialDataset URL: " + initialDataset.toString());
     log.info("datasetToMerge URL: " + datasetToMerge.toString());
     // GIVEN
