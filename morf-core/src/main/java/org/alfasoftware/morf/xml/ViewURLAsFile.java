@@ -73,7 +73,7 @@ class ViewURLAsFile implements Closeable {
    * @return Location on disk at which file operations can be performed on
    *         <var>url</var>
    */
-  File getFile(URL url, String urlUsername, String urlPassword) {
+  File getFile(final URL url, final String urlUsername, final String urlPassword) {
     if (url.getProtocol().equals("file")) {
       log.info(url.toString() + " is a File System resource. Providing it directily as a File.");
       try {
