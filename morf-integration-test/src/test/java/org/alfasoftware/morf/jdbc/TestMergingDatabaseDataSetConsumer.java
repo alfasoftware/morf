@@ -7,10 +7,11 @@ import static org.junit.Assert.assertThat;
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.net.URISyntaxException;
+import java.net.URL;
 
 import org.alfasoftware.morf.dataset.DataSetConnector;
 import org.alfasoftware.morf.dataset.DataSetConsumer;
-import org.alfasoftware.morf.dataset.DataSetProducer;
 import org.alfasoftware.morf.xml.XmlDataSetConsumer;
 import org.alfasoftware.morf.xml.XmlDataSetProducer;
 import org.apache.commons.logging.Log;
@@ -21,6 +22,7 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 
+import com.google.common.io.Resources;
 import com.google.inject.util.Providers;
 import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;
@@ -61,7 +63,9 @@ public class TestMergingDatabaseDataSetConsumer {
    */
   @Test
   @Parameters(method = "mergeParameters")
-  public void testMergeTwoExtracts(File controlExtract, File initialDataset, File datasetToMerge) throws IOException {
+  public void testMergeTwoExtracts(final URL controlExtract, final URL initialDataset, final URL datasetToMerge) throws IOException {
+    log.info("initialDataset URL: " + initialDataset.toString());
+    log.info("datasetToMerge URL: " + datasetToMerge.toString());
     // GIVEN
 
     // ... a control extract (provided)
@@ -72,7 +76,7 @@ public class TestMergingDatabaseDataSetConsumer {
     log.info("Creating the initial DataSet");
 
     DataSetConsumer firstDatabaseDataSetConsumer = new SchemaModificationAdapter(new DatabaseDataSetConsumer(connectionResources, sqlScriptExecutorProvider));
-    new DataSetConnector(toDataSetProducer(initialDataset), firstDatabaseDataSetConsumer).connect();
+    new DataSetConnector(new XmlDataSetProducer(initialDataset), firstDatabaseDataSetConsumer).connect();
 
     log.info("Initial DataSet creation complete");
 
@@ -81,7 +85,7 @@ public class TestMergingDatabaseDataSetConsumer {
     // ... we merge a datasource having both overlapping and non-overlapping tables and records into it
 
     DataSetConsumer mergingDatabaseDatasetConsumer = new MergingDatabaseDataSetConsumer(connectionResources, sqlScriptExecutorProvider);
-    new DataSetConnector(toDataSetProducer(datasetToMerge), mergingDatabaseDatasetConsumer).connect();
+    new DataSetConnector(new XmlDataSetProducer(datasetToMerge), mergingDatabaseDatasetConsumer).connect();
 
     // ... and we pipe the result into a zip file
     log.info("Creating an XML extract from the merged database tables.");
@@ -95,28 +99,19 @@ public class TestMergingDatabaseDataSetConsumer {
   }
 
 
-  private DataSetProducer toDataSetProducer(File file) {
-    try {
-      return new XmlDataSetProducer(file.toURI().toURL());
-    } catch (MalformedURLException e) {
-      throw new IllegalArgumentException(e);
-    }
-  }
-
-
   /**
    * Parameters for merge extract tests.
    *
    * @return each array item is an array of File where the first item is the control extract, the remaining ones are the extracts to merge.
    */
-  private Object[] mergeParameters() {
+  private Object[] mergeParameters() throws MalformedURLException, URISyntaxException {
     return new Object[] {
-        new File[] {
+        new Object[] {
             // merge two extract with only non-overlapping content in role.xml and both overlapping and non overlapping records in employee.xml
             // especially employee#1 shall be "Richard Willbourne" from sourceDataset2, while "Andrew Rogers" from sourceDataset1 should disappear
-            new File(getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/simple/controlDataset").getFile()),
-            new File(getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/simple/sourceDataset1").getFile()),
-            new File(getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/simple/sourceDataset2").getFile())
+            Resources.getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/simple/controlDataset/").toURI().toURL(),
+            Resources.getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/simple/sourceDataset1/").toURI().toURL(),
+            Resources.getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/simple/sourceDataset2/").toURI().toURL()
         }
     };
   }
