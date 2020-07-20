@@ -6,7 +6,6 @@ import static org.junit.Assert.assertThat;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
 
@@ -20,17 +19,12 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
 
-import com.google.common.io.Resources;
 import com.google.inject.util.Providers;
-import junitparams.JUnitParamsRunner;
-import junitparams.Parameters;
 
 /**
  * Verifies that two start position merge into
  */
-@RunWith(JUnitParamsRunner.class)
 public class TestMergingDatabaseDataSetConsumer {
 
   private static final Log log = LogFactory.getLog(TestMergingDatabaseDataSetConsumer.class);
@@ -62,8 +56,11 @@ public class TestMergingDatabaseDataSetConsumer {
    * overwrite the already-present ones and the non-overlapping to be inserted.
    */
   @Test
-  @Parameters(method = "mergeParameters")
-  public void testMergeTwoExtracts(final URL controlExtract, final URL initialDataset, final URL datasetToMerge) throws IOException {
+  public void testMergeTwoExtracts() throws IOException, URISyntaxException {
+    URL controlExtract = getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/simple/controlDataset/").toURI().toURL();
+    URL initialDataset = getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/simple/sourceDataset1/").toURI().toURL();
+    URL datasetToMerge = getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/simple/sourceDataset2/").toURI().toURL();
+
     log.info("initialDataset URL: " + initialDataset.toString());
     log.info("datasetToMerge URL: " + datasetToMerge.toString());
     // GIVEN
@@ -96,23 +93,5 @@ public class TestMergingDatabaseDataSetConsumer {
 
     // ... the resulting dataset matches the control one
     assertThat("the merged dataset should match the control one", mergedExtractsAsFile, sameXmlFileAndLengths(controlExtract));
-  }
-
-
-  /**
-   * Parameters for merge extract tests.
-   *
-   * @return each array item is an array of File where the first item is the control extract, the remaining ones are the extracts to merge.
-   */
-  private Object[] mergeParameters() throws MalformedURLException, URISyntaxException {
-    return new Object[] {
-        new Object[] {
-            // merge two extract with only non-overlapping content in role.xml and both overlapping and non overlapping records in employee.xml
-            // especially employee#1 shall be "Richard Willbourne" from sourceDataset2, while "Andrew Rogers" from sourceDataset1 should disappear
-            Resources.getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/simple/controlDataset/").toURI().toURL(),
-            Resources.getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/simple/sourceDataset1/").toURI().toURL(),
-            Resources.getResource("org/alfasoftware/morf/dataset/mergingDatabaseDatasetConsumer/simple/sourceDataset2/").toURI().toURL()
-        }
-    };
   }
 }
