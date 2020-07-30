@@ -17,7 +17,6 @@ package org.alfasoftware.morf.testing;
 
 import javax.sql.DataSource;
 
-import com.google.inject.Binder;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.ConnectionResourcesBean;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -26,6 +25,7 @@ import org.apache.commons.logging.LogFactory;
 
 import com.google.common.io.Resources;
 import com.google.inject.AbstractModule;
+import com.google.inject.Binder;
 import com.google.inject.Provides;
 
 /**
@@ -56,7 +56,7 @@ public class TestingDataSourceModule extends AbstractModule {
   @Provides
   DataSource provideDataSource(ConnectionResources connectionResources) {
     if (dataSource != null) return dataSource;
-    synchronized (this) {
+    synchronized (TestingDataSourceModule.class) {
       if (dataSource != null) return dataSource;
       dataSource = connectionResources.getDataSource();
       if (AutoCloseable.class.isInstance(dataSource)) {

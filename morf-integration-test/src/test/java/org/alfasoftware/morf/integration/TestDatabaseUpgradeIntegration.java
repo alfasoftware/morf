@@ -47,6 +47,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import javax.sql.DataSource;
 
 import org.alfasoftware.morf.dataset.DataSetConnector;
@@ -129,6 +130,7 @@ import com.google.inject.Provider;
  *
  * @author Copyright (c) Alfa Financial Software 2012v
  */
+@NotThreadSafe
 public class TestDatabaseUpgradeIntegration {
 
   /***/

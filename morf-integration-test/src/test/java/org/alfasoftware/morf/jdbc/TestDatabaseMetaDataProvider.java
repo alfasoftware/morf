@@ -41,6 +41,8 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.function.Function;
 
+import javax.annotation.concurrent.NotThreadSafe;
+
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
@@ -72,6 +74,7 @@ import com.google.inject.Inject;
  *
  * @author Copyright (c) Alfa Financial Software 2011
  */
+@NotThreadSafe
 public class TestDatabaseMetaDataProvider {
 
   @Rule public InjectMembersRule injectMembersRule = new InjectMembersRule(new TestingDataSourceModule());

@@ -9,8 +9,11 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
 
+import javax.annotation.concurrent.NotThreadSafe;
+
 import org.alfasoftware.morf.dataset.DataSetConnector;
 import org.alfasoftware.morf.dataset.DataSetConsumer;
+import org.alfasoftware.morf.guicesupport.InjectMembersRule;
 import org.alfasoftware.morf.xml.XmlDataSetConsumer;
 import org.alfasoftware.morf.xml.XmlDataSetProducer;
 import org.apache.commons.logging.Log;
@@ -19,12 +22,15 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.junit.rules.TestRule;
+import org.junit.runners.model.Statement;
 
 import com.google.inject.util.Providers;
 
 /**
  * Verifies that two start position merge into
  */
+@NotThreadSafe
 public class TestMergingDatabaseDataSetConsumer {
 
   private static final Log log = LogFactory.getLog(TestMergingDatabaseDataSetConsumer.class);
@@ -33,6 +39,17 @@ public class TestMergingDatabaseDataSetConsumer {
   public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   ConnectionResourcesBean connectionResources;
+
+  @Rule
+  public TestRule syncronisation = (base, description) -> new Statement() {
+
+    @Override
+    public void evaluate() throws Throwable {
+      synchronized (InjectMembersRule.class) {
+        base.evaluate();
+      }
+    }
+  };
 
   @Before
   public void setup() {

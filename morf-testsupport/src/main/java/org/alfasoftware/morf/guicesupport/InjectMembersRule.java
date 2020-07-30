@@ -80,11 +80,13 @@ public class InjectMembersRule implements MethodRule {
         if (target instanceof Module) {
           moduleWithTarget.add((Module) target);
         }
-        Guice.createInjector(moduleWithTarget).injectMembers(target);
-        try {
-          base.evaluate();
-        } finally {
-          new ThreadSafeMockingProgress().reset();
+        synchronized (InjectMembersRule.class) {
+          Guice.createInjector(moduleWithTarget).injectMembers(target);
+          try {
+            base.evaluate();
+          } finally {
+            new ThreadSafeMockingProgress().reset();
+          }
         }
       }
     };

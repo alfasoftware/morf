@@ -29,14 +29,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import javax.sql.DataSource;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Schema;
@@ -52,6 +47,12 @@ import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager.TruncationBehavior;
 import org.alfasoftware.morf.testing.TestingDataSourceModule;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 
 import com.google.inject.Inject;
 import com.google.inject.Provider;
@@ -62,6 +63,7 @@ import com.google.inject.Provider;
  *
  * @author Copyright (c) Alfa Financial Software 2012
  */
+@NotThreadSafe
 public class TestConnectedSqlDialect {
   private static final Log log = LogFactory.getLog(TestConnectedSqlDialect.class);
 

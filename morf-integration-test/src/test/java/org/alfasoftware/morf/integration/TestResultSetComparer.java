@@ -112,6 +112,7 @@ public class TestResultSetComparer {
 
     // We don't want to inherit some old sequence numbers on existing tables - drop
     // so we reset any autonumbering
+    schemaManager.get().invalidateCache();
     schemaManager.get().dropTablesIfPresent(ImmutableSet.of("Autonumbered"));
     schemaManager.get().mutateToSupportSchema(schema, TruncationBehavior.ALWAYS);
     new DataSetConnector(dataSet, databaseDataSetConsumer.get()).connect();

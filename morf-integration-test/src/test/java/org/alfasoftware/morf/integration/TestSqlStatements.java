@@ -713,6 +713,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
   public void before() throws SQLException {
     // We don't want to inherit some old sequence numbers on existing tables
     // therefore we simply drop any tables with auto-numbering on them
+    schemaManager.get().invalidateCache();
     schemaManager.get().dropTablesIfPresent(ImmutableSet.of("Autonumbered", "MergeTableMultipleKeys"));
     // no need to truncate the tables, the connector does that anyway
     schemaManager.get().mutateToSupportSchema(schema, TruncationBehavior.ONLY_ON_TABLE_CHANGE);

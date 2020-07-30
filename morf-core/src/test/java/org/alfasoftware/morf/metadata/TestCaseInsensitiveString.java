@@ -4,6 +4,8 @@ import static org.alfasoftware.morf.metadata.CaseInsensitiveString.of;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import javax.annotation.concurrent.NotThreadSafe;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -12,6 +14,7 @@ import org.junit.Test;
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2019
  */
+@NotThreadSafe
 public class TestCaseInsensitiveString {
 
   @SuppressWarnings("deprecation")

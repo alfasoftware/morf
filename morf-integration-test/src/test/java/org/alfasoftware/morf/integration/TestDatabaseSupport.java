@@ -27,6 +27,8 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Random;
 
+import javax.annotation.concurrent.NotThreadSafe;
+
 import org.alfasoftware.morf.dataset.DataSetConnector;
 import org.alfasoftware.morf.dataset.DataSetHomology;
 import org.alfasoftware.morf.dataset.DataSetProducer;
@@ -59,6 +61,7 @@ import com.google.inject.Provider;
  *
  * @author Copyright (c) Alfa Financial Software 2012
  */
+@NotThreadSafe
 public class TestDatabaseSupport {
 
   @Rule public InjectMembersRule injectMembersRule = new InjectMembersRule(new TestingDataSourceModule());
