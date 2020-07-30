@@ -104,6 +104,7 @@
             <parallel>classes</parallel>
             <perCoreThreadCount>false</perCoreThreadCount>
             <threadCount>4</threadCount>
+            <runOrder>alphabetical</runOrder>
             <systemPropertyVariables>
               <log4j.configuration>file:${basedir}/../etc/log4j-maven.properties</log4j.configuration>
             </systemPropertyVariables>
