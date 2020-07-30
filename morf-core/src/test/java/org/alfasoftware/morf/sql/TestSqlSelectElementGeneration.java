@@ -36,6 +36,8 @@ import static org.junit.Assert.fail;
 
 import java.util.List;
 
+import javax.annotation.concurrent.NotThreadSafe;
+
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.Direction;
@@ -55,6 +57,7 @@ import com.google.common.collect.ImmutableSet;
  *
  * @author Copyright (c) Alfa Financial Software 2009
  */
+@NotThreadSafe
 public class TestSqlSelectElementGeneration {
 
   /**

@@ -27,6 +27,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import javax.sql.DataSource;
 
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
@@ -53,6 +54,7 @@ import com.google.inject.Inject;
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
+@NotThreadSafe
 public class TestFullDeployment {
 
   @Rule public InjectMembersRule injectMembersRule = new InjectMembersRule(new TestingDataSourceModule());

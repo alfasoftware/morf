@@ -35,6 +35,8 @@ import org.apache.commons.lang3.StringUtils;
 public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableWithTransformation<AliasedField,AliasedFieldBuilder>//  TEMPORARY - Transitional implementation of AliasedFieldBuilder
 {
 
+  private static final ThreadLocal<Boolean> isImmutableBuilderEnabledThreadLocalOverride = new ThreadLocal<>();
+
   /**
    * The alias to use for the field. TODO make final (see {@link #as(String)}).
    */
@@ -395,17 +397,11 @@ public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableW
   }
 
   private static void withImmutableBuilders(Runnable runnable, boolean enabled) {
-    String property = "AliasedField.IMMUTABLE_DSL_ENABLED";
-    String previousProperty = System.getProperty(property);
-    System.setProperty(property, enabled ? "true": "false");
+    isImmutableBuilderEnabledThreadLocalOverride.set(enabled);
     try {
       runnable.run();
     } finally {
-      if (previousProperty == null) {
-        System.clearProperty(property);
-      } else {
-        System.setProperty(property, previousProperty);
-      }
+      isImmutableBuilderEnabledThreadLocalOverride.remove();
     }
   }
 
@@ -416,6 +412,10 @@ public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableW
    * @return true if immutable builder behaviour is enabled.
    */
   public static boolean immutableDslEnabled() {
+    if (isImmutableBuilderEnabledThreadLocalOverride.get() != null) {
+      return isImmutableBuilderEnabledThreadLocalOverride.get();
+    }
+
     return Boolean.TRUE.toString()
         .equalsIgnoreCase(System.getProperty("AliasedField.IMMUTABLE_DSL_ENABLED"));
   }

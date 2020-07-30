@@ -101,6 +101,9 @@
           <artifactId>maven-surefire-plugin</artifactId>
           <version>${maven-surefire-plugin.version}</version>
           <configuration>
+            <parallel>classes</parallel>
+            <perCoreThreadCount>false</perCoreThreadCount>
+            <threadCount>4</threadCount>
             <systemPropertyVariables>
               <log4j.configuration>file:${basedir}/../etc/log4j-maven.properties</log4j.configuration>
             </systemPropertyVariables>

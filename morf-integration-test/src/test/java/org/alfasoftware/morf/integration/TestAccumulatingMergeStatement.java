@@ -21,6 +21,8 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.Executors;
 
+import javax.annotation.concurrent.NotThreadSafe;
+
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
@@ -51,6 +53,7 @@ import com.google.inject.Provider;
  *
  * @author Copyright (c) Alfa Financial Software 2019
  */
+@NotThreadSafe
 public class TestAccumulatingMergeStatement {
 
   @Rule public InjectMembersRule injectMembersRule = new InjectMembersRule(new TestingDataSourceModule());
