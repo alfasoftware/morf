@@ -27,7 +27,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Random;
 
-import javax.annotation.concurrent.NotThreadSafe;
+import net.jcip.annotations.NotThreadSafe;
 
 import org.alfasoftware.morf.dataset.DataSetConnector;
 import org.alfasoftware.morf.dataset.DataSetHomology;

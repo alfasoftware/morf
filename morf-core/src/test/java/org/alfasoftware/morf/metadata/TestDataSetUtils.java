@@ -25,6 +25,8 @@ import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
 import org.alfasoftware.morf.metadata.DataSetUtils.RecordDecorator;
 import org.joda.time.LocalDate;
 import org.junit.Test;
+import org.junit.rules.TestRule;
+import org.junit.runners.model.Statement;
 
 
 /**
@@ -53,6 +55,16 @@ public class TestDataSetUtils {
   private static final Long LONG = 3333333333333333333L;
   private static final byte[] BYTE_ARRAY = new byte[]{ -127, 127 };
   private static final String VALUE = "erg";
+
+  public TestRule syncronisation = (base, description) -> new Statement() {
+
+    @Override
+    public void evaluate() throws Throwable {
+      synchronized (CaseInsensitiveString.class) {
+        base.evaluate();
+      }
+    }
+  };
 
   @SuppressWarnings("deprecation")
   private static final RecordBuilder BASE_RECORD = record()
