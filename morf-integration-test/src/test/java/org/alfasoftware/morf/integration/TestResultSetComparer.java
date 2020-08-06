@@ -76,6 +76,8 @@ import com.google.common.collect.ImmutableSet;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 
+import net.jcip.annotations.NotThreadSafe;
+
 /**
  * Tests that the result set comparer is valid for all supported database platforms.
  * <p>
@@ -85,6 +87,7 @@ import com.google.inject.Provider;
  *
  * @author Copyright (c) Alfa Financial Software 2014
  */
+@NotThreadSafe
 public class TestResultSetComparer {
 
   @Rule public InjectMembersRule injectMembersRule = new InjectMembersRule(new TestingDataSourceModule(), new TestingDatabaseEquivalentStringComparator.Module());
