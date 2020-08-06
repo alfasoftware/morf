@@ -164,6 +164,8 @@ import com.google.common.collect.Sets;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 
+import net.jcip.annotations.NotThreadSafe;
+
 /**
  * Tests that the various SQL statement representations can be converted by the
  * SQL DSL to generate SQL that is valid for all supported database platforms.
@@ -181,6 +183,7 @@ import com.google.inject.Provider;
  * @author Copyright (c) Alfa Financial Software 2012
  */
 @FixMethodOrder(MethodSorters.NAME_ASCENDING) // This should be removed - see WEB-22433
+@NotThreadSafe
 public class TestSqlStatements { //CHECKSTYLE:OFF
 
   private static final String TEST_ONLY_RUN_WITH_WINDOW_FUNCTION_SUPPORT = "This test is only run for dialects that support window functions";

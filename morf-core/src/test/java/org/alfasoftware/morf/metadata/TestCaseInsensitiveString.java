@@ -4,10 +4,13 @@ import static org.alfasoftware.morf.metadata.CaseInsensitiveString.of;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import javax.annotation.concurrent.NotThreadSafe;
+import net.jcip.annotations.NotThreadSafe;
 
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
+import org.junit.runners.model.Statement;
 
 /**
  * Tests {@link CaseInsensitiveString}.
@@ -16,6 +19,17 @@ import org.junit.Test;
  */
 @NotThreadSafe
 public class TestCaseInsensitiveString {
+
+  @Rule
+  public TestRule syncronisation = (base, description) -> new Statement() {
+
+    @Override
+    public void evaluate() throws Throwable {
+      synchronized (CaseInsensitiveString.class) {
+        base.evaluate();
+      }
+    }
+  };
 
   @SuppressWarnings("deprecation")
   @Before

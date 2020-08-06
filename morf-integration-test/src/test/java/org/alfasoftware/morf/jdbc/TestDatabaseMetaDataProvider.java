@@ -41,7 +41,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.function.Function;
 
-import javax.annotation.concurrent.NotThreadSafe;
+import net.jcip.annotations.NotThreadSafe;
 
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
 import org.alfasoftware.morf.metadata.Column;
