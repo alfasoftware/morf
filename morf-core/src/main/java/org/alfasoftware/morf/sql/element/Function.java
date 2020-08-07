@@ -287,7 +287,8 @@ public final class Function extends AliasedField implements Driver {
    *
    * <p>Example : 3.2 rounds to 3 and 3.5 rounds to 4.</p>
    *
-   * <table border='1' summary=''>
+   * <table>
+   * <caption>Database rounding references</caption>
    * <tr><th>Database</th><th>Database Manual</th></tr>
    * <tr><td>Oracle</td><td>http://docs.oracle.com/cd/B19306_01/server.102/b14200/functions135.htm</td></tr>
    * <tr><td>MySQL</td><td>http://dev.mysql.com/doc/refman/5.0/en/mathematical-functions.html#function_round</td></tr>
@@ -295,7 +296,6 @@ public final class Function extends AliasedField implements Driver {
    * <tr><td>Db2400</td><td>http://publib.boulder.ibm.com/infocenter/db2luw/v9/index.jsp?topic=%2Fcom.ibm.db2.udb.admin.doc%2Fdoc%2Fr0000845.htm</td></tr>
    * <tr><td>H2</td><td>http://www.h2database.com/html/functions.html#round</td></tr>
    * </table>
-   * <br>
    *
    * @param expression the expression to evaluate
    * @param number an expression evaluating to the number of decimal places to round the expression to

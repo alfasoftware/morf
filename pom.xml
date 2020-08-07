@@ -118,6 +118,7 @@
           <configuration>
             <failOnError>true</failOnError>
             <quiet>true</quiet>
+            <detectJavaApiLink>false</detectJavaApiLink>
           </configuration>
           <executions>
             <execution>
