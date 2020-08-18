@@ -1,31 +1,26 @@
 package org.alfasoftware.morf.jdbc;
 
-import static com.google.common.io.Resources.getResource;
-import static org.alfasoftware.morf.xml.MorfXmlDatasetMatchers.sameXmlFileAndLengths;
-import static org.junit.Assert.assertThat;
-
-import java.io.File;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.net.URL;
-
+import com.google.inject.util.Providers;
 import net.jcip.annotations.NotThreadSafe;
-
 import org.alfasoftware.morf.dataset.DataSetConnector;
 import org.alfasoftware.morf.dataset.DataSetConsumer;
+import org.alfasoftware.morf.dataset.DataSetHomology;
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
-import org.alfasoftware.morf.xml.XmlDataSetConsumer;
 import org.alfasoftware.morf.xml.XmlDataSetProducer;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 import org.junit.rules.TestRule;
 import org.junit.runners.model.Statement;
 
-import com.google.inject.util.Providers;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.net.URL;
+
+import static com.google.common.io.Resources.getResource;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Verifies that two start position merge into
@@ -34,9 +29,6 @@ import com.google.inject.util.Providers;
 public class TestMergingDatabaseDataSetConsumer {
 
   private static final Log log = LogFactory.getLog(TestMergingDatabaseDataSetConsumer.class);
-
-  @Rule
-  public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   ConnectionResourcesBean connectionResources;
 
@@ -56,17 +48,6 @@ public class TestMergingDatabaseDataSetConsumer {
     connectionResources = new ConnectionResourcesBean(getResource("morf.properties"));
   }
 
-
-  private File getDatabaseAsFile() throws IOException {
-    DatabaseDataSetProducer databaseDataSetProducer = new DatabaseDataSetProducer(connectionResources);
-    File mergedExtractAsFile = temporaryFolder.newFile("merged-extract.zip");
-    mergedExtractAsFile.createNewFile();
-
-    XmlDataSetConsumer fileConsumer = new XmlDataSetConsumer(mergedExtractAsFile);
-    new DataSetConnector(databaseDataSetProducer, fileConsumer).connect();
-
-    return mergedExtractAsFile;
-  }
 
   /**
    * Verifies that merging two extracts containing both overlapping and non-overlapping records results in having the overlapping records
@@ -101,14 +82,9 @@ public class TestMergingDatabaseDataSetConsumer {
     DataSetConsumer mergingDatabaseDatasetConsumer = new MergingDatabaseDataSetConsumer(connectionResources, sqlScriptExecutorProvider);
     new DataSetConnector(new XmlDataSetProducer(datasetToMerge), mergingDatabaseDatasetConsumer).connect();
 
-    // ... and we pipe the result into a zip file
-    log.info("Creating an XML extract from the merged database tables.");
-    File mergedExtractsAsFile = getDatabaseAsFile();
-    log.info("Merged XML file creation complete.");
-
     // THEN
 
     // ... the resulting dataset matches the control one
-    assertThat("the merged dataset should match the control one", mergedExtractsAsFile, sameXmlFileAndLengths(controlExtract));
+    assertTrue("the merged dataset should match the control one", new DataSetHomology().dataSetProducersMatch(new DatabaseDataSetProducer(connectionResources), new XmlDataSetProducer(controlExtract)));
   }
 }
