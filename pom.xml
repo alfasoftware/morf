@@ -386,16 +386,6 @@
         <artifactId>serializer</artifactId>
         <version>${serializer.version}</version>
       </dependency>
-	  <dependency>
-	    <groupId>org.xmlunit</groupId>
-	    <artifactId>xmlunit-core</artifactId>
-	    <version>${xmlunit.version}</version>
-	  </dependency>
-	  <dependency>
-	    <groupId>org.xmlunit</groupId>
-	    <artifactId>xmlunit-matchers</artifactId>
-	    <version>${xmlunit.version}</version>
-	  </dependency>
     </dependencies>
   </dependencyManagement>
 
