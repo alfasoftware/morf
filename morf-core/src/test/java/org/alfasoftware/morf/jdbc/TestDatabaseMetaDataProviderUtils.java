@@ -48,6 +48,7 @@ public class TestDatabaseMetaDataProviderUtils {
 
     assertTrue(DatabaseMetaDataProviderUtils.shouldIgnoreIndex("Schedule_PRF0"));
     assertTrue(DatabaseMetaDataProviderUtils.shouldIgnoreIndex("Schedule_PRF1"));
+    assertTrue(DatabaseMetaDataProviderUtils.shouldIgnoreIndex("Schedule_PRF11"));
     assertTrue(DatabaseMetaDataProviderUtils.shouldIgnoreIndex("Fred_PRF2"));
     assertTrue(DatabaseMetaDataProviderUtils.shouldIgnoreIndex("Fred_prf2")); // everything has to be case-insensitive
   }
