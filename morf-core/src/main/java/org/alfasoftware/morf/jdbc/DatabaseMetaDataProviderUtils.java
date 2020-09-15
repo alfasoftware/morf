@@ -66,7 +66,9 @@ public class DatabaseMetaDataProviderUtils {
 
 
   /**
-   * Indexes which contain the suffix _PRF and a digit are to be ignored: this allows performance testing of new index to verify their effect, without breaking the schema checking.
+   * Indexes which contain the suffix _PRF and a digit are to be ignored:
+   * this allows performance testing of new index to verify their effect,
+   * without breaking the schema checking.
    *
    * eg. Schedule_PRF1
    *
@@ -74,6 +76,6 @@ public class DatabaseMetaDataProviderUtils {
    * @return Whether it should be ignored
    */
   public static boolean shouldIgnoreIndex(String indexName) {
-    return indexName.toUpperCase().matches(".*_PRF\\d$");
+    return indexName.toUpperCase().matches(".*_PRF\\d+$");
   }
 }
