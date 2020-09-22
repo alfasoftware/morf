@@ -36,7 +36,9 @@ import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deployedViewsTable;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.upgradeAuditTable;
+import static org.hamcrest.Matchers.equalToIgnoringCase;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -58,6 +60,7 @@ import org.alfasoftware.morf.guicesupport.InjectMembersRule;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddBasicTable;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddColumn;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddColumnDropDefaultValue;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddColumnWithoutDropDefaultValue;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddDataToAutonumberedColumn;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddDataToIdColumn;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddPrimaryKeyColumns;
@@ -105,6 +108,7 @@ import org.alfasoftware.morf.testing.DatabaseSchemaManager.TruncationBehavior;
 import org.alfasoftware.morf.testing.TestingDataSourceModule;
 import org.alfasoftware.morf.upgrade.LoggingSqlScriptVisitor;
 import org.alfasoftware.morf.upgrade.Upgrade;
+import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsException;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
@@ -933,6 +937,56 @@ public class TestDatabaseUpgradeIntegration {
             + "|(" + "ORA-01400: cannot insert NULL into \\(.*ANOTHERVALUE.*\\)" + ".*)" // Oracle
             + "|(" + "ERROR: null value in column \"anothervalue\" violates not-null constraint" + ".*)" // PgSQL
         ));
+    }
+  }
+
+
+  /**
+   * Tests adding non-nullable column to the table,
+   * and leaving a default value behind.
+   */
+  @Test
+  public void testAddColumnWithoutDropDefault1() throws SQLException {
+    Schema expected = replaceTablesInSchema(
+      table("WithDefaultValue")
+        .columns(
+          column("id", DataType.STRING, 3).primaryKey(),
+          column("version", DataType.INTEGER).defaultValue("0"),
+          column("anotherValue", DataType.STRING, 10)
+        )
+      );
+
+    try {
+      verifyUpgrade(expected, AddColumnWithoutDropDefaultValue.class);
+
+      fail ("Should not upgrade because of forgotten DEFAULT value");
+    }
+    catch (NoUpgradePathExistsException e) { /* happy path */ }
+  }
+
+
+  /**
+   * Tests adding non-nullable column to the table,
+   * and leaving a default value behind.
+   */
+  @Test
+  public void testAddColumnWithoutDropDefault2() throws SQLException {
+    Schema expected = replaceTablesInSchema(
+      table("WithDefaultValue")
+        .columns(
+          column("id", DataType.STRING, 3).primaryKey(),
+          column("version", DataType.INTEGER).defaultValue("0"),
+          column("anotherValue", DataType.STRING, 10).defaultValue("OLD")
+        )
+      );
+
+    try {
+      verifyUpgrade(expected, AddColumnWithoutDropDefaultValue.class);
+
+      fail ("Should not upgrade because of forgotten DEFAULT value");
+    }
+    catch (java.lang.AssertionError e) {
+      assertThat(e.getMessage(), equalToIgnoringCase("[Column [anotherValue] on table [WithDefaultValue] default value does not match: [OLD] in expected, [] in actual]"));
     }
   }
 
