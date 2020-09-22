@@ -71,6 +71,7 @@ import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.CorrectPrimaryKeyOrder;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.CorrectPrimaryKeyOrderNoOp;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.CreateTableAsSelect;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.DropLurkingDefaultValue;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.DropPrimaryKey;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ReduceStringColumnWidth;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RemoveAutoNumbered;
@@ -988,6 +989,24 @@ public class TestDatabaseUpgradeIntegration {
     catch (java.lang.AssertionError e) {
       assertThat(e.getMessage(), equalToIgnoringCase("[Column [anotherValue] on table [WithDefaultValue] default value does not match: [OLD] in expected, [] in actual]"));
     }
+  }
+
+
+  /**
+   * Tests adding non-nullable column to the table,
+   * and leaving a default value behind.
+   */
+  @Test
+  public void testDropDefaultValue() throws SQLException {
+    Schema expected = replaceTablesInSchema(
+      table("CompositeKeyTable")
+        .columns(
+          column("keyCol1", DataType.STRING, 20).primaryKey(),
+          column("keyCol2", DataType.STRING, 20).primaryKey(),
+          column("valCol", DataType.STRING, 20))
+      );
+
+    verifyUpgrade(expected, DropLurkingDefaultValue.class);
   }
 
 
