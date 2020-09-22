@@ -445,7 +445,7 @@ public class OracleMetaDataProvider implements Schema {
     long end = System.currentTimeMillis();
     if (log.isDebugEnabled()) log.debug(String.format("Loaded index column list in %dms", end - pointThree));
 
-    log.info(String.format("Read table metadata in %dms", end - start));
+    log.info(String.format("Read table metadata in %dms; %d tables", end - start, tableMap.size()));
   }
 
 
@@ -555,7 +555,7 @@ public class OracleMetaDataProvider implements Schema {
     });
 
     long end = System.currentTimeMillis();
-    log.info(String.format("Read view metadata in %dms", end - start));
+    log.info(String.format("Read view metadata in %dms; %d views", end - start, viewMap.size()));
   }
 
 

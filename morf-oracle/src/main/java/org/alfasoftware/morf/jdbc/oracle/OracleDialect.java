@@ -807,8 +807,7 @@ class OracleDialect extends SqlDialect {
     }
 
     boolean includeNullability = newColumn.isNullable() != oldColumn.isNullable();
-    boolean includeColumnType = newColumn.getType() != oldColumn.getType() || newColumn.getWidth() != oldColumn.getWidth() || newColumn
-        .getScale() != oldColumn.getScale();
+    boolean includeColumnType = newColumn.getType() != oldColumn.getType() || newColumn.getWidth() != oldColumn.getWidth() || newColumn.getScale() != oldColumn.getScale();
     String sqlRepresentationOfColumnType = sqlRepresentationOfColumnType(newColumn, includeNullability, true, includeColumnType);
 
     if (!StringUtils.isBlank(sqlRepresentationOfColumnType)) {
@@ -823,6 +822,19 @@ class OracleDialect extends SqlDialect {
         .append(")");
 
       result.add(statement.toString());
+    }
+
+    if (!StringUtils.isBlank(oldColumn.getDefaultValue()) && StringUtils.isBlank(newColumn.getDefaultValue())) {
+      StringBuilder statement = new StringBuilder()
+          .append("ALTER TABLE ")
+          .append(schemaNamePrefix())
+          .append(truncatedTableName)
+          .append(" MODIFY (")
+          .append(newColumn.getName())
+          .append(" DEFAULT NULL")
+          .append(")");
+
+        result.add(statement.toString());
     }
 
     if (recreatePrimaryKey && !primaryKeysForTable(table).isEmpty()) {
