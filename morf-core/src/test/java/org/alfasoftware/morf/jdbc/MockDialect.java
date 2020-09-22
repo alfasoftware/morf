@@ -272,9 +272,9 @@ public class MockDialect extends SqlDialect {
 
     // Now do column operations on the new
     if (StringUtils.isNotEmpty(newColumn.getDefaultValue())) {
-      String escape = newColumn.getType() == DataType.STRING ? "'" : "";
-      result.add("ALTER TABLE " + table.getName() + " ALTER COLUMN " + newColumn.getName() + " SET DEFAULT " + escape
-          + newColumn.getDefaultValue() + escape);
+
+      result.add("ALTER TABLE " + table.getName() + " ALTER COLUMN " + newColumn.getName() + " SET DEFAULT "
+          + sqlForDefaultClauseLiteral(newColumn));
     }
 
     if (oldColumn.isNullable() != newColumn.isNullable()) {

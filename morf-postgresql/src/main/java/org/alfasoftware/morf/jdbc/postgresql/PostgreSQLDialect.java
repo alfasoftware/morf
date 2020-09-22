@@ -592,7 +592,7 @@ class PostgreSQLDialect extends SqlDialect {
                 + (alterNullable && alterType ? "," : "")
                 + (alterType ? " ALTER COLUMN " + newColumn.getName() + " TYPE " + sqlRepresentationOfColumnType(newColumn, false, false, true) : "")
                 + (alterDefaultValue && (alterNullable || alterType) ? "," : "")
-                + (alterDefaultValue ? " ALTER COLUMN " + newColumn.getName() + (!newColumn.getDefaultValue().isEmpty() ? " SET DEFAULT " + newColumn.getDefaultValue() : " DROP DEFAULT") : "")
+                + (alterDefaultValue ? " ALTER COLUMN " + newColumn.getName() + (!newColumn.getDefaultValue().isEmpty() ? " SET DEFAULT " + sqlForDefaultClauseLiteral(newColumn) : " DROP DEFAULT") : "")
         );
     return sqlBuilder.toString();
   }
