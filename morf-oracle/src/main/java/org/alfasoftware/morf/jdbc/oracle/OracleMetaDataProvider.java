@@ -753,7 +753,7 @@ public class OracleMetaDataProvider implements Schema {
     final String trimedActualDefaultValue = actualDefaultValue.trim();
 
     // columns that previously had DEFAULT and were set to DEFAULT NULL
-    if ("NULL".equals(trimedActualDefaultValue))
+    if ("NULL".equalsIgnoreCase(trimedActualDefaultValue))
       return "";
 
     // columns that previously had DEFAULT and were set to DEFAULT ''
