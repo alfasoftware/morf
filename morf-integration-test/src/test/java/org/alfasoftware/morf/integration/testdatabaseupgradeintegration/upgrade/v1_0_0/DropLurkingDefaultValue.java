@@ -28,10 +28,13 @@ import org.alfasoftware.morf.upgrade.UUID;
 public class DropLurkingDefaultValue extends AbstractTestUpgradeStep {
   @Override
   public void execute(SchemaEditor schema, DataEditor data) {
+
+    // introduce a new special default value; the upgrade path finder would not allow us to drop it otherwise
     schema.changeColumn("CompositeKeyTable",
       column("valCol", DataType.STRING, 20),
       column("valCol", DataType.STRING, 20).defaultValue("XXX"));
 
+    // now drop the newly introduced default value
     schema.changeColumn("CompositeKeyTable",
       column("valCol", DataType.STRING, 20).defaultValue("XXX"),
       column("valCol", DataType.STRING, 20));
