@@ -191,7 +191,7 @@ public class OracleMetaDataProvider implements Schema {
             Integer dataScale = resultSet.getInt(9);
             String nullableStr = resultSet.getString(10);
             String defaultValue = determineDefaultValue(columnName);
-            String actualDefaultValue = trimActualDefaultValue(resultSet.getString(11));
+            String actualDefaultValue = determineActualDefaultValue(resultSet.getString(11));
             if (!defaultValue.equals(actualDefaultValue)) {
                 log.warn("DEFAULT value for " + tableName + "." + columnName + " expected to be [" + defaultValue + "], but was [" + actualDefaultValue + "]");
             }
@@ -745,7 +745,7 @@ public class OracleMetaDataProvider implements Schema {
   }
 
 
-  private String trimActualDefaultValue(final String actualDefaultValue) {
+  private String determineActualDefaultValue(final String actualDefaultValue) {
     // columns that never had DEFAULT
     if (actualDefaultValue == null)
       return "";

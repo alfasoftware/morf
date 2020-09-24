@@ -947,7 +947,7 @@ public class TestDatabaseUpgradeIntegration {
    * and leaving a default value behind.
    */
   @Test
-  public void testAddColumnWithoutDropDefault1() throws SQLException {
+  public void testAddColumnWithoutDropDefaultAsIfDropWasForgotten() throws SQLException {
     Schema expected = replaceTablesInSchema(
       table("WithDefaultValue")
         .columns(
@@ -971,7 +971,7 @@ public class TestDatabaseUpgradeIntegration {
    * and leaving a default value behind.
    */
   @Test
-  public void testAddColumnWithoutDropDefault2() throws SQLException {
+  public void testAddColumnWithoutDropDefaultAsIfNoDropWasIntended() throws SQLException {
     Schema expected = replaceTablesInSchema(
       table("WithDefaultValue")
         .columns(
