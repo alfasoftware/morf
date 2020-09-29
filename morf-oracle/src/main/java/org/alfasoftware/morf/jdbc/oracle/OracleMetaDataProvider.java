@@ -191,6 +191,10 @@ public class OracleMetaDataProvider implements Schema {
             Integer dataScale = resultSet.getInt(9);
             String nullableStr = resultSet.getString(10);
             String defaultValue = determineDefaultValue(columnName);
+            String actualDefaultValue = determineActualDefaultValue(resultSet.getString(11));
+            if (!defaultValue.equals(actualDefaultValue)) {
+                log.warn("DEFAULT value for " + tableName + "." + columnName + " expected to be [" + defaultValue + "], but was [" + actualDefaultValue + "]");
+            }
 
             handleTableColumnRow(primaryKeys, tableName, tableComment, columnName, columnComment, dataTypeName, dataLength,
               dataPrecision, dataScale, nullableStr, defaultValue);
@@ -445,7 +449,7 @@ public class OracleMetaDataProvider implements Schema {
     long end = System.currentTimeMillis();
     if (log.isDebugEnabled()) log.debug(String.format("Loaded index column list in %dms", end - pointThree));
 
-    log.info(String.format("Read table metadata in %dms", end - start));
+    log.info(String.format("Read table metadata in %dms; %d tables", end - start, tableMap.size()));
   }
 
 
@@ -555,7 +559,7 @@ public class OracleMetaDataProvider implements Schema {
     });
 
     long end = System.currentTimeMillis();
-    log.info(String.format("Read view metadata in %dms", end - start));
+    log.info(String.format("Read view metadata in %dms; %d views", end - start, viewMap.size()));
   }
 
 
@@ -739,6 +743,32 @@ public class OracleMetaDataProvider implements Schema {
 
     return "";
   }
+
+
+  private String determineActualDefaultValue(final String actualDefaultValue) {
+    // columns that never had DEFAULT
+    if (actualDefaultValue == null)
+      return "";
+
+    final String trimedActualDefaultValue = actualDefaultValue.trim();
+
+    // columns that previously had DEFAULT and were set to DEFAULT NULL
+    if ("NULL".equalsIgnoreCase(trimedActualDefaultValue))
+      return "";
+
+    // columns that previously had DEFAULT and were set to DEFAULT ''
+    if ("''".equals(trimedActualDefaultValue))
+      return "";
+
+    // other values returned with just a bit of trimming
+    // - note that these are Oracle expressions, not actual default values
+    // - simple decimals come back as decimals,
+    // - strings come back wrapped in single quotes,
+    // - functions come back as expressions,
+    // - as specified in the last alter statement
+    return trimedActualDefaultValue;
+  }
+
 
   /**
    * @see org.alfasoftware.morf.metadata.Schema#viewExists(java.lang.String)

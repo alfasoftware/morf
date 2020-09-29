@@ -699,6 +699,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAlterBigIntegerColumnStatement() {
     return Arrays.asList(
+      "ALTER TABLE TESTSCHEMA.Test MODIFY (bigIntegerField DEFAULT NULL)",
       "COMMENT ON COLUMN TESTSCHEMA.Test.bigIntegerField IS 'REALNAME:[bigIntegerField]/TYPE:[BIG_INTEGER]'");
   }
 

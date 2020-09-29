@@ -460,11 +460,10 @@ class NuoDBDialect extends SqlDialect {
   private List<String> changeColumnNullability(Table table, Column oldColumn, Column newColumn) {
     List<String> result = new ArrayList<>();
     if (StringUtils.isNotEmpty(newColumn.getDefaultValue())) {
-      String escape = newColumn.getType() == DataType.STRING ? "'" : "";
       result.add(
         "ALTER TABLE " + qualifiedTableName(table) + " ALTER COLUMN " + newColumn.getName()
         + " NOT NULL" // required by the DEFAULT to update existing rows
-        + " DEFAULT " + escape + newColumn.getDefaultValue() + escape
+        + " DEFAULT " + sqlForDefaultClauseLiteral(newColumn)
       );
     }
     else if (!StringUtils.equals(oldColumn.getDefaultValue(), newColumn.getDefaultValue())) {
