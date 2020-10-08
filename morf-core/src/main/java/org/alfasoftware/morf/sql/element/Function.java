@@ -327,7 +327,10 @@ public final class Function extends AliasedField implements Driver {
    * @param fieldToEvaluate the field to evaluate in the is null function
    * @param replacementValue The replacement value
    * @return an instance of the is null function
+   *
+   * @deprecated Use {@link #coalesce(AliasedField...)} instead.
    */
+  @Deprecated
   public static Function isnull(AliasedField fieldToEvaluate, AliasedField replacementValue) {
     return new Function(FunctionType.IS_NULL, fieldToEvaluate, replacementValue);
   }
