@@ -366,13 +366,13 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
   public T innerJoin(TableReference toTable, Criterion criterion) {
     return copyOnWriteOrMutate(
         b -> b.innerJoin(toTable, criterion),
-        () -> joins.add(new Join(JoinType.INNER_JOIN, toTable).on(criterion))
+        () -> joins.add(new Join(JoinType.INNER_JOIN, toTable, criterion))
     );
   }
 
 
   /**
-   * Specifies a table to which to perform a cross join/cartesian product.
+   * Specifies a table to cross join to (creating a cartesian product).
    *
    * <blockquote><pre>
    * TableReference foo = tableRef("Foo");
@@ -385,6 +385,21 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
    * @param toTable the table to join to
    * @return a new select statement with the change applied.
    */
+  public T crossJoin(TableReference toTable) {
+    return copyOnWriteOrMutate(
+        b -> b.crossJoin(toTable),
+        () -> joins.add(new Join(JoinType.INNER_JOIN, toTable, null))
+    );
+  }
+
+
+  /**
+   * @deprecated Use {@link #crossJoin(TableReference)} to do a cross join;
+   *             or add join conditions for {@link #innerJoin(SelectStatement, Criterion)
+   *             to make this an inner join.
+   */
+  @Deprecated
+  @SuppressWarnings("deprecation")
   public T innerJoin(TableReference toTable) {
     return copyOnWriteOrMutate(
         b -> b.innerJoin(toTable),
@@ -426,13 +441,13 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
   public T innerJoin(SelectStatement subSelect, Criterion onCondition) {
     return copyOnWriteOrMutate(
         b -> b.innerJoin(subSelect, onCondition),
-        () -> joins.add(new Join(JoinType.INNER_JOIN, subSelect).on(onCondition))
+        () -> joins.add(new Join(JoinType.INNER_JOIN, subSelect, onCondition))
     );
   }
 
 
   /**
-   * Specifies an cross join to a subselect:
+   * Specifies a cross join (creating a cartesian product) to a subselect:
    *
    * <blockquote><pre>
    * // Each sale as a percentage of all sales
@@ -454,6 +469,20 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
    * @param subSelect the sub select statement to join on to
    * @return a new select statement with the change applied.
    */
+  public T crossJoin(SelectStatement subSelect) {
+    return copyOnWriteOrMutate(
+        b -> b.crossJoin(subSelect),
+        () -> joins.add(new Join(JoinType.INNER_JOIN, subSelect, null))
+    );
+  }
+
+  /**
+   * @deprecated Use {@link #crossJoin(SelectStatement)} to do a cross join;
+   *             or add join conditions for {@link #innerJoin(SelectStatement, Criterion)
+   *             to make this an inner join.
+   */
+  @Deprecated
+  @SuppressWarnings("deprecation")
   public T innerJoin(SelectStatement subSelect) {
     return copyOnWriteOrMutate(
         b -> b.innerJoin(subSelect),
@@ -480,7 +509,7 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
   public T leftOuterJoin(TableReference toTable, Criterion criterion) {
     return copyOnWriteOrMutate(
         b -> b.leftOuterJoin(toTable, criterion),
-        () -> joins.add(new Join(JoinType.LEFT_OUTER_JOIN, toTable).on(criterion))
+        () -> joins.add(new Join(JoinType.LEFT_OUTER_JOIN, toTable, criterion))
     );
   }
 
@@ -522,7 +551,7 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
   public T leftOuterJoin(SelectStatement subSelect, Criterion criterion) {
     return copyOnWriteOrMutate(
         b -> b.leftOuterJoin(subSelect, criterion),
-        () -> joins.add(new Join(JoinType.LEFT_OUTER_JOIN, subSelect).on(criterion))
+        () -> joins.add(new Join(JoinType.LEFT_OUTER_JOIN, subSelect, criterion))
     );
   }
 
