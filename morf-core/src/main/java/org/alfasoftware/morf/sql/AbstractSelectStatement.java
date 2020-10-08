@@ -103,7 +103,7 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
   }
 
 
-  protected AbstractSelectStatement(List<? extends AliasedFieldBuilder> aliasedFields) {
+  protected AbstractSelectStatement(Iterable<? extends AliasedFieldBuilder> aliasedFields) {
     if (AliasedField.immutableDslEnabled()) {
       this.fromSelects = ImmutableList.of();
       this.joins = ImmutableList.of();
@@ -160,7 +160,7 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
   /**
    * @param aliasedFields The fields to add
    */
-  protected void addFields(List<? extends AliasedFieldBuilder> aliasedFields) {
+  protected void addFields(Iterable<? extends AliasedFieldBuilder> aliasedFields) {
     AliasedField.assetImmutableDslDisabled();
     fields.addAll(FluentIterable.from(aliasedFields)
       .transform(Builder.Helper.<AliasedField>buildAll()).toList());
