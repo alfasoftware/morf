@@ -18,6 +18,7 @@ package org.alfasoftware.morf.jdbc;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static org.alfasoftware.morf.metadata.DataSetUtils.statementParameters;
+import static org.alfasoftware.morf.metadata.SchemaUtils.autonumber;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.idColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
@@ -39,15 +40,47 @@ import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.SqlUtils.update;
 import static org.alfasoftware.morf.sql.SqlUtils.windowFunction;
 import static org.alfasoftware.morf.sql.element.Criterion.and;
+import static org.alfasoftware.morf.sql.element.Criterion.eq;
+import static org.alfasoftware.morf.sql.element.Criterion.exists;
+import static org.alfasoftware.morf.sql.element.Criterion.greaterThan;
+import static org.alfasoftware.morf.sql.element.Criterion.greaterThanOrEqualTo;
+import static org.alfasoftware.morf.sql.element.Criterion.in;
+import static org.alfasoftware.morf.sql.element.Criterion.isNotNull;
+import static org.alfasoftware.morf.sql.element.Criterion.isNull;
+import static org.alfasoftware.morf.sql.element.Criterion.lessThan;
+import static org.alfasoftware.morf.sql.element.Criterion.lessThanOrEqualTo;
+import static org.alfasoftware.morf.sql.element.Criterion.like;
+import static org.alfasoftware.morf.sql.element.Criterion.neq;
+import static org.alfasoftware.morf.sql.element.Criterion.not;
+import static org.alfasoftware.morf.sql.element.Criterion.or;
+import static org.alfasoftware.morf.sql.element.Function.addDays;
+import static org.alfasoftware.morf.sql.element.Function.addMonths;
 import static org.alfasoftware.morf.sql.element.Function.average;
+import static org.alfasoftware.morf.sql.element.Function.coalesce;
 import static org.alfasoftware.morf.sql.element.Function.count;
+import static org.alfasoftware.morf.sql.element.Function.dateToYyyyMMddHHmmss;
+import static org.alfasoftware.morf.sql.element.Function.dateToYyyymmdd;
 import static org.alfasoftware.morf.sql.element.Function.daysBetween;
 import static org.alfasoftware.morf.sql.element.Function.every;
+import static org.alfasoftware.morf.sql.element.Function.floor;
+import static org.alfasoftware.morf.sql.element.Function.isnull;
+import static org.alfasoftware.morf.sql.element.Function.leftPad;
+import static org.alfasoftware.morf.sql.element.Function.leftTrim;
+import static org.alfasoftware.morf.sql.element.Function.lowerCase;
 import static org.alfasoftware.morf.sql.element.Function.max;
 import static org.alfasoftware.morf.sql.element.Function.min;
+import static org.alfasoftware.morf.sql.element.Function.mod;
+import static org.alfasoftware.morf.sql.element.Function.now;
+import static org.alfasoftware.morf.sql.element.Function.power;
 import static org.alfasoftware.morf.sql.element.Function.random;
+import static org.alfasoftware.morf.sql.element.Function.randomString;
+import static org.alfasoftware.morf.sql.element.Function.rightTrim;
+import static org.alfasoftware.morf.sql.element.Function.round;
 import static org.alfasoftware.morf.sql.element.Function.some;
+import static org.alfasoftware.morf.sql.element.Function.substring;
 import static org.alfasoftware.morf.sql.element.Function.sum;
+import static org.alfasoftware.morf.sql.element.Function.upperCase;
+import static org.alfasoftware.morf.sql.element.Function.yyyymmddToDate;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -80,7 +113,6 @@ import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.DeleteStatement;
@@ -93,7 +125,6 @@ import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.CaseStatement;
 import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
-import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.Direction;
 import org.alfasoftware.morf.sql.element.FieldFromSelect;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
@@ -385,13 +416,13 @@ public abstract class AbstractSqlDialectTest {
     // Test table with a database-supplied unique id
     Table autoNumber = table(AUTO_NUMBER_TABLE)
         .columns(
-          SchemaUtils.autonumber(INT_FIELD, 5)
+          autonumber(INT_FIELD, 5)
             );
 
     // Test view
     TableReference tr = new TableReference(TEST_TABLE);
     FieldReference f = new FieldReference(STRING_FIELD);
-    testView = view("TestView", select(f).from(tr).where(Criterion.eq(f, new FieldLiteral("blah"))));
+    testView = view("TestView", select(f).from(tr).where(eq(f, new FieldLiteral("blah"))));
 
     Table inner = table("Inner")
         .columns(
@@ -535,7 +566,7 @@ public abstract class AbstractSqlDialectTest {
     assertEquals(
       expectedSelectLiteralWithWhereClauseString(),
       testDialect.convertStatementToSQL(
-        new SelectStatement(new FieldLiteral("LITERAL")).where(Criterion.eq(new FieldLiteral("ONE"), "ONE"))
+        new SelectStatement(new FieldLiteral("LITERAL")).where(eq(new FieldLiteral("ONE"), "ONE"))
       )
     );
   }
@@ -718,7 +749,7 @@ public abstract class AbstractSqlDialectTest {
       new FieldReference(INT_FIELD),
       new FieldReference(DATE_FIELD).as("aliasDate"))
     .from(new TableReference(TEST_TABLE).as("T"))
-    .innerJoin(new TableReference(ALTERNATE_TABLE).as("A"), Criterion.eq(new FieldReference(new TableReference("T"), STRING_FIELD), new FieldReference(new TableReference("A"), STRING_FIELD)));
+    .innerJoin(new TableReference(ALTERNATE_TABLE).as("A"), eq(new FieldReference(new TableReference("T"), STRING_FIELD), new FieldReference(new TableReference("A"), STRING_FIELD)));
 
     String expectedSql = "SELECT stringField, intField, dateField AS aliasDate FROM " + tableName(TEST_TABLE) + " T INNER JOIN " + tableName(ALTERNATE_TABLE) + " A ON (T.stringField = A.stringField)";
     assertEquals("Select scripts are not the same", expectedSql, testDialect.convertStatementToSQL(stmt));
@@ -731,7 +762,7 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testSelectWhereScript() {
     SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
-        .where(Criterion.eq(new FieldReference(STRING_FIELD), "A0001"));
+        .where(eq(new FieldReference(STRING_FIELD), "A0001"));
 
     String value = varCharCast("'A0001'");
     String expectedSql = "SELECT * FROM " + tableName(TEST_TABLE) + " WHERE (stringField = " + stringLiteralPrefix() +value+")";
@@ -745,9 +776,9 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testSelectNestedOrWhereScript() {
     SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
-        .where(Criterion.or(
-          Criterion.eq(new FieldReference(STRING_FIELD), "A0001"),
-          Criterion.greaterThan(new FieldReference(INT_FIELD), new Integer(20080101))));
+        .where(or(
+          eq(new FieldReference(STRING_FIELD), "A0001"),
+          greaterThan(new FieldReference(INT_FIELD), new Integer(20080101))));
 
     String value = varCharCast("'A0001'");
     String expectedSql = "SELECT * FROM " + tableName(TEST_TABLE) + " WHERE ((stringField = " + stringLiteralPrefix() + value+") OR (intField > 20080101))";
@@ -761,9 +792,9 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testSelectNestedAndWhereScript() {
     SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
-        .where(Criterion.and(
-          Criterion.eq(new FieldReference(STRING_FIELD), "A0001"),
-          Criterion.greaterThan(new FieldReference(INT_FIELD), new Integer(20080101))));
+        .where(and(
+          eq(new FieldReference(STRING_FIELD), "A0001"),
+          greaterThan(new FieldReference(INT_FIELD), new Integer(20080101))));
 
     String value = varCharCast("'A0001'");
     String expectedSql = "SELECT * FROM " + tableName(TEST_TABLE) + " WHERE ((stringField = " + stringLiteralPrefix() +value+") AND (intField > 20080101))";
@@ -777,8 +808,8 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testSelectNotWhereScript() {
     SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
-        .where(Criterion.not(
-          Criterion.eq(new FieldReference(STRING_FIELD), "A0001")
+        .where(not(
+          eq(new FieldReference(STRING_FIELD), "A0001")
             ));
 
     String value = varCharCast("'A0001'");
@@ -793,10 +824,10 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testSelectMultipleWhereScript() {
     SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
-        .where(Criterion.and(
-          Criterion.eq(new FieldReference(STRING_FIELD), "A0001"),
-          Criterion.greaterThan(new FieldReference(INT_FIELD), new Integer(20080101)),
-          Criterion.lessThan(new FieldReference(DATE_FIELD), new Integer(20090101))
+        .where(and(
+          eq(new FieldReference(STRING_FIELD), "A0001"),
+          greaterThan(new FieldReference(INT_FIELD), new Integer(20080101)),
+          lessThan(new FieldReference(DATE_FIELD), new Integer(20090101))
             ));
 
     String value = varCharCast("'A0001'");
@@ -811,11 +842,11 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testSelectMultipleNestedWhereScript() {
     SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
-        .where(Criterion.and(
-          Criterion.eq(new FieldReference(STRING_FIELD), "A0001"),
-          Criterion.or(
-            Criterion.greaterThan(new FieldReference(INT_FIELD), new Integer(20080101)),
-            Criterion.lessThan(new FieldReference(DATE_FIELD), new Integer(20090101))
+        .where(and(
+          eq(new FieldReference(STRING_FIELD), "A0001"),
+          or(
+            greaterThan(new FieldReference(INT_FIELD), new Integer(20080101)),
+            lessThan(new FieldReference(DATE_FIELD), new Integer(20090101))
               )
             ));
 
@@ -832,7 +863,7 @@ public abstract class AbstractSqlDialectTest {
   public void testSelectSimpleJoinScript() {
     SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
         .innerJoin(new TableReference(ALTERNATE_TABLE),
-          Criterion.eq(new FieldReference(new TableReference(TEST_TABLE), STRING_FIELD),
+          eq(new FieldReference(new TableReference(TEST_TABLE), STRING_FIELD),
             new FieldReference(new TableReference(ALTERNATE_TABLE), STRING_FIELD))
             );
 
@@ -849,13 +880,13 @@ public abstract class AbstractSqlDialectTest {
   public void testSelectMultipleJoinScript() {
     SelectStatement stmt = new SelectStatement().from(new TableReference(ALTERNATE_TABLE))
         .innerJoin(new TableReference(TEST_TABLE),
-          Criterion.eq(new FieldReference(new TableReference(ALTERNATE_TABLE), STRING_FIELD),
+          eq(new FieldReference(new TableReference(ALTERNATE_TABLE), STRING_FIELD),
             new FieldReference(new TableReference(TEST_TABLE), STRING_FIELD))
             ).leftOuterJoin(new TableReference(OTHER_TABLE),
-              Criterion.and(
-                Criterion.eq(new FieldReference(new TableReference(TEST_TABLE), STRING_FIELD),
+              and(
+                eq(new FieldReference(new TableReference(TEST_TABLE), STRING_FIELD),
                   new FieldReference(new TableReference(OTHER_TABLE), STRING_FIELD)),
-                  Criterion.eq(new FieldReference(new TableReference(TEST_TABLE), INT_FIELD),
+                  eq(new FieldReference(new TableReference(TEST_TABLE), INT_FIELD),
                     new FieldReference(new TableReference(OTHER_TABLE), INT_FIELD))
                   )
                 );
@@ -873,7 +904,7 @@ public abstract class AbstractSqlDialectTest {
     SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD))
     .from(new TableReference(ALTERNATE_TABLE))
     .groupBy(new FieldReference(STRING_FIELD))
-    .having(Criterion.eq(new FieldReference("blah"), "X"));
+    .having(eq(new FieldReference("blah"), "X"));
 
     String value = varCharCast("'X'");
     String expectedSql = "SELECT stringField FROM " + tableName(ALTERNATE_TABLE) + " GROUP BY stringField HAVING (blah = " + stringLiteralPrefix() + value+")";
@@ -992,7 +1023,7 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testCaseSelect() {
     WhenCondition whenCondition  = new WhenCondition(
-      Criterion.eq(new FieldReference(CHAR_FIELD),  new FieldLiteral('Y')),
+      eq(new FieldReference(CHAR_FIELD),  new FieldLiteral('Y')),
       new FieldReference(INT_FIELD));
 
     SelectStatement stmt = new SelectStatement(
@@ -1017,7 +1048,7 @@ public abstract class AbstractSqlDialectTest {
 
     CaseStatement enabledWhenAutoRunIsT =
         new CaseStatement(new FieldLiteral("DISABLED"),
-          new WhenCondition(Criterion.eq(new FieldReference("autorunBackgroundProcess"),
+          new WhenCondition(eq(new FieldReference("autorunBackgroundProcess"),
             new FieldLiteral("Y")),
             new FieldLiteral("ENABLED")));
 
@@ -1042,7 +1073,7 @@ public abstract class AbstractSqlDialectTest {
   public void testSelectWithLessThanWhereClauses() {
     SelectStatement stmt = new SelectStatement()
     .from(new TableReference(TEST_TABLE))
-    .where(Criterion.lessThan(new FieldReference(INT_FIELD), new Integer(20090101)));
+    .where(lessThan(new FieldReference(INT_FIELD), new Integer(20090101)));
 
     String expectedSql = "SELECT * FROM " + tableName(TEST_TABLE) + " WHERE (intField < 20090101)";
     assertEquals("Select with less than where clause", expectedSql, testDialect.convertStatementToSQL(stmt));
@@ -1056,7 +1087,7 @@ public abstract class AbstractSqlDialectTest {
   public void testSelectWithLikeClause() {
     SelectStatement stmt = new SelectStatement()
     .from(new TableReference(TEST_TABLE))
-    .where(Criterion.like(new FieldReference(STRING_FIELD), "A%"));
+    .where(like(new FieldReference(STRING_FIELD), "A%"));
 
     String value = varCharCast("'A%'");
     String expectedSql = "SELECT * FROM " + tableName(TEST_TABLE) + " WHERE (stringField LIKE " + stringLiteralPrefix() + value + likeEscapeSuffix() +")";
@@ -1071,7 +1102,7 @@ public abstract class AbstractSqlDialectTest {
   public void testSelectWithWhereLessThanOrEqualTo() {
     SelectStatement stmt = new SelectStatement()
     .from(new TableReference(TEST_TABLE))
-    .where(Criterion.lessThanOrEqualTo(new FieldReference(INT_FIELD), new Integer(20090101)));
+    .where(lessThanOrEqualTo(new FieldReference(INT_FIELD), new Integer(20090101)));
 
     String expectedSql = "SELECT * FROM " + tableName(TEST_TABLE) + " WHERE (intField <= 20090101)";
     assertEquals("Select with less or equal clause", expectedSql, testDialect.convertStatementToSQL(stmt));
@@ -1085,7 +1116,7 @@ public abstract class AbstractSqlDialectTest {
   public void testSelectWhereGreaterThan() {
     SelectStatement stmt = new SelectStatement()
     .from(new TableReference(TEST_TABLE))
-    .where(Criterion.greaterThan(new FieldReference(INT_FIELD), new Integer(20090101)));
+    .where(greaterThan(new FieldReference(INT_FIELD), new Integer(20090101)));
 
     String expectedSql = "SELECT * FROM " + tableName(TEST_TABLE) + " WHERE (intField > 20090101)";
     assertEquals("Select with greater than clause", expectedSql, testDialect.convertStatementToSQL(stmt));
@@ -1099,7 +1130,7 @@ public abstract class AbstractSqlDialectTest {
   public void testSelectWithGreaterThanOrEqualToClause() {
     SelectStatement stmt = new SelectStatement()
     .from(new TableReference(TEST_TABLE))
-    .where(Criterion.greaterThanOrEqualTo(new FieldReference(INT_FIELD), new Integer(20090101)));
+    .where(greaterThanOrEqualTo(new FieldReference(INT_FIELD), new Integer(20090101)));
 
     String expectedSql = "SELECT * FROM " + tableName(TEST_TABLE) + " WHERE (intField >= 20090101)";
     assertEquals("Select with greater than or equal to clause", expectedSql, testDialect.convertStatementToSQL(stmt));
@@ -1113,7 +1144,7 @@ public abstract class AbstractSqlDialectTest {
   public void testSelectWhereIsNull() {
     SelectStatement stmt = new SelectStatement()
     .from(new TableReference(TEST_TABLE))
-    .where(Criterion.isNull(new FieldReference(INT_FIELD)));
+    .where(isNull(new FieldReference(INT_FIELD)));
 
     String expectedSql = "SELECT * FROM " + tableName(TEST_TABLE) + " WHERE (intField IS NULL)";
     assertEquals("Select with null check clause", expectedSql, testDialect.convertStatementToSQL(stmt));
@@ -1127,7 +1158,7 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testSelectWhereIsNotNull() {
     SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
-        .where(Criterion.isNotNull(new FieldReference(INT_FIELD)));
+        .where(isNotNull(new FieldReference(INT_FIELD)));
 
     String expectedSql = "SELECT * FROM " + tableName(TEST_TABLE) + " WHERE (intField IS NOT NULL)";
     assertEquals("Select with not null clause", expectedSql, testDialect.convertStatementToSQL(stmt));
@@ -1141,10 +1172,10 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testSelectWhereExists() {
     SelectStatement existsStatement = new SelectStatement().from(new TableReference(TEST_TABLE))
-        .where(Criterion.isNotNull(new FieldReference(INT_FIELD)));
+        .where(isNotNull(new FieldReference(INT_FIELD)));
 
     SelectStatement stmt = new SelectStatement().from(new TableReference(ALTERNATE_TABLE))
-        .where(Criterion.exists(existsStatement));
+        .where(exists(existsStatement));
 
     String expectedSql = "SELECT * FROM " + tableName(ALTERNATE_TABLE) + " WHERE (EXISTS (SELECT * FROM " + tableName(TEST_TABLE) + " WHERE (intField IS NOT NULL)))";
     assertEquals("Select with exists check", expectedSql, testDialect.convertStatementToSQL(stmt));
@@ -1158,11 +1189,11 @@ public abstract class AbstractSqlDialectTest {
   public void testSelectWhereInSubquery() {
     SelectStatement inStatement = new SelectStatement(new FieldReference(STRING_FIELD))
     .from(new TableReference(TEST_TABLE))
-    .where(Criterion.isNotNull(new FieldReference(INT_FIELD)));
+    .where(isNotNull(new FieldReference(INT_FIELD)));
 
     SelectStatement stmt = new SelectStatement()
     .from(new TableReference(ALTERNATE_TABLE))
-    .where(Criterion.in(new FieldReference(STRING_FIELD), inStatement));
+    .where(in(new FieldReference(STRING_FIELD), inStatement));
 
     String expectedSql = "SELECT * FROM " + tableName(ALTERNATE_TABLE) + " WHERE (stringField IN (SELECT stringField FROM " + tableName(TEST_TABLE) + " WHERE (intField IS NOT NULL)))";
     assertEquals("Select with exists check", expectedSql, testDialect.convertStatementToSQL(stmt));
@@ -1173,7 +1204,7 @@ public abstract class AbstractSqlDialectTest {
   public void testSelectWhereInIntegerList() {
     SelectStatement stmt = new SelectStatement()
     .from(new TableReference(ALTERNATE_TABLE))
-    .where(Criterion.in(new FieldReference(STRING_FIELD), 1, 2, 3));
+    .where(in(new FieldReference(STRING_FIELD), 1, 2, 3));
 
     String expectedSql = "SELECT * FROM " + tableName(ALTERNATE_TABLE) + " WHERE (stringField IN (1, 2, 3))";
     assertEquals("Select with exists check", expectedSql, testDialect.convertStatementToSQL(stmt));
@@ -1184,7 +1215,7 @@ public abstract class AbstractSqlDialectTest {
   public void testSelectWhereInFunctionList() {
     SelectStatement stmt = new SelectStatement()
     .from(new TableReference(ALTERNATE_TABLE))
-    .where(Criterion.in(new FieldReference(STRING_FIELD), sum(field("one")), sum(field("two"))));
+    .where(in(new FieldReference(STRING_FIELD), sum(field("one")), sum(field("two"))));
 
     String expectedSql = "SELECT * FROM " + tableName(ALTERNATE_TABLE) + " WHERE (stringField IN (SUM(one), SUM(two)))";
     assertEquals("Select with exists check", expectedSql, testDialect.convertStatementToSQL(stmt));
@@ -1199,13 +1230,13 @@ public abstract class AbstractSqlDialectTest {
   public void testSelectWhereInSubqueryWithMoreThanOneField() {
     SelectStatement inStatement = new SelectStatement(new FieldReference(STRING_FIELD), new FieldReference(BOOLEAN_FIELD))
     .from(new TableReference(TEST_TABLE))
-    .where(Criterion.isNotNull(new FieldReference(INT_FIELD)));
+    .where(isNotNull(new FieldReference(INT_FIELD)));
 
     exception.expect(IllegalArgumentException.class);
 
     new SelectStatement()
     .from(new TableReference(ALTERNATE_TABLE))
-    .where(Criterion.in(new FieldReference(STRING_FIELD), inStatement));
+    .where(in(new FieldReference(STRING_FIELD), inStatement));
   }
 
 
@@ -1217,13 +1248,13 @@ public abstract class AbstractSqlDialectTest {
   public void testSelectWhereInSubqueryWithAllFields() {
     SelectStatement inStatement = new SelectStatement()
     .from(new TableReference(TEST_TABLE))
-    .where(Criterion.isNotNull(new FieldReference(INT_FIELD)));
+    .where(isNotNull(new FieldReference(INT_FIELD)));
 
     exception.expect(IllegalArgumentException.class);
 
     new SelectStatement()
     .from(new TableReference(ALTERNATE_TABLE))
-    .where(Criterion.in(new FieldReference(STRING_FIELD), inStatement));
+    .where(in(new FieldReference(STRING_FIELD), inStatement));
   }
 
 
@@ -1233,7 +1264,7 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testSelectWhereNotEqualTo() {
     SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
-        .where(Criterion.neq(new FieldReference(INT_FIELD), new Integer(20090101)));
+        .where(neq(new FieldReference(INT_FIELD), new Integer(20090101)));
 
     String expectedSql = "SELECT * FROM " + tableName(TEST_TABLE) + " WHERE (intField <> 20090101)";
     assertEquals("Select with not equals check", expectedSql, testDialect.convertStatementToSQL(stmt));
@@ -1245,7 +1276,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testSelectWithCountFunction() {
-    SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD), Function.count())
+    SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD), count())
     .from(new TableReference(ALTERNATE_TABLE))
     .groupBy(new FieldReference(STRING_FIELD));
 
@@ -1259,7 +1290,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testSelectWithSum() {
-    SelectStatement stmt = new SelectStatement(Function.sum(new FieldReference(INT_FIELD))).from(new TableReference(TEST_TABLE));
+    SelectStatement stmt = new SelectStatement(sum(new FieldReference(INT_FIELD))).from(new TableReference(TEST_TABLE));
     String expectedSql = "SELECT SUM(intField) FROM " + tableName(TEST_TABLE);
     assertEquals("Select with sum function", expectedSql, testDialect.convertStatementToSQL(stmt));
   }
@@ -1270,7 +1301,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testSelectMinimum() {
-    SelectStatement stmt = new SelectStatement(Function.min(new FieldReference(INT_FIELD))).from(new TableReference(TEST_TABLE));
+    SelectStatement stmt = new SelectStatement(min(new FieldReference(INT_FIELD))).from(new TableReference(TEST_TABLE));
     String expectedSql = "SELECT MIN(intField) FROM " + tableName(TEST_TABLE);
     assertEquals("Select with minimum function", expectedSql, testDialect.convertStatementToSQL(stmt));
   }
@@ -1281,7 +1312,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testSelectMaximum() {
-    SelectStatement stmt = new SelectStatement(Function.max(new FieldReference(INT_FIELD))).from(new TableReference(TEST_TABLE));
+    SelectStatement stmt = new SelectStatement(max(new FieldReference(INT_FIELD))).from(new TableReference(TEST_TABLE));
     String expectedSql = "SELECT MAX(intField) FROM " + tableName(TEST_TABLE);
     assertEquals("Select scripts are not the same", expectedSql, testDialect.convertStatementToSQL(stmt));
   }
@@ -1366,7 +1397,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testSelectMod() {
-    SelectStatement stmt = new SelectStatement(Function.mod(new FieldReference(INT_FIELD), new FieldLiteral(5))).from(new TableReference(TEST_TABLE));
+    SelectStatement stmt = new SelectStatement(mod(new FieldReference(INT_FIELD), new FieldLiteral(5))).from(new TableReference(TEST_TABLE));
     String expectedSql = expectedSelectModSQL();
     assertEquals("Select scripts are not the same", expectedSql, testDialect.convertStatementToSQL(stmt));
   }
@@ -1379,7 +1410,7 @@ public abstract class AbstractSqlDialectTest {
   public void testSelectWithNestedEqualityCheck() {
     SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD))
     .from(new TableReference(TEST_TABLE))
-    .where(Criterion.eq(new FieldReference(BOOLEAN_FIELD), Criterion.eq(new FieldReference(CHAR_FIELD), "Y")));
+    .where(eq(new FieldReference(BOOLEAN_FIELD), eq(new FieldReference(CHAR_FIELD), "Y")));
 
     String value = varCharCast("'Y'");
     String expectedSql = "SELECT stringField FROM " + tableName(TEST_TABLE) + " WHERE (booleanField = (charField = " + stringLiteralPrefix() + value + "))";
@@ -1951,7 +1982,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testDeleteWithWhereCriterion() {
-    DeleteStatement stmt = new DeleteStatement(new TableReference(TEST_TABLE)).where(Criterion.eq(new FieldReference(new TableReference(TEST_TABLE), STRING_FIELD), "A001003657"));
+    DeleteStatement stmt = new DeleteStatement(new TableReference(TEST_TABLE)).where(eq(new FieldReference(new TableReference(TEST_TABLE), STRING_FIELD), "A001003657"));
     String value = varCharCast("'A001003657'");
     String expectedSql = "DELETE FROM " + tableName(TEST_TABLE) + " WHERE (Test.stringField = " + stringLiteralPrefix() + value + ")";
     assertEquals("Simple delete", expectedSql, testDialect.convertStatementToSQL(stmt));
@@ -1965,7 +1996,7 @@ public abstract class AbstractSqlDialectTest {
   public void testDeleteWithLimitAndSimpleWhereCriterion() {
     DeleteStatement stmt = DeleteStatement
       .delete(new TableReference(TEST_TABLE))
-      .where(Criterion.eq(new FieldReference(new TableReference(TEST_TABLE), STRING_FIELD), "A001003657"))
+      .where(eq(new FieldReference(new TableReference(TEST_TABLE), STRING_FIELD), "A001003657"))
       .limit(1000)
       .build();
 
@@ -1981,8 +2012,8 @@ public abstract class AbstractSqlDialectTest {
   public void testDeleteWithLimitAndComplexWhereCriterion() {
     DeleteStatement stmt = DeleteStatement
       .delete(new TableReference(TEST_TABLE))
-      .where(Criterion.or(Criterion.eq(new FieldReference(new TableReference(TEST_TABLE), STRING_FIELD), "A001003657"),
-        Criterion.eq(new FieldReference(new TableReference(TEST_TABLE), STRING_FIELD), "A001003658")))
+      .where(or(eq(new FieldReference(new TableReference(TEST_TABLE), STRING_FIELD), "A001003657"),
+        eq(new FieldReference(new TableReference(TEST_TABLE), STRING_FIELD), "A001003658")))
       .limit(1000)
       .build();
 
@@ -2023,7 +2054,7 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testUpdateUsingFieldFromSelect() {
     SelectStatement fieldOneSelect = new SelectStatement(new FieldReference(FLOAT_FIELD)).from(new TableReference(TEST_TABLE))
-        .where(Criterion.eq(new FieldReference(new TableReference(TEST_TABLE), STRING_FIELD), "A001003657"));
+        .where(eq(new FieldReference(new TableReference(TEST_TABLE), STRING_FIELD), "A001003657"));
 
     UpdateStatement updateStmt = new UpdateStatement(new TableReference(OTHER_TABLE))
     .set(new FieldFromSelect(fieldOneSelect).as(INT_FIELD), new FieldLiteral("blank").as(STRING_FIELD));
@@ -2097,18 +2128,18 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testUpdateWithSelectMinimum() {
-    SelectStatement stmt = new SelectStatement(Function.min(new FieldReference(INT_FIELD)))
+    SelectStatement stmt = new SelectStatement(min(new FieldReference(INT_FIELD)))
     .from(new TableReference(TEST_TABLE).as("T"))
-    .where(Criterion.and(
-      Criterion.eq(new FieldReference(new TableReference("T"), CHAR_FIELD), new FieldLiteral("S")),
-      Criterion.eq(new FieldReference(new TableReference("T"), STRING_FIELD), new FieldReference(new TableReference("O"), STRING_FIELD)),
-      Criterion.eq(new FieldReference(new TableReference("T"), INT_FIELD), new FieldReference(new TableReference("O"), INT_FIELD))
+    .where(and(
+      eq(new FieldReference(new TableReference("T"), CHAR_FIELD), new FieldLiteral("S")),
+      eq(new FieldReference(new TableReference("T"), STRING_FIELD), new FieldReference(new TableReference("O"), STRING_FIELD)),
+      eq(new FieldReference(new TableReference("T"), INT_FIELD), new FieldReference(new TableReference("O"), INT_FIELD))
         )
         );
 
     UpdateStatement updateStmt = new UpdateStatement(new TableReference(OTHER_TABLE).as("O"))
     .set(new FieldFromSelect(stmt).as(INT_FIELD))
-    .where(Criterion.eq(new FieldReference(STRING_FIELD), new FieldLiteral("Y")));
+    .where(eq(new FieldReference(STRING_FIELD), new FieldLiteral("Y")));
 
     assertEquals("Update scripts are not the same",
       expectedUpdateWithSelectMinimum(),
@@ -2123,7 +2154,7 @@ public abstract class AbstractSqlDialectTest {
   public void testUpdateUsingAliasedTable() {
 
     SelectStatement fieldOneSelect = new SelectStatement(new FieldReference(FLOAT_FIELD)).from(new TableReference(TEST_TABLE).as("stageName"))
-        .where(Criterion.eq(new FieldReference(new TableReference(TEST_TABLE).as("stageName"), STRING_FIELD), "A001003657"));
+        .where(eq(new FieldReference(new TableReference(TEST_TABLE).as("stageName"), STRING_FIELD), "A001003657"));
 
     UpdateStatement updateStmt = new UpdateStatement(new TableReference("myUpdateTable"))
     .set(new FieldFromSelect(fieldOneSelect).as(INT_FIELD), new FieldLiteral("blank").as(STRING_FIELD));
@@ -2142,7 +2173,7 @@ public abstract class AbstractSqlDialectTest {
     SelectStatement selectStmt = new SelectStatement(new FieldReference("settlementFrequency"))
     .from(new TableReference("FloatingRateDetail").as("B"))
     .where(
-      Criterion.eq(new FieldReference(new TableReference("A"), "floatingRateDetailId"), new FieldReference(new TableReference("B"), "id")));
+      eq(new FieldReference(new TableReference("A"), "floatingRateDetailId"), new FieldReference(new TableReference("B"), "id")));
 
     UpdateStatement updateStmt = new UpdateStatement(new TableReference("FloatingRateRate").as("A"))
     .set(new FieldFromSelect(selectStmt).as("settlementFrequency"));
@@ -2161,7 +2192,7 @@ public abstract class AbstractSqlDialectTest {
     SelectStatement selectStmt = new SelectStatement(new FieldReference("settlementFrequency"))
     .from(new TableReference("FloatingRateDetail").as("B"))
     .where(
-      Criterion.eq(new FieldReference(new TableReference("A"), "floatingRateDetailId"), new FieldReference(new TableReference("B"), "id")));
+      eq(new FieldReference(new TableReference("A"), "floatingRateDetailId"), new FieldReference(new TableReference("B"), "id")));
 
     UpdateStatement updateStmt = new UpdateStatement(new TableReference("MYSCHEMA", "FloatingRateRate").as("A"))
     .set(new FieldFromSelect(selectStmt).as("settlementFrequency"));
@@ -2181,7 +2212,7 @@ public abstract class AbstractSqlDialectTest {
     SelectStatement selectStmt = new SelectStatement(new FieldReference("settlementFrequency"))
     .from(new TableReference("MYSCHEMA", "FloatingRateDetail").as("B"))
     .where(
-      Criterion.eq(new FieldReference(new TableReference("A"), "floatingRateDetailId"), new FieldReference(new TableReference("B"), "id")));
+      eq(new FieldReference(new TableReference("A"), "floatingRateDetailId"), new FieldReference(new TableReference("B"), "id")));
 
     UpdateStatement updateStmt = new UpdateStatement(new TableReference("FloatingRateRate").as("A"))
     .set(new FieldFromSelect(selectStmt).as("settlementFrequency"));
@@ -2277,8 +2308,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testSelectWithConcatenationUsingFunction() {
-    SelectStatement stmt = new SelectStatement(new ConcatenatedField(new FieldReference("assetDescriptionLine1"), Function
-      .max(new FieldReference("scheduleStartDate"))).as("test")).from(new TableReference("schedule"));
+    SelectStatement stmt = new SelectStatement(new ConcatenatedField(new FieldReference("assetDescriptionLine1"), max(new FieldReference("scheduleStartDate"))).as("test")).from(new TableReference("schedule"));
 
     String result = testDialect.convertStatementToSQL(stmt);
     assertEquals("Select script should match expected", expectedConcatenationWithFunction(), result);
@@ -2290,8 +2320,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testSelectWithConcatenationUsingCase() {
-    WhenCondition whenCondition = new WhenCondition(Criterion
-      .eq(new FieldReference("taxVariationIndicator"), new FieldLiteral('Y')), new FieldReference("exposureCustomerNumber"));
+    WhenCondition whenCondition = new WhenCondition(eq(new FieldReference("taxVariationIndicator"), new FieldLiteral('Y')), new FieldReference("exposureCustomerNumber"));
     SelectStatement stmt = new SelectStatement(new ConcatenatedField(new FieldReference("assetDescriptionLine1"),
       new CaseStatement(new FieldReference("invoicingCustomerNumber"), whenCondition)).as("test")).from(new TableReference(
           "schedule"));
@@ -2334,7 +2363,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testIsNull() {
-    String result = testDialect.getSqlFrom(Function.isnull(new FieldLiteral("A"), new FieldLiteral("B")));
+    String result = testDialect.getSqlFrom(isnull(new FieldLiteral("A"), new FieldLiteral("B")));
     assertEquals(expectedIsNull(), result);
   }
 
@@ -2344,7 +2373,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testYYYYMMDDToDate() {
-    String result = testDialect.getSqlFrom(Function.yyyymmddToDate(new FieldLiteral("20100101")));
+    String result = testDialect.getSqlFrom(yyyymmddToDate(new FieldLiteral("20100101")));
     assertEquals(expectedYYYYMMDDToDate(), result);
   }
 
@@ -2354,7 +2383,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testDateToYyyymmdd() {
-    String result = testDialect.getSqlFrom(Function.dateToYyyymmdd(field("testField")));
+    String result = testDialect.getSqlFrom(dateToYyyymmdd(field("testField")));
     assertEquals(expectedDateToYyyymmdd(), result);
   }
 
@@ -2364,7 +2393,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testDateToYyyymmddHHmmss() {
-    String result = testDialect.getSqlFrom(Function.dateToYyyyMMddHHmmss(field("testField")));
+    String result = testDialect.getSqlFrom(dateToYyyyMMddHHmmss(field("testField")));
     assertEquals(expectedDateToYyyymmddHHmmss(), result);
   }
 
@@ -2374,7 +2403,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testNow() {
-    String result = testDialect.getSqlFrom(Function.now());
+    String result = testDialect.getSqlFrom(now());
     assertEquals(expectedNow(), result);
   }
 
@@ -2384,7 +2413,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testAddDays() {
-    String result = testDialect.getSqlFrom(Function.addDays(field("testField"), new FieldLiteral(-20)));
+    String result = testDialect.getSqlFrom(addDays(field("testField"), new FieldLiteral(-20)));
     assertEquals(expectedAddDays(), result);
   }
 
@@ -2394,7 +2423,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testAddMonths() {
-    String result = testDialect.getSqlFrom(Function.addMonths(field("testField"), new FieldLiteral(-3)));
+    String result = testDialect.getSqlFrom(addMonths(field("testField"), new FieldLiteral(-3)));
     assertEquals(expectedAddMonths(), result);
   }
 
@@ -2406,7 +2435,7 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testRound() {
     // Given
-    Function round = Function.round(new FieldReference("field1"), new FieldLiteral(2));
+    Function round = round(new FieldReference("field1"), new FieldLiteral(2));
     SelectStatement stmt = new SelectStatement(round).from(new TableReference("schedule"));
 
     // When
@@ -2433,7 +2462,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testCoalesce() {
-    SelectStatement testStatement = select(Function.coalesce(new NullFieldLiteral(), field("bob"))).from(tableRef("MyTable"));
+    SelectStatement testStatement = select(coalesce(new NullFieldLiteral(), field("bob"))).from(tableRef("MyTable"));
     assertEquals(expectedCoalesce().toLowerCase(), testDialect.convertStatementToSQL(testStatement).toLowerCase());
   }
 
@@ -2812,7 +2841,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void shouldGenerateCorrectSqlForMathOperationsForExistingDataFix1() {
-    Function dsl = Function.round(field("doublevalue").divideBy(literal(1000)).multiplyBy(field("doublevalue")), literal(2));
+    Function dsl = round(field("doublevalue").divideBy(literal(1000)).multiplyBy(field("doublevalue")), literal(2));
     String sql = testDialect.getSqlFrom(dsl);
     assertEquals(expectedSqlForMathOperationsForExistingDataFix1(), sql);
   }
@@ -2832,7 +2861,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void shouldGenerateCorrectSqlForMathOperationsForExistingDataFix2() {
-    AliasedField dsl = Function.floor(Function.random().multiplyBy(new FieldLiteral(Math.pow(10, 6) - 1)));
+    AliasedField dsl = floor(random().multiplyBy(new FieldLiteral(Math.pow(10, 6) - 1)));
     String sql = testDialect.getSqlFrom(dsl);
     assertEquals(expectedSqlForMathOperationsForExistingDataFix2(testDialect.getSqlForRandom()), sql);
   }
@@ -3146,7 +3175,7 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testSubstring() {
     // Given
-    Function substring = Function.substring(new FieldReference("field1"), new FieldLiteral(1), new FieldLiteral(3));
+    Function substring = substring(new FieldReference("field1"), new FieldLiteral(1), new FieldLiteral(3));
     SelectStatement stmt = new SelectStatement(substring).from(new TableReference("schedule"));
 
     // When
@@ -3163,7 +3192,7 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testLeftTrim() {
     // Given
-    Function leftTrim = Function.leftTrim(new FieldReference("field1"));
+    Function leftTrim = leftTrim(new FieldReference("field1"));
     SelectStatement selectStatement = new SelectStatement(leftTrim).from(new TableReference("schedule"));
 
     // When
@@ -3180,7 +3209,7 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testRightTrim() {
     // Given
-    Function rightTrim = Function.rightTrim(new FieldReference("field1"));
+    Function rightTrim = rightTrim(new FieldReference("field1"));
     SelectStatement selectStatement = new SelectStatement(rightTrim).from(new TableReference("schedule"));
 
     // When
@@ -3197,7 +3226,7 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testGetSqlForLeftPad() {
     // Given
-    Function leftPad = Function.leftPad(new FieldReference(STRING_FIELD), new FieldLiteral(10), new FieldLiteral("j"));
+    Function leftPad = leftPad(new FieldReference(STRING_FIELD), new FieldLiteral(10), new FieldLiteral("j"));
     SelectStatement leftPadStatement = new SelectStatement(leftPad).from(new TableReference(TEST_TABLE));
 
     // When
@@ -3224,7 +3253,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testRandomString() {
-    SelectStatement statement = new SelectStatement(Function.randomString(new FieldLiteral(10))).from(new TableReference(
+    SelectStatement statement = new SelectStatement(randomString(new FieldLiteral(10))).from(new TableReference(
         TEST_TABLE));
     String actual = testDialect.convertStatementToSQL(statement);
     assertEquals("Random string script should match expected", "SELECT " + expectedRandomString() + " FROM " + tableName(TEST_TABLE), actual);
@@ -3236,7 +3265,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testLower() {
-    SelectStatement statement = new SelectStatement(Function.lowerCase(new FieldReference("field1"))).from(new TableReference(
+    SelectStatement statement = new SelectStatement(lowerCase(new FieldReference("field1"))).from(new TableReference(
         "schedule"));
     String actual = testDialect.convertStatementToSQL(statement);
     assertEquals("LowerCase script should match expected", expectedLower(), actual);
@@ -3248,7 +3277,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testUpper() {
-    SelectStatement statement = new SelectStatement(Function.upperCase(new FieldReference("field1"))).from(new TableReference(
+    SelectStatement statement = new SelectStatement(upperCase(new FieldReference("field1"))).from(new TableReference(
         "schedule"));
     String actual = testDialect.convertStatementToSQL(statement);
     assertEquals("UpperCase script should match expected", expectedUpper(), actual);
@@ -3260,7 +3289,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testFloor() {
-    SelectStatement statement = new SelectStatement(Function.floor(new FieldReference(FLOAT_FIELD))).from(new TableReference(
+    SelectStatement statement = new SelectStatement(floor(new FieldReference(FLOAT_FIELD))).from(new TableReference(
         TEST_TABLE));
     String actual = testDialect.convertStatementToSQL(statement);
     assertEquals("Floor script should match expected", expectedFloor(), actual);
@@ -3272,7 +3301,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testPower() {
-    SelectStatement statement = new SelectStatement(Function.power(new FieldReference(FLOAT_FIELD), new FieldReference(INT_FIELD))).from(new TableReference(
+    SelectStatement statement = new SelectStatement(power(new FieldReference(FLOAT_FIELD), new FieldReference(INT_FIELD))).from(new TableReference(
         TEST_TABLE));
     String actual = testDialect.convertStatementToSQL(statement);
     assertEquals("Power script should match expected", expectedPower(), actual);
@@ -3802,7 +3831,7 @@ public abstract class AbstractSqlDialectTest {
     TableReference somewhere = new TableReference("somewhere");
     TableReference join = new TableReference("join");
 
-    SelectStatement sourceStmt = new SelectStatement(somewhere.field("newId").as("id"), join.field("joinBar").as("bar")).from(somewhere).innerJoin(join, Criterion.eq(somewhere.field("newId"), join.field("joinId"))).alias("alias");
+    SelectStatement sourceStmt = new SelectStatement(somewhere.field("newId").as("id"), join.field("joinBar").as("bar")).from(somewhere).innerJoin(join, eq(somewhere.field("newId"), join.field("joinId"))).alias("alias");
 
     MergeStatement stmt = new MergeStatement().into(foo).tableUniqueKey(foo.field("id")).from(sourceStmt);
 
@@ -4319,13 +4348,13 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testPrepareStatementParameter() throws SQLException {
 
-    final SqlParameter dateColumn = parameter(SchemaUtils.column("dateColumn", DataType.DATE));
-    final SqlParameter decimalColumn = parameter(SchemaUtils.column("decimalColumn", DataType.DECIMAL, 9, 5));
-    final SqlParameter stringColumn = parameter(SchemaUtils.column("stringColumn", DataType.STRING, 4));
-    final SqlParameter integerColumn = parameter(SchemaUtils.column("integerColumn", DataType.INTEGER));
-    final SqlParameter bigIntegerColumn = parameter(SchemaUtils.column("bigIntegerColumn", DataType.BIG_INTEGER));
-    final SqlParameter blobColumn = parameter(SchemaUtils.column("blobColumn", DataType.BLOB));
-    final SqlParameter clobColumn = parameter(SchemaUtils.column("clobColumn", DataType.CLOB));
+    final SqlParameter dateColumn = parameter(column("dateColumn", DataType.DATE));
+    final SqlParameter decimalColumn = parameter(column("decimalColumn", DataType.DECIMAL, 9, 5));
+    final SqlParameter stringColumn = parameter(column("stringColumn", DataType.STRING, 4));
+    final SqlParameter integerColumn = parameter(column("integerColumn", DataType.INTEGER));
+    final SqlParameter bigIntegerColumn = parameter(column("bigIntegerColumn", DataType.BIG_INTEGER));
+    final SqlParameter blobColumn = parameter(column("blobColumn", DataType.BLOB));
+    final SqlParameter clobColumn = parameter(column("clobColumn", DataType.CLOB));
 
     // Boolean
     verifyBooleanPrepareStatementParameter();
