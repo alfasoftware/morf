@@ -394,8 +394,11 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
 
 
   /**
+   * @param toTable
+   * @return
+   *
    * @deprecated Use {@link #crossJoin(TableReference)} to do a cross join;
-   *             or add join conditions for {@link #innerJoin(SelectStatement, Criterion)
+   *             or add join conditions for {@link #innerJoin(SelectStatement, Criterion)}
    *             to make this an inner join.
    */
   @Deprecated
@@ -477,8 +480,11 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
   }
 
   /**
+   * @param subSelect
+   * @return
+   *
    * @deprecated Use {@link #crossJoin(SelectStatement)} to do a cross join;
-   *             or add join conditions for {@link #innerJoin(SelectStatement, Criterion)
+   *             or add join conditions for {@link #innerJoin(SelectStatement, Criterion)}
    *             to make this an inner join.
    */
   @Deprecated
