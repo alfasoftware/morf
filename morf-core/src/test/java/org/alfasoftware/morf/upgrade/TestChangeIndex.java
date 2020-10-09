@@ -23,13 +23,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
-import org.junit.Before;
-import org.junit.Test;
-
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
+import org.junit.Before;
+import org.junit.Test;
+
+import com.google.common.collect.ImmutableList;
 
 /**
  * Tests changing indexes for a schema.
@@ -46,14 +47,14 @@ public class TestChangeIndex {
    */
   @Before
   public void setUp() throws Exception {
-    appleTable = table("Apple").columns(
+    appleTable = table("Apple").columns(ImmutableList.of(
         column("pips", DataType.STRING, 10).nullable(),
         column("colour", DataType.STRING, 10).nullable(),
         column("totalValue", DataType.STRING, 10).nullable()
-      ).indexes(	    index("Apple_1").unique().columns("pips"),
+      )).indexes(ImmutableList.of(	    index("Apple_1").unique().columns("pips"),
         index("Apple_2").unique().columns("colour"),
         index("Apple_3").unique().columns("colour", "pips")
-      );
+      ));
   }
 
 
