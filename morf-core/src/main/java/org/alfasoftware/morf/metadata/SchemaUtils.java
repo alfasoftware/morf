@@ -15,18 +15,15 @@
 
 package org.alfasoftware.morf.metadata;
 
-import static com.google.common.collect.FluentIterable.from;
-import static org.alfasoftware.morf.metadata.DataType.BIG_INTEGER;
-
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 import org.alfasoftware.morf.sql.SelectStatement;
 
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 
 /**
@@ -124,7 +121,7 @@ public final class SchemaUtils {
    * @return A {@link Schema} implementation
    */
   public static Schema schema(Collection<View> views) {
-    return new SchemaBean(Collections.<Table> emptySet(), views);
+    return new SchemaBean(ImmutableList.of(), views);
   }
 
 
@@ -162,11 +159,11 @@ public final class SchemaUtils {
    */
   public static Schema copy(Schema schema, Collection<String> exclusionRegExes) {
       return schema(
-        schema(from(schema.tables())
+        schema(FluentIterable.from(schema.tables())
           .filter(table -> !isMatching(exclusionRegExes, table.getName()))
           .transform(SchemaUtils::copy)
           .toList()),
-        schema(from(schema.views())
+        schema(FluentIterable.from(schema.views())
           .filter(view -> !isMatching(exclusionRegExes, view.getName()))
           .transform(SchemaUtils::copy)
             .toList()));
@@ -307,7 +304,7 @@ public final class SchemaUtils {
    * @return A new {@link Column}.
    */
   public static Column autonumber(String name, int startFrom) {
-    return new ColumnBean(name, BIG_INTEGER, 0, 0, false, null, true, true, startFrom);
+    return new ColumnBean(name, DataType.BIG_INTEGER, 0, 0, false, null, true, true, startFrom);
   }
 
 
