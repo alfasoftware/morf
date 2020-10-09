@@ -19,7 +19,6 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.sql.element.Criterion.eq;
 
 import java.math.BigDecimal;
-import java.util.List;
 
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
@@ -105,7 +104,7 @@ public class SqlUtils {
    * @param fields fields that should be selected
    * @return {@link SelectStatement}
    */
-  public static SelectStatement select(List<? extends AliasedFieldBuilder> fields) {
+  public static SelectStatement select(Iterable<? extends AliasedFieldBuilder> fields) {
     return new SelectStatement(fields);
   }
 
@@ -125,6 +124,25 @@ public class SqlUtils {
    * @return {@link SelectStatement}
    */
   public static SelectStatement selectDistinct(AliasedFieldBuilder... fields) {
+    return new SelectStatement(fields, true);
+  }
+
+
+  /**
+   * Constructs a distinct Select Statement which optionally selects on a subset of fields.
+   * If no fields are specified then this is equivalent of selecting all
+   * fields (i.e. {@code SELECT DISTINCT * FROM x}).
+   *
+   * <p>Usage is discouraged; this method will be deprecated at some point. Use
+   * {@link SelectStatement#select(AliasedFieldBuilder...)} for preference. For
+   * example:</p>
+   *
+   * <pre>SelectStatement.select(myFields).distinct().from(foo).build();</pre>
+   *
+   * @param fields an array of fields that should be selected
+   * @return {@link SelectStatement}
+   */
+  public static SelectStatement selectDistinct(Iterable<? extends AliasedFieldBuilder> fields) {
     return new SelectStatement(fields, true);
   }
 
