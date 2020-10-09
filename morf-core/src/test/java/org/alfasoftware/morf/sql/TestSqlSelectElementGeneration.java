@@ -1034,8 +1034,8 @@ public class TestSqlSelectElementGeneration {
       assertFalse(select.getFromSelects().isEmpty());
 
       // Joins
-      select.innerJoin(subSelect1);
-      select.innerJoin(tableRef("C"));
+      select.crossJoin(subSelect1);
+      select.crossJoin(tableRef("C"));
       select.innerJoin(tableRef("B"), field1.eq(field2));
       select.innerJoin(subSelect1, field1.eq(field2));
       select.leftOuterJoin(tableRef("B"), field1.eq(field2));
@@ -1158,8 +1158,8 @@ public class TestSqlSelectElementGeneration {
       SelectStatement select = select(literal(1));
       SelectStatement updated = select
           .from("B")
-          .innerJoin(subSelect1)
-          .innerJoin(tableRef("C"))
+          .crossJoin(subSelect1)
+          .crossJoin(tableRef("C"))
           .innerJoin(tableRef("B"), field1.eq(field2))
           .innerJoin(subSelect1, field1.eq(field2))
           .leftOuterJoin(tableRef("B"), field1.eq(field2))
@@ -1179,8 +1179,8 @@ public class TestSqlSelectElementGeneration {
 
       // Explicit copy-on-write
       SelectStatement copy = select.shallowCopy()
-          .innerJoin(subSelect1)
-          .innerJoin(tableRef("C"))
+          .crossJoin(subSelect1)
+          .crossJoin(tableRef("C"))
           .innerJoin(tableRef("B"), field1.eq(field2))
           .innerJoin(subSelect1, field1.eq(field2))
           .leftOuterJoin(tableRef("B"), field1.eq(field2))

@@ -678,7 +678,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test(expected = IllegalArgumentException.class)
   public void testSelectWithJoinForUpdate() {
-    SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE)).innerJoin(new TableReference("Test2")).forUpdate();
+    SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE)).crossJoin(new TableReference("Test2")).forUpdate();
     testDialect.convertStatementToSQL(stmt);
   }
 
@@ -4250,7 +4250,7 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testJoinNoCriteria() {
-    SelectStatement testStatement = select().from(tableRef("TableOne")).innerJoin(tableRef("TableTwo"));
+    SelectStatement testStatement = select().from(tableRef("TableOne")).crossJoin(tableRef("TableTwo"));
     assertEquals(testDialect.convertStatementToSQL(testStatement), expectedJoinOnEverything());
   }
 
