@@ -282,8 +282,7 @@ public abstract class AbstractSelectStatementBuilder<U extends AbstractSelectSta
    */
   @Deprecated
   public T innerJoin(TableReference toTable) {
-    joins.add(new Join(JoinType.INNER_JOIN, toTable, null));
-    return castToChild(this);
+    return crossJoin(toTable);
   }
 
 
@@ -362,8 +361,7 @@ public abstract class AbstractSelectStatementBuilder<U extends AbstractSelectSta
    */
   @Deprecated
   public T innerJoin(SelectStatement subSelect) {
-    joins.add(new Join(JoinType.INNER_JOIN, subSelect, null));
-    return castToChild(this);
+    return crossJoin(subSelect);
   }
 
 
