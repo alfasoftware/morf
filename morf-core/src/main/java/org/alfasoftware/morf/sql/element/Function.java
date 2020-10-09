@@ -66,9 +66,12 @@ public final class Function extends AliasedField implements Driver {
 
 
   private Function(FunctionType type, AliasedField... arguments) {
-    super();
-    this.type = type;
-    this.arguments = ImmutableList.copyOf(arguments);
+    this("", type, ImmutableList.copyOf(arguments));
+  }
+
+
+  private Function(FunctionType type, Iterable<? extends AliasedField> arguments) {
+    this("", type, ImmutableList.copyOf(arguments));
   }
 
 
@@ -356,6 +359,18 @@ public final class Function extends AliasedField implements Driver {
    * @return an instance of the coalesce function.
    */
   public static Function coalesce(AliasedField... fields) {
+    return new Function(FunctionType.COALESCE, fields);
+  }
+
+
+  /**
+   * Helper method to create an instance of the "coalesce" SQL function,
+   * which will result in the first non-null argument.
+   *
+   * @param fields the fields to evaluate.
+   * @return an instance of the coalesce function.
+   */
+  public static Function coalesce(Iterable<? extends AliasedField> fields) {
     return new Function(FunctionType.COALESCE, fields);
   }
 
