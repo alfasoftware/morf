@@ -1546,7 +1546,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
       monthBetweenListComp.add(Months.monthsBetween(fromDate, toDate).getMonths());
     }
 
-    SelectStatement monthBetweenSelect = select(monthBetweenListSql.toArray(new AliasedField[monthBetweenListSql.size()]))
+    SelectStatement monthBetweenSelect = select(monthBetweenListSql)
         .from("ActualDates")
         .where(field("actualDate").eq(new LocalDate(1995, 10, 23)));
 
@@ -2819,7 +2819,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
 
     InsertStatement insertStatement = insert().into(insertTable)
         .from(
-          selectDistinct(selectTable.field("column1"), selectTable.field("column2"))
+          selectDistinct(ImmutableList.of(selectTable.field("column1"), selectTable.field("column2")))
           .from(selectTable)
           .innerJoin(joinTable, eq(joinTable.field("foreignKeyId"), selectTable.field("id"))));
 
