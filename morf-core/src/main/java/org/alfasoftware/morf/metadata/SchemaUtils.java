@@ -420,6 +420,16 @@ public final class SchemaUtils {
 
 
     /**
+     * Sets the columns for the table.
+     *
+     * @param columns The columns to set, probably provided by calls to
+     *          {@link SchemaUtils#column(String, DataType, int, int)}.
+     * @return this table builder, for method chaining.
+     */
+    public TableBuilder columns(Iterable<? extends Column> columns);
+
+
+    /**
      * Sets the indexes for the table.
      *
      * @param indexes The indexes to set, probably provided by calls to
@@ -427,6 +437,16 @@ public final class SchemaUtils {
      * @return this table builder, for method chaining.
      */
     public TableBuilder indexes(Index... indexes);
+
+
+    /**
+     * Sets the indexes for the table.
+     *
+     * @param indexes The indexes to set, probably provided by calls to
+     *          {@link SchemaUtils#index(String)}
+     * @return this table builder, for method chaining.
+     */
+    public TableBuilder indexes(Iterable<? extends Index> indexes);
 
 
     /**
@@ -539,7 +559,7 @@ public final class SchemaUtils {
     }
 
 
-    private TableBuilderImpl(String name, List<Column> columns, List<Index> indexes, boolean isTemporary) {
+    private TableBuilderImpl(String name, Iterable<? extends Column> columns, Iterable<? extends Index> indexes, boolean isTemporary) {
       super(name, columns, indexes, isTemporary);
     }
 
@@ -554,11 +574,29 @@ public final class SchemaUtils {
 
 
     /**
+     * @see org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder#columns(java.lang.Iterable)
+     */
+    @Override
+    public TableBuilder columns(Iterable<? extends Column> columns) {
+      return new TableBuilderImpl(getName(), columns, indexes(), isTemporary());
+    }
+
+
+    /**
      * @see org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder#indexes(org.alfasoftware.morf.metadata.Index[])
      */
     @Override
     public TableBuilder indexes(Index... indexes) {
       return new TableBuilderImpl(getName(), columns(), Arrays.asList(indexes), isTemporary());
+    }
+
+
+    /**
+     * @see org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder#indexes(java.lang.Iterable)
+     */
+    @Override
+    public TableBuilder indexes(Iterable<? extends Index> indexes) {
+      return new TableBuilderImpl(getName(), columns(), indexes, isTemporary());
     }
 
 
