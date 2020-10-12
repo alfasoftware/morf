@@ -82,7 +82,7 @@ public class SqlUtils {
    * <p>Usage is discouraged; this method will be deprecated at some point. Use
    * {@link SelectStatement#select(AliasedFieldBuilder...)} for preference.</p>
    *
-   * @param fields an array of fields that should be selected
+   * @param fields fields to be selected
    * @return {@link SelectStatement}
    */
   public static SelectStatement select(AliasedFieldBuilder... fields) {
@@ -101,7 +101,7 @@ public class SqlUtils {
    *
    * <pre>SelectStatement.select().fields(myFields).from(foo).build();</pre>
    *
-   * @param fields fields that should be selected
+   * @param fields fields to be selected
    * @return {@link SelectStatement}
    */
   public static SelectStatement select(Iterable<? extends AliasedFieldBuilder> fields) {
@@ -120,7 +120,7 @@ public class SqlUtils {
    *
    * <pre>SelectStatement.select(myFields).distinct().from(foo).build();</pre>
    *
-   * @param fields an array of fields that should be selected
+   * @param fields fields to be selected
    * @return {@link SelectStatement}
    */
   public static SelectStatement selectDistinct(AliasedFieldBuilder... fields) {
@@ -139,7 +139,7 @@ public class SqlUtils {
    *
    * <pre>SelectStatement.select(myFields).distinct().from(foo).build();</pre>
    *
-   * @param fields an array of fields that should be selected
+   * @param fields fields to be selected
    * @return {@link SelectStatement}
    */
   public static SelectStatement selectDistinct(Iterable<? extends AliasedFieldBuilder> fields) {
