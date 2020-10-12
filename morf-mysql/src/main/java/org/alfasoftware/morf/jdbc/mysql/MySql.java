@@ -90,7 +90,7 @@ public final class MySql extends AbstractDatabaseType {
       dataSource.getClass().getMethod("setPinGlobalTxToPhysicalConnection", boolean.class).invoke(dataSource, true);
       return dataSource;
     } catch (Exception e) {
-      throw new IllegalStateException("Failed to create Oracle XA data source", e);
+      throw new IllegalStateException("Failed to create MySQL XA data source", e);
     }
   }
 
