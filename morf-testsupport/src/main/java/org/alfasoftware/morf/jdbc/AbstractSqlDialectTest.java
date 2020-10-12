@@ -778,7 +778,7 @@ public abstract class AbstractSqlDialectTest {
     SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
         .where(or(
           eq(new FieldReference(STRING_FIELD), "A0001"),
-          greaterThan(new FieldReference(INT_FIELD), new Integer(20080101))));
+          greaterThan(new FieldReference(INT_FIELD), 20080101)));
 
     String value = varCharCast("'A0001'");
     String expectedSql = "SELECT * FROM " + tableName(TEST_TABLE) + " WHERE ((stringField = " + stringLiteralPrefix() + value+") OR (intField > 20080101))";
@@ -794,7 +794,7 @@ public abstract class AbstractSqlDialectTest {
     SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
         .where(and(
           eq(new FieldReference(STRING_FIELD), "A0001"),
-          greaterThan(new FieldReference(INT_FIELD), new Integer(20080101))));
+          greaterThan(new FieldReference(INT_FIELD), 20080101)));
 
     String value = varCharCast("'A0001'");
     String expectedSql = "SELECT * FROM " + tableName(TEST_TABLE) + " WHERE ((stringField = " + stringLiteralPrefix() +value+") AND (intField > 20080101))";
@@ -826,8 +826,8 @@ public abstract class AbstractSqlDialectTest {
     SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
         .where(and(
           eq(new FieldReference(STRING_FIELD), "A0001"),
-          greaterThan(new FieldReference(INT_FIELD), new Integer(20080101)),
-          lessThan(new FieldReference(DATE_FIELD), new Integer(20090101))
+          greaterThan(new FieldReference(INT_FIELD), 20080101),
+          lessThan(new FieldReference(DATE_FIELD), 20090101)
             ));
 
     String value = varCharCast("'A0001'");
@@ -845,8 +845,8 @@ public abstract class AbstractSqlDialectTest {
         .where(and(
           eq(new FieldReference(STRING_FIELD), "A0001"),
           or(
-            greaterThan(new FieldReference(INT_FIELD), new Integer(20080101)),
-            lessThan(new FieldReference(DATE_FIELD), new Integer(20090101))
+            greaterThan(new FieldReference(INT_FIELD), 20080101),
+            lessThan(new FieldReference(DATE_FIELD), 20090101)
               )
             ));
 
@@ -1073,7 +1073,7 @@ public abstract class AbstractSqlDialectTest {
   public void testSelectWithLessThanWhereClauses() {
     SelectStatement stmt = new SelectStatement()
     .from(new TableReference(TEST_TABLE))
-    .where(lessThan(new FieldReference(INT_FIELD), new Integer(20090101)));
+    .where(lessThan(new FieldReference(INT_FIELD), 20090101));
 
     String expectedSql = "SELECT * FROM " + tableName(TEST_TABLE) + " WHERE (intField < 20090101)";
     assertEquals("Select with less than where clause", expectedSql, testDialect.convertStatementToSQL(stmt));
@@ -1102,7 +1102,7 @@ public abstract class AbstractSqlDialectTest {
   public void testSelectWithWhereLessThanOrEqualTo() {
     SelectStatement stmt = new SelectStatement()
     .from(new TableReference(TEST_TABLE))
-    .where(lessThanOrEqualTo(new FieldReference(INT_FIELD), new Integer(20090101)));
+    .where(lessThanOrEqualTo(new FieldReference(INT_FIELD), 20090101));
 
     String expectedSql = "SELECT * FROM " + tableName(TEST_TABLE) + " WHERE (intField <= 20090101)";
     assertEquals("Select with less or equal clause", expectedSql, testDialect.convertStatementToSQL(stmt));
@@ -1116,7 +1116,7 @@ public abstract class AbstractSqlDialectTest {
   public void testSelectWhereGreaterThan() {
     SelectStatement stmt = new SelectStatement()
     .from(new TableReference(TEST_TABLE))
-    .where(greaterThan(new FieldReference(INT_FIELD), new Integer(20090101)));
+    .where(greaterThan(new FieldReference(INT_FIELD), 20090101));
 
     String expectedSql = "SELECT * FROM " + tableName(TEST_TABLE) + " WHERE (intField > 20090101)";
     assertEquals("Select with greater than clause", expectedSql, testDialect.convertStatementToSQL(stmt));
@@ -1130,7 +1130,7 @@ public abstract class AbstractSqlDialectTest {
   public void testSelectWithGreaterThanOrEqualToClause() {
     SelectStatement stmt = new SelectStatement()
     .from(new TableReference(TEST_TABLE))
-    .where(greaterThanOrEqualTo(new FieldReference(INT_FIELD), new Integer(20090101)));
+    .where(greaterThanOrEqualTo(new FieldReference(INT_FIELD), 20090101));
 
     String expectedSql = "SELECT * FROM " + tableName(TEST_TABLE) + " WHERE (intField >= 20090101)";
     assertEquals("Select with greater than or equal to clause", expectedSql, testDialect.convertStatementToSQL(stmt));
@@ -1264,7 +1264,7 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testSelectWhereNotEqualTo() {
     SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
-        .where(neq(new FieldReference(INT_FIELD), new Integer(20090101)));
+        .where(neq(new FieldReference(INT_FIELD), 20090101));
 
     String expectedSql = "SELECT * FROM " + tableName(TEST_TABLE) + " WHERE (intField <> 20090101)";
     assertEquals("Select with not equals check", expectedSql, testDialect.convertStatementToSQL(stmt));
@@ -2362,6 +2362,7 @@ public abstract class AbstractSqlDialectTest {
    * Test that IsNull functionality behaves as expected.
    */
   @Test
+  @SuppressWarnings("deprecation")
   public void testIsNull() {
     String result = testDialect.getSqlFrom(isnull(new FieldLiteral("A"), new FieldLiteral("B")));
     assertEquals(expectedIsNull(), result);
