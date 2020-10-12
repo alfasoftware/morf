@@ -88,21 +88,6 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
   private final List<AliasedField>    orderBys;
 
 
-  protected AbstractSelectStatement() {
-    if (AliasedField.immutableDslEnabled()) {
-      this.fromSelects = ImmutableList.of();
-      this.joins = ImmutableList.of();
-      this.orderBys = ImmutableList.of();
-      this.fields = ImmutableList.of();
-    } else {
-      this.fromSelects = Lists.newArrayList();
-      this.joins = Lists.newArrayList();
-      this.orderBys = Lists.newArrayList();
-      this.fields = Lists.newArrayList();
-    }
-  }
-
-
   protected AbstractSelectStatement(Iterable<? extends AliasedFieldBuilder> aliasedFields) {
     if (AliasedField.immutableDslEnabled()) {
       this.fromSelects = ImmutableList.of();
@@ -159,7 +144,9 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
 
   /**
    * @param aliasedFields The fields to add
+   * @deprecated Do not use {@link AbstractSelectStatement} mutably. Create a new statement.
    */
+  @Deprecated
   protected void addFields(Iterable<? extends AliasedFieldBuilder> aliasedFields) {
     AliasedField.assetImmutableDslDisabled();
     fields.addAll(FluentIterable.from(aliasedFields)
