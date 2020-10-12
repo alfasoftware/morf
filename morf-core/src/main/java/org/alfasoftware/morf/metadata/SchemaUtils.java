@@ -566,7 +566,7 @@ public final class SchemaUtils {
      */
     @Override
     public TableBuilder columns(Column... columns) {
-      return new TableBuilderImpl(getName(), Arrays.asList(columns), indexes(), isTemporary());
+      return columns(Arrays.asList(columns));
     }
 
 
@@ -584,7 +584,7 @@ public final class SchemaUtils {
      */
     @Override
     public TableBuilder indexes(Index... indexes) {
-      return new TableBuilderImpl(getName(), columns(), Arrays.asList(indexes), isTemporary());
+      return indexes(Arrays.asList(indexes));
     }
 
 
