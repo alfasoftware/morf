@@ -3107,7 +3107,7 @@ public abstract class SqlDialect {
    * @return SQL getting the maximum value from the {@code dataTable}.
    */
   protected String getExistingMaxAutoNumberValue(TableReference dataTable, String fieldName) {
-    return getSqlFrom(new SelectStatement(Function.isnull(
+    return getSqlFrom(new SelectStatement(Function.coalesce(
       new MathsField(Function.max(new FieldReference(fieldName)), MathsOperator.PLUS, new FieldLiteral(1)), new FieldLiteral(1))
         .as("CurrentValue")).from(dataTable));
   }
@@ -3127,11 +3127,11 @@ public abstract class SqlDialect {
     String autoNumberName = getAutoNumberName(sourceTable.getName());
 
     if (sourceReference == null) {
-      return new FieldFromSelect(new SelectStatement(Function.isnull(new FieldReference(valueColumn), new FieldLiteral(1))).from(
+      return new FieldFromSelect(new SelectStatement(Function.coalesce(new FieldReference(valueColumn), new FieldLiteral(1))).from(
         new TableReference(autoNumberTable.getName(), autoNumberTable.isTemporary())).where(
         new Criterion(Operator.EQ, new FieldReference(nameColumn), autoNumberName)));
     } else {
-      return new MathsField(new FieldFromSelect(new SelectStatement(Function.isnull(new FieldReference(valueColumn),
+      return new MathsField(new FieldFromSelect(new SelectStatement(Function.coalesce(new FieldReference(valueColumn),
         new FieldLiteral(0))).from(new TableReference(autoNumberTable.getName(), autoNumberTable.isTemporary())).where(
         new Criterion(Operator.EQ, new FieldReference(nameColumn), autoNumberName))), MathsOperator.PLUS, new FieldReference(
           sourceReference, "id"));

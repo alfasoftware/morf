@@ -177,8 +177,8 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   protected List<String> expectedAutoGenerateIdStatement() {
     return Arrays.asList(
       "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
-      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT ISNULL(MAX(id) + 1, 1)  AS CurrentValue FROM TESTSCHEMA.Test))",
-      "INSERT INTO TESTSCHEMA.Test (version, stringField, id) SELECT version, stringField, (SELECT ISNULL(value, 0)  FROM TESTSCHEMA.idvalues WHERE (name = 'Test')) + Other.id FROM TESTSCHEMA.Other"
+      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
+      "INSERT INTO TESTSCHEMA.Test (version, stringField, id) SELECT version, stringField, (SELECT COALESCE(value, 0) FROM TESTSCHEMA.idvalues WHERE (name = 'Test')) + Other.id FROM TESTSCHEMA.Other"
         );
   }
 
@@ -190,8 +190,8 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   protected List<String> expectedInsertWithIdAndVersion() {
     return Arrays.asList(
       "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
-      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT ISNULL(MAX(id) + 1, 1)  AS CurrentValue FROM TESTSCHEMA.Test))",
-      "INSERT INTO TESTSCHEMA.Test (stringField, id, version) SELECT stringField, (SELECT ISNULL(value, 0)  FROM TESTSCHEMA.idvalues WHERE (name = 'Test')) + Other.id, 0 AS version FROM TESTSCHEMA.Other"
+      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
+      "INSERT INTO TESTSCHEMA.Test (stringField, id, version) SELECT stringField, (SELECT COALESCE(value, 0) FROM TESTSCHEMA.idvalues WHERE (name = 'Test')) + Other.id, 0 AS version FROM TESTSCHEMA.Other"
         );
   }
 
@@ -279,8 +279,8 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   protected List<String> expectedSpecifiedValueInsert() {
     return Arrays.asList(
       "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
-      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT ISNULL(MAX(id) + 1, 1)  AS CurrentValue FROM TESTSCHEMA.Test))",
-      "INSERT INTO TESTSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, 1, 'X', (SELECT ISNULL(value, 1)  FROM TESTSCHEMA.idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
+      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
+      "INSERT INTO TESTSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, 1, 'X', (SELECT COALESCE(value, 1) FROM TESTSCHEMA.idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
         );
   }
 
@@ -292,8 +292,8 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   protected List<String> expectedSpecifiedValueInsertWithTableInDifferentSchema() {
     return Arrays.asList(
       "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
-      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT ISNULL(MAX(id) + 1, 1)  AS CurrentValue FROM MYSCHEMA.Test))",
-      "INSERT INTO MYSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, 1, 'X', (SELECT ISNULL(value, 1)  FROM TESTSCHEMA.idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
+      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM MYSCHEMA.Test))",
+      "INSERT INTO MYSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, 1, 'X', (SELECT COALESCE(value, 1) FROM TESTSCHEMA.idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
     );
   }
 
@@ -312,7 +312,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedEmptyStringInsertStatement() {
-    return "INSERT INTO TESTSCHEMA.Test (stringField, id, version, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (NULL, (SELECT ISNULL(value, 1)  FROM TESTSCHEMA.idvalues WHERE (name = 'Test')), 0, 0, 0, null, 0, NULL, null, 12345, null)";
+    return "INSERT INTO TESTSCHEMA.Test (stringField, id, version, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (NULL, (SELECT COALESCE(value, 1) FROM TESTSCHEMA.idvalues WHERE (name = 'Test')), 0, 0, 0, null, 0, NULL, null, 12345, null)";
   }
 
 
@@ -861,7 +861,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAutonumberUpdate() {
-    return Arrays.asList("MERGE INTO TESTSCHEMA.Autonumber A USING (SELECT ISNULL(MAX(id) + 1, 1)  AS CurrentValue FROM TESTSCHEMA.TestTable) S ON (A.id = 'TestTable') WHEN MATCHED THEN UPDATE SET A.value = CASE WHEN S.CurrentValue > A.value THEN S.CurrentValue ELSE A.value END WHEN NOT MATCHED THEN INSERT (id, value) VALUES ('TestTable', S.CurrentValue);");
+    return Arrays.asList("MERGE INTO TESTSCHEMA.Autonumber A USING (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.TestTable) S ON (A.id = 'TestTable') WHEN MATCHED THEN UPDATE SET A.value = CASE WHEN S.CurrentValue > A.value THEN S.CurrentValue ELSE A.value END WHEN NOT MATCHED THEN INSERT (id, value) VALUES ('TestTable', S.CurrentValue);");
   }
 
 
@@ -976,7 +976,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAutonumberUpdateForNonIdColumn() {
-    return Arrays.asList("MERGE INTO TESTSCHEMA.Autonumber A USING (SELECT ISNULL(MAX(generatedColumn) + 1, 1)  AS CurrentValue FROM TESTSCHEMA.TestTable) S ON (A.id = 'TestTable') WHEN MATCHED THEN UPDATE SET A.value = CASE WHEN S.CurrentValue > A.value THEN S.CurrentValue ELSE A.value END WHEN NOT MATCHED THEN INSERT (id, value) VALUES ('TestTable', S.CurrentValue);");
+    return Arrays.asList("MERGE INTO TESTSCHEMA.Autonumber A USING (SELECT COALESCE(MAX(generatedColumn) + 1, 1) AS CurrentValue FROM TESTSCHEMA.TestTable) S ON (A.id = 'TestTable') WHEN MATCHED THEN UPDATE SET A.value = CASE WHEN S.CurrentValue > A.value THEN S.CurrentValue ELSE A.value END WHEN NOT MATCHED THEN INSERT (id, value) VALUES ('TestTable', S.CurrentValue);");
   }
 
 
