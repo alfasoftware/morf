@@ -2184,7 +2184,9 @@ public abstract class SqlDialect {
    * @param function the function to convert.
    * @return a string representation of the SQL.
    */
-  protected abstract String leftTrim(Function function);
+  protected String leftTrim(Function function) {
+    return "LTRIM(" + getSqlFrom(function.getArguments().get(0)) + ")";
+  }
 
 
   /**
@@ -2193,7 +2195,9 @@ public abstract class SqlDialect {
    * @param function the function to convert.
    * @return a string representation of the SQL.
    */
-  protected abstract String rightTrim(Function function);
+  protected String rightTrim(Function function) {
+    return "RTRIM(" + getSqlFrom(function.getArguments().get(0)) + ")";
+  }
 
 
   /**
