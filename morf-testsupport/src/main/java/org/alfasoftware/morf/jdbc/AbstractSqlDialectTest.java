@@ -79,6 +79,7 @@ import static org.alfasoftware.morf.sql.element.Function.round;
 import static org.alfasoftware.morf.sql.element.Function.some;
 import static org.alfasoftware.morf.sql.element.Function.substring;
 import static org.alfasoftware.morf.sql.element.Function.sum;
+import static org.alfasoftware.morf.sql.element.Function.trim;
 import static org.alfasoftware.morf.sql.element.Function.upperCase;
 import static org.alfasoftware.morf.sql.element.Function.yyyymmddToDate;
 import static org.junit.Assert.assertArrayEquals;
@@ -3188,6 +3189,23 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * Tests that Trim functionality works.
+   */
+  @Test
+  public void testTrim() {
+    // Given
+    Function trim = trim(new FieldReference("field1"));
+    SelectStatement selectStatement = new SelectStatement(trim).from(new TableReference("schedule"));
+
+    // When
+    String result = testDialect.convertStatementToSQL(selectStatement);
+
+    // Then
+    assertEquals("Trim script should match expected", expectedTrim(), result);
+  }
+
+
+  /**
    * Tests that Left Trim functionality works.
    */
   @Test
@@ -4978,6 +4996,14 @@ public abstract class AbstractSqlDialectTest {
    */
   protected String expectedJoinOnEverything() {
     return "SELECT * FROM " + tableName("TableOne") + " INNER JOIN " + tableName("TableTwo") + " ON 1=1";
+  }
+
+
+  /**
+   * @return The expected SQL for a Trim
+   */
+  protected String expectedTrim() {
+    return "SELECT TRIM(field1) FROM " + tableName("schedule");
   }
 
 

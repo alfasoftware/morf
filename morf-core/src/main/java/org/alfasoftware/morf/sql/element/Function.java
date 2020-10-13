@@ -423,6 +423,18 @@ public final class Function extends AliasedField implements Driver {
 
 
   /**
+   * Helper method to create an instance of the "trim" SQL function,
+   * which will result in argument having leading and trailing spaces removed.
+   *
+   * @param expression the field to evaluate.
+   * @return an instance of the trim function.
+   */
+  public static Function trim(AliasedField expression) {
+    return new Function(FunctionType.TRIM, expression);
+  }
+
+
+  /**
    * Helper method to create an instance of the "leftTrim" SQL function,
    * which will result in argument having leading spaces removed.
    *

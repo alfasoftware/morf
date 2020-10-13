@@ -1818,6 +1818,14 @@ public abstract class SqlDialect {
         expression.append(')');
         return expression.toString();
 
+      case TRIM:
+        if (function.getArguments().size() != 1) {
+          throw new IllegalArgumentException("The TRIM function should have one argument. This function has "
+              + function.getArguments().size());
+        }
+
+        return trim(function);
+
       case LEFT_TRIM:
         if (function.getArguments().size() != 1) {
           throw new IllegalArgumentException("The LEFT_TRIM function should have one argument. This function has "
@@ -2157,6 +2165,17 @@ public abstract class SqlDialect {
    * @return a string representation of the SQL.
    */
   protected abstract String getSqlForNow(Function function);
+
+
+  /**
+   * Converts the TRIM function into SQL.
+   *
+   * @param function the function to convert.
+   * @return a string representation of the SQL.
+   */
+  protected String trim(Function function) {
+    return "TRIM(" + getSqlFrom(function.getArguments().get(0)) + ")";
+  }
 
 
   /**

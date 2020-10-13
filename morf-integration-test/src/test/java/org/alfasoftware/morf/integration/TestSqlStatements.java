@@ -69,6 +69,7 @@ import static org.alfasoftware.morf.sql.element.Function.rightTrim;
 import static org.alfasoftware.morf.sql.element.Function.some;
 import static org.alfasoftware.morf.sql.element.Function.substring;
 import static org.alfasoftware.morf.sql.element.Function.sum;
+import static org.alfasoftware.morf.sql.element.Function.trim;
 import static org.alfasoftware.morf.sql.element.Function.upperCase;
 import static org.alfasoftware.morf.sql.element.Function.yyyymmddToDate;
 import static org.hamcrest.Matchers.allOf;
@@ -1639,7 +1640,8 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     SelectStatement testStatement1 = select(
                                        leftTrim(field("stringColumn")),
                                        rightTrim(field("stringColumn")),
-                                       rightTrim(leftTrim(field("stringColumn")))
+                                       rightTrim(leftTrim(field("stringColumn"))),
+                                       trim(field("stringColumn"))
                                      )
                                      .from(tableRef("LeftAndRightTrimTable"))
                                      .orderBy(field("indexColumn"));
@@ -1657,6 +1659,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
           assertEquals(expectedStringL.get(counter), resultSet.getString(1));
           assertEquals(expectedStringR.get(counter), resultSet.getString(2));
           assertEquals(expectedStringLR.get(counter), resultSet.getString(3));
+          assertEquals(expectedStringLR.get(counter), resultSet.getString(4));
           counter++;
         }
         return null;
