@@ -39,6 +39,7 @@ import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.sql.element.WhenCondition;
 import org.alfasoftware.morf.sql.element.WindowFunction;
+import org.apache.commons.lang3.StringUtils;
 import org.joda.time.LocalDate;
 
 /**
@@ -369,7 +370,25 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
 
 
   /**
-   * Shortcut to "not empty and not null"
+   * Shortcut to "empty or null", where empty means spaces only.
+   *
+   * <p>Note that only <i>spaces</i> are considered empty. Tabs and newlines are not considered empty.
+   * This will therefore give somewhat different results to {@link StringUtils#isBlank(CharSequence)}.</p>
+   *
+   * @param expression the expression to evaluate.
+   * @return an expression wrapping the passed expression with additional
+   * criteria to ensure it is not blank or null.
+   */
+  public static Criterion isEmpty(AliasedField expression) {
+    return Function.coalesce(Function.length(Function.trim(expression)), literal(0)).eq(0);
+  }
+
+
+  /**
+   * Shortcut to "not empty and not null", where empty means spaces only.
+   *
+   * <p>Note that only <i>spaces</i> are considered empty. Tabs and newlines are not considered empty.
+   * This will therefore give somewhat different results to {@link StringUtils#isBlank(CharSequence)}.</p>
    *
    * @param expression the expression to evaluate.
    * @return an expression wrapping the passed expression with additional
@@ -377,8 +396,8 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
    */
   public static Criterion isNotEmpty(AliasedField expression) {
     return Criterion.and(
-      Criterion.neq(expression, literal("")),
-      Criterion.isNotNull(expression)
+      Criterion.isNotNull(expression), // performance optimisation
+      Function.coalesce(Function.length(Function.trim(expression)), literal(0)).greaterThan(0) // the coalesce is important!
     );
   }
 

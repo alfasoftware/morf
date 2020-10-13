@@ -27,6 +27,8 @@ import static org.alfasoftware.morf.sql.SqlUtils.cast;
 import static org.alfasoftware.morf.sql.SqlUtils.concat;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.insert;
+import static org.alfasoftware.morf.sql.SqlUtils.isEmpty;
+import static org.alfasoftware.morf.sql.SqlUtils.isNotEmpty;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.merge;
 import static org.alfasoftware.morf.sql.SqlUtils.nullLiteral;
@@ -43,6 +45,7 @@ import static org.alfasoftware.morf.sql.element.Criterion.and;
 import static org.alfasoftware.morf.sql.element.Criterion.eq;
 import static org.alfasoftware.morf.sql.element.Criterion.in;
 import static org.alfasoftware.morf.sql.element.Criterion.like;
+import static org.alfasoftware.morf.sql.element.Criterion.not;
 import static org.alfasoftware.morf.sql.element.Criterion.or;
 import static org.alfasoftware.morf.sql.element.Function.addDays;
 import static org.alfasoftware.morf.sql.element.Function.average;
@@ -1623,6 +1626,60 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
       public Void process(ResultSet resultSet) throws SQLException {
         while (resultSet.next()) {
           assertEquals("ello wo\\''\\'", resultSet.getString(1));
+        }
+        return null;
+      }
+    });
+  }
+
+
+  /**
+   * Test the behaviour of the {@link org.alfasoftware.morf.sql.SqlUtils.isEmpty(AliasedField)}
+   * and {@link org.alfasoftware.morf.sql.SqlUtils.isNotEmpty(AliasedField)} SQL criteria against all {@linkplain SqlDialect}s
+   *
+   * @throws SQLException if something goes wrong.
+   */
+  @Test
+  public void LtestIsEmpty() throws SQLException {
+    SelectStatement testStatement1 = select(
+        // isEmpty positives
+        caseStatement(when(isEmpty(nullLiteral())).then(1)).otherwise(0),
+        caseStatement(when(isEmpty(literal(""))).then(1)).otherwise(0),
+        caseStatement(when(isEmpty(literal(" "))).then(1)).otherwise(0),
+        caseStatement(when(isEmpty(literal("  "))).then(1)).otherwise(0),
+        // isNotEmpty negatives
+        caseStatement(when(not(isNotEmpty(nullLiteral()))).then(1)).otherwise(0),
+        caseStatement(when(not(isNotEmpty(literal("")))).then(1)).otherwise(0),
+        caseStatement(when(not(isNotEmpty(literal(" ")))).then(1)).otherwise(0),
+        caseStatement(when(not(isNotEmpty(literal("  ")))).then(1)).otherwise(0),
+        // isEmpty negatives
+        caseStatement(when(not(isEmpty(literal("a")))).then(1)).otherwise(0),
+        caseStatement(when(not(isEmpty(literal(" a ")))).then(1)).otherwise(0),
+        caseStatement(when(not(isEmpty(literal("?")))).then(1)).otherwise(0),
+        caseStatement(when(not(isEmpty(literal("\t")))).then(1)).otherwise(0),  // note the tab is not a space!
+        caseStatement(when(not(isEmpty(literal("\n")))).then(1)).otherwise(0),  // note the newline is not a space!
+        // isNotEmpty positives
+        caseStatement(when(isNotEmpty(literal("a"))).then(1)).otherwise(0),
+        caseStatement(when(isNotEmpty(literal(" a "))).then(1)).otherwise(0),
+        caseStatement(when(isNotEmpty(literal("?"))).then(1)).otherwise(0),
+        caseStatement(when(isNotEmpty(literal("\t"))).then(1)).otherwise(0),   // note the tab is not a space!
+        caseStatement(when(isNotEmpty(literal("\n"))).then(1)).otherwise(0),   // note the newline is not a space!
+        // making sure we check all fields
+        literal(7)
+      );
+
+    String sql = convertStatementToSQL(testStatement1);
+
+    sqlScriptExecutorProvider.get().executeQuery(sql, new ResultSetProcessor<Void>() {
+      @Override
+      public Void process(ResultSet resultSet) throws SQLException {
+        while (resultSet.next()) {
+          final int answers = 19;
+          assertEquals(answers, resultSet.getMetaData().getColumnCount());
+          for (int i = 1; i < answers; i++) {
+            assertEquals("Answer " + i + " not as expected", 1, resultSet.getInt(i));
+          }
+          assertEquals("Last answer not as expected", 7, resultSet.getInt(answers));
         }
         return null;
       }
