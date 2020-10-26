@@ -415,18 +415,6 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
-  protected String leftTrim(Function function) {
-    return "LTRIM(" + getSqlFrom(function.getArguments().get(0)) + ")";
-  }
-
-
-  @Override
-  protected String rightTrim(Function function) {
-    return "RTRIM(" + getSqlFrom(function.getArguments().get(0)) + ")";
-  }
-
-
-  @Override
   protected String getSqlForAddDays(Function function) {
     AliasedField date = function.getArguments().get(0);
     AliasedField days = function.getArguments().get(1);

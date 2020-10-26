@@ -111,6 +111,11 @@ public enum FunctionType {
   MONTHS_BETWEEN,
 
   /**
+   * Trim function. Trim leading and trailing spaces
+   */
+  TRIM,
+
+  /**
    * Left Trim function. Trim leading spaces
    */
   LEFT_TRIM,

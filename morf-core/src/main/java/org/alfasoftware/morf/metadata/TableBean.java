@@ -19,6 +19,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 
+import com.google.common.collect.Iterables;
+
+
 /**
  * Implements {@linkplain Table} as a bean.
  *
@@ -76,11 +79,11 @@ class TableBean implements Table {
    * @param indexes indexes for the table;
    * @param isTemporary Whether the table is a temporary table.
    */
-  TableBean(String tableName, List<Column> columns, List<Index> indexes, boolean isTemporary) {
+  TableBean(String tableName, Iterable<? extends Column> columns, Iterable<? extends Index> indexes, boolean isTemporary) {
     this(tableName, isTemporary);
 
-    this.columns.addAll(columns);
-    this.indexes.addAll(indexes);
+    Iterables.addAll(this.columns, columns);
+    Iterables.addAll(this.indexes, indexes);
   }
 
 

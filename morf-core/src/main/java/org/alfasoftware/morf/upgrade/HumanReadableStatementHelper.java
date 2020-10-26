@@ -130,6 +130,7 @@ class HumanReadableStatementHelper {
       .put(FunctionType.ROUND, new FunctionTypeMetaData("", " decimal places", " rounded to ", true, false))
       .put(FunctionType.SUBSTRING, new FunctionTypeMetaData("substring(", ")", ", ", false, false))
       .put(FunctionType.SUM, new FunctionTypeMetaData("sum of ", "", "", false, false))
+      .put(FunctionType.TRIM, new FunctionTypeMetaData("trimmed ", "", "", false, false))
       .put(FunctionType.UPPER, new FunctionTypeMetaData("upper case ", "", "", false, false))
       .put(FunctionType.LAST_DAY_OF_MONTH, new FunctionTypeMetaData("last day of month ", "", "", false, false))
       .build();

@@ -1818,6 +1818,14 @@ public abstract class SqlDialect {
         expression.append(')');
         return expression.toString();
 
+      case TRIM:
+        if (function.getArguments().size() != 1) {
+          throw new IllegalArgumentException("The TRIM function should have one argument. This function has "
+              + function.getArguments().size());
+        }
+
+        return trim(function);
+
       case LEFT_TRIM:
         if (function.getArguments().size() != 1) {
           throw new IllegalArgumentException("The LEFT_TRIM function should have one argument. This function has "
@@ -2160,12 +2168,25 @@ public abstract class SqlDialect {
 
 
   /**
+   * Converts the TRIM function into SQL.
+   *
+   * @param function the function to convert.
+   * @return a string representation of the SQL.
+   */
+  protected String trim(Function function) {
+    return "TRIM(" + getSqlFrom(function.getArguments().get(0)) + ")";
+  }
+
+
+  /**
    * Converts the LEFT_TRIM function into SQL.
    *
    * @param function the function to convert.
    * @return a string representation of the SQL.
    */
-  protected abstract String leftTrim(Function function);
+  protected String leftTrim(Function function) {
+    return "LTRIM(" + getSqlFrom(function.getArguments().get(0)) + ")";
+  }
 
 
   /**
@@ -2174,7 +2195,9 @@ public abstract class SqlDialect {
    * @param function the function to convert.
    * @return a string representation of the SQL.
    */
-  protected abstract String rightTrim(Function function);
+  protected String rightTrim(Function function) {
+    return "RTRIM(" + getSqlFrom(function.getArguments().get(0)) + ")";
+  }
 
 
   /**
@@ -3084,7 +3107,7 @@ public abstract class SqlDialect {
    * @return SQL getting the maximum value from the {@code dataTable}.
    */
   protected String getExistingMaxAutoNumberValue(TableReference dataTable, String fieldName) {
-    return getSqlFrom(new SelectStatement(Function.isnull(
+    return getSqlFrom(new SelectStatement(Function.coalesce(
       new MathsField(Function.max(new FieldReference(fieldName)), MathsOperator.PLUS, new FieldLiteral(1)), new FieldLiteral(1))
         .as("CurrentValue")).from(dataTable));
   }
@@ -3104,11 +3127,11 @@ public abstract class SqlDialect {
     String autoNumberName = getAutoNumberName(sourceTable.getName());
 
     if (sourceReference == null) {
-      return new FieldFromSelect(new SelectStatement(Function.isnull(new FieldReference(valueColumn), new FieldLiteral(1))).from(
+      return new FieldFromSelect(new SelectStatement(Function.coalesce(new FieldReference(valueColumn), new FieldLiteral(1))).from(
         new TableReference(autoNumberTable.getName(), autoNumberTable.isTemporary())).where(
         new Criterion(Operator.EQ, new FieldReference(nameColumn), autoNumberName)));
     } else {
-      return new MathsField(new FieldFromSelect(new SelectStatement(Function.isnull(new FieldReference(valueColumn),
+      return new MathsField(new FieldFromSelect(new SelectStatement(Function.coalesce(new FieldReference(valueColumn),
         new FieldLiteral(0))).from(new TableReference(autoNumberTable.getName(), autoNumberTable.isTemporary())).where(
         new Criterion(Operator.EQ, new FieldReference(nameColumn), autoNumberName))), MathsOperator.PLUS, new FieldReference(
           sourceReference, "id"));

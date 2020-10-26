@@ -66,9 +66,12 @@ public final class Function extends AliasedField implements Driver {
 
 
   private Function(FunctionType type, AliasedField... arguments) {
-    super();
-    this.type = type;
-    this.arguments = ImmutableList.copyOf(arguments);
+    this("", type, ImmutableList.copyOf(arguments));
+  }
+
+
+  private Function(FunctionType type, Iterable<? extends AliasedField> arguments) {
+    this("", type, ImmutableList.copyOf(arguments));
   }
 
 
@@ -327,7 +330,10 @@ public final class Function extends AliasedField implements Driver {
    * @param fieldToEvaluate the field to evaluate in the is null function
    * @param replacementValue The replacement value
    * @return an instance of the is null function
+   *
+   * @deprecated Use {@link #coalesce(AliasedField...)} instead.
    */
+  @Deprecated
   public static Function isnull(AliasedField fieldToEvaluate, AliasedField replacementValue) {
     return new Function(FunctionType.IS_NULL, fieldToEvaluate, replacementValue);
   }
@@ -353,6 +359,18 @@ public final class Function extends AliasedField implements Driver {
    * @return an instance of the coalesce function.
    */
   public static Function coalesce(AliasedField... fields) {
+    return new Function(FunctionType.COALESCE, fields);
+  }
+
+
+  /**
+   * Helper method to create an instance of the "coalesce" SQL function,
+   * which will result in the first non-null argument.
+   *
+   * @param fields the fields to evaluate.
+   * @return an instance of the coalesce function.
+   */
+  public static Function coalesce(Iterable<? extends AliasedField> fields) {
     return new Function(FunctionType.COALESCE, fields);
   }
 
@@ -401,6 +419,18 @@ public final class Function extends AliasedField implements Driver {
    */
   public static Function lastDayOfMonth(AliasedField date) {
     return new Function(FunctionType.LAST_DAY_OF_MONTH, date);
+  }
+
+
+  /**
+   * Helper method to create an instance of the "trim" SQL function,
+   * which will result in argument having leading and trailing spaces removed.
+   *
+   * @param expression the field to evaluate.
+   * @return an instance of the trim function.
+   */
+  public static Function trim(AliasedField expression) {
+    return new Function(FunctionType.TRIM, expression);
   }
 
 

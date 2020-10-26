@@ -17,18 +17,18 @@ package org.alfasoftware.morf.integration;
 
 import static org.alfasoftware.morf.metadata.DataSetUtils.dataSetProducer;
 import static org.alfasoftware.morf.metadata.DataSetUtils.record;
-import static org.alfasoftware.morf.metadata.DataType.DECIMAL;
-import static org.alfasoftware.morf.metadata.DataType.INTEGER;
-import static org.alfasoftware.morf.metadata.DataType.STRING;
 import static org.alfasoftware.morf.metadata.SchemaUtils.autonumber;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.alfasoftware.morf.sql.SqlUtils.caseStatement;
 import static org.alfasoftware.morf.sql.SqlUtils.cast;
 import static org.alfasoftware.morf.sql.SqlUtils.concat;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.insert;
+import static org.alfasoftware.morf.sql.SqlUtils.isEmpty;
+import static org.alfasoftware.morf.sql.SqlUtils.isNotEmpty;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.merge;
 import static org.alfasoftware.morf.sql.SqlUtils.nullLiteral;
@@ -45,17 +45,22 @@ import static org.alfasoftware.morf.sql.element.Criterion.and;
 import static org.alfasoftware.morf.sql.element.Criterion.eq;
 import static org.alfasoftware.morf.sql.element.Criterion.in;
 import static org.alfasoftware.morf.sql.element.Criterion.like;
+import static org.alfasoftware.morf.sql.element.Criterion.not;
 import static org.alfasoftware.morf.sql.element.Criterion.or;
 import static org.alfasoftware.morf.sql.element.Function.addDays;
 import static org.alfasoftware.morf.sql.element.Function.average;
 import static org.alfasoftware.morf.sql.element.Function.coalesce;
 import static org.alfasoftware.morf.sql.element.Function.count;
+import static org.alfasoftware.morf.sql.element.Function.dateToYyyyMMddHHmmss;
+import static org.alfasoftware.morf.sql.element.Function.dateToYyyymmdd;
 import static org.alfasoftware.morf.sql.element.Function.daysBetween;
 import static org.alfasoftware.morf.sql.element.Function.every;
 import static org.alfasoftware.morf.sql.element.Function.floor;
+import static org.alfasoftware.morf.sql.element.Function.lastDayOfMonth;
 import static org.alfasoftware.morf.sql.element.Function.leftPad;
 import static org.alfasoftware.morf.sql.element.Function.leftTrim;
 import static org.alfasoftware.morf.sql.element.Function.length;
+import static org.alfasoftware.morf.sql.element.Function.lowerCase;
 import static org.alfasoftware.morf.sql.element.Function.max;
 import static org.alfasoftware.morf.sql.element.Function.mod;
 import static org.alfasoftware.morf.sql.element.Function.monthsBetween;
@@ -67,8 +72,9 @@ import static org.alfasoftware.morf.sql.element.Function.rightTrim;
 import static org.alfasoftware.morf.sql.element.Function.some;
 import static org.alfasoftware.morf.sql.element.Function.substring;
 import static org.alfasoftware.morf.sql.element.Function.sum;
+import static org.alfasoftware.morf.sql.element.Function.trim;
+import static org.alfasoftware.morf.sql.element.Function.upperCase;
 import static org.alfasoftware.morf.sql.element.Function.yyyymmddToDate;
-import static org.alfasoftware.morf.sql.element.MathsOperator.MINUS;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.instanceOf;
@@ -126,7 +132,6 @@ import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
-import org.alfasoftware.morf.sql.SqlUtils;
 import org.alfasoftware.morf.sql.TruncateStatement;
 import org.alfasoftware.morf.sql.UpdateStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
@@ -136,7 +141,6 @@ import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
-import org.alfasoftware.morf.sql.element.MathsField;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager;
@@ -1061,10 +1065,10 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     final TableReference simpleTypes = new TableReference("SimpleTypes");
 
     // Where clause for SELECT.
-    final Criterion whereStringCol = Criterion.eq(new FieldReference(simpleTypes, "stringCol"), primaryKeyValue);
+    final Criterion whereStringCol = eq(new FieldReference(simpleTypes, "stringCol"), primaryKeyValue);
 
     // Sub-selects.
-    final Criterion havingCriteria = Criterion.eq(Function.count(), 0);
+    final Criterion havingCriteria = eq(count(), 0);
     final SelectStatement selectFromSimpleTypes = new SelectStatement(
       new FieldLiteral(primaryKeyValue).as("stringCol"),
       new FieldLiteral("not\\'null'").as("nullableStringCol"),
@@ -1135,7 +1139,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
                                                             java.sql.Date.valueOf("2100-02-28"));
 
     SelectStatement testStatement = select(
-        Function.lastDayOfMonth(yyyymmddToDate(new Cast(field("alfaDate1"), DataType.STRING, 8))))
+        lastDayOfMonth(yyyymmddToDate(new Cast(field("alfaDate1"), DataType.STRING, 8))))
         .from(tableRef("LastDayOfMonthTable"));
 
     // Run the SQL
@@ -1546,7 +1550,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
       monthBetweenListComp.add(Months.monthsBetween(fromDate, toDate).getMonths());
     }
 
-    SelectStatement monthBetweenSelect = select(monthBetweenListSql.toArray(new AliasedField[monthBetweenListSql.size()]))
+    SelectStatement monthBetweenSelect = select(monthBetweenListSql)
         .from("ActualDates")
         .where(field("actualDate").eq(new LocalDate(1995, 10, 23)));
 
@@ -1630,6 +1634,60 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
 
 
   /**
+   * Test the behaviour of the {@link org.alfasoftware.morf.sql.SqlUtils.isEmpty(AliasedField)}
+   * and {@link org.alfasoftware.morf.sql.SqlUtils.isNotEmpty(AliasedField)} SQL criteria against all {@linkplain SqlDialect}s
+   *
+   * @throws SQLException if something goes wrong.
+   */
+  @Test
+  public void LtestIsEmpty() throws SQLException {
+    SelectStatement testStatement1 = select(
+        // isEmpty positives
+        caseStatement(when(isEmpty(nullLiteral())).then(1)).otherwise(0),
+        caseStatement(when(isEmpty(literal(""))).then(1)).otherwise(0),
+        caseStatement(when(isEmpty(literal(" "))).then(1)).otherwise(0),
+        caseStatement(when(isEmpty(literal("  "))).then(1)).otherwise(0),
+        // isNotEmpty negatives
+        caseStatement(when(not(isNotEmpty(nullLiteral()))).then(1)).otherwise(0),
+        caseStatement(when(not(isNotEmpty(literal("")))).then(1)).otherwise(0),
+        caseStatement(when(not(isNotEmpty(literal(" ")))).then(1)).otherwise(0),
+        caseStatement(when(not(isNotEmpty(literal("  ")))).then(1)).otherwise(0),
+        // isEmpty negatives
+        caseStatement(when(not(isEmpty(literal("a")))).then(1)).otherwise(0),
+        caseStatement(when(not(isEmpty(literal(" a ")))).then(1)).otherwise(0),
+        caseStatement(when(not(isEmpty(literal("?")))).then(1)).otherwise(0),
+        caseStatement(when(not(isEmpty(literal("\t")))).then(1)).otherwise(0),  // note the tab is not a space!
+        caseStatement(when(not(isEmpty(literal("\n")))).then(1)).otherwise(0),  // note the newline is not a space!
+        // isNotEmpty positives
+        caseStatement(when(isNotEmpty(literal("a"))).then(1)).otherwise(0),
+        caseStatement(when(isNotEmpty(literal(" a "))).then(1)).otherwise(0),
+        caseStatement(when(isNotEmpty(literal("?"))).then(1)).otherwise(0),
+        caseStatement(when(isNotEmpty(literal("\t"))).then(1)).otherwise(0),   // note the tab is not a space!
+        caseStatement(when(isNotEmpty(literal("\n"))).then(1)).otherwise(0),   // note the newline is not a space!
+        // making sure we check all fields
+        literal(7)
+      );
+
+    String sql = convertStatementToSQL(testStatement1);
+
+    sqlScriptExecutorProvider.get().executeQuery(sql, new ResultSetProcessor<Void>() {
+      @Override
+      public Void process(ResultSet resultSet) throws SQLException {
+        while (resultSet.next()) {
+          final int answers = 19;
+          assertEquals(answers, resultSet.getMetaData().getColumnCount());
+          for (int i = 1; i < answers; i++) {
+            assertEquals("Answer " + i + " not as expected", 1, resultSet.getInt(i));
+          }
+          assertEquals("Last answer not as expected", 7, resultSet.getInt(answers));
+        }
+        return null;
+      }
+    });
+  }
+
+
+  /**
    * Test the behaviour of the trim SQL functions against all {@linkplain SqlDialect}s
    *
    * @throws SQLException if something goes wrong.
@@ -1639,7 +1697,8 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     SelectStatement testStatement1 = select(
                                        leftTrim(field("stringColumn")),
                                        rightTrim(field("stringColumn")),
-                                       rightTrim(leftTrim(field("stringColumn")))
+                                       rightTrim(leftTrim(field("stringColumn"))),
+                                       trim(field("stringColumn"))
                                      )
                                      .from(tableRef("LeftAndRightTrimTable"))
                                      .orderBy(field("indexColumn"));
@@ -1657,6 +1716,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
           assertEquals(expectedStringL.get(counter), resultSet.getString(1));
           assertEquals(expectedStringR.get(counter), resultSet.getString(2));
           assertEquals(expectedStringLR.get(counter), resultSet.getString(3));
+          assertEquals(expectedStringLR.get(counter), resultSet.getString(4));
           counter++;
         }
         return null;
@@ -1875,7 +1935,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
                                        addDays(field("actualDate"), literal(0)),
                                        addDays(field("actualDate"), literal(365)),
                                        addDays(field("actualDate"), field("column3")),
-                                       addDays(field("actualDate"), new MathsField(literal(0), MINUS, field("column3")))
+                                       addDays(field("actualDate"), literal(0).minus(field("column3")))
                                      )
                                      .from(tableRef("ActualDates"))
                                      .innerJoin(tableRef("CoalesceTable"), eq(field("column3"), literal(5)))
@@ -2208,7 +2268,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testLowerAndUpper() throws SQLException {
-    SelectStatement statement = select(Function.lowerCase(field("firstName")), Function.upperCase(field("lastName"))).from(
+    SelectStatement statement = select(lowerCase(field("firstName")), upperCase(field("lastName"))).from(
       tableRef("LowerAndUpperTable")).orderBy(field("id"));
     String sql = convertStatementToSQL(statement);
     sqlScriptExecutorProvider.get().executeQuery(sql, new ResultSetProcessor<Void>() {
@@ -2234,7 +2294,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testDateToYyyymmdd() {
-    SelectStatement statement = select(Function.dateToYyyymmdd(field("actualDate"))).from(tableRef("ActualDates")).orderBy(field("actualDate"));
+    SelectStatement statement = select(dateToYyyymmdd(field("actualDate"))).from(tableRef("ActualDates")).orderBy(field("actualDate"));
 
     String sql = convertStatementToSQL(statement);
     sqlScriptExecutorProvider.get().executeQuery(sql, new ResultSetProcessor<Void>() {
@@ -2262,7 +2322,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testDateToYyyymmddHHmmss() {
-    SelectStatement statement = select(Function.dateToYyyyMMddHHmmss(Function.now()), Function.dateToYyyymmdd(Function.now()), Function.dateToYyyymmdd(Function.addDays(Function.now(), literal(1))));
+    SelectStatement statement = select(dateToYyyyMMddHHmmss(now()), dateToYyyymmdd(now()), dateToYyyymmdd(addDays(now(), literal(1))));
 
     String sql = convertStatementToSQL(statement);
     sqlScriptExecutorProvider.get().executeQuery(sql, new ResultSetProcessor<Void>() {
@@ -2440,9 +2500,9 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         )
         .from("SelectFirstTable")
         .where(field("field1").in(
-          parameter("param1").type(INTEGER).plus(parameter("param1").type(INTEGER)),
-          parameter("param2").type(DECIMAL),
-          parameter("param2").type(INTEGER)
+          parameter("param1").type(DataType.INTEGER).plus(parameter("param1").type(DataType.INTEGER)),
+          parameter("param2").type(DataType.DECIMAL),
+          parameter("param2").type(DataType.INTEGER)
         ))
         .orderBy(field("field1"), field("field2"));
 
@@ -2452,9 +2512,9 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
       sqlDialect.prepareStatementParameters(
         preparedStatement,
         ImmutableList.of(
-          parameter("param1").type(INTEGER),
-          parameter("param2").type(DECIMAL),
-          parameter("param3").type(INTEGER)
+          parameter("param1").type(DataType.INTEGER),
+          parameter("param2").type(DataType.DECIMAL),
+          parameter("param3").type(DataType.INTEGER)
         ),
         DataSetUtils.statementParameters()
           .setInteger("param1", 1) // 1 + 1 = 2
@@ -2488,10 +2548,10 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     sqlDialect.prepareStatementParameters(
       preparedStatement,
       ImmutableList.of(
-        parameter("column1").type(INTEGER),
-        parameter("column2").type(DECIMAL),
-        parameter("column3").type(STRING),
-        parameter("parameterValue").type(STRING)
+        parameter("column1").type(DataType.INTEGER),
+        parameter("column2").type(DataType.DECIMAL),
+        parameter("column3").type(DataType.STRING),
+        parameter("parameterValue").type(DataType.STRING)
       ),
       DataSetUtils.statementParameters()
         .setInteger("column1", col1Value)
@@ -2567,7 +2627,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     int rowsAffected = executor.execute(sql);
     assertEquals(1, rowsAffected);
 
-    int rows = executor.executeQuery(convertStatementToSQL(select(Function.count()).from(tableRef("ParameterTable"))), new ResultSetProcessor<Integer>() {
+    int rows = executor.executeQuery(convertStatementToSQL(select(count()).from(tableRef("ParameterTable"))), new ResultSetProcessor<Integer>() {
       @Override
       public Integer process(ResultSet resultSet) throws SQLException {
         resultSet.next();
@@ -2819,7 +2879,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
 
     InsertStatement insertStatement = insert().into(insertTable)
         .from(
-          selectDistinct(selectTable.field("column1"), selectTable.field("column2"))
+          selectDistinct(ImmutableList.of(selectTable.field("column1"), selectTable.field("column2")))
           .from(selectTable)
           .innerJoin(joinTable, eq(joinTable.field("foreignKeyId"), selectTable.field("id"))));
 
@@ -3148,8 +3208,8 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testSomeFunctionWithACaseStatement() {
-    CaseStatement caseStmt = SqlUtils.caseStatement(
-      when(cast(field("id")).asType(INTEGER).lessThanOrEqualTo(literal(1))).then(true))
+    CaseStatement caseStmt = caseStatement(
+      when(cast(field("id")).asType(DataType.INTEGER).lessThanOrEqualTo(literal(1))).then(true))
         .otherwise(false);
     SelectStatement selectComplexSome = select(some(caseStmt), every(caseStmt)).from(tableRef("WithDefaultValue"));
     sqlScriptExecutorProvider.get().executeQuery(selectComplexSome).processWith(new ResultSetProcessor<Void>() {

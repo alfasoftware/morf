@@ -226,7 +226,7 @@ public class TestDatabaseUpgradeIntegration {
     ),
     schema(
       view("view4", select(field("valCol"), field("keyCol1")).from("view2"), "view3"),
-      view("view1", select(field("valCol"), field("keyCol1")).from("BasicTable").innerJoin(tableRef("KeylessTable"))),
+      view("view1", select(field("valCol"), field("keyCol1")).from("BasicTable").crossJoin(tableRef("KeylessTable"))),
       view("view3", select(field("valCol"), field("keyCol1")).from("view2"), "view2"),
       view("view2", select(field("valCol"), field("keyCol1")).from("view1"), "view1"),
       view("viewId", select(field("id"), field("someValue")).from("IdTable"))
@@ -1029,7 +1029,7 @@ public class TestDatabaseUpgradeIntegration {
 
     List<View> newSchemaViews = FluentIterable.from(schema.views())
       .filter(v -> !v.getName().equalsIgnoreCase("view1")) // re-add view1 now dependent on BasicTable view
-      .append(view("view1", select(field("valCol"), field("keyCol1")).from("BasicTable").innerJoin(tableRef("KeylessTable")), "BasicTable"))
+      .append(view("view1", select(field("valCol"), field("keyCol1")).from("BasicTable").crossJoin(tableRef("KeylessTable")), "BasicTable"))
       .append(newView) // and add the new BasicTable view
       .toList();
 

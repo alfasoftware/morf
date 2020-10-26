@@ -19,7 +19,6 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.sql.element.Criterion.eq;
 
 import java.math.BigDecimal;
-import java.util.List;
 
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
@@ -40,6 +39,7 @@ import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.sql.element.WhenCondition;
 import org.alfasoftware.morf.sql.element.WindowFunction;
+import org.apache.commons.lang3.StringUtils;
 import org.joda.time.LocalDate;
 
 /**
@@ -83,7 +83,7 @@ public class SqlUtils {
    * <p>Usage is discouraged; this method will be deprecated at some point. Use
    * {@link SelectStatement#select(AliasedFieldBuilder...)} for preference.</p>
    *
-   * @param fields an array of fields that should be selected
+   * @param fields fields to be selected
    * @return {@link SelectStatement}
    */
   public static SelectStatement select(AliasedFieldBuilder... fields) {
@@ -102,10 +102,10 @@ public class SqlUtils {
    *
    * <pre>SelectStatement.select().fields(myFields).from(foo).build();</pre>
    *
-   * @param fields fields that should be selected
+   * @param fields fields to be selected
    * @return {@link SelectStatement}
    */
-  public static SelectStatement select(List<? extends AliasedFieldBuilder> fields) {
+  public static SelectStatement select(Iterable<? extends AliasedFieldBuilder> fields) {
     return new SelectStatement(fields);
   }
 
@@ -121,10 +121,29 @@ public class SqlUtils {
    *
    * <pre>SelectStatement.select(myFields).distinct().from(foo).build();</pre>
    *
-   * @param fields an array of fields that should be selected
+   * @param fields fields to be selected
    * @return {@link SelectStatement}
    */
   public static SelectStatement selectDistinct(AliasedFieldBuilder... fields) {
+    return new SelectStatement(fields, true);
+  }
+
+
+  /**
+   * Constructs a distinct Select Statement which optionally selects on a subset of fields.
+   * If no fields are specified then this is equivalent of selecting all
+   * fields (i.e. {@code SELECT DISTINCT * FROM x}).
+   *
+   * <p>Usage is discouraged; this method will be deprecated at some point. Use
+   * {@link SelectStatement#select(AliasedFieldBuilder...)} for preference. For
+   * example:</p>
+   *
+   * <pre>SelectStatement.select(myFields).distinct().from(foo).build();</pre>
+   *
+   * @param fields fields to be selected
+   * @return {@link SelectStatement}
+   */
+  public static SelectStatement selectDistinct(Iterable<? extends AliasedFieldBuilder> fields) {
     return new SelectStatement(fields, true);
   }
 
@@ -351,7 +370,25 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
 
 
   /**
-   * Shortcut to "not empty and not null"
+   * Shortcut to "empty or null", where empty means spaces only.
+   *
+   * <p>Note that only <i>spaces</i> are considered empty. Tabs and newlines are not considered empty.
+   * This will therefore give somewhat different results to {@link StringUtils#isBlank(CharSequence)}.</p>
+   *
+   * @param expression the expression to evaluate.
+   * @return an expression wrapping the passed expression with additional
+   * criteria to ensure it is not blank or null.
+   */
+  public static Criterion isEmpty(AliasedField expression) {
+    return Function.coalesce(Function.length(Function.trim(expression)), literal(0)).eq(0);
+  }
+
+
+  /**
+   * Shortcut to "not empty and not null", where empty means spaces only.
+   *
+   * <p>Note that only <i>spaces</i> are considered empty. Tabs and newlines are not considered empty.
+   * This will therefore give somewhat different results to {@link StringUtils#isBlank(CharSequence)}.</p>
    *
    * @param expression the expression to evaluate.
    * @return an expression wrapping the passed expression with additional
@@ -359,8 +396,8 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
    */
   public static Criterion isNotEmpty(AliasedField expression) {
     return Criterion.and(
-      Criterion.neq(expression, literal("")),
-      Criterion.isNotNull(expression)
+      Criterion.isNotNull(expression), // performance optimisation
+      Function.coalesce(Function.length(Function.trim(expression)), literal(0)).greaterThan(0) // the coalesce is important!
     );
   }
 

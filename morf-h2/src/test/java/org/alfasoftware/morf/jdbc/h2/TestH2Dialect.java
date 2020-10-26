@@ -163,8 +163,8 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   protected List<String> expectedAutoGenerateIdStatement() {
     return Arrays.asList(
       "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
-      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1)  AS CurrentValue FROM TESTSCHEMA.Test))",
-      "INSERT INTO TESTSCHEMA.Test (version, stringField, id) SELECT version, stringField, (SELECT COALESCE(value, 0)  FROM TESTSCHEMA.idvalues WHERE (name = CAST('Test' AS VARCHAR(4)))) + Other.id FROM TESTSCHEMA.Other"
+      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
+      "INSERT INTO TESTSCHEMA.Test (version, stringField, id) SELECT version, stringField, (SELECT COALESCE(value, 0) FROM TESTSCHEMA.idvalues WHERE (name = CAST('Test' AS VARCHAR(4)))) + Other.id FROM TESTSCHEMA.Other"
     );
   }
 
@@ -176,8 +176,8 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   protected List<String> expectedInsertWithIdAndVersion() {
     return Arrays.asList(
       "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
-      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1)  AS CurrentValue FROM TESTSCHEMA.Test))",
-      "INSERT INTO TESTSCHEMA.Test (stringField, id, version) SELECT stringField, (SELECT COALESCE(value, 0)  FROM TESTSCHEMA.idvalues WHERE (name = CAST('Test' AS VARCHAR(4)))) + Other.id, 0 AS version FROM TESTSCHEMA.Other"
+      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
+      "INSERT INTO TESTSCHEMA.Test (stringField, id, version) SELECT stringField, (SELECT COALESCE(value, 0) FROM TESTSCHEMA.idvalues WHERE (name = CAST('Test' AS VARCHAR(4)))) + Other.id, 0 AS version FROM TESTSCHEMA.Other"
     );
   }
 
@@ -189,8 +189,8 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   protected List<String> expectedSpecifiedValueInsert() {
     return Arrays.asList(
       "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
-      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1)  AS CurrentValue FROM TESTSCHEMA.Test))",
-      "INSERT INTO TESTSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES (CAST('Escap''d' AS VARCHAR(7)), 7, 11.25, 20100405, 1, CAST('X' AS VARCHAR(1)), (SELECT COALESCE(value, 1)  FROM TESTSCHEMA.idvalues WHERE (name = CAST('Test' AS VARCHAR(4)))), 0, null, 12345, null)"
+      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
+      "INSERT INTO TESTSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES (CAST('Escap''d' AS VARCHAR(7)), 7, 11.25, 20100405, 1, CAST('X' AS VARCHAR(1)), (SELECT COALESCE(value, 1) FROM TESTSCHEMA.idvalues WHERE (name = CAST('Test' AS VARCHAR(4)))), 0, null, 12345, null)"
     );
   }
 
@@ -202,8 +202,8 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   protected List<String> expectedSpecifiedValueInsertWithTableInDifferentSchema() {
     return Arrays.asList(
       "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
-      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1)  AS CurrentValue FROM MYSCHEMA.Test))",
-      "INSERT INTO MYSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES (CAST('Escap''d' AS VARCHAR(7)), 7, 11.25, 20100405, 1, CAST('X' AS VARCHAR(1)), (SELECT COALESCE(value, 1)  FROM TESTSCHEMA.idvalues WHERE (name = CAST('Test' AS VARCHAR(4)))), 0, null, 12345, null)"
+      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM MYSCHEMA.Test))",
+      "INSERT INTO MYSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES (CAST('Escap''d' AS VARCHAR(7)), 7, 11.25, 20100405, 1, CAST('X' AS VARCHAR(1)), (SELECT COALESCE(value, 1) FROM TESTSCHEMA.idvalues WHERE (name = CAST('Test' AS VARCHAR(4)))), 0, null, 12345, null)"
     );
   }
 
@@ -222,7 +222,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedEmptyStringInsertStatement() {
-    return "INSERT INTO TESTSCHEMA.Test (stringField, id, version, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (NULL, (SELECT COALESCE(value, 1)  FROM TESTSCHEMA.idvalues WHERE (name = CAST('Test' AS VARCHAR(4)))), 0, 0, 0, null, 0, NULL, null, 12345, null)";
+    return "INSERT INTO TESTSCHEMA.Test (stringField, id, version, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (NULL, (SELECT COALESCE(value, 1) FROM TESTSCHEMA.idvalues WHERE (name = CAST('Test' AS VARCHAR(4)))), 0, 0, 0, null, 0, NULL, null, 12345, null)";
   }
 
 

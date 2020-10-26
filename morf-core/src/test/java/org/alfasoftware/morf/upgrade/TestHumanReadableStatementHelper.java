@@ -726,6 +726,7 @@ public class TestHumanReadableStatementHelper {
     final Function coalesce = Function.coalesce(new FieldReference("foo"), new FieldReference("foo2"), new FieldLiteral(42));
     final AliasedField daysBetween = Function.daysBetween(new FieldReference("foo"), new FieldReference("foo2"));
     final Function monthsBetween = Function.monthsBetween(new FieldReference("foo"), new FieldReference("foo2"));
+    final Function trim = Function.trim(new FieldReference("foo"));
     final Function leftTrim = Function.leftTrim(new FieldReference("foo"));
     final Function rightTrim = Function.rightTrim(new FieldReference("foo"));
     final Function random = Function.random();
@@ -754,6 +755,7 @@ public class TestHumanReadableStatementHelper {
     assertEquals("COALESCE", String.format("%n    - Set bar to first non-null of (foo, foo2, 42)"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(coalesce.as("bar")));
     assertEquals("DAYS_BETWEEN", String.format("%n    - Set bar to days between foo and foo2"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(daysBetween.as("bar")));
     assertEquals("MONTHS_BETWEEN", String.format("%n    - Set bar to months between foo and foo2"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(monthsBetween.as("bar")));
+    assertEquals("TRIM", String.format("%n    - Set bar to trimmed foo"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(trim.as("bar")));
     assertEquals("LEFT_TRIM", String.format("%n    - Set bar to left trimmed foo"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(leftTrim.as("bar")));
     assertEquals("RIGHT_TRIM", String.format("%n    - Set bar to right trimmed foo"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(rightTrim.as("bar")));
     assertEquals("RANDOM", String.format("%n    - Set bar to random"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(random.as("bar")));

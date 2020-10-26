@@ -114,6 +114,19 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
 
 
   /**
+   * Constructs a Select Statement which optionally selects on a subset of fields.
+   * If no fields are specified then this is equivalent of selecting all
+   * fields (i.e. {@code SELECT * FROM x}).
+   *
+   * @param fields a list of fields that should be selected
+   * @return Builder.
+   */
+  public static SelectStatementBuilder select(Iterable<AliasedFieldBuilder> fields) {
+    return new SelectStatementBuilder().fields(fields);
+  }
+
+
+  /**
    * Builder constructor.
    *
    * @param builder The builder.
@@ -161,7 +174,7 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
    *
    * @param fields an array of fields that should be selected
    */
-  public SelectStatement(List<? extends AliasedFieldBuilder> fields) {
+  public SelectStatement(Iterable<? extends AliasedFieldBuilder> fields) {
     this(fields, false);
   }
 
@@ -197,7 +210,7 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
    * @param fields The fields in the select clause
    * @param isDistinct Determines whether the DISTINCT clause should be added or not
    */
-  public SelectStatement(List<? extends AliasedFieldBuilder> fields, boolean isDistinct) {
+  public SelectStatement(Iterable<? extends AliasedFieldBuilder> fields, boolean isDistinct) {
     super(fields);
     if (AliasedField.immutableDslEnabled()) {
       this.groupBys = ImmutableList.of();

@@ -253,7 +253,7 @@ public abstract class AbstractSelectStatementBuilder<U extends AbstractSelectSta
 
 
   /**
-   * Specifies a table to which to perform a cross join/cartesian product.
+   * Specifies a table to cross join to (creating a cartesian product).
    *
    * <blockquote><pre>
    * TableReference foo = tableRef("Foo");
@@ -266,9 +266,23 @@ public abstract class AbstractSelectStatementBuilder<U extends AbstractSelectSta
    * @param toTable the table to join to
    * @return this, for method chaining.
    */
-  public T innerJoin(TableReference toTable) {
+  public T crossJoin(TableReference toTable) {
     joins.add(new Join(JoinType.INNER_JOIN, toTable, null));
     return castToChild(this);
+  }
+
+
+  /**
+   * @param toTable
+   * @return
+   *
+   * @deprecated Use {@link #crossJoin(TableReference)} to do a cross join;
+   *             or add join conditions for {@link #innerJoin(TableReference, Criterion)}
+   *             to make this an inner join.
+   */
+  @Deprecated
+  public T innerJoin(TableReference toTable) {
+    return crossJoin(toTable);
   }
 
 
@@ -309,7 +323,7 @@ public abstract class AbstractSelectStatementBuilder<U extends AbstractSelectSta
 
 
   /**
-   * Specifies an cross join to a subselect:
+   * Specifies a cross join (creating a cartesian product) to a subselect:
    *
    * <blockquote><pre>
    * // Each sale as a percentage of all sales
@@ -331,9 +345,23 @@ public abstract class AbstractSelectStatementBuilder<U extends AbstractSelectSta
    * @param subSelect the sub select statement to join on to
    * @return this, for method chaining.
    */
-  public T innerJoin(SelectStatement subSelect) {
+  public T crossJoin(SelectStatement subSelect) {
     joins.add(new Join(JoinType.INNER_JOIN, subSelect, null));
     return castToChild(this);
+  }
+
+
+  /**
+   * @param subSelect
+   * @return
+   *
+   * @deprecated Use {@link #crossJoin(SelectStatement)} to do a cross join;
+   *             or add join conditions for {@link #innerJoin(SelectStatement, Criterion)}
+   *             to make this an inner join.
+   */
+  @Deprecated
+  public T innerJoin(SelectStatement subSelect) {
+    return crossJoin(subSelect);
   }
 
 
