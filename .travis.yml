@@ -10,17 +10,17 @@ dist: trusty
 jobs:
   include:
     - if: repo = alfasoftware/morf AND branch = master AND NOT type = pull_request
-      name: "Test"
+      name: "Verify"
       script:
         - git fetch --unshallow --quiet
         - mvn clean verify sonar:sonar -Pcoverage -B -U
     - if: repo = alfasoftware/morf AND NOT branch = master AND NOT type = pull_request
-      name: "Test"
+      name: "Verify"
       script:
         - git fetch --unshallow --quiet
         - mvn clean verify sonar:sonar -Pcoverage -B -U -Dsonar.branch.name=$TRAVIS_BRANCH
     - if: repo = alfasoftware/morf AND head_repo = alfasoftware/morf AND type = pull_request
-      name: "Test"
+      name: "Verify"
       script:
         - git fetch --unshallow --quiet
         - mvn clean verify sonar:sonar -Pcoverage -B -U -Dsonar.pullrequest.key=$TRAVIS_PULL_REQUEST -Dsonar.pullrequest.branch=$TRAVIS_PULL_REQUEST_BRANCH -Dsonar.pullrequest.base=$TRAVIS_BRANCH
@@ -30,7 +30,11 @@ jobs:
         - echo $GPG_SECRET_KEYS | base64 --decode | $GPG_EXECUTABLE --import
         - echo $GPG_OWNERTRUST | base64 --decode | $GPG_EXECUTABLE --import-ownertrust
         - mvn clean deploy --settings .maven-settings.xml -B -U -Prelease
-    - if: (repo = alfasoftware/morf AND NOT head_repo = alfasoftware/morf AND type = pull_request) OR NOT repo = alfasoftware/morf 
+    - if: (repo = alfasoftware/morf AND NOT head_repo = alfasoftware/morf AND type = pull_request)
+      name: "Verify"
+      script:
+        - mvn clean verify sonar:sonar -Pcoverage -B -U
+    - if: NOT repo = alfasoftware/morf 
       name: "Test"
       script:
         - mvn clean test -B -U
