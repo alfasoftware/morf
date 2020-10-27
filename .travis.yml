@@ -33,7 +33,7 @@ jobs:
     - if: (repo = alfasoftware/morf AND NOT head_repo = alfasoftware/morf AND type = pull_request)
       name: "Verify"
       script:
-        - mvn clean verify sonar:sonar -Pcoverage -B -U
+        - mvn clean verify sonar:sonar -Pcoverage -B -U -Dsonar.pullrequest.key=$TRAVIS_PULL_REQUEST -Dsonar.pullrequest.branch=$TRAVIS_PULL_REQUEST_BRANCH -Dsonar.pullrequest.base=$TRAVIS_BRANCH
     - if: NOT repo = alfasoftware/morf 
       name: "Test"
       script:
