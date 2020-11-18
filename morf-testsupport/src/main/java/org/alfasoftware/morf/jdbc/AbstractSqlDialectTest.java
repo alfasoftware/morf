@@ -775,11 +775,29 @@ public abstract class AbstractSqlDialectTest {
    * Tests a select with a nested "or where" clause.
    */
   @Test
-  public void testSelectNestedOrWhereScript() {
+  public void testSelectOr() {
     SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
-        .where(or(
-          eq(new FieldReference(STRING_FIELD), "A0001"),
-          greaterThan(new FieldReference(INT_FIELD), 20080101)));
+        .where(Criterion.or(
+          Criterion.eq(new FieldReference(STRING_FIELD), "A0001"),
+          Criterion.greaterThan(new FieldReference(INT_FIELD), new Integer(20080101))
+        ));
+
+    String value = varCharCast("'A0001'");
+    String expectedSql = "SELECT * FROM " + tableName(TEST_TABLE) + " WHERE ((stringField = " + stringLiteralPrefix() + value+") OR (intField > 20080101))";
+    assertEquals("Select with nested or", expectedSql, testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
+   * Tests a select with a nested "or where" clause.
+   */
+  @Test
+  public void testSelectOrList() {
+    SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
+        .where(Criterion.or(ImmutableList.of(
+          Criterion.eq(new FieldReference(STRING_FIELD), "A0001"),
+          Criterion.greaterThan(new FieldReference(INT_FIELD), 20080101)
+        )));
 
     String value = varCharCast("'A0001'");
     String expectedSql = "SELECT * FROM " + tableName(TEST_TABLE) + " WHERE ((stringField = " + stringLiteralPrefix() + value+") OR (intField > 20080101))";
@@ -791,11 +809,29 @@ public abstract class AbstractSqlDialectTest {
    * Tests a select with a nested "and where" clause.
    */
   @Test
-  public void testSelectNestedAndWhereScript() {
+  public void testSelectAnd() {
     SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
-        .where(and(
-          eq(new FieldReference(STRING_FIELD), "A0001"),
-          greaterThan(new FieldReference(INT_FIELD), 20080101)));
+        .where(Criterion.and(
+          Criterion.eq(new FieldReference(STRING_FIELD), "A0001"),
+          Criterion.greaterThan(new FieldReference(INT_FIELD), new Integer(20080101))
+        ));
+
+    String value = varCharCast("'A0001'");
+    String expectedSql = "SELECT * FROM " + tableName(TEST_TABLE) + " WHERE ((stringField = " + stringLiteralPrefix() +value+") AND (intField > 20080101))";
+    assertEquals("Select with multiple where clauses", expectedSql, testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
+   * Tests a select with a nested "and where" clause.
+   */
+  @Test
+  public void testSelectAndList() {
+    SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
+        .where(Criterion.and(ImmutableList.of(
+          Criterion.eq(new FieldReference(STRING_FIELD), "A0001"),
+          Criterion.greaterThan(new FieldReference(INT_FIELD), 20080101)
+        )));
 
     String value = varCharCast("'A0001'");
     String expectedSql = "SELECT * FROM " + tableName(TEST_TABLE) + " WHERE ((stringField = " + stringLiteralPrefix() +value+") AND (intField > 20080101))";
