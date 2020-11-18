@@ -777,9 +777,9 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testSelectOr() {
     SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
-        .where(Criterion.or(
-          Criterion.eq(new FieldReference(STRING_FIELD), "A0001"),
-          Criterion.greaterThan(new FieldReference(INT_FIELD), new Integer(20080101))
+        .where(or(
+          eq(new FieldReference(STRING_FIELD), "A0001"),
+          greaterThan(new FieldReference(INT_FIELD), new Integer(20080101))
         ));
 
     String value = varCharCast("'A0001'");
@@ -794,9 +794,9 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testSelectOrList() {
     SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
-        .where(Criterion.or(ImmutableList.of(
-          Criterion.eq(new FieldReference(STRING_FIELD), "A0001"),
-          Criterion.greaterThan(new FieldReference(INT_FIELD), 20080101)
+        .where(or(ImmutableList.of(
+          eq(new FieldReference(STRING_FIELD), "A0001"),
+          greaterThan(new FieldReference(INT_FIELD), 20080101)
         )));
 
     String value = varCharCast("'A0001'");
@@ -811,9 +811,9 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testSelectAnd() {
     SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
-        .where(Criterion.and(
-          Criterion.eq(new FieldReference(STRING_FIELD), "A0001"),
-          Criterion.greaterThan(new FieldReference(INT_FIELD), new Integer(20080101))
+        .where(and(
+          eq(new FieldReference(STRING_FIELD), "A0001"),
+          greaterThan(new FieldReference(INT_FIELD), new Integer(20080101))
         ));
 
     String value = varCharCast("'A0001'");
@@ -828,9 +828,9 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testSelectAndList() {
     SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
-        .where(Criterion.and(ImmutableList.of(
-          Criterion.eq(new FieldReference(STRING_FIELD), "A0001"),
-          Criterion.greaterThan(new FieldReference(INT_FIELD), 20080101)
+        .where(and(ImmutableList.of(
+          eq(new FieldReference(STRING_FIELD), "A0001"),
+          greaterThan(new FieldReference(INT_FIELD), 20080101)
         )));
 
     String value = varCharCast("'A0001'");
