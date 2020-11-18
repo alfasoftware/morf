@@ -1253,6 +1253,32 @@ public class TestSqlSelectElementGeneration {
 
 
   /**
+   *  Test that mutation is performed by copy-and-write when we change the group by.
+   */
+  @Test
+  public void testGroupByListImmutable() {
+    AliasedField.withImmutableBuildersEnabled(() -> {
+
+      FieldLiteral field1 = literal(1);
+      FieldLiteral field2 = literal(2);
+      FieldLiteral field3 = literal(3);
+      SelectStatement select = select(literal(1));
+
+      // Explicit copy-on-write
+      assertThat(select.shallowCopy().groupBy(ImmutableList.of(field1, field2)).build().getGroupBys(), contains(field1, field2));
+
+      // Implicit copy-on-write
+      SelectStatement updated = select.groupBy(ImmutableList.of(field1, field2));
+      assertThat(select.getGroupBys(), empty());
+      assertThat(updated.getGroupBys(), contains(field1, field2));
+      assertNotSame(select, updated);
+
+      assertUnsupported(() -> updated.getGroupBys().add(field3));
+    });
+  }
+
+
+  /**
    *  Test that mutation is performed by copy-and-write when we change the having.
    */
   @Test

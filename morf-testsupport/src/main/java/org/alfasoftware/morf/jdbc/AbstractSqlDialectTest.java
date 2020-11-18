@@ -1287,6 +1287,34 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * Tests the group by in a select.
+   */
+  @Test
+  public void testSelectWithGroupBy() {
+    SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD), count(literal(1)))
+    .from(new TableReference(ALTERNATE_TABLE))
+    .groupBy(field(STRING_FIELD), field(INT_FIELD), field(FLOAT_FIELD));
+
+    String expectedSql = "SELECT stringField, COUNT(1) FROM " + tableName(ALTERNATE_TABLE) + " GROUP BY stringField, intField, floatField";
+    assertEquals("Select with count function", expectedSql, testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
+   * Tests the group by in a select.
+   */
+  @Test
+  public void testSelectWithGroupByList() {
+    SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD), count(field(STRING_FIELD)))
+    .from(new TableReference(ALTERNATE_TABLE))
+    .groupBy(ImmutableList.of(field(STRING_FIELD), field(INT_FIELD), field(FLOAT_FIELD)));
+
+    String expectedSql = "SELECT stringField, COUNT(stringField) FROM " + tableName(ALTERNATE_TABLE) + " GROUP BY stringField, intField, floatField";
+    assertEquals("Select with count function", expectedSql, testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
    * Test the use of the sum function in a select
    */
   @Test
