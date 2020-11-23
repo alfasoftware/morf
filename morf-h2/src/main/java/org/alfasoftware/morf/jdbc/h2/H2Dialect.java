@@ -187,15 +187,6 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#useInsertBatching()
-   */
-  @Override
-  public boolean useInsertBatching() {
-    return true;
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getFromDummyTable()
    */
   @Override
