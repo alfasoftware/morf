@@ -919,16 +919,29 @@ public abstract class AbstractSqlDialectTest {
         .innerJoin(new TableReference(TEST_TABLE),
           eq(new FieldReference(new TableReference(ALTERNATE_TABLE), STRING_FIELD),
             new FieldReference(new TableReference(TEST_TABLE), STRING_FIELD))
-            ).leftOuterJoin(new TableReference(OTHER_TABLE),
+            )
+        .leftOuterJoin(new TableReference(OTHER_TABLE),
               and(
                 eq(new FieldReference(new TableReference(TEST_TABLE), STRING_FIELD),
                   new FieldReference(new TableReference(OTHER_TABLE), STRING_FIELD)),
                   eq(new FieldReference(new TableReference(TEST_TABLE), INT_FIELD),
                     new FieldReference(new TableReference(OTHER_TABLE), INT_FIELD))
                   )
-                );
+                )
+        .fullOuterJoin(new TableReference(MIXED_TABLE),
+          and(
+            eq(new FieldReference(new TableReference(TEST_TABLE), STRING_FIELD),
+              new FieldReference(new TableReference(MIXED_TABLE), STRING_FIELD)),
+              eq(new FieldReference(new TableReference(TEST_TABLE), INT_FIELD),
+                new FieldReference(new TableReference(MIXED_TABLE), INT_FIELD))
+              )
+            );
 
-    String expectedSql = "SELECT * FROM " + tableName(ALTERNATE_TABLE) + " INNER JOIN " + tableName(TEST_TABLE) + " ON (Alternate.stringField = Test.stringField) LEFT OUTER JOIN " + tableName(OTHER_TABLE) + " ON ((Test.stringField = Other.stringField) AND (Test.intField = Other.intField))";
+    String expectedSql = "SELECT * FROM " + tableName(ALTERNATE_TABLE)
+        + " INNER JOIN " + tableName(TEST_TABLE) + " ON (Alternate.stringField = Test.stringField)"
+        + " LEFT OUTER JOIN " + tableName(OTHER_TABLE) + " ON ((Test.stringField = Other.stringField) AND (Test.intField = Other.intField))"
+        + " FULL OUTER JOIN " + tableName(MIXED_TABLE) + " ON ((Test.stringField = Mixed.stringField) AND (Test.intField = Mixed.intField))"
+        ;
     assertEquals("Select with multiple joins", expectedSql, testDialect.convertStatementToSQL(stmt));
   }
 

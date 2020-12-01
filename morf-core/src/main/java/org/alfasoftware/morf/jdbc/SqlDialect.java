@@ -1152,8 +1152,8 @@ public abstract class SqlDialect {
       case LEFT_OUTER_JOIN:
         result.append(" LEFT OUTER JOIN ");
         break;
-      case RIGHT_OUTER_JOIN:
-        result.append(" RIGHT OUTER JOIN ");
+      case FULL_OUTER_JOIN:
+        result.append(" FULL OUTER JOIN ");
         break;
       default:
         throw new UnsupportedOperationException("Cannot perform join of type [" + join.getType() + "] on database");
@@ -1184,7 +1184,7 @@ public abstract class SqlDialect {
       // Then put the join fields into the output
       result.append(getSqlFrom(join.getCriterion()));
 
-    } else if (join.getType() == JoinType.LEFT_OUTER_JOIN || join.getType() == JoinType.RIGHT_OUTER_JOIN) {
+    } else if (join.getType() == JoinType.LEFT_OUTER_JOIN || join.getType() == JoinType.FULL_OUTER_JOIN) {
       throw new IllegalArgumentException(join.getType() + " must have ON criteria");
 
     } else {

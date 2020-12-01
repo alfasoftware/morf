@@ -20,6 +20,7 @@ import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.selectDistinct;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.element.Direction.ASCENDING;
+import static org.alfasoftware.morf.sql.element.JoinType.FULL_OUTER_JOIN;
 import static org.alfasoftware.morf.sql.element.JoinType.INNER_JOIN;
 import static org.alfasoftware.morf.sql.element.JoinType.LEFT_OUTER_JOIN;
 import static org.hamcrest.Matchers.contains;
@@ -36,8 +37,6 @@ import static org.junit.Assert.fail;
 
 import java.util.List;
 
-import net.jcip.annotations.NotThreadSafe;
-
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.Direction;
@@ -51,6 +50,8 @@ import org.junit.Test;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+
+import net.jcip.annotations.NotThreadSafe;
 
 /**
  * Test that the SQL Select statement behaves as expected.
@@ -1153,6 +1154,7 @@ public class TestSqlSelectElementGeneration {
       FieldLiteral field2 = literal(1);
       SelectStatement subSelect1 = select(literal(1));
       SelectStatement subSelect2 = select(literal(1));
+      SelectStatement subSelect3 = select(literal(1));
 
       // Implicit copy-on-write
       SelectStatement select = select(literal(1));
@@ -1163,7 +1165,9 @@ public class TestSqlSelectElementGeneration {
           .innerJoin(tableRef("B"), field1.eq(field2))
           .innerJoin(subSelect1, field1.eq(field2))
           .leftOuterJoin(tableRef("B"), field1.eq(field2))
-          .leftOuterJoin(subSelect2, field1.eq(field2));
+          .leftOuterJoin(subSelect2, field1.eq(field2))
+          .fullOuterJoin(tableRef("C"), field1.eq(field2))
+          .fullOuterJoin(subSelect3, field1.eq(field2));
 
       assertThat(select.getJoins(), empty());
       assertThat(updated.getJoins(), contains(
@@ -1172,7 +1176,9 @@ public class TestSqlSelectElementGeneration {
           new Join(INNER_JOIN, tableRef("B"), field1.eq(field2)),
           new Join(INNER_JOIN, subSelect1, field1.eq(field2)),
           new Join(LEFT_OUTER_JOIN, tableRef("B"), field1.eq(field2)),
-          new Join(LEFT_OUTER_JOIN, subSelect2, field1.eq(field2))
+          new Join(LEFT_OUTER_JOIN, subSelect2, field1.eq(field2)),
+          new Join(FULL_OUTER_JOIN, tableRef("C"), field1.eq(field2)),
+          new Join(FULL_OUTER_JOIN, subSelect3, field1.eq(field2))
       ));
 
       assertUnsupported(() -> updated.getJoins().add(new Join(INNER_JOIN, subSelect2, null)));

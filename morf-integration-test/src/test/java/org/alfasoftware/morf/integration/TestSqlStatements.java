@@ -153,6 +153,7 @@ import org.apache.commons.logging.LogFactory;
 import org.joda.time.LocalDate;
 import org.joda.time.Months;
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.FixMethodOrder;
 import org.junit.Rule;
@@ -2998,6 +2999,31 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     assertEquals("Should have 1 records selected", 1, numberOfRecords.intValue());
   }
 
+
+  /**
+   * We can't use joins with FOR UPDATE, so this tries join order hinting
+   */
+  @Test
+  public void testSelectLeftJoinFullJoin() {
+    Assume.assumeFalse("Not yet supported on H2", "H2".equals(connectionResources.getDatabaseType())); // https://github.com/h2database/h2database/issues/457
+    Assume.assumeFalse("Not yet supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
+
+    TableReference selectTable = tableRef("SelectDistinctTable");
+    TableReference selectTable2 = tableRef("SelectDistinctTable").as("abc");
+    TableReference selectTable3 = tableRef("SelectDistinctTable").as("def");
+    TableReference selectTable4 = tableRef("SelectDistinctTable").as("ghi");
+
+    SelectStatement selectStatement = select(selectTable.field("column1"), selectTable.field("column2"))
+      .from(selectTable)
+      .innerJoin(selectTable2, selectTable.field("column1").eq(selectTable2.field("column1")))
+      .leftOuterJoin(selectTable3, selectTable.field("column1").eq(selectTable3.field("column1")))
+      .fullOuterJoin(selectTable4, selectTable.field("column1").eq(selectTable4.field("column1")))
+      .where(selectTable.field("column1").eq("TEST1"));
+
+    Integer numberOfRecords = getNumberOfRecordsFromSelect(selectStatement);
+
+    assertEquals("Should have 1 records selected", 1, numberOfRecords.intValue());
+  }
 
 
   /**
