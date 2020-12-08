@@ -1746,8 +1746,7 @@ public abstract class SqlDialect {
               + function.getArguments().size());
         }
 
-        return getSubstringFunctionName() + "(" + getSqlFrom(function.getArguments().get(0)) + ", "
-            + getSqlFrom(function.getArguments().get(1)) + ", " + getSqlFrom(function.getArguments().get(2)) + ")";
+        return getSqlForSubstring(function);
 
       case YYYYMMDD_TO_DATE:
         if (function.getArguments().size() != 1) {
@@ -1939,6 +1938,20 @@ public abstract class SqlDialect {
    */
   protected String getSqlForAverage(Function function) {
     return "AVG(" + getSqlFrom(function.getArguments().get(0)) + ")";
+  }
+
+
+  /**
+   * Converts the substring function into SQL.
+   *
+   * @param function the function details
+   * @return a string representation of the SQL
+   */
+  protected String getSqlForSubstring(Function function) {
+    return getSubstringFunctionName() + "("
+        + getSqlFrom(function.getArguments().get(0)) + ", "
+        + getSqlFrom(function.getArguments().get(1)) + ", "
+        + getSqlFrom(function.getArguments().get(2)) + ")";
   }
 
 
