@@ -1803,20 +1803,7 @@ public abstract class SqlDialect {
               + function.getArguments().size());
         }
 
-        StringBuilder expression = new StringBuilder();
-        expression.append(getCoalesceFunctionName()).append('(');
-        boolean first = true;
-        for (AliasedField f : function.getArguments()) {
-          if (!first) {
-            expression.append(", ");
-          }
-
-          expression.append(getSqlFrom(f));
-          first = false;
-        }
-
-        expression.append(')');
-        return expression.toString();
+        return getSqlForCoalesce(function);
 
       case GREATEST:
         if (function.getArguments().size() == 0) {
@@ -1941,6 +1928,30 @@ public abstract class SqlDialect {
         throw new UnsupportedOperationException("This database does not currently support the [" + function.getType()
             + "] function");
     }
+  }
+
+
+  /**
+   * Converts the coalesce function into SQL.
+   *
+   * @param function the function details
+   * @return a string representation of the SQL
+   */
+  protected final String getSqlForCoalesce(Function function) {
+    StringBuilder expression = new StringBuilder();
+    expression.append(getCoalesceFunctionName()).append('(');
+    boolean first = true;
+    for (AliasedField f : function.getArguments()) {
+      if (!first) {
+        expression.append(", ");
+      }
+
+      expression.append(getSqlFrom(f));
+      first = false;
+    }
+
+    expression.append(')');
+    return expression.toString();
   }
 
 
