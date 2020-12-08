@@ -1706,7 +1706,7 @@ public abstract class SqlDialect {
               + function.getArguments().size());
         }
       case AVERAGE:
-        return "AVG(" + getSqlFrom(function.getArguments().get(0)) + ")";
+        return getSqlForAverage(function);
       case LENGTH:
       case BLOB_LENGTH:
         return getSqlforLength(function);
@@ -1928,6 +1928,17 @@ public abstract class SqlDialect {
         throw new UnsupportedOperationException("This database does not currently support the [" + function.getType()
             + "] function");
     }
+  }
+
+
+  /**
+   * Converts the average function into SQL.
+   *
+   * @param function the function details
+   * @return a string representation of the SQL
+   */
+  protected String getSqlForAverage(Function function) {
+    return "AVG(" + getSqlFrom(function.getArguments().get(0)) + ")";
   }
 
 
