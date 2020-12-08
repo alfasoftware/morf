@@ -1705,16 +1705,28 @@ public abstract class SqlDialect {
         throw new IllegalArgumentException("The COUNT function should have only have one or zero arguments. This function has " + function.getArguments().size());
 
       case AVERAGE:
+        if (function.getArguments().size() != 1) {
+          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
+        }
         return getSqlForAverage(function);
 
       case LENGTH:
       case BLOB_LENGTH:
+        if (function.getArguments().size() != 1) {
+          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
+        }
         return getSqlforLength(function);
 
       case SOME:
+        if (function.getArguments().size() != 1) {
+          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
+        }
         return getSqlForSome(function);
 
       case EVERY:
+        if (function.getArguments().size() != 1) {
+          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
+        }
         return getSqlForEvery(function);
 
       case MAX:
@@ -1850,6 +1862,9 @@ public abstract class SqlDialect {
         return getSqlForFloor(function);
 
       case RANDOM:
+        if (function.getArguments().size() != 0) {
+          throw new IllegalArgumentException("The " + function.getType() + " function should have no arguments. This function has " + function.getArguments().size());
+        }
         return getSqlForRandom();
 
       case RANDOM_STRING:
