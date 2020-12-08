@@ -1711,9 +1711,9 @@ public abstract class SqlDialect {
       case BLOB_LENGTH:
         return getSqlforLength(function);
       case SOME:
-        return getSqlForSome(function.getArguments().get(0));
+        return getSqlForSome(function);
       case EVERY:
-        return getSqlForEvery(function.getArguments().get(0));
+        return getSqlForEvery(function);
       case MAX:
       case MIN:
       case SUM:
@@ -1969,24 +1969,22 @@ public abstract class SqlDialect {
   /**
    * Converts the some function into SQL.
    *
-   * @param aliasedField the field to get the maximum for.
-   * @return a string representation of the SQL.
-   * @see org.alfasoftware.morf.sql.element.Function#some(AliasedField)
+   * @param function the function details
+   * @return a string representation of the SQL
    */
-  protected String getSqlForSome(AliasedField aliasedField) {
-    return "MAX(" + getSqlFrom(aliasedField) + ")";
+  protected String getSqlForSome(Function function) {
+    return "MAX(" + getSqlFrom(function.getArguments().get(0)) + ")";
   }
 
 
   /**
    * Converts the every function into SQL.
    *
-   * @param aliasedField the field to get the minimum for.
-   * @return a string representation of the SQL.
-   * @see org.alfasoftware.morf.sql.element.Function#every(AliasedField)
+   * @param function the function details
+   * @return a string representation of the SQL
    */
-  protected String getSqlForEvery(AliasedField aliasedField) {
-    return "MIN(" + getSqlFrom(aliasedField) + ")";
+  protected String getSqlForEvery(Function function) {
+    return "MIN(" + getSqlFrom(function.getArguments().get(0)) + ")";
   };
 
 

@@ -676,14 +676,14 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
-  protected String getSqlForSome(AliasedField aliasedField) {
-    return "BOOL_OR(" + getSqlFrom(aliasedField) + ")";
+  protected String getSqlForSome(Function function) {
+    return "BOOL_OR(" + getSqlFrom(function.getArguments().get(0)) + ")";
   }
 
 
   @Override
-  protected String getSqlForEvery(AliasedField aliasedField) {
-    return "BOOL_AND(" + getSqlFrom(aliasedField) + ")";
+  protected String getSqlForEvery(Function function) {
+    return "BOOL_AND(" + getSqlFrom(function.getArguments().get(0)) + ")";
   }
 
 
