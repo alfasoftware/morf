@@ -709,8 +709,8 @@ public class TestHumanReadableStatementHelper {
    */
   @Test
   public void testFunctionField() {
-    final Function count1 = Function.count();
-    final Function count2 = Function.count(new FieldReference("foo"));
+    final Function countRows = Function.count();
+    final Function countValues = Function.count(new FieldReference("foo"));
     final Function max = Function.max(new FieldReference("foo"));
     final Function min = Function.min(new FieldReference("foo"));
     final Function average = Function.average(new FieldReference("foo"));
@@ -739,8 +739,8 @@ public class TestHumanReadableStatementHelper {
     final Function now = Function.now();
     final Function lastDayOfMonth = Function.lastDayOfMonth(new FieldReference("foo"));
 
-    assertEquals("COUNT", String.format("%n    - Set bar to record count"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(count1.as("bar")));
-    assertEquals("COUNT", String.format("%n    - Set bar to count of foo"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(count2.as("bar")));
+    assertEquals("COUNT", String.format("%n    - Set bar to record count"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(countRows.as("bar")));
+    assertEquals("COUNT", String.format("%n    - Set bar to count of foo"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(countValues.as("bar")));
     assertEquals("MAX", String.format("%n    - Set bar to highest foo"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(max.as("bar")));
     assertEquals("MIN", String.format("%n    - Set bar to lowest foo"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(min.as("bar")));
     assertEquals("AVG", String.format("%n    - Set bar to average of foo"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(average.as("bar")));
