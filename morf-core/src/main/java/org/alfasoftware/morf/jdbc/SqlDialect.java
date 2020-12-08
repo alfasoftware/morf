@@ -1826,7 +1826,7 @@ public abstract class SqlDialect {
               + function.getArguments().size());
         }
 
-        return trim(function);
+        return getSqlForTrim(function);
 
       case LEFT_TRIM:
         if (function.getArguments().size() != 1) {
@@ -1834,7 +1834,7 @@ public abstract class SqlDialect {
               + function.getArguments().size());
         }
 
-        return leftTrim(function);
+        return getSqlForLeftTrim(function);
 
       case RIGHT_TRIM:
         if (function.getArguments().size() != 1) {
@@ -1842,7 +1842,7 @@ public abstract class SqlDialect {
               + function.getArguments().size());
         }
 
-        return rightTrim(function);
+        return getSqlForRightTrim(function);
 
       case ADD_DAYS:
         if (function.getArguments().size() != 2) {
@@ -2260,7 +2260,7 @@ public abstract class SqlDialect {
    * @param function the function to convert.
    * @return a string representation of the SQL.
    */
-  protected String trim(Function function) {
+  protected String getSqlForTrim(Function function) {
     return "TRIM(" + getSqlFrom(function.getArguments().get(0)) + ")";
   }
 
@@ -2271,7 +2271,7 @@ public abstract class SqlDialect {
    * @param function the function to convert.
    * @return a string representation of the SQL.
    */
-  protected String leftTrim(Function function) {
+  protected String getSqlForLeftTrim(Function function) {
     return "LTRIM(" + getSqlFrom(function.getArguments().get(0)) + ")";
   }
 
@@ -2282,7 +2282,7 @@ public abstract class SqlDialect {
    * @param function the function to convert.
    * @return a string representation of the SQL.
    */
-  protected String rightTrim(Function function) {
+  protected String getSqlForRightTrim(Function function) {
     return "RTRIM(" + getSqlFrom(function.getArguments().get(0)) + ")";
   }
 
