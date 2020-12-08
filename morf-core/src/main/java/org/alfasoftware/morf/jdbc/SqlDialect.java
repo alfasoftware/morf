@@ -1699,7 +1699,8 @@ public abstract class SqlDialect {
       case COUNT:
         if (function.getArguments().isEmpty()) {
           return getSqlForCount();
-        } else if (function.getArguments().size() == 1) {
+        }
+        if (function.getArguments().size() == 1) {
           return getSqlForCount(function);
         }
         throw new IllegalArgumentException("The COUNT function should have only have one or zero arguments. This function has " + function.getArguments().size());
