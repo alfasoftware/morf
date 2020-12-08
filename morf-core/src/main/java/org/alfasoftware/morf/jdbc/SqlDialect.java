@@ -1701,10 +1701,10 @@ public abstract class SqlDialect {
           return "COUNT(*)";
         } else if (function.getArguments().size() == 1) {
           return "COUNT(" + getSqlFrom(function.getArguments().get(0)) + ")";
-        } else {
+        }
           throw new IllegalArgumentException("The COUNT function should have only have one or zero arguments. This function has "
               + function.getArguments().size());
-        }
+
       case AVERAGE:
         return getSqlForAverage(function);
       case LENGTH:
