@@ -366,10 +366,10 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         .columns(
           column("column1", DataType.STRING, 10).primaryKey(),
           column("column2", DataType.INTEGER).primaryKey()),
-        table("NumericTable")
+     table("NumericTable")
         .columns(
-          column("decimalColumn", DataType.DECIMAL, 13, 2),
-          column("integerColumn", DataType.INTEGER)),
+          column("decimalColumn", DataType.DECIMAL, 13, 2).nullable(),
+          column("integerColumn", DataType.INTEGER).nullable()),
      table("InsertTargetTable")
         .columns(
           column("id", DataType.INTEGER).primaryKey(),
@@ -668,8 +668,14 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
          .setString("decimalColumn", "4237.43")
          .setInteger("integerColumn", 212131),
        record()
+         .setString("decimalColumn", "4237.43")
+         .setInteger("integerColumn", 212131),
+       record()
          .setString("decimalColumn", "92337.29")
          .setInteger("integerColumn", 21323),
+         record()
+         .setString("decimalColumn", null)
+         .setInteger("integerColumn", null),
        record()
          .setString("decimalColumn", "92376427.13")
          .setInteger("integerColumn", 213231)
@@ -2741,28 +2747,77 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
 
 
   /**
+   *  Tests that the correct behaviour occurs when using the count function
+   */
+  @Test
+  public void testCount() {
+    SelectStatement selectCount =
+        select(
+          count().as("rowCount"),
+          count(field("decimalColumn")).as("valueCount"))
+        .from("NumericTable");
+
+    sqlScriptExecutorProvider.get().executeQuery(selectCount).processWith(new ResultSetProcessor<Void>() {
+      @Override
+      public Void process(ResultSet resultSet) throws SQLException {
+        while (resultSet.next()) {
+          assertEquals("Row count returned should be", 7, resultSet.getInt(1));
+          assertEquals("Value count returned should be", 6, resultSet.getInt(2));
+        }
+        return null;
+      }
+
+    });
+  }
+
+
+  /**
    *  Tests that the correct behaviour occurs when using the average function
    */
   @Test
   public void testAverage() {
     SelectStatement selectAverage =
         select(
-          average(field("decimalColumn").as("decimalAverage")),
-          average(field("integerColumn").as("integerAverage")))
+          average(field("decimalColumn")).as("decimalAverage"),
+          average(field("integerColumn")).as("integerAverage"))
         .from("NumericTable");
+
     sqlScriptExecutorProvider.get().executeQuery(selectAverage).processWith(new ResultSetProcessor<Void>() {
       @Override
       public Void process(ResultSet resultSet) throws SQLException {
         while (resultSet.next()) {
-          assertEquals("Decimal average returned should be", 227938805.676 , resultSet.getDouble(1), 0.005);
-          assertEquals("Integer average returned should be", 562189 , resultSet.getInt(2));
+          assertEquals("Decimal average returned should be", 189949710.968, resultSet.getDouble(1), 0.005);
+          assertEquals("Integer average returned should be", 503846, resultSet.getInt(2));
         }
         return null;
       }
 
     });
+  }
 
 
+  /**
+   *  Tests that the correct behaviour occurs when using the sum function
+   */
+  @Test
+  public void testSum() {
+    SelectStatement selectSum =
+        select(
+          sum(field("decimalColumn")).as("decimalSum"),
+          sum(field("integerColumn")).as("integerSum"))
+        .from("NumericTable");
+
+    sqlScriptExecutorProvider.get().executeQuery(selectSum).processWith(new ResultSetProcessor<Void>() {
+      @Override
+      public Void process(ResultSet resultSet) throws SQLException {
+        while (resultSet.next()) {
+          assertEquals("Decimal sum returned should be", 1139698265.81, resultSet.getDouble(1), 0.005);
+          assertEquals("Integer sum returned should be", 3023078, resultSet.getInt(2));
+        }
+        return null;
+      }
+
+    });
   }
 
   protected void checkMaxRows(SelectStatement select, final int maxRows) {
