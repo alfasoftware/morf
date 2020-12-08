@@ -1705,11 +1705,23 @@ public abstract class SqlDialect {
         }
         throw new IllegalArgumentException("The COUNT function should have only have one or zero arguments. This function has " + function.getArguments().size());
 
+      case COUNT_DISTINCT:
+        if (function.getArguments().size() != 1) {
+          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
+        }
+        return getSqlForCountDistinct(function);
+
       case AVERAGE:
         if (function.getArguments().size() != 1) {
           throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
         }
         return getSqlForAverage(function);
+
+      case AVERAGE_DISTINCT:
+        if (function.getArguments().size() != 1) {
+          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
+        }
+        return getSqlForAverageDistinct(function);
 
       case LENGTH:
       case BLOB_LENGTH:
@@ -1747,6 +1759,12 @@ public abstract class SqlDialect {
           throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
         }
         return getSqlForSum(function);
+
+      case SUM_DISTINCT:
+        if (function.getArguments().size() != 1) {
+          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
+        }
+        return getSqlForSumDistinct(function);
 
       case IS_NULL:
         if (function.getArguments().size() != 2) {
@@ -1933,6 +1951,17 @@ public abstract class SqlDialect {
 
 
   /**
+   * Converts the count function into SQL.
+   *
+   * @param function the function details
+   * @return a string representation of the SQL
+   */
+  protected String getSqlForCountDistinct(Function function) {
+    return "COUNT(DISTINCT " + getSqlFrom(function.getArguments().get(0)) + ")";
+  }
+
+
+  /**
    * Converts the average function into SQL.
    *
    * @param function the function details
@@ -1940,6 +1969,17 @@ public abstract class SqlDialect {
    */
   protected String getSqlForAverage(Function function) {
     return "AVG(" + getSqlFrom(function.getArguments().get(0)) + ")";
+  }
+
+
+  /**
+   * Converts the average function into SQL.
+   *
+   * @param function the function details
+   * @return a string representation of the SQL
+   */
+  protected String getSqlForAverageDistinct(Function function) {
+    return "AVG(DISTINCT " + getSqlFrom(function.getArguments().get(0)) + ")";
   }
 
 
@@ -2033,6 +2073,17 @@ public abstract class SqlDialect {
    */
   protected String getSqlForSum(Function function) {
     return "SUM(" + getSqlFrom(function.getArguments().get(0)) + ")";
+  }
+
+
+  /**
+   * Converts the sum function into SQL.
+   *
+   * @param function the function details
+   * @return a string representation of the SQL
+   */
+  protected String getSqlForSumDistinct(Function function) {
+    return "SUM(DISTINCT " + getSqlFrom(function.getArguments().get(0)) + ")";
   }
 
 

@@ -711,10 +711,13 @@ public class TestHumanReadableStatementHelper {
   public void testFunctionField() {
     final Function countRows = Function.count();
     final Function countValues = Function.count(new FieldReference("foo"));
+    final Function countDistinct = Function.countDistinct(new FieldReference("foo"));
     final Function max = Function.max(new FieldReference("foo"));
     final Function min = Function.min(new FieldReference("foo"));
     final Function average = Function.average(new FieldReference("foo"));
+    final Function averageDistinct = Function.averageDistinct(new FieldReference("foo"));
     final Function sum = Function.sum(new FieldReference("foo"));
+    final Function sumDistinct = Function.sumDistinct(new FieldReference("foo"));
     final Function length = Function.length(new FieldReference("foo"));
     final Function yyyymmddToDate = Function.yyyymmddToDate(new FieldReference("foo"));
     final Function dateToYyyymmdd = Function.dateToYyyymmdd(new FieldReference("foo"));
@@ -741,10 +744,13 @@ public class TestHumanReadableStatementHelper {
 
     assertEquals("COUNT", String.format("%n    - Set bar to record count"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(countRows.as("bar")));
     assertEquals("COUNT", String.format("%n    - Set bar to count of foo"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(countValues.as("bar")));
+    assertEquals("COUNT_DISTINCT", String.format("%n    - Set bar to count of distinct foo"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(countDistinct.as("bar")));
     assertEquals("MAX", String.format("%n    - Set bar to highest foo"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(max.as("bar")));
     assertEquals("MIN", String.format("%n    - Set bar to lowest foo"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(min.as("bar")));
     assertEquals("AVG", String.format("%n    - Set bar to average of foo"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(average.as("bar")));
+    assertEquals("AVG_DISTINCT", String.format("%n    - Set bar to average of distinct foo"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(averageDistinct.as("bar")));
     assertEquals("SUM", String.format("%n    - Set bar to sum of foo"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(sum.as("bar")));
+    assertEquals("SUM_DISTINCT", String.format("%n    - Set bar to sum of distinct foo"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(sumDistinct.as("bar")));
     assertEquals("LENGTH", String.format("%n    - Set bar to length of foo"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(length.as("bar")));
     assertEquals("YYYYMMDD_TO_DATE", String.format("%n    - Set bar to foo"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(yyyymmddToDate.as("bar")));
     assertEquals("DATE_TO_YYYYMMDD", String.format("%n    - Set bar to foo"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(dateToYyyymmdd.as("bar")));

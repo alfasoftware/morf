@@ -49,8 +49,10 @@ import static org.alfasoftware.morf.sql.element.Criterion.not;
 import static org.alfasoftware.morf.sql.element.Criterion.or;
 import static org.alfasoftware.morf.sql.element.Function.addDays;
 import static org.alfasoftware.morf.sql.element.Function.average;
+import static org.alfasoftware.morf.sql.element.Function.averageDistinct;
 import static org.alfasoftware.morf.sql.element.Function.coalesce;
 import static org.alfasoftware.morf.sql.element.Function.count;
+import static org.alfasoftware.morf.sql.element.Function.countDistinct;
 import static org.alfasoftware.morf.sql.element.Function.dateToYyyyMMddHHmmss;
 import static org.alfasoftware.morf.sql.element.Function.dateToYyyymmdd;
 import static org.alfasoftware.morf.sql.element.Function.daysBetween;
@@ -74,6 +76,7 @@ import static org.alfasoftware.morf.sql.element.Function.rightTrim;
 import static org.alfasoftware.morf.sql.element.Function.some;
 import static org.alfasoftware.morf.sql.element.Function.substring;
 import static org.alfasoftware.morf.sql.element.Function.sum;
+import static org.alfasoftware.morf.sql.element.Function.sumDistinct;
 import static org.alfasoftware.morf.sql.element.Function.trim;
 import static org.alfasoftware.morf.sql.element.Function.upperCase;
 import static org.alfasoftware.morf.sql.element.Function.yyyymmddToDate;
@@ -2754,7 +2757,8 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     SelectStatement selectCount =
         select(
           count().as("rowCount"),
-          count(field("decimalColumn")).as("valueCount"))
+          count(field("decimalColumn")).as("valueCount"),
+          countDistinct(field("integerColumn")).as("distinctCount"))
         .from("NumericTable");
 
     sqlScriptExecutorProvider.get().executeQuery(selectCount).processWith(new ResultSetProcessor<Void>() {
@@ -2763,6 +2767,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         while (resultSet.next()) {
           assertEquals("Row count returned should be", 7, resultSet.getInt(1));
           assertEquals("Value count returned should be", 6, resultSet.getInt(2));
+          assertEquals("Distinct count returned should be", 5, resultSet.getInt(3));
         }
         return null;
       }
@@ -2779,7 +2784,9 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     SelectStatement selectAverage =
         select(
           average(field("decimalColumn")).as("decimalAverage"),
-          average(field("integerColumn")).as("integerAverage"))
+          average(field("integerColumn")).as("integerAverage"),
+          averageDistinct(field("decimalColumn")).as("decimalDistinctAverage"),
+          averageDistinct(field("integerColumn")).as("integerDistinctAverage"))
         .from("NumericTable");
 
     sqlScriptExecutorProvider.get().executeQuery(selectAverage).processWith(new ResultSetProcessor<Void>() {
@@ -2788,6 +2795,8 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         while (resultSet.next()) {
           assertEquals("Decimal average returned should be", 189949710.968, resultSet.getDouble(1), 0.005);
           assertEquals("Integer average returned should be", 503846, resultSet.getInt(2));
+          assertEquals("Decimal distinct average returned should be", 227938805.676, resultSet.getDouble(3), 0.005);
+          assertEquals("Integer distinct average returned should be", 562189, resultSet.getInt(4));
         }
         return null;
       }
@@ -2804,7 +2813,9 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     SelectStatement selectSum =
         select(
           sum(field("decimalColumn")).as("decimalSum"),
-          sum(field("integerColumn")).as("integerSum"))
+          sum(field("integerColumn")).as("integerSum"),
+          sumDistinct(field("decimalColumn")).as("decimalDistinctSum"),
+          sumDistinct(field("integerColumn")).as("integerDistinctSum"))
         .from("NumericTable");
 
     sqlScriptExecutorProvider.get().executeQuery(selectSum).processWith(new ResultSetProcessor<Void>() {
@@ -2813,6 +2824,8 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         while (resultSet.next()) {
           assertEquals("Decimal sum returned should be", 1139698265.81, resultSet.getDouble(1), 0.005);
           assertEquals("Integer sum returned should be", 3023078, resultSet.getInt(2));
+          assertEquals("Decimal distinct sum returned should be", 1139694028.38, resultSet.getDouble(3), 0.005);
+          assertEquals("Integer distinct sum returned should be", 2810947, resultSet.getInt(4));
         }
         return null;
       }

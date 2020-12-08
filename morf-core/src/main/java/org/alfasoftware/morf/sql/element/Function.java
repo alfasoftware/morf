@@ -108,6 +108,18 @@ public final class Function extends AliasedField implements Driver {
 
 
   /**
+   * Helper method to create an instance of the "count(distinct)" SQL function.
+   *
+   * @param field the field to evaluate in the count function.
+   *
+   * @return an instance of a count function
+   */
+  public static Function countDistinct(AliasedField field) {
+    return new Function(FunctionType.COUNT_DISTINCT, field);
+  }
+
+
+  /**
    * Helper method to create an instance of the "average" SQL function.
    *
    * @param field the field to evaluate in the average function.
@@ -115,6 +127,17 @@ public final class Function extends AliasedField implements Driver {
    */
   public static Function average(AliasedField field) {
     return new Function(FunctionType.AVERAGE, field);
+  }
+
+
+  /**
+   * Helper method to create an instance of the "average(distinct)" SQL function.
+   *
+   * @param field the field to evaluate in the average function.
+   * @return an instance of a average function.
+   */
+  public static Function averageDistinct(AliasedField field) {
+    return new Function(FunctionType.AVERAGE_DISTINCT, field);
   }
 
 
@@ -170,6 +193,17 @@ public final class Function extends AliasedField implements Driver {
    */
   public static Function sum(AliasedField fieldToEvaluate) {
     return new Function(FunctionType.SUM, fieldToEvaluate);
+  }
+
+
+  /**
+   * Helper method to create an instance of the "sum(distinct)" SQL function.
+   *
+   * @param fieldToEvaluate the field to evaluate in the sum function. This can be any expression resulting in a single column of data.
+   * @return an instance of the sum function
+   */
+  public static Function sumDistinct(AliasedField fieldToEvaluate) {
+    return new Function(FunctionType.SUM_DISTINCT, fieldToEvaluate);
   }
 
 

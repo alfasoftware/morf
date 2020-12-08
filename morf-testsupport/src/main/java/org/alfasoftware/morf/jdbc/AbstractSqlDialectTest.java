@@ -56,8 +56,10 @@ import static org.alfasoftware.morf.sql.element.Criterion.or;
 import static org.alfasoftware.morf.sql.element.Function.addDays;
 import static org.alfasoftware.morf.sql.element.Function.addMonths;
 import static org.alfasoftware.morf.sql.element.Function.average;
+import static org.alfasoftware.morf.sql.element.Function.averageDistinct;
 import static org.alfasoftware.morf.sql.element.Function.coalesce;
 import static org.alfasoftware.morf.sql.element.Function.count;
+import static org.alfasoftware.morf.sql.element.Function.countDistinct;
 import static org.alfasoftware.morf.sql.element.Function.dateToYyyyMMddHHmmss;
 import static org.alfasoftware.morf.sql.element.Function.dateToYyyymmdd;
 import static org.alfasoftware.morf.sql.element.Function.daysBetween;
@@ -81,6 +83,7 @@ import static org.alfasoftware.morf.sql.element.Function.round;
 import static org.alfasoftware.morf.sql.element.Function.some;
 import static org.alfasoftware.morf.sql.element.Function.substring;
 import static org.alfasoftware.morf.sql.element.Function.sum;
+import static org.alfasoftware.morf.sql.element.Function.sumDistinct;
 import static org.alfasoftware.morf.sql.element.Function.trim;
 import static org.alfasoftware.morf.sql.element.Function.upperCase;
 import static org.alfasoftware.morf.sql.element.Function.yyyymmddToDate;
@@ -1342,11 +1345,11 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testSelectWithGroupBy() {
-    SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD), count(literal(1)))
+    SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD), count(literal(1)), countDistinct(literal(1)))
     .from(new TableReference(ALTERNATE_TABLE))
     .groupBy(field(STRING_FIELD), field(INT_FIELD), field(FLOAT_FIELD));
 
-    String expectedSql = "SELECT stringField, COUNT(1) FROM " + tableName(ALTERNATE_TABLE) + " GROUP BY stringField, intField, floatField";
+    String expectedSql = "SELECT stringField, COUNT(1), COUNT(DISTINCT 1) FROM " + tableName(ALTERNATE_TABLE) + " GROUP BY stringField, intField, floatField";
     assertEquals("Select with count function", expectedSql, testDialect.convertStatementToSQL(stmt));
   }
 
@@ -1356,11 +1359,11 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testSelectWithGroupByList() {
-    SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD), count(field(STRING_FIELD)))
+    SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD), count(field(STRING_FIELD)), countDistinct(field(STRING_FIELD)))
     .from(new TableReference(ALTERNATE_TABLE))
     .groupBy(ImmutableList.of(field(STRING_FIELD), field(INT_FIELD), field(FLOAT_FIELD)));
 
-    String expectedSql = "SELECT stringField, COUNT(stringField) FROM " + tableName(ALTERNATE_TABLE) + " GROUP BY stringField, intField, floatField";
+    String expectedSql = "SELECT stringField, COUNT(stringField), COUNT(DISTINCT stringField) FROM " + tableName(ALTERNATE_TABLE) + " GROUP BY stringField, intField, floatField";
     assertEquals("Select with count function", expectedSql, testDialect.convertStatementToSQL(stmt));
   }
 
@@ -1370,8 +1373,8 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testSelectWithSum() {
-    SelectStatement stmt = new SelectStatement(sum(new FieldReference(INT_FIELD))).from(new TableReference(TEST_TABLE));
-    String expectedSql = "SELECT SUM(intField) FROM " + tableName(TEST_TABLE);
+    SelectStatement stmt = new SelectStatement(sum(new FieldReference(INT_FIELD)), sumDistinct(new FieldReference(INT_FIELD))).from(new TableReference(TEST_TABLE));
+    String expectedSql = "SELECT SUM(intField), SUM(DISTINCT intField) FROM " + tableName(TEST_TABLE);
     assertEquals("Select with sum function", expectedSql, testDialect.convertStatementToSQL(stmt));
   }
 
@@ -4392,9 +4395,9 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testCountArgument() {
     final TableReference tableOne = tableRef("TableOne");
-    SelectStatement testStatement = select(count(field("name"))).from(tableOne);
+    SelectStatement testStatement = select(count(field("name")), countDistinct(field("name"))).from(tableOne);
 
-    assertEquals(testDialect.convertStatementToSQL(testStatement), "SELECT COUNT(name) FROM " + tableName("TableOne"));
+    assertEquals(testDialect.convertStatementToSQL(testStatement), "SELECT COUNT(name), COUNT(DISTINCT name) FROM " + tableName("TableOne"));
   }
 
 
@@ -4404,9 +4407,9 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testAverage() {
     final TableReference tableOne = tableRef("TableOne");
-    SelectStatement testStatement = select(average(field("name"))).from(tableOne);
+    SelectStatement testStatement = select(average(field("name")), averageDistinct(field("name"))).from(tableOne);
 
-    assertEquals("SELECT AVG(name) FROM " + tableName("TableOne"), testDialect.convertStatementToSQL(testStatement));
+    assertEquals("SELECT AVG(name), AVG(DISTINCT name) FROM " + tableName("TableOne"), testDialect.convertStatementToSQL(testStatement));
   }
 
 
