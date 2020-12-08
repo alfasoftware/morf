@@ -361,7 +361,7 @@ public abstract class SqlDialect {
    * @param statement The statement to check
    * @return true if autonumbered, false otherwise
    */
-  private boolean isAutonumbered(InsertStatement statement, Schema databaseMetadata) {
+  protected boolean isAutonumbered(InsertStatement statement, Schema databaseMetadata) {
     if (statement.getTable() != null) {
       Table tableInserting = databaseMetadata.getTable(statement.getTable().getName());
       for (Column col : tableInserting.columns()) {
@@ -858,7 +858,7 @@ public abstract class SqlDialect {
    * @param result alias will be appended to this
    * @param currentField field to be aliased
    */
-  private void appendAlias(StringBuilder result, AliasedField currentField) {
+  protected void appendAlias(StringBuilder result, AliasedField currentField) {
     if (!StringUtils.isBlank(currentField.getAlias())) {
       result.append(String.format(" AS %s", currentField.getAlias()));
     }
@@ -1055,7 +1055,7 @@ public abstract class SqlDialect {
    * @param currentOrderByField field within order by clause
    * @return SQL for the field inside order by clause
    */
-  private String getSqlForOrderByField(AliasedField currentOrderByField) {
+  protected String getSqlForOrderByField(AliasedField currentOrderByField) {
 
     if (currentOrderByField instanceof FieldReference) {
       return getSqlForOrderByField((FieldReference) currentOrderByField);
@@ -1143,7 +1143,7 @@ public abstract class SqlDialect {
    * @param result the string builder to append to
    * @param join the join statement
    */
-  private void appendJoin(StringBuilder result, Join join, String innerJoinKeyword) {
+  protected void appendJoin(StringBuilder result, Join join, String innerJoinKeyword) {
     // Put the type in
     switch (join.getType()) {
       case INNER_JOIN:
@@ -1211,7 +1211,7 @@ public abstract class SqlDialect {
    * @param operator the union to convert.
    * @return a string representation of the field.
    */
-  private String getSqlFrom(UnionSetOperator operator) {
+  protected String getSqlFrom(UnionSetOperator operator) {
     return String.format(" %s %s", operator.getUnionStrategy() == ALL ? "UNION ALL" : "UNION",
       getSqlFrom(operator.getSelectStatement()));
   }
@@ -1261,7 +1261,7 @@ public abstract class SqlDialect {
    * @param idTable the ID Table.
    * @return a standards compliant SQL INSERT statement
    */
-  private List<String> getSqlFromInsert(InsertStatement stmt, Schema metadata, Table idTable) {
+  protected List<String> getSqlFromInsert(InsertStatement stmt, Schema metadata, Table idTable) {
     if (stmt.getTable() == null) {
       throw new IllegalArgumentException("Cannot specify a null destination table in an insert statement");
     }
@@ -1940,7 +1940,7 @@ public abstract class SqlDialect {
    * @param function the function details
    * @return a string representation of the SQL
    */
-  protected final String getSqlForCoalesce(Function function) {
+  protected String getSqlForCoalesce(Function function) {
     StringBuilder expression = new StringBuilder();
     expression.append(getCoalesceFunctionName()).append('(');
     boolean first = true;
@@ -1964,7 +1964,7 @@ public abstract class SqlDialect {
    * @param function the function details
    * @return a string representation of the SQL
    */
-  protected final String getSqlForGreatest(Function function) {
+  protected String getSqlForGreatest(Function function) {
     return getGreatestFunctionName() + '(' + Joiner.on(", ").join(function.getArguments().stream().map(f -> getSqlFrom(f)).iterator()) + ')';
   }
 
@@ -1975,7 +1975,7 @@ public abstract class SqlDialect {
    * @param function the function details
    * @return a string representation of the SQL
    */
-  protected final String getSqlForLeast(Function function) {
+  protected String getSqlForLeast(Function function) {
     return getLeastFunctionName() + '(' + Joiner.on(", ").join(function.getArguments().stream().map(f -> getSqlFrom(f)).iterator()) + ')';
   }
 
@@ -1986,7 +1986,7 @@ public abstract class SqlDialect {
    * @param function the function details
    * @return a string representation of the SQL
    */
-  private String getSqlForMax(Function function) {
+  protected String getSqlForMax(Function function) {
     return "MAX(" + getSqlFrom(function.getArguments().get(0)) + ")";
   }
 
@@ -1997,7 +1997,7 @@ public abstract class SqlDialect {
    * @param function the function details
    * @return a string representation of the SQL
    */
-  private String getSqlForMin(Function function) {
+  protected String getSqlForMin(Function function) {
     return "MIN(" + getSqlFrom(function.getArguments().get(0)) + ")";
   }
 
@@ -2008,7 +2008,7 @@ public abstract class SqlDialect {
    * @param function the function details
    * @return a string representation of the SQL
    */
-  private String getSqlForSum(Function function) {
+  protected String getSqlForSum(Function function) {
     return "SUM(" + getSqlFrom(function.getArguments().get(0)) + ")";
   }
 
@@ -2043,7 +2043,7 @@ public abstract class SqlDialect {
    * @see org.alfasoftware.morf.sql.element.Function#power(AliasedField,
    *      AliasedField)
    */
-  private String getSqlForPower(Function function) {
+  protected String getSqlForPower(Function function) {
     return String.format("POWER(%s, %s)", getSqlFrom(function.getArguments().get(0)), getSqlFrom(function.getArguments().get(1)));
   }
 
