@@ -1698,9 +1698,9 @@ public abstract class SqlDialect {
     switch (function.getType()) {
       case COUNT:
         if (function.getArguments().isEmpty()) {
-          return "COUNT(*)";
+          return getSqlForCount();
         } else if (function.getArguments().size() == 1) {
-          return "COUNT(" + getSqlFrom(function.getArguments().get(0)) + ")";
+          return getSqlForCount(function);
         }
         throw new IllegalArgumentException("The COUNT function should have only have one or zero arguments. This function has " + function.getArguments().size());
 
@@ -1906,6 +1906,28 @@ public abstract class SqlDialect {
       default:
         throw new UnsupportedOperationException("This database does not currently support the [" + function.getType() + "] function");
     }
+  }
+
+
+  /**
+   * Converts the count function into SQL.
+   *
+   * @param function the function details
+   * @return a string representation of the SQL
+   */
+  protected String getSqlForCount() {
+    return "COUNT(*)";
+  }
+
+
+  /**
+   * Converts the count function into SQL.
+   *
+   * @param function the function details
+   * @return a string representation of the SQL
+   */
+  protected String getSqlForCount(Function function) {
+    return "COUNT(" + getSqlFrom(function.getArguments().get(0)) + ")";
   }
 
 
