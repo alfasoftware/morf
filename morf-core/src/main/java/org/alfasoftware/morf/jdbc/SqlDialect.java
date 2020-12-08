@@ -1715,14 +1715,24 @@ public abstract class SqlDialect {
       case EVERY:
         return getSqlForEvery(function);
       case MAX:
+        if (function.getArguments().size() != 1) {
+          throw new IllegalArgumentException("The " + function.getType()
+              + " function should have only one argument. This function has " + function.getArguments().size());
+        }
+        return getSqlForMax(function);
       case MIN:
+        if (function.getArguments().size() != 1) {
+          throw new IllegalArgumentException("The " + function.getType()
+              + " function should have only one argument. This function has " + function.getArguments().size());
+        }
+        return getSqlForMin(function);
       case SUM:
         if (function.getArguments().size() != 1) {
           throw new IllegalArgumentException("The " + function.getType()
               + " function should have only one argument. This function has " + function.getArguments().size());
         }
 
-        return function.getType().name() + "(" + getSqlFrom(function.getArguments().get(0)) + ")";
+        return getSqlForSum(function);
 
       case IS_NULL:
         if (function.getArguments().size() != 2) {
@@ -2002,13 +2012,46 @@ public abstract class SqlDialect {
 
 
   /**
+   * Converts the max function into SQL.
+   *
+   * @param function the function details
+   * @return a string representation of the SQL
+   */
+  private String getSqlForMax(Function function) {
+    return "MAX(" + getSqlFrom(function.getArguments().get(0)) + ")";
+  }
+
+
+  /**
+   * Converts the min function into SQL.
+   *
+   * @param function the function details
+   * @return a string representation of the SQL
+   */
+  private String getSqlForMin(Function function) {
+    return "MIN(" + getSqlFrom(function.getArguments().get(0)) + ")";
+  }
+
+
+  /**
+   * Converts the sum function into SQL.
+   *
+   * @param function the function details
+   * @return a string representation of the SQL
+   */
+  private String getSqlForSum(Function function) {
+    return "SUM(" + getSqlFrom(function.getArguments().get(0)) + ")";
+  }
+
+
+  /**
    * Converts the some function into SQL.
    *
    * @param function the function details
    * @return a string representation of the SQL
    */
   protected String getSqlForSome(Function function) {
-    return "MAX(" + getSqlFrom(function.getArguments().get(0)) + ")";
+    return getSqlForMax(function);
   }
 
 
@@ -2019,7 +2062,7 @@ public abstract class SqlDialect {
    * @return a string representation of the SQL
    */
   protected String getSqlForEvery(Function function) {
-    return "MIN(" + getSqlFrom(function.getArguments().get(0)) + ")";
+    return getSqlForMin(function);
   };
 
 
