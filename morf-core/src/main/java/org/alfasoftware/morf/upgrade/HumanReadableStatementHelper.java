@@ -122,6 +122,7 @@ class HumanReadableStatementHelper {
       .put(FunctionType.LOWER, new FunctionTypeMetaData("lower case ", "", "", false, false))
       .put(FunctionType.MAX, new FunctionTypeMetaData("highest ", "", "", false, false))
       .put(FunctionType.MIN, new FunctionTypeMetaData("lowest ", "", "", false, false))
+      .put(FunctionType.AVERAGE, new FunctionTypeMetaData("average of ", "", "", false, false))
       .put(FunctionType.SOME, new FunctionTypeMetaData("logical OR over ", "", "", false, false))
       .put(FunctionType.EVERY, new FunctionTypeMetaData("logical AND over ", "", "", false, false))
       .put(FunctionType.MONTHS_BETWEEN, new FunctionTypeMetaData("months between ", "", " and ", true, true))
