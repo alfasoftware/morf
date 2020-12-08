@@ -63,7 +63,9 @@ import static org.alfasoftware.morf.sql.element.Function.dateToYyyymmdd;
 import static org.alfasoftware.morf.sql.element.Function.daysBetween;
 import static org.alfasoftware.morf.sql.element.Function.every;
 import static org.alfasoftware.morf.sql.element.Function.floor;
+import static org.alfasoftware.morf.sql.element.Function.greatest;
 import static org.alfasoftware.morf.sql.element.Function.isnull;
+import static org.alfasoftware.morf.sql.element.Function.least;
 import static org.alfasoftware.morf.sql.element.Function.leftPad;
 import static org.alfasoftware.morf.sql.element.Function.leftTrim;
 import static org.alfasoftware.morf.sql.element.Function.lowerCase;
@@ -2547,6 +2549,26 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * Test the GREATEST functionality behaves as expected
+   */
+  @Test
+  public void testGreatest() {
+    SelectStatement testStatement = select(greatest(new NullFieldLiteral(), field("bob"))).from(tableRef("MyTable"));
+    assertEquals(expectedGreatest().toLowerCase(), testDialect.convertStatementToSQL(testStatement).toLowerCase());
+  }
+
+
+  /**
+   * Test the LEAST functionality behaves as expected
+   */
+  @Test
+  public void testLeast() {
+    SelectStatement testStatement = select(least(new NullFieldLiteral(), field("bob"))).from(tableRef("MyTable"));
+    assertEquals(expectedLeast().toLowerCase(), testDialect.convertStatementToSQL(testStatement).toLowerCase());
+  }
+
+
+  /**
    * Test that adding numbers returns as expected.
    */
   @Test
@@ -4672,6 +4694,22 @@ public abstract class AbstractSqlDialectTest {
    */
   protected String expectedCoalesce() {
     return "SELECT COALESCE(NULL, bob) FROM " + tableName("MyTable");
+  }
+
+
+  /**
+   * @return The expected SQL statement when performing the ANSI GREATEST call
+   */
+  protected String expectedGreatest() {
+    return "SELECT GREATEST(NULL, bob) FROM " + tableName("MyTable");
+  }
+
+
+  /**
+   * @return The expected SQL statement when performing the ANSI LEAST call
+   */
+  protected String expectedLeast() {
+    return "SELECT LEAST(NULL, bob) FROM " + tableName("MyTable");
   }
 
 

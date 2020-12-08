@@ -376,6 +376,50 @@ public final class Function extends AliasedField implements Driver {
 
 
   /**
+   * Helper method to create an instance of the "greatest" SQL function.
+   *
+   * @param fields the fields to evaluate.
+   * @return an instance of the "greatest" function.
+   */
+  public static Function greatest(AliasedField... fields) {
+    return new Function(FunctionType.GREATEST, fields);
+  }
+
+
+  /**
+   * Helper method to create an instance of the "greatest" SQL function.
+   *
+   * @param fields the fields to evaluate.
+   * @return an instance of the "greatest" function.
+   */
+  public static Function greatest(Iterable<? extends AliasedField> fields) {
+    return new Function(FunctionType.GREATEST, fields);
+  }
+
+
+  /**
+   * Helper method to create an instance of the "least" SQL function.
+   *
+   * @param fields the fields to evaluate.
+   * @return an instance of the "least" function.
+   */
+  public static Function least(AliasedField... fields) {
+    return new Function(FunctionType.LEAST, fields);
+  }
+
+
+  /**
+   * Helper method to create an instance of the "least" SQL function.
+   *
+   * @param fields the fields to evaluate.
+   * @return an instance of the "least" function.
+   */
+  public static Function least(Iterable<? extends AliasedField> fields) {
+    return new Function(FunctionType.LEAST, fields);
+  }
+
+
+  /**
    * The number of days between two dates including one bound, but excluding the other;
    * so {@code daysBetween(2012-12-20, 2012-12-21)} is 1.
    *

@@ -56,7 +56,9 @@ import static org.alfasoftware.morf.sql.element.Function.dateToYyyymmdd;
 import static org.alfasoftware.morf.sql.element.Function.daysBetween;
 import static org.alfasoftware.morf.sql.element.Function.every;
 import static org.alfasoftware.morf.sql.element.Function.floor;
+import static org.alfasoftware.morf.sql.element.Function.greatest;
 import static org.alfasoftware.morf.sql.element.Function.lastDayOfMonth;
+import static org.alfasoftware.morf.sql.element.Function.least;
 import static org.alfasoftware.morf.sql.element.Function.leftPad;
 import static org.alfasoftware.morf.sql.element.Function.leftTrim;
 import static org.alfasoftware.morf.sql.element.Function.length;
@@ -3246,6 +3248,60 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         assertEquals("Aggregated value of id should be", false, resultSet.getBoolean(2));
       }
       return null;
+      }
+    });
+  }
+
+
+  /**
+   * Test the greatest SQL function against all {@linkplain SqlDialect}s
+   */
+  @Test
+  public void testGreatest() throws SQLException {
+    final SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+
+    executor.executeQuery(convertStatementToSQL(select(greatest(literal(1), literal(7), literal(-1)))), connection, new ResultSetProcessor<Void>() {
+      @Override
+      public Void process(ResultSet resultSet) throws SQLException {
+        assertTrue (resultSet.next());
+        assertEquals(7, resultSet.getInt(1));
+        return null;
+      }
+    });
+
+    executor.executeQuery(convertStatementToSQL(select(greatest(ImmutableList.of(literal(1), literal(7), literal(-1))))), connection, new ResultSetProcessor<Void>() {
+      @Override
+      public Void process(ResultSet resultSet) throws SQLException {
+        assertTrue (resultSet.next());
+        assertEquals(7, resultSet.getInt(1));
+        return null;
+      }
+    });
+  }
+
+
+  /**
+   * Test the greatest SQL function against all {@linkplain SqlDialect}s
+   */
+  @Test
+  public void testLeast() throws SQLException {
+    final SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+
+    executor.executeQuery(convertStatementToSQL(select(least(literal(1), literal(7), literal(-1)))), connection, new ResultSetProcessor<Void>() {
+      @Override
+      public Void process(ResultSet resultSet) throws SQLException {
+        assertTrue (resultSet.next());
+        assertEquals(-1, resultSet.getInt(1));
+        return null;
+      }
+    });
+
+    executor.executeQuery(convertStatementToSQL(select(least(ImmutableList.of(literal(1), literal(7), literal(-1))))), connection, new ResultSetProcessor<Void>() {
+      @Override
+      public Void process(ResultSet resultSet) throws SQLException {
+        assertTrue (resultSet.next());
+        assertEquals(-1, resultSet.getInt(1));
+        return null;
       }
     });
   }

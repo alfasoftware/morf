@@ -99,6 +99,16 @@ public enum FunctionType {
   COALESCE,
 
   /**
+   * Greatest function (maximum of given values)
+   */
+  GREATEST,
+
+  /**
+   * Least function (minimum of given values)
+   */
+  LEAST,
+
+  /**
    * Calculate the number of days between two bounds, effectively
    * {@code arg1 - arg0}.
    */

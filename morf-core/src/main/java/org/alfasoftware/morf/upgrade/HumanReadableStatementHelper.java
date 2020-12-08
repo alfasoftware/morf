@@ -106,6 +106,8 @@ class HumanReadableStatementHelper {
   private static final Map<FunctionType, FunctionTypeMetaData> functionTypeMetaData = new ImmutableMap.Builder<FunctionType, FunctionTypeMetaData>()
       .put(FunctionType.ADD_DAYS, new FunctionTypeMetaData("", " days", " plus ", false, false))
       .put(FunctionType.COALESCE, new FunctionTypeMetaData("first non-null of (", ")", ", ", false, false))
+      .put(FunctionType.GREATEST, new FunctionTypeMetaData("maximum of (", ")", ", ", false, false))
+      .put(FunctionType.LEAST, new FunctionTypeMetaData("minimum of (", ")", ", ", false, false))
       .put(FunctionType.COUNT, new FunctionTypeMetaData("count of ", "", "", false, false))
       .put(FunctionType.DAYS_BETWEEN, new FunctionTypeMetaData("days between ", "", " and ", true, true))
       .put(FunctionType.DATE_TO_YYYYMMDD, new FunctionTypeMetaData("", "", "", false, false))

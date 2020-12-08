@@ -1818,6 +1818,22 @@ public abstract class SqlDialect {
         expression.append(')');
         return expression.toString();
 
+      case GREATEST:
+        if (function.getArguments().size() == 0) {
+          throw new IllegalArgumentException("The GREATEST function requires at least one argument. This function has "
+              + function.getArguments().size());
+        }
+
+        return getSqlForGreatest(function);
+
+      case LEAST:
+        if (function.getArguments().size() == 0) {
+          throw new IllegalArgumentException("The LEAST function requires at least one argument. This function has "
+              + function.getArguments().size());
+        }
+
+        return getSqlForLeast(function);
+
       case TRIM:
         if (function.getArguments().size() != 1) {
           throw new IllegalArgumentException("The TRIM function should have one argument. This function has "
@@ -1929,6 +1945,28 @@ public abstract class SqlDialect {
 
 
   /**
+   * Converts the greatest function into SQL.
+   *
+   * @param function the function details
+   * @return a string representation of the SQL
+   */
+  protected final String getSqlForGreatest(Function function) {
+    return getGreatestFunctionName() + '(' + Joiner.on(", ").join(function.getArguments().stream().map(f -> getSqlFrom(f)).iterator()) + ')';
+  }
+
+
+  /**
+   * Converts the least function into SQL.
+   *
+   * @param function the function details
+   * @return a string representation of the SQL
+   */
+  protected final String getSqlForLeast(Function function) {
+    return getLeastFunctionName() + '(' + Joiner.on(", ").join(function.getArguments().stream().map(f -> getSqlFrom(f)).iterator()) + ')';
+  }
+
+
+  /**
    * Converts the some function into SQL.
    *
    * @param aliasedField the field to get the maximum for.
@@ -2018,6 +2056,22 @@ public abstract class SqlDialect {
    */
   protected String getCoalesceFunctionName() {
     return "COALESCE";
+  }
+
+
+  /**
+   * @return The name of the GREATEST function
+   */
+  protected String getGreatestFunctionName() {
+    return "GREATEST";
+  }
+
+
+  /**
+   * @return The name of the LEAST function
+   */
+  protected String getLeastFunctionName() {
+    return "LEAST";
   }
 
 
