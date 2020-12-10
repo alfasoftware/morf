@@ -784,7 +784,7 @@ public abstract class AbstractSqlDialectTest {
     SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
         .where(or(
           eq(new FieldReference(STRING_FIELD), "A0001"),
-          greaterThan(new FieldReference(INT_FIELD), new Integer(20080101))
+          greaterThan(new FieldReference(INT_FIELD), 20080101)
         ));
 
     String value = varCharCast("'A0001'");
@@ -818,7 +818,7 @@ public abstract class AbstractSqlDialectTest {
     SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
         .where(and(
           eq(new FieldReference(STRING_FIELD), "A0001"),
-          greaterThan(new FieldReference(INT_FIELD), new Integer(20080101))
+          greaterThan(new FieldReference(INT_FIELD), 20080101)
         ));
 
     String value = varCharCast("'A0001'");
