@@ -359,6 +359,7 @@ public abstract class SqlDialect {
    * autonumbered columns
    *
    * @param statement The statement to check
+   * @param databaseMetadata the database schema
    * @return true if autonumbered, false otherwise
    */
   protected boolean isAutonumbered(InsertStatement statement, Schema databaseMetadata) {
@@ -1142,6 +1143,7 @@ public abstract class SqlDialect {
   /**
    * @param result the string builder to append to
    * @param join the join statement
+   * @param innerJoinKeyword usually an INNER JOIN, but this can be changed for optimisations
    */
   protected void appendJoin(StringBuilder result, Join join, String innerJoinKeyword) {
     // Put the type in
@@ -1931,7 +1933,6 @@ public abstract class SqlDialect {
   /**
    * Converts the count function into SQL.
    *
-   * @param function the function details
    * @return a string representation of the SQL
    */
   protected String getSqlForCount() {

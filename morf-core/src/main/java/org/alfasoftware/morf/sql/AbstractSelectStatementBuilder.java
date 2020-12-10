@@ -273,8 +273,8 @@ public abstract class AbstractSelectStatementBuilder<U extends AbstractSelectSta
 
 
   /**
-   * @param toTable
-   * @return
+   * @param toTable the table to join to
+   * @return this, for method chaining.
    *
    * @deprecated Use {@link #crossJoin(TableReference)} to do a cross join;
    *             or add join conditions for {@link #innerJoin(TableReference, Criterion)}
@@ -352,8 +352,8 @@ public abstract class AbstractSelectStatementBuilder<U extends AbstractSelectSta
 
 
   /**
-   * @param subSelect
-   * @return
+   * @param subSelect the sub select statement to join on to
+   * @return this, for method chaining.
    *
    * @deprecated Use {@link #crossJoin(SelectStatement)} to do a cross join;
    *             or add join conditions for {@link #innerJoin(SelectStatement, Criterion)}

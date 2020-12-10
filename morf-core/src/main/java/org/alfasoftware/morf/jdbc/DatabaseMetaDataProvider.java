@@ -959,6 +959,8 @@ public class DatabaseMetaDataProvider implements Schema {
      * The user-friendly camel-case name of the object,
      * often derived by looking at the comment of that object,
      * or in schema descriptions.
+     *
+     * @return user-friendly camel-case name
      */
     public String getRealName() {
       return realName;
@@ -966,6 +968,8 @@ public class DatabaseMetaDataProvider implements Schema {
 
     /**
      * The name as retrieved by the JDBC driver.
+     *
+     * @return name as expected in the database
      */
     public String getDbName() {
       return getAName();
