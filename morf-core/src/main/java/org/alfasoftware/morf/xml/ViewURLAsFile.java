@@ -31,6 +31,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import com.google.common.base.Charsets;
 import com.google.common.io.ByteStreams;
 import com.google.common.io.CharSource;
 import com.google.common.io.Files;
@@ -49,7 +50,7 @@ class ViewURLAsFile implements Closeable {
    * Used to keep track of expanded resources in the temporary directory.
    * Keys are URLs as strings.
    */
-  private Map<String, File> expandedResources = new HashMap<>();
+  private final Map<String, File> expandedResources = new HashMap<>();
 
 
   /**
@@ -207,6 +208,7 @@ class ViewURLAsFile implements Closeable {
   /**
    * Closes all the temporary files opened.
    */
+  @Override
   public void close() {
     for (File file : tempFiles) {
       try {
@@ -262,7 +264,7 @@ class ViewURLAsFile implements Closeable {
     //
     if (urlUsername != null && urlPassword != null) {
       String userpass = urlUsername + ":" + urlPassword;
-      String basicAuth = "Basic " + new String(Base64.getEncoder().encode(userpass.getBytes(StandardCharsets.UTF_8)));
+      String basicAuth = "Basic " + new String(Base64.getEncoder().encode(userpass.getBytes(StandardCharsets.UTF_8)), Charsets.US_ASCII);
       urlConnection.setRequestProperty("Authorization", basicAuth);
     }
 
