@@ -15,7 +15,6 @@
 
 package org.alfasoftware.morf.integration;
 
-import com.chpconsulting.subetha.util.LocaleRule;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
@@ -146,8 +145,6 @@ public class TestDatabaseUpgradeIntegration {
 
   /***/
   @Rule public InjectMembersRule injectMembersRule = new InjectMembersRule(new TestingDataSourceModule());
-
-  @Rule public LocaleRule localeRule = new LocaleRule(Locale.UK);
 
   @Inject
   private Provider<DatabaseDataSetConsumer> databaseDataSetConsumer;
@@ -310,6 +307,7 @@ public class TestDatabaseUpgradeIntegration {
    */
   @Before
   public void before() {
+    Locale.setDefault(new Locale("en", "GB"));
     schemaManager.get().dropAllViews();
     schemaManager.get().dropAllTables();
     schemaManager.get().mutateToSupportSchema(schema, TruncationBehavior.ALWAYS);

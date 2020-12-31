@@ -106,11 +106,5 @@
       <artifactId>JUnitParams</artifactId>
       <scope>test</scope>
     </dependency>
-    <dependency>
-      <groupId>com.alfasystems</groupId>
-      <artifactId>alfa-subetha-testsupport</artifactId>
-      <version>1.18.0</version>
-      <scope>test</scope>
-    </dependency>
   </dependencies>
 </project>
