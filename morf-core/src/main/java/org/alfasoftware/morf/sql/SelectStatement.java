@@ -282,6 +282,32 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
 
 
   /**
+   * Specifies that the records should be grouped by the specified fields.
+   *
+   * <blockquote><pre>
+   * select()
+   *   .from(tableRef("Foo"))
+   *   .groupBy(groupByFields);</pre></blockquote>
+   *
+   * @param fields the fields to group by
+   * @return a new select statement with the change applied.
+   */
+  public SelectStatement groupBy(Iterable<? extends AliasedFieldBuilder> fields) {
+    return copyOnWriteOrMutate(
+        (SelectStatementBuilder b) -> b.groupBy(fields),
+        () -> {
+          if (fields == null) {
+            throw new IllegalArgumentException("Field was null in group by clause");
+          }
+
+          // Add the list
+          groupBys.addAll(Builder.Helper.buildAll(fields));
+        }
+    );
+  }
+
+
+  /**
    * Filters the grouped records by some criteria.
    *
    * <blockquote><pre>

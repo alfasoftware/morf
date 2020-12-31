@@ -49,14 +49,18 @@ import static org.alfasoftware.morf.sql.element.Criterion.not;
 import static org.alfasoftware.morf.sql.element.Criterion.or;
 import static org.alfasoftware.morf.sql.element.Function.addDays;
 import static org.alfasoftware.morf.sql.element.Function.average;
+import static org.alfasoftware.morf.sql.element.Function.averageDistinct;
 import static org.alfasoftware.morf.sql.element.Function.coalesce;
 import static org.alfasoftware.morf.sql.element.Function.count;
+import static org.alfasoftware.morf.sql.element.Function.countDistinct;
 import static org.alfasoftware.morf.sql.element.Function.dateToYyyyMMddHHmmss;
 import static org.alfasoftware.morf.sql.element.Function.dateToYyyymmdd;
 import static org.alfasoftware.morf.sql.element.Function.daysBetween;
 import static org.alfasoftware.morf.sql.element.Function.every;
 import static org.alfasoftware.morf.sql.element.Function.floor;
+import static org.alfasoftware.morf.sql.element.Function.greatest;
 import static org.alfasoftware.morf.sql.element.Function.lastDayOfMonth;
+import static org.alfasoftware.morf.sql.element.Function.least;
 import static org.alfasoftware.morf.sql.element.Function.leftPad;
 import static org.alfasoftware.morf.sql.element.Function.leftTrim;
 import static org.alfasoftware.morf.sql.element.Function.length;
@@ -72,6 +76,7 @@ import static org.alfasoftware.morf.sql.element.Function.rightTrim;
 import static org.alfasoftware.morf.sql.element.Function.some;
 import static org.alfasoftware.morf.sql.element.Function.substring;
 import static org.alfasoftware.morf.sql.element.Function.sum;
+import static org.alfasoftware.morf.sql.element.Function.sumDistinct;
 import static org.alfasoftware.morf.sql.element.Function.trim;
 import static org.alfasoftware.morf.sql.element.Function.upperCase;
 import static org.alfasoftware.morf.sql.element.Function.yyyymmddToDate;
@@ -153,6 +158,7 @@ import org.apache.commons.logging.LogFactory;
 import org.joda.time.LocalDate;
 import org.joda.time.Months;
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.FixMethodOrder;
 import org.junit.Rule;
@@ -363,10 +369,10 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         .columns(
           column("column1", DataType.STRING, 10).primaryKey(),
           column("column2", DataType.INTEGER).primaryKey()),
-        table("NumericTable")
+     table("NumericTable")
         .columns(
-          column("decimalColumn", DataType.DECIMAL, 13, 2),
-          column("integerColumn", DataType.INTEGER)),
+          column("decimalColumn", DataType.DECIMAL, 13, 2).nullable(),
+          column("integerColumn", DataType.INTEGER).nullable()),
      table("InsertTargetTable")
         .columns(
           column("id", DataType.INTEGER).primaryKey(),
@@ -665,8 +671,14 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
          .setString("decimalColumn", "4237.43")
          .setInteger("integerColumn", 212131),
        record()
+         .setString("decimalColumn", "4237.43")
+         .setInteger("integerColumn", 212131),
+       record()
          .setString("decimalColumn", "92337.29")
          .setInteger("integerColumn", 21323),
+         record()
+         .setString("decimalColumn", null)
+         .setInteger("integerColumn", null),
        record()
          .setString("decimalColumn", "92376427.13")
          .setInteger("integerColumn", 213231)
@@ -2738,28 +2750,87 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
 
 
   /**
+   *  Tests that the correct behaviour occurs when using the count function
+   */
+  @Test
+  public void testCount() {
+    SelectStatement selectCount =
+        select(
+          count().as("rowCount"),
+          count(field("decimalColumn")).as("valueCount"),
+          countDistinct(field("integerColumn")).as("distinctCount"))
+        .from("NumericTable");
+
+    sqlScriptExecutorProvider.get().executeQuery(selectCount).processWith(new ResultSetProcessor<Void>() {
+      @Override
+      public Void process(ResultSet resultSet) throws SQLException {
+        while (resultSet.next()) {
+          assertEquals("Row count returned should be", 7, resultSet.getInt(1));
+          assertEquals("Value count returned should be", 6, resultSet.getInt(2));
+          assertEquals("Distinct count returned should be", 5, resultSet.getInt(3));
+        }
+        return null;
+      }
+
+    });
+  }
+
+
+  /**
    *  Tests that the correct behaviour occurs when using the average function
    */
   @Test
   public void testAverage() {
     SelectStatement selectAverage =
         select(
-          average(field("decimalColumn").as("decimalAverage")),
-          average(field("integerColumn").as("integerAverage")))
+          average(field("decimalColumn")).as("decimalAverage"),
+          average(field("integerColumn")).as("integerAverage"),
+          averageDistinct(field("decimalColumn")).as("decimalDistinctAverage"),
+          averageDistinct(field("integerColumn")).as("integerDistinctAverage"))
         .from("NumericTable");
+
     sqlScriptExecutorProvider.get().executeQuery(selectAverage).processWith(new ResultSetProcessor<Void>() {
       @Override
       public Void process(ResultSet resultSet) throws SQLException {
         while (resultSet.next()) {
-          assertEquals("Decimal average returned should be", 227938805.676 , resultSet.getDouble(1), 0.005);
-          assertEquals("Integer average returned should be", 562189 , resultSet.getInt(2));
+          assertEquals("Decimal average returned should be", 189949710.968, resultSet.getDouble(1), 0.005);
+          assertEquals("Integer average returned should be", 503846, resultSet.getInt(2));
+          assertEquals("Decimal distinct average returned should be", 227938805.676, resultSet.getDouble(3), 0.005);
+          assertEquals("Integer distinct average returned should be", 562189, resultSet.getInt(4));
         }
         return null;
       }
 
     });
+  }
 
 
+  /**
+   *  Tests that the correct behaviour occurs when using the sum function
+   */
+  @Test
+  public void testSum() {
+    SelectStatement selectSum =
+        select(
+          sum(field("decimalColumn")).as("decimalSum"),
+          sum(field("integerColumn")).as("integerSum"),
+          sumDistinct(field("decimalColumn")).as("decimalDistinctSum"),
+          sumDistinct(field("integerColumn")).as("integerDistinctSum"))
+        .from("NumericTable");
+
+    sqlScriptExecutorProvider.get().executeQuery(selectSum).processWith(new ResultSetProcessor<Void>() {
+      @Override
+      public Void process(ResultSet resultSet) throws SQLException {
+        while (resultSet.next()) {
+          assertEquals("Decimal sum returned should be", 1139698265.81, resultSet.getDouble(1), 0.005);
+          assertEquals("Integer sum returned should be", 3023078, resultSet.getInt(2));
+          assertEquals("Decimal distinct sum returned should be", 1139694028.38, resultSet.getDouble(3), 0.005);
+          assertEquals("Integer distinct sum returned should be", 2810947, resultSet.getInt(4));
+        }
+        return null;
+      }
+
+    });
   }
 
   protected void checkMaxRows(SelectStatement select, final int maxRows) {
@@ -2999,6 +3070,31 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
   }
 
 
+  /**
+   * We can't use joins with FOR UPDATE, so this tries join order hinting
+   */
+  @Test
+  public void testSelectLeftJoinFullJoin() {
+    Assume.assumeFalse("Not yet supported on H2", "H2".equals(connectionResources.getDatabaseType())); // https://github.com/h2database/h2database/issues/457
+    Assume.assumeFalse("Not yet supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
+
+    TableReference selectTable = tableRef("SelectDistinctTable");
+    TableReference selectTable2 = tableRef("SelectDistinctTable").as("abc");
+    TableReference selectTable3 = tableRef("SelectDistinctTable").as("def");
+    TableReference selectTable4 = tableRef("SelectDistinctTable").as("ghi");
+
+    SelectStatement selectStatement = select(selectTable.field("column1"), selectTable.field("column2"))
+      .from(selectTable)
+      .innerJoin(selectTable2, selectTable.field("column1").eq(selectTable2.field("column1")))
+      .leftOuterJoin(selectTable3, selectTable.field("column1").eq(selectTable3.field("column1")))
+      .fullOuterJoin(selectTable4, selectTable.field("column1").eq(selectTable4.field("column1")))
+      .where(selectTable.field("column1").eq("TEST1"));
+
+    Integer numberOfRecords = getNumberOfRecordsFromSelect(selectStatement);
+
+    assertEquals("Should have 1 records selected", 1, numberOfRecords.intValue());
+  }
+
 
   /**
    * Runs a insert... select statement with all our SQL hint directives to make sure the query doesn't blow up.
@@ -3220,6 +3316,60 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         assertEquals("Aggregated value of id should be", false, resultSet.getBoolean(2));
       }
       return null;
+      }
+    });
+  }
+
+
+  /**
+   * Test the greatest SQL function against all {@linkplain SqlDialect}s
+   */
+  @Test
+  public void testGreatest() throws SQLException {
+    final SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+
+    executor.executeQuery(convertStatementToSQL(select(greatest(literal(1), literal(7), literal(-1)))), connection, new ResultSetProcessor<Void>() {
+      @Override
+      public Void process(ResultSet resultSet) throws SQLException {
+        assertTrue (resultSet.next());
+        assertEquals(7, resultSet.getInt(1));
+        return null;
+      }
+    });
+
+    executor.executeQuery(convertStatementToSQL(select(greatest(ImmutableList.of(literal(1), literal(7), literal(-1))))), connection, new ResultSetProcessor<Void>() {
+      @Override
+      public Void process(ResultSet resultSet) throws SQLException {
+        assertTrue (resultSet.next());
+        assertEquals(7, resultSet.getInt(1));
+        return null;
+      }
+    });
+  }
+
+
+  /**
+   * Test the greatest SQL function against all {@linkplain SqlDialect}s
+   */
+  @Test
+  public void testLeast() throws SQLException {
+    final SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+
+    executor.executeQuery(convertStatementToSQL(select(least(literal(1), literal(7), literal(-1)))), connection, new ResultSetProcessor<Void>() {
+      @Override
+      public Void process(ResultSet resultSet) throws SQLException {
+        assertTrue (resultSet.next());
+        assertEquals(-1, resultSet.getInt(1));
+        return null;
+      }
+    });
+
+    executor.executeQuery(convertStatementToSQL(select(least(ImmutableList.of(literal(1), literal(7), literal(-1))))), connection, new ResultSetProcessor<Void>() {
+      @Override
+      public Void process(ResultSet resultSet) throws SQLException {
+        assertTrue (resultSet.next());
+        assertEquals(-1, resultSet.getInt(1));
+        return null;
       }
     });
   }

@@ -77,6 +77,8 @@ public class TestSelectStatementDeepCopyContract extends AbstractShallowAndDeepC
       testCase("select().from(\"A\").leftOuterJoin(TABLE_1, CRITERION_1)", () -> select().from("A").leftOuterJoin(TABLE_1, CRITERION_1)),
       testCase("select().from(\"A\").leftOuterJoin(TABLE_1, CRITERION_2)", () -> select().from("A").leftOuterJoin(TABLE_1, CRITERION_2)),
       testCase("select().from(\"A\").leftOuterJoin(TABLE_2, CRITERION_1)", () -> select().from("A").leftOuterJoin(TABLE_2, CRITERION_1)),
+      testCase("select().from(\"A\").fullOuterJoin(TABLE_1, CRITERION_1)", () -> select().from("A").fullOuterJoin(TABLE_1, CRITERION_1)),
+      testCase("select().from(\"A\").fullOuterJoin(TABLE_1, CRITERION_2)", () -> select().from("A").fullOuterJoin(TABLE_1, CRITERION_2)),
       testCase("select().orderBy(literal(1), literal(2))", () -> select().orderBy(literal(1), literal(2))),
       testCase("select().orderBy(literal(1), literal(3))", () -> select().orderBy(literal(1), literal(3))),
       testCase("select().having(CRITERION_1)", () -> select().having(CRITERION_1)),

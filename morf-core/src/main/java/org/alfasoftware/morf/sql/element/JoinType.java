@@ -33,8 +33,8 @@ public enum JoinType {
   LEFT_OUTER_JOIN,
 
   /**
-   * A right outer join to another table
+   * A full outer join to another table
    */
-  RIGHT_OUTER_JOIN
+  FULL_OUTER_JOIN
 
 }

@@ -64,6 +64,8 @@ public class TestSelectFirstStatementDeepCopyContract extends AbstractShallowAnd
       testCase(() -> selectFirst(literal(1)).from("A").leftOuterJoin(TABLE_1, CRITERION_1)),
       testCase(() -> selectFirst(literal(1)).from("A").leftOuterJoin(TABLE_1, CRITERION_2)),
       testCase(() -> selectFirst(literal(1)).from("A").leftOuterJoin(TABLE_2, CRITERION_1)),
+      testCase(() -> selectFirst(literal(1)).from("A").fullOuterJoin(TABLE_1, CRITERION_1)),
+      testCase(() -> selectFirst(literal(1)).from("A").fullOuterJoin(TABLE_1, CRITERION_2)),
       testCase(() -> selectFirst(literal(1)).orderBy(literal(1), literal(2))),
       testCase(() -> selectFirst(literal(1)).orderBy(literal(1), literal(3)))
     );

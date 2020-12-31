@@ -56,14 +56,18 @@ import static org.alfasoftware.morf.sql.element.Criterion.or;
 import static org.alfasoftware.morf.sql.element.Function.addDays;
 import static org.alfasoftware.morf.sql.element.Function.addMonths;
 import static org.alfasoftware.morf.sql.element.Function.average;
+import static org.alfasoftware.morf.sql.element.Function.averageDistinct;
 import static org.alfasoftware.morf.sql.element.Function.coalesce;
 import static org.alfasoftware.morf.sql.element.Function.count;
+import static org.alfasoftware.morf.sql.element.Function.countDistinct;
 import static org.alfasoftware.morf.sql.element.Function.dateToYyyyMMddHHmmss;
 import static org.alfasoftware.morf.sql.element.Function.dateToYyyymmdd;
 import static org.alfasoftware.morf.sql.element.Function.daysBetween;
 import static org.alfasoftware.morf.sql.element.Function.every;
 import static org.alfasoftware.morf.sql.element.Function.floor;
+import static org.alfasoftware.morf.sql.element.Function.greatest;
 import static org.alfasoftware.morf.sql.element.Function.isnull;
+import static org.alfasoftware.morf.sql.element.Function.least;
 import static org.alfasoftware.morf.sql.element.Function.leftPad;
 import static org.alfasoftware.morf.sql.element.Function.leftTrim;
 import static org.alfasoftware.morf.sql.element.Function.lowerCase;
@@ -79,6 +83,7 @@ import static org.alfasoftware.morf.sql.element.Function.round;
 import static org.alfasoftware.morf.sql.element.Function.some;
 import static org.alfasoftware.morf.sql.element.Function.substring;
 import static org.alfasoftware.morf.sql.element.Function.sum;
+import static org.alfasoftware.morf.sql.element.Function.sumDistinct;
 import static org.alfasoftware.morf.sql.element.Function.trim;
 import static org.alfasoftware.morf.sql.element.Function.upperCase;
 import static org.alfasoftware.morf.sql.element.Function.yyyymmddToDate;
@@ -775,11 +780,29 @@ public abstract class AbstractSqlDialectTest {
    * Tests a select with a nested "or where" clause.
    */
   @Test
-  public void testSelectNestedOrWhereScript() {
+  public void testSelectOr() {
     SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
         .where(or(
           eq(new FieldReference(STRING_FIELD), "A0001"),
-          greaterThan(new FieldReference(INT_FIELD), 20080101)));
+          greaterThan(new FieldReference(INT_FIELD), 20080101)
+        ));
+
+    String value = varCharCast("'A0001'");
+    String expectedSql = "SELECT * FROM " + tableName(TEST_TABLE) + " WHERE ((stringField = " + stringLiteralPrefix() + value+") OR (intField > 20080101))";
+    assertEquals("Select with nested or", expectedSql, testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
+   * Tests a select with a nested "or where" clause.
+   */
+  @Test
+  public void testSelectOrList() {
+    SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
+        .where(or(ImmutableList.of(
+          eq(new FieldReference(STRING_FIELD), "A0001"),
+          greaterThan(new FieldReference(INT_FIELD), 20080101)
+        )));
 
     String value = varCharCast("'A0001'");
     String expectedSql = "SELECT * FROM " + tableName(TEST_TABLE) + " WHERE ((stringField = " + stringLiteralPrefix() + value+") OR (intField > 20080101))";
@@ -791,11 +814,29 @@ public abstract class AbstractSqlDialectTest {
    * Tests a select with a nested "and where" clause.
    */
   @Test
-  public void testSelectNestedAndWhereScript() {
+  public void testSelectAnd() {
     SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
         .where(and(
           eq(new FieldReference(STRING_FIELD), "A0001"),
-          greaterThan(new FieldReference(INT_FIELD), 20080101)));
+          greaterThan(new FieldReference(INT_FIELD), 20080101)
+        ));
+
+    String value = varCharCast("'A0001'");
+    String expectedSql = "SELECT * FROM " + tableName(TEST_TABLE) + " WHERE ((stringField = " + stringLiteralPrefix() +value+") AND (intField > 20080101))";
+    assertEquals("Select with multiple where clauses", expectedSql, testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
+   * Tests a select with a nested "and where" clause.
+   */
+  @Test
+  public void testSelectAndList() {
+    SelectStatement stmt = new SelectStatement().from(new TableReference(TEST_TABLE))
+        .where(and(ImmutableList.of(
+          eq(new FieldReference(STRING_FIELD), "A0001"),
+          greaterThan(new FieldReference(INT_FIELD), 20080101)
+        )));
 
     String value = varCharCast("'A0001'");
     String expectedSql = "SELECT * FROM " + tableName(TEST_TABLE) + " WHERE ((stringField = " + stringLiteralPrefix() +value+") AND (intField > 20080101))";
@@ -883,16 +924,29 @@ public abstract class AbstractSqlDialectTest {
         .innerJoin(new TableReference(TEST_TABLE),
           eq(new FieldReference(new TableReference(ALTERNATE_TABLE), STRING_FIELD),
             new FieldReference(new TableReference(TEST_TABLE), STRING_FIELD))
-            ).leftOuterJoin(new TableReference(OTHER_TABLE),
+            )
+        .leftOuterJoin(new TableReference(OTHER_TABLE),
               and(
                 eq(new FieldReference(new TableReference(TEST_TABLE), STRING_FIELD),
                   new FieldReference(new TableReference(OTHER_TABLE), STRING_FIELD)),
                   eq(new FieldReference(new TableReference(TEST_TABLE), INT_FIELD),
                     new FieldReference(new TableReference(OTHER_TABLE), INT_FIELD))
                   )
-                );
+                )
+        .fullOuterJoin(new TableReference(MIXED_TABLE),
+          and(
+            eq(new FieldReference(new TableReference(TEST_TABLE), STRING_FIELD),
+              new FieldReference(new TableReference(MIXED_TABLE), STRING_FIELD)),
+              eq(new FieldReference(new TableReference(TEST_TABLE), INT_FIELD),
+                new FieldReference(new TableReference(MIXED_TABLE), INT_FIELD))
+              )
+            );
 
-    String expectedSql = "SELECT * FROM " + tableName(ALTERNATE_TABLE) + " INNER JOIN " + tableName(TEST_TABLE) + " ON (Alternate.stringField = Test.stringField) LEFT OUTER JOIN " + tableName(OTHER_TABLE) + " ON ((Test.stringField = Other.stringField) AND (Test.intField = Other.intField))";
+    String expectedSql = "SELECT * FROM " + tableName(ALTERNATE_TABLE)
+        + " INNER JOIN " + tableName(TEST_TABLE) + " ON (Alternate.stringField = Test.stringField)"
+        + " LEFT OUTER JOIN " + tableName(OTHER_TABLE) + " ON ((Test.stringField = Other.stringField) AND (Test.intField = Other.intField))"
+        + " FULL OUTER JOIN " + tableName(MIXED_TABLE) + " ON ((Test.stringField = Mixed.stringField) AND (Test.intField = Mixed.intField))"
+        ;
     assertEquals("Select with multiple joins", expectedSql, testDialect.convertStatementToSQL(stmt));
   }
 
@@ -1287,12 +1341,40 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * Tests the group by in a select.
+   */
+  @Test
+  public void testSelectWithGroupBy() {
+    SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD), count(literal(1)), countDistinct(literal(1)))
+    .from(new TableReference(ALTERNATE_TABLE))
+    .groupBy(field(STRING_FIELD), field(INT_FIELD), field(FLOAT_FIELD));
+
+    String expectedSql = "SELECT stringField, COUNT(1), COUNT(DISTINCT 1) FROM " + tableName(ALTERNATE_TABLE) + " GROUP BY stringField, intField, floatField";
+    assertEquals("Select with count function", expectedSql, testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
+   * Tests the group by in a select.
+   */
+  @Test
+  public void testSelectWithGroupByList() {
+    SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD), count(field(STRING_FIELD)), countDistinct(field(STRING_FIELD)))
+    .from(new TableReference(ALTERNATE_TABLE))
+    .groupBy(ImmutableList.of(field(STRING_FIELD), field(INT_FIELD), field(FLOAT_FIELD)));
+
+    String expectedSql = "SELECT stringField, COUNT(stringField), COUNT(DISTINCT stringField) FROM " + tableName(ALTERNATE_TABLE) + " GROUP BY stringField, intField, floatField";
+    assertEquals("Select with count function", expectedSql, testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
    * Test the use of the sum function in a select
    */
   @Test
   public void testSelectWithSum() {
-    SelectStatement stmt = new SelectStatement(sum(new FieldReference(INT_FIELD))).from(new TableReference(TEST_TABLE));
-    String expectedSql = "SELECT SUM(intField) FROM " + tableName(TEST_TABLE);
+    SelectStatement stmt = new SelectStatement(sum(new FieldReference(INT_FIELD)), sumDistinct(new FieldReference(INT_FIELD))).from(new TableReference(TEST_TABLE));
+    String expectedSql = "SELECT SUM(intField), SUM(DISTINCT intField) FROM " + tableName(TEST_TABLE);
     assertEquals("Select with sum function", expectedSql, testDialect.convertStatementToSQL(stmt));
   }
 
@@ -2466,6 +2548,26 @@ public abstract class AbstractSqlDialectTest {
   public void testCoalesce() {
     SelectStatement testStatement = select(coalesce(new NullFieldLiteral(), field("bob"))).from(tableRef("MyTable"));
     assertEquals(expectedCoalesce().toLowerCase(), testDialect.convertStatementToSQL(testStatement).toLowerCase());
+  }
+
+
+  /**
+   * Test the GREATEST functionality behaves as expected
+   */
+  @Test
+  public void testGreatest() {
+    SelectStatement testStatement = select(greatest(new NullFieldLiteral(), field("bob"))).from(tableRef("MyTable"));
+    assertEquals(expectedGreatest().toLowerCase(), testDialect.convertStatementToSQL(testStatement).toLowerCase());
+  }
+
+
+  /**
+   * Test the LEAST functionality behaves as expected
+   */
+  @Test
+  public void testLeast() {
+    SelectStatement testStatement = select(least(new NullFieldLiteral(), field("bob"))).from(tableRef("MyTable"));
+    assertEquals(expectedLeast().toLowerCase(), testDialect.convertStatementToSQL(testStatement).toLowerCase());
   }
 
 
@@ -4293,9 +4395,9 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testCountArgument() {
     final TableReference tableOne = tableRef("TableOne");
-    SelectStatement testStatement = select(count(field("name"))).from(tableOne);
+    SelectStatement testStatement = select(count(field("name")), countDistinct(field("name"))).from(tableOne);
 
-    assertEquals(testDialect.convertStatementToSQL(testStatement), "SELECT COUNT(name) FROM " + tableName("TableOne"));
+    assertEquals(testDialect.convertStatementToSQL(testStatement), "SELECT COUNT(name), COUNT(DISTINCT name) FROM " + tableName("TableOne"));
   }
 
 
@@ -4305,9 +4407,9 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testAverage() {
     final TableReference tableOne = tableRef("TableOne");
-    SelectStatement testStatement = select(average(field("name"))).from(tableOne);
+    SelectStatement testStatement = select(average(field("name")), averageDistinct(field("name"))).from(tableOne);
 
-    assertEquals("SELECT AVG(name) FROM " + tableName("TableOne"), testDialect.convertStatementToSQL(testStatement));
+    assertEquals("SELECT AVG(name), AVG(DISTINCT name) FROM " + tableName("TableOne"), testDialect.convertStatementToSQL(testStatement));
   }
 
 
@@ -4595,6 +4697,22 @@ public abstract class AbstractSqlDialectTest {
    */
   protected String expectedCoalesce() {
     return "SELECT COALESCE(NULL, bob) FROM " + tableName("MyTable");
+  }
+
+
+  /**
+   * @return The expected SQL statement when performing the ANSI GREATEST call
+   */
+  protected String expectedGreatest() {
+    return "SELECT GREATEST(NULL, bob) FROM " + tableName("MyTable");
+  }
+
+
+  /**
+   * @return The expected SQL statement when performing the ANSI LEAST call
+   */
+  protected String expectedLeast() {
+    return "SELECT LEAST(NULL, bob) FROM " + tableName("MyTable");
   }
 
 

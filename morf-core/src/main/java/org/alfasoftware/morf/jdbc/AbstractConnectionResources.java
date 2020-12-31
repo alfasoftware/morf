@@ -291,7 +291,7 @@ public abstract class AbstractConnectionResources implements ConnectionResources
      */
     @Override
     public Connection getConnection(String username, String password) throws SQLException {
-      log.info("Opening new database connection to [" + AbstractConnectionResources.this.getJdbcUrl() + "] with username [" + username + "]");
+      log.info("Opening new database connection to [" + AbstractConnectionResources.this.getJdbcUrl() + "] with username [" + username + "] for schema [" + AbstractConnectionResources.this.getSchemaName() + "]");
       loadJdbcDriver();
       Connection connection = openConnection(username, password);
       return log.isDebugEnabled() ? new LoggingConnection(connection) : connection;

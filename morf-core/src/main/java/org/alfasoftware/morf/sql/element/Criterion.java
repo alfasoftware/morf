@@ -136,7 +136,7 @@ public class Criterion implements Driver, DeepCopyableWithTransformation<Criteri
    * @param criterion the first criterion in this criterion
    * @param criteria subsequent criteria
    */
-  public Criterion(Operator operator, Criterion criterion, Criterion...criteria) {
+  public Criterion(Operator operator, Criterion criterion, Criterion... criteria) {
     this(
       operator,
       criterion == null
@@ -222,6 +222,21 @@ public class Criterion implements Driver, DeepCopyableWithTransformation<Criteri
     return new Criterion(Operator.AND, criterion, criteria);
   }
 
+
+  /**
+   * Helper method to create a new "AND" expression.
+   *
+   * <blockquote><pre>
+   *    Criterion.and(listOfCriterions);</pre></blockquote>
+   *
+   * @param criteria the criteria
+   * @return a new Criterion object
+   */
+  public static Criterion and(Iterable<Criterion> criteria) {
+    return new Criterion(Operator.AND, criteria);
+  }
+
+
   /**
    * Helper method to create a new "OR" expression.
    *
@@ -234,6 +249,20 @@ public class Criterion implements Driver, DeepCopyableWithTransformation<Criteri
    */
   public static Criterion or(Criterion criterion, Criterion... criteria) {
     return new Criterion(Operator.OR, criterion, criteria);
+  }
+
+
+  /**
+   * Helper method to create a new "OR" expression.
+   *
+   * <blockquote><pre>
+   *    Criterion.or(listOfCriterions);</pre></blockquote>
+   *
+   * @param criteria the criteria
+   * @return a new Criterion object
+   */
+  public static Criterion or(Iterable<Criterion> criteria) {
+    return new Criterion(Operator.OR, criteria);
   }
 
   /**
@@ -338,8 +367,8 @@ public class Criterion implements Driver, DeepCopyableWithTransformation<Criteri
    * @param values the list of values (the right-hand side of the expression)
    * @return a new Criterion object
    */
-  public static Criterion in(AliasedField field, List<Object> values) {
-    return new Criterion(Operator.IN, field, values);
+  public static Criterion in(AliasedField field, Iterable<? extends Object> values) {
+    return new Criterion(Operator.IN, field, ImmutableList.copyOf(values));
   }
 
 
