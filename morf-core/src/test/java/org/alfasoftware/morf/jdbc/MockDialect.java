@@ -27,7 +27,6 @@ import java.util.List;
 
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.element.AliasedField;
@@ -45,16 +44,6 @@ import com.google.common.collect.ImmutableList.Builder;
  * @author Copyright (c) Alfa Financial Software 2017
  */
 public class MockDialect extends SqlDialect {
-
-  /**
-   * The prefix to add to all temporary tables.
-   */
-  public static final String TEMPORARY_TABLE_PREFIX = "TEMP_";
-
-  /**
-   * Used as the alias for the select statement in merge statements.
-   */
-  private static final String MERGE_SOURCE_ALIAS = "xmergesource";
 
   private final DatabaseType databaseType = mock(DatabaseType.class);
 
@@ -179,24 +168,6 @@ public class MockDialect extends SqlDialect {
       default:
         throw new UnsupportedOperationException("Cannot map column with type [" + dataType + "]");
     }
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#useInsertBatching()
-   */
-  @Override
-  public boolean useInsertBatching() {
-    return true;
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getFromDummyTable()
-   */
-  @Override
-  protected String getFromDummyTable() {
-    return " FROM dual";
   }
 
 
@@ -349,63 +320,6 @@ public class MockDialect extends SqlDialect {
    */
   private String dropPrimaryKeyConstraintStatement(Table table) {
     return "ALTER TABLE " + table.getName() + " DROP CONSTRAINT " + table.getName() + "_PK";
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#indexDeploymentStatements(org.alfasoftware.morf.metadata.Table,
-   *      org.alfasoftware.morf.metadata.Index)
-   */
-  @Override
-  protected Collection<String> indexDeploymentStatements(Table table, Index index) {
-    StringBuilder statement = new StringBuilder();
-
-    statement.append("CREATE ");
-    if (index.isUnique()) {
-      statement.append("UNIQUE ");
-    }
-    statement.append("INDEX ").append(index.getName()).append(" ON ").append(table.getName()).append(" (")
-        .append(Joiner.on(',').join(index.columnNames())).append(")");
-
-    return Collections.singletonList(statement.toString());
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#indexDropStatements(org.alfasoftware.morf.metadata.Table,
-   *      org.alfasoftware.morf.metadata.Index)
-   */
-  @Override
-  public Collection<String> indexDropStatements(Table table, Index indexToBeRemoved) {
-    return Arrays.asList("DROP INDEX " + indexToBeRemoved.getName());
-  }
-
-
-  /**
-   * It does explicit VARCHAR casting to avoid a HSQLDB 'feature' in which
-   * string literal values are effectively returned as CHAR (fixed width) data
-   * types rather than VARCHARs, where the length of the CHAR to hold the value
-   * is given by the maximum string length of any of the values that can be
-   * returned by the CASE statement.
-   *
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#makeStringLiteral(java.lang.String)
-   */
-  @Override
-  protected String makeStringLiteral(String literalValue) {
-    if (StringUtils.isEmpty(literalValue)) {
-      return "NULL";
-    }
-
-    return String.format("CAST(%s AS VARCHAR(%d))", super.makeStringLiteral(literalValue), literalValue.length());
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#decorateTemporaryTableName(java.lang.String)
-   */
-  @Override
-  public String decorateTemporaryTableName(String undecoratedName) {
-    return TEMPORARY_TABLE_PREFIX + undecoratedName;
   }
 
 
