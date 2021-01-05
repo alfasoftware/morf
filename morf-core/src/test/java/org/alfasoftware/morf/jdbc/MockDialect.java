@@ -388,26 +388,7 @@ public class MockDialect extends SqlDialect {
    */
   @Override
   protected String getSqlForMonthsBetween(AliasedField toDate, AliasedField fromDate) {
-    return String.format(
-       "CASE " +
-        "WHEN %1$s = %2$s THEN 0 " +
-        "ELSE " +
-         "DATEDIFF(MONTH, %1$s, %2$s) + " +
-         "CASE " +
-          "WHEN %2$s > %1$s THEN " +
-            "CASE " +
-             "WHEN DAY(%1$s) <= DAY(%2$s) OR MONTH(%2$s) <> MONTH(DATEADD(DAY, 1, %2$s)) THEN 0 " +
-             "ELSE -1 " +
-            "END " +
-          "ELSE " +
-            "CASE " +
-             "WHEN DAY(%2$s) <= DAY(%1$s) OR MONTH(%1$s) <> MONTH(DATEADD(DAY, 1, %1$s)) THEN 0 " +
-             "ELSE 1 " +
-            "END " +
-         "END " +
-       "END ",
-       getSqlFrom(fromDate), getSqlFrom(toDate)
-    );
+    return "DATEDIFF('MONTH'," + getSqlFrom(fromDate) + ", " + getSqlFrom(toDate) + ")";
   }
 
 
