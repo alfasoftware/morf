@@ -433,7 +433,7 @@ public class MockDialect extends SqlDialect {
    */
   @Override
   protected String getSqlForRandomString(Function function) {
-    return String.format("SUBSTRING(REPLACE(RANDOM_UUID(),'-'), 1, %s)", getSqlFrom(function.getArguments().get(0)));
+    return "SUBSTRING(MD5(RAND()), 1, " + getSqlFrom(function.getArguments().get(0)) + ")";
   }
 
 
