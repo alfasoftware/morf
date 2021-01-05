@@ -1054,7 +1054,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedRenameIndexStatements() {
-    return ImmutableList.of("ALTER INDEX TempTest_1 RENAME TO TempTest_2");
+    return ImmutableList.of("ALTER INDEX TESTSCHEMA.TempTest_1 RENAME TO TempTest_2");
   }
 
 

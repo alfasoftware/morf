@@ -244,7 +244,9 @@ public abstract class SqlDialect {
    * @param toIndexName The new index name
    * @return SQL Statements required to rename an index
    */
-  public abstract Collection<String> renameIndexStatements(Table table, String fromIndexName, String toIndexName);
+  public Collection<String> renameIndexStatements(@SuppressWarnings("unused") Table table, String fromIndexName, String toIndexName) {
+    return ImmutableList.of("ALTER INDEX " + schemaNamePrefix() + fromIndexName + " RENAME TO " + toIndexName);
+  }
 
 
   /**
