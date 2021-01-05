@@ -337,8 +337,7 @@ public class MockDialect extends SqlDialect {
    */
   @Override
   protected String getSqlForYYYYMMDDToDate(Function function) {
-    AliasedField field = function.getArguments().get(0);
-    return "CAST(SUBSTRING(" + getSqlFrom(field) + ", 1, 4)||'-'||SUBSTRING(" + getSqlFrom(field) + ", 5, 2)||'-'||SUBSTRING(" + getSqlFrom(field) + ", 7, 2) AS DATE)";
+    return "TO_DATE(" + getSqlFrom(function.getArguments().get(0)) + ", 'yyyymmdd')";
   }
 
 
@@ -348,8 +347,7 @@ public class MockDialect extends SqlDialect {
    */
   @Override
   protected String getSqlForDateToYyyymmdd(Function function) {
-    String sqlExpression = getSqlFrom(function.getArguments().get(0));
-    return String.format("CAST(SUBSTRING(%1$s, 1, 4)||SUBSTRING(%1$s, 6, 2)||SUBSTRING(%1$s, 9, 2) AS INT)",sqlExpression);
+    return "TO_NUMBER(TO_CHAR(" + getSqlFrom(function.getArguments().get(0)) + ", 'yyyymmdd'))";
   }
 
 
@@ -358,9 +356,7 @@ public class MockDialect extends SqlDialect {
    */
   @Override
   protected String getSqlForDateToYyyymmddHHmmss(Function function) {
-    String sqlExpression = getSqlFrom(function.getArguments().get(0));
-    // Example for CURRENT_TIMESTAMP() -> 2015-06-23 11:25:08.11
-    return String.format("CAST(SUBSTRING(%1$s, 1, 4)||SUBSTRING(%1$s, 6, 2)||SUBSTRING(%1$s, 9, 2)||SUBSTRING(%1$s, 12, 2)||SUBSTRING(%1$s, 15, 2)||SUBSTRING(%1$s, 18, 2) AS BIGINT)", sqlExpression);
+    return "TO_NUMBER(TO_CHAR(" + getSqlFrom(function.getArguments().get(0)) + ", 'yyyymmddHH24MISS'))";
   }
 
 
@@ -369,7 +365,7 @@ public class MockDialect extends SqlDialect {
    */
   @Override
   protected String getSqlForNow(Function function) {
-    return "UTC_TIMESTAMP()";
+    return "NOW()";
   }
 
 
@@ -397,11 +393,7 @@ public class MockDialect extends SqlDialect {
    */
   @Override
   protected String getSqlForAddDays(Function function) {
-    return String.format(
-      "DATEADD('DAY', %s, %s)",
-      getSqlFrom(function.getArguments().get(1)),
-      getSqlFrom(function.getArguments().get(0))
-    );
+    return "DATEADD('DAY', " + getSqlFrom(function.getArguments().get(1)) + ", " + getSqlFrom(function.getArguments().get(0)) + ")";
   }
 
 
@@ -410,11 +402,7 @@ public class MockDialect extends SqlDialect {
    */
   @Override
   protected String getSqlForAddMonths(Function function) {
-    return String.format(
-      "DATEADD('MONTH', %s, %s)",
-      getSqlFrom(function.getArguments().get(1)),
-      getSqlFrom(function.getArguments().get(0))
-    );
+    return "DATEADD('MONTH', " + getSqlFrom(function.getArguments().get(1)) + ", " + getSqlFrom(function.getArguments().get(0)) + ")";
   }
 
 
