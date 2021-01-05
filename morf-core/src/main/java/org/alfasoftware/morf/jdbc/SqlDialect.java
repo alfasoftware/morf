@@ -3460,7 +3460,9 @@ public abstract class SqlDialect {
    * @param table The table to run the analysis on.
    * @return The SQL statements to analyse the table.
    */
-  public abstract Collection<String> getSqlForAnalyseTable(Table table);
+  public Collection<String> getSqlForAnalyseTable(@SuppressWarnings("unused") Table table) {
+    return SqlDialect.NO_STATEMENTS;
+  }
 
 
   /**
