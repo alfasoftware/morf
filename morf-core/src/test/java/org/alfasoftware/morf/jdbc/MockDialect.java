@@ -333,6 +333,15 @@ public class MockDialect extends SqlDialect {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForRandomString(int)
+   */
+  @Override
+  protected String getSqlForRandomString(Function function) {
+    return "SUBSTRING(MD5(RAND()), 1, " + getSqlFrom(function.getArguments().get(0)) + ")";
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForYYYYMMDDToDate(org.alfasoftware.morf.sql.element.Function)
    */
   @Override
@@ -425,15 +434,6 @@ public class MockDialect extends SqlDialect {
     }
 
     return builder.build();
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForRandomString(int)
-   */
-  @Override
-  protected String getSqlForRandomString(Function function) {
-    return "SUBSTRING(MD5(RAND()), 1, " + getSqlFrom(function.getArguments().get(0)) + ")";
   }
 
 
