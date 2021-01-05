@@ -3914,10 +3914,14 @@ public abstract class SqlDialect {
 
 
    /**
+   * Indicates whether the dialect supports window functions.
+   *
    * @return true if the dialect supports window functions (e.g. PARTITION BY).
    *
    **/
-   public abstract boolean supportsWindowFunctions();
+   public boolean supportsWindowFunctions() {
+     return false;
+   }
 
 
   /**
