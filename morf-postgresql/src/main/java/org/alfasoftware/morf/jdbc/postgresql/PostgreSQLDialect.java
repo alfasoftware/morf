@@ -614,12 +614,6 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
-  public Collection<String> rebuildTriggers(Table table) {
-    return SqlDialect.NO_STATEMENTS;
-  }
-
-
-  @Override
   protected Collection<String> indexDeploymentStatements(Table table, Index index) {
     StringBuilder statement = new StringBuilder();
 

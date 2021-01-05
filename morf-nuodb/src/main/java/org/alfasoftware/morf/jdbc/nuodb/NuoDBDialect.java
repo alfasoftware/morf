@@ -894,15 +894,6 @@ class NuoDBDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#rebuildTriggers(org.alfasoftware.morf.metadata.Table)
-   */
-  @Override
-  public Collection<String> rebuildTriggers(Table table) {
-    return SqlDialect.NO_STATEMENTS;
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#likeEscapeSuffix()
    */
   @Override

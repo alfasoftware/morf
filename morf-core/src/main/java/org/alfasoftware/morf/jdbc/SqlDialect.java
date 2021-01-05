@@ -3898,7 +3898,9 @@ public abstract class SqlDialect {
    * @param table the table for which to rebuild triggers
    * @return a collection of sql statements to execute
    */
-  public abstract Collection<String> rebuildTriggers(Table table);
+  public Collection<String> rebuildTriggers(@SuppressWarnings("unused") Table table) {
+    return SqlDialect.NO_STATEMENTS;
+  }
 
 
   /**

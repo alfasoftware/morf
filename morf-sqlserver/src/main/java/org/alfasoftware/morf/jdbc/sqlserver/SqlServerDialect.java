@@ -1100,15 +1100,6 @@ class SqlServerDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#rebuildTriggers(org.alfasoftware.morf.metadata.Table)
-   */
-  @Override
-  public Collection<String> rebuildTriggers(Table table) {
-    return SqlDialect.NO_STATEMENTS;
-  }
-
-
-  /**
    * SQL server places a shared lock on a record when it is selected without doing anything else (no MVCC)
    * so no need to specify a lock mode.
    *
