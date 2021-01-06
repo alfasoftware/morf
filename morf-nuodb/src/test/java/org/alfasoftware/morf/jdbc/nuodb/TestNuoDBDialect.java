@@ -553,7 +553,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedIsNull() {
-    return "COALESCE('A', 'B') ";
+    return "COALESCE('A', 'B')";
   }
 
 

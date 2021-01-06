@@ -285,7 +285,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedIsNull() {
-    return "COALESCE(CAST('A' AS VARCHAR(1)), CAST('B' AS VARCHAR(1))) ";
+    return "COALESCE(CAST('A' AS VARCHAR(1)), CAST('B' AS VARCHAR(1)))";
   }
 
 

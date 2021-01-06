@@ -2303,7 +2303,7 @@ public abstract class SqlDialect {
    * @return a string representation of the SQL.
    */
   protected String getSqlForIsNull(Function function) {
-    return "COALESCE(" + getSqlFrom(function.getArguments().get(0)) + ", " + getSqlFrom(function.getArguments().get(1)) + ") ";
+    return getSqlForCoalesce(function);
   }
 
 
