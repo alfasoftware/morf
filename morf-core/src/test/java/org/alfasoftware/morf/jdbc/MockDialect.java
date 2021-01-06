@@ -305,6 +305,15 @@ public class MockDialect extends SqlDialect {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForNow(org.alfasoftware.morf.sql.element.Function)
+   */
+  @Override
+  protected String getSqlForNow(Function function) {
+    return "NOW()";
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForYYYYMMDDToDate(org.alfasoftware.morf.sql.element.Function)
    */
   @Override
@@ -329,15 +338,6 @@ public class MockDialect extends SqlDialect {
   @Override
   protected String getSqlForDateToYyyymmddHHmmss(Function function) {
     return "TO_NUMBER(TO_CHAR(" + getSqlFrom(function.getArguments().get(0)) + ", 'yyyymmddHH24MISS'))";
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForNow(org.alfasoftware.morf.sql.element.Function)
-   */
-  @Override
-  protected String getSqlForNow(Function function) {
-    return "NOW()";
   }
 
 
