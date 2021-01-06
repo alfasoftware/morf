@@ -286,6 +286,7 @@ public class TestInlineTableUpgrader {
     UpdateStatement updateStatement = mock(UpdateStatement.class);
     given(executeStatement.getStatement()).willReturn(updateStatement);
     when(sqlDialect.convertStatementToSQL(eq((Statement)updateStatement), any(Schema.class), any(Table.class))).thenCallRealMethod();
+    when(sqlDialect.convertStatementToSQL(eq(updateStatement))).thenReturn("dummy");
 
     // when
     upgrader.visit(executeStatement);
@@ -306,6 +307,7 @@ public class TestInlineTableUpgrader {
     DeleteStatement deleteStatement = mock(DeleteStatement.class);
     given(executeStatement.getStatement()).willReturn(deleteStatement);
     when(sqlDialect.convertStatementToSQL(eq((Statement)deleteStatement), any(Schema.class), any(Table.class))).thenCallRealMethod();
+    when(sqlDialect.convertStatementToSQL(eq(deleteStatement))).thenReturn("dummy");
 
     // when
     upgrader.visit(executeStatement);
@@ -326,6 +328,7 @@ public class TestInlineTableUpgrader {
     MergeStatement mergeStatement = mock(MergeStatement.class);
     given(executeStatement.getStatement()).willReturn(mergeStatement);
     when(sqlDialect.convertStatementToSQL(eq((Statement)mergeStatement), any(Schema.class), any(Table.class))).thenCallRealMethod();
+    when(sqlDialect.convertStatementToSQL(eq(mergeStatement))).thenReturn("dummy");
 
     // when
     upgrader.visit(executeStatement);

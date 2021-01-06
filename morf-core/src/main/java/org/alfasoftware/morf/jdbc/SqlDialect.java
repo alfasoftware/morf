@@ -33,7 +33,6 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -131,7 +130,7 @@ public abstract class SqlDialect {
   /**
    * Empty collection of strings that implementations can return if required.
    */
-  public static final Collection<String> NO_STATEMENTS                     = Collections.emptyList();
+  public static final Collection<String> NO_STATEMENTS                     = ImmutableList.of();
 
   /**
    * Used as the alias for the select statement in merge statements.
@@ -281,7 +280,7 @@ public abstract class SqlDialect {
    */
   @SuppressWarnings("unused")
   public Collection<String> preInsertWithPresetAutonumStatements(Table table, boolean insertingUnderAutonumLimit) {
-    return Collections.emptyList();
+    return ImmutableList.of();
   }
 
 
@@ -345,16 +344,16 @@ public abstract class SqlDialect {
       }
     } else if (statement instanceof UpdateStatement) {
       UpdateStatement update = (UpdateStatement) statement;
-      return Collections.singletonList(convertStatementToSQL(update));
+      return ImmutableList.of(convertStatementToSQL(update));
     } else if (statement instanceof DeleteStatement) {
       DeleteStatement delete = (DeleteStatement) statement;
-      return Collections.singletonList(convertStatementToSQL(delete));
+      return ImmutableList.of(convertStatementToSQL(delete));
     } else if (statement instanceof TruncateStatement) {
       TruncateStatement truncateStatement = (TruncateStatement) statement;
-      return Collections.singletonList(convertStatementToSQL(truncateStatement));
+      return ImmutableList.of(convertStatementToSQL(truncateStatement));
     } else if (statement instanceof MergeStatement) {
       MergeStatement merge = (MergeStatement) statement;
-      return Collections.singletonList(convertStatementToSQL(merge));
+      return ImmutableList.of(convertStatementToSQL(merge));
     } else {
       throw new UnsupportedOperationException("Executed statement operation not supported for [" + statement.getClass() + "]");
     }
@@ -3604,7 +3603,7 @@ public abstract class SqlDialect {
       .append(Joiner.on(", ").join(index.columnNames()))
       .append(')');
 
-    return Collections.singletonList(statement.toString());
+    return ImmutableList.of(statement.toString());
   }
 
 
