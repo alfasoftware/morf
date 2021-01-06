@@ -31,7 +31,6 @@ import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
@@ -401,15 +400,6 @@ class H2Dialect extends SqlDialect {
   @Override
   public String decorateTemporaryTableName(String undecoratedName) {
     return TEMPORARY_TABLE_PREFIX + undecoratedName;
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#dropStatements(org.alfasoftware.morf.metadata.View)
-   */
-  @Override
-  public Collection<String> dropStatements(View view) {
-    return Arrays.asList("DROP VIEW " + schemaNamePrefix() + view.getName() + " IF EXISTS CASCADE");
   }
 
 

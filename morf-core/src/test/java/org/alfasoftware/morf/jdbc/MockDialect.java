@@ -28,7 +28,6 @@ import java.util.List;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Function;
@@ -318,15 +317,6 @@ public class MockDialect extends SqlDialect {
    */
   private String dropPrimaryKeyConstraintStatement(Table table) {
     return "ALTER TABLE " + table.getName() + " DROP CONSTRAINT " + table.getName() + "_PK";
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#dropStatements(org.alfasoftware.morf.metadata.View)
-   */
-  @Override
-  public Collection<String> dropStatements(View view) {
-    return Arrays.asList("DROP VIEW " + view.getName() + " IF EXISTS CASCADE");
   }
 
 

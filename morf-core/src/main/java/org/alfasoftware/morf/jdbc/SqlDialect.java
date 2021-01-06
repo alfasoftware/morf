@@ -32,7 +32,6 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -733,7 +732,9 @@ public abstract class SqlDialect {
    * @param view The view to drop
    * @return The SQL statements as strings.
    */
-  public abstract Collection<String> dropStatements(View view);
+  public Collection<String> dropStatements(View view) {
+    return ImmutableList.of("DROP VIEW " + schemaNamePrefix() + view.getName() + " IF EXISTS CASCADE");
+  }
 
 
   /**
@@ -3500,7 +3501,7 @@ public abstract class SqlDialect {
    * @return The SQL to drop the specified index.
    */
   public Collection<String> indexDropStatements(@SuppressWarnings("unused") Table table, Index indexToBeRemoved) {
-    return Arrays.asList("DROP INDEX " + indexToBeRemoved.getName());
+    return ImmutableList.of("DROP INDEX " + indexToBeRemoved.getName());
   }
 
 
