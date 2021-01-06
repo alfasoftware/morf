@@ -2300,7 +2300,36 @@ public abstract class SqlDialect {
    * @param scale the column scale.
    * @return a string representation of the column definition.
    */
-  protected abstract String getColumnRepresentation(DataType dataType, int width, int scale);
+  protected String getColumnRepresentation(DataType dataType, int width, int scale) {
+    switch (dataType) {
+      case STRING:
+        return width == 0 ? "VARCHAR" : String.format("VARCHAR(%d)", width);
+
+      case DECIMAL:
+        return width == 0 ? "DECIMAL" : String.format("DECIMAL(%d,%d)", width, scale);
+
+      case DATE:
+        return "DATE";
+
+      case BOOLEAN:
+        return "BIT";
+
+      case BIG_INTEGER:
+        return "BIGINT";
+
+      case INTEGER:
+        return "INTEGER";
+
+      case BLOB:
+        return "BLOB";
+
+      case CLOB:
+        return "CLOB";
+
+      default:
+        throw new UnsupportedOperationException("Cannot map column with type [" + dataType + "]");
+    }
+  }
 
 
   /**

@@ -26,7 +26,6 @@ import java.util.Collections;
 import java.util.List;
 
 import org.alfasoftware.morf.metadata.Column;
-import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Function;
@@ -145,43 +144,6 @@ public class MockDialect extends SqlDialect {
   @Override
   public Collection<String> deleteAllFromTableStatements(Table table) {
     return Arrays.asList("delete from " + table.getName());
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getColumnRepresentation(org.alfasoftware.morf.metadata.DataType,
-   *      int, int)
-   */
-  @Override
-  protected String getColumnRepresentation(DataType dataType, int width, int scale) {
-    switch (dataType) {
-      case STRING:
-        return String.format("VARCHAR(%d)", width);
-
-      case DECIMAL:
-        return String.format("DECIMAL(%d,%d)", width, scale);
-
-      case DATE:
-        return "DATE";
-
-      case BOOLEAN:
-        return "BIT";
-
-      case BIG_INTEGER:
-        return "BIGINT";
-
-      case INTEGER:
-        return "INTEGER";
-
-      case BLOB:
-        return "LONGVARBINARY";
-
-      case CLOB:
-        return "NCLOB";
-
-      default:
-        throw new UnsupportedOperationException("Cannot map column with type [" + dataType + "]");
-    }
   }
 
 
