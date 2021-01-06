@@ -1075,6 +1075,18 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedRenameIndexStatements() {
     return ImmutableList.of(
+      "ALTER TABLE `Test` DROP INDEX `Test_1`",
+      "ALTER TABLE `Test` ADD INDEX `Test_2` (`intField`, `floatField`)"
+    );
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRenameIndexStatements()
+   */
+  @Override
+  protected List<String> expectedRenameTempIndexStatements() {
+    return ImmutableList.of(
       "ALTER TABLE `TempTest` DROP INDEX `TempTest_1`",
       "ALTER TABLE `TempTest` ADD INDEX `TempTest_2` (`intField`, `floatField`)"
     );

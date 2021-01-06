@@ -1138,6 +1138,15 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedRenameIndexStatements() {
+    return ImmutableList.of("sp_rename N'TESTSCHEMA.Test.Test_1', N'Test_2', N'INDEX'");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRenameIndexStatements()
+   */
+  @Override
+  protected List<String> expectedRenameTempIndexStatements() {
     return ImmutableList.of("sp_rename N'TESTSCHEMA.#TempTest.TempTest_1', N'TempTest_2', N'INDEX'");
   }
 

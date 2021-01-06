@@ -1091,6 +1091,16 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedRenameIndexStatements() {
+    return ImmutableList.of("ALTER INDEX testschema.Test_1 RENAME TO Test_2",
+                            "COMMENT ON INDEX Test_2 IS 'REALNAME:[Test_2]'");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRenameIndexStatements()
+   */
+  @Override
+  protected List<String> expectedRenameTempIndexStatements() {
     return ImmutableList.of("ALTER INDEX testschema.TempTest_1 RENAME TO TempTest_2",
                             "COMMENT ON INDEX TempTest_2 IS 'REALNAME:[TempTest_2]'");
   }

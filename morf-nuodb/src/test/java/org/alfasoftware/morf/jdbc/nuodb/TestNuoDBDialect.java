@@ -1308,6 +1308,18 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedRenameIndexStatements() {
     return ImmutableList.of(
+      "DROP INDEX SCM.Test_1",
+      "CREATE INDEX Test_2 ON SCM.Test (intField,floatField)"
+    );
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRenameIndexStatements()
+   */
+  @Override
+  protected List<String> expectedRenameTempIndexStatements() {
+    return ImmutableList.of(
       "DROP INDEX TempTest_1",
       "CREATE INDEX TempTest_2 ON TEMP_TempTest (intField,floatField)" // no schema name as temporary
     );

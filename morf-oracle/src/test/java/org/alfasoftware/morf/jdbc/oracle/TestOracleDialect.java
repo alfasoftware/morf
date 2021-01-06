@@ -1320,6 +1320,15 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedRenameIndexStatements() {
+    return ImmutableList.of("ALTER INDEX TESTSCHEMA.Test_1 RENAME TO Test_2");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRenameIndexStatements()
+   */
+  @Override
+  protected List<String> expectedRenameTempIndexStatements() {
     return ImmutableList.of("ALTER INDEX TESTSCHEMA.TempTest_1 RENAME TO TempTest_2");
   }
 
