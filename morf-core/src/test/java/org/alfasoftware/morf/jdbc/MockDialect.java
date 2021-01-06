@@ -29,7 +29,6 @@ import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.element.AliasedField;
-import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Function;
 import org.apache.commons.lang3.StringUtils;
 
@@ -183,20 +182,6 @@ public class MockDialect extends SqlDialect {
   @Override
   public DatabaseType getDatabaseType() {
     return databaseType;
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(ConcatenatedField)
-   */
-  @Override
-  protected String getSqlFrom(ConcatenatedField concatenatedField) {
-    List<String> sql = new ArrayList<>();
-    for (AliasedField field : concatenatedField.getConcatenationFields()) {
-      // Interpret null values as empty strings
-      sql.add("COALESCE(" + getSqlFrom(field) + ",'')");
-    }
-    return StringUtils.join(sql, " || ");
   }
 
 

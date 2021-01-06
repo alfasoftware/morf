@@ -33,7 +33,6 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
-import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.WindowFunction;
@@ -209,20 +208,6 @@ class H2Dialect extends SqlDialect {
   @Override
   public DatabaseType getDatabaseType() {
     return DatabaseType.Registry.findByIdentifier(H2.IDENTIFIER);
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(ConcatenatedField)
-   */
-  @Override
-  protected String getSqlFrom(ConcatenatedField concatenatedField) {
-    List<String> sql = new ArrayList<>();
-    for (AliasedField field : concatenatedField.getConcatenationFields()) {
-      // Interpret null values as empty strings
-      sql.add("COALESCE(" + getSqlFrom(field) + ",'')");
-    }
-    return StringUtils.join(sql, " || ");
   }
 
 

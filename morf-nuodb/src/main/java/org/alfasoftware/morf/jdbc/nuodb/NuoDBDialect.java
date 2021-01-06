@@ -31,7 +31,6 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
@@ -46,7 +45,6 @@ import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.UseImplicitJoinOrder;
 import org.alfasoftware.morf.sql.UseIndex;
 import org.alfasoftware.morf.sql.element.AliasedField;
-import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
@@ -339,20 +337,6 @@ class NuoDBDialect extends SqlDialect {
       default:
         return super.getSqlFrom(field);
     }
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(ConcatenatedField)
-   * TODO - We don't expect the cast here to be required.
-   * Consulting with NuoDB support under WEB-73667
-   */
-  @Override
-  protected String getSqlFrom(ConcatenatedField concatenatedField) {
-    return concatenatedField.getConcatenationFields().stream()
-    .map(this::getSqlFrom)
-    .map(p -> "IFNULL(CAST(" + p + " AS STRING),'')")
-    .collect(Collectors.joining(" || "));
   }
 
 

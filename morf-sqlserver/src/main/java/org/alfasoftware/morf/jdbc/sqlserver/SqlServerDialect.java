@@ -420,7 +420,7 @@ class SqlServerDialect extends SqlDialect {
   protected String getSqlFrom(ConcatenatedField concatenatedField) {
     List<String> sql = new ArrayList<>();
     for (AliasedField field : concatenatedField.getConcatenationFields()) {
-      sql.add("ISNULL("+getSqlFrom(field)+",'')");
+      sql.add("COALESCE("+getSqlFrom(field)+",'')");
     }
     return StringUtils.join(sql, " + ");
   }

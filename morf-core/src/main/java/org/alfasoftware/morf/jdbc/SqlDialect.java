@@ -1692,7 +1692,14 @@ public abstract class SqlDialect {
    * @param concatenatedField the field to generate SQL for
    * @return a string representation of the field literal
    */
-  protected abstract String getSqlFrom(ConcatenatedField concatenatedField);
+  protected String getSqlFrom(ConcatenatedField concatenatedField) {
+    List<String> sql = new ArrayList<>();
+    for (AliasedField field : concatenatedField.getConcatenationFields()) {
+      // Interpret null values as empty strings
+      sql.add("COALESCE(" + getSqlFrom(field) + ",'')");
+    }
+    return StringUtils.join(sql, " || ");
+  }
 
 
   /**
