@@ -233,7 +233,9 @@ public abstract class SqlDialect {
    * @param to - table with new name
    * @return SQL statements required to change a table name.
    */
-  public abstract Collection<String> renameTableStatements(Table from, Table to);
+  public Collection<String> renameTableStatements(Table from, Table to) {
+    return ImmutableList.of("ALTER TABLE " + schemaNamePrefix() + from.getName() + " RENAME TO " + to.getName());
+  }
 
 
   /**

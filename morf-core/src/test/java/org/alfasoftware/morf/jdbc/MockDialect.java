@@ -35,8 +35,6 @@ import org.alfasoftware.morf.sql.element.Function;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableList.Builder;
 
 /**
  * Dialect, loosely based on H2, to give tests something vaguely realistic to work with.
@@ -412,28 +410,6 @@ public class MockDialect extends SqlDialect {
   @Override
   protected String getSqlForAddMonths(Function function) {
     return "DATEADD('MONTH', " + getSqlFrom(function.getArguments().get(1)) + ", " + getSqlFrom(function.getArguments().get(0)) + ")";
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#renameTableStatements(java.lang.String, java.lang.String)
-   */
-  @Override
-  public Collection<String> renameTableStatements(Table from, Table to) {
-
-    Builder<String> builder = ImmutableList.<String>builder();
-
-    if (!primaryKeysForTable(from).isEmpty()) {
-      builder.add(dropPrimaryKeyConstraintStatement(from));
-    }
-
-    builder.add("ALTER TABLE " + from.getName() + " RENAME TO " + to.getName());
-
-    if (!primaryKeysForTable(to).isEmpty()) {
-      builder.add(addPrimaryKeyConstraintStatement(to, namesOfColumns(primaryKeysForTable(to))));
-    }
-
-    return builder.build();
   }
 
 
