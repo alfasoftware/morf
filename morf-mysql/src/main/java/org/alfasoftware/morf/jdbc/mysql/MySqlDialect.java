@@ -487,15 +487,6 @@ class MySqlDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForIsNull(org.alfasoftware.morf.sql.element.Function)
-   */
-  @Override
-  protected String getSqlForIsNull(Function function) {
-    return "COALESCE(" + getSqlFrom(function.getArguments().get(0)) + ", " + getSqlFrom(function.getArguments().get(1)) + ") ";
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getFromDummyTable()
    */
   @Override

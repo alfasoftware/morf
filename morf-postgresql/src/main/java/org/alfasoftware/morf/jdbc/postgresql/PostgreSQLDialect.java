@@ -384,12 +384,6 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
-  protected String getSqlForIsNull(Function function) {
-     return "COALESCE(" + getSqlFrom(function.getArguments().get(0)) + ", " + getSqlFrom(function.getArguments().get(1)) + ") ";
-  }
-
-
-  @Override
   protected String getSqlForDateToYyyymmdd(Function function) {
     AliasedField field = function.getArguments().get(0);
     return "TO_CHAR("+ getSqlFrom(field) + ",'YYYYMMDD') :: NUMERIC";

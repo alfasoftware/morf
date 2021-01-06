@@ -525,7 +525,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedIsNull() {
-    return "nvl(N'A', N'B') ";
+    return "COALESCE(N'A', N'B') ";
   }
 
 

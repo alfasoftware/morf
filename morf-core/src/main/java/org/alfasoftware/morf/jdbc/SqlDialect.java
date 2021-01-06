@@ -2302,7 +2302,9 @@ public abstract class SqlDialect {
    * @param function the function to convert.
    * @return a string representation of the SQL.
    */
-  protected abstract String getSqlForIsNull(Function function);
+  protected String getSqlForIsNull(Function function) {
+    return "COALESCE(" + getSqlFrom(function.getArguments().get(0)) + ", " + getSqlFrom(function.getArguments().get(1)) + ") ";
+  }
 
 
   /**

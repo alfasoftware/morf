@@ -575,15 +575,6 @@ class OracleDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForIsNull(org.alfasoftware.morf.sql.element.Function)
-   */
-  @Override
-  protected String getSqlForIsNull(Function function) {
-    return "nvl(" + getSqlFrom(function.getArguments().get(0)) + ", " + getSqlFrom(function.getArguments().get(1)) + ") ";
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#buildSQLToStartTracing(java.lang.String)
    */
   @Override

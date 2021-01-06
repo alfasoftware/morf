@@ -427,15 +427,6 @@ class SqlServerDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForIsNull(org.alfasoftware.morf.sql.element.Function)
-   */
-  @Override
-  protected String getSqlForIsNull(Function function) {
-    return "ISNULL(" + getSqlFrom(function.getArguments().get(0)) + ", " + getSqlFrom(function.getArguments().get(1)) + ") ";
-  }
-
-
-  /**
    * {@inheritDoc}
    *
    * @see org.alfasoftware.morf.jdbc.SqlDialect#decorateTemporaryTableName(java.lang.String)

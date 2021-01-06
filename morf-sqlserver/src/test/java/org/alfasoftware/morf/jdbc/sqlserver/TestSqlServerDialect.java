@@ -375,7 +375,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedIsNull() {
-    return "ISNULL('A', 'B') ";
+    return "COALESCE('A', 'B') ";
   }
 
 
