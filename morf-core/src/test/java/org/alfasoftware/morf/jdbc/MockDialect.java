@@ -33,7 +33,7 @@ import org.apache.commons.lang3.StringUtils;
 import com.google.common.base.Joiner;
 
 /**
- * Dialect, loosely based on H2, to give tests something vaguely realistic to work with.
+ * Mock {@link SqlDialect} to give tests something vaguely realistic to work with.
  *
  * @author Copyright (c) Alfa Financial Software 2017
  */
@@ -65,7 +65,7 @@ public class MockDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#tableDeploymentStatements(org.alfasoftware.morf.metadata.Table)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#internalTableDeploymentStatements(org.alfasoftware.morf.metadata.Table)
    */
   @Override
   public Collection<String> internalTableDeploymentStatements(Table table) {
@@ -210,27 +210,18 @@ public class MockDialect extends SqlDialect {
   }
 
 
-  /**
-   * @param table The table to add the constraint for
-   * @param primaryKeyColumnNames
-   * @return The statement
-   */
   private String addPrimaryKeyConstraintStatement(Table table, List<String> primaryKeyColumnNames) {
     return "ALTER TABLE " + schemaNamePrefix() + table.getName() + " ADD CONSTRAINT " + table.getName() + "_PK PRIMARY KEY (" + Joiner.on(", ").join(primaryKeyColumnNames) + ")";
   }
 
 
-  /**
-   * @param table The table whose primary key should be dropped
-   * @return The statement
-   */
   private String dropPrimaryKeyConstraintStatement(Table table) {
     return "ALTER TABLE " + schemaNamePrefix() + table.getName() + " DROP PRIMARY KEY";
   }
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForRandomString(int)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForRandomString(org.alfasoftware.morf.sql.element.Function)
    */
   @Override
   protected String getSqlForRandomString(Function function) {
@@ -276,8 +267,7 @@ public class MockDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForDaysBetween(org.alfasoftware.morf.sql.element.AliasedField,
-   *      org.alfasoftware.morf.sql.element.AliasedField)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForDaysBetween(org.alfasoftware.morf.sql.element.AliasedField, org.alfasoftware.morf.sql.element.AliasedField)
    */
   @Override
   protected String getSqlForDaysBetween(AliasedField toDate, AliasedField fromDate) {
@@ -313,7 +303,7 @@ public class MockDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForLastDayOfMonth
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForLastDayOfMonth(org.alfasoftware.morf.sql.element.AliasedField)
    */
   @Override
   protected String getSqlForLastDayOfMonth(AliasedField date) {
