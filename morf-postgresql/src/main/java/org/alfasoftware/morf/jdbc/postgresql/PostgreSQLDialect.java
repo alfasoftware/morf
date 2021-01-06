@@ -224,7 +224,7 @@ class PostgreSQLDialect extends SqlDialect {
 
     Iterable<String> renamePk = SchemaUtils.primaryKeysForTable(from).isEmpty()
         ? ImmutableList.of()
-        : renameIndexStatements(null, from.getName() + "_pk", to.getName() + "_pk");
+        : renameIndexStatements(from, from.getName() + "_pk", to.getName() + "_pk");
 
     Iterable<String> renameSeq = SchemaUtils.autoNumbersForTable(from).isEmpty()
         ? ImmutableList.of()

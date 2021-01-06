@@ -234,7 +234,7 @@ public abstract class SqlDialect {
    * @return SQL statements required to change a table name.
    */
   public Collection<String> renameTableStatements(Table from, Table to) {
-    return ImmutableList.of("ALTER TABLE " + schemaNamePrefix() + from.getName() + " RENAME TO " + to.getName());
+    return ImmutableList.of("ALTER TABLE " + schemaNamePrefix(from) + from.getName() + " RENAME TO " + to.getName());
   }
 
 
@@ -246,8 +246,8 @@ public abstract class SqlDialect {
    * @param toIndexName The new index name
    * @return SQL Statements required to rename an index
    */
-  public Collection<String> renameIndexStatements(@SuppressWarnings("unused") Table table, String fromIndexName, String toIndexName) {
-    return ImmutableList.of("ALTER INDEX " + schemaNamePrefix() + fromIndexName + " RENAME TO " + toIndexName);
+  public Collection<String> renameIndexStatements(Table table, String fromIndexName, String toIndexName) {
+    return ImmutableList.of("ALTER INDEX " + schemaNamePrefix(table) + fromIndexName + " RENAME TO " + toIndexName);
   }
 
 
@@ -267,7 +267,7 @@ public abstract class SqlDialect {
    * @return SQL statements required to clear the table.
    */
   public Collection<String> deleteAllFromTableStatements(Table table) {
-    return ImmutableList.of("DELETE FROM " + schemaNamePrefix() + table.getName());
+    return ImmutableList.of("DELETE FROM " + schemaNamePrefix(table) + table.getName());
   }
 
 
@@ -704,6 +704,10 @@ public abstract class SqlDialect {
   }
 
 
+  /**
+   * @param table The table for which the schema name will be retrieved
+   * @return Base implementation calls {@link #schemaNamePrefix()}.
+   */
   protected String schemaNamePrefix(@SuppressWarnings("unused") Table tableRef) {
     return schemaNamePrefix();
   }
@@ -3592,10 +3596,10 @@ public abstract class SqlDialect {
       statement.append("UNIQUE ");
     }
     statement.append("INDEX ")
-      .append(schemaNamePrefix())
+      .append(schemaNamePrefix(table))
       .append(index.getName())
       .append(" ON ")
-      .append(schemaNamePrefix())
+      .append(schemaNamePrefix(table))
       .append(table.getName())
       .append(" (")
       .append(Joiner.on(", ").join(index.columnNames()))

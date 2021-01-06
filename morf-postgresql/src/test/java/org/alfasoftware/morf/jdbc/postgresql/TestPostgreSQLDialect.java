@@ -1101,7 +1101,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedRenameTempIndexStatements() {
-    return ImmutableList.of("ALTER INDEX testschema.TempTest_1 RENAME TO TempTest_2",
+    return ImmutableList.of("ALTER INDEX TempTest_1 RENAME TO TempTest_2",
                             "COMMENT ON INDEX TempTest_2 IS 'REALNAME:[TempTest_2]'");
   }
 
