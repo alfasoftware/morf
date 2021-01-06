@@ -315,12 +315,11 @@ class H2Dialect extends SqlDialect {
     List<String> result = new ArrayList<>();
 
     if (!oldPrimaryKeyColumns.isEmpty()) {
-      result.add("ALTER TABLE " + schemaNamePrefix() + table.getName() + " DROP PRIMARY KEY");
+      result.add(dropPrimaryKeyConstraintStatement(table));
     }
 
     if (!newPrimaryKeyColumns.isEmpty()) {
-      result.add(
-        addPrimaryKeyConstraintStatement(table, newPrimaryKeyColumns));
+      result.add(addPrimaryKeyConstraintStatement(table, newPrimaryKeyColumns));
     }
 
     return result;
@@ -342,7 +341,7 @@ class H2Dialect extends SqlDialect {
    * @return The statement
    */
   private String dropPrimaryKeyConstraintStatement(Table table) {
-    return "ALTER TABLE " + schemaNamePrefix() + table.getName() + " DROP CONSTRAINT " + table.getName() + "_PK";
+    return "ALTER TABLE " + schemaNamePrefix() + table.getName() + " DROP PRIMARY KEY";
   }
 
 

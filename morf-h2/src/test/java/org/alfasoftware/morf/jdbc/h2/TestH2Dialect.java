@@ -673,7 +673,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterRemoveColumnFromCompositeKeyStatements() {
     return ImmutableList.of(
-      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey DROP CONSTRAINT CompositePrimaryKey_PK",
+      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey DROP PRIMARY KEY",
       "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ALTER COLUMN secondPrimaryKey SET NULL",
       "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ALTER COLUMN secondPrimaryKey VARCHAR(5)",
       "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ADD CONSTRAINT CompositePrimaryKey_PK PRIMARY KEY (id)"
@@ -1030,7 +1030,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedRenameTableStatements() {
     return ImmutableList.of(
-      "ALTER TABLE TESTSCHEMA.Test DROP CONSTRAINT Test_PK",
+      "ALTER TABLE TESTSCHEMA.Test DROP PRIMARY KEY",
       "ALTER TABLE TESTSCHEMA.Test RENAME TO Renamed",
       "ALTER TABLE TESTSCHEMA.Renamed ADD CONSTRAINT Renamed_PK PRIMARY KEY (id)"
     );
@@ -1043,7 +1043,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> getRenamingTableWithLongNameStatements() {
     return ImmutableList.of(
-      "ALTER TABLE TESTSCHEMA.123456789012345678901234567890XXX DROP CONSTRAINT 123456789012345678901234567890XXX_PK",
+      "ALTER TABLE TESTSCHEMA.123456789012345678901234567890XXX DROP PRIMARY KEY",
       "ALTER TABLE TESTSCHEMA.123456789012345678901234567890XXX RENAME TO Blah",
       "ALTER TABLE TESTSCHEMA.Blah ADD CONSTRAINT Blah_PK PRIMARY KEY (id)");
   }

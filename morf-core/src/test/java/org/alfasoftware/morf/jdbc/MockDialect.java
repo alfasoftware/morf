@@ -289,12 +289,11 @@ public class MockDialect extends SqlDialect {
     List<String> result = new ArrayList<>();
 
     if (!oldPrimaryKeyColumns.isEmpty()) {
-      result.add("ALTER TABLE " + table.getName() + " DROP PRIMARY KEY");
+      result.add(dropPrimaryKeyConstraintStatement(table));
     }
 
     if (!newPrimaryKeyColumns.isEmpty()) {
-      result.add(
-        addPrimaryKeyConstraintStatement(table, newPrimaryKeyColumns));
+      result.add(addPrimaryKeyConstraintStatement(table, newPrimaryKeyColumns));
     }
 
     return result;
@@ -307,7 +306,7 @@ public class MockDialect extends SqlDialect {
    * @return The statement
    */
   private String addPrimaryKeyConstraintStatement(Table table, List<String> primaryKeyColumnNames) {
-    return "ALTER TABLE " + table.getName() + " ADD CONSTRAINT " + table.getName() + "_PK PRIMARY KEY (" + Joiner.on(", ").join(primaryKeyColumnNames) + ")";
+    return "ALTER TABLE " + schemaNamePrefix() + table.getName() + " ADD CONSTRAINT " + table.getName() + "_PK PRIMARY KEY (" + Joiner.on(", ").join(primaryKeyColumnNames) + ")";
   }
 
 
@@ -316,7 +315,7 @@ public class MockDialect extends SqlDialect {
    * @return The statement
    */
   private String dropPrimaryKeyConstraintStatement(Table table) {
-    return "ALTER TABLE " + table.getName() + " DROP CONSTRAINT " + table.getName() + "_PK";
+    return "ALTER TABLE " + schemaNamePrefix() + table.getName() + " DROP PRIMARY KEY";
   }
 
 
