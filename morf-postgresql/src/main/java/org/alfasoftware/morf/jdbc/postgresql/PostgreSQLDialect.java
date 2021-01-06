@@ -290,23 +290,6 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
-  public Collection<String> dropStatements(Table table) {
-    ImmutableList.Builder<String> statements = ImmutableList.builder();
-
-    StringBuilder dropStatement = new StringBuilder();
-
-    dropStatement.append("DROP TABLE ");
-
-    dropStatement.append(schemaNamePrefix(table))
-                 .append(table.getName());
-
-    statements.add(dropStatement.toString());
-
-    return statements.build();
-  }
-
-
-  @Override
   public Collection<String> dropStatements(View view) {
     return ImmutableList.of("DROP VIEW IF EXISTS " + schemaNamePrefix() + view.getName() + " CASCADE");
   }

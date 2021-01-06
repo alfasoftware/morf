@@ -20,7 +20,6 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
 import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -117,15 +116,6 @@ public class MockDialect extends SqlDialect {
     statements.add(createTableStatement.toString());
 
     return statements;
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#dropStatements(org.alfasoftware.morf.metadata.Table)
-   */
-  @Override
-  public Collection<String> dropStatements(Table table) {
-    return Arrays.asList("drop table " + table.getName());
   }
 
 

@@ -727,7 +727,9 @@ public abstract class SqlDialect {
    * @param table The table to drop
    * @return The SQL statements as strings.
    */
-  public abstract Collection<String> dropStatements(Table table);
+  public Collection<String> dropStatements(Table table) {
+    return ImmutableList.of("DROP TABLE " + schemaNamePrefix(table) + table.getName());
+  }
 
 
   /**

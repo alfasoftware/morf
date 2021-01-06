@@ -220,15 +220,6 @@ class SqlServerDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#dropStatements(org.alfasoftware.morf.metadata.Table)
-   */
-  @Override
-  public Collection<String> dropStatements(Table table) {
-    return Arrays.asList("DROP TABLE " + schemaNamePrefix() + table.getName());
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#dropStatements(org.alfasoftware.morf.metadata.View)
    */
   @Override
