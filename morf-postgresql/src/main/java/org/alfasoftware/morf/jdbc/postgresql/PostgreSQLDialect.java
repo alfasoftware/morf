@@ -286,12 +286,6 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
-  public Collection<String> deleteAllFromTableStatements(Table table) {
-    return ImmutableList.of("DELETE FROM " + schemaNamePrefix(table) + table.getName());
-  }
-
-
-  @Override
   public Collection<String> viewDeploymentStatements(View view) {
     return ImmutableList.<String>builder()
         .addAll(super.viewDeploymentStatements(view))

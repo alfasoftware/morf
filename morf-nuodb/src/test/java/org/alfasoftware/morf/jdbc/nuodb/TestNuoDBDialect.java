@@ -166,7 +166,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedDeleteAllFromTableStatements() {
-    return Arrays.asList("delete from SCM.Test");
+    return Arrays.asList("DELETE FROM SCM.Test");
   }
 
 

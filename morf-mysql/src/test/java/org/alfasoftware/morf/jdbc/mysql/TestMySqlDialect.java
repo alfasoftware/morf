@@ -182,7 +182,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedDeleteAllFromTableStatements() {
-    return Arrays.asList("delete from Test");
+    return Arrays.asList("DELETE FROM Test");
   }
 
 

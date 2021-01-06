@@ -265,7 +265,9 @@ public abstract class SqlDialect {
    * @param table the database table to clear
    * @return SQL statements required to clear the table.
    */
-  public abstract Collection<String> deleteAllFromTableStatements(Table table);
+  public Collection<String> deleteAllFromTableStatements(Table table) {
+    return ImmutableList.of("DELETE FROM " + schemaNamePrefix() + table.getName());
+  }
 
 
   /**

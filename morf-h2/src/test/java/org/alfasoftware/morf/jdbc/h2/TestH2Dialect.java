@@ -134,7 +134,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedDeleteAllFromTableStatements() {
-    return Arrays.asList("delete from TESTSCHEMA.Test");
+    return Arrays.asList("DELETE FROM TESTSCHEMA.Test");
   }
 
 
