@@ -693,8 +693,7 @@ public abstract class SqlDialect {
 
 
   /**
-   * @return The schema prefix (including the dot) or blank if the schema's
-   *         blank.
+   * @return The schema prefix (including the dot) or blank if the schema's blank.
    */
   public String schemaNamePrefix() {
     if (StringUtils.isEmpty(schemaName)) {
@@ -705,11 +704,15 @@ public abstract class SqlDialect {
   }
 
 
+  protected String schemaNamePrefix(@SuppressWarnings("unused") Table tableRef) {
+    return schemaNamePrefix();
+  }
+
+
   /**
    * @param tableRef The table reference from which the schema name will be extracted
    * @return The schema prefix of the specified table (including the dot), the
-   *         dialect's schema prefix or blank if neither is specified (in that
-   *         order).
+   *         dialect's schema prefix or blank if neither is specified (in that order).
    */
   protected String schemaNamePrefix(TableReference tableRef) {
     if (StringUtils.isEmpty(tableRef.getSchemaName())) {
@@ -3312,11 +3315,6 @@ public abstract class SqlDialect {
       nameColumn, valueColumn, autoNumberName, getExistingMaxAutoNumberValue(dataTable, generatedFieldName)));
 
     return sql;
-  }
-
-
-  protected String schemaNamePrefix(@SuppressWarnings("unused") Table tableRef) {
-    return schemaNamePrefix();
   }
 
 
