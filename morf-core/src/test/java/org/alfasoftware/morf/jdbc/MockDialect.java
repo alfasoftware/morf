@@ -49,6 +49,24 @@ public class MockDialect extends SqlDialect {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getDatabaseType()
+   */
+  @Override
+  public DatabaseType getDatabaseType() {
+    return databaseType;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#connectionTestStatement()
+   */
+  @Override
+  public String connectionTestStatement() {
+    return "select 1";
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#tableDeploymentStatements(org.alfasoftware.morf.metadata.Table)
    */
   @Override
@@ -164,24 +182,6 @@ public class MockDialect extends SqlDialect {
       default:
         throw new UnsupportedOperationException("Cannot map column with type [" + dataType + "]");
     }
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#connectionTestStatement()
-   */
-  @Override
-  public String connectionTestStatement() {
-    return "select 1";
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getDatabaseType()
-   */
-  @Override
-  public DatabaseType getDatabaseType() {
-    return databaseType;
   }
 
 
