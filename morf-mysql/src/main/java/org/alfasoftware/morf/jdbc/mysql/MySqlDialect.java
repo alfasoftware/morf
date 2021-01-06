@@ -289,15 +289,6 @@ class MySqlDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#truncateTableStatements(org.alfasoftware.morf.metadata.Table)
-   */
-  @Override
-  public Collection<String> truncateTableStatements(Table table) {
-    return Arrays.asList("TRUNCATE " + table.getName());
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#postInsertWithPresetAutonumStatements(org.alfasoftware.morf.metadata.Table, boolean)
    */
   @Override

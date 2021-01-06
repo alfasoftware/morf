@@ -116,7 +116,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedTruncateTableStatements() {
-    return Arrays.asList("truncate table TESTSCHEMA.Test");
+    return Arrays.asList("TRUNCATE TABLE TESTSCHEMA.Test");
   }
 
 
@@ -125,7 +125,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedTruncateTempTableStatements() {
-    return Arrays.asList("truncate table TESTSCHEMA.TEMP_TempTest");
+    return Arrays.asList("TRUNCATE TABLE TESTSCHEMA.TEMP_TempTest");
   }
 
 

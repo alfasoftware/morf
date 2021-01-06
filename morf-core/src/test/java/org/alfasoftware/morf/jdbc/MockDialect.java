@@ -130,15 +130,6 @@ public class MockDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#truncateTableStatements(org.alfasoftware.morf.metadata.Table)
-   */
-  @Override
-  public Collection<String> truncateTableStatements(Table table) {
-    return Arrays.asList("truncate table " + table.getName());
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#alterTableAddColumnStatements(org.alfasoftware.morf.metadata.Table, org.alfasoftware.morf.metadata.Column)
    */
   @Override

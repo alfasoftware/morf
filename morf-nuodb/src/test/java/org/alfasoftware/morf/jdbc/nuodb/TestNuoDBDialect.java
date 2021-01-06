@@ -148,7 +148,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedTruncateTableStatements() {
-    return Arrays.asList("truncate table SCM.Test");
+    return Arrays.asList("TRUNCATE TABLE SCM.Test");
   }
 
 
@@ -157,7 +157,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedTruncateTempTableStatements() {
-    return Arrays.asList("truncate table TEMP_TempTest"); // no schema because is temporary
+    return Arrays.asList("TRUNCATE TABLE TEMP_TempTest"); // no schema because is temporary
   }
 
 

@@ -219,22 +219,6 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
-  public Collection<String> truncateTableStatements(Table table) {
-    List<String> statements = new ArrayList<>();
-
-    StringBuilder truncateStatement = new StringBuilder();
-
-    truncateStatement.append("TRUNCATE TABLE ");
-
-    truncateStatement.append(schemaNamePrefix(table))
-                     .append(table.getName());
-
-    statements.add(truncateStatement.toString());
-    return statements;
-  }
-
-
-  @Override
   public Collection<String> renameTableStatements(Table from, Table to) {
     Iterable<String> renameTable = ImmutableList.of("ALTER TABLE " + schemaNamePrefix(from) + from.getName() + " RENAME TO " + to.getName());
 

@@ -222,7 +222,9 @@ public abstract class SqlDialect {
    * @return SQL statements required to clear a table and prepare it for data
    *         population.
    */
-  public abstract Collection<String> truncateTableStatements(Table table);
+  public Collection<String> truncateTableStatements(Table table) {
+    return ImmutableList.of("TRUNCATE TABLE " + schemaNamePrefix(table) + table.getName());
+  }
 
 
   /**

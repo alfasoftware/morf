@@ -219,15 +219,6 @@ class NuoDBDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#truncateTableStatements(org.alfasoftware.morf.metadata.Table)
-   */
-  @Override
-  public Collection<String> truncateTableStatements(Table table) {
-    return Arrays.asList("truncate table " + qualifiedTableName(table));
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getColumnRepresentation(org.alfasoftware.morf.metadata.DataType,
    *      int, int)
    */
