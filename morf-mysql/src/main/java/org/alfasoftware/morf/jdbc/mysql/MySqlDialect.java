@@ -289,24 +289,6 @@ class MySqlDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#truncateTableStatements(org.alfasoftware.morf.metadata.Table)
-   */
-  @Override
-  public Collection<String> truncateTableStatements(Table table) {
-    return Arrays.asList("TRUNCATE " + table.getName());
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#deleteAllFromTableStatements(org.alfasoftware.morf.metadata.Table)
-   */
-  @Override
-  public Collection<String> deleteAllFromTableStatements(Table table) {
-    return Arrays.asList("delete from " + table.getName());
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#postInsertWithPresetAutonumStatements(org.alfasoftware.morf.metadata.Table, boolean)
    */
   @Override
@@ -483,15 +465,6 @@ class MySqlDialect extends SqlDialect {
     }
     // Using "_WithSeparator" but not passing a separator because MySQL vanilla CONCAT doesn't support null arguments properly
     return "CONCAT_WS('', " + StringUtils.join(sql, ", ") + ")";
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForIsNull(org.alfasoftware.morf.sql.element.Function)
-   */
-  @Override
-  protected String getSqlForIsNull(Function function) {
-    return "COALESCE(" + getSqlFrom(function.getArguments().get(0)) + ", " + getSqlFrom(function.getArguments().get(1)) + ") ";
   }
 
 
@@ -871,24 +844,6 @@ class MySqlDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#rebuildTriggers(org.alfasoftware.morf.metadata.Table)
-   */
-  @Override
-  public Collection<String> rebuildTriggers(Table table) {
-    return SqlDialect.NO_STATEMENTS;
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#supportsWindowFunctions()
-   */
-  @Override
-  public boolean supportsWindowFunctions() {
-    return false;
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.element.WindowFunction)
    */
   @Override
@@ -931,15 +886,6 @@ class MySqlDialect extends SqlDialect {
   @Override
   protected String getSqlForLastDayOfMonth(AliasedField date) {
     return "LAST_DAY(" + getSqlFrom(date) + ")";
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect.getSqlForAnalyseTable(Table)
-   */
-  @Override
-  public Collection<String> getSqlForAnalyseTable(Table table) {
-    return SqlDialect.NO_STATEMENTS;
   }
 
 

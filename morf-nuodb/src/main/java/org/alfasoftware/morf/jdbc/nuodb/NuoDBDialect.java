@@ -31,7 +31,6 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
@@ -40,14 +39,12 @@ import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.Hint;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.UseImplicitJoinOrder;
 import org.alfasoftware.morf.sql.UseIndex;
 import org.alfasoftware.morf.sql.element.AliasedField;
-import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
@@ -222,24 +219,6 @@ class NuoDBDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#truncateTableStatements(org.alfasoftware.morf.metadata.Table)
-   */
-  @Override
-  public Collection<String> truncateTableStatements(Table table) {
-    return Arrays.asList("truncate table " + qualifiedTableName(table));
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#deleteAllFromTableStatements(org.alfasoftware.morf.metadata.Table)
-   */
-  @Override
-  public Collection<String> deleteAllFromTableStatements(Table table) {
-    return Arrays.asList("delete from " + qualifiedTableName(table));
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getColumnRepresentation(org.alfasoftware.morf.metadata.DataType,
    *      int, int)
    */
@@ -340,29 +319,6 @@ class NuoDBDialect extends SqlDialect {
       default:
         return super.getSqlFrom(field);
     }
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(ConcatenatedField)
-   * TODO - We don't expect the cast here to be required.
-   * Consulting with NuoDB support under WEB-73667
-   */
-  @Override
-  protected String getSqlFrom(ConcatenatedField concatenatedField) {
-    return concatenatedField.getConcatenationFields().stream()
-    .map(this::getSqlFrom)
-    .map(p -> "IFNULL(CAST(" + p + " AS STRING),'')")
-    .collect(Collectors.joining(" || "));
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForIsNull(org.alfasoftware.morf.sql.element.Function)
-   */
-  @Override
-  protected String getSqlForIsNull(Function function) {
-    return "COALESCE(" + getSqlFrom(function.getArguments().get(0)) + ", " + getSqlFrom(function.getArguments().get(1)) + ") ";
   }
 
 
@@ -691,15 +647,6 @@ class NuoDBDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#dropStatements(org.alfasoftware.morf.metadata.View)
-   */
-  @Override
-  public Collection<String> dropStatements(View view) {
-    return Arrays.asList("DROP VIEW " + schemaNamePrefix() + view.getName() + " IF EXISTS CASCADE");
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForYYYYMMDDToDate(org.alfasoftware.morf.sql.element.Function)
    */
   @Override
@@ -894,15 +841,6 @@ class NuoDBDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#rebuildTriggers(org.alfasoftware.morf.metadata.Table)
-   */
-  @Override
-  public Collection<String> rebuildTriggers(Table table) {
-    return SqlDialect.NO_STATEMENTS;
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#likeEscapeSuffix()
    */
   @Override
@@ -989,15 +927,6 @@ class NuoDBDialect extends SqlDialect {
 
     return "/*+ " + Joiner.on(", ").join(hintTexts) + " */ ";
   };
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect.getSqlForAnalyseTable(Table)
-   */
-  @Override
-  public Collection<String> getSqlForAnalyseTable(Table table) {
-    return SqlDialect.NO_STATEMENTS;
-  }
 
 
   /**

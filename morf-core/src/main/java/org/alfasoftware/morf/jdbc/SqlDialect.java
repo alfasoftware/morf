@@ -32,9 +32,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -132,7 +130,7 @@ public abstract class SqlDialect {
   /**
    * Empty collection of strings that implementations can return if required.
    */
-  public static final Collection<String> NO_STATEMENTS                     = Collections.emptyList();
+  public static final Collection<String> NO_STATEMENTS                     = ImmutableList.of();
 
   /**
    * Used as the alias for the select statement in merge statements.
@@ -223,7 +221,9 @@ public abstract class SqlDialect {
    * @return SQL statements required to clear a table and prepare it for data
    *         population.
    */
-  public abstract Collection<String> truncateTableStatements(Table table);
+  public Collection<String> truncateTableStatements(Table table) {
+    return ImmutableList.of("TRUNCATE TABLE " + schemaNamePrefix(table) + table.getName());
+  }
 
 
   /**
@@ -233,7 +233,9 @@ public abstract class SqlDialect {
    * @param to - table with new name
    * @return SQL statements required to change a table name.
    */
-  public abstract Collection<String> renameTableStatements(Table from, Table to);
+  public Collection<String> renameTableStatements(Table from, Table to) {
+    return ImmutableList.of("ALTER TABLE " + schemaNamePrefix(from) + from.getName() + " RENAME TO " + to.getName());
+  }
 
 
   /**
@@ -244,7 +246,9 @@ public abstract class SqlDialect {
    * @param toIndexName The new index name
    * @return SQL Statements required to rename an index
    */
-  public abstract Collection<String> renameIndexStatements(Table table, String fromIndexName, String toIndexName);
+  public Collection<String> renameIndexStatements(Table table, String fromIndexName, String toIndexName) {
+    return ImmutableList.of("ALTER INDEX " + schemaNamePrefix(table) + fromIndexName + " RENAME TO " + toIndexName);
+  }
 
 
   /**
@@ -262,7 +266,9 @@ public abstract class SqlDialect {
    * @param table the database table to clear
    * @return SQL statements required to clear the table.
    */
-  public abstract Collection<String> deleteAllFromTableStatements(Table table);
+  public Collection<String> deleteAllFromTableStatements(Table table) {
+    return ImmutableList.of("DELETE FROM " + schemaNamePrefix(table) + table.getName());
+  }
 
 
   /**
@@ -274,7 +280,7 @@ public abstract class SqlDialect {
    */
   @SuppressWarnings("unused")
   public Collection<String> preInsertWithPresetAutonumStatements(Table table, boolean insertingUnderAutonumLimit) {
-    return Collections.emptyList();
+    return ImmutableList.of();
   }
 
 
@@ -338,16 +344,16 @@ public abstract class SqlDialect {
       }
     } else if (statement instanceof UpdateStatement) {
       UpdateStatement update = (UpdateStatement) statement;
-      return Collections.singletonList(convertStatementToSQL(update));
+      return ImmutableList.of(convertStatementToSQL(update));
     } else if (statement instanceof DeleteStatement) {
       DeleteStatement delete = (DeleteStatement) statement;
-      return Collections.singletonList(convertStatementToSQL(delete));
+      return ImmutableList.of(convertStatementToSQL(delete));
     } else if (statement instanceof TruncateStatement) {
       TruncateStatement truncateStatement = (TruncateStatement) statement;
-      return Collections.singletonList(convertStatementToSQL(truncateStatement));
+      return ImmutableList.of(convertStatementToSQL(truncateStatement));
     } else if (statement instanceof MergeStatement) {
       MergeStatement merge = (MergeStatement) statement;
-      return Collections.singletonList(convertStatementToSQL(merge));
+      return ImmutableList.of(convertStatementToSQL(merge));
     } else {
       throw new UnsupportedOperationException("Executed statement operation not supported for [" + statement.getClass() + "]");
     }
@@ -687,8 +693,7 @@ public abstract class SqlDialect {
 
 
   /**
-   * @return The schema prefix (including the dot) or blank if the schema's
-   *         blank.
+   * @return The schema prefix (including the dot) or blank if the schema's blank.
    */
   public String schemaNamePrefix() {
     if (StringUtils.isEmpty(schemaName)) {
@@ -700,10 +705,18 @@ public abstract class SqlDialect {
 
 
   /**
+   * @param table The table for which the schema name will be retrieved
+   * @return Base implementation calls {@link #schemaNamePrefix()}.
+   */
+  protected String schemaNamePrefix(@SuppressWarnings("unused") Table table) {
+    return schemaNamePrefix();
+  }
+
+
+  /**
    * @param tableRef The table reference from which the schema name will be extracted
    * @return The schema prefix of the specified table (including the dot), the
-   *         dialect's schema prefix or blank if neither is specified (in that
-   *         order).
+   *         dialect's schema prefix or blank if neither is specified (in that order).
    */
   protected String schemaNamePrefix(TableReference tableRef) {
     if (StringUtils.isEmpty(tableRef.getSchemaName())) {
@@ -720,7 +733,9 @@ public abstract class SqlDialect {
    * @param table The table to drop
    * @return The SQL statements as strings.
    */
-  public abstract Collection<String> dropStatements(Table table);
+  public Collection<String> dropStatements(Table table) {
+    return ImmutableList.of("DROP TABLE " + schemaNamePrefix(table) + table.getName());
+  }
 
 
   /**
@@ -729,7 +744,9 @@ public abstract class SqlDialect {
    * @param view The view to drop
    * @return The SQL statements as strings.
    */
-  public abstract Collection<String> dropStatements(View view);
+  public Collection<String> dropStatements(View view) {
+    return ImmutableList.of("DROP VIEW " + schemaNamePrefix() + view.getName() + " IF EXISTS CASCADE");
+  }
 
 
   /**
@@ -1687,7 +1704,14 @@ public abstract class SqlDialect {
    * @param concatenatedField the field to generate SQL for
    * @return a string representation of the field literal
    */
-  protected abstract String getSqlFrom(ConcatenatedField concatenatedField);
+  protected String getSqlFrom(ConcatenatedField concatenatedField) {
+    List<String> sql = new ArrayList<>();
+    for (AliasedField field : concatenatedField.getConcatenationFields()) {
+      // Interpret null values as empty strings
+      sql.add("COALESCE(" + getSqlFrom(field) + ",'')");
+    }
+    return StringUtils.join(sql, " || ");
+  }
 
 
   /**
@@ -2288,7 +2312,36 @@ public abstract class SqlDialect {
    * @param scale the column scale.
    * @return a string representation of the column definition.
    */
-  protected abstract String getColumnRepresentation(DataType dataType, int width, int scale);
+  protected String getColumnRepresentation(DataType dataType, int width, int scale) {
+    switch (dataType) {
+      case STRING:
+        return width == 0 ? "VARCHAR" : String.format("VARCHAR(%d)", width);
+
+      case DECIMAL:
+        return width == 0 ? "DECIMAL" : String.format("DECIMAL(%d,%d)", width, scale);
+
+      case DATE:
+        return "DATE";
+
+      case BOOLEAN:
+        return "BIT";
+
+      case BIG_INTEGER:
+        return "BIGINT";
+
+      case INTEGER:
+        return "INTEGER";
+
+      case BLOB:
+        return "BLOB";
+
+      case CLOB:
+        return "CLOB";
+
+      default:
+        throw new UnsupportedOperationException("Cannot map column with type [" + dataType + "]");
+    }
+  }
 
 
   /**
@@ -2297,7 +2350,9 @@ public abstract class SqlDialect {
    * @param function the function to convert.
    * @return a string representation of the SQL.
    */
-  protected abstract String getSqlForIsNull(Function function);
+  protected String getSqlForIsNull(Function function) {
+    return getSqlForCoalesce(function);
+  }
 
 
   /**
@@ -3267,11 +3322,6 @@ public abstract class SqlDialect {
   }
 
 
-  protected String schemaNamePrefix(@SuppressWarnings("unused") Table tableRef) {
-    return schemaNamePrefix();
-  }
-
-
   /**
    * Builds SQL to get the maximum value of the specified column on the
    * specified {@code dataTable}.
@@ -3460,7 +3510,9 @@ public abstract class SqlDialect {
    * @param table The table to run the analysis on.
    * @return The SQL statements to analyse the table.
    */
-  public abstract Collection<String> getSqlForAnalyseTable(Table table);
+  public Collection<String> getSqlForAnalyseTable(@SuppressWarnings("unused") Table table) {
+    return SqlDialect.NO_STATEMENTS;
+  }
 
 
   /**
@@ -3494,7 +3546,7 @@ public abstract class SqlDialect {
    * @return The SQL to drop the specified index.
    */
   public Collection<String> indexDropStatements(@SuppressWarnings("unused") Table table, Index indexToBeRemoved) {
-    return Arrays.asList("DROP INDEX " + indexToBeRemoved.getName());
+    return ImmutableList.of("DROP INDEX " + indexToBeRemoved.getName());
   }
 
 
@@ -3544,16 +3596,16 @@ public abstract class SqlDialect {
       statement.append("UNIQUE ");
     }
     statement.append("INDEX ")
-      .append(schemaNamePrefix())
+      .append(schemaNamePrefix(table))
       .append(index.getName())
       .append(" ON ")
-      .append(schemaNamePrefix())
+      .append(schemaNamePrefix(table))
       .append(table.getName())
       .append(" (")
       .append(Joiner.on(", ").join(index.columnNames()))
       .append(')');
 
-    return Collections.singletonList(statement.toString());
+    return ImmutableList.of(statement.toString());
   }
 
 
@@ -3898,7 +3950,9 @@ public abstract class SqlDialect {
    * @param table the table for which to rebuild triggers
    * @return a collection of sql statements to execute
    */
-  public abstract Collection<String> rebuildTriggers(Table table);
+  public Collection<String> rebuildTriggers(@SuppressWarnings("unused") Table table) {
+    return SqlDialect.NO_STATEMENTS;
+  }
 
 
   /**
@@ -3912,10 +3966,14 @@ public abstract class SqlDialect {
 
 
    /**
+   * Indicates whether the dialect supports window functions.
+   *
    * @return true if the dialect supports window functions (e.g. PARTITION BY).
    *
    **/
-   public abstract boolean supportsWindowFunctions();
+   public boolean supportsWindowFunctions() {
+     return false;
+   }
 
 
   /**

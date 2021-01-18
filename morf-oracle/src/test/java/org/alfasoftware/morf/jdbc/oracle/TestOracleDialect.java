@@ -282,7 +282,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedDeleteAllFromTableStatements() {
-    return Arrays.asList("delete from TESTSCHEMA.Test");
+    return Arrays.asList("DELETE FROM TESTSCHEMA.Test");
   }
 
 
@@ -525,7 +525,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedIsNull() {
-    return "nvl(N'A', N'B') ";
+    return "COALESCE(N'A', N'B')";
   }
 
 
@@ -1320,6 +1320,15 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedRenameIndexStatements() {
+    return ImmutableList.of("ALTER INDEX TESTSCHEMA.Test_1 RENAME TO Test_2");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRenameIndexStatements()
+   */
+  @Override
+  protected List<String> expectedRenameTempIndexStatements() {
     return ImmutableList.of("ALTER INDEX TESTSCHEMA.TempTest_1 RENAME TO TempTest_2");
   }
 

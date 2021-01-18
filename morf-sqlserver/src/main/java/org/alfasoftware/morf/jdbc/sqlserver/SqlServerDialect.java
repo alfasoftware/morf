@@ -106,24 +106,6 @@ class SqlServerDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#truncateTableStatements(org.alfasoftware.morf.metadata.Table)
-   */
-  @Override
-  public Collection<String> truncateTableStatements(Table table) {
-    return Arrays.asList("TRUNCATE TABLE " + schemaNamePrefix() + table.getName());
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#deleteAllFromTableStatements(org.alfasoftware.morf.metadata.Table)
-   */
-  @Override
-  public Collection<String> deleteAllFromTableStatements(Table table) {
-    return Arrays.asList("DELETE FROM " + schemaNamePrefix() + table.getName());
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#tableDeploymentStatements(org.alfasoftware.morf.metadata.Table)
    */
   @Override
@@ -234,15 +216,6 @@ class SqlServerDialect extends SqlDialect {
   @Override
   public Collection<String> indexDropStatements(Table table, Index indexToBeRemoved) {
     return Arrays.asList("DROP INDEX " + indexToBeRemoved.getName() + " ON " + schemaNamePrefix() + table.getName());
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#dropStatements(org.alfasoftware.morf.metadata.Table)
-   */
-  @Override
-  public Collection<String> dropStatements(Table table) {
-    return Arrays.asList("DROP TABLE " + schemaNamePrefix() + table.getName());
   }
 
 
@@ -420,18 +393,9 @@ class SqlServerDialect extends SqlDialect {
   protected String getSqlFrom(ConcatenatedField concatenatedField) {
     List<String> sql = new ArrayList<>();
     for (AliasedField field : concatenatedField.getConcatenationFields()) {
-      sql.add("ISNULL("+getSqlFrom(field)+",'')");
+      sql.add("COALESCE("+getSqlFrom(field)+",'')");
     }
     return StringUtils.join(sql, " + ");
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForIsNull(org.alfasoftware.morf.sql.element.Function)
-   */
-  @Override
-  protected String getSqlForIsNull(Function function) {
-    return "ISNULL(" + getSqlFrom(function.getArguments().get(0)) + ", " + getSqlFrom(function.getArguments().get(1)) + ") ";
   }
 
 
@@ -1100,15 +1064,6 @@ class SqlServerDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#rebuildTriggers(org.alfasoftware.morf.metadata.Table)
-   */
-  @Override
-  public Collection<String> rebuildTriggers(Table table) {
-    return SqlDialect.NO_STATEMENTS;
-  }
-
-
-  /**
    * SQL server places a shared lock on a record when it is selected without doing anything else (no MVCC)
    * so no need to specify a lock mode.
    *
@@ -1145,15 +1100,6 @@ class SqlServerDialect extends SqlDialect {
   @Override
   protected String getSqlForLastDayOfMonth(AliasedField date) {
     return "DATEADD(s,-1,DATEADD(mm, DATEDIFF(m,0," + getSqlFrom(date) + ")+1,0))";
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect.getSqlForAnalyseTable(Table)
-   */
-  @Override
-  public Collection<String> getSqlForAnalyseTable(Table table) {
-    return SqlDialect.NO_STATEMENTS;
   }
 
 

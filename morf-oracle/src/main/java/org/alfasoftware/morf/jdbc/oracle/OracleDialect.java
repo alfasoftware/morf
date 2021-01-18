@@ -116,15 +116,6 @@ class OracleDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#deleteAllFromTableStatements(org.alfasoftware.morf.metadata.Table)
-   */
-  @Override
-  public Collection<String> deleteAllFromTableStatements(Table table) {
-    return Arrays.asList("delete from " + schemaNamePrefix() + table.getName());
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#tableDeploymentStatements(org.alfasoftware.morf.metadata.Table)
    */
   @Override
@@ -571,15 +562,6 @@ class OracleDialect extends SqlDialect {
       sql.add(getSqlFrom(field));
     }
     return StringUtils.join(sql, " || ");
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForIsNull(org.alfasoftware.morf.sql.element.Function)
-   */
-  @Override
-  protected String getSqlForIsNull(Function function) {
-    return "nvl(" + getSqlFrom(function.getArguments().get(0)) + ", " + getSqlFrom(function.getArguments().get(1)) + ") ";
   }
 
 
@@ -1056,15 +1038,6 @@ class OracleDialect extends SqlDialect {
     statements.add(commentOnTable(to));
 
     return statements;
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#renameIndexStatements(org.alfasoftware.morf.metadata.Table, java.lang.String, java.lang.String)
-   */
-  @Override
-  public Collection<String> renameIndexStatements(Table table, String fromIndexName, String toIndexName) {
-    return ImmutableList.of(String.format("ALTER INDEX %s%s RENAME TO %s", schemaNamePrefix(), fromIndexName, toIndexName));
   }
 
 

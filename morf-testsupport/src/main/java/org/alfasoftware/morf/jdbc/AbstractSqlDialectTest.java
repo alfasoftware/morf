@@ -270,6 +270,8 @@ public abstract class AbstractSqlDialectTest {
    */
   protected SqlDialect testDialect;
 
+  private Table testTable;
+
   private Table testTempTable;
   private Table nonNullTempTable;
   private Table alternateTestTempTable;
@@ -289,7 +291,7 @@ public abstract class AbstractSqlDialectTest {
     testDialect = createTestDialect();
 
     // Main test table
-    Table testTable = table(TEST_TABLE)
+    testTable = table(TEST_TABLE)
         .columns(
           idColumn(),
           versionColumn(),
@@ -3913,7 +3915,17 @@ public abstract class AbstractSqlDialectTest {
   @SuppressWarnings("unchecked")
   @Test
   public void testRenameIndexStatements() {
-    compareStatements(expectedRenameIndexStatements(), testDialect.renameIndexStatements(testTempTable, "TempTest_1", "TempTest_2"));
+    compareStatements(expectedRenameIndexStatements(), testDialect.renameIndexStatements(testTable, "Test_1", "Test_2"));
+  }
+
+
+  /**
+   * Tests that the syntax is correct for renaming an index.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testRenameTempIndexStatements() {
+    compareStatements(expectedRenameTempIndexStatements(), testDialect.renameIndexStatements(testTempTable, "TempTest_1", "TempTest_2"));
   }
 
 
@@ -4283,6 +4295,12 @@ public abstract class AbstractSqlDialectTest {
    * @return Expected SQL for {@link #testRenameIndexStatements()}
    */
   protected abstract List<String> expectedRenameIndexStatements();
+
+
+  /**
+   * @return Expected SQL for {@link #testRenameTempIndexStatements()}
+   */
+  protected abstract List<String> expectedRenameTempIndexStatements();
 
 
   /**

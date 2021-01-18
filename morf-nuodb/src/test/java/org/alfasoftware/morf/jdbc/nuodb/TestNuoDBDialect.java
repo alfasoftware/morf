@@ -148,7 +148,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedTruncateTableStatements() {
-    return Arrays.asList("truncate table SCM.Test");
+    return Arrays.asList("TRUNCATE TABLE SCM.Test");
   }
 
 
@@ -157,7 +157,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedTruncateTempTableStatements() {
-    return Arrays.asList("truncate table TEMP_TempTest"); // no schema because is temporary
+    return Arrays.asList("TRUNCATE TABLE TEMP_TempTest"); // no schema because is temporary
   }
 
 
@@ -166,7 +166,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedDeleteAllFromTableStatements() {
-    return Arrays.asList("delete from SCM.Test");
+    return Arrays.asList("DELETE FROM SCM.Test");
   }
 
 
@@ -499,7 +499,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedConcatenationWithCase() {
-    return "SELECT IFNULL(CAST(assetDescriptionLine1 AS STRING),'') || IFNULL(CAST(CASE WHEN (taxVariationIndicator = 'Y') THEN exposureCustomerNumber ELSE invoicingCustomerNumber END AS STRING),'') AS test FROM SCM.schedule";
+    return "SELECT COALESCE(assetDescriptionLine1,'') || COALESCE(CASE WHEN (taxVariationIndicator = 'Y') THEN exposureCustomerNumber ELSE invoicingCustomerNumber END,'') AS test FROM SCM.schedule";
   }
 
 
@@ -508,7 +508,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedConcatenationWithFunction() {
-    return "SELECT IFNULL(CAST(assetDescriptionLine1 AS STRING),'') || IFNULL(CAST(MAX(scheduleStartDate) AS STRING),'') AS test FROM SCM.schedule";
+    return "SELECT COALESCE(assetDescriptionLine1,'') || COALESCE(MAX(scheduleStartDate),'') AS test FROM SCM.schedule";
   }
 
 
@@ -517,7 +517,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedConcatenationWithMultipleFieldLiterals() {
-    return "SELECT IFNULL(CAST('ABC' AS STRING),'') || IFNULL(CAST(' ' AS STRING),'') || IFNULL(CAST('DEF' AS STRING),'') AS assetDescription FROM SCM.schedule";
+    return "SELECT COALESCE('ABC','') || COALESCE(' ','') || COALESCE('DEF','') AS assetDescription FROM SCM.schedule";
   }
 
 
@@ -526,7 +526,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedNestedConcatenations() {
-    return "SELECT IFNULL(CAST(field1 AS STRING),'') || IFNULL(CAST(IFNULL(CAST(field2 AS STRING),'') || IFNULL(CAST('XYZ' AS STRING),'') AS STRING),'') AS test FROM SCM.schedule";
+    return "SELECT COALESCE(field1,'') || COALESCE(COALESCE(field2,'') || COALESCE('XYZ',''),'') AS test FROM SCM.schedule";
   }
 
 
@@ -535,7 +535,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSelectWithConcatenation1() {
-    return "SELECT IFNULL(CAST(assetDescriptionLine1 AS STRING),'') || IFNULL(CAST(' ' AS STRING),'') || IFNULL(CAST(assetDescriptionLine2 AS STRING),'') AS assetDescription FROM SCM.schedule";
+    return "SELECT COALESCE(assetDescriptionLine1,'') || COALESCE(' ','') || COALESCE(assetDescriptionLine2,'') AS assetDescription FROM SCM.schedule";
   }
 
 
@@ -544,7 +544,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSelectWithConcatenation2() {
-    return "SELECT IFNULL(CAST(assetDescriptionLine1 AS STRING),'') || IFNULL(CAST('XYZ' AS STRING),'') || IFNULL(CAST(assetDescriptionLine2 AS STRING),'') AS assetDescription FROM SCM.schedule";
+    return "SELECT COALESCE(assetDescriptionLine1,'') || COALESCE('XYZ','') || COALESCE(assetDescriptionLine2,'') AS assetDescription FROM SCM.schedule";
   }
 
 
@@ -553,7 +553,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedIsNull() {
-    return "COALESCE('A', 'B') ";
+    return "COALESCE('A', 'B')";
   }
 
 
@@ -1307,6 +1307,18 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedRenameIndexStatements() {
+    return ImmutableList.of(
+      "DROP INDEX SCM.Test_1",
+      "CREATE INDEX Test_2 ON SCM.Test (intField,floatField)"
+    );
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRenameIndexStatements()
+   */
+  @Override
+  protected List<String> expectedRenameTempIndexStatements() {
     return ImmutableList.of(
       "DROP INDEX TempTest_1",
       "CREATE INDEX TempTest_2 ON TEMP_TempTest (intField,floatField)" // no schema name as temporary

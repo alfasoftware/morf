@@ -219,28 +219,12 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
-  public Collection<String> truncateTableStatements(Table table) {
-    List<String> statements = new ArrayList<>();
-
-    StringBuilder truncateStatement = new StringBuilder();
-
-    truncateStatement.append("TRUNCATE TABLE ");
-
-    truncateStatement.append(schemaNamePrefix(table))
-                     .append(table.getName());
-
-    statements.add(truncateStatement.toString());
-    return statements;
-  }
-
-
-  @Override
   public Collection<String> renameTableStatements(Table from, Table to) {
     Iterable<String> renameTable = ImmutableList.of("ALTER TABLE " + schemaNamePrefix(from) + from.getName() + " RENAME TO " + to.getName());
 
     Iterable<String> renamePk = SchemaUtils.primaryKeysForTable(from).isEmpty()
         ? ImmutableList.of()
-        : renameIndexStatements(null, from.getName() + "_pk", to.getName() + "_pk");
+        : renameIndexStatements(from, from.getName() + "_pk", to.getName() + "_pk");
 
     Iterable<String> renameSeq = SchemaUtils.autoNumbersForTable(from).isEmpty()
         ? ImmutableList.of()
@@ -257,8 +241,10 @@ class PostgreSQLDialect extends SqlDialect {
 
   @Override
   public Collection<String> renameIndexStatements(Table table, String fromIndexName, String toIndexName) {
-    return ImmutableList.of("ALTER INDEX " + schemaNamePrefix() + fromIndexName + " RENAME TO " + toIndexName,
-      addIndexComment(toIndexName));
+    return ImmutableList.<String>builder()
+        .addAll(super.renameIndexStatements(table, fromIndexName, toIndexName))
+        .add(addIndexComment(toIndexName))
+        .build();
   }
 
 
@@ -284,12 +270,6 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
-  public Collection<String> deleteAllFromTableStatements(Table table) {
-    return ImmutableList.of("DELETE FROM " + schemaNamePrefix(table) + table.getName());
-  }
-
-
-  @Override
   public Collection<String> viewDeploymentStatements(View view) {
     return ImmutableList.<String>builder()
         .addAll(super.viewDeploymentStatements(view))
@@ -306,23 +286,6 @@ class PostgreSQLDialect extends SqlDialect {
   @Override
   public String connectionTestStatement() {
     return "SELECT 1";
-  }
-
-
-  @Override
-  public Collection<String> dropStatements(Table table) {
-    ImmutableList.Builder<String> statements = ImmutableList.builder();
-
-    StringBuilder dropStatement = new StringBuilder();
-
-    dropStatement.append("DROP TABLE ");
-
-    dropStatement.append(schemaNamePrefix(table))
-                 .append(table.getName());
-
-    statements.add(dropStatement.toString());
-
-    return statements.build();
   }
 
 
@@ -378,12 +341,6 @@ class PostgreSQLDialect extends SqlDialect {
     return String.format(
         "(DATE_TRUNC('MONTH', (%s)) + INTERVAL '1 MONTH' - INTERVAL '1 DAY') :: DATE",
         getSqlFrom(date));
-  }
-
-
-  @Override
-  protected String getSqlForIsNull(Function function) {
-     return "COALESCE(" + getSqlFrom(function.getArguments().get(0)) + ", " + getSqlFrom(function.getArguments().get(1)) + ") ";
   }
 
 
@@ -610,12 +567,6 @@ class PostgreSQLDialect extends SqlDialect {
   @Override
   public Collection<String> alterTableDropColumnStatements(Table table, Column column) {
     return ImmutableList.of("ALTER TABLE " + schemaNamePrefix(table) + table.getName() + " DROP COLUMN " + column.getName());
-  }
-
-
-  @Override
-  public Collection<String> rebuildTriggers(Table table) {
-    return SqlDialect.NO_STATEMENTS;
   }
 
 

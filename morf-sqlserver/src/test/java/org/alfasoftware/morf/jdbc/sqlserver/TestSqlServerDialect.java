@@ -321,7 +321,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSelectWithConcatenation1() {
-    return "SELECT ISNULL(assetDescriptionLine1,'') + ISNULL(' ','') + ISNULL(assetDescriptionLine2,'') AS assetDescription FROM TESTSCHEMA.schedule";
+    return "SELECT COALESCE(assetDescriptionLine1,'') + COALESCE(' ','') + COALESCE(assetDescriptionLine2,'') AS assetDescription FROM TESTSCHEMA.schedule";
   }
 
 
@@ -330,7 +330,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSelectWithConcatenation2() {
-    return "SELECT ISNULL(assetDescriptionLine1,'') + ISNULL('XYZ','') + ISNULL(assetDescriptionLine2,'') AS assetDescription FROM TESTSCHEMA.schedule";
+    return "SELECT COALESCE(assetDescriptionLine1,'') + COALESCE('XYZ','') + COALESCE(assetDescriptionLine2,'') AS assetDescription FROM TESTSCHEMA.schedule";
   }
 
 
@@ -339,7 +339,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedConcatenationWithCase() {
-    return "SELECT ISNULL(assetDescriptionLine1,'') + ISNULL(CASE WHEN (taxVariationIndicator = 'Y') THEN exposureCustomerNumber ELSE invoicingCustomerNumber END,'') AS test FROM TESTSCHEMA.schedule";
+    return "SELECT COALESCE(assetDescriptionLine1,'') + COALESCE(CASE WHEN (taxVariationIndicator = 'Y') THEN exposureCustomerNumber ELSE invoicingCustomerNumber END,'') AS test FROM TESTSCHEMA.schedule";
   }
 
 
@@ -348,7 +348,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedConcatenationWithFunction() {
-    return "SELECT ISNULL(assetDescriptionLine1,'') + ISNULL(MAX(scheduleStartDate),'') AS test FROM TESTSCHEMA.schedule";
+    return "SELECT COALESCE(assetDescriptionLine1,'') + COALESCE(MAX(scheduleStartDate),'') AS test FROM TESTSCHEMA.schedule";
   }
 
 
@@ -357,7 +357,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedConcatenationWithMultipleFieldLiterals() {
-    return "SELECT ISNULL('ABC','') + ISNULL(' ','') + ISNULL('DEF','') AS assetDescription FROM TESTSCHEMA.schedule";
+    return "SELECT COALESCE('ABC','') + COALESCE(' ','') + COALESCE('DEF','') AS assetDescription FROM TESTSCHEMA.schedule";
   }
 
 
@@ -366,7 +366,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedNestedConcatenations() {
-    return "SELECT ISNULL(field1,'') + ISNULL(ISNULL(field2,'') + ISNULL('XYZ',''),'') AS test FROM TESTSCHEMA.schedule";
+    return "SELECT COALESCE(field1,'') + COALESCE(COALESCE(field2,'') + COALESCE('XYZ',''),'') AS test FROM TESTSCHEMA.schedule";
   }
 
 
@@ -375,7 +375,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedIsNull() {
-    return "ISNULL('A', 'B') ";
+    return "COALESCE('A', 'B')";
   }
 
 
@@ -1138,6 +1138,15 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedRenameIndexStatements() {
+    return ImmutableList.of("sp_rename N'TESTSCHEMA.Test.Test_1', N'Test_2', N'INDEX'");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRenameIndexStatements()
+   */
+  @Override
+  protected List<String> expectedRenameTempIndexStatements() {
     return ImmutableList.of("sp_rename N'TESTSCHEMA.#TempTest.TempTest_1', N'TempTest_2', N'INDEX'");
   }
 
