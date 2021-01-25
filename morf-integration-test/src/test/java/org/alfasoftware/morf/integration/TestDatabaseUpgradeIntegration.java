@@ -146,6 +146,8 @@ public class TestDatabaseUpgradeIntegration {
   /***/
   @Rule public InjectMembersRule injectMembersRule = new InjectMembersRule(new TestingDataSourceModule());
 
+  private Locale defaultLocale;
+
   @Inject
   private Provider<DatabaseDataSetConsumer> databaseDataSetConsumer;
 
@@ -307,6 +309,7 @@ public class TestDatabaseUpgradeIntegration {
    */
   @Before
   public void before() {
+    defaultLocale = Locale.getDefault();
     Locale.setDefault(new Locale("en", "GB"));
     schemaManager.get().dropAllViews();
     schemaManager.get().dropAllTables();
@@ -321,6 +324,9 @@ public class TestDatabaseUpgradeIntegration {
   @After
   public void after() {
     schemaManager.get().invalidateCache();
+    if (defaultLocale != null) {
+      Locale.setDefault(defaultLocale);
+    }
   }
 
 
