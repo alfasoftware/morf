@@ -15,43 +15,13 @@
 
 package org.alfasoftware.morf.integration;
 
-import static com.google.common.base.Predicates.compose;
-import static com.google.common.base.Predicates.equalTo;
-import static com.google.common.base.Predicates.not;
-import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toSet;
-import static org.alfasoftware.morf.metadata.DataSetUtils.dataSetProducer;
-import static org.alfasoftware.morf.metadata.DataSetUtils.record;
-import static org.alfasoftware.morf.metadata.SchemaUtils.column;
-import static org.alfasoftware.morf.metadata.SchemaUtils.copy;
-import static org.alfasoftware.morf.metadata.SchemaUtils.idColumn;
-import static org.alfasoftware.morf.metadata.SchemaUtils.index;
-import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
-import static org.alfasoftware.morf.metadata.SchemaUtils.table;
-import static org.alfasoftware.morf.metadata.SchemaUtils.view;
-import static org.alfasoftware.morf.sql.SqlUtils.field;
-import static org.alfasoftware.morf.sql.SqlUtils.insert;
-import static org.alfasoftware.morf.sql.SqlUtils.literal;
-import static org.alfasoftware.morf.sql.SqlUtils.select;
-import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deployedViewsTable;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.upgradeAuditTable;
-import static org.hamcrest.Matchers.equalToIgnoringCase;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.math.BigDecimal;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-
-import javax.sql.DataSource;
-
+import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.inject.Inject;
+import com.google.inject.Provider;
+import net.jcip.annotations.NotThreadSafe;
 import org.alfasoftware.morf.dataset.DataSetConnector;
 import org.alfasoftware.morf.dataset.DataSetProducer;
 import org.alfasoftware.morf.dataset.Record;
@@ -117,14 +87,42 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
-import com.google.common.collect.FluentIterable;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.inject.Inject;
-import com.google.inject.Provider;
+import javax.sql.DataSource;
+import java.math.BigDecimal;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
-import net.jcip.annotations.NotThreadSafe;
+import static com.google.common.base.Predicates.compose;
+import static com.google.common.base.Predicates.equalTo;
+import static com.google.common.base.Predicates.not;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toSet;
+import static org.alfasoftware.morf.metadata.DataSetUtils.dataSetProducer;
+import static org.alfasoftware.morf.metadata.DataSetUtils.record;
+import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.alfasoftware.morf.metadata.SchemaUtils.copy;
+import static org.alfasoftware.morf.metadata.SchemaUtils.idColumn;
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
+import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
+import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.alfasoftware.morf.metadata.SchemaUtils.view;
+import static org.alfasoftware.morf.sql.SqlUtils.field;
+import static org.alfasoftware.morf.sql.SqlUtils.insert;
+import static org.alfasoftware.morf.sql.SqlUtils.literal;
+import static org.alfasoftware.morf.sql.SqlUtils.select;
+import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deployedViewsTable;
+import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.upgradeAuditTable;
+import static org.hamcrest.Matchers.equalToIgnoringCase;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * Tests that the various SQL statement representations can be converted by the
@@ -309,6 +307,7 @@ public class TestDatabaseUpgradeIntegration {
    */
   @Before
   public void before() {
+    Locale.setDefault(new Locale("en", "GB"));
     schemaManager.get().dropAllViews();
     schemaManager.get().dropAllTables();
     schemaManager.get().mutateToSupportSchema(schema, TruncationBehavior.ALWAYS);
