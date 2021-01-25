@@ -48,6 +48,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import javax.sql.DataSource;
@@ -309,6 +310,7 @@ public class TestDatabaseUpgradeIntegration {
    */
   @Before
   public void before() {
+    Locale.setDefault(new Locale("en", "GB"));
     schemaManager.get().dropAllViews();
     schemaManager.get().dropAllTables();
     schemaManager.get().mutateToSupportSchema(schema, TruncationBehavior.ALWAYS);
