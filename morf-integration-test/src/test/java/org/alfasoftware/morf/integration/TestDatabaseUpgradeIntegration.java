@@ -48,6 +48,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import javax.sql.DataSource;
@@ -147,6 +148,8 @@ public class TestDatabaseUpgradeIntegration {
 
   /***/
   @Rule public InjectMembersRule injectMembersRule = new InjectMembersRule(new TestingDataSourceModule());
+
+  private Locale defaultLocale;
 
   @Inject
   private Provider<DatabaseDataSetConsumer> databaseDataSetConsumer;
@@ -309,6 +312,8 @@ public class TestDatabaseUpgradeIntegration {
    */
   @Before
   public void before() {
+    defaultLocale = Locale.getDefault();
+    Locale.setDefault(new Locale("en", "GB"));
     schemaManager.get().dropAllViews();
     schemaManager.get().dropAllTables();
     schemaManager.get().mutateToSupportSchema(schema, TruncationBehavior.ALWAYS);
@@ -322,6 +327,9 @@ public class TestDatabaseUpgradeIntegration {
   @After
   public void after() {
     schemaManager.get().invalidateCache();
+    if (defaultLocale != null) {
+      Locale.setDefault(defaultLocale);
+    }
   }
 
 
