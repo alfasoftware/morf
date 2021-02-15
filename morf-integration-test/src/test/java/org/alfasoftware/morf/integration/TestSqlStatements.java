@@ -59,6 +59,7 @@ import static org.alfasoftware.morf.sql.element.Function.daysBetween;
 import static org.alfasoftware.morf.sql.element.Function.every;
 import static org.alfasoftware.morf.sql.element.Function.floor;
 import static org.alfasoftware.morf.sql.element.Function.greatest;
+import static org.alfasoftware.morf.sql.element.Function.isnull;
 import static org.alfasoftware.morf.sql.element.Function.lastDayOfMonth;
 import static org.alfasoftware.morf.sql.element.Function.least;
 import static org.alfasoftware.morf.sql.element.Function.leftPad;
@@ -2508,7 +2509,8 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
           field("field1"),
           field("field2"),
           literal(":justtomesswithyou"), // just to confuse it - should be treated as a string
-          parameter("param3").type(DataType.INTEGER).as("field3")
+          parameter("param3").type(DataType.INTEGER).as("field3"),
+          isnull(literal("value"), parameter("param4").type(DataType.STRING))
         )
         .from("SelectFirstTable")
         .where(field("field1").in(
@@ -2526,12 +2528,14 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         ImmutableList.of(
           parameter("param1").type(DataType.INTEGER),
           parameter("param2").type(DataType.DECIMAL),
-          parameter("param3").type(DataType.INTEGER)
+          parameter("param3").type(DataType.INTEGER),
+          parameter("param4").type(DataType.STRING)
         ),
         DataSetUtils.statementParameters()
           .setInteger("param1", 1) // 1 + 1 = 2
           .setInteger("param2", 5)
           .setInteger("param3", 7)
+          .setString("param4", "value4")
       );
       ResultSet resultSet = preparedStatement.executeQuery();
       assertTrue("No record 1", resultSet.next());
@@ -2539,16 +2543,19 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
       assertEquals("Row 1 column 2", 2, resultSet.getInt(2));
       assertEquals("Row 1 column 3", ":justtomesswithyou", resultSet.getString(3));
       assertEquals("Row 1 column 4", 7, resultSet.getInt(4));
+      assertEquals("Row 1 column 5", "value", resultSet.getString(5));
       assertTrue("No record 2", resultSet.next());
       assertEquals("Row 2 column 1", 2, resultSet.getInt(1));
       assertEquals("Row 2 column 2", 3, resultSet.getInt(2));
       assertEquals("Row 2 column 3", ":justtomesswithyou", resultSet.getString(3));
       assertEquals("Row 2 column 4", 7, resultSet.getInt(4));
+      assertEquals("Row 2 column 5", "value", resultSet.getString(5));
       assertTrue("No record 3", resultSet.next());
       assertEquals("Row 3 column 1", 5, resultSet.getInt(1));
       assertEquals("Row 3 column 2", 4, resultSet.getInt(2));
       assertEquals("Row 3 column 3", ":justtomesswithyou", resultSet.getString(3));
       assertEquals("Row 3 column 4", 7, resultSet.getInt(4));
+      assertEquals("Row 3 column 5", "value", resultSet.getString(5));
       assertFalse("Noo many records", resultSet.next());
     } finally {
       preparedStatement.close();
