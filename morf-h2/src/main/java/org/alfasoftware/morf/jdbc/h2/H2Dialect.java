@@ -31,10 +31,8 @@ import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
-import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.WindowFunction;
@@ -132,24 +130,6 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#truncateTableStatements(org.alfasoftware.morf.metadata.Table)
-   */
-  @Override
-  public Collection<String> truncateTableStatements(Table table) {
-    return Arrays.asList("truncate table " + schemaNamePrefix() + table.getName());
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#deleteAllFromTableStatements(org.alfasoftware.morf.metadata.Table)
-   */
-  @Override
-  public Collection<String> deleteAllFromTableStatements(Table table) {
-    return Arrays.asList("delete from " + schemaNamePrefix() + table.getName());
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getColumnRepresentation(org.alfasoftware.morf.metadata.DataType,
    *      int, int)
    */
@@ -187,15 +167,6 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#useInsertBatching()
-   */
-  @Override
-  public boolean useInsertBatching() {
-    return true;
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getFromDummyTable()
    */
   @Override
@@ -219,29 +190,6 @@ class H2Dialect extends SqlDialect {
   @Override
   public DatabaseType getDatabaseType() {
     return DatabaseType.Registry.findByIdentifier(H2.IDENTIFIER);
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(ConcatenatedField)
-   */
-  @Override
-  protected String getSqlFrom(ConcatenatedField concatenatedField) {
-    List<String> sql = new ArrayList<>();
-    for (AliasedField field : concatenatedField.getConcatenationFields()) {
-      // Interpret null values as empty strings
-      sql.add("COALESCE(" + getSqlFrom(field) + ",'')");
-    }
-    return StringUtils.join(sql, " || ");
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForIsNull(org.alfasoftware.morf.sql.element.Function)
-   */
-  @Override
-  protected String getSqlForIsNull(Function function) {
-    return "COALESCE(" + getSqlFrom(function.getArguments().get(0)) + ", " + getSqlFrom(function.getArguments().get(1)) + ") ";
   }
 
 
@@ -276,9 +224,9 @@ class H2Dialect extends SqlDialect {
 
     // Now do column operations on the new
     if (StringUtils.isNotEmpty(newColumn.getDefaultValue())) {
-      String escape = newColumn.getType() == DataType.STRING ? "'" : "";
-      result.add("ALTER TABLE " + schemaNamePrefix() + table.getName() + " ALTER COLUMN " + newColumn.getName() + " SET DEFAULT " + escape
-          + newColumn.getDefaultValue() + escape);
+
+      result.add("ALTER TABLE " + schemaNamePrefix() + table.getName() + " ALTER COLUMN " + newColumn.getName() + " SET DEFAULT "
+          + sqlForDefaultClauseLiteral(newColumn));
     }
 
     if (oldColumn.isNullable() != newColumn.isNullable()) {
@@ -325,12 +273,11 @@ class H2Dialect extends SqlDialect {
     List<String> result = new ArrayList<>();
 
     if (!oldPrimaryKeyColumns.isEmpty()) {
-      result.add("ALTER TABLE " + schemaNamePrefix() + table.getName() + " DROP PRIMARY KEY");
+      result.add(dropPrimaryKeyConstraintStatement(table));
     }
 
     if (!newPrimaryKeyColumns.isEmpty()) {
-      result.add(
-        addPrimaryKeyConstraintStatement(table, newPrimaryKeyColumns));
+      result.add(addPrimaryKeyConstraintStatement(table, newPrimaryKeyColumns));
     }
 
     return result;
@@ -352,7 +299,7 @@ class H2Dialect extends SqlDialect {
    * @return The statement
    */
   private String dropPrimaryKeyConstraintStatement(Table table) {
-    return "ALTER TABLE " + schemaNamePrefix() + table.getName() + " DROP CONSTRAINT " + table.getName() + "_PK";
+    return "ALTER TABLE " + schemaNamePrefix() + table.getName() + " DROP PRIMARY KEY";
   }
 
 
@@ -410,15 +357,6 @@ class H2Dialect extends SqlDialect {
   @Override
   public String decorateTemporaryTableName(String undecoratedName) {
     return TEMPORARY_TABLE_PREFIX + undecoratedName;
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#dropStatements(org.alfasoftware.morf.metadata.View)
-   */
-  @Override
-  public Collection<String> dropStatements(View view) {
-    return Arrays.asList("DROP VIEW " + schemaNamePrefix() + view.getName() + " IF EXISTS CASCADE");
   }
 
 
@@ -498,24 +436,6 @@ class H2Dialect extends SqlDialect {
        "END ",
        getSqlFrom(fromDate), getSqlFrom(toDate)
     );
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#leftTrim(org.alfasoftware.morf.sql.element.Function)
-   */
-  @Override
-  protected String leftTrim(Function function) {
-    return "LTRIM(" + getSqlFrom(function.getArguments().get(0)) + ")";
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#rightTrim(org.alfasoftware.morf.sql.element.Function)
-   */
-  @Override
-  protected String rightTrim(Function function) {
-    return "RTRIM(" + getSqlFrom(function.getArguments().get(0)) + ")";
   }
 
 
@@ -652,15 +572,6 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#supportsWindowFunctions()
-   */
-  @Override
-  public boolean supportsWindowFunctions() {
-    return false;
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.element.WindowFunction)
    */
   @Override
@@ -670,38 +581,11 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#renameIndexStatements(org.alfasoftware.morf.metadata.Table, java.lang.String, java.lang.String)
-   */
-  @Override
-  public Collection<String> renameIndexStatements(Table table, String fromIndexName, String toIndexName) {
-    return ImmutableList.of(String.format("ALTER INDEX %s RENAME TO %s", fromIndexName, toIndexName));
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#rebuildTriggers(org.alfasoftware.morf.metadata.Table)
-   */
-  @Override
-  public Collection<String> rebuildTriggers(Table table) {
-    return SqlDialect.NO_STATEMENTS;
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForLastDayOfMonth
    */
   @Override
   protected String getSqlForLastDayOfMonth(AliasedField date) {
     return "DATEADD(dd, -DAY(DATEADD(m,1," + getSqlFrom(date) + ")), DATEADD(m,1," + getSqlFrom(date) + "))";
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect.getSqlForAnalyseTable(Table)
-   */
-  @Override
-  public Collection<String> getSqlForAnalyseTable(Table table) {
-    return SqlDialect.NO_STATEMENTS;
   }
 
 

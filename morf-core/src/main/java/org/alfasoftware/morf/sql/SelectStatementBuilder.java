@@ -155,6 +155,25 @@ public class SelectStatementBuilder extends AbstractSelectStatementBuilder<Selec
 
 
   /**
+   * Specifies that the records should be grouped by the specified fields.
+   *
+   * <blockquote><pre>
+   * select()
+   *   .from(tableRef("Foo"))
+   *   .groupBy(field("age"));</pre></blockquote>
+   *
+   * @param fields the fields to group by
+   * @return this, for method chaining.
+   */
+  public SelectStatementBuilder groupBy(Iterable<? extends AliasedFieldBuilder> fields) {
+    // Add the list
+    groupBys.addAll(Builder.Helper.buildAll(Lists.newArrayList(fields)));
+
+    return this;
+  }
+
+
+  /**
    * Filters the grouped records by some criteria.
    *
    * <blockquote><pre>

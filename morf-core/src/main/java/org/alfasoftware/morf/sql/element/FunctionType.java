@@ -25,9 +25,14 @@ package org.alfasoftware.morf.sql.element;
 public enum FunctionType {
 
   /**
-   * Count function (e.g. COUNT(*) FROM BLAH) specified
+   * Count function (e.g. COUNT(*) or COUNT(amount))
    */
   COUNT,
+
+  /**
+   * Count(DISTINCT) function (e.g. COUNT(DISTINCT id))
+   */
+  COUNT_DISTINCT,
 
   /**
    * Maximum function (e.g. MAX(scheduleStartDate))
@@ -53,6 +58,11 @@ public enum FunctionType {
    * Sum function (e.g. SUM(assetCost))
    */
   SUM,
+
+  /**
+   * Sum(DISTINCT) function (e.g. SUM(DISTINCT assetCost))
+   */
+  SUM_DISTINCT,
 
   /**
    * Modulo function (e.g. MOD(numberOfAssets, 10))
@@ -99,6 +109,16 @@ public enum FunctionType {
   COALESCE,
 
   /**
+   * Greatest function (maximum of given values)
+   */
+  GREATEST,
+
+  /**
+   * Least function (minimum of given values)
+   */
+  LEAST,
+
+  /**
    * Calculate the number of days between two bounds, effectively
    * {@code arg1 - arg0}.
    */
@@ -109,6 +129,11 @@ public enum FunctionType {
    * {@code in_months(arg1 - arg0)}.
    */
   MONTHS_BETWEEN,
+
+  /**
+   * Trim function. Trim leading and trailing spaces
+   */
+  TRIM,
 
   /**
    * Left Trim function. Trim leading spaces
@@ -187,6 +212,11 @@ public enum FunctionType {
    * Average function.
    */
   AVERAGE,
+
+  /**
+   * Average(DISTINCT) function.
+   */
+  AVERAGE_DISTINCT,
 
   /**
    * Last day of the month from the date provider as an argument.

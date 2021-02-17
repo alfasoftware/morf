@@ -20,6 +20,8 @@ import java.util.Base64;
 
 import org.joda.time.LocalDate;
 
+import com.google.common.base.Charsets;
+
 /**
  * Standard implementations of {@link ValueConverter}.
  *
@@ -285,7 +287,7 @@ final class ValueConverters {
     }
     @Override
     public String stringValue(byte[] value) {
-      return new String(Base64.getEncoder().encode(value));
+      return new String(Base64.getEncoder().encode(value), Charsets.US_ASCII);
     }
   }
 

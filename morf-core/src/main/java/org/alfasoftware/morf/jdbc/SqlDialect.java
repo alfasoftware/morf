@@ -32,9 +32,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -132,7 +130,7 @@ public abstract class SqlDialect {
   /**
    * Empty collection of strings that implementations can return if required.
    */
-  public static final Collection<String> NO_STATEMENTS                     = Collections.emptyList();
+  public static final Collection<String> NO_STATEMENTS                     = ImmutableList.of();
 
   /**
    * Used as the alias for the select statement in merge statements.
@@ -223,7 +221,9 @@ public abstract class SqlDialect {
    * @return SQL statements required to clear a table and prepare it for data
    *         population.
    */
-  public abstract Collection<String> truncateTableStatements(Table table);
+  public Collection<String> truncateTableStatements(Table table) {
+    return ImmutableList.of("TRUNCATE TABLE " + schemaNamePrefix(table) + table.getName());
+  }
 
 
   /**
@@ -233,7 +233,9 @@ public abstract class SqlDialect {
    * @param to - table with new name
    * @return SQL statements required to change a table name.
    */
-  public abstract Collection<String> renameTableStatements(Table from, Table to);
+  public Collection<String> renameTableStatements(Table from, Table to) {
+    return ImmutableList.of("ALTER TABLE " + schemaNamePrefix(from) + from.getName() + " RENAME TO " + to.getName());
+  }
 
 
   /**
@@ -244,7 +246,9 @@ public abstract class SqlDialect {
    * @param toIndexName The new index name
    * @return SQL Statements required to rename an index
    */
-  public abstract Collection<String> renameIndexStatements(Table table, String fromIndexName, String toIndexName);
+  public Collection<String> renameIndexStatements(Table table, String fromIndexName, String toIndexName) {
+    return ImmutableList.of("ALTER INDEX " + schemaNamePrefix(table) + fromIndexName + " RENAME TO " + toIndexName);
+  }
 
 
   /**
@@ -262,7 +266,9 @@ public abstract class SqlDialect {
    * @param table the database table to clear
    * @return SQL statements required to clear the table.
    */
-  public abstract Collection<String> deleteAllFromTableStatements(Table table);
+  public Collection<String> deleteAllFromTableStatements(Table table) {
+    return ImmutableList.of("DELETE FROM " + schemaNamePrefix(table) + table.getName());
+  }
 
 
   /**
@@ -274,7 +280,7 @@ public abstract class SqlDialect {
    */
   @SuppressWarnings("unused")
   public Collection<String> preInsertWithPresetAutonumStatements(Table table, boolean insertingUnderAutonumLimit) {
-    return Collections.emptyList();
+    return ImmutableList.of();
   }
 
 
@@ -338,16 +344,16 @@ public abstract class SqlDialect {
       }
     } else if (statement instanceof UpdateStatement) {
       UpdateStatement update = (UpdateStatement) statement;
-      return Collections.singletonList(convertStatementToSQL(update));
+      return ImmutableList.of(convertStatementToSQL(update));
     } else if (statement instanceof DeleteStatement) {
       DeleteStatement delete = (DeleteStatement) statement;
-      return Collections.singletonList(convertStatementToSQL(delete));
+      return ImmutableList.of(convertStatementToSQL(delete));
     } else if (statement instanceof TruncateStatement) {
       TruncateStatement truncateStatement = (TruncateStatement) statement;
-      return Collections.singletonList(convertStatementToSQL(truncateStatement));
+      return ImmutableList.of(convertStatementToSQL(truncateStatement));
     } else if (statement instanceof MergeStatement) {
       MergeStatement merge = (MergeStatement) statement;
-      return Collections.singletonList(convertStatementToSQL(merge));
+      return ImmutableList.of(convertStatementToSQL(merge));
     } else {
       throw new UnsupportedOperationException("Executed statement operation not supported for [" + statement.getClass() + "]");
     }
@@ -359,9 +365,10 @@ public abstract class SqlDialect {
    * autonumbered columns
    *
    * @param statement The statement to check
+   * @param databaseMetadata the database schema
    * @return true if autonumbered, false otherwise
    */
-  private boolean isAutonumbered(InsertStatement statement, Schema databaseMetadata) {
+  protected boolean isAutonumbered(InsertStatement statement, Schema databaseMetadata) {
     if (statement.getTable() != null) {
       Table tableInserting = databaseMetadata.getTable(statement.getTable().getName());
       for (Column col : tableInserting.columns()) {
@@ -686,8 +693,7 @@ public abstract class SqlDialect {
 
 
   /**
-   * @return The schema prefix (including the dot) or blank if the schema's
-   *         blank.
+   * @return The schema prefix (including the dot) or blank if the schema's blank.
    */
   public String schemaNamePrefix() {
     if (StringUtils.isEmpty(schemaName)) {
@@ -699,10 +705,18 @@ public abstract class SqlDialect {
 
 
   /**
+   * @param table The table for which the schema name will be retrieved
+   * @return Base implementation calls {@link #schemaNamePrefix()}.
+   */
+  protected String schemaNamePrefix(@SuppressWarnings("unused") Table table) {
+    return schemaNamePrefix();
+  }
+
+
+  /**
    * @param tableRef The table reference from which the schema name will be extracted
    * @return The schema prefix of the specified table (including the dot), the
-   *         dialect's schema prefix or blank if neither is specified (in that
-   *         order).
+   *         dialect's schema prefix or blank if neither is specified (in that order).
    */
   protected String schemaNamePrefix(TableReference tableRef) {
     if (StringUtils.isEmpty(tableRef.getSchemaName())) {
@@ -719,7 +733,9 @@ public abstract class SqlDialect {
    * @param table The table to drop
    * @return The SQL statements as strings.
    */
-  public abstract Collection<String> dropStatements(Table table);
+  public Collection<String> dropStatements(Table table) {
+    return ImmutableList.of("DROP TABLE " + schemaNamePrefix(table) + table.getName());
+  }
 
 
   /**
@@ -728,7 +744,9 @@ public abstract class SqlDialect {
    * @param view The view to drop
    * @return The SQL statements as strings.
    */
-  public abstract Collection<String> dropStatements(View view);
+  public Collection<String> dropStatements(View view) {
+    return ImmutableList.of("DROP VIEW " + schemaNamePrefix() + view.getName() + " IF EXISTS CASCADE");
+  }
 
 
   /**
@@ -858,7 +876,7 @@ public abstract class SqlDialect {
    * @param result alias will be appended to this
    * @param currentField field to be aliased
    */
-  private void appendAlias(StringBuilder result, AliasedField currentField) {
+  protected void appendAlias(StringBuilder result, AliasedField currentField) {
     if (!StringUtils.isBlank(currentField.getAlias())) {
       result.append(String.format(" AS %s", currentField.getAlias()));
     }
@@ -1055,7 +1073,7 @@ public abstract class SqlDialect {
    * @param currentOrderByField field within order by clause
    * @return SQL for the field inside order by clause
    */
-  private String getSqlForOrderByField(AliasedField currentOrderByField) {
+  protected String getSqlForOrderByField(AliasedField currentOrderByField) {
 
     if (currentOrderByField instanceof FieldReference) {
       return getSqlForOrderByField((FieldReference) currentOrderByField);
@@ -1142,8 +1160,9 @@ public abstract class SqlDialect {
   /**
    * @param result the string builder to append to
    * @param join the join statement
+   * @param innerJoinKeyword usually an INNER JOIN, but this can be changed for optimisations
    */
-  private void appendJoin(StringBuilder result, Join join, String innerJoinKeyword) {
+  protected void appendJoin(StringBuilder result, Join join, String innerJoinKeyword) {
     // Put the type in
     switch (join.getType()) {
       case INNER_JOIN:
@@ -1152,8 +1171,8 @@ public abstract class SqlDialect {
       case LEFT_OUTER_JOIN:
         result.append(" LEFT OUTER JOIN ");
         break;
-      case RIGHT_OUTER_JOIN:
-        result.append(" RIGHT OUTER JOIN ");
+      case FULL_OUTER_JOIN:
+        result.append(" FULL OUTER JOIN ");
         break;
       default:
         throw new UnsupportedOperationException("Cannot perform join of type [" + join.getType() + "] on database");
@@ -1184,7 +1203,7 @@ public abstract class SqlDialect {
       // Then put the join fields into the output
       result.append(getSqlFrom(join.getCriterion()));
 
-    } else if (join.getType() == JoinType.LEFT_OUTER_JOIN || join.getType() == JoinType.RIGHT_OUTER_JOIN) {
+    } else if (join.getType() == JoinType.LEFT_OUTER_JOIN || join.getType() == JoinType.FULL_OUTER_JOIN) {
       throw new IllegalArgumentException(join.getType() + " must have ON criteria");
 
     } else {
@@ -1211,7 +1230,7 @@ public abstract class SqlDialect {
    * @param operator the union to convert.
    * @return a string representation of the field.
    */
-  private String getSqlFrom(UnionSetOperator operator) {
+  protected String getSqlFrom(UnionSetOperator operator) {
     return String.format(" %s %s", operator.getUnionStrategy() == ALL ? "UNION ALL" : "UNION",
       getSqlFrom(operator.getSelectStatement()));
   }
@@ -1261,7 +1280,7 @@ public abstract class SqlDialect {
    * @param idTable the ID Table.
    * @return a standards compliant SQL INSERT statement
    */
-  private List<String> getSqlFromInsert(InsertStatement stmt, Schema metadata, Table idTable) {
+  protected List<String> getSqlFromInsert(InsertStatement stmt, Schema metadata, Table idTable) {
     if (stmt.getTable() == null) {
       throw new IllegalArgumentException("Cannot specify a null destination table in an insert statement");
     }
@@ -1685,7 +1704,14 @@ public abstract class SqlDialect {
    * @param concatenatedField the field to generate SQL for
    * @return a string representation of the field literal
    */
-  protected abstract String getSqlFrom(ConcatenatedField concatenatedField);
+  protected String getSqlFrom(ConcatenatedField concatenatedField) {
+    List<String> sql = new ArrayList<>();
+    for (AliasedField field : concatenatedField.getConcatenationFields()) {
+      // Interpret null values as empty strings
+      sql.add("COALESCE(" + getSqlFrom(field) + ",'')");
+    }
+    return StringUtils.join(sql, " || ");
+  }
 
 
   /**
@@ -1698,249 +1724,413 @@ public abstract class SqlDialect {
     switch (function.getType()) {
       case COUNT:
         if (function.getArguments().isEmpty()) {
-          return "COUNT(*)";
-        } else if (function.getArguments().size() == 1) {
-          return "COUNT(" + getSqlFrom(function.getArguments().get(0)) + ")";
-        } else {
-          throw new IllegalArgumentException("The COUNT function should have only have one or zero arguments. This function has "
-              + function.getArguments().size());
+          return getSqlForCount();
         }
+        if (function.getArguments().size() == 1) {
+          return getSqlForCount(function);
+        }
+        throw new IllegalArgumentException("The COUNT function should have only have one or zero arguments. This function has " + function.getArguments().size());
+
+      case COUNT_DISTINCT:
+        if (function.getArguments().size() != 1) {
+          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
+        }
+        return getSqlForCountDistinct(function);
+
       case AVERAGE:
-        return "AVG(" + getSqlFrom(function.getArguments().get(0)) + ")";
+        if (function.getArguments().size() != 1) {
+          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
+        }
+        return getSqlForAverage(function);
+
+      case AVERAGE_DISTINCT:
+        if (function.getArguments().size() != 1) {
+          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
+        }
+        return getSqlForAverageDistinct(function);
+
       case LENGTH:
       case BLOB_LENGTH:
+        if (function.getArguments().size() != 1) {
+          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
+        }
         return getSqlforLength(function);
+
       case SOME:
-        return getSqlForSome(function.getArguments().get(0));
+        if (function.getArguments().size() != 1) {
+          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
+        }
+        return getSqlForSome(function);
+
       case EVERY:
-        return getSqlForEvery(function.getArguments().get(0));
+        if (function.getArguments().size() != 1) {
+          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
+        }
+        return getSqlForEvery(function);
+
       case MAX:
+        if (function.getArguments().size() != 1) {
+          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
+        }
+        return getSqlForMax(function);
+
       case MIN:
+        if (function.getArguments().size() != 1) {
+          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
+        }
+        return getSqlForMin(function);
+
       case SUM:
         if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType()
-              + " function should have only one argument. This function has " + function.getArguments().size());
+          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
         }
+        return getSqlForSum(function);
 
-        return function.getType().name() + "(" + getSqlFrom(function.getArguments().get(0)) + ")";
+      case SUM_DISTINCT:
+        if (function.getArguments().size() != 1) {
+          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
+        }
+        return getSqlForSumDistinct(function);
 
       case IS_NULL:
         if (function.getArguments().size() != 2) {
-          throw new IllegalArgumentException("The IS_NULL function should have two arguments. This function has "
-              + function.getArguments().size());
+          throw new IllegalArgumentException("The IS_NULL function should have two arguments. This function has " + function.getArguments().size());
         }
-
         return getSqlForIsNull(function);
 
       case MOD:
         if (function.getArguments().size() != 2) {
-          throw new IllegalArgumentException("The MOD function should have two arguments. This function has "
-              + function.getArguments().size());
+          throw new IllegalArgumentException("The MOD function should have two arguments. This function has " + function.getArguments().size());
         }
-
         return getSqlForMod(function);
 
       case SUBSTRING:
         if (function.getArguments().size() != 3) {
-          throw new IllegalArgumentException("The SUBSTRING function should have three arguments. This function has "
-              + function.getArguments().size());
+          throw new IllegalArgumentException("The SUBSTRING function should have three arguments. This function has " + function.getArguments().size());
         }
-
-        return getSubstringFunctionName() + "(" + getSqlFrom(function.getArguments().get(0)) + ", "
-            + getSqlFrom(function.getArguments().get(1)) + ", " + getSqlFrom(function.getArguments().get(2)) + ")";
+        return getSqlForSubstring(function);
 
       case YYYYMMDD_TO_DATE:
         if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The YYYYMMDD_TO_DATE function should have one argument. This function has "
-              + function.getArguments().size());
+          throw new IllegalArgumentException("The YYYYMMDD_TO_DATE function should have one argument. This function has " + function.getArguments().size());
         }
-
         return getSqlForYYYYMMDDToDate(function);
 
       case DATE_TO_YYYYMMDD:
         if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The DATE_TO_YYYYMMDD function should have one argument. This function has "
-              + function.getArguments().size());
+          throw new IllegalArgumentException("The DATE_TO_YYYYMMDD function should have one argument. This function has " + function.getArguments().size());
         }
-
         return getSqlForDateToYyyymmdd(function);
 
       case DATE_TO_YYYYMMDDHHMMSS:
         if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The DATE_TO_YYYYMMDDHHMMSS function should have one argument. This function has "
-              + function.getArguments().size());
+          throw new IllegalArgumentException("The DATE_TO_YYYYMMDDHHMMSS function should have one argument. This function has " + function.getArguments().size());
         }
-
         return getSqlForDateToYyyymmddHHmmss(function);
 
       case NOW:
         if (!function.getArguments().isEmpty()) {
-          throw new IllegalArgumentException("The NOW function should have zero arguments. This function has "
-              + function.getArguments().size());
+          throw new IllegalArgumentException("The NOW function should have zero arguments. This function has " + function.getArguments().size());
         }
-
         return getSqlForNow(function);
 
       case DAYS_BETWEEN:
         if (function.getArguments().size() != 2) {
-          throw new IllegalArgumentException("The DAYS_BETWEEN function should have two arguments. This function has"
-              + function.getArguments().size());
+          throw new IllegalArgumentException("The DAYS_BETWEEN function should have two arguments. This function has " + function.getArguments().size());
         }
-
         return getSqlForDaysBetween(function.getArguments().get(0), function.getArguments().get(1));
 
       case MONTHS_BETWEEN:
         if (function.getArguments().size() != 2) {
-          throw new IllegalArgumentException("The MONTHS_BETWEEN function should have two arguments. This function has"
-              + function.getArguments().size());
+          throw new IllegalArgumentException("The MONTHS_BETWEEN function should have two arguments. This function has " + function.getArguments().size());
         }
-
         return getSqlForMonthsBetween(function.getArguments().get(0), function.getArguments().get(1));
 
       case COALESCE:
         if (function.getArguments().size() == 0) {
-          throw new IllegalArgumentException("The COALESCE function requires at least one argument. This function has"
-              + function.getArguments().size());
+          throw new IllegalArgumentException("The COALESCE function requires at least one argument. This function has " + function.getArguments().size());
         }
+        return getSqlForCoalesce(function);
 
-        StringBuilder expression = new StringBuilder();
-        expression.append(getCoalesceFunctionName()).append('(');
-        boolean first = true;
-        for (AliasedField f : function.getArguments()) {
-          if (!first) {
-            expression.append(", ");
-          }
-
-          expression.append(getSqlFrom(f));
-          first = false;
+      case GREATEST:
+        if (function.getArguments().size() == 0) {
+          throw new IllegalArgumentException("The GREATEST function requires at least one argument. This function has " + function.getArguments().size());
         }
+        return getSqlForGreatest(function);
 
-        expression.append(')');
-        return expression.toString();
+      case LEAST:
+        if (function.getArguments().size() == 0) {
+          throw new IllegalArgumentException("The LEAST function requires at least one argument. This function has " + function.getArguments().size());
+        }
+        return getSqlForLeast(function);
+
+      case TRIM:
+        if (function.getArguments().size() != 1) {
+          throw new IllegalArgumentException("The TRIM function should have one argument. This function has " + function.getArguments().size());
+        }
+        return getSqlForTrim(function);
 
       case LEFT_TRIM:
         if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The LEFT_TRIM function should have one argument. This function has "
-              + function.getArguments().size());
+          throw new IllegalArgumentException("The LEFT_TRIM function should have one argument. This function has " + function.getArguments().size());
         }
-
-        return leftTrim(function);
+        return getSqlForLeftTrim(function);
 
       case RIGHT_TRIM:
         if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The RIGHT_TRIM function should have one argument. This function has "
-              + function.getArguments().size());
+          throw new IllegalArgumentException("The RIGHT_TRIM function should have one argument. This function has " + function.getArguments().size());
         }
-
-        return rightTrim(function);
+        return getSqlForRightTrim(function);
 
       case ADD_DAYS:
         if (function.getArguments().size() != 2) {
-          throw new IllegalArgumentException("The ADD_DAYS function should have two arguments. This function has "
-              + function.getArguments().size());
+          throw new IllegalArgumentException("The ADD_DAYS function should have two arguments. This function has " + function.getArguments().size());
         }
-
         return getSqlForAddDays(function);
 
       case ADD_MONTHS:
         if (function.getArguments().size() != 2) {
-          throw new IllegalArgumentException("The ADD_MONTHS function should have two arguments. This function has "
-              + function.getArguments().size());
+          throw new IllegalArgumentException("The ADD_MONTHS function should have two arguments. This function has " + function.getArguments().size());
         }
-
         return getSqlForAddMonths(function);
 
       case ROUND:
         if (function.getArguments().size() != 2) {
-          throw new IllegalArgumentException("The ROUND function should have two arguments. This function has "
-              + function.getArguments().size());
+          throw new IllegalArgumentException("The ROUND function should have two arguments. This function has " + function.getArguments().size());
         }
-
         return getSqlForRound(function);
 
       case FLOOR:
         if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The FLOOR function should have one argument. This function has "
-              + function.getArguments().size());
+          throw new IllegalArgumentException("The FLOOR function should have one argument. This function has " + function.getArguments().size());
         }
-
         return getSqlForFloor(function);
 
       case RANDOM:
+        if (function.getArguments().size() != 0) {
+          throw new IllegalArgumentException("The " + function.getType() + " function should have no arguments. This function has " + function.getArguments().size());
+        }
         return getSqlForRandom();
 
       case RANDOM_STRING:
         if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The RANDOM_STRING function should have one argument. This function has "
-              + function.getArguments().size());
+          throw new IllegalArgumentException("The RANDOM_STRING function should have one argument. This function has " + function.getArguments().size());
         }
-
         return getSqlForRandomString(function);
 
       case LOWER:
         if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The LOWER function should have one argument. This function has "
-              + function.getArguments().size());
+          throw new IllegalArgumentException("The LOWER function should have one argument. This function has " + function.getArguments().size());
         }
         return getSqlForLower(function);
 
       case UPPER:
         if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The UPPER function should have one argument. This function has "
-              + function.getArguments().size());
+          throw new IllegalArgumentException("The UPPER function should have one argument. This function has " + function.getArguments().size());
         }
         return getSqlForUpper(function);
 
       case POWER:
         if (function.getArguments().size() != 2) {
-          throw new IllegalArgumentException("The POWER function should have two arguments. This function has "
-              + function.getArguments().size());
+          throw new IllegalArgumentException("The POWER function should have two arguments. This function has " + function.getArguments().size());
         }
         return getSqlForPower(function);
 
       case LEFT_PAD:
         if (function.getArguments().size() != 3) {
-          throw new IllegalArgumentException("The LEFT_PAD function should have three arguments. This function has "
-              + function.getArguments().size());
+          throw new IllegalArgumentException("The LEFT_PAD function should have three arguments. This function has " + function.getArguments().size());
         }
         return getSqlForLeftPad(function.getArguments().get(0), function.getArguments().get(1), function.getArguments().get(2));
 
       case LAST_DAY_OF_MONTH:
         if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The LAST_DAY_OF_MONTH function should have one argument. This function has"
-              + function.getArguments().size());
+          throw new IllegalArgumentException("The LAST_DAY_OF_MONTH function should have one argument. This function has " + function.getArguments().size());
         }
-
         return getSqlForLastDayOfMonth(function.getArguments().get(0));
 
       default:
-        throw new UnsupportedOperationException("This database does not currently support the [" + function.getType()
-            + "] function");
+        throw new UnsupportedOperationException("This database does not currently support the [" + function.getType() + "] function");
     }
+  }
+
+
+  /**
+   * Converts the count function into SQL.
+   *
+   * @return a string representation of the SQL
+   */
+  protected String getSqlForCount() {
+    return "COUNT(*)";
+  }
+
+
+  /**
+   * Converts the count function into SQL.
+   *
+   * @param function the function details
+   * @return a string representation of the SQL
+   */
+  protected String getSqlForCount(Function function) {
+    return "COUNT(" + getSqlFrom(function.getArguments().get(0)) + ")";
+  }
+
+
+  /**
+   * Converts the count function into SQL.
+   *
+   * @param function the function details
+   * @return a string representation of the SQL
+   */
+  protected String getSqlForCountDistinct(Function function) {
+    return "COUNT(DISTINCT " + getSqlFrom(function.getArguments().get(0)) + ")";
+  }
+
+
+  /**
+   * Converts the average function into SQL.
+   *
+   * @param function the function details
+   * @return a string representation of the SQL
+   */
+  protected String getSqlForAverage(Function function) {
+    return "AVG(" + getSqlFrom(function.getArguments().get(0)) + ")";
+  }
+
+
+  /**
+   * Converts the average function into SQL.
+   *
+   * @param function the function details
+   * @return a string representation of the SQL
+   */
+  protected String getSqlForAverageDistinct(Function function) {
+    return "AVG(DISTINCT " + getSqlFrom(function.getArguments().get(0)) + ")";
+  }
+
+
+  /**
+   * Converts the substring function into SQL.
+   *
+   * @param function the function details
+   * @return a string representation of the SQL
+   */
+  protected String getSqlForSubstring(Function function) {
+    return getSubstringFunctionName() + "("
+        + getSqlFrom(function.getArguments().get(0)) + ", "
+        + getSqlFrom(function.getArguments().get(1)) + ", "
+        + getSqlFrom(function.getArguments().get(2)) + ")";
+  }
+
+
+  /**
+   * Converts the coalesce function into SQL.
+   *
+   * @param function the function details
+   * @return a string representation of the SQL
+   */
+  protected String getSqlForCoalesce(Function function) {
+    StringBuilder expression = new StringBuilder();
+    expression.append(getCoalesceFunctionName()).append('(');
+    boolean first = true;
+    for (AliasedField f : function.getArguments()) {
+      if (!first) {
+        expression.append(", ");
+      }
+
+      expression.append(getSqlFrom(f));
+      first = false;
+    }
+
+    expression.append(')');
+    return expression.toString();
+  }
+
+
+  /**
+   * Converts the greatest function into SQL.
+   *
+   * @param function the function details
+   * @return a string representation of the SQL
+   */
+  protected String getSqlForGreatest(Function function) {
+    return getGreatestFunctionName() + '(' + Joiner.on(", ").join(function.getArguments().stream().map(f -> getSqlFrom(f)).iterator()) + ')';
+  }
+
+
+  /**
+   * Converts the least function into SQL.
+   *
+   * @param function the function details
+   * @return a string representation of the SQL
+   */
+  protected String getSqlForLeast(Function function) {
+    return getLeastFunctionName() + '(' + Joiner.on(", ").join(function.getArguments().stream().map(f -> getSqlFrom(f)).iterator()) + ')';
+  }
+
+
+  /**
+   * Converts the max function into SQL.
+   *
+   * @param function the function details
+   * @return a string representation of the SQL
+   */
+  protected String getSqlForMax(Function function) {
+    return "MAX(" + getSqlFrom(function.getArguments().get(0)) + ")";
+  }
+
+
+  /**
+   * Converts the min function into SQL.
+   *
+   * @param function the function details
+   * @return a string representation of the SQL
+   */
+  protected String getSqlForMin(Function function) {
+    return "MIN(" + getSqlFrom(function.getArguments().get(0)) + ")";
+  }
+
+
+  /**
+   * Converts the sum function into SQL.
+   *
+   * @param function the function details
+   * @return a string representation of the SQL
+   */
+  protected String getSqlForSum(Function function) {
+    return "SUM(" + getSqlFrom(function.getArguments().get(0)) + ")";
+  }
+
+
+  /**
+   * Converts the sum function into SQL.
+   *
+   * @param function the function details
+   * @return a string representation of the SQL
+   */
+  protected String getSqlForSumDistinct(Function function) {
+    return "SUM(DISTINCT " + getSqlFrom(function.getArguments().get(0)) + ")";
   }
 
 
   /**
    * Converts the some function into SQL.
    *
-   * @param aliasedField the field to get the maximum for.
-   * @return a string representation of the SQL.
-   * @see org.alfasoftware.morf.sql.element.Function#some(AliasedField)
+   * @param function the function details
+   * @return a string representation of the SQL
    */
-  protected String getSqlForSome(AliasedField aliasedField) {
-    return "MAX(" + getSqlFrom(aliasedField) + ")";
+  protected String getSqlForSome(Function function) {
+    return getSqlForMax(function);
   }
 
 
   /**
    * Converts the every function into SQL.
    *
-   * @param aliasedField the field to get the minimum for.
-   * @return a string representation of the SQL.
-   * @see org.alfasoftware.morf.sql.element.Function#every(AliasedField)
+   * @param function the function details
+   * @return a string representation of the SQL
    */
-  protected String getSqlForEvery(AliasedField aliasedField) {
-    return "MIN(" + getSqlFrom(aliasedField) + ")";
+  protected String getSqlForEvery(Function function) {
+    return getSqlForMin(function);
   };
 
 
@@ -1952,7 +2142,7 @@ public abstract class SqlDialect {
    * @see org.alfasoftware.morf.sql.element.Function#power(AliasedField,
    *      AliasedField)
    */
-  private String getSqlForPower(Function function) {
+  protected String getSqlForPower(Function function) {
     return String.format("POWER(%s, %s)", getSqlFrom(function.getArguments().get(0)), getSqlFrom(function.getArguments().get(1)));
   }
 
@@ -2010,6 +2200,22 @@ public abstract class SqlDialect {
    */
   protected String getCoalesceFunctionName() {
     return "COALESCE";
+  }
+
+
+  /**
+   * @return The name of the GREATEST function
+   */
+  protected String getGreatestFunctionName() {
+    return "GREATEST";
+  }
+
+
+  /**
+   * @return The name of the LEAST function
+   */
+  protected String getLeastFunctionName() {
+    return "LEAST";
   }
 
 
@@ -2106,7 +2312,36 @@ public abstract class SqlDialect {
    * @param scale the column scale.
    * @return a string representation of the column definition.
    */
-  protected abstract String getColumnRepresentation(DataType dataType, int width, int scale);
+  protected String getColumnRepresentation(DataType dataType, int width, int scale) {
+    switch (dataType) {
+      case STRING:
+        return width == 0 ? "VARCHAR" : String.format("VARCHAR(%d)", width);
+
+      case DECIMAL:
+        return width == 0 ? "DECIMAL" : String.format("DECIMAL(%d,%d)", width, scale);
+
+      case DATE:
+        return "DATE";
+
+      case BOOLEAN:
+        return "BIT";
+
+      case BIG_INTEGER:
+        return "BIGINT";
+
+      case INTEGER:
+        return "INTEGER";
+
+      case BLOB:
+        return "BLOB";
+
+      case CLOB:
+        return "CLOB";
+
+      default:
+        throw new UnsupportedOperationException("Cannot map column with type [" + dataType + "]");
+    }
+  }
 
 
   /**
@@ -2115,7 +2350,9 @@ public abstract class SqlDialect {
    * @param function the function to convert.
    * @return a string representation of the SQL.
    */
-  protected abstract String getSqlForIsNull(Function function);
+  protected String getSqlForIsNull(Function function) {
+    return getSqlForCoalesce(function);
+  }
 
 
   /**
@@ -2160,12 +2397,25 @@ public abstract class SqlDialect {
 
 
   /**
+   * Converts the TRIM function into SQL.
+   *
+   * @param function the function to convert.
+   * @return a string representation of the SQL.
+   */
+  protected String getSqlForTrim(Function function) {
+    return "TRIM(" + getSqlFrom(function.getArguments().get(0)) + ")";
+  }
+
+
+  /**
    * Converts the LEFT_TRIM function into SQL.
    *
    * @param function the function to convert.
    * @return a string representation of the SQL.
    */
-  protected abstract String leftTrim(Function function);
+  protected String getSqlForLeftTrim(Function function) {
+    return "LTRIM(" + getSqlFrom(function.getArguments().get(0)) + ")";
+  }
 
 
   /**
@@ -2174,7 +2424,9 @@ public abstract class SqlDialect {
    * @param function the function to convert.
    * @return a string representation of the SQL.
    */
-  protected abstract String rightTrim(Function function);
+  protected String getSqlForRightTrim(Function function) {
+    return "RTRIM(" + getSqlFrom(function.getArguments().get(0)) + ")";
+  }
 
 
   /**
@@ -3070,11 +3322,6 @@ public abstract class SqlDialect {
   }
 
 
-  protected String schemaNamePrefix(@SuppressWarnings("unused") Table tableRef) {
-    return schemaNamePrefix();
-  }
-
-
   /**
    * Builds SQL to get the maximum value of the specified column on the
    * specified {@code dataTable}.
@@ -3084,7 +3331,7 @@ public abstract class SqlDialect {
    * @return SQL getting the maximum value from the {@code dataTable}.
    */
   protected String getExistingMaxAutoNumberValue(TableReference dataTable, String fieldName) {
-    return getSqlFrom(new SelectStatement(Function.isnull(
+    return getSqlFrom(new SelectStatement(Function.coalesce(
       new MathsField(Function.max(new FieldReference(fieldName)), MathsOperator.PLUS, new FieldLiteral(1)), new FieldLiteral(1))
         .as("CurrentValue")).from(dataTable));
   }
@@ -3104,11 +3351,11 @@ public abstract class SqlDialect {
     String autoNumberName = getAutoNumberName(sourceTable.getName());
 
     if (sourceReference == null) {
-      return new FieldFromSelect(new SelectStatement(Function.isnull(new FieldReference(valueColumn), new FieldLiteral(1))).from(
+      return new FieldFromSelect(new SelectStatement(Function.coalesce(new FieldReference(valueColumn), new FieldLiteral(1))).from(
         new TableReference(autoNumberTable.getName(), autoNumberTable.isTemporary())).where(
         new Criterion(Operator.EQ, new FieldReference(nameColumn), autoNumberName)));
     } else {
-      return new MathsField(new FieldFromSelect(new SelectStatement(Function.isnull(new FieldReference(valueColumn),
+      return new MathsField(new FieldFromSelect(new SelectStatement(Function.coalesce(new FieldReference(valueColumn),
         new FieldLiteral(0))).from(new TableReference(autoNumberTable.getName(), autoNumberTable.isTemporary())).where(
         new Criterion(Operator.EQ, new FieldReference(nameColumn), autoNumberName))), MathsOperator.PLUS, new FieldReference(
           sourceReference, "id"));
@@ -3263,7 +3510,9 @@ public abstract class SqlDialect {
    * @param table The table to run the analysis on.
    * @return The SQL statements to analyse the table.
    */
-  public abstract Collection<String> getSqlForAnalyseTable(Table table);
+  public Collection<String> getSqlForAnalyseTable(@SuppressWarnings("unused") Table table) {
+    return SqlDialect.NO_STATEMENTS;
+  }
 
 
   /**
@@ -3297,7 +3546,7 @@ public abstract class SqlDialect {
    * @return The SQL to drop the specified index.
    */
   public Collection<String> indexDropStatements(@SuppressWarnings("unused") Table table, Index indexToBeRemoved) {
-    return Arrays.asList("DROP INDEX " + indexToBeRemoved.getName());
+    return ImmutableList.of("DROP INDEX " + indexToBeRemoved.getName());
   }
 
 
@@ -3347,16 +3596,16 @@ public abstract class SqlDialect {
       statement.append("UNIQUE ");
     }
     statement.append("INDEX ")
-      .append(schemaNamePrefix())
+      .append(schemaNamePrefix(table))
       .append(index.getName())
       .append(" ON ")
-      .append(schemaNamePrefix())
+      .append(schemaNamePrefix(table))
       .append(table.getName())
       .append(" (")
       .append(Joiner.on(", ").join(index.columnNames()))
       .append(')');
 
-    return Collections.singletonList(statement.toString());
+    return ImmutableList.of(statement.toString());
   }
 
 
@@ -3701,7 +3950,9 @@ public abstract class SqlDialect {
    * @param table the table for which to rebuild triggers
    * @return a collection of sql statements to execute
    */
-  public abstract Collection<String> rebuildTriggers(Table table);
+  public Collection<String> rebuildTriggers(@SuppressWarnings("unused") Table table) {
+    return SqlDialect.NO_STATEMENTS;
+  }
 
 
   /**
@@ -3715,10 +3966,14 @@ public abstract class SqlDialect {
 
 
    /**
+   * Indicates whether the dialect supports window functions.
+   *
    * @return true if the dialect supports window functions (e.g. PARTITION BY).
    *
    **/
-   public abstract boolean supportsWindowFunctions();
+   public boolean supportsWindowFunctions() {
+     return false;
+   }
 
 
   /**

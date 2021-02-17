@@ -253,7 +253,7 @@ public abstract class AbstractSelectStatementBuilder<U extends AbstractSelectSta
 
 
   /**
-   * Specifies a table to which to perform a cross join/cartesian product.
+   * Specifies a table to cross join to (creating a cartesian product).
    *
    * <blockquote><pre>
    * TableReference foo = tableRef("Foo");
@@ -266,9 +266,23 @@ public abstract class AbstractSelectStatementBuilder<U extends AbstractSelectSta
    * @param toTable the table to join to
    * @return this, for method chaining.
    */
-  public T innerJoin(TableReference toTable) {
+  public T crossJoin(TableReference toTable) {
     joins.add(new Join(JoinType.INNER_JOIN, toTable, null));
     return castToChild(this);
+  }
+
+
+  /**
+   * @param toTable the table to join to
+   * @return this, for method chaining.
+   *
+   * @deprecated Use {@link #crossJoin(TableReference)} to do a cross join;
+   *             or add join conditions for {@link #innerJoin(TableReference, Criterion)}
+   *             to make this an inner join.
+   */
+  @Deprecated
+  public T innerJoin(TableReference toTable) {
+    return crossJoin(toTable);
   }
 
 
@@ -309,7 +323,7 @@ public abstract class AbstractSelectStatementBuilder<U extends AbstractSelectSta
 
 
   /**
-   * Specifies an cross join to a subselect:
+   * Specifies a cross join (creating a cartesian product) to a subselect:
    *
    * <blockquote><pre>
    * // Each sale as a percentage of all sales
@@ -331,9 +345,23 @@ public abstract class AbstractSelectStatementBuilder<U extends AbstractSelectSta
    * @param subSelect the sub select statement to join on to
    * @return this, for method chaining.
    */
-  public T innerJoin(SelectStatement subSelect) {
+  public T crossJoin(SelectStatement subSelect) {
     joins.add(new Join(JoinType.INNER_JOIN, subSelect, null));
     return castToChild(this);
+  }
+
+
+  /**
+   * @param subSelect the sub select statement to join on to
+   * @return this, for method chaining.
+   *
+   * @deprecated Use {@link #crossJoin(SelectStatement)} to do a cross join;
+   *             or add join conditions for {@link #innerJoin(SelectStatement, Criterion)}
+   *             to make this an inner join.
+   */
+  @Deprecated
+  public T innerJoin(SelectStatement subSelect) {
+    return crossJoin(subSelect);
   }
 
 
@@ -394,6 +422,67 @@ public abstract class AbstractSelectStatementBuilder<U extends AbstractSelectSta
    */
   public T leftOuterJoin(SelectStatement subSelect, Criterion criterion) {
     joins.add(new Join(JoinType.LEFT_OUTER_JOIN, subSelect, criterion));
+    return castToChild(this);
+  }
+
+
+  /**
+   * Specifies a full outer join to a table:
+   *
+   * <blockquote><pre>
+   * TableReference foo = tableRef("Foo");
+   * TableReference bar = tableRef("Bar");
+   * SelectStatement statement = select()
+   *     .from(foo)
+   *     .fullOuterJoin(bar, foo.field(&quot;id&quot;).eq(bar.field(&quot;fooId&quot;)));</pre>
+   * </blockquote>
+   *
+   * @param toTable the table to join to
+   * @param criterion the criteria on which to join the tables
+   * @return this, for method chaining.
+   */
+  public T fullOuterJoin(TableReference toTable, Criterion criterion) {
+    joins.add(new Join(JoinType.FULL_OUTER_JOIN, toTable, criterion));
+    return castToChild(this);
+  }
+
+
+  /**
+   * Specifies an full outer join to a subselect:
+   *
+   * <blockquote><pre>
+   * TableReference sale = tableRef("Sale");
+   * TableReference customer = tableRef("Customer");
+   *
+   * // Define the subselect - a group by showing total sales by age in the
+   * // previous month.
+   * SelectStatement amountsByAgeLastMonth = select(field("age"), sum(field("amount")))
+   *     .from(sale)
+   *     .innerJoin(customer, sale.field("customerId").eq(customer.field("id")))
+   *     .where(sale.field("month").eq(5))
+   *     .groupBy(customer.field("age")
+   *     .alias("amountByAge");
+   *
+   * // The outer select, showing each sale this month as a percentage of the sales
+   * // to that age the previous month
+   * SelectStatement outer = select(
+   *       sale.field("id"),
+   *       sale.field("amount")
+   *          // May cause division by zero (!)
+   *          .divideBy(isNull(amountsByAgeLastMonth.asTable().field("amount"), 0))
+   *          .multiplyBy(literal(100))
+   *     )
+   *     .from(sale)
+   *     .innerJoin(customer, sale.field("customerId").eq(customer.field("id")))
+   *     .fullOuterJoin(amountsByAgeLastMonth, amountsByAgeLastMonth.asTable().field("age").eq(customer.field("age")));
+   * </pre></blockquote>
+   *
+   * @param subSelect the sub select statement to join on to
+   * @param criterion the criteria on which to join the tables
+   * @return this, for method chaining.
+   */
+  public T fullOuterJoin(SelectStatement subSelect, Criterion criterion) {
+    joins.add(new Join(JoinType.FULL_OUTER_JOIN, subSelect, criterion));
     return castToChild(this);
   }
 

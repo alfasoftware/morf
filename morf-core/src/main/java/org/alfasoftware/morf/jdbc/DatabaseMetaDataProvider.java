@@ -71,6 +71,7 @@ public class DatabaseMetaDataProvider implements Schema {
   protected static final int COLUMN_SIZE = 7;
   protected static final int COLUMN_DECIMAL_DIGITS = 9;
   protected static final int COLUMN_REMARKS = 12;
+  protected static final int COLUMN_DEFAULT_EXPR = 13;
   protected static final int COLUMN_IS_NULLABLE = 18;
   protected static final int COLUMN_IS_AUTOINCREMENT = 23;
 
@@ -466,7 +467,46 @@ public class DatabaseMetaDataProvider implements Schema {
   @SuppressWarnings("unused")
   protected ColumnBuilder setColumnDefaultValue(RealName tableName, ColumnBuilder column, ResultSet columnResultSet) throws SQLException {
     String defaultValue = "version".equalsIgnoreCase(column.getName()) ? "0" : "";
+
+    String actualDefaultValue = getActualDefaultValue(tableName, column, columnResultSet);
+    if (!defaultValue.equals(actualDefaultValue) && !column.isAutoNumbered()) {
+        log.warn("DEFAULT value for " + tableName.getDbName() + "." + column.getName() + " expected to be [" + defaultValue + "], but was [" + actualDefaultValue + "]");
+    }
+
     return column.defaultValue(defaultValue);
+  }
+
+
+  /**
+   * Reads the actual default value in the database.
+   *
+   * @param tableName Name of the table.
+   * @param column Column builder to set to.
+   * @param columnResultSet Result set to be read.
+   * @return The default value, usually as an expression.
+   * @throws SQLException Upon errors.
+   */
+  @SuppressWarnings("unused")
+  protected String getActualDefaultValue(RealName tableName, ColumnBuilder column, ResultSet columnResultSet) throws SQLException {
+    final String actualDefaultValue = columnResultSet.getString(COLUMN_DEFAULT_EXPR);
+
+    // columns that never had DEFAULT
+    if (actualDefaultValue == null)
+      return "";
+
+    final String trimedActualDefaultValue = actualDefaultValue.trim();
+
+    // columns that previously had DEFAULT and were set to DEFAULT NULL
+    if ("NULL".equalsIgnoreCase(trimedActualDefaultValue))
+      return "";
+
+    // other values returned with just a bit of trimming
+    // - note that these are Oracle expressions, not actual default values
+    // - simple decimals come back as decimals,
+    // - strings come back wrapped in single quotes,
+    // - functions come back as expressions,
+    // - as specified in the last alter statement
+    return trimedActualDefaultValue;
   }
 
 
@@ -915,10 +955,22 @@ public class DatabaseMetaDataProvider implements Schema {
       this.realName = realName;
     }
 
+    /**
+     * The user-friendly camel-case name of the object,
+     * often derived by looking at the comment of that object,
+     * or in schema descriptions.
+     *
+     * @return user-friendly camel-case name
+     */
     public String getRealName() {
       return realName;
     }
 
+    /**
+     * The name as retrieved by the JDBC driver.
+     *
+     * @return name as expected in the database
+     */
     public String getDbName() {
       return getAName();
     }

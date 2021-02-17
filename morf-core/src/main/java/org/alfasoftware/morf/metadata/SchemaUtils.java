@@ -15,18 +15,15 @@
 
 package org.alfasoftware.morf.metadata;
 
-import static com.google.common.collect.FluentIterable.from;
-import static org.alfasoftware.morf.metadata.DataType.BIG_INTEGER;
-
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 import org.alfasoftware.morf.sql.SelectStatement;
 
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 
 /**
@@ -124,7 +121,7 @@ public final class SchemaUtils {
    * @return A {@link Schema} implementation
    */
   public static Schema schema(Collection<View> views) {
-    return new SchemaBean(Collections.<Table> emptySet(), views);
+    return new SchemaBean(ImmutableList.of(), views);
   }
 
 
@@ -162,11 +159,11 @@ public final class SchemaUtils {
    */
   public static Schema copy(Schema schema, Collection<String> exclusionRegExes) {
       return schema(
-        schema(from(schema.tables())
+        schema(FluentIterable.from(schema.tables())
           .filter(table -> !isMatching(exclusionRegExes, table.getName()))
           .transform(SchemaUtils::copy)
           .toList()),
-        schema(from(schema.views())
+        schema(FluentIterable.from(schema.views())
           .filter(view -> !isMatching(exclusionRegExes, view.getName()))
           .transform(SchemaUtils::copy)
             .toList()));
@@ -307,7 +304,7 @@ public final class SchemaUtils {
    * @return A new {@link Column}.
    */
   public static Column autonumber(String name, int startFrom) {
-    return new ColumnBean(name, BIG_INTEGER, 0, 0, false, null, true, true, startFrom);
+    return new ColumnBean(name, DataType.BIG_INTEGER, 0, 0, false, null, true, true, startFrom);
   }
 
 
@@ -420,6 +417,16 @@ public final class SchemaUtils {
 
 
     /**
+     * Sets the columns for the table.
+     *
+     * @param columns The columns to set, probably provided by calls to
+     *          {@link SchemaUtils#column(String, DataType, int, int)}.
+     * @return this table builder, for method chaining.
+     */
+    public TableBuilder columns(Iterable<? extends Column> columns);
+
+
+    /**
      * Sets the indexes for the table.
      *
      * @param indexes The indexes to set, probably provided by calls to
@@ -427,6 +434,16 @@ public final class SchemaUtils {
      * @return this table builder, for method chaining.
      */
     public TableBuilder indexes(Index... indexes);
+
+
+    /**
+     * Sets the indexes for the table.
+     *
+     * @param indexes The indexes to set, probably provided by calls to
+     *          {@link SchemaUtils#index(String)}
+     * @return this table builder, for method chaining.
+     */
+    public TableBuilder indexes(Iterable<? extends Index> indexes);
 
 
     /**
@@ -539,7 +556,7 @@ public final class SchemaUtils {
     }
 
 
-    private TableBuilderImpl(String name, List<Column> columns, List<Index> indexes, boolean isTemporary) {
+    private TableBuilderImpl(String name, Iterable<? extends Column> columns, Iterable<? extends Index> indexes, boolean isTemporary) {
       super(name, columns, indexes, isTemporary);
     }
 
@@ -549,7 +566,16 @@ public final class SchemaUtils {
      */
     @Override
     public TableBuilder columns(Column... columns) {
-      return new TableBuilderImpl(getName(), Arrays.asList(columns), indexes(), isTemporary());
+      return columns(Arrays.asList(columns));
+    }
+
+
+    /**
+     * @see org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder#columns(java.lang.Iterable)
+     */
+    @Override
+    public TableBuilder columns(Iterable<? extends Column> columns) {
+      return new TableBuilderImpl(getName(), columns, indexes(), isTemporary());
     }
 
 
@@ -558,7 +584,16 @@ public final class SchemaUtils {
      */
     @Override
     public TableBuilder indexes(Index... indexes) {
-      return new TableBuilderImpl(getName(), columns(), Arrays.asList(indexes), isTemporary());
+      return indexes(Arrays.asList(indexes));
+    }
+
+
+    /**
+     * @see org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder#indexes(java.lang.Iterable)
+     */
+    @Override
+    public TableBuilder indexes(Iterable<? extends Index> indexes) {
+      return new TableBuilderImpl(getName(), columns(), indexes, isTemporary());
     }
 
 

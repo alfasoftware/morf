@@ -30,12 +30,15 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.metadata.SchemaUtils.view;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
+import static org.alfasoftware.morf.sql.SqlUtils.insert;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deployedViewsTable;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.upgradeAuditTable;
+import static org.hamcrest.Matchers.equalToIgnoringCase;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -45,9 +48,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
-import net.jcip.annotations.NotThreadSafe;
 import javax.sql.DataSource;
 
 import org.alfasoftware.morf.dataset.DataSetConnector;
@@ -56,6 +59,9 @@ import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.dataset.TableDataHomology;
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddBasicTable;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddColumn;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddColumnDropDefaultValue;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddColumnWithoutDropDefaultValue;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddDataToAutonumberedColumn;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddDataToIdColumn;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddPrimaryKeyColumns;
@@ -66,6 +72,7 @@ import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.CorrectPrimaryKeyOrder;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.CorrectPrimaryKeyOrderNoOp;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.CreateTableAsSelect;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.DropLurkingDefaultValue;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.DropPrimaryKey;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ReduceStringColumnWidth;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RemoveAutoNumbered;
@@ -83,6 +90,7 @@ import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.DatabaseDataSetConsumer;
 import org.alfasoftware.morf.jdbc.DatabaseDataSetProducer;
+import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor.ResultSetProcessor;
@@ -95,13 +103,16 @@ import org.alfasoftware.morf.metadata.SchemaHomology.CollectingDifferenceWriter;
 import org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager.TruncationBehavior;
 import org.alfasoftware.morf.testing.TestingDataSourceModule;
 import org.alfasoftware.morf.upgrade.LoggingSqlScriptVisitor;
 import org.alfasoftware.morf.upgrade.Upgrade;
+import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsException;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -113,6 +124,8 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
+
+import net.jcip.annotations.NotThreadSafe;
 
 /**
  * Tests that the various SQL statement representations can be converted by the
@@ -135,6 +148,8 @@ public class TestDatabaseUpgradeIntegration {
 
   /***/
   @Rule public InjectMembersRule injectMembersRule = new InjectMembersRule(new TestingDataSourceModule());
+
+  private Locale defaultLocale;
 
   @Inject
   private Provider<DatabaseDataSetConsumer> databaseDataSetConsumer;
@@ -214,7 +229,7 @@ public class TestDatabaseUpgradeIntegration {
     ),
     schema(
       view("view4", select(field("valCol"), field("keyCol1")).from("view2"), "view3"),
-      view("view1", select(field("valCol"), field("keyCol1")).from("BasicTable").innerJoin(tableRef("KeylessTable"))),
+      view("view1", select(field("valCol"), field("keyCol1")).from("BasicTable").crossJoin(tableRef("KeylessTable"))),
       view("view3", select(field("valCol"), field("keyCol1")).from("view2"), "view2"),
       view("view2", select(field("valCol"), field("keyCol1")).from("view1"), "view1"),
       view("viewId", select(field("id"), field("someValue")).from("IdTable"))
@@ -297,6 +312,8 @@ public class TestDatabaseUpgradeIntegration {
    */
   @Before
   public void before() {
+    defaultLocale = Locale.getDefault();
+    Locale.setDefault(new Locale("en", "GB"));
     schemaManager.get().dropAllViews();
     schemaManager.get().dropAllTables();
     schemaManager.get().mutateToSupportSchema(schema, TruncationBehavior.ALWAYS);
@@ -310,6 +327,9 @@ public class TestDatabaseUpgradeIntegration {
   @After
   public void after() {
     schemaManager.get().invalidateCache();
+    if (defaultLocale != null) {
+      Locale.setDefault(defaultLocale);
+    }
   }
 
 
@@ -824,6 +844,181 @@ public class TestDatabaseUpgradeIntegration {
 
 
   /**
+   * Tests adding non-nullable column to the table.
+   * Verifies that default value is dropped after column is added.
+   */
+  @Test
+  public void testAddColumnWithImplicitDropDefault() throws SQLException {
+    doAddColumn(AddColumn.class);
+  }
+
+
+  /**
+   * Tests adding non-nullable column to the table.
+   * Verifies that default value is dropped after column is added.
+   */
+  @Test
+  public void testAddColumnWithExplicitDropDefault() throws SQLException {
+    doAddColumn(AddColumnDropDefaultValue.class);
+  }
+
+
+  private void doAddColumn(Class<? extends UpgradeStep> upgradeStep) throws SQLException {
+    Schema expected = replaceTablesInSchema(
+      table("WithDefaultValue")
+        .columns(
+          column("id", DataType.STRING, 3).primaryKey(),
+          column("version", DataType.INTEGER).defaultValue("0"),
+          column("anotherValue", DataType.STRING, 10)
+        )
+      );
+
+    verifyUpgrade(expected, upgradeStep);
+
+    DataSetProducer expectedRecords = dataSetProducer(schema(expected.getTable("WithDefaultValue")))
+        .table("WithDefaultValue",
+          record()
+            .setString("id", "1")
+            .setInteger("version", 6)
+            .setString("anotherValue", "OLD"),
+          record()
+            .setString("id", "2")
+            .setInteger("version", 6)
+            .setString("anotherValue", "OLD")
+        );
+
+    compareTableRecords("WithDefaultValue", expectedRecords.records("WithDefaultValue"));
+
+    // --
+    // ensure the default value has been dropped
+
+    DatabaseDataSetProducer producer = databaseDataSetProducer.get();
+    producer.open();
+    try {
+      Column column = producer.getSchema().getTable("WithDefaultValue").columns().stream()
+        .filter(c -> c.getName().equalsIgnoreCase("anotherValue"))
+        .findAny()
+        .get();
+
+      assertTrue(StringUtils.isBlank(column.getDefaultValue()));
+    }
+    finally {
+      producer.close();
+    }
+
+    //
+    // try to insert some values into the table
+
+    SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+
+    try (Connection connection = dataSource.getConnection()) {
+      InsertStatement insertStatement = insert()
+          .into(tableRef("WithDefaultValue"))
+          .fields(field("id"), field("anotherValue"))
+          .from(select(
+            literal(7).as("id"),
+            literal("NEW").as("anotherValue") // can insert NEW
+          ));
+
+      executor.execute(connectionResources.sqlDialect().convertStatementToSQL(insertStatement), connection);
+    }
+
+    try (Connection connection = dataSource.getConnection()) {
+      InsertStatement insertStatement = insert()
+          .into(tableRef("WithDefaultValue"))
+          .fields(field("id"))
+          .from(select(
+            literal(8).as("id")
+          ));
+
+      executor.execute(connectionResources.sqlDialect().convertStatementToSQL(insertStatement), connection);
+
+      fail("Should not be able to insert the NULL");
+    }
+    catch (RuntimeSqlException e) {
+      // crude attempt to ensure the failure was due to the NULL into non-NULL column
+      String message = e.getCause().getMessage().trim();
+      assertTrue(
+        "Exception message: [" + message + "]",
+        message.matches(
+          "(?is)(" + "NULL not allowed for column \"ANOTHERVALUE\"" + ".*)" // H2
+            + "|(" + "Field 'anotherValue' doesn't have a default value" + ".*)" // MySQL
+            + "|(" + "ORA-01400: cannot insert NULL into \\(.*ANOTHERVALUE.*\\)" + ".*)" // Oracle
+            + "|(" + "ERROR: null value in column \"anothervalue\" violates not-null constraint" + ".*)" // PgSQL
+        ));
+    }
+  }
+
+
+  /**
+   * Tests adding non-nullable column to the table,
+   * and leaving a default value behind.
+   */
+  @Test
+  public void testAddColumnWithoutDropDefaultAsIfDropWasForgotten() throws SQLException {
+    Schema expected = replaceTablesInSchema(
+      table("WithDefaultValue")
+        .columns(
+          column("id", DataType.STRING, 3).primaryKey(),
+          column("version", DataType.INTEGER).defaultValue("0"),
+          column("anotherValue", DataType.STRING, 10)
+        )
+      );
+
+    try {
+      verifyUpgrade(expected, AddColumnWithoutDropDefaultValue.class);
+
+      fail ("Should not upgrade because of forgotten DEFAULT value");
+    }
+    catch (NoUpgradePathExistsException e) { /* happy path */ }
+  }
+
+
+  /**
+   * Tests adding non-nullable column to the table,
+   * and leaving a default value behind.
+   */
+  @Test
+  public void testAddColumnWithoutDropDefaultAsIfNoDropWasIntended() throws SQLException {
+    Schema expected = replaceTablesInSchema(
+      table("WithDefaultValue")
+        .columns(
+          column("id", DataType.STRING, 3).primaryKey(),
+          column("version", DataType.INTEGER).defaultValue("0"),
+          column("anotherValue", DataType.STRING, 10).defaultValue("OLD")
+        )
+      );
+
+    try {
+      verifyUpgrade(expected, AddColumnWithoutDropDefaultValue.class);
+
+      fail ("Should not upgrade because of forgotten DEFAULT value");
+    }
+    catch (java.lang.AssertionError e) {
+      assertThat(e.getMessage(), equalToIgnoringCase("[Column [anotherValue] on table [WithDefaultValue] default value does not match: [OLD] in expected, [] in actual]"));
+    }
+  }
+
+
+  /**
+   * Tests adding non-nullable column to the table,
+   * and leaving a default value behind.
+   */
+  @Test
+  public void testDropDefaultValue() throws SQLException {
+    Schema expected = replaceTablesInSchema(
+      table("CompositeKeyTable")
+        .columns(
+          column("keyCol1", DataType.STRING, 20).primaryKey(),
+          column("keyCol2", DataType.STRING, 20).primaryKey(),
+          column("valCol", DataType.STRING, 20))
+      );
+
+    verifyUpgrade(expected, DropLurkingDefaultValue.class);
+  }
+
+
+  /**
    * Test that renaming a table works
    */
   @Test
@@ -842,7 +1037,7 @@ public class TestDatabaseUpgradeIntegration {
 
     List<View> newSchemaViews = FluentIterable.from(schema.views())
       .filter(v -> !v.getName().equalsIgnoreCase("view1")) // re-add view1 now dependent on BasicTable view
-      .append(view("view1", select(field("valCol"), field("keyCol1")).from("BasicTable").innerJoin(tableRef("KeylessTable")), "BasicTable"))
+      .append(view("view1", select(field("valCol"), field("keyCol1")).from("BasicTable").crossJoin(tableRef("KeylessTable")), "BasicTable"))
       .append(newView) // and add the new BasicTable view
       .toList();
 

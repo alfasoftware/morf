@@ -165,6 +165,22 @@ public class TestFunctionDetail {
 
 
   /**
+   * Tests indirect usage of the trim function
+   */
+  @Test
+  public void testTrim() {
+    Function function = Function.trim(new FieldReference("agreementNumber"));
+
+    assertEquals("Function should be of type Trim", FunctionType.TRIM, function.getType());
+    assertNotNull("Function should have arguments", function.getArguments());
+    assertEquals("Function should have one argument", 1, function.getArguments().size());
+    AliasedField firstArgument = function.getArguments().get(0);
+    assertTrue("First argument should be a field reference", firstArgument instanceof FieldReference);
+    assertEquals("First argument should have correct name", "agreementNumber", ((FieldReference)firstArgument).getName());
+  }
+
+
+  /**
    * Tests indirect usage of the leftTrim function
    */
   @Test

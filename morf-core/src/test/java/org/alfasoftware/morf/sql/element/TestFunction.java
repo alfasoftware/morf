@@ -54,7 +54,7 @@ public class TestFunction extends AbstractAliasedFieldTest<Function> {
           () -> Function.coalesce(literal(2), literal(1)),
           () -> Function.coalesce(literal(1)),
           () -> Function.coalesce(literal(2)),
-          () -> Function.coalesce(literal(1), literal(1), literal(1))
+          () -> Function.coalesce(ImmutableList.of(literal(1), literal(1), literal(1)))
         )
     );
   }

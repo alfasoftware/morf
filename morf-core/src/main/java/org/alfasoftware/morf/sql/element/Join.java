@@ -29,7 +29,7 @@ import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
  * destination table and not the source table.
  *
  * <p>Joins are created using join methods such as
- * {@link AbstractSelectStatement#innerJoin(SelectStatement)}. Example:</p>
+ * {@link AbstractSelectStatement#innerJoin(TableReference, Criterion)}. Example:</p>
  *
  * <blockquote><pre>
  *    Statement stmt = SqlUtils.select

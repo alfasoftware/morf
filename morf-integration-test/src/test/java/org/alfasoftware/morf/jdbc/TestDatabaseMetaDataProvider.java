@@ -131,7 +131,7 @@ public class TestDatabaseMetaDataProvider {
           column("dateCol", DataType.DATE).defaultValue("2020-01-01"))
     ),
     schema(
-      view("ViewWithTypes", select(field("primaryStringCol"), field("id")).from("WithTypes").innerJoin(tableRef("WithDefaults"))),
+      view("ViewWithTypes", select(field("primaryStringCol"), field("id")).from("WithTypes").crossJoin(tableRef("WithDefaults"))),
       view("View2", select(field("primaryStringCol"), field("id")).from("ViewWithTypes"), "ViewWithTypes")
     )
   );

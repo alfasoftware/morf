@@ -116,7 +116,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedTruncateTableStatements() {
-    return Arrays.asList("truncate table TESTSCHEMA.Test");
+    return Arrays.asList("TRUNCATE TABLE TESTSCHEMA.Test");
   }
 
 
@@ -125,7 +125,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedTruncateTempTableStatements() {
-    return Arrays.asList("truncate table TESTSCHEMA.TEMP_TempTest");
+    return Arrays.asList("TRUNCATE TABLE TESTSCHEMA.TEMP_TempTest");
   }
 
 
@@ -134,7 +134,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedDeleteAllFromTableStatements() {
-    return Arrays.asList("delete from TESTSCHEMA.Test");
+    return Arrays.asList("DELETE FROM TESTSCHEMA.Test");
   }
 
 
@@ -163,8 +163,8 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   protected List<String> expectedAutoGenerateIdStatement() {
     return Arrays.asList(
       "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
-      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1)  AS CurrentValue FROM TESTSCHEMA.Test))",
-      "INSERT INTO TESTSCHEMA.Test (version, stringField, id) SELECT version, stringField, (SELECT COALESCE(value, 0)  FROM TESTSCHEMA.idvalues WHERE (name = CAST('Test' AS VARCHAR(4)))) + Other.id FROM TESTSCHEMA.Other"
+      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
+      "INSERT INTO TESTSCHEMA.Test (version, stringField, id) SELECT version, stringField, (SELECT COALESCE(value, 0) FROM TESTSCHEMA.idvalues WHERE (name = CAST('Test' AS VARCHAR(4)))) + Other.id FROM TESTSCHEMA.Other"
     );
   }
 
@@ -176,8 +176,8 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   protected List<String> expectedInsertWithIdAndVersion() {
     return Arrays.asList(
       "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
-      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1)  AS CurrentValue FROM TESTSCHEMA.Test))",
-      "INSERT INTO TESTSCHEMA.Test (stringField, id, version) SELECT stringField, (SELECT COALESCE(value, 0)  FROM TESTSCHEMA.idvalues WHERE (name = CAST('Test' AS VARCHAR(4)))) + Other.id, 0 AS version FROM TESTSCHEMA.Other"
+      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
+      "INSERT INTO TESTSCHEMA.Test (stringField, id, version) SELECT stringField, (SELECT COALESCE(value, 0) FROM TESTSCHEMA.idvalues WHERE (name = CAST('Test' AS VARCHAR(4)))) + Other.id, 0 AS version FROM TESTSCHEMA.Other"
     );
   }
 
@@ -189,8 +189,8 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   protected List<String> expectedSpecifiedValueInsert() {
     return Arrays.asList(
       "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
-      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1)  AS CurrentValue FROM TESTSCHEMA.Test))",
-      "INSERT INTO TESTSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES (CAST('Escap''d' AS VARCHAR(7)), 7, 11.25, 20100405, 1, CAST('X' AS VARCHAR(1)), (SELECT COALESCE(value, 1)  FROM TESTSCHEMA.idvalues WHERE (name = CAST('Test' AS VARCHAR(4)))), 0, null, 12345, null)"
+      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
+      "INSERT INTO TESTSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES (CAST('Escap''d' AS VARCHAR(7)), 7, 11.25, 20100405, 1, CAST('X' AS VARCHAR(1)), (SELECT COALESCE(value, 1) FROM TESTSCHEMA.idvalues WHERE (name = CAST('Test' AS VARCHAR(4)))), 0, null, 12345, null)"
     );
   }
 
@@ -202,8 +202,8 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   protected List<String> expectedSpecifiedValueInsertWithTableInDifferentSchema() {
     return Arrays.asList(
       "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
-      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1)  AS CurrentValue FROM MYSCHEMA.Test))",
-      "INSERT INTO MYSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES (CAST('Escap''d' AS VARCHAR(7)), 7, 11.25, 20100405, 1, CAST('X' AS VARCHAR(1)), (SELECT COALESCE(value, 1)  FROM TESTSCHEMA.idvalues WHERE (name = CAST('Test' AS VARCHAR(4)))), 0, null, 12345, null)"
+      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM MYSCHEMA.Test))",
+      "INSERT INTO MYSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES (CAST('Escap''d' AS VARCHAR(7)), 7, 11.25, 20100405, 1, CAST('X' AS VARCHAR(1)), (SELECT COALESCE(value, 1) FROM TESTSCHEMA.idvalues WHERE (name = CAST('Test' AS VARCHAR(4)))), 0, null, 12345, null)"
     );
   }
 
@@ -222,7 +222,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedEmptyStringInsertStatement() {
-    return "INSERT INTO TESTSCHEMA.Test (stringField, id, version, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (NULL, (SELECT COALESCE(value, 1)  FROM TESTSCHEMA.idvalues WHERE (name = CAST('Test' AS VARCHAR(4)))), 0, 0, 0, null, 0, NULL, null, 12345, null)";
+    return "INSERT INTO TESTSCHEMA.Test (stringField, id, version, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (NULL, (SELECT COALESCE(value, 1) FROM TESTSCHEMA.idvalues WHERE (name = CAST('Test' AS VARCHAR(4)))), 0, 0, 0, null, 0, NULL, null, 12345, null)";
   }
 
 
@@ -285,7 +285,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedIsNull() {
-    return "COALESCE(CAST('A' AS VARCHAR(1)), CAST('B' AS VARCHAR(1))) ";
+    return "COALESCE(CAST('A' AS VARCHAR(1)), CAST('B' AS VARCHAR(1)))";
   }
 
 
@@ -673,7 +673,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterRemoveColumnFromCompositeKeyStatements() {
     return ImmutableList.of(
-      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey DROP CONSTRAINT CompositePrimaryKey_PK",
+      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey DROP PRIMARY KEY",
       "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ALTER COLUMN secondPrimaryKey SET NULL",
       "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ALTER COLUMN secondPrimaryKey VARCHAR(5)",
       "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ADD CONSTRAINT CompositePrimaryKey_PK PRIMARY KEY (id)"
@@ -1030,7 +1030,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedRenameTableStatements() {
     return ImmutableList.of(
-      "ALTER TABLE TESTSCHEMA.Test DROP CONSTRAINT Test_PK",
+      "ALTER TABLE TESTSCHEMA.Test DROP PRIMARY KEY",
       "ALTER TABLE TESTSCHEMA.Test RENAME TO Renamed",
       "ALTER TABLE TESTSCHEMA.Renamed ADD CONSTRAINT Renamed_PK PRIMARY KEY (id)"
     );
@@ -1043,7 +1043,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> getRenamingTableWithLongNameStatements() {
     return ImmutableList.of(
-      "ALTER TABLE TESTSCHEMA.123456789012345678901234567890XXX DROP CONSTRAINT 123456789012345678901234567890XXX_PK",
+      "ALTER TABLE TESTSCHEMA.123456789012345678901234567890XXX DROP PRIMARY KEY",
       "ALTER TABLE TESTSCHEMA.123456789012345678901234567890XXX RENAME TO Blah",
       "ALTER TABLE TESTSCHEMA.Blah ADD CONSTRAINT Blah_PK PRIMARY KEY (id)");
   }
@@ -1054,7 +1054,16 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedRenameIndexStatements() {
-    return ImmutableList.of("ALTER INDEX TempTest_1 RENAME TO TempTest_2");
+    return ImmutableList.of("ALTER INDEX TESTSCHEMA.Test_1 RENAME TO Test_2");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRenameIndexStatements()
+   */
+  @Override
+  protected List<String> expectedRenameTempIndexStatements() {
+    return ImmutableList.of("ALTER INDEX TESTSCHEMA.TempTest_1 RENAME TO TempTest_2");
   }
 
 

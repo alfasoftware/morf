@@ -57,13 +57,15 @@ public class TestSelectFirstStatementDeepCopyContract extends AbstractShallowAnd
       testCase(() -> selectFirst(literal(1)).from(SELECT_1, SELECT_2)),
       testCase(() -> selectFirst(literal(1)).from("A").where(CRITERION_1)),
       testCase(() -> selectFirst(literal(1)).from("A").where(CRITERION_2)),
-      testCase(() -> selectFirst(literal(1)).from("A").innerJoin(TABLE_1)),
-      testCase(() -> selectFirst(literal(1)).from("A").innerJoin(TABLE_2)),
-      testCase(() -> selectFirst(literal(1)).from("A").innerJoin(TABLE_1).innerJoin(TABLE_2)),
+      testCase(() -> selectFirst(literal(1)).from("A").crossJoin(TABLE_1)),
+      testCase(() -> selectFirst(literal(1)).from("A").crossJoin(TABLE_2)),
+      testCase(() -> selectFirst(literal(1)).from("A").crossJoin(TABLE_1).crossJoin(TABLE_2)),
       testCase(() -> selectFirst(literal(1)).from("A").innerJoin(TABLE_1, CRITERION_1).innerJoin(TABLE_2, CRITERION_1)),
       testCase(() -> selectFirst(literal(1)).from("A").leftOuterJoin(TABLE_1, CRITERION_1)),
       testCase(() -> selectFirst(literal(1)).from("A").leftOuterJoin(TABLE_1, CRITERION_2)),
       testCase(() -> selectFirst(literal(1)).from("A").leftOuterJoin(TABLE_2, CRITERION_1)),
+      testCase(() -> selectFirst(literal(1)).from("A").fullOuterJoin(TABLE_1, CRITERION_1)),
+      testCase(() -> selectFirst(literal(1)).from("A").fullOuterJoin(TABLE_1, CRITERION_2)),
       testCase(() -> selectFirst(literal(1)).orderBy(literal(1), literal(2))),
       testCase(() -> selectFirst(literal(1)).orderBy(literal(1), literal(3)))
     );

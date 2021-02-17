@@ -164,7 +164,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedTruncateTableStatements() {
-    return Arrays.asList("TRUNCATE Test");
+    return Arrays.asList("TRUNCATE TABLE Test");
   }
 
 
@@ -173,7 +173,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedTruncateTempTableStatements() {
-    return Arrays.asList("TRUNCATE TempTest");
+    return Arrays.asList("TRUNCATE TABLE TempTest");
   }
 
 
@@ -182,7 +182,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedDeleteAllFromTableStatements() {
-    return Arrays.asList("delete from Test");
+    return Arrays.asList("DELETE FROM Test");
   }
 
 
@@ -211,8 +211,8 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   protected List<String> expectedAutoGenerateIdStatement() {
     return ImmutableList.of(
       "DELETE FROM idvalues where name = 'Test'",
-      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1)  AS CurrentValue FROM Test))",
-      "INSERT INTO Test (version, stringField, id) SELECT version, stringField, (SELECT COALESCE(value, 0)  FROM idvalues WHERE (name = 'Test')) + Other.id FROM Other"
+      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM Test))",
+      "INSERT INTO Test (version, stringField, id) SELECT version, stringField, (SELECT COALESCE(value, 0) FROM idvalues WHERE (name = 'Test')) + Other.id FROM Other"
     );
   }
 
@@ -224,8 +224,8 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   protected List<String> expectedInsertWithIdAndVersion() {
     return Arrays.asList(
       "DELETE FROM idvalues where name = 'Test'",
-      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1)  AS CurrentValue FROM Test))",
-      "INSERT INTO Test (stringField, id, version) SELECT stringField, (SELECT COALESCE(value, 0)  FROM idvalues WHERE (name = 'Test')) + Other.id, 0 AS version FROM Other"
+      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM Test))",
+      "INSERT INTO Test (stringField, id, version) SELECT stringField, (SELECT COALESCE(value, 0) FROM idvalues WHERE (name = 'Test')) + Other.id, 0 AS version FROM Other"
     );
   }
 
@@ -277,8 +277,8 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   protected List<String> expectedSpecifiedValueInsert() {
     return Arrays.asList(
       "DELETE FROM idvalues where name = 'Test'",
-      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1)  AS CurrentValue FROM Test))",
-      "INSERT INTO Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, 1, 'X', (SELECT COALESCE(value, 1)  FROM idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
+      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM Test))",
+      "INSERT INTO Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, 1, 'X', (SELECT COALESCE(value, 1) FROM idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
     );
   }
 
@@ -290,8 +290,8 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   protected List<String> expectedSpecifiedValueInsertWithTableInDifferentSchema() {
     return Arrays.asList(
       "DELETE FROM idvalues where name = 'Test'",
-      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1)  AS CurrentValue FROM MYSCHEMA.Test))",
-      "INSERT INTO MYSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, 1, 'X', (SELECT COALESCE(value, 1)  FROM idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
+      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM MYSCHEMA.Test))",
+      "INSERT INTO MYSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, 1, 'X', (SELECT COALESCE(value, 1) FROM idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
     );
   }
 
@@ -310,7 +310,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedEmptyStringInsertStatement() {
-    return "INSERT INTO Test (stringField, id, version, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (NULL, (SELECT COALESCE(value, 1)  FROM idvalues WHERE (name = 'Test')), 0, 0, 0, null, 0, NULL, null, 12345, null)";
+    return "INSERT INTO Test (stringField, id, version, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (NULL, (SELECT COALESCE(value, 1) FROM idvalues WHERE (name = 'Test')), 0, 0, 0, null, 0, NULL, null, 12345, null)";
   }
 
 
@@ -373,7 +373,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedIsNull() {
-    return "COALESCE('A', 'B') ";
+    return "COALESCE('A', 'B')";
   }
 
 
@@ -1074,6 +1074,18 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedRenameIndexStatements() {
+    return ImmutableList.of(
+      "ALTER TABLE `Test` DROP INDEX `Test_1`",
+      "ALTER TABLE `Test` ADD INDEX `Test_2` (`intField`, `floatField`)"
+    );
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRenameIndexStatements()
+   */
+  @Override
+  protected List<String> expectedRenameTempIndexStatements() {
     return ImmutableList.of(
       "ALTER TABLE `TempTest` DROP INDEX `TempTest_1`",
       "ALTER TABLE `TempTest` ADD INDEX `TempTest_2` (`intField`, `floatField`)"

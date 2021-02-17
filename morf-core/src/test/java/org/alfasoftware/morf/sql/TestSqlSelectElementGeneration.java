@@ -20,6 +20,7 @@ import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.selectDistinct;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.element.Direction.ASCENDING;
+import static org.alfasoftware.morf.sql.element.JoinType.FULL_OUTER_JOIN;
 import static org.alfasoftware.morf.sql.element.JoinType.INNER_JOIN;
 import static org.alfasoftware.morf.sql.element.JoinType.LEFT_OUTER_JOIN;
 import static org.hamcrest.Matchers.contains;
@@ -36,8 +37,6 @@ import static org.junit.Assert.fail;
 
 import java.util.List;
 
-import net.jcip.annotations.NotThreadSafe;
-
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.Direction;
@@ -51,6 +50,8 @@ import org.junit.Test;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+
+import net.jcip.annotations.NotThreadSafe;
 
 /**
  * Test that the SQL Select statement behaves as expected.
@@ -1034,8 +1035,8 @@ public class TestSqlSelectElementGeneration {
       assertFalse(select.getFromSelects().isEmpty());
 
       // Joins
-      select.innerJoin(subSelect1);
-      select.innerJoin(tableRef("C"));
+      select.crossJoin(subSelect1);
+      select.crossJoin(tableRef("C"));
       select.innerJoin(tableRef("B"), field1.eq(field2));
       select.innerJoin(subSelect1, field1.eq(field2));
       select.leftOuterJoin(tableRef("B"), field1.eq(field2));
@@ -1153,17 +1154,20 @@ public class TestSqlSelectElementGeneration {
       FieldLiteral field2 = literal(1);
       SelectStatement subSelect1 = select(literal(1));
       SelectStatement subSelect2 = select(literal(1));
+      SelectStatement subSelect3 = select(literal(1));
 
       // Implicit copy-on-write
       SelectStatement select = select(literal(1));
       SelectStatement updated = select
           .from("B")
-          .innerJoin(subSelect1)
-          .innerJoin(tableRef("C"))
+          .crossJoin(subSelect1)
+          .crossJoin(tableRef("C"))
           .innerJoin(tableRef("B"), field1.eq(field2))
           .innerJoin(subSelect1, field1.eq(field2))
           .leftOuterJoin(tableRef("B"), field1.eq(field2))
-          .leftOuterJoin(subSelect2, field1.eq(field2));
+          .leftOuterJoin(subSelect2, field1.eq(field2))
+          .fullOuterJoin(tableRef("C"), field1.eq(field2))
+          .fullOuterJoin(subSelect3, field1.eq(field2));
 
       assertThat(select.getJoins(), empty());
       assertThat(updated.getJoins(), contains(
@@ -1172,15 +1176,17 @@ public class TestSqlSelectElementGeneration {
           new Join(INNER_JOIN, tableRef("B"), field1.eq(field2)),
           new Join(INNER_JOIN, subSelect1, field1.eq(field2)),
           new Join(LEFT_OUTER_JOIN, tableRef("B"), field1.eq(field2)),
-          new Join(LEFT_OUTER_JOIN, subSelect2, field1.eq(field2))
+          new Join(LEFT_OUTER_JOIN, subSelect2, field1.eq(field2)),
+          new Join(FULL_OUTER_JOIN, tableRef("C"), field1.eq(field2)),
+          new Join(FULL_OUTER_JOIN, subSelect3, field1.eq(field2))
       ));
 
       assertUnsupported(() -> updated.getJoins().add(new Join(INNER_JOIN, subSelect2, null)));
 
       // Explicit copy-on-write
       SelectStatement copy = select.shallowCopy()
-          .innerJoin(subSelect1)
-          .innerJoin(tableRef("C"))
+          .crossJoin(subSelect1)
+          .crossJoin(tableRef("C"))
           .innerJoin(tableRef("B"), field1.eq(field2))
           .innerJoin(subSelect1, field1.eq(field2))
           .leftOuterJoin(tableRef("B"), field1.eq(field2))
@@ -1243,6 +1249,32 @@ public class TestSqlSelectElementGeneration {
 
       // Implicit copy-on-write
       SelectStatement updated = select.groupBy(field1, field2);
+      assertThat(select.getGroupBys(), empty());
+      assertThat(updated.getGroupBys(), contains(field1, field2));
+      assertNotSame(select, updated);
+
+      assertUnsupported(() -> updated.getGroupBys().add(field3));
+    });
+  }
+
+
+  /**
+   *  Test that mutation is performed by copy-and-write when we change the group by.
+   */
+  @Test
+  public void testGroupByListImmutable() {
+    AliasedField.withImmutableBuildersEnabled(() -> {
+
+      FieldLiteral field1 = literal(1);
+      FieldLiteral field2 = literal(2);
+      FieldLiteral field3 = literal(3);
+      SelectStatement select = select(literal(1));
+
+      // Explicit copy-on-write
+      assertThat(select.shallowCopy().groupBy(ImmutableList.of(field1, field2)).build().getGroupBys(), contains(field1, field2));
+
+      // Implicit copy-on-write
+      SelectStatement updated = select.groupBy(ImmutableList.of(field1, field2));
       assertThat(select.getGroupBys(), empty());
       assertThat(updated.getGroupBys(), contains(field1, field2));
       assertNotSame(select, updated);

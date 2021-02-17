@@ -116,15 +116,6 @@ class OracleDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#deleteAllFromTableStatements(org.alfasoftware.morf.metadata.Table)
-   */
-  @Override
-  public Collection<String> deleteAllFromTableStatements(Table table) {
-    return Arrays.asList("delete from " + schemaNamePrefix() + table.getName());
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#tableDeploymentStatements(org.alfasoftware.morf.metadata.Table)
    */
   @Override
@@ -807,8 +798,7 @@ class OracleDialect extends SqlDialect {
     }
 
     boolean includeNullability = newColumn.isNullable() != oldColumn.isNullable();
-    boolean includeColumnType = newColumn.getType() != oldColumn.getType() || newColumn.getWidth() != oldColumn.getWidth() || newColumn
-        .getScale() != oldColumn.getScale();
+    boolean includeColumnType = newColumn.getType() != oldColumn.getType() || newColumn.getWidth() != oldColumn.getWidth() || newColumn.getScale() != oldColumn.getScale();
     String sqlRepresentationOfColumnType = sqlRepresentationOfColumnType(newColumn, includeNullability, true, includeColumnType);
 
     if (!StringUtils.isBlank(sqlRepresentationOfColumnType)) {
@@ -823,6 +813,19 @@ class OracleDialect extends SqlDialect {
         .append(")");
 
       result.add(statement.toString());
+    }
+
+    if (!StringUtils.isBlank(oldColumn.getDefaultValue()) && StringUtils.isBlank(newColumn.getDefaultValue())) {
+      StringBuilder statement = new StringBuilder()
+          .append("ALTER TABLE ")
+          .append(schemaNamePrefix())
+          .append(truncatedTableName)
+          .append(" MODIFY (")
+          .append(newColumn.getName())
+          .append(" DEFAULT NULL")
+          .append(")");
+
+        result.add(statement.toString());
     }
 
     if (recreatePrimaryKey && !primaryKeysForTable(table).isEmpty()) {
@@ -996,24 +999,6 @@ class OracleDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#leftTrim(org.alfasoftware.morf.sql.element.Function)
-   */
-  @Override
-  protected String leftTrim(Function function) {
-    return "LTRIM(" + getSqlFrom(function.getArguments().get(0)) + ")";
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#rightTrim(org.alfasoftware.morf.sql.element.Function)
-   */
-  @Override
-  protected String rightTrim(Function function) {
-    return "RTRIM(" + getSqlFrom(function.getArguments().get(0)) + ")";
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForAddDays(org.alfasoftware.morf.sql.element.Function)
    */
   @Override
@@ -1062,15 +1047,6 @@ class OracleDialect extends SqlDialect {
     statements.add(commentOnTable(to));
 
     return statements;
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#renameIndexStatements(org.alfasoftware.morf.metadata.Table, java.lang.String, java.lang.String)
-   */
-  @Override
-  public Collection<String> renameIndexStatements(Table table, String fromIndexName, String toIndexName) {
-    return ImmutableList.of(String.format("ALTER INDEX %s%s RENAME TO %s", schemaNamePrefix(), fromIndexName, toIndexName));
   }
 
 

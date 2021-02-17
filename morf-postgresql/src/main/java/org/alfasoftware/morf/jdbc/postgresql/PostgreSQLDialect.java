@@ -219,28 +219,12 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
-  public Collection<String> truncateTableStatements(Table table) {
-    List<String> statements = new ArrayList<>();
-
-    StringBuilder truncateStatement = new StringBuilder();
-
-    truncateStatement.append("TRUNCATE TABLE ");
-
-    truncateStatement.append(schemaNamePrefix(table))
-                     .append(table.getName());
-
-    statements.add(truncateStatement.toString());
-    return statements;
-  }
-
-
-  @Override
   public Collection<String> renameTableStatements(Table from, Table to) {
     Iterable<String> renameTable = ImmutableList.of("ALTER TABLE " + schemaNamePrefix(from) + from.getName() + " RENAME TO " + to.getName());
 
     Iterable<String> renamePk = SchemaUtils.primaryKeysForTable(from).isEmpty()
         ? ImmutableList.of()
-        : renameIndexStatements(null, from.getName() + "_pk", to.getName() + "_pk");
+        : renameIndexStatements(from, from.getName() + "_pk", to.getName() + "_pk");
 
     Iterable<String> renameSeq = SchemaUtils.autoNumbersForTable(from).isEmpty()
         ? ImmutableList.of()
@@ -257,8 +241,10 @@ class PostgreSQLDialect extends SqlDialect {
 
   @Override
   public Collection<String> renameIndexStatements(Table table, String fromIndexName, String toIndexName) {
-    return ImmutableList.of("ALTER INDEX " + schemaNamePrefix() + fromIndexName + " RENAME TO " + toIndexName,
-      addIndexComment(toIndexName));
+    return ImmutableList.<String>builder()
+        .addAll(super.renameIndexStatements(table, fromIndexName, toIndexName))
+        .add(addIndexComment(toIndexName))
+        .build();
   }
 
 
@@ -284,12 +270,6 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
-  public Collection<String> deleteAllFromTableStatements(Table table) {
-    return ImmutableList.of("DELETE FROM " + schemaNamePrefix(table) + table.getName());
-  }
-
-
-  @Override
   public Collection<String> viewDeploymentStatements(View view) {
     return ImmutableList.<String>builder()
         .addAll(super.viewDeploymentStatements(view))
@@ -306,23 +286,6 @@ class PostgreSQLDialect extends SqlDialect {
   @Override
   public String connectionTestStatement() {
     return "SELECT 1";
-  }
-
-
-  @Override
-  public Collection<String> dropStatements(Table table) {
-    ImmutableList.Builder<String> statements = ImmutableList.builder();
-
-    StringBuilder dropStatement = new StringBuilder();
-
-    dropStatement.append("DROP TABLE ");
-
-    dropStatement.append(schemaNamePrefix(table))
-                 .append(table.getName());
-
-    statements.add(dropStatement.toString());
-
-    return statements.build();
   }
 
 
@@ -382,12 +345,6 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
-  protected String getSqlForIsNull(Function function) {
-     return "COALESCE(" + getSqlFrom(function.getArguments().get(0)) + ", " + getSqlFrom(function.getArguments().get(1)) + ") ";
-  }
-
-
-  @Override
   protected String getSqlForDateToYyyymmdd(Function function) {
     AliasedField field = function.getArguments().get(0);
     return "TO_CHAR("+ getSqlFrom(field) + ",'YYYYMMDD') :: NUMERIC";
@@ -411,18 +368,6 @@ class PostgreSQLDialect extends SqlDialect {
   @Override
   protected String getSqlForNow(Function function) {
     return "NOW()";
-  }
-
-
-  @Override
-  protected String leftTrim(Function function) {
-    return "LTRIM(" + getSqlFrom(function.getArguments().get(0)) + ")";
-  }
-
-
-  @Override
-  protected String rightTrim(Function function) {
-    return "RTRIM(" + getSqlFrom(function.getArguments().get(0)) + ")";
   }
 
 
@@ -592,7 +537,7 @@ class PostgreSQLDialect extends SqlDialect {
                 + (alterNullable && alterType ? "," : "")
                 + (alterType ? " ALTER COLUMN " + newColumn.getName() + " TYPE " + sqlRepresentationOfColumnType(newColumn, false, false, true) : "")
                 + (alterDefaultValue && (alterNullable || alterType) ? "," : "")
-                + (alterDefaultValue ? " ALTER COLUMN " + newColumn.getName() + (!newColumn.getDefaultValue().isEmpty() ? " SET DEFAULT " + newColumn.getDefaultValue() : " DROP DEFAULT") : "")
+                + (alterDefaultValue ? " ALTER COLUMN " + newColumn.getName() + (!newColumn.getDefaultValue().isEmpty() ? " SET DEFAULT " + sqlForDefaultClauseLiteral(newColumn) : " DROP DEFAULT") : "")
         );
     return sqlBuilder.toString();
   }
@@ -622,12 +567,6 @@ class PostgreSQLDialect extends SqlDialect {
   @Override
   public Collection<String> alterTableDropColumnStatements(Table table, Column column) {
     return ImmutableList.of("ALTER TABLE " + schemaNamePrefix(table) + table.getName() + " DROP COLUMN " + column.getName());
-  }
-
-
-  @Override
-  public Collection<String> rebuildTriggers(Table table) {
-    return SqlDialect.NO_STATEMENTS;
   }
 
 
@@ -688,14 +627,14 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
-  protected String getSqlForSome(AliasedField aliasedField) {
-    return "BOOL_OR(" + getSqlFrom(aliasedField) + ")";
+  protected String getSqlForSome(Function function) {
+    return "BOOL_OR(" + getSqlFrom(function.getArguments().get(0)) + ")";
   }
 
 
   @Override
-  protected String getSqlForEvery(AliasedField aliasedField) {
-    return "BOOL_AND(" + getSqlFrom(aliasedField) + ")";
+  protected String getSqlForEvery(Function function) {
+    return "BOOL_AND(" + getSqlFrom(function.getArguments().get(0)) + ")";
   }
 
 

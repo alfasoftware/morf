@@ -20,41 +20,24 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
 import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
 import org.alfasoftware.morf.metadata.Column;
-import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.element.AliasedField;
-import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Function;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableList.Builder;
 
 /**
- * Dialect, loosely based on H2, to give tests something vaguely realistic to work with.
+ * Mock {@link SqlDialect} to give tests something vaguely realistic to work with.
  *
  * @author Copyright (c) Alfa Financial Software 2017
  */
 public class MockDialect extends SqlDialect {
-
-  /**
-   * The prefix to add to all temporary tables.
-   */
-  public static final String TEMPORARY_TABLE_PREFIX = "TEMP_";
-
-  /**
-   * Used as the alias for the select statement in merge statements.
-   */
-  private static final String MERGE_SOURCE_ALIAS = "xmergesource";
 
   private final DatabaseType databaseType = mock(DatabaseType.class);
 
@@ -64,7 +47,25 @@ public class MockDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#tableDeploymentStatements(org.alfasoftware.morf.metadata.Table)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getDatabaseType()
+   */
+  @Override
+  public DatabaseType getDatabaseType() {
+    return databaseType;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#connectionTestStatement()
+   */
+  @Override
+  public String connectionTestStatement() {
+    return "select 1";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#internalTableDeploymentStatements(org.alfasoftware.morf.metadata.Table)
    */
   @Override
   public Collection<String> internalTableDeploymentStatements(Table table) {
@@ -119,129 +120,6 @@ public class MockDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#dropStatements(org.alfasoftware.morf.metadata.Table)
-   */
-  @Override
-  public Collection<String> dropStatements(Table table) {
-    return Arrays.asList("drop table " + table.getName());
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#truncateTableStatements(org.alfasoftware.morf.metadata.Table)
-   */
-  @Override
-  public Collection<String> truncateTableStatements(Table table) {
-    return Arrays.asList("truncate table " + table.getName());
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#deleteAllFromTableStatements(org.alfasoftware.morf.metadata.Table)
-   */
-  @Override
-  public Collection<String> deleteAllFromTableStatements(Table table) {
-    return Arrays.asList("delete from " + table.getName());
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getColumnRepresentation(org.alfasoftware.morf.metadata.DataType,
-   *      int, int)
-   */
-  @Override
-  protected String getColumnRepresentation(DataType dataType, int width, int scale) {
-    switch (dataType) {
-      case STRING:
-        return String.format("VARCHAR(%d)", width);
-
-      case DECIMAL:
-        return String.format("DECIMAL(%d,%d)", width, scale);
-
-      case DATE:
-        return "DATE";
-
-      case BOOLEAN:
-        return "BIT";
-
-      case BIG_INTEGER:
-        return "BIGINT";
-
-      case INTEGER:
-        return "INTEGER";
-
-      case BLOB:
-        return "LONGVARBINARY";
-
-      case CLOB:
-        return "NCLOB";
-
-      default:
-        throw new UnsupportedOperationException("Cannot map column with type [" + dataType + "]");
-    }
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#useInsertBatching()
-   */
-  @Override
-  public boolean useInsertBatching() {
-    return true;
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getFromDummyTable()
-   */
-  @Override
-  protected String getFromDummyTable() {
-    return " FROM dual";
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#connectionTestStatement()
-   */
-  @Override
-  public String connectionTestStatement() {
-    return "select 1";
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getDatabaseType()
-   */
-  @Override
-  public DatabaseType getDatabaseType() {
-    return databaseType;
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(ConcatenatedField)
-   */
-  @Override
-  protected String getSqlFrom(ConcatenatedField concatenatedField) {
-    List<String> sql = new ArrayList<>();
-    for (AliasedField field : concatenatedField.getConcatenationFields()) {
-      // Interpret null values as empty strings
-      sql.add("COALESCE(" + getSqlFrom(field) + ",'')");
-    }
-    return StringUtils.join(sql, " || ");
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForIsNull(org.alfasoftware.morf.sql.element.Function)
-   */
-  @Override
-  protected String getSqlForIsNull(Function function) {
-    return "COALESCE(" + getSqlFrom(function.getArguments().get(0)) + ", " + getSqlFrom(function.getArguments().get(1)) + ") ";
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#alterTableAddColumnStatements(org.alfasoftware.morf.metadata.Table, org.alfasoftware.morf.metadata.Column)
    */
   @Override
@@ -272,9 +150,9 @@ public class MockDialect extends SqlDialect {
 
     // Now do column operations on the new
     if (StringUtils.isNotEmpty(newColumn.getDefaultValue())) {
-      String escape = newColumn.getType() == DataType.STRING ? "'" : "";
-      result.add("ALTER TABLE " + table.getName() + " ALTER COLUMN " + newColumn.getName() + " SET DEFAULT " + escape
-          + newColumn.getDefaultValue() + escape);
+
+      result.add("ALTER TABLE " + table.getName() + " ALTER COLUMN " + newColumn.getName() + " SET DEFAULT "
+          + sqlForDefaultClauseLiteral(newColumn));
     }
 
     if (oldColumn.isNullable() != newColumn.isNullable()) {
@@ -321,100 +199,42 @@ public class MockDialect extends SqlDialect {
     List<String> result = new ArrayList<>();
 
     if (!oldPrimaryKeyColumns.isEmpty()) {
-      result.add("ALTER TABLE " + table.getName() + " DROP PRIMARY KEY");
+      result.add(dropPrimaryKeyConstraintStatement(table));
     }
 
     if (!newPrimaryKeyColumns.isEmpty()) {
-      result.add(
-        addPrimaryKeyConstraintStatement(table, newPrimaryKeyColumns));
+      result.add(addPrimaryKeyConstraintStatement(table, newPrimaryKeyColumns));
     }
 
     return result;
   }
 
 
-  /**
-   * @param table The table to add the constraint for
-   * @param primaryKeyColumnNames
-   * @return The statement
-   */
   private String addPrimaryKeyConstraintStatement(Table table, List<String> primaryKeyColumnNames) {
-    return "ALTER TABLE " + table.getName() + " ADD CONSTRAINT " + table.getName() + "_PK PRIMARY KEY (" + Joiner.on(", ").join(primaryKeyColumnNames) + ")";
+    return "ALTER TABLE " + schemaNamePrefix() + table.getName() + " ADD CONSTRAINT " + table.getName() + "_PK PRIMARY KEY (" + Joiner.on(", ").join(primaryKeyColumnNames) + ")";
   }
 
 
-  /**
-   * @param table The table whose primary key should be dropped
-   * @return The statement
-   */
   private String dropPrimaryKeyConstraintStatement(Table table) {
-    return "ALTER TABLE " + table.getName() + " DROP CONSTRAINT " + table.getName() + "_PK";
+    return "ALTER TABLE " + schemaNamePrefix() + table.getName() + " DROP PRIMARY KEY";
   }
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#indexDeploymentStatements(org.alfasoftware.morf.metadata.Table,
-   *      org.alfasoftware.morf.metadata.Index)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForRandomString(org.alfasoftware.morf.sql.element.Function)
    */
   @Override
-  protected Collection<String> indexDeploymentStatements(Table table, Index index) {
-    StringBuilder statement = new StringBuilder();
-
-    statement.append("CREATE ");
-    if (index.isUnique()) {
-      statement.append("UNIQUE ");
-    }
-    statement.append("INDEX ").append(index.getName()).append(" ON ").append(table.getName()).append(" (")
-        .append(Joiner.on(',').join(index.columnNames())).append(")");
-
-    return Collections.singletonList(statement.toString());
+  protected String getSqlForRandomString(Function function) {
+    return "SUBSTRING(MD5(RAND()), 1, " + getSqlFrom(function.getArguments().get(0)) + ")";
   }
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#indexDropStatements(org.alfasoftware.morf.metadata.Table,
-   *      org.alfasoftware.morf.metadata.Index)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForNow(org.alfasoftware.morf.sql.element.Function)
    */
   @Override
-  public Collection<String> indexDropStatements(Table table, Index indexToBeRemoved) {
-    return Arrays.asList("DROP INDEX " + indexToBeRemoved.getName());
-  }
-
-
-  /**
-   * It does explicit VARCHAR casting to avoid a HSQLDB 'feature' in which
-   * string literal values are effectively returned as CHAR (fixed width) data
-   * types rather than VARCHARs, where the length of the CHAR to hold the value
-   * is given by the maximum string length of any of the values that can be
-   * returned by the CASE statement.
-   *
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#makeStringLiteral(java.lang.String)
-   */
-  @Override
-  protected String makeStringLiteral(String literalValue) {
-    if (StringUtils.isEmpty(literalValue)) {
-      return "NULL";
-    }
-
-    return String.format("CAST(%s AS VARCHAR(%d))", super.makeStringLiteral(literalValue), literalValue.length());
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#decorateTemporaryTableName(java.lang.String)
-   */
-  @Override
-  public String decorateTemporaryTableName(String undecoratedName) {
-    return TEMPORARY_TABLE_PREFIX + undecoratedName;
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#dropStatements(org.alfasoftware.morf.metadata.View)
-   */
-  @Override
-  public Collection<String> dropStatements(View view) {
-    return Arrays.asList("DROP VIEW " + view.getName() + " IF EXISTS CASCADE");
+  protected String getSqlForNow(Function function) {
+    return "NOW()";
   }
 
 
@@ -423,8 +243,7 @@ public class MockDialect extends SqlDialect {
    */
   @Override
   protected String getSqlForYYYYMMDDToDate(Function function) {
-    AliasedField field = function.getArguments().get(0);
-    return "CAST(SUBSTRING(" + getSqlFrom(field) + ", 1, 4)||'-'||SUBSTRING(" + getSqlFrom(field) + ", 5, 2)||'-'||SUBSTRING(" + getSqlFrom(field) + ", 7, 2) AS DATE)";
+    return "TO_DATE(" + getSqlFrom(function.getArguments().get(0)) + ", 'yyyymmdd')";
   }
 
 
@@ -434,8 +253,7 @@ public class MockDialect extends SqlDialect {
    */
   @Override
   protected String getSqlForDateToYyyymmdd(Function function) {
-    String sqlExpression = getSqlFrom(function.getArguments().get(0));
-    return String.format("CAST(SUBSTRING(%1$s, 1, 4)||SUBSTRING(%1$s, 6, 2)||SUBSTRING(%1$s, 9, 2) AS INT)",sqlExpression);
+    return "TO_NUMBER(TO_CHAR(" + getSqlFrom(function.getArguments().get(0)) + ", 'yyyymmdd'))";
   }
 
 
@@ -444,24 +262,12 @@ public class MockDialect extends SqlDialect {
    */
   @Override
   protected String getSqlForDateToYyyymmddHHmmss(Function function) {
-    String sqlExpression = getSqlFrom(function.getArguments().get(0));
-    // Example for CURRENT_TIMESTAMP() -> 2015-06-23 11:25:08.11
-    return String.format("CAST(SUBSTRING(%1$s, 1, 4)||SUBSTRING(%1$s, 6, 2)||SUBSTRING(%1$s, 9, 2)||SUBSTRING(%1$s, 12, 2)||SUBSTRING(%1$s, 15, 2)||SUBSTRING(%1$s, 18, 2) AS BIGINT)", sqlExpression);
+    return "TO_NUMBER(TO_CHAR(" + getSqlFrom(function.getArguments().get(0)) + ", 'yyyymmddHH24MISS'))";
   }
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForNow(org.alfasoftware.morf.sql.element.Function)
-   */
-  @Override
-  protected String getSqlForNow(Function function) {
-    return "UTC_TIMESTAMP()";
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForDaysBetween(org.alfasoftware.morf.sql.element.AliasedField,
-   *      org.alfasoftware.morf.sql.element.AliasedField)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForDaysBetween(org.alfasoftware.morf.sql.element.AliasedField, org.alfasoftware.morf.sql.element.AliasedField)
    */
   @Override
   protected String getSqlForDaysBetween(AliasedField toDate, AliasedField fromDate) {
@@ -474,44 +280,7 @@ public class MockDialect extends SqlDialect {
    */
   @Override
   protected String getSqlForMonthsBetween(AliasedField toDate, AliasedField fromDate) {
-    return String.format(
-       "CASE " +
-        "WHEN %1$s = %2$s THEN 0 " +
-        "ELSE " +
-         "DATEDIFF(MONTH, %1$s, %2$s) + " +
-         "CASE " +
-          "WHEN %2$s > %1$s THEN " +
-            "CASE " +
-             "WHEN DAY(%1$s) <= DAY(%2$s) OR MONTH(%2$s) <> MONTH(DATEADD(DAY, 1, %2$s)) THEN 0 " +
-             "ELSE -1 " +
-            "END " +
-          "ELSE " +
-            "CASE " +
-             "WHEN DAY(%2$s) <= DAY(%1$s) OR MONTH(%1$s) <> MONTH(DATEADD(DAY, 1, %1$s)) THEN 0 " +
-             "ELSE 1 " +
-            "END " +
-         "END " +
-       "END ",
-       getSqlFrom(fromDate), getSqlFrom(toDate)
-    );
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#leftTrim(org.alfasoftware.morf.sql.element.Function)
-   */
-  @Override
-  protected String leftTrim(Function function) {
-    return "LTRIM(" + getSqlFrom(function.getArguments().get(0)) + ")";
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#rightTrim(org.alfasoftware.morf.sql.element.Function)
-   */
-  @Override
-  protected String rightTrim(Function function) {
-    return "RTRIM(" + getSqlFrom(function.getArguments().get(0)) + ")";
+    return "DATEDIFF('MONTH'," + getSqlFrom(fromDate) + ", " + getSqlFrom(toDate) + ")";
   }
 
 
@@ -520,11 +289,7 @@ public class MockDialect extends SqlDialect {
    */
   @Override
   protected String getSqlForAddDays(Function function) {
-    return String.format(
-      "DATEADD('DAY', %s, %s)",
-      getSqlFrom(function.getArguments().get(1)),
-      getSqlFrom(function.getArguments().get(0))
-    );
+    return "DATEADD('DAY', " + getSqlFrom(function.getArguments().get(1)) + ", " + getSqlFrom(function.getArguments().get(0)) + ")";
   }
 
 
@@ -533,86 +298,15 @@ public class MockDialect extends SqlDialect {
    */
   @Override
   protected String getSqlForAddMonths(Function function) {
-    return String.format(
-      "DATEADD('MONTH', %s, %s)",
-      getSqlFrom(function.getArguments().get(1)),
-      getSqlFrom(function.getArguments().get(0))
-    );
+    return "DATEADD('MONTH', " + getSqlFrom(function.getArguments().get(1)) + ", " + getSqlFrom(function.getArguments().get(0)) + ")";
   }
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#renameTableStatements(java.lang.String, java.lang.String)
-   */
-  @Override
-  public Collection<String> renameTableStatements(Table from, Table to) {
-
-    Builder<String> builder = ImmutableList.<String>builder();
-
-    if (!primaryKeysForTable(from).isEmpty()) {
-      builder.add(dropPrimaryKeyConstraintStatement(from));
-    }
-
-    builder.add("ALTER TABLE " + from.getName() + " RENAME TO " + to.getName());
-
-    if (!primaryKeysForTable(to).isEmpty()) {
-      builder.add(addPrimaryKeyConstraintStatement(to, namesOfColumns(primaryKeysForTable(to))));
-    }
-
-    return builder.build();
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForRandomString(int)
-   */
-  @Override
-  protected String getSqlForRandomString(Function function) {
-    return String.format("SUBSTRING(REPLACE(RANDOM_UUID(),'-'), 1, %s)", getSqlFrom(function.getArguments().get(0)));
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#renameIndexStatements(org.alfasoftware.morf.metadata.Table, java.lang.String, java.lang.String)
-   */
-  @Override
-  public Collection<String> renameIndexStatements(Table table, String fromIndexName, String toIndexName) {
-    return ImmutableList.of(String.format("ALTER INDEX %s RENAME TO %s", fromIndexName, toIndexName));
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#rebuildTriggers(org.alfasoftware.morf.metadata.Table)
-   */
-  @Override
-  public Collection<String> rebuildTriggers(Table table) {
-    return SqlDialect.NO_STATEMENTS;
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForLastDayOfMonth
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForLastDayOfMonth(org.alfasoftware.morf.sql.element.AliasedField)
    */
   @Override
   protected String getSqlForLastDayOfMonth(AliasedField date) {
     return "DATEADD(dd, -DAY(DATEADD(m,1," + getSqlFrom(date) + ")), DATEADD(m,1," + getSqlFrom(date) + "))";
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#supportsWindowFunctions()
-   */
-  @Override
-  public boolean supportsWindowFunctions() {
-    return false;
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForAnalyseTable
-   */
-  @Override
-  public Collection<String> getSqlForAnalyseTable(Table table) {
-    return SqlDialect.NO_STATEMENTS;
   }
 }
