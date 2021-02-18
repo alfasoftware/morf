@@ -1114,7 +1114,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedDaysBetween() {
-    return "SELECT dateTwo - dateOne FROM " + tableName("MyTable");
+    return "SELECT (dateTwo) - (dateOne) FROM " + tableName("MyTable");
   }
 
 
@@ -1267,7 +1267,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedAddDays() {
-    return "testField + -20";
+    return "(testField) + (-20)";
   }
 
 
