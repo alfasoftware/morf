@@ -394,7 +394,7 @@ class PostgreSQLDialect extends SqlDialect {
   @Override
   protected String getSqlForRandomString(Function function) {
     String lengthSql = getSqlFrom(function.getArguments().get(0));
-    String randomString = "(SELECT STRING_AGG(MD5(RANDOM() :: TEXT), ''))";
+    String randomString = "MD5(RANDOM() :: TEXT)";
     return "UPPER(SUBSTRING(" + randomString + ", 1, " + lengthSql + " :: INT))";
   }
 
