@@ -313,7 +313,7 @@ class PostgreSQLDialect extends SqlDialect {
 
   @Override
   protected String getSqlForDaysBetween(AliasedField toDate, AliasedField fromDate) {
-    return getSqlFrom(toDate) + " - " + getSqlFrom(fromDate);
+    return "(" + getSqlFrom(toDate) + ") - (" + getSqlFrom(fromDate) + ")";
   }
 
 
@@ -361,7 +361,7 @@ class PostgreSQLDialect extends SqlDialect {
   @Override
   protected String getSqlForYYYYMMDDToDate(Function function) {
     AliasedField field = function.getArguments().get(0);
-    return "TO_DATE("+ getSqlFrom(field) + " :: TEXT,'YYYYMMDD')";
+    return "TO_DATE(("+ getSqlFrom(field) + ") :: TEXT,'YYYYMMDD')";
   }
 
 
@@ -395,7 +395,7 @@ class PostgreSQLDialect extends SqlDialect {
   protected String getSqlForRandomString(Function function) {
     String lengthSql = getSqlFrom(function.getArguments().get(0));
     String randomString = "MD5(RANDOM() :: TEXT)";
-    return "UPPER(SUBSTRING(" + randomString + ", 1, " + lengthSql + " :: INT))";
+    return "UPPER(SUBSTRING(" + randomString + ", 1, (" + lengthSql + ") :: INT))";
   }
 
 
