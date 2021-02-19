@@ -881,7 +881,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedYYYYMMDDToDate() {
-    return "TO_DATE('20100101' :: TEXT,'YYYYMMDD')";
+    return "TO_DATE(('20100101') :: TEXT,'YYYYMMDD')";
   }
 
 
@@ -962,7 +962,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedDaysBetween() {
-    return "SELECT dateTwo - dateOne FROM testschema.MyTable";
+    return "SELECT (dateTwo) - (dateOne) FROM testschema.MyTable";
   }
 
 
@@ -1111,7 +1111,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedRandomString() {
-    return "UPPER(SUBSTRING((SELECT STRING_AGG(MD5(RANDOM() :: TEXT), '')), 1, 10 :: INT))";
+    return "UPPER(SUBSTRING(MD5(RANDOM() :: TEXT), 1, (10) :: INT))";
   }
 
 

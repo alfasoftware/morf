@@ -961,7 +961,7 @@ class OracleDialect extends SqlDialect {
    */
   @Override
   protected String getSqlForDaysBetween(AliasedField toDate, AliasedField fromDate) {
-    return String.format("%s - %s", getSqlFrom(toDate), getSqlFrom(fromDate));
+    return String.format("(%s) - (%s)", getSqlFrom(toDate), getSqlFrom(fromDate));
   }
 
 
@@ -1004,7 +1004,7 @@ class OracleDialect extends SqlDialect {
   @Override
   protected String getSqlForAddDays(Function function) {
     return String.format(
-      "%s + %s",
+      "(%s) + (%s)",
       getSqlFrom(function.getArguments().get(0)),
       getSqlFrom(function.getArguments().get(1))
     );
