@@ -2413,7 +2413,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
             parameter("parameterValue").type(DataType.STRING).as("column4")
           )
         );
-    NamedParameterPreparedStatement preparedStatement = NamedParameterPreparedStatement.parse(sqlDialect.convertStatementToSQL(merge)).createFor(connection);
+    NamedParameterPreparedStatement preparedStatement = NamedParameterPreparedStatement.parseSql(sqlDialect.convertStatementToSQL(merge), sqlDialect).createFor(connection);
     try {
 
       // Put in two records.  The first should merge with the initial data set.
@@ -2466,7 +2466,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     UpdateStatement update = update(tableRef("MergeTableMultipleKeys"))
         .set(column2, column3, column4)
         .where(field("column1").eq(column1));
-    ParseResult parsed = NamedParameterPreparedStatement.parse(sqlDialect.convertStatementToSQL(update));
+    ParseResult parsed = NamedParameterPreparedStatement.parseSql(sqlDialect.convertStatementToSQL(update), sqlDialect);
 
     NamedParameterPreparedStatement preparedStatement = parsed.createFor(connection);
     try {
@@ -2520,7 +2520,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         ))
         .orderBy(field("field1"), field("field2"));
 
-    NamedParameterPreparedStatement preparedStatement = NamedParameterPreparedStatement.parse(sqlDialect.convertStatementToSQL(select)).createForQueryOn(connection);
+    NamedParameterPreparedStatement preparedStatement = NamedParameterPreparedStatement.parseSql(sqlDialect.convertStatementToSQL(select), sqlDialect).createForQueryOn(connection);
     try {
       preparedStatement.setFetchSize(sqlDialect.fetchSizeForBulkSelects());
       sqlDialect.prepareStatementParameters(

@@ -263,8 +263,8 @@ public class ResultSetComparer {
    */
   public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback,
                      StatementParameters leftStatementParameters, StatementParameters rightStatementParameters) {
-    try (NamedParameterPreparedStatement statementLeft = NamedParameterPreparedStatement.parse(leftSqlDialect.convertStatementToSQL(left)).createForQueryOn(leftConnection);
-         NamedParameterPreparedStatement statementRight = NamedParameterPreparedStatement.parse(rightSqlDialect.convertStatementToSQL(right)).createForQueryOn(rightConnection);
+    try (NamedParameterPreparedStatement statementLeft = NamedParameterPreparedStatement.parseSql(leftSqlDialect.convertStatementToSQL(left), leftSqlDialect).createForQueryOn(leftConnection);
+         NamedParameterPreparedStatement statementRight = NamedParameterPreparedStatement.parseSql(rightSqlDialect.convertStatementToSQL(right), rightSqlDialect).createForQueryOn(rightConnection);
          ResultSet rsLeft = parameteriseAndExecute(statementLeft, left, leftStatementParameters, leftSqlDialect);
          ResultSet rsRight = parameteriseAndExecute(statementRight, right, rightStatementParameters, rightSqlDialect)) {
       return compare(keyColumns, rsLeft, rsRight, callback);

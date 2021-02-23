@@ -15,8 +15,6 @@
 
 package org.alfasoftware.morf.jdbc;
 
-import static org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement.parse;
-
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -287,7 +285,7 @@ public class SqlScriptExecutor {
     int numberOfRowsUpdated = 0;
     try {
       try {
-        try (NamedParameterPreparedStatement preparedStatement = NamedParameterPreparedStatement.parse(sqlStatement).createFor(connection)) {
+        try (NamedParameterPreparedStatement preparedStatement = NamedParameterPreparedStatement.parseSql(sqlStatement, sqlDialect).createFor(connection)) {
           sqlDialect.prepareStatementParameters(preparedStatement, parameterMetadata, parameterData);
           numberOfRowsUpdated = preparedStatement.executeUpdate();
         }
@@ -521,7 +519,7 @@ public class SqlScriptExecutor {
       Connection connection, ResultSetProcessor<T> resultSetProcessor, Optional<Integer> maxRows, Optional<Integer> queryTimeout,
       boolean standalone) {
     try {
-      ParseResult parseResult = parse(sql);
+      ParseResult parseResult = NamedParameterPreparedStatement.parseSql(sql, sqlDialect);
       try (NamedParameterPreparedStatement preparedStatement = standalone ? parseResult.createForQueryOn(connection) : parseResult.createFor(connection)) {
         if (standalone) {
           preparedStatement.setFetchSize(sqlDialect.fetchSizeForBulkSelects());
@@ -599,7 +597,7 @@ public class SqlScriptExecutor {
    */
   public void executeStatementBatch(String sqlStatement, Iterable<SqlParameter> parameterMetadata, Iterable<? extends DataValueLookup> parameterData, Connection connection, boolean explicitCommit, int statementsPerFlush) {
     try {
-      try (NamedParameterPreparedStatement preparedStatement = NamedParameterPreparedStatement.parse(sqlStatement).createFor(connection)) {
+      try (NamedParameterPreparedStatement preparedStatement = NamedParameterPreparedStatement.parseSql(sqlStatement, sqlDialect).createFor(connection)) {
         executeStatementBatch(preparedStatement, parameterMetadata, parameterData, connection, explicitCommit, statementsPerFlush);
       } finally {
         if (explicitCommit) {
