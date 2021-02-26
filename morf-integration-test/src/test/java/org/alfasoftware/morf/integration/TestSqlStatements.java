@@ -1350,6 +1350,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void ItestBooleanFields() throws SQLException {
+    ImmutableList<Boolean> listOfTrueAndFalse = ImmutableList.of(true, false); // deliberately not a List<Object>
 
     SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
 
@@ -1366,7 +1367,8 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
                                        field("column1").eq(literal(true)),
                                        field("column1").eq(literal(false)),
                                        field("column1").in(true, false),
-                                       field("column1").in(literal(true), literal(false))
+                                       field("column1").in(literal(true), literal(false),
+                                       field("column1").in(listOfTrueAndFalse))
                                      ));
     UpdateStatement updateStatement = update(tableRef("BooleanTable"))
                                      .set(literal(true).as("column1"), literal(false).as("column2"));
