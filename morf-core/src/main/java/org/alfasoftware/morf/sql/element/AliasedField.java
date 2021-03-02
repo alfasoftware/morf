@@ -18,8 +18,6 @@ package org.alfasoftware.morf.sql.element;
 import static org.alfasoftware.morf.sql.SqlUtils.bracket;
 import static org.alfasoftware.morf.util.DeepCopyTransformations.noTransformation;
 
-import java.util.List;
-
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.SqlUtils;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
@@ -333,7 +331,7 @@ public abstract class AliasedField implements AliasedFieldBuilder, DeepCopyableW
    * @param values The values for comparison
    * @return The resulting {@link Criterion}.
    */
-  public Criterion in(List<Object> values) {
+  public Criterion in(Iterable<? extends Object> values) {
     return Criterion.in(this, values);
   }
 
