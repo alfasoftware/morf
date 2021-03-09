@@ -75,7 +75,7 @@ public class XmlDataSetProducer implements DataSetProducer {
   /**
    * Provides a file given a URL, abstracting us from the specific protocol.
    */
-  private ViewURLAsFile urlHandler;
+  private final ViewURLAsFile urlHandler;
 
 
   /**
@@ -112,8 +112,12 @@ public class XmlDataSetProducer implements DataSetProducer {
     File file = urlHandler.getFile(source, sourceUsername, sourcePassword);
     if (file.isDirectory()) {
       this.xmlStreamProvider = new DirectoryDataSet(file);
-    } else {
+    }
+    else if (file.isFile()) {
       this.xmlStreamProvider = new ArchiveDataSetReader(file);
+    }
+    else {
+      throw new RuntimeException("Could not find [" + file + "] from [" + source + "]");
     }
   }
 

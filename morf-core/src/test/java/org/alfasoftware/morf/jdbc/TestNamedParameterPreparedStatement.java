@@ -27,9 +27,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
-import org.junit.Test;
-
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement.ParseResult;
+import org.junit.Test;
 
 /**
  * Tests {@link NamedParameterPreparedStatement}.
@@ -45,8 +44,9 @@ public class TestNamedParameterPreparedStatement {
    */
   @Test
   public void testParse() {
-    ParseResult parseResult = NamedParameterPreparedStatement.parse(
-      "SELECT :fee,:fi, :fo(:fum), ':eek' FROM :fum WHERE :fum AND :fo"
+    ParseResult parseResult = NamedParameterPreparedStatement.parseSql(
+      "SELECT :fee,:fi, :fo(:fum), ':eek' FROM :fum WHERE :fum AND :fo",
+      mock(SqlDialect.class)
     );
 
     assertThat("Parsed SQL", parseResult.getParsedSql(),                equalTo("SELECT ?,?, ?(?), ':eek' FROM ? WHERE ? AND ?"));
@@ -67,7 +67,7 @@ public class TestNamedParameterPreparedStatement {
     Connection connection = mock(Connection.class);
     PreparedStatement underlying = mock(PreparedStatement.class);
     when(connection.prepareStatement("SELECT * FROM somewhere")).thenReturn(underlying);
-    NamedParameterPreparedStatement.parse("SELECT * FROM somewhere").createFor(connection).setMaxRows(123);
+    NamedParameterPreparedStatement.parseSql("SELECT * FROM somewhere", mock(SqlDialect.class)).createFor(connection).setMaxRows(123);
     verify(underlying).setMaxRows(123);
   }
 }

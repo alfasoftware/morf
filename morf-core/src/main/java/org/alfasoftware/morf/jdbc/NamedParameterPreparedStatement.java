@@ -60,10 +60,20 @@ public class NamedParameterPreparedStatement implements AutoCloseable {
    * can be created rapidly.
    *
    * @param sql the SQL
+   * @param sqlDialect Dialect of the SQL.
    * @return the parsed result
    */
+  public static ParseResult parseSql(String sql, SqlDialect sqlDialect) {
+    return new ParseResult(sql, sqlDialect);
+  }
+
+
+  /**
+   * @deprecated Use the {@link #parseSql(String, SqlDialect)} method.
+   */
+  @Deprecated
   public static ParseResult parse(String sql) {
-    return new ParseResult(sql);
+    return new ParseResult(sql, null);
   }
 
 
@@ -333,7 +343,13 @@ public class NamedParameterPreparedStatement implements AutoCloseable {
     forEachOccurrenceOfParameter(parameter, new Operation() {
       @Override
       public void apply(int parameterIndex) throws SQLException {
-        statement.setString(parameterIndex, value);
+        // TODO: dialect nullability is deprecated, and should be ousted asap
+        if (sql.dialect != null && sql.dialect.usesNVARCHARforStrings()) {
+          statement.setNString(parameterIndex, value);
+        }
+        else {
+          statement.setString(parameterIndex, value);
+        }
       }
     });
     return this;
@@ -469,13 +485,15 @@ public class NamedParameterPreparedStatement implements AutoCloseable {
   public static final class ParseResult {
 
     private final String query;
+    private final SqlDialect dialect;
     private final Map<String, List<Integer>> indexMap = Maps.newHashMap();
 
     /**
      * Private constructor.
      */
-    private ParseResult(String query) {
+    private ParseResult(String query, SqlDialect sqlDialect) {
       this.query = parse(query);
+      this.dialect = sqlDialect;
     }
 
 

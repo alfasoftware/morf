@@ -1350,6 +1350,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void ItestBooleanFields() throws SQLException {
+    ImmutableList<Boolean> listOfTrueAndFalse = ImmutableList.of(true, false); // deliberately not a List<Object>
 
     SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
 
@@ -1366,7 +1367,8 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
                                        field("column1").eq(literal(true)),
                                        field("column1").eq(literal(false)),
                                        field("column1").in(true, false),
-                                       field("column1").in(literal(true), literal(false))
+                                       field("column1").in(literal(true), literal(false)),
+                                       field("column1").in(listOfTrueAndFalse)
                                      ));
     UpdateStatement updateStatement = update(tableRef("BooleanTable"))
                                      .set(literal(true).as("column1"), literal(false).as("column2"));
@@ -2413,7 +2415,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
             parameter("parameterValue").type(DataType.STRING).as("column4")
           )
         );
-    NamedParameterPreparedStatement preparedStatement = NamedParameterPreparedStatement.parse(sqlDialect.convertStatementToSQL(merge)).createFor(connection);
+    NamedParameterPreparedStatement preparedStatement = NamedParameterPreparedStatement.parseSql(sqlDialect.convertStatementToSQL(merge), sqlDialect).createFor(connection);
     try {
 
       // Put in two records.  The first should merge with the initial data set.
@@ -2466,7 +2468,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     UpdateStatement update = update(tableRef("MergeTableMultipleKeys"))
         .set(column2, column3, column4)
         .where(field("column1").eq(column1));
-    ParseResult parsed = NamedParameterPreparedStatement.parse(sqlDialect.convertStatementToSQL(update));
+    ParseResult parsed = NamedParameterPreparedStatement.parseSql(sqlDialect.convertStatementToSQL(update), sqlDialect);
 
     NamedParameterPreparedStatement preparedStatement = parsed.createFor(connection);
     try {
@@ -2510,6 +2512,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
           field("field2"),
           literal(":justtomesswithyou"), // just to confuse it - should be treated as a string
           parameter("param3").type(DataType.INTEGER).as("field3"),
+          coalesce(literal("value"), parameter("param4").type(DataType.STRING)),
           isnull(literal("value"), parameter("param4").type(DataType.STRING))
         )
         .from("SelectFirstTable")
@@ -2520,7 +2523,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         ))
         .orderBy(field("field1"), field("field2"));
 
-    NamedParameterPreparedStatement preparedStatement = NamedParameterPreparedStatement.parse(sqlDialect.convertStatementToSQL(select)).createForQueryOn(connection);
+    NamedParameterPreparedStatement preparedStatement = NamedParameterPreparedStatement.parseSql(sqlDialect.convertStatementToSQL(select), sqlDialect).createForQueryOn(connection);
     try {
       preparedStatement.setFetchSize(sqlDialect.fetchSizeForBulkSelects());
       sqlDialect.prepareStatementParameters(
@@ -2544,18 +2547,21 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
       assertEquals("Row 1 column 3", ":justtomesswithyou", resultSet.getString(3));
       assertEquals("Row 1 column 4", 7, resultSet.getInt(4));
       assertEquals("Row 1 column 5", "value", resultSet.getString(5));
+      assertEquals("Row 1 column 6", "value", resultSet.getString(6));
       assertTrue("No record 2", resultSet.next());
       assertEquals("Row 2 column 1", 2, resultSet.getInt(1));
       assertEquals("Row 2 column 2", 3, resultSet.getInt(2));
       assertEquals("Row 2 column 3", ":justtomesswithyou", resultSet.getString(3));
       assertEquals("Row 2 column 4", 7, resultSet.getInt(4));
       assertEquals("Row 2 column 5", "value", resultSet.getString(5));
+      assertEquals("Row 2 column 6", "value", resultSet.getString(6));
       assertTrue("No record 3", resultSet.next());
       assertEquals("Row 3 column 1", 5, resultSet.getInt(1));
       assertEquals("Row 3 column 2", 4, resultSet.getInt(2));
       assertEquals("Row 3 column 3", ":justtomesswithyou", resultSet.getString(3));
       assertEquals("Row 3 column 4", 7, resultSet.getInt(4));
       assertEquals("Row 3 column 5", "value", resultSet.getString(5));
+      assertEquals("Row 3 column 6", "value", resultSet.getString(6));
       assertFalse("Noo many records", resultSet.next());
     } finally {
       preparedStatement.close();
