@@ -207,14 +207,22 @@ class PostgreSQLDialect extends SqlDialect {
     return ImmutableList.<String>builder()
         .addAll(preStatements)
         .add(createTableStatement.toString())
-        .add(addTableComment(table.getName()))
+        .add(addTableComment(table))
         .addAll(postStatements)
         .build();
   }
 
 
-  private String addTableComment(String tableName) {
-    return "COMMENT ON TABLE " + schemaNamePrefix() + tableName + " IS 'REALNAME:[" + tableName + "]'";
+  private String addTableComment(Table table) {
+    StringBuilder sqlBuilder = new StringBuilder("COMMENT ON TABLE ");
+    if (!table.isTemporary()) {
+      sqlBuilder.append(schemaNamePrefix());
+    }
+    return sqlBuilder.append(table.getName())
+      .append(" IS 'REALNAME:[")
+      .append(table.getName())
+      .append("]'")
+      .toString();
   }
 
 
@@ -234,7 +242,7 @@ class PostgreSQLDialect extends SqlDialect {
         .addAll(renameTable)
         .addAll(renamePk)
         .addAll(renameSeq)
-        .add(addTableComment(to.getName()))
+        .add(addTableComment(to))
         .build();
   }
 
