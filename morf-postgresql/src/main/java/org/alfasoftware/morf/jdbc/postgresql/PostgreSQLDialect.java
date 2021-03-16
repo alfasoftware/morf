@@ -214,15 +214,7 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   private String addTableComment(Table table) {
-    StringBuilder sqlBuilder = new StringBuilder("COMMENT ON TABLE ");
-    if (!table.isTemporary()) {
-      sqlBuilder.append(schemaNamePrefix());
-    }
-    return sqlBuilder.append(table.getName())
-      .append(" IS 'REALNAME:[")
-      .append(table.getName())
-      .append("]'")
-      .toString();
+    return "COMMENT ON TABLE " + schemaNamePrefix(table) + table.getName() + " IS 'REALNAME:[" + table.getName() + "]'";
   }
 
 
