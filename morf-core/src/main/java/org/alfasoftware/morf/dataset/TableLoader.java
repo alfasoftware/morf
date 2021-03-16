@@ -21,6 +21,7 @@ import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.SQLException;
 
 import org.alfasoftware.morf.dataset.TableLoaderBuilder.TableLoaderBuilderImpl;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
@@ -89,6 +90,13 @@ public class TableLoader {
     this.insertingUnderAutonumLimit = insertingUnderAutonumLimit;
     this.truncateBeforeLoad = truncateBeforeLoad;
     this.batchSize = batchSize;
+
+    if (truncateBeforeLoad && !explicitCommit) {
+      // This is because PostgreSQL needs to be able to commit/rollback, for TRUNCATE fallback to DELETE to work
+      // It could potentially be relaxed, if the DELETE fallback after a failed TRUNCATE is not needed.
+      // It also could potentially be relaxed, if running on PostgreSQL is of no concern to the caller.
+      throw new UnsupportedOperationException("Cannot TRUNCATE before load without permission to commit explicitly");
+    }
   }
 
 
@@ -100,7 +108,7 @@ public class TableLoader {
   public void load(final Iterable<Record> records) {
 
     if (truncateBeforeLoad) {
-      truncate(table, connection);
+      truncate(table);
     }
 
     insertOrMergeRecords(records);
@@ -112,17 +120,46 @@ public class TableLoader {
    *
    * @param table
    */
-  private void truncate(Table table, Connection connection) {
+  private void truncate(Table table) {
     // Get our own table definition based on the name to avoid case sensitivity bugs on some database vendors
     log.debug("Clearing table [" + table.getName() + "]");
 
     // Try to use a truncate
     try {
+     runRecoverably(() -> {
       sqlExecutor.execute(sqlDialect.truncateTableStatements(table), connection);
-    } catch (RuntimeSqlException e) {
+     });
+    } catch (SQLException | RuntimeSqlException e) {
       // If that has failed try to use a delete
       log.debug("Failed to truncate table, attempting a delete", e);
       sqlExecutor.execute(sqlDialect.deleteAllFromTableStatements(table), connection);
+    }
+  }
+
+
+  /**
+   * PostgreSQL does not like failing commands, and marks connections as "dirty" after errors:
+   * <q>ERROR: current transaction is aborted, commands ignored until end of transaction block.</q>
+   *
+   * <p>To recover a connection, one has to issue a rollback.</p>
+   *
+   * @param runnable
+   */
+  private void runRecoverably(Runnable runnable) throws SQLException {
+    // make sure we commit if we can
+    if (explicitCommit) {
+      connection.commit();
+    }
+
+    try {
+      runnable.run();
+    }
+    catch (Exception e) {
+      // make sure we rollback if we can
+      if (explicitCommit) {
+        connection.rollback();
+      }
+      throw e;
     }
   }
 
