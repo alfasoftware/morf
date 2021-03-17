@@ -126,9 +126,9 @@ public class TableLoader {
 
     // Try to use a truncate
     try {
-     runRecoverably(() -> {
-      sqlExecutor.execute(sqlDialect.truncateTableStatements(table), connection);
-     });
+      runRecoverably(() ->
+        sqlExecutor.execute(sqlDialect.truncateTableStatements(table), connection)
+      );
     } catch (SQLException | RuntimeSqlException e) {
       // If that has failed try to use a delete
       log.debug("Failed to truncate table, attempting a delete", e);
