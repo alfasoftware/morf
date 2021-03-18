@@ -84,7 +84,7 @@ public final class NuoDB extends AbstractDatabaseType {
    */
   @Override
   public boolean matchesProduct(String product) {
-    return product.equalsIgnoreCase("NUODB");
+    return product.equalsIgnoreCase(IDENTIFIER);
   }
 
 

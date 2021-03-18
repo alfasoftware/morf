@@ -40,6 +40,13 @@ import com.google.common.collect.FluentIterable;
 public class RecordHelper {
 
   /**
+   * Static class not intended to be instantiated
+   */
+  private RecordHelper() {
+    throw new IllegalStateException("Utility class");
+  }
+
+  /**
    * Date/time formatter for record format dates
    */
   private static final DateTimeFormatter FROM_YYYY_MM_DD = DateTimeFormat.forPattern("yyyy-MM-dd");
