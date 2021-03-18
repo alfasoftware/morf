@@ -115,7 +115,7 @@ public class SchemaHomology {
    */
   public boolean schemasMatch(Schema schema1, Schema schema2, Collection<String> exclusionRegex) {
     noDifferences = true;
-    HashMap<String, Table> schema2Tables = new HashMap<String, Table>();
+    HashMap<String, Table> schema2Tables = new HashMap<>();
     for (Table table : schema2.tables()) {
       schema2Tables.put(table.getName().toUpperCase(), table);
     }
@@ -297,7 +297,7 @@ public class SchemaHomology {
   private void checkColumns(String tableName, List<Column> columns1, List<Column> columns2) {
     // Note that we compare all columns even once the first mismatch is detected.
 
-    Map<String, Column> columns2Source = new HashMap<String, Column>();
+    Map<String, Column> columns2Source = new HashMap<>();
     for (Column column : columns2) {
       columns2Source.put(column.getName().toUpperCase(), column);
     }
@@ -325,7 +325,7 @@ public class SchemaHomology {
    * @param indexes2 The second set of indexes
    */
   private void checkIndexes(String tableName, List<Index> indexes1, List<Index> indexes2) {
-    Map<String, Index> sourceIndexes2 = new HashMap<String, Index>();
+    Map<String, Index> sourceIndexes2 = new HashMap<>();
     for (Index index : indexes2) {
       sourceIndexes2.put(index.getName().toUpperCase(), index);
     }
