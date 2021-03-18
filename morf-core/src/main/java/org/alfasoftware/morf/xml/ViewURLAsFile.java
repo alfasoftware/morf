@@ -76,7 +76,7 @@ class ViewURLAsFile implements Closeable {
    */
   File getFile(final URL url, final String urlUsername, final String urlPassword) {
     if (url.getProtocol().equals("file")) {
-      log.info(url.toString() + " is a File System resource. Providing it directily as a File.");
+      log.info(url.toString() + " is a File System resource. Providing it directly as a File.");
       try {
         return new File(URLDecoder.decode(url.getPath(), "utf-8"));
       } catch (UnsupportedEncodingException e) {
@@ -128,7 +128,7 @@ class ViewURLAsFile implements Closeable {
             }
           }
         } catch (IOException e) {
-          throw new RuntimeException("Unable to access [" + url + "] when targetting temporary file [" + result + "]", e);
+          throw new RuntimeException("Unable to access [" + url + "] when targeting temporary file [" + result + "]", e);
         }
 
         return result;

@@ -51,16 +51,15 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider {
 
   @Override
   protected DataType dataTypeFromSqlType(int sqlType, String typeName, int width) {
-    switch (sqlType) {
-      case Types.VARCHAR:
-        if (typeName.equals("text")) {
-          return DataType.CLOB;
-        }
-        return super.dataTypeFromSqlType(sqlType, typeName, width);
 
-      default:
-        return super.dataTypeFromSqlType(sqlType, typeName, width);
+    if (sqlType == Types.VARCHAR) {
+      if (typeName.equals("text")) {
+        return DataType.CLOB;
+      }
+      return super.dataTypeFromSqlType(sqlType, typeName, width);
     }
+
+    return super.dataTypeFromSqlType(sqlType, typeName, width);
   }
 
 
