@@ -128,15 +128,22 @@ public abstract class SqlDialect {
   public static final int                ID_COLUMN_WIDTH                   = 19;
 
   /**
-   *
+   * Label to identify the real name of an object in an SQL comment
    */
-  public static final String          REAL_NAME_COMMENT_LABEL            = "REALNAME";
+  public static final String             REAL_NAME_COMMENT_LABEL           = "REALNAME";
 
 
   /**
    * Empty collection of strings that implementations can return if required.
    */
   public static final Collection<String> NO_STATEMENTS                     = ImmutableList.of();
+
+  /**
+   * IllegalArgumentException message
+   */
+  private static final String            CANNOT_CONVERT_NULL_STATEMENT_TO_SQL  =  "Cannot convert a null statement to SQL";
+
+
 
   /**
    * Used as the alias for the select statement in merge statements.
@@ -411,7 +418,7 @@ public abstract class SqlDialect {
    */
   public List<String> convertStatementToSQL(InsertStatement statement) {
     if (statement == null) {
-      throw new IllegalArgumentException("Cannot convert a null statement to SQL");
+      throw new IllegalArgumentException(CANNOT_CONVERT_NULL_STATEMENT_TO_SQL);
     }
 
     expandInnerSelectFields(statement.getSelectStatement());
@@ -437,7 +444,7 @@ public abstract class SqlDialect {
    */
   public List<String> convertStatementToSQL(InsertStatement statement, Schema databaseMetadata, Table idTable) {
     if (statement == null) {
-      throw new IllegalArgumentException("Cannot convert a null statement to SQL");
+      throw new IllegalArgumentException(CANNOT_CONVERT_NULL_STATEMENT_TO_SQL);
     }
 
     expandInnerSelectFields(statement.getSelectStatement());
@@ -593,7 +600,7 @@ public abstract class SqlDialect {
    */
   public String convertStatementToSQL(UpdateStatement statement) {
     if (statement == null) {
-      throw new IllegalArgumentException("Cannot convert a null statement to SQL");
+      throw new IllegalArgumentException(CANNOT_CONVERT_NULL_STATEMENT_TO_SQL);
     }
 
     return getSqlFrom(statement);
@@ -608,7 +615,7 @@ public abstract class SqlDialect {
    */
   public String convertStatementToSQL(MergeStatement statement) {
     if (statement == null) {
-      throw new IllegalArgumentException("Cannot convert a null statement to SQL");
+      throw new IllegalArgumentException(CANNOT_CONVERT_NULL_STATEMENT_TO_SQL);
     }
 
     return getSqlFrom(statement);
@@ -623,7 +630,7 @@ public abstract class SqlDialect {
    */
   public String convertStatementToSQL(DeleteStatement statement) {
     if (statement == null) {
-      throw new IllegalArgumentException("Cannot convert a null statement to SQL");
+      throw new IllegalArgumentException(CANNOT_CONVERT_NULL_STATEMENT_TO_SQL);
     }
 
     return getSqlFrom(statement);
@@ -2640,7 +2647,7 @@ public abstract class SqlDialect {
    */
   public String convertStatementToSQL(SelectStatement statement) {
     if (statement == null) {
-      throw new IllegalArgumentException("Cannot convert a null statement to SQL");
+      throw new IllegalArgumentException(CANNOT_CONVERT_NULL_STATEMENT_TO_SQL);
     }
 
     return getSqlFrom(statement);
@@ -2656,7 +2663,7 @@ public abstract class SqlDialect {
    */
   public String convertStatementToSQL(SelectFirstStatement statement) {
     if (statement == null) {
-      throw new IllegalArgumentException("Cannot convert a null statement to SQL");
+      throw new IllegalArgumentException(CANNOT_CONVERT_NULL_STATEMENT_TO_SQL);
     }
 
     if (statement.getOrderBys().isEmpty()) {
