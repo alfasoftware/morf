@@ -34,7 +34,7 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider {
 
   private static final Log log = LogFactory.getLog(PostgreSQLMetaDataProvider.class);
 
-  private static final Pattern REALNAME_COMMENT_MATCHER = Pattern.compile(".*REALNAME:\\[([^\\]]*)\\](/TYPE:\\[([^\\]]*)\\])?.*");
+  private static final Pattern REALNAME_COMMENT_MATCHER = Pattern.compile(".*"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":\\[([^\\]]*)\\](/TYPE:\\[([^\\]]*)\\])?.*");
 
   private final Supplier<Map<AName, RealName>> allIndexNames = Suppliers.memoize(this::loadAllIndexNames);
 

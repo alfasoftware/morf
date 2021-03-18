@@ -128,6 +128,12 @@ public abstract class SqlDialect {
   public static final int                ID_COLUMN_WIDTH                   = 19;
 
   /**
+   *
+   */
+  public static final String          REAL_NAME_COMMENT_LABEL            = "REALNAME";
+
+
+  /**
    * Empty collection of strings that implementations can return if required.
    */
   public static final Collection<String> NO_STATEMENTS                     = ImmutableList.of();
