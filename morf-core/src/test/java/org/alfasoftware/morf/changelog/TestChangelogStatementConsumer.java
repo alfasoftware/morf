@@ -51,12 +51,12 @@ public class TestChangelogStatementConsumer {
 
     test.upgradeStepStart("Upgrade2", "Long description - lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua", "WEB-1234");
     test.dataChange("Multiple lines" +
-        SystemUtils.LINE_SEPARATOR + "    - long sub-line 1 - lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua ut enim ad minim veniam, quis nostrud exercitation ullamco laboris" +
-        SystemUtils.LINE_SEPARATOR + "    - short sub-line" +
-        SystemUtils.LINE_SEPARATOR + "    - long sub-line 2 - lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua ut enim ad minim veniam, quis nostrud exercitation ullamco laboris");
+        System.lineSeparator() + "    - long sub-line 1 - lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua ut enim ad minim veniam, quis nostrud exercitation ullamco laboris" +
+        System.lineSeparator() + "    - short sub-line" +
+        System.lineSeparator() + "    - long sub-line 2 - lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua ut enim ad minim veniam, quis nostrud exercitation ullamco laboris");
     test.upgradeStepEnd("Upgrade2");
 
-    final String[] lines = writer.toString().split(SystemUtils.LINE_SEPARATOR);
+    final String[] lines = writer.toString().split(System.lineSeparator());
 
     assertArrayEquals("Line wrapping", new String[] {
       "* WEB-1234: Short description",

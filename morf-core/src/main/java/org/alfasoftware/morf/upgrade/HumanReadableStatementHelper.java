@@ -591,12 +591,12 @@ class HumanReadableStatementHelper {
     }
     final StringBuilder sb = new StringBuilder("Run the following raw SQL statement");
     // Raw SQL fragments may have either "\n" written into them or use the platform separator
-    final String[] lines = sql.split(SystemUtils.LINE_SEPARATOR + "|\\n");
+    final String[] lines = sql.split(System.lineSeparator() + "|\\n");
     for (int i = 0; i < lines.length; i++) {
       if (i > 0) {
-        sb.append(SystemUtils.LINE_SEPARATOR).append("      ");
+        sb.append(System.lineSeparator()).append("      ");
       } else {
-        sb.append(SystemUtils.LINE_SEPARATOR).append("    - ");
+        sb.append(System.lineSeparator()).append("    - ");
       }
       sb.append(lines[i]);
     }
