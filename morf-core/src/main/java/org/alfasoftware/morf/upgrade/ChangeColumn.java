@@ -60,7 +60,7 @@ public class ChangeColumn implements SchemaChange {
    *
    * Transitions do not have to be reversible.
    */
-  private final Multimap<DataType,DataType> allowedDataTypeChanges = ImmutableMultimap.<>builder()
+  private final Multimap<DataType,DataType> allowedDataTypeChanges = ImmutableMultimap.<DataType,DataType>builder()
     .put(DataType.DECIMAL, DataType.BIG_INTEGER) // Tested by testChangeColumnDataTypeAndChangeToPrimaryKey
     .build();
 
