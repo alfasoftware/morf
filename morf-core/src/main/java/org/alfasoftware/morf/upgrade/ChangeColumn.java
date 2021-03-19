@@ -60,7 +60,7 @@ public class ChangeColumn implements SchemaChange {
    *
    * Transitions do not have to be reversible.
    */
-  private final Multimap<DataType,DataType> allowedDataTypeChanges = ImmutableMultimap.<DataType,DataType>builder()
+  private final Multimap<DataType,DataType> allowedDataTypeChanges = ImmutableMultimap.<>builder()
     .put(DataType.DECIMAL, DataType.BIG_INTEGER) // Tested by testChangeColumnDataTypeAndChangeToPrimaryKey
     .build();
 
@@ -103,8 +103,8 @@ public class ChangeColumn implements SchemaChange {
     boolean foundMatch = false;
 
     // Copy the columns names into a list of strings for column sort order
-    List<String> columns = new ArrayList<String>();
-    Set<String> processedColumns = new HashSet<String>();
+    List<String> columns = new ArrayList<>();
+    Set<String> processedColumns = new HashSet<>();
     for (Column column : original.columns()) {
       String currentColumnName = column.getName();
 

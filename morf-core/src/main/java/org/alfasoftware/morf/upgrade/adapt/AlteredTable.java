@@ -61,8 +61,8 @@ public class AlteredTable implements Table {
     // -- Apply changes to columns...
     //
     if (columnOrder != null) {
-      this.columns = new ArrayList<Column>();
-      Map<String, Column> columnMap = new HashMap<String, Column>();
+      this.columns = new ArrayList<>();
+      Map<String, Column> columnMap = new HashMap<>();
       for (Column column : baseTable.columns()) {
         columnMap.put(column.getName().toUpperCase(), column);
       }
@@ -80,8 +80,8 @@ public class AlteredTable implements Table {
     // -- Apply changes to indexes...
     //
     if (indexes != null) {
-      this.indexes = new ArrayList<Index>();
-      Map<String, Index> indexMap = new HashMap<String, Index>();
+      this.indexes = new ArrayList<>();
+      Map<String, Index> indexMap = new HashMap<>();
       for (Index index : baseTable.indexes()) {
         indexMap.put(index.getName(), index);
       }
