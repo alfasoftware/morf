@@ -19,7 +19,6 @@ import java.io.PrintWriter;
 
 import org.alfasoftware.morf.upgrade.HumanReadableStatementConsumer;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.text.WordUtils;
 
 /**
