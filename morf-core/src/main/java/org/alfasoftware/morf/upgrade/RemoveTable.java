@@ -95,7 +95,7 @@ public class RemoveTable implements SchemaChange {
   @Override
   public Schema reverse(Schema schema) {
     if(schema.tableExists(tableToBeRemoved.getName().toUpperCase())){
-      throw new IllegalArgumentException("Cannot perform reversal for for [" + tableToBeRemoved.getName() + "] table removal as it already exist.");
+      throw new IllegalArgumentException("Cannot perform reversal for [" + tableToBeRemoved.getName() + "] table removal as it already exists.");
     }
     return new AugmentedSchema(schema, tableToBeRemoved);
   }
