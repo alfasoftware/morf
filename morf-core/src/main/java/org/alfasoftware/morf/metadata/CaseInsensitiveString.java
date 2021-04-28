@@ -2,8 +2,8 @@ package org.alfasoftware.morf.metadata;
 
 import java.io.Serializable;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
@@ -20,7 +20,7 @@ import com.google.common.collect.ImmutableMap;
  */
 public final class CaseInsensitiveString implements Serializable {
 
-  private static final Log log = LogFactory.getLog(CaseInsensitiveString.class);
+  private static final Logger log = LogManager.getLogger(CaseInsensitiveString.class);
 
   private static final long serialVersionUID = -928749237982340192L;
 
