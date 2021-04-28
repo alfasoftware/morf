@@ -64,6 +64,9 @@
     <serializer.version>2.7.1</serializer.version>
     <xmlunit.version>2.6.4</xmlunit.version>
     <slf4j.version>1.5.0</slf4j.version>
+    <sonar.coverage.exclusions>
+        morf-testsupport/**
+    </sonar.coverage.exclusions>
   </properties>
   
   <build>
