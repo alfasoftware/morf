@@ -18,6 +18,7 @@ package org.alfasoftware.morf.integration;
 import static org.alfasoftware.morf.metadata.DataSetUtils.dataSetProducer;
 import static org.alfasoftware.morf.metadata.DataSetUtils.record;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.junit.Assert.assertEquals;
@@ -26,8 +27,6 @@ import static org.junit.Assert.assertTrue;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Random;
-
-import net.jcip.annotations.NotThreadSafe;
 
 import org.alfasoftware.morf.dataset.DataSetConnector;
 import org.alfasoftware.morf.dataset.DataSetHomology;
@@ -53,6 +52,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
+import net.jcip.annotations.NotThreadSafe;
 
 /**
  * Tests that our tooling works on the currently configured database.
@@ -233,6 +233,41 @@ public class TestDatabaseSupport {
         .table("WithAutoNum");
 
     doConnectAndCompare(schema, dataSetWithInvalidValue, databaseDataSetConsumer.get());
+  }
+
+
+  /**
+   * Tests that index statements are dropped when modifying the schema
+   */
+  @Test
+  public void testDropIndexesWhenModifyingSchema() {
+    Schema schemaTableA = schema(table("TableA")
+        .columns(column("field", DataType.BIG_INTEGER))
+        .indexes(index("CommonIndex").columns("field")));
+    Schema schemaTableB = schema(table("TableB")
+        .columns(column("field", DataType.BIG_INTEGER))
+        .indexes(index("CommonIndex").columns("field")));
+
+    doConnectAndCompare(schemaTableA, dataSetProducer(schemaTableA).table("TableA"), databaseDataSetConsumer.get());
+    doConnectAndCompare(schemaTableB, dataSetProducer(schemaTableB).table("TableB"), databaseDataSetConsumer.get());
+  }
+
+
+  /**
+   * Tests that duplicate indexes result in an exception
+   */
+  @Test
+  public void testDuplicateIndexName() {
+    thrown.expect(RuntimeException.class);
+
+    Schema schema = schema(table("TableA")
+        .columns(column("field", DataType.BIG_INTEGER))
+        .indexes(index("CommonIndex").columns("field")),
+    table("TableB")
+        .columns(column("field", DataType.BIG_INTEGER))
+        .indexes(index("CommonIndex").columns("field")));
+
+    doConnectAndCompare(schema, dataSetProducer(schema).table("TableA").table("TableB"), databaseDataSetConsumer.get());
   }
 
 
