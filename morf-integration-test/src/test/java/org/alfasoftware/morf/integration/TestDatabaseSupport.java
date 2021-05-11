@@ -254,6 +254,24 @@ public class TestDatabaseSupport {
 
 
   /**
+   * Tests that index statements are dropped when modifying the schema
+   */
+  @Test
+  public void testDropIndexesWhenModifyingSchemaWithExistingTable() {
+    Schema schemaTableA = schema(table("TableA")
+            .columns(column("field", DataType.BIG_INTEGER))
+            .indexes(index("CommonIndex").columns("field")),
+        table("TableB"));
+    Schema schemaTableB = schema(table("TableB")
+        .columns(column("field", DataType.BIG_INTEGER))
+        .indexes(index("CommonIndex").columns("field")));
+
+    doConnectAndCompare(schemaTableA, dataSetProducer(schemaTableA).table("TableA").table("TableB"), databaseDataSetConsumer.get());
+    doConnectAndCompare(schemaTableB, dataSetProducer(schemaTableB).table("TableB"), databaseDataSetConsumer.get());
+  }
+
+
+  /**
    * Tests that duplicate indexes result in an exception
    */
   @Test
