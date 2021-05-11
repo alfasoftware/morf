@@ -156,24 +156,23 @@ public class SchemaModificationAdapter extends DataSetAdapter {
     if (schemaResource.tableExists(table.getName())) {
       // if the table exists, we need to check it's of the right schema
       Table databaseTableMetaData = schemaResource.getTable(table.getName());
-      databaseTableMetaData.indexes().forEach(index -> existingIndexNames.remove(index.getName().toUpperCase()));
 
       if (!new SchemaHomology().tablesMatch(table, databaseTableMetaData)) {
         // there was a difference. Drop and re-deploy
         log.debug("Replacing table [" + table.getName() + "] with different version");
         dropExistingViewsIfNecessary();
+        dropExistingIndexesIfNecessary(table);
         sqlExecutor.execute(sqlDialect.dropStatements(databaseTableMetaData), connection);
         sqlExecutor.execute(sqlDialect.tableDeploymentStatements(table), connection);
+      } else {
+        // Remove the index names that are now part of the modified schema
+        table.indexes().forEach(index -> existingIndexNames.remove(index.getName().toUpperCase()));
       }
 
     } else {
       log.debug("Deploying missing table [" + table.getName() + "]");
       dropExistingViewsIfNecessary();
-      table.indexes().forEach(index -> {
-        if (existingIndexNames.remove(index.getName().toUpperCase())) {
-          sqlExecutor.execute(sqlDialect.indexDropStatements(table, index), connection);
-        }
-      });
+      dropExistingIndexesIfNecessary(table);
       sqlExecutor.execute(sqlDialect.tableDeploymentStatements(table), connection);
     }
   }
@@ -191,6 +190,19 @@ public class SchemaModificationAdapter extends DataSetAdapter {
       Table table = schemaResource.getTable(tableName);
       sqlExecutor.execute(sqlDialect.dropStatements(table), connection);
     }
+  }
+
+
+  /**
+   * Drop all existing indexes of the table that's about to be deployed.
+   */
+  private void dropExistingIndexesIfNecessary(Table tableToDeploy) {
+    tableToDeploy.indexes().forEach(index -> {
+      if (existingIndexNames.remove(index.getName().toUpperCase())) {
+        // Only drop the index if it belongs to the previous schema
+        databaseDataSetConsumer.getSqlExecutor().execute(sqlDialect.indexDropStatements(tableToDeploy, index), connection);
+      }
+    });
   }
 
 }
