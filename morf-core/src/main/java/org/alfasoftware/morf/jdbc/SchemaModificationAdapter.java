@@ -48,6 +48,8 @@ public class SchemaModificationAdapter extends DataSetAdapter {
    */
   private final Set<String> remainingTables = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
+  private final Set<String> existingIndexNames = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
   private final SqlDialect sqlDialect;
 
   /**
@@ -85,10 +87,10 @@ public class SchemaModificationAdapter extends DataSetAdapter {
       throw new RuntimeSqlException("Error closing connection", e);
     }
     // get a list of all the tables at the start
-    for (String tableName : schemaResource.tableNames()) {
-      remainingTables.add(tableName.toUpperCase());
+    for (Table table : schemaResource.tables()) {
+      remainingTables.add(table.getName().toUpperCase());
+      table.indexes().forEach(index -> existingIndexNames.add(index.getName().toUpperCase()));
     }
-
   }
 
 
@@ -154,6 +156,7 @@ public class SchemaModificationAdapter extends DataSetAdapter {
     if (schemaResource.tableExists(table.getName())) {
       // if the table exists, we need to check it's of the right schema
       Table databaseTableMetaData = schemaResource.getTable(table.getName());
+      databaseTableMetaData.indexes().forEach(index -> existingIndexNames.remove(index.getName().toUpperCase()));
 
       if (!new SchemaHomology().tablesMatch(table, databaseTableMetaData)) {
         // there was a difference. Drop and re-deploy
@@ -166,6 +169,11 @@ public class SchemaModificationAdapter extends DataSetAdapter {
     } else {
       log.debug("Deploying missing table [" + table.getName() + "]");
       dropExistingViewsIfNecessary();
+      table.indexes().forEach(index -> {
+        if (existingIndexNames.remove(index.getName().toUpperCase())) {
+          sqlExecutor.execute(sqlDialect.indexDropStatements(table, index), connection);
+        }
+      });
       sqlExecutor.execute(sqlDialect.tableDeploymentStatements(table), connection);
     }
   }
