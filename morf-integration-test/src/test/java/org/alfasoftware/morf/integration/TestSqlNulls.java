@@ -140,6 +140,7 @@ public class TestSqlNulls {
   @Before
   public void before() throws SQLException {
     // no need to truncate the tables, the connector does that anyway
+    schemaManager.get().invalidateCache();
     schemaManager.get().mutateToSupportSchema(schema, TruncationBehavior.ONLY_ON_TABLE_CHANGE);
     new DataSetConnector(dataSet, databaseDataSetConsumer.get()).connect();
 
