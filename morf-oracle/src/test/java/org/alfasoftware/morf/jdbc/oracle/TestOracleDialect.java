@@ -90,41 +90,41 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
     return Arrays
         .asList(
           "CREATE TABLE TESTSCHEMA.Test (id NUMBER(19) NOT NULL, version INTEGER DEFAULT 0, stringField NVARCHAR2(3), intField INTEGER, floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField DECIMAL(1,0), charField NVARCHAR2(1), blobField BLOB, bigIntegerField NUMBER(19) DEFAULT 12345, clobField NCLOB, CONSTRAINT Test_PK PRIMARY KEY (id))",
-          "COMMENT ON TABLE TESTSCHEMA.Test IS 'REALNAME:[Test]'",
-          "COMMENT ON COLUMN TESTSCHEMA.Test.id IS 'REALNAME:[id]/TYPE:[BIG_INTEGER]'",
-          "COMMENT ON COLUMN TESTSCHEMA.Test.version IS 'REALNAME:[version]/TYPE:[INTEGER]'",
-          "COMMENT ON COLUMN TESTSCHEMA.Test.stringField IS 'REALNAME:[stringField]/TYPE:[STRING]'",
-          "COMMENT ON COLUMN TESTSCHEMA.Test.intField IS 'REALNAME:[intField]/TYPE:[INTEGER]'",
-          "COMMENT ON COLUMN TESTSCHEMA.Test.floatField IS 'REALNAME:[floatField]/TYPE:[DECIMAL]'",
-          "COMMENT ON COLUMN TESTSCHEMA.Test.dateField IS 'REALNAME:[dateField]/TYPE:[DATE]'",
-          "COMMENT ON COLUMN TESTSCHEMA.Test.booleanField IS 'REALNAME:[booleanField]/TYPE:[BOOLEAN]'",
-          "COMMENT ON COLUMN TESTSCHEMA.Test.charField IS 'REALNAME:[charField]/TYPE:[STRING]'",
-          "COMMENT ON COLUMN TESTSCHEMA.Test.blobField IS 'REALNAME:[blobField]/TYPE:[BLOB]'",
-          "COMMENT ON COLUMN TESTSCHEMA.Test.bigIntegerField IS 'REALNAME:[bigIntegerField]/TYPE:[BIG_INTEGER]'",
-          "COMMENT ON COLUMN TESTSCHEMA.Test.clobField IS 'REALNAME:[clobField]/TYPE:[CLOB]'",
+          "COMMENT ON TABLE TESTSCHEMA.Test IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[Test]'",
+          "COMMENT ON COLUMN TESTSCHEMA.Test.id IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[id]/TYPE:[BIG_INTEGER]'",
+          "COMMENT ON COLUMN TESTSCHEMA.Test.version IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[version]/TYPE:[INTEGER]'",
+          "COMMENT ON COLUMN TESTSCHEMA.Test.stringField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[stringField]/TYPE:[STRING]'",
+          "COMMENT ON COLUMN TESTSCHEMA.Test.intField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[INTEGER]'",
+          "COMMENT ON COLUMN TESTSCHEMA.Test.floatField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[floatField]/TYPE:[DECIMAL]'",
+          "COMMENT ON COLUMN TESTSCHEMA.Test.dateField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[dateField]/TYPE:[DATE]'",
+          "COMMENT ON COLUMN TESTSCHEMA.Test.booleanField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[booleanField]/TYPE:[BOOLEAN]'",
+          "COMMENT ON COLUMN TESTSCHEMA.Test.charField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[charField]/TYPE:[STRING]'",
+          "COMMENT ON COLUMN TESTSCHEMA.Test.blobField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[blobField]/TYPE:[BLOB]'",
+          "COMMENT ON COLUMN TESTSCHEMA.Test.bigIntegerField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[bigIntegerField]/TYPE:[BIG_INTEGER]'",
+          "COMMENT ON COLUMN TESTSCHEMA.Test.clobField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[clobField]/TYPE:[CLOB]'",
           "CREATE UNIQUE INDEX TESTSCHEMA.Test_NK ON TESTSCHEMA.Test (stringField)",
           "CREATE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.Test (intField, floatField)",
           "CREATE TABLE TESTSCHEMA.Alternate (id NUMBER(19) NOT NULL, version INTEGER DEFAULT 0, stringField NVARCHAR2(3), CONSTRAINT Alternate_PK PRIMARY KEY (id))",
-          "COMMENT ON TABLE TESTSCHEMA.Alternate IS 'REALNAME:[Alternate]'",
-          "COMMENT ON COLUMN TESTSCHEMA.Alternate.id IS 'REALNAME:[id]/TYPE:[BIG_INTEGER]'",
-          "COMMENT ON COLUMN TESTSCHEMA.Alternate.version IS 'REALNAME:[version]/TYPE:[INTEGER]'",
-          "COMMENT ON COLUMN TESTSCHEMA.Alternate.stringField IS 'REALNAME:[stringField]/TYPE:[STRING]'",
+          "COMMENT ON TABLE TESTSCHEMA.Alternate IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[Alternate]'",
+          "COMMENT ON COLUMN TESTSCHEMA.Alternate.id IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[id]/TYPE:[BIG_INTEGER]'",
+          "COMMENT ON COLUMN TESTSCHEMA.Alternate.version IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[version]/TYPE:[INTEGER]'",
+          "COMMENT ON COLUMN TESTSCHEMA.Alternate.stringField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[stringField]/TYPE:[STRING]'",
           "CREATE INDEX TESTSCHEMA.Alternate_1 ON TESTSCHEMA.Alternate (stringField)",
           "CREATE TABLE TESTSCHEMA.NonNull (id NUMBER(19) NOT NULL, version INTEGER DEFAULT 0, stringField NVARCHAR2(3) NOT NULL, intField DECIMAL(8,0) NOT NULL, booleanField DECIMAL(1,0) NOT NULL, dateField DATE NOT NULL, blobField BLOB NOT NULL, CONSTRAINT NonNull_PK PRIMARY KEY (id))",
-          "COMMENT ON TABLE TESTSCHEMA.NonNull IS 'REALNAME:[NonNull]'",
-          "COMMENT ON COLUMN TESTSCHEMA.NonNull.id IS 'REALNAME:[id]/TYPE:[BIG_INTEGER]'",
-          "COMMENT ON COLUMN TESTSCHEMA.NonNull.version IS 'REALNAME:[version]/TYPE:[INTEGER]'",
-          "COMMENT ON COLUMN TESTSCHEMA.NonNull.stringField IS 'REALNAME:[stringField]/TYPE:[STRING]'",
-          "COMMENT ON COLUMN TESTSCHEMA.NonNull.intField IS 'REALNAME:[intField]/TYPE:[DECIMAL]'",
-          "COMMENT ON COLUMN TESTSCHEMA.NonNull.booleanField IS 'REALNAME:[booleanField]/TYPE:[BOOLEAN]'",
-          "COMMENT ON COLUMN TESTSCHEMA.NonNull.dateField IS 'REALNAME:[dateField]/TYPE:[DATE]'",
-          "COMMENT ON COLUMN TESTSCHEMA.NonNull.blobField IS 'REALNAME:[blobField]/TYPE:[BLOB]'",
+          "COMMENT ON TABLE TESTSCHEMA.NonNull IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[NonNull]'",
+          "COMMENT ON COLUMN TESTSCHEMA.NonNull.id IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[id]/TYPE:[BIG_INTEGER]'",
+          "COMMENT ON COLUMN TESTSCHEMA.NonNull.version IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[version]/TYPE:[INTEGER]'",
+          "COMMENT ON COLUMN TESTSCHEMA.NonNull.stringField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[stringField]/TYPE:[STRING]'",
+          "COMMENT ON COLUMN TESTSCHEMA.NonNull.intField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[DECIMAL]'",
+          "COMMENT ON COLUMN TESTSCHEMA.NonNull.booleanField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[booleanField]/TYPE:[BOOLEAN]'",
+          "COMMENT ON COLUMN TESTSCHEMA.NonNull.dateField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[dateField]/TYPE:[DATE]'",
+          "COMMENT ON COLUMN TESTSCHEMA.NonNull.blobField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[blobField]/TYPE:[BLOB]'",
           "CREATE TABLE TESTSCHEMA.CompositePrimaryKey (id NUMBER(19) NOT NULL, version INTEGER DEFAULT 0, stringField NVARCHAR2(3) NOT NULL, secondPrimaryKey NVARCHAR2(3) NOT NULL, CONSTRAINT CompositePrimaryKey_PK PRIMARY KEY (id, secondPrimaryKey))",
-          "COMMENT ON TABLE TESTSCHEMA.CompositePrimaryKey IS 'REALNAME:[CompositePrimaryKey]'",
-          "COMMENT ON COLUMN TESTSCHEMA.CompositePrimaryKey.id IS 'REALNAME:[id]/TYPE:[BIG_INTEGER]'",
-          "COMMENT ON COLUMN TESTSCHEMA.CompositePrimaryKey.version IS 'REALNAME:[version]/TYPE:[INTEGER]'",
-          "COMMENT ON COLUMN TESTSCHEMA.CompositePrimaryKey.stringField IS 'REALNAME:[stringField]/TYPE:[STRING]'",
-          "COMMENT ON COLUMN TESTSCHEMA.CompositePrimaryKey.secondPrimaryKey IS 'REALNAME:[secondPrimaryKey]/TYPE:[STRING]'",
+          "COMMENT ON TABLE TESTSCHEMA.CompositePrimaryKey IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[CompositePrimaryKey]'",
+          "COMMENT ON COLUMN TESTSCHEMA.CompositePrimaryKey.id IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[id]/TYPE:[BIG_INTEGER]'",
+          "COMMENT ON COLUMN TESTSCHEMA.CompositePrimaryKey.version IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[version]/TYPE:[INTEGER]'",
+          "COMMENT ON COLUMN TESTSCHEMA.CompositePrimaryKey.stringField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[stringField]/TYPE:[STRING]'",
+          "COMMENT ON COLUMN TESTSCHEMA.CompositePrimaryKey.secondPrimaryKey IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[secondPrimaryKey]/TYPE:[STRING]'",
 
           "CREATE TABLE TESTSCHEMA.AutoNumber (intField NUMBER(19), CONSTRAINT AutoNumber_PK PRIMARY KEY (intField))",
 
@@ -165,8 +165,8 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
           "  END IF; \n" +
           "END;",
 
-          "COMMENT ON TABLE TESTSCHEMA.AutoNumber IS 'REALNAME:[AutoNumber]'",
-          "COMMENT ON COLUMN TESTSCHEMA.AutoNumber.intField IS 'REALNAME:[intField]/TYPE:[BIG_INTEGER]/AUTONUMSTART:[5]'"
+          "COMMENT ON TABLE TESTSCHEMA.AutoNumber IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[AutoNumber]'",
+          "COMMENT ON COLUMN TESTSCHEMA.AutoNumber.intField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[BIG_INTEGER]/AUTONUMSTART:[5]'"
         );
   }
 
@@ -182,35 +182,35 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
     return Arrays
         .asList(
           "CREATE GLOBAL TEMPORARY TABLE TESTSCHEMA.TempTest (id NUMBER(19) NOT NULL, version INTEGER DEFAULT 0, stringField NVARCHAR2(3), intField INTEGER, floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField DECIMAL(1,0), charField NVARCHAR2(1), blobField BLOB, bigIntegerField NUMBER(19) DEFAULT 12345, clobField NCLOB, CONSTRAINT TempTest_PK PRIMARY KEY (id)) ON COMMIT PRESERVE ROWS",
-          "COMMENT ON TABLE TESTSCHEMA.TempTest IS 'REALNAME:[TempTest]'",
-          "COMMENT ON COLUMN TESTSCHEMA.TempTest.id IS 'REALNAME:[id]/TYPE:[BIG_INTEGER]'",
-          "COMMENT ON COLUMN TESTSCHEMA.TempTest.version IS 'REALNAME:[version]/TYPE:[INTEGER]'",
-          "COMMENT ON COLUMN TESTSCHEMA.TempTest.stringField IS 'REALNAME:[stringField]/TYPE:[STRING]'",
-          "COMMENT ON COLUMN TESTSCHEMA.TempTest.intField IS 'REALNAME:[intField]/TYPE:[INTEGER]'",
-          "COMMENT ON COLUMN TESTSCHEMA.TempTest.floatField IS 'REALNAME:[floatField]/TYPE:[DECIMAL]'",
-          "COMMENT ON COLUMN TESTSCHEMA.TempTest.dateField IS 'REALNAME:[dateField]/TYPE:[DATE]'",
-          "COMMENT ON COLUMN TESTSCHEMA.TempTest.booleanField IS 'REALNAME:[booleanField]/TYPE:[BOOLEAN]'",
-          "COMMENT ON COLUMN TESTSCHEMA.TempTest.charField IS 'REALNAME:[charField]/TYPE:[STRING]'",
-          "COMMENT ON COLUMN TESTSCHEMA.TempTest.blobField IS 'REALNAME:[blobField]/TYPE:[BLOB]'",
-          "COMMENT ON COLUMN TESTSCHEMA.TempTest.bigIntegerField IS 'REALNAME:[bigIntegerField]/TYPE:[BIG_INTEGER]'",
-          "COMMENT ON COLUMN TESTSCHEMA.TempTest.clobField IS 'REALNAME:[clobField]/TYPE:[CLOB]'",
+          "COMMENT ON TABLE TESTSCHEMA.TempTest IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[TempTest]'",
+          "COMMENT ON COLUMN TESTSCHEMA.TempTest.id IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[id]/TYPE:[BIG_INTEGER]'",
+          "COMMENT ON COLUMN TESTSCHEMA.TempTest.version IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[version]/TYPE:[INTEGER]'",
+          "COMMENT ON COLUMN TESTSCHEMA.TempTest.stringField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[stringField]/TYPE:[STRING]'",
+          "COMMENT ON COLUMN TESTSCHEMA.TempTest.intField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[INTEGER]'",
+          "COMMENT ON COLUMN TESTSCHEMA.TempTest.floatField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[floatField]/TYPE:[DECIMAL]'",
+          "COMMENT ON COLUMN TESTSCHEMA.TempTest.dateField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[dateField]/TYPE:[DATE]'",
+          "COMMENT ON COLUMN TESTSCHEMA.TempTest.booleanField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[booleanField]/TYPE:[BOOLEAN]'",
+          "COMMENT ON COLUMN TESTSCHEMA.TempTest.charField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[charField]/TYPE:[STRING]'",
+          "COMMENT ON COLUMN TESTSCHEMA.TempTest.blobField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[blobField]/TYPE:[BLOB]'",
+          "COMMENT ON COLUMN TESTSCHEMA.TempTest.bigIntegerField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[bigIntegerField]/TYPE:[BIG_INTEGER]'",
+          "COMMENT ON COLUMN TESTSCHEMA.TempTest.clobField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[clobField]/TYPE:[CLOB]'",
           "CREATE UNIQUE INDEX TESTSCHEMA.TempTest_NK ON TESTSCHEMA.TempTest (stringField)",
           "CREATE INDEX TESTSCHEMA.TempTest_1 ON TESTSCHEMA.TempTest (intField, floatField)",
           "CREATE GLOBAL TEMPORARY TABLE TESTSCHEMA.TempAlternate (id NUMBER(19) NOT NULL, version INTEGER DEFAULT 0, stringField NVARCHAR2(3), CONSTRAINT TempAlternate_PK PRIMARY KEY (id)) ON COMMIT PRESERVE ROWS",
-          "COMMENT ON TABLE TESTSCHEMA.TempAlternate IS 'REALNAME:[TempAlternate]'",
-          "COMMENT ON COLUMN TESTSCHEMA.TempAlternate.id IS 'REALNAME:[id]/TYPE:[BIG_INTEGER]'",
-          "COMMENT ON COLUMN TESTSCHEMA.TempAlternate.version IS 'REALNAME:[version]/TYPE:[INTEGER]'",
-          "COMMENT ON COLUMN TESTSCHEMA.TempAlternate.stringField IS 'REALNAME:[stringField]/TYPE:[STRING]'",
+          "COMMENT ON TABLE TESTSCHEMA.TempAlternate IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[TempAlternate]'",
+          "COMMENT ON COLUMN TESTSCHEMA.TempAlternate.id IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[id]/TYPE:[BIG_INTEGER]'",
+          "COMMENT ON COLUMN TESTSCHEMA.TempAlternate.version IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[version]/TYPE:[INTEGER]'",
+          "COMMENT ON COLUMN TESTSCHEMA.TempAlternate.stringField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[stringField]/TYPE:[STRING]'",
           "CREATE INDEX TESTSCHEMA.TempAlternate_1 ON TESTSCHEMA.TempAlternate (stringField)",
           "CREATE GLOBAL TEMPORARY TABLE TESTSCHEMA.TempNonNull (id NUMBER(19) NOT NULL, version INTEGER DEFAULT 0, stringField NVARCHAR2(3) NOT NULL, intField DECIMAL(8,0) NOT NULL, booleanField DECIMAL(1,0) NOT NULL, dateField DATE NOT NULL, blobField BLOB NOT NULL, CONSTRAINT TempNonNull_PK PRIMARY KEY (id)) ON COMMIT PRESERVE ROWS",
-          "COMMENT ON TABLE TESTSCHEMA.TempNonNull IS 'REALNAME:[TempNonNull]'",
-          "COMMENT ON COLUMN TESTSCHEMA.TempNonNull.id IS 'REALNAME:[id]/TYPE:[BIG_INTEGER]'",
-          "COMMENT ON COLUMN TESTSCHEMA.TempNonNull.version IS 'REALNAME:[version]/TYPE:[INTEGER]'",
-          "COMMENT ON COLUMN TESTSCHEMA.TempNonNull.stringField IS 'REALNAME:[stringField]/TYPE:[STRING]'",
-          "COMMENT ON COLUMN TESTSCHEMA.TempNonNull.intField IS 'REALNAME:[intField]/TYPE:[DECIMAL]'",
-          "COMMENT ON COLUMN TESTSCHEMA.TempNonNull.booleanField IS 'REALNAME:[booleanField]/TYPE:[BOOLEAN]'",
-          "COMMENT ON COLUMN TESTSCHEMA.TempNonNull.dateField IS 'REALNAME:[dateField]/TYPE:[DATE]'",
-          "COMMENT ON COLUMN TESTSCHEMA.TempNonNull.blobField IS 'REALNAME:[blobField]/TYPE:[BLOB]'");
+          "COMMENT ON TABLE TESTSCHEMA.TempNonNull IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[TempNonNull]'",
+          "COMMENT ON COLUMN TESTSCHEMA.TempNonNull.id IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[id]/TYPE:[BIG_INTEGER]'",
+          "COMMENT ON COLUMN TESTSCHEMA.TempNonNull.version IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[version]/TYPE:[INTEGER]'",
+          "COMMENT ON COLUMN TESTSCHEMA.TempNonNull.stringField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[stringField]/TYPE:[STRING]'",
+          "COMMENT ON COLUMN TESTSCHEMA.TempNonNull.intField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[DECIMAL]'",
+          "COMMENT ON COLUMN TESTSCHEMA.TempNonNull.booleanField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[booleanField]/TYPE:[BOOLEAN]'",
+          "COMMENT ON COLUMN TESTSCHEMA.TempNonNull.dateField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[dateField]/TYPE:[DATE]'",
+          "COMMENT ON COLUMN TESTSCHEMA.TempNonNull.blobField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[blobField]/TYPE:[BLOB]'");
   }
 
 
@@ -225,16 +225,16 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
               + LONG_TABLE_NAME_TRUNCATED_30
               + " (id NUMBER(19) NOT NULL, version INTEGER DEFAULT 0, stringField NVARCHAR2(3), intField DECIMAL(8,0), floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField DECIMAL(1,0), charField NVARCHAR2(1), CONSTRAINT "
               + LONG_TABLE_NAME_TRUNCATED_27 + "_PK PRIMARY KEY (id))",
-          "COMMENT ON TABLE TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + " IS 'REALNAME:[" + LONG_TABLE_NAME_TRUNCATED_30 + "]'",
-          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + ".id IS 'REALNAME:[id]/TYPE:[BIG_INTEGER]'",
-          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + ".version IS 'REALNAME:[version]/TYPE:[INTEGER]'",
-          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + ".stringField IS 'REALNAME:[stringField]/TYPE:[STRING]'",
-          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + ".intField IS 'REALNAME:[intField]/TYPE:[DECIMAL]'",
-          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + ".floatField IS 'REALNAME:[floatField]/TYPE:[DECIMAL]'",
-          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + ".dateField IS 'REALNAME:[dateField]/TYPE:[DATE]'",
+          "COMMENT ON TABLE TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + " IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[" + LONG_TABLE_NAME_TRUNCATED_30 + "]'",
+          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + ".id IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[id]/TYPE:[BIG_INTEGER]'",
+          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + ".version IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[version]/TYPE:[INTEGER]'",
+          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + ".stringField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[stringField]/TYPE:[STRING]'",
+          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + ".intField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[DECIMAL]'",
+          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + ".floatField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[floatField]/TYPE:[DECIMAL]'",
+          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + ".dateField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[dateField]/TYPE:[DATE]'",
           "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30
-              + ".booleanField IS 'REALNAME:[booleanField]/TYPE:[BOOLEAN]'", "COMMENT ON COLUMN TESTSCHEMA."
-              + LONG_TABLE_NAME_TRUNCATED_30 + ".charField IS 'REALNAME:[charField]/TYPE:[STRING]'",
+              + ".booleanField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[booleanField]/TYPE:[BOOLEAN]'", "COMMENT ON COLUMN TESTSCHEMA."
+              + LONG_TABLE_NAME_TRUNCATED_30 + ".charField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[charField]/TYPE:[STRING]'",
           "CREATE UNIQUE INDEX TESTSCHEMA.Test_NK ON TESTSCHEMA."+LONG_TABLE_NAME_TRUNCATED_30+" (stringField)",
           "CREATE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.tableWithANameThatExceedsTwent (intField, floatField)"
     );
@@ -665,7 +665,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAddStringColumnStatement() {
     return Arrays.asList("ALTER TABLE TESTSCHEMA.Test ADD (stringField_new NVARCHAR2(6) NULL)",
-      "COMMENT ON COLUMN TESTSCHEMA.Test.stringField_new IS 'REALNAME:[stringField_new]/TYPE:[STRING]'");
+      "COMMENT ON COLUMN TESTSCHEMA.Test.stringField_new IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[stringField_new]/TYPE:[STRING]'");
   }
 
 
@@ -679,7 +679,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
       "ALTER TABLE TESTSCHEMA.Test MODIFY (stringField NVARCHAR2(6))",
       "CREATE UNIQUE INDEX TESTSCHEMA.Test_NK ON TESTSCHEMA.Test (stringField) PARALLEL NOLOGGING",
       "ALTER INDEX TESTSCHEMA.Test_NK NOPARALLEL LOGGING",
-      "COMMENT ON COLUMN TESTSCHEMA.Test.stringField IS 'REALNAME:[stringField]/TYPE:[STRING]'");
+      "COMMENT ON COLUMN TESTSCHEMA.Test.stringField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[stringField]/TYPE:[STRING]'");
   }
 
 
@@ -689,7 +689,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAddBigIntegerColumnStatement() {
     return Arrays.asList("ALTER TABLE TESTSCHEMA.Test ADD (bigIntegerField_new NUMBER(19) NULL)",
-      "COMMENT ON COLUMN TESTSCHEMA.Test.bigIntegerField_new IS 'REALNAME:[bigIntegerField_new]/TYPE:[BIG_INTEGER]'");
+      "COMMENT ON COLUMN TESTSCHEMA.Test.bigIntegerField_new IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[bigIntegerField_new]/TYPE:[BIG_INTEGER]'");
   }
 
 
@@ -700,7 +700,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   protected List<String> expectedAlterTableAlterBigIntegerColumnStatement() {
     return Arrays.asList(
       "ALTER TABLE TESTSCHEMA.Test MODIFY (bigIntegerField DEFAULT NULL)",
-      "COMMENT ON COLUMN TESTSCHEMA.Test.bigIntegerField IS 'REALNAME:[bigIntegerField]/TYPE:[BIG_INTEGER]'");
+      "COMMENT ON COLUMN TESTSCHEMA.Test.bigIntegerField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[bigIntegerField]/TYPE:[BIG_INTEGER]'");
   }
 
 
@@ -710,7 +710,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAddBlobColumnStatement() {
     return Arrays.asList("ALTER TABLE TESTSCHEMA.Test ADD (blobField_new BLOB NULL)",
-      "COMMENT ON COLUMN TESTSCHEMA.Test.blobField_new IS 'REALNAME:[blobField_new]/TYPE:[BLOB]'");
+      "COMMENT ON COLUMN TESTSCHEMA.Test.blobField_new IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[blobField_new]/TYPE:[BLOB]'");
   }
 
 
@@ -720,7 +720,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAlterBlobColumnStatement() {
     return Arrays.asList("ALTER TABLE TESTSCHEMA.Test MODIFY (blobField  NOT NULL)",
-      "COMMENT ON COLUMN TESTSCHEMA.Test.blobField IS 'REALNAME:[blobField]/TYPE:[BLOB]'");
+      "COMMENT ON COLUMN TESTSCHEMA.Test.blobField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[blobField]/TYPE:[BLOB]'");
   }
 
 
@@ -764,7 +764,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
       "ALTER TABLE TESTSCHEMA.Test MODIFY (floatField DECIMAL(20,3))",
       "CREATE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.Test (intField, floatField) PARALLEL NOLOGGING",
       "ALTER INDEX TESTSCHEMA.Test_1 NOPARALLEL LOGGING",
-      "COMMENT ON COLUMN TESTSCHEMA.Test.floatField IS 'REALNAME:[floatField]/TYPE:[DECIMAL]'");
+      "COMMENT ON COLUMN TESTSCHEMA.Test.floatField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[floatField]/TYPE:[DECIMAL]'");
   }
 
 
@@ -774,7 +774,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAlterBooleanColumnStatement() {
     return Arrays.asList("ALTER TABLE TESTSCHEMA.Test MODIFY (booleanField  NOT NULL)",
-      "COMMENT ON COLUMN TESTSCHEMA.Test.booleanField IS 'REALNAME:[booleanField]/TYPE:[BOOLEAN]'");
+      "COMMENT ON COLUMN TESTSCHEMA.Test.booleanField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[booleanField]/TYPE:[BOOLEAN]'");
   }
 
 
@@ -784,7 +784,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAddBooleanColumnStatement() {
     return Arrays.asList("ALTER TABLE TESTSCHEMA.Test ADD (booleanField_new DECIMAL(1,0) NULL)",
-      "COMMENT ON COLUMN TESTSCHEMA.Test.booleanField_new IS 'REALNAME:[booleanField_new]/TYPE:[BOOLEAN]'");
+      "COMMENT ON COLUMN TESTSCHEMA.Test.booleanField_new IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[booleanField_new]/TYPE:[BOOLEAN]'");
   }
 
 
@@ -794,7 +794,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAddIntegerColumnStatement() {
     return Arrays.asList("ALTER TABLE TESTSCHEMA.Test ADD (intField_new INTEGER NULL)",
-      "COMMENT ON COLUMN TESTSCHEMA.Test.intField_new IS 'REALNAME:[intField_new]/TYPE:[INTEGER]'");
+      "COMMENT ON COLUMN TESTSCHEMA.Test.intField_new IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[intField_new]/TYPE:[INTEGER]'");
   }
 
 
@@ -808,7 +808,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
       "ALTER TABLE TESTSCHEMA.Test MODIFY (intField  NOT NULL)",
       "CREATE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.Test (intField, floatField) PARALLEL NOLOGGING",
       "ALTER INDEX TESTSCHEMA.Test_1 NOPARALLEL LOGGING",
-      "COMMENT ON COLUMN TESTSCHEMA.Test.intField IS 'REALNAME:[intField]/TYPE:[INTEGER]'");
+      "COMMENT ON COLUMN TESTSCHEMA.Test.intField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[INTEGER]'");
   }
 
 
@@ -818,7 +818,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAddDateColumnStatement() {
     return Arrays.asList("ALTER TABLE TESTSCHEMA.Test ADD (dateField_new DATE NULL)",
-      "COMMENT ON COLUMN TESTSCHEMA.Test.dateField_new IS 'REALNAME:[dateField_new]/TYPE:[DATE]'");
+      "COMMENT ON COLUMN TESTSCHEMA.Test.dateField_new IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[dateField_new]/TYPE:[DATE]'");
   }
 
 
@@ -828,7 +828,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAlterDateColumnStatement() {
     return Arrays.asList("ALTER TABLE TESTSCHEMA.Test MODIFY (dateField  NOT NULL)",
-      "COMMENT ON COLUMN TESTSCHEMA.Test.dateField IS 'REALNAME:[dateField]/TYPE:[DATE]'");
+      "COMMENT ON COLUMN TESTSCHEMA.Test.dateField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[dateField]/TYPE:[DATE]'");
   }
 
 
@@ -838,7 +838,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAddDecimalColumnStatement() {
     return Arrays.asList("ALTER TABLE TESTSCHEMA.Test ADD (floatField_new DECIMAL(6,3) NULL)",
-      "COMMENT ON COLUMN TESTSCHEMA.Test.floatField_new IS 'REALNAME:[floatField_new]/TYPE:[DECIMAL]'");
+      "COMMENT ON COLUMN TESTSCHEMA.Test.floatField_new IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[floatField_new]/TYPE:[DECIMAL]'");
   }
 
 
@@ -852,7 +852,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
       "ALTER TABLE TESTSCHEMA.Test MODIFY (floatField DECIMAL(14,3) NULL)",
       "CREATE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.Test (intField, floatField) PARALLEL NOLOGGING",
       "ALTER INDEX TESTSCHEMA.Test_1 NOPARALLEL LOGGING",
-      "COMMENT ON COLUMN TESTSCHEMA.Test.floatField IS 'REALNAME:[floatField]/TYPE:[DECIMAL]'");
+      "COMMENT ON COLUMN TESTSCHEMA.Test.floatField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[floatField]/TYPE:[DECIMAL]'");
   }
 
 
@@ -862,7 +862,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAddColumnNotNullableStatement() {
     return Arrays.asList("ALTER TABLE TESTSCHEMA.Test ADD (dateField_new DATE DEFAULT DATE '2010-01-01' NOT NULL)",
-      "COMMENT ON COLUMN TESTSCHEMA.Test.dateField_new IS 'REALNAME:[dateField_new]/TYPE:[DATE]'");
+      "COMMENT ON COLUMN TESTSCHEMA.Test.dateField_new IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[dateField_new]/TYPE:[DATE]'");
   }
 
 
@@ -872,7 +872,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAlterColumnFromNullableToNotNullableStatement() {
     return Arrays.asList("ALTER TABLE TESTSCHEMA.Test MODIFY (dateField  NOT NULL)",
-      "COMMENT ON COLUMN TESTSCHEMA.Test.dateField IS 'REALNAME:[dateField]/TYPE:[DATE]'");
+      "COMMENT ON COLUMN TESTSCHEMA.Test.dateField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[dateField]/TYPE:[DATE]'");
   }
 
 
@@ -886,7 +886,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
       "ALTER TABLE TESTSCHEMA.Test MODIFY (floatField DECIMAL(20,3) NULL)",
       "CREATE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.Test (intField, floatField) PARALLEL NOLOGGING",
       "ALTER INDEX TESTSCHEMA.Test_1 NOPARALLEL LOGGING",
-      "COMMENT ON COLUMN TESTSCHEMA.Test.floatField IS 'REALNAME:[floatField]/TYPE:[DECIMAL]'");
+      "COMMENT ON COLUMN TESTSCHEMA.Test.floatField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[floatField]/TYPE:[DECIMAL]'");
   }
 
 
@@ -896,7 +896,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAddColumnWithDefaultStatement() {
     return Arrays.asList("ALTER TABLE TESTSCHEMA.Test ADD (floatField_new DECIMAL(6,3) DEFAULT 20.33 NULL)",
-      "COMMENT ON COLUMN TESTSCHEMA.Test.floatField_new IS 'REALNAME:[floatField_new]/TYPE:[DECIMAL]'");
+      "COMMENT ON COLUMN TESTSCHEMA.Test.floatField_new IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[floatField_new]/TYPE:[DECIMAL]'");
   }
 
 
@@ -906,7 +906,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAlterColumnWithDefaultStatement() {
     return Arrays.asList("ALTER TABLE TESTSCHEMA.Test MODIFY (bigIntegerField  DEFAULT 54321)",
-      "COMMENT ON COLUMN TESTSCHEMA.Test.bigIntegerField IS 'REALNAME:[bigIntegerField]/TYPE:[BIG_INTEGER]'");
+      "COMMENT ON COLUMN TESTSCHEMA.Test.bigIntegerField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[bigIntegerField]/TYPE:[BIG_INTEGER]'");
   }
 
 
@@ -934,7 +934,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
       "ALTER TABLE TESTSCHEMA.Test MODIFY (intField  NOT NULL)",
       "CREATE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.Test (INTFIELD) PARALLEL NOLOGGING",
       "ALTER INDEX TESTSCHEMA.Test_1 NOPARALLEL LOGGING",
-      "COMMENT ON COLUMN TESTSCHEMA.Test.intField IS 'REALNAME:[intField]/TYPE:[INTEGER]'");
+      "COMMENT ON COLUMN TESTSCHEMA.Test.intField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[INTEGER]'");
   }
 
 
@@ -955,7 +955,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
     return Arrays.asList(
       "ALTER TABLE TESTSCHEMA.Test DROP PRIMARY KEY DROP INDEX",
       "ALTER TABLE TESTSCHEMA.Test ADD CONSTRAINT Test_PK PRIMARY KEY (id, dateField)",
-      "COMMENT ON COLUMN TESTSCHEMA.Test.dateField IS 'REALNAME:[dateField]/TYPE:[DATE]'");
+      "COMMENT ON COLUMN TESTSCHEMA.Test.dateField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[dateField]/TYPE:[DATE]'");
   }
 
 
@@ -968,7 +968,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
       "ALTER TABLE TESTSCHEMA.CompositePrimaryKey DROP PRIMARY KEY DROP INDEX",
       "ALTER TABLE TESTSCHEMA.CompositePrimaryKey MODIFY (secondPrimaryKey NVARCHAR2(5))",
       "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ADD CONSTRAINT CompositePrimaryKey_PK PRIMARY KEY (id, secondPrimaryKey)",
-      "COMMENT ON COLUMN TESTSCHEMA.CompositePrimaryKey.secondPrimaryKey IS 'REALNAME:[secondPrimaryKey]/TYPE:[STRING]'");
+      "COMMENT ON COLUMN TESTSCHEMA.CompositePrimaryKey.secondPrimaryKey IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[secondPrimaryKey]/TYPE:[STRING]'");
   }
 
 
@@ -981,7 +981,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
       "ALTER TABLE TESTSCHEMA.CompositePrimaryKey DROP PRIMARY KEY DROP INDEX",
       "ALTER TABLE TESTSCHEMA.CompositePrimaryKey MODIFY (secondPrimaryKey NVARCHAR2(5) NULL)",
       "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ADD CONSTRAINT CompositePrimaryKey_PK PRIMARY KEY (id)",
-      "COMMENT ON COLUMN TESTSCHEMA.CompositePrimaryKey.secondPrimaryKey IS 'REALNAME:[secondPrimaryKey]/TYPE:[STRING]'");
+      "COMMENT ON COLUMN TESTSCHEMA.CompositePrimaryKey.secondPrimaryKey IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[secondPrimaryKey]/TYPE:[STRING]'");
   }
 
 
@@ -994,7 +994,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
       "ALTER TABLE TESTSCHEMA.Test DROP PRIMARY KEY DROP INDEX",
       "ALTER TABLE TESTSCHEMA.Test RENAME COLUMN id TO renamedId",
       "ALTER TABLE TESTSCHEMA.Test ADD CONSTRAINT Test_PK PRIMARY KEY (renamedId)",
-      "COMMENT ON COLUMN TESTSCHEMA.Test.renamedId IS 'REALNAME:[renamedId]/TYPE:[BIG_INTEGER]'"
+      "COMMENT ON COLUMN TESTSCHEMA.Test.renamedId IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[renamedId]/TYPE:[BIG_INTEGER]'"
     );
   }
 
@@ -1006,7 +1006,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   protected List<String> expectedAlterColumnRenamingAndChangingNullability() {
     return Arrays.asList("ALTER TABLE TESTSCHEMA.Other RENAME COLUMN floatField TO blahField",
       "ALTER TABLE TESTSCHEMA.Other MODIFY (blahField DECIMAL(20,3) NULL)",
-      "COMMENT ON COLUMN TESTSCHEMA.Other.blahField IS 'REALNAME:[blahField]/TYPE:[DECIMAL]'");
+      "COMMENT ON COLUMN TESTSCHEMA.Other.blahField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[blahField]/TYPE:[DECIMAL]'");
   }
 
 
@@ -1016,7 +1016,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterColumnChangingLengthAndCase() {
     return Arrays.asList("ALTER TABLE TESTSCHEMA.Other MODIFY (FloatField DECIMAL(20,3))",
-      "COMMENT ON COLUMN TESTSCHEMA.Other.FloatField IS 'REALNAME:[FloatField]/TYPE:[DECIMAL]'");
+      "COMMENT ON COLUMN TESTSCHEMA.Other.FloatField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[FloatField]/TYPE:[DECIMAL]'");
   }
 
 
@@ -1037,7 +1037,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAddStringColumnWithDefaultStatement() {
     return Arrays.asList("ALTER TABLE TESTSCHEMA.Test ADD (stringField_with_default NVARCHAR2(6) DEFAULT N'N' NOT NULL)",
-      "COMMENT ON COLUMN TESTSCHEMA.Test.stringField_with_default IS 'REALNAME:[stringField_with_default]/TYPE:[STRING]'");
+      "COMMENT ON COLUMN TESTSCHEMA.Test.stringField_with_default IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[stringField_with_default]/TYPE:[STRING]'");
   }
 
 
@@ -1298,7 +1298,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
       "ALTER TABLE TESTSCHEMA.Test RENAME CONSTRAINT Test_PK TO Renamed_PK",
       "ALTER INDEX TESTSCHEMA.Test_PK RENAME TO Renamed_PK",
       "ALTER TABLE TESTSCHEMA.Test RENAME TO Renamed",
-      "COMMENT ON TABLE TESTSCHEMA.Renamed IS 'REALNAME:[Renamed]'");
+      "COMMENT ON TABLE TESTSCHEMA.Renamed IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[Renamed]'");
   }
 
 
@@ -1311,7 +1311,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
       "ALTER TABLE TESTSCHEMA.123456789012345678901234567890 RENAME CONSTRAINT 123456789012345678901234567_PK TO Blah_PK",
       "ALTER INDEX TESTSCHEMA.123456789012345678901234567_PK RENAME TO Blah_PK",
       "ALTER TABLE TESTSCHEMA.123456789012345678901234567890 RENAME TO Blah",
-      "COMMENT ON TABLE TESTSCHEMA.Blah IS 'REALNAME:[Blah]'");
+      "COMMENT ON TABLE TESTSCHEMA.Blah IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[Blah]'");
   }
 
 
@@ -1434,9 +1434,9 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
       "CREATE TABLE TESTSCHEMA.SomeTable (someField  NOT NULL, otherField  NOT NULL, CONSTRAINT SomeTable_PK PRIMARY KEY (someField)) PARALLEL NOLOGGING AS SELECT someField, otherField FROM TESTSCHEMA.OtherTable",
       "ALTER TABLE TESTSCHEMA.SomeTable NOPARALLEL LOGGING",
       "ALTER INDEX TESTSCHEMA.SomeTable_PK NOPARALLEL LOGGING",
-      "COMMENT ON TABLE TESTSCHEMA.SomeTable IS 'REALNAME:[SomeTable]'",
-      "COMMENT ON COLUMN TESTSCHEMA.SomeTable.someField IS 'REALNAME:[someField]/TYPE:[STRING]'",
-      "COMMENT ON COLUMN TESTSCHEMA.SomeTable.otherField IS 'REALNAME:[otherField]/TYPE:[DECIMAL]'"
+      "COMMENT ON TABLE TESTSCHEMA.SomeTable IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable]'",
+      "COMMENT ON COLUMN TESTSCHEMA.SomeTable.someField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[someField]/TYPE:[STRING]'",
+      "COMMENT ON COLUMN TESTSCHEMA.SomeTable.otherField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[otherField]/TYPE:[DECIMAL]'"
     );
   }
 

@@ -137,7 +137,7 @@ public class RenameIndex implements SchemaChange {
     boolean foundMatch = false;
 
     // Copy the index names into a list of strings
-    List<String> indexes = new ArrayList<String>();
+    List<String> indexes = new ArrayList<>();
     Index newIndex = null;
     for (Index index : original.indexes()) {
       String currentIndexName = index.getName();

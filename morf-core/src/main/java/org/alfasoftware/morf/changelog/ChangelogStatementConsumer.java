@@ -19,7 +19,6 @@ import java.io.PrintWriter;
 
 import org.alfasoftware.morf.upgrade.HumanReadableStatementConsumer;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.text.WordUtils;
 
 /**
@@ -48,8 +47,8 @@ class ChangelogStatementConsumer implements HumanReadableStatementConsumer {
   private void writeWrapped(final String text) {
 
     // Handle the case of multiple lines
-    if (text.contains(SystemUtils.LINE_SEPARATOR)) {
-      for (String line : text.split(SystemUtils.LINE_SEPARATOR)) {
+    if (text.contains(System.lineSeparator())) {
+      for (String line : text.split(System.lineSeparator())) {
         writeWrapped(line);
       }
       return;
@@ -70,7 +69,7 @@ class ChangelogStatementConsumer implements HumanReadableStatementConsumer {
 
     // Split the line, preserving the indent on new lines
     final String firstLineIndent = text.substring(0, indent);
-    final String lineSeparator = SystemUtils.LINE_SEPARATOR + StringUtils.repeat(" ", indent);
+    final String lineSeparator = System.lineSeparator() + StringUtils.repeat(" ", indent);
     outputStream.println(firstLineIndent + WordUtils.wrap(text.substring(indent), LINE_LENGTH - indent, lineSeparator, false));
   }
 

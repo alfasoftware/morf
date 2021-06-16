@@ -214,7 +214,7 @@ class OracleDialect extends SqlDialect {
    * Adds the table name into comments.
    */
   private String commentOnTable(String truncatedTableName) {
-    return "COMMENT ON TABLE " + schemaNamePrefix() + truncatedTableName + " IS 'REALNAME:[" + truncatedTableName + "]'";
+    return "COMMENT ON TABLE " + schemaNamePrefix() + truncatedTableName + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + truncatedTableName + "]'";
   }
 
 
@@ -870,7 +870,7 @@ class OracleDialect extends SqlDialect {
    * Build the comment comment that allows the metadata reader to determine the correct lower case table names and types.
    */
   private String columnComment(Column column, String tableName) {
-    StringBuilder comment = new StringBuilder ("COMMENT ON COLUMN " + schemaNamePrefix() + tableName + "." + column.getName() + " IS 'REALNAME:[" + column.getName() + "]/TYPE:[" + column.getType().toString() + "]");
+    StringBuilder comment = new StringBuilder ("COMMENT ON COLUMN " + schemaNamePrefix() + tableName + "." + column.getName() + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + column.getName() + "]/TYPE:[" + column.getType().toString() + "]");
 
     if (column.isAutoNumbered()) {
       int autoNumberStart = column.getAutoNumberStart() == -1 ? 1 : column.getAutoNumberStart();

@@ -137,7 +137,7 @@ public class ChangeIndex implements SchemaChange {
     boolean foundMatch = false;
 
     // Copy the index names into a list of strings for column sort order
-    List<String> indexes = new ArrayList<String>();
+    List<String> indexes = new ArrayList<>();
     for (Index index : original.indexes()) {
       String currentIndexName = index.getName();
 
