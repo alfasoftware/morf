@@ -2,6 +2,7 @@ package org.alfasoftware.morf.upgrade;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -153,10 +154,17 @@ public class ParallelUpgrade extends Upgrade {
     }).sorted(Comparator.comparing(UpgradeNode::getSequence)).collect(Collectors.toList());
   }
 
-  private void logGraph(UpgradeNode node) {
-    log.debug(node.toString());
-    for(UpgradeNode child : node.children) {
-      logGraph(child);
+  void logGraph(UpgradeNode node) {
+    logGraph(node, new HashSet<UpgradeNode>());
+  }
+
+  private void logGraph(UpgradeNode node, Set<UpgradeNode> visited) {
+    if(!visited.contains(node)) {
+      log.info(node.toString());
+      visited.add(node);
+      for(UpgradeNode child : node.children) {
+        logGraph(child);
+      }
     }
   }
 
@@ -236,7 +244,13 @@ public class ParallelUpgrade extends Upgrade {
     @Override
     public String toString() {
       return "UpgradeNode [name=" + name + ", sequence=" + sequence + ", reads=" + reads + ", modifies=" + modifies + ", children="
-          + children + ", parents=" + parents + "]";
+          + nodeListToStringOfNames(children) + ", parents=" + nodeListToStringOfNames(parents) + "]";
+    }
+
+    private String nodeListToStringOfNames(Collection<UpgradeNode> nodes) {
+      return nodes.stream()
+          .map(n -> n.getName())
+          .collect(Collectors.joining(", "));
     }
 
   }

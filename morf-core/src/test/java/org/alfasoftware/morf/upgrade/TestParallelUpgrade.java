@@ -30,10 +30,10 @@ public class TestParallelUpgrade {
 
     //when
     List<UpgradeNode> nodes = parallelUpgrade.produceNodes(upgradesToApply);
-    parallelUpgrade.prepareGraph(nodes);
+    UpgradeNode root = parallelUpgrade.prepareGraph(nodes);
 
     //then
-
+    parallelUpgrade.logGraph(root);
 
   }
 }
