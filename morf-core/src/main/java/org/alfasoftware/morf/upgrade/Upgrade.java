@@ -207,6 +207,11 @@ public class Upgrade {
       viewChanges = viewChanges.droppingAlso(sourceSchema.views()).deployingAlso(targetSchema.views());
     }
 
+
+
+    ParallelUpgrade upg = new ParallelUpgrade(connectionResources, dataSource, factory, upgradeStatusTableService);
+    upg.execute(dialect, sourceSchema, targetSchema, upgradeStatements, viewChanges, upgradesToApply);
+
     // Build the actual upgrade path
     return buildUpgradePath(dialect, sourceSchema, targetSchema, upgradeStatements, viewChanges, upgradesToApply);
   }
