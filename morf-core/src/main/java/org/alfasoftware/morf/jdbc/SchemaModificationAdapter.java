@@ -18,6 +18,7 @@ package org.alfasoftware.morf.jdbc;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -48,7 +49,7 @@ public class SchemaModificationAdapter extends DataSetAdapter {
    */
   private final Set<String> remainingTables = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
-  private final Set<String> existingIndexNames = Collections.newSetFromMap(new ConcurrentHashMap<>());
+  private final Map<String, Table> existingIndexNamesAndTables = new ConcurrentHashMap<>();
 
   private final SqlDialect sqlDialect;
 
@@ -89,7 +90,7 @@ public class SchemaModificationAdapter extends DataSetAdapter {
     // get a list of all the tables at the start
     for (Table table : schemaResource.tables()) {
       remainingTables.add(table.getName().toUpperCase());
-      table.indexes().forEach(index -> existingIndexNames.add(index.getName().toUpperCase()));
+      table.indexes().forEach(index -> existingIndexNamesAndTables.put(index.getName().toUpperCase(), table));
     }
   }
 
@@ -166,7 +167,7 @@ public class SchemaModificationAdapter extends DataSetAdapter {
         sqlExecutor.execute(sqlDialect.tableDeploymentStatements(table), connection);
       } else {
         // Remove the index names that are now part of the modified schema
-        table.indexes().forEach(index -> existingIndexNames.remove(index.getName().toUpperCase()));
+        table.indexes().forEach(index -> existingIndexNamesAndTables.remove(index.getName().toUpperCase()));
       }
 
     } else {
@@ -198,9 +199,10 @@ public class SchemaModificationAdapter extends DataSetAdapter {
    */
   private void dropExistingIndexesIfNecessary(Table tableToDeploy) {
     tableToDeploy.indexes().forEach(index -> {
-      if (existingIndexNames.remove(index.getName().toUpperCase())) {
-        // Only drop the index if it belongs to the previous schema
-        databaseDataSetConsumer.getSqlExecutor().execute(sqlDialect.indexDropStatements(tableToDeploy, index), connection);
+      Table existingTableWithSameIndex = existingIndexNamesAndTables.remove(index.getName().toUpperCase());
+      if (existingTableWithSameIndex != null && !tableToDeploy.getName().toUpperCase().equals(existingTableWithSameIndex.getName().toUpperCase())) {
+        // Only drop the index if it belongs to the previous schema under a different tablename.
+        databaseDataSetConsumer.getSqlExecutor().execute(sqlDialect.indexDropStatements(existingTableWithSameIndex, index), connection);
       }
     });
   }

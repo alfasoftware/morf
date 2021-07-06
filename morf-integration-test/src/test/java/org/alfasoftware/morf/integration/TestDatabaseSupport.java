@@ -272,6 +272,23 @@ public class TestDatabaseSupport {
 
 
   /**
+   * Tests that index statements are dropped when modifying the schema
+   */
+  @Test
+  public void testDropIndexesWhenModifyingSchemaWithDifferentTableStructure() {
+    Schema schemaTableA1 = schema(table("TableA")
+            .columns(column("field1", DataType.BIG_INTEGER))
+            .indexes(index("IndexName").columns("field1")));
+    Schema schemaTableA2 = schema(table("TableA")
+            .columns(column("field2", DataType.BIG_INTEGER))
+            .indexes(index("IndexName").columns("field2")));
+
+    doConnectAndCompare(schemaTableA1, dataSetProducer(schemaTableA1).table("TableA"), databaseDataSetConsumer.get());
+    doConnectAndCompare(schemaTableA2, dataSetProducer(schemaTableA2).table("TableA"), databaseDataSetConsumer.get());
+  }
+
+
+  /**
    * Tests that duplicate indexes result in an exception
    */
   @Test
