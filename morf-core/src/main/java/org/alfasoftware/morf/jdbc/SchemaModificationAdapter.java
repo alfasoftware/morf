@@ -200,7 +200,7 @@ public class SchemaModificationAdapter extends DataSetAdapter {
   private void dropExistingIndexesIfNecessary(Table tableToDeploy) {
     tableToDeploy.indexes().forEach(index -> {
       Table existingTableWithSameIndex = existingIndexNamesAndTables.remove(index.getName().toUpperCase());
-      if (existingTableWithSameIndex != null && !tableToDeploy.getName().toUpperCase().equals(existingTableWithSameIndex.getName().toUpperCase())) {
+      if (existingTableWithSameIndex != null && !tableToDeploy.getName().equalsIgnoreCase(existingTableWithSameIndex.getName())) {
         // Only drop the index if it belongs to the previous schema under a different tablename.
         databaseDataSetConsumer.getSqlExecutor().execute(sqlDialect.indexDropStatements(existingTableWithSameIndex, index), connection);
       }
