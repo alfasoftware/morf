@@ -45,6 +45,7 @@ import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
 import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsException;
 import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
+import org.alfasoftware.morf.upgrade.db.DeployedViewsDefSqlDialectProvider;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -63,18 +64,20 @@ public class Upgrade {
   private final ConnectionResources connectionResources;
   private final DataSource dataSource;
   private final UpgradeStatusTableService upgradeStatusTableService;
+  private final DeployedViewsDefSqlDialectProvider deployedViewsDefSqlDialectProvider;
 
 
   /**
    * Injected Constructor.
    */
   @Inject
-  Upgrade(ConnectionResources connectionResources, DataSource dataSource, UpgradePathFactory factory, UpgradeStatusTableService upgradeStatusTableService) {
+  Upgrade(ConnectionResources connectionResources, DataSource dataSource, UpgradePathFactory factory, UpgradeStatusTableService upgradeStatusTableService, DeployedViewsDefSqlDialectProvider deployedViewsDefSqlDialectProvider) {
     super();
     this.connectionResources = connectionResources;
     this.dataSource = dataSource;
     this.factory = factory;
     this.upgradeStatusTableService = upgradeStatusTableService;
+    this.deployedViewsDefSqlDialectProvider = deployedViewsDefSqlDialectProvider;
   }
 
 
@@ -86,17 +89,23 @@ public class Upgrade {
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
    * @param connectionResources Connection details for the database.
    */
-  public static void performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources) {
+  public static void performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, DeployedViewsDefSqlDialectProvider deployedViewsDefSqlDialectProvider) {
     SqlScriptExecutorProvider sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
     UpgradeStatusTableService upgradeStatusTableService = new UpgradeStatusTableServiceImpl(sqlScriptExecutorProvider, connectionResources.sqlDialect());
     try {
-      UpgradePath path = Upgrade.createPath(targetSchema, upgradeSteps, connectionResources, upgradeStatusTableService);
+      UpgradePath path = Upgrade.createPath(targetSchema, upgradeSteps, connectionResources, upgradeStatusTableService, deployedViewsDefSqlDialectProvider);
       if (path.hasStepsToApply()) {
         sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor()).execute(path.getSql());
       }
     } finally {
       upgradeStatusTableService.tidyUp(connectionResources.getDataSource());
     }
+  }
+
+
+  @Deprecated
+  public static void performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources) {
+    performUpgrade(targetSchema, upgradeSteps, connectionResources, connectionResources::sqlDialect);
   }
 
 
@@ -112,13 +121,17 @@ public class Upgrade {
    *
    * @return The required upgrade path.
    */
-  public static UpgradePath createPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeStatusTableService upgradeStatusTableService) {
+  public static UpgradePath createPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeStatusTableService upgradeStatusTableService, DeployedViewsDefSqlDialectProvider deployedViewsDefSqlDialectProvider) {
     return new Upgrade(connectionResources, connectionResources.getDataSource(),
         new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition> emptySet(), upgradeStatusTableService),
-                       upgradeStatusTableService)
+                       upgradeStatusTableService, deployedViewsDefSqlDialectProvider)
            .findPath(targetSchema, upgradeSteps, Collections.<String> emptySet());
   }
 
+  @Deprecated
+  public static UpgradePath createPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeStatusTableService upgradeStatusTableService) {
+    return createPath(targetSchema, upgradeSteps, connectionResources, upgradeStatusTableService, connectionResources::sqlDialect);
+  }
 
 
   /**
@@ -223,8 +236,10 @@ public class Upgrade {
    * @param upgradesToApply Upgrade steps identified.
    * @return An upgrade path.
    */
-  private UpgradePath buildUpgradePath(SqlDialect dialect, Schema sourceSchema, Schema targetSchema,
-      final List<String> upgradeStatements, ViewChanges viewChanges, List<UpgradeStep> upgradesToApply) {
+  private UpgradePath buildUpgradePath(
+      SqlDialect dialect, Schema sourceSchema, Schema targetSchema,
+      List<String> upgradeStatements, ViewChanges viewChanges,
+      List<UpgradeStep> upgradesToApply) {
 
     UpgradePath path = factory.create(upgradesToApply, dialect);
     for (View view : viewChanges.getViewsToDrop()) {
@@ -247,12 +262,12 @@ public class Upgrade {
     for (View view : viewChanges.getViewsToDeploy()) {
       path.writeSql(dialect.viewDeploymentStatements(view));
       if (targetSchema.tableExists(DEPLOYED_VIEWS_NAME)) {
-        path.writeSql(ImmutableList.of(
-          dialect.convertStatementToSQL(
+        path.writeSql(ImmutableList.of(dialect.convertStatementToSQL(
             insert().into(tableRef(DEPLOYED_VIEWS_NAME))
-                                 .fields(literal(view.getName().toUpperCase()).as("name"),
-                                         literal(dialect.convertStatementToHash(view.getSelectStatement())).as("hash")),
-          targetSchema)));
+              .fields(literal(view.getName().toUpperCase()).as("name"),
+                      literal(dialect.convertStatementToHash(view.getSelectStatement())).as("hash"),
+                      literal(deployedViewsDefSqlDialectProvider.get().viewDeploymentStatementsAsScript(view)).as("sqlDefinition")),
+            targetSchema)));
       }
     }
 

@@ -39,6 +39,7 @@ import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
 import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
+import org.alfasoftware.morf.upgrade.db.DeployedViewsDefSqlDialectProvider;
 
 import com.google.inject.ImplementedBy;
 import com.google.inject.Inject;
@@ -79,23 +80,27 @@ public class Deployment {
 
   private final UpgradePathFactory upgradePathFactory;
 
+  private final DeployedViewsDefSqlDialectProvider deployedViewsDefSqlDialectProvider;
+
   /**
    * Constructor.
    */
   @Inject
-  Deployment(SqlDialect sqlDialect, SqlScriptExecutorProvider sqlScriptExecutorProvider, UpgradePathFactory upgradePathFactory) {
+  Deployment(SqlDialect sqlDialect, SqlScriptExecutorProvider sqlScriptExecutorProvider, UpgradePathFactory upgradePathFactory, DeployedViewsDefSqlDialectProvider deployedViewsDefSqlDialectProvider) {
     super();
     this.sqlDialect = sqlDialect;
     this.sqlScriptExecutorProvider = sqlScriptExecutorProvider;
     this.upgradePathFactory = upgradePathFactory;
+    this.deployedViewsDefSqlDialectProvider = deployedViewsDefSqlDialectProvider;
   }
 
 
   /**
    * Constructor for use by {@link DeploymentFactory}.
    */
-  private Deployment(UpgradePathFactory upgradePathFactory, @Assisted ConnectionResources connectionResources) {
+  private Deployment(UpgradePathFactory upgradePathFactory, @Assisted ConnectionResources connectionResources, DeployedViewsDefSqlDialectProvider deployedViewsDefSqlDialectProvider) {
     super();
+    this.deployedViewsDefSqlDialectProvider = deployedViewsDefSqlDialectProvider;
     this.sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
     this.sqlDialect = connectionResources.sqlDialect();
     this.upgradePathFactory = upgradePathFactory;
@@ -119,19 +124,17 @@ public class Deployment {
       sqlStatementWriter.writeSql(sqlDialect.tableDeploymentStatements(table));
     }
 
-    // Iterate through all the views and deploy them - will deploy in
-    // dependency order.
+    // Iterate through all the views and deploy them - will deploy in dependency order.
     ViewChanges viewChanges = new ViewChanges(targetSchema.views(), new HashSet<>(), targetSchema.views());
     for (View view : viewChanges.getViewsToDeploy()) {
       sqlStatementWriter.writeSql(sqlDialect.viewDeploymentStatements(view));
       if (targetSchema.tableExists(DEPLOYED_VIEWS_NAME)) {
-        sqlStatementWriter.writeSql(
-          sqlDialect.convertStatementToSQL(
+        sqlStatementWriter.writeSql(sqlDialect.convertStatementToSQL(
             insert().into(tableRef(DEPLOYED_VIEWS_NAME))
-                                 .values(literal(view.getName().toUpperCase()).as("name"),
-                                         literal(sqlDialect.convertStatementToHash(view.getSelectStatement())).as("hash"))
-          )
-        );
+              .values(literal(view.getName().toUpperCase()).as("name"),
+                      literal(sqlDialect.convertStatementToHash(view.getSelectStatement())).as("hash"),
+                      literal(deployedViewsDefSqlDialectProvider.get().viewDeploymentStatementsAsScript(view)).as("sqlDefinition"))
+        ));
       }
     }
   }
@@ -170,17 +173,23 @@ public class Deployment {
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
    * @param connectionResources Connection details for the database.
    */
-  public static void deploySchema(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources) {
+  public static void deploySchema(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, DeployedViewsDefSqlDialectProvider deployedViewsDefSqlDialectProvider) {
     UpgradeStatusTableServiceImpl upgradeStatusTableService = new UpgradeStatusTableServiceImpl(
       new SqlScriptExecutorProvider(connectionResources), connectionResources.sqlDialect());
     try {
       new Deployment(
         new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition>emptySet(), upgradeStatusTableService),
-        connectionResources
+        connectionResources, deployedViewsDefSqlDialectProvider
       ).deploy(targetSchema, upgradeSteps);
     } finally {
       upgradeStatusTableService.tidyUp(connectionResources.getDataSource());
     }
+  }
+
+
+  @Deprecated
+  public static void deploySchema(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources) {
+    deploySchema(targetSchema, upgradeSteps, connectionResources, connectionResources::sqlDialect);
   }
 
 
@@ -247,15 +256,17 @@ public class Deployment {
   static final class DeploymentFactoryImpl implements DeploymentFactory {
 
     private final UpgradePathFactory upgradePathFactory;
+    private final DeployedViewsDefSqlDialectProvider deployedViewsDefSqlDialectProvider;
 
     @Inject
-    public DeploymentFactoryImpl(UpgradePathFactory upgradePathFactory) {
+    public DeploymentFactoryImpl(UpgradePathFactory upgradePathFactory, DeployedViewsDefSqlDialectProvider deployedViewsDefSqlDialectProvider) {
       this.upgradePathFactory = upgradePathFactory;
+      this.deployedViewsDefSqlDialectProvider = deployedViewsDefSqlDialectProvider;
     }
 
     @Override
     public Deployment create(ConnectionResources connectionResources) {
-      return new Deployment(upgradePathFactory, connectionResources);
+      return new Deployment(upgradePathFactory, connectionResources, deployedViewsDefSqlDialectProvider);
     }
   }
 }
