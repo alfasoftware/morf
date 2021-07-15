@@ -159,7 +159,7 @@ public class TestUpgrade {
     when(schemaResource.tables()).thenReturn(tables);
     when(upgradeStatusTableService.getStatus(Optional.of(mockConnectionResources.getDataSource()))).thenReturn(NONE);
 
-    UpgradePath results = new Upgrade(mockConnectionResources, mockConnectionResources.getDataSource(), upgradePathFactory(), upgradeStatusTableService).findPath(targetSchema,
+    UpgradePath results = new Upgrade(mockConnectionResources, mockConnectionResources.getDataSource(), upgradePathFactory(), upgradeStatusTableService, mockConnectionResources::sqlDialect).findPath(targetSchema,
       upgradeSteps, Lists.newArrayList("^Drivers$", "^EXCLUDE_.*$"));
 
     assertEquals("Should be two steps.", 2, results.getSteps().size());
@@ -192,7 +192,7 @@ public class TestUpgrade {
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
     when(connection.sqlDialect()).thenReturn(dialect);
 
-    UpgradePath results = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService).findPath(
+    UpgradePath results = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, connection::sqlDialect).findPath(
       schema(upgradeAudit(), deployedViews(), upgradedCar()),
       ImmutableSet.<Class<? extends UpgradeStep>>of(ChangeCar.class),
       new HashSet<String>());
@@ -258,7 +258,7 @@ public class TestUpgrade {
     when(mockConnectionResources.openSchemaResource(eq(mockConnectionResources.getDataSource()))).thenReturn(schemaResource);
     when(schemaResource.tables()).thenReturn(Arrays.asList(upgradeAudit));
 
-    UpgradePath results = new Upgrade(mockConnectionResources, mockConnectionResources.getDataSource(), upgradePathFactory(), upgradeStatusTableService).findPath(targetSchema,
+    UpgradePath results = new Upgrade(mockConnectionResources, mockConnectionResources.getDataSource(), upgradePathFactory(), upgradeStatusTableService, mockConnectionResources::sqlDialect).findPath(targetSchema,
       upgradeSteps, new HashSet<String>());
     assertTrue("No steps to apply", results.getSteps().isEmpty());
     assertTrue("No SQL statements", results.getSql().isEmpty());
@@ -289,7 +289,7 @@ public class TestUpgrade {
     when(connection.openSchemaResource(eq(connection.getDataSource()))).thenReturn(new StubSchemaResource(sourceSchema));
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
     // When
-    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, connection::sqlDialect).findPath(targetSchema, upgradeSteps, new HashSet<String>());
 
     // Then
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
@@ -330,7 +330,7 @@ public class TestUpgrade {
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
 
     // When
-    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, connection::sqlDialect).findPath(targetSchema, upgradeSteps, new HashSet<String>());
 
     // Then
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
@@ -400,7 +400,7 @@ public class TestUpgrade {
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
 
     // When
-    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, connection::sqlDialect).findPath(targetSchema, upgradeSteps, new HashSet<String>());
 
     // Then
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
@@ -470,7 +470,7 @@ public class TestUpgrade {
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
 
     // When
-    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, connection::sqlDialect).findPath(targetSchema, upgradeSteps, new HashSet<String>());
 
     // Then
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
@@ -531,7 +531,7 @@ public class TestUpgrade {
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
 
     // When
-    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, connection::sqlDialect).findPath(targetSchema, upgradeSteps, new HashSet<String>());
 
     // Then
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
@@ -569,7 +569,7 @@ public class TestUpgrade {
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
 
     // When
-    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, connection::sqlDialect).findPath(targetSchema, upgradeSteps, new HashSet<String>());
 
     // Then
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
@@ -649,7 +649,7 @@ public class TestUpgrade {
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
 
     // When
-    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, connection::sqlDialect).findPath(targetSchema, upgradeSteps, new HashSet<String>());
 
     // Then
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
@@ -689,7 +689,7 @@ public class TestUpgrade {
                                               create();
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
 
-    new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+    new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, connection::sqlDialect).findPath(targetSchema, upgradeSteps, new HashSet<String>());
 
     ArgumentCaptor<Table> tableArgumentCaptor = ArgumentCaptor.forClass(Table.class);
     verify(connection.sqlDialect(), times(3)).rebuildTriggers(tableArgumentCaptor.capture());
@@ -759,7 +759,7 @@ public class TestUpgrade {
     UpgradeStatusTableService upgradeStatusTableService = mock(UpgradeStatusTableService.class);
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(currentStatus);
 
-    UpgradePath path = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+    UpgradePath path = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, connection::sqlDialect).findPath(targetSchema, upgradeSteps, new HashSet<String>());
     assertFalse("Steps to apply", path.hasStepsToApply());
     assertTrue("In progress", path.upgradeInProgress());
   }
