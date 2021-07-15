@@ -227,6 +227,20 @@ public abstract class SqlDialect {
 
 
   /**
+   * Creates SQL script to deploy a database view.
+   *
+   * @param view The meta data for the view to deploy.
+   * @return The statements required to deploy the view joined into a script.
+   */
+  public String viewDeploymentStatementsAsScript(View view) {
+    final String firstLine = "-- " + getDatabaseType().identifier() + "\n";
+    String viewDefinition = viewDeploymentStatements(view)
+        .stream().collect(Collectors.joining(";\n", firstLine, ";"));
+    return viewDefinition;
+  }
+
+
+  /**
    * Creates SQL to truncate a table (may require DBA rights on some databases
    * e.g. Oracle).
    *
