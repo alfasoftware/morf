@@ -47,40 +47,7 @@ import static org.alfasoftware.morf.sql.element.Criterion.in;
 import static org.alfasoftware.morf.sql.element.Criterion.like;
 import static org.alfasoftware.morf.sql.element.Criterion.not;
 import static org.alfasoftware.morf.sql.element.Criterion.or;
-import static org.alfasoftware.morf.sql.element.Function.addDays;
-import static org.alfasoftware.morf.sql.element.Function.average;
-import static org.alfasoftware.morf.sql.element.Function.averageDistinct;
-import static org.alfasoftware.morf.sql.element.Function.coalesce;
-import static org.alfasoftware.morf.sql.element.Function.count;
-import static org.alfasoftware.morf.sql.element.Function.countDistinct;
-import static org.alfasoftware.morf.sql.element.Function.dateToYyyyMMddHHmmss;
-import static org.alfasoftware.morf.sql.element.Function.dateToYyyymmdd;
-import static org.alfasoftware.morf.sql.element.Function.daysBetween;
-import static org.alfasoftware.morf.sql.element.Function.every;
-import static org.alfasoftware.morf.sql.element.Function.floor;
-import static org.alfasoftware.morf.sql.element.Function.greatest;
-import static org.alfasoftware.morf.sql.element.Function.isnull;
-import static org.alfasoftware.morf.sql.element.Function.lastDayOfMonth;
-import static org.alfasoftware.morf.sql.element.Function.least;
-import static org.alfasoftware.morf.sql.element.Function.leftPad;
-import static org.alfasoftware.morf.sql.element.Function.leftTrim;
-import static org.alfasoftware.morf.sql.element.Function.length;
-import static org.alfasoftware.morf.sql.element.Function.lowerCase;
-import static org.alfasoftware.morf.sql.element.Function.max;
-import static org.alfasoftware.morf.sql.element.Function.mod;
-import static org.alfasoftware.morf.sql.element.Function.monthsBetween;
-import static org.alfasoftware.morf.sql.element.Function.now;
-import static org.alfasoftware.morf.sql.element.Function.power;
-import static org.alfasoftware.morf.sql.element.Function.random;
-import static org.alfasoftware.morf.sql.element.Function.randomString;
-import static org.alfasoftware.morf.sql.element.Function.rightTrim;
-import static org.alfasoftware.morf.sql.element.Function.some;
-import static org.alfasoftware.morf.sql.element.Function.substring;
-import static org.alfasoftware.morf.sql.element.Function.sum;
-import static org.alfasoftware.morf.sql.element.Function.sumDistinct;
-import static org.alfasoftware.morf.sql.element.Function.trim;
-import static org.alfasoftware.morf.sql.element.Function.upperCase;
-import static org.alfasoftware.morf.sql.element.Function.yyyymmddToDate;
+import static org.alfasoftware.morf.sql.element.Function.*;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.instanceOf;
@@ -2231,7 +2198,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     final byte[] value = "hello world BLOB".getBytes();
 
     SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
-    String sql = convertStatementToSQL(select(field("blobCol"), length(field("blobCol")).as("lengthResult"))
+    String sql = convertStatementToSQL(select(field("blobCol"), blobLength(field("blobCol")).as("lengthResult"))
                                                                         .from(tableRef("SimpleTypes"))
                                                                         .orderBy(field("lengthResult")));
 

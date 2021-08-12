@@ -28,6 +28,7 @@ import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.SelectStatementBuilder;
 import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Function;
@@ -306,6 +307,10 @@ class PostgreSQLDialect extends SqlDialect {
     return "CONCAT(" + StringUtils.join(sql, ", ") + ")";
   }
 
+  @Override
+  protected String getSqlFrom(BlobFieldLiteral field) {
+    return String.format("DECODE('%s', 'base64')", field.getValue());
+  }
 
   @Override
   protected String getSqlForDaysBetween(AliasedField toDate, AliasedField fromDate) {

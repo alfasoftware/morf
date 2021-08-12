@@ -26,6 +26,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.metadata.SchemaUtils.versionColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.view;
+import static org.alfasoftware.morf.sql.SqlUtils.blobliteral;
 import static org.alfasoftware.morf.sql.SqlUtils.bracket;
 import static org.alfasoftware.morf.sql.SqlUtils.cast;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
@@ -104,12 +105,14 @@ import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -245,6 +248,10 @@ public abstract class AbstractSqlDialectTest {
       + "QAAABDv6BDv/AAAAAD9AAAAEO/oEO/8AAAAAP0AAAAQ7+gQ7/wAAAAA/QAAAPgZfMC50aWlLAAAAAD4GXzAudGlzSwAAAAA+Bl8wLm5ybUsAAAAAPgxz"
       + "ZWdtZW50cy5nZW5LAAAAAD4GXzAucHJ4SwAAAAA+Bl8wLmZkdEsAAAAAPgZfMC5mcnFLAAAAAD4GXzAuZm5tSwAAAAA+CnNlZ21lbnRzXzJLAAAAAD4GX"
       + "zAuZmR4SwAAAAABATU=";
+  private static final String NEW_BLOB_VALUE = "New Blob Value";
+  private static final String OLD_BLOB_VALUE = "Old Blob Value";
+  protected static final String NEW_BLOB_VALUE_BASE64 = Base64.getEncoder().encodeToString(NEW_BLOB_VALUE.getBytes(StandardCharsets.UTF_8));
+  protected static final String OLD_BLOB_VALUE_BASE64 = Base64.getEncoder().encodeToString(NEW_BLOB_VALUE.getBytes(StandardCharsets.UTF_8));
 
 
   /**
@@ -2159,6 +2166,8 @@ public abstract class AbstractSqlDialectTest {
   public void testUpdateWithLiteralValues() {
     UpdateStatement stmt = update(tableRef(TEST_TABLE))
       .set(literal("Value").as(STRING_FIELD))
+      .set(blobliteral(NEW_BLOB_VALUE).as("blobFieldOne"))
+      .set(blobliteral(NEW_BLOB_VALUE.getBytes(StandardCharsets.UTF_8)).as("blobFieldTwo"))
       .where(and(
         field("field1").eq(true),
         field("field2").eq(false),
@@ -2167,7 +2176,9 @@ public abstract class AbstractSqlDialectTest {
         field("field5").eq(new LocalDate(2010, 1, 2)),
         field("field6").eq(literal(new LocalDate(2010, 1, 2))),
         field("field7").eq("Value"),
-        field("field8").eq(literal("Value"))
+        field("field8").eq(literal("Value")),
+        field("field9").eq(blobliteral(OLD_BLOB_VALUE)),
+        field("field10").eq(blobliteral(OLD_BLOB_VALUE.getBytes(StandardCharsets.UTF_8)))
       ));
     assertEquals(
       "Update with literal values",
@@ -4354,16 +4365,26 @@ public abstract class AbstractSqlDialectTest {
   protected String expectedUpdateWithLiteralValues() {
     String value = varCharCast("'Value'");
     return String.format(
-        "UPDATE %s SET stringField = %s%s WHERE ((field1 = 1) AND (field2 = 0) AND (field3 = 1) AND (field4 = 0) AND (field5 = %s) AND (field6 = %s) AND (field7 = %s%s) AND (field8 = %s%s))",
+        "UPDATE %s SET stringField = %s%s, blobFieldOne = %s, blobFieldTwo = %s " +
+        "WHERE ((field1 = %s) AND (field2 = %s) AND (field3 = %s) AND (field4 = %s) AND (field5 = %s) AND (field6 = %s) AND (field7 = %s%s) AND (field8 = %s%s) " +
+        "AND (field9 = %s) AND (field10 = %s))",
         tableName(TEST_TABLE),
         stringLiteralPrefix(),
         value,
+        expectedBlobLiteral(NEW_BLOB_VALUE),
+        expectedBlobLiteral(NEW_BLOB_VALUE),
+        expectedBooleanLiteral(true),
+        expectedBooleanLiteral(false),
+        expectedBooleanLiteral(true),
+        expectedBooleanLiteral(false),
         expectedDateLiteral(),
         expectedDateLiteral(),
         stringLiteralPrefix(),
         value,
         stringLiteralPrefix(),
-        value
+        value,
+        expectedBlobLiteral(OLD_BLOB_VALUE),
+        expectedBlobLiteral(OLD_BLOB_VALUE)
       );
   }
 
@@ -5188,6 +5209,24 @@ public abstract class AbstractSqlDialectTest {
    */
   protected String expectedDateLiteral() {
     return "DATE '2010-01-02'";
+  }
+
+
+  /**
+   * @param value the boolean value to translate.
+   * @return The expected boolean literal.
+   */
+  protected String expectedBooleanLiteral(boolean value) {
+    return value ? "1" : "0";
+  }
+
+
+  /**
+   * @param value the blob value to translate.
+   * @return The expected blob literal.
+   */
+  protected String expectedBlobLiteral(String value) {
+    return String.format("'%s'", Base64.getEncoder().encodeToString(value.getBytes(StandardCharsets.UTF_8)));
   }
 
 

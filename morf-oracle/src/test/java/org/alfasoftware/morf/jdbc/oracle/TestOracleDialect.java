@@ -1092,6 +1092,14 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedBlobLiteral(String) ()
+   */
+  @Override
+  protected String expectedBlobLiteral(String value) {
+    return String.format("UTL_ENCODE.BASE64_DECODE(%s)",super.expectedBlobLiteral(value));
+  }
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDateToYyyymmddHHmmss()
    */
   @Override

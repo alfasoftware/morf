@@ -50,6 +50,7 @@ import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.UseImplicitJoinOrder;
 import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldReference;
@@ -602,7 +603,12 @@ class MySqlDialect extends SqlDialect {
   }
 
 
-  /**
+    @Override
+    protected String getSqlFrom(BlobFieldLiteral field) {
+        return String.format("FROM_BASE64('%s')", field.getValue());
+    }
+
+    /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForYYYYMMDDToDate(org.alfasoftware.morf.sql.element.Function)
    */
   @Override

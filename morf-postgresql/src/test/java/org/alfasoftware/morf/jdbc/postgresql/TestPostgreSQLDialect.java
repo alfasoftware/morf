@@ -4,8 +4,10 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.verify;
 
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -504,6 +506,23 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedLeftPad() {
     return "SELECT LPAD(stringField, 10, 'j') FROM testschema.Test";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedBooleanLiteral(boolean) ()
+   */
+  @Override
+  protected String expectedBooleanLiteral(boolean value) {
+    return value ? "TRUE" : "FALSE";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedBlobLiteral(String)  ()
+   */
+  protected String expectedBlobLiteral(String value) {
+    return String.format("DECODE(%s, 'base64')", super.expectedBlobLiteral(value));
   }
 
 
@@ -1165,18 +1184,6 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedUpdateUsingSourceTableInDifferentSchema() {
     return "UPDATE " + tableName("FloatingRateRate") + " A SET settlementFrequency = (SELECT settlementFrequency FROM MYSCHEMA.FloatingRateDetail B WHERE (A.floatingRateDetailId = B.id))";
-  }
-
-  /**
-   * @return Expected SQL for {@link #testUpdateWithLiteralValues()}
-   */
-  @Override
-  protected String expectedUpdateWithLiteralValues() {
-    return String.format(
-        "UPDATE testschema.Test SET stringField = 'Value' WHERE ((field1 = TRUE) AND (field2 = FALSE) AND (field3 = TRUE) AND (field4 = FALSE) AND (field5 = %s) AND (field6 = %s) AND (field7 = 'Value') AND (field8 = 'Value'))",
-        expectedDateLiteral(),
-        expectedDateLiteral()
-      );
   }
 
   /**

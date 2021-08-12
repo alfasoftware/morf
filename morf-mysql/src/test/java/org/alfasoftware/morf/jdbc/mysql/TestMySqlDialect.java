@@ -1223,4 +1223,11 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   protected String expectedDeleteWithLimitWithoutWhere() {
     return "DELETE FROM " + tableName(TEST_TABLE) + " LIMIT 1000";
   }
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedBlobLiteral(String)  ()
+   */
+  protected String expectedBlobLiteral(String value) {
+    return String.format("FROM_BASE64(%s)", super.expectedBlobLiteral(value));
+  }
 }

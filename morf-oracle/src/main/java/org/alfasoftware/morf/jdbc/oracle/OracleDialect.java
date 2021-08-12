@@ -51,6 +51,7 @@ import org.alfasoftware.morf.sql.UseImplicitJoinOrder;
 import org.alfasoftware.morf.sql.UseIndex;
 import org.alfasoftware.morf.sql.UseParallelDml;
 import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
@@ -1170,6 +1171,11 @@ class OracleDialect extends SqlDialect {
   }
 
 
+  @Override
+  protected String getSqlforBlobLength(Function function) {
+    return String.format("dbms_lob.getlength(%s)", getSqlFrom(function.getArguments().get(0)));
+  }
+
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getFromDummyTable()
    */
@@ -1199,6 +1205,10 @@ class OracleDialect extends SqlDialect {
     return result.toString().trim();
   }
 
+  @Override
+  protected String getSqlFrom(BlobFieldLiteral field) {
+    return String.format("UTL_ENCODE.BASE64_DECODE('%s')", field.getValue());
+  }
 
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#selectStatementPreFieldDirectives(org.alfasoftware.morf.sql.SelectStatement)
