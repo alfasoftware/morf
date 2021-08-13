@@ -41,7 +41,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.dataset.Record;
@@ -2216,7 +2215,8 @@ public abstract class SqlDialect {
 
   /**
    * Converts the function get LENGTH of Blob data or field into SQL.
-   *
+   * Use LENGTH instead of OCTET_LENGTH as they are synonymous in MySQl and PostGreSQL. In H2 LENGTH returns the correct
+   * number of bytes, whereas OCTET_LENGTH returns 2 times the byte length.
    * @param function the function to convert.
    * @return a string representation of the SQL.
    * @see org.alfasoftware.morf.sql.element.Function#blobLength(AliasedField)
