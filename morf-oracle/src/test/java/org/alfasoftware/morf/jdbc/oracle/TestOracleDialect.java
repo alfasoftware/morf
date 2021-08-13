@@ -1096,7 +1096,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedBlobLiteral(String value) {
-    return String.format("UTL_ENCODE.BASE64_DECODE(%s)",super.expectedBlobLiteral(value));
+    return String.format("HEXTORAW(%s)",super.expectedBlobLiteral(value));
   }
 
   /**

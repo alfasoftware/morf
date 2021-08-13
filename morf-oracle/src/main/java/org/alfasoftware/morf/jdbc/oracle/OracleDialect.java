@@ -1205,9 +1205,13 @@ class OracleDialect extends SqlDialect {
     return result.toString().trim();
   }
 
+  /**
+   * @param field the BLOB field literal
+   * @return
+   */
   @Override
   protected String getSqlFrom(BlobFieldLiteral field) {
-    return String.format("UTL_ENCODE.BASE64_DECODE('%s')", field.getValue());
+    return String.format("HEXTORAW('%s')", field.getValue());
   }
 
   /**

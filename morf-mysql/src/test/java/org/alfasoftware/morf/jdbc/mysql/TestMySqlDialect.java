@@ -1228,6 +1228,6 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedBlobLiteral(String)  ()
    */
   protected String expectedBlobLiteral(String value) {
-    return String.format("FROM_BASE64(%s)", super.expectedBlobLiteral(value));
+    return String.format("x%s", super.expectedBlobLiteral(value));
   }
 }

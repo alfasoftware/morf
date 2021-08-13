@@ -309,7 +309,7 @@ class PostgreSQLDialect extends SqlDialect {
 
   @Override
   protected String getSqlFrom(BlobFieldLiteral field) {
-    return String.format("DECODE('%s', 'base64')", field.getValue());
+    return String.format("E'\\x%s'", field.getValue());
   }
 
   @Override

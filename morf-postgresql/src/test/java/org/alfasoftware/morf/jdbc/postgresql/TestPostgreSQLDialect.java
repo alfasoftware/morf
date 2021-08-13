@@ -522,7 +522,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedBlobLiteral(String)  ()
    */
   protected String expectedBlobLiteral(String value) {
-    return String.format("DECODE(%s, 'base64')", super.expectedBlobLiteral(value));
+    return String.format("E'\\x%s'", value);
   }
 
 

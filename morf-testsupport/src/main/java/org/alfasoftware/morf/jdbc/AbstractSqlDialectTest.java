@@ -250,8 +250,8 @@ public abstract class AbstractSqlDialectTest {
       + "zAuZmR4SwAAAAABATU=";
   private static final String NEW_BLOB_VALUE = "New Blob Value";
   private static final String OLD_BLOB_VALUE = "Old Blob Value";
-  protected static final String NEW_BLOB_VALUE_BASE64 = Base64.getEncoder().encodeToString(NEW_BLOB_VALUE.getBytes(StandardCharsets.UTF_8));
-  protected static final String OLD_BLOB_VALUE_BASE64 = Base64.getEncoder().encodeToString(NEW_BLOB_VALUE.getBytes(StandardCharsets.UTF_8));
+  protected static final String NEW_BLOB_VALUE_HEX = "4E657720426C6F622056616C7565";
+  protected static final String OLD_BLOB_VALUE_HEX = "4F6C6420426C6F622056616C7565";
 
 
   /**
@@ -4371,8 +4371,8 @@ public abstract class AbstractSqlDialectTest {
         tableName(TEST_TABLE),
         stringLiteralPrefix(),
         value,
-        expectedBlobLiteral(NEW_BLOB_VALUE),
-        expectedBlobLiteral(NEW_BLOB_VALUE),
+        expectedBlobLiteral(NEW_BLOB_VALUE_HEX),
+        expectedBlobLiteral(NEW_BLOB_VALUE_HEX),
         expectedBooleanLiteral(true),
         expectedBooleanLiteral(false),
         expectedBooleanLiteral(true),
@@ -4383,8 +4383,8 @@ public abstract class AbstractSqlDialectTest {
         value,
         stringLiteralPrefix(),
         value,
-        expectedBlobLiteral(OLD_BLOB_VALUE),
-        expectedBlobLiteral(OLD_BLOB_VALUE)
+        expectedBlobLiteral(OLD_BLOB_VALUE_HEX),
+        expectedBlobLiteral(OLD_BLOB_VALUE_HEX)
       );
   }
 
@@ -5226,7 +5226,7 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected blob literal.
    */
   protected String expectedBlobLiteral(String value) {
-    return String.format("'%s'", Base64.getEncoder().encodeToString(value.getBytes(StandardCharsets.UTF_8)));
+    return String.format("'%s'", value);
   }
 
 

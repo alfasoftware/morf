@@ -605,7 +605,7 @@ class MySqlDialect extends SqlDialect {
 
     @Override
     protected String getSqlFrom(BlobFieldLiteral field) {
-        return String.format("FROM_BASE64('%s')", field.getValue());
+        return String.format("x'%s'", field.getValue());
     }
 
     /**
