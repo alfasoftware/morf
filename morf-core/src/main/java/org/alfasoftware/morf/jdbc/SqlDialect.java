@@ -2222,7 +2222,7 @@ public abstract class SqlDialect {
    * @see org.alfasoftware.morf.sql.element.Function#blobLength(AliasedField)
    */
   protected String getSqlforBlobLength(Function function) {
-    return String.format("OCTET_LENGTH(%s)", getSqlFrom(function.getArguments().get(0)));
+    return String.format("LENGTH(%s)", getSqlFrom(function.getArguments().get(0)));
   }
 
 
