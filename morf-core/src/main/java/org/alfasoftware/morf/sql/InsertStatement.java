@@ -81,6 +81,11 @@ public class InsertStatement implements Statement,
   private final List<AliasedField>  fields;
 
   /**
+   * Lists the declared hints in the order they were declared.
+   */
+  private final List<Hint> hints;
+
+  /**
    * The primary table to select from
    */
   private TableReference            table;
@@ -126,10 +131,12 @@ public class InsertStatement implements Statement,
     super();
     if (AliasedField.immutableDslEnabled()) {
       this.fields = ImmutableList.of();
+      this.hints = ImmutableList.of();
       this.values = ImmutableList.of();
       this.fieldDefaults = ImmutableMap.of();
     } else {
       this.fields = new ArrayList<>();
+      this.hints = new ArrayList<>();
       this.values = new ArrayList<>();
       this.fieldDefaults = new HashMap<>();
     }
@@ -148,10 +155,12 @@ public class InsertStatement implements Statement,
     this.selectStatement = builder.getSelectStatement();
     if (AliasedField.immutableDslEnabled()) {
       this.fields = ImmutableList.copyOf(builder.getFields());
+      this.hints = ImmutableList.copyOf(builder.getHints());
       this.values = ImmutableList.copyOf(builder.getValues());
       this.fieldDefaults = ImmutableMap.copyOf(builder.getFieldDefaults());
     } else {
       this.fields = new ArrayList<>();
+      this.hints = new ArrayList<>();
       this.values = new ArrayList<>();
       this.fieldDefaults = new HashMap<>();
       this.fields.addAll(builder.getFields());
@@ -366,6 +375,14 @@ public class InsertStatement implements Statement,
 
 
   /**
+   * @return all hints in the order they were declared.
+   */
+  public List<Hint> getHints() {
+    return hints;
+  }
+
+
+  /**
    * Gets the table being inserted into
    *
    * @return the table being inserted into
@@ -449,6 +466,7 @@ public class InsertStatement implements Statement,
   @Override
   public String toString() {
     StringBuilder result = new StringBuilder("SQL INSERT INTO [" + table + "]");
+    if (!hints.isEmpty()) result.append(" HINTS ").append(hints);
     if (!fields.isEmpty()) result.append(" FIELDS ").append(fields);
     if (!values.isEmpty()) result.append(" VALUES ").append(values);
     if (selectStatement != null) result.append(" FROM SELECT [").append(selectStatement).append("]");
@@ -462,12 +480,13 @@ public class InsertStatement implements Statement,
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result + ((fieldDefaults == null) ? 0 : fieldDefaults.hashCode());
-    result = prime * result + ((fields == null) ? 0 : fields.hashCode());
-    result = prime * result + ((fromTable == null) ? 0 : fromTable.hashCode());
-    result = prime * result + ((selectStatement == null) ? 0 : selectStatement.hashCode());
-    result = prime * result + ((table == null) ? 0 : table.hashCode());
-    result = prime * result + ((values == null) ? 0 : values.hashCode());
+    result = prime * result + (fieldDefaults == null ? 0 : fieldDefaults.hashCode());
+    result = prime * result + (hints == null ? 0 : hints.hashCode());
+    result = prime * result + (fields == null ? 0 : fields.hashCode());
+    result = prime * result + (fromTable == null ? 0 : fromTable.hashCode());
+    result = prime * result + (selectStatement == null ? 0 : selectStatement.hashCode());
+    result = prime * result + (table == null ? 0 : table.hashCode());
+    result = prime * result + (values == null ? 0 : values.hashCode());
     return result;
   }
 
@@ -490,6 +509,11 @@ public class InsertStatement implements Statement,
       if (other.fields != null)
         return false;
     } else if (!fields.equals(other.fields))
+      return false;
+    if (hints == null) {
+      if (other.hints != null)
+        return false;
+    } else if (!hints.equals(other.hints))
       return false;
     if (fromTable == null) {
       if (other.fromTable != null)

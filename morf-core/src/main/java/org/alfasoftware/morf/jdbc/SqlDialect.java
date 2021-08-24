@@ -1309,6 +1309,7 @@ public abstract class SqlDialect {
     StringBuilder stringBuilder = new StringBuilder();
 
     stringBuilder.append("INSERT INTO ");
+    stringBuilder.append(insertStatementPreFieldDirectives(stmt));
     stringBuilder.append(schemaNamePrefix(stmt.getTable()));
     stringBuilder.append(stmt.getTable().getName());
 
@@ -4032,6 +4033,11 @@ public abstract class SqlDialect {
     statement.append(")");
 
     return statement.toString();
+  }
+
+
+  protected String insertStatementPreFieldDirectives(@SuppressWarnings("unused") InsertStatement insertStatement) {
+    return StringUtils.EMPTY;
   }
 
 

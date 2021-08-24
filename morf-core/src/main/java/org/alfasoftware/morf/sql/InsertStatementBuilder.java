@@ -41,6 +41,7 @@ import com.google.common.collect.Maps;
 public class InsertStatementBuilder implements Builder<InsertStatement> {
 
   private final List<AliasedField> fields = new ArrayList<>();
+  private final List<Hint> hints = new ArrayList<>();
   private TableReference table;
   private SelectStatement selectStatement;
   private TableReference fromTable;
@@ -64,6 +65,7 @@ public class InsertStatementBuilder implements Builder<InsertStatement> {
   InsertStatementBuilder(InsertStatement copyOf) {
     super();
     this.fields.addAll(copyOf.getFields());
+    this.hints.addAll(copyOf.getHints());
     this.values.addAll(copyOf.getValues());
     this.fieldDefaults.putAll(copyOf.getFieldDefaults());
     this.table = copyOf.getTable();
@@ -80,12 +82,13 @@ public class InsertStatementBuilder implements Builder<InsertStatement> {
    */
   InsertStatementBuilder(InsertStatement copyOf, DeepCopyTransformation transformation) {
     super();
-    this.fields.addAll(transformIterable(copyOf.getFields(),transformation));
+    this.fields.addAll(transformIterable(copyOf.getFields(), transformation));
     this.values.addAll(transformIterable(copyOf.getValues(),transformation));
     this.fieldDefaults.putAll(Maps.transformValues(copyOf.getFieldDefaults(), transformation::deepCopy));
     this.table = transformation.deepCopy(copyOf.getTable());
     this.fromTable = transformation.deepCopy(copyOf.getFromTable());
     this.selectStatement = transformation.deepCopy(copyOf.getSelectStatement());
+    this.hints.addAll(copyOf.getHints());
   }
 
 
@@ -239,6 +242,14 @@ public class InsertStatementBuilder implements Builder<InsertStatement> {
 
 
   /**
+   * @return all hints in the order they were declared.
+   */
+  public List<Hint> getHints() {
+    return hints;
+  }
+
+
+  /**
    * Gets the table being inserted into
    *
    * @return the table being inserted into
@@ -283,6 +294,14 @@ public class InsertStatementBuilder implements Builder<InsertStatement> {
    */
   List<AliasedField> getValues() {
     return values;
+  }
+
+
+  /**
+   * Adds a an {@code APPEND} query hint to this INSERT statement builder.
+   */
+  void useDirectPath() {
+    getHints().add(new DirectPathQueryHint());
   }
 
 
