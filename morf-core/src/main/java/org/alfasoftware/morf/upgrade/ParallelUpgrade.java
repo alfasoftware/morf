@@ -57,6 +57,37 @@ public class ParallelUpgrade extends Upgrade {
   }
 
 
+//  private void handleAnnotatedNode(List<UpgradeNode> processedNodes, UpgradeNode node, UpgradeNode root) {
+//    // if nothing has been processed add node as child of the root
+//    if(processedNodes.isEmpty()) {
+//      log.debug("Root empty, adding node: " + node.getName() + " as child of the root");
+//      addEdge(root, node);
+//      return;
+//    }
+//
+//    // for each processed node
+//    for(UpgradeNode processed : processedNodes) {
+//      // if it's not annotated node make an edge only when it's a leaf
+//      if(processed.noDependenciesDefined() && processed.getChildren().isEmpty()) {
+//        addEdge(processed, node);
+//        log.info("Node: " + node.getName() + " depends on " + processed.getName() + " because it's a not annotated leaf");
+//      }
+//      // if it's annotated and there is dependency add an edge
+//      if(!processed.noDependenciesDefined() && checkDependency(processed, node)) {
+//        addEdge(processed, node);
+//      }
+//      // if it's annotated leaf which depends on any not annotated node add an edge
+//      if(!processed.noDependenciesDefined() && )
+//    }
+//
+//    // if no dependency found add as child of the root
+//    if(node.getParents().isEmpty()) {
+//      log.info("No dependencies found for node: " + node.getName() + " - adding as child of the root");
+//      addEdge(root, node);
+//    }
+//  }
+
+
   private void handleAnnotatedNode(List<UpgradeNode> processedNodes, UpgradeNode node, UpgradeNode root) {
     // if nothing has been processed add node as child of the root
     if(processedNodes.isEmpty()) {
@@ -65,24 +96,29 @@ public class ParallelUpgrade extends Upgrade {
       return;
     }
 
-    // for each processed node
-    for(UpgradeNode processed : processedNodes) {
-      // if it's not annotated node make an edge only when it's a leaf
-      if(processed.noDependenciesDefined() && processed.getChildren().isEmpty()) {
-        addEdge(processed, node);
-      }
+    for(int i = processedNodes.size() - 1; i>=0; i--) {
+      UpgradeNode processed = processedNodes.get(i);
+
       // if it's annotated and there is dependency add an edge
       if(!processed.noDependenciesDefined() && checkDependency(processed, node)) {
         addEdge(processed, node);
       }
+
+      // if not annotated check add edge only if current node has no parents
+      if(processed.noDependenciesDefined() && node.getParents().isEmpty()) {
+        addEdge(processed, node);
+        log.info("Node: " + node.getName() + " depends on " + processed.getName() + " because it had no parent and the dependency is a not annotated leaf");
+      }
+
     }
 
     // if no dependency found add as child of the root
     if(node.getParents().isEmpty()) {
-      log.debug("No dependencies found for node: " + node.getName() + " - adding as child of the root");
+      log.info("No dependencies found for node: " + node.getName() + " - adding as child of the root");
       addEdge(root, node);
     }
   }
+
 
 
   private boolean checkDependency(UpgradeNode processed, UpgradeNode node) {
@@ -105,7 +141,7 @@ public class ParallelUpgrade extends Upgrade {
 
     Set<String> allMatches = new HashSet<>(view1);
     allMatches.addAll(view2);
-    log.debug("Node: " + node.getName() + " depends on " + processed.getName() + " because of entities: "
+    log.info("Node: " + node.getName() + " depends on " + processed.getName() + " because of entities: "
         + Arrays.toString(allMatches.toArray()));
     return true;
 
@@ -121,8 +157,9 @@ public class ParallelUpgrade extends Upgrade {
 
     // else add it a child of all leafs
     for(UpgradeNode processed : processedNodes) {
-      if(processed.getChildren().isEmpty()) {
+      if(processed.getChildren().isEmpty() && !processed.isRoot() ) {
         addEdge(processed, node);
+        log.info("Node (no annotations): " + node.getName() + " depends on " + processed.getName() + " because it is a leaf");
       }
     }
   }
@@ -220,6 +257,10 @@ public class ParallelUpgrade extends Upgrade {
     }
 
 
+    public boolean isRoot() {
+      return sequence == 0;
+    }
+
     @Override
     public int hashCode() {
       final int prime = 31;
@@ -243,9 +284,10 @@ public class ParallelUpgrade extends Upgrade {
 
     @Override
     public String toString() {
-      return "UpgradeNode [name=" + name + ", sequence=" + sequence + ", reads=" + reads + ", modifies=" + modifies + ", children="
-          + nodeListToStringOfNames(children) + ", parents=" + nodeListToStringOfNames(parents) + "]";
+      return "UpgradeNode [name=" + name + ", sequence=" + sequence + ", reads=" + reads + ", modifies=" + modifies + ", root="
+          + isRoot() + ", children=" + nodeListToStringOfNames(children) + ", parents=" + nodeListToStringOfNames(parents) + "]";
     }
+
 
     private String nodeListToStringOfNames(Collection<UpgradeNode> nodes) {
       return nodes.stream()
