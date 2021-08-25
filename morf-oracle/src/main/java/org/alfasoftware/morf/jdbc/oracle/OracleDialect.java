@@ -1325,13 +1325,18 @@ class OracleDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#insertStatementPreFieldDirectives(org.alfasoftware.morf.sql.InsertStatement)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForInsertInto(org.alfasoftware.morf.sql.InsertStatement)
    */
   @Override
-  protected String insertStatementPreFieldDirectives(InsertStatement insertStatement) {
+  protected String getSqlForInsertInto(InsertStatement insertStatement) {
+    return super.getSqlForInsertInto(insertStatement) + insertStatementPreFieldDirectives(insertStatement);
+  }
+
+
+  private String insertStatementPreFieldDirectives(InsertStatement insertStatement) {
 
     if (insertStatement.getHints().isEmpty()) {
-      return super.insertStatementPreFieldDirectives(insertStatement);
+      return "";
     }
 
     StringBuilder builder = new StringBuilder().append("/*+");

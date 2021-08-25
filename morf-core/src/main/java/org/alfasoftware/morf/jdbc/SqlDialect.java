@@ -1308,8 +1308,7 @@ public abstract class SqlDialect {
 
     StringBuilder stringBuilder = new StringBuilder();
 
-    stringBuilder.append("INSERT INTO ");
-    stringBuilder.append(insertStatementPreFieldDirectives(stmt));
+    stringBuilder.append(getSqlForInsertInto(stmt));
     stringBuilder.append(schemaNamePrefix(stmt.getTable()));
     stringBuilder.append(stmt.getTable().getName());
 
@@ -4036,8 +4035,14 @@ public abstract class SqlDialect {
   }
 
 
-  protected String insertStatementPreFieldDirectives(@SuppressWarnings("unused") InsertStatement insertStatement) {
-    return StringUtils.EMPTY;
+  /**
+   * Returns the INSERT INTO statement.
+   *
+   * @param insertStatement he {@linkplain InsertStatement} object which can be used by the overriding methods to customize the INSERT statement.
+   * @return the INSERT INTO statement.
+   */
+  protected String getSqlForInsertInto(@SuppressWarnings("unused") InsertStatement insertStatement) {
+    return "INSERT INTO ";
   }
 
 
