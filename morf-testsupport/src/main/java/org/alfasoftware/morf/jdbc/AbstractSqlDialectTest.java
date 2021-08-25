@@ -3185,6 +3185,15 @@ public abstract class AbstractSqlDialectTest {
         .useParallelDml()
       )
     );
+    assertEquals(
+      Lists.newArrayList(expectedHints4()),
+      testDialect.convertStatementToSQL(
+        insert()
+        .into(tableRef("Foo"))
+        .from(select(field("a"), field("b")).from(tableRef("Foo_1")))
+        .useDirectPath()
+      )
+    );
   }
 
 
@@ -5288,6 +5297,14 @@ public abstract class AbstractSqlDialectTest {
    */
   protected String expectedHints3() {
     return "UPDATE " + tableName("Foo") + " SET a = b";
+  }
+
+
+  /**
+   * @return The expected SQL for the {@link UpdateStatement#useParallelDml()} directive.
+   */
+  protected String expectedHints4() {
+    return  "INSERT INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
   }
 
 

@@ -166,6 +166,7 @@ public class InsertStatement implements Statement,
       this.fields.addAll(builder.getFields());
       this.values.addAll(builder.getValues());
       this.fieldDefaults.putAll(builder.getFieldDefaults());
+      this.hints.addAll(builder.getHints());
     }
   }
 
@@ -316,6 +317,27 @@ public class InsertStatement implements Statement,
           }
           this.values.addAll(Builder.Helper.buildAll(Lists.newArrayList(fieldValues)));
         }
+    );
+  }
+
+
+  /**
+   * If supported by the dialect, hints to the database that an {@code APPEND} query hint should be used in the insert statement.
+   *
+   * <p>In general, as with all query plan modification, <strong>do not use this unless you know
+   * exactly what you are doing</strong>.</p>
+   *
+   * <p>As for all query plan modification (see also {@link #optimiseForRowCount(int)}
+   * and {@link #useImplicitJoinOrder()}): where supported on the target database, these directives
+   * applied in the SQL in the order they are called on {@link SelectStatement}.  This usually
+   * affects their precedence or relative importance, depending on the platform.</p>
+   *
+   * @return a new insert statement with the change applied.
+   */
+  public InsertStatement useDirectPath() {
+    return copyOnWriteOrMutate(
+        (InsertStatementBuilder b) -> b.useDirectPath(),
+        () -> this.hints.add(new DirectPathQueryHint())
     );
   }
 
