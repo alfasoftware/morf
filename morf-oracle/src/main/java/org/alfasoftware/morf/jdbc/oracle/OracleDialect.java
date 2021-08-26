@@ -1329,11 +1329,11 @@ class OracleDialect extends SqlDialect {
    */
   @Override
   protected String getSqlForInsertInto(InsertStatement insertStatement) {
-    return "INSERT " + insertStatementPreFieldDirectives(insertStatement) + "INTO ";
+    return "INSERT " + insertStatementPreIntoDirectives(insertStatement) + "INTO ";
   }
 
 
-  private String insertStatementPreFieldDirectives(InsertStatement insertStatement) {
+  private String insertStatementPreIntoDirectives(InsertStatement insertStatement) {
 
     if (insertStatement.getHints().isEmpty()) {
       return "";
