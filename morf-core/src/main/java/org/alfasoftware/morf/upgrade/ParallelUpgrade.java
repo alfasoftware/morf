@@ -76,6 +76,11 @@ public class ParallelUpgrade extends Upgrade {
         analyzeDependency(processed, node, remainingReads, remainingModifies, removeAtNextModify);
       }
 
+      // stop processing if there are no dependencies to consider anymore
+      if(remainingModifies.isEmpty() && remainingReads.isEmpty()) {
+        break;
+      }
+
       // if not annotated check add edge only if current node has no parents
       if(processed.noDependenciesDefined() && node.getParents().isEmpty()) {
         addEdge(processed, node);
