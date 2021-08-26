@@ -73,7 +73,7 @@ public class OracleMetaDataProvider implements Schema {
   /**
    * Regex pattern matcher for the real name on column/table comments
    */
-  private static final Pattern realnameCommentMatcher = Pattern.compile(".*REALNAME:\\[([^\\]]*)\\](/TYPE:\\[([^\\]]*)\\])?.*");
+  private static final Pattern realnameCommentMatcher = Pattern.compile(".*"+OracleDialect.REAL_NAME_COMMENT_LABEL+":\\[([^\\]]*)\\](/TYPE:\\[([^\\]]*)\\])?.*");
 
   /**
    * The map of table data.

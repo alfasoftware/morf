@@ -102,7 +102,7 @@ public class DatabaseDataSetProducer implements DataSetProducer {
    */
   @Inject
   public DatabaseDataSetProducer(ConnectionResources connectionResources, DataSource dataSource) {
-    this(connectionResources, new HashMap<String, List<String>>(), dataSource);
+    this(connectionResources, new HashMap<>(), dataSource);
   }
 
 

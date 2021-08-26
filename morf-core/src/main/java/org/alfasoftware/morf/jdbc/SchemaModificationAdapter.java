@@ -18,6 +18,7 @@ package org.alfasoftware.morf.jdbc;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -47,6 +48,8 @@ public class SchemaModificationAdapter extends DataSetAdapter {
    * names as all-caps.</p>
    */
   private final Set<String> remainingTables = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+  private final Map<String, Table> existingIndexNamesAndTables = new ConcurrentHashMap<>();
 
   private final SqlDialect sqlDialect;
 
@@ -85,10 +88,10 @@ public class SchemaModificationAdapter extends DataSetAdapter {
       throw new RuntimeSqlException("Error closing connection", e);
     }
     // get a list of all the tables at the start
-    for (String tableName : schemaResource.tableNames()) {
-      remainingTables.add(tableName.toUpperCase());
+    for (Table table : schemaResource.tables()) {
+      remainingTables.add(table.getName().toUpperCase());
+      table.indexes().forEach(index -> existingIndexNamesAndTables.put(index.getName().toUpperCase(), table));
     }
-
   }
 
 
@@ -159,13 +162,18 @@ public class SchemaModificationAdapter extends DataSetAdapter {
         // there was a difference. Drop and re-deploy
         log.debug("Replacing table [" + table.getName() + "] with different version");
         dropExistingViewsIfNecessary();
+        dropExistingIndexesIfNecessary(table);
         sqlExecutor.execute(sqlDialect.dropStatements(databaseTableMetaData), connection);
         sqlExecutor.execute(sqlDialect.tableDeploymentStatements(table), connection);
+      } else {
+        // Remove the index names that are now part of the modified schema
+        table.indexes().forEach(index -> existingIndexNamesAndTables.remove(index.getName().toUpperCase()));
       }
 
     } else {
       log.debug("Deploying missing table [" + table.getName() + "]");
       dropExistingViewsIfNecessary();
+      dropExistingIndexesIfNecessary(table);
       sqlExecutor.execute(sqlDialect.tableDeploymentStatements(table), connection);
     }
   }
@@ -183,6 +191,20 @@ public class SchemaModificationAdapter extends DataSetAdapter {
       Table table = schemaResource.getTable(tableName);
       sqlExecutor.execute(sqlDialect.dropStatements(table), connection);
     }
+  }
+
+
+  /**
+   * Drop all existing indexes of the table that's about to be deployed.
+   */
+  private void dropExistingIndexesIfNecessary(Table tableToDeploy) {
+    tableToDeploy.indexes().forEach(index -> {
+      Table existingTableWithSameIndex = existingIndexNamesAndTables.remove(index.getName().toUpperCase());
+      if (existingTableWithSameIndex != null && !tableToDeploy.getName().equalsIgnoreCase(existingTableWithSameIndex.getName())) {
+        // Only drop the index if it belongs to the previous schema under a different tablename.
+        databaseDataSetConsumer.getSqlExecutor().execute(sqlDialect.indexDropStatements(existingTableWithSameIndex, index), connection);
+      }
+    });
   }
 
 }

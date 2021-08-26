@@ -37,7 +37,14 @@ import com.google.common.collect.FluentIterable;
  *
  * @author Copyright (c) Alfa Financial Software 2011
  */
-public class RecordHelper {
+public final class RecordHelper {
+
+  /**
+   * Static class not intended to be instantiated
+   */
+  private RecordHelper() {
+    throw new IllegalStateException("Utility class");
+  }
 
   /**
    * Date/time formatter for record format dates

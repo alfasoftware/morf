@@ -126,25 +126,21 @@ class PostgreSQLDialect extends SqlDialect {
 
   @Override
   protected String getColumnRepresentation(DataType dataType, int width, int scale) {
-    switch (dataType) {
-      case STRING:
-        return getDataTypeRepresentation(dataType, width, scale) + " COLLATE \"POSIX\"";
-
-      default:
-        return getDataTypeRepresentation(dataType, width, scale);
+    if (dataType == DataType.STRING) {
+      return getDataTypeRepresentation(dataType, width, scale) + " COLLATE \"POSIX\"";
     }
+
+    return getDataTypeRepresentation(dataType, width, scale);
   }
 
 
   @Override
   protected String getSqlFrom(Cast cast) {
-    switch (cast.getDataType()) {
-      case STRING:
-        return super.getSqlFrom(cast) + " COLLATE \"POSIX\"";
-
-      default:
-        return super.getSqlFrom(cast);
+    if (cast.getDataType() == DataType.STRING) {
+      return super.getSqlFrom(cast) + " COLLATE \"POSIX\"";
     }
+
+    return super.getSqlFrom(cast);
   }
 
 
@@ -207,14 +203,14 @@ class PostgreSQLDialect extends SqlDialect {
     return ImmutableList.<String>builder()
         .addAll(preStatements)
         .add(createTableStatement.toString())
-        .add(addTableComment(table.getName()))
+        .add(addTableComment(table))
         .addAll(postStatements)
         .build();
   }
 
 
-  private String addTableComment(String tableName) {
-    return "COMMENT ON TABLE " + schemaNamePrefix() + tableName + " IS 'REALNAME:[" + tableName + "]'";
+  private String addTableComment(Table table) {
+    return "COMMENT ON TABLE " + schemaNamePrefix(table) + table.getName() + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + table.getName() + "]'";
   }
 
 
@@ -234,7 +230,7 @@ class PostgreSQLDialect extends SqlDialect {
         .addAll(renameTable)
         .addAll(renamePk)
         .addAll(renameSeq)
-        .add(addTableComment(to.getName()))
+        .add(addTableComment(to))
         .build();
   }
 
@@ -279,7 +275,7 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   private String addViewComment(String viewName) {
-    return "COMMENT ON VIEW " + viewName + " IS 'REALNAME:[" + viewName + "]'";
+    return "COMMENT ON VIEW " + viewName + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + viewName + "]'";
   }
 
 
@@ -544,7 +540,7 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   private String addColumnComment(Table table, Column column) {
-    StringBuilder comment = new StringBuilder ("COMMENT ON COLUMN " + schemaNamePrefix(table) + table.getName() + "." + column.getName() + " IS 'REALNAME:[" + column.getName() + "]/TYPE:[" + column.getType().toString() + "]");
+    StringBuilder comment = new StringBuilder ("COMMENT ON COLUMN " + schemaNamePrefix(table) + table.getName() + "." + column.getName() + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + column.getName() + "]/TYPE:[" + column.getType().toString() + "]");
     if(column.isAutoNumbered()) {
       int autoNumberStart = column.getAutoNumberStart() == -1 ? 1 : column.getAutoNumberStart();
       comment.append("/AUTONUMSTART:[" + autoNumberStart + "]");
@@ -595,7 +591,7 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   private String addIndexComment(String indexName) {
-    return "COMMENT ON INDEX " + indexName + " IS 'REALNAME:[" + indexName + "]'";
+    return "COMMENT ON INDEX " + indexName + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + indexName + "]'";
   }
 
 

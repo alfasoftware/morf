@@ -121,7 +121,7 @@ public class Deployment {
 
     // Iterate through all the views and deploy them - will deploy in
     // dependency order.
-    ViewChanges viewChanges = new ViewChanges(targetSchema.views(), new HashSet<View>(), targetSchema.views());
+    ViewChanges viewChanges = new ViewChanges(targetSchema.views(), new HashSet<>(), targetSchema.views());
     for (View view : viewChanges.getViewsToDeploy()) {
       sqlStatementWriter.writeSql(sqlDialect.viewDeploymentStatements(view));
       if (targetSchema.tableExists(DEPLOYED_VIEWS_NAME)) {
@@ -143,7 +143,7 @@ public class Deployment {
    * @param targetSchema Schema that is to be deployed.
    */
   public void deploy(Schema targetSchema) {
-    UpgradePath path = getPath(targetSchema, new ArrayList<Class<? extends UpgradeStep>>());
+    UpgradePath path = getPath(targetSchema, new ArrayList<>());
     sqlScriptExecutorProvider.get().execute(path.getSql());
   }
 

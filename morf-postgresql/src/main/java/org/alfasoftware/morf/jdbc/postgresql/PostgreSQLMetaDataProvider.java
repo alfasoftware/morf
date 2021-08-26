@@ -34,7 +34,7 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider {
 
   private static final Log log = LogFactory.getLog(PostgreSQLMetaDataProvider.class);
 
-  private static final Pattern REALNAME_COMMENT_MATCHER = Pattern.compile(".*REALNAME:\\[([^\\]]*)\\](/TYPE:\\[([^\\]]*)\\])?.*");
+  private static final Pattern REALNAME_COMMENT_MATCHER = Pattern.compile(".*"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":\\[([^\\]]*)\\](/TYPE:\\[([^\\]]*)\\])?.*");
 
   private final Supplier<Map<AName, RealName>> allIndexNames = Suppliers.memoize(this::loadAllIndexNames);
 
@@ -51,16 +51,15 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider {
 
   @Override
   protected DataType dataTypeFromSqlType(int sqlType, String typeName, int width) {
-    switch (sqlType) {
-      case Types.VARCHAR:
-        if (typeName.equals("text")) {
-          return DataType.CLOB;
-        }
-        return super.dataTypeFromSqlType(sqlType, typeName, width);
 
-      default:
-        return super.dataTypeFromSqlType(sqlType, typeName, width);
+    if (sqlType == Types.VARCHAR) {
+      if (typeName.equals("text")) {
+        return DataType.CLOB;
+      }
+      return super.dataTypeFromSqlType(sqlType, typeName, width);
     }
+
+    return super.dataTypeFromSqlType(sqlType, typeName, width);
   }
 
 
