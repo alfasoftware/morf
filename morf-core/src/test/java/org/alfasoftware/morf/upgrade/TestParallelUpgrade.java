@@ -135,39 +135,39 @@ public class TestParallelUpgrade {
     addEdge(n1, n2);
 
     UpgradeNode n3 = new UpgradeNode("UpgradeStep3", 3, Sets.newHashSet("t1"), Sets.newHashSet());
-    addEdge(n1, n3);
+    //addEdge(n1, n3);
     addEdge(n2, n3);
 
     UpgradeNode n4 = new UpgradeNode("UpgradeStep4", 4, Sets.newHashSet("t1"), Sets.newHashSet());
-    addEdge(n1, n4);
+    //addEdge(n1, n4);
     addEdge(n2, n4);
 
     UpgradeNode n5 = new UpgradeNode("UpgradeStep5", 5, Sets.newHashSet(), Sets.newHashSet("t2"));
     addEdge(r, n5);
 
     UpgradeNode n6 = new UpgradeNode("UpgradeStep6", 6, Sets.newHashSet(), Sets.newHashSet("t1", "t2"));
-    addEdge(n1, n6);
-    addEdge(n2, n6);
+    //addEdge(n1, n6);
+    //addEdge(n2, n6);
     addEdge(n3, n6);
     addEdge(n4, n6);
     addEdge(n5, n6);
 
     UpgradeNode n7 = new UpgradeNode("UpgradeStep7", 7, Sets.newHashSet("t1", "t2"), Sets.newHashSet());
-    addEdge(n1, n7);
-    addEdge(n2, n7);
-    addEdge(n5, n7);
+    //addEdge(n1, n7);
+    //addEdge(n2, n7);
+    //addEdge(n5, n7);
     addEdge(n6, n7);
 
     UpgradeNode n8 = new UpgradeNode("UpgradeStep8", 8, Sets.newHashSet("t2"), Sets.newHashSet());
-    addEdge(n5, n8);
+    //addEdge(n5, n8);
     addEdge(n6, n8);
 
     UpgradeNode n9 = new UpgradeNode("UpgradeStep9", 9, Sets.newHashSet("t2"), Sets.newHashSet("t1"));
-    addEdge(n1, n9);
-    addEdge(n2, n9);
-    addEdge(n3, n9);
-    addEdge(n4, n9);
-    addEdge(n5, n9);
+    //addEdge(n1, n9);
+    //addEdge(n2, n9);
+    //addEdge(n3, n9);
+    //addEdge(n4, n9);
+    //addEdge(n5, n9);
     addEdge(n6, n9);
     addEdge(n7, n9);
 
@@ -185,7 +185,7 @@ public class TestParallelUpgrade {
     addEdge(n12, n13);
 
     UpgradeNode n14 = new UpgradeNode("UpgradeStep14", 14, Sets.newHashSet(), Sets.newHashSet("t3"));
-    addEdge(n12, n14);
+    //addEdge(n12, n14);
     addEdge(n13, n14);
 
     UpgradeNode n15 = new UpgradeNode("UpgradeStep15", 15, Sets.newHashSet("t5"), Sets.newHashSet());
@@ -211,9 +211,9 @@ public class TestParallelUpgrade {
     addEdge(n19, n20);
 
     UpgradeNode n21 = new UpgradeNode("UpgradeStep21", 21, Sets.newHashSet(), Sets.newHashSet("t3"));
-    addEdge(n12, n21);
-    addEdge(n13, n21);
-    addEdge(n14, n21);
+    //addEdge(n12, n21);
+    //addEdge(n13, n21);
+    //addEdge(n14, n21);
     addEdge(n20, n21);
 
     return Sets.newHashSet(r, n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11, n12, n13, n14, n15, n16, n17, n18, n19, n20, n21);

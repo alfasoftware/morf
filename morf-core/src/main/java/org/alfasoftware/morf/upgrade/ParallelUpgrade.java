@@ -8,7 +8,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import javax.sql.DataSource;
 
@@ -56,38 +55,6 @@ public class ParallelUpgrade extends Upgrade {
     return root;
   }
 
-
-//  private void handleAnnotatedNode(List<UpgradeNode> processedNodes, UpgradeNode node, UpgradeNode root) {
-//    // if nothing has been processed add node as child of the root
-//    if(processedNodes.isEmpty()) {
-//      log.debug("Root empty, adding node: " + node.getName() + " as child of the root");
-//      addEdge(root, node);
-//      return;
-//    }
-//
-//    // for each processed node
-//    for(UpgradeNode processed : processedNodes) {
-//      // if it's not annotated node make an edge only when it's a leaf
-//      if(processed.noDependenciesDefined() && processed.getChildren().isEmpty()) {
-//        addEdge(processed, node);
-//        log.info("Node: " + node.getName() + " depends on " + processed.getName() + " because it's a not annotated leaf");
-//      }
-//      // if it's annotated and there is dependency add an edge
-//      if(!processed.noDependenciesDefined() && checkDependency(processed, node)) {
-//        addEdge(processed, node);
-//      }
-//      // if it's annotated leaf which depends on any not annotated node add an edge
-//      if(!processed.noDependenciesDefined() && )
-//    }
-//
-//    // if no dependency found add as child of the root
-//    if(node.getParents().isEmpty()) {
-//      log.info("No dependencies found for node: " + node.getName() + " - adding as child of the root");
-//      addEdge(root, node);
-//    }
-//  }
-
-
   private void handleAnnotatedNode(List<UpgradeNode> processedNodes, UpgradeNode node, UpgradeNode root) {
     // if nothing has been processed add node as child of the root
     if(processedNodes.isEmpty()) {
@@ -96,20 +63,25 @@ public class ParallelUpgrade extends Upgrade {
       return;
     }
 
-    for(int i = processedNodes.size() - 1; i>=0; i--) {
+    Set<String> remainingReads = new HashSet<>(node.getReads());
+    Set<String> remainingModifies = new HashSet<>(node.getModifies());
+    Set<String> removeAtNextModify = new HashSet<>();
+
+
+    for (int i = processedNodes.size() - 1; i >= 0; i--) {
       UpgradeNode processed = processedNodes.get(i);
 
-      // if it's annotated and there is dependency add an edge
-      if(!processed.noDependenciesDefined() && checkDependency(processed, node)) {
-        addEdge(processed, node);
+      // if it's annotated
+      if (!processed.noDependenciesDefined()) {
+        analyzeDependency(processed, node, remainingReads, remainingModifies, removeAtNextModify);
       }
 
       // if not annotated check add edge only if current node has no parents
       if(processed.noDependenciesDefined() && node.getParents().isEmpty()) {
         addEdge(processed, node);
         log.info("Node: " + node.getName() + " depends on " + processed.getName() + " because it had no parent and the dependency is a not annotated leaf");
+        break;
       }
-
     }
 
     // if no dependency found add as child of the root
@@ -120,31 +92,44 @@ public class ParallelUpgrade extends Upgrade {
   }
 
 
+  private void analyzeDependency(UpgradeNode processed, UpgradeNode node, Set<String> remainingReads, Set<String> remainingModifies, Set<String> removeAtNextModify) {
 
-  private boolean checkDependency(UpgradeNode processed, UpgradeNode node) {
-    // processed writes intersection with any category of node
-    SetView<String> view1 =
-        Sets.intersection(
-          processed.getModifies(),
-          Stream.concat(node.getModifies().stream(), node.getReads().stream()).collect(Collectors.toSet()));
+    // processed writes intersection with writes of the current node
+    SetView<String> view1 = Sets.intersection(processed.getModifies(), remainingModifies);
+    view1.stream().forEach(hit -> {
+      if(removeAtNextModify.contains(hit)) {
+        log.info("Node: " + node.getName() + " does NOT depends on " + processed.getName()
+            + " because of writes-writes (current-processed) intersection has been suppressed at: " + hit + ".");
+        removeAtNextModify.remove(hit);
+      } else {
+        addEdge(processed, node);
+        log.info("Node: " + node.getName() + " depends on " + processed.getName()
+            + " because of writes-writes (current-processed) intersection at: " + hit + ".");
+      }
+      remainingModifies.remove(hit);
+    });
 
-    // processed reads intersection with writes of node
-    SetView<String> view2 =
-        Sets.intersection(
-          processed.getReads(),
-          node.getModifies());
+    // processed writes intersection with reads of the current node
+    SetView<String> view2 = Sets.intersection(processed.getModifies(), remainingReads);
+    view2.stream().forEach(hit -> {
+      addEdge(processed, node);
+      remainingReads.remove(hit);
+      log.info("Node: " + node.getName() + " depends on " + processed.getName()
+      + " because of reads-writes (current-processed) intersection at: " + hit + ".");
+    });
 
-    if (view1.isEmpty() && view2.isEmpty()) {
-      log.debug("No intersection found between potential parent: " + processed.getName() + " and node: " + node.getName());
-      return false;
+    // processed reads intersection with writes of the current node
+    SetView<String> view3 = Sets.intersection(processed.getReads(), remainingModifies);
+    view3.stream().forEach(hit -> {
+      addEdge(processed, node);
+      removeAtNextModify.add(hit);
+      log.info("Node: " + node.getName() + " depends on " + processed.getName()
+          + " because of writes-reads (current-processed) intersection at: " + hit + ". Adding this table to removeAtNextModify.");
+    });
+
+    if (!node.getParents().contains(processed)) {
+      log.debug("No dependenciees found between potential parent: " + processed.getName() + " and node: " + node.getName());
     }
-
-    Set<String> allMatches = new HashSet<>(view1);
-    allMatches.addAll(view2);
-    log.info("Node: " + node.getName() + " depends on " + processed.getName() + " because of entities: "
-        + Arrays.toString(allMatches.toArray()));
-    return true;
-
   }
 
 
