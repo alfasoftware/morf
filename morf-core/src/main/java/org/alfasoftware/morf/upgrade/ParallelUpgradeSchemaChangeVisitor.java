@@ -11,6 +11,8 @@ import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.Statement;
 
+import com.google.common.collect.Lists;
+
 
 public class ParallelUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
 
@@ -18,7 +20,7 @@ public class ParallelUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
   private final SqlDialect         sqlDialect;
   private final Table              idTable;
   private final TableNameResolver  tracker;
-  private final Map<String, UpgradeNode> upgradeNodes;
+  private Map<String, UpgradeNode> upgradeNodes;
   private UpgradeNode currentNode;
 
 
@@ -30,20 +32,19 @@ public class ParallelUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
    * @param sqlStatementWriter recipient for all upgrade SQL statements.
    * @param idTable table for id generation.
    */
-  public ParallelUpgradeSchemaChangeVisitor(Schema startSchema, SqlDialect sqlDialect, Table idTable, Map<String, UpgradeNode> upgradeNodes) {
+  public ParallelUpgradeSchemaChangeVisitor(Schema startSchema, SqlDialect sqlDialect, Table idTable) {
     this.currentSchema = startSchema;
     this.sqlDialect = sqlDialect;
     this.idTable= idTable;
-    this.upgradeNodes = upgradeNodes;
 
     tracker = new IdTableTracker(idTable.getName());
   }
 
-  public Collection<String> preUpgrade() {
-    return sqlDialect.tableDeploymentStatements(idTable);
+  public List<String> preUpgrade() {
+    return Lists.newArrayList(sqlDialect.tableDeploymentStatements(idTable));
   }
 
-  public Collection<String> postUpgrade() {
+  public List<String> postUpgrade() {
     List<String> sql = new ArrayList<>();
     sql.addAll(sqlDialect.truncateTableStatements(idTable));
     sql.addAll(sqlDialect.dropStatements(idTable));
@@ -248,6 +249,10 @@ public class ParallelUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
   public void visit(AnalyseTable analyseTable) {
     currentSchema = analyseTable.apply(currentSchema);
     writeStatements(sqlDialect.getSqlForAnalyseTable(currentSchema.getTable(analyseTable.getTableName())));
+  }
+
+  public void setUpgradeNodes(Map<String, UpgradeNode> collect) {
+    this.upgradeNodes = collect;
   }
 
 }

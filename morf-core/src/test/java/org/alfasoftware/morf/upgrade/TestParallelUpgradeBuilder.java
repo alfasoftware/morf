@@ -1,6 +1,7 @@
 package org.alfasoftware.morf.upgrade;
 
 import static org.junit.Assert.assertFalse;
+import static org.mockito.Mockito.mock;
 
 import java.util.HashSet;
 import java.util.List;
@@ -21,7 +22,7 @@ public class TestParallelUpgradeBuilder {
   @Test
   public void testGraphBuilding() {
     //given
-    ParallelUpgradeBuilder parallelUpgrade = new ParallelUpgradeBuilder();
+    ParallelUpgradeBuilder parallelUpgrade = new ParallelUpgradeBuilder(mock(ParallelUpgradeSchemaChangeVisitor.class));
     List<UpgradeStep> upgradesToApply = Lists.newArrayList(
       new UpgradeStep10(),
       new UpgradeStep13(),

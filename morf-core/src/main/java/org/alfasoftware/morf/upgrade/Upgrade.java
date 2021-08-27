@@ -191,6 +191,14 @@ public class Upgrade {
       upgrader.postUpgrade();
     }
 
+    // -- Parallel upgrade
+    ParallelUpgrade parallelUpgrade = null;
+    if (!schemaChangeSequence.getUpgradeSteps().isEmpty()) {
+      ParallelUpgradeSchemaChangeVisitor visitor = new ParallelUpgradeSchemaChangeVisitor(sourceSchema, dialect, SqlDialect.IdTable.withPrefix(dialect, "temp_id_"));
+      ParallelUpgradeBuilder parallelUpgradeBuilder = new ParallelUpgradeBuilder(visitor);
+      parallelUpgrade = parallelUpgradeBuilder.prepareParallelUpgrade(schemaChangeSequence);
+    }
+
     // -- Upgrade path...
     //
     List<UpgradeStep> upgradesToApply = new ArrayList<>(schemaChangeSequence.getUpgradeSteps());
@@ -208,8 +216,7 @@ public class Upgrade {
     }
 
 
-    ParallelUpgradeBuilder upg = new ParallelUpgradeBuilder();
-    upg.prepareParallelUpgrade(upgradesToApply);
+
 
     // Build the actual upgrade path
     return buildUpgradePath(dialect, sourceSchema, targetSchema, upgradeStatements, viewChanges, upgradesToApply);

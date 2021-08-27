@@ -18,12 +18,25 @@ import com.google.common.collect.Sets.SetView;
 public class ParallelUpgradeBuilder {
 
   private static final Log log = LogFactory.getLog(ParallelUpgradeBuilder.class);
+  private final ParallelUpgradeSchemaChangeVisitor visitor;
 
-  public ParallelUpgrade prepareParallelUpgrade(List<UpgradeStep> upgradesToApply) {
-    List<UpgradeNode> nodes = produceNodes(upgradesToApply);
+
+  public ParallelUpgradeBuilder(ParallelUpgradeSchemaChangeVisitor visitor) {
+    this.visitor = visitor;
+  }
+
+  public ParallelUpgrade prepareParallelUpgrade(SchemaChangeSequence schemaChangeSequence) {
+    List<UpgradeNode> nodes = produceNodes(schemaChangeSequence.getUpgradeSteps());
     UpgradeNode root = prepareGraph(nodes);
+
+    visitor.setUpgradeNodes(nodes.stream().collect(Collectors.toMap(UpgradeNode::getName, Function.identity())));
+
+    List<String> preUpg = visitor.preUpgrade();
+    schemaChangeSequence.applyTo(visitor);
+    List<String> postUpg = visitor.postUpgrade();
     logGraph(root);
-    return new ParallelUpgrade(root, nodes.stream().collect(Collectors.toMap(UpgradeNode::getName, Function.identity())));
+
+    return new ParallelUpgrade(root, preUpg, postUpg);
   }
 
 
