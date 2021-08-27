@@ -208,9 +208,8 @@ public class Upgrade {
     }
 
 
-
-    ParallelUpgrade upg = new ParallelUpgrade(connectionResources, dataSource, factory, upgradeStatusTableService);
-    upg.execute(dialect, sourceSchema, targetSchema, upgradeStatements, viewChanges, upgradesToApply);
+    ParallelUpgradeBuilder upg = new ParallelUpgradeBuilder();
+    upg.prepareParallelUpgrade(upgradesToApply);
 
     // Build the actual upgrade path
     return buildUpgradePath(dialect, sourceSchema, targetSchema, upgradeStatements, viewChanges, upgradesToApply);

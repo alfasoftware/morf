@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import org.alfasoftware.morf.upgrade.ParallelUpgrade.UpgradeNode;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.Test;
@@ -15,14 +14,14 @@ import org.junit.Test;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
-public class TestParallelUpgrade {
+public class TestParallelUpgradeBuilder {
 
-  private static final Log log = LogFactory.getLog(ParallelUpgrade.class);
+  private static final Log log = LogFactory.getLog(ParallelUpgradeBuilder.class);
 
   @Test
   public void testGraphBuilding() {
     //given
-    ParallelUpgrade parallelUpgrade = new ParallelUpgrade(null, null, null, null);
+    ParallelUpgradeBuilder parallelUpgrade = new ParallelUpgradeBuilder();
     List<UpgradeStep> upgradesToApply = Lists.newArrayList(
       new UpgradeStep10(),
       new UpgradeStep13(),
