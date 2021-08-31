@@ -327,9 +327,7 @@ public class InsertStatement implements Statement,
    * <p>In general, as with all query plan modification, <strong>do not use this unless you know
    * exactly what you are doing</strong>.</p>
    *
-   * <p>As for all query plan modification (see also {@link #optimiseForRowCount(int)}
-   * and {@link #useImplicitJoinOrder()}): where supported on the target database, these directives
-   * applied in the SQL in the order they are called on {@link SelectStatement}.  This usually
+   * <p>These directives are applied in the SQL in the order they are called on {@link InsertStatement}.  This usually
    * affects their precedence or relative importance, depending on the platform.</p>
    *
    * @return a new insert statement with the change applied.
