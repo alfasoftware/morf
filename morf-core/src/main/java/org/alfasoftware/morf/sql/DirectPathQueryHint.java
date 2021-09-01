@@ -11,15 +11,7 @@ public final class DirectPathQueryHint implements Hint {
     super();
   }
 
-  private static final DirectPathQueryHint INSTANCE = new DirectPathQueryHint();
-
-
-  /**
-   * @return the {@link DirectPathQueryHint} instance.
-   */
-  public static DirectPathQueryHint getInstance() {
-    return INSTANCE;
-  }
+  public static final DirectPathQueryHint INSTANCE = new DirectPathQueryHint();
 
 }
 
