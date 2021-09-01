@@ -1308,7 +1308,7 @@ public abstract class SqlDialect {
 
     StringBuilder stringBuilder = new StringBuilder();
 
-    stringBuilder.append("INSERT INTO ");
+    stringBuilder.append(getSqlForInsertInto(stmt));
     stringBuilder.append(schemaNamePrefix(stmt.getTable()));
     stringBuilder.append(stmt.getTable().getName());
 
@@ -2753,7 +2753,7 @@ public abstract class SqlDialect {
 
     // -- Add the preamble...
     //
-    sqlBuilder.append("INSERT INTO ");
+    sqlBuilder.append(getSqlForInsertInto(statement));
     sqlBuilder.append(schemaNamePrefix(statement.getTable()));
     sqlBuilder.append(destinationTableName);
     sqlBuilder.append(" (");
@@ -2809,7 +2809,7 @@ public abstract class SqlDialect {
 
     // -- Add the preamble...
     //
-    sqlBuilder.append("INSERT INTO ");
+    sqlBuilder.append(getSqlForInsertInto(statement));
     sqlBuilder.append(schemaNamePrefix(statement.getTable()));
     sqlBuilder.append(destinationTableName);
     sqlBuilder.append(" (");
@@ -4032,6 +4032,17 @@ public abstract class SqlDialect {
     statement.append(")");
 
     return statement.toString();
+  }
+
+
+  /**
+   * Returns the INSERT INTO statement.
+   *
+   * @param insertStatement he {@linkplain InsertStatement} object which can be used by the overriding methods to customize the INSERT statement.
+   * @return the INSERT INTO statement.
+   */
+  protected String getSqlForInsertInto(@SuppressWarnings("unused") InsertStatement insertStatement) {
+    return "INSERT INTO ";
   }
 
 
