@@ -160,7 +160,7 @@ public class TestSqlInsertElementGeneration {
   public void testInsertIntoTableWithDirectPathQueryHint() {
     InsertStatement stmtBuilder = insert().into(new TableReference("agreement")).useDirectPath().build();
 
-    assertTrue("Direct path query hint", stmtBuilder.getHints().contains(new DirectPathQueryHint()));
+    assertTrue("Direct path query hint", stmtBuilder.getHints().contains(DirectPathQueryHint.getInstance()));
   }
 
 

@@ -226,7 +226,7 @@ public class InsertStatementBuilder implements Builder<InsertStatement> {
    * @return this, for method chaining.
    */
   public InsertStatementBuilder useDirectPath() {
-    getHints().add(new DirectPathQueryHint());
+    getHints().add(DirectPathQueryHint.getInstance());
     return this;
   }
 

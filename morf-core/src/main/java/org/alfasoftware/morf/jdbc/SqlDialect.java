@@ -2753,7 +2753,7 @@ public abstract class SqlDialect {
 
     // -- Add the preamble...
     //
-    sqlBuilder.append("INSERT INTO ");
+    sqlBuilder.append(getSqlForInsertInto(statement));
     sqlBuilder.append(schemaNamePrefix(statement.getTable()));
     sqlBuilder.append(destinationTableName);
     sqlBuilder.append(" (");
@@ -2809,7 +2809,7 @@ public abstract class SqlDialect {
 
     // -- Add the preamble...
     //
-    sqlBuilder.append("INSERT INTO ");
+    sqlBuilder.append(getSqlForInsertInto(statement));
     sqlBuilder.append(schemaNamePrefix(statement.getTable()));
     sqlBuilder.append(destinationTableName);
     sqlBuilder.append(" (");

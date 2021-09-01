@@ -334,8 +334,8 @@ public class InsertStatement implements Statement,
    */
   public InsertStatement useDirectPath() {
     return copyOnWriteOrMutate(
-        (InsertStatementBuilder b) -> b.useDirectPath(),
-        () -> this.hints.add(new DirectPathQueryHint())
+        InsertStatementBuilder::useDirectPath,
+        () -> this.hints.add(DirectPathQueryHint.getInstance())
     );
   }
 

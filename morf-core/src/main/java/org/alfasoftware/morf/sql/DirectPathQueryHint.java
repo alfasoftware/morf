@@ -1,7 +1,5 @@
 package org.alfasoftware.morf.sql;
 
-import java.util.Objects;
-
 /**
  * Represents the hint for a direct path query.
  *
@@ -10,30 +8,17 @@ import java.util.Objects;
 public class DirectPathQueryHint implements Hint {
 
 
-  /**
-   * @see java.lang.Object#toString()
-   */
-  @Override
-  public String toString() {
-    return getClass().getSimpleName();
-  }
+  private DirectPathQueryHint() {}
+
+
+  private static DirectPathQueryHint INSTANCE = new DirectPathQueryHint();
 
 
   /**
-   * @see java.lang.Object#hashCode()
+   * @return the {@link DirectPathQueryHint} instance.
    */
-  @Override
-  public int hashCode() {
-    return Objects.hash(getClass());
-  }
-
-
-  /**
-   * @see java.lang.Object#equals(java.lang.Object)
-   */
-  @Override
-  public boolean equals(Object oth) {
-    return oth != null && this.getClass() == oth.getClass();
+  public static DirectPathQueryHint getInstance() {
+    return INSTANCE;
   }
 
 }
