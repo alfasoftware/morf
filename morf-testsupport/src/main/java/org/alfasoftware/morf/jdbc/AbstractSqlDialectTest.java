@@ -3194,6 +3194,14 @@ public abstract class AbstractSqlDialectTest {
         .useDirectPath()
       )
     );
+    assertEquals(
+      Lists.newArrayList(expectedHints5()),
+      testDialect.convertStatementToSQL(
+        insert()
+        .into(tableRef("Foo"))
+        .from(select(field("a"), field("b")).from(tableRef("Foo_1")))
+      )
+    );
   }
 
 
@@ -5304,6 +5312,14 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL for the {@link InsertStatement#useDirectPath()} directive.
    */
   protected String expectedHints4() {
+    return  "INSERT INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
+  }
+
+
+  /**
+   * @return The expected SQL when no hint directive is used on the {@link InsertStatement}.
+   */
+  private String expectedHints5() {
     return  "INSERT INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
   }
 
