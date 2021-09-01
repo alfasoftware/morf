@@ -5,7 +5,7 @@ package org.alfasoftware.morf.sql;
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2021
  */
-public class DirectPathQueryHint implements Hint {
+final public class DirectPathQueryHint implements Hint {
 
 
   private DirectPathQueryHint() {}
