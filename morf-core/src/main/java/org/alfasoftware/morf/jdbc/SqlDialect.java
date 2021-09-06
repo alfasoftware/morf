@@ -1761,47 +1761,47 @@ public abstract class SqlDialect {
         throw new IllegalArgumentException("The COUNT function should have only have one or zero arguments. This function has " + function.getArguments().size());
 
       case COUNT_DISTINCT:
-        checkFunctionHasSingleArgument(function);
+        checkSingleArgument(function);
         return getSqlForCountDistinct(function);
 
       case AVERAGE:
-        checkFunctionHasSingleArgument(function);
+        checkSingleArgument(function);
         return getSqlForAverage(function);
 
       case AVERAGE_DISTINCT:
-        checkFunctionHasSingleArgument(function);
+        checkSingleArgument(function);
         return getSqlForAverageDistinct(function);
 
       case LENGTH:
-        checkFunctionHasSingleArgument(function);
+        checkSingleArgument(function);
         return getSqlforLength(function);
 
       case BLOB_LENGTH:
-        checkFunctionHasSingleArgument(function);
+        checkSingleArgument(function);
         return getSqlforBlobLength(function);
 
       case SOME:
-        checkFunctionHasSingleArgument(function);
+        checkSingleArgument(function);
         return getSqlForSome(function);
 
       case EVERY:
-        checkFunctionHasSingleArgument(function);
+        checkSingleArgument(function);
         return getSqlForEvery(function);
 
       case MAX:
-        checkFunctionHasSingleArgument(function);
+        checkSingleArgument(function);
         return getSqlForMax(function);
 
       case MIN:
-        checkFunctionHasSingleArgument(function);
+        checkSingleArgument(function);
         return getSqlForMin(function);
 
       case SUM:
-        checkFunctionHasSingleArgument(function);
+        checkSingleArgument(function);
         return getSqlForSum(function);
 
       case SUM_DISTINCT:
-        checkFunctionHasSingleArgument(function);
+        checkSingleArgument(function);
         return getSqlForSumDistinct(function);
 
       case IS_NULL:
@@ -1965,7 +1965,7 @@ public abstract class SqlDialect {
     }
   }
 
-  private void checkFunctionHasSingleArgument(Function function) {
+  private void checkSingleArgument(Function function) {
     if (function.getArguments().size() != 1) {
       throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
     }

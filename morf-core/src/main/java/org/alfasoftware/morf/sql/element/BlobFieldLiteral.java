@@ -13,7 +13,7 @@ import java.nio.charset.StandardCharsets;
 public class BlobFieldLiteral extends FieldLiteral {
 
     public BlobFieldLiteral(byte[] bytes) {
-        super("", new BigInteger(bytes).toString(16).toUpperCase(), DataType.BLOB);
+        super(new BigInteger(bytes).toString(16).toUpperCase(), DataType.BLOB);
     }
 
     public BlobFieldLiteral(String text) {

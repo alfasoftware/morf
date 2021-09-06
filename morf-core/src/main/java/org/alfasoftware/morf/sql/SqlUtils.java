@@ -350,7 +350,7 @@ public class SqlUtils {
    * @param value the literal value to use
    * @return {@link BlobFieldLiteral}
    */
-  public static BlobFieldLiteral blobliteral(byte[] value) {
+  public static BlobFieldLiteral blob(byte[] value) {
     return new BlobFieldLiteral(value);
   }
 
@@ -361,7 +361,7 @@ public class SqlUtils {
    * @param value the literal value to use
    * @return {@link BlobFieldLiteral}
    */
-  public static BlobFieldLiteral blobliteral(String value) {
+  public static BlobFieldLiteral blob(String value) {
     return new BlobFieldLiteral(value);
   }
 

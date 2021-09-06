@@ -22,7 +22,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
-import static org.alfasoftware.morf.sql.SqlUtils.blobliteral;
+import static org.alfasoftware.morf.sql.SqlUtils.blob;
 import static org.alfasoftware.morf.sql.SqlUtils.caseStatement;
 import static org.alfasoftware.morf.sql.SqlUtils.cast;
 import static org.alfasoftware.morf.sql.SqlUtils.concat;
@@ -102,12 +102,7 @@ import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.sql.InsertStatement;
-import org.alfasoftware.morf.sql.MergeStatement;
-import org.alfasoftware.morf.sql.SelectFirstStatement;
-import org.alfasoftware.morf.sql.SelectStatement;
-import org.alfasoftware.morf.sql.TruncateStatement;
-import org.alfasoftware.morf.sql.UpdateStatement;
+import org.alfasoftware.morf.sql.*;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.CaseStatement;
 import org.alfasoftware.morf.sql.element.Cast;
@@ -1598,20 +1593,20 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         InsertStatement insertStatement = insert()
                 .into(tableRef("BlobTable"))
                 .fields(field("column1"), field("column2"))
-                .values(blobliteral(BLOB1_VALUE).as("column1"), blobliteral(BLOB2_VALUE.getBytes()).as("column2"));
+                .values(blob(BLOB1_VALUE).as("column1"), SqlUtils.blob(BLOB2_VALUE.getBytes()).as("column2"));
         SelectStatement selectStatementAfterInsert = select(field("column1"), field("column2"))
                 .from(tableRef("BlobTable"))
                 .where(or(
-                        field("column1").eq(blobliteral(BLOB1_VALUE.getBytes())),
-                        field("column1").eq(blobliteral(BLOB1_VALUE))
+                        field("column1").eq(SqlUtils.blob(BLOB1_VALUE.getBytes())),
+                        field("column1").eq(blob(BLOB1_VALUE))
                 ));
         UpdateStatement updateStatement = update(tableRef("BlobTable"))
-                .set(blobliteral(BLOB1_VALUE + " Updated").as("column1"), blobliteral((BLOB2_VALUE + " Updated").getBytes()).as("column2"));
+                .set(blob(BLOB1_VALUE + " Updated").as("column1"), SqlUtils.blob((BLOB2_VALUE + " Updated").getBytes()).as("column2"));
         SelectStatement selectStatementAfterUpdate = select(field("column1"), field("column2"))
                 .from(tableRef("BlobTable"))
                 .where(or(
-                        field("column1").eq(blobliteral((BLOB1_VALUE + " Updated").getBytes())),
-                        field("column1").eq(blobliteral(BLOB1_VALUE + " Updated"))
+                        field("column1").eq(SqlUtils.blob((BLOB1_VALUE + " Updated").getBytes())),
+                        field("column1").eq(blob(BLOB1_VALUE + " Updated"))
                 ));
 
         // Insert
