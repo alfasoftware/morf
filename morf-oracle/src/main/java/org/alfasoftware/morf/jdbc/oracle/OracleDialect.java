@@ -41,7 +41,9 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.sql.DirectPathQueryHint;
 import org.alfasoftware.morf.sql.Hint;
+import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.OptimiseForRowCount;
 import org.alfasoftware.morf.sql.ParallelQueryHint;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
@@ -1333,5 +1335,32 @@ class OracleDialect extends SqlDialect {
   @Override
   protected Optional<String> getDeleteLimitWhereClause(int limit) {
     return Optional.of("ROWNUM <= " + limit);
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForInsertInto(org.alfasoftware.morf.sql.InsertStatement)
+   */
+  @Override
+  protected String getSqlForInsertInto(InsertStatement insertStatement) {
+    return "INSERT " + insertStatementPreIntoDirectives(insertStatement) + "INTO ";
+  }
+
+
+  private String insertStatementPreIntoDirectives(InsertStatement insertStatement) {
+
+    if (insertStatement.getHints().isEmpty()) {
+      return "";
+    }
+
+    StringBuilder builder = new StringBuilder().append("/*+");
+
+    for (Hint hint : insertStatement.getHints()) {
+      if (hint instanceof DirectPathQueryHint) {
+        builder.append(" APPEND");
+      }
+    }
+
+    return builder.append(" */ ").toString();
   }
 }

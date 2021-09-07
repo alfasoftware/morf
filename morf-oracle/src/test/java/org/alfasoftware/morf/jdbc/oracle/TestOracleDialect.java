@@ -1461,6 +1461,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
          + "ORDER BY a NULLS FIRST";
   }
 
+
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints2(int)
    */
@@ -1477,6 +1478,16 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   protected String expectedHints3() {
     return "UPDATE /*+ ENABLE_PARALLEL_DML PARALLEL */ " + tableName("Foo") + " SET a = b";
   }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints4()
+   */
+  @Override
+  protected String expectedHints4() {
+    return "INSERT /*+ APPEND */ INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
+  }
+
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#supportsWindowFunctions()
