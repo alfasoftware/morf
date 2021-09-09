@@ -405,10 +405,10 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
   /**
    * This allows a custom hint to be passed in as a string to be used by the query
    */
-  public org.alfasoftware.morf.sql.SelectStatement withCustomHint(String customHint) {
+  public org.alfasoftware.morf.sql.SelectStatement withCustomHint(OracleCustomHint customHint) {
       return copyOnWriteOrMutate(
               (SelectStatementBuilder b) -> b.withCustomHint(customHint),
-              () -> this.hints.add(new CustomHint(customHint))
+              () -> this.hints.add(customHint)
       );
   }
 

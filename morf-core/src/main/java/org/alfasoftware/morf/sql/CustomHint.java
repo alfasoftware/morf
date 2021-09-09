@@ -1,39 +1,28 @@
-/* Copyright 2021 Alfa Financial Software */
+/* Copyright 2021 Alfa Financial Software
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.alfasoftware.morf.sql;
 
- package org.alfasoftware.morf.sql;
-
-import java.util.Objects;
 
 /**
- * Represents a custom hint for a query
+ *
+ * Marker interface for Custom hints
+ *
+ * @author Copyright (c) Alfa Financial Software Limited. 2021
  */
-public final class CustomHint implements Hint {
+public interface CustomHint extends Hint {
 
-  private final String customHint;
-
-  CustomHint(String customHint) {
-    this.customHint = customHint;
-  }
-
-  public String getCustomHint() {
-    return customHint;
-  }
-
-  @Override
-  public String toString() {
-    return getClass().getSimpleName();
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(getClass());
-  }
-
-  @Override
-  public boolean equals(Object oth) {
-    return oth != null && this.getClass() == oth.getClass();
-  }
-
+  public String getCustomHint();
 }
-
 

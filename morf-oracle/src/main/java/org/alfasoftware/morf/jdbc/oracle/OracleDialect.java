@@ -41,6 +41,7 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.sql.OracleCustomHint;
 import org.alfasoftware.morf.sql.Hint;
 import org.alfasoftware.morf.sql.OptimiseForRowCount;
 import org.alfasoftware.morf.sql.ParallelQueryHint;
@@ -1249,6 +1250,10 @@ class OracleDialect extends SqlDialect {
       }
       if (hint instanceof ParallelQueryHint) {
         builder.append(" PARALLEL");
+      }
+      if (hint instanceof OracleCustomHint) {
+        builder.append(" ")
+        .append(((OracleCustomHint)hint).getCustomHint());
       }
     }
 

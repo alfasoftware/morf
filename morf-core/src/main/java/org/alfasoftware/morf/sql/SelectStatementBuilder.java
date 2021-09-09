@@ -259,8 +259,8 @@ public class SelectStatementBuilder extends AbstractSelectStatementBuilder<Selec
    * @param String representation of a custom hint
    * @return this, for method chaining.
    */
-  public org.alfasoftware.morf.sql.SelectStatementBuilder withCustomHint(String customHint) {
-    this.hints.add(new CustomHint(customHint));
+  public org.alfasoftware.morf.sql.SelectStatementBuilder withCustomHint(OracleCustomHint customHint) {
+    this.hints.add(customHint);
     return this;
   }
 
