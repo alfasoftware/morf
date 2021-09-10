@@ -15,6 +15,7 @@ public class UpgradeNode {
   final Set<UpgradeNode> children = new HashSet<>();
   final Set<UpgradeNode> parents = new HashSet<>();
   final List<String> upgradeStatements = new ArrayList<>();
+  private boolean completed;
 
   public UpgradeNode(String name, long sequence, Set<String> reads, Set<String> modifies) {
     super();
@@ -71,6 +72,16 @@ public class UpgradeNode {
   public void addAllUpgradeStatements(Collection<String> statements) {
     upgradeStatements.addAll(statements);
   }
+
+  public boolean isCompleted() {
+    return completed;
+  }
+
+
+  public void complete() {
+    this.completed = true;
+  }
+
 
   @Override
   public int hashCode() {

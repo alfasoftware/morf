@@ -36,7 +36,7 @@ public class ParallelUpgradeBuilder {
     List<String> postUpg = visitor.postUpgrade();
     logGraph(root);
 
-    return new ParallelUpgrade(root, preUpg, postUpg);
+    return new ParallelUpgrade(root, preUpg, postUpg, nodes.size());
   }
 
 

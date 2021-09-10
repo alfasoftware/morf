@@ -219,7 +219,7 @@ public class Upgrade {
 
 
     // Build the actual upgrade path
-    return buildUpgradePath(dialect, sourceSchema, targetSchema, upgradeStatements, viewChanges, upgradesToApply);
+    return buildUpgradePath(dialect, sourceSchema, targetSchema, upgradeStatements, viewChanges, upgradesToApply, parallelUpgrade);
   }
 
 
@@ -235,9 +235,11 @@ public class Upgrade {
    * @return An upgrade path.
    */
   private UpgradePath buildUpgradePath(SqlDialect dialect, Schema sourceSchema, Schema targetSchema,
-      final List<String> upgradeStatements, ViewChanges viewChanges, List<UpgradeStep> upgradesToApply) {
+      final List<String> upgradeStatements, ViewChanges viewChanges, List<UpgradeStep> upgradesToApply,
+      ParallelUpgrade parallelUpgrade) {
 
     UpgradePath path = factory.create(upgradesToApply, dialect);
+    path.setParallelUpgrade(parallelUpgrade);
     for (View view : viewChanges.getViewsToDrop()) {
       // non-present views can be listed amongst ViewsToDrop due to how we calculate dependencies
       if (sourceSchema.viewExists(view.getName())) {

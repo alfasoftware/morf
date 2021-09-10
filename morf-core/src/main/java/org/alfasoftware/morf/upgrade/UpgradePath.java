@@ -83,6 +83,8 @@ public class UpgradePath implements SqlStatementWriter {
    */
   private final UpgradeStatus upgradeStatus;
 
+  private ParallelUpgrade parallelUpgrade;
+
 
   /**
    * Create a new complete deployment.
@@ -311,5 +313,15 @@ public class UpgradePath implements SqlStatementWriter {
                              upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS),
                              upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED));
     }
+  }
+
+
+  public ParallelUpgrade getParallelUpgrade() {
+    return parallelUpgrade;
+  }
+
+
+  public void setParallelUpgrade(ParallelUpgrade parallelUpgrade) {
+    this.parallelUpgrade = parallelUpgrade;
   }
 }
