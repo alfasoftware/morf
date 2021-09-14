@@ -41,6 +41,7 @@ import com.google.common.collect.Maps;
 public class InsertStatementBuilder implements Builder<InsertStatement> {
 
   private final List<AliasedField> fields = new ArrayList<>();
+  private final List<Hint> hints = new ArrayList<>();
   private TableReference table;
   private SelectStatement selectStatement;
   private TableReference fromTable;
@@ -64,6 +65,7 @@ public class InsertStatementBuilder implements Builder<InsertStatement> {
   InsertStatementBuilder(InsertStatement copyOf) {
     super();
     this.fields.addAll(copyOf.getFields());
+    this.hints.addAll(copyOf.getHints());
     this.values.addAll(copyOf.getValues());
     this.fieldDefaults.putAll(copyOf.getFieldDefaults());
     this.table = copyOf.getTable();
@@ -80,12 +82,13 @@ public class InsertStatementBuilder implements Builder<InsertStatement> {
    */
   InsertStatementBuilder(InsertStatement copyOf, DeepCopyTransformation transformation) {
     super();
-    this.fields.addAll(transformIterable(copyOf.getFields(),transformation));
+    this.fields.addAll(transformIterable(copyOf.getFields(), transformation));
     this.values.addAll(transformIterable(copyOf.getValues(),transformation));
     this.fieldDefaults.putAll(Maps.transformValues(copyOf.getFieldDefaults(), transformation::deepCopy));
     this.table = transformation.deepCopy(copyOf.getTable());
     this.fromTable = transformation.deepCopy(copyOf.getFromTable());
     this.selectStatement = transformation.deepCopy(copyOf.getSelectStatement());
+    this.hints.addAll(copyOf.getHints());
   }
 
 
@@ -212,6 +215,23 @@ public class InsertStatementBuilder implements Builder<InsertStatement> {
 
 
   /**
+   * If supported by the dialect, hints to the database that an {@code APPEND} query hint should be used in the insert statement.
+   *
+   * <p>In general, as with all query plan modification, <strong>do not use this unless you know
+   * exactly what you are doing</strong>.</p>
+   *
+   * <p>These directives are applied in the SQL in the order they are called on {@link InsertStatement}.  This usually
+   * affects their precedence or relative importance, depending on the platform.</p>
+   *
+   * @return this, for method chaining.
+   */
+  public InsertStatementBuilder useDirectPath() {
+    getHints().add(DirectPathQueryHint.INSTANCE);
+    return this;
+  }
+
+
+  /**
    * Specifies the defaults to use when inserting new fields.
    *
    * @param defaultValues the list of values to use as defaults
@@ -235,6 +255,14 @@ public class InsertStatementBuilder implements Builder<InsertStatement> {
    */
   List<AliasedField> getFields() {
     return fields;
+  }
+
+
+  /**
+   * @return all hints in the order they were declared.
+   */
+  List<Hint> getHints() {
+    return hints;
   }
 
 
@@ -286,6 +314,9 @@ public class InsertStatementBuilder implements Builder<InsertStatement> {
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.util.Builder#build()
+   */
   @Override
   public InsertStatement build() {
     return new InsertStatement(this);

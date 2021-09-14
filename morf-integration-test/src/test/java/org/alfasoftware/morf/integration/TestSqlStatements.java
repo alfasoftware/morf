@@ -22,6 +22,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.alfasoftware.morf.sql.SqlUtils.blob;
 import static org.alfasoftware.morf.sql.SqlUtils.caseStatement;
 import static org.alfasoftware.morf.sql.SqlUtils.cast;
 import static org.alfasoftware.morf.sql.SqlUtils.concat;
@@ -47,40 +48,7 @@ import static org.alfasoftware.morf.sql.element.Criterion.in;
 import static org.alfasoftware.morf.sql.element.Criterion.like;
 import static org.alfasoftware.morf.sql.element.Criterion.not;
 import static org.alfasoftware.morf.sql.element.Criterion.or;
-import static org.alfasoftware.morf.sql.element.Function.addDays;
-import static org.alfasoftware.morf.sql.element.Function.average;
-import static org.alfasoftware.morf.sql.element.Function.averageDistinct;
-import static org.alfasoftware.morf.sql.element.Function.coalesce;
-import static org.alfasoftware.morf.sql.element.Function.count;
-import static org.alfasoftware.morf.sql.element.Function.countDistinct;
-import static org.alfasoftware.morf.sql.element.Function.dateToYyyyMMddHHmmss;
-import static org.alfasoftware.morf.sql.element.Function.dateToYyyymmdd;
-import static org.alfasoftware.morf.sql.element.Function.daysBetween;
-import static org.alfasoftware.morf.sql.element.Function.every;
-import static org.alfasoftware.morf.sql.element.Function.floor;
-import static org.alfasoftware.morf.sql.element.Function.greatest;
-import static org.alfasoftware.morf.sql.element.Function.isnull;
-import static org.alfasoftware.morf.sql.element.Function.lastDayOfMonth;
-import static org.alfasoftware.morf.sql.element.Function.least;
-import static org.alfasoftware.morf.sql.element.Function.leftPad;
-import static org.alfasoftware.morf.sql.element.Function.leftTrim;
-import static org.alfasoftware.morf.sql.element.Function.length;
-import static org.alfasoftware.morf.sql.element.Function.lowerCase;
-import static org.alfasoftware.morf.sql.element.Function.max;
-import static org.alfasoftware.morf.sql.element.Function.mod;
-import static org.alfasoftware.morf.sql.element.Function.monthsBetween;
-import static org.alfasoftware.morf.sql.element.Function.now;
-import static org.alfasoftware.morf.sql.element.Function.power;
-import static org.alfasoftware.morf.sql.element.Function.random;
-import static org.alfasoftware.morf.sql.element.Function.randomString;
-import static org.alfasoftware.morf.sql.element.Function.rightTrim;
-import static org.alfasoftware.morf.sql.element.Function.some;
-import static org.alfasoftware.morf.sql.element.Function.substring;
-import static org.alfasoftware.morf.sql.element.Function.sum;
-import static org.alfasoftware.morf.sql.element.Function.sumDistinct;
-import static org.alfasoftware.morf.sql.element.Function.trim;
-import static org.alfasoftware.morf.sql.element.Function.upperCase;
-import static org.alfasoftware.morf.sql.element.Function.yyyymmddToDate;
+import static org.alfasoftware.morf.sql.element.Function.*;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.instanceOf;
@@ -134,12 +102,7 @@ import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.sql.InsertStatement;
-import org.alfasoftware.morf.sql.MergeStatement;
-import org.alfasoftware.morf.sql.SelectFirstStatement;
-import org.alfasoftware.morf.sql.SelectStatement;
-import org.alfasoftware.morf.sql.TruncateStatement;
-import org.alfasoftware.morf.sql.UpdateStatement;
+import org.alfasoftware.morf.sql.*;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.CaseStatement;
 import org.alfasoftware.morf.sql.element.Cast;
@@ -201,6 +164,9 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
 
   private static final Log log = LogFactory.getLog(TestSqlStatements.class);
 
+  private static final String BLOB1_VALUE = "A Blob named One";
+  private static final String BLOB2_VALUE = "A Blob named Two";
+
   @Rule public InjectMembersRule injectMembersRule = new InjectMembersRule(new TestingDataSourceModule());
 
   @Inject
@@ -254,6 +220,11 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
       .columns(
         column("column1", DataType.BOOLEAN).nullable(),
         column("column2", DataType.BOOLEAN).nullable()
+      ),
+    table("BlobTable")
+      .columns(
+        column("column1", DataType.BLOB).nullable(),
+        column("column2", DataType.BLOB).nullable()
       ),
     table("AccumulateBooleanTable")
       .columns(
@@ -451,6 +422,11 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
       record()
         .setBoolean("column1", false)
         .setBoolean("column2", true)
+    )
+    .table("BlobTable",
+      record()
+        .setByteArray("column1", BLOB1_VALUE.getBytes())
+        .setByteArray("column2", BLOB2_VALUE.getBytes())
     )
     .table("AccumulateBooleanTable",
       record()
@@ -1602,7 +1578,80 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
   }
 
 
-  /**
+    /**
+     * Test the behaviour of SELECTs, INSERTs and UPDATEs of blob fields.  In the process
+     * we test a lot of {@link SqlScriptExecutor}'s statement handling capabilities
+     *
+     * @throws SQLException if something goes wrong.
+     */
+    @Test
+    public void testBlobFields() throws SQLException {
+
+        SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+
+        // Set up queries
+        InsertStatement insertStatement = insert()
+                .into(tableRef("BlobTable"))
+                .fields(field("column1"), field("column2"))
+                .values(blob(BLOB1_VALUE).as("column1"), SqlUtils.blob(BLOB2_VALUE.getBytes()).as("column2"));
+        SelectStatement selectStatementAfterInsert = select(field("column1"), field("column2"))
+                .from(tableRef("BlobTable"))
+                .where(or(
+                        field("column1").eq(SqlUtils.blob(BLOB1_VALUE.getBytes())),
+                        field("column1").eq(blob(BLOB1_VALUE))
+                ));
+        UpdateStatement updateStatement = update(tableRef("BlobTable"))
+                .set(blob(BLOB1_VALUE + " Updated").as("column1"), SqlUtils.blob((BLOB2_VALUE + " Updated").getBytes()).as("column2"));
+        SelectStatement selectStatementAfterUpdate = select(field("column1"), field("column2"))
+                .from(tableRef("BlobTable"))
+                .where(or(
+                        field("column1").eq(SqlUtils.blob((BLOB1_VALUE + " Updated").getBytes())),
+                        field("column1").eq(blob(BLOB1_VALUE + " Updated"))
+                ));
+
+        // Insert
+        executor.execute(convertStatementToSQL(insertStatement, schema, null), connection);
+
+        // Check result - note that this is deliberately not tidy - we are making sure that results get
+        // passed back up to this scope correctly.
+        String sql = convertStatementToSQL(selectStatementAfterInsert);
+        Integer numberOfRecords = executor.executeQuery(sql, connection, new ResultSetProcessor<Integer>() {
+            @Override
+            public Integer process(ResultSet resultSet) throws SQLException {
+                int result = 0;
+                while (resultSet.next()) {
+                    result++;
+                    assertEquals("column1 blob value not correctly set/returned after insert", BLOB1_VALUE, new String(resultSet.getBytes(1)));
+                    assertEquals("column2 blob value not correctly set/returned after insert", BLOB2_VALUE, new String(resultSet.getBytes(2)));
+                }
+                return result;
+            }
+        });
+        assertEquals("Should be exactly two records", 2, numberOfRecords.intValue());
+
+        // Update
+        executor.execute(ImmutableList.of(convertStatementToSQL(updateStatement)), connection);
+
+        // Check result- note that this is deliberately not tidy - we are making sure that results get
+        // passed back up to this scope correctly.
+        sql = convertStatementToSQL(selectStatementAfterUpdate);
+        numberOfRecords = executor.executeQuery(sql, connection, new ResultSetProcessor<Integer>() {
+            @Override
+            public Integer process(ResultSet resultSet) throws SQLException {
+                int result = 0;
+                while (resultSet.next()) {
+                    result++;
+                    assertEquals("column1 blob value not correctly set/returned after update", BLOB1_VALUE + " Updated", new String(resultSet.getBytes(1)));
+                    assertEquals("column2 blob value not correctly set/returned after update", BLOB2_VALUE + " Updated", new String(resultSet.getBytes(2)));
+                }
+                return result;
+            }
+        });
+        assertEquals("Should be exactly two records", 2, numberOfRecords.intValue());
+    }
+
+
+    /**
    * Asserts that the number of records in the table are as expected.
    *
    * @param numberOfRecords The number of records expected.
@@ -2231,7 +2280,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     final byte[] value = "hello world BLOB".getBytes();
 
     SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
-    String sql = convertStatementToSQL(select(field("blobCol"), length(field("blobCol")).as("lengthResult"))
+    String sql = convertStatementToSQL(select(field("blobCol"), blobLength(field("blobCol")).as("lengthResult"))
                                                                         .from(tableRef("SimpleTypes"))
                                                                         .orderBy(field("lengthResult")));
 

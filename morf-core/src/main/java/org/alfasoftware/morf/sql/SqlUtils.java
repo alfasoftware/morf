@@ -24,6 +24,7 @@ import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
+import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.BracketedExpression;
 import org.alfasoftware.morf.sql.element.CaseStatement;
 import org.alfasoftware.morf.sql.element.Cast;
@@ -340,6 +341,28 @@ public class SqlUtils {
    */
   public static FieldLiteral literal(Character value) {
     return new FieldLiteral(value);
+  }
+
+
+  /**
+   * Constructs a new {@link BlobFieldLiteral} with a byte array source.
+   *
+   * @param value the literal value to use
+   * @return {@link BlobFieldLiteral}
+   */
+  public static BlobFieldLiteral blob(byte[] value) {
+    return new BlobFieldLiteral(value);
+  }
+
+
+  /**
+   * Constructs a new {@link BlobFieldLiteral} with a String source.
+   *
+   * @param value the literal value to use
+   * @return {@link BlobFieldLiteral}
+   */
+  public static BlobFieldLiteral blob(String value) {
+    return new BlobFieldLiteral(value);
   }
 
 
