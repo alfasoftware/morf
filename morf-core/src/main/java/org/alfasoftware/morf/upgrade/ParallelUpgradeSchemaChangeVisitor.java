@@ -64,7 +64,7 @@ public class ParallelUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
    * Write out SQL
    */
   private void writeStatement(String statement) {
-    currentNode.addUpgradeStatement(statement);
+    currentNode.addUpgradeStatements(statement);
   }
 
 

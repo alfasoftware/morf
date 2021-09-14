@@ -190,7 +190,7 @@ public class ParallelUpgradeBuilder {
       log.info(node.toString());
       visited.add(node);
       for(UpgradeNode child : node.children) {
-        logGraph(child);
+        logGraph(child, visited);
       }
     }
   }

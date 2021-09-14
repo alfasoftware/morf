@@ -65,12 +65,16 @@ public class UpgradeNode {
     return sequence == 0;
   }
 
-  public void addUpgradeStatement(String statement) {
+  public void addUpgradeStatements(String statement) {
     upgradeStatements.add(statement);
   }
 
   public void addAllUpgradeStatements(Collection<String> statements) {
     upgradeStatements.addAll(statements);
+  }
+
+  public List<String> getUpgradeStatements() {
+    return upgradeStatements;
   }
 
   public boolean isCompleted() {
