@@ -194,7 +194,7 @@ public class Upgrade {
     // -- Parallel upgrade
     ParallelUpgrade parallelUpgrade = null;
     if (!schemaChangeSequence.getUpgradeSteps().isEmpty()) {
-      ParallelUpgradeSchemaChangeVisitor visitor = new ParallelUpgradeSchemaChangeVisitor(sourceSchema, dialect, SqlDialect.IdTable.withPrefix(dialect, "temp_id_"));
+      ParallelUpgradeSchemaChangeVisitor visitor = new ParallelUpgradeSchemaChangeVisitor(sourceSchema, dialect, SqlDialect.IdTable.withPrefixNotTemp(dialect, "temp_id_"));
       ParallelUpgradeBuilder parallelUpgradeBuilder = new ParallelUpgradeBuilder(visitor);
       parallelUpgrade = parallelUpgradeBuilder.prepareParallelUpgrade(schemaChangeSequence);
     }

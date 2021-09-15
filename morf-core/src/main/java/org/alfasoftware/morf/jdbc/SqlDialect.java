@@ -4069,12 +4069,13 @@ public abstract class SqlDialect {
    *
    * @author Copyright (c) Alfa Financial Software 2011
    */
-  public static final class IdTable implements Table {
+  public static class IdTable implements Table {
 
     /**
      * The name of the ID Table.
      */
     private final String tableName;
+    private final boolean isTemp;
 
 
     /**
@@ -4085,7 +4086,7 @@ public abstract class SqlDialect {
      * @return {@link IdTable}.
      */
     public static IdTable withDeterministicName(String tableName) {
-      return new IdTable(tableName);
+      return new IdTable(tableName, true);
     }
 
 
@@ -4099,7 +4100,12 @@ public abstract class SqlDialect {
      * @return {@link IdTable}
      */
     public static IdTable withPrefix(SqlDialect dialect, String prefix) {
-      return new IdTable(dialect.decorateTemporaryTableName(prefix + RandomStringUtils.randomAlphabetic(5)));
+      return new IdTable(dialect.decorateTemporaryTableName(prefix + RandomStringUtils.randomAlphabetic(5)), true);
+    }
+
+
+    public static IdTable withPrefixNotTemp(SqlDialect dialect, String prefix) {
+      return new IdTable(dialect.decorateTemporaryTableName(prefix + RandomStringUtils.randomAlphabetic(5)), false);
     }
 
 
@@ -4108,8 +4114,9 @@ public abstract class SqlDialect {
      *
      * @param tableName table name for the temporary table.
      */
-    private IdTable(String tableName) {
+    private IdTable(String tableName, boolean isTemp) {
       this.tableName = tableName;
+      this.isTemp = isTemp;
     }
 
 
@@ -4151,7 +4158,7 @@ public abstract class SqlDialect {
      */
     @Override
     public boolean isTemporary() {
-      return true;
+      return isTemp;
     }
   }
 }
