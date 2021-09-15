@@ -116,6 +116,7 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.sql.CustomHint;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.MergeStatement;
@@ -3071,6 +3072,7 @@ public abstract class AbstractSqlDialectTest {
         .optimiseForRowCount(1000)
         .useImplicitJoinOrder()
         .withParallelQueryPlan()
+        .withCustomHint(mock(CustomHint.class))
       )
     );
     assertEquals(
@@ -3081,6 +3083,19 @@ public abstract class AbstractSqlDialectTest {
         .useParallelDml()
       )
     );
+
+    assertEquals(
+      expectedHints4(),
+      testDialect.convertStatementToSQL(
+        select()
+        .from(new TableReference("SCHEMA2", "Foo"))
+        .withCustomHint(provideCustomHint())
+      )
+    );
+  }
+
+  protected CustomHint provideCustomHint() {
+    return mock(CustomHint.class);
   }
 
 
@@ -5152,6 +5167,13 @@ public abstract class AbstractSqlDialectTest {
    */
   protected String expectedHints3() {
     return "UPDATE " + tableName("Foo") + " SET a = b";
+  }
+
+  /**
+   * @return The expected SQL for the {@link SelectStatement#withCustomHint()} directive.
+   */
+  protected  String expectedHints4() {
+    return "SELECT * FROM SCHEMA2.Foo";
   }
 
 

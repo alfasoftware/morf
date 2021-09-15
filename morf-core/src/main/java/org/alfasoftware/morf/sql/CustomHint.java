@@ -17,12 +17,16 @@ package org.alfasoftware.morf.sql;
 
 /**
  *
- * Marker interface for Custom hints
+ * Interface for Custom hints
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2021
  */
 public interface CustomHint extends Hint {
 
+  /**
+   *
+   * @return
+   */
   public String getCustomHint();
 }
 
