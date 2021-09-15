@@ -115,6 +115,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.Column;
@@ -3212,6 +3213,15 @@ public abstract class AbstractSqlDialectTest {
         .from(select(field("a"), field("b")).from(tableRef("Foo_1")))
       )
     );
+    assertEquals(
+      expectedHints6(),
+      testDialect.convertStatementToSQL(
+        select(field("a"), field("b"))
+        .from(tableRef("Foo"))
+        .orderBy(field("a"))
+        .withParallelQueryPlan(Optional.of(5))
+      )
+    );
   }
 
 
@@ -5360,6 +5370,15 @@ public abstract class AbstractSqlDialectTest {
   private String expectedHints5() {
     return  "INSERT INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
   }
+
+
+  /**
+   * @return The expected SQL for the {@link SelectStatement#withParallelQueryPlan(Optional)} directive.
+   */
+  protected String expectedHints6() {
+    return "SELECT a, b FROM " + tableName("Foo") + " ORDER BY a NULLS FIRST";
+  }
+
 
 
   /**

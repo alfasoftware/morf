@@ -20,6 +20,7 @@ import static org.alfasoftware.morf.util.DeepCopyTransformations.noTransformatio
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import org.alfasoftware.morf.sql.UnionSetOperator.UnionStrategy;
 import org.alfasoftware.morf.sql.element.AliasedField;
@@ -421,10 +422,25 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
    * @return this, for method chaining.
    */
   public SelectStatement withParallelQueryPlan() {
+    return withParallelQueryPlan(Optional.empty());
+  }
+
+
+  /**
+   * Request that this query is executed with a parallel execution plan and with the given degree of parallelism. If the database implementation does not support, or is configured to disable parallel query execution, then this request will have no effect.
+   *
+   * <p>For queries that are likely to conduct a full table scan, a parallel execution plan may result in the results being delivered faster, although the exact effect depends on
+   * the underlying database, the nature of the data and the nature of the query.</p>
+   *
+   * <p>Note that the executed use cases of this are rare. Caution is needed because if multiple requests are made by the application to run parallel queries, the resulting resource contention may result in worse performance - this is not intended for queries that are submitted in parallel by the application.</p>
+   *
+   * @return this, for method chaining.
+   */
+  public SelectStatement withParallelQueryPlan(Optional<Integer> degreeOfParallelism) {
     return copyOnWriteOrMutate(
-      (SelectStatementBuilder b) -> b.withParallelQueryPlan(),
-      () -> this.hints.add(new ParallelQueryHint())
-  );
+      (SelectStatementBuilder b) -> b.withParallelQueryPlan(degreeOfParallelism),
+      () -> this.hints.add(new ParallelQueryHint(degreeOfParallelism))
+     );
   }
 
 
