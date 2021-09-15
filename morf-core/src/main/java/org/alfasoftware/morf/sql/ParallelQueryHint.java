@@ -1,7 +1,11 @@
 package org.alfasoftware.morf.sql;
 
-import java.util.Objects;
+import static java.lang.String.format;
+
 import java.util.Optional;
+
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 /**
  * Represents the hint for a parallel query.
@@ -35,7 +39,7 @@ public final class ParallelQueryHint implements Hint {
    */
   @Override
   public String toString() {
-    return getClass().getSimpleName();
+    return degreeOfParallelism.isPresent() ? format("ParallelQueryHint [degreeOfParallelism=%s]", degreeOfParallelism.get().toString()) : getClass().getSimpleName();
   }
 
 
@@ -44,7 +48,7 @@ public final class ParallelQueryHint implements Hint {
    */
   @Override
   public int hashCode() {
-    return Objects.hash(getClass());
+    return new HashCodeBuilder().append(degreeOfParallelism.orElse(null)).build();
   }
 
 
@@ -52,8 +56,10 @@ public final class ParallelQueryHint implements Hint {
    * @see java.lang.Object#equals(java.lang.Object)
    */
   @Override
-  public boolean equals(Object oth) {
-    return oth != null && this.getClass() == oth.getClass();
+  public boolean equals(Object obj) {
+    if (!(obj instanceof ParallelQueryHint)) return false;
+    ParallelQueryHint other = (ParallelQueryHint) obj;
+    return new EqualsBuilder().append(degreeOfParallelism.orElse(null), other.degreeOfParallelism.orElse(null)).isEquals();
   }
 
 }
