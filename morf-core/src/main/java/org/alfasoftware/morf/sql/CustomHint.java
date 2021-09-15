@@ -24,8 +24,9 @@ package org.alfasoftware.morf.sql;
 public interface CustomHint extends Hint {
 
   /**
+   * Get the string representation of this custom hint
    *
-   * @return
+   * @return string, the string representation of this custom hint
    */
   public String getCustomHint();
 }
