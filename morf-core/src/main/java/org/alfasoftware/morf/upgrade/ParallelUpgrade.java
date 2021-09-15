@@ -6,14 +6,14 @@ public class ParallelUpgrade {
   private final UpgradeNode root;
   private final List<String> preUpgradeStatements;
   private final List<String> postUpgradeStatements;
-  private final int nodesNumber;
+  private final List<UpgradeNode> nodes;
 
-  public ParallelUpgrade(UpgradeNode root, List<String> preUpgradeStatements, List<String> postUpgradeStatements, int nodesNumber) {
+  public ParallelUpgrade(UpgradeNode root, List<String> preUpgradeStatements, List<String> postUpgradeStatements, List<UpgradeNode> nodes) {
     super();
     this.root = root;
     this.preUpgradeStatements = preUpgradeStatements;
     this.postUpgradeStatements = postUpgradeStatements;
-    this.nodesNumber = nodesNumber;
+    this.nodes = nodes;
   }
 
   public UpgradeNode getRoot() {
@@ -29,7 +29,11 @@ public class ParallelUpgrade {
   }
 
   public int getNodesNumber() {
-    return nodesNumber;
+    return nodes.size();
+  }
+
+  public List<UpgradeNode> getNodes() {
+    return nodes;
   }
 
 }

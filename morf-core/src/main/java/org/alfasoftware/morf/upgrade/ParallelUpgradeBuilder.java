@@ -36,7 +36,7 @@ public class ParallelUpgradeBuilder {
     List<String> postUpg = visitor.postUpgrade();
     logGraph(root);
 
-    return new ParallelUpgrade(root, preUpg, postUpg, nodes.size());
+    return new ParallelUpgrade(root, preUpg, postUpg, nodes);
   }
 
 
@@ -166,13 +166,13 @@ public class ParallelUpgradeBuilder {
       Set<String> modifies, reads;
       if (upg.getClass().isAnnotationPresent(UpgradeModifies.class)) {
         UpgradeModifies annotation = upg.getClass().getAnnotation(UpgradeModifies.class);
-        modifies = new HashSet<>(Arrays.asList(annotation.value()));
+        modifies = Arrays.stream(annotation.value()).map(s -> s.toUpperCase()).collect(Collectors.toSet());
       } else {
         modifies = new HashSet<>();
       }
       if (upg.getClass().isAnnotationPresent(UpgradeReads.class)) {
         UpgradeReads annotation = upg.getClass().getAnnotation(UpgradeReads.class);
-        reads = new HashSet<>(Arrays.asList(annotation.value()));
+        reads = Arrays.stream(annotation.value()).map(s -> s.toUpperCase()).collect(Collectors.toSet());
       } else {
         reads = new HashSet<>();
       }
