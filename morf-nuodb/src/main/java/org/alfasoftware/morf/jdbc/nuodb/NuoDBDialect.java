@@ -925,7 +925,7 @@ class NuoDBDialect extends SqlDialect {
       }
     }
 
-    return "/*+ " + Joiner.on(", ").join(hintTexts) + " */ ";
+    return hintTexts.isEmpty() ? "" : "/*+ " + Joiner.on(", ").join(hintTexts) + " */ ";
   };
 
 
