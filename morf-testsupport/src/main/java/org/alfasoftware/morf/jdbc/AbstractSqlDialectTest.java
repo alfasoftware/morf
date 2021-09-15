@@ -5376,7 +5376,7 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL for the {@link SelectStatement#withParallelQueryPlan(Optional)} directive.
    */
   protected String expectedHints6() {
-    return "SELECT a, b FROM " + tableName("Foo") + " ORDER BY a NULLS FIRST";
+    return "SELECT a, b FROM " + tableName("Foo") + " ORDER BY a";
   }
 
 
