@@ -1254,6 +1254,15 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints4
+   */
+  @Override
+  protected String expectedHints4() {
+    return "SELECT * FROM SCHEMA2.Foo OPTION()";
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedForUpdate()
    */
   @Override
