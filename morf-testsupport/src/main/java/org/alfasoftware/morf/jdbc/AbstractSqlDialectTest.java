@@ -115,7 +115,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.Column;
@@ -5373,7 +5372,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * @return The expected SQL for the {@link SelectStatement#withParallelQueryPlan(Optional)} directive.
+   * @return The expected SQL for the {@link SelectStatement#withParallelQueryPlan(int)} directive.
    */
   protected String expectedHints6() {
     return "SELECT a, b FROM " + tableName("Foo") + " ORDER BY a";
