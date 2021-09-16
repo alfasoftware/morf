@@ -191,14 +191,6 @@ public class Upgrade {
       upgrader.postUpgrade();
     }
 
-    // -- Parallel upgrade
-    ParallelUpgrade parallelUpgrade = null;
-    if (!schemaChangeSequence.getUpgradeSteps().isEmpty()) {
-      ParallelUpgradeSchemaChangeVisitor visitor = new ParallelUpgradeSchemaChangeVisitor(sourceSchema, dialect, SqlDialect.IdTable.withPrefixNotTemp(dialect, "temp_id_"));
-      ParallelUpgradeBuilder parallelUpgradeBuilder = new ParallelUpgradeBuilder(visitor);
-      parallelUpgrade = parallelUpgradeBuilder.prepareParallelUpgrade(schemaChangeSequence);
-    }
-
     // -- Upgrade path...
     //
     List<UpgradeStep> upgradesToApply = new ArrayList<>(schemaChangeSequence.getUpgradeSteps());
@@ -215,7 +207,15 @@ public class Upgrade {
       viewChanges = viewChanges.droppingAlso(sourceSchema.views()).deployingAlso(targetSchema.views());
     }
 
-
+    // -- Parallel upgrade
+    ParallelUpgrade parallelUpgrade = null;
+    if (!schemaChangeSequence.getUpgradeSteps().isEmpty()) {
+      ParallelUpgradeSchemaChangeVisitor visitor = new ParallelUpgradeSchemaChangeVisitor(sourceSchema, targetSchema, dialect,
+          SqlDialect.IdTable.withPrefixNotTemp(dialect, "temp_id_"), viewChanges,
+          upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS));
+      ParallelUpgradeBuilder parallelUpgradeBuilder = new ParallelUpgradeBuilder(visitor);
+      parallelUpgrade = parallelUpgradeBuilder.prepareParallelUpgrade(schemaChangeSequence);
+    }
 
 
     // Build the actual upgrade path
@@ -239,7 +239,9 @@ public class Upgrade {
       ParallelUpgrade parallelUpgrade) {
 
     UpgradePath path = factory.create(upgradesToApply, dialect);
+
     path.setParallelUpgrade(parallelUpgrade);
+
     for (View view : viewChanges.getViewsToDrop()) {
       // non-present views can be listed amongst ViewsToDrop due to how we calculate dependencies
       if (sourceSchema.viewExists(view.getName())) {

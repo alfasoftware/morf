@@ -1,25 +1,38 @@
 package org.alfasoftware.morf.upgrade;
 
+import static org.alfasoftware.morf.sql.SqlUtils.delete;
+import static org.alfasoftware.morf.sql.SqlUtils.field;
+import static org.alfasoftware.morf.sql.SqlUtils.insert;
+import static org.alfasoftware.morf.sql.SqlUtils.literal;
+import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.Statement;
+import org.alfasoftware.morf.sql.element.Criterion;
 
-import com.google.common.collect.Lists;
+import com.google.common.collect.ImmutableList;
 
 
 public class ParallelUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
 
-  private Schema                   currentSchema;
+  private Schema                   sourceSchema;
+  private final Schema             targetSchema;
   private final SqlDialect         sqlDialect;
   private final Table              idTable;
   private final TableNameResolver  tracker;
+  private final ViewChanges        viewChanges;
+  private final List<String>       initScript;
   private Map<String, UpgradeNode> upgradeNodes;
   private UpgradeNode currentNode;
 
@@ -27,27 +40,88 @@ public class ParallelUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
   /**
    * Default constructor.
    *
-   * @param startSchema schema prior to upgrade step.
+   * @param sourceSchema schema prior to upgrade step.
+   * @param targetSchema
    * @param sqlDialect Dialect to generate statements for the target database.
    * @param sqlStatementWriter recipient for all upgrade SQL statements.
    * @param idTable table for id generation.
+   * @param viewChanges
+   * @param initScript
    */
-  public ParallelUpgradeSchemaChangeVisitor(Schema startSchema, SqlDialect sqlDialect, Table idTable) {
-    this.currentSchema = startSchema;
+  public ParallelUpgradeSchemaChangeVisitor(Schema sourceSchema, Schema targetSchema, SqlDialect sqlDialect, Table idTable,
+      ViewChanges viewChanges, List<String> initScript) {
+    this.sourceSchema = sourceSchema;
+    this.targetSchema = targetSchema;
     this.sqlDialect = sqlDialect;
-    this.idTable= idTable;
+    this.idTable = idTable;
+    this.viewChanges = viewChanges;
+    this.initScript = initScript;
 
     tracker = new IdTableTracker(idTable.getName());
   }
 
   public List<String> preUpgrade() {
-    return Lists.newArrayList(sqlDialect.tableDeploymentStatements(idTable));
+    List<String> sql = new ArrayList<>();
+
+    // zzz table
+    sql.addAll(initScript);
+
+    // temp table
+    sql.addAll(sqlDialect.tableDeploymentStatements(idTable));
+
+    // drop views
+    for (View view : viewChanges.getViewsToDrop()) {
+      // non-present views can be listed amongst ViewsToDrop due to how we calculate dependencies
+      if (sourceSchema.viewExists(view.getName())) {
+        sql.addAll(sqlDialect.dropStatements(view));
+      }
+      if (sourceSchema.tableExists(DEPLOYED_VIEWS_NAME) && targetSchema.tableExists(DEPLOYED_VIEWS_NAME)) {
+        sql.addAll(ImmutableList.of(
+          sqlDialect.convertStatementToSQL(
+            delete(tableRef(DEPLOYED_VIEWS_NAME)).where(Criterion.eq(field("name"), view.getName().toUpperCase()))
+          )));
+      }
+    }
+
+    return sql;
   }
 
   public List<String> postUpgrade() {
     List<String> sql = new ArrayList<>();
+    // temp table drop
     sql.addAll(sqlDialect.truncateTableStatements(idTable));
     sql.addAll(sqlDialect.dropStatements(idTable));
+
+    // recreate views
+    for (View view : viewChanges.getViewsToDeploy()) {
+      sql.addAll(sqlDialect.viewDeploymentStatements(view));
+      if (targetSchema.tableExists(DEPLOYED_VIEWS_NAME)) {
+        sql.addAll(ImmutableList.of(
+          sqlDialect.convertStatementToSQL(
+            insert().into(tableRef(DEPLOYED_VIEWS_NAME))
+                                 .fields(literal(view.getName().toUpperCase()).as("name"),
+                                         literal(sqlDialect.convertStatementToHash(view.getSelectStatement())).as("hash")),
+                                           targetSchema)));
+      }
+    }
+
+    // Since Oracle is not able to re-map schema references in trigger code, we need to rebuild all triggers
+    // for id column autonumbering when exporting and importing data between environments.
+    // We will drop-and-recreate triggers whenever there are upgrade steps to execute. Ideally we'd want to do
+    // this step once, however there's no easy way to do that with our upgrade framework.
+    AtomicBoolean first = new AtomicBoolean(true);
+    targetSchema.tables().stream()
+      .map(t -> sqlDialect.rebuildTriggers(t))
+      .filter(triggerSql -> !triggerSql.isEmpty())
+      .peek(triggerSql -> {
+          if (first.compareAndSet(true, false)) {
+            sql.addAll(ImmutableList.of(
+              sqlDialect.convertCommentToSQL("Upgrades executed. Rebuilding all triggers to account for potential changes to autonumbered columns")
+            ));
+          }
+      })
+      .forEach(sql::addAll);
+
     return sql;
   }
 
@@ -73,7 +147,7 @@ public class ParallelUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
    */
   @Override
   public void visit(AddTable addTable) {
-    currentSchema = addTable.apply(currentSchema);
+    sourceSchema = addTable.apply(sourceSchema);
     writeStatements(sqlDialect.tableDeploymentStatements(addTable.getTable()));
   }
 
@@ -83,7 +157,7 @@ public class ParallelUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
    */
   @Override
   public void visit(RemoveTable removeTable) {
-    currentSchema = removeTable.apply(currentSchema);
+    sourceSchema = removeTable.apply(sourceSchema);
     writeStatements(sqlDialect.dropStatements(removeTable.getTable()));
   }
 
@@ -93,8 +167,8 @@ public class ParallelUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
    */
   @Override
   public void visit(AddIndex addIndex) {
-    currentSchema = addIndex.apply(currentSchema);
-    writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(addIndex.getTableName()), addIndex.getNewIndex()));
+    sourceSchema = addIndex.apply(sourceSchema);
+    writeStatements(sqlDialect.addIndexStatements(sourceSchema.getTable(addIndex.getTableName()), addIndex.getNewIndex()));
   }
 
 
@@ -103,8 +177,8 @@ public class ParallelUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
    */
   @Override
   public void visit(AddColumn addColumn) {
-    currentSchema = addColumn.apply(currentSchema);
-    writeStatements(sqlDialect.alterTableAddColumnStatements(currentSchema.getTable(addColumn.getTableName()), addColumn.getNewColumnDefinition()));
+    sourceSchema = addColumn.apply(sourceSchema);
+    writeStatements(sqlDialect.alterTableAddColumnStatements(sourceSchema.getTable(addColumn.getTableName()), addColumn.getNewColumnDefinition()));
   }
 
 
@@ -113,8 +187,8 @@ public class ParallelUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
    */
   @Override
   public void visit(ChangeColumn changeColumn) {
-    currentSchema = changeColumn.apply(currentSchema);
-    writeStatements(sqlDialect.alterTableChangeColumnStatements(currentSchema.getTable(changeColumn.getTableName()), changeColumn.getFromColumn(), changeColumn.getToColumn()));
+    sourceSchema = changeColumn.apply(sourceSchema);
+    writeStatements(sqlDialect.alterTableChangeColumnStatements(sourceSchema.getTable(changeColumn.getTableName()), changeColumn.getFromColumn(), changeColumn.getToColumn()));
   }
 
 
@@ -123,8 +197,8 @@ public class ParallelUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
    */
   @Override
   public void visit(RemoveColumn removeColumn) {
-    currentSchema = removeColumn.apply(currentSchema);
-    writeStatements(sqlDialect.alterTableDropColumnStatements(currentSchema.getTable(removeColumn.getTableName()), removeColumn.getColumnDefinition()));
+    sourceSchema = removeColumn.apply(sourceSchema);
+    writeStatements(sqlDialect.alterTableDropColumnStatements(sourceSchema.getTable(removeColumn.getTableName()), removeColumn.getColumnDefinition()));
   }
 
 
@@ -133,8 +207,8 @@ public class ParallelUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
    */
   @Override
   public void visit(RemoveIndex removeIndex) {
-    currentSchema = removeIndex.apply(currentSchema);
-    writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(removeIndex.getTableName()), removeIndex.getIndexToBeRemoved()));
+    sourceSchema = removeIndex.apply(sourceSchema);
+    writeStatements(sqlDialect.indexDropStatements(sourceSchema.getTable(removeIndex.getTableName()), removeIndex.getIndexToBeRemoved()));
   }
 
 
@@ -143,9 +217,9 @@ public class ParallelUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
    */
   @Override
   public void visit(ChangeIndex changeIndex) {
-    currentSchema = changeIndex.apply(currentSchema);
-    writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(changeIndex.getTableName()), changeIndex.getFromIndex()));
-    writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(changeIndex.getTableName()), changeIndex.getToIndex()));
+    sourceSchema = changeIndex.apply(sourceSchema);
+    writeStatements(sqlDialect.indexDropStatements(sourceSchema.getTable(changeIndex.getTableName()), changeIndex.getFromIndex()));
+    writeStatements(sqlDialect.addIndexStatements(sourceSchema.getTable(changeIndex.getTableName()), changeIndex.getToIndex()));
   }
 
 
@@ -154,8 +228,8 @@ public class ParallelUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
    */
   @Override
   public void visit(final RenameIndex renameIndex) {
-    currentSchema = renameIndex.apply(currentSchema);
-    writeStatements(sqlDialect.renameIndexStatements(currentSchema.getTable(renameIndex.getTableName()),
+    sourceSchema = renameIndex.apply(sourceSchema);
+    writeStatements(sqlDialect.renameIndexStatements(sourceSchema.getTable(renameIndex.getTableName()),
       renameIndex.getFromIndexName(), renameIndex.getToIndexName()));
   }
 
@@ -179,9 +253,9 @@ public class ParallelUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
    */
   @Override
   public void visit(RenameTable renameTable) {
-    Table oldTable = currentSchema.getTable(renameTable.getOldTableName());
-    currentSchema = renameTable.apply(currentSchema);
-    Table newTable = currentSchema.getTable(renameTable.getNewTableName());
+    Table oldTable = sourceSchema.getTable(renameTable.getOldTableName());
+    sourceSchema = renameTable.apply(sourceSchema);
+    Table newTable = sourceSchema.getTable(renameTable.getNewTableName());
 
     writeStatements(sqlDialect.renameTableStatements(oldTable, newTable));
   }
@@ -192,8 +266,8 @@ public class ParallelUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
    */
   @Override
   public void visit(ChangePrimaryKeyColumns changePrimaryKeyColumns) {
-    currentSchema = changePrimaryKeyColumns.apply(currentSchema);
-    writeStatements(sqlDialect.changePrimaryKeyColumns(currentSchema.getTable(changePrimaryKeyColumns.getTableName()), changePrimaryKeyColumns.getOldPrimaryKeyColumns(), changePrimaryKeyColumns.getNewPrimaryKeyColumns()));
+    sourceSchema = changePrimaryKeyColumns.apply(sourceSchema);
+    writeStatements(sqlDialect.changePrimaryKeyColumns(sourceSchema.getTable(changePrimaryKeyColumns.getTableName()), changePrimaryKeyColumns.getOldPrimaryKeyColumns(), changePrimaryKeyColumns.getNewPrimaryKeyColumns()));
   }
 
 
@@ -214,13 +288,13 @@ public class ParallelUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
    * @param statement The {@link Statement}.
    */
   private void visitStatement(Statement statement) {
-    writeStatements(sqlDialect.convertStatementToSQL(statement, currentSchema, idTable));
+    writeStatements(sqlDialect.convertStatementToSQL(statement, sourceSchema, idTable));
   }
 
 
   @Override
   public void addAuditRecord(UUID uuid, String description) {
-    AuditRecordHelper.addAuditRecord(this, currentSchema, uuid, description);
+    AuditRecordHelper.addAuditRecord(this, sourceSchema, uuid, description);
   }
 
 
@@ -237,7 +311,7 @@ public class ParallelUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
    */
   @Override
   public void visit(AddTableFrom addTableFrom) {
-    currentSchema = addTableFrom.apply(currentSchema);
+    sourceSchema = addTableFrom.apply(sourceSchema);
     writeStatements(sqlDialect.addTableFromStatements(addTableFrom.getTable(), addTableFrom.getSelectStatement()));
   }
 
@@ -247,8 +321,8 @@ public class ParallelUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
    */
   @Override
   public void visit(AnalyseTable analyseTable) {
-    currentSchema = analyseTable.apply(currentSchema);
-    writeStatements(sqlDialect.getSqlForAnalyseTable(currentSchema.getTable(analyseTable.getTableName())));
+    sourceSchema = analyseTable.apply(sourceSchema);
+    writeStatements(sqlDialect.getSqlForAnalyseTable(sourceSchema.getTable(analyseTable.getTableName())));
   }
 
   public void setUpgradeNodes(Map<String, UpgradeNode> collect) {
