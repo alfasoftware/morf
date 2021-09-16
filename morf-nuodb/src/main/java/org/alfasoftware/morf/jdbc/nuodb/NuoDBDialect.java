@@ -974,11 +974,7 @@ class NuoDBDialect extends SqlDialect {
    */
   @Override
   protected String selectStatementPreFieldDirectives(SelectStatement selectStatement) {
-    if (selectStatement.getHints().isEmpty()) {
-      return super.selectStatementPreFieldDirectives(selectStatement);
-    }
-
-    // http://doc.nuodb.com/Latest/Content/Using-Optimizer-Hints.htm
+      // http://doc.nuodb.com/Latest/Content/Using-Optimizer-Hints.htm
 
     List<String> hintTexts = Lists.newArrayList();
     for (Hint hint : selectStatement.getHints()) {
@@ -994,6 +990,10 @@ class NuoDBDialect extends SqlDialect {
       if (hint instanceof UseImplicitJoinOrder) {
         hintTexts.add("ORDERED");
       }
+    }
+
+    if (hintTexts.isEmpty()) {
+      return super.selectStatementPreFieldDirectives(selectStatement);
     }
 
     return "/*+ " + Joiner.on(", ").join(hintTexts) + " */ ";

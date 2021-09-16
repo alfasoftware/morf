@@ -1063,11 +1063,7 @@ class SqlServerDialect extends SqlDialect {
 
   @Override
   protected String selectStatementPostStatementDirectives(SelectStatement selectStatement) {
-    if (selectStatement.getHints().isEmpty()) {
-      return super.selectStatementPreFieldDirectives(selectStatement);
-    }
-
-    StringBuilder builder = new StringBuilder().append(" OPTION(");
+    StringBuilder builder = new StringBuilder();
 
     boolean comma = false;
 
@@ -1095,7 +1091,11 @@ class SqlServerDialect extends SqlDialect {
       }
     }
 
-    return builder.append(")").toString();
+    if (builder.length() == 0) {
+      return super.selectStatementPreFieldDirectives(selectStatement);
+    }
+
+    return " OPTION(" + builder.append(")").toString();
   }
 
 

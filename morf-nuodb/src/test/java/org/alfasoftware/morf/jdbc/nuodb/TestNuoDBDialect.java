@@ -1400,15 +1400,6 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints4
-   */
-  @Override
-  protected String expectedHints4() {
-    return "SELECT /*+  */ * FROM SCHEMA2.Foo";
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#supportsWindowFunctions()
    */
   @Override
