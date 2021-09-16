@@ -5170,7 +5170,7 @@ public abstract class AbstractSqlDialectTest {
   }
 
   /**
-   * @return The expected SQL for the {@link SelectStatement#withCustomHint()} directive.
+   * @return The expected SQL for the {@link SelectStatement#withCustomHint(CustomHint customHint)} directive.
    */
   protected  String expectedHints4() {
     return "SELECT * FROM SCHEMA2.Foo";
