@@ -162,14 +162,6 @@ public class TestOracleDatabaseType {
     assertThat(databaseType.reclassifyException(oracleXaException(2049)), instanceOf(SQLTransientException.class));
   }
 
-  /**
-   *
-   */
-  @Test
-  public void testCustomHint() {
-
-
-  }
 
 
   private Exception oracleXaException(int code) {
