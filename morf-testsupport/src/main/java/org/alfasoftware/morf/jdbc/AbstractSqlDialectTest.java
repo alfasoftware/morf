@@ -3219,7 +3219,7 @@ public abstract class AbstractSqlDialectTest {
         select(field("a"), field("b"))
         .from(tableRef("Foo"))
         .orderBy(field("a"))
-        .withParallelQueryPlan(Optional.of(5))
+        .withParallelQueryPlan(5)
       )
     );
   }

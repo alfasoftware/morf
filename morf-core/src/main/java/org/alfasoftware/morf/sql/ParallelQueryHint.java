@@ -1,6 +1,7 @@
 package org.alfasoftware.morf.sql;
 
 import static java.lang.String.format;
+import static java.util.Optional.ofNullable;
 
 import java.util.Optional;
 
@@ -14,15 +15,15 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
  */
 public final class ParallelQueryHint implements Hint {
 
-  private final Optional<Integer> degreeOfParallelism;
+  private final Integer degreeOfParallelism;
 
-  public ParallelQueryHint(Optional<Integer> degreeOfParallelism) {
+  public ParallelQueryHint(int degreeOfParallelism) {
     this.degreeOfParallelism = degreeOfParallelism;
   }
 
 
   public ParallelQueryHint() {
-    this(Optional.empty());
+    this.degreeOfParallelism = null;
   }
 
 
@@ -30,7 +31,7 @@ public final class ParallelQueryHint implements Hint {
    * @return the degree of parallelism for this PARALLEL query hint.
    */
   public Optional<Integer> getDegreeOfParallelism() {
-    return degreeOfParallelism;
+    return Optional.ofNullable(degreeOfParallelism);
   }
 
 
@@ -39,7 +40,7 @@ public final class ParallelQueryHint implements Hint {
    */
   @Override
   public String toString() {
-    return degreeOfParallelism.isPresent() ? format("ParallelQueryHint [degreeOfParallelism=%s]", degreeOfParallelism.get().toString()) : getClass().getSimpleName();
+    return degreeOfParallelism == null ? getClass().getSimpleName() : format("ParallelQueryHint [degreeOfParallelism=%s]", degreeOfParallelism.toString());
   }
 
 
@@ -48,7 +49,7 @@ public final class ParallelQueryHint implements Hint {
    */
   @Override
   public int hashCode() {
-    return new HashCodeBuilder().append(degreeOfParallelism.orElse(null)).build();
+    return new HashCodeBuilder().append(ofNullable(degreeOfParallelism).orElse(null)).build();
   }
 
 
@@ -59,7 +60,7 @@ public final class ParallelQueryHint implements Hint {
   public boolean equals(Object obj) {
     if (!(obj instanceof ParallelQueryHint)) return false;
     ParallelQueryHint other = (ParallelQueryHint) obj;
-    return new EqualsBuilder().append(degreeOfParallelism.orElse(null), other.degreeOfParallelism.orElse(null)).isEquals();
+    return new EqualsBuilder().append(ofNullable(degreeOfParallelism).orElse(null), ofNullable(other.degreeOfParallelism).orElse(null)).isEquals();
   }
 
 }

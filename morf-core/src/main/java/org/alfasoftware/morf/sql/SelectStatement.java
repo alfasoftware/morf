@@ -20,7 +20,6 @@ import static org.alfasoftware.morf.util.DeepCopyTransformations.noTransformatio
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 
 import org.alfasoftware.morf.sql.UnionSetOperator.UnionStrategy;
 import org.alfasoftware.morf.sql.element.AliasedField;
@@ -422,7 +421,10 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
    * @return this, for method chaining.
    */
   public SelectStatement withParallelQueryPlan() {
-    return withParallelQueryPlan(Optional.empty());
+    return copyOnWriteOrMutate(
+      (SelectStatementBuilder b) -> b.withParallelQueryPlan(),
+      () -> this.hints.add(new ParallelQueryHint())
+     );
   }
 
 
@@ -436,7 +438,7 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
    *
    * @return this, for method chaining.
    */
-  public SelectStatement withParallelQueryPlan(Optional<Integer> degreeOfParallelism) {
+  public SelectStatement withParallelQueryPlan(int degreeOfParallelism) {
     return copyOnWriteOrMutate(
       (SelectStatementBuilder b) -> b.withParallelQueryPlan(degreeOfParallelism),
       () -> this.hints.add(new ParallelQueryHint(degreeOfParallelism))

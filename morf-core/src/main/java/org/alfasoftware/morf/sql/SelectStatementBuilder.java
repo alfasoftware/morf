@@ -17,7 +17,6 @@ package org.alfasoftware.morf.sql;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 import org.alfasoftware.morf.sql.UnionSetOperator.UnionStrategy;
 import org.alfasoftware.morf.sql.element.AliasedField;
@@ -268,7 +267,8 @@ public class SelectStatementBuilder extends AbstractSelectStatementBuilder<Selec
    * @return this, for method chaining.
    */
   public SelectStatementBuilder withParallelQueryPlan() {
-    return withParallelQueryPlan(Optional.empty());
+    this.hints.add(new ParallelQueryHint());
+    return this;
   }
 
 
@@ -282,7 +282,7 @@ public class SelectStatementBuilder extends AbstractSelectStatementBuilder<Selec
    *
    * @return this, for method chaining.
    */
-  public SelectStatementBuilder withParallelQueryPlan(Optional<Integer> degreeOfParallelism) {
+  public SelectStatementBuilder withParallelQueryPlan(int degreeOfParallelism) {
     this.hints.add(new ParallelQueryHint(degreeOfParallelism));
     return this;
   }
