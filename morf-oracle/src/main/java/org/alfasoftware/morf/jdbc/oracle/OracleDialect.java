@@ -1224,11 +1224,7 @@ class OracleDialect extends SqlDialect {
    */
   @Override
   protected String selectStatementPreFieldDirectives(SelectStatement selectStatement) {
-    if (selectStatement.getHints().isEmpty()) {
-      return super.selectStatementPreFieldDirectives(selectStatement);
-    }
-
-    StringBuilder builder = new StringBuilder().append("/*+");
+    StringBuilder builder = new StringBuilder();
 
     for (Hint hint : selectStatement.getHints()) {
       if (hint instanceof OptimiseForRowCount) {
@@ -1257,9 +1253,12 @@ class OracleDialect extends SqlDialect {
       }
     }
 
-    return builder.append(" */ ").toString();
-  };
+    if (builder.length() == 0) {
+      return super.selectStatementPreFieldDirectives(selectStatement);
+    }
 
+    return "/*+" + builder.append(" */ ").toString();
+  }
 
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#updateStatementPreTableDirectives(org.alfasoftware.morf.sql.UpdateStatement)

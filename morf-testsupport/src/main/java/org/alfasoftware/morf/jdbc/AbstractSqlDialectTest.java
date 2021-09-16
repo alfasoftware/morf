@@ -3072,7 +3072,6 @@ public abstract class AbstractSqlDialectTest {
         .optimiseForRowCount(1000)
         .useImplicitJoinOrder()
         .withParallelQueryPlan()
-        .withCustomHint(mock(CustomHint.class))
       )
     );
     assertEquals(
@@ -3090,6 +3089,15 @@ public abstract class AbstractSqlDialectTest {
         select()
         .from(new TableReference("SCHEMA2", "Foo"))
         .withCustomHint(provideCustomHint())
+      )
+    );
+
+    assertEquals(
+      expectedHints5(),
+      testDialect.convertStatementToSQL(
+        select()
+        .from(new TableReference("SCHEMA2", "Foo"))
+        .withCustomHint(mock(CustomHint.class))
       )
     );
   }
@@ -5175,6 +5183,14 @@ public abstract class AbstractSqlDialectTest {
   protected  String expectedHints4() {
     return "SELECT * FROM SCHEMA2.Foo";
   }
+
+  /**
+   * @return The expected SQL for the {@link SelectStatement#withCustomHint(CustomHint customHint)} directive.
+   */
+  protected  String expectedHints5() {
+    return "SELECT * FROM SCHEMA2.Foo";
+  }
+
 
 
   /**
