@@ -406,9 +406,10 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
    * Supplies a specified custom hint to the database for a query.
    *
    * @param customHint representation of a custom hint
+   *
    * @return this, for method chaining.
    */
-  public org.alfasoftware.morf.sql.SelectStatement withCustomHint(CustomHint customHint) {
+  public SelectStatement withCustomHint(CustomHint customHint) {
       return copyOnWriteOrMutate(
               (SelectStatementBuilder b) -> b.withCustomHint(customHint),
               () -> this.hints.add(customHint)
