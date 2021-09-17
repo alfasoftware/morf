@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.jdbc.sqlserver;
 
+import static com.google.common.base.Strings.isNullOrEmpty;
 import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
 import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
@@ -1031,35 +1032,38 @@ class SqlServerDialect extends SqlDialect {
       return super.selectStatementPreFieldDirectives(selectStatement);
     }
 
-    StringBuilder builder = new StringBuilder().append(" OPTION(");
+    String option = " OPTION(";
 
     boolean comma = false;
 
+    StringBuilder hintsBuilder = new StringBuilder();
     for (Hint hint : selectStatement.getHints()) {
       if (SUPPORTED_HINTS.contains(hint.getClass())) {
         if (comma) {
-          builder.append(", ");
+          hintsBuilder.append(", ");
         } else {
           comma = true;
         }
       }
       if (hint instanceof OptimiseForRowCount) {
-        builder.append("FAST " + ((OptimiseForRowCount)hint).getRowCount());
+        hintsBuilder.append("FAST " + ((OptimiseForRowCount)hint).getRowCount());
       }
       if (hint instanceof UseIndex) {
         UseIndex useIndex = (UseIndex) hint;
-        builder.append("TABLE HINT(")
+        hintsBuilder.append("TABLE HINT(")
           // Includes schema name - see https://msdn.microsoft.com/en-us/library/ms181714.aspx
           .append(StringUtils.isEmpty(useIndex.getTable().getAlias()) ? schemaNamePrefix(useIndex.getTable()) + useIndex.getTable().getName() : useIndex.getTable().getAlias())
           .append(", INDEX(" + useIndex.getIndexName() + ")")
           .append(")");
       }
       if (hint instanceof UseImplicitJoinOrder) {
-        builder.append("FORCE ORDER");
+        hintsBuilder.append("FORCE ORDER");
       }
     }
 
-    return builder.append(")").toString();
+    option += hintsBuilder.toString() + ")";
+
+    return isNullOrEmpty(hintsBuilder.toString()) ? "" : option;
   }
 
 

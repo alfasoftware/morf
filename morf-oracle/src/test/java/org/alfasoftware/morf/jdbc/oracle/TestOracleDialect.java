@@ -1490,6 +1490,15 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints6()
+   */
+  @Override
+  protected String expectedHints6() {
+    return "SELECT /*+ PARALLEL 5 */ a, b FROM " + tableName("Foo") + " ORDER BY a NULLS FIRST";
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#supportsWindowFunctions()
    */
   @Override
