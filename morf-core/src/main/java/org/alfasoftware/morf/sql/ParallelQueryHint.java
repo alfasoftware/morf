@@ -1,7 +1,6 @@
 package org.alfasoftware.morf.sql;
 
 import static java.lang.String.format;
-import static java.util.Optional.ofNullable;
 
 import java.util.Optional;
 
