@@ -49,7 +49,7 @@ public final class ParallelQueryHint implements Hint {
    */
   @Override
   public int hashCode() {
-    return new HashCodeBuilder().append(ofNullable(degreeOfParallelism).orElse(null)).build();
+    return new HashCodeBuilder().append(degreeOfParallelism).build();
   }
 
 
@@ -60,7 +60,7 @@ public final class ParallelQueryHint implements Hint {
   public boolean equals(Object obj) {
     if (!(obj instanceof ParallelQueryHint)) return false;
     ParallelQueryHint other = (ParallelQueryHint) obj;
-    return new EqualsBuilder().append(ofNullable(degreeOfParallelism).orElse(null), ofNullable(other.degreeOfParallelism).orElse(null)).isEquals();
+    return new EqualsBuilder().append(degreeOfParallelism, other.degreeOfParallelism).isEquals();
   }
 
 }
