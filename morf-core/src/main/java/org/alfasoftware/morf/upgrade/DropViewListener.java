@@ -7,7 +7,7 @@ import com.google.inject.ImplementedBy;
 
 /**
  *
- * Listener for calls to {@link ViewChangesDeploymentHelper#dropView(View)}.
+ * Listener for calls to {@link ViewChangesDeploymentHelper#dropViewIfExists(View, boolean)}.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2021
  */
@@ -15,7 +15,7 @@ import com.google.inject.ImplementedBy;
 public interface DropViewListener {
 
   /**
-   * Called during {@link ViewChangesDeploymentHelper#dropView(View)}.
+   * Called during {@link ViewChangesDeploymentHelper#dropViewIfExists(View, boolean)}.
    *
    * @param view View being dropped.
    * @return Should return statements to be part of view removal.
