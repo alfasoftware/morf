@@ -160,6 +160,7 @@ public class Deployment {
    * @param targetSchema The target database schema.
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
    * @param connectionResources Connection details for the database.
+   * @param viewChangesDeploymentHelper Provide a {@link ViewChangesDeploymentHelper}.
    */
   public static void deploySchema(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, ViewChangesDeploymentHelper viewChangesDeploymentHelper) {
     UpgradeStatusTableServiceImpl upgradeStatusTableService = new UpgradeStatusTableServiceImpl(

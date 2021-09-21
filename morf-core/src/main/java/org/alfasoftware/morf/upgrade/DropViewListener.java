@@ -7,7 +7,7 @@ import com.google.inject.ImplementedBy;
 
 /**
  *
- * Listener for calls to {@link ViewChangesDeploymentHelper#dropView(View).
+ * Listener for calls to {@link ViewChangesDeploymentHelper#dropView(View)}.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2021
  */
@@ -15,9 +15,10 @@ import com.google.inject.ImplementedBy;
 public interface DropViewListener {
 
   /**
-   * Called during {@link ViewChangesDeploymentHelper#dropView(View).
+   * Called during {@link ViewChangesDeploymentHelper#dropView(View)}.
    *
-   * @return Should return statements to be part of view creation.
+   * @param view View being dropped.
+   * @return Should return statements to be part of view removal.
    */
   public Iterable<String> dropView(View view);
 
@@ -28,6 +29,5 @@ public interface DropViewListener {
     public Iterable<String> dropView(View view) {
       return ImmutableList.of();
     }
-
   }
 }

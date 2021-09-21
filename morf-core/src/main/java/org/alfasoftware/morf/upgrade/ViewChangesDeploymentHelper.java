@@ -83,7 +83,6 @@ public class ViewChangesDeploymentHelper {
    *
    * @param view View to be dropped.
    * @param updateDeloyedViews Whether to update the DeployedViews table.
-   * @param dropTheView Whether to actually drop the view from the database.
    * @return SQL statements to be run to drop the view.
    */
   public List<String> dropViewIfExists(View view, boolean updateDeloyedViews) {
