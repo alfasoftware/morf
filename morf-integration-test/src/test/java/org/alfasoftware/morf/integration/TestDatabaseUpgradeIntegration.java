@@ -112,6 +112,7 @@ import org.alfasoftware.morf.upgrade.LoggingSqlScriptVisitor;
 import org.alfasoftware.morf.upgrade.Upgrade;
 import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsException;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
+import org.alfasoftware.morf.upgrade.ViewChangesDeploymentHelper;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -1085,7 +1086,8 @@ public class TestDatabaseUpgradeIntegration {
    * @param upgradeSteps The upgrade steps to test
    */
   private void verifyUpgrade(Schema expectedSchema, List<Class<? extends UpgradeStep>> upgradeSteps) {
-    Upgrade.performUpgrade(expectedSchema, upgradeSteps, connectionResources);
+    ViewChangesDeploymentHelper viewChangesDeploymentHelper = new ViewChangesDeploymentHelper(connectionResources.sqlDialect());
+    Upgrade.performUpgrade(expectedSchema, upgradeSteps, connectionResources, viewChangesDeploymentHelper);
     compareSchema(expectedSchema);
   }
 

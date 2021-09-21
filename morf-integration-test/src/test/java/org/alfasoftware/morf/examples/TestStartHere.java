@@ -51,6 +51,7 @@ import org.alfasoftware.morf.upgrade.UUID;
 import org.alfasoftware.morf.upgrade.Upgrade;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
 import org.alfasoftware.morf.upgrade.Version;
+import org.alfasoftware.morf.upgrade.ViewChangesDeploymentHelper;
 import org.junit.Test;
 
 import com.google.common.collect.FluentIterable;
@@ -98,7 +99,7 @@ public class TestStartHere {
     connectionResources.setPassword("test");
 
     // Deploy the schema
-    Deployment.deploySchema(targetSchema, upgradeSteps, connectionResources);
+    Deployment.deploySchema(targetSchema, upgradeSteps, connectionResources, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()));
 
     // Confirm that the database has been correctly initialised
     withCurrentDatabase(connectionResources, dataSetProducer -> {
@@ -127,7 +128,7 @@ public class TestStartHere {
     upgradeSteps.add(CreateTest3.class);
 
     // Run the upgrade
-    Upgrade.performUpgrade(targetSchema, upgradeSteps, connectionResources);
+    Upgrade.performUpgrade(targetSchema, upgradeSteps, connectionResources, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()));
 
     // Confirm that the database has been correctly upgraded
     withCurrentDatabase(connectionResources, dataSetProducer -> {

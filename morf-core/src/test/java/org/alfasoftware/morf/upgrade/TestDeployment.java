@@ -50,7 +50,6 @@ import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
-import org.alfasoftware.morf.upgrade.db.DeployedViewsDefSqlDialectProvider;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -110,7 +109,7 @@ public class TestDeployment {
     );
 
     // When
-    Deployment deployment = new Deployment(dialect, executorProvider, upgradePathFactory, new DeployedViewsDefSqlDialectProvider.ImplicitSqlDialect(dialect));
+    Deployment deployment = new Deployment(dialect, executorProvider, upgradePathFactory, new ViewChangesDeploymentHelper(dialect));
     UpgradePath path = deployment.getPath(targetSchema, Lists.<Class<? extends UpgradeStep>>newArrayList());
 
     // Then
@@ -150,7 +149,7 @@ public class TestDeployment {
     );
 
 
-    Deployment deployment = new Deployment(dialect, executorProvider, upgradePathFactory, new DeployedViewsDefSqlDialectProvider.ImplicitSqlDialect(dialect));
+    Deployment deployment = new Deployment(dialect, executorProvider, upgradePathFactory, new ViewChangesDeploymentHelper(dialect));
     UpgradePath path = deployment.getPath(targetSchema, Lists.<Class<? extends UpgradeStep>>newArrayList());
 
     // Then
@@ -191,7 +190,7 @@ public class TestDeployment {
     Schema targetSchema = schema(testTable);
 
     // When
-    Deployment deployment = new Deployment(dialect, executorProvider, upgradePathFactory, new DeployedViewsDefSqlDialectProvider.ImplicitSqlDialect(dialect));
+    Deployment deployment = new Deployment(dialect, executorProvider, upgradePathFactory, new ViewChangesDeploymentHelper(dialect));
     UpgradePath path = deployment.getPath(targetSchema, stepsToApply);
 
     // Then

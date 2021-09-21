@@ -16,12 +16,6 @@
 package org.alfasoftware.morf.upgrade;
 
 import static org.alfasoftware.morf.metadata.SchemaUtils.copy;
-import static org.alfasoftware.morf.sql.SqlUtils.delete;
-import static org.alfasoftware.morf.sql.SqlUtils.field;
-import static org.alfasoftware.morf.sql.SqlUtils.insert;
-import static org.alfasoftware.morf.sql.SqlUtils.literal;
-import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -39,13 +33,12 @@ import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaValidator;
 import org.alfasoftware.morf.metadata.View;
-import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.upgrade.ExistingViewStateLoader.Result;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
 import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsException;
 import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
-import org.alfasoftware.morf.upgrade.db.DeployedViewsDefSqlDialectProvider;
+import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -64,20 +57,20 @@ public class Upgrade {
   private final ConnectionResources connectionResources;
   private final DataSource dataSource;
   private final UpgradeStatusTableService upgradeStatusTableService;
-  private final DeployedViewsDefSqlDialectProvider deployedViewsDefSqlDialectProvider;
+  private final ViewChangesDeploymentHelper viewChangesDeploymentHelper;
 
 
   /**
    * Injected Constructor.
    */
   @Inject
-  Upgrade(ConnectionResources connectionResources, DataSource dataSource, UpgradePathFactory factory, UpgradeStatusTableService upgradeStatusTableService, DeployedViewsDefSqlDialectProvider deployedViewsDefSqlDialectProvider) {
+  Upgrade(ConnectionResources connectionResources, DataSource dataSource, UpgradePathFactory factory, UpgradeStatusTableService upgradeStatusTableService, ViewChangesDeploymentHelper viewChangesDeploymentHelper) {
     super();
     this.connectionResources = connectionResources;
     this.dataSource = dataSource;
     this.factory = factory;
     this.upgradeStatusTableService = upgradeStatusTableService;
-    this.deployedViewsDefSqlDialectProvider = deployedViewsDefSqlDialectProvider;
+    this.viewChangesDeploymentHelper = viewChangesDeploymentHelper;
   }
 
 
@@ -89,23 +82,17 @@ public class Upgrade {
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
    * @param connectionResources Connection details for the database.
    */
-  public static void performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, DeployedViewsDefSqlDialectProvider deployedViewsDefSqlDialectProvider) {
+  public static void performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, ViewChangesDeploymentHelper viewChangesDeploymentHelper) {
     SqlScriptExecutorProvider sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
     UpgradeStatusTableService upgradeStatusTableService = new UpgradeStatusTableServiceImpl(sqlScriptExecutorProvider, connectionResources.sqlDialect());
     try {
-      UpgradePath path = Upgrade.createPath(targetSchema, upgradeSteps, connectionResources, upgradeStatusTableService, deployedViewsDefSqlDialectProvider);
+      UpgradePath path = Upgrade.createPath(targetSchema, upgradeSteps, connectionResources, upgradeStatusTableService, viewChangesDeploymentHelper);
       if (path.hasStepsToApply()) {
         sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor()).execute(path.getSql());
       }
     } finally {
       upgradeStatusTableService.tidyUp(connectionResources.getDataSource());
     }
-  }
-
-
-  @Deprecated
-  public static void performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources) {
-    performUpgrade(targetSchema, upgradeSteps, connectionResources, connectionResources::sqlDialect);
   }
 
 
@@ -121,16 +108,11 @@ public class Upgrade {
    *
    * @return The required upgrade path.
    */
-  public static UpgradePath createPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeStatusTableService upgradeStatusTableService, DeployedViewsDefSqlDialectProvider deployedViewsDefSqlDialectProvider) {
+  public static UpgradePath createPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeStatusTableService upgradeStatusTableService, ViewChangesDeploymentHelper viewChangesDeploymentHelper) {
     return new Upgrade(connectionResources, connectionResources.getDataSource(),
         new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition> emptySet(), upgradeStatusTableService),
-                       upgradeStatusTableService, deployedViewsDefSqlDialectProvider)
+                       upgradeStatusTableService, viewChangesDeploymentHelper)
            .findPath(targetSchema, upgradeSteps, Collections.<String> emptySet());
-  }
-
-  @Deprecated
-  public static UpgradePath createPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeStatusTableService upgradeStatusTableService) {
-    return createPath(targetSchema, upgradeSteps, connectionResources, upgradeStatusTableService, connectionResources::sqlDialect);
   }
 
 
@@ -242,33 +224,17 @@ public class Upgrade {
       List<UpgradeStep> upgradesToApply) {
 
     UpgradePath path = factory.create(upgradesToApply, dialect);
+
+    final boolean deleteFromDeployedViews = sourceSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME) && targetSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME);
     for (View view : viewChanges.getViewsToDrop()) {
-      // non-present views can be listed amongst ViewsToDrop due to how we calculate dependencies
-      if (sourceSchema.viewExists(view.getName())) {
-        path.writeSql(dialect.dropStatements(view));
-      } else if (log.isDebugEnabled()) {
-        log.debug("View " + view.getName() + " not present; skipping drop statement");
-      }
-      if (sourceSchema.tableExists(DEPLOYED_VIEWS_NAME) && targetSchema.tableExists(DEPLOYED_VIEWS_NAME)) {
-        path.writeSql(ImmutableList.of(
-          dialect.convertStatementToSQL(
-            delete(tableRef(DEPLOYED_VIEWS_NAME)).where(Criterion.eq(field("name"), view.getName().toUpperCase()))
-          )));
-      }
+      path.writeSql(viewChangesDeploymentHelper.dropViewIfExists(view, sourceSchema.viewExists(view.getName()), deleteFromDeployedViews));
     }
 
     path.writeSql(upgradeStatements);
 
+    final boolean insertToDeployedViews = targetSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME);
     for (View view : viewChanges.getViewsToDeploy()) {
-      path.writeSql(dialect.viewDeploymentStatements(view));
-      if (targetSchema.tableExists(DEPLOYED_VIEWS_NAME)) {
-        path.writeSql(ImmutableList.of(dialect.convertStatementToSQL(
-            insert().into(tableRef(DEPLOYED_VIEWS_NAME))
-              .fields(literal(view.getName().toUpperCase()).as("name"),
-                      literal(dialect.convertStatementToHash(view.getSelectStatement())).as("hash"),
-                      literal(deployedViewsDefSqlDialectProvider.get().viewDeploymentStatementsAsScript(view)).as("sqlDefinition")),
-            targetSchema)));
-      }
+      path.writeSql(viewChangesDeploymentHelper.createView(view, insertToDeployedViews));
     }
 
     // Since Oracle is not able to re-map schema references in trigger code, we need to rebuild all triggers
