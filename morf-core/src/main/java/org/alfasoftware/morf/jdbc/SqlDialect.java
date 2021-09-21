@@ -234,9 +234,8 @@ public abstract class SqlDialect {
    */
   public String viewDeploymentStatementsAsScript(View view) {
     final String firstLine = "-- " + getDatabaseType().identifier() + "\n";
-    String viewDefinition = viewDeploymentStatements(view)
+    return viewDeploymentStatements(view)
         .stream().collect(Collectors.joining(";\n", firstLine, ";"));
-    return viewDefinition;
   }
 
 

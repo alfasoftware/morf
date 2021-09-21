@@ -6,7 +6,7 @@ import org.alfasoftware.morf.upgrade.UpgradeStep;
 
 import com.google.common.collect.ImmutableList;
 
-public final class UpgradeSteps {
+public class UpgradeSteps {
 
   public static final List<Class<? extends UpgradeStep>> LIST = ImmutableList.of(
     AddDeployedViewsSqlDefinition.class
