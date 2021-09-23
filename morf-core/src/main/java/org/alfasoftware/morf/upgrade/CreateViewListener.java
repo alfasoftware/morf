@@ -7,7 +7,7 @@ import com.google.inject.ImplementedBy;
 
 /**
  *
- * Listener for calls to {@link ViewChangesDeploymentHelper#createView(View, boolean)}.
+ * Listener for calls to {@link ViewChangesDeploymentHelper#createView(View)}.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2021
  */
@@ -15,18 +15,21 @@ import com.google.inject.ImplementedBy;
 public interface CreateViewListener {
 
   /**
-   * Called during {@link ViewChangesDeploymentHelper#createView(View, boolean)}.
+   * Called during {@link ViewChangesDeploymentHelper#createView(View)}.
    *
    * @param view View being created.
-   * @return Should return statements to be part of view creation.
+   * @return Should return statements to be part of view creation, after the view has been created.
    */
-  public Iterable<String> createView(View view);
+  public Iterable<String> registerView(View view);
 
 
+  /**
+   * Empty implementation.
+   */
   class NoOp implements CreateViewListener {
 
     @Override
-    public Iterable<String> createView(View view) {
+    public Iterable<String> registerView(View view) {
       return ImmutableList.of();
     }
   }

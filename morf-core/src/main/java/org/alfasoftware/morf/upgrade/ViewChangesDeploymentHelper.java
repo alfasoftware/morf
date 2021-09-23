@@ -49,10 +49,21 @@ public class ViewChangesDeploymentHelper {
    * Creates SQL statements for creating given view.
    *
    * @param view View to be created.
+   * @return SQL statements to be run to create the view.
+   */
+  public List<String> createView(View view) {
+    return createView(view, true);
+  }
+
+
+  /**
+   * Creates SQL statements for creating given view.
+   *
+   * @param view View to be created.
    * @param updateDeloyedViews Whether to update the DeployedViews table.
    * @return SQL statements to be run to create the view.
    */
-  public List<String> createView(View view, boolean updateDeloyedViews) {
+  List<String> createView(View view, boolean updateDeloyedViews) {
     Builder<String> builder = ImmutableList.builder();
 
     // create the view
@@ -72,9 +83,20 @@ public class ViewChangesDeploymentHelper {
     }
 
     // add statements from the listener
-    builder.addAll(createViewListener.createView(view));
+    builder.addAll(createViewListener.registerView(view));
 
     return builder.build();
+  }
+
+
+  /**
+   * Creates SQL statements for dropping given view.
+   *
+   * @param view View to be dropped.
+   * @return SQL statements to be run to drop the view.
+   */
+  public List<String> dropViewIfExists(View view) {
+    return dropViewIfExists(view, true, true);
   }
 
 
@@ -85,8 +107,20 @@ public class ViewChangesDeploymentHelper {
    * @param updateDeloyedViews Whether to update the DeployedViews table.
    * @return SQL statements to be run to drop the view.
    */
-  public List<String> dropViewIfExists(View view, boolean updateDeloyedViews) {
+  List<String> dropViewIfExists(View view, boolean updateDeloyedViews) {
     return dropViewIfExists(view, true, updateDeloyedViews);
+  }
+
+
+  /**
+   * Creates SQL statements for removing given view from the view register.
+   *
+   * @param view View to be dropped.
+   * @param updateDeloyedViews Whether to update the DeployedViews table.
+   * @return SQL statements to be run to drop the view.
+   */
+  List<String> deregisterViewIfExists(View view, boolean updateDeloyedViews) {
+    return dropViewIfExists(view, false, updateDeloyedViews);
   }
 
 
@@ -98,7 +132,7 @@ public class ViewChangesDeploymentHelper {
    * @param dropTheView Whether to actually drop the view from the database.
    * @return SQL statements to be run to drop the view.
    */
-  public List<String> dropViewIfExists(View view, boolean dropTheView, boolean updateDeloyedViews) {
+  private List<String> dropViewIfExists(View view, boolean dropTheView, boolean updateDeloyedViews) {
     Builder<String> builder = ImmutableList.builder();
 
     // drop the view
@@ -115,9 +149,21 @@ public class ViewChangesDeploymentHelper {
         ));
     }
 
-    // add statements from the listener
-    builder.addAll(dropViewListener.dropView(view));
+    // call the listener
+    builder.addAll(dropViewListener.deregisterView(view));
 
     return builder.build();
+  }
+
+
+  /**
+   * Creates SQL statements for removing all views from the view register.
+   *
+   * @return SQL statements to be run to de-register all views.
+   */
+  public List<String> deregisterAllViews() {
+    return ImmutableList.of(sqlDialect.convertStatementToSQL(
+      delete(tableRef(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME))
+    ));
   }
 }

@@ -7,7 +7,7 @@ import com.google.inject.ImplementedBy;
 
 /**
  *
- * Listener for calls to {@link ViewChangesDeploymentHelper#dropViewIfExists(View, boolean)}.
+ * Listener for calls to {@link ViewChangesDeploymentHelper#dropViewIfExists(View)}.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2021
  */
@@ -15,18 +15,21 @@ import com.google.inject.ImplementedBy;
 public interface DropViewListener {
 
   /**
-   * Called during {@link ViewChangesDeploymentHelper#dropViewIfExists(View, boolean)}.
+   * Called during {@link ViewChangesDeploymentHelper#dropViewIfExists(View)}.
    *
-   * @param view View being dropped.
-   * @return Should return statements to be part of view removal.
+   * @param view View being de-registered.
+   * @return Should return statements to be part of view removal, after the view is de-registered.
    */
-  public Iterable<String> dropView(View view);
+  public Iterable<String> deregisterView(View view);
 
 
+  /**
+   * Empty implementation.
+   */
   class NoOp implements DropViewListener {
 
     @Override
-    public Iterable<String> dropView(View view) {
+    public Iterable<String> deregisterView(View view) {
       return ImmutableList.of();
     }
   }

@@ -228,7 +228,12 @@ public class Upgrade {
 
     final boolean deleteFromDeployedViews = sourceSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME) && targetSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME);
     for (View view : viewChanges.getViewsToDrop()) {
-      path.writeSql(viewChangesDeploymentHelper.dropViewIfExists(view, sourceSchema.viewExists(view.getName()), deleteFromDeployedViews));
+      if (sourceSchema.viewExists(view.getName())) {
+        path.writeSql(viewChangesDeploymentHelper.dropViewIfExists(view, deleteFromDeployedViews));
+      }
+      else {
+        path.writeSql(viewChangesDeploymentHelper.deregisterViewIfExists(view, deleteFromDeployedViews));
+      }
     }
 
     path.writeSql(upgradeStatements);

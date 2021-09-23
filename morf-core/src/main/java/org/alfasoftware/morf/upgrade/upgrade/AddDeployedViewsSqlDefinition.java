@@ -17,7 +17,7 @@ class AddDeployedViewsSqlDefinition implements UpgradeStep {
 
   @Override
   public String getJiraId() {
-    return "WEB-122709";
+    return "MORF-20";
   }
 
 
