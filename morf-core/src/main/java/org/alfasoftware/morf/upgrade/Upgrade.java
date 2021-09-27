@@ -81,13 +81,12 @@ public class Upgrade {
    * @param targetSchema The target database schema.
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
    * @param connectionResources Connection details for the database.
-   * @param viewChangesDeploymentHelper Provide a {@link ViewChangesDeploymentHelper}.
    */
-  public static void performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, ViewChangesDeploymentHelper viewChangesDeploymentHelper) {
+  public static void performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources) {
     SqlScriptExecutorProvider sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
     UpgradeStatusTableService upgradeStatusTableService = new UpgradeStatusTableServiceImpl(sqlScriptExecutorProvider, connectionResources.sqlDialect());
     try {
-      UpgradePath path = Upgrade.createPath(targetSchema, upgradeSteps, connectionResources, upgradeStatusTableService, viewChangesDeploymentHelper);
+      UpgradePath path = Upgrade.createPath(targetSchema, upgradeSteps, connectionResources, upgradeStatusTableService);
       if (path.hasStepsToApply()) {
         sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor()).execute(path.getSql());
       }
@@ -106,14 +105,15 @@ public class Upgrade {
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
    * @param connectionResources Connection details for the database.
    * @param upgradeStatusTableService Service used to manage the upgrade status coordination table.
-   * @param viewChangesDeploymentHelper Provide a {@link ViewChangesDeploymentHelper}.
    * @return The required upgrade path.
    */
-  public static UpgradePath createPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeStatusTableService upgradeStatusTableService, ViewChangesDeploymentHelper viewChangesDeploymentHelper) {
-    return new Upgrade(connectionResources, connectionResources.getDataSource(),
-        new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition> emptySet(), upgradeStatusTableService),
-                       upgradeStatusTableService, viewChangesDeploymentHelper)
-           .findPath(targetSchema, upgradeSteps, Collections.<String> emptySet());
+  public static UpgradePath createPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeStatusTableService upgradeStatusTableService) {
+    Upgrade upgrade = new Upgrade(
+      connectionResources, connectionResources.getDataSource(),
+      new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition> emptySet(), upgradeStatusTableService),
+      upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect())
+    );
+    return upgrade.findPath(targetSchema, upgradeSteps, Collections.<String> emptySet());
   }
 
 

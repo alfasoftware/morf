@@ -93,12 +93,13 @@ public class Deployment {
   /**
    * Constructor for use by {@link DeploymentFactory}.
    */
-  private Deployment(UpgradePathFactory upgradePathFactory, @Assisted ConnectionResources connectionResources, ViewChangesDeploymentHelper viewChangesDeploymentHelper) {
+  private Deployment(UpgradePathFactory upgradePathFactory, @Assisted ConnectionResources connectionResources) {
     super();
-    this.viewChangesDeploymentHelper = viewChangesDeploymentHelper;
     this.sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
     this.sqlDialect = connectionResources.sqlDialect();
     this.upgradePathFactory = upgradePathFactory;
+
+    this.viewChangesDeploymentHelper = new ViewChangesDeploymentHelper(sqlDialect);
   }
 
 
@@ -160,15 +161,14 @@ public class Deployment {
    * @param targetSchema The target database schema.
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
    * @param connectionResources Connection details for the database.
-   * @param viewChangesDeploymentHelper Provide a {@link ViewChangesDeploymentHelper}.
    */
-  public static void deploySchema(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, ViewChangesDeploymentHelper viewChangesDeploymentHelper) {
+  public static void deploySchema(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources) {
     UpgradeStatusTableServiceImpl upgradeStatusTableService = new UpgradeStatusTableServiceImpl(
       new SqlScriptExecutorProvider(connectionResources), connectionResources.sqlDialect());
     try {
       new Deployment(
         new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition>emptySet(), upgradeStatusTableService),
-        connectionResources, viewChangesDeploymentHelper
+        connectionResources
       ).deploy(targetSchema, upgradeSteps);
     } finally {
       upgradeStatusTableService.tidyUp(connectionResources.getDataSource());
@@ -239,17 +239,15 @@ public class Deployment {
   static final class DeploymentFactoryImpl implements DeploymentFactory {
 
     private final UpgradePathFactory upgradePathFactory;
-    private final ViewChangesDeploymentHelper viewChangesDeploymentHelper;
 
     @Inject
-    public DeploymentFactoryImpl(UpgradePathFactory upgradePathFactory, ViewChangesDeploymentHelper viewChangesDeploymentHelper) {
+    public DeploymentFactoryImpl(UpgradePathFactory upgradePathFactory) {
       this.upgradePathFactory = upgradePathFactory;
-      this.viewChangesDeploymentHelper = viewChangesDeploymentHelper;
     }
 
     @Override
     public Deployment create(ConnectionResources connectionResources) {
-      return new Deployment(upgradePathFactory, connectionResources, viewChangesDeploymentHelper);
+      return new Deployment(upgradePathFactory, connectionResources);
     }
   }
 }
