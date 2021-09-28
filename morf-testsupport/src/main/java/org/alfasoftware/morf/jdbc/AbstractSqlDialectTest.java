@@ -26,7 +26,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.metadata.SchemaUtils.versionColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.view;
-import static org.alfasoftware.morf.sql.SqlUtils.blob;
+import static org.alfasoftware.morf.sql.SqlUtils.blobLiteral;
 import static org.alfasoftware.morf.sql.SqlUtils.bracket;
 import static org.alfasoftware.morf.sql.SqlUtils.cast;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
@@ -2165,8 +2165,8 @@ public abstract class AbstractSqlDialectTest {
   public void testUpdateWithLiteralValues() {
     UpdateStatement stmt = update(tableRef(TEST_TABLE))
       .set(literal("Value").as(STRING_FIELD))
-      .set(blob(NEW_BLOB_VALUE).as("blobFieldOne"))
-      .set(blob(NEW_BLOB_VALUE.getBytes(StandardCharsets.UTF_8)).as("blobFieldTwo"))
+      .set(blobLiteral(NEW_BLOB_VALUE).as("blobFieldOne"))
+      .set(blobLiteral(NEW_BLOB_VALUE.getBytes(StandardCharsets.UTF_8)).as("blobFieldTwo"))
       .where(and(
         field("field1").eq(true),
         field("field2").eq(false),
@@ -2176,8 +2176,8 @@ public abstract class AbstractSqlDialectTest {
         field("field6").eq(literal(new LocalDate(2010, 1, 2))),
         field("field7").eq("Value"),
         field("field8").eq(literal("Value")),
-        field("field9").eq(blob(OLD_BLOB_VALUE)),
-        field("field10").eq(blob(OLD_BLOB_VALUE.getBytes(StandardCharsets.UTF_8)))
+        field("field9").eq(blobLiteral(OLD_BLOB_VALUE)),
+        field("field10").eq(blobLiteral(OLD_BLOB_VALUE.getBytes(StandardCharsets.UTF_8)))
       ));
     assertEquals(
       "Update with literal values",
