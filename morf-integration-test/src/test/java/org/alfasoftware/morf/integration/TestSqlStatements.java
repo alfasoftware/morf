@@ -22,7 +22,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
-import static org.alfasoftware.morf.sql.SqlUtils.blob;
+import static org.alfasoftware.morf.sql.SqlUtils.blobLiteral;
 import static org.alfasoftware.morf.sql.SqlUtils.caseStatement;
 import static org.alfasoftware.morf.sql.SqlUtils.cast;
 import static org.alfasoftware.morf.sql.SqlUtils.concat;
@@ -48,7 +48,41 @@ import static org.alfasoftware.morf.sql.element.Criterion.in;
 import static org.alfasoftware.morf.sql.element.Criterion.like;
 import static org.alfasoftware.morf.sql.element.Criterion.not;
 import static org.alfasoftware.morf.sql.element.Criterion.or;
-import static org.alfasoftware.morf.sql.element.Function.*;
+import static org.alfasoftware.morf.sql.element.Function.addDays;
+import static org.alfasoftware.morf.sql.element.Function.average;
+import static org.alfasoftware.morf.sql.element.Function.averageDistinct;
+import static org.alfasoftware.morf.sql.element.Function.blobLength;
+import static org.alfasoftware.morf.sql.element.Function.coalesce;
+import static org.alfasoftware.morf.sql.element.Function.count;
+import static org.alfasoftware.morf.sql.element.Function.countDistinct;
+import static org.alfasoftware.morf.sql.element.Function.dateToYyyyMMddHHmmss;
+import static org.alfasoftware.morf.sql.element.Function.dateToYyyymmdd;
+import static org.alfasoftware.morf.sql.element.Function.daysBetween;
+import static org.alfasoftware.morf.sql.element.Function.every;
+import static org.alfasoftware.morf.sql.element.Function.floor;
+import static org.alfasoftware.morf.sql.element.Function.greatest;
+import static org.alfasoftware.morf.sql.element.Function.isnull;
+import static org.alfasoftware.morf.sql.element.Function.lastDayOfMonth;
+import static org.alfasoftware.morf.sql.element.Function.least;
+import static org.alfasoftware.morf.sql.element.Function.leftPad;
+import static org.alfasoftware.morf.sql.element.Function.leftTrim;
+import static org.alfasoftware.morf.sql.element.Function.length;
+import static org.alfasoftware.morf.sql.element.Function.lowerCase;
+import static org.alfasoftware.morf.sql.element.Function.max;
+import static org.alfasoftware.morf.sql.element.Function.mod;
+import static org.alfasoftware.morf.sql.element.Function.monthsBetween;
+import static org.alfasoftware.morf.sql.element.Function.now;
+import static org.alfasoftware.morf.sql.element.Function.power;
+import static org.alfasoftware.morf.sql.element.Function.random;
+import static org.alfasoftware.morf.sql.element.Function.randomString;
+import static org.alfasoftware.morf.sql.element.Function.rightTrim;
+import static org.alfasoftware.morf.sql.element.Function.some;
+import static org.alfasoftware.morf.sql.element.Function.substring;
+import static org.alfasoftware.morf.sql.element.Function.sum;
+import static org.alfasoftware.morf.sql.element.Function.sumDistinct;
+import static org.alfasoftware.morf.sql.element.Function.trim;
+import static org.alfasoftware.morf.sql.element.Function.upperCase;
+import static org.alfasoftware.morf.sql.element.Function.yyyymmddToDate;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.instanceOf;
@@ -102,7 +136,12 @@ import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.sql.*;
+import org.alfasoftware.morf.sql.InsertStatement;
+import org.alfasoftware.morf.sql.MergeStatement;
+import org.alfasoftware.morf.sql.SelectFirstStatement;
+import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.sql.TruncateStatement;
+import org.alfasoftware.morf.sql.UpdateStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.CaseStatement;
 import org.alfasoftware.morf.sql.element.Cast;
@@ -1593,20 +1632,20 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         InsertStatement insertStatement = insert()
                 .into(tableRef("BlobTable"))
                 .fields(field("column1"), field("column2"))
-                .values(blob(BLOB1_VALUE).as("column1"), SqlUtils.blob(BLOB2_VALUE.getBytes()).as("column2"));
+                .values(blobLiteral(BLOB1_VALUE).as("column1"), blobLiteral(BLOB2_VALUE.getBytes()).as("column2"));
         SelectStatement selectStatementAfterInsert = select(field("column1"), field("column2"))
                 .from(tableRef("BlobTable"))
                 .where(or(
-                        field("column1").eq(SqlUtils.blob(BLOB1_VALUE.getBytes())),
-                        field("column1").eq(blob(BLOB1_VALUE))
+                        field("column1").eq(blobLiteral(BLOB1_VALUE.getBytes())),
+                        field("column1").eq(blobLiteral(BLOB1_VALUE))
                 ));
         UpdateStatement updateStatement = update(tableRef("BlobTable"))
-                .set(blob(BLOB1_VALUE + " Updated").as("column1"), SqlUtils.blob((BLOB2_VALUE + " Updated").getBytes()).as("column2"));
+                .set(blobLiteral(BLOB1_VALUE + " Updated").as("column1"), blobLiteral((BLOB2_VALUE + " Updated").getBytes()).as("column2"));
         SelectStatement selectStatementAfterUpdate = select(field("column1"), field("column2"))
                 .from(tableRef("BlobTable"))
                 .where(or(
-                        field("column1").eq(SqlUtils.blob((BLOB1_VALUE + " Updated").getBytes())),
-                        field("column1").eq(blob(BLOB1_VALUE + " Updated"))
+                        field("column1").eq(blobLiteral((BLOB1_VALUE + " Updated").getBytes())),
+                        field("column1").eq(blobLiteral(BLOB1_VALUE + " Updated"))
                 ));
 
         // Insert
