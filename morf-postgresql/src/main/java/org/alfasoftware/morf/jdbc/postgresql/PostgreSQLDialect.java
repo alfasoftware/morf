@@ -24,9 +24,15 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.DeleteStatementBuilder;
+import org.alfasoftware.morf.sql.Hint;
 import org.alfasoftware.morf.sql.MergeStatement;
+import org.alfasoftware.morf.sql.OptimiseForRowCount;
+import org.alfasoftware.morf.sql.ParallelQueryHint;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
+import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.SelectStatementBuilder;
+import org.alfasoftware.morf.sql.UseImplicitJoinOrder;
+import org.alfasoftware.morf.sql.UseIndex;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.Cast;
@@ -475,6 +481,39 @@ class PostgreSQLDialect extends SqlDialect {
     result.append(" LIMIT 1 OFFSET 0");
 
     return result.toString().trim();
+  }
+
+
+  @Override
+  protected String selectStatementPreFieldDirectives(SelectStatement selectStatement) {
+    StringBuilder builder = new StringBuilder();
+
+    for (Hint hint : selectStatement.getHints()) {
+      if (hint instanceof OptimiseForRowCount) {
+        // not available in pg_hint_plan
+      }
+      if (hint instanceof UseIndex) {
+        UseIndex useIndex = (UseIndex)hint;
+        builder.append(" IndexScan(")
+          .append(StringUtils.isEmpty(useIndex.getTable().getAlias()) ? useIndex.getTable().getName() : useIndex.getTable().getAlias())
+          .append(" ")
+          .append(useIndex.getIndexName().toLowerCase())
+          .append(")");
+      }
+      if (hint instanceof UseImplicitJoinOrder) {
+        // not available in pg_hint_plan
+        // actually, there is Leading hint, which we could abuse
+      }
+      if (hint instanceof ParallelQueryHint) {
+        // not available in pg_hint_plan
+      }
+    }
+
+    if (builder.length() == 0) {
+      return super.selectStatementPreFieldDirectives(selectStatement);
+    }
+
+    return "/*+" + builder.append(" */ ").toString();
   }
 
 
