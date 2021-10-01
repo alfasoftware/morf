@@ -429,6 +429,21 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
 
 
   /**
+   * Supplies a specified custom hint to the database for a query.
+   *
+   * @param customHint representation of a custom hint
+   *
+   * @return this, for method chaining.
+   */
+  public SelectStatement withCustomHint(CustomHint customHint) {
+      return copyOnWriteOrMutate(
+              (SelectStatementBuilder b) -> b.withCustomHint(customHint),
+              () -> this.hints.add(customHint)
+      );
+  }
+
+
+  /**
    * If supported by the dialect, hints to the database that joins should be applied in the order
    * they are written in the SQL statement.
    *
