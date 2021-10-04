@@ -121,6 +121,7 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.sql.CustomHint;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.MergeStatement;
@@ -3175,6 +3176,7 @@ public abstract class AbstractSqlDialectTest {
         .optimiseForRowCount(1000)
         .useImplicitJoinOrder()
         .withParallelQueryPlan()
+        .withCustomHint(mock(CustomHint.class))
       )
     );
     assertEquals(
@@ -3185,6 +3187,30 @@ public abstract class AbstractSqlDialectTest {
         .useParallelDml()
       )
     );
+    assertEquals(
+      expectedHints4(),
+      testDialect.convertStatementToSQL(
+        select()
+        .from(new TableReference("SCHEMA2", "Foo"))
+        .withCustomHint(provideCustomHint())
+      )
+    );
+    assertEquals(
+      expectedHints5(),
+      testDialect.convertStatementToSQL(
+        select()
+        .from(new TableReference("SCHEMA2", "Foo"))
+        .withCustomHint(mock(CustomHint.class))
+      )
+    );
+  }
+
+
+  /**
+   * This method can be overridden in specific dialects to test providing custom hints in each dialect
+   */
+  protected CustomHint provideCustomHint() {
+    return mock(CustomHint.class);
   }
 
 
@@ -5292,6 +5318,49 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+<<<<<<< HEAD
+=======
+   * @return The expected SQL for the {@link InsertStatement#useDirectPath()} directive.
+   */
+  protected String expectedHints4() {
+    return  "INSERT INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
+  }
+
+
+  /**
+   * @return The expected SQL when no hint directive is used on the {@link InsertStatement}.
+   */
+  private String expectedHints5() {
+    return  "INSERT INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
+  }
+
+
+  /**
+   * @return The expected SQL for the {@link SelectStatement#withParallelQueryPlan(int)} directive.
+   */
+  protected String expectedHints6() {
+    return "SELECT a, b FROM " + tableName("Foo") + " ORDER BY a";
+  }
+
+
+  /**
+   * @return The expected SQL for the {@link SelectStatement#withCustomHint()} directive. Testing the OracleDialect adds the hints successfully.
+   */
+  protected  String expectedHints7() {
+    return "SELECT * FROM SCHEMA2.Foo";
+  }
+
+
+  /**
+   * @return The expected SQL for the {@link SelectStatement#withCustomHint(CustomHint customHint)} directive. Testing all dialcts do not react to an empty hint being supplied.
+   */
+  protected  String expectedHints8() {
+    return "SELECT * FROM SCHEMA2.Foo";
+  }
+
+
+  /**
+>>>>>>> 0b1f82b (Changes to OracleDialect for provind a cusom hint + test coverage for all diaclets. Ensure we do not react to an empty custom hint for all dialects.)
    * @return the testDialect
    */
   public SqlDialect getTestDialect() {
