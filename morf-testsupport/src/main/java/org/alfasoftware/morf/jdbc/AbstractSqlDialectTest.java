@@ -123,6 +123,7 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.sql.CustomHint;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.MergeStatement;
@@ -3185,6 +3186,7 @@ public abstract class AbstractSqlDialectTest {
         .optimiseForRowCount(1000)
         .useImplicitJoinOrder()
         .withParallelQueryPlan()
+        .withCustomHint(mock(CustomHint.class))
       )
     );
     assertEquals(
@@ -3221,6 +3223,32 @@ public abstract class AbstractSqlDialectTest {
         .withParallelQueryPlan(5)
       )
     );
+
+    assertEquals(
+      expectedHints7(),
+      testDialect.convertStatementToSQL(
+        select()
+        .from(new TableReference("SCHEMA2", "Foo"))
+        .withCustomHint(provideCustomHint())
+      )
+    );
+
+    assertEquals(
+      expectedHints8(),
+      testDialect.convertStatementToSQL(
+        select()
+        .from(new TableReference("SCHEMA2", "Foo"))
+        .withCustomHint(mock(CustomHint.class))
+      )
+    );
+  }
+
+
+  /**
+   * This method can be overridden in specific dialects to test providing custom hints in each dialect
+   */
+  protected CustomHint provideCustomHint() {
+    return mock(CustomHint.class);
   }
 
 
@@ -5378,6 +5406,21 @@ public abstract class AbstractSqlDialectTest {
     return "SELECT a, b FROM " + tableName("Foo") + " ORDER BY a";
   }
 
+
+  /**
+   * @return The expected SQL for the {@link SelectStatement#withCustomHint()} directive. Testing the OracleDialect adds the hints successfully.
+   */
+  protected  String expectedHints7() {
+    return "SELECT * FROM SCHEMA2.Foo";
+  }
+
+
+  /**
+   * @return The expected SQL for the {@link SelectStatement#withCustomHint(CustomHint customHint)} directive. Testing all dialcts do not react to an empty hint being supplied.
+   */
+  protected  String expectedHints8() {
+    return "SELECT * FROM SCHEMA2.Foo";
+  }
 
 
   /**
