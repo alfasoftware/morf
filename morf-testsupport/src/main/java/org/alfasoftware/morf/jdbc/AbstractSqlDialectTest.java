@@ -3208,6 +3208,7 @@ public abstract class AbstractSqlDialectTest {
 
   /**
    * This method can be overridden in specific dialects to test providing custom hints in each dialect
+   * @return a mock CustomHint or an overridden, more specific, CustomHint
    */
   protected CustomHint provideCustomHint() {
     return mock(CustomHint.class);
