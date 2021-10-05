@@ -5324,7 +5324,7 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL for the {@link SelectStatement#withCustomHint(CustomHint customHint)} directive. Testing the OracleDialect adds the hints successfully.
    */
   protected  String expectedHints4() {
-    return "SELECT * FROM SCHEMA2.Foo";
+    return "SELECT * FROM SCHEMA2.Foo"; //NOSONAR
   }
 
 
@@ -5332,7 +5332,7 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL for the {@link SelectStatement#withCustomHint(CustomHint customHint)} directive. Testing all dialects do not react to an empty hint being supplied.
    */
   protected  String expectedHints5() {
-    return "SELECT * FROM SCHEMA2.Foo";
+    return "SELECT * FROM SCHEMA2.Foo"; //NOSONAR
   }
 
 
