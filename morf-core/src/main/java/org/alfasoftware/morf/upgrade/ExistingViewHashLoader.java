@@ -18,7 +18,6 @@ package org.alfasoftware.morf.upgrade;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -33,6 +32,7 @@ import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -74,17 +74,17 @@ class ExistingViewHashLoader {
    */
   Optional<Map<String, String>> loadViewHashes(Schema schema) {
 
-    if (!schema.tableExists(DEPLOYED_VIEWS_NAME)) {
+    if (!schema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME)) {
       return Optional.empty();
     }
 
     Map<String, String> result = Maps.newHashMap();
 
     // Query the database to load DeployedViews
-    SelectStatement upgradeAuditSelect = select(field("name"), field("hash")).from(tableRef(DEPLOYED_VIEWS_NAME));
+    SelectStatement upgradeAuditSelect = select(field("name"), field("hash")).from(tableRef(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME));
     String sql = dialect.convertStatementToSQL(upgradeAuditSelect);
 
-    if (log.isDebugEnabled()) log.debug("Loading " + DEPLOYED_VIEWS_NAME + " with SQL [" + sql + "]");
+    if (log.isDebugEnabled()) log.debug("Loading " + DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME + " with SQL [" + sql + "]");
 
     try (Connection connection = dataSource.getConnection();
          java.sql.Statement statement = connection.createStatement();
