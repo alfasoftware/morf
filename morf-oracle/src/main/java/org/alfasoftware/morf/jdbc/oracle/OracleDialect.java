@@ -45,6 +45,7 @@ import org.alfasoftware.morf.sql.DirectPathQueryHint;
 import org.alfasoftware.morf.sql.Hint;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.OptimiseForRowCount;
+import org.alfasoftware.morf.sql.OracleCustomHint;
 import org.alfasoftware.morf.sql.ParallelQueryHint;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
@@ -1221,11 +1222,7 @@ class OracleDialect extends SqlDialect {
    */
   @Override
   protected String selectStatementPreFieldDirectives(SelectStatement selectStatement) {
-    if (selectStatement.getHints().isEmpty()) {
-      return super.selectStatementPreFieldDirectives(selectStatement);
-    }
-
-    StringBuilder builder = new StringBuilder().append("/*+");
+    StringBuilder builder = new StringBuilder();
 
     for (Hint hint : selectStatement.getHints()) {
       if (hint instanceof OptimiseForRowCount) {
@@ -1250,9 +1247,17 @@ class OracleDialect extends SqlDialect {
         ParallelQueryHint parallelQueryHint = (ParallelQueryHint) hint;
         builder.append(parallelQueryHint.getDegreeOfParallelism().map(d -> " " + d).orElse(""));
       }
+      if (hint instanceof OracleCustomHint) {
+        builder.append(" ")
+        .append(((OracleCustomHint)hint).getCustomHint());
+      }
     }
 
-    return builder.append(" */ ").toString();
+    if (builder.length() == 0) {
+      return super.selectStatementPreFieldDirectives(selectStatement);
+    }
+
+    return "/*+" + builder.append(" */ ").toString();
   };
 
 

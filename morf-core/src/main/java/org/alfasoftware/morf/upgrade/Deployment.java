@@ -15,11 +15,6 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import static org.alfasoftware.morf.sql.SqlUtils.insert;
-import static org.alfasoftware.morf.sql.SqlUtils.literal;
-import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -39,6 +34,7 @@ import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
 import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
+import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 
 import com.google.inject.ImplementedBy;
 import com.google.inject.Inject;
@@ -79,15 +75,18 @@ public class Deployment {
 
   private final UpgradePathFactory upgradePathFactory;
 
+  private final ViewChangesDeploymentHelper viewChangesDeploymentHelper;
+
   /**
    * Constructor.
    */
   @Inject
-  Deployment(SqlDialect sqlDialect, SqlScriptExecutorProvider sqlScriptExecutorProvider, UpgradePathFactory upgradePathFactory) {
+  Deployment(SqlDialect sqlDialect, SqlScriptExecutorProvider sqlScriptExecutorProvider, UpgradePathFactory upgradePathFactory, ViewChangesDeploymentHelper viewChangesDeploymentHelper) {
     super();
     this.sqlDialect = sqlDialect;
     this.sqlScriptExecutorProvider = sqlScriptExecutorProvider;
     this.upgradePathFactory = upgradePathFactory;
+    this.viewChangesDeploymentHelper = viewChangesDeploymentHelper;
   }
 
 
@@ -99,6 +98,8 @@ public class Deployment {
     this.sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
     this.sqlDialect = connectionResources.sqlDialect();
     this.upgradePathFactory = upgradePathFactory;
+
+    this.viewChangesDeploymentHelper = new ViewChangesDeploymentHelper(sqlDialect);
   }
 
 
@@ -119,20 +120,11 @@ public class Deployment {
       sqlStatementWriter.writeSql(sqlDialect.tableDeploymentStatements(table));
     }
 
-    // Iterate through all the views and deploy them - will deploy in
-    // dependency order.
+    // Iterate through all the views and deploy them - will deploy in dependency order.
+    final boolean updateDeloyedViews = targetSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME);
     ViewChanges viewChanges = new ViewChanges(targetSchema.views(), new HashSet<>(), targetSchema.views());
     for (View view : viewChanges.getViewsToDeploy()) {
-      sqlStatementWriter.writeSql(sqlDialect.viewDeploymentStatements(view));
-      if (targetSchema.tableExists(DEPLOYED_VIEWS_NAME)) {
-        sqlStatementWriter.writeSql(
-          sqlDialect.convertStatementToSQL(
-            insert().into(tableRef(DEPLOYED_VIEWS_NAME))
-                                 .values(literal(view.getName().toUpperCase()).as("name"),
-                                         literal(sqlDialect.convertStatementToHash(view.getSelectStatement())).as("hash"))
-          )
-        );
-      }
+      sqlStatementWriter.writeSql(viewChangesDeploymentHelper.createView(view, updateDeloyedViews));
     }
   }
 

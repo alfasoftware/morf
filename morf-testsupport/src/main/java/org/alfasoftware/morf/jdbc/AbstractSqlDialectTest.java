@@ -26,7 +26,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.metadata.SchemaUtils.versionColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.view;
-import static org.alfasoftware.morf.sql.SqlUtils.blob;
+import static org.alfasoftware.morf.sql.SqlUtils.blobLiteral;
 import static org.alfasoftware.morf.sql.SqlUtils.bracket;
 import static org.alfasoftware.morf.sql.SqlUtils.cast;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
@@ -123,6 +123,7 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.sql.CustomHint;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.MergeStatement;
@@ -2165,8 +2166,8 @@ public abstract class AbstractSqlDialectTest {
   public void testUpdateWithLiteralValues() {
     UpdateStatement stmt = update(tableRef(TEST_TABLE))
       .set(literal("Value").as(STRING_FIELD))
-      .set(blob(NEW_BLOB_VALUE).as("blobFieldOne"))
-      .set(blob(NEW_BLOB_VALUE.getBytes(StandardCharsets.UTF_8)).as("blobFieldTwo"))
+      .set(blobLiteral(NEW_BLOB_VALUE).as("blobFieldOne"))
+      .set(blobLiteral(NEW_BLOB_VALUE.getBytes(StandardCharsets.UTF_8)).as("blobFieldTwo"))
       .where(and(
         field("field1").eq(true),
         field("field2").eq(false),
@@ -2176,8 +2177,8 @@ public abstract class AbstractSqlDialectTest {
         field("field6").eq(literal(new LocalDate(2010, 1, 2))),
         field("field7").eq("Value"),
         field("field8").eq(literal("Value")),
-        field("field9").eq(blob(OLD_BLOB_VALUE)),
-        field("field10").eq(blob(OLD_BLOB_VALUE.getBytes(StandardCharsets.UTF_8)))
+        field("field9").eq(blobLiteral(OLD_BLOB_VALUE)),
+        field("field10").eq(blobLiteral(OLD_BLOB_VALUE.getBytes(StandardCharsets.UTF_8)))
       ));
     assertEquals(
       "Update with literal values",
@@ -3185,6 +3186,7 @@ public abstract class AbstractSqlDialectTest {
         .optimiseForRowCount(1000)
         .useImplicitJoinOrder()
         .withParallelQueryPlan()
+        .withCustomHint(mock(CustomHint.class))
       )
     );
     assertEquals(
@@ -3221,6 +3223,33 @@ public abstract class AbstractSqlDialectTest {
         .withParallelQueryPlan(5)
       )
     );
+
+    assertEquals(
+      expectedHints7(),
+      testDialect.convertStatementToSQL(
+        select()
+        .from(new TableReference("SCHEMA2", "Foo"))
+        .withCustomHint(provideCustomHint())
+      )
+    );
+
+    assertEquals(
+      expectedHints8(),
+      testDialect.convertStatementToSQL(
+        select()
+        .from(new TableReference("SCHEMA2", "Foo"))
+        .withCustomHint(mock(CustomHint.class))
+      )
+    );
+  }
+
+
+  /**
+   * This method can be overridden in specific dialects to test providing custom hints in each dialect
+   * @return a mock CustomHint or an overridden, more specific, CustomHint
+   */
+  protected CustomHint provideCustomHint() {
+    return mock(CustomHint.class);
   }
 
 
@@ -5378,6 +5407,21 @@ public abstract class AbstractSqlDialectTest {
     return "SELECT a, b FROM " + tableName("Foo") + " ORDER BY a";
   }
 
+
+  /**
+   * @return The expected SQL for the {@link SelectStatement#withCustomHint(CustomHint customHint)} directive. Testing the OracleDialect adds the hints successfully.
+   */
+  protected  String expectedHints7() {
+    return "SELECT * FROM SCHEMA2.Foo"; //NOSONAR
+  }
+
+
+  /**
+   * @return The expected SQL for the {@link SelectStatement#withCustomHint(CustomHint customHint)} directive. Testing all dialcts do not react to an empty hint being supplied.
+   */
+  protected  String expectedHints8() {
+    return "SELECT * FROM SCHEMA2.Foo"; //NOSONAR
+  }
 
 
   /**

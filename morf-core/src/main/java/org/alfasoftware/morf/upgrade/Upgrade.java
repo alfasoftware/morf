@@ -16,12 +16,6 @@
 package org.alfasoftware.morf.upgrade;
 
 import static org.alfasoftware.morf.metadata.SchemaUtils.copy;
-import static org.alfasoftware.morf.sql.SqlUtils.delete;
-import static org.alfasoftware.morf.sql.SqlUtils.field;
-import static org.alfasoftware.morf.sql.SqlUtils.insert;
-import static org.alfasoftware.morf.sql.SqlUtils.literal;
-import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -39,12 +33,12 @@ import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaValidator;
 import org.alfasoftware.morf.metadata.View;
-import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.upgrade.ExistingViewStateLoader.Result;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
 import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsException;
 import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
+import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -63,18 +57,20 @@ public class Upgrade {
   private final ConnectionResources connectionResources;
   private final DataSource dataSource;
   private final UpgradeStatusTableService upgradeStatusTableService;
+  private final ViewChangesDeploymentHelper viewChangesDeploymentHelper;
 
 
   /**
    * Injected Constructor.
    */
   @Inject
-  Upgrade(ConnectionResources connectionResources, DataSource dataSource, UpgradePathFactory factory, UpgradeStatusTableService upgradeStatusTableService) {
+  Upgrade(ConnectionResources connectionResources, DataSource dataSource, UpgradePathFactory factory, UpgradeStatusTableService upgradeStatusTableService, ViewChangesDeploymentHelper viewChangesDeploymentHelper) {
     super();
     this.connectionResources = connectionResources;
     this.dataSource = dataSource;
     this.factory = factory;
     this.upgradeStatusTableService = upgradeStatusTableService;
+    this.viewChangesDeploymentHelper = viewChangesDeploymentHelper;
   }
 
 
@@ -109,16 +105,16 @@ public class Upgrade {
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
    * @param connectionResources Connection details for the database.
    * @param upgradeStatusTableService Service used to manage the upgrade status coordination table.
-   *
    * @return The required upgrade path.
    */
   public static UpgradePath createPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeStatusTableService upgradeStatusTableService) {
-    return new Upgrade(connectionResources, connectionResources.getDataSource(),
-        new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition> emptySet(), upgradeStatusTableService),
-                       upgradeStatusTableService)
-           .findPath(targetSchema, upgradeSteps, Collections.<String> emptySet());
+    Upgrade upgrade = new Upgrade(
+      connectionResources, connectionResources.getDataSource(),
+      new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition> emptySet(), upgradeStatusTableService),
+      upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect())
+    );
+    return upgrade.findPath(targetSchema, upgradeSteps, Collections.<String> emptySet());
   }
-
 
 
   /**
@@ -242,33 +238,21 @@ public class Upgrade {
 
     path.setParallelUpgrade(parallelUpgrade);
 
+    final boolean deleteFromDeployedViews = sourceSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME) && targetSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME);
     for (View view : viewChanges.getViewsToDrop()) {
-      // non-present views can be listed amongst ViewsToDrop due to how we calculate dependencies
       if (sourceSchema.viewExists(view.getName())) {
-        path.writeSql(dialect.dropStatements(view));
-      } else if (log.isDebugEnabled()) {
-        log.debug("View " + view.getName() + " not present; skipping drop statement");
+        path.writeSql(viewChangesDeploymentHelper.dropViewIfExists(view, deleteFromDeployedViews));
       }
-      if (sourceSchema.tableExists(DEPLOYED_VIEWS_NAME) && targetSchema.tableExists(DEPLOYED_VIEWS_NAME)) {
-        path.writeSql(ImmutableList.of(
-          dialect.convertStatementToSQL(
-            delete(tableRef(DEPLOYED_VIEWS_NAME)).where(Criterion.eq(field("name"), view.getName().toUpperCase()))
-          )));
+      else {
+        path.writeSql(viewChangesDeploymentHelper.deregisterViewIfExists(view, deleteFromDeployedViews));
       }
     }
 
     path.writeSql(upgradeStatements);
 
+    final boolean insertToDeployedViews = targetSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME);
     for (View view : viewChanges.getViewsToDeploy()) {
-      path.writeSql(dialect.viewDeploymentStatements(view));
-      if (targetSchema.tableExists(DEPLOYED_VIEWS_NAME)) {
-        path.writeSql(ImmutableList.of(
-          dialect.convertStatementToSQL(
-            insert().into(tableRef(DEPLOYED_VIEWS_NAME))
-                                 .fields(literal(view.getName().toUpperCase()).as("name"),
-                                         literal(dialect.convertStatementToHash(view.getSelectStatement())).as("hash")),
-          targetSchema)));
-      }
+      path.writeSql(viewChangesDeploymentHelper.createView(view, insertToDeployedViews));
     }
 
     // Since Oracle is not able to re-map schema references in trigger code, we need to rebuild all triggers
