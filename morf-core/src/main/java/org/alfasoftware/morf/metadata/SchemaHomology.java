@@ -249,40 +249,59 @@ public class SchemaHomology {
                                   String value1, String value2) {
 
 
-      String difference;
-      String onObjectDescription =  ( (!objectType.equals("Table")) ? " on Table [" +tableName+ "] " : " ");
+    String difference;
+    String onObjectDescription;
+    boolean detailed = differenceWriter instanceof DifferenceDetailWriter;
 
-      switch (differenceType) {
-        case ABSENT_FROM_SCHEMA_1:
-          difference = objectType + " [" + objectName + "]" +
-                  onObjectDescription +
-                  "is present in " + schema2Name + " but was not found in " + schema1Name;
-          break;
-        case ABSENT_FROM_SCHEMA_2:
-          difference = objectType + " [" + objectName + "]" +
-                  onObjectDescription +
-                  "is present in " + schema1Name + " but was not found in " + schema2Name;
-          break;
-        case PRIMARY_KEY_COUNT_MISMATCH:
+    if (detailed){
+      onObjectDescription = "";
+    } else {
+      onObjectDescription = objectType + " [" + objectName + "]" + ((!objectType.equals("Table")) ? " on Table [" + tableName + "] " : " ");
+    }
+
+    switch (differenceType) {
+      case ABSENT_FROM_SCHEMA_1:
+        difference = onObjectDescription +
+                "is present in " + schema2Name + " but was not found in " + schema1Name;
+        break;
+      case ABSENT_FROM_SCHEMA_2:
+        difference = onObjectDescription +
+                "is present in " + schema1Name + " but was not found in " + schema2Name;
+        break;
+      case PRIMARY_KEY_COUNT_MISMATCH:
+        if (detailed) {
+          difference = String.format("primary key count differs, count is [%s] in %s and [%s] in %s", value1, schema1Name, value2, schema2Name);
+        } else {
           difference = String.format("Primary key column count on %s [%s] does not match. Column are [%s] in %s and [%s] in %s", objectType, objectName, value1, schema1Name, value2, schema2Name);
-          break;
-        case PRIMARY_KEY_DIFFERENCE:
-          difference = String.format("Primary key at [%s]%s does not match. Columns are [%s] and [%s]", objectName,onObjectDescription, value1, value2);
-          break;
-        case DIFFERENCE:
-          difference = String.format("%s does not match on %s %s%s: [%s] in %s, [%s] in %s ",
-                  propertyName, objectType, objectName, onObjectDescription, value1, schema1Name, value2, schema2Name );
+        }
+        break;
+      case PRIMARY_KEY_DIFFERENCE:
+        if (detailed) {
+          difference = String.format("primary key differs, columns are [%s] in %s and [%s] in %s", value1, schema1Name, value2, schema2Name);
+        } else {
+          difference = String.format("Primary key at [%s]%s does not match. Columns are [%s] and [%s]", objectName, onObjectDescription, value1, value2);
+        }
+        break;
+      case DIFFERENCE:
+          if (detailed) {
+            difference = String.format("%s does not match: [%s] in %s, [%s] in %s ",
+                    propertyName, value1, schema1Name, value2, schema2Name);
+
+          } else {
+            difference = String.format("%s does not match on %s %s%s: [%s] in %s, [%s] in %s ",
+                propertyName, objectType, objectName, onObjectDescription, value1, schema1Name, value2, schema2Name);
+          }
           break;
         default:
           difference = "Unknown difference";
-      }
+    }
 
-      if ( differenceWriter instanceof DifferenceDetailWriter ) {
-        ((DifferenceDetailWriter) differenceWriter).detailedDifference(objectType, objectName, tableName,  propertyName,
-                differenceType,  schema1Name, schema2Name, difference);
-      } else{
-        differenceWriter.difference(difference);
-      }
+    if ( detailed ) {
+      ((DifferenceDetailWriter) differenceWriter).detailedDifference(objectType, objectName, tableName,  propertyName,
+              differenceType,  schema1Name, schema2Name, difference);
+    } else{
+      differenceWriter.difference(difference);
+    }
 
     noDifferences = false;
   }
@@ -430,9 +449,9 @@ public class SchemaHomology {
    * @param index2 index to compare
    */
   private void checkIndex(String tableName, Index index1, Index index2) {
-    matches("Index", index1.getName(), tableName, "Index name on table [" + tableName + "]", index1.getName().toUpperCase(), index2.getName().toUpperCase());
-    matches("Index", index1.getName(), tableName, "Index [" + index1.getName() + "] on table [" + tableName + "] uniqueness", index1.isUnique(), index2.isUnique());
-    matches("Index", index1.getName(), tableName, "Index [" + index1.getName() + "] on table [" + tableName + "] columnNames", toUpperCase(index1.columnNames()), toUpperCase(index2.columnNames()));
+    matches("Index", index1.getName(), tableName, "name", index1.getName().toUpperCase(), index2.getName().toUpperCase());
+    matches("Index", index1.getName(), tableName, "uniqueness", index1.isUnique(), index2.isUnique());
+    matches("Index", index1.getName(), tableName, "columnNames", toUpperCase(index1.columnNames()), toUpperCase(index2.columnNames()));
   }
 
 
