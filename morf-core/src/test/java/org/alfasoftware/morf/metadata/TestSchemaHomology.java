@@ -25,6 +25,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 
 import org.junit.Before;
@@ -103,12 +105,7 @@ public class TestSchemaHomology {
 
     differences = Sets.newHashSet();
 
-    DifferenceWriter differenceWriter = new DifferenceWriter() {
-      @Override
-      public void difference(String message) {
-        differences.add(message);
-      }
-    };
+    DifferenceWriter differenceWriter = message -> differences.add(message);
 
     schemaHomology = new SchemaHomology(differenceWriter, "SCHEMA1", "SCHEMA2");
 
@@ -117,7 +114,8 @@ public class TestSchemaHomology {
         column("colour", DataType.STRING).nullable(),
         column("flavour", DataType.DECIMAL).nullable(),
         column("sweet", DataType.BOOLEAN).nullable()
-      ).indexes(        index("sweetness").unique().columns("colour")
+      ).indexes(
+        index("sweetness").unique().columns("colour")
       );
 
     appleTableDuplicate = table("Apple").columns(
@@ -125,7 +123,8 @@ public class TestSchemaHomology {
         column("colour", DataType.STRING).nullable(),
         column("flavour", DataType.DECIMAL).nullable(),
         column("sweet", DataType.BOOLEAN).nullable()
-      ).indexes(        index("sweetness").unique().columns("colour")
+      ).indexes(
+        index("sweetness").unique().columns("colour")
       );
 
 
@@ -134,7 +133,8 @@ public class TestSchemaHomology {
         column("COLOUR", DataType.STRING).nullable(),
         column("FLAVOUR", DataType.DECIMAL).nullable(),
         column("SWEET", DataType.BOOLEAN).nullable()
-      ).indexes(        index("SWEETNESS").unique().columns("COLOUR")
+      ).indexes(
+        index("SWEETNESS").unique().columns("COLOUR")
       );
 
 
@@ -143,7 +143,8 @@ public class TestSchemaHomology {
         column("colour", DataType.STRING).nullable(),
         column("flavour", DataType.DECIMAL).nullable(),
         column("sweet", DataType.BOOLEAN).nullable()
-      ).indexes(        index("sweetness").unique().columns("colour")
+      ).indexes(
+        index("sweetness").unique().columns("colour")
       );
 
 
@@ -153,7 +154,8 @@ public class TestSchemaHomology {
         column("name", DataType.STRING).nullable(),
         column("flavour", DataType.DECIMAL).nullable(),
         column("sweet", DataType.BOOLEAN).nullable()
-      ).indexes(        index("sweetness").unique().columns("colour")
+      ).indexes(
+        index("sweetness").unique().columns("colour")
       );
 
 
@@ -161,7 +163,8 @@ public class TestSchemaHomology {
         autonumber("autonum", 3),
         column("colour", DataType.STRING).nullable(),
         column("flavour", DataType.DECIMAL).nullable()
-      ).indexes(        index("sweetness").unique().columns("colour")
+      ).indexes(
+        index("sweetness").unique().columns("colour")
       );
 
 
@@ -170,7 +173,8 @@ public class TestSchemaHomology {
         column("colour", DataType.STRING).nullable(),
         column("flavor", DataType.DECIMAL).nullable(),
         column("sweet", DataType.BOOLEAN).nullable()
-      ).indexes(        index("sweetness").unique().columns("colour")
+      ).indexes(
+        index("sweetness").unique().columns("colour")
       );
 
 
@@ -179,7 +183,8 @@ public class TestSchemaHomology {
         column("colour", DataType.STRING).nullable(),
         column("flavour", DataType.DECIMAL).nullable(),
         column("sweet", DataType.BOOLEAN).nullable()
-      ).indexes(        index("sweetneess").unique().columns("colour")
+      ).indexes(
+        index("sweetneess").unique().columns("colour")
       );
 
 
@@ -188,7 +193,8 @@ public class TestSchemaHomology {
         column("colour", DataType.STRING).nullable(),
         column("flavour", DataType.DECIMAL).nullable(),
         column("sweet", DataType.BOOLEAN).nullable()
-      ).indexes(        index("sweety").unique().columns("colour")
+      ).indexes(
+        index("sweety").unique().columns("colour")
       );
 
     appleTableNotAutonumbered = table("Apple").columns(
@@ -352,7 +358,7 @@ public class TestSchemaHomology {
     Schema schema1 = schema(appleTable, pearTable, simpleTable);
     Schema schema2 = schema(appleTable, pearTable, simpleTable);
 
-    boolean match = schemaHomology.schemasMatch(schema1, schema2, Sets.<String>newHashSet());
+    boolean match = schemaHomology.schemasMatch(schema1, schema2, Sets.newHashSet());
     assertTrue(match);
   }
 
@@ -364,7 +370,7 @@ public class TestSchemaHomology {
     Schema schema1 = schema(appleTable, pearTable, simpleTable);
     Schema schema2 = schema(appleTable, pearTable);
 
-    assertFalse(schemaHomology.schemasMatch(schema1, schema2, Sets.<String>newHashSet()));
+    assertFalse(schemaHomology.schemasMatch(schema1, schema2, Sets.newHashSet()));
     assertEquals(ImmutableSet.of("Table [MYTABLE] is present in SCHEMA1 but was not found in SCHEMA2"), differences);
   }
 
@@ -377,7 +383,7 @@ public class TestSchemaHomology {
     Schema schema1 = schema(appleTable, pearTable);
     Schema schema2 = schema(appleTable, pearTable, simpleTable);
 
-    assertFalse(schemaHomology.schemasMatch(schema1, schema2, Sets.<String>newHashSet()));
+    assertFalse(schemaHomology.schemasMatch(schema1, schema2, Sets.newHashSet()));
     assertEquals(ImmutableSet.of("Table [MYTABLE] is present in SCHEMA2 but was not found in SCHEMA1"), differences);
   }
 
@@ -390,7 +396,7 @@ public class TestSchemaHomology {
     Schema schema1 = schema(appleTable, pearTable, simpleTable);
     Schema schema2 = schema(appleTableMissingIndex, pearTable, simpleTable);
 
-    assertFalse(schemaHomology.schemasMatch(schema1, schema2, Sets.<String>newHashSet()));
+    assertFalse(schemaHomology.schemasMatch(schema1, schema2, Sets.newHashSet()));
   }
 
 
@@ -483,7 +489,7 @@ public class TestSchemaHomology {
     Schema schema1 = schema(appleTable, pearTable, simpleTable);
     Schema schema2 = schema(appleTable, pearTable);
 
-    assertFalse("Schemas", schemaHomology.schemasMatch(schema1, schema2, Sets.<String>newHashSet()));
+    assertFalse("Schemas", schemaHomology.schemasMatch(schema1, schema2, Sets.newHashSet()));
   }
 
 
@@ -561,4 +567,55 @@ public class TestSchemaHomology {
     schemaHomology.schemasMatch(schema1, schema2, exclusionRegex);
     fail("Did not throw RuntimeException");
   }
+
+  @Test
+  public void testAggregatingDifferenceWriter() {
+    differences = Sets.newHashSet();
+
+    SchemaHomology.AggregatingDifferenceWriter differenceWriter = new SchemaHomology.AggregatingDifferenceWriter();
+
+    schemaHomology = new SchemaHomology(differenceWriter, "SCHEMA1", "SCHEMA2");
+
+    Table bananaTable1 = table("Banana").columns(
+            autonumber("autonum", 4),
+            column("colour", DataType.STRING, 20).nullable(),
+            column("flavour", DataType.DECIMAL).nullable(),
+            column("sweet", DataType.BOOLEAN).nullable(),
+            column("peeled", DataType.BOOLEAN).nullable()
+    ).indexes(
+            index("sweetness").unique().columns("colour"),
+            index("flav").columns("flavour"),
+            index("composite").unique().columns("sweet", "peeled")
+    );
+
+    Table bananaTable2 = table("Banana").columns(
+            autonumber("autonum", 9),
+            column("colour", DataType.STRING, 12).nullable(),
+            column("peeled", DataType.BOOLEAN),
+            column("flavour", DataType.DECIMAL).nullable(),
+            column("sour", DataType.BOOLEAN).nullable(),
+            column("peeled2", DataType.BOOLEAN).nullable()
+    ).indexes(
+            index("sweetness").unique().columns("colour"),
+            index("flavour").columns("flavour"),
+            index("composite").unique().columns("peeled", "sour")
+    );
+
+
+
+    Schema schema1 = schema(appleTable, pearTable, simpleTable, bananaTable1);
+    Schema schema2 = schema(appleTableMissingIndex, pearTable, simpleTable, bananaTable2);
+
+    schemaHomology.schemasMatch(schema1, schema2, Sets.newHashSet());
+
+    List<String> differences = differenceWriter.differences();
+
+    for (String difference : differences) {
+      System.out.println(difference);
+    }
+
+  }
+
+
+
 }

@@ -19,13 +19,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
 import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
 import static java.util.regex.Pattern.CASE_INSENSITIVE;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -49,6 +43,14 @@ import com.google.common.collect.Sets;
 public class SchemaHomology {
 
   private static final Log log = LogFactory.getLog(SchemaHomology.class);
+
+  private enum DifferenceType {
+    ABSENT_FROM_SCHEMA_1,
+    ABSENT_FROM_SCHEMA_2,
+    PRIMARY_KEY_COUNT_MISMATCH,
+    PRIMARY_KEY_DIFFERENCE,
+    DIFFERENCE,
+  }
 
   /**
    * Records differences between schema elements.
@@ -165,11 +167,15 @@ public class SchemaHomology {
     }
 
     for (String tableName : additionalTablesInSchema1) {
-      difference("Table [" + tableName + "] is present in " + schema1Name + " but was not found in " + schema2Name);
+      detailedDifference("Table", tableName, tableName,
+               DifferenceType.ABSENT_FROM_SCHEMA_2, schema1Name, schema2Name);
+  //    difference("Table [" + tableName + "] is present in " + schema1Name + " but was not found in " + schema2Name);
     }
 
     for (String tableName : additionalTablesInSchema2) {
-      difference("Table [" + tableName + "] is present in " + schema2Name + " but was not found in " + schema1Name);
+      detailedDifference("Table", tableName, tableName,
+              DifferenceType.ABSENT_FROM_SCHEMA_1, schema1Name, schema2Name);
+ //     difference("Table [" + tableName + "] is present in " + schema2Name + " but was not found in " + schema1Name);
     }
 
     return noDifferences;
@@ -217,16 +223,72 @@ public class SchemaHomology {
     return noDifferences;
   }
 
+//
+//  /**
+//   * Write out a difference.
+//   *
+//   * @param difference The difference log.
+//   */
+//  private void simpleDifference(String difference) {
+//    differenceWriter.difference(difference);
+//    noDifferences = false;
+//  }
+
 
   /**
-   * Write out a difference.
-   *
-   * @param difference The difference log.
+   * Write out a detailed difference, falling back to a simple difference if required
    */
-  private void difference(String difference) {
-    differenceWriter.difference(difference);
+  private void detailedDifference(String objectType, String objectName,  String tableName, DifferenceType differenceType,
+                                  String schema1Name, String schema2Name) {
+    detailedDifference(objectType, objectName, tableName, "", differenceType, schema1Name, schema2Name, "", "");
+  }
+
+
+  private void detailedDifference(String objectType, String objectName, String tableName, String propertyName,
+                                  DifferenceType differenceType, String schema1Name, String schema2Name,
+                                  String value1, String value2) {
+
+
+      String difference;
+      String onObjectDescription =  ( (!objectType.equals("Table")) ? " on Table [" +tableName+ "] " : " ");
+
+      switch (differenceType) {
+        case ABSENT_FROM_SCHEMA_1:
+          difference = objectType + " [" + objectName + "]" +
+                  onObjectDescription +
+                  "is present in " + schema2Name + " but was not found in " + schema1Name;
+          break;
+        case ABSENT_FROM_SCHEMA_2:
+          difference = objectType + " [" + objectName + "]" +
+                  onObjectDescription +
+                  "is present in " + schema1Name + " but was not found in " + schema2Name;
+          break;
+        case PRIMARY_KEY_COUNT_MISMATCH:
+          difference = String.format("Primary key column count on %s [%s] does not match. Column are [%s] in %s and [%s] in %s", objectType, objectName, value1, schema1Name, value2, schema2Name);
+          break;
+        case PRIMARY_KEY_DIFFERENCE:
+          difference = String.format("Primary key at [%s]%s does not match. Columns are [%s] and [%s]", objectName,onObjectDescription, value1, value2);
+          break;
+        case DIFFERENCE:
+          difference = String.format("%s does not match on %s %s%s: [%s] in %s, [%s] in %s ",
+                  propertyName, objectType, objectName, onObjectDescription, value1, schema1Name, value2, schema2Name );
+          break;
+        default:
+          difference = "Unknown difference";
+      }
+
+      if ( differenceWriter instanceof DifferenceDetailWriter ) {
+        ((DifferenceDetailWriter) differenceWriter).detailedDifference(objectType, objectName, tableName,  propertyName,
+                differenceType,  schema1Name, schema2Name, difference);
+      } else{
+        differenceWriter.difference(difference);
+      }
+
     noDifferences = false;
   }
+
+
+
 
 
   /**
@@ -234,7 +296,8 @@ public class SchemaHomology {
    * @param table2 Second table to compare.
    */
   private void checkTable(Table table1, Table table2) {
-    matches("Table name", table1.getName().toUpperCase(), table2.getName().toUpperCase());
+    matches("Table", table1.getName(),table1.getName(),"Table name",
+            table1.getName().toUpperCase(), table2.getName().toUpperCase());
 
     checkColumns(table1.getName(), table1.columns(), table2.columns());
 
@@ -249,12 +312,17 @@ public class SchemaHomology {
    */
   private void checkPrimaryKeys(String tableName, List<String> table1Keys, List<String> table2Keys) {
     if (table1Keys.size() != table2Keys.size()) {
-      difference(String.format("Primary key column count on table [%s] does not match. Column are [%s] and [%s]", tableName, table1Keys, table2Keys));
+   //   difference(String.format("Primary key column count on table [%s] does not match. Column are [%s] and [%s]", tableName, table1Keys, table2Keys));
+      detailedDifference("Table", tableName, tableName, "",
+              DifferenceType.PRIMARY_KEY_COUNT_MISMATCH, schema1Name, schema2Name, String.join(",", table1Keys),
+              String.join(",", table2Keys));
       return;
     }
     for (int i = 0 ; i < table1Keys.size(); i++) {
       if (!StringUtils.equalsIgnoreCase(table1Keys.get(i), table2Keys.get(i))) {
-        difference(String.format("Primary key at index [%d] on table [%s] does not match. Columns are [%s] and [%s]", i, tableName, table1Keys.get(i), table2Keys.get(i)));
+        detailedDifference("Primary Key", "Index "+i, tableName, "",
+                DifferenceType.PRIMARY_KEY_DIFFERENCE, schema1Name, schema2Name, String.join(",", table1Keys),
+                String.join(",", table2Keys) );
       }
     }
   }
@@ -266,23 +334,22 @@ public class SchemaHomology {
    * @param column2 Second column to compare.
    */
   private void checkColumn(String tableName, Column column1, Column column2) {
-    matches("Column name", column1.getName().toUpperCase(), column2.getName().toUpperCase());
-    String prefix = "Column [" + column1.getName() + "] " + (tableName == null ? "" :  "on table [" + tableName + "] ");
-    matches(prefix + "data type", column1.getType(), column2.getType());
-    matches(prefix + "nullable", column1.isNullable(), column2.isNullable());
-    matches(prefix + "primary key", column1.isPrimaryKey(), column2.isPrimaryKey());
-    matches(prefix + "default value", column1.getDefaultValue(), column2.getDefaultValue());
-    matches(prefix + "autonumber", column1.isAutoNumbered(), column2.isAutoNumbered());
+    matches("Column", column1.getName(), tableName, "Column name", column1.getName().toUpperCase(), column2.getName().toUpperCase());
+    matches("Column", column1.getName(), tableName, "data type", column1.getType(), column2.getType());
+    matches("Column", column1.getName(), tableName, "nullable", column1.isNullable(), column2.isNullable());
+    matches("Column", column1.getName(), tableName, "primary key", column1.isPrimaryKey(), column2.isPrimaryKey());
+    matches("Column", column1.getName(), tableName, "default value", column1.getDefaultValue(), column2.getDefaultValue());
+    matches("Column", column1.getName(), tableName, "autonumber", column1.isAutoNumbered(), column2.isAutoNumbered());
     if (column1.isAutoNumbered()) {
-      matches(prefix + "autonumber start", column1.getAutoNumberStart(), column2.getAutoNumberStart());
+      matches("Column", column1.getName(), tableName, "autonumber start", column1.getAutoNumberStart(), column2.getAutoNumberStart());
     }
 
     if (column1.getType().hasWidth()) {
-      matches(prefix + "width", column1.getWidth(), column2.getWidth());
+      matches("Column", column1.getName(), tableName, "width", column1.getWidth(), column2.getWidth());
     }
 
     if (column1.getType().hasScale()) {
-      matches(prefix + "scale", column1.getScale(), column2.getScale());
+      matches("Column", column1.getName(), tableName, "scale", column1.getScale(), column2.getScale());
     }
   }
 
@@ -305,14 +372,18 @@ public class SchemaHomology {
     for (Column column1 : columns1) {
       Column column2 = columns2Source.remove(column1.getName().toUpperCase());
       if (column2 == null) {
-        difference("Column [" + column1.getName() + "] on table [" + tableName + "] not found in " + schema2Name);
+   //     difference("Column [" + column1.getName() + "] on table [" + tableName + "] not found in " + schema2Name);
+        detailedDifference("Column", column1.getName(), tableName,
+                DifferenceType.ABSENT_FROM_SCHEMA_2, schema1Name, schema2Name);
       } else {
         checkColumn(tableName, column1, column2);
       }
     }
 
     for (Column column : columns2Source.values()) {
-      difference("Column [" + column.getName() + "] on table [" + tableName + "] not found in " + schema1Name);
+ //     difference("Column [" + column.getName() + "] on table [" + tableName + "] not found in " + schema1Name);
+      detailedDifference("Column", column.getName(), tableName,
+              DifferenceType.ABSENT_FROM_SCHEMA_1, schema1Name, schema2Name);
     }
   }
 
@@ -336,14 +407,18 @@ public class SchemaHomology {
       Index index2 = sourceIndexes2.remove(index1.getName().toUpperCase());
 
       if (index2 == null) {
-        difference("Index [" + index1.getName() + "] on table [" + tableName + "] not found in " + schema2Name);
+//        difference("Index [" + index1.getName() + "] on table [" + tableName + "] not found in " + schema2Name);
+        detailedDifference("Index", index1.getName(),  tableName,
+                DifferenceType.ABSENT_FROM_SCHEMA_2, schema1Name, schema2Name);
       } else {
         checkIndex(tableName, index1, index2);
       }
     }
 
     for(Index index : sourceIndexes2.values()) {
-      difference("Index [" + index.getName() + "] on table [" + tableName + "] not found in " + schema1Name);
+//      difference("Index [" + index.getName() + "] on table [" + tableName + "] not found in " + schema1Name);
+      detailedDifference("Index", index.getName(),  tableName,
+              DifferenceType.ABSENT_FROM_SCHEMA_1, schema1Name, schema2Name);
     }
   }
 
@@ -355,9 +430,9 @@ public class SchemaHomology {
    * @param index2 index to compare
    */
   private void checkIndex(String tableName, Index index1, Index index2) {
-    matches("Index name on table [" + tableName + "]", index1.getName().toUpperCase(), index2.getName().toUpperCase());
-    matches("Index [" + index1.getName() + "] on table [" + tableName + "] uniqueness", index1.isUnique(), index2.isUnique());
-    matches("Index [" + index1.getName() + "] on table [" + tableName + "] columnNames", toUpperCase(index1.columnNames()), toUpperCase(index2.columnNames()));
+    matches("Index", index1.getName(), tableName, "Index name on table [" + tableName + "]", index1.getName().toUpperCase(), index2.getName().toUpperCase());
+    matches("Index", index1.getName(), tableName, "Index [" + index1.getName() + "] on table [" + tableName + "] uniqueness", index1.isUnique(), index2.isUnique());
+    matches("Index", index1.getName(), tableName, "Index [" + index1.getName() + "] on table [" + tableName + "] columnNames", toUpperCase(index1.columnNames()), toUpperCase(index2.columnNames()));
   }
 
 
@@ -367,7 +442,7 @@ public class SchemaHomology {
    * @return The strings converted to upper case.
    */
   private List<String> toUpperCase(List<String> strings) {
-    List<String> result = new ArrayList<String>();
+    List<String> result = new ArrayList<>();
     for(String source : strings) {
       result.add(source.toUpperCase());
     }
@@ -377,14 +452,10 @@ public class SchemaHomology {
 
   /**
    * Check two objects match, writing a difference if they don't.
-   *
-   * @param description The description to log when the match fails
-   * @param value1 The first value
-   * @param value2 The second value
    */
-  private void matches(String description, Object value1, Object value2) {
+  private void matches(String objectType, String objectName, String tableName, String propertyName, Object value1, Object value2) {
     if (ObjectUtils.notEqual(value1, value2)) {
-      difference(String.format("%s does not match: [%s] in %s, [%s] in %s", description, value1, schema1Name, value2, schema2Name));
+      detailedDifference(objectType, objectName, tableName, propertyName, DifferenceType.DIFFERENCE, schema1Name, schema2Name, value1.toString(), value2.toString());
     }
   }
 
@@ -394,13 +465,34 @@ public class SchemaHomology {
    *
    * @author Copyright (c) Alfa Financial Software 2010
    */
-  public static interface DifferenceWriter {
+  public interface DifferenceWriter {
 
     /**
      * @param message Textual message identifying a single difference.
      */
-    public void difference(String message);
+    void difference(String message);
   }
+
+  /**
+   * Defines contract for receiving differences between schema elements.
+   *
+   * @author Copyright (c) Alfa Financial Software 2010
+   */
+  public interface DifferenceDetailWriter extends DifferenceWriter {
+    /**
+     *
+     * @param objectType is the type of the object with differences (e.g. "Index" or "Column")
+     * @param objectName is the name of the object with differences
+     * @param tableName is the name of the table with differences
+     * @param differenceType is an enum denoting the type of difference
+     * @param schema1Name is a description of the first schema being compared
+     * @param schema2Name is a description of the second schema being compared
+     */
+    void detailedDifference(String objectType, String objectName, String tableName, String propertyName,
+                                   DifferenceType differenceType, String schema1Name, String schema2Name, String message);
+  }
+
+
 
 
   /**
@@ -437,7 +529,7 @@ public class SchemaHomology {
   }
 
   /**
-   * RuntimeException-throwing version of {@link DifferenceWriter}.
+   * Collating version of {@link DifferenceWriter}.
    */
   public static final class CollectingDifferenceWriter implements DifferenceWriter {
 
@@ -457,5 +549,97 @@ public class SchemaHomology {
     public List<String> differences() {
       return differences;
     }
+  }
+
+
+  public static final class AggregatingDifferenceWriter implements DifferenceDetailWriter {
+
+    class DetailedDifference {
+       String objectType;
+       String objectName;
+       String tableName;
+       String propertyName;
+       DifferenceType differenceType;
+       String schema1Name;
+       String schema2Name;
+       String message;
+
+      public DetailedDifference(String objectType, String objectName, String tableName, String propertyName,
+                                DifferenceType differenceType, String schema1Name, String schema2Name, String message) {
+        this.objectType = objectType;
+        this.objectName = objectName;
+        this.tableName = tableName;
+        this.propertyName = propertyName;
+        this.differenceType = differenceType;
+        this.schema1Name = schema1Name;
+        this.schema2Name = schema2Name;
+        this.message = message;
+      }
+    }
+
+    private final List<DetailedDifference> detailedDifferenceList = new ArrayList<>();
+
+    /**
+     * This method should not be used on this class
+     * Calls should only be made to detailedDifference, so this method throws a runtime exception if called
+     *
+     * @param message Textual message identifying a single difference.
+     */
+    @Override
+    public void difference(String message) {
+      throw new RuntimeException("difference method incorrectly called on DifferenceDetailWriter: " + message);
+    }
+
+    @Override
+    public void detailedDifference(String objectType, String objectName, String tableName, String propertyName, DifferenceType differenceType, String schema1Name, String schema2Name, String message) {
+        detailedDifferenceList.add(new DetailedDifference(objectType, objectName, tableName, propertyName, differenceType, schema1Name, schema2Name, message));
+    }
+
+    /**
+     * @return the differences
+     */
+    public List<String> differences() {
+
+      List<String> differences = new ArrayList<>();
+
+      // Order by TableName, Object Type, Object Name, Property Name
+      detailedDifferenceList.sort((d1, d2) -> d1.tableName.compareTo(d2.tableName) == 0
+              ? d1.objectType.compareTo(d2.objectType) == 0
+              ? d1.objectName.compareTo(d2.objectName) == 0
+              ? d1.propertyName.compareTo(d2.propertyName)
+              : d1.objectName.compareTo(d2.objectName)
+              : d1.objectType.compareTo(d2.objectType)
+              : d1.tableName.compareTo(d2.tableName));
+
+
+      String lastTableName  = "123456";  // invalid table name so will not clash
+      String lastObjectType = "123456";  // invalid type, so non-clashing
+      String lastObjectName = "123456";  // invalid name, so non-clashing
+
+      String tablePrefix      = "  Table ";
+      String objectTypePrefix = "       ";
+      String objectNamePrefix = "            ";
+      String messagePrefix    = "                 ";
+
+      for (DetailedDifference d : detailedDifferenceList) {
+          if( ! lastTableName.equals(d.tableName)) {
+              differences.add(tablePrefix + d.tableName);
+              lastTableName = d.tableName;
+          }
+          if( ! lastObjectType.equals(d.objectType)) {
+              differences.add(objectTypePrefix + d.objectType);
+              lastObjectType = d.objectType;
+          }
+          if( ! lastObjectName.equals(d.objectName)) {
+              differences.add(objectNamePrefix + d.objectName);
+              lastObjectName = d.objectName;
+          }
+
+          differences.add(messagePrefix + d.message);
+      }
+
+      return differences;
+    }
+
   }
 }
