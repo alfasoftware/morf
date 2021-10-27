@@ -28,6 +28,7 @@ import org.alfasoftware.morf.sql.Hint;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.OptimiseForRowCount;
 import org.alfasoftware.morf.sql.ParallelQueryHint;
+import org.alfasoftware.morf.sql.PostgreSQLCustomHint;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.SelectStatementBuilder;
@@ -506,6 +507,10 @@ class PostgreSQLDialect extends SqlDialect {
       }
       if (hint instanceof ParallelQueryHint) {
         // not available in pg_hint_plan
+      }
+      if (hint instanceof PostgreSQLCustomHint) {
+        builder.append(" ")
+        .append(((PostgreSQLCustomHint)hint).getCustomHint());
       }
     }
 
