@@ -3238,12 +3238,7 @@ public abstract class AbstractSqlDialectTest {
       testDialect.convertStatementToSQL(
         select()
         .from(new TableReference("SCHEMA2", "Foo"))
-        .withCustomHint(new CustomHint() {
-          @Override
-          public String getCustomHint() {
-            return "CustomHint";
-          }
-        })
+        .withCustomHint(() -> "CustomHint")
       )
     );
   }
