@@ -46,11 +46,13 @@ import org.alfasoftware.morf.sql.OptimiseForRowCount;
 import org.alfasoftware.morf.sql.ParallelQueryHint;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.sql.SqlUtils;
 import org.alfasoftware.morf.sql.UpdateStatement;
 import org.alfasoftware.morf.sql.UseImplicitJoinOrder;
 import org.alfasoftware.morf.sql.UseIndex;
 import org.alfasoftware.morf.sql.UseParallelDml;
 import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
@@ -60,6 +62,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.Splitter;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.Iterables;
@@ -373,6 +377,21 @@ class OracleDialect extends SqlDialect {
   @Override
   public Collection<String> dropStatements(View view) {
     return Arrays.asList("BEGIN FOR i IN (SELECT null FROM all_views WHERE OWNER='" + getSchemaName().toUpperCase() + "' AND VIEW_NAME='" + view.getName().toUpperCase() + "') LOOP EXECUTE IMMEDIATE 'DROP VIEW " + schemaNamePrefix() + view.getName() + "'; END LOOP; END;");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#viewDeploymentStatementsAsLiteral(org.alfasoftware.morf.metadata.View)
+   */
+  @Override
+  public AliasedField viewDeploymentStatementsAsLiteral(View view) {
+    Iterable<String> scriptChunks = Splitter.fixedLength(1024)
+      .split(viewDeploymentStatementsAsScript(view));
+
+    FluentIterable<Cast> concatLiterals = FluentIterable.from(scriptChunks)
+      .transform(chunk -> SqlUtils.cast(SqlUtils.literal(chunk)).asType(DataType.CLOB));
+
+    return SqlUtils.concat(concatLiterals);
   }
 
 

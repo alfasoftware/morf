@@ -15,14 +15,6 @@
 
 package org.alfasoftware.morf.jdbc;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.column;
-import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
-import static org.alfasoftware.morf.metadata.SchemaUtils.table;
-import static org.alfasoftware.morf.sql.SelectStatement.select;
-import static org.alfasoftware.morf.sql.SqlUtils.insert;
-import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.sql.UnionSetOperator.UnionStrategy.ALL;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
@@ -51,6 +43,7 @@ import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.DataValueLookup;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.AbstractSelectStatement;
@@ -66,6 +59,7 @@ import org.alfasoftware.morf.sql.SqlUtils;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.sql.TruncateStatement;
 import org.alfasoftware.morf.sql.UnionSetOperator;
+import org.alfasoftware.morf.sql.UnionSetOperator.UnionStrategy;
 import org.alfasoftware.morf.sql.UpdateStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.BracketedExpression;
@@ -238,6 +232,16 @@ public abstract class SqlDialect {
         .stream().collect(Collectors.joining(";\n", firstLine, ";"));
   }
 
+
+  /**
+   * Creates SQL script to deploy a database view.
+   *
+   * @param view The meta data for the view to deploy.
+   * @return The statements required to deploy the view joined into a script and prepared as literals.
+   */
+  public AliasedField viewDeploymentStatementsAsLiteral(View view) {
+    return SqlUtils.literal(viewDeploymentStatementsAsScript(view));
+  }
 
   /**
    * Creates SQL to truncate a table (may require DBA rights on some databases
@@ -657,7 +661,7 @@ public abstract class SqlDialect {
    * @return The SQL represented by the statement
    */
   public String convertStatementToSQL(TruncateStatement statement) {
-    return truncateTableStatements(table(statement.getTable().getName())).iterator().next();
+    return truncateTableStatements(SchemaUtils.table(statement.getTable().getName())).iterator().next();
   }
 
 
@@ -1257,7 +1261,7 @@ public abstract class SqlDialect {
    * @return a string representation of the field.
    */
   protected String getSqlFrom(UnionSetOperator operator) {
-    return String.format(" %s %s", operator.getUnionStrategy() == ALL ? "UNION ALL" : "UNION",
+    return String.format(" %s %s", operator.getUnionStrategy() == UnionStrategy.ALL ? "UNION ALL" : "UNION",
       getSqlFrom(operator.getSelectStatement()));
   }
 
@@ -3250,7 +3254,7 @@ public abstract class SqlDialect {
     }
 
     // Build up the select statement from field list
-    SelectStatementBuilder selectStatementBuilder = select();
+    SelectStatementBuilder selectStatementBuilder = SelectStatement.select();
     List<AliasedField> resultFields = new ArrayList<>();
 
     for (Column currentColumn : metadata.getTable(destinationTableName).columns()) {
@@ -3589,7 +3593,7 @@ public abstract class SqlDialect {
         tableDeploymentStatements(table)
       )
       .addAll(convertStatementToSQL(
-        insert().into(tableRef(table.getName())).from(selectStatement))
+        SqlUtils.insert().into(SqlUtils.tableRef(table.getName())).from(selectStatement))
       )
       .build();
   }
@@ -3966,7 +3970,7 @@ public abstract class SqlDialect {
    *
    */
   protected Table oldTableForChangeColumn(Table table, Column oldColumn, Column newColumn) {
-    return new ChangeColumn(table.getName(), oldColumn, newColumn).reverse(schema(table)).getTable(table.getName());
+    return new ChangeColumn(table.getName(), oldColumn, newColumn).reverse(SchemaUtils.schema(table)).getTable(table.getName());
   }
 
 
@@ -4121,8 +4125,8 @@ public abstract class SqlDialect {
     @Override
     public List<Column> columns() {
       List<Column> columns = new ArrayList<>();
-      columns.add(column(ID_INCREMENTOR_TABLE_COLUMN_NAME, DataType.STRING, 132).primaryKey());
-      columns.add(column(ID_INCREMENTOR_TABLE_COLUMN_VALUE, DataType.BIG_INTEGER));
+      columns.add(SchemaUtils.column(ID_INCREMENTOR_TABLE_COLUMN_NAME, DataType.STRING, 132).primaryKey());
+      columns.add(SchemaUtils.column(ID_INCREMENTOR_TABLE_COLUMN_VALUE, DataType.BIG_INTEGER));
 
       return columns;
     }
