@@ -21,6 +21,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.metadata.SchemaUtils.view;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
+import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.junit.Assert.assertEquals;
@@ -141,7 +142,7 @@ public class TestDeployment {
     when(dialect.viewDeploymentStatements(same(testView))).thenReturn(ImmutableList.of("C"));
     when(dialect.convertStatementToSQL(any(InsertStatement.class))).thenReturn(ImmutableList.of("D"));
     when(dialect.convertStatementToHash(any(SelectStatement.class))).thenReturn("E");
-    when(dialect.viewDeploymentStatementsAsScript(same(testView))).thenReturn("F");
+    when(dialect.viewDeploymentStatementsAsLiteral(same(testView))).thenReturn(literal("F"));
 
     Schema targetSchema = schema(
       schema(testTable, deployedViews),

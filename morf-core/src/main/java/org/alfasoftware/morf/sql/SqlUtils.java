@@ -42,6 +42,8 @@ import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.LocalDate;
 
+import com.google.common.collect.Iterables;
+
 /**
  * Utility methods for creating SQL constructs.
  *
@@ -452,6 +454,11 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
   }
 
 
+  public static CaseStatementBuilder caseStatement(Iterable<WhenCondition> whenClauses) {
+    return new CaseStatementBuilder(whenClauses);
+  }
+
+
   /**
    * @return a {@link NullFieldLiteral}.
    */
@@ -581,6 +588,11 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
      */
     private CaseStatementBuilder(WhenCondition... whenClauses) {
       this.whenClauses = whenClauses.clone();
+    }
+
+
+    private CaseStatementBuilder(Iterable<WhenCondition> whenClauses) {
+      this.whenClauses = Iterables.toArray(whenClauses, WhenCondition.class);
     }
 
 
