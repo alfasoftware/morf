@@ -454,6 +454,25 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
   }
 
 
+  /**
+   * Builder method for {@link CaseStatement}.
+   *
+   * <p>
+   * Example:
+   * </p>
+   *
+   * <pre>
+   * caseStatement(when(eq(field(&quot;receiptType&quot;), literal(&quot;R&quot;))).then(literal(&quot;Receipt&quot;)),
+   *               when(eq(field(&quot;receiptType&quot;), literal(&quot;S&quot;))).then(literal(&quot;Agreement Suspense&quot;)),
+   *               when(eq(field(&quot;receiptType&quot;), literal(&quot;T&quot;))).then(literal(&quot;General Suspense&quot;)))
+   *              .otherwise(literal(&quot;UNKNOWN&quot;))
+   * </pre>
+   *
+   * @see #when(Criterion)
+   *
+   * @param whenClauses the {@link WhenCondition} portions of the case statement
+   * @return A builder to create a {@link CaseStatement}.
+   */
   public static CaseStatementBuilder caseStatement(Iterable<WhenCondition> whenClauses) {
     return new CaseStatementBuilder(whenClauses);
   }
