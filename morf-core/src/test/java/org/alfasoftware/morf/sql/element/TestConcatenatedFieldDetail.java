@@ -20,6 +20,8 @@ import static org.alfasoftware.morf.sql.SqlUtils.literal;
 
 import org.junit.Test;
 
+import com.google.common.collect.ImmutableList;
+
 /**
  * Tests {@link ConcatenatedField}.
  *
@@ -28,7 +30,12 @@ import org.junit.Test;
 public class TestConcatenatedFieldDetail {
 
   @Test(expected = IllegalArgumentException.class)
-  public void testRequiresAtLeastOneArgument() {
+  public void testRequiresAtLeastOneArgumentArray() {
     concat(literal(1));
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testRequiresAtLeastOneArgumentIterable() {
+    concat(ImmutableList.of(literal(1)));
   }
 }

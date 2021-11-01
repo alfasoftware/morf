@@ -737,6 +737,17 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
 
 
   /**
+   * Returns an expression concatenating all the passed expressions.
+   *
+   * @param fields the expressions to concatenate.
+   * @return the expression concatenating the passed expressions.
+   */
+  public static ConcatenatedField concat(Iterable<? extends AliasedField> fields) {
+    return new ConcatenatedField(fields);
+  }
+
+
+  /**
    * Returns a SQL DSL expression to return the substring of <strong>field</strong>
    * of <strong>length</strong> characters, starting from <strong>from</strong>.
    *
