@@ -473,7 +473,7 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
    * @param whenClauses the {@link WhenCondition} portions of the case statement
    * @return A builder to create a {@link CaseStatement}.
    */
-  public static CaseStatementBuilder caseStatement(Iterable<WhenCondition> whenClauses) {
+  public static CaseStatementBuilder caseStatement(Iterable<? extends WhenCondition> whenClauses) {
     return new CaseStatementBuilder(whenClauses);
   }
 
@@ -610,7 +610,7 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
     }
 
 
-    private CaseStatementBuilder(Iterable<WhenCondition> whenClauses) {
+    private CaseStatementBuilder(Iterable<? extends WhenCondition> whenClauses) {
       this.whenClauses = Iterables.toArray(whenClauses, WhenCondition.class);
     }
 
