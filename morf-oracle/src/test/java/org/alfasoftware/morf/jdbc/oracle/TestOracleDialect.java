@@ -43,6 +43,8 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.sql.CustomHint;
+import org.alfasoftware.morf.sql.OracleCustomHint;
 import org.alfasoftware.morf.sql.element.Direction;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.mockito.ArgumentCaptor;
@@ -1092,6 +1094,14 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedBlobLiteral(String) ()
+   */
+  @Override
+  protected String expectedBlobLiteral(String value) {
+    return String.format("HEXTORAW(%s)",super.expectedBlobLiteral(value));
+  }
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDateToYyyymmddHHmmss()
    */
   @Override
@@ -1453,6 +1463,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
          + "ORDER BY a NULLS FIRST";
   }
 
+
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints2(int)
    */
@@ -1469,6 +1480,41 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   protected String expectedHints3() {
     return "UPDATE /*+ ENABLE_PARALLEL_DML PARALLEL */ " + tableName("Foo") + " SET a = b";
   }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints4()
+   */
+  @Override
+  protected String expectedHints4() {
+    return "INSERT /*+ APPEND */ INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints6()
+   */
+  @Override
+  protected String expectedHints6() {
+    return "SELECT /*+ PARALLEL 5 */ a, b FROM " + tableName("Foo") + " ORDER BY a NULLS FIRST";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints7
+   */
+  @Override
+  protected String expectedHints7() {
+    return "SELECT /*+ opt_param('optimizer_index_caching',100) opt_param('optimizer_index_cost_adj',50) optimizer_features_enable('12.1.0.2') ) */ * FROM SCHEMA2.Foo";
+  }
+
+
+  @Override
+  protected CustomHint provideCustomHint() {
+    return new OracleCustomHint("opt_param('optimizer_index_caching',100) opt_param('optimizer_index_cost_adj',50) optimizer_features_enable('12.1.0.2') )");
+  }
+
+
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#supportsWindowFunctions()

@@ -152,6 +152,18 @@ public class TestSqlInsertElementGeneration {
     }
   }
 
+
+  /**
+   * Tests that the {@link DirectPathQueryHint} can be added to the insert statement.
+   */
+  @Test
+  public void testInsertIntoTableWithDirectPathQueryHint() {
+    InsertStatement stmtBuilder = insert().into(new TableReference("agreement")).useDirectPath().build();
+
+    assertTrue("Direct path query hint", stmtBuilder.getHints().contains(DirectPathQueryHint.INSTANCE));
+  }
+
+
   /**
    * Test that deep copy works for insert with fields.
    */

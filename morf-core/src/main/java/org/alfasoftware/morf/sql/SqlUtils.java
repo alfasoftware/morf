@@ -19,11 +19,13 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.sql.element.Criterion.eq;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
+import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.BracketedExpression;
 import org.alfasoftware.morf.sql.element.CaseStatement;
 import org.alfasoftware.morf.sql.element.Cast;
@@ -342,6 +344,29 @@ public class SqlUtils {
    */
   public static FieldLiteral literal(Character value) {
     return new FieldLiteral(value);
+  }
+
+
+  /**
+   * Constructs a new {@link BlobFieldLiteral} from given bytes.
+   *
+   * @param value the literal value to use
+   * @return {@link BlobFieldLiteral}
+   */
+  public static BlobFieldLiteral blobLiteral(byte[] value) {
+    return new BlobFieldLiteral(value);
+  }
+
+
+  /**
+   * Constructs a new {@link BlobFieldLiteral} from given String,
+   * which is turned into bytes using a UTF-8 encoding.
+   *
+   * @param value the literal value to use
+   * @return {@link BlobFieldLiteral}
+   */
+  public static BlobFieldLiteral blobLiteral(String value) {
+    return new BlobFieldLiteral(value.getBytes(StandardCharsets.UTF_8));
   }
 
 

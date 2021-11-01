@@ -62,6 +62,7 @@ import org.alfasoftware.morf.sql.UnionSetOperator;
 import org.alfasoftware.morf.sql.UnionSetOperator.UnionStrategy;
 import org.alfasoftware.morf.sql.UpdateStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.BracketedExpression;
 import org.alfasoftware.morf.sql.element.CaseStatement;
 import org.alfasoftware.morf.sql.element.Cast;
@@ -1325,7 +1326,7 @@ public abstract class SqlDialect {
 
     StringBuilder stringBuilder = new StringBuilder();
 
-    stringBuilder.append("INSERT INTO ");
+    stringBuilder.append(getSqlForInsertInto(stmt));
     stringBuilder.append(schemaNamePrefix(stmt.getTable()));
     stringBuilder.append(stmt.getTable().getName());
 
@@ -1552,6 +1553,10 @@ public abstract class SqlDialect {
       return getSqlFrom((SqlParameter)field);
     }
 
+    if (field instanceof BlobFieldLiteral) {
+      return getSqlFrom((BlobFieldLiteral)field);
+    }
+
     if (field instanceof FieldLiteral) {
       return getSqlFrom((FieldLiteral) field);
     }
@@ -1676,7 +1681,6 @@ public abstract class SqlDialect {
       case DECIMAL:
       case BIG_INTEGER:
       case INTEGER:
-      case BLOB:
       case CLOB:
         return field.getValue();
       case NULL:
@@ -1688,6 +1692,18 @@ public abstract class SqlDialect {
         throw new UnsupportedOperationException("Cannot convert the specified field literal into an SQL literal: ["
             + field.getValue() + "]");
     }
+  }
+
+
+  /**
+   * Default implementation will just return the Base64 representation of the binary data, which may not necessarily work with all SQL dialects.
+   * Hence appropriate conversions to the appropriate type based on facilities provided by the dialect's SQL vendor implementation should be used.
+   *
+   * @param field the BLOB field literal
+   * @return the SQL construct or base64 string representation of the binary value
+   */
+  protected String getSqlFrom(BlobFieldLiteral field) {
+    return String.format("'%s'", field.getValue());
   }
 
 
@@ -1762,64 +1778,47 @@ public abstract class SqlDialect {
         throw new IllegalArgumentException("The COUNT function should have only have one or zero arguments. This function has " + function.getArguments().size());
 
       case COUNT_DISTINCT:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForCountDistinct(function);
 
       case AVERAGE:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForAverage(function);
 
       case AVERAGE_DISTINCT:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForAverageDistinct(function);
 
       case LENGTH:
-      case BLOB_LENGTH:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlforLength(function);
 
+      case BLOB_LENGTH:
+        checkSingleArgument(function);
+        return getSqlforBlobLength(function);
+
       case SOME:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForSome(function);
 
       case EVERY:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForEvery(function);
 
       case MAX:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForMax(function);
 
       case MIN:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForMin(function);
 
       case SUM:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForSum(function);
 
       case SUM_DISTINCT:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForSumDistinct(function);
 
       case IS_NULL:
@@ -1980,6 +1979,12 @@ public abstract class SqlDialect {
 
       default:
         throw new UnsupportedOperationException("This database does not currently support the [" + function.getType() + "] function");
+    }
+  }
+
+  private void checkSingleArgument(Function function) {
+    if (function.getArguments().size() != 1) {
+      throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
     }
   }
 
@@ -2221,6 +2226,19 @@ public abstract class SqlDialect {
    * @see org.alfasoftware.morf.sql.element.Function#length(AliasedField)
    */
   protected String getSqlforLength(Function function) {
+    return String.format("LENGTH(%s)", getSqlFrom(function.getArguments().get(0)));
+  }
+
+
+  /**
+   * Converts the function get LENGTH of Blob data or field into SQL.
+   * Use LENGTH instead of OCTET_LENGTH as they are synonymous in MySQl and PostGreSQL. In H2 LENGTH returns the correct
+   * number of bytes, whereas OCTET_LENGTH returns 2 times the byte length.
+   * @param function the function to convert.
+   * @return a string representation of the SQL.
+   * @see org.alfasoftware.morf.sql.element.Function#blobLength(AliasedField)
+   */
+  protected String getSqlforBlobLength(Function function) {
     return String.format("LENGTH(%s)", getSqlFrom(function.getArguments().get(0)));
   }
 
@@ -2770,7 +2788,7 @@ public abstract class SqlDialect {
 
     // -- Add the preamble...
     //
-    sqlBuilder.append("INSERT INTO ");
+    sqlBuilder.append(getSqlForInsertInto(statement));
     sqlBuilder.append(schemaNamePrefix(statement.getTable()));
     sqlBuilder.append(destinationTableName);
     sqlBuilder.append(" (");
@@ -2826,7 +2844,7 @@ public abstract class SqlDialect {
 
     // -- Add the preamble...
     //
-    sqlBuilder.append("INSERT INTO ");
+    sqlBuilder.append(getSqlForInsertInto(statement));
     sqlBuilder.append(schemaNamePrefix(statement.getTable()));
     sqlBuilder.append(destinationTableName);
     sqlBuilder.append(" (");
@@ -4049,6 +4067,17 @@ public abstract class SqlDialect {
     statement.append(")");
 
     return statement.toString();
+  }
+
+
+  /**
+   * Returns the INSERT INTO statement.
+   *
+   * @param insertStatement he {@linkplain InsertStatement} object which can be used by the overriding methods to customize the INSERT statement.
+   * @return the INSERT INTO statement.
+   */
+  protected String getSqlForInsertInto(@SuppressWarnings("unused") InsertStatement insertStatement) {
+    return "INSERT INTO ";
   }
 
 

@@ -41,8 +41,11 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.sql.DirectPathQueryHint;
 import org.alfasoftware.morf.sql.Hint;
+import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.OptimiseForRowCount;
+import org.alfasoftware.morf.sql.OracleCustomHint;
 import org.alfasoftware.morf.sql.ParallelQueryHint;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
@@ -53,6 +56,7 @@ import org.alfasoftware.morf.sql.UseIndex;
 import org.alfasoftware.morf.sql.UseParallelDml;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Cast;
+import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
@@ -1207,6 +1211,11 @@ class OracleDialect extends SqlDialect {
   }
 
 
+  @Override
+  protected String getSqlforBlobLength(Function function) {
+    return String.format("dbms_lob.getlength(%s)", getSqlFrom(function.getArguments().get(0)));
+  }
+
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getFromDummyTable()
    */
@@ -1236,17 +1245,21 @@ class OracleDialect extends SqlDialect {
     return result.toString().trim();
   }
 
+  /**
+   * @param field the BLOB field literal
+   * @return
+   */
+  @Override
+  protected String getSqlFrom(BlobFieldLiteral field) {
+    return String.format("HEXTORAW('%s')", field.getValue());
+  }
 
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#selectStatementPreFieldDirectives(org.alfasoftware.morf.sql.SelectStatement)
    */
   @Override
   protected String selectStatementPreFieldDirectives(SelectStatement selectStatement) {
-    if (selectStatement.getHints().isEmpty()) {
-      return super.selectStatementPreFieldDirectives(selectStatement);
-    }
-
-    StringBuilder builder = new StringBuilder().append("/*+");
+    StringBuilder builder = new StringBuilder();
 
     for (Hint hint : selectStatement.getHints()) {
       if (hint instanceof OptimiseForRowCount) {
@@ -1268,10 +1281,20 @@ class OracleDialect extends SqlDialect {
       }
       if (hint instanceof ParallelQueryHint) {
         builder.append(" PARALLEL");
+        ParallelQueryHint parallelQueryHint = (ParallelQueryHint) hint;
+        builder.append(parallelQueryHint.getDegreeOfParallelism().map(d -> " " + d).orElse(""));
+      }
+      if (hint instanceof OracleCustomHint) {
+        builder.append(" ")
+        .append(((OracleCustomHint)hint).getCustomHint());
       }
     }
 
-    return builder.append(" */ ").toString();
+    if (builder.length() == 0) {
+      return super.selectStatementPreFieldDirectives(selectStatement);
+    }
+
+    return "/*+" + builder.append(" */ ").toString();
   };
 
 
@@ -1356,5 +1379,32 @@ class OracleDialect extends SqlDialect {
   @Override
   protected Optional<String> getDeleteLimitWhereClause(int limit) {
     return Optional.of("ROWNUM <= " + limit);
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForInsertInto(org.alfasoftware.morf.sql.InsertStatement)
+   */
+  @Override
+  protected String getSqlForInsertInto(InsertStatement insertStatement) {
+    return "INSERT " + insertStatementPreIntoDirectives(insertStatement) + "INTO ";
+  }
+
+
+  private String insertStatementPreIntoDirectives(InsertStatement insertStatement) {
+
+    if (insertStatement.getHints().isEmpty()) {
+      return "";
+    }
+
+    StringBuilder builder = new StringBuilder().append("/*+");
+
+    for (Hint hint : insertStatement.getHints()) {
+      if (hint instanceof DirectPathQueryHint) {
+        builder.append(" APPEND");
+      }
+    }
+
+    return builder.append(" */ ").toString();
   }
 }
