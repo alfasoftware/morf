@@ -385,13 +385,31 @@ class OracleDialect extends SqlDialect {
    */
   @Override
   public AliasedField viewDeploymentStatementsAsLiteral(View view) {
-    Iterable<String> scriptChunks = Splitter.fixedLength(1024)
-      .split(viewDeploymentStatementsAsScript(view));
+    final String script = viewDeploymentStatementsAsScript(view);
 
+    final int chunkSize = 512;
+    if (script.length() < chunkSize) {
+      return super.viewDeploymentStatementsAsLiteral(view);
+    }
+
+    Iterable<String> scriptChunks = Splitter.fixedLength(chunkSize).split(script);
     FluentIterable<Cast> concatLiterals = FluentIterable.from(scriptChunks)
       .transform(chunk -> SqlUtils.cast(SqlUtils.literal(chunk)).asType(DataType.CLOB));
 
     return SqlUtils.concat(concatLiterals);
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.element.Cast)
+   */
+  @Override
+  protected String getSqlFrom(Cast cast) {
+    // CAST does not directly support any of the LOB datatypes
+    if (DataType.CLOB.equals(cast.getDataType())) {
+      return String.format("TO_CLOB(%s)", getSqlFrom(cast.getExpression()));
+    }
+    return super.getSqlFrom(cast);
   }
 
 
