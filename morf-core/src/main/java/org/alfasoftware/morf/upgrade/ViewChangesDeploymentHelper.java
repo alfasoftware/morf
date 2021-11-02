@@ -77,7 +77,7 @@ public class ViewChangesDeploymentHelper {
             .values(
               literal(view.getName().toUpperCase()).as("name"),
               literal(sqlDialect.convertStatementToHash(view.getSelectStatement())).as("hash"),
-              literal(sqlDialect.viewDeploymentStatementsAsScript(view)).as("sqlDefinition")
+              sqlDialect.viewDeploymentStatementsAsLiteral(view).as("sqlDefinition")
             )
         ));
     }

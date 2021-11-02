@@ -75,6 +75,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 
@@ -239,7 +240,7 @@ public class TestSqlNulls {
           // concat
           concat(field("name"), field("name")),
           concat(literal("x"), field("name")),
-          concat(field("name"), literal("x")),
+          concat(ImmutableList.of(field("name"), literal("x"))),
           // last column
           literal(-7))
           .from(tableRef("SimpleTypes"))

@@ -41,6 +41,7 @@ public class TestConcatenatedField extends AbstractAliasedFieldTest<Concatenated
         "asString",
         () -> concat(literal(1), literal(2)),
         () -> concat(literal(1), literal(3)),
+        () -> concat(ImmutableList.of(literal(1), literal(3))),
         () -> concat(literal(1), literal(2), literal(3))
       )
     );

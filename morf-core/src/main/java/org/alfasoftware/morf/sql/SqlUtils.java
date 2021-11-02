@@ -44,6 +44,8 @@ import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.LocalDate;
 
+import com.google.common.collect.Iterables;
+
 /**
  * Utility methods for creating SQL constructs.
  *
@@ -478,6 +480,30 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
 
 
   /**
+   * Builder method for {@link CaseStatement}.
+   *
+   * <p>
+   * Example:
+   * </p>
+   *
+   * <pre>
+   * caseStatement(when(eq(field(&quot;receiptType&quot;), literal(&quot;R&quot;))).then(literal(&quot;Receipt&quot;)),
+   *               when(eq(field(&quot;receiptType&quot;), literal(&quot;S&quot;))).then(literal(&quot;Agreement Suspense&quot;)),
+   *               when(eq(field(&quot;receiptType&quot;), literal(&quot;T&quot;))).then(literal(&quot;General Suspense&quot;)))
+   *              .otherwise(literal(&quot;UNKNOWN&quot;))
+   * </pre>
+   *
+   * @see #when(Criterion)
+   *
+   * @param whenClauses the {@link WhenCondition} portions of the case statement
+   * @return A builder to create a {@link CaseStatement}.
+   */
+  public static CaseStatementBuilder caseStatement(Iterable<? extends WhenCondition> whenClauses) {
+    return new CaseStatementBuilder(whenClauses);
+  }
+
+
+  /**
    * @return a {@link NullFieldLiteral}.
    */
   public static FieldLiteral nullLiteral() {
@@ -606,6 +632,11 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
      */
     private CaseStatementBuilder(WhenCondition... whenClauses) {
       this.whenClauses = whenClauses.clone();
+    }
+
+
+    private CaseStatementBuilder(Iterable<? extends WhenCondition> whenClauses) {
+      this.whenClauses = Iterables.toArray(whenClauses, WhenCondition.class);
     }
 
 
@@ -757,6 +788,17 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
    * @return the expression concatenating the passed expressions.
    */
   public static ConcatenatedField concat(AliasedField... fields) {
+    return new ConcatenatedField(fields);
+  }
+
+
+  /**
+   * Returns an expression concatenating all the passed expressions.
+   *
+   * @param fields the expressions to concatenate.
+   * @return the expression concatenating the passed expressions.
+   */
+  public static ConcatenatedField concat(Iterable<? extends AliasedField> fields) {
     return new ConcatenatedField(fields);
   }
 
