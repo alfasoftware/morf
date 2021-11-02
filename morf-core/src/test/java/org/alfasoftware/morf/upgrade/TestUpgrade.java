@@ -23,6 +23,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.metadata.SchemaUtils.versionColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.view;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
+import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.upgrade.UpgradeStatus.NONE;
@@ -285,6 +286,7 @@ public class TestUpgrade {
 
     ConnectionResources connection = mock(ConnectionResources.class, RETURNS_DEEP_STUBS);
     when(connection.sqlDialect().viewDeploymentStatements(same(testView))).thenReturn(ImmutableList.of("A"));
+    when(connection.sqlDialect().viewDeploymentStatementsAsLiteral(any(View.class))).thenReturn(literal("W"));
     when(connection.sqlDialect().rebuildTriggers(any(Table.class))).thenReturn(Collections.<String>emptyList());
     when(connection.openSchemaResource(eq(connection.getDataSource()))).thenReturn(new StubSchemaResource(sourceSchema));
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
@@ -325,6 +327,7 @@ public class TestUpgrade {
     ConnectionResources connection = mock(ConnectionResources.class, RETURNS_DEEP_STUBS);
     when(connection.sqlDialect().dropStatements(any(View.class))).thenReturn(ImmutableList.of("X"));
     when(connection.sqlDialect().viewDeploymentStatements(same(testView))).thenReturn(ImmutableList.of("A"));
+    when(connection.sqlDialect().viewDeploymentStatementsAsLiteral(any(View.class))).thenReturn(literal("W"));
     when(connection.sqlDialect().rebuildTriggers(any(Table.class))).thenReturn(Collections.<String>emptyList());
     when(connection.openSchemaResource(eq(connection.getDataSource()))).thenReturn(new StubSchemaResource(sourceSchema));
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
@@ -364,10 +367,9 @@ public class TestUpgrade {
     when(sqlDialect.convertStatementToHash(any(SelectStatement.class))).thenReturn("XXX");
     when(sqlDialect.dropStatements(any(View.class))).thenReturn(ImmutableList.of("X"));
     when(sqlDialect.viewDeploymentStatements(same(testView))).thenReturn(ImmutableList.of("A"));
-
+    when(sqlDialect.viewDeploymentStatementsAsLiteral(any(View.class))).thenReturn(literal("W"));
     when(sqlDialect.convertStatementToSQL(any(InsertStatement.class))).thenReturn(ImmutableList.of("C"));
     when(sqlDialect.convertStatementToSQL(any(DeleteStatement.class))).thenReturn("D");
-    when(sqlDialect.convertStatementToSQL(any(InsertStatement.class), any(Schema.class), any(Table.class))).thenReturn(new ArrayList<String>());
     when(sqlDialect.dropStatements(any(Table.class))).thenReturn(new HashSet<String>());
     when(sqlDialect.truncateTableStatements(any(Table.class))).thenReturn(new HashSet<String>());
     when(sqlDialect.convertStatementToSQL(any(DeleteStatement.class))).thenReturn("G");
@@ -434,10 +436,9 @@ public class TestUpgrade {
     when(sqlDialect.convertStatementToHash(any(SelectStatement.class))).thenReturn("XXX");
     when(sqlDialect.dropStatements(any(View.class))).thenReturn(ImmutableList.of("X"));
     when(sqlDialect.viewDeploymentStatements(same(testView))).thenReturn(ImmutableList.of("A"));
-
+    when(sqlDialect.viewDeploymentStatementsAsLiteral(any(View.class))).thenReturn(literal("W"));
     when(sqlDialect.convertStatementToSQL(any(InsertStatement.class))).thenReturn(ImmutableList.of("C"));
     when(sqlDialect.convertStatementToSQL(any(DeleteStatement.class))).thenReturn("D");
-    when(sqlDialect.convertStatementToSQL(any(InsertStatement.class), any(Schema.class), any(Table.class))).thenReturn(new ArrayList<String>());
     when(sqlDialect.dropStatements(any(Table.class))).thenReturn(new HashSet<String>());
     when(sqlDialect.truncateTableStatements(any(Table.class))).thenReturn(new HashSet<String>());
     when(sqlDialect.convertStatementToSQL(any(DeleteStatement.class))).thenReturn("G");
@@ -505,7 +506,7 @@ public class TestUpgrade {
     when(sqlDialect.convertStatementToHash(any(SelectStatement.class))).thenReturn("XXX");
     when(sqlDialect.dropStatements(any(View.class))).thenReturn(ImmutableList.of("X"));
     when(sqlDialect.viewDeploymentStatements(same(testView))).thenReturn(ImmutableList.of("A"));
-
+    when(sqlDialect.viewDeploymentStatementsAsLiteral(any(View.class))).thenReturn(literal("W"));
     when(sqlDialect.convertStatementToSQL(any(InsertStatement.class))).thenReturn(ImmutableList.of("C"));
     when(sqlDialect.convertStatementToSQL(any(DeleteStatement.class))).thenReturn("D");
     when(sqlDialect.convertStatementToSQL(any(SelectStatement.class))).then(new Answer<String>() {
@@ -563,6 +564,7 @@ public class TestUpgrade {
 
     ConnectionResources connection = mock(ConnectionResources.class, RETURNS_DEEP_STUBS);
     when(connection.sqlDialect().viewDeploymentStatements(same(testView))).thenReturn(ImmutableList.of("A"));
+    when(connection.sqlDialect().viewDeploymentStatementsAsLiteral(any(View.class))).thenReturn(literal("W"));
     when(connection.sqlDialect().convertStatementToSQL(any(InsertStatement.class))).thenReturn(ImmutableList.of("C"));
     when(connection.sqlDialect().rebuildTriggers(any(Table.class))).thenReturn(Collections.<String>emptyList());
     when(connection.openSchemaResource(eq(connection.getDataSource()))).thenReturn(new StubSchemaResource(sourceSchema));
@@ -613,10 +615,10 @@ public class TestUpgrade {
     SqlDialect sqlDialect = mock(SqlDialect.class);
     when(sqlDialect.convertStatementToHash(any(SelectStatement.class))).thenReturn("XXX");
     when(sqlDialect.viewDeploymentStatements(any(View.class))).thenReturn(ImmutableList.of("A"));
+    when(sqlDialect.viewDeploymentStatementsAsLiteral(any(View.class))).thenReturn(literal("W"));
     when(sqlDialect.dropStatements(any(View.class))).thenReturn(ImmutableList.of("B"));
     when(sqlDialect.convertStatementToSQL(any(InsertStatement.class))).thenReturn(ImmutableList.of("C"));
     when(sqlDialect.convertStatementToSQL(any(DeleteStatement.class))).thenReturn("D");
-    when(sqlDialect.convertStatementToSQL(any(InsertStatement.class), any(Schema.class), any(Table.class))).thenReturn(new ArrayList<String>());
     when(sqlDialect.dropStatements(any(Table.class))).thenReturn(new HashSet<String>());
     when(sqlDialect.convertCommentToSQL(any(String.class))).thenReturn("CM");
     when(sqlDialect.truncateTableStatements(any(Table.class))).thenReturn(new HashSet<String>());
