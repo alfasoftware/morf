@@ -392,7 +392,7 @@ class OracleDialect extends SqlDialect {
     final String script = viewDeploymentStatementsAsScript(view);
 
     final int chunkSize = 512;
-    if (script.length() < chunkSize) {
+    if (script.length() <= chunkSize) {
       return super.viewDeploymentStatementsAsLiteral(view);
     }
 
