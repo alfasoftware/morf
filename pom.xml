@@ -60,7 +60,7 @@
     <junitparams.version>1.0.4</junitparams.version>
     <jxl.version>2.6.12</jxl.version>
     <log4j.version>1.2.15</log4j.version>
-    <mockito.version>1.9.0</mockito.version>
+    <mockito.version>3.9.0</mockito.version>
     <ognl.version>2.6.9</ognl.version>
     <serializer.version>2.7.1</serializer.version>
     <xmlunit.version>2.6.4</xmlunit.version>
@@ -68,6 +68,7 @@
     <sonar.coverage.exclusions>
         morf-testsupport/**
     </sonar.coverage.exclusions>
+    <test.threadCount>4</test.threadCount>
   </properties>
   
   <build>
@@ -108,7 +109,7 @@
           <configuration>
             <parallel>classes</parallel>
             <perCoreThreadCount>false</perCoreThreadCount>
-            <threadCount>4</threadCount>
+            <threadCount>${test.threadCount}</threadCount>
             <runOrder>alphabetical</runOrder>
             <systemPropertyVariables>
               <log4j.configuration>file:${basedir}/../etc/log4j-maven.properties</log4j.configuration>

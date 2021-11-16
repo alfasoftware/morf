@@ -21,10 +21,9 @@ package org.alfasoftware.morf.upgrade;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyCollectionOf;
-import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
@@ -115,7 +114,7 @@ public class TestInlineTableUpgrader {
 
     // then
     verify(addTable).apply(schema);
-    verify(sqlDialect, atLeastOnce()).tableDeploymentStatements(any(Table.class));
+    verify(sqlDialect, atLeastOnce()).tableDeploymentStatements(nullable(Table.class));
     verify(sqlStatementWriter).writeSql(anyCollectionOf(String.class)); // deploying the specified table and indexes
   }
 
@@ -134,7 +133,7 @@ public class TestInlineTableUpgrader {
 
     // then
     verify(removeTable).apply(schema);
-    verify(sqlDialect).dropStatements(any(Table.class));
+    verify(sqlDialect).dropStatements(nullable(Table.class));
     verify(sqlStatementWriter).writeSql(anyCollectionOf(String.class));
   }
 
@@ -153,7 +152,7 @@ public class TestInlineTableUpgrader {
 
     // then
     verify(addIndex).apply(schema);
-    verify(sqlDialect).addIndexStatements(any(Table.class), any(Index.class));
+    verify(sqlDialect).addIndexStatements(nullable(Table.class), nullable(Index.class));
     verify(sqlStatementWriter).writeSql(anyCollectionOf(String.class));
   }
 
@@ -172,7 +171,7 @@ public class TestInlineTableUpgrader {
 
     // then
     verify(addColumn).apply(schema);
-    verify(sqlDialect).alterTableAddColumnStatements(any(Table.class), any(Column.class));
+    verify(sqlDialect).alterTableAddColumnStatements(nullable(Table.class), nullable(Column.class));
     verify(sqlStatementWriter).writeSql(anyCollectionOf(String.class));
   }
 
@@ -191,7 +190,7 @@ public class TestInlineTableUpgrader {
 
     // then
     verify(changeColumn).apply(schema);
-    verify(sqlDialect).alterTableChangeColumnStatements(any(Table.class), any(Column.class), any(Column.class));
+    verify(sqlDialect).alterTableChangeColumnStatements(nullable(Table.class), nullable(Column.class), nullable(Column.class));
     verify(sqlStatementWriter).writeSql(anyCollectionOf(String.class));
   }
 
@@ -210,7 +209,7 @@ public class TestInlineTableUpgrader {
 
     // then
     verify(removeColumn).apply(schema);
-    verify(sqlDialect).alterTableDropColumnStatements(any(Table.class), any(Column.class));
+    verify(sqlDialect).alterTableDropColumnStatements(nullable(Table.class), nullable(Column.class));
     verify(sqlStatementWriter).writeSql(anyCollectionOf(String.class));
   }
 
@@ -229,7 +228,7 @@ public class TestInlineTableUpgrader {
 
     // then
     verify(removeIndex).apply(schema);
-    verify(sqlDialect).indexDropStatements(any(Table.class), any(Index.class));
+    verify(sqlDialect).indexDropStatements(nullable(Table.class), nullable(Index.class));
     verify(sqlStatementWriter).writeSql(anyCollectionOf(String.class));
   }
 
@@ -248,8 +247,8 @@ public class TestInlineTableUpgrader {
 
     // then
     verify(changeIndex).apply(schema);
-    verify(sqlDialect).indexDropStatements(any(Table.class), any(Index.class));
-    verify(sqlDialect).addIndexStatements(any(Table.class), any(Index.class));
+    verify(sqlDialect).indexDropStatements(nullable(Table.class), nullable(Index.class));
+    verify(sqlDialect).addIndexStatements(nullable(Table.class), nullable(Index.class));
     verify(sqlStatementWriter, times(2)).writeSql(anyCollectionOf(String.class)); // index drop and index deployment
   }
 
@@ -263,7 +262,7 @@ public class TestInlineTableUpgrader {
     ExecuteStatement executeStatement = mock(ExecuteStatement.class);
     InsertStatement insertStatement = mock(InsertStatement.class);
     given(executeStatement.getStatement()).willReturn(insertStatement);
-    when(sqlDialect.convertStatementToSQL(eq((Statement)insertStatement), any(Schema.class), any(Table.class))).thenCallRealMethod();
+    when(sqlDialect.convertStatementToSQL(eq((Statement)insertStatement), nullable(Schema.class), nullable(Table.class))).thenCallRealMethod();
 
     // when
     upgrader.visit(executeStatement);
@@ -285,7 +284,7 @@ public class TestInlineTableUpgrader {
     ExecuteStatement executeStatement = mock(ExecuteStatement.class);
     UpdateStatement updateStatement = mock(UpdateStatement.class);
     given(executeStatement.getStatement()).willReturn(updateStatement);
-    when(sqlDialect.convertStatementToSQL(eq((Statement)updateStatement), any(Schema.class), any(Table.class))).thenCallRealMethod();
+    when(sqlDialect.convertStatementToSQL(eq((Statement)updateStatement), nullable(Schema.class), nullable(Table.class))).thenCallRealMethod();
     when(sqlDialect.convertStatementToSQL(eq(updateStatement))).thenReturn("dummy");
 
     // when
@@ -306,7 +305,7 @@ public class TestInlineTableUpgrader {
     ExecuteStatement executeStatement = mock(ExecuteStatement.class);
     DeleteStatement deleteStatement = mock(DeleteStatement.class);
     given(executeStatement.getStatement()).willReturn(deleteStatement);
-    when(sqlDialect.convertStatementToSQL(eq((Statement)deleteStatement), any(Schema.class), any(Table.class))).thenCallRealMethod();
+    when(sqlDialect.convertStatementToSQL(eq((Statement)deleteStatement), nullable(Schema.class), nullable(Table.class))).thenCallRealMethod();
     when(sqlDialect.convertStatementToSQL(eq(deleteStatement))).thenReturn("dummy");
 
     // when
@@ -327,7 +326,7 @@ public class TestInlineTableUpgrader {
     ExecuteStatement executeStatement = mock(ExecuteStatement.class);
     MergeStatement mergeStatement = mock(MergeStatement.class);
     given(executeStatement.getStatement()).willReturn(mergeStatement);
-    when(sqlDialect.convertStatementToSQL(eq((Statement)mergeStatement), any(Schema.class), any(Table.class))).thenCallRealMethod();
+    when(sqlDialect.convertStatementToSQL(eq((Statement)mergeStatement), nullable(Schema.class), nullable(Table.class))).thenCallRealMethod();
     when(sqlDialect.convertStatementToSQL(eq(mergeStatement))).thenReturn("dummy");
 
     // when
@@ -348,7 +347,7 @@ public class TestInlineTableUpgrader {
     ExecuteStatement executeStatement = mock(ExecuteStatement.class);
     Statement statement = mock(Statement.class);
     given(executeStatement.getStatement()).willReturn(statement);
-    when(sqlDialect.convertStatementToSQL(eq(statement), any(Schema.class), any(Table.class))).thenCallRealMethod();
+    when(sqlDialect.convertStatementToSQL(eq(statement), nullable(Schema.class), nullable(Table.class))).thenCallRealMethod();
 
     // when
     try {
@@ -378,7 +377,7 @@ public class TestInlineTableUpgrader {
     upgrader.visit(executeStatement);
 
     // then
-    verify(statement).getStatement(eq("Foo"), anyString());
+    verify(statement).getStatement(eq("Foo"), nullable(String.class));
     verify(sqlStatementWriter).writeSql(anyCollectionOf(String.class));
   }
 
@@ -393,7 +392,7 @@ public class TestInlineTableUpgrader {
     upgrader.visit(analyseTable);
 
     // then
-    verify(sqlDialect).getSqlForAnalyseTable(any(Table.class));
+    verify(sqlDialect).getSqlForAnalyseTable(nullable(Table.class));
     verify(sqlStatementWriter).writeSql(anyCollectionOf(String.class));
   }
 }
