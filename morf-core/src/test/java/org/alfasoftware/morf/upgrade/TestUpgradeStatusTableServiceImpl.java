@@ -24,10 +24,10 @@ import static org.alfasoftware.morf.upgrade.UpgradeStatusTableServiceImpl.STATUS
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyList;
 import static org.mockito.Matchers.anyListOf;
-import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -93,7 +93,7 @@ public class TestUpgradeStatusTableServiceImpl {
   @SuppressWarnings("unchecked")
   @Test
   public void testGetStatusWhenTableNotPresent() {
-    when(sqlScriptExecutor.executeQuery(anyString(), any(Connection.class), any(ResultSetProcessor.class))).thenThrow(RuntimeSqlException.class);
+    when(sqlScriptExecutor.executeQuery(nullable(String.class), nullable(Connection.class), nullable(ResultSetProcessor.class))).thenThrow(RuntimeSqlException.class);
     assertEquals("Result", UpgradeStatus.NONE, upgradeStatusTableService.getStatus(Optional.of(dataSource)));
   }
 
@@ -108,7 +108,7 @@ public class TestUpgradeStatusTableServiceImpl {
   public void testGetStatusWhenTablePresent() throws SQLException {
     ArgumentCaptor<ResultSetProcessor> captor = ArgumentCaptor.forClass(ResultSetProcessor.class);
     ResultSet resultSet = mock(ResultSet.class);
-    when(sqlScriptExecutor.executeQuery(anyString(), any(Connection.class), captor.capture())).thenAnswer(invocation -> {
+    when(sqlScriptExecutor.executeQuery(nullable(String.class), nullable(Connection.class), captor.capture())).thenAnswer(invocation -> {
       ResultSetProcessor processor = (ResultSetProcessor) invocation.getArguments()[2];
       assertSame("Processor", captor.getValue(), processor);
 
