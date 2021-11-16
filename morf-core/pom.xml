@@ -15,6 +15,7 @@
 
   <properties>
     <sonar.coverage.jacoco.xmlReportPaths>${basedir}/../${aggregate.report.dir}</sonar.coverage.jacoco.xmlReportPaths>
+    <test.threadCount>1</test.threadCount>
   </properties>
 
   <build>

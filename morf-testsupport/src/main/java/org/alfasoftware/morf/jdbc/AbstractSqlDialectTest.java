@@ -5706,7 +5706,7 @@ public abstract class AbstractSqlDialectTest {
    *
    * @author Copyright (c) Alfa Financial Software 2011
    */
-  private static final class ByteArrayMatcher extends ArgumentMatcher<byte[]> {
+  private static final class ByteArrayMatcher implements ArgumentMatcher<byte[]> {
 
     /**
      * expected byte value of argument
@@ -5727,8 +5727,8 @@ public abstract class AbstractSqlDialectTest {
      * @see org.mockito.ArgumentMatcher#matches(java.lang.Object)
      */
     @Override
-    public boolean matches(final Object argument) {
-      return Arrays.equals((byte[])argument, expectedBytes);
+    public boolean matches(final byte[] argument) {
+      return Arrays.equals(argument, expectedBytes);
     }
   }
 
