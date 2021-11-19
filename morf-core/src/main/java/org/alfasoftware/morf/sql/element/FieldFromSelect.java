@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.sql.element;
 
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.upgrade.TableDiscovery.DiscoveredTables;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
@@ -100,7 +101,7 @@ public class FieldFromSelect extends AliasedField implements Driver{
   public int hashCode() {
     final int prime = 31;
     int result = super.hashCode();
-    result = prime * result + ((selectStatement == null) ? 0 : selectStatement.hashCode());
+    result = prime * result + (selectStatement == null ? 0 : selectStatement.hashCode());
     return result;
   }
 
@@ -120,5 +121,13 @@ public class FieldFromSelect extends AliasedField implements Driver{
     } else if (!selectStatement.equals(other.selectStatement))
       return false;
     return true;
+  }
+
+
+  @Override
+  public void discoverTables(DiscoveredTables discoveredTables) {
+    if(selectStatement != null) {
+      selectStatement.discoverTables(discoveredTables);
+    }
   }
 }

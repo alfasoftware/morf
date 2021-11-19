@@ -29,6 +29,7 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
+import org.alfasoftware.morf.upgrade.TableDiscovery.DiscoveredTables;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
@@ -48,6 +49,8 @@ public class SchemaChangeSequence {
 
   private final List<UpgradeStepWithChanges> allChanges     = Lists.newArrayList();
 
+  private final TableDiscovery tableDiscovery = new TableDiscovery();
+
 
   /**
    * @param steps the upgrade steps
@@ -57,10 +60,12 @@ public class SchemaChangeSequence {
 
     for (UpgradeStep step : steps) {
       InternalVisitor internalVisitor = new InternalVisitor();
-      Editor editor = new Editor(internalVisitor);
+      DiscoveredTables discoveredTables = new DiscoveredTables();
+      Editor editor = new Editor(internalVisitor, discoveredTables);
       // For historical reasons, we need to pass the editor in twice
       step.execute(editor, editor);
       allChanges.add(new UpgradeStepWithChanges(step, internalVisitor.getChanges()));
+      tableDiscovery.addDiscoveredTables(step.getClass().getSimpleName(), discoveredTables);
     }
   }
 
@@ -144,6 +149,11 @@ public class SchemaChangeSequence {
   }
 
 
+  public TableDiscovery getTableDiscovery() {
+    return tableDiscovery;
+  }
+
+
   /**
    * The editor implementation which is used by upgrade steps
    */
@@ -151,12 +161,16 @@ public class SchemaChangeSequence {
 
     private final SchemaChangeVisitor visitor;
 
+    private final DiscoveredTables discoveredTables;
+
     /**
      * @param visitor The visitor to pass the changes to.
+     * @param discoveredTables
      */
-    Editor(SchemaChangeVisitor visitor) {
+    Editor(SchemaChangeVisitor visitor, DiscoveredTables discoveredTables) {
       super();
       this.visitor = visitor;
+      this.discoveredTables = discoveredTables;
     }
 
 
@@ -166,6 +180,7 @@ public class SchemaChangeSequence {
     @Override
     public void executeStatement(Statement statement) {
       visitor.visit(new ExecuteStatement(statement));
+      statement.discoverTables(discoveredTables);
     }
 
 
@@ -182,6 +197,8 @@ public class SchemaChangeSequence {
 
       // now move to the final column definition, which may not have the default value.
       changeColumn(tableName, temporaryDefinitionWithDefault, definition);
+
+      discoveredTables.addModifiedTable(tableName);
     }
 
 
@@ -191,6 +208,7 @@ public class SchemaChangeSequence {
     @Override
     public void addColumn(String tableName, Column definition) {
       visitor.visit(new AddColumn(tableName, definition));
+      discoveredTables.addModifiedTable(tableName);
     }
 
 
@@ -203,6 +221,8 @@ public class SchemaChangeSequence {
       tableAdditions.add(definition.getName());
 
       visitor.visit(new AddTable(definition));
+
+      discoveredTables.addModifiedTable(definition.getName());
     }
 
 
@@ -212,6 +232,7 @@ public class SchemaChangeSequence {
     @Override
     public void removeTable(Table table) {
       visitor.visit(new RemoveTable(table));
+      discoveredTables.addModifiedTable(table.getName());
     }
 
 
@@ -221,6 +242,7 @@ public class SchemaChangeSequence {
     @Override
     public void changeColumn(String tableName, Column fromDefinition, Column toDefinition) {
       visitor.visit(new ChangeColumn(tableName, fromDefinition, toDefinition));
+      discoveredTables.addModifiedTable(tableName);
     }
 
 
@@ -230,6 +252,7 @@ public class SchemaChangeSequence {
     @Override
     public void removeColumn(String tableName, Column definition) {
       visitor.visit(new RemoveColumn(tableName, definition));
+      discoveredTables.addModifiedTable(tableName);
     }
 
 
@@ -242,6 +265,7 @@ public class SchemaChangeSequence {
       for (Column definition : definitions) {
         removeColumn(tableName, definition);
       }
+      discoveredTables.addModifiedTable(tableName);
     }
 
 
@@ -251,6 +275,7 @@ public class SchemaChangeSequence {
     @Override
     public void addIndex(String tableName, Index index) {
       visitor.visit(new AddIndex(tableName, index));
+      discoveredTables.addModifiedTable(tableName);
     }
 
 
@@ -260,6 +285,7 @@ public class SchemaChangeSequence {
     @Override
     public void removeIndex(String tableName, Index index) {
       visitor.visit(new RemoveIndex(tableName, index));
+      discoveredTables.addModifiedTable(tableName);
     }
 
 
@@ -269,6 +295,7 @@ public class SchemaChangeSequence {
     @Override
     public void changeIndex(String tableName, Index fromIndex, Index toIndex) {
       visitor.visit(new ChangeIndex(tableName, fromIndex, toIndex));
+      discoveredTables.addModifiedTable(tableName);
     }
 
 
@@ -278,6 +305,7 @@ public class SchemaChangeSequence {
     @Override
     public void renameIndex(String tableName, String fromIndexName, String toIndexName) {
       visitor.visit(new RenameIndex(tableName, fromIndexName, toIndexName));
+      discoveredTables.addModifiedTable(tableName);
     }
 
 
@@ -288,6 +316,8 @@ public class SchemaChangeSequence {
     public void renameTable(String fromTableName, String toTableName) {
       tableAdditions.add(toTableName);
       visitor.visit(new RenameTable(fromTableName, toTableName));
+      discoveredTables.addModifiedTable(fromTableName);
+      discoveredTables.addModifiedTable(toTableName);
     }
 
 
@@ -297,6 +327,7 @@ public class SchemaChangeSequence {
     @Override
     public void changePrimaryKeyColumns(String tableName, List<String> oldPrimaryKeyColumns, List<String> newPrimaryKeyColumns) {
       visitor.visit(new ChangePrimaryKeyColumns(tableName, oldPrimaryKeyColumns, newPrimaryKeyColumns));
+      discoveredTables.addModifiedTable(tableName);
     }
 
 
@@ -309,6 +340,7 @@ public class SchemaChangeSequence {
     @Deprecated
     public void correctPrimaryKeyColumns(String tableName, List<String> newPrimaryKeyColumns) {
       visitor.visit(new CorrectPrimaryKeyColumns(tableName, newPrimaryKeyColumns));
+      discoveredTables.addModifiedTable(tableName);
     }
 
 
@@ -321,6 +353,9 @@ public class SchemaChangeSequence {
       tableAdditions.add(table.getName());
 
       visitor.visit(new AddTableFrom(table, select));
+
+      discoveredTables.addModifiedTable(table.getName());
+      // TODO select analysis
     }
 
 
@@ -330,6 +365,7 @@ public class SchemaChangeSequence {
     @Override
     public void analyseTable(String tableName) {
       visitor.visit(new AnalyseTable(tableName));
+      discoveredTables.addModifiedTable(tableName);
     }
   }
 

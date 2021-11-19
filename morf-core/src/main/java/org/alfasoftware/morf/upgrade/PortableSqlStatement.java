@@ -24,6 +24,7 @@ import java.util.Map;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.sql.Statement;
+import org.alfasoftware.morf.upgrade.TableDiscovery.DiscoveredTables;
 
 import com.google.common.io.CharStreams;
 import com.google.common.io.Closeables;
@@ -185,6 +186,12 @@ public class PortableSqlStatement implements Statement {
       currentIndex = endPosition;
     }
     return buffer.toString();
+  }
+
+
+  @Override
+  public void discoverTables(DiscoveredTables discoveredTables) {
+    discoveredTables.portableSqlStatementUsed();
   }
 
 

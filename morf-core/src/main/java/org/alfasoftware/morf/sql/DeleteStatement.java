@@ -22,6 +22,7 @@ import java.util.function.Function;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.alfasoftware.morf.upgrade.TableDiscovery.DiscoveredTables;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyTransformations;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
@@ -227,7 +228,7 @@ public class DeleteStatement implements Statement,
   @Override
   public String toString() {
     return "SQL DELETE FROM [" + table + "] " +
-      (whereCriterion == null ? "" : ("WHERE " + whereCriterion)) +
+      (whereCriterion == null ? "" : "WHERE " + whereCriterion) +
       (limit.isPresent() ? " LIMIT(" + limit.get() + ")" : "");
   }
 
@@ -236,9 +237,9 @@ public class DeleteStatement implements Statement,
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result + ((table == null) ? 0 : table.hashCode());
-    result = prime * result + ((whereCriterion == null) ? 0 : whereCriterion.hashCode());
-    result = prime * result + ((!limit.isPresent()) ? 0 : limit.get().hashCode());
+    result = prime * result + (table == null ? 0 : table.hashCode());
+    result = prime * result + (whereCriterion == null ? 0 : whereCriterion.hashCode());
+    result = prime * result + (!limit.isPresent() ? 0 : limit.get().hashCode());
     return result;
   }
 
@@ -265,5 +266,15 @@ public class DeleteStatement implements Statement,
     if (!Objects.equals(limit, other.limit))
       return false;
     return true;
+  }
+
+
+  @Override
+  public void discoverTables(DiscoveredTables discoveredTables) {
+    discoveredTables.addModifiedTable(table.getName());
+
+    if(whereCriterion != null) {
+      whereCriterion.discoverTables(discoveredTables);
+    }
   }
 }

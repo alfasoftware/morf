@@ -19,6 +19,7 @@ import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.sql.SqlUtils;
+import org.alfasoftware.morf.upgrade.TableDiscovery.DiscoveredTables;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -198,6 +199,12 @@ parameter("name").type(DataType.DECIMAL).width(13,2).build();</pre>
         .append(width, other.width)
         .append(type, other.type)
         .isEquals();
+  }
+
+
+  @Override
+  public void discoverTables(DiscoveredTables discoveredTables) {
+    //nothing
   }
 
 

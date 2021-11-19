@@ -21,7 +21,9 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.sql.TableDiscoverable;
 import org.alfasoftware.morf.sql.TempTransitionalBuilderWrapper;
+import org.alfasoftware.morf.upgrade.TableDiscovery.DiscoveredTables;
 import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
@@ -52,7 +54,7 @@ import com.google.common.collect.Lists;
  *
  * @author Copyright (c) Alfa Financial Software 2009
  */
-public class Criterion implements Driver, DeepCopyableWithTransformation<Criterion,Builder<Criterion>>{
+public class Criterion implements Driver, DeepCopyableWithTransformation<Criterion, Builder<Criterion>>, TableDiscoverable{
 
   /**
    * Operator to use in the criterion
@@ -657,5 +659,17 @@ public class Criterion implements Driver, DeepCopyableWithTransformation<Criteri
     } else if (!value.equals(other.value))
       return false;
     return true;
+  }
+
+
+  @Override
+  public void discoverTables(DiscoveredTables discoveredTables) {
+    if(selectStatement != null) {
+      selectStatement.discoverTables(discoveredTables);
+    }
+    criteria.stream().forEach(crit -> crit.discoverTables(discoveredTables));
+    if(field != null) {
+      field.discoverTables(discoveredTables);
+    }
   }
 }

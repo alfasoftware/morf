@@ -23,7 +23,7 @@ import org.alfasoftware.morf.util.DeepCopyTransformation;
  *
  * @author Copyright (c) Alfa Financial Software 2009
  */
-public interface Statement {
+public interface Statement extends TableDiscoverable{
 
 
   /**
@@ -34,5 +34,4 @@ public interface Statement {
    */
   @Deprecated
   public Statement deepCopy();
-
 }

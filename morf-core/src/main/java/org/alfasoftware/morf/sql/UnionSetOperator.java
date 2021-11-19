@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.sql;
 
+import org.alfasoftware.morf.upgrade.TableDiscovery.DiscoveredTables;
 import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
@@ -167,8 +168,8 @@ public class UnionSetOperator implements SetOperator {
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result + ((selectStatement == null) ? 0 : selectStatement.hashCode());
-    result = prime * result + ((unionStrategy == null) ? 0 : unionStrategy.hashCode());
+    result = prime * result + (selectStatement == null ? 0 : selectStatement.hashCode());
+    result = prime * result + (unionStrategy == null ? 0 : unionStrategy.hashCode());
     return result;
   }
 
@@ -208,5 +209,11 @@ public class UnionSetOperator implements SetOperator {
   @Override
   public Builder<SetOperator> deepCopy(DeepCopyTransformation transformer) {
     return TempTransitionalBuilderWrapper.<SetOperator>wrapper(new UnionSetOperator(getUnionStrategy(),transformer.deepCopy(getSelectStatement())));
+  }
+
+
+  @Override
+  public void discoverTables(DiscoveredTables discoveredTables) {
+    selectStatement.discoverTables(discoveredTables);
   }
 }

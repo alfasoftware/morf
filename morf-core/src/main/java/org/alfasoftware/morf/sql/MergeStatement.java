@@ -23,6 +23,7 @@ import java.util.List;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.alfasoftware.morf.upgrade.TableDiscovery.DiscoveredTables;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
@@ -153,6 +154,12 @@ public class MergeStatement implements Statement,
       InputField that = (InputField) obj;
       return super.equals(that)
           && this.name.equals(that.name);
+    }
+
+
+    @Override
+    public void discoverTables(DiscoveredTables discoveredTables) {
+      //nothing
     }
   }
 
@@ -403,5 +410,20 @@ public class MergeStatement implements Statement,
   @Override
   public MergeStatementBuilder shallowCopy() {
     return new MergeStatementBuilder(this);
+  }
+
+
+  @Override
+  public void discoverTables(DiscoveredTables discoveredTables) {
+    discoveredTables.addModifiedTable(table.getName());
+    if(selectStatement != null) {
+      selectStatement.discoverTables(discoveredTables);
+    }
+    if(tableUniqueKey != null) {
+      tableUniqueKey.stream().forEach(tuk -> tuk.discoverTables(discoveredTables));
+    }
+    if(ifUpdating != null) {
+      ifUpdating.stream().forEach(tuk -> tuk.discoverTables(discoveredTables));
+    }
   }
 }

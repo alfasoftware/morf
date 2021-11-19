@@ -26,6 +26,7 @@ import java.util.function.Function;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.alfasoftware.morf.upgrade.TableDiscovery.DiscoveredTables;
 import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
@@ -571,5 +572,26 @@ public class InsertStatement implements Statement,
       .dispatch(fields)
       .dispatch(values)
       .dispatch(fieldDefaults.values());
+  }
+
+
+  @Override
+  public void discoverTables(DiscoveredTables discoveredTables) {
+    discoveredTables.addModifiedTable(table.getName());
+    if(fromTable != null) {
+      discoveredTables.addReadTable(fromTable.getName());
+    }
+    if(selectStatement != null) {
+      selectStatement.discoverTables(discoveredTables);
+    }
+    if(fields != null) {
+      fields.stream().forEach(f -> f.discoverTables(discoveredTables));
+    }
+    if(values != null) {
+      values.stream().forEach(f -> f.discoverTables(discoveredTables));
+    }
+    if(fieldDefaults != null) {
+      fieldDefaults.values().stream().forEach(f -> f.discoverTables(discoveredTables));
+    }
   }
 }

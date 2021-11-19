@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.sql.Statement;
+import org.alfasoftware.morf.upgrade.TableDiscovery.DiscoveredTables;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -292,5 +293,11 @@ public class FieldLiteral extends AliasedField {
     return (dataType.equals(DataType.STRING)
         ? "\"" + value + "\""
         : value == null ? "NULL" : value) + super.toString();
+  }
+
+
+  @Override
+  public void discoverTables(DiscoveredTables discoveredTables) {
+    //nothing
   }
 }

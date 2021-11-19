@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.sql.element;
 
 import org.alfasoftware.morf.sql.SelectFirstStatement;
+import org.alfasoftware.morf.upgrade.TableDiscovery.DiscoveredTables;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
@@ -96,7 +97,7 @@ public class FieldFromSelectFirst extends AliasedField implements Driver {
   public int hashCode() {
     final int prime = 31;
     int result = super.hashCode();
-    result = prime * result + ((selectFirstStatement == null) ? 0 : selectFirstStatement.hashCode());
+    result = prime * result + (selectFirstStatement == null ? 0 : selectFirstStatement.hashCode());
     return result;
   }
 
@@ -116,5 +117,13 @@ public class FieldFromSelectFirst extends AliasedField implements Driver {
     } else if (!selectFirstStatement.equals(other.selectFirstStatement))
       return false;
     return true;
+  }
+
+
+  @Override
+  public void discoverTables(DiscoveredTables discoveredTables) {
+    if(selectFirstStatement != null) {
+      selectFirstStatement.discoverTables(discoveredTables);
+    }
   }
 }

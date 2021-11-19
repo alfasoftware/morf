@@ -27,6 +27,7 @@ import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.FieldFromSelect;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.alfasoftware.morf.upgrade.TableDiscovery.DiscoveredTables;
 import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
@@ -704,5 +705,18 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
   @Override
   public SelectStatementBuilder deepCopy(DeepCopyTransformation transformer) {
     return new SelectStatementBuilder(this, transformer);
+  }
+
+
+  @Override
+  public void discoverTables(DiscoveredTables discoveredTables) {
+    super.discoverTables(discoveredTables);
+
+    if(having != null) {
+      having.discoverTables(discoveredTables);
+    }
+    if(setOperators != null) {
+      setOperators.stream().forEach(op -> op.discoverTables(discoveredTables));
+    }
   }
 }

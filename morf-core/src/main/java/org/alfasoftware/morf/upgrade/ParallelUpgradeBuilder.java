@@ -26,7 +26,9 @@ public class ParallelUpgradeBuilder {
   }
 
   public ParallelUpgrade prepareParallelUpgrade(SchemaChangeSequence schemaChangeSequence) {
-    List<UpgradeNode> nodes = produceNodes(schemaChangeSequence.getUpgradeSteps());
+    //List<UpgradeNode> nodes = produceNodes(schemaChangeSequence.getUpgradeSteps());
+    List<UpgradeNode> nodes = produceNodes2(schemaChangeSequence.getUpgradeSteps(), schemaChangeSequence.getTableDiscovery());
+
     UpgradeNode root = prepareGraph(nodes);
 
     visitor.setUpgradeNodes(nodes.stream().collect(Collectors.toMap(UpgradeNode::getName, Function.identity())));
@@ -179,6 +181,18 @@ public class ParallelUpgradeBuilder {
       return new UpgradeNode(upg.getClass().getSimpleName(), upg.getClass().getAnnotation(Sequence.class).value(), reads, modifies);
 
     }).sorted(Comparator.comparing(UpgradeNode::getSequence)).collect(Collectors.toList());
+  }
+
+
+  List<UpgradeNode> produceNodes2(List<UpgradeStep> upgradesToApply, TableDiscovery tableDiscovery) {
+    return upgradesToApply.stream().map(upg -> {
+      Set<String> modifies = tableDiscovery.getModifiedTables(upg.getClass().getSimpleName());
+      Set<String> reads = tableDiscovery.getReadTables(upg.getClass().getSimpleName());
+      return new UpgradeNode(upg.getClass().getSimpleName(), upg.getClass().getAnnotation(Sequence.class).value(), reads, modifies);
+    }).sorted(Comparator.comparing(UpgradeNode::getSequence)).collect(Collectors.toList());
+  // TODO
+    // Fall back to annotations for portable sql
+    // make read and write list exclusive
   }
 
   void logGraph(UpgradeNode node) {

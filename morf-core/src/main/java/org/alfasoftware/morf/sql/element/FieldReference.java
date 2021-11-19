@@ -19,6 +19,7 @@ import static org.alfasoftware.morf.util.DeepCopyTransformations.noTransformatio
 
 import java.util.Optional;
 
+import org.alfasoftware.morf.upgrade.TableDiscovery.DiscoveredTables;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
@@ -399,6 +400,14 @@ public class FieldReference extends AliasedField implements Driver {
    */
   public FieldReference direction(Direction direction) {
     return new Builder(noTransformation(), this).direction(direction).build();
+  }
+
+
+  @Override
+  public void discoverTables(DiscoveredTables discoveredTables) {
+    if(table != null) {
+      discoveredTables.addReadTable(table.getName());
+    }
   }
 
 
