@@ -14,13 +14,16 @@ public class TableDiscovery {
     return Collections.unmodifiableSet(discoveredTablesMap.get(upgradeStepName).modifiedTables);
   }
 
-
   public Set<String> getReadTables(String upgradeStepName) {
     return Collections.unmodifiableSet(discoveredTablesMap.get(upgradeStepName).readTables);
   }
 
   public void addDiscoveredTables(String upgradeStepName, DiscoveredTables discoveredTables) {
     discoveredTablesMap.put(upgradeStepName, discoveredTables);
+  }
+
+  public boolean isPortableSqlStatementUsed(String upgradeStepName) {
+    return discoveredTablesMap.get(upgradeStepName).portableSqlStatementUsed;
   }
 
   public static class DiscoveredTables {
@@ -30,19 +33,18 @@ public class TableDiscovery {
 
     public void addModifiedTable(String tableName) {
       modifiedTables.add(tableName.toUpperCase());
+      readTables.remove(tableName.toUpperCase());
     }
 
 
     public void addReadTable(String tableName) {
-      readTables.add(tableName.toUpperCase());
+      if(!modifiedTables.contains(tableName.toUpperCase())) {
+        readTables.add(tableName.toUpperCase());
+      }
     }
 
     public void portableSqlStatementUsed() {
       portableSqlStatementUsed = true;
-    }
-
-    public boolean isPortableSqlStatementUsed() {
-      return portableSqlStatementUsed;
     }
   }
 

@@ -185,14 +185,55 @@ public class ParallelUpgradeBuilder {
 
 
   List<UpgradeNode> produceNodes2(List<UpgradeStep> upgradesToApply, TableDiscovery tableDiscovery) {
-    return upgradesToApply.stream().map(upg -> {
-      Set<String> modifies = tableDiscovery.getModifiedTables(upg.getClass().getSimpleName());
-      Set<String> reads = tableDiscovery.getReadTables(upg.getClass().getSimpleName());
-      return new UpgradeNode(upg.getClass().getSimpleName(), upg.getClass().getAnnotation(Sequence.class).value(), reads, modifies);
+    List<UpgradeNode> nodes = upgradesToApply.stream().map(upg -> {
+      String upgradeName = upg.getClass().getSimpleName();
+      Set<String> modifies, reads;
+      if(tableDiscovery.isPortableSqlStatementUsed(upgradeName)) {
+        // fallback to annotations
+        log.info("Due to use of PortableSqlStatement falling back to annotations for: " + upgradeName);
+        if (upg.getClass().isAnnotationPresent(UpgradeModifies.class)) {
+          UpgradeModifies annotation = upg.getClass().getAnnotation(UpgradeModifies.class);
+          modifies = Arrays.stream(annotation.value()).map(s -> s.toUpperCase()).collect(Collectors.toSet());
+        } else {
+          modifies = new HashSet<>();
+        }
+        if (upg.getClass().isAnnotationPresent(UpgradeReads.class)) {
+          UpgradeReads annotation = upg.getClass().getAnnotation(UpgradeReads.class);
+          reads = Arrays.stream(annotation.value()).map(s -> s.toUpperCase()).collect(Collectors.toSet());
+        } else {
+          reads = new HashSet<>();
+        }
+      } else {
+        modifies = tableDiscovery.getModifiedTables(upgradeName);
+        reads = tableDiscovery.getReadTables(upgradeName);
+
+        // temp testing - to be deleted
+        Set<String> modifies2, reads2;
+        if (upg.getClass().isAnnotationPresent(UpgradeModifies.class)) {
+          UpgradeModifies annotation = upg.getClass().getAnnotation(UpgradeModifies.class);
+          modifies2 = Arrays.stream(annotation.value()).map(s -> s.toUpperCase()).collect(Collectors.toSet());
+        } else {
+          modifies2 = new HashSet<>();
+        }
+        if (upg.getClass().isAnnotationPresent(UpgradeReads.class)) {
+          UpgradeReads annotation = upg.getClass().getAnnotation(UpgradeReads.class);
+          reads2 = Arrays.stream(annotation.value()).map(s -> s.toUpperCase()).collect(Collectors.toSet());
+        } else {
+          reads2 = new HashSet<>();
+        }
+        if((!Sets.symmetricDifference(reads, reads2).isEmpty() || !Sets.symmetricDifference(modifies, modifies2).isEmpty()) && (upg.getClass().isAnnotationPresent(UpgradeModifies.class) || upg.getClass().isAnnotationPresent(UpgradeReads.class))) {
+          log.info("Annotations vs Auto diff found for: " + upgradeName);
+          log.info("Auto modifies: " + modifies);
+          log.info("Annotations modifies: " + modifies2);
+          log.info("Auto reads: " + reads);
+          log.info("Annotations reads: " + reads2);
+        }
+     // temp testing - to be deleted STOP
+
+      }
+      return new UpgradeNode(upgradeName, upg.getClass().getAnnotation(Sequence.class).value(), reads, modifies);
     }).sorted(Comparator.comparing(UpgradeNode::getSequence)).collect(Collectors.toList());
-  // TODO
-    // Fall back to annotations for portable sql
-    // make read and write list exclusive
+    return nodes;
   }
 
   void logGraph(UpgradeNode node) {
