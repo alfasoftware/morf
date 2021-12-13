@@ -23,7 +23,6 @@ import java.util.List;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
 import org.alfasoftware.morf.sql.element.TableReference;
-import org.alfasoftware.morf.upgrade.TableDiscovery.DiscoveredTables;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
@@ -158,7 +157,7 @@ public class MergeStatement implements Statement,
 
 
     @Override
-    public void discoverTables(DiscoveredTables discoveredTables) {
+    public void resolveTables(ResolvedTables resolvedTables) {
       //nothing
     }
   }
