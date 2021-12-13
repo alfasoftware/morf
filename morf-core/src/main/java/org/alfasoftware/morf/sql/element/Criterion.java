@@ -20,7 +20,9 @@ import static org.alfasoftware.morf.util.DeepCopyTransformations.noTransformatio
 import java.util.Arrays;
 import java.util.List;
 
+import org.alfasoftware.morf.sql.ResolvedTables;
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.sql.TableResolvable;
 import org.alfasoftware.morf.sql.TempTransitionalBuilderWrapper;
 import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
@@ -52,7 +54,7 @@ import com.google.common.collect.Lists;
  *
  * @author Copyright (c) Alfa Financial Software 2009
  */
-public class Criterion implements Driver, DeepCopyableWithTransformation<Criterion,Builder<Criterion>>{
+public class Criterion implements Driver, DeepCopyableWithTransformation<Criterion, Builder<Criterion>>, TableResolvable {
 
   /**
    * Operator to use in the criterion
@@ -657,5 +659,17 @@ public class Criterion implements Driver, DeepCopyableWithTransformation<Criteri
     } else if (!value.equals(other.value))
       return false;
     return true;
+  }
+
+
+  @Override
+  public void resolveTables(ResolvedTables resolvedTables) {
+    if(selectStatement != null) {
+      selectStatement.resolveTables(resolvedTables);
+    }
+    criteria.stream().forEach(crit -> crit.resolveTables(resolvedTables));
+    if(field != null) {
+      field.resolveTables(resolvedTables);
+    }
   }
 }

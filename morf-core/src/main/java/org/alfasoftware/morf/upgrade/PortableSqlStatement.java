@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
+import org.alfasoftware.morf.sql.ResolvedTables;
 import org.alfasoftware.morf.sql.Statement;
 
 import com.google.common.io.CharStreams;
@@ -185,6 +186,12 @@ public class PortableSqlStatement implements Statement {
       currentIndex = endPosition;
     }
     return buffer.toString();
+  }
+
+
+  @Override
+  public void resolveTables(ResolvedTables resolvedTables) {
+    resolvedTables.portableSqlStatementUsed();
   }
 
 

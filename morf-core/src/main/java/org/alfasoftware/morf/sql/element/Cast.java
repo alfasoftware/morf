@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.sql.element;
 
 import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.sql.ResolvedTables;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
@@ -164,8 +165,8 @@ public class Cast extends AliasedField implements Driver {
   public int hashCode() {
     final int prime = 31;
     int result = super.hashCode();
-    result = prime * result + ((dataType == null) ? 0 : dataType.hashCode());
-    result = prime * result + ((expression == null) ? 0 : expression.hashCode());
+    result = prime * result + (dataType == null ? 0 : dataType.hashCode());
+    result = prime * result + (expression == null ? 0 : expression.hashCode());
     result = prime * result + scale;
     result = prime * result + width;
     return result;
@@ -193,5 +194,13 @@ public class Cast extends AliasedField implements Driver {
     if (width != other.width)
       return false;
     return true;
+  }
+
+
+  @Override
+  public void resolveTables(ResolvedTables resolvedTables) {
+    if(expression != null) {
+      expression.resolveTables(resolvedTables);
+    }
   }
 }

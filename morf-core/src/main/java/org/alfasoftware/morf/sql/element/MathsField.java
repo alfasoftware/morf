@@ -17,6 +17,7 @@ package org.alfasoftware.morf.sql.element;
 
 import static org.alfasoftware.morf.sql.SqlUtils.bracket;
 
+import org.alfasoftware.morf.sql.ResolvedTables;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
@@ -145,9 +146,9 @@ public class MathsField extends AliasedField implements Driver {
   public int hashCode() {
     final int prime = 31;
     int result = super.hashCode();
-    result = prime * result + ((leftField == null) ? 0 : leftField.hashCode());
-    result = prime * result + ((operator == null) ? 0 : operator.hashCode());
-    result = prime * result + ((rightField == null) ? 0 : rightField.hashCode());
+    result = prime * result + (leftField == null ? 0 : leftField.hashCode());
+    result = prime * result + (operator == null ? 0 : operator.hashCode());
+    result = prime * result + (rightField == null ? 0 : rightField.hashCode());
     return result;
   }
 
@@ -183,5 +184,16 @@ public class MathsField extends AliasedField implements Driver {
   @Override
   public String toString() {
     return String.format("%s %s %s%s", leftField, operator, rightField, super.toString());
+  }
+
+
+  @Override
+  public void resolveTables(ResolvedTables resolvedTables) {
+    if(leftField != null) {
+      leftField.resolveTables(resolvedTables);
+    }
+    if(rightField != null) {
+      rightField.resolveTables(resolvedTables);
+    }
   }
 }

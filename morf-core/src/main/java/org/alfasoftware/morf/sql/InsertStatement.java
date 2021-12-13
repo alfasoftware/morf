@@ -572,4 +572,25 @@ public class InsertStatement implements Statement,
       .dispatch(values)
       .dispatch(fieldDefaults.values());
   }
+
+
+  @Override
+  public void resolveTables(ResolvedTables resolvedTables) {
+    resolvedTables.addModifiedTable(table.getName());
+    if(fromTable != null) {
+      resolvedTables.addReadTable(fromTable.getName());
+    }
+    if(selectStatement != null) {
+      selectStatement.resolveTables(resolvedTables);
+    }
+    if(fields != null) {
+      fields.stream().forEach(f -> f.resolveTables(resolvedTables));
+    }
+    if(values != null) {
+      values.stream().forEach(v -> v.resolveTables(resolvedTables));
+    }
+    if(fieldDefaults != null) {
+      fieldDefaults.values().stream().forEach(f -> f.resolveTables(resolvedTables));
+    }
+  }
 }

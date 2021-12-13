@@ -226,7 +226,7 @@ public class UpdateStatement implements Statement,
    * the underlying database, the nature of the data and the nature of the query.</p>
    *
    * <p>Note that the use of parallel DML comes with restrictions, in particular, a table may not be accessed in the same transaction following a parallel DML execution. Please consult the Oracle manual section <em>Restrictions on Parallel DML</em> to check whether this hint is suitable.</p>
-   *    
+   *
    * @return this, for method chaining.
    */
   public UpdateStatement useParallelDml() {
@@ -308,5 +308,17 @@ public class UpdateStatement implements Statement,
       .dispatch(getWhereCriterion())
       .dispatch(getFields())
       .dispatch(getHints());
+  }
+
+
+  @Override
+  public void resolveTables(ResolvedTables resolvedTables) {
+    resolvedTables.addModifiedTable(table.getName());
+    if(whereCriterion != null) {
+      whereCriterion.resolveTables(resolvedTables);
+    }
+    if(fields != null) {
+      fields.stream().forEach(f -> f.resolveTables(resolvedTables));
+    }
   }
 }

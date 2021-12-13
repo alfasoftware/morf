@@ -19,6 +19,7 @@ import static org.alfasoftware.morf.util.DeepCopyTransformations.transformIterab
 
 import java.util.List;
 
+import org.alfasoftware.morf.sql.ResolvedTables;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
@@ -284,9 +285,9 @@ public final class WindowFunction extends AliasedField implements Driver {
   public int hashCode() {
     final int prime = 31;
     int result = super.hashCode();
-    result = prime * result + ((function == null) ? 0 : function.hashCode());
-    result = prime * result + ((orderBys == null) ? 0 : orderBys.hashCode());
-    result = prime * result + ((partitionBys == null) ? 0 : partitionBys.hashCode());
+    result = prime * result + (function == null ? 0 : function.hashCode());
+    result = prime * result + (orderBys == null ? 0 : orderBys.hashCode());
+    result = prime * result + (partitionBys == null ? 0 : partitionBys.hashCode());
     return result;
   }
 
@@ -344,5 +345,13 @@ public final class WindowFunction extends AliasedField implements Driver {
       .dispatch(getFunction())
       .dispatch(getOrderBys())
       .dispatch(getPartitionBys());
+  }
+
+
+  @Override
+  public void resolveTables(ResolvedTables resolvedTables) {
+    if(function != null) {
+      function.resolveTables(resolvedTables);
+    }
   }
 }

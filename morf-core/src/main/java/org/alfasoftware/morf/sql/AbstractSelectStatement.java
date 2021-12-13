@@ -43,7 +43,7 @@ import com.google.common.collect.Lists;
  *
  * @author Copyright (c) Alfa Financial Software 2014
  */
-public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<T>>  implements Statement,Driver{
+public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<T>>  implements Statement, Driver{
 
   /**
    * The fields to select from the table
@@ -825,5 +825,25 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
     } else if (!whereCriterion.equals(other.whereCriterion))
       return false;
     return true;
+  }
+
+
+  @Override
+  public void resolveTables(ResolvedTables resolvedTables) {
+    if(table != null) {
+      resolvedTables.addReadTable(table.getName());
+    }
+    if(fromSelects != null) {
+      fromSelects.stream().forEach(sel -> sel.resolveTables(resolvedTables));
+    }
+    if(joins != null) {
+      joins.stream().forEach(join -> join.resolveTables(resolvedTables));
+    }
+    if(whereCriterion != null) {
+      whereCriterion.resolveTables(resolvedTables);
+    }
+    if(fields != null) {
+      fields.stream().forEach(f -> f.resolveTables(resolvedTables));
+    }
   }
 }

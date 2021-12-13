@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.sql.element;
 
+import org.alfasoftware.morf.sql.ResolvedTables;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
@@ -90,7 +91,7 @@ public class BracketedExpression extends AliasedField implements Driver {
   public int hashCode() {
     final int prime = 31;
     int result = super.hashCode();
-    result = prime * result + ((innerExpression == null) ? 0 : innerExpression.hashCode());
+    result = prime * result + (innerExpression == null ? 0 : innerExpression.hashCode());
     return result;
   }
 
@@ -110,5 +111,13 @@ public class BracketedExpression extends AliasedField implements Driver {
     } else if (!innerExpression.equals(other.innerExpression))
       return false;
     return true;
+  }
+
+
+  @Override
+  public void resolveTables(ResolvedTables resolvedTables) {
+    if(innerExpression != null) {
+      innerExpression.resolveTables(resolvedTables);
+    }
   }
 }

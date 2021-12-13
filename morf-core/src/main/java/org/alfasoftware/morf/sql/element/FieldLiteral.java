@@ -18,6 +18,7 @@ package org.alfasoftware.morf.sql.element;
 import java.math.BigDecimal;
 
 import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.sql.ResolvedTables;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.apache.commons.lang3.builder.EqualsBuilder;
@@ -292,5 +293,11 @@ public class FieldLiteral extends AliasedField {
     return (dataType.equals(DataType.STRING)
         ? "\"" + value + "\""
         : value == null ? "NULL" : value) + super.toString();
+  }
+
+
+  @Override
+  public void resolveTables(ResolvedTables resolvedTables) {
+    //nothing
   }
 }

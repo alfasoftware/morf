@@ -15,6 +15,8 @@
 
 package org.alfasoftware.morf.sql.element;
 
+import org.alfasoftware.morf.sql.ResolvedTables;
+import org.alfasoftware.morf.sql.TableResolvable;
 import org.alfasoftware.morf.sql.TempTransitionalBuilderWrapper;
 import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
@@ -29,7 +31,7 @@ import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-public class WhenCondition implements Driver,DeepCopyableWithTransformation<WhenCondition,Builder<WhenCondition>>{
+public class WhenCondition implements Driver, DeepCopyableWithTransformation<WhenCondition, Builder<WhenCondition>>, TableResolvable {
 
   /** Value */
   private final AliasedField value;
@@ -102,8 +104,8 @@ public class WhenCondition implements Driver,DeepCopyableWithTransformation<When
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result + ((criterion == null) ? 0 : criterion.hashCode());
-    result = prime * result + ((value == null) ? 0 : value.hashCode());
+    result = prime * result + (criterion == null ? 0 : criterion.hashCode());
+    result = prime * result + (value == null ? 0 : value.hashCode());
     return result;
   }
 
@@ -147,5 +149,16 @@ public class WhenCondition implements Driver,DeepCopyableWithTransformation<When
   @Override
   public Builder<WhenCondition> deepCopy(DeepCopyTransformation transformer) {
     return TempTransitionalBuilderWrapper.wrapper(new WhenCondition(this,transformer));
+  }
+
+
+  @Override
+  public void resolveTables(ResolvedTables resolvedTables) {
+    if(value != null) {
+      value.resolveTables(resolvedTables);
+    }
+    if(criterion != null) {
+      criterion.resolveTables(resolvedTables);
+    }
   }
 }

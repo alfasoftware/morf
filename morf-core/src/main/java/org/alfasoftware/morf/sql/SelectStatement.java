@@ -705,4 +705,16 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
   public SelectStatementBuilder deepCopy(DeepCopyTransformation transformer) {
     return new SelectStatementBuilder(this, transformer);
   }
+
+
+  @Override
+  public void resolveTables(ResolvedTables resolvedTables) {
+    super.resolveTables(resolvedTables);
+    if(having != null) {
+      having.resolveTables(resolvedTables);
+    }
+    if(setOperators != null) {
+      setOperators.stream().forEach(op -> op.resolveTables(resolvedTables));
+    }
+  }
 }

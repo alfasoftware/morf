@@ -16,7 +16,9 @@
 package org.alfasoftware.morf.sql.element;
 
 import org.alfasoftware.morf.sql.AbstractSelectStatement;
+import org.alfasoftware.morf.sql.ResolvedTables;
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.sql.TableResolvable;
 import org.alfasoftware.morf.sql.TempTransitionalBuilderWrapper;
 import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
@@ -41,7 +43,7 @@ import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
  *
  * @author Copyright (c) Alfa Financial Software 2009
  */
-public class Join implements Driver, DeepCopyableWithTransformation<Join,Builder<Join>> {
+public class Join implements Driver, DeepCopyableWithTransformation<Join,Builder<Join>>, TableResolvable {
 
   /**
    * The type of join to use
@@ -266,5 +268,19 @@ public class Join implements Driver, DeepCopyableWithTransformation<Join,Builder
   @Override
   public Builder<Join> deepCopy(DeepCopyTransformation transformer) {
     return TempTransitionalBuilderWrapper.wrapper(new Join(this,transformer));
+  }
+
+
+  @Override
+  public void resolveTables(ResolvedTables resolvedTables) {
+    if(table != null) {
+      resolvedTables.addReadTable(table.getName());
+    }
+    if(subSelect != null) {
+      subSelect.resolveTables(resolvedTables);
+    }
+    if(criterion != null) {
+      criterion.resolveTables(resolvedTables);
+    }
   }
 }

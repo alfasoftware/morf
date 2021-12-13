@@ -31,7 +31,7 @@ import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
  *
  * @author Copyright (c) Alfa Financial Software 2012
  */
-public interface SetOperator extends Driver, DeepCopyableWithTransformation<SetOperator,Builder<SetOperator>> {
+public interface SetOperator extends Driver, DeepCopyableWithTransformation<SetOperator, Builder<SetOperator>>, TableResolvable {
 
   /**
    * @return The right-hand operand this operation is being performed against.

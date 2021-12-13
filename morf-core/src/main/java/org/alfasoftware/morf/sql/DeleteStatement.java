@@ -227,7 +227,7 @@ public class DeleteStatement implements Statement,
   @Override
   public String toString() {
     return "SQL DELETE FROM [" + table + "] " +
-      (whereCriterion == null ? "" : ("WHERE " + whereCriterion)) +
+      (whereCriterion == null ? "" : "WHERE " + whereCriterion) +
       (limit.isPresent() ? " LIMIT(" + limit.get() + ")" : "");
   }
 
@@ -236,9 +236,9 @@ public class DeleteStatement implements Statement,
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result + ((table == null) ? 0 : table.hashCode());
-    result = prime * result + ((whereCriterion == null) ? 0 : whereCriterion.hashCode());
-    result = prime * result + ((!limit.isPresent()) ? 0 : limit.get().hashCode());
+    result = prime * result + (table == null ? 0 : table.hashCode());
+    result = prime * result + (whereCriterion == null ? 0 : whereCriterion.hashCode());
+    result = prime * result + (!limit.isPresent() ? 0 : limit.get().hashCode());
     return result;
   }
 
@@ -265,5 +265,15 @@ public class DeleteStatement implements Statement,
     if (!Objects.equals(limit, other.limit))
       return false;
     return true;
+  }
+
+
+  @Override
+  public void resolveTables(ResolvedTables resolvedTables) {
+    resolvedTables.addModifiedTable(table.getName());
+
+    if(whereCriterion != null) {
+      whereCriterion.resolveTables(resolvedTables);
+    }
   }
 }
