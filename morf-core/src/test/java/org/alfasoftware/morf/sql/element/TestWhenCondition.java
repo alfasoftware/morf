@@ -16,10 +16,14 @@
 package org.alfasoftware.morf.sql.element;
 
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.util.Arrays;
 import java.util.List;
 
+import org.alfasoftware.morf.sql.ResolvedTables;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
@@ -42,5 +46,21 @@ public class TestWhenCondition extends AbstractDeepCopyableTest<WhenCondition> {
       testCase("2", () -> new WhenCondition(CRITERION_1, literal(2))),
       testCase("3", () -> new WhenCondition(CRITERION_2, literal(1)))
     );
+  }
+
+
+  @Test
+  public void tableResolutionDetectsAllTables() {
+    //given
+    AliasedField field = mock(AliasedField.class);
+    WhenCondition when = new WhenCondition(CRITERION_1, field);
+    ResolvedTables res = new ResolvedTables();
+
+    //when
+    when.resolveTables(res);
+
+    //then
+    verify(field).resolveTables(res);
+    verify(CRITERION_1).resolveTables(res);
   }
 }

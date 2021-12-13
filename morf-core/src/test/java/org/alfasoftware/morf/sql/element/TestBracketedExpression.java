@@ -25,6 +25,7 @@ import static org.mockito.Mockito.verify;
 import java.util.Collections;
 import java.util.List;
 
+import org.alfasoftware.morf.sql.ResolvedTables;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -64,5 +65,20 @@ public class TestBracketedExpression extends AbstractAliasedFieldTest<BracketedE
     ObjectTreeTraverser.Callback callback = mock(ObjectTreeTraverser.Callback.class);
     onTest.drive(ObjectTreeTraverser.forCallback(callback));
     verify(callback).visit(onTest.getInnerExpression());
+  }
+
+
+  @Test
+  public void tableResolutionDetectsAllTables() {
+    //given
+    MathsField field = mock(MathsField.class);
+    BracketedExpression onTest = (BracketedExpression) bracket(field);
+    ResolvedTables res = new ResolvedTables();
+
+    //when
+    onTest.resolveTables(res);
+
+    //then
+    verify(field).resolveTables(res);
   }
 }

@@ -15,10 +15,17 @@
 
 package org.alfasoftware.morf.sql.element;
 
+import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.verify;
+
 import java.util.Arrays;
 import java.util.List;
 
+import org.alfasoftware.morf.sql.ResolvedTables;
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.hamcrest.Matchers;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
@@ -54,5 +61,35 @@ public class TestJoin extends AbstractDeepCopyableTest<Join> {
       testCase("left select 2", () -> new Join(JoinType.LEFT_OUTER_JOIN, SELECT_1, CRITERION_2)),
       testCase("left select 3", () -> new Join(JoinType.LEFT_OUTER_JOIN, SELECT_2, CRITERION_1))
     );
+  }
+
+
+  @Test
+  public void tableResolutionDetectsAllTables1() {
+    //given
+    Join join = new Join(JoinType.INNER_JOIN, tableRef("table1"), CRITERION_1);
+    ResolvedTables res = new ResolvedTables();
+
+    //when
+    join.resolveTables(res);
+
+    //then
+    verify(CRITERION_1).resolveTables(res);
+    assertThat(res.getReadTables(), Matchers.contains("TABLE1"));
+  }
+
+
+  @Test
+  public void tableResolutionDetectsAllTables2() {
+    //given
+    Join join = new Join(JoinType.INNER_JOIN, SELECT_1, CRITERION_1);
+    ResolvedTables res = new ResolvedTables();
+
+    //when
+    join.resolveTables(res);
+
+    //then
+    verify(CRITERION_1).resolveTables(res);
+    verify(SELECT_1).resolveTables(res);
   }
 }

@@ -17,9 +17,13 @@ package org.alfasoftware.morf.sql.element;
 
 import static org.alfasoftware.morf.sql.SqlUtils.concat;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.util.List;
 
+import org.alfasoftware.morf.sql.ResolvedTables;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
@@ -45,5 +49,22 @@ public class TestConcatenatedField extends AbstractAliasedFieldTest<Concatenated
         () -> concat(literal(1), literal(2), literal(3))
       )
     );
+  }
+
+
+  @Test
+  public void tableResolutionDetectsAllTables() {
+    //given
+    AliasedField field = mock(AliasedField.class);
+    AliasedField field2 = mock(AliasedField.class);
+    ConcatenatedField con = concat(field, field2);
+    ResolvedTables res = new ResolvedTables();
+
+    //when
+    con.resolveTables(res);
+
+    //then
+    verify(field).resolveTables(res);
+    verify(field2).resolveTables(res);
   }
 }

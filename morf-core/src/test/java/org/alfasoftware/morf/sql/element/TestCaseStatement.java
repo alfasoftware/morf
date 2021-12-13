@@ -18,11 +18,15 @@ package org.alfasoftware.morf.sql.element;
 import static org.alfasoftware.morf.sql.SqlUtils.caseStatement;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.when;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.util.Collections;
 import java.util.List;
 
+import org.alfasoftware.morf.sql.ResolvedTables;
 import org.alfasoftware.morf.sql.SqlUtils;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
@@ -50,5 +54,22 @@ public class TestCaseStatement extends AbstractAliasedFieldTest<CaseStatement> {
               ).otherwise(literal(4))
       )
     );
+  }
+
+
+  @Test
+  public void tableResolutionDetectsAllTables() {
+    //given
+    WhenCondition when = mock(WhenCondition.class);
+    AliasedField field = mock(AliasedField.class);
+    CaseStatement caseStatement = caseStatement(when).otherwise(field);
+    ResolvedTables res = new ResolvedTables();
+
+    //when
+    caseStatement.resolveTables(res);
+
+    //then
+    verify(field).resolveTables(res);
+    verify(when).resolveTables(res);
   }
 }

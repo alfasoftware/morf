@@ -20,9 +20,13 @@ import static org.alfasoftware.morf.metadata.DataType.DECIMAL;
 import static org.alfasoftware.morf.metadata.DataType.INTEGER;
 import static org.alfasoftware.morf.sql.SqlUtils.cast;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.util.List;
 
+import org.alfasoftware.morf.sql.ResolvedTables;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
@@ -59,5 +63,20 @@ public class TestCast extends AbstractAliasedFieldTest<Cast> {
         () -> cast(literal(1)).asType(DECIMAL, 12, 2)
       )
     );
+  }
+
+
+  @Test
+  public void tableResolutionDetectsAllTables() {
+    //given
+    AliasedField field = mock(AliasedField.class);
+    Cast cast = cast(field).asType(DECIMAL);
+    ResolvedTables res = new ResolvedTables();
+
+    //when
+    cast.resolveTables(res);
+
+    //then
+    verify(field).resolveTables(res);
   }
 }

@@ -20,6 +20,8 @@ import static org.alfasoftware.morf.util.DeepCopyTransformations.noTransformatio
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.junit.Rule;
@@ -181,4 +183,21 @@ public class TestUnionSetOperator {
     assertEquals(original.getUnionStrategy(), copy.getUnionStrategy());
     assertNotSame(childSelect, copy.getSelectStatement());
   }
+
+
+  @Test
+  public void tableResolutionDetectsAllTables() {
+    //given
+    SelectStatement parentSelect = mock(SelectStatement.class);
+    SelectStatement childSelect = mock(SelectStatement.class);
+    UnionSetOperator original = new UnionSetOperator(ALL, parentSelect, childSelect);
+    ResolvedTables res = new ResolvedTables();
+
+    //when
+    original.resolveTables(res);
+
+    //then
+    verify(childSelect).resolveTables(res);
+  }
+
 }
