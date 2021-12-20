@@ -3238,7 +3238,7 @@ public abstract class AbstractSqlDialectTest {
       testDialect.convertStatementToSQL(
         select()
         .from(new TableReference("SCHEMA2", "Foo"))
-        .withCustomHint(mock(CustomHint.class))
+        .withCustomHint(() -> "CustomHint")
       )
     );
   }

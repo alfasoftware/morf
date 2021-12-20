@@ -4,16 +4,16 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.verify;
 
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
 import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
 import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.sql.CustomHint;
+import org.alfasoftware.morf.sql.PostgreSQLCustomHint;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
@@ -521,6 +521,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedBlobLiteral(String)  ()
    */
+  @Override
   protected String expectedBlobLiteral(String value) {
     return String.format("E'\\x%s'", value);
   }
@@ -1161,13 +1162,36 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
 
 
   /**
-   * No hints are supported.
-   *
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints1(int)
    */
   @Override
   protected String expectedHints1(int rowCount) {
-    return "SELECT * FROM SCHEMA2.Foo INNER JOIN testschema.Bar ON (a = b) LEFT OUTER JOIN testschema.Fo ON (a = b) INNER JOIN testschema.Fum Fumble ON (a = b) ORDER BY a";
+    return "SELECT /*+ IndexScan(Foo foo_1) IndexScan(aliased foo_2) */ * FROM SCHEMA2.Foo INNER JOIN testschema.Bar ON (a = b) LEFT OUTER JOIN testschema.Fo ON (a = b) INNER JOIN testschema.Fum Fumble ON (a = b) ORDER BY a";
+  }
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints2(int)
+   */
+  @Override
+  protected String expectedHints2(int rowCount) {
+    return "SELECT /*+ IndexScan(Foo foo_1) */ a, b FROM " + tableName("Foo") + " ORDER BY a FOR UPDATE";
+  }
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints7()
+   */
+  @Override
+  protected String expectedHints7() {
+    return "SELECT /*+ Set(random_page_cost 2.0) */ * FROM SCHEMA2.Foo";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#provideCustomHint()
+   */
+  @Override
+  protected CustomHint provideCustomHint() {
+    return new PostgreSQLCustomHint("Set(random_page_cost 2.0)");
   }
 
   /**
