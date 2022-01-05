@@ -15,8 +15,6 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME;
-
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
@@ -27,6 +25,7 @@ import java.util.TreeMap;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -79,7 +78,7 @@ class ExistingViewStateLoader {
           String existingHash = deployedViews.get().get(targetViewName);
           String newHash = dialect.convertStatementToHash(view.getSelectStatement());
           if (existingHash == null) {
-            log.info(String.format("View [%s] exists but hash not present in %s", targetViewName, DEPLOYED_VIEWS_NAME));
+            log.info(String.format("View [%s] exists but hash not present in %s", targetViewName, DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME));
           } else if (newHash.equals(existingHash)) {
             // All good - leave it in place.
             viewsToDrop.remove(targetViewName);
@@ -89,7 +88,7 @@ class ExistingViewStateLoader {
               String.format(
                 "View [%s] exists in %s, but hash [%s] does not match target schema [%s]",
                 targetViewName,
-                DEPLOYED_VIEWS_NAME,
+                DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME,
                 existingHash,
                 newHash
               )
@@ -97,7 +96,7 @@ class ExistingViewStateLoader {
           }
         } else {
           if (deployedViews.get().containsKey(targetViewName)) {
-            log.info(String.format("View [%s] is missing, but %s entry exists. The view may have been deleted.", targetViewName, DEPLOYED_VIEWS_NAME));
+            log.info(String.format("View [%s] is missing, but %s entry exists. The view may have been deleted.", targetViewName, DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME));
             viewsToDrop.put(targetViewName, view);
           } else {
             log.info(String.format("View [%s] is missing", targetViewName));

@@ -29,11 +29,13 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.metadata.SchemaUtils.view;
+import static org.alfasoftware.morf.sql.SqlUtils.caseStatement;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.insert;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.alfasoftware.morf.sql.SqlUtils.when;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deployedViewsTable;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.upgradeAuditTable;
 import static org.hamcrest.Matchers.equalToIgnoringCase;
@@ -105,6 +107,7 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager.TruncationBehavior;
 import org.alfasoftware.morf.testing.TestingDataSourceModule;
@@ -232,9 +235,29 @@ public class TestDatabaseUpgradeIntegration {
       view("view1", select(field("valCol"), field("keyCol1")).from("BasicTable").crossJoin(tableRef("KeylessTable"))),
       view("view3", select(field("valCol"), field("keyCol1")).from("view2"), "view2"),
       view("view2", select(field("valCol"), field("keyCol1")).from("view1"), "view1"),
-      view("viewId", select(field("id"), field("someValue")).from("IdTable"))
+      view("viewId", select(field("id"), field("someValue")).from("IdTable")),
+      view("veryLongView", veryLongViewDefinition())
     )
   );
+
+
+  private SelectStatement veryLongViewDefinition() {
+    // this quickly builds a very very long SQL definition
+    final AliasedField veryLongFieldDefinition =
+        veryLongViewDefinitionHelper(
+          veryLongViewDefinitionHelper(
+            veryLongViewDefinitionHelper(
+              veryLongViewDefinitionHelper(
+                veryLongViewDefinitionHelper(
+                  field("someValue"))))));
+
+    return select(veryLongFieldDefinition.as("field")).from("IdTable");
+  }
+
+
+  private AliasedField veryLongViewDefinitionHelper(AliasedField field) {
+    return caseStatement(when(field.eq(field)).then(field)).otherwise(field);
+  }
 
 
   /**

@@ -21,6 +21,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.metadata.SchemaUtils.view;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
+import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.junit.Assert.assertEquals;
@@ -109,7 +110,7 @@ public class TestDeployment {
     );
 
     // When
-    Deployment deployment = new Deployment(dialect, executorProvider, upgradePathFactory);
+    Deployment deployment = new Deployment(dialect, executorProvider, upgradePathFactory, new ViewChangesDeploymentHelper(dialect));
     UpgradePath path = deployment.getPath(targetSchema, Lists.<Class<? extends UpgradeStep>>newArrayList());
 
     // Then
@@ -141,6 +142,7 @@ public class TestDeployment {
     when(dialect.viewDeploymentStatements(same(testView))).thenReturn(ImmutableList.of("C"));
     when(dialect.convertStatementToSQL(any(InsertStatement.class))).thenReturn(ImmutableList.of("D"));
     when(dialect.convertStatementToHash(any(SelectStatement.class))).thenReturn("E");
+    when(dialect.viewDeploymentStatementsAsLiteral(same(testView))).thenReturn(literal("F"));
 
     Schema targetSchema = schema(
       schema(testTable, deployedViews),
@@ -148,7 +150,7 @@ public class TestDeployment {
     );
 
 
-    Deployment deployment = new Deployment(dialect, executorProvider, upgradePathFactory);
+    Deployment deployment = new Deployment(dialect, executorProvider, upgradePathFactory, new ViewChangesDeploymentHelper(dialect));
     UpgradePath path = deployment.getPath(targetSchema, Lists.<Class<? extends UpgradeStep>>newArrayList());
 
     // Then
@@ -165,7 +167,7 @@ public class TestDeployment {
     for (AliasedField value : stmt.getValues())
       values.add(((FieldLiteral)value).getValue());
 
-    assertEquals("Values", "[FOOVIEW, E]", values.toString());
+    assertEquals("Values", "[FOOVIEW, E, F]", values.toString());
 
     // When
     deployment.deploy(targetSchema);
@@ -189,7 +191,7 @@ public class TestDeployment {
     Schema targetSchema = schema(testTable);
 
     // When
-    Deployment deployment = new Deployment(dialect, executorProvider, upgradePathFactory);
+    Deployment deployment = new Deployment(dialect, executorProvider, upgradePathFactory, new ViewChangesDeploymentHelper(dialect));
     UpgradePath path = deployment.getPath(targetSchema, stepsToApply);
 
     // Then

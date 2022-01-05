@@ -18,8 +18,7 @@ package org.alfasoftware.morf.excel;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyInt;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -36,7 +35,6 @@ import org.junit.Test;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-
 import jxl.write.WritableWorkbook;
 
 
@@ -94,8 +92,8 @@ public class TestSpreadsheetDataSetConsumer {
     consumer.table(one, NO_RECORDS);
     consumer.table(two, NO_RECORDS);
 
-    verify(outputter).table(anyInt(), any(WritableWorkbook.class), eq(two), eq(NO_RECORDS));
-    verify(outputter, times(0)).table(anyInt(), any(WritableWorkbook.class), eq(one), eq(NO_RECORDS));
+    verify(outputter).table(nullable(Integer.class), nullable(WritableWorkbook.class), eq(two), eq(NO_RECORDS));
+    verify(outputter, times(0)).table(nullable(Integer.class), nullable(WritableWorkbook.class), eq(one), eq(NO_RECORDS));
   }
 
 

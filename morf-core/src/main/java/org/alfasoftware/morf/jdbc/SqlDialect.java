@@ -15,14 +15,6 @@
 
 package org.alfasoftware.morf.jdbc;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.column;
-import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
-import static org.alfasoftware.morf.metadata.SchemaUtils.table;
-import static org.alfasoftware.morf.sql.SelectStatement.select;
-import static org.alfasoftware.morf.sql.SqlUtils.insert;
-import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.sql.UnionSetOperator.UnionStrategy.ALL;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
@@ -51,6 +43,7 @@ import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.DataValueLookup;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.AbstractSelectStatement;
@@ -66,8 +59,10 @@ import org.alfasoftware.morf.sql.SqlUtils;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.sql.TruncateStatement;
 import org.alfasoftware.morf.sql.UnionSetOperator;
+import org.alfasoftware.morf.sql.UnionSetOperator.UnionStrategy;
 import org.alfasoftware.morf.sql.UpdateStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.BracketedExpression;
 import org.alfasoftware.morf.sql.element.CaseStatement;
 import org.alfasoftware.morf.sql.element.Cast;
@@ -225,6 +220,29 @@ public abstract class SqlDialect {
     return statements;
   }
 
+
+  /**
+   * Creates SQL script to deploy a database view.
+   *
+   * @param view The meta data for the view to deploy.
+   * @return The statements required to deploy the view joined into a script.
+   */
+  public String viewDeploymentStatementsAsScript(View view) {
+    final String firstLine = "-- " + getDatabaseType().identifier() + "\n";
+    return viewDeploymentStatements(view)
+        .stream().collect(Collectors.joining(";\n", firstLine, ";"));
+  }
+
+
+  /**
+   * Creates SQL script to deploy a database view.
+   *
+   * @param view The meta data for the view to deploy.
+   * @return The statements required to deploy the view joined into a script and prepared as literals.
+   */
+  public AliasedField viewDeploymentStatementsAsLiteral(View view) {
+    return SqlUtils.literal(viewDeploymentStatementsAsScript(view));
+  }
 
   /**
    * Creates SQL to truncate a table (may require DBA rights on some databases
@@ -644,7 +662,7 @@ public abstract class SqlDialect {
    * @return The SQL represented by the statement
    */
   public String convertStatementToSQL(TruncateStatement statement) {
-    return truncateTableStatements(table(statement.getTable().getName())).iterator().next();
+    return truncateTableStatements(SchemaUtils.table(statement.getTable().getName())).iterator().next();
   }
 
 
@@ -1244,7 +1262,7 @@ public abstract class SqlDialect {
    * @return a string representation of the field.
    */
   protected String getSqlFrom(UnionSetOperator operator) {
-    return String.format(" %s %s", operator.getUnionStrategy() == ALL ? "UNION ALL" : "UNION",
+    return String.format(" %s %s", operator.getUnionStrategy() == UnionStrategy.ALL ? "UNION ALL" : "UNION",
       getSqlFrom(operator.getSelectStatement()));
   }
 
@@ -1308,7 +1326,7 @@ public abstract class SqlDialect {
 
     StringBuilder stringBuilder = new StringBuilder();
 
-    stringBuilder.append("INSERT INTO ");
+    stringBuilder.append(getSqlForInsertInto(stmt));
     stringBuilder.append(schemaNamePrefix(stmt.getTable()));
     stringBuilder.append(stmt.getTable().getName());
 
@@ -1535,6 +1553,10 @@ public abstract class SqlDialect {
       return getSqlFrom((SqlParameter)field);
     }
 
+    if (field instanceof BlobFieldLiteral) {
+      return getSqlFrom((BlobFieldLiteral)field);
+    }
+
     if (field instanceof FieldLiteral) {
       return getSqlFrom((FieldLiteral) field);
     }
@@ -1659,7 +1681,6 @@ public abstract class SqlDialect {
       case DECIMAL:
       case BIG_INTEGER:
       case INTEGER:
-      case BLOB:
       case CLOB:
         return field.getValue();
       case NULL:
@@ -1671,6 +1692,18 @@ public abstract class SqlDialect {
         throw new UnsupportedOperationException("Cannot convert the specified field literal into an SQL literal: ["
             + field.getValue() + "]");
     }
+  }
+
+
+  /**
+   * Default implementation will just return the Base64 representation of the binary data, which may not necessarily work with all SQL dialects.
+   * Hence appropriate conversions to the appropriate type based on facilities provided by the dialect's SQL vendor implementation should be used.
+   *
+   * @param field the BLOB field literal
+   * @return the SQL construct or base64 string representation of the binary value
+   */
+  protected String getSqlFrom(BlobFieldLiteral field) {
+    return String.format("'%s'", field.getValue());
   }
 
 
@@ -1745,64 +1778,47 @@ public abstract class SqlDialect {
         throw new IllegalArgumentException("The COUNT function should have only have one or zero arguments. This function has " + function.getArguments().size());
 
       case COUNT_DISTINCT:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForCountDistinct(function);
 
       case AVERAGE:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForAverage(function);
 
       case AVERAGE_DISTINCT:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForAverageDistinct(function);
 
       case LENGTH:
-      case BLOB_LENGTH:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlforLength(function);
 
+      case BLOB_LENGTH:
+        checkSingleArgument(function);
+        return getSqlforBlobLength(function);
+
       case SOME:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForSome(function);
 
       case EVERY:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForEvery(function);
 
       case MAX:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForMax(function);
 
       case MIN:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForMin(function);
 
       case SUM:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForSum(function);
 
       case SUM_DISTINCT:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForSumDistinct(function);
 
       case IS_NULL:
@@ -1963,6 +1979,12 @@ public abstract class SqlDialect {
 
       default:
         throw new UnsupportedOperationException("This database does not currently support the [" + function.getType() + "] function");
+    }
+  }
+
+  private void checkSingleArgument(Function function) {
+    if (function.getArguments().size() != 1) {
+      throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
     }
   }
 
@@ -2204,6 +2226,19 @@ public abstract class SqlDialect {
    * @see org.alfasoftware.morf.sql.element.Function#length(AliasedField)
    */
   protected String getSqlforLength(Function function) {
+    return String.format("LENGTH(%s)", getSqlFrom(function.getArguments().get(0)));
+  }
+
+
+  /**
+   * Converts the function get LENGTH of Blob data or field into SQL.
+   * Use LENGTH instead of OCTET_LENGTH as they are synonymous in MySQl and PostGreSQL. In H2 LENGTH returns the correct
+   * number of bytes, whereas OCTET_LENGTH returns 2 times the byte length.
+   * @param function the function to convert.
+   * @return a string representation of the SQL.
+   * @see org.alfasoftware.morf.sql.element.Function#blobLength(AliasedField)
+   */
+  protected String getSqlforBlobLength(Function function) {
     return String.format("LENGTH(%s)", getSqlFrom(function.getArguments().get(0)));
   }
 
@@ -2753,7 +2788,7 @@ public abstract class SqlDialect {
 
     // -- Add the preamble...
     //
-    sqlBuilder.append("INSERT INTO ");
+    sqlBuilder.append(getSqlForInsertInto(statement));
     sqlBuilder.append(schemaNamePrefix(statement.getTable()));
     sqlBuilder.append(destinationTableName);
     sqlBuilder.append(" (");
@@ -2809,7 +2844,7 @@ public abstract class SqlDialect {
 
     // -- Add the preamble...
     //
-    sqlBuilder.append("INSERT INTO ");
+    sqlBuilder.append(getSqlForInsertInto(statement));
     sqlBuilder.append(schemaNamePrefix(statement.getTable()));
     sqlBuilder.append(destinationTableName);
     sqlBuilder.append(" (");
@@ -3237,7 +3272,7 @@ public abstract class SqlDialect {
     }
 
     // Build up the select statement from field list
-    SelectStatementBuilder selectStatementBuilder = select();
+    SelectStatementBuilder selectStatementBuilder = SelectStatement.select();
     List<AliasedField> resultFields = new ArrayList<>();
 
     for (Column currentColumn : metadata.getTable(destinationTableName).columns()) {
@@ -3576,7 +3611,7 @@ public abstract class SqlDialect {
         tableDeploymentStatements(table)
       )
       .addAll(convertStatementToSQL(
-        insert().into(tableRef(table.getName())).from(selectStatement))
+        SqlUtils.insert().into(SqlUtils.tableRef(table.getName())).from(selectStatement))
       )
       .build();
   }
@@ -3953,7 +3988,7 @@ public abstract class SqlDialect {
    *
    */
   protected Table oldTableForChangeColumn(Table table, Column oldColumn, Column newColumn) {
-    return new ChangeColumn(table.getName(), oldColumn, newColumn).reverse(schema(table)).getTable(table.getName());
+    return new ChangeColumn(table.getName(), oldColumn, newColumn).reverse(SchemaUtils.schema(table)).getTable(table.getName());
   }
 
 
@@ -4036,6 +4071,17 @@ public abstract class SqlDialect {
 
 
   /**
+   * Returns the INSERT INTO statement.
+   *
+   * @param insertStatement he {@linkplain InsertStatement} object which can be used by the overriding methods to customize the INSERT statement.
+   * @return the INSERT INTO statement.
+   */
+  protected String getSqlForInsertInto(@SuppressWarnings("unused") InsertStatement insertStatement) {
+    return "INSERT INTO ";
+  }
+
+
+  /**
    * Class representing the structor of an ID Table.
    *
    * @author Copyright (c) Alfa Financial Software 2011
@@ -4108,8 +4154,8 @@ public abstract class SqlDialect {
     @Override
     public List<Column> columns() {
       List<Column> columns = new ArrayList<>();
-      columns.add(column(ID_INCREMENTOR_TABLE_COLUMN_NAME, DataType.STRING, 132).primaryKey());
-      columns.add(column(ID_INCREMENTOR_TABLE_COLUMN_VALUE, DataType.BIG_INTEGER));
+      columns.add(SchemaUtils.column(ID_INCREMENTOR_TABLE_COLUMN_NAME, DataType.STRING, 132).primaryKey());
+      columns.add(SchemaUtils.column(ID_INCREMENTOR_TABLE_COLUMN_VALUE, DataType.BIG_INTEGER));
 
       return columns;
     }

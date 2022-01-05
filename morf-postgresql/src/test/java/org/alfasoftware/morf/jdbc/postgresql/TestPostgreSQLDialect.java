@@ -12,6 +12,8 @@ import java.util.List;
 
 import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
 import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.sql.CustomHint;
+import org.alfasoftware.morf.sql.PostgreSQLCustomHint;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
@@ -504,6 +506,24 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedLeftPad() {
     return "SELECT LPAD(stringField, 10, 'j') FROM testschema.Test";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedBooleanLiteral(boolean) ()
+   */
+  @Override
+  protected String expectedBooleanLiteral(boolean value) {
+    return value ? "TRUE" : "FALSE";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedBlobLiteral(String)  ()
+   */
+  @Override
+  protected String expectedBlobLiteral(String value) {
+    return String.format("E'\\x%s'", value);
   }
 
 
@@ -1142,13 +1162,36 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
 
 
   /**
-   * No hints are supported.
-   *
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints1(int)
    */
   @Override
   protected String expectedHints1(int rowCount) {
-    return "SELECT * FROM SCHEMA2.Foo INNER JOIN testschema.Bar ON (a = b) LEFT OUTER JOIN testschema.Fo ON (a = b) INNER JOIN testschema.Fum Fumble ON (a = b) ORDER BY a";
+    return "SELECT /*+ IndexScan(Foo foo_1) IndexScan(aliased foo_2) */ * FROM SCHEMA2.Foo INNER JOIN testschema.Bar ON (a = b) LEFT OUTER JOIN testschema.Fo ON (a = b) INNER JOIN testschema.Fum Fumble ON (a = b) ORDER BY a";
+  }
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints2(int)
+   */
+  @Override
+  protected String expectedHints2(int rowCount) {
+    return "SELECT /*+ IndexScan(Foo foo_1) */ a, b FROM " + tableName("Foo") + " ORDER BY a FOR UPDATE";
+  }
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints7()
+   */
+  @Override
+  protected String expectedHints7() {
+    return "SELECT /*+ Set(random_page_cost 2.0) */ * FROM SCHEMA2.Foo";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#provideCustomHint()
+   */
+  @Override
+  protected CustomHint provideCustomHint() {
+    return new PostgreSQLCustomHint("Set(random_page_cost 2.0)");
   }
 
   /**
@@ -1165,18 +1208,6 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedUpdateUsingSourceTableInDifferentSchema() {
     return "UPDATE " + tableName("FloatingRateRate") + " A SET settlementFrequency = (SELECT settlementFrequency FROM MYSCHEMA.FloatingRateDetail B WHERE (A.floatingRateDetailId = B.id))";
-  }
-
-  /**
-   * @return Expected SQL for {@link #testUpdateWithLiteralValues()}
-   */
-  @Override
-  protected String expectedUpdateWithLiteralValues() {
-    return String.format(
-        "UPDATE testschema.Test SET stringField = 'Value' WHERE ((field1 = TRUE) AND (field2 = FALSE) AND (field3 = TRUE) AND (field4 = FALSE) AND (field5 = %s) AND (field6 = %s) AND (field7 = 'Value') AND (field8 = 'Value'))",
-        expectedDateLiteral(),
-        expectedDateLiteral()
-      );
   }
 
   /**

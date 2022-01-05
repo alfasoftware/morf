@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.alfasoftware</groupId>
     <artifactId>morf-parent</artifactId>
-    <version>1.3.11-SNAPSHOT</version>
+    <version>1.6.7-SNAPSHOT</version>
   </parent>
   
   <name>Morf - Core</name>
@@ -15,6 +15,7 @@
 
   <properties>
     <sonar.coverage.jacoco.xmlReportPaths>${basedir}/../${aggregate.report.dir}</sonar.coverage.jacoco.xmlReportPaths>
+    <test.threadCount>1</test.threadCount>
   </properties>
 
   <build>
@@ -47,6 +48,10 @@
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-lang3</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>commons-codec</groupId>
+      <artifactId>commons-codec</artifactId>
     </dependency>
     <dependency>
       <groupId>commons-logging</groupId>
