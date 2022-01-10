@@ -18,9 +18,12 @@ package org.alfasoftware.morf.sql.element;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.util.List;
 
+import org.alfasoftware.morf.sql.ResolvedTables;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -88,5 +91,20 @@ public class TestFieldFromSelect extends AbstractAliasedFieldTest<FieldFromSelec
     assertEquals("Criterion field names should match", ((FieldReference)ffs.getSelectStatement().getWhereCriterion().getField()).getName(), ((FieldReference)ffsCopy.getSelectStatement().getWhereCriterion().getField()).getName());
     assertEquals("Criterion values should match", ((String) ffs.getSelectStatement().getWhereCriterion().getValue()).toUpperCase(), ((String) ffsCopy.getSelectStatement().getWhereCriterion().getValue()).toUpperCase());
     assertEquals("Alias", ffs.getAlias(), ffsCopy.getAlias());
+  }
+
+
+  @Test
+  public void tableResolutionDetectsAllTables() {
+    //given
+    SelectStatement selectStatement = mock(SelectStatement.class);
+    FieldFromSelect onTest = new FieldFromSelect(selectStatement);
+    ResolvedTables res = new ResolvedTables();
+
+    //when
+    onTest.resolveTables(res);
+
+    //then
+    verify(selectStatement).resolveTables(res);
   }
 }

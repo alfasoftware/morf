@@ -15,9 +15,14 @@
 
 package org.alfasoftware.morf.sql.element;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+
 import java.util.List;
 
+import org.alfasoftware.morf.sql.ResolvedTables;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
@@ -45,4 +50,18 @@ public class TestFieldFromSelectFirst extends AbstractAliasedFieldTest<FieldFrom
     );
   }
 
+
+  @Test
+  public void tableResolutionDetectsAllTables() {
+    //given
+    SelectFirstStatement selectStatement = mock(SelectFirstStatement.class);
+    FieldFromSelectFirst onTest = new FieldFromSelectFirst(selectStatement);
+    ResolvedTables res = new ResolvedTables();
+
+    //when
+    onTest.resolveTables(res);
+
+    //then
+    verify(selectStatement).resolveTables(res);
+  }
 }

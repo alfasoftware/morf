@@ -16,9 +16,13 @@
 package org.alfasoftware.morf.sql.element;
 
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.util.List;
 
+import org.alfasoftware.morf.sql.ResolvedTables;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
@@ -57,5 +61,20 @@ public class TestFunction extends AbstractAliasedFieldTest<Function> {
           () -> Function.coalesce(ImmutableList.of(literal(1), literal(1), literal(1)))
         )
     );
+  }
+
+
+  @Test
+  public void tableResolutionDetectsAllTables() {
+    //given
+    AliasedField field = mock(AliasedField.class);
+    Function onTest = Function.count(field);
+    ResolvedTables res = new ResolvedTables();
+
+    //when
+    onTest.resolveTables(res);
+
+    //then
+    verify(field).resolveTables(res);
   }
 }

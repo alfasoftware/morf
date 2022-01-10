@@ -30,7 +30,7 @@ public class TestDeleteStatement {
 
 
   @Test
-  public void tableResolutionDetectsAllTables1() {
+  public void tableResolutionDetectsAllTables() {
     //given
     DeleteStatement del1 = delete(tableRef("table1")).where(criterion1);
     ResolvedTables res = new ResolvedTables();

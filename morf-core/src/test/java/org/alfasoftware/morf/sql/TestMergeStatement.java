@@ -32,7 +32,7 @@ public class TestMergeStatement {
 
 
   @Test
-  public void tableResolutionDetectsAllTables1() {
+  public void tableResolutionDetectsAllTables() {
     //given
     MergeStatement mer1 = MergeStatement.merge()
         .into(tableRef("table1"))

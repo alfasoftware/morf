@@ -15,16 +15,20 @@
 
 package org.alfasoftware.morf.sql.element;
 
+import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.element.Direction.ASCENDING;
 import static org.alfasoftware.morf.sql.element.Direction.DESCENDING;
 import static org.alfasoftware.morf.sql.element.FieldReference.field;
 import static org.alfasoftware.morf.sql.element.NullValueHandling.FIRST;
 import static org.alfasoftware.morf.sql.element.NullValueHandling.LAST;
 import static org.alfasoftware.morf.sql.element.NullValueHandling.NONE;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 
 import java.util.List;
 
+import org.alfasoftware.morf.sql.ResolvedTables;
+import org.hamcrest.Matchers;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -87,5 +91,19 @@ public class TestFieldReference extends AbstractAliasedFieldTest<FieldReference>
     assertEquals(fr.getName(), frCopy.getName());
     assertEquals(fr.getAlias(), frCopy.getAlias());
     assertEquals(fr.getDirection(), frCopy.getDirection());
+  }
+
+
+  @Test
+  public void tableResolutionDetectsAllTables() {
+    //given
+    FieldReference onTest = new FieldReference(tableRef("table1"), "x");
+    ResolvedTables res = new ResolvedTables();
+
+    //when
+    onTest.resolveTables(res);
+
+    //then
+    assertThat(res.getReadTables(), Matchers.contains("TABLE1"));
   }
 }

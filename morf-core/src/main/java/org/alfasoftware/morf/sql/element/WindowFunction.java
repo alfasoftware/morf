@@ -353,5 +353,11 @@ public final class WindowFunction extends AliasedField implements Driver {
     if(function != null) {
       function.resolveTables(resolvedTables);
     }
+    if(orderBys !=null) {
+      orderBys.stream().forEach(arg -> arg.resolveTables(resolvedTables));
+    }
+    if(partitionBys !=null) {
+      partitionBys.stream().forEach(arg -> arg.resolveTables(resolvedTables));
+    }
   }
 }
