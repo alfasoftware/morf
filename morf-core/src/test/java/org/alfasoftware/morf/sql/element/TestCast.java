@@ -25,11 +25,14 @@ import static org.mockito.Mockito.verify;
 
 import java.util.List;
 
-import org.alfasoftware.morf.sql.ResolvedTables;
+import org.alfasoftware.morf.upgrade.UpgradeTableResolutionVisitor;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import com.google.common.collect.ImmutableList;
 
@@ -40,6 +43,15 @@ import com.google.common.collect.ImmutableList;
  */
 @RunWith(Parameterized.class)
 public class TestCast extends AbstractAliasedFieldTest<Cast> {
+
+  @Mock
+  private UpgradeTableResolutionVisitor res;
+
+  @Before
+  public void setUp() throws Exception {
+    MockitoAnnotations.openMocks(this);
+  }
+
 
   @Parameters(name = "{0}")
   public static List<Object[]> data() {
@@ -71,12 +83,12 @@ public class TestCast extends AbstractAliasedFieldTest<Cast> {
     //given
     AliasedField field = mock(AliasedField.class);
     Cast cast = cast(field).asType(DECIMAL);
-    ResolvedTables res = new ResolvedTables();
 
     //when
-    cast.resolveTables(res);
+    cast.accept(res);
 
     //then
-    verify(field).resolveTables(res);
+    verify(res).visit(cast);
+    verify(field).accept(res);
   }
 }

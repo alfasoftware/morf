@@ -8,7 +8,7 @@ import org.alfasoftware.morf.upgrade.PortableSqlStatement;
 
 /**
  * Stores information about table reads and/or modification which happen in a
- * single SQL/DDL element. It also stores information bout potential
+ * single SQL/DDL element. It also stores information about potential
  * {@link PortableSqlStatement} usage. Read and modified sets are mutually
  * exclusive and given table name can be stored in only one of those sets.
  * Modification takes precedent over read.

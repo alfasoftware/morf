@@ -1,9 +1,13 @@
 package org.alfasoftware.morf.sql;
 
-import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.verify;
 
 import org.alfasoftware.morf.upgrade.PortableSqlStatement;
+import org.alfasoftware.morf.upgrade.UpgradeTableResolutionVisitor;
+import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 /**
  * Unit tests of {@link PortableSqlStatement}
@@ -12,17 +16,24 @@ import org.junit.Test;
  */
 public class TestPortableSqlStatement {
 
+  @Mock
+  private UpgradeTableResolutionVisitor res;
+
+  @Before
+  public void setUp() throws Exception {
+    MockitoAnnotations.openMocks(this);
+  }
+
   @Test
   public void tableResolutionDetectsAllTables1() {
     //given
     PortableSqlStatement statement = new PortableSqlStatement();
-    ResolvedTables res = new ResolvedTables();
 
     //when
-    statement.resolveTables(res);
+    statement.accept(res);
 
     //then
-    assertTrue(res.isPortableSqlStatementUsed());
+    verify(res).visit(statement);
   }
 }
 

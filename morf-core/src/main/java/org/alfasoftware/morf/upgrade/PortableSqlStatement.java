@@ -23,7 +23,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
-import org.alfasoftware.morf.sql.ResolvedTables;
 import org.alfasoftware.morf.sql.Statement;
 
 import com.google.common.io.CharStreams;
@@ -190,8 +189,8 @@ public class PortableSqlStatement implements Statement {
 
 
   @Override
-  public void resolveTables(ResolvedTables resolvedTables) {
-    resolvedTables.portableSqlStatementUsed();
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
   }
 
 

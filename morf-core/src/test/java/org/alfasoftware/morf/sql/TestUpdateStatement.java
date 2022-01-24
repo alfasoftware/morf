@@ -2,12 +2,11 @@ package org.alfasoftware.morf.sql;
 
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.SqlUtils.update;
-import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.verify;
 
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Criterion;
-import org.hamcrest.Matchers;
+import org.alfasoftware.morf.upgrade.UpgradeTableResolutionVisitor;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -26,6 +25,9 @@ public class TestUpdateStatement {
   @Mock
   private Criterion crit;
 
+  @Mock
+  private UpgradeTableResolutionVisitor res;
+
   @Before
   public void setUp() throws Exception {
     MockitoAnnotations.openMocks(this);
@@ -38,15 +40,14 @@ public class TestUpdateStatement {
     UpdateStatement up1 = update(tableRef("table1"))
         .set(field)
         .where(crit);
-    ResolvedTables res = new ResolvedTables();
 
     //when
-    up1.resolveTables(res);
+    up1.accept(res);
 
     //then
-    verify(field).resolveTables(res);
-    verify(crit).resolveTables(res);
-    assertThat(res.getModifiedTables(), Matchers.contains("TABLE1"));
+    verify(res).visit(up1);
+    verify(field).accept(res);
+    verify(crit).accept(res);
   }
 }
 

@@ -20,12 +20,15 @@ import static org.mockito.Mockito.verify;
 
 import java.util.List;
 
-import org.alfasoftware.morf.sql.ResolvedTables;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
+import org.alfasoftware.morf.upgrade.UpgradeTableResolutionVisitor;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import com.google.common.collect.ImmutableList;
 
@@ -36,6 +39,15 @@ import com.google.common.collect.ImmutableList;
  */
 @RunWith(Parameterized.class)
 public class TestFieldFromSelectFirst extends AbstractAliasedFieldTest<FieldFromSelectFirst> {
+
+  @Mock
+  private UpgradeTableResolutionVisitor res;
+
+  @Before
+  public void setUp() throws Exception {
+    MockitoAnnotations.openMocks(this);
+  }
+
 
   @Parameters(name = "{0}")
   public static List<Object[]> data() {
@@ -56,12 +68,12 @@ public class TestFieldFromSelectFirst extends AbstractAliasedFieldTest<FieldFrom
     //given
     SelectFirstStatement selectStatement = mock(SelectFirstStatement.class);
     FieldFromSelectFirst onTest = new FieldFromSelectFirst(selectStatement);
-    ResolvedTables res = new ResolvedTables();
 
     //when
-    onTest.resolveTables(res);
+    onTest.accept(res);
 
     //then
-    verify(selectStatement).resolveTables(res);
+    verify(res).visit(onTest);
+    verify(selectStatement).accept(res);
   }
 }

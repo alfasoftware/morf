@@ -20,7 +20,7 @@ import static org.alfasoftware.morf.util.DeepCopyTransformations.noTransformatio
 
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.SqlUtils;
-import org.alfasoftware.morf.sql.TableResolvable;
+import org.alfasoftware.morf.sql.SchemaAndDataChangeVisitable;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
 import org.apache.commons.lang3.StringUtils;
@@ -31,7 +31,7 @@ import org.apache.commons.lang3.StringUtils;
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-public abstract class AliasedField implements AliasedFieldBuilder, TableResolvable, DeepCopyableWithTransformation<AliasedField, AliasedFieldBuilder>//  TEMPORARY - Transitional implementation of AliasedFieldBuilder
+public abstract class AliasedField implements AliasedFieldBuilder, SchemaAndDataChangeVisitable, DeepCopyableWithTransformation<AliasedField, AliasedFieldBuilder>//  TEMPORARY - Transitional implementation of AliasedFieldBuilder
 {
 
   private static final ThreadLocal<Boolean> isImmutableBuilderEnabledThreadLocalOverride = new ThreadLocal<>();

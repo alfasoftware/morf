@@ -23,6 +23,7 @@ import java.util.List;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
@@ -157,8 +158,8 @@ public class MergeStatement implements Statement,
 
 
     @Override
-    public void resolveTables(ResolvedTables resolvedTables) {
-      //nothing
+    public void accept(SchemaAndDataChangeVisitor visitor) {
+      visitor.visit(this);
     }
   }
 
@@ -413,16 +414,17 @@ public class MergeStatement implements Statement,
 
 
   @Override
-  public void resolveTables(ResolvedTables resolvedTables) {
-    resolvedTables.addModifiedTable(table.getName());
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
+
     if(selectStatement != null) {
-      selectStatement.resolveTables(resolvedTables);
+      selectStatement.accept(visitor);
     }
     if(tableUniqueKey != null) {
-      tableUniqueKey.stream().forEach(tuk -> tuk.resolveTables(resolvedTables));
+      tableUniqueKey.stream().forEach(tuk -> tuk.accept(visitor));
     }
     if(ifUpdating != null) {
-      ifUpdating.stream().forEach(iu -> iu.resolveTables(resolvedTables));
+      ifUpdating.stream().forEach(iu -> iu.accept(visitor));
     }
   }
 }

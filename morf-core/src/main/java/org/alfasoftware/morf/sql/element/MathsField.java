@@ -17,7 +17,7 @@ package org.alfasoftware.morf.sql.element;
 
 import static org.alfasoftware.morf.sql.SqlUtils.bracket;
 
-import org.alfasoftware.morf.sql.ResolvedTables;
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
@@ -188,12 +188,13 @@ public class MathsField extends AliasedField implements Driver {
 
 
   @Override
-  public void resolveTables(ResolvedTables resolvedTables) {
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
     if(leftField != null) {
-      leftField.resolveTables(resolvedTables);
+      leftField.accept(visitor);
     }
     if(rightField != null) {
-      rightField.resolveTables(resolvedTables);
+      rightField.accept(visitor);
     }
   }
 }

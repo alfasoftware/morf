@@ -2,12 +2,11 @@ package org.alfasoftware.morf.sql;
 
 import static org.alfasoftware.morf.sql.SqlUtils.insert;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.alfasoftware.morf.sql.element.AliasedField;
-import org.hamcrest.Matchers;
+import org.alfasoftware.morf.upgrade.UpgradeTableResolutionVisitor;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -26,6 +25,9 @@ public class TestInsertStatement {
   @Mock
   private SelectStatement fromSelect;
 
+  @Mock
+  private UpgradeTableResolutionVisitor res;
+
   @Before
   public void setUp() throws Exception {
     MockitoAnnotations.openMocks(this);
@@ -41,16 +43,15 @@ public class TestInsertStatement {
         .fields(field)
         .from(fromSelect)
         .withDefaults(field3);
-    ResolvedTables res = new ResolvedTables();
 
     //when
-    ins1.resolveTables(res);
+    ins1.accept(res);
 
     //then
-    verify(field).resolveTables(res);
-    verify(field3).resolveTables(res);
-    verify(fromSelect).resolveTables(res);
-    assertThat(res.getModifiedTables(), Matchers.contains("TABLE1"));
+    verify(res).visit(ins1);
+    verify(field).accept(res);
+    verify(field3).accept(res);
+    verify(fromSelect).accept(res);
   }
 
 
@@ -60,31 +61,14 @@ public class TestInsertStatement {
     InsertStatement ins1 = insert().into(tableRef("table1"))
         .fields(field)
         .values(field2);
-    ResolvedTables res = new ResolvedTables();
 
     //when
-    ins1.resolveTables(res);
+    ins1.accept(res);
 
     //then
-    verify(field).resolveTables(res);
-    verify(field2).resolveTables(res);
-    assertThat(res.getModifiedTables(), Matchers.contains("TABLE1"));
-  }
-
-
-  @Test
-  public void tableResolutionDetectsAllTables3() {
-    //given
-    InsertStatement ins1 = insert().into(tableRef("table1"))
-        .from(tableRef("table2"));
-    ResolvedTables res = new ResolvedTables();
-
-    //when
-    ins1.resolveTables(res);
-
-    //then
-    assertThat(res.getModifiedTables(), Matchers.contains("TABLE1"));
-    assertThat(res.getReadTables(), Matchers.contains("TABLE2"));
+    verify(res).visit(ins1);
+    verify(field).accept(res);
+    verify(field2).accept(res);
   }
 }
 

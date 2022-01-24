@@ -22,17 +22,19 @@ import static org.alfasoftware.morf.sql.element.FieldReference.field;
 import static org.alfasoftware.morf.sql.element.NullValueHandling.FIRST;
 import static org.alfasoftware.morf.sql.element.NullValueHandling.LAST;
 import static org.alfasoftware.morf.sql.element.NullValueHandling.NONE;
-import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.verify;
 
 import java.util.List;
 
-import org.alfasoftware.morf.sql.ResolvedTables;
-import org.hamcrest.Matchers;
+import org.alfasoftware.morf.upgrade.UpgradeTableResolutionVisitor;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import com.google.common.collect.ImmutableList;
 
@@ -43,6 +45,15 @@ import com.google.common.collect.ImmutableList;
  */
 @RunWith(Parameterized.class)
 public class TestFieldReference extends AbstractAliasedFieldTest<FieldReference> {
+
+  @Mock
+  private UpgradeTableResolutionVisitor res;
+
+  @Before
+  public void setUp() throws Exception {
+    MockitoAnnotations.openMocks(this);
+  }
+
 
   @Parameters(name = "{0}")
   public static List<Object[]> data() {
@@ -98,12 +109,11 @@ public class TestFieldReference extends AbstractAliasedFieldTest<FieldReference>
   public void tableResolutionDetectsAllTables() {
     //given
     FieldReference onTest = new FieldReference(tableRef("table1"), "x");
-    ResolvedTables res = new ResolvedTables();
 
     //when
-    onTest.resolveTables(res);
+    onTest.accept(res);
 
     //then
-    assertThat(res.getReadTables(), Matchers.contains("TABLE1"));
+    verify(res).visit(onTest);
   }
 }

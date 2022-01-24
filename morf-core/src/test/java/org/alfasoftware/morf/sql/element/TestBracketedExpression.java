@@ -25,12 +25,15 @@ import static org.mockito.Mockito.verify;
 import java.util.Collections;
 import java.util.List;
 
-import org.alfasoftware.morf.sql.ResolvedTables;
+import org.alfasoftware.morf.upgrade.UpgradeTableResolutionVisitor;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 /**
  * Tests {@link BracketedExpression}.
@@ -40,7 +43,15 @@ import org.junit.runners.Parameterized.Parameters;
 @RunWith(Parameterized.class)
 public class TestBracketedExpression extends AbstractAliasedFieldTest<BracketedExpression> {
 
+  @Mock
+  private UpgradeTableResolutionVisitor res;
+
   public final BracketedExpression onTest = (BracketedExpression) bracket(plus(literal(1), literal(2)));
+
+  @Before
+  public void setUp() throws Exception {
+    MockitoAnnotations.openMocks(this);
+  }
 
   @Parameters(name = "{0}")
   public static List<Object[]> data() {
@@ -73,12 +84,12 @@ public class TestBracketedExpression extends AbstractAliasedFieldTest<BracketedE
     //given
     MathsField field = mock(MathsField.class);
     BracketedExpression onTest = (BracketedExpression) bracket(field);
-    ResolvedTables res = new ResolvedTables();
 
     //when
-    onTest.resolveTables(res);
+    onTest.accept(res);
 
     //then
-    verify(field).resolveTables(res);
+    verify(res).visit(onTest);
+    verify(field).accept(res);
   }
 }

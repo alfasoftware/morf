@@ -19,7 +19,7 @@ import static org.alfasoftware.morf.util.DeepCopyTransformations.transformIterab
 
 import java.util.List;
 
-import org.alfasoftware.morf.sql.ResolvedTables;
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
@@ -349,15 +349,16 @@ public final class WindowFunction extends AliasedField implements Driver {
 
 
   @Override
-  public void resolveTables(ResolvedTables resolvedTables) {
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
     if(function != null) {
-      function.resolveTables(resolvedTables);
+      function.accept(visitor);
     }
     if(orderBys !=null) {
-      orderBys.stream().forEach(arg -> arg.resolveTables(resolvedTables));
+      orderBys.stream().forEach(arg -> arg.accept(visitor));
     }
     if(partitionBys !=null) {
-      partitionBys.stream().forEach(arg -> arg.resolveTables(resolvedTables));
+      partitionBys.stream().forEach(arg -> arg.accept(visitor));
     }
   }
 }

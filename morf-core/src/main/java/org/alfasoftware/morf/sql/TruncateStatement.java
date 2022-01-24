@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.sql;
 
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyTransformations;
@@ -132,7 +133,7 @@ public class TruncateStatement implements Statement,
 
 
   @Override
-  public void resolveTables(ResolvedTables resolvedTables) {
-    resolvedTables.addModifiedTable(table.getName());
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
   }
 }

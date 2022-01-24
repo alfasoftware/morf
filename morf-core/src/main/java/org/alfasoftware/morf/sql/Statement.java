@@ -23,7 +23,7 @@ import org.alfasoftware.morf.util.DeepCopyTransformation;
  *
  * @author Copyright (c) Alfa Financial Software 2009
  */
-public interface Statement extends TableResolvable {
+public interface Statement extends SchemaAndDataChangeVisitable {
 
 
   /**

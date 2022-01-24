@@ -18,8 +18,8 @@ package org.alfasoftware.morf.sql.element;
 import java.math.BigDecimal;
 
 import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.sql.ResolvedTables;
 import org.alfasoftware.morf.sql.Statement;
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -297,7 +297,7 @@ public class FieldLiteral extends AliasedField {
 
 
   @Override
-  public void resolveTables(ResolvedTables resolvedTables) {
-    //nothing
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
   }
 }

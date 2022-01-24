@@ -21,6 +21,7 @@ import java.util.List;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyTransformations;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
@@ -312,13 +313,13 @@ public class UpdateStatement implements Statement,
 
 
   @Override
-  public void resolveTables(ResolvedTables resolvedTables) {
-    resolvedTables.addModifiedTable(table.getName());
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
     if(whereCriterion != null) {
-      whereCriterion.resolveTables(resolvedTables);
+      whereCriterion.accept(visitor);
     }
     if(fields != null) {
-      fields.stream().forEach(f -> f.resolveTables(resolvedTables));
+      fields.stream().forEach(f -> f.accept(visitor));
     }
   }
 }

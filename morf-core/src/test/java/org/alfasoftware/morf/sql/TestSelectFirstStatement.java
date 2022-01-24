@@ -1,12 +1,11 @@
 package org.alfasoftware.morf.sql;
 
 import static org.alfasoftware.morf.sql.SqlUtils.selectFirst;
-import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.verify;
 
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Criterion;
-import org.hamcrest.Matchers;
+import org.alfasoftware.morf.upgrade.UpgradeTableResolutionVisitor;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -20,13 +19,16 @@ import org.mockito.MockitoAnnotations;
 public class TestSelectFirstStatement {
 
   @Mock
-  private AliasedField field, field2;
+  private AliasedField field;
 
   @Mock
   private SelectStatement fromSelect, subSelect;
 
   @Mock
   private Criterion onCondition, criterion2;
+
+  @Mock
+  private UpgradeTableResolutionVisitor res;
 
 
   @Before
@@ -43,34 +45,16 @@ public class TestSelectFirstStatement {
         .innerJoin(subSelect, onCondition)
         .where(criterion2);
 
-
-    ResolvedTables res = new ResolvedTables();
-
     //when
-    sel1.resolveTables(res);
+    sel1.accept(res);
 
     //then
-    verify(field).resolveTables(res);
-    verify(fromSelect).resolveTables(res);
-    verify(subSelect).resolveTables(res);
-    verify(onCondition).resolveTables(res);
-    verify(criterion2).resolveTables(res);
-  }
-
-
-  @Test
-  public void tableResolutionDetectsAllTables2() {
-    //given
-    SelectFirstStatement sel1 = selectFirst(field)
-        .from("table1");
-
-    ResolvedTables res = new ResolvedTables();
-
-    //when
-    sel1.resolveTables(res);
-
-    //then
-    assertThat(res.getReadTables(), Matchers.contains("TABLE1"));
+    verify(res).visit(sel1);
+    verify(field).accept(res);
+    verify(fromSelect).accept(res);
+    verify(subSelect).accept(res);
+    verify(onCondition).accept(res);
+    verify(criterion2).accept(res);
   }
 }
 

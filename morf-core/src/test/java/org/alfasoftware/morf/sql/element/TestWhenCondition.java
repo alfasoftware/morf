@@ -22,11 +22,14 @@ import static org.mockito.Mockito.verify;
 import java.util.Arrays;
 import java.util.List;
 
-import org.alfasoftware.morf.sql.ResolvedTables;
+import org.alfasoftware.morf.upgrade.UpgradeTableResolutionVisitor;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 /**
  * Tests for {@link WhenCondition}.
@@ -38,6 +41,15 @@ public class TestWhenCondition extends AbstractDeepCopyableTest<WhenCondition> {
 
   public static final Criterion CRITERION_1 = mockOf(Criterion.class);
   public static final Criterion CRITERION_2 = mockOf(Criterion.class);
+
+  @Mock
+  private UpgradeTableResolutionVisitor res;
+
+  @Before
+  public void setUp() throws Exception {
+    MockitoAnnotations.openMocks(this);
+  }
+
 
   @Parameters(name = "{0}")
   public static List<Object[]> data() {
@@ -54,13 +66,13 @@ public class TestWhenCondition extends AbstractDeepCopyableTest<WhenCondition> {
     //given
     AliasedField field = mock(AliasedField.class);
     WhenCondition when = new WhenCondition(CRITERION_1, field);
-    ResolvedTables res = new ResolvedTables();
 
     //when
-    when.resolveTables(res);
+    when.accept(res);
 
     //then
-    verify(field).resolveTables(res);
-    verify(CRITERION_1).resolveTables(res);
+    verify(res).visit(when);
+    verify(field).accept(res);
+    verify(CRITERION_1).accept(res);
   }
 }

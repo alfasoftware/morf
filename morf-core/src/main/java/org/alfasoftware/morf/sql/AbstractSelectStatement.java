@@ -28,6 +28,7 @@ import org.alfasoftware.morf.sql.element.Join;
 import org.alfasoftware.morf.sql.element.JoinType;
 import org.alfasoftware.morf.sql.element.Operator;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
@@ -829,21 +830,18 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
 
 
   @Override
-  public void resolveTables(ResolvedTables resolvedTables) {
-    if(table != null) {
-      resolvedTables.addReadTable(table.getName());
-    }
+  public void accept(SchemaAndDataChangeVisitor visitor) {
     if(fromSelects != null) {
-      fromSelects.stream().forEach(sel -> sel.resolveTables(resolvedTables));
+      fromSelects.stream().forEach(sel -> sel.accept(visitor));
     }
     if(joins != null) {
-      joins.stream().forEach(join -> join.resolveTables(resolvedTables));
+      joins.stream().forEach(join -> join.accept(visitor));
     }
     if(whereCriterion != null) {
-      whereCriterion.resolveTables(resolvedTables);
+      whereCriterion.accept(visitor);
     }
     if(fields != null) {
-      fields.stream().forEach(f -> f.resolveTables(resolvedTables));
+      fields.stream().forEach(f -> f.accept(visitor));
     }
   }
 }

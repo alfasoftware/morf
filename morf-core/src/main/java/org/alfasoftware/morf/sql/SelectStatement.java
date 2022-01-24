@@ -27,6 +27,7 @@ import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.FieldFromSelect;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
@@ -708,13 +709,15 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
 
 
   @Override
-  public void resolveTables(ResolvedTables resolvedTables) {
-    super.resolveTables(resolvedTables);
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
+    super.accept(visitor);
+
     if(having != null) {
-      having.resolveTables(resolvedTables);
+      having.accept(visitor);
     }
     if(setOperators != null) {
-      setOperators.stream().forEach(op -> op.resolveTables(resolvedTables));
+      setOperators.stream().forEach(op -> op.accept(visitor));
     }
   }
 }

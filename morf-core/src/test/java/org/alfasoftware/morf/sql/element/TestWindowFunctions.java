@@ -24,11 +24,14 @@ import static org.mockito.Mockito.verify;
 import java.util.Collections;
 import java.util.List;
 
-import org.alfasoftware.morf.sql.ResolvedTables;
+import org.alfasoftware.morf.upgrade.UpgradeTableResolutionVisitor;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 /**
  * Tests the WindowFunction DSL
@@ -37,6 +40,15 @@ import org.junit.runners.Parameterized.Parameters;
  */
 @RunWith(Parameterized.class)
 public class TestWindowFunctions extends AbstractAliasedFieldTest<WindowFunction> {
+
+  @Mock
+  private UpgradeTableResolutionVisitor res;
+
+  @Before
+  public void setUp() throws Exception {
+    MockitoAnnotations.openMocks(this);
+  }
+
 
   @Parameters(name = "{0}")
   public static List<Object[]> data() {
@@ -62,14 +74,14 @@ public class TestWindowFunctions extends AbstractAliasedFieldTest<WindowFunction
     AliasedField field = mock(AliasedField.class);
     AliasedField field2 = mock(AliasedField.class);
     WindowFunction onTest = WindowFunction.over(func).orderBy(field).partitionBy(field2).build();
-    ResolvedTables res = new ResolvedTables();
 
     //when
-    onTest.resolveTables(res);
+    onTest.accept(res);
 
     //then
-    verify(field).resolveTables(res);
-    verify(field2).resolveTables(res);
-    verify(field3).resolveTables(res);
+    verify(res).visit(onTest);
+    verify(field).accept(res);
+    verify(field2).accept(res);
+    verify(field3).accept(res);
   }
 }

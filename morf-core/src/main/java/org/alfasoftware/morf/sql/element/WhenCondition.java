@@ -15,9 +15,9 @@
 
 package org.alfasoftware.morf.sql.element;
 
-import org.alfasoftware.morf.sql.ResolvedTables;
-import org.alfasoftware.morf.sql.TableResolvable;
+import org.alfasoftware.morf.sql.SchemaAndDataChangeVisitable;
 import org.alfasoftware.morf.sql.TempTransitionalBuilderWrapper;
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyTransformations;
@@ -31,7 +31,7 @@ import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-public class WhenCondition implements Driver, DeepCopyableWithTransformation<WhenCondition, Builder<WhenCondition>>, TableResolvable {
+public class WhenCondition implements Driver, DeepCopyableWithTransformation<WhenCondition, Builder<WhenCondition>>, SchemaAndDataChangeVisitable {
 
   /** Value */
   private final AliasedField value;
@@ -153,12 +153,13 @@ public class WhenCondition implements Driver, DeepCopyableWithTransformation<Whe
 
 
   @Override
-  public void resolveTables(ResolvedTables resolvedTables) {
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
     if(value != null) {
-      value.resolveTables(resolvedTables);
+      value.accept(visitor);
     }
     if(criterion != null) {
-      criterion.resolveTables(resolvedTables);
+      criterion.accept(visitor);
     }
   }
 }

@@ -15,8 +15,8 @@
 
 package org.alfasoftware.morf.sql.element;
 
-import org.alfasoftware.morf.sql.ResolvedTables;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
@@ -121,9 +121,10 @@ public class FieldFromSelectFirst extends AliasedField implements Driver {
 
 
   @Override
-  public void resolveTables(ResolvedTables resolvedTables) {
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
     if(selectFirstStatement != null) {
-      selectFirstStatement.resolveTables(resolvedTables);
+      selectFirstStatement.accept(visitor);
     }
   }
 }

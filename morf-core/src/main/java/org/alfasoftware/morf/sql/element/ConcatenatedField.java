@@ -17,7 +17,7 @@ package org.alfasoftware.morf.sql.element;
 
 import java.util.List;
 
-import org.alfasoftware.morf.sql.ResolvedTables;
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
@@ -147,9 +147,10 @@ public class ConcatenatedField extends AliasedField implements Driver {
 
 
   @Override
-  public void resolveTables(ResolvedTables resolvedTables) {
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
     if(fields != null) {
-      fields.stream().forEach(f -> f.resolveTables(resolvedTables));
+      fields.stream().forEach(f -> f.accept(visitor));
     }
   }
 }

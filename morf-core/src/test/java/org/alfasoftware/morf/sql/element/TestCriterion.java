@@ -5,8 +5,8 @@ import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
 
-import org.alfasoftware.morf.sql.ResolvedTables;
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.upgrade.UpgradeTableResolutionVisitor;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -28,6 +28,8 @@ public class TestCriterion {
   @Mock
   private Criterion criterion1;
 
+  @Mock
+  private UpgradeTableResolutionVisitor res;
 
   @Before
   public void setUp() throws Exception {
@@ -40,15 +42,15 @@ public class TestCriterion {
     //given
     when(select.getFields()).thenReturn(Arrays.asList(field2));
     Criterion c = Criterion.and(criterion1, Criterion.in(field, select));
-    ResolvedTables res = new ResolvedTables();
 
     //when
-    c.resolveTables(res);
+    c.accept(res);
 
     //then
-    verify(field).resolveTables(res);
-    verify(select).resolveTables(res);
-    verify(criterion1).resolveTables(res);
+    verify(res).visit(c);
+    verify(field).accept(res);
+    verify(select).accept(res);
+    verify(criterion1).accept(res);
   }
 }
 

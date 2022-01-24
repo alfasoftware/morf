@@ -16,7 +16,7 @@
 package org.alfasoftware.morf.sql.element;
 
 import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.sql.ResolvedTables;
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
@@ -198,9 +198,10 @@ public class Cast extends AliasedField implements Driver {
 
 
   @Override
-  public void resolveTables(ResolvedTables resolvedTables) {
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
     if(expression != null) {
-      expression.resolveTables(resolvedTables);
+      expression.accept(visitor);
     }
   }
 }

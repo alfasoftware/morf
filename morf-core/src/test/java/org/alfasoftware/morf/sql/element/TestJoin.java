@@ -16,19 +16,20 @@
 package org.alfasoftware.morf.sql.element;
 
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.verify;
 
 import java.util.Arrays;
 import java.util.List;
 
-import org.alfasoftware.morf.sql.ResolvedTables;
 import org.alfasoftware.morf.sql.SelectStatement;
-import org.hamcrest.Matchers;
+import org.alfasoftware.morf.upgrade.UpgradeTableResolutionVisitor;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 /**
  * Tests for {@link Join}.
@@ -44,6 +45,15 @@ public class TestJoin extends AbstractDeepCopyableTest<Join> {
   public static final Criterion CRITERION_2 = mockOf(Criterion.class);
   public static final SelectStatement SELECT_1 = mockSelectStatement();
   public static final SelectStatement SELECT_2 = mockSelectStatement();
+
+  @Mock
+  private UpgradeTableResolutionVisitor res;
+
+  @Before
+  public void setUp() throws Exception {
+    MockitoAnnotations.openMocks(this);
+  }
+
 
   @Parameters(name = "{0}")
   public static List<Object[]> data() {
@@ -68,14 +78,13 @@ public class TestJoin extends AbstractDeepCopyableTest<Join> {
   public void tableResolutionDetectsAllTables1() {
     //given
     Join join = new Join(JoinType.INNER_JOIN, tableRef("table1"), CRITERION_1);
-    ResolvedTables res = new ResolvedTables();
 
     //when
-    join.resolveTables(res);
+    join.accept(res);
 
     //then
-    verify(CRITERION_1).resolveTables(res);
-    assertThat(res.getReadTables(), Matchers.contains("TABLE1"));
+    verify(res).visit(join);
+    verify(CRITERION_1).accept(res);
   }
 
 
@@ -83,13 +92,13 @@ public class TestJoin extends AbstractDeepCopyableTest<Join> {
   public void tableResolutionDetectsAllTables2() {
     //given
     Join join = new Join(JoinType.INNER_JOIN, SELECT_1, CRITERION_1);
-    ResolvedTables res = new ResolvedTables();
 
     //when
-    join.resolveTables(res);
+    join.accept(res);
 
     //then
-    verify(CRITERION_1).resolveTables(res);
-    verify(SELECT_1).resolveTables(res);
+    verify(res).visit(join);
+    verify(CRITERION_1).accept(res);
+    verify(SELECT_1).accept(res);
   }
 }

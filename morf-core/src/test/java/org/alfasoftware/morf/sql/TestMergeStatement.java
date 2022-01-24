@@ -2,11 +2,10 @@ package org.alfasoftware.morf.sql;
 
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.verify;
 
 import org.alfasoftware.morf.sql.element.AliasedField;
-import org.hamcrest.Matchers;
+import org.alfasoftware.morf.upgrade.UpgradeTableResolutionVisitor;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -25,6 +24,9 @@ public class TestMergeStatement {
   @Mock
   private SelectStatement fromSelect;
 
+  @Mock
+  private UpgradeTableResolutionVisitor res;
+
   @Before
   public void setUp() throws Exception {
     MockitoAnnotations.openMocks(this);
@@ -41,15 +43,14 @@ public class TestMergeStatement {
         .ifUpdating((overrides, values) -> overrides
           .set(field))
         .build();
-    ResolvedTables res = new ResolvedTables();
 
     //when
-    mer1.resolveTables(res);
+    mer1.accept(res);
 
     //then
-    verify(field).resolveTables(res);
-    verify(fromSelect).resolveTables(res);
-    assertThat(res.getModifiedTables(), Matchers.contains("TABLE1"));
+    verify(res).visit(mer1);
+    verify(field).accept(res);
+    verify(fromSelect).accept(res);
   }
 }
 

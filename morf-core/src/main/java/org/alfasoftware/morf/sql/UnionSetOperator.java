@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.sql;
 
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
@@ -212,7 +213,8 @@ public class UnionSetOperator implements SetOperator {
 
 
   @Override
-  public void resolveTables(ResolvedTables resolvedTables) {
-    selectStatement.resolveTables(resolvedTables);
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
+    selectStatement.accept(visitor);
   }
 }
