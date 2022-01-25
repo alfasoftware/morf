@@ -16,10 +16,11 @@ public class UpgradeTableResolution {
 
   /**
    * @param upgradeStepName
-   * @return all tables modified by given upgrade step
+   * @return all tables modified by given upgrade step or null if this upgrade
+   *         step hasn't been processed
    */
   public Set<String> getModifiedTables(String upgradeStepName) {
-    return resolvedTablesMap.get(upgradeStepName).getModifiedTables();
+    return resolvedTablesMap.get(upgradeStepName) == null ? null : resolvedTablesMap.get(upgradeStepName).getModifiedTables();
   }
 
 
@@ -28,7 +29,7 @@ public class UpgradeTableResolution {
    * @return all tables read by given upgrade step
    */
   public Set<String> getReadTables(String upgradeStepName) {
-    return resolvedTablesMap.get(upgradeStepName).getReadTables();
+    return resolvedTablesMap.get(upgradeStepName) == null ? null : resolvedTablesMap.get(upgradeStepName).getReadTables();
   }
 
 
@@ -45,9 +46,10 @@ public class UpgradeTableResolution {
 
   /**
    * @param upgradeStepName
-   * @return true if given upgrade step is using {@link PortableSqlStatement}
+   * @return true if given upgrade step is using {@link PortableSqlStatement} or null if this upgrade
+   *         step hasn't been processed
    */
-  public boolean isPortableSqlStatementUsed(String upgradeStepName) {
-    return resolvedTablesMap.get(upgradeStepName).isPortableSqlStatementUsed();
+  public Boolean isPortableSqlStatementUsed(String upgradeStepName) {
+    return resolvedTablesMap.get(upgradeStepName) == null ? null : resolvedTablesMap.get(upgradeStepName).isPortableSqlStatementUsed();
   }
 }
