@@ -280,6 +280,8 @@ public class SelectStatementBuilder extends AbstractSelectStatementBuilder<Selec
    *
    * <p>Note that the executed use cases of this are rare. Caution is needed because if multiple requests are made by the application to run parallel queries, the resulting resource contention may result in worse performance - this is not intended for queries that are submitted in parallel by the application.</p>
    *
+   * @param degreeOfParallelism degree of parallelism for the select
+   *
    * @return this, for method chaining.
    */
   public SelectStatementBuilder withParallelQueryPlan(int degreeOfParallelism) {

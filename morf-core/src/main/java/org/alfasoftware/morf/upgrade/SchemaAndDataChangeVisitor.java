@@ -153,7 +153,7 @@ public interface SchemaAndDataChangeVisitor {
   /**
    * Perform visit operation on a {@link SelectFirstStatement} instance.
    *
-   * @param renameIndex instance of {@link SelectFirstStatement} to visit.
+   * @param selectFirstStatement instance of {@link SelectFirstStatement} to visit.
    */
   default void visit(SelectFirstStatement selectFirstStatement) {
   }
@@ -162,7 +162,7 @@ public interface SchemaAndDataChangeVisitor {
   /**
    * Perform visit operation on a {@link SelectStatement} instance.
    *
-   * @param renameIndex instance of {@link SelectStatement} to visit.
+   * @param selectStatement instance of {@link SelectStatement} to visit.
    */
   default void visit(SelectStatement selectStatement) {
   }
@@ -171,7 +171,7 @@ public interface SchemaAndDataChangeVisitor {
   /**
    * Perform visit operation on a {@link DeleteStatement} instance.
    *
-   * @param renameIndex instance of {@link DeleteStatement} to visit.
+   * @param deleteStatement instance of {@link DeleteStatement} to visit.
    */
   default void visit(DeleteStatement deleteStatement) {
   }
@@ -180,7 +180,7 @@ public interface SchemaAndDataChangeVisitor {
   /**
    * Perform visit operation on a {@link InsertStatement} instance.
    *
-   * @param renameIndex instance of {@link InsertStatement} to visit.
+   * @param insertStatement instance of {@link InsertStatement} to visit.
    */
   default void visit(InsertStatement insertStatement) {
   }
@@ -189,7 +189,7 @@ public interface SchemaAndDataChangeVisitor {
   /**
    * Perform visit operation on a {@link InputField} instance.
    *
-   * @param renameIndex instance of {@link InputField} to visit.
+   * @param inputField instance of {@link InputField} to visit.
    */
   default void visit(InputField inputField) {
   };
@@ -198,7 +198,7 @@ public interface SchemaAndDataChangeVisitor {
   /**
    * Perform visit operation on a {@link MergeStatement} instance.
    *
-   * @param renameIndex instance of {@link MergeStatement} to visit.
+   * @param mergeStatement instance of {@link MergeStatement} to visit.
    */
   default void visit(MergeStatement mergeStatement) {
   }
@@ -207,7 +207,7 @@ public interface SchemaAndDataChangeVisitor {
   /**
    * Perform visit operation on a {@link PortableSqlStatement} instance.
    *
-   * @param renameIndex instance of {@link PortableSqlStatement} to visit.
+   * @param portableSqlStatement instance of {@link PortableSqlStatement} to visit.
    */
   default void visit(PortableSqlStatement portableSqlStatement) {
   }
@@ -216,7 +216,7 @@ public interface SchemaAndDataChangeVisitor {
   /**
    * Perform visit operation on a {@link TruncateStatement} instance.
    *
-   * @param renameIndex instance of {@link TruncateStatement} to visit.
+   * @param truncateStatement instance of {@link TruncateStatement} to visit.
    */
   default void visit(TruncateStatement truncateStatement) {
   }
@@ -225,7 +225,7 @@ public interface SchemaAndDataChangeVisitor {
   /**
    * Perform visit operation on a {@link UpdateStatement} instance.
    *
-   * @param renameIndex instance of {@link UpdateStatement} to visit.
+   * @param updateStatement instance of {@link UpdateStatement} to visit.
    */
   default void visit(UpdateStatement updateStatement) {
   }
@@ -234,7 +234,7 @@ public interface SchemaAndDataChangeVisitor {
   /**
    * Perform visit operation on a {@link UnionSetOperator} instance.
    *
-   * @param renameIndex instance of {@link UnionSetOperator} to visit.
+   * @param unionSetOperator instance of {@link UnionSetOperator} to visit.
    */
   default void visit(UnionSetOperator unionSetOperator) {
   }
@@ -243,7 +243,7 @@ public interface SchemaAndDataChangeVisitor {
   /**
    * Perform visit operation on a {@link BracketedExpression} instance.
    *
-   * @param renameIndex instance of {@link BracketedExpression} to visit.
+   * @param bracketedExpression instance of {@link BracketedExpression} to visit.
    */
   default void visit(BracketedExpression bracketedExpression) {
   }
@@ -252,7 +252,7 @@ public interface SchemaAndDataChangeVisitor {
   /**
    * Perform visit operation on a {@link CaseStatement} instance.
    *
-   * @param renameIndex instance of {@link CaseStatement} to visit.
+   * @param caseStatement instance of {@link CaseStatement} to visit.
    */
   default void visit(CaseStatement caseStatement) {
   }
@@ -261,7 +261,7 @@ public interface SchemaAndDataChangeVisitor {
   /**
    * Perform visit operation on a {@link Cast} instance.
    *
-   * @param renameIndex instance of {@link Cast} to visit.
+   * @param cast instance of {@link Cast} to visit.
    */
   default void visit(Cast cast) {
   }
@@ -270,7 +270,7 @@ public interface SchemaAndDataChangeVisitor {
   /**
    * Perform visit operation on a {@link ConcatenatedField} instance.
    *
-   * @param renameIndex instance of {@link ConcatenatedField} to visit.
+   * @param concatenatedField instance of {@link ConcatenatedField} to visit.
    */
   default void visit(ConcatenatedField concatenatedField) {
   }
@@ -279,7 +279,7 @@ public interface SchemaAndDataChangeVisitor {
   /**
    * Perform visit operation on a {@link Criterion} instance.
    *
-   * @param renameIndex instance of {@link Criterion} to visit.
+   * @param criterion instance of {@link Criterion} to visit.
    */
   default void visit(Criterion criterion) {
   }
@@ -288,7 +288,7 @@ public interface SchemaAndDataChangeVisitor {
   /**
    * Perform visit operation on a {@link FieldFromSelect} instance.
    *
-   * @param renameIndex instance of {@link FieldFromSelect} to visit.
+   * @param fieldFromSelect instance of {@link FieldFromSelect} to visit.
    */
   default void visit(FieldFromSelect fieldFromSelect) {
   }
@@ -297,7 +297,7 @@ public interface SchemaAndDataChangeVisitor {
   /**
    * Perform visit operation on a {@link FieldFromSelectFirst} instance.
    *
-   * @param renameIndex instance of {@link FieldFromSelectFirst} to visit.
+   * @param fieldFromSelectFirst instance of {@link FieldFromSelectFirst} to visit.
    */
   default void visit(FieldFromSelectFirst fieldFromSelectFirst) {
   }
@@ -306,7 +306,7 @@ public interface SchemaAndDataChangeVisitor {
   /**
    * Perform visit operation on a {@link FieldLiteral} instance.
    *
-   * @param renameIndex instance of {@link FieldLiteral} to visit.
+   * @param fieldLiteral instance of {@link FieldLiteral} to visit.
    */
   default void visit(FieldLiteral fieldLiteral) {
   }
@@ -315,7 +315,7 @@ public interface SchemaAndDataChangeVisitor {
   /**
    * Perform visit operation on a {@link FieldReference} instance.
    *
-   * @param renameIndex instance of {@link FieldReference} to visit.
+   * @param fieldReference instance of {@link FieldReference} to visit.
    */
   default void visit(FieldReference fieldReference) {
   }
@@ -324,7 +324,7 @@ public interface SchemaAndDataChangeVisitor {
   /**
    * Perform visit operation on a {@link Function} instance.
    *
-   * @param renameIndex instance of {@link Function} to visit.
+   * @param function instance of {@link Function} to visit.
    */
   default void visit(Function function) {
   }
@@ -333,7 +333,7 @@ public interface SchemaAndDataChangeVisitor {
   /**
    * Perform visit operation on a {@link Join} instance.
    *
-   * @param renameIndex instance of {@link Join} to visit.
+   * @param join instance of {@link Join} to visit.
    */
   default void visit(Join join) {
   }
@@ -342,7 +342,7 @@ public interface SchemaAndDataChangeVisitor {
   /**
    * Perform visit operation on a {@link MathsField} instance.
    *
-   * @param renameIndex instance of {@link MathsField} to visit.
+   * @param mathsField instance of {@link MathsField} to visit.
    */
   default void visit(MathsField mathsField) {
   }
@@ -351,7 +351,7 @@ public interface SchemaAndDataChangeVisitor {
   /**
    * Perform visit operation on a {@link SqlParameter} instance.
    *
-   * @param renameIndex instance of {@link SqlParameter} to visit.
+   * @param sqlParameter instance of {@link SqlParameter} to visit.
    */
   default void visit(SqlParameter sqlParameter) {
   }
@@ -360,7 +360,7 @@ public interface SchemaAndDataChangeVisitor {
   /**
    * Perform visit operation on a {@link WhenCondition} instance.
    *
-   * @param renameIndex instance of {@link WhenCondition} to visit.
+   * @param whenCondition instance of {@link WhenCondition} to visit.
    */
   default void visit(WhenCondition whenCondition) {
   }
@@ -369,7 +369,7 @@ public interface SchemaAndDataChangeVisitor {
   /**
    * Perform visit operation on a {@link WindowFunction} instance.
    *
-   * @param renameIndex instance of {@link WindowFunction} to visit.
+   * @param windowFunction instance of {@link WindowFunction} to visit.
    */
   default void visit(WindowFunction windowFunction) {
   }

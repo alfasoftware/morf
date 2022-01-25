@@ -15,7 +15,7 @@ public class UpgradeTableResolution {
   private final Map<String, ResolvedTables> resolvedTablesMap = new HashMap<>();
 
   /**
-   * @param upgradeStepName
+   * @param upgradeStepName name of the class of the upgrade step to be checked
    * @return all tables modified by given upgrade step or null if this upgrade
    *         step hasn't been processed
    */
@@ -25,7 +25,7 @@ public class UpgradeTableResolution {
 
 
   /**
-   * @param upgradeStepName
+   * @param upgradeStepName name of the class of the upgrade step to be checked
    * @return all tables read by given upgrade step
    */
   public Set<String> getReadTables(String upgradeStepName) {
@@ -36,8 +36,8 @@ public class UpgradeTableResolution {
   /**
    * Adds information about read/modified tables by given upgrade step
    *
-   * @param upgradeStepName
-   * @param resolvedTables
+   * @param upgradeStepName name of the class of the upgrade step to be registered
+   * @param resolvedTables registry of read/modified tables
    */
   public void addDiscoveredTables(String upgradeStepName, ResolvedTables resolvedTables) {
     resolvedTablesMap.put(upgradeStepName, resolvedTables);
@@ -45,7 +45,7 @@ public class UpgradeTableResolution {
 
 
   /**
-   * @param upgradeStepName
+   * @param upgradeStepName name of the class of the upgrade step to be checked
    * @return true if given upgrade step is using {@link PortableSqlStatement} or null if this upgrade
    *         step hasn't been processed
    */

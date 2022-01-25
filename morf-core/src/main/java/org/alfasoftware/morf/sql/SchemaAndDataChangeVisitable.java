@@ -11,6 +11,8 @@ public interface SchemaAndDataChangeVisitable {
 
   /**
    * Accepts visit by {@link SchemaAndDataChangeVisitor} implementation.
+   *
+   * @param visitor to be accepted.
    */
   void accept(SchemaAndDataChangeVisitor visitor);
 }
