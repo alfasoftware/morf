@@ -210,7 +210,7 @@ public interface SchemaAndDataChangeVisitor {
    */
   default void visit(InputField inputField) {
     // Do nothing on default
-  };
+  }
 
 
   /**
