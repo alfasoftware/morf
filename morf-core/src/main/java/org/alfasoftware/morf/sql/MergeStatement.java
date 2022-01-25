@@ -104,7 +104,7 @@ public class MergeStatement implements Statement,
    * For updating existing records, references the new field value being merged, i.e. the value provided by the select.
    * This internally implements the {@link MergeStatementBuilder.UpdateValues#input(String)} reference.
    */
-  public static final class InputField extends AliasedField {
+  public static class InputField extends AliasedField {
 
     private final String name;
 

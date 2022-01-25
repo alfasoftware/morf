@@ -39,6 +39,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param addColumn instance of {@link AddColumn} to visit.
    */
   default void visit(AddColumn addColumn) {
+    // Do nothing on default
   }
 
 
@@ -48,6 +49,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param addTable instance of {@link AddTable} to visit.
    */
   default void visit(AddTable addTable) {
+    // Do nothing on default
   }
 
 
@@ -57,6 +59,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param removeTable instance of {@link RemoveTable} to visit.
    */
   default void visit(RemoveTable removeTable) {
+    // Do nothing on default
   }
 
 
@@ -66,6 +69,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param addIndex instance of {@link AddIndex} to visit.
    */
   default void visit(AddIndex addIndex) {
+    // Do nothing on default
   }
 
 
@@ -75,6 +79,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param changeColumn instance of {@link ChangeColumn} to visit.
    */
   default void visit(ChangeColumn changeColumn) {
+    // Do nothing on default
   }
 
 
@@ -84,6 +89,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param removeColumn instance of {@link RemoveColumn} to visit.
    */
   default void visit(RemoveColumn removeColumn) {
+    // Do nothing on default
   }
 
 
@@ -93,6 +99,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param removeIndex instance of {@link RemoveIndex} to visit.
    */
   default void visit(RemoveIndex removeIndex) {
+    // Do nothing on default
   }
 
 
@@ -102,6 +109,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param changeIndex instance of {@link ChangeIndex} to visit.
    */
   default void visit(ChangeIndex changeIndex) {
+    // Do nothing on default
   }
 
 
@@ -111,6 +119,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param renameIndex instance of {@link RenameIndex} to visit.
    */
   default void visit(RenameIndex renameIndex) {
+    // Do nothing on default
   }
 
 
@@ -120,15 +129,17 @@ public interface SchemaAndDataChangeVisitor {
    * @param renameTable instance of {@link RenameTable} to visit.
    */
   default void visit(RenameTable renameTable) {
+    // Do nothing on default
   }
 
 
   /**
    * Perform visit operation on a {@link ChangePrimaryKeyColumns} instance.
    *
-   * @param renameTable instance of {@link ChangePrimaryKeyColumns} to visit.
+   * @param changePrimaryKeyColumns instance of {@link ChangePrimaryKeyColumns} to visit.
    */
-  default void visit(ChangePrimaryKeyColumns renameTable) {
+  default void visit(ChangePrimaryKeyColumns changePrimaryKeyColumns) {
+    // Do nothing on default
   }
 
 
@@ -138,6 +149,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param addTableFrom instance of {@link AddTableFrom} to visit.
    */
   default void visit(AddTableFrom addTableFrom) {
+    // Do nothing on default
   }
 
 
@@ -147,6 +159,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param analyseTable instance of {@link AnalyseTable} to visit.
    */
   default void visit(AnalyseTable analyseTable) {
+    // Do nothing on default
   }
 
 
@@ -156,6 +169,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param selectFirstStatement instance of {@link SelectFirstStatement} to visit.
    */
   default void visit(SelectFirstStatement selectFirstStatement) {
+    // Do nothing on default
   }
 
 
@@ -165,6 +179,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param selectStatement instance of {@link SelectStatement} to visit.
    */
   default void visit(SelectStatement selectStatement) {
+    // Do nothing on default
   }
 
 
@@ -174,6 +189,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param deleteStatement instance of {@link DeleteStatement} to visit.
    */
   default void visit(DeleteStatement deleteStatement) {
+    // Do nothing on default
   }
 
 
@@ -183,6 +199,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param insertStatement instance of {@link InsertStatement} to visit.
    */
   default void visit(InsertStatement insertStatement) {
+    // Do nothing on default
   }
 
 
@@ -192,6 +209,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param inputField instance of {@link InputField} to visit.
    */
   default void visit(InputField inputField) {
+    // Do nothing on default
   };
 
 
@@ -201,6 +219,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param mergeStatement instance of {@link MergeStatement} to visit.
    */
   default void visit(MergeStatement mergeStatement) {
+    // Do nothing on default
   }
 
 
@@ -210,6 +229,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param portableSqlStatement instance of {@link PortableSqlStatement} to visit.
    */
   default void visit(PortableSqlStatement portableSqlStatement) {
+    // Do nothing on default
   }
 
 
@@ -219,6 +239,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param truncateStatement instance of {@link TruncateStatement} to visit.
    */
   default void visit(TruncateStatement truncateStatement) {
+    // Do nothing on default
   }
 
 
@@ -228,6 +249,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param updateStatement instance of {@link UpdateStatement} to visit.
    */
   default void visit(UpdateStatement updateStatement) {
+    // Do nothing on default
   }
 
 
@@ -237,6 +259,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param unionSetOperator instance of {@link UnionSetOperator} to visit.
    */
   default void visit(UnionSetOperator unionSetOperator) {
+    // Do nothing on default
   }
 
 
@@ -246,6 +269,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param bracketedExpression instance of {@link BracketedExpression} to visit.
    */
   default void visit(BracketedExpression bracketedExpression) {
+    // Do nothing on default
   }
 
 
@@ -255,6 +279,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param caseStatement instance of {@link CaseStatement} to visit.
    */
   default void visit(CaseStatement caseStatement) {
+    // Do nothing on default
   }
 
 
@@ -264,6 +289,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param cast instance of {@link Cast} to visit.
    */
   default void visit(Cast cast) {
+    // Do nothing on default
   }
 
 
@@ -273,6 +299,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param concatenatedField instance of {@link ConcatenatedField} to visit.
    */
   default void visit(ConcatenatedField concatenatedField) {
+    // Do nothing on default
   }
 
 
@@ -282,6 +309,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param criterion instance of {@link Criterion} to visit.
    */
   default void visit(Criterion criterion) {
+    // Do nothing on default
   }
 
 
@@ -291,6 +319,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param fieldFromSelect instance of {@link FieldFromSelect} to visit.
    */
   default void visit(FieldFromSelect fieldFromSelect) {
+    // Do nothing on default
   }
 
 
@@ -300,6 +329,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param fieldFromSelectFirst instance of {@link FieldFromSelectFirst} to visit.
    */
   default void visit(FieldFromSelectFirst fieldFromSelectFirst) {
+    // Do nothing on default
   }
 
 
@@ -309,6 +339,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param fieldLiteral instance of {@link FieldLiteral} to visit.
    */
   default void visit(FieldLiteral fieldLiteral) {
+    // Do nothing on default
   }
 
 
@@ -318,6 +349,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param fieldReference instance of {@link FieldReference} to visit.
    */
   default void visit(FieldReference fieldReference) {
+    // Do nothing on default
   }
 
 
@@ -327,6 +359,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param function instance of {@link Function} to visit.
    */
   default void visit(Function function) {
+    // Do nothing on default
   }
 
 
@@ -336,6 +369,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param join instance of {@link Join} to visit.
    */
   default void visit(Join join) {
+    // Do nothing on default
   }
 
 
@@ -345,6 +379,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param mathsField instance of {@link MathsField} to visit.
    */
   default void visit(MathsField mathsField) {
+    // Do nothing on default
   }
 
 
@@ -354,6 +389,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param sqlParameter instance of {@link SqlParameter} to visit.
    */
   default void visit(SqlParameter sqlParameter) {
+    // Do nothing on default
   }
 
 
@@ -363,6 +399,7 @@ public interface SchemaAndDataChangeVisitor {
    * @param whenCondition instance of {@link WhenCondition} to visit.
    */
   default void visit(WhenCondition whenCondition) {
+    // Do nothing on default
   }
 
 
@@ -372,5 +409,6 @@ public interface SchemaAndDataChangeVisitor {
    * @param windowFunction instance of {@link WindowFunction} to visit.
    */
   default void visit(WindowFunction windowFunction) {
+    // Do nothing on default
   }
 }
