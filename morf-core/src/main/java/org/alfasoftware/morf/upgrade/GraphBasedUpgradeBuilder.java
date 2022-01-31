@@ -64,6 +64,7 @@ public class GraphBasedUpgradeBuilder {
    */
   public GraphBasedUpgrade prepareParallelUpgrade(SchemaChangeSequence schemaChangeSequence) {
     UpgradeStepToUpgradeNode mapper = new UpgradeStepToUpgradeNode(schemaChangeSequence.getUpgradeTableResolution());
+
     List<GraphBasedUpgradeNode> nodes = produceNodes(schemaChangeSequence.getUpgradeSteps(), mapper);
 
     GraphBasedUpgradeNode root = prepareGraph(nodes);
@@ -85,6 +86,12 @@ public class GraphBasedUpgradeBuilder {
   }
 
 
+  /**
+   * Maps instances of {@link UpgradeStep} to instances of {@link GraphBasedUpgradeNode}.
+   * @param upgradeSteps to be mapped
+   * @param mapper to be used
+   * @return list of {@link GraphBasedUpgradeNode} instances
+   */
   private List<GraphBasedUpgradeNode> produceNodes(List<UpgradeStep> upgradeSteps, UpgradeStepToUpgradeNode mapper) {
     return upgradeSteps.stream().
         map(mapper).
@@ -93,7 +100,11 @@ public class GraphBasedUpgradeBuilder {
   }
 
 
-
+  /**
+   * Build execution graph.
+   * @param nodes to be inserted into the graph
+   * @return root node of the graph
+   */
   private GraphBasedUpgradeNode prepareGraph(List<GraphBasedUpgradeNode> nodes) {
     GraphBasedUpgradeNode root = new GraphBasedUpgradeNode("root", 0, new HashSet<>(), new HashSet<>());
     List<GraphBasedUpgradeNode> processedNodes = new ArrayList<>();
@@ -109,6 +120,12 @@ public class GraphBasedUpgradeBuilder {
   }
 
 
+  /**
+   * Insert annotated node into the graph.
+   * @param processedNodes nodes processed so far
+   * @param node to be inserted
+   * @param root of the graph
+   */
   private void handleAnnotatedNode(List<GraphBasedUpgradeNode> processedNodes, GraphBasedUpgradeNode node, GraphBasedUpgradeNode root) {
     // if nothing has been processed add node as child of the root
     if(processedNodes.isEmpty()) {
@@ -125,7 +142,7 @@ public class GraphBasedUpgradeBuilder {
     for (int i = processedNodes.size() - 1; i >= 0; i--) {
       GraphBasedUpgradeNode processed = processedNodes.get(i);
 
-      // if it's annotated
+      // if dependencies are defined for the processed node
       if (!processed.noDependenciesDefined()) {
         analyzeDependency(processed, node, remainingReads, remainingModifies, removeAtNextModify);
       }
@@ -135,33 +152,44 @@ public class GraphBasedUpgradeBuilder {
         break;
       }
 
-      // if not annotated check add edge only if current node has no parents
+      // if processed has no dependencies add an edge only if current node has no parents
       if(processed.noDependenciesDefined() && node.getParents().isEmpty()) {
         addEdge(processed, node);
-        LOG.info("Node: " + node.getName() + " depends on " + processed.getName() + " because it had no parent and the dependency is a not annotated leaf");
+        LOG.debug("Node: " + node.getName() + " depends on " + processed.getName()
+            + " because it had no parent and the dependency has no dependencies defined");
         break;
       }
     }
 
-    // if no dependency found add as child of the root
+    // if no dependencies have been found add as a child of the root
     if(node.getParents().isEmpty()) {
-      LOG.info("No dependencies found for node: " + node.getName() + " - adding as child of the root");
+      LOG.debug("No dependencies found for node: " + node.getName() + " - adding as child of the root");
       addEdge(root, node);
     }
   }
 
 
+  /**
+   * Checks dependencies of current node and previously processed node to
+   * establish if an edge should be added.
+   *
+   * @param processed previously processed node
+   * @param node current node
+   * @param remainingReads read-level dependencies which haven't been reflected in the graph so far
+   * @param remainingModifies modify-level dependencies which haven't been reflected in the graph so far
+   * @param removeAtNextModify list of dependencies which will be suppressed during the next write-based edge creation attempt
+   */
   private void analyzeDependency(GraphBasedUpgradeNode processed, GraphBasedUpgradeNode node, Set<String> remainingReads, Set<String> remainingModifies, Set<String> removeAtNextModify) {
     // processed writes intersection with writes of the current node
     SetView<String> view1 = Sets.intersection(processed.getModifies(), remainingModifies);
     view1.stream().forEach(hit -> {
       if(removeAtNextModify.contains(hit)) {
-        LOG.debug("Node: " + node.getName() + " does NOT depends on " + processed.getName()
+        LOG.debug("Node: " + node.getName() + " does NOT depend on " + processed.getName()
             + " because of writes-writes (current-processed) intersection has been suppressed at: " + hit + ".");
         removeAtNextModify.remove(hit);
       } else {
         addEdge(processed, node);
-        LOG.info("Node: " + node.getName() + " depends on " + processed.getName()
+        LOG.debug("Node: " + node.getName() + " depends on " + processed.getName()
             + " because of writes-writes (current-processed) intersection at: " + hit + ".");
       }
       remainingModifies.remove(hit);
@@ -172,7 +200,7 @@ public class GraphBasedUpgradeBuilder {
     view2.stream().forEach(hit -> {
       addEdge(processed, node);
       remainingReads.remove(hit);
-      LOG.info("Node: " + node.getName() + " depends on " + processed.getName()
+      LOG.debug("Node: " + node.getName() + " depends on " + processed.getName()
       + " because of reads-writes (current-processed) intersection at: " + hit + ".");
     });
 
@@ -181,16 +209,22 @@ public class GraphBasedUpgradeBuilder {
     view3.stream().forEach(hit -> {
       addEdge(processed, node);
       removeAtNextModify.add(hit);
-      LOG.info("Node: " + node.getName() + " depends on " + processed.getName()
+      LOG.debug("Node: " + node.getName() + " depends on " + processed.getName()
           + " because of writes-reads (current-processed) intersection at: " + hit + ". Adding this table to removeAtNextModify.");
     });
 
     if (!node.getParents().contains(processed)) {
-      LOG.debug("No dependenciees found between potential parent: " + processed.getName() + " and node: " + node.getName());
+      LOG.debug("No edges have been created between potential parent: " + processed.getName() + " and node: " + node.getName());
     }
   }
 
 
+  /**
+   * Handle nodes without defined dependencies.
+   * @param processed previously processed node
+   * @param node current node
+   * @param root of the graph
+   */
   private void handleNotAnnotatedNode(List<GraphBasedUpgradeNode> processedNodes, GraphBasedUpgradeNode node, GraphBasedUpgradeNode root) {
     // if nothing has been processed add node as a child of a root
     if(processedNodes.isEmpty()) {
@@ -202,22 +236,39 @@ public class GraphBasedUpgradeBuilder {
     for(GraphBasedUpgradeNode processed : processedNodes) {
       if(processed.getChildren().isEmpty() && !processed.isRoot() ) {
         addEdge(processed, node);
-        LOG.info("Node (no annotations): " + node.getName() + " depends on " + processed.getName() + " because it is a leaf");
+        LOG.debug("Node (no dependencies): " + node.getName() + " depends on " + processed.getName() + " because it is a leaf");
       }
     }
   }
 
 
+  /**
+   * Adds graph's edge.
+   * @param parent node which fulfills a dependency
+   * @param child node with a dependency
+   */
   private void addEdge(GraphBasedUpgradeNode parent, GraphBasedUpgradeNode child) {
     parent.getChildren().add(child);
     child.getParents().add(parent);
   }
 
 
+  /**
+   * Traverses graph and logs it.
+   *
+   * @param node the first node of the graph (or part of the graph) to be logged
+   */
   void logGraph(GraphBasedUpgradeNode node) {
     traverseAndLog(node, new HashSet<GraphBasedUpgradeNode>());
   }
 
+
+  /**
+   * Recurrence method logging the nodes.
+   *
+   * @param node to be logged
+   * @param visited set of already logged nodes which should not be logged again
+   */
   private void traverseAndLog(GraphBasedUpgradeNode node, Set<GraphBasedUpgradeNode> visited) {
     if(!visited.contains(node)) {
       LOG.debug(node.toString());
@@ -229,23 +280,40 @@ public class GraphBasedUpgradeBuilder {
   }
 
 
+  /**
+   * Maps from {@link UpgradeStep} to {@link GraphBasedUpgradeNode}.
+   *
+   * @author Copyright (c) Alfa Financial Software Limited. 2022
+   */
   private class UpgradeStepToUpgradeNode implements Function<UpgradeStep, GraphBasedUpgradeNode> {
     private final UpgradeTableResolution upgradeTableResolution;
 
+    /**
+     * Default constructor.
+     *
+     * @param upgradeTableResolution table resolution information
+     */
     public UpgradeStepToUpgradeNode(UpgradeTableResolution upgradeTableResolution) {
       this.upgradeTableResolution = upgradeTableResolution;
     }
 
 
+    /**
+     * Builds a new {@link GraphBasedUpgradeNode} instance based on
+     * {@link UpgradeStep} instance and agumented by information contained in the
+     * {@link UpgradeTableResolution}.
+     *
+     * @see java.util.function.Function#apply(java.lang.Object)
+     */
     @Override
     public GraphBasedUpgradeNode apply(UpgradeStep upg) {
       String upgradeName = upg.getClass().getSimpleName();
 
       Set<String> modifies, reads;
       if (upgradeTableResolution.isPortableSqlStatementUsed(upgradeName)) {
+
         // fallback to annotations
         LOG.debug("Due to use of PortableSqlStatement falling back to annotations for: " + upgradeName);
-
         if (upg.getClass().isAnnotationPresent(UpgradeModifies.class)) {
           UpgradeModifies annotation = upg.getClass().getAnnotation(UpgradeModifies.class);
           modifies = Arrays.stream(annotation.value()).map(s -> s.toUpperCase()).collect(Collectors.toSet());
