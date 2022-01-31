@@ -27,9 +27,11 @@ import com.google.common.collect.Sets.SetView;
 public class GraphBasedUpgradeBuilder {
 
   private static final Log LOG = LogFactory.getLog(GraphBasedUpgradeBuilder.class);
+  private static final Log DRAWIO_GRAPH_PRINT_LOG = LogFactory.getLog(GraphBasedUpgradeBuilder.class.getSimpleName() + ".GraphPrint");
 
   private final GraphBasedUpgradeSchemaChangeVisitorFactory visitorFactory;
   private final GraphBasedUpgradeScriptGenerator scriptGenerator;
+  private final DrawIOGraphPrinter drawIOGraphPrinter;
   private final Schema sourceSchema;
   private final SqlDialect sqlDialect;
   private final Table idTable;
@@ -51,12 +53,14 @@ public class GraphBasedUpgradeBuilder {
   public GraphBasedUpgradeBuilder(
       GraphBasedUpgradeSchemaChangeVisitorFactory visitorFactory,
       GraphBasedUpgradeScriptGenerator scriptGenerator,
+      DrawIOGraphPrinter drawIOGraphPrinter,
       Schema sourceSchema,
       SqlDialect sqlDialect,
       Table idTable,
       Set<String> exclusiveExecutionSteps) {
     this.visitorFactory = visitorFactory;
     this.scriptGenerator = scriptGenerator;
+    this.drawIOGraphPrinter = drawIOGraphPrinter;
     this.sourceSchema = sourceSchema;
     this.sqlDialect = sqlDialect;
     this.idTable = idTable;
@@ -87,6 +91,10 @@ public class GraphBasedUpgradeBuilder {
 
     if (LOG.isDebugEnabled()) {
       logGraph(root);
+    }
+
+    if (DRAWIO_GRAPH_PRINT_LOG.isDebugEnabled()) {
+      DRAWIO_GRAPH_PRINT_LOG.debug(drawIOGraphPrinter.print(new GraphBasedUpgradeNodeDrawIOAdapter(nodes, root)));
     }
 
     return new GraphBasedUpgrade(root, preUpgStatements, postUpgStatements, nodes);
