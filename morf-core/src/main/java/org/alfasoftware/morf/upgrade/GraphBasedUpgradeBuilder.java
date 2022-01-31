@@ -33,27 +33,34 @@ public class GraphBasedUpgradeBuilder {
   private final Schema sourceSchema;
   private final SqlDialect sqlDialect;
   private final Table idTable;
+  private final Set<String> exclusiveExecutionSteps;
 
   /**
    * Default constructor
    *
-   * @param visitorFactory factory of {@link GraphBasedUpgradeSchemaChangeVisitor} instances
-   * @param scriptGenerator creates pre- and post- upgrade statements
-   * @param sourceSchema source schema
-   * @param sqlDialect dialect to be used
-   * @param idTable autonumber tracking table
+   * @param visitorFactory          factory of
+   *                                  {@link GraphBasedUpgradeSchemaChangeVisitor}
+   *                                  instances
+   * @param scriptGenerator         creates pre- and post- upgrade statements
+   * @param sourceSchema            source schema
+   * @param sqlDialect              dialect to be used
+   * @param idTable                 autonumber tracking table
+   * @param exclusiveExecutionSteps names of the upgrade step classes which should
+   *                                  be executed in an exclusive way
    */
   public GraphBasedUpgradeBuilder(
       GraphBasedUpgradeSchemaChangeVisitorFactory visitorFactory,
       GraphBasedUpgradeScriptGenerator scriptGenerator,
       Schema sourceSchema,
       SqlDialect sqlDialect,
-      Table idTable) {
+      Table idTable,
+      Set<String> exclusiveExecutionSteps) {
     this.visitorFactory = visitorFactory;
     this.scriptGenerator = scriptGenerator;
     this.sourceSchema = sourceSchema;
     this.sqlDialect = sqlDialect;
     this.idTable = idTable;
+    this.exclusiveExecutionSteps = exclusiveExecutionSteps;
   }
 
 
@@ -314,8 +321,8 @@ public class GraphBasedUpgradeBuilder {
     public GraphBasedUpgradeNode apply(UpgradeStep upg) {
       String upgradeName = upg.getClass().getSimpleName();
 
-      // Exclusive execution annotation consideration
-      if (upg.getClass().isAnnotationPresent(UpgradeModifies.class)) {
+      // Exclusive execution annotation and injected configuration consideration
+      if (upg.getClass().isAnnotationPresent(ExclusiveExecution.class) || exclusiveExecutionSteps.contains(upgradeName)) {
         // if given upgrade step should be executed in an exclusive way do not gather
         // dependencies
         LOG.debug("Exclusive execution annotation or configuration found for: " + upgradeName);
