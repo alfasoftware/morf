@@ -17,6 +17,7 @@ public class GraphBasedUpgradeNode {
   final long sequence;
   final Set<String> reads;
   final Set<String> modifies;
+  final boolean exclusiveExecution;
   final Set<GraphBasedUpgradeNode> children = new HashSet<>();
   final Set<GraphBasedUpgradeNode> parents = new HashSet<>();
   final List<String> upgradeStatements = new ArrayList<>();
@@ -24,18 +25,23 @@ public class GraphBasedUpgradeNode {
   /**
    * Default constructor.
    *
-   * @param name     name of the upgrade node - usually name of class of the
-   *                   corresponding {@link UpgradeStep}
-   * @param sequence sequence number of this upgrade node
-   * @param reads    all the tables which are read by this upgrade node
-   * @param modifies all the tables which are modified by this upgrade node
+   * @param name               name of the upgrade node - usually name of class of
+   *                             the corresponding {@link UpgradeStep}
+   * @param sequence           sequence number of this upgrade node
+   * @param reads              all the tables which are read by this upgrade node
+   * @param modifies           all the tables which are modified by this upgrade
+   *                             node
+   * @param exclusiveExecution true if this node should be executed in an
+   *                             exclusive way (no other node should be executed
+   *                             while this one is being processed)
    */
-  public GraphBasedUpgradeNode(String name, long sequence, Set<String> reads, Set<String> modifies) {
+  public GraphBasedUpgradeNode(String name, long sequence, Set<String> reads, Set<String> modifies, boolean exclusiveExecution) {
     super();
     this.name = name;
     this.sequence = sequence;
     this.reads = reads;
     this.modifies = modifies;
+    this.exclusiveExecution = exclusiveExecution;
   }
 
 
@@ -44,14 +50,6 @@ public class GraphBasedUpgradeNode {
    */
   public String getName() {
     return name;
-  }
-
-
-  /**
-   * @return true if there are no dependencies defined for this upgrade step
-   */
-  public boolean noDependenciesDefined() {
-    return reads.isEmpty() && modifies.isEmpty();
   }
 
 
@@ -128,6 +126,15 @@ public class GraphBasedUpgradeNode {
    */
   public List<String> getUpgradeStatements() {
     return upgradeStatements;
+  }
+
+
+  /**
+   * @return true if this node should be executed in an exclusive way (no other
+   *         node should be executed while this one is being processed)
+   */
+  public boolean requiresExclusiveExecution() {
+    return exclusiveExecution || reads.isEmpty() && modifies.isEmpty();
   }
 
 
