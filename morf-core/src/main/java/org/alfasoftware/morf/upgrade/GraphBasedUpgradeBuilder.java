@@ -88,7 +88,7 @@ public class GraphBasedUpgradeBuilder {
    * Builds {@link GraphBasedUpgrade} instance.
    * @return ready to execute {@link GraphBasedUpgrade} instance
    */
-  public GraphBasedUpgrade prepareParallelUpgrade() {
+  public GraphBasedUpgrade prepareGraphBasedUpgrade() {
     UpgradeStepToUpgradeNode mapper = new UpgradeStepToUpgradeNode(schemaChangeSequence.getUpgradeTableResolution());
 
     List<GraphBasedUpgradeNode> nodes = produceNodes(schemaChangeSequence.getUpgradeSteps(), mapper);

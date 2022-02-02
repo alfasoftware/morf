@@ -106,6 +106,20 @@ public class UpgradePath implements SqlStatementWriter {
 
 
   /**
+   * Create a new upgrade for the given list of steps. Graph based upgrade will not be available.
+   *
+   * @param upgradeScriptAdditions The SQL to be appended to the upgrade.
+   * @param steps the upgrade steps to run
+   * @param sqlDialect the SQL dialect being used for this upgrade path
+   * @param initialisationSql the SQL to execute before all other, if and only if there is other SQL to execute.
+   * @param finalisationSql the SQL to execute after all other, if and only if there is other SQL to execute.
+   */
+  public UpgradePath(Set<UpgradeScriptAddition> upgradeScriptAdditions, List<UpgradeStep> steps, SqlDialect sqlDialect, List<String> initialisationSql, List<String> finalisationSql) {
+    this(upgradeScriptAdditions, steps, sqlDialect, initialisationSql, finalisationSql, null);
+  }
+
+
+  /**
    * Create a new upgrade for the given list of steps.
    *
    * @param upgradeScriptAdditions The SQL to be appended to the upgrade.
@@ -123,7 +137,7 @@ public class UpgradePath implements SqlStatementWriter {
     this.upgradeStatus = null;
     this.initialisationSql = initialisationSql;
     this.finalisationSql = finalisationSql;
-    this.graphBasedUpgradeSupplier = Suppliers.memoize(() -> graphBasedUpgradeBuilder != null ? graphBasedUpgradeBuilder.prepareParallelUpgrade() : null);
+    this.graphBasedUpgradeSupplier = Suppliers.memoize(() -> graphBasedUpgradeBuilder != null ? graphBasedUpgradeBuilder.prepareGraphBasedUpgrade() : null);
   }
 
 
