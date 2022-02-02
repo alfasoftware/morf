@@ -117,7 +117,7 @@ class GraphBasedUpgradeBuilder {
       DRAWIO_GRAPH_PRINT_LOG.debug(drawIOGraphPrinter.print(new GraphBasedUpgradeNodeDrawIOAdapter(nodes, root)));
     }
 
-    return new GraphBasedUpgrade(root, preUpgStatements, postUpgStatements, nodes);
+    return new GraphBasedUpgrade(root, preUpgStatements, postUpgStatements, nodes.size());
   }
 
 

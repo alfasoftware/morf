@@ -13,7 +13,7 @@ public class GraphBasedUpgrade {
   private final GraphBasedUpgradeNode root;
   private final List<String> preUpgradeStatements;
   private final List<String> postUpgradeStatements;
-  private final List<GraphBasedUpgradeNode> nodes;
+  private final int numberOfNodes;
 
   /**
    * Default constructor.
@@ -21,15 +21,14 @@ public class GraphBasedUpgrade {
    * @param root                  no-op upgrade node which is the root of the graph
    * @param preUpgradeStatements  statements which must be executed before the upgrade
    * @param postUpgradeStatements statements which must be executed after the upgrade
-   * @param nodes                 all the nodes of this upgrade as a list, without the no-op root
+   * @param numberOfNodes            number of nodes in this upgrade, without the no-op root
    */
-  public GraphBasedUpgrade(GraphBasedUpgradeNode root, List<String> preUpgradeStatements, List<String> postUpgradeStatements,
-      List<GraphBasedUpgradeNode> nodes) {
+  public GraphBasedUpgrade(GraphBasedUpgradeNode root, List<String> preUpgradeStatements, List<String> postUpgradeStatements, int numberOfNodes) {
     super();
     this.root = root;
     this.preUpgradeStatements = preUpgradeStatements;
     this.postUpgradeStatements = postUpgradeStatements;
-    this.nodes = nodes;
+    this.numberOfNodes = numberOfNodes;
   }
 
 
@@ -60,15 +59,7 @@ public class GraphBasedUpgrade {
   /**
    * @return number of upgrade nodes in this graph, without the no-op root
    */
-  public int getNodesNumber() {
-    return nodes.size();
-  }
-
-
-  /**
-   * @return nodes all the nodes of this upgrade as a list, without the no-op root
-   */
-  public List<GraphBasedUpgradeNode> getNodes() {
-    return nodes;
+  public int getNumberOfNodes() {
+    return numberOfNodes;
   }
 }
