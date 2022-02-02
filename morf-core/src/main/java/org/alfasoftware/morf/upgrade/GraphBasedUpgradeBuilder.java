@@ -13,11 +13,13 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeSchemaChangeVisitor.GraphBasedUpgradeSchemaChangeVisitorFactory;
+import org.alfasoftware.morf.upgrade.GraphBasedUpgradeScriptGenerator.GraphBasedUpgradeScriptGeneratorFactory;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.google.common.collect.Sets;
 import com.google.common.collect.Sets.SetView;
+import com.google.inject.Inject;
 
 /**
  * Builds {@link GraphBasedUpgrade} instance which is ready to be executed.
@@ -30,12 +32,14 @@ public class GraphBasedUpgradeBuilder {
   private static final Log DRAWIO_GRAPH_PRINT_LOG = LogFactory.getLog(GraphBasedUpgradeBuilder.class.getSimpleName() + ".GraphPrint");
 
   private final GraphBasedUpgradeSchemaChangeVisitorFactory visitorFactory;
-  private final GraphBasedUpgradeScriptGenerator scriptGenerator;
+  private final GraphBasedUpgradeScriptGeneratorFactory scriptGeneratorFactory;
   private final DrawIOGraphPrinter drawIOGraphPrinter;
   private final Schema sourceSchema;
+  private final Schema targetSchema;
   private final SqlDialect sqlDialect;
-  private final Table idTable;
   private final Set<String> exclusiveExecutionSteps;
+  private final SchemaChangeSequence schemaChangeSequence;
+  private final ViewChanges viewChanges;
 
   /**
    * Default constructor
@@ -43,47 +47,63 @@ public class GraphBasedUpgradeBuilder {
    * @param visitorFactory          factory of
    *                                  {@link GraphBasedUpgradeSchemaChangeVisitor}
    *                                  instances
-   * @param scriptGenerator         creates pre- and post- upgrade statements
+   * @param scriptGeneratorFactory  factory of
+   *                                  {@link GraphBasedUpgradeScriptGenerator}
+   *                                  used to create pre- and post- upgrade
+   *                                  statements
+   * @param drawIOGraphPrinter      prints graph in a draw.io friendly format
    * @param sourceSchema            source schema
+   * @param targetSchema            target schema
    * @param sqlDialect              dialect to be used
-   * @param idTable                 autonumber tracking table
    * @param exclusiveExecutionSteps names of the upgrade step classes which should
    *                                  be executed in an exclusive way
+   * @param schemaChangeSequence    to be used to build a
+   *                                  {@link GraphBasedUpgrade}
+   * @param viewChanges             view changes which need to be made to match
+   *                                  the target schema
    */
   public GraphBasedUpgradeBuilder(
       GraphBasedUpgradeSchemaChangeVisitorFactory visitorFactory,
-      GraphBasedUpgradeScriptGenerator scriptGenerator,
+      GraphBasedUpgradeScriptGeneratorFactory scriptGeneratorFactory,
       DrawIOGraphPrinter drawIOGraphPrinter,
       Schema sourceSchema,
+      Schema targetSchema,
       SqlDialect sqlDialect,
-      Table idTable,
-      Set<String> exclusiveExecutionSteps) {
+      Set<String> exclusiveExecutionSteps,
+      SchemaChangeSequence schemaChangeSequence,
+      ViewChanges viewChanges) {
     this.visitorFactory = visitorFactory;
-    this.scriptGenerator = scriptGenerator;
+    this.scriptGeneratorFactory = scriptGeneratorFactory;
     this.drawIOGraphPrinter = drawIOGraphPrinter;
     this.sourceSchema = sourceSchema;
+    this.targetSchema = targetSchema;
     this.sqlDialect = sqlDialect;
-    this.idTable = idTable;
     this.exclusiveExecutionSteps = exclusiveExecutionSteps;
+    this.schemaChangeSequence = schemaChangeSequence;
+    this.viewChanges = viewChanges;
   }
 
 
   /**
-   * Builds {@link GraphBasedUpgrade} instance based on the given {@link SchemaChangeSequence}.
-   * @param schemaChangeSequence to be used to build a {@link GraphBasedUpgrade}
+   * Builds {@link GraphBasedUpgrade} instance.
    * @return ready to execute {@link GraphBasedUpgrade} instance
    */
-  public GraphBasedUpgrade prepareParallelUpgrade(SchemaChangeSequence schemaChangeSequence) {
+  public GraphBasedUpgrade prepareParallelUpgrade() {
     UpgradeStepToUpgradeNode mapper = new UpgradeStepToUpgradeNode(schemaChangeSequence.getUpgradeTableResolution());
 
     List<GraphBasedUpgradeNode> nodes = produceNodes(schemaChangeSequence.getUpgradeSteps(), mapper);
 
     GraphBasedUpgradeNode root = prepareGraph(nodes);
+
+    Table idTable = SqlDialect.IdTable.withPrefix(sqlDialect, "temp_id_", false);
+
     GraphBasedUpgradeSchemaChangeVisitor visitor = visitorFactory.create(
       sourceSchema,
       sqlDialect,
       idTable,
       nodes.stream().collect(Collectors.toMap(GraphBasedUpgradeNode::getName, Function.identity())));
+
+    GraphBasedUpgradeScriptGenerator scriptGenerator = scriptGeneratorFactory.create(sourceSchema, targetSchema, sqlDialect, idTable, viewChanges);
 
     List<String> preUpgStatements = scriptGenerator.generatePreUpgradeStatements();
     schemaChangeSequence.applyTo(visitor);
@@ -372,5 +392,72 @@ public class GraphBasedUpgradeBuilder {
      }
   }
 
+
+  /**
+   * Factory of {@link GraphBasedUpgradeBuilder} instances.
+   *
+   * @author Copyright (c) Alfa Financial Software Limited. 2022
+   */
+  static class GraphBasedUpgradeBuilderFactory {
+
+    private final GraphBasedUpgradeSchemaChangeVisitorFactory visitorFactory;
+    private final GraphBasedUpgradeScriptGeneratorFactory scriptGeneratorFactory;
+    private final DrawIOGraphPrinter drawIOGraphPrinter;
+
+    /**
+     * Default constructor
+     *
+     * @param visitorFactory         factory of
+     *                                 {@link GraphBasedUpgradeSchemaChangeVisitor}
+     *                                 instances
+     * @param scriptGeneratorFactory factory of
+     *                                 {@link GraphBasedUpgradeScriptGenerator} used
+     *                                 to create pre- and post- upgrade statements
+     * @param drawIOGraphPrinter     prints graph in a draw.io friendly format
+     */
+    @Inject
+    public GraphBasedUpgradeBuilderFactory(
+        GraphBasedUpgradeSchemaChangeVisitorFactory visitorFactory,
+        GraphBasedUpgradeScriptGeneratorFactory scriptGeneratorFactory,
+        DrawIOGraphPrinter drawIOGraphPrinter) {
+      this.visitorFactory = visitorFactory;
+      this.scriptGeneratorFactory = scriptGeneratorFactory;
+      this.drawIOGraphPrinter = drawIOGraphPrinter;
+    }
+
+
+    /**
+     * Creates new {@link GraphBasedUpgradeBuilder}.
+     *
+     * @param sourceSchema            source schema
+     * @param targetSchema            target schema
+     * @param sqlDialect              dialect to be used
+     * @param exclusiveExecutionSteps names of the upgrade step classes which should
+     *                                  be executed in an exclusive way
+     * @param schemaChangeSequence    to be used to build a
+     *                                  {@link GraphBasedUpgrade}
+     * @param viewChanges             view changes which need to be made to match
+     *                                  the target schema
+     * @return new {@link GraphBasedUpgradeBuilder} instance
+     */
+    GraphBasedUpgradeBuilder create(
+        Schema sourceSchema,
+        Schema targetSchema,
+        SqlDialect sqlDialect,
+        Set<String> exclusiveExecutionSteps,
+        SchemaChangeSequence schemaChangeSequence,
+        ViewChanges viewChanges) {
+      return new GraphBasedUpgradeBuilder(
+        visitorFactory,
+        scriptGeneratorFactory,
+        drawIOGraphPrinter,
+        sourceSchema,
+        targetSchema,
+        sqlDialect,
+        exclusiveExecutionSteps,
+        schemaChangeSequence,
+        viewChanges);
+    }
+  }
 }
 

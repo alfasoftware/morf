@@ -20,6 +20,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.copy;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -34,6 +35,9 @@ import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaValidator;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.upgrade.ExistingViewStateLoader.Result;
+import org.alfasoftware.morf.upgrade.GraphBasedUpgradeBuilder.GraphBasedUpgradeBuilderFactory;
+import org.alfasoftware.morf.upgrade.GraphBasedUpgradeSchemaChangeVisitor.GraphBasedUpgradeSchemaChangeVisitorFactory;
+import org.alfasoftware.morf.upgrade.GraphBasedUpgradeScriptGenerator.GraphBasedUpgradeScriptGeneratorFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
 import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsException;
@@ -58,19 +62,27 @@ public class Upgrade {
   private final DataSource dataSource;
   private final UpgradeStatusTableService upgradeStatusTableService;
   private final ViewChangesDeploymentHelper viewChangesDeploymentHelper;
+  private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
 
 
   /**
    * Injected Constructor.
    */
   @Inject
-  Upgrade(ConnectionResources connectionResources, DataSource dataSource, UpgradePathFactory factory, UpgradeStatusTableService upgradeStatusTableService, ViewChangesDeploymentHelper viewChangesDeploymentHelper) {
+  Upgrade(
+      ConnectionResources connectionResources,
+      DataSource dataSource,
+      UpgradePathFactory factory,
+      UpgradeStatusTableService upgradeStatusTableService,
+      ViewChangesDeploymentHelper viewChangesDeploymentHelper,
+      GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory) {
     super();
     this.connectionResources = connectionResources;
     this.dataSource = dataSource;
     this.factory = factory;
     this.upgradeStatusTableService = upgradeStatusTableService;
     this.viewChangesDeploymentHelper = viewChangesDeploymentHelper;
+    this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
   }
 
 
@@ -111,7 +123,11 @@ public class Upgrade {
     Upgrade upgrade = new Upgrade(
       connectionResources, connectionResources.getDataSource(),
       new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition> emptySet(), upgradeStatusTableService),
-      upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect())
+      upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()),
+      new GraphBasedUpgradeBuilderFactory(
+        new GraphBasedUpgradeSchemaChangeVisitorFactory(),
+        new GraphBasedUpgradeScriptGeneratorFactory(upgradeStatusTableService),
+        new DrawIOGraphPrinterImpl())
     );
     return upgrade.findPath(targetSchema, upgradeSteps, Collections.<String> emptySet());
   }
@@ -203,8 +219,20 @@ public class Upgrade {
       viewChanges = viewChanges.droppingAlso(sourceSchema.views()).deployingAlso(targetSchema.views());
     }
 
+    // Prepare GraphBasedUpgradeBuilder
+    GraphBasedUpgradeBuilder graphBasedUpgradeBuilder = null;
+    if (!schemaChangeSequence.getUpgradeSteps().isEmpty()) {
+      graphBasedUpgradeBuilder = graphBasedUpgradeBuilderFactory.create(
+        sourceSchema,
+        targetSchema,
+        dialect,
+        new HashSet<>(), // TODO
+        schemaChangeSequence,
+        viewChanges);
+    }
+
     // Build the actual upgrade path
-    return buildUpgradePath(dialect, sourceSchema, targetSchema, upgradeStatements, viewChanges, upgradesToApply);
+    return buildUpgradePath(dialect, sourceSchema, targetSchema, upgradeStatements, viewChanges, upgradesToApply, graphBasedUpgradeBuilder);
   }
 
 
@@ -222,9 +250,10 @@ public class Upgrade {
   private UpgradePath buildUpgradePath(
       SqlDialect dialect, Schema sourceSchema, Schema targetSchema,
       List<String> upgradeStatements, ViewChanges viewChanges,
-      List<UpgradeStep> upgradesToApply) {
+      List<UpgradeStep> upgradesToApply,
+      GraphBasedUpgradeBuilder graphBasedUpgradeBuilder) {
 
-    UpgradePath path = factory.create(upgradesToApply, dialect);
+    UpgradePath path = factory.create(upgradesToApply, dialect, graphBasedUpgradeBuilder);
 
     final boolean deleteFromDeployedViews = sourceSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME) && targetSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME);
     for (View view : viewChanges.getViewsToDrop()) {

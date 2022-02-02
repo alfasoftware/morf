@@ -5,6 +5,7 @@ import java.util.Set;
 
 import com.google.common.graph.Graph;
 import com.google.common.graph.MutableGraph;
+import com.google.inject.ImplementedBy;
 
 /**
  * Outputs a given {@link Graph} of {@link Node} objects in a format suitable for importing into Draw.io.
@@ -25,6 +26,7 @@ import com.google.common.graph.MutableGraph;
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2020
  */
+@ImplementedBy(DrawIOGraphPrinterImpl.class)
 interface DrawIOGraphPrinter {
 
   /**

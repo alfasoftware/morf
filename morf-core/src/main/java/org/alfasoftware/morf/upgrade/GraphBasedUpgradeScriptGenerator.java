@@ -18,6 +18,7 @@ import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.element.Criterion;
 
 import com.google.common.collect.ImmutableList;
+import com.google.inject.Inject;
 
 /**
  * Generates pre- and post- upgrade statements to be execute before/after the
@@ -32,7 +33,7 @@ public class GraphBasedUpgradeScriptGenerator {
   private final SqlDialect sqlDialect;
   private final Table idTable;
   private final ViewChanges viewChanges;
-  private final List<String> initScript;
+  private final UpgradeStatusTableService upgradeStatusTableService;
 
   /**
    * Default constructor.
@@ -42,16 +43,16 @@ public class GraphBasedUpgradeScriptGenerator {
    * @param sqlDialect dialect to generate statements for the target database
    * @param idTable table for id generation
    * @param viewChanges view changes which need to be made to match the target schema
-   * @param initScript script needed to update the transient "zzzUpgradeStatus" table
+   * @param upgradeStatusTableService used to generate a script needed to update the transient "zzzUpgradeStatus" table
    */
   public GraphBasedUpgradeScriptGenerator(Schema sourceSchema, Schema targetSchema, SqlDialect sqlDialect, Table idTable,
-      ViewChanges viewChanges, List<String> initScript) {
+      ViewChanges viewChanges, UpgradeStatusTableService upgradeStatusTableService) {
     this.sourceSchema = sourceSchema;
     this.targetSchema = targetSchema;
     this.sqlDialect = sqlDialect;
     this.idTable = idTable;
     this.viewChanges = viewChanges;
-    this.initScript = initScript;
+    this.upgradeStatusTableService = upgradeStatusTableService;
   }
 
 
@@ -62,7 +63,7 @@ public class GraphBasedUpgradeScriptGenerator {
     List<String> statements = new ArrayList<>();
 
     // zzzUpgradeStatus table
-    statements.addAll(initScript);
+    statements.addAll(upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS));
 
     // temp table
     statements.addAll(sqlDialect.tableDeploymentStatements(idTable));
@@ -126,6 +127,44 @@ public class GraphBasedUpgradeScriptGenerator {
       .forEach(statements::addAll);
 
     return statements;
+  }
+
+
+  /**
+   * Factory of {@link GraphBasedUpgradeScriptGenerator} instances.
+   *
+   * @author Copyright (c) Alfa Financial Software Limited. 2022
+   */
+  static class GraphBasedUpgradeScriptGeneratorFactory {
+    private final UpgradeStatusTableService upgradeStatusTableService;
+
+    /**
+     * Default constructor.
+     *
+     * @param upgradeStatusTableService used to generate a script needed to update the transient "zzzUpgradeStatus" table
+     */
+    @Inject
+    public GraphBasedUpgradeScriptGeneratorFactory(UpgradeStatusTableService upgradeStatusTableService) {
+      this.upgradeStatusTableService = upgradeStatusTableService;
+    }
+
+
+    /**
+     * Creates {@link GraphBasedUpgradeScriptGenerator}.
+     *
+     * @param sourceSchema schema prior to upgrade step
+     * @param targetSchema target schema to upgrade to
+     * @param sqlDialect   dialect to generate statements for the target database
+     * @param idTable      table for id generation
+     * @param viewChanges  view changes which need to be made to match the target
+     *                       schema
+     * @return new {@link GraphBasedUpgradeScriptGenerator} instance
+     */
+    GraphBasedUpgradeScriptGenerator create(Schema sourceSchema, Schema targetSchema, SqlDialect sqlDialect, Table idTable,
+        ViewChanges viewChanges) {
+      return new GraphBasedUpgradeScriptGenerator(sourceSchema, targetSchema, sqlDialect, idTable, viewChanges,
+          upgradeStatusTableService);
+    }
   }
 }
 

@@ -4093,21 +4093,27 @@ public abstract class SqlDialect {
      */
     private final String tableName;
 
+    /**
+     * True if this idTable should be create as a temporary table specific to
+     * dialect
+     */
+    private final boolean isTemporary;
+
 
     /**
      * For testing only - the tableName might not be appropriate for your
-     * dialect!
+     * dialect! The table will be a temporary table, specific to the dialect.
      *
      * @param tableName table name for the id table.
      * @return {@link IdTable}.
      */
     public static IdTable withDeterministicName(String tableName) {
-      return new IdTable(tableName);
+      return new IdTable(tableName, true);
     }
 
 
     /**
-     * Use this to create an {@link IdTable} which is guaranteed to have a legal
+     * Use this to create a temporary {@link IdTable} which is guaranteed to have a legal
      * name for the dialect.
      *
      * @param dialect {@link SqlDialect} that knows what temp table names are
@@ -4116,7 +4122,25 @@ public abstract class SqlDialect {
      * @return {@link IdTable}
      */
     public static IdTable withPrefix(SqlDialect dialect, String prefix) {
-      return new IdTable(dialect.decorateTemporaryTableName(prefix + RandomStringUtils.randomAlphabetic(5)));
+      return withPrefix(dialect, prefix, true);
+    }
+
+
+    /**
+     * Use this to create a temporary or non-temporary {@link IdTable} which is
+     * guaranteed to have a legal name for the dialect. The non-temporary idTables
+     * are necessary to enable access from many sessions/connections in case of some
+     * dialects.
+     *
+     * @param dialect     {@link SqlDialect} that knows what temp table names are
+     *                      allowed.
+     * @param prefix      prefix for the unique name generated.
+     * @param isTemporary if set to true the table will be created as a temporary
+     *                      table specific for the dialect.
+     * @return {@link IdTable}
+     */
+    public static IdTable withPrefix(SqlDialect dialect, String prefix, boolean isTemporary) {
+      return new IdTable(dialect.decorateTemporaryTableName(prefix + RandomStringUtils.randomAlphabetic(5)), isTemporary);
     }
 
 
@@ -4124,9 +4148,11 @@ public abstract class SqlDialect {
      * Constructor used by tests for generating a predictable table name.
      *
      * @param tableName table name for the temporary table.
+     * @param isTemporary if set to true, the table will be a temporary table specific to dialect.
      */
-    private IdTable(String tableName) {
+    private IdTable(String tableName, boolean isTemporary) {
       this.tableName = tableName;
+      this.isTemporary = isTemporary;
     }
 
 
@@ -4168,7 +4194,7 @@ public abstract class SqlDialect {
      */
     @Override
     public boolean isTemporary() {
-      return true;
+      return isTemporary;
     }
   }
 }

@@ -30,9 +30,10 @@ class GraphBasedUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
    * Default constructor.
    *
    * @param sourceSchema schema prior to upgrade step.
-   * @param sqlDialect dialect to generate statements for the target database.
-   * @param sqlStatementWriter recipient for all upgrade SQL statements.
-   * @param idTable table for id generation.
+   * @param sqlDialect   dialect to generate statements for the target database.
+   * @param idTable      table for id generation.
+   * @param upgradeNodes all the {@link GraphBasedUpgradeNode} instances in the
+   *                       upgrade for which the visitor will generate statements
    */
   GraphBasedUpgradeSchemaChangeVisitor(Schema sourceSchema, SqlDialect sqlDialect, Table idTable, Map<String, GraphBasedUpgradeNode> upgradeNodes) {
     this.sourceSchema = sourceSchema;
@@ -212,7 +213,7 @@ class GraphBasedUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
    *
    * @author Copyright (c) Alfa Financial Software Limited. 2022
    */
-  class GraphBasedUpgradeSchemaChangeVisitorFactory {
+  static class GraphBasedUpgradeSchemaChangeVisitorFactory {
 
     /**
      * Creates {@link GraphBasedUpgradeSchemaChangeVisitor} instance.
