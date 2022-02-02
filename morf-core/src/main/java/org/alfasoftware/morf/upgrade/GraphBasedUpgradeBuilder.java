@@ -313,7 +313,7 @@ class GraphBasedUpgradeBuilder {
     if (!visited.contains(node)) {
       LOG.debug(node.toString());
       visited.add(node);
-      for (GraphBasedUpgradeNode child : node.children) {
+      for (GraphBasedUpgradeNode child : node.getChildren()) {
         traverseAndLog(child, visited);
       }
     }
