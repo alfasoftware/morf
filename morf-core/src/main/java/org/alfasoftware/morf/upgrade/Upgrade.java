@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.sql.DataSource;
@@ -142,6 +143,21 @@ public class Upgrade {
    * @return The upgrade path available
    */
   public UpgradePath findPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, Collection<String> exceptionRegexes) {
+    return findPath(targetSchema, upgradeSteps, exceptionRegexes, new HashSet<>());
+  }
+
+
+  /**
+   * Find an upgrade path.
+   *
+   * @param targetSchema            Target schema to upgrade to.
+   * @param upgradeSteps            All available upgrade steps.
+   * @param exceptionRegexes        Regular expression for table exclusions.
+   * @param exclusiveExecutionSteps names of the upgrade step classes which should
+   *                                  be executed in an exclusive way
+   * @return The upgrade path available
+   */
+  public UpgradePath findPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, Collection<String> exceptionRegexes, Set<String> exclusiveExecutionSteps) {
     final List<String> upgradeStatements = new ArrayList<>();
 
     //Return an upgradePath with the current upgrade status if one is in progress
@@ -226,7 +242,7 @@ public class Upgrade {
         sourceSchema,
         targetSchema,
         dialect,
-        new HashSet<>(), // TODO
+        exclusiveExecutionSteps,
         schemaChangeSequence,
         viewChanges);
     }
