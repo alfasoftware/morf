@@ -35,6 +35,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyListOf;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
@@ -215,7 +216,7 @@ public class TestUpgrade {
   @SuppressWarnings("unchecked")
   private UpgradePathFactory upgradePathFactory() {
     UpgradePathFactory upgradePathFactory = mock(UpgradePathFactory.class);
-    when(upgradePathFactory.create(anyListOf(UpgradeStep.class), any(SqlDialect.class))).thenAnswer(invocation -> {
+    when(upgradePathFactory.create(anyListOf(UpgradeStep.class), any(SqlDialect.class), nullable(GraphBasedUpgradeBuilder.class))).thenAnswer(invocation -> {
       return new UpgradePath(Sets.<UpgradeScriptAddition>newHashSet(), (List<UpgradeStep>)invocation.getArguments()[0], (SqlDialect)invocation.getArguments()[1], Collections.emptyList(), Collections.emptyList());
     });
 

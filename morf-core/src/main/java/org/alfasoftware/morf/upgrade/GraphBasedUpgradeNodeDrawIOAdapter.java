@@ -14,7 +14,7 @@ import org.alfasoftware.morf.upgrade.DrawIOGraphPrinter.PrintableGraph;
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2022
  */
-public class GraphBasedUpgradeNodeDrawIOAdapter implements PrintableGraph<Node> {
+class GraphBasedUpgradeNodeDrawIOAdapter implements PrintableGraph<Node> {
   private final List<GraphBasedUpgradeNode> nodes;
 
   /**

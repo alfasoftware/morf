@@ -26,7 +26,7 @@ import com.google.inject.Inject;
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2022
  */
-public class GraphBasedUpgradeScriptGenerator {
+class GraphBasedUpgradeScriptGenerator {
 
   private final Schema sourceSchema;
   private final Schema targetSchema;
