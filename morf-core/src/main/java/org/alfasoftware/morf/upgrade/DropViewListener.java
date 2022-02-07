@@ -24,7 +24,7 @@ public interface DropViewListener {
 
 
   /**
-   * Called during {@link ViewChangesDeploymentHelper.deregisterAllViews()}.
+   * Called during {@link ViewChangesDeploymentHelper#deregisterAllViews()}.
    *
    * @return Should return statements to be part of all views removal.
    */
