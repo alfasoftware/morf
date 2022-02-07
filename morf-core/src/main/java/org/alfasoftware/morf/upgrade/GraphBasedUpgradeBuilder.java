@@ -62,7 +62,7 @@ class GraphBasedUpgradeBuilder {
    * @param viewChanges             view changes which need to be made to match
    *                                  the target schema
    */
-  public GraphBasedUpgradeBuilder(
+  GraphBasedUpgradeBuilder(
       GraphBasedUpgradeSchemaChangeVisitorFactory visitorFactory,
       GraphBasedUpgradeScriptGeneratorFactory scriptGeneratorFactory,
       DrawIOGraphPrinter drawIOGraphPrinter,
@@ -189,7 +189,7 @@ class GraphBasedUpgradeBuilder {
         break;
       }
 
-      // if processed requres exclusive execution, add an edge only if current node has no parents
+      // if processed requires exclusive execution, add an edge only if current node has no parents
       if (processed.requiresExclusiveExecution() && node.getParents().isEmpty()) {
         addEdge(processed, node);
         LOG.debug("Node: " + node.getName() + " depends on " + processed.getName()
@@ -347,7 +347,7 @@ class GraphBasedUpgradeBuilder {
      */
     @Override
     public GraphBasedUpgradeNode apply(UpgradeStep upg) {
-      String upgradeName = upg.getClass().getSimpleName();
+      String upgradeName = upg.getClass().getName();
 
       // Exclusive execution annotation and injected configuration consideration
       if (upg.getClass().isAnnotationPresent(ExclusiveExecution.class) || exclusiveExecutionSteps.contains(upgradeName)) {
@@ -363,6 +363,7 @@ class GraphBasedUpgradeBuilder {
       if (upg.getClass().isAnnotationPresent(UpgradeModifies.class)) {
         UpgradeModifies annotation = upg.getClass().getAnnotation(UpgradeModifies.class);
         modifies = Arrays.stream(annotation.value()).map(s -> s.toUpperCase()).collect(Collectors.toSet());
+        LOG.debug("Fallback UpgradeModifies annotation found for: " + upgradeName);
       } else {
         modifies = new HashSet<>();
       }
@@ -370,6 +371,7 @@ class GraphBasedUpgradeBuilder {
       if (upg.getClass().isAnnotationPresent(UpgradeReads.class)) {
         UpgradeReads annotation = upg.getClass().getAnnotation(UpgradeReads.class);
         reads = Arrays.stream(annotation.value()).map(s -> s.toUpperCase()).collect(Collectors.toSet());
+        LOG.debug("Fallback UpgradeReads annotation found for: " + upgradeName);
       } else {
         reads = new HashSet<>();
       }
