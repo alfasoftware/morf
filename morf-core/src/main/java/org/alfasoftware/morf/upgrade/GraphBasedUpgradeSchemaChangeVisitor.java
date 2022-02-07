@@ -23,7 +23,7 @@ class GraphBasedUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
   private final Table idTable;
   private final TableNameResolver tracker;
   private final Map<String, GraphBasedUpgradeNode> upgradeNodes;
-  private GraphBasedUpgradeNode currentNode;
+  GraphBasedUpgradeNode currentNode;
 
 
   /**
