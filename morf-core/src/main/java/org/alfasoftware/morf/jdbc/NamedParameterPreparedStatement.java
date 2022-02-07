@@ -71,6 +71,7 @@ public class NamedParameterPreparedStatement implements AutoCloseable {
   /**
    * @deprecated Use the {@link #parseSql(String, SqlDialect)} method.
    * @param sql the SQL
+   * @return the parsed result
    */
   @Deprecated
   public static ParseResult parse(String sql) {
