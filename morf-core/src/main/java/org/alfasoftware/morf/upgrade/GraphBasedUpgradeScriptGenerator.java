@@ -45,7 +45,7 @@ class GraphBasedUpgradeScriptGenerator {
    * @param viewChanges view changes which need to be made to match the target schema
    * @param upgradeStatusTableService used to generate a script needed to update the transient "zzzUpgradeStatus" table
    */
-  public GraphBasedUpgradeScriptGenerator(Schema sourceSchema, Schema targetSchema, SqlDialect sqlDialect, Table idTable,
+  GraphBasedUpgradeScriptGenerator(Schema sourceSchema, Schema targetSchema, SqlDialect sqlDialect, Table idTable,
       ViewChanges viewChanges, UpgradeStatusTableService upgradeStatusTableService) {
     this.sourceSchema = sourceSchema;
     this.targetSchema = targetSchema;
