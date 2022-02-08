@@ -8,7 +8,7 @@ import java.lang.annotation.Target;
 /**
  * Carries information about the tables (table names) which are read (are not
  * modified in <b>any</b> way) by the annotated upgrade step.
- * </p>
+ * <p/>
  * In the context of Graph Based Upgrade this annotation is mutually exclusive
  * to {@link ExclusiveExecution} but may be complemented by
  * {@link UpgradeModifies}.
