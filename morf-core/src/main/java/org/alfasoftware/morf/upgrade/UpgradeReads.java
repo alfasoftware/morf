@@ -6,12 +6,15 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
+ * <p>
  * Carries information about the tables (table names) which are read (are not
  * modified in <b>any</b> way) by the annotated upgrade step.
- * <p/>
+ * </p>
+ * <p>
  * In the context of Graph Based Upgrade this annotation is mutually exclusive
  * to {@link ExclusiveExecution} but may be complemented by
  * {@link UpgradeModifies}.
+ * </p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2022
  */
