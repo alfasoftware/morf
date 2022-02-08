@@ -104,7 +104,7 @@ public class GraphBasedUpgradeNode {
   /**
    * Add upgrade statement to be executed by this upgrade node
    *
-   * @param statement
+   * @param statement to be executed
    */
   public void addUpgradeStatements(String statement) {
     upgradeStatements.add(statement);
@@ -114,7 +114,7 @@ public class GraphBasedUpgradeNode {
   /**
    * Add upgrade statements to be executed by this upgrade node
    *
-   * @param statement
+   * @param statements to be executed
    */
   public void addAllUpgradeStatements(Collection<String> statements) {
     upgradeStatements.addAll(statements);
