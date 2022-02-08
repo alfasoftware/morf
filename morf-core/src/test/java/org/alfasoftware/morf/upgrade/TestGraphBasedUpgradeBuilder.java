@@ -1,6 +1,7 @@
 package org.alfasoftware.morf.upgrade;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
@@ -15,6 +16,7 @@ import java.util.Set;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.upgrade.GraphBasedUpgradeBuilder.GraphBasedUpgradeBuilderFactory;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeSchemaChangeVisitor.GraphBasedUpgradeSchemaChangeVisitorFactory;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeScriptGenerator.GraphBasedUpgradeScriptGeneratorFactory;
 import org.junit.Before;
@@ -374,6 +376,19 @@ public class TestGraphBasedUpgradeBuilder {
     checkParentChild(upgrade, u2, eu1);
 
     checkNotParentChild(upgrade, u1, eu1);
+  }
+
+
+  @Test
+  public void testFactory() {
+    // given
+    GraphBasedUpgradeBuilderFactory factory = new GraphBasedUpgradeBuilderFactory(visitorFactory, scriptGeneratorFactory, drawIOGraphPrinter);
+
+    // when
+    GraphBasedUpgradeBuilder created = factory.create(sourceSchema, targetSchema, sqlDialect, exclusiveExecutionSteps, schemaChangeSequence, viewChanges);
+
+    // then
+    assertNotNull(created);
   }
 
 
