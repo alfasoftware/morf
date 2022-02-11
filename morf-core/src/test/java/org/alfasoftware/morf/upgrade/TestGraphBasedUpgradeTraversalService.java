@@ -8,7 +8,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.alfasoftware.morf.upgrade.GraphBasedUpgradeTraversalService.GraphBasedUpgradeServiceFactory;
+import org.alfasoftware.morf.upgrade.GraphBasedUpgradeTraversalService.GraphBasedUpgradeTraversalServiceFactory;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -141,7 +141,7 @@ public class TestGraphBasedUpgradeTraversalService {
 
   @Test
   public void testFactory() {
-    GraphBasedUpgradeServiceFactory factory = new GraphBasedUpgradeServiceFactory();
+    GraphBasedUpgradeTraversalServiceFactory factory = new GraphBasedUpgradeTraversalServiceFactory();
     assertNotNull(factory.create(new GraphBasedUpgrade(root, Lists.newArrayList(), Lists.newArrayList(), 2)));
   }
 }

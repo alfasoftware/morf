@@ -172,13 +172,13 @@ public class GraphBasedUpgradeTraversalService {
    *
    * @author Copyright (c) Alfa Financial Software Limited. 2022
    */
-  public static class GraphBasedUpgradeServiceFactory {
+  public static class GraphBasedUpgradeTraversalServiceFactory {
 
     /**
      * Default constructor
      */
     @Inject
-    public GraphBasedUpgradeServiceFactory() {}
+    public GraphBasedUpgradeTraversalServiceFactory() {}
 
 
     /**
