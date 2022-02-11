@@ -8,7 +8,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.alfasoftware.morf.upgrade.GraphBasedUpgradeService.GraphBasedUpgradeServiceFactory;
+import org.alfasoftware.morf.upgrade.GraphBasedUpgradeTraversalService.GraphBasedUpgradeServiceFactory;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -16,13 +16,13 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
 /**
- * All tests of {@link GraphBasedUpgradeService}.
+ * All tests of {@link GraphBasedUpgradeTraversalService}.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2022
  */
-public class TestGraphBasedUpgradeService {
+public class TestGraphBasedUpgradeTraversalService {
   private GraphBasedUpgradeNode node1, node2, root;
-  private GraphBasedUpgradeService service;
+  private GraphBasedUpgradeTraversalService service;
 
   @Before
   public void setup() {
@@ -36,7 +36,7 @@ public class TestGraphBasedUpgradeService {
     node2.getParents().add(node1);
 
     GraphBasedUpgrade upgrade = new GraphBasedUpgrade(root, Lists.newArrayList(), Lists.newArrayList(), 2);
-    service = new GraphBasedUpgradeService(upgrade);
+    service = new GraphBasedUpgradeTraversalService(upgrade);
   }
 
 

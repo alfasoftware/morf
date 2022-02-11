@@ -24,7 +24,7 @@ import com.google.inject.Inject;
  * {@link GraphBasedUpgradeNode} executions.
  * </p>
  * <p>
- * The {@link GraphBasedUpgradeService} is created using the factory and is
+ * The {@link GraphBasedUpgradeTraversalService} is created using the factory and is
  * created for a specific instance of {@link GraphBasedUpgrade}. <b>Since it is
  * tracking specific upgrade the service is stateful.</b>
  * </p>
@@ -35,8 +35,8 @@ import com.google.inject.Inject;
  * @author Copyright (c) Alfa Financial Software Limited. 2022
  */
 @ThreadSafe
-public class GraphBasedUpgradeService {
-  private static final Log LOG = LogFactory.getLog(GraphBasedUpgradeService.class);
+public class GraphBasedUpgradeTraversalService {
+  private static final Log LOG = LogFactory.getLog(GraphBasedUpgradeTraversalService.class);
   private final GraphBasedUpgrade graphBasedUpgrade;
   private final Set<GraphBasedUpgradeNode> readyToExecuteNodes = new HashSet<>();
   private final Set<GraphBasedUpgradeNode> completedNodes = new HashSet<>();
@@ -45,11 +45,11 @@ public class GraphBasedUpgradeService {
   private final Condition newReadyToExecuteNode = lock.newCondition();
 
   /**
-   * Constructs {@link GraphBasedUpgradeService} instance for a specific upgrade
+   * Constructs {@link GraphBasedUpgradeTraversalService} instance for a specific upgrade
    *
    * @param graphBasedUpgrade for which the service should be created
    */
-  GraphBasedUpgradeService(GraphBasedUpgrade graphBasedUpgrade) {
+  GraphBasedUpgradeTraversalService(GraphBasedUpgrade graphBasedUpgrade) {
     this.graphBasedUpgrade = graphBasedUpgrade;
     readyToExecuteNodes.addAll(graphBasedUpgrade.getRoot().getChildren());
   }
@@ -168,7 +168,7 @@ public class GraphBasedUpgradeService {
   }
 
   /**
-   * Factory of {@link GraphBasedUpgradeService} instances.
+   * Factory of {@link GraphBasedUpgradeTraversalService} instances.
    *
    * @author Copyright (c) Alfa Financial Software Limited. 2022
    */
@@ -182,13 +182,13 @@ public class GraphBasedUpgradeService {
 
 
     /**
-     * Creates new {@link GraphBasedUpgradeService} for a given
+     * Creates new {@link GraphBasedUpgradeTraversalService} for a given
      * {@link GraphBasedUpgrade}.
      *
-     * @return new {@link GraphBasedUpgradeService} instance
+     * @return new {@link GraphBasedUpgradeTraversalService} instance
      */
-    public GraphBasedUpgradeService create(GraphBasedUpgrade graphBasedUpgrade) {
-      return new GraphBasedUpgradeService(graphBasedUpgrade);
+    public GraphBasedUpgradeTraversalService create(GraphBasedUpgrade graphBasedUpgrade) {
+      return new GraphBasedUpgradeTraversalService(graphBasedUpgrade);
     }
   }
 }
