@@ -91,32 +91,6 @@ public class TestGraphBasedUpgradeTraversalService {
 
 
   @Test(timeout = 1000)
-  public void testWaitingForAllNodesToBeCompleted() throws InterruptedException {
-    // given
-    final AtomicBoolean stillWaiting= new AtomicBoolean(true);
-    Thread waiting = new Thread(new Runnable() {
-      @Override
-      public void run() {
-        service.waitForAllNodesToBeCompleted();
-        stillWaiting.set(false);
-      }
-    });
-
-    // when then
-    waiting.start();
-    Thread.sleep(100);
-    assertTrue(stillWaiting.get());
-    GraphBasedUpgradeNode nextNode = service.nextNode().get();
-    service.completeNode(nextNode);
-    nextNode = service.nextNode().get();
-    service.completeNode(nextNode);
-    waiting.join();
-    assertTrue(service.allNodesCompleted());
-    assertFalse(stillWaiting.get());
-  }
-
-
-  @Test(timeout = 1000)
   public void testWaitingForNewNodeAvailable() throws InterruptedException {
     // given
     final AtomicBoolean stillWaiting= new AtomicBoolean(true);

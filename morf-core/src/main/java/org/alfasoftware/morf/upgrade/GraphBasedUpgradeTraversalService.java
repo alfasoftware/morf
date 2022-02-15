@@ -128,25 +128,6 @@ public class GraphBasedUpgradeTraversalService {
 
 
   /**
-   * Caller of this method will be blocked awaiting moment when all nodes of the
-   * upgrade have been executed. When the upgrade reaches that point the block
-   * will be released and the method will be completed.
-   */
-  public void waitForAllNodesToBeCompleted() {
-    lock.lock();
-    try {
-      while(!allNodesCompletedNoLock()) {
-        allNodesCompletedCondition.await();
-      }
-    } catch (InterruptedException e) {
-      LOG.error("InterruptedException in GraphBasedUpgradeService.waitForAllNodesToBeCompleted", e);
-    } finally {
-      lock.unlock();
-    }
-  }
-
-
-  /**
    * Caller of this method will be blocked awaiting moment when at least one new
    * node is available for execution or all the nodes of the upgrade have been
    * executed. When the upgrade reaches that point the block will be released and
