@@ -1476,7 +1476,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints7
    */
   @Override
-  protected String expectedHints7() {
+  protected String expectedHints4() {
     return "SELECT /*+ opt_param('optimizer_index_caching',100) opt_param('optimizer_index_cost_adj',50) optimizer_features_enable('12.1.0.2') ) */ * FROM SCHEMA2.Foo";
   }
 
