@@ -45,6 +45,7 @@ import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.DataEditor;
 import org.alfasoftware.morf.upgrade.Deployment;
+import org.alfasoftware.morf.upgrade.ExamineViewListener;
 import org.alfasoftware.morf.upgrade.SchemaEditor;
 import org.alfasoftware.morf.upgrade.Sequence;
 import org.alfasoftware.morf.upgrade.UUID;
@@ -127,7 +128,7 @@ public class TestStartHere {
     upgradeSteps.add(CreateTest3.class);
 
     // Run the upgrade
-    Upgrade.performUpgrade(targetSchema, upgradeSteps, connectionResources);
+    Upgrade.performUpgrade(targetSchema, upgradeSteps, connectionResources, new ExamineViewListener.NoOp());
 
     // Confirm that the database has been correctly upgraded
     withCurrentDatabase(connectionResources, dataSetProducer -> {
