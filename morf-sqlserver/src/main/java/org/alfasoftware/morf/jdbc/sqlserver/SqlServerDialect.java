@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.jdbc.sqlserver;
 
+import static com.google.common.base.Strings.isNullOrEmpty;
 import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
 import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
@@ -1031,10 +1032,11 @@ class SqlServerDialect extends SqlDialect {
       return super.selectStatementPreFieldDirectives(selectStatement);
     }
 
-    StringBuilder builder = new StringBuilder().append(" OPTION(");
+    String option = " OPTION(";
 
     boolean comma = false;
 
+    StringBuilder builder = new StringBuilder();
     for (Hint hint : selectStatement.getHints()) {
       if (SUPPORTED_HINTS.contains(hint.getClass())) {
         if (comma) {
@@ -1059,7 +1061,9 @@ class SqlServerDialect extends SqlDialect {
       }
     }
 
-    return builder.append(")").toString();
+    option += builder.toString() + ")";
+
+    return isNullOrEmpty(builder.toString()) ? "" : option;
   }
 
 

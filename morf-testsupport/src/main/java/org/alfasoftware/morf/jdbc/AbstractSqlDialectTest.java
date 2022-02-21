@@ -121,6 +121,7 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.sql.CustomHint;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.MergeStatement;
@@ -3175,6 +3176,7 @@ public abstract class AbstractSqlDialectTest {
         .optimiseForRowCount(1000)
         .useImplicitJoinOrder()
         .withParallelQueryPlan()
+        .withCustomHint(mock(CustomHint.class))
       )
     );
     assertEquals(
@@ -3185,6 +3187,33 @@ public abstract class AbstractSqlDialectTest {
         .useParallelDml()
       )
     );
+
+    assertEquals(
+      expectedHints4(),
+      testDialect.convertStatementToSQL(
+        select()
+        .from(new TableReference("SCHEMA2", "Foo"))
+        .withCustomHint(provideCustomHint())
+      )
+    );
+
+    assertEquals(
+      expectedHints5(),
+      testDialect.convertStatementToSQL(
+        select()
+        .from(new TableReference("SCHEMA2", "Foo"))
+        .withCustomHint(mock(CustomHint.class))
+      )
+    );
+  }
+
+
+  /**
+   * This method can be overridden in specific dialects to test providing custom hints in each dialect
+   * @return a mock CustomHint or an overridden, more specific, CustomHint
+   */
+  protected CustomHint provideCustomHint() {
+    return mock(CustomHint.class);
   }
 
 
@@ -5288,6 +5317,22 @@ public abstract class AbstractSqlDialectTest {
    */
   protected String expectedHints3() {
     return "UPDATE " + tableName("Foo") + " SET a = b";
+  }
+
+
+  /**
+   * @return The expected SQL for the {@link SelectStatement#withCustomHint(CustomHint customHint)} directive. Testing the OracleDialect adds the hints successfully.
+   */
+  protected  String expectedHints4() {
+    return "SELECT * FROM SCHEMA2.Foo"; //NOSONAR
+  }
+
+
+  /**
+   * @return The expected SQL for the {@link SelectStatement#withCustomHint(CustomHint customHint)} directive. Testing all dialects do not react to an empty hint being supplied.
+   */
+  protected  String expectedHints5() {
+    return "SELECT * FROM SCHEMA2.Foo"; //NOSONAR
   }
 
 

@@ -272,6 +272,18 @@ public class SelectStatementBuilder extends AbstractSelectStatementBuilder<Selec
   }
 
   /**
+   * Supplies a specified custom hint to the database for a query.
+   *
+   * @param customHint representation of a custom hint
+   * @return this, for method chaining.
+   */
+  public org.alfasoftware.morf.sql.SelectStatementBuilder withCustomHint(CustomHint customHint) {
+    this.hints.add(customHint);
+    return this;
+  }
+
+
+  /**
    * If supported by the dialect, hints to the database that joins should be applied in the order
    * they are written in the SQL statement.
    *
