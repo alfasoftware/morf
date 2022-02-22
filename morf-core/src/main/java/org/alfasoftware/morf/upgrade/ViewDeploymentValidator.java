@@ -9,8 +9,8 @@ import com.google.inject.ImplementedBy;
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2021
  */
-@ImplementedBy(ExamineViewListener.NoOp.class)
-public interface ExamineViewListener {
+@ImplementedBy(ViewDeploymentValidator.AlwaysValidate.class)
+public interface ViewDeploymentValidator {
 
   /**
    * Called during {@link ExistingViewStateLoader#viewChanges(org.alfasoftware.morf.metadata.Schema, org.alfasoftware.morf.metadata.Schema)},
@@ -38,18 +38,18 @@ public interface ExamineViewListener {
 
 
   /**
-   * Empty implementation.
+   * Empty implementation which always agrees with the given view.
    */
-  class NoOp implements ExamineViewListener {
+  class AlwaysValidate implements ViewDeploymentValidator {
 
     @Override
     public boolean validateExistingView(View view) {
-      return true;
+      return true; // the given existing view is okay as is
     }
 
     @Override
     public boolean validateMissingView(View view) {
-      return true;
+      return true; // the given new view can be created right away
     }
   }
 }

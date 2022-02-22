@@ -58,21 +58,21 @@ public class Upgrade {
   private final DataSource dataSource;
   private final UpgradeStatusTableService upgradeStatusTableService;
   private final ViewChangesDeploymentHelper viewChangesDeploymentHelper;
-  private final ExamineViewListener examineViewListener;
+  private final ViewDeploymentValidator viewDeploymentValidator;
 
 
   /**
    * Injected Constructor.
    */
   @Inject
-  Upgrade(ConnectionResources connectionResources, DataSource dataSource, UpgradePathFactory factory, UpgradeStatusTableService upgradeStatusTableService, ViewChangesDeploymentHelper viewChangesDeploymentHelper, ExamineViewListener examineViewListener) {
+  Upgrade(ConnectionResources connectionResources, DataSource dataSource, UpgradePathFactory factory, UpgradeStatusTableService upgradeStatusTableService, ViewChangesDeploymentHelper viewChangesDeploymentHelper, ViewDeploymentValidator viewDeploymentValidator) {
     super();
     this.connectionResources = connectionResources;
     this.dataSource = dataSource;
     this.factory = factory;
     this.upgradeStatusTableService = upgradeStatusTableService;
     this.viewChangesDeploymentHelper = viewChangesDeploymentHelper;
-    this.examineViewListener = examineViewListener;
+    this.viewDeploymentValidator = viewDeploymentValidator;
   }
 
 
@@ -84,11 +84,11 @@ public class Upgrade {
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
    * @param connectionResources Connection details for the database.
    */
-  public static void performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, ExamineViewListener examineViewListener) {
+  public static void performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, ViewDeploymentValidator viewDeploymentValidator) {
     SqlScriptExecutorProvider sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
     UpgradeStatusTableService upgradeStatusTableService = new UpgradeStatusTableServiceImpl(sqlScriptExecutorProvider, connectionResources.sqlDialect());
     try {
-      UpgradePath path = Upgrade.createPath(targetSchema, upgradeSteps, connectionResources, upgradeStatusTableService, examineViewListener);
+      UpgradePath path = Upgrade.createPath(targetSchema, upgradeSteps, connectionResources, upgradeStatusTableService, viewDeploymentValidator);
       if (path.hasStepsToApply()) {
         sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor()).execute(path.getSql());
       }
@@ -109,11 +109,11 @@ public class Upgrade {
    * @param upgradeStatusTableService Service used to manage the upgrade status coordination table.
    * @return The required upgrade path.
    */
-  public static UpgradePath createPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeStatusTableService upgradeStatusTableService, ExamineViewListener examineViewListener) {
+  public static UpgradePath createPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeStatusTableService upgradeStatusTableService, ViewDeploymentValidator viewDeploymentValidator) {
     Upgrade upgrade = new Upgrade(
       connectionResources, connectionResources.getDataSource(),
       new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition> emptySet(), upgradeStatusTableService),
-      upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()), examineViewListener
+      upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()), viewDeploymentValidator
     );
     return upgrade.findPath(targetSchema, upgradeSteps, Collections.<String> emptySet());
   }
@@ -147,7 +147,7 @@ public class Upgrade {
 
     // -- Get the current UUIDs and deployed views...
     log.info("Examining current views");    //
-    ExistingViewStateLoader existingViewState = new ExistingViewStateLoader(dialect, new ExistingViewHashLoader(dataSource, dialect), examineViewListener);
+    ExistingViewStateLoader existingViewState = new ExistingViewStateLoader(dialect, new ExistingViewHashLoader(dataSource, dialect), viewDeploymentValidator);
     Result viewChangeInfo = existingViewState.viewChanges(sourceSchema, targetSchema);
     ViewChanges viewChanges = new ViewChanges(targetSchema.views(), viewChangeInfo.getViewsToDrop(), viewChangeInfo.getViewsToDeploy());
 

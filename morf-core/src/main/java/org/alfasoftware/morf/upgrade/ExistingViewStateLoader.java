@@ -39,17 +39,17 @@ class ExistingViewStateLoader {
 
   private final SqlDialect dialect;
   private final ExistingViewHashLoader existingViewHashLoader;
-  private final ExamineViewListener examineViewListener;
+  private final ViewDeploymentValidator viewDeploymentValidator;
 
 
   /**
    * Injection constructor.
    */
-  ExistingViewStateLoader(SqlDialect dialect, ExistingViewHashLoader existingViewHashLoader, ExamineViewListener examineViewListener) {
+  ExistingViewStateLoader(SqlDialect dialect, ExistingViewHashLoader existingViewHashLoader, ViewDeploymentValidator viewDeploymentValidator) {
     super();
     this.dialect = dialect;
     this.existingViewHashLoader = existingViewHashLoader;
-    this.examineViewListener = examineViewListener;
+    this.viewDeploymentValidator = viewDeploymentValidator;
   }
 
   /**
@@ -83,8 +83,8 @@ class ExistingViewStateLoader {
             log.info(String.format("View [%s] exists but hash not present in %s", targetViewName, DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME));
           } else if (!newHash.equals(existingHash)) {
             log.info(String.format("View [%s] exists in %s, but hash [%s] does not match target schema [%s]", targetViewName, DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME, existingHash, newHash));
-          } else if (!examineViewListener.validateExistingView(view)) {
-            log.info(String.format("View [%s] exists in %s, but was rejected by %s", targetViewName, DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME, examineViewListener.getClass()));
+          } else if (!viewDeploymentValidator.validateExistingView(view)) {
+            log.info(String.format("View [%s] exists in %s, but was rejected by %s", targetViewName, DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME, viewDeploymentValidator.getClass()));
           } else {
             log.debug(String.format("View [%s] exists in %s and was validated", targetViewName, DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME));
             // All good - leave it in place.
@@ -95,8 +95,8 @@ class ExistingViewStateLoader {
           if (deployedViews.get().containsKey(targetViewName)) {
             log.info(String.format("View [%s] is missing, but %s entry exists; the view may have been deleted", targetViewName, DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME));
             viewsToDrop.put(targetViewName, view);
-          } else if (!examineViewListener.validateMissingView(view)) {
-            log.info(String.format("View [%s] is missing, but was recognized by %s; the view may have been deleted", targetViewName, examineViewListener.getClass()));
+          } else if (!viewDeploymentValidator.validateMissingView(view)) {
+            log.info(String.format("View [%s] is missing, but was recognized by %s; the view may have been deleted", targetViewName, viewDeploymentValidator.getClass()));
             viewsToDrop.put(targetViewName, view);
           } else {
             log.info(String.format("View [%s] is missing", targetViewName));

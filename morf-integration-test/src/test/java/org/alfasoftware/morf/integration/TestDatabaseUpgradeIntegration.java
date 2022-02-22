@@ -111,7 +111,7 @@ import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager.TruncationBehavior;
 import org.alfasoftware.morf.testing.TestingDataSourceModule;
-import org.alfasoftware.morf.upgrade.ExamineViewListener;
+import org.alfasoftware.morf.upgrade.ViewDeploymentValidator;
 import org.alfasoftware.morf.upgrade.LoggingSqlScriptVisitor;
 import org.alfasoftware.morf.upgrade.Upgrade;
 import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsException;
@@ -168,7 +168,7 @@ public class TestDatabaseUpgradeIntegration {
   private ConnectionResources connectionResources;
 
   @Inject
-  private ExamineViewListener examineViewListener;
+  private ViewDeploymentValidator viewDeploymentValidator;
 
   @Inject
   private SqlScriptExecutorProvider sqlScriptExecutorProvider;
@@ -1112,7 +1112,7 @@ public class TestDatabaseUpgradeIntegration {
    * @param upgradeSteps The upgrade steps to test
    */
   private void verifyUpgrade(Schema expectedSchema, List<Class<? extends UpgradeStep>> upgradeSteps) {
-    Upgrade.performUpgrade(expectedSchema, upgradeSteps, connectionResources, examineViewListener);
+    Upgrade.performUpgrade(expectedSchema, upgradeSteps, connectionResources, viewDeploymentValidator);
     compareSchema(expectedSchema);
   }
 
