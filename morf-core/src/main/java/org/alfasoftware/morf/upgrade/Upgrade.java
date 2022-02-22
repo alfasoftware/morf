@@ -83,6 +83,7 @@ public class Upgrade {
    * @param targetSchema The target database schema.
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
    * @param connectionResources Connection details for the database.
+   * @param viewDeploymentValidator External view deployment validator.
    */
   public static void performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, ViewDeploymentValidator viewDeploymentValidator) {
     SqlScriptExecutorProvider sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
@@ -107,6 +108,7 @@ public class Upgrade {
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
    * @param connectionResources Connection details for the database.
    * @param upgradeStatusTableService Service used to manage the upgrade status coordination table.
+   * @param viewDeploymentValidator External view deployment validator.
    * @return The required upgrade path.
    */
   public static UpgradePath createPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeStatusTableService upgradeStatusTableService, ViewDeploymentValidator viewDeploymentValidator) {
