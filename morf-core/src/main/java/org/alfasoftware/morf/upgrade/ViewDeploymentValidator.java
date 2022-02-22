@@ -5,7 +5,7 @@ import org.alfasoftware.morf.metadata.View;
 import com.google.inject.ImplementedBy;
 
 /**
- * Listener for calls to {@link ExistingViewStateLoader#viewChanges(org.alfasoftware.morf.metadata.Schema, org.alfasoftware.morf.metadata.Schema)}.
+ * External view validator for {@link ExistingViewStateLoader#viewChanges(org.alfasoftware.morf.metadata.Schema, org.alfasoftware.morf.metadata.Schema)}.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2021
  */
@@ -14,8 +14,8 @@ public interface ViewDeploymentValidator {
 
   /**
    * Called during {@link ExistingViewStateLoader#viewChanges(org.alfasoftware.morf.metadata.Schema, org.alfasoftware.morf.metadata.Schema)},
-   * for each view that exists and appears to be valid. Listeners should return true to further validate the view from their point of view.
-   * If fully validated, the view will be left in it's current state, otherwise, if a listener responds with false, any old view records will
+   * for each view that exists and appears to be valid. Validators should return true to further validate the view from their point of view.
+   * If fully validated, the view will be left in it's current state, otherwise, if a validator responds with false, any old view records will
    * first need to be de-registered, to clear any potential remnants, and only then the new view will be created.
    *
    * @param view View being examined. This is an existing schema view.
@@ -26,8 +26,8 @@ public interface ViewDeploymentValidator {
 
   /**
    * Called during {@link ExistingViewStateLoader#viewChanges(org.alfasoftware.morf.metadata.Schema, org.alfasoftware.morf.metadata.Schema)},
-   * for each view that does not yet exist in the database, and is to be created. Listeners should return true to acknowledge they also do not
-   * yet recognise the view. If acknowledged, the view will be created, otherwise, if a listener responds with false, any old view records will
+   * for each view that does not yet exist in the database, and is to be created. Validators should return true to acknowledge they also do not
+   * yet recognise the view. If acknowledged, the view will be created, otherwise, if a validator responds with false, any old view records will
    * first need to be de-registered, to clear any potential remnants, and only then the new view will be created.
    *
    * @param view View being examined. This is a non-existing schema view.
