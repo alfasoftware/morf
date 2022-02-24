@@ -48,13 +48,6 @@ public class SchemaChangeSequence {
 
   private final List<UpgradeStepWithChanges> allChanges     = Lists.newArrayList();
 
-  /**
-   * If set to true, the process will include filling the
-   * {@link UpgradeTableResolution} object with tables used by upgrade steps
-   * included in this upgrade.
-   */
-  private final boolean shouldResolveTables;
-
   private final UpgradeTableResolution upgradeTableResolution = new UpgradeTableResolution();
 
 
@@ -65,33 +58,19 @@ public class SchemaChangeSequence {
    * @param shouldResolveTables true if the {@link UpgradeTableResolution} object
    *                              should be filled.
    */
-  public SchemaChangeSequence(List<UpgradeStep> steps, boolean shouldResolveTables) {
+  public SchemaChangeSequence(List<UpgradeStep> steps) {
     upgradeSteps = steps;
-    this.shouldResolveTables = shouldResolveTables;
 
     for (UpgradeStep step : steps) {
       InternalVisitor internalVisitor = new InternalVisitor();
-      UpgradeTableResolutionVisitor resolvedTablesVisitor = shouldResolveTables ? new UpgradeTableResolutionVisitor() : null;
+      UpgradeTableResolutionVisitor resolvedTablesVisitor = new UpgradeTableResolutionVisitor();
       Editor editor = new Editor(internalVisitor, resolvedTablesVisitor);
       // For historical reasons, we need to pass the editor in twice
       step.execute(editor, editor);
 
       allChanges.add(new UpgradeStepWithChanges(step, internalVisitor.getChanges()));
-      if(shouldResolveTables) {
-        upgradeTableResolution.addDiscoveredTables(step.getClass().getName(), resolvedTablesVisitor.getResolvedTables());
-      }
+      upgradeTableResolution.addDiscoveredTables(step.getClass().getName(), resolvedTablesVisitor.getResolvedTables());
     }
-  }
-
-
-  /**
-   * Create an instance of {@link SchemaChangeSequence} which will not fill
-   * the @link UpgradeTableResolution} object.
-   *
-   * @param steps the upgrade steps
-   */
-  public SchemaChangeSequence(List<UpgradeStep> steps) {
-    this(steps, false);
   }
 
 
@@ -206,9 +185,7 @@ public class SchemaChangeSequence {
     @Override
     public void executeStatement(Statement statement) {
       visitor.visit(new ExecuteStatement(statement));
-      if(shouldResolveTables) {
-        statement.accept(schemaAndDataChangeVisitor);
-      }
+      statement.accept(schemaAndDataChangeVisitor);
     }
 
 
@@ -235,9 +212,7 @@ public class SchemaChangeSequence {
     public void addColumn(String tableName, Column definition) {
       AddColumn addColumn = new AddColumn(tableName, definition);
       visitor.visit(addColumn);
-      if(shouldResolveTables) {
-        schemaAndDataChangeVisitor.visit(addColumn);
-      }
+      schemaAndDataChangeVisitor.visit(addColumn);
     }
 
 
@@ -251,9 +226,7 @@ public class SchemaChangeSequence {
 
       AddTable addTable = new AddTable(definition);
       visitor.visit(addTable);
-      if(shouldResolveTables) {
-        schemaAndDataChangeVisitor.visit(addTable);
-      }
+      schemaAndDataChangeVisitor.visit(addTable);
     }
 
 
@@ -264,9 +237,7 @@ public class SchemaChangeSequence {
     public void removeTable(Table table) {
       RemoveTable removeTable = new RemoveTable(table);
       visitor.visit(removeTable);
-      if(shouldResolveTables) {
-        schemaAndDataChangeVisitor.visit(removeTable);
-      }
+      schemaAndDataChangeVisitor.visit(removeTable);
     }
 
 
@@ -277,9 +248,7 @@ public class SchemaChangeSequence {
     public void changeColumn(String tableName, Column fromDefinition, Column toDefinition) {
       ChangeColumn changeColumn = new ChangeColumn(tableName, fromDefinition, toDefinition);
       visitor.visit(changeColumn);
-      if(shouldResolveTables) {
-        schemaAndDataChangeVisitor.visit(changeColumn);
-      }
+      schemaAndDataChangeVisitor.visit(changeColumn);
     }
 
 
@@ -290,9 +259,7 @@ public class SchemaChangeSequence {
     public void removeColumn(String tableName, Column definition) {
       RemoveColumn removeColumn = new RemoveColumn(tableName, definition);
       visitor.visit(removeColumn);
-      if(shouldResolveTables) {
-        schemaAndDataChangeVisitor.visit(removeColumn);
-      }
+      schemaAndDataChangeVisitor.visit(removeColumn);
     }
 
 
@@ -315,9 +282,7 @@ public class SchemaChangeSequence {
     public void addIndex(String tableName, Index index) {
       AddIndex addIndex = new AddIndex(tableName, index);
       visitor.visit(addIndex);
-      if(shouldResolveTables) {
-        schemaAndDataChangeVisitor.visit(addIndex);
-      }
+      schemaAndDataChangeVisitor.visit(addIndex);
     }
 
 
@@ -328,9 +293,7 @@ public class SchemaChangeSequence {
     public void removeIndex(String tableName, Index index) {
       RemoveIndex removeIndex = new RemoveIndex(tableName, index);
       visitor.visit(removeIndex);
-      if(shouldResolveTables) {
-        schemaAndDataChangeVisitor.visit(removeIndex);
-      }
+      schemaAndDataChangeVisitor.visit(removeIndex);
     }
 
 
@@ -341,9 +304,7 @@ public class SchemaChangeSequence {
     public void changeIndex(String tableName, Index fromIndex, Index toIndex) {
       ChangeIndex changeIndex = new ChangeIndex(tableName, fromIndex, toIndex);
       visitor.visit(changeIndex);
-      if(shouldResolveTables) {
-        schemaAndDataChangeVisitor.visit(changeIndex);
-      }
+      schemaAndDataChangeVisitor.visit(changeIndex);
     }
 
 
@@ -354,9 +315,7 @@ public class SchemaChangeSequence {
     public void renameIndex(String tableName, String fromIndexName, String toIndexName) {
       RenameIndex removeIndex = new RenameIndex(tableName, fromIndexName, toIndexName);
       visitor.visit(removeIndex);
-      if(shouldResolveTables) {
-        schemaAndDataChangeVisitor.visit(removeIndex);
-      }
+      schemaAndDataChangeVisitor.visit(removeIndex);
     }
 
 
@@ -368,9 +327,7 @@ public class SchemaChangeSequence {
       tableAdditions.add(toTableName);
       RenameTable renameTable = new RenameTable(fromTableName, toTableName);
       visitor.visit(renameTable);
-      if(shouldResolveTables) {
-        schemaAndDataChangeVisitor.visit(renameTable);
-      }
+      schemaAndDataChangeVisitor.visit(renameTable);
     }
 
 
@@ -381,9 +338,7 @@ public class SchemaChangeSequence {
     public void changePrimaryKeyColumns(String tableName, List<String> oldPrimaryKeyColumns, List<String> newPrimaryKeyColumns) {
       ChangePrimaryKeyColumns changePrimaryKeyColumns = new ChangePrimaryKeyColumns(tableName, oldPrimaryKeyColumns, newPrimaryKeyColumns);
       visitor.visit(changePrimaryKeyColumns);
-      if(shouldResolveTables) {
-        schemaAndDataChangeVisitor.visit(changePrimaryKeyColumns);
-      }
+      schemaAndDataChangeVisitor.visit(changePrimaryKeyColumns);
     }
 
 
@@ -397,9 +352,7 @@ public class SchemaChangeSequence {
     public void correctPrimaryKeyColumns(String tableName, List<String> newPrimaryKeyColumns) {
       CorrectPrimaryKeyColumns correctPrimaryKeyColumns = new CorrectPrimaryKeyColumns(tableName, newPrimaryKeyColumns);
       visitor.visit(correctPrimaryKeyColumns);
-      if(shouldResolveTables) {
-        schemaAndDataChangeVisitor.visit(correctPrimaryKeyColumns);
-      }
+      schemaAndDataChangeVisitor.visit(correctPrimaryKeyColumns);
     }
 
 
@@ -413,10 +366,8 @@ public class SchemaChangeSequence {
 
       AddTable addTable = new AddTableFrom(table, select);
       visitor.visit(addTable);
-      if(shouldResolveTables) {
-        schemaAndDataChangeVisitor.visit(addTable);
-        select.accept(schemaAndDataChangeVisitor);
-      }
+      schemaAndDataChangeVisitor.visit(addTable);
+      select.accept(schemaAndDataChangeVisitor);
     }
 
 
@@ -427,9 +378,7 @@ public class SchemaChangeSequence {
     public void analyseTable(String tableName) {
       AnalyseTable analyseTable = new AnalyseTable(tableName);
       visitor.visit(analyseTable);
-      if(shouldResolveTables) {
-        schemaAndDataChangeVisitor.visit(analyseTable);
-      }
+      schemaAndDataChangeVisitor.visit(analyseTable);
     }
   }
 

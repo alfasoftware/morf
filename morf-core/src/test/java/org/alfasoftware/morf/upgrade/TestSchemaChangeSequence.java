@@ -2,8 +2,6 @@ package org.alfasoftware.morf.upgrade;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.any;
-import static org.junit.Assert.assertNull;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -67,7 +65,7 @@ public class TestSchemaChangeSequence {
     upgSteps.add(new UpgradeStep1());
 
     // when
-    SchemaChangeSequence schemaChangeSequence = new SchemaChangeSequence(upgSteps, true);
+    SchemaChangeSequence schemaChangeSequence = new SchemaChangeSequence(upgSteps);
 
     // then
     UpgradeTableResolution res = schemaChangeSequence.getUpgradeTableResolution();
@@ -76,30 +74,6 @@ public class TestSchemaChangeSequence {
         "T11", "T12", "T13", "T14", "T15", "T16", "T17"));
     verify(statement).accept(MockitoHamcrest.argThat(any(UpgradeTableResolutionVisitor.class)));
     verify(select).accept(MockitoHamcrest.argThat(any(UpgradeTableResolutionVisitor.class)));
-  }
-
-
-  @Test
-  public void testTableResolutionDisabled() {
-    // given
-    when(col.isNullable()).thenReturn(true);
-    when(col.getType()).thenReturn(DataType.STRING);
-
-    when(table.getName()).thenReturn("t3");
-    when(table2.getName()).thenReturn("t4");
-    when(table3.getName()).thenReturn("t16");
-
-    List<UpgradeStep> upgSteps = new ArrayList<>();
-    upgSteps.add(new UpgradeStep1());
-
-    // when
-    SchemaChangeSequence schemaChangeSequence = new SchemaChangeSequence(upgSteps);
-
-    // then
-    UpgradeTableResolution res = schemaChangeSequence.getUpgradeTableResolution();
-    assertNull(res.getModifiedTables(UpgradeStep1.class.getName()));
-    verify(statement, never()).accept(MockitoHamcrest.argThat(any(UpgradeTableResolutionVisitor.class)));
-    verify(select, never()).accept(MockitoHamcrest.argThat(any(UpgradeTableResolutionVisitor.class)));
   }
 
 
