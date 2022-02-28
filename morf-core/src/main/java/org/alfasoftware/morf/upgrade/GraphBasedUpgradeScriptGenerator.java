@@ -9,6 +9,7 @@ import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -16,8 +17,10 @@ import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.element.Criterion;
+import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import com.google.inject.Inject;
 
 /**
@@ -34,6 +37,8 @@ class GraphBasedUpgradeScriptGenerator {
   private final Table idTable;
   private final ViewChanges viewChanges;
   private final UpgradeStatusTableService upgradeStatusTableService;
+  private final Set<UpgradeScriptAddition> upgradeScriptAdditions;
+
 
   /**
    * Default constructor.
@@ -46,13 +51,14 @@ class GraphBasedUpgradeScriptGenerator {
    * @param upgradeStatusTableService used to generate a script needed to update the transient "zzzUpgradeStatus" table
    */
   GraphBasedUpgradeScriptGenerator(Schema sourceSchema, Schema targetSchema, SqlDialect sqlDialect, Table idTable,
-      ViewChanges viewChanges, UpgradeStatusTableService upgradeStatusTableService) {
+      ViewChanges viewChanges, UpgradeStatusTableService upgradeStatusTableService, Set<UpgradeScriptAddition> upgradeScriptAdditions) {
     this.sourceSchema = sourceSchema;
     this.targetSchema = targetSchema;
     this.sqlDialect = sqlDialect;
     this.idTable = idTable;
     this.viewChanges = viewChanges;
     this.upgradeStatusTableService = upgradeStatusTableService;
+    this.upgradeScriptAdditions = upgradeScriptAdditions;
   }
 
 
@@ -126,6 +132,14 @@ class GraphBasedUpgradeScriptGenerator {
       })
       .forEach(statements::addAll);
 
+    // upgrade script additions (if any)
+    upgradeScriptAdditions.stream()
+      .map(add -> Lists.newArrayList(add.sql()))
+      .forEach(statements::addAll);
+
+    // status table
+    statements.addAll(upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED));
+
     return statements;
   }
 
@@ -137,6 +151,7 @@ class GraphBasedUpgradeScriptGenerator {
    */
   static class GraphBasedUpgradeScriptGeneratorFactory {
     private final UpgradeStatusTableService upgradeStatusTableService;
+    private final Set<UpgradeScriptAddition> upgradeScriptAdditions;
 
     /**
      * Default constructor.
@@ -144,8 +159,9 @@ class GraphBasedUpgradeScriptGenerator {
      * @param upgradeStatusTableService used to generate a script needed to update the transient "zzzUpgradeStatus" table
      */
     @Inject
-    public GraphBasedUpgradeScriptGeneratorFactory(UpgradeStatusTableService upgradeStatusTableService) {
+    public GraphBasedUpgradeScriptGeneratorFactory(UpgradeStatusTableService upgradeStatusTableService, Set<UpgradeScriptAddition> upgradeScriptAdditions) {
       this.upgradeStatusTableService = upgradeStatusTableService;
+      this.upgradeScriptAdditions = upgradeScriptAdditions;
     }
 
 
@@ -163,7 +179,7 @@ class GraphBasedUpgradeScriptGenerator {
     GraphBasedUpgradeScriptGenerator create(Schema sourceSchema, Schema targetSchema, SqlDialect sqlDialect, Table idTable,
         ViewChanges viewChanges) {
       return new GraphBasedUpgradeScriptGenerator(sourceSchema, targetSchema, sqlDialect, idTable, viewChanges,
-          upgradeStatusTableService);
+          upgradeStatusTableService, upgradeScriptAdditions);
     }
   }
 }

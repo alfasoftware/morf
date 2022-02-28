@@ -37,8 +37,6 @@ import org.alfasoftware.morf.metadata.SchemaValidator;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.upgrade.ExistingViewStateLoader.Result;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeBuilder.GraphBasedUpgradeBuilderFactory;
-import org.alfasoftware.morf.upgrade.GraphBasedUpgradeSchemaChangeVisitor.GraphBasedUpgradeSchemaChangeVisitorFactory;
-import org.alfasoftware.morf.upgrade.GraphBasedUpgradeScriptGenerator.GraphBasedUpgradeScriptGeneratorFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
 import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsException;
@@ -90,6 +88,7 @@ public class Upgrade {
   /**
    * Static convenience method which takes the specified database and upgrades it to the target
    * schema, using the upgrade steps supplied which have not already been applied.
+   * <b>This static context does not support Graph Based Upgrade.</b>
    *
    * @param targetSchema The target database schema.
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
@@ -112,7 +111,8 @@ public class Upgrade {
   /**
    * Static convenience method which creates the required {@link UpgradePath} to take the specified
    * database and upgrade it to the target schema, using the upgrade steps supplied which have not
-   * already been applied.
+   * already been applied. <b>This static context does not support Graph Based Upgrade.</b>
+
    *
    * @param targetSchema The target database schema.
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
@@ -120,16 +120,15 @@ public class Upgrade {
    * @param upgradeStatusTableService Service used to manage the upgrade status coordination table.
    * @return The required upgrade path.
    */
-  public static UpgradePath createPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeStatusTableService upgradeStatusTableService) {
+  public static UpgradePath createPath(
+      Schema targetSchema,
+      Collection<Class<? extends UpgradeStep>> upgradeSteps,
+      ConnectionResources connectionResources,
+      UpgradeStatusTableService upgradeStatusTableService) {
     Upgrade upgrade = new Upgrade(
       connectionResources, connectionResources.getDataSource(),
       new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition> emptySet(), upgradeStatusTableService),
-      upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()),
-      new GraphBasedUpgradeBuilderFactory(
-        new GraphBasedUpgradeSchemaChangeVisitorFactory(),
-        new GraphBasedUpgradeScriptGeneratorFactory(upgradeStatusTableService),
-        new DrawIOGraphPrinterImpl())
-    );
+      upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()), null);
     return upgrade.findPath(targetSchema, upgradeSteps, Collections.<String> emptySet());
   }
 
@@ -235,9 +234,9 @@ public class Upgrade {
       viewChanges = viewChanges.droppingAlso(sourceSchema.views()).deployingAlso(targetSchema.views());
     }
 
-    // Prepare GraphBasedUpgradeBuilder
+    // Prepare GraphBasedUpgradeBuilder, not supported in the static context (graphBasedUpgradeBuilderFactory = null)
     GraphBasedUpgradeBuilder graphBasedUpgradeBuilder = null;
-    if (!schemaChangeSequence.getUpgradeSteps().isEmpty()) {
+    if (!schemaChangeSequence.getUpgradeSteps().isEmpty() && graphBasedUpgradeBuilderFactory != null) {
       graphBasedUpgradeBuilder = graphBasedUpgradeBuilderFactory.create(
         sourceSchema,
         targetSchema,

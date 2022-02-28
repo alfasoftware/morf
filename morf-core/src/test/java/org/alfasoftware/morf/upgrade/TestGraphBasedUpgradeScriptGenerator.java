@@ -17,11 +17,13 @@ import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeScriptGenerator.GraphBasedUpgradeScriptGeneratorFactory;
+import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
 import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.internal.util.collections.Sets;
 
 import com.google.common.collect.Lists;
 
@@ -58,11 +60,14 @@ public class TestGraphBasedUpgradeScriptGenerator {
   @Mock
   private UpgradeStatusTableService upgradeStatusTableService;
 
+  @Mock
+  private UpgradeScriptAddition upgradeScriptAddition;
+
   @Before
   public void setup() {
     MockitoAnnotations.openMocks(this);
     gen = new GraphBasedUpgradeScriptGenerator(sourceSchema, targetSchema, sqlDialect, idTable, viewChanges,
-        upgradeStatusTableService);
+        upgradeStatusTableService, Sets.newSet(upgradeScriptAddition));
 
 
   }
@@ -102,19 +107,22 @@ public class TestGraphBasedUpgradeScriptGenerator {
     when(targetSchema.tables()).thenReturn(Lists.newArrayList(table));
     when(sqlDialect.convertCommentToSQL(any(String.class))).thenReturn("5");
     when(sqlDialect.rebuildTriggers(table)).thenReturn(Lists.newArrayList("6"));
+    when(upgradeScriptAddition.sql()).thenReturn(Lists.newArrayList("7"));
+    when(upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED)).thenReturn(Lists.newArrayList("8"));
+
 
     // when
     List<String> statements = gen.generatePostUpgradeStatements();
 
     // then
-    assertThat(statements, Matchers.contains("1", "2", "3", "4", "5", "6"));
+    assertThat(statements, Matchers.contains("1", "2", "3", "4", "5", "6", "7", "8"));
   }
 
 
   @Test
   public void testFactory() {
     // given
-    GraphBasedUpgradeScriptGeneratorFactory factory = new GraphBasedUpgradeScriptGeneratorFactory(upgradeStatusTableService);
+    GraphBasedUpgradeScriptGeneratorFactory factory = new GraphBasedUpgradeScriptGeneratorFactory(upgradeStatusTableService, Sets.newSet(upgradeScriptAddition));
 
     // when
     GraphBasedUpgradeScriptGenerator created = factory.create(sourceSchema, targetSchema, sqlDialect, idTable, viewChanges);
