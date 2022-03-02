@@ -39,10 +39,14 @@ class GraphBasedUpgradeNodeDrawIOAdapter implements PrintableGraph<Node> {
 
   @Override
   public Set<Node> getNodesThisNodeLinksTo(Node node) {
-    return nodes.stream().filter(step -> step.getSequence() == node.getSequence()).findFirst().get().getParents().stream()
+    return nodes.stream()
+        .filter(step -> step.getSequence() == node.getSequence())
+        .findFirst().orElseThrow(() -> new IllegalStateException("Node with the sequence: " + node.getSequence() + " does not exist."))
+        .getParents().stream()
         .map(dep -> {
           return new BasicNode("" + dep.getName() + "-" + dep.getSequence(), dep.getSequence());
-        }).collect(Collectors.toSet());
+        })
+        .collect(Collectors.toSet());
   }
 
 }

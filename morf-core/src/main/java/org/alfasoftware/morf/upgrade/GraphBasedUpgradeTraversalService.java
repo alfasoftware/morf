@@ -139,10 +139,13 @@ public class GraphBasedUpgradeTraversalService {
     lock.lock();
     try {
       while(readyToExecuteNodes.isEmpty() && !allNodesCompletedNoLock()) {
-        newReadyToExecuteNode.await(500, TimeUnit.MILLISECONDS);
+        // The result of this await is (indirectly) checked by the wait loop
+        // so there is no need to check the result of the await (so NOSONAR).
+        newReadyToExecuteNode.await(500, TimeUnit.MILLISECONDS); // NOSONAR
       }
     } catch (InterruptedException e) {
       LOG.error("InterruptedException in GraphBasedUpgradeService.waitForAllNodesToBeCompleted", e);
+      throw new RuntimeException(e);
     } finally {
       lock.unlock();
     }
@@ -159,7 +162,9 @@ public class GraphBasedUpgradeTraversalService {
      * Default constructor
      */
     @Inject
-    public GraphBasedUpgradeTraversalServiceFactory() {}
+    public GraphBasedUpgradeTraversalServiceFactory() {
+      // nothing
+    }
 
 
     /**
