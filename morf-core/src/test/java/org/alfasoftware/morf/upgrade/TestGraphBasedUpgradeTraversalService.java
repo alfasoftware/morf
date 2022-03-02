@@ -97,7 +97,11 @@ public class TestGraphBasedUpgradeTraversalService {
     Thread waiting = new Thread(new Runnable() {
       @Override
       public void run() {
-        service.waitForReadyToExecuteNode();
+        try {
+          service.waitForReadyToExecuteNode();
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
         stillWaiting.set(false);
       }
     });

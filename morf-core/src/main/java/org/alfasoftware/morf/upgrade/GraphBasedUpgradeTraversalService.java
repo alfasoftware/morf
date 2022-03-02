@@ -134,8 +134,10 @@ public class GraphBasedUpgradeTraversalService {
    * the method will be completed. Note that the the fact that at the time of the
    * block at least one new node has been available doesn't guarantee that it will
    * still be available later. It may be potentially acquired by another thread.
+   *
+   * @throws InterruptedException
    */
-  public void waitForReadyToExecuteNode() {
+  public void waitForReadyToExecuteNode() throws InterruptedException {
     lock.lock();
     try {
       while(readyToExecuteNodes.isEmpty() && !allNodesCompletedNoLock()) {
@@ -145,7 +147,7 @@ public class GraphBasedUpgradeTraversalService {
       }
     } catch (InterruptedException e) {
       LOG.error("InterruptedException in GraphBasedUpgradeService.waitForAllNodesToBeCompleted", e);
-      throw new RuntimeException(e);
+      throw e;
     } finally {
       lock.unlock();
     }
