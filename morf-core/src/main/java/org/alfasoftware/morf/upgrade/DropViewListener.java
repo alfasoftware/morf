@@ -24,12 +24,25 @@ public interface DropViewListener {
 
 
   /**
+   * Called during {@link ViewChangesDeploymentHelper#deregisterAllViews()}.
+   *
+   * @return Should return statements to be part of all views removal.
+   */
+  public Iterable<String> deregisterAllViews();
+
+
+  /**
    * Empty implementation.
    */
   class NoOp implements DropViewListener {
 
     @Override
     public Iterable<String> deregisterView(View view) {
+      return ImmutableList.of();
+    }
+
+    @Override
+    public Iterable<String> deregisterAllViews() {
       return ImmutableList.of();
     }
   }

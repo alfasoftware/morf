@@ -99,6 +99,7 @@ import com.google.common.collect.Sets;
 public class TestUpgrade {
 
   public UpgradeStatusTableService upgradeStatusTableService;
+  public ViewDeploymentValidator viewDeploymentValidator;
   private DataSource dataSource;
 
   @Mock
@@ -108,8 +109,11 @@ public class TestUpgrade {
   public void setUp() {
     MockitoAnnotations.openMocks(this);
     upgradeStatusTableService = mock(UpgradeStatusTableService.class);
+    viewDeploymentValidator = mock(ViewDeploymentValidator.class);
     dataSource = mock(DataSource.class);
     when(upgradeStatusTableService.getStatus(Optional.of(dataSource))).thenReturn(NONE);
+    when(viewDeploymentValidator.validateExistingView(any(View.class))).thenReturn(true);
+    when(viewDeploymentValidator.validateMissingView(any(View.class))).thenReturn(true);
   }
 
 
@@ -168,8 +172,8 @@ public class TestUpgrade {
     when(schemaResource.tables()).thenReturn(tables);
     when(upgradeStatusTableService.getStatus(Optional.of(mockConnectionResources.getDataSource()))).thenReturn(NONE);
 
-    UpgradePath results = new Upgrade(mockConnectionResources, mockConnectionResources.getDataSource(), upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(mockConnectionResources.sqlDialect()), graphBasedUpgradeScriptGeneratorFactory).findPath(targetSchema,
-      upgradeSteps, Lists.newArrayList("^Drivers$", "^EXCLUDE_.*$"));
+    UpgradePath results = new Upgrade(mockConnectionResources, mockConnectionResources.getDataSource(), upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(mockConnectionResources.sqlDialect()), viewDeploymentValidator, graphBasedUpgradeScriptGeneratorFactory)
+        .findPath(targetSchema, upgradeSteps, Lists.newArrayList("^Drivers$", "^EXCLUDE_.*$"));
 
     assertEquals("Should be two steps.", 2, results.getSteps().size());
     assertEquals("Number of SQL statements", 18, results.getSql().size()); // Includes statements to create, truncate and then drop temp table, also 2 comments
@@ -201,7 +205,7 @@ public class TestUpgrade {
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
     when(connection.sqlDialect()).thenReturn(dialect);
 
-    UpgradePath results = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), graphBasedUpgradeScriptGeneratorFactory).findPath(
+    UpgradePath results = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), viewDeploymentValidator, graphBasedUpgradeScriptGeneratorFactory).findPath(
       schema(upgradeAudit(), deployedViews(), upgradedCar()),
       ImmutableSet.<Class<? extends UpgradeStep>>of(ChangeCar.class),
       new HashSet<String>());
@@ -267,7 +271,7 @@ public class TestUpgrade {
     when(mockConnectionResources.openSchemaResource(eq(mockConnectionResources.getDataSource()))).thenReturn(schemaResource);
     when(schemaResource.tables()).thenReturn(Arrays.asList(upgradeAudit));
 
-    UpgradePath results = new Upgrade(mockConnectionResources, mockConnectionResources.getDataSource(), upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(mockConnectionResources.sqlDialect()), graphBasedUpgradeScriptGeneratorFactory).findPath(targetSchema,
+    UpgradePath results = new Upgrade(mockConnectionResources, mockConnectionResources.getDataSource(), upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(mockConnectionResources.sqlDialect()), viewDeploymentValidator, graphBasedUpgradeScriptGeneratorFactory).findPath(targetSchema,
       upgradeSteps, new HashSet<String>());
     assertTrue("No steps to apply", results.getSteps().isEmpty());
     assertTrue("No SQL statements", results.getSql().isEmpty());
@@ -298,8 +302,9 @@ public class TestUpgrade {
     when(connection.sqlDialect().rebuildTriggers(any(Table.class))).thenReturn(Collections.<String>emptyList());
     when(connection.openSchemaResource(eq(connection.getDataSource()))).thenReturn(new StubSchemaResource(sourceSchema));
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
+
     // When
-    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), graphBasedUpgradeScriptGeneratorFactory).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), viewDeploymentValidator, graphBasedUpgradeScriptGeneratorFactory).findPath(targetSchema, upgradeSteps, new HashSet<String>());
 
     // Then
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
@@ -341,7 +346,7 @@ public class TestUpgrade {
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
 
     // When
-    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), graphBasedUpgradeScriptGeneratorFactory).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), viewDeploymentValidator, graphBasedUpgradeScriptGeneratorFactory).findPath(targetSchema, upgradeSteps, new HashSet<String>());
 
     // Then
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
@@ -410,7 +415,7 @@ public class TestUpgrade {
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
 
     // When
-    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), graphBasedUpgradeScriptGeneratorFactory).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), viewDeploymentValidator, graphBasedUpgradeScriptGeneratorFactory).findPath(targetSchema, upgradeSteps, new HashSet<String>());
 
     // Then
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
@@ -479,7 +484,7 @@ public class TestUpgrade {
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
 
     // When
-    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), graphBasedUpgradeScriptGeneratorFactory).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), viewDeploymentValidator, graphBasedUpgradeScriptGeneratorFactory).findPath(targetSchema, upgradeSteps, new HashSet<String>());
 
     // Then
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
@@ -540,7 +545,7 @@ public class TestUpgrade {
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
 
     // When
-    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), graphBasedUpgradeScriptGeneratorFactory).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), viewDeploymentValidator, graphBasedUpgradeScriptGeneratorFactory).findPath(targetSchema, upgradeSteps, new HashSet<String>());
 
     // Then
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
@@ -579,7 +584,7 @@ public class TestUpgrade {
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
 
     // When
-    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), graphBasedUpgradeScriptGeneratorFactory).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), viewDeploymentValidator, graphBasedUpgradeScriptGeneratorFactory).findPath(targetSchema, upgradeSteps, new HashSet<String>());
 
     // Then
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
@@ -659,7 +664,7 @@ public class TestUpgrade {
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
 
     // When
-    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), graphBasedUpgradeScriptGeneratorFactory).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+    UpgradePath result = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), viewDeploymentValidator, graphBasedUpgradeScriptGeneratorFactory).findPath(targetSchema, upgradeSteps, new HashSet<String>());
 
     // Then
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
@@ -699,7 +704,8 @@ public class TestUpgrade {
                                               create();
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
 
-    new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), graphBasedUpgradeScriptGeneratorFactory).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+
+    new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), viewDeploymentValidator, graphBasedUpgradeScriptGeneratorFactory).findPath(targetSchema, upgradeSteps, new HashSet<String>());
 
     ArgumentCaptor<Table> tableArgumentCaptor = ArgumentCaptor.forClass(Table.class);
     verify(connection.sqlDialect(), times(3)).rebuildTriggers(tableArgumentCaptor.capture());
@@ -769,7 +775,7 @@ public class TestUpgrade {
     UpgradeStatusTableService upgradeStatusTableService = mock(UpgradeStatusTableService.class);
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(currentStatus);
 
-    UpgradePath path = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), graphBasedUpgradeScriptGeneratorFactory).findPath(targetSchema, upgradeSteps, new HashSet<String>());
+    UpgradePath path = new Upgrade(connection, connection.getDataSource(), upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), viewDeploymentValidator, graphBasedUpgradeScriptGeneratorFactory).findPath(targetSchema, upgradeSteps, new HashSet<String>());
     assertFalse("Steps to apply", path.hasStepsToApply());
     assertTrue("In progress", path.upgradeInProgress());
   }

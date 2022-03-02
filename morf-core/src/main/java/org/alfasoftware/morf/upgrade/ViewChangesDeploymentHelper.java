@@ -162,8 +162,16 @@ public class ViewChangesDeploymentHelper {
    * @return SQL statements to be run to de-register all views.
    */
   public List<String> deregisterAllViews() {
-    return ImmutableList.of(sqlDialect.convertStatementToSQL(
+    Builder<String> builder = ImmutableList.builder();
+
+    // update deployed views
+    builder.add(sqlDialect.convertStatementToSQL(
       delete(tableRef(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME))
     ));
+
+    // call the listener
+    builder.addAll(dropViewListener.deregisterAllViews());
+
+    return builder.build();
   }
 }
