@@ -166,6 +166,7 @@ public class GraphBasedUpgradeTraversalService {
      * Creates new {@link GraphBasedUpgradeTraversalService} for a given
      * {@link GraphBasedUpgrade}.
      *
+     * @param graphBasedUpgrade for which the service should be created
      * @return new {@link GraphBasedUpgradeTraversalService} instance
      */
     public GraphBasedUpgradeTraversalService create(GraphBasedUpgrade graphBasedUpgrade) {

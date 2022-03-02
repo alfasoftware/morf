@@ -54,9 +54,7 @@ public class SchemaChangeSequence {
   /**
    * Create an instance of {@link SchemaChangeSequence}.
    *
-   * @param steps               the upgrade steps
-   * @param shouldResolveTables true if the {@link UpgradeTableResolution} object
-   *                              should be filled.
+   * @param steps the upgrade steps
    */
   public SchemaChangeSequence(List<UpgradeStep> steps) {
     upgradeSteps = steps;
