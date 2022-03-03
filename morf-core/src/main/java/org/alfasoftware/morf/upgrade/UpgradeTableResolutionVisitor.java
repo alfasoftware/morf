@@ -20,7 +20,7 @@ import org.alfasoftware.morf.sql.element.Join;
  */
 public class UpgradeTableResolutionVisitor implements SchemaAndDataChangeVisitor {
 
-  ResolvedTables resolvedTables = new ResolvedTables();
+  private final ResolvedTables resolvedTables = new ResolvedTables();
 
   /**
    * @return tables resolved by this visitor

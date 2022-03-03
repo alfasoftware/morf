@@ -13,14 +13,14 @@ import java.util.stream.Collectors;
  * @author Copyright (c) Alfa Financial Software Limited. 2022
  */
 public class GraphBasedUpgradeNode {
-  final String name;
-  final long sequence;
-  final Set<String> reads;
-  final Set<String> modifies;
-  final boolean exclusiveExecution;
-  final Set<GraphBasedUpgradeNode> children = new HashSet<>();
-  final Set<GraphBasedUpgradeNode> parents = new HashSet<>();
-  final List<String> upgradeStatements = new ArrayList<>();
+  private final String name;
+  private final long sequence;
+  private final Set<String> reads;
+  private final Set<String> modifies;
+  private final boolean exclusiveExecution;
+  private final Set<GraphBasedUpgradeNode> children = new HashSet<>();
+  private final Set<GraphBasedUpgradeNode> parents = new HashSet<>();
+  private final List<String> upgradeStatements = new ArrayList<>();
 
   /**
    * Default constructor.
