@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.SchemaUtils;
@@ -28,6 +29,7 @@ import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import com.google.common.base.Suppliers;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.inject.ImplementedBy;
@@ -83,6 +85,12 @@ public class UpgradePath implements SqlStatementWriter {
    */
   private final UpgradeStatus upgradeStatus;
 
+  /**
+   * Supplier of {@link GraphBasedUpgrade}. May supply null if
+   * {@link GraphBasedUpgrade} instance is not available.
+   */
+  private final Supplier<GraphBasedUpgrade> graphBasedUpgradeSupplier;
+
 
   /**
    * Create a new complete deployment.
@@ -93,7 +101,21 @@ public class UpgradePath implements SqlStatementWriter {
    * @param finalisationSql the SQL to execute after all other, if and only if there is other SQL to execute.
    */
   public UpgradePath(Set<UpgradeScriptAddition> upgradeScriptAdditions, SqlDialect sqlDialect, List<String> initialisationSql, List<String> finalisationSql) {
-    this(upgradeScriptAdditions, new ArrayList<UpgradeStep>(), sqlDialect, initialisationSql, finalisationSql);
+    this(upgradeScriptAdditions, new ArrayList<UpgradeStep>(), sqlDialect, initialisationSql, finalisationSql, null);
+  }
+
+
+  /**
+   * Create a new upgrade for the given list of steps. Graph based upgrade will not be available.
+   *
+   * @param upgradeScriptAdditions The SQL to be appended to the upgrade.
+   * @param steps the upgrade steps to run
+   * @param sqlDialect the SQL dialect being used for this upgrade path
+   * @param initialisationSql the SQL to execute before all other, if and only if there is other SQL to execute.
+   * @param finalisationSql the SQL to execute after all other, if and only if there is other SQL to execute.
+   */
+  public UpgradePath(Set<UpgradeScriptAddition> upgradeScriptAdditions, List<UpgradeStep> steps, SqlDialect sqlDialect, List<String> initialisationSql, List<String> finalisationSql) {
+    this(upgradeScriptAdditions, steps, sqlDialect, initialisationSql, finalisationSql, null);
   }
 
 
@@ -105,8 +127,9 @@ public class UpgradePath implements SqlStatementWriter {
    * @param sqlDialect the SQL dialect being used for this upgrade path
    * @param initialisationSql the SQL to execute before all other, if and only if there is other SQL to execute.
    * @param finalisationSql the SQL to execute after all other, if and only if there is other SQL to execute.
+   * @param graphBasedUpgradeBuilder prepares {@link GraphBasedUpgrade} instance, may be null if graph based upgrade is not available
    */
-  public UpgradePath(Set<UpgradeScriptAddition> upgradeScriptAdditions, List<UpgradeStep> steps, SqlDialect sqlDialect, List<String> initialisationSql, List<String> finalisationSql) {
+  public UpgradePath(Set<UpgradeScriptAddition> upgradeScriptAdditions, List<UpgradeStep> steps, SqlDialect sqlDialect, List<String> initialisationSql, List<String> finalisationSql, GraphBasedUpgradeBuilder graphBasedUpgradeBuilder) {
     super();
     this.steps = Collections.unmodifiableList(steps);
     this.sqlDialect = sqlDialect;
@@ -114,6 +137,7 @@ public class UpgradePath implements SqlStatementWriter {
     this.upgradeStatus = null;
     this.initialisationSql = initialisationSql;
     this.finalisationSql = finalisationSql;
+    this.graphBasedUpgradeSupplier = Suppliers.memoize(() -> graphBasedUpgradeBuilder != null ? graphBasedUpgradeBuilder.prepareGraphBasedUpgrade() : null);
   }
 
 
@@ -130,6 +154,7 @@ public class UpgradePath implements SqlStatementWriter {
     this.upgradeStatus = upgradeStatus;
     this.initialisationSql = null;
     this.finalisationSql = null;
+    this.graphBasedUpgradeSupplier = Suppliers.memoize(() -> null);
   }
 
 
@@ -254,6 +279,15 @@ public class UpgradePath implements SqlStatementWriter {
 
 
   /**
+   * @return {@link GraphBasedUpgrade} instance if it's available - may return
+   *         null
+   */
+  public GraphBasedUpgrade getGraphBasedUpgradeUpgrade() {
+    return graphBasedUpgradeSupplier.get();
+  }
+
+
+  /**
    * Factory interface that can be used to create {@link UpgradePath}s.
    *
    * @author Copyright (c) Alfa Financial Software 2015
@@ -278,6 +312,17 @@ public class UpgradePath implements SqlStatementWriter {
      * @return The resulting {@link UpgradePath}.
      */
     public UpgradePath create(List<UpgradeStep> steps, SqlDialect sqlDialect);
+
+
+    /**
+     * Creates an instance of {@link UpgradePath}.
+     *
+     * @param steps The steps represented by the {@link UpgradePath}.
+     * @param sqlDialect The SqlDialect.
+     * @param graphBasedUpgradeBuilder to be used to create a graph based upgrade if needed
+     * @return The resulting {@link UpgradePath}.
+     */
+    public UpgradePath create(List<UpgradeStep> steps, SqlDialect sqlDialect, GraphBasedUpgradeBuilder graphBasedUpgradeBuilder);
   }
 
 
@@ -298,6 +343,7 @@ public class UpgradePath implements SqlStatementWriter {
       this.upgradeStatusTableService = upgradeStatusTableService;
     }
 
+
     @Override
     public UpgradePath create(SqlDialect sqlDialect) {
       return new UpgradePath(upgradeScriptAdditions, sqlDialect,
@@ -305,11 +351,22 @@ public class UpgradePath implements SqlStatementWriter {
                              upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.DATA_TRANSFER_REQUIRED));
     }
 
+
     @Override
     public UpgradePath create(List<UpgradeStep> steps, SqlDialect sqlDialect) {
       return new UpgradePath(upgradeScriptAdditions, steps, sqlDialect,
                              upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS),
-                             upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED));
+                             upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED),
+                             null);
+    }
+
+
+    @Override
+    public UpgradePath create(List<UpgradeStep> steps, SqlDialect sqlDialect, GraphBasedUpgradeBuilder graphBasedUpgradeBuilder) {
+      return new UpgradePath(upgradeScriptAdditions, steps, sqlDialect,
+                             upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS),
+                             upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED),
+                             graphBasedUpgradeBuilder);
     }
   }
 }

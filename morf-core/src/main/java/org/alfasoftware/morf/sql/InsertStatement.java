@@ -26,6 +26,7 @@ import java.util.function.Function;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
@@ -571,5 +572,24 @@ public class InsertStatement implements Statement,
       .dispatch(fields)
       .dispatch(values)
       .dispatch(fieldDefaults.values());
+  }
+
+
+  @Override
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
+
+    if(selectStatement != null) {
+      selectStatement.accept(visitor);
+    }
+    if(fields != null) {
+      fields.stream().forEach(f -> f.accept(visitor));
+    }
+    if(values != null) {
+      values.stream().forEach(v -> v.accept(visitor));
+    }
+    if(fieldDefaults != null) {
+      fieldDefaults.values().stream().forEach(f -> f.accept(visitor));
+    }
   }
 }

@@ -18,14 +18,21 @@ package org.alfasoftware.morf.sql.element;
 import static org.alfasoftware.morf.sql.SqlUtils.caseStatement;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.when;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.util.Collections;
 import java.util.List;
 
 import org.alfasoftware.morf.sql.SqlUtils;
+import org.alfasoftware.morf.upgrade.UpgradeTableResolutionVisitor;
+import org.junit.Before;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 /**
  * Tests {@link CaseStatement}
@@ -34,6 +41,14 @@ import org.junit.runners.Parameterized.Parameters;
  */
 @RunWith(Parameterized.class)
 public class TestCaseStatement extends AbstractAliasedFieldTest<CaseStatement> {
+
+  @Mock
+  private UpgradeTableResolutionVisitor res;
+
+  @Before
+  public void setUp() throws Exception {
+    MockitoAnnotations.openMocks(this);
+  }
 
   @Parameters(name = "{0}")
   public static List<Object[]> data() {
@@ -50,5 +65,22 @@ public class TestCaseStatement extends AbstractAliasedFieldTest<CaseStatement> {
               ).otherwise(literal(4))
       )
     );
+  }
+
+
+  @Test
+  public void tableResolutionDetectsAllTables() {
+    //given
+    WhenCondition when = mock(WhenCondition.class);
+    AliasedField field = mock(AliasedField.class);
+    CaseStatement caseStatement = caseStatement(when).otherwise(field);
+
+    //when
+    caseStatement.accept(res);
+
+    //then
+    verify(res).visit(caseStatement);
+    verify(field).accept(res);
+    verify(when).accept(res);
   }
 }

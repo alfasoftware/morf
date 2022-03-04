@@ -48,8 +48,12 @@ public class SchemaChangeSequence {
 
   private final List<UpgradeStepWithChanges> allChanges     = Lists.newArrayList();
 
+  private final UpgradeTableResolution upgradeTableResolution = new UpgradeTableResolution();
+
 
   /**
+   * Create an instance of {@link SchemaChangeSequence}.
+   *
    * @param steps the upgrade steps
    */
   public SchemaChangeSequence(List<UpgradeStep> steps) {
@@ -57,10 +61,13 @@ public class SchemaChangeSequence {
 
     for (UpgradeStep step : steps) {
       InternalVisitor internalVisitor = new InternalVisitor();
-      Editor editor = new Editor(internalVisitor);
+      UpgradeTableResolutionVisitor resolvedTablesVisitor = new UpgradeTableResolutionVisitor();
+      Editor editor = new Editor(internalVisitor, resolvedTablesVisitor);
       // For historical reasons, we need to pass the editor in twice
       step.execute(editor, editor);
+
       allChanges.add(new UpgradeStepWithChanges(step, internalVisitor.getChanges()));
+      upgradeTableResolution.addDiscoveredTables(step.getClass().getName(), resolvedTablesVisitor.getResolvedTables());
     }
   }
 
@@ -119,6 +126,14 @@ public class SchemaChangeSequence {
 
 
   /**
+   * @return {@link UpgradeTableResolution} for this upgrade
+   */
+  public UpgradeTableResolution getUpgradeTableResolution() {
+    return upgradeTableResolution;
+  }
+
+
+  /**
    * @param visitor The schema change visitor against which to write the changes.
    */
   public void applyTo(SchemaChangeVisitor visitor) {
@@ -150,13 +165,15 @@ public class SchemaChangeSequence {
   private class Editor implements SchemaEditor, DataEditor {
 
     private final SchemaChangeVisitor visitor;
+    private final SchemaAndDataChangeVisitor schemaAndDataChangeVisitor;
 
     /**
      * @param visitor The visitor to pass the changes to.
      */
-    Editor(SchemaChangeVisitor visitor) {
+    Editor(SchemaChangeVisitor visitor, SchemaAndDataChangeVisitor schemaAndDataChangeVisitor) {
       super();
       this.visitor = visitor;
+      this.schemaAndDataChangeVisitor = schemaAndDataChangeVisitor;
     }
 
 
@@ -166,6 +183,7 @@ public class SchemaChangeSequence {
     @Override
     public void executeStatement(Statement statement) {
       visitor.visit(new ExecuteStatement(statement));
+      statement.accept(schemaAndDataChangeVisitor);
     }
 
 
@@ -190,7 +208,9 @@ public class SchemaChangeSequence {
      */
     @Override
     public void addColumn(String tableName, Column definition) {
-      visitor.visit(new AddColumn(tableName, definition));
+      AddColumn addColumn = new AddColumn(tableName, definition);
+      visitor.visit(addColumn);
+      schemaAndDataChangeVisitor.visit(addColumn);
     }
 
 
@@ -202,7 +222,9 @@ public class SchemaChangeSequence {
       // track added tables...
       tableAdditions.add(definition.getName());
 
-      visitor.visit(new AddTable(definition));
+      AddTable addTable = new AddTable(definition);
+      visitor.visit(addTable);
+      schemaAndDataChangeVisitor.visit(addTable);
     }
 
 
@@ -211,7 +233,9 @@ public class SchemaChangeSequence {
      */
     @Override
     public void removeTable(Table table) {
-      visitor.visit(new RemoveTable(table));
+      RemoveTable removeTable = new RemoveTable(table);
+      visitor.visit(removeTable);
+      schemaAndDataChangeVisitor.visit(removeTable);
     }
 
 
@@ -220,7 +244,9 @@ public class SchemaChangeSequence {
      */
     @Override
     public void changeColumn(String tableName, Column fromDefinition, Column toDefinition) {
-      visitor.visit(new ChangeColumn(tableName, fromDefinition, toDefinition));
+      ChangeColumn changeColumn = new ChangeColumn(tableName, fromDefinition, toDefinition);
+      visitor.visit(changeColumn);
+      schemaAndDataChangeVisitor.visit(changeColumn);
     }
 
 
@@ -229,7 +255,9 @@ public class SchemaChangeSequence {
      */
     @Override
     public void removeColumn(String tableName, Column definition) {
-      visitor.visit(new RemoveColumn(tableName, definition));
+      RemoveColumn removeColumn = new RemoveColumn(tableName, definition);
+      visitor.visit(removeColumn);
+      schemaAndDataChangeVisitor.visit(removeColumn);
     }
 
 
@@ -250,7 +278,9 @@ public class SchemaChangeSequence {
      */
     @Override
     public void addIndex(String tableName, Index index) {
-      visitor.visit(new AddIndex(tableName, index));
+      AddIndex addIndex = new AddIndex(tableName, index);
+      visitor.visit(addIndex);
+      schemaAndDataChangeVisitor.visit(addIndex);
     }
 
 
@@ -259,7 +289,9 @@ public class SchemaChangeSequence {
      */
     @Override
     public void removeIndex(String tableName, Index index) {
-      visitor.visit(new RemoveIndex(tableName, index));
+      RemoveIndex removeIndex = new RemoveIndex(tableName, index);
+      visitor.visit(removeIndex);
+      schemaAndDataChangeVisitor.visit(removeIndex);
     }
 
 
@@ -268,7 +300,9 @@ public class SchemaChangeSequence {
      */
     @Override
     public void changeIndex(String tableName, Index fromIndex, Index toIndex) {
-      visitor.visit(new ChangeIndex(tableName, fromIndex, toIndex));
+      ChangeIndex changeIndex = new ChangeIndex(tableName, fromIndex, toIndex);
+      visitor.visit(changeIndex);
+      schemaAndDataChangeVisitor.visit(changeIndex);
     }
 
 
@@ -277,7 +311,9 @@ public class SchemaChangeSequence {
      */
     @Override
     public void renameIndex(String tableName, String fromIndexName, String toIndexName) {
-      visitor.visit(new RenameIndex(tableName, fromIndexName, toIndexName));
+      RenameIndex removeIndex = new RenameIndex(tableName, fromIndexName, toIndexName);
+      visitor.visit(removeIndex);
+      schemaAndDataChangeVisitor.visit(removeIndex);
     }
 
 
@@ -287,7 +323,9 @@ public class SchemaChangeSequence {
     @Override
     public void renameTable(String fromTableName, String toTableName) {
       tableAdditions.add(toTableName);
-      visitor.visit(new RenameTable(fromTableName, toTableName));
+      RenameTable renameTable = new RenameTable(fromTableName, toTableName);
+      visitor.visit(renameTable);
+      schemaAndDataChangeVisitor.visit(renameTable);
     }
 
 
@@ -296,7 +334,9 @@ public class SchemaChangeSequence {
      */
     @Override
     public void changePrimaryKeyColumns(String tableName, List<String> oldPrimaryKeyColumns, List<String> newPrimaryKeyColumns) {
-      visitor.visit(new ChangePrimaryKeyColumns(tableName, oldPrimaryKeyColumns, newPrimaryKeyColumns));
+      ChangePrimaryKeyColumns changePrimaryKeyColumns = new ChangePrimaryKeyColumns(tableName, oldPrimaryKeyColumns, newPrimaryKeyColumns);
+      visitor.visit(changePrimaryKeyColumns);
+      schemaAndDataChangeVisitor.visit(changePrimaryKeyColumns);
     }
 
 
@@ -308,7 +348,9 @@ public class SchemaChangeSequence {
     @Override
     @Deprecated
     public void correctPrimaryKeyColumns(String tableName, List<String> newPrimaryKeyColumns) {
-      visitor.visit(new CorrectPrimaryKeyColumns(tableName, newPrimaryKeyColumns));
+      CorrectPrimaryKeyColumns correctPrimaryKeyColumns = new CorrectPrimaryKeyColumns(tableName, newPrimaryKeyColumns);
+      visitor.visit(correctPrimaryKeyColumns);
+      schemaAndDataChangeVisitor.visit(correctPrimaryKeyColumns);
     }
 
 
@@ -320,7 +362,10 @@ public class SchemaChangeSequence {
       // track added tables...
       tableAdditions.add(table.getName());
 
-      visitor.visit(new AddTableFrom(table, select));
+      AddTable addTable = new AddTableFrom(table, select);
+      visitor.visit(addTable);
+      schemaAndDataChangeVisitor.visit(addTable);
+      select.accept(schemaAndDataChangeVisitor);
     }
 
 
@@ -329,7 +374,9 @@ public class SchemaChangeSequence {
      */
     @Override
     public void analyseTable(String tableName) {
-      visitor.visit(new AnalyseTable(tableName));
+      AnalyseTable analyseTable = new AnalyseTable(tableName);
+      visitor.visit(analyseTable);
+      schemaAndDataChangeVisitor.visit(analyseTable);
     }
   }
 

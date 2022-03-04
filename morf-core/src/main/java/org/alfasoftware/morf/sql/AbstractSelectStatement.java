@@ -28,6 +28,7 @@ import org.alfasoftware.morf.sql.element.Join;
 import org.alfasoftware.morf.sql.element.JoinType;
 import org.alfasoftware.morf.sql.element.Operator;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
@@ -43,7 +44,7 @@ import com.google.common.collect.Lists;
  *
  * @author Copyright (c) Alfa Financial Software 2014
  */
-public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<T>>  implements Statement,Driver{
+public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<T>>  implements Statement, Driver{
 
   /**
    * The fields to select from the table
@@ -825,5 +826,22 @@ public abstract class AbstractSelectStatement<T extends AbstractSelectStatement<
     } else if (!whereCriterion.equals(other.whereCriterion))
       return false;
     return true;
+  }
+
+
+  @Override
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    if(fromSelects != null) {
+      fromSelects.stream().forEach(sel -> sel.accept(visitor));
+    }
+    if(joins != null) {
+      joins.stream().forEach(join -> join.accept(visitor));
+    }
+    if(whereCriterion != null) {
+      whereCriterion.accept(visitor);
+    }
+    if(fields != null) {
+      fields.stream().forEach(f -> f.accept(visitor));
+    }
   }
 }

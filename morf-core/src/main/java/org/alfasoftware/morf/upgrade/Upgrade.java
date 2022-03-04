@@ -20,8 +20,10 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.copy;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.sql.DataSource;
@@ -34,6 +36,7 @@ import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaValidator;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.upgrade.ExistingViewStateLoader.Result;
+import org.alfasoftware.morf.upgrade.GraphBasedUpgradeBuilder.GraphBasedUpgradeBuilderFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
 import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsException;
@@ -59,13 +62,21 @@ public class Upgrade {
   private final UpgradeStatusTableService upgradeStatusTableService;
   private final ViewChangesDeploymentHelper viewChangesDeploymentHelper;
   private final ViewDeploymentValidator viewDeploymentValidator;
+  private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
 
 
   /**
    * Injected Constructor.
    */
   @Inject
-  Upgrade(ConnectionResources connectionResources, DataSource dataSource, UpgradePathFactory factory, UpgradeStatusTableService upgradeStatusTableService, ViewChangesDeploymentHelper viewChangesDeploymentHelper, ViewDeploymentValidator viewDeploymentValidator) {
+  Upgrade(
+      ConnectionResources connectionResources,
+      DataSource dataSource,
+      UpgradePathFactory factory,
+      UpgradeStatusTableService upgradeStatusTableService,
+      ViewChangesDeploymentHelper viewChangesDeploymentHelper,
+      ViewDeploymentValidator viewDeploymentValidator,
+      GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory) {
     super();
     this.connectionResources = connectionResources;
     this.dataSource = dataSource;
@@ -73,12 +84,14 @@ public class Upgrade {
     this.upgradeStatusTableService = upgradeStatusTableService;
     this.viewChangesDeploymentHelper = viewChangesDeploymentHelper;
     this.viewDeploymentValidator = viewDeploymentValidator;
+    this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
   }
 
 
   /**
    * Static convenience method which takes the specified database and upgrades it to the target
    * schema, using the upgrade steps supplied which have not already been applied.
+   * <b>This static context does not support Graph Based Upgrade.</b>
    *
    * @param targetSchema The target database schema.
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
@@ -102,7 +115,8 @@ public class Upgrade {
   /**
    * Static convenience method which creates the required {@link UpgradePath} to take the specified
    * database and upgrade it to the target schema, using the upgrade steps supplied which have not
-   * already been applied.
+   * already been applied. <b>This static context does not support Graph Based Upgrade.</b>
+
    *
    * @param targetSchema The target database schema.
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
@@ -111,12 +125,16 @@ public class Upgrade {
    * @param viewDeploymentValidator External view deployment validator.
    * @return The required upgrade path.
    */
-  public static UpgradePath createPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeStatusTableService upgradeStatusTableService, ViewDeploymentValidator viewDeploymentValidator) {
+  public static UpgradePath createPath(
+      Schema targetSchema,
+      Collection<Class<? extends UpgradeStep>> upgradeSteps,
+      ConnectionResources connectionResources,
+      UpgradeStatusTableService upgradeStatusTableService,
+      ViewDeploymentValidator viewDeploymentValidator) {
     Upgrade upgrade = new Upgrade(
       connectionResources, connectionResources.getDataSource(),
       new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition> emptySet(), upgradeStatusTableService),
-      upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()), viewDeploymentValidator
-    );
+      upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()), viewDeploymentValidator, null);
     return upgrade.findPath(targetSchema, upgradeSteps, Collections.<String> emptySet());
   }
 
@@ -130,6 +148,21 @@ public class Upgrade {
    * @return The upgrade path available
    */
   public UpgradePath findPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, Collection<String> exceptionRegexes) {
+    return findPath(targetSchema, upgradeSteps, exceptionRegexes, new HashSet<>());
+  }
+
+
+  /**
+   * Find an upgrade path.
+   *
+   * @param targetSchema            Target schema to upgrade to.
+   * @param upgradeSteps            All available upgrade steps.
+   * @param exceptionRegexes        Regular expression for table exclusions.
+   * @param exclusiveExecutionSteps names of the upgrade step classes which should
+   *                                  be executed in an exclusive way
+   * @return The upgrade path available
+   */
+  public UpgradePath findPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, Collection<String> exceptionRegexes, Set<String> exclusiveExecutionSteps) {
     final List<String> upgradeStatements = new ArrayList<>();
 
     //Return an upgradePath with the current upgrade status if one is in progress
@@ -207,8 +240,20 @@ public class Upgrade {
       viewChanges = viewChanges.droppingAlso(sourceSchema.views()).deployingAlso(targetSchema.views());
     }
 
+    // Prepare GraphBasedUpgradeBuilder, not supported in the static context (graphBasedUpgradeBuilderFactory = null)
+    GraphBasedUpgradeBuilder graphBasedUpgradeBuilder = null;
+    if (!schemaChangeSequence.getUpgradeSteps().isEmpty() && graphBasedUpgradeBuilderFactory != null) {
+      graphBasedUpgradeBuilder = graphBasedUpgradeBuilderFactory.create(
+        sourceSchema,
+        targetSchema,
+        dialect,
+        exclusiveExecutionSteps,
+        schemaChangeSequence,
+        viewChanges);
+    }
+
     // Build the actual upgrade path
-    return buildUpgradePath(dialect, sourceSchema, targetSchema, upgradeStatements, viewChanges, upgradesToApply);
+    return buildUpgradePath(dialect, sourceSchema, targetSchema, upgradeStatements, viewChanges, upgradesToApply, graphBasedUpgradeBuilder);
   }
 
 
@@ -226,9 +271,10 @@ public class Upgrade {
   private UpgradePath buildUpgradePath(
       SqlDialect dialect, Schema sourceSchema, Schema targetSchema,
       List<String> upgradeStatements, ViewChanges viewChanges,
-      List<UpgradeStep> upgradesToApply) {
+      List<UpgradeStep> upgradesToApply,
+      GraphBasedUpgradeBuilder graphBasedUpgradeBuilder) {
 
-    UpgradePath path = factory.create(upgradesToApply, dialect);
+    UpgradePath path = factory.create(upgradesToApply, dialect, graphBasedUpgradeBuilder);
 
     final boolean deleteFromDeployedViews = sourceSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME) && targetSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME);
     for (View view : viewChanges.getViewsToDrop()) {

@@ -15,16 +15,23 @@
 
 package org.alfasoftware.morf.sql.element;
 
-import static org.alfasoftware.morf.sql.SqlUtils.windowFunction;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
+import static org.alfasoftware.morf.sql.SqlUtils.windowFunction;
 import static org.alfasoftware.morf.sql.element.Function.sum;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.util.Collections;
 import java.util.List;
 
+import org.alfasoftware.morf.upgrade.UpgradeTableResolutionVisitor;
+import org.junit.Before;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 /**
  * Tests the WindowFunction DSL
@@ -33,6 +40,15 @@ import org.junit.runners.Parameterized.Parameters;
  */
 @RunWith(Parameterized.class)
 public class TestWindowFunctions extends AbstractAliasedFieldTest<WindowFunction> {
+
+  @Mock
+  private UpgradeTableResolutionVisitor res;
+
+  @Before
+  public void setUp() throws Exception {
+    MockitoAnnotations.openMocks(this);
+  }
+
 
   @Parameters(name = "{0}")
   public static List<Object[]> data() {
@@ -47,5 +63,25 @@ public class TestWindowFunctions extends AbstractAliasedFieldTest<WindowFunction
         () -> windowFunction(sum(literal(1))).partitionBy(literal(2)).build()
       )
     );
+  }
+
+
+  @Test
+  public void tableResolutionDetectsAllTables() {
+    //given
+    AliasedField field3 = mock(AliasedField.class);
+    Function func = Function.count(field3);
+    AliasedField field = mock(AliasedField.class);
+    AliasedField field2 = mock(AliasedField.class);
+    WindowFunction onTest = WindowFunction.over(func).orderBy(field).partitionBy(field2).build();
+
+    //when
+    onTest.accept(res);
+
+    //then
+    verify(res).visit(onTest);
+    verify(field).accept(res);
+    verify(field2).accept(res);
+    verify(field3).accept(res);
   }
 }

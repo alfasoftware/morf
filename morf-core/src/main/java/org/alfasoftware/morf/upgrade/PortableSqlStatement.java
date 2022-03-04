@@ -188,6 +188,12 @@ public class PortableSqlStatement implements Statement {
   }
 
 
+  @Override
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
+  }
+
+
   /**
    * Enum defining whether a database type is supported by this SQL statement.
    *

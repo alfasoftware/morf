@@ -19,6 +19,7 @@ import static org.alfasoftware.morf.sql.SqlUtils.literal;
 
 import java.util.List;
 
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
@@ -697,5 +698,14 @@ public final class Function extends AliasedField implements Driver {
   @Override
   public String toString() {
     return type.toString() + "(" + StringUtils.join(arguments, ", ") + ")" + super.toString();
+  }
+
+
+  @Override
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
+    if(arguments != null) {
+      arguments.stream().forEach(arg -> arg.accept(visitor));
+    }
   }
 }
