@@ -25,14 +25,15 @@ import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import org.alfasoftware.morf.xml.XmlStreamProvider.XmlInputStreamProvider;
+import org.alfasoftware.morf.directory.BaseDataSetReader;
+import org.alfasoftware.morf.directory.DirectoryStreamProvider;
 
 /**
  * Allows reading of data sets based on an archive (zip) file.
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-class ArchiveDataSetReader extends BaseDataSetReader implements XmlInputStreamProvider {
+class ArchiveDataSetReader extends BaseDataSetReader implements DirectoryStreamProvider.DirectoryInputStreamProvider {
 
   /**
    * The file to read the archive from.

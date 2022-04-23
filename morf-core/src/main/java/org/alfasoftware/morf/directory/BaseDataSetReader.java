@@ -13,13 +13,12 @@
  * limitations under the License.
  */
 
-package org.alfasoftware.morf.xml;
+package org.alfasoftware.morf.directory;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import org.alfasoftware.morf.xml.XmlStreamProvider.XmlInputStreamProvider;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
@@ -28,7 +27,7 @@ import com.google.common.collect.Maps;
  *
  * @author Copyright (c) Alfa Financial Software 2012
  */
-abstract class BaseDataSetReader implements XmlInputStreamProvider {
+public abstract class BaseDataSetReader implements DirectoryStreamProvider.DirectoryInputStreamProvider {
 
   /**
    * Maps table names to upper case
@@ -71,7 +70,7 @@ abstract class BaseDataSetReader implements XmlInputStreamProvider {
 
 
   /**
-   * @see org.alfasoftware.morf.xml.XmlStreamProvider.XmlInputStreamProvider#availableStreamNames()
+   * @see org.alfasoftware.morf.directory.DirectoryStreamProvider.DirectoryInputStreamProvider#availableStreamNames()
    */
   @Override
   public Collection<String> availableStreamNames() {

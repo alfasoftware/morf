@@ -13,30 +13,18 @@
  * limitations under the License.
  */
 
-package org.alfasoftware.morf.xml;
+package org.alfasoftware.morf.directory;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.nio.file.Files;
 import java.util.Arrays;
-
-import org.alfasoftware.morf.directory.BaseDataSetReader;
-import org.alfasoftware.morf.directory.DirectoryStreamProvider;
 
 /**
  * Allows reading of a data set from a directory.
  *
- * Deprecated - use org.alfasoftware.morf.directory.DirectoryDataSet
- *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-@Deprecated
-class DirectoryDataSet extends BaseDataSetReader implements DirectoryStreamProvider.DirectoryInputStreamProvider,
-        DirectoryStreamProvider.DirectoryOutputStreamProvider {
+public class DirectoryDataSet extends BaseDataSetReader implements DirectoryStreamProvider.DirectoryInputStreamProvider, DirectoryStreamProvider.DirectoryOutputStreamProvider {
 
   /**
    * The directory to read from.
@@ -67,7 +55,7 @@ class DirectoryDataSet extends BaseDataSetReader implements DirectoryStreamProvi
 
 
   /**
-   * @see org.alfasoftware.morf.xml.XmlStreamProvider.XmlOutputStreamProvider#clearDestination()
+   * @see DirectoryOutputStreamProvider#clearDestination()
    */
   @Override
   public void clearDestination() {
@@ -94,7 +82,7 @@ class DirectoryDataSet extends BaseDataSetReader implements DirectoryStreamProvi
 
 
   /**
-   * @see org.alfasoftware.morf.xml.XmlStreamProvider.XmlInputStreamProvider#openInputStreamForTable(java.lang.String)
+   * @see DirectoryInputStreamProvider#openInputStreamForTable(String)
    */
   @Override
   public InputStream openInputStreamForTable(String tableName) {
@@ -107,7 +95,7 @@ class DirectoryDataSet extends BaseDataSetReader implements DirectoryStreamProvi
 
 
   /**
-   * @see org.alfasoftware.morf.xml.XmlStreamProvider.XmlOutputStreamProvider#openOutputStreamForTable(java.lang.String)
+   * @see DirectoryOutputStreamProvider#openOutputStreamForTable(String)
    */
   @Override
   public OutputStream openOutputStreamForTable(String tableName) {

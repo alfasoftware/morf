@@ -18,14 +18,14 @@ package org.alfasoftware.morf.xml;
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 
-import org.alfasoftware.morf.xml.XmlStreamProvider.XmlOutputStreamProvider;
+import org.alfasoftware.morf.directory.DirectoryStreamProvider;
 
 /**
  * Testing implementation to catch result XML.
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-public final class DummyXmlOutputStreamProvider implements XmlOutputStreamProvider {
+public final class DummyXmlOutputStreamProvider implements DirectoryStreamProvider.DirectoryOutputStreamProvider {
 
   /**
    * Holds the output stream for test data.
@@ -38,7 +38,7 @@ public final class DummyXmlOutputStreamProvider implements XmlOutputStreamProvid
   private boolean cleared;
 
   /**
-   * @see org.alfasoftware.morf.xml.XmlStreamProvider#close()
+   * @see org.alfasoftware.morf.directory.DirectoryStreamProvider#close()
    */
   @Override
   public void close() {
@@ -47,7 +47,7 @@ public final class DummyXmlOutputStreamProvider implements XmlOutputStreamProvid
 
 
   /**
-   * @see org.alfasoftware.morf.xml.XmlStreamProvider#open()
+   * @see org.alfasoftware.morf.directory.DirectoryStreamProvider#open()
    */
   @Override
   public void open() {
@@ -56,7 +56,7 @@ public final class DummyXmlOutputStreamProvider implements XmlOutputStreamProvid
 
 
   /**
-   * @see org.alfasoftware.morf.xml.XmlStreamProvider.XmlOutputStreamProvider#openOutputStreamForTable(java.lang.String)
+   * @see org.alfasoftware.morf.directory.DirectoryStreamProvider.DirectoryOutputStreamProvider#openOutputStreamForTable(java.lang.String)
    */
   @Override
   public OutputStream openOutputStreamForTable(String tableName) {
@@ -65,7 +65,7 @@ public final class DummyXmlOutputStreamProvider implements XmlOutputStreamProvid
 
 
   /**
-   * @see org.alfasoftware.morf.xml.XmlStreamProvider.XmlOutputStreamProvider#clearDestination()
+   * @see org.alfasoftware.morf.directory.DirectoryStreamProvider.DirectoryOutputStreamProvider#clearDestination()
    */
   @Override
   public void clearDestination() {

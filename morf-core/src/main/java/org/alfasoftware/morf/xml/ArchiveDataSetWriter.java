@@ -23,7 +23,7 @@ import java.io.OutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import org.alfasoftware.morf.xml.XmlStreamProvider.XmlOutputStreamProvider;
+import org.alfasoftware.morf.directory.DirectoryStreamProvider;
 
 import com.google.common.io.ByteStreams;
 
@@ -32,7 +32,7 @@ import com.google.common.io.ByteStreams;
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-class ArchiveDataSetWriter implements XmlOutputStreamProvider {
+class ArchiveDataSetWriter implements DirectoryStreamProvider.DirectoryOutputStreamProvider {
 
   /**
    * A read me entry to be included in all created zip files.
@@ -61,7 +61,7 @@ class ArchiveDataSetWriter implements XmlOutputStreamProvider {
 
 
   /**
-   * @see org.alfasoftware.morf.xml.XmlStreamProvider.XmlOutputStreamProvider#clearDestination()
+   * @see org.alfasoftware.morf.directory.DirectoryStreamProvider.DirectoryOutputStreamProvider#clearDestination()
    */
   @Override
   public void clearDestination() {
@@ -70,7 +70,7 @@ class ArchiveDataSetWriter implements XmlOutputStreamProvider {
 
 
   /**
-   * @see org.alfasoftware.morf.xml.XmlStreamProvider#open()
+   * @see org.alfasoftware.morf.directory.DirectoryStreamProvider#open()
    */
   @Override
   public void open() {
@@ -109,7 +109,7 @@ class ArchiveDataSetWriter implements XmlOutputStreamProvider {
 
 
   /**
-   * @see org.alfasoftware.morf.xml.XmlStreamProvider.XmlOutputStreamProvider#openOutputStreamForTable(java.lang.String)
+   * @see org.alfasoftware.morf.directory.DirectoryStreamProvider.DirectoryOutputStreamProvider#openOutputStreamForTable(java.lang.String)
    */
   @Override
   public OutputStream openOutputStreamForTable(String tableName) {

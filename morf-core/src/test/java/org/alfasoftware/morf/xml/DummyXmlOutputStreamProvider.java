@@ -18,14 +18,14 @@ package org.alfasoftware.morf.xml;
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 
-import org.alfasoftware.morf.xml.XmlStreamProvider.XmlOutputStreamProvider;
+import org.alfasoftware.morf.directory.DirectoryStreamProvider;
 
 /**
  * Testing implementation to catch result XML.
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-public final class DummyXmlOutputStreamProvider implements XmlOutputStreamProvider {
+public final class DummyXmlOutputStreamProvider implements DirectoryStreamProvider.DirectoryOutputStreamProvider {
 
   /**
    * Holds the output stream for test data.

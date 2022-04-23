@@ -21,8 +21,8 @@ import java.util.Set;
 
 import org.alfasoftware.morf.dataset.DataSetConsumer;
 import org.alfasoftware.morf.dataset.Record;
+import org.alfasoftware.morf.directory.DirectoryStreamProvider;
 import org.alfasoftware.morf.metadata.Column;
-import org.alfasoftware.morf.xml.XmlStreamProvider.XmlOutputStreamProvider;
 
 /**
  * Implementation of {@linkplain DataSetConsumer} which discards specific fields when consuming
@@ -63,7 +63,7 @@ public class DataMaskingXmlDataSetConsumer extends XmlDataSetConsumer {
    * for the data in the data set.
    * @param tableColumnsToMask the table columns to mask when consuming a dataset
    */
-  public DataMaskingXmlDataSetConsumer(XmlOutputStreamProvider xmlOutputStreamProvider, Map<String, Set<String>> tableColumnsToMask) {
+  public DataMaskingXmlDataSetConsumer(DirectoryStreamProvider.DirectoryOutputStreamProvider xmlOutputStreamProvider, Map<String, Set<String>> tableColumnsToMask) {
     super(xmlOutputStreamProvider);
     this.tableColumnsToMask = tableColumnsToMask;
   }
