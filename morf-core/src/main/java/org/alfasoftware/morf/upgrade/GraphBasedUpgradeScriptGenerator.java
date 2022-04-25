@@ -105,13 +105,14 @@ class GraphBasedUpgradeScriptGenerator {
     for (View view : viewChanges.getViewsToDeploy()) {
       statements.addAll(sqlDialect.viewDeploymentStatements(view));
       if (targetSchema.tableExists(DEPLOYED_VIEWS_NAME)) {
-        statements.addAll(ImmutableList.of(
+        statements.addAll(
           sqlDialect.convertStatementToSQL(
             insert().into(tableRef(DEPLOYED_VIEWS_NAME))
-                                 .fields(
+                                 .values(
                                    literal(view.getName().toUpperCase()).as("name"),
-                                   literal(sqlDialect.convertStatementToHash(view.getSelectStatement())).as("hash")),
-                                           targetSchema)));
+                                   literal(sqlDialect.convertStatementToHash(view.getSelectStatement())).as("hash"),
+                                   sqlDialect.viewDeploymentStatementsAsLiteral(view).as("sqlDefinition"))
+                                           ));
       }
     }
 

@@ -1,10 +1,10 @@
 package org.alfasoftware.morf.upgrade;
 
 
+import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.when;
 
@@ -102,8 +102,9 @@ public class TestGraphBasedUpgradeScriptGenerator {
     when(viewChanges.getViewsToDeploy()).thenReturn(Lists.newArrayList(view));
     when(view.getName()).thenReturn("x");
     when(sqlDialect.viewDeploymentStatements(view)).thenReturn(Lists.newArrayList("3"));
+    when(sqlDialect.viewDeploymentStatementsAsLiteral(view)).thenReturn(literal("9"));
     when(targetSchema.tableExists(nullable(String.class))).thenReturn(true);
-    when(sqlDialect.convertStatementToSQL(any(InsertStatement.class), eq(targetSchema))).thenReturn("4");
+    when(sqlDialect.convertStatementToSQL(any(InsertStatement.class))).thenReturn(Lists.newArrayList("4"));
     when(targetSchema.tables()).thenReturn(Lists.newArrayList(table));
     when(sqlDialect.convertCommentToSQL(any(String.class))).thenReturn("5");
     when(sqlDialect.rebuildTriggers(table)).thenReturn(Lists.newArrayList("6"));
