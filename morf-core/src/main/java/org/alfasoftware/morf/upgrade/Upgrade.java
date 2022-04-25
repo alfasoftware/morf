@@ -240,9 +240,10 @@ public class Upgrade {
       viewChanges = viewChanges.droppingAlso(sourceSchema.views()).deployingAlso(targetSchema.views());
     }
 
-    // Prepare GraphBasedUpgradeBuilder, not supported in the static context (graphBasedUpgradeBuilderFactory = null)
+    // Prepare GraphBasedUpgradeBuilder, not supported in the static context (graphBasedUpgradeBuilderFactory = null).
+    // The builder should be created even when there are no steps to run, for the view rebuild case.
     GraphBasedUpgradeBuilder graphBasedUpgradeBuilder = null;
-    if (!schemaChangeSequence.getUpgradeSteps().isEmpty() && graphBasedUpgradeBuilderFactory != null) {
+    if (graphBasedUpgradeBuilderFactory != null) {
       graphBasedUpgradeBuilder = graphBasedUpgradeBuilderFactory.create(
         sourceSchema,
         targetSchema,
