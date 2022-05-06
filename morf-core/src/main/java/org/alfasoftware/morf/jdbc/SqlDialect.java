@@ -110,7 +110,7 @@ public abstract class SqlDialect {
   /**
    *
    */
-  protected static final String          ID_INCREMENTOR_TABLE_COLUMN_VALUE = "value";
+  protected static String                ID_INCREMENTOR_TABLE_COLUMN_VALUE = "value";
 
   /**
    *

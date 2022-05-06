@@ -50,6 +50,10 @@ import com.google.common.collect.Iterables;
  */
 class H2Dialect extends SqlDialect {
 
+  static {
+    ID_INCREMENTOR_TABLE_COLUMN_VALUE = "val";
+  }
+
   /**
    * The prefix to add to all temporary tables.
    */

@@ -20,6 +20,8 @@ import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.getAutoIn
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.List;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
@@ -30,6 +32,23 @@ import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
  * @author Copyright (c) Alfa Financial Software 2010
  */
 class H2MetaDataProvider extends DatabaseMetaDataProvider {
+
+
+  private static final List<String> systemTables = Arrays.asList("CONSTANTS",
+          "ENUM_VALUES",
+          "INDEXES",
+          "INDEX_COLUMNS",
+          "INFORMATION_SCHEMA_CATALOG_NAME",
+          "IN_DOUBT",
+          "LOCKS",
+          "QUERY_STATISTICS",
+          "RIGHTS",
+          "ROLES",
+          "SESSIONS",
+          "SESSION_STATE",
+          "SETTINGS",
+          "SYNONYMS",
+          "USERS");
 
     /**
    * @param connection DataSource to provide meta data for.
@@ -56,9 +75,26 @@ class H2MetaDataProvider extends DatabaseMetaDataProvider {
   @Override
   protected boolean isIgnoredTable(RealName tableName) {
     // Ignore temporary tables
-    return tableName.getDbName().startsWith(H2Dialect.TEMPORARY_TABLE_PREFIX);
+    return tableName.getDbName().startsWith(H2Dialect.TEMPORARY_TABLE_PREFIX) ;
   }
 
+  /**
+   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isSystemTable(java.lang.String)
+   */
+  @Override
+  protected boolean isSystemTable(@SuppressWarnings("unused") RealName tableName) {
+    // Ignore System Tables
+    return  systemTables.contains(tableName.getDbName());
+  }
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isSystemView(java.lang.String)
+   */
+  @Override
+  protected boolean isSystemView(@SuppressWarnings("unused") RealName viewName) {
+    // Ignore System Views
+    return  systemTables.contains(viewName.getDbName());
+  }
 
   /**
    * H2 can (and must) provide the auto-increment start value from the column remarks.

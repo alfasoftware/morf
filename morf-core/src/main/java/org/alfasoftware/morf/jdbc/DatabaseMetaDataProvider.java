@@ -277,6 +277,18 @@ public class DatabaseMetaDataProvider implements Schema {
     return false;
   }
 
+  /**
+   * Identify whether or not the view is one owned by the system, or owned by
+   * our application. The default implementation assumes that all views we can
+   * access in the schema are under our control.
+   *
+   * @param viewName The view which we are accessing.
+   * @return <var>true</var> if the view is owned by the system
+   */
+  protected boolean isSystemView(@SuppressWarnings("unused") RealName viewName) {
+    return false;
+  }
+
 
   /**
    * Identify whether or not the specified table should be ignored in the metadata. This is
@@ -286,6 +298,17 @@ public class DatabaseMetaDataProvider implements Schema {
    * @return <var>true</var> if the table should be ignored, false otherwise.
    */
   protected boolean isIgnoredTable(@SuppressWarnings("unused") RealName tableName) {
+    return false;
+  }
+
+  /**
+   * Identify whether or not the specified view should be ignored in the metadata. This is
+   * typically used to filter temporary tables.
+   *
+   * @param viewName The view which we are accessing.
+   * @return <var>true</var> if the table should be ignored, false otherwise.
+   */
+  protected boolean isIgnoredView(@SuppressWarnings("unused") RealName viewName) {
     return false;
   }
 
@@ -753,12 +776,17 @@ public class DatabaseMetaDataProvider implements Schema {
       try (ResultSet viewResultSet = databaseMetaData.getTables(null, schemaName, null, tableTypesForViews())) {
         while (viewResultSet.next()) {
           RealName viewName = readViewName(viewResultSet);
+          boolean systemTable = isSystemTable(viewName);
+          boolean ignoredTable = isIgnoredTable(viewName);
 
           if (log.isDebugEnabled()) {
             log.debug("Found view [" + viewName + "]");
+            log.debug("Found table [" + viewName + "] "
+                    + (systemTable ? " - SYSTEM VIEW" : "") + (ignoredTable ? " - IGNORED" : ""));
           }
-
-          viewNameMappings.put(viewName, viewName);
+          if (!systemTable && !ignoredTable) {
+            viewNameMappings.put(viewName, viewName);
+          }
         }
 
         return viewNameMappings.build();
