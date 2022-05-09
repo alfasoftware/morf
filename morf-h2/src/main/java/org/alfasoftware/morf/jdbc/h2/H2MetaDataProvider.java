@@ -20,8 +20,6 @@ import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.getAutoIn
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.List;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
@@ -33,8 +31,6 @@ import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
  */
 class H2MetaDataProvider extends DatabaseMetaDataProvider {
 
-
-  private final String schemaName;
 
     /**
    * @param connection DataSource to provide meta data for.
@@ -49,7 +45,6 @@ class H2MetaDataProvider extends DatabaseMetaDataProvider {
    */
   public H2MetaDataProvider(Connection connection, String schemaName) {
     super(connection, schemaName);
-    this.schemaName = schemaName;
   }
 
 

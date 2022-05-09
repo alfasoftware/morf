@@ -218,7 +218,7 @@ public class DatabaseMetaDataProvider implements Schema {
             boolean systemTable = isSystemTable(tableName);
             boolean ignoredTable = isIgnoredTable(tableName);
 
-            if (log.isDebugEnabled()) {
+            if (log.isDebugEnabled()) { //NOSONAR
               log.debug("Found table [" + tableName + "] of type [" + tableType + "] in schema [" + tableSchemaName + "]"
                   + (systemTable ? " - SYSTEM TABLE" : "") + (ignoredTable ? " - IGNORED" : ""));
             }
@@ -350,7 +350,7 @@ public class DatabaseMetaDataProvider implements Schema {
               column = setColumnDefaultValue(realTableName, column, columnResultSet);
               column = setAdditionalColumnMetadata(realTableName, column, columnResultSet);
 
-              if (log.isDebugEnabled()) {
+              if (log.isDebugEnabled()) { //NOSONAR
                 log.debug("Found column [" + column + "] on table [" + tableName + "]: " + column);
               }
 
@@ -359,7 +359,7 @@ public class DatabaseMetaDataProvider implements Schema {
             catch (UnexpectedDataTypeException e) {
               ColumnBuilder column = new UnsupportedDataTypeColumn(columnName, typeName, typeCode, width, scale, columnResultSet);
 
-              if (log.isDebugEnabled()) {
+              if (log.isDebugEnabled()) { //NOSONAR
                 log.debug("Found unsupported column [" + column + "] on table [" + tableName + "]: " + column);
               }
 
@@ -609,7 +609,7 @@ public class DatabaseMetaDataProvider implements Schema {
           columns.put(named(columnName), sequenceNumber);
         }
 
-        if (log.isDebugEnabled()) {
+        if (log.isDebugEnabled()) { //NOSONAR
           log.debug("Found primary key [" + columns.build() + "] on table [" + tableName + "]");
         }
 
@@ -697,7 +697,7 @@ public class DatabaseMetaDataProvider implements Schema {
             RealName columnName = createRealName(dbColumnName, realColumnName);
             boolean unique = !indexResultSet.getBoolean(INDEX_NON_UNIQUE);
 
-            if (log.isDebugEnabled()) {
+            if (log.isDebugEnabled()) { //NOSONAR
               log.debug("Found index column [" + columnName + "] for index [" + indexName  + ", unique: " + unique + "] on table [" + tableName + "]");
             }
 
@@ -779,7 +779,7 @@ public class DatabaseMetaDataProvider implements Schema {
           boolean systemTable = isSystemTable(viewName);
           boolean ignoredTable = isIgnoredTable(viewName);
 
-          if (log.isDebugEnabled()) {
+          if (log.isDebugEnabled()) { //NOSONAR
             log.debug("Found view [" + viewName + "]");
             log.debug("Found table [" + viewName + "] "
                     + (systemTable ? " - SYSTEM VIEW" : "") + (ignoredTable ? " - IGNORED" : ""));
