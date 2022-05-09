@@ -34,27 +34,22 @@ import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
 class H2MetaDataProvider extends DatabaseMetaDataProvider {
 
 
-  private static final List<String> systemTables = Arrays.asList("CONSTANTS",
-          "ENUM_VALUES",
-          "INDEXES",
-          "INDEX_COLUMNS",
-          "INFORMATION_SCHEMA_CATALOG_NAME",
-          "IN_DOUBT",
-          "LOCKS",
-          "QUERY_STATISTICS",
-          "RIGHTS",
-          "ROLES",
-          "SESSIONS",
-          "SESSION_STATE",
-          "SETTINGS",
-          "SYNONYMS",
-          "USERS");
+  private final String schemaName;
 
     /**
    * @param connection DataSource to provide meta data for.
    */
   public H2MetaDataProvider(Connection connection) {
-    super(connection, null);
+    this(connection, "PUBLIC");
+  }
+
+  /**
+   * @param connection DataSource to provide meta data for.
+   * @param schemaName The schema to connect to.
+   */
+  public H2MetaDataProvider(Connection connection, String schemaName) {
+    super(connection, schemaName);
+    this.schemaName = schemaName;
   }
 
 
@@ -78,23 +73,6 @@ class H2MetaDataProvider extends DatabaseMetaDataProvider {
     return tableName.getDbName().startsWith(H2Dialect.TEMPORARY_TABLE_PREFIX) ;
   }
 
-  /**
-   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isSystemTable(java.lang.String)
-   */
-  @Override
-  protected boolean isSystemTable(@SuppressWarnings("unused") RealName tableName) {
-    // Ignore System Tables
-    return  systemTables.contains(tableName.getDbName());
-  }
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isSystemView(java.lang.String)
-   */
-  @Override
-  protected boolean isSystemView(@SuppressWarnings("unused") RealName viewName) {
-    // Ignore System Views
-    return  systemTables.contains(viewName.getDbName());
-  }
 
   /**
    * H2 can (and must) provide the auto-increment start value from the column remarks.

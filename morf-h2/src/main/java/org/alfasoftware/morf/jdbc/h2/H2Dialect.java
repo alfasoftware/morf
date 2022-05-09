@@ -32,8 +32,9 @@ import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.MergeStatement;
-import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
+import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.apache.commons.lang3.StringUtils;
@@ -363,6 +364,22 @@ class H2Dialect extends SqlDialect {
     return TEMPORARY_TABLE_PREFIX + undecoratedName;
   }
 
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(Boolean)  
+   */
+  @Override
+  protected String getSqlFrom(Boolean literalValue) {
+    return literalValue ? "true" : "false";
+  }
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(BlobFieldLiteral)
+   */
+  @Override
+  protected String getSqlFrom(BlobFieldLiteral field) {
+    return String.format("X'%s'", field.getValue());
+  }
 
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForYYYYMMDDToDate(org.alfasoftware.morf.sql.element.Function)
