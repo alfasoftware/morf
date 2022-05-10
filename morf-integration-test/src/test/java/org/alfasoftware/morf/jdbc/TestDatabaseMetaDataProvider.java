@@ -172,7 +172,6 @@ public class TestDatabaseMetaDataProvider {
   @Test
   public void testViewsAndTables() throws SQLException {
     try(SchemaResource schemaResource = database.openSchemaResource()) {
-
       assertFalse(schemaResource.isEmptyDatabase());
 
       assertThat(schemaResource.viewNames(), containsInAnyOrder(ImmutableList.of(
