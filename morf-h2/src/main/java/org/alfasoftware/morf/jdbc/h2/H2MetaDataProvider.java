@@ -65,7 +65,7 @@ class H2MetaDataProvider extends DatabaseMetaDataProvider {
   @Override
   protected boolean isIgnoredTable(RealName tableName) {
     // Ignore temporary tables
-    return tableName.getDbName().startsWith(H2Dialect.TEMPORARY_TABLE_PREFIX) ;
+    return tableName.getDbName().startsWith(H2Dialect.TEMPORARY_TABLE_PREFIX);
   }
 
 

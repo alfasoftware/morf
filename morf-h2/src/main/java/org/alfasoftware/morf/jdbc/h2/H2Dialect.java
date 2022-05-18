@@ -51,17 +51,13 @@ import com.google.common.collect.Iterables;
  */
 class H2Dialect extends SqlDialect {
 
-  static {
-    ID_INCREMENTOR_TABLE_COLUMN_VALUE = "val";
-  }
-
   /**
    * The prefix to add to all temporary tables.
    */
   public static final String TEMPORARY_TABLE_PREFIX = "TEMP_";
 
   /**
-   * @param h2
+   * @param schemaName Schema Name
    *
    */
   public H2Dialect(String schemaName) {
