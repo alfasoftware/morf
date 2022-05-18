@@ -195,8 +195,8 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
   protected List<String> expectedAutoGenerateIdStatement() {
     return ImmutableList.of(
       "DELETE FROM idvalues where name = 'Test'",
-      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM SCM.Test))",
-      "INSERT INTO SCM.Test (version, stringField, id) SELECT version, stringField, (SELECT COALESCE(value, 0) FROM SCM.idvalues WHERE (name = 'Test')) + Other.id FROM SCM.Other"
+      "INSERT INTO idvalues (name, nextvalue) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM SCM.Test))",
+      "INSERT INTO SCM.Test (version, stringField, id) SELECT version, stringField, (SELECT COALESCE(nextvalue, 0) FROM SCM.idvalues WHERE (name = 'Test')) + Other.id FROM SCM.Other"
     );
   }
 
@@ -208,8 +208,8 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
   protected List<String> expectedInsertWithIdAndVersion() {
     return Arrays.asList(
       "DELETE FROM idvalues where name = 'Test'",
-      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM SCM.Test))",
-      "INSERT INTO SCM.Test (stringField, id, version) SELECT stringField, (SELECT COALESCE(value, 0) FROM SCM.idvalues WHERE (name = 'Test')) + Other.id, 0 AS version FROM SCM.Other"
+      "INSERT INTO idvalues (name, nextvalue) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM SCM.Test))",
+      "INSERT INTO SCM.Test (stringField, id, version) SELECT stringField, (SELECT COALESCE(nextvalue, 0) FROM SCM.idvalues WHERE (name = 'Test')) + Other.id, 0 AS version FROM SCM.Other"
     );
   }
 
@@ -437,7 +437,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedSqlInsertIntoValuesWithComplexField() {
-    return Arrays.asList("INSERT INTO " + tableName("TableOne") + " (id, value) VALUES (3, 1 + 2)");
+    return Arrays.asList("INSERT INTO " + tableName("TableOne") + " (id, nextvalue) VALUES (3, 1 + 2)");
   }
 
 
@@ -457,8 +457,8 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
   protected List<String> expectedSpecifiedValueInsert() {
     return Arrays.asList(
       "DELETE FROM idvalues where name = 'Test'",
-      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM SCM.Test))",
-      "INSERT INTO SCM.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, 1, 'X', (SELECT COALESCE(value, 1) FROM SCM.idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
+      "INSERT INTO idvalues (name, nextvalue) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM SCM.Test))",
+      "INSERT INTO SCM.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, 1, 'X', (SELECT COALESCE(nextvalue, 1) FROM SCM.idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
     );
   }
 
@@ -470,8 +470,8 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
   protected List<String> expectedSpecifiedValueInsertWithTableInDifferentSchema() {
     return Arrays.asList(
       "DELETE FROM idvalues where name = 'Test'",
-      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM MYSCHEMA.Test))",
-      "INSERT INTO MYSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, 1, 'X', (SELECT COALESCE(value, 1) FROM SCM.idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
+      "INSERT INTO idvalues (name, nextvalue) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM MYSCHEMA.Test))",
+      "INSERT INTO MYSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, 1, 'X', (SELECT COALESCE(nextvalue, 1) FROM SCM.idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
     );
   }
 
@@ -490,7 +490,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedEmptyStringInsertStatement() {
-    return "INSERT INTO SCM.Test (stringField, id, version, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (NULL, (SELECT COALESCE(value, 1) FROM SCM.idvalues WHERE (name = 'Test')), 0, 0, 0, null, 0, NULL, null, 12345, null)";
+    return "INSERT INTO SCM.Test (stringField, id, version, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (NULL, (SELECT COALESCE(nextvalue, 1) FROM SCM.idvalues WHERE (name = 'Test')), 0, 0, 0, null, 0, NULL, null, 12345, null)";
   }
 
 
@@ -1074,7 +1074,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAutonumberUpdate() {
-    return Arrays.asList("INSERT INTO SCM.Autonumber (id, value) VALUES('TestTable', (SELECT COALESCE(MAX(id) + 1, 1)  AS CurrentValue FROM SCM.TestTable)) ON DUPLICATE KEY UPDATE nextValue = GREATEST(nextValue, VALUES(nextValue))");
+    return Arrays.asList("INSERT INTO SCM.Autonumber (id, nextvalue) VALUES('TestTable', (SELECT COALESCE(MAX(id) + 1, 1)  AS CurrentValue FROM SCM.TestTable)) ON DUPLICATE KEY UPDATE nextValue = GREATEST(nextValue, VALUES(nextValue))");
   }
 
 
@@ -1168,7 +1168,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedAutonumberUpdateForNonIdColumn() {
-    return Arrays.asList("INSERT INTO SCM.Autonumber (id, value) VALUES('TestTable', (SELECT COALESCE(MAX(generatedColumn) + 1, 1)  AS CurrentValue FROM SCM.TestTable)) ON DUPLICATE KEY UPDATE nextValue = GREATEST(nextValue, VALUES(nextValue))");
+    return Arrays.asList("INSERT INTO SCM.Autonumber (id, nextvalue) VALUES('TestTable', (SELECT COALESCE(MAX(generatedColumn) + 1, 1)  AS CurrentValue FROM SCM.TestTable)) ON DUPLICATE KEY UPDATE nextValue = GREATEST(nextValue, VALUES(nextValue))");
   }
 
 

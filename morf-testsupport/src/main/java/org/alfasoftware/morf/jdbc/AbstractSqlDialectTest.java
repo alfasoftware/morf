@@ -4511,8 +4511,8 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testInsertIntoValuesWithComplexField() {
-    Schema schema = schema(table("TableOne").columns(column("id", DataType.INTEGER), column("value", DataType.INTEGER)));
-    InsertStatement testStatement = insert().into(tableRef("TableOne")).values(literal(3).as("id"), literal(1).plus(literal(2)).as("value"));
+    Schema schema = schema(table("TableOne").columns(column("id", DataType.INTEGER), column("nextvalue", DataType.INTEGER)));
+    InsertStatement testStatement = insert().into(tableRef("TableOne")).values(literal(3).as("id"), literal(1).plus(literal(2)).as("nextvalue"));
 
     assertEquals(expectedSqlInsertIntoValuesWithComplexField(), testDialect.convertStatementToSQL(testStatement, schema, null));
   }
@@ -4522,7 +4522,7 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL for Insert Into Values With Complex Field
    */
   protected List<String> expectedSqlInsertIntoValuesWithComplexField() {
-    return Arrays.asList("INSERT INTO " + tableName("TableOne") + " (id, value) VALUES (3, 1 + 2)");
+    return Arrays.asList("INSERT INTO " + tableName("TableOne") + " (id, nextvalue) VALUES (3, 1 + 2)");
   }
 
 
@@ -4531,10 +4531,10 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testInsertDateLiteral() {
-    Schema schema = schema(table("TableOne").columns(column("id", DataType.INTEGER), column("value", DataType.DATE)));
-    InsertStatement testStatement = insert().into(tableRef("TableOne")).values(literal(3).as("id"), literal(new LocalDate(2010,1,2)).as("value"));
+    Schema schema = schema(table("TableOne").columns(column("id", DataType.INTEGER), column("nextvalue", DataType.DATE)));
+    InsertStatement testStatement = insert().into(tableRef("TableOne")).values(literal(3).as("id"), literal(new LocalDate(2010,1,2)).as("nextvalue"));
 
-    assertEquals(Arrays.asList("INSERT INTO " + tableName("TableOne") + " (id, value) VALUES (3, " + expectedDateLiteral() + ")"), testDialect.convertStatementToSQL(testStatement, schema, null));
+    assertEquals(Arrays.asList("INSERT INTO " + tableName("TableOne") + " (id, nextvalue) VALUES (3, " + expectedDateLiteral() + ")"), testDialect.convertStatementToSQL(testStatement, schema, null));
   }
 
 
