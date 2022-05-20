@@ -36,6 +36,7 @@ import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import com.google.common.collect.FluentIterable;
 
 /**
  * Loads a list of {@link Record}s into a database table, using native load if it is available.
@@ -172,12 +173,14 @@ public class TableLoader {
    * @param bulk Indicates if we should call {@link SqlDialect#preInsertStatements(Table)} and {@link SqlDialect#postInsertStatements(Table)}
    */
   private void insertOrMergeRecords(Iterable<Record> records) {
+    Iterable<Record> fixedRecords = FluentIterable.from(records)
+        .transform(this::transformRecord);
 
     if (insertingWithPresetAutonums) {
       sqlExecutor.execute(sqlDialect.preInsertWithPresetAutonumStatements(table, insertingUnderAutonumLimit), connection);
     }
 
-    sqlInsertOrMergeLoad(table, records, connection);
+    sqlInsertOrMergeLoad(table, fixedRecords, connection);
 
     if (insertingWithPresetAutonums) {
       sqlDialect.postInsertWithPresetAutonumStatements(table, sqlExecutor, connection,insertingUnderAutonumLimit);
@@ -213,5 +216,20 @@ public class TableLoader {
     } catch (Exception exceptionOnBatch) {
       throw new RuntimeException(String.format("Failure in batch insert for table [%s]", table.getName()), exceptionOnBatch);
     }
+  }
+
+
+  private Record transformRecord(Record record) {
+    return new Record() {
+      @Override
+      @SuppressWarnings("deprecation")
+      public String getValue(String name) {
+        return replaceSingleNulCharacter(record.getValue(name));
+      }
+
+      private String replaceSingleNulCharacter(String value) {
+        return value.equals("\u0000") ? "\u2400" : value;
+      }
+    };
   }
 }
