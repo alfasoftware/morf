@@ -228,7 +228,7 @@ public class TableLoader {
       }
 
       private String replaceSingleNulCharacter(String value) {
-        return value.equals("\u0000") ? "\u2400" : value;
+        return "\u0000".equals(value) ? "\u2400" : value;
       }
     };
   }
