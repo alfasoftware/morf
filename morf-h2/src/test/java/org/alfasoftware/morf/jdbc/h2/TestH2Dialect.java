@@ -51,7 +51,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
         .asList(
           "CREATE TABLE TESTSCHEMA.Test (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), intField INTEGER, floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField BIT, charField VARCHAR(1), blobField LONGVARBINARY, bigIntegerField BIGINT DEFAULT 12345, clobField NCLOB, CONSTRAINT Test_PK PRIMARY KEY (id))",
           "CREATE UNIQUE INDEX Test_NK ON TESTSCHEMA.Test (stringField)",
-          "CREATE INDEX Test_1 ON TESTSCHEMA.Test (intField,floatField)",
+          "CREATE UNIQUE INDEX Test_1 ON TESTSCHEMA.Test (intField,floatField)",
           "CREATE TABLE TESTSCHEMA.Alternate (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), CONSTRAINT Alternate_PK PRIMARY KEY (id))",
           "CREATE INDEX Alternate_1 ON TESTSCHEMA.Alternate (stringField)",
           "CREATE TABLE TESTSCHEMA.NonNull (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3) NOT NULL, intField DECIMAL(8,0) NOT NULL, booleanField BIT NOT NULL, dateField DATE NOT NULL, blobField LONGVARBINARY NOT NULL, CONSTRAINT NonNull_PK PRIMARY KEY (id))",
@@ -637,6 +637,15 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAddIndexStatementsUnique() {
     return Arrays.asList("CREATE UNIQUE INDEX indexName ON TESTSCHEMA.Test (id)");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddIndexStatementsUniqueNullable()
+   */
+  @Override
+  protected List<String> expectedAddIndexStatementsUniqueNullable() {
+    return Arrays.asList("CREATE UNIQUE INDEX indexName ON TESTSCHEMA.Test (stringField,intField,floatField,dateField)");
   }
 
 

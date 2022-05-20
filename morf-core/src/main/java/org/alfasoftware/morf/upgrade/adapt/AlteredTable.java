@@ -54,8 +54,7 @@ public class AlteredTable implements Table {
    * @param newIndexDefinitions new definitions for indexes (overrides or
    *          supplements those in the base {@link Table})
    */
-  public AlteredTable(Table baseTable, Collection<String> columnOrder, Collection<Column> newColumnDefinitions,
-      Collection<String> indexes, Collection<Index> newIndexDefinitions) {
+  public AlteredTable(Table baseTable, Collection<String> columnOrder, Collection<Column> newColumnDefinitions, Iterable<String> indexes, Iterable<Index> newIndexDefinitions) {
     this.baseTable = baseTable;
 
     // -- Apply changes to columns...
@@ -159,6 +158,6 @@ public class AlteredTable implements Table {
    */
   @Override
   public boolean isTemporary() {
-    return false;
+    return baseTable.isTemporary();
   }
 }

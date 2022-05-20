@@ -17,7 +17,7 @@ package org.alfasoftware.morf.jdbc.sqlserver;
 
 import static org.hamcrest.Matchers.contains;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
@@ -65,7 +65,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
         .asList(
           "CREATE TABLE TESTSCHEMA.Test ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT Test_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS, [intField] INTEGER, [floatField] NUMERIC(13,2) NOT NULL, [dateField] DATE, [booleanField] BIT, [charField] NVARCHAR(1) COLLATE SQL_Latin1_General_CP1_CS_AS, [blobField] IMAGE, [bigIntegerField] BIGINT CONSTRAINT Test_bigIntegerField_DF DEFAULT 12345, [clobField] NVARCHAR(MAX) COLLATE SQL_Latin1_General_CP1_CS_AS, CONSTRAINT [Test_PK] PRIMARY KEY ([id]))",
           "CREATE UNIQUE NONCLUSTERED INDEX Test_NK ON TESTSCHEMA.Test ([stringField])",
-          "CREATE INDEX Test_1 ON TESTSCHEMA.Test ([intField], [floatField])",
+          "CREATE UNIQUE NONCLUSTERED INDEX Test_1 ON TESTSCHEMA.Test ([intField], [floatField])",
           "CREATE TABLE TESTSCHEMA.Alternate ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT Alternate_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS, CONSTRAINT [Alternate_PK] PRIMARY KEY ([id]))",
           "CREATE INDEX Alternate_1 ON TESTSCHEMA.Alternate ([stringField])",
           "CREATE TABLE TESTSCHEMA.NonNull ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT NonNull_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [intField] NUMERIC(8,0) NOT NULL, [booleanField] BIT NOT NULL, [dateField] DATE NOT NULL, [blobField] IMAGE NOT NULL, CONSTRAINT [NonNull_PK] PRIMARY KEY ([id]))",
@@ -534,7 +534,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   protected List<String> expectedAlterTableAlterDecimalColumnStatement() {
     return Arrays.asList("DROP INDEX Test_1 ON TESTSCHEMA.Test",
       "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN floatField NUMERIC(14,3)",
-        "CREATE INDEX Test_1 ON TESTSCHEMA.Test ([intField], [floatField])");
+        "CREATE UNIQUE NONCLUSTERED INDEX Test_1 ON TESTSCHEMA.Test ([intField], [floatField])");
   }
 
 
@@ -636,7 +636,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
     return Arrays.asList(
       "DROP INDEX Test_1 ON TESTSCHEMA.Test",
       "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN intField INTEGER NOT NULL",
-      "CREATE INDEX Test_1 ON TESTSCHEMA.Test ([intField], [floatField])"
+      "CREATE UNIQUE NONCLUSTERED INDEX Test_1 ON TESTSCHEMA.Test ([intField], [floatField])"
     );
   }
 
@@ -686,7 +686,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   protected List<String> expectedAlterTableAlterColumnFromNotNullableToNotNullableStatement() {
     return Arrays.asList("DROP INDEX Test_1 ON TESTSCHEMA.Test",
       "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN floatField NUMERIC(20,3) NOT NULL",
-        "CREATE INDEX Test_1 ON TESTSCHEMA.Test ([intField], [floatField])");
+        "CREATE UNIQUE NONCLUSTERED INDEX Test_1 ON TESTSCHEMA.Test ([intField], [floatField])");
   }
 
 
@@ -697,7 +697,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   protected List<String> expectedAlterTableAlterColumnFromNotNullableToNullableStatement() {
     return Arrays.asList("DROP INDEX Test_1 ON TESTSCHEMA.Test",
       "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN floatField NUMERIC(20,3)",
-        "CREATE INDEX Test_1 ON TESTSCHEMA.Test ([intField], [floatField])");
+        "CREATE UNIQUE NONCLUSTERED INDEX Test_1 ON TESTSCHEMA.Test ([intField], [floatField])");
   }
 
 
@@ -725,6 +725,15 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAddIndexStatementsUnique() {
     return Arrays.asList("CREATE UNIQUE NONCLUSTERED INDEX indexName ON TESTSCHEMA.Test ([id])");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddIndexStatementsUniqueNullable()
+   */
+  @Override
+  protected List<String> expectedAddIndexStatementsUniqueNullable() {
+    return Arrays.asList("CREATE UNIQUE NONCLUSTERED INDEX indexName ON TESTSCHEMA.Test ([stringField], [intField], [floatField], [dateField])");
   }
 
 

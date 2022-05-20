@@ -19,8 +19,8 @@ import static org.alfasoftware.morf.sql.SqlUtils.parameter;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -99,7 +99,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
         .asList(
           "CREATE TABLE `Test` (`id` BIGINT NOT NULL, `version` INTEGER DEFAULT 0, `stringField` VARCHAR(3), `intField` INTEGER, `floatField` DECIMAL(13,2) NOT NULL, `dateField` DATE, `booleanField` TINYINT(1), `charField` VARCHAR(1), `blobField` LONGBLOB, `bigIntegerField` BIGINT DEFAULT 12345, `clobField` LONGTEXT, CONSTRAINT `Test_PK` PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin",
           "ALTER TABLE `Test` ADD UNIQUE INDEX `Test_NK` (`stringField`)",
-          "ALTER TABLE `Test` ADD INDEX `Test_1` (`intField`, `floatField`)",
+          "ALTER TABLE `Test` ADD UNIQUE INDEX `Test_1` (`intField`, `floatField`)",
           "CREATE TABLE `Alternate` (`id` BIGINT NOT NULL, `version` INTEGER DEFAULT 0, `stringField` VARCHAR(3), CONSTRAINT `Alternate_PK` PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin",
           "ALTER TABLE `Alternate` ADD INDEX `Alternate_1` (`stringField`)",
           "CREATE TABLE `NonNull` (`id` BIGINT NOT NULL, `version` INTEGER DEFAULT 0, `stringField` VARCHAR(3) NOT NULL, `intField` DECIMAL(8,0) NOT NULL, `booleanField` TINYINT(1) NOT NULL, `dateField` DATE NOT NULL, `blobField` LONGBLOB NOT NULL, CONSTRAINT `NonNull_PK` PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin",
@@ -708,6 +708,15 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddIndexStatementsUniqueNullable()
+   */
+  @Override
+  protected List<String> expectedAddIndexStatementsUniqueNullable() {
+    return Arrays.asList("ALTER TABLE `Test` ADD UNIQUE INDEX `indexName` (`stringField`, `intField`, `floatField`, `dateField`)");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterTableAlterColumnFromNotNullableToNotNullableStatement()
    */
   @Override
@@ -1076,7 +1085,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   protected List<String> expectedRenameIndexStatements() {
     return ImmutableList.of(
       "ALTER TABLE `Test` DROP INDEX `Test_1`",
-      "ALTER TABLE `Test` ADD INDEX `Test_2` (`intField`, `floatField`)"
+      "ALTER TABLE `Test` ADD UNIQUE INDEX `Test_2` (`intField`, `floatField`)"
     );
   }
 
@@ -1227,6 +1236,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedBlobLiteral(String)  ()
    */
+  @Override
   protected String expectedBlobLiteral(String value) {
     return String.format("x%s", super.expectedBlobLiteral(value));
   }

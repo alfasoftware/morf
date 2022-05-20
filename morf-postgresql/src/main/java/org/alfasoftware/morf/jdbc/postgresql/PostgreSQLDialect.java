@@ -629,7 +629,7 @@ class PostgreSQLDialect extends SqlDialect {
              .append(schemaNamePrefix(table))
              .append(table.getName())
              .append(" (")
-             .append(Joiner.on(",").join(index.columnNames()))
+             .append(Joiner.on(", ").join(index.columnNames()))
              .append(")");
 
     return ImmutableList.<String>builder()

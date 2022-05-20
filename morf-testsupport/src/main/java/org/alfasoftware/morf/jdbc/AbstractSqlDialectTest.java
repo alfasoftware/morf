@@ -96,8 +96,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -149,6 +149,7 @@ import org.alfasoftware.morf.upgrade.AddColumn;
 import org.alfasoftware.morf.upgrade.ChangeColumn;
 import org.alfasoftware.morf.upgrade.ChangeIndex;
 import org.alfasoftware.morf.upgrade.RemoveColumn;
+import org.alfasoftware.morf.upgrade.adapt.AlteredTable;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.LocalDate;
 import org.junit.Assert;
@@ -313,7 +314,7 @@ public abstract class AbstractSqlDialectTest {
           column(CLOB_FIELD, DataType.CLOB).nullable()
             ).indexes(
               index("Test_NK").unique().columns(STRING_FIELD),
-              index("Test_1").columns(INT_FIELD, FLOAT_FIELD)
+              index("Test_1").columns(INT_FIELD, FLOAT_FIELD).unique()
                 );
 
     // Temporary version of the main test table
@@ -3774,11 +3775,11 @@ public abstract class AbstractSqlDialectTest {
     // alter an index
     // note the different case
     ChangeIndex changeIndex = new ChangeIndex(TEST_TABLE,
-      index("Test_1").columns(INT_FIELD, FLOAT_FIELD),
+      index("Test_1").columns(INT_FIELD, FLOAT_FIELD).unique(),
       index("Test_1").columns("INTFIELD"));
     schema = changeIndex.apply(metadata);
     Table tableAfterChangeIndex = schema.getTable(TEST_TABLE);
-    Collection<String> dropIndexStatements = testDialect.indexDropStatements(tableAfterChangeIndex, index("Test_1").columns(INT_FIELD, FLOAT_FIELD));
+    Collection<String> dropIndexStatements = testDialect.indexDropStatements(tableAfterChangeIndex, index("Test_1").columns(INT_FIELD, FLOAT_FIELD).unique());
     Collection<String> addIndexStatements = testDialect.addIndexStatements(tableAfterChangeIndex, index("Test_1").columns(INT_FIELD));
 
     // then alter a column in that index
@@ -3893,6 +3894,20 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * Test adding a unique index.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testAddIndexStatementsUniqueNullable() {
+    Table table = metadata.getTable(TEST_TABLE);
+    Index index = index("indexName").unique().columns(STRING_FIELD, INT_FIELD, FLOAT_FIELD, DATE_FIELD);
+    compareStatements(
+      expectedAddIndexStatementsUniqueNullable(),
+      testDialect.addIndexStatements(table, index));
+  }
+
+
+  /**
    * Test dropping an index.
    */
   @SuppressWarnings("unchecked")
@@ -3929,7 +3944,7 @@ public abstract class AbstractSqlDialectTest {
       column(CLOB_FIELD, DataType.CLOB).nullable()
         ).indexes(
           index("Test_NK").unique().columns(STRING_FIELD),
-          index("Test_1").columns(INT_FIELD, FLOAT_FIELD)
+          index("Test_1").columns(INT_FIELD, FLOAT_FIELD).unique()
             );
 
     compareStatements(expectedRenameTableStatements(), testDialect.renameTableStatements(fromTable, renamed));
@@ -3980,7 +3995,12 @@ public abstract class AbstractSqlDialectTest {
   @SuppressWarnings("unchecked")
   @Test
   public void testRenameIndexStatements() {
-    compareStatements(expectedRenameIndexStatements(), testDialect.renameIndexStatements(testTable, "Test_1", "Test_2"));
+    AlteredTable alteredTable = new AlteredTable(testTable, null, null,
+      FluentIterable.from(testTable.indexes()).transform(i -> i.getName()).filter(i -> !i.equals("Test_1")).append("Test_2"),
+      ImmutableList.of(index("Test_2").columns(INT_FIELD, FLOAT_FIELD).unique())
+    );
+
+    compareStatements(expectedRenameIndexStatements(), testDialect.renameIndexStatements(alteredTable, "Test_1", "Test_2"));
   }
 
 
@@ -3990,7 +4010,12 @@ public abstract class AbstractSqlDialectTest {
   @SuppressWarnings("unchecked")
   @Test
   public void testRenameTempIndexStatements() {
-    compareStatements(expectedRenameTempIndexStatements(), testDialect.renameIndexStatements(testTempTable, "TempTest_1", "TempTest_2"));
+    AlteredTable alteredTable = new AlteredTable(testTempTable, null, null,
+      FluentIterable.from(testTempTable.indexes()).transform(i -> i.getName()).filter(i -> !i.equals("TempTest_1")).append("TempTest_2"),
+      ImmutableList.of(index("TempTest_2").columns(INT_FIELD, FLOAT_FIELD))
+    );
+
+    compareStatements(expectedRenameTempIndexStatements(), testDialect.renameIndexStatements(alteredTable, "TempTest_1", "TempTest_2"));
   }
 
 
@@ -4342,6 +4367,12 @@ public abstract class AbstractSqlDialectTest {
    * @return Expected SQL for {@link #testAddIndexStatementsUnique()}
    */
   protected abstract List<String> expectedAddIndexStatementsUnique();
+
+
+  /**
+   * @return Expected SQL for {@link #testAddIndexStatementsUniqueNullable()}
+   */
+  protected abstract List<String> expectedAddIndexStatementsUniqueNullable();
 
 
   /**
