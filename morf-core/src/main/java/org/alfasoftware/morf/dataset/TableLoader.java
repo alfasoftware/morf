@@ -173,6 +173,9 @@ public class TableLoader {
    * @param bulk Indicates if we should call {@link SqlDialect#preInsertStatements(Table)} and {@link SqlDialect#postInsertStatements(Table)}
    */
   private void insertOrMergeRecords(Iterable<Record> records) {
+    // Important: This transformation must be applied in a large-data-streaming-friendly fashion.
+    // FluentIterable.from() works here, as it uses pass-through to apply the transformation;
+    // Stream().collect() would not work here, as it would effectively load everything into memory!
     Iterable<Record> fixedRecords = FluentIterable.from(records)
         .transform(this::transformRecord);
 
