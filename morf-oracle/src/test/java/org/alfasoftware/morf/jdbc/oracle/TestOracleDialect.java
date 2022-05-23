@@ -23,8 +23,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -105,7 +105,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
           "COMMENT ON COLUMN TESTSCHEMA.Test.bigIntegerField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[bigIntegerField]/TYPE:[BIG_INTEGER]'",
           "COMMENT ON COLUMN TESTSCHEMA.Test.clobField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[clobField]/TYPE:[CLOB]'",
           "CREATE UNIQUE INDEX TESTSCHEMA.Test_NK ON TESTSCHEMA.Test (stringField)",
-          "CREATE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.Test (intField, floatField)",
+          "CREATE UNIQUE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.Test (intField, floatField)",
           "CREATE TABLE TESTSCHEMA.Alternate (id NUMBER(19) NOT NULL, version INTEGER DEFAULT 0, stringField NVARCHAR2(3), CONSTRAINT Alternate_PK PRIMARY KEY (id))",
           "COMMENT ON TABLE TESTSCHEMA.Alternate IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[Alternate]'",
           "COMMENT ON COLUMN TESTSCHEMA.Alternate.id IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[id]/TYPE:[BIG_INTEGER]'",
@@ -757,6 +757,16 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddIndexStatementsUniqueNullable()
+   */
+  @Override
+  protected List<String> expectedAddIndexStatementsUniqueNullable() {
+    return Arrays.asList("CREATE UNIQUE INDEX TESTSCHEMA.indexName ON TESTSCHEMA.Test (stringField, intField, floatField, dateField) PARALLEL NOLOGGING",
+        "ALTER INDEX TESTSCHEMA.indexName NOPARALLEL LOGGING");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterTableAlterColumnFromNotNullableToNotNullableStatement()
    */
   @Override
@@ -764,7 +774,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
     return Arrays.asList(
       "DROP INDEX TESTSCHEMA.Test_1",
       "ALTER TABLE TESTSCHEMA.Test MODIFY (floatField DECIMAL(20,3))",
-      "CREATE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.Test (intField, floatField) PARALLEL NOLOGGING",
+      "CREATE UNIQUE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.Test (intField, floatField) PARALLEL NOLOGGING",
       "ALTER INDEX TESTSCHEMA.Test_1 NOPARALLEL LOGGING",
       "COMMENT ON COLUMN TESTSCHEMA.Test.floatField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[floatField]/TYPE:[DECIMAL]'");
   }
@@ -808,7 +818,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
     return Arrays.asList(
       "DROP INDEX TESTSCHEMA.Test_1",
       "ALTER TABLE TESTSCHEMA.Test MODIFY (intField  NOT NULL)",
-      "CREATE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.Test (intField, floatField) PARALLEL NOLOGGING",
+      "CREATE UNIQUE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.Test (intField, floatField) PARALLEL NOLOGGING",
       "ALTER INDEX TESTSCHEMA.Test_1 NOPARALLEL LOGGING",
       "COMMENT ON COLUMN TESTSCHEMA.Test.intField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[INTEGER]'");
   }
@@ -852,7 +862,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
     return Arrays.asList(
       "DROP INDEX TESTSCHEMA.Test_1",
       "ALTER TABLE TESTSCHEMA.Test MODIFY (floatField DECIMAL(14,3) NULL)",
-      "CREATE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.Test (intField, floatField) PARALLEL NOLOGGING",
+      "CREATE UNIQUE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.Test (intField, floatField) PARALLEL NOLOGGING",
       "ALTER INDEX TESTSCHEMA.Test_1 NOPARALLEL LOGGING",
       "COMMENT ON COLUMN TESTSCHEMA.Test.floatField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[floatField]/TYPE:[DECIMAL]'");
   }
@@ -886,7 +896,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
     return Arrays.asList(
       "DROP INDEX TESTSCHEMA.Test_1",
       "ALTER TABLE TESTSCHEMA.Test MODIFY (floatField DECIMAL(20,3) NULL)",
-      "CREATE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.Test (intField, floatField) PARALLEL NOLOGGING",
+      "CREATE UNIQUE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.Test (intField, floatField) PARALLEL NOLOGGING",
       "ALTER INDEX TESTSCHEMA.Test_1 NOPARALLEL LOGGING",
       "COMMENT ON COLUMN TESTSCHEMA.Test.floatField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[floatField]/TYPE:[DECIMAL]'");
   }

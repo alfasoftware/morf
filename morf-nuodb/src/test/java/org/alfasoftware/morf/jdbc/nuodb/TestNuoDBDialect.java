@@ -17,8 +17,8 @@ package org.alfasoftware.morf.jdbc.nuodb;
 
 import static org.alfasoftware.morf.sql.SqlUtils.parameter;
 import static org.junit.Assert.assertEquals;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 
 import java.math.BigDecimal;
@@ -75,7 +75,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
           "DROP INDEX IF EXISTS SCM.Test_NK",
           "CREATE UNIQUE INDEX Test_NK ON SCM.Test (stringField)",
           "DROP INDEX IF EXISTS SCM.Test_1",
-          "CREATE INDEX Test_1 ON SCM.Test (intField,floatField)",
+          "CREATE UNIQUE INDEX Test_1 ON SCM.Test (intField,floatField)",
           "CREATE TABLE SCM.Alternate (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), PRIMARY KEY (id))",
           "DROP INDEX IF EXISTS SCM.Alternate_1",
           "CREATE INDEX Alternate_1 ON SCM.Alternate (stringField)",
@@ -693,7 +693,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
     return Arrays.asList("DROP INDEX SCM.Test_1",
                          "ALTER TABLE SCM.Test ALTER COLUMN intField NOT NULL DEFAULT 0",
                          "ALTER TABLE SCM.Test ALTER COLUMN intField DROP DEFAULT",
-                         "CREATE INDEX Test_1 ON SCM.Test (intField,floatField)");
+                         "CREATE UNIQUE INDEX Test_1 ON SCM.Test (intField,floatField)");
   }
 
 
@@ -780,7 +780,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
       "ALTER TABLE SCM.Test ALTER COLUMN floatField TYPE DECIMAL(14,3)",
       "ALTER TABLE SCM.Test ALTER COLUMN floatField NULL",
       "ALTER TABLE SCM.Test ALTER COLUMN floatField DROP DEFAULT",
-      "CREATE INDEX Test_1 ON SCM.Test (intField,floatField)"
+      "CREATE UNIQUE INDEX Test_1 ON SCM.Test (intField,floatField)"
       );
   }
 
@@ -919,11 +919,20 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddIndexStatementsUniqueNullable()
+   */
+  @Override
+  protected List<String> expectedAddIndexStatementsUniqueNullable() {
+    return Arrays.asList("DROP INDEX IF EXISTS SCM.indexName", "CREATE UNIQUE INDEX indexName ON SCM.Test (stringField,intField,floatField,dateField)");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterTableAlterColumnFromNotNullableToNotNullableStatement()
    */
   @Override
   protected List<String> expectedAlterTableAlterColumnFromNotNullableToNotNullableStatement() {
-    return Arrays.asList("DROP INDEX SCM.Test_1", "ALTER TABLE SCM.Test ALTER COLUMN floatField TYPE DECIMAL(20,3)", "CREATE INDEX Test_1 ON SCM.Test (intField,floatField)");
+    return Arrays.asList("DROP INDEX SCM.Test_1", "ALTER TABLE SCM.Test ALTER COLUMN floatField TYPE DECIMAL(20,3)", "CREATE UNIQUE INDEX Test_1 ON SCM.Test (intField,floatField)");
   }
 
 
@@ -936,7 +945,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
       "ALTER TABLE SCM.Test ALTER COLUMN floatField TYPE DECIMAL(20,3)",
       "ALTER TABLE SCM.Test ALTER COLUMN floatField NULL",
       "ALTER TABLE SCM.Test ALTER COLUMN floatField DROP DEFAULT",
-      "CREATE INDEX Test_1 ON SCM.Test (intField,floatField)"
+      "CREATE UNIQUE INDEX Test_1 ON SCM.Test (intField,floatField)"
       );
   }
 
@@ -1309,7 +1318,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
   protected List<String> expectedRenameIndexStatements() {
     return ImmutableList.of(
       "DROP INDEX SCM.Test_1",
-      "CREATE INDEX Test_2 ON SCM.Test (intField,floatField)"
+      "CREATE UNIQUE INDEX Test_2 ON SCM.Test (intField,floatField)"
     );
   }
 
