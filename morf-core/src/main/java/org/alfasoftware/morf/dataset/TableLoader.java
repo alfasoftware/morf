@@ -19,7 +19,9 @@ import static java.util.stream.Collectors.toList;
 import static org.alfasoftware.morf.sql.SqlUtils.parameter;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 
+import java.math.BigDecimal;
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
@@ -27,6 +29,8 @@ import org.alfasoftware.morf.dataset.TableLoaderBuilder.TableLoaderBuilderImpl;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
+import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.DataValue;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.InsertStatement;
@@ -35,6 +39,7 @@ import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.joda.time.LocalDate;
 
 import com.google.common.collect.FluentIterable;
 
@@ -224,6 +229,62 @@ public class TableLoader {
 
   private Record transformRecord(Record record) {
     return new Record() {
+
+      @Override
+      public Iterable<? extends DataValue> getValues() {
+        return record.getValues(); // important; avoid calling catch-all Record.getValue
+      }
+
+      @Override
+      public byte[] getByteArray(String name) {
+        return record.getByteArray(name); // important; avoid calling catch-all Record.getValue
+      }
+
+      @Override
+      public BigDecimal getBigDecimal(String name) {
+        return record.getBigDecimal(name); // important; avoid calling catch-all Record.getValue
+      }
+
+      @Override
+      public Integer getInteger(String name) {
+        return record.getInteger(name); // important; avoid calling catch-all Record.getValue
+      }
+
+      @Override
+      public Long getLong(String name) {
+        return record.getLong(name); // important; avoid calling catch-all Record.getValue
+      }
+
+      @Override
+      public Boolean getBoolean(String name) {
+        return record.getBoolean(name); // important; avoid calling catch-all Record.getValue
+      }
+
+      @Override
+      public Double getDouble(String name) {
+        return record.getDouble(name); // important; avoid calling catch-all Record.getValue
+      }
+
+      @Override
+      public Date getDate(String name) {
+        return record.getDate(name); // important; avoid calling catch-all Record.getValue
+      }
+
+      @Override
+      public LocalDate getLocalDate(String name) {
+        return record.getLocalDate(name); // important; avoid calling catch-all Record.getValue
+      }
+
+      @Override
+      public Object getObject(Column column) {
+        return record.getObject(column); // important; avoid calling catch-all Record.getValue
+      }
+
+      @Override
+      public String getString(String name) {
+        return replaceSingleNulCharacter(record.getString(name));
+      }
+
       @Override
       @SuppressWarnings("deprecation")
       public String getValue(String name) {
