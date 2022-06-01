@@ -902,4 +902,32 @@ class MySqlDialect extends SqlDialect {
   protected Optional<String> getDeleteLimitSuffix(int limit) {
     return Optional.of("LIMIT " + limit);
   }
+
+
+  /**
+   * MySQL does not accept parenthesis when creating a view select and over a UNION select.
+   *
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#viewDeploymentStatements(org.alfasoftware.morf.metadata.View)
+   */
+  @Override
+  public Collection<String> viewDeploymentStatements(View view) {
+    List<String> statements = new ArrayList<>();
+
+    String convertedSqlStatement = convertStatementToSQL(view.getSelectStatement());
+    boolean selectStmntContainsUnion = StringUtils.containsIgnoreCase(convertedSqlStatement, " UNION ");
+
+    // Create the table deployment statement
+    StringBuilder createTableStatement = new StringBuilder();
+    createTableStatement.append("CREATE ");
+    createTableStatement.append("VIEW ");
+    createTableStatement.append(schemaNamePrefix());
+    createTableStatement.append(view.getName());
+    createTableStatement.append(" AS" + (selectStmntContainsUnion ? " " : " ("));
+    createTableStatement.append(convertedSqlStatement);
+    createTableStatement.append(selectStmntContainsUnion ? "" : ")");
+
+    statements.add(createTableStatement.toString());
+
+    return statements;
+  }
 }

@@ -907,6 +907,17 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedCreateViewOverUnionSelectStatements()
+   */
+  @Override
+  protected List<String> expectedCreateViewOverUnionSelectStatements() {
+    return Arrays.asList(
+      "CREATE VIEW " + tableName("TestView") + " AS (SELECT stringField FROM " + tableName(TEST_TABLE) + " WHERE (stringField = " + stringLiteralPrefix() + "'blah') UNION ALL SELECT stringField FROM " + tableName(OTHER_TABLE) + " WHERE (stringField = " + stringLiteralPrefix() + "'blah'))",
+      "COMMENT ON VIEW TestView IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[TestView]'");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedYYYYMMDDToDate()
    */
   @Override
@@ -1321,4 +1332,5 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
       "SELECT ctid FROM " + tableName(TEST_TABLE) +
       " LIMIT 1000)";
   };
+
 }

@@ -1240,4 +1240,13 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   protected String expectedBlobLiteral(String value) {
     return String.format("x%s", super.expectedBlobLiteral(value));
   }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedCreateViewOverUnionSelectStatements()
+   */
+  @Override
+  protected List<String> expectedCreateViewOverUnionSelectStatements() {
+    return Arrays.asList("CREATE VIEW " + tableName("TestView") + " AS SELECT stringField FROM " + tableName(TEST_TABLE) + " WHERE (stringField = " + stringLiteralPrefix() + "'blah') UNION ALL SELECT stringField FROM " + tableName(OTHER_TABLE) + " WHERE (stringField = " + stringLiteralPrefix() + "'blah')");
+  }
 }

@@ -1170,4 +1170,13 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   protected String tableName(String baseName) {
     return "TESTSCHEMA." + baseName;
   }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedCreateViewOverUnionSelectStatements()
+   */
+  @Override
+  protected List<String> expectedCreateViewOverUnionSelectStatements() {
+    return Arrays.asList("CREATE VIEW " + tableName("TestView") + " AS (SELECT stringField FROM " + tableName(TEST_TABLE) + " WHERE (stringField = " + stringLiteralPrefix() + "CAST('blah' AS VARCHAR(4))) UNION ALL SELECT stringField FROM " + tableName(OTHER_TABLE) + " WHERE (stringField = " + stringLiteralPrefix() + "CAST('blah' AS VARCHAR(4))))");
+  }
 }
