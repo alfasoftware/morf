@@ -191,7 +191,7 @@ public abstract class AbstractSqlDialectTest {
   private static final String TEMP_TEST_2 = "TempTest_2";
 
   private static final String ALTERNATE_TABLE = "Alternate";
-  private static final String OTHER_TABLE = "Other";
+  protected static final String OTHER_TABLE = "Other";
   private static final String UPPER_TABLE = "UPPER";
   private static final String MIXED_TABLE = "Mixed";
   private static final String NON_NULL_TABLE = "NonNull";
@@ -276,6 +276,8 @@ public abstract class AbstractSqlDialectTest {
    */
   protected Schema metadata;
   private View testView;
+
+  private View testViewWithUnion;
 
   /**
    * Very long table name to test name truncation.
@@ -449,6 +451,10 @@ public abstract class AbstractSqlDialectTest {
     FieldReference f = new FieldReference(STRING_FIELD);
     testView = view("TestView", select(f).from(tr).where(eq(f, new FieldLiteral("blah"))));
 
+    TableReference tr1 = new TableReference(OTHER_TABLE);
+    testViewWithUnion = view("TestView", select(f).from(tr).where(eq(f, new FieldLiteral("blah")))
+      .unionAll(select(f).from(tr1).where(eq(f, new FieldLiteral("blah")))));
+
     Table inner = table("Inner")
         .columns(
           column(INNER_FIELD_A, DataType.STRING, 3),
@@ -524,6 +530,18 @@ public abstract class AbstractSqlDialectTest {
     compareStatements(
       expectedCreateViewStatements(),
       testDialect.viewDeploymentStatements(testView));
+  }
+
+
+  /**
+   * Tests the SQL for creating a view over a union select.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testCreateViewStatementOverUnionSelect() {
+    compareStatements(
+      expectedCreateViewOverUnionSelectStatements(),
+      testDialect.viewDeploymentStatements(testViewWithUnion));
   }
 
 
@@ -4814,6 +4832,14 @@ public abstract class AbstractSqlDialectTest {
    */
   protected List<String> expectedCreateViewStatements() {
     return Arrays.asList("CREATE VIEW " + tableName("TestView") + " AS (SELECT stringField FROM " + tableName(TEST_TABLE) + " WHERE (stringField = " + stringLiteralPrefix() + "'blah'))");
+  }
+
+
+  /**
+   * @return The expected SQL statements for creating the test database view over a union select.
+   */
+  protected List<String> expectedCreateViewOverUnionSelectStatements() {
+    return Arrays.asList("CREATE VIEW " + tableName("TestView") + " AS (SELECT stringField FROM " + tableName(TEST_TABLE) + " WHERE (stringField = " + stringLiteralPrefix() + "'blah') UNION ALL SELECT stringField FROM " + tableName(OTHER_TABLE) + " WHERE (stringField = " + stringLiteralPrefix() + "'blah'))");
   }
 
 
