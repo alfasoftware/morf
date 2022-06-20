@@ -8,14 +8,17 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
+import org.alfasoftware.morf.jdbc.postgresql.PostgreSQLUniqueIndexAdditionalDeploymentStatements.AdditionalIndexInfo;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
 import org.apache.commons.lang3.StringUtils;
@@ -23,6 +26,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.google.common.base.Suppliers;
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
 /**
@@ -37,6 +42,8 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider {
   private static final Pattern REALNAME_COMMENT_MATCHER = Pattern.compile(".*"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":\\[([^\\]]*)\\](/TYPE:\\[([^\\]]*)\\])?.*");
 
   private final Supplier<Map<AName, RealName>> allIndexNames = Suppliers.memoize(this::loadAllIndexNames);
+
+  private final HashMultimap<String, AdditionalIndexInfo> additionalConstraintIndexes = HashMultimap.create();
 
   public PostgreSQLMetaDataProvider(Connection connection, String schemaName) {
     super(connection, schemaName);
@@ -170,5 +177,36 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider {
       }
     }
     return null;
+  }
+
+
+  @Override
+  protected void ignoreIndexName(RealName indexName, ResultSet indexResultSet) throws SQLException {
+    super.ignoreIndexName(indexName, indexResultSet);
+
+    PostgreSQLUniqueIndexAdditionalDeploymentStatements.matchAdditionalIndex(indexName.getDbName(), indexName.getRealName())
+      .ifPresent(additionalIndexInfo -> {
+        if (log.isDebugEnabled()) {
+          log.debug("Accepted index [" + indexName + "] as supporting constraint for index [" + additionalIndexInfo.getBaseName() + "]");
+        }
+        additionalConstraintIndexes.put(additionalIndexInfo.getBaseName().toLowerCase(), additionalIndexInfo);
+      });
+  }
+
+
+  /**
+   * For a given unique constraint index base name, returns a collection of {@link AdditionalIndexInfo},
+   * a pre-parsed POJOs describing ignored technical indexes recorded for the given constraint base name.
+   *
+   * Important: The {@link AdditionalIndexInfo} are gathered when reading the metadata of the underlying
+   * index. Therefore, this method might return an empty collection, if called too soon, before metadata
+   * of the index has been read.
+   *
+   * @param baseIndexName Name of the underlying unique index.
+   * @return Collection of additional technical indexes belonging to the underlying unique index.
+   */
+  public Collection<AdditionalIndexInfo> getAdditionalConstraintIndexes(String baseIndexName) {
+    Set<AdditionalIndexInfo> infos = additionalConstraintIndexes.get(baseIndexName);
+    return infos == null ? ImmutableList.of() : infos;
   }
 }

@@ -666,6 +666,7 @@ public class DatabaseMetaDataProvider implements Schema {
               continue;
             }
             if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName.getDbName())) {
+              ignoreIndexName(indexName, indexResultSet);
               continue;
             }
 
@@ -685,6 +686,9 @@ public class DatabaseMetaDataProvider implements Schema {
           }
           catch (SQLException e) {
             throw new RuntimeSqlException("Error reading metadata for index ["+indexName+"] on table ["+tableName+"]", e);
+          }
+          catch (RuntimeException e) {
+            throw new RuntimeException("Error reading metadata for index ["+indexName+"] on table ["+tableName+"]", e);
           }
         }
 
@@ -709,6 +713,21 @@ public class DatabaseMetaDataProvider implements Schema {
   protected RealName readIndexName(ResultSet indexResultSet) throws SQLException {
     String indexName = indexResultSet.getString(INDEX_NAME);
     return createRealName(indexName, indexName);
+  }
+
+
+  /**
+   * Receives an ignored index name.
+   * This can be overridden to process technical indexes, or remember performance indexes, etc.
+   *
+   * Note: This can be called multiple times for the same index!
+   *
+   * @param indexName name of the ignored index.
+   * @param indexResultSet
+   * @throws SQLException Upon errors.
+   */
+  protected void ignoreIndexName(RealName indexName, ResultSet indexResultSet) throws SQLException {
+    if (log.isDebugEnabled()) log.debug("Ignored index [" + indexName.getRealName() + "] column [" + indexResultSet.getString(INDEX_COLUMN_NAME) + "]");
   }
 
 
@@ -910,7 +929,7 @@ public class DatabaseMetaDataProvider implements Schema {
       this.hashCode = aName.toLowerCase().hashCode();
     }
 
-    protected String getAName() {
+    public String getAName() {
       return aName;
     }
 
