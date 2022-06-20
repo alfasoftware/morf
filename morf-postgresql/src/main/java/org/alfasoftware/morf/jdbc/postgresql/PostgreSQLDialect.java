@@ -44,6 +44,7 @@ import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Joiner;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 
@@ -239,15 +240,6 @@ class PostgreSQLDialect extends SqlDialect {
         .addAll(renamePk)
         .addAll(renameSeq)
         .add(addTableComment(to))
-        .build();
-  }
-
-
-  @Override
-  public Collection<String> renameIndexStatements(Table table, String fromIndexName, String toIndexName) {
-    return ImmutableList.<String>builder()
-        .addAll(super.renameIndexStatements(table, fromIndexName, toIndexName))
-        .add(addIndexComment(toIndexName))
         .build();
   }
 
@@ -635,12 +627,52 @@ class PostgreSQLDialect extends SqlDialect {
     return ImmutableList.<String>builder()
       .add(statement.toString())
       .add(addIndexComment(index.getName()))
+      .addAll(additionalUniqueIndexDeploymentStatements(table, index))
       .build();
+  }
+
+
+  @Override
+  public Collection<String> renameIndexStatements(Table table, String fromIndexName, String toIndexName) {
+    return ImmutableList.<String>builder()
+        .addAll(super.renameIndexStatements(table, fromIndexName, toIndexName))
+        .add(addIndexComment(toIndexName))
+        .addAll(additionalUniqueIndexRenameStatements(table, fromIndexName, toIndexName))
+        .build();
+  }
+
+
+  @Override
+  public Collection<String> indexDropStatements(Table table, Index indexToBeRemoved) {
+    return ImmutableList.<String>builder()
+        .addAll(super.indexDropStatements(table, indexToBeRemoved))
+        .addAll(additionalUniqueIndexDropStatements(table, indexToBeRemoved))
+        .build();
   }
 
 
   private String addIndexComment(String indexName) {
     return "COMMENT ON INDEX " + indexName + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + indexName + "]'";
+  }
+
+
+  private Iterable<String> additionalUniqueIndexDeploymentStatements(Table table, Index index) {
+    return new PostgreSQLUniqueIndexAdditionalDeploymentStatements(table, index).createIndexStatements(schemaNamePrefix(table) + table.getName());
+  }
+
+
+  private Iterable<String> additionalUniqueIndexRenameStatements(Table table, String fromIndexName, String toIndexName) {
+    if (toIndexName.endsWith("_pk") && fromIndexName.equals(table.getName() + "_pk")) {
+      return ImmutableList.of();
+    }
+
+    Index index = Iterables.getOnlyElement(FluentIterable.from(table.indexes()).filter(i -> toIndexName.equalsIgnoreCase(i.getName())));
+    return new PostgreSQLUniqueIndexAdditionalDeploymentStatements(table, index).renameIndexStatements(schemaNamePrefix(table) + table.getName(), fromIndexName, toIndexName);
+  }
+
+
+  private Iterable<String> additionalUniqueIndexDropStatements(Table table, Index index) {
+    return new PostgreSQLUniqueIndexAdditionalDeploymentStatements(table, index).dropIndexStatements(schemaNamePrefix(table) + table.getName());
   }
 
 

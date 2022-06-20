@@ -86,8 +86,12 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
           "COMMENT ON COLUMN testschema.Test.clobField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[clobField]/TYPE:[CLOB]'",
           "CREATE UNIQUE INDEX Test_NK ON testschema.Test (stringField)",
           "COMMENT ON INDEX Test_NK IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_NK]'",
+          "CREATE UNIQUE INDEX Test_NK$null0 ON testschema.Test ((0)) WHERE stringField IS NULL",
+          "COMMENT ON INDEX Test_NK$null0 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[e069928444ba25d94fe4d5f64e1423ae/cfcd208495d565ef66e7dff9f98764da]'",
           "CREATE UNIQUE INDEX Test_1 ON testschema.Test (intField, floatField)",
           "COMMENT ON INDEX Test_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_1]'",
+          "CREATE UNIQUE INDEX Test_1$null0 ON testschema.Test (floatField) WHERE intField IS NULL",
+          "COMMENT ON INDEX Test_1$null0 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[9c2e9ac2612f55025a2656b5c2cc9316/cfcd208495d565ef66e7dff9f98764da]'",
           "CREATE TABLE testschema.Alternate (id NUMERIC(19) NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3) COLLATE \"POSIX\", CONSTRAINT Alternate_PK PRIMARY KEY(id))",
           "COMMENT ON TABLE testschema.Alternate IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Alternate]'",
           "COMMENT ON COLUMN testschema.Alternate.id IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[id]/TYPE:[BIG_INTEGER]'",
@@ -141,6 +145,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
             "COMMENT ON COLUMN TempTest.clobField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[clobField]/TYPE:[CLOB]'",
             "CREATE UNIQUE INDEX TempTest_NK ON TempTest (stringField)",
             "COMMENT ON INDEX TempTest_NK IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[TempTest_NK]'",
+            "CREATE UNIQUE INDEX TempTest_NK$null0 ON TempTest ((0)) WHERE stringField IS NULL",
+            "COMMENT ON INDEX TempTest_NK$null0 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[e069928444ba25d94fe4d5f64e1423ae/cfcd208495d565ef66e7dff9f98764da]'",
             "CREATE INDEX TempTest_1 ON TempTest (intField, floatField)",
             "COMMENT ON INDEX TempTest_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[TempTest_1]'",
             "CREATE TEMP TABLE TempAlternate (id NUMERIC(19) NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3) COLLATE \"POSIX\", CONSTRAINT TempAlternate_PK PRIMARY KEY(id))",
@@ -182,6 +188,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
             "COMMENT ON COLUMN testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation.charField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[charField]/TYPE:[STRING]'",
             "CREATE UNIQUE INDEX Test_NK ON testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation (stringField)",
             "COMMENT ON INDEX Test_NK IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_NK]'",
+            "CREATE UNIQUE INDEX Test_NK$null0 ON testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation ((0)) WHERE stringField IS NULL",
+            "COMMENT ON INDEX Test_NK$null0 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[e069928444ba25d94fe4d5f64e1423ae/cfcd208495d565ef66e7dff9f98764da]'",
             "CREATE INDEX Test_1 ON testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation (intField, floatField)",
             "COMMENT ON INDEX Test_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_1]'"
         );
@@ -736,6 +744,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected List<String> expectedChangeIndexFollowedByChangeOfAssociatedColumnStatement() {
     return Arrays.asList(
       "DROP INDEX Test_1",
+      "DROP INDEX IF EXISTS Test_1$null0",
       "CREATE INDEX Test_1 ON testschema.Test (intField)",
       "COMMENT ON INDEX Test_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_1]'",
       "ALTER TABLE testschema.Test ALTER COLUMN intField SET NOT NULL",
@@ -779,7 +788,10 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAddIndexStatementsUniqueNullable() {
     return Arrays.asList("CREATE UNIQUE INDEX indexName ON testschema.Test (stringField, intField, floatField, dateField)",
-                         "COMMENT ON INDEX indexName IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[indexName]'");
+                         "COMMENT ON INDEX indexName IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[indexName]'",
+                         "CREATE UNIQUE INDEX indexName$null ON testschema.Test ((stringField ||'§'|| intField ||'§'|| floatField ||'§'|| dateField)) WHERE stringField IS NULL OR intField IS NULL OR dateField IS NULL",
+                         "COMMENT ON INDEX indexName$null IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[121e97b2b38f63cc6840445595b4177c]'"
+    );
   }
 
 
@@ -1133,7 +1145,9 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedRenameIndexStatements() {
     return ImmutableList.of("ALTER INDEX testschema.Test_1 RENAME TO Test_2",
-                            "COMMENT ON INDEX Test_2 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_2]'");
+                            "COMMENT ON INDEX Test_2 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_2]'",
+                            "ALTER INDEX IF EXISTS testschema.TestTest_1$null0 RENAME TO Test_2$null0"
+    );
   }
 
 
