@@ -346,9 +346,7 @@ class PostgreSQLUniqueIndexAdditionalDeploymentStatements {
 
     private boolean healIndexStatementsNeeded(Collection<AdditionalIndexInfo> additionalConstraintIndexInfos) {
       boolean healIndexStatementsNeeded = strategy.healIndexStatementsNeeded(additionalConstraintIndexInfos);
-      if (healIndexStatementsNeeded) {
-        log.info(strategy.getClass().getSimpleName() + ".healIndexStatementsNeeded(" + additionalConstraintIndexInfos + ")");
-      }
+      if (log.isDebugEnabled()) log.debug(strategy.getClass().getSimpleName() + ".healIndexStatementsNeeded: " + healIndexStatementsNeeded + ", " + additionalConstraintIndexInfos);
       return healIndexStatementsNeeded;
     }
 

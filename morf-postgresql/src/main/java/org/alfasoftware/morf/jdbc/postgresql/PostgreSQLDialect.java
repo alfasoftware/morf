@@ -15,10 +15,12 @@ import java.util.List;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.jdbc.postgresql.PostgreSQLUniqueIndexAdditionalDeploymentStatements.AdditionalIndexInfo;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.DataValueLookup;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
@@ -741,5 +743,44 @@ class PostgreSQLDialect extends SqlDialect {
     sqlBuilder.append(" LIMIT " + statement.getLimit().get() + ")");
 
     return sqlBuilder.toString();
+  }
+
+
+  @Override
+  public List<String> getSchemaConsistencyStatements(SchemaResource schemaResource) {
+    return schemaResource.getDatabaseMetaDataProvider()
+            .map(PostgreSQLMetaDataProvider.class::cast)
+            .map(this::getSchemaConsistencyStatements)
+            .orElseGet(() -> super.getSchemaConsistencyStatements(schemaResource));
+  }
+
+
+  private List<String> getSchemaConsistencyStatements(PostgreSQLMetaDataProvider metaDataProvider) {
+    return FluentIterable.from(metaDataProvider.tables())
+            .transformAndConcat(table -> healTable(metaDataProvider, table))
+            .toList(); // turn all the concatenated fluent iterables into a firm immutable list
+  }
+
+
+  private Iterable<String> healTable(PostgreSQLMetaDataProvider metaDataProvider, Table table) {
+    Iterable<String> statements = healIndexes(metaDataProvider, table);
+
+    if (statements.iterator().hasNext()) {
+      List<String> intro = ImmutableList.of(convertCommentToSQL("Healing table: " + table.getName()));
+      return Iterables.concat(intro, statements);
+    }
+    return ImmutableList.of();
+  }
+
+
+  private Iterable<String> healIndexes(PostgreSQLMetaDataProvider metaDataProvider, Table table) {
+    return FluentIterable.from(table.indexes())
+            .transformAndConcat(index -> healIndexes(metaDataProvider.getAdditionalConstraintIndexes(index.getName().toLowerCase()), table, index));
+  }
+
+
+  private Iterable<String> healIndexes(Collection<AdditionalIndexInfo> additionalConstraintIndexInfo, Table table, Index index) {
+    return new PostgreSQLUniqueIndexAdditionalDeploymentStatements(table, index)
+            .healIndexStatements(additionalConstraintIndexInfo, schemaNamePrefix(table) + table.getName());
   }
 }

@@ -177,7 +177,7 @@ public class Upgrade {
 
     // Get access to the schema we are starting from
     log.info("Reading current schema");
-    Schema sourceSchema = copySourceSchema(connectionResources, dataSource, exceptionRegexes);
+    Schema sourceSchema = readSourceDatabaseSchema(connectionResources, dataSource, exceptionRegexes, upgradeStatements);
     SqlDialect dialect = connectionResources.sqlDialect();
 
     // -- Get the current UUIDs and deployed views...
@@ -319,19 +319,19 @@ public class Upgrade {
 
 
   /**
-   * Gets the source schema from the {@code database}.
+   * Gets a copy of the source schema from the {@code database}.
+   * Also gathers up any schema consistency statements.
    *
    * @param database the database to connect to.
    * @param dataSource the dataSource to use.
-   * @param exceptionRegexes
+   * @param exclusionRegExes collection of regular expressions describing tables/views to exclude from the schema.
+   * @param upgradeStatements adds schema consistency statements to this list.
    * @return the schema.
    */
-  private Schema copySourceSchema(ConnectionResources database, DataSource dataSource, Collection<String> exceptionRegexes) {
-    SchemaResource databaseSchemaResource = database.openSchemaResource(dataSource);
-    try {
-      return copy(databaseSchemaResource, exceptionRegexes);
-    } finally {
-      databaseSchemaResource.close();
+  private static Schema readSourceDatabaseSchema(ConnectionResources database, DataSource dataSource, Collection<String> exclusionRegExes, List<String> upgradeStatements) {
+    try (SchemaResource databaseSchemaResource = database.openSchemaResource(dataSource)) {
+      upgradeStatements.addAll(database.sqlDialect().getSchemaConsistencyStatements(databaseSchemaResource));
+      return copy(databaseSchemaResource, exclusionRegExes);
     }
   }
 }
