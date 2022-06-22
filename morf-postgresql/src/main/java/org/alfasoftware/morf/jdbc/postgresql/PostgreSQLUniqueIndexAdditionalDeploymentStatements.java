@@ -160,12 +160,13 @@ class PostgreSQLUniqueIndexAdditionalDeploymentStatements {
         String indexHash = makeIndexHash(nullColumns);
 
         String createStatement =
-            "CREATE UNIQUE INDEX " + fullIndexName + " ON " + prefixedTableName
-            + " (" + Joiner.on(", ").join(indexColumns) + ")"
-            + " WHERE " + Joiner.on(" IS NULL AND ").join(whereColumns) + " IS NULL";
+            createIndexSqlStatement(
+              fullIndexName, prefixedTableName,
+              Joiner.on(", ").join(indexColumns),
+              Joiner.on(" IS NULL AND ").join(whereColumns) + " IS NULL"
+            );
 
-        String commentStatement =
-            "COMMENT ON INDEX " + fullIndexName + " IS '" + SqlDialect.REAL_NAME_COMMENT_LABEL + ":[" + indexHash + "]'";
+        String commentStatement = commentOnIndexSqlStatement(fullIndexName, indexHash);
 
         return ImmutableList.of(createStatement, commentStatement);
       }
@@ -180,7 +181,7 @@ class PostgreSQLUniqueIndexAdditionalDeploymentStatements {
 
       private Iterable<String> renameIndexStatements(String prefixedTableName, String fromIndexName, String toIndexName, Iterable<Integer> nullColumns) {
         String indexNameSuffix = makeIndexSuffix(nullColumns);
-        String alterStatement = "ALTER INDEX IF EXISTS " + prefixedTableName + fromIndexName + indexNameSuffix + " RENAME TO " + toIndexName + indexNameSuffix;
+        String alterStatement = alterIndexSqlStatement(prefixedTableName + fromIndexName + indexNameSuffix, toIndexName + indexNameSuffix);
         return ImmutableList.of(alterStatement);
       }
 
@@ -193,7 +194,7 @@ class PostgreSQLUniqueIndexAdditionalDeploymentStatements {
 
 
       private Iterable<String> dropIndexStatements(Iterable<Integer> nullColumns) {
-        String dropStatement = "DROP INDEX IF EXISTS " + makeIndexName(nullColumns);
+        String dropStatement = dropIndexSqlStatement(makeIndexName(nullColumns));
         return ImmutableList.of(dropStatement);
       }
 
@@ -219,7 +220,7 @@ class PostgreSQLUniqueIndexAdditionalDeploymentStatements {
         // To keep some of the existing indexes, we would need to work out which ones to drop, which ones to keep, and which ones to create.
 
         Set<String> dropOldIndexes = FluentIterable.from(additionalConstraintIndexInfos)
-          .transform(info -> "DROP INDEX IF EXISTS " + info.getIndexName())
+          .transform(info -> dropIndexSqlStatement(info.getIndexName()))
           .toSet(); // removes duplicates
 
         return FluentIterable.from(dropOldIndexes)
@@ -271,12 +272,13 @@ class PostgreSQLUniqueIndexAdditionalDeploymentStatements {
         String indexHash = calculateIndexHash(index.columnNames(), nullableIndexColumns);
 
         String createStatement =
-            "CREATE UNIQUE INDEX " + fullIndexName + " ON " + prefixedTableName
-            + " ((" + Joiner.on(" ||'" + MAGIC_GLUE + "'|| ").join(index.columnNames()) + "))"
-            + " WHERE " + Joiner.on(" IS NULL OR ").join(nullableIndexColumns) + " IS NULL";
+            createIndexSqlStatement(
+              fullIndexName, prefixedTableName,
+              "(" + Joiner.on(" ||'" + MAGIC_GLUE + "'|| ").join(index.columnNames()) + ")",
+              Joiner.on(" IS NULL OR ").join(nullableIndexColumns) + " IS NULL"
+            );
 
-        String commentStatement =
-            "COMMENT ON INDEX " + fullIndexName + " IS '" + SqlDialect.REAL_NAME_COMMENT_LABEL + ":[" + indexHash + "]'";
+        String commentStatement = commentOnIndexSqlStatement(fullIndexName, indexHash);
 
         return ImmutableList.of(createStatement, commentStatement);
       }
@@ -284,14 +286,14 @@ class PostgreSQLUniqueIndexAdditionalDeploymentStatements {
 
       @Override
       public Iterable<String> renameIndexStatements(String prefixedTableName, String fromIndexName, String toIndexName) {
-        String alterStatement = "ALTER INDEX IF EXISTS " + prefixedTableName + fromIndexName + INDEX_NAME_SUFFIX + " RENAME TO " + toIndexName + INDEX_NAME_SUFFIX;
+        String alterStatement = alterIndexSqlStatement(prefixedTableName + fromIndexName + INDEX_NAME_SUFFIX, toIndexName + INDEX_NAME_SUFFIX);
         return ImmutableList.of(alterStatement);
       }
 
 
       @Override
       public Iterable<String> dropIndexStatements(String prefixedTableName) {
-        String dropStatement = "DROP INDEX IF EXISTS " + index.getName() + INDEX_NAME_SUFFIX;
+        String dropStatement = dropIndexSqlStatement(index.getName() + INDEX_NAME_SUFFIX);
         return ImmutableList.of(dropStatement);
       }
 
@@ -313,7 +315,7 @@ class PostgreSQLUniqueIndexAdditionalDeploymentStatements {
       @Override
       public Iterable<String> healIndexStatements(Collection<AdditionalIndexInfo> additionalConstraintIndexInfos, String prefixedTableName) {
         Set<String> dropOldIndexes = FluentIterable.from(additionalConstraintIndexInfos)
-          .transform(info -> "DROP INDEX IF EXISTS " + info.getIndexName())
+          .transform(info -> dropIndexSqlStatement(info.getIndexName()))
           .toSet(); // removes duplicates
 
         return FluentIterable.from(dropOldIndexes)
@@ -433,6 +435,26 @@ class PostgreSQLUniqueIndexAdditionalDeploymentStatements {
 
       // Put it all together
       return calculateIndexHash(allColumnNames, allNullableColumnNames) + '/' + DigestUtils.md5Hex(nulledColumns);
+    }
+
+
+    private static String createIndexSqlStatement(String fullIndexName, String prefixedTableName, String indexColumns, String indexWhereCondition) {
+      return "CREATE UNIQUE INDEX " + fullIndexName + " ON " + prefixedTableName + " (" + indexColumns + ")" + " WHERE " + indexWhereCondition;
+    }
+
+
+    private static String commentOnIndexSqlStatement(String fullIndexName, String indexHash) {
+      return "COMMENT ON INDEX " + fullIndexName + " IS '" + SqlDialect.REAL_NAME_COMMENT_LABEL + ":[" + indexHash + "]'";
+    }
+
+
+    private static String alterIndexSqlStatement(String oldIndexName, String newIndexName) {
+      return "ALTER INDEX IF EXISTS " + oldIndexName + " RENAME TO " + newIndexName;
+    }
+
+
+    private static String dropIndexSqlStatement(String fullIndexName) {
+      return "DROP INDEX IF EXISTS " + fullIndexName;
     }
 
 
