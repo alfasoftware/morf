@@ -3,7 +3,6 @@ package org.alfasoftware.morf.jdbc.postgresql;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
@@ -189,7 +188,7 @@ class PostgreSQLUniqueIndexAdditionalDeploymentStatements {
       @Override
       public Iterable<String> dropIndexStatements(String prefixedTableName) {
         return FluentIterable.from(constellations)
-            .transformAndConcat(nullColumns -> dropIndexStatements(nullColumns));
+            .transformAndConcat(this::dropIndexStatements);
       }
 
 
@@ -467,7 +466,7 @@ class PostgreSQLUniqueIndexAdditionalDeploymentStatements {
      *         Optional.isPresent() if the index name is an additional supporting constraint.
      * @see #healIndexStatements(Collection, String)
      */
-    public static Optional<AdditionalIndexInfo> matchAdditionalIndex(String indexName, String indexHash) throws SQLException {
+    public static Optional<AdditionalIndexInfo> matchAdditionalIndex(String indexName, String indexHash) {
       Matcher matcher = ADDITIONAL_INDEX_NAME_MATCHER.matcher(indexName);
       if (matcher.matches()) {
         String baseName = matcher.group(1);
