@@ -188,11 +188,11 @@ class PostgreSQLUniqueIndexAdditionalDeploymentStatements {
       @Override
       public Iterable<String> dropIndexStatements(String prefixedTableName) {
         return FluentIterable.from(constellations)
-            .transformAndConcat(nullColumns -> dropIndexStatements(prefixedTableName, nullColumns));
+            .transformAndConcat(nullColumns -> dropIndexStatements(nullColumns));
       }
 
 
-      private Iterable<String> dropIndexStatements(@SuppressWarnings("unused") String prefixedTableName, Iterable<Integer> nullColumns) {
+      private Iterable<String> dropIndexStatements(Iterable<Integer> nullColumns) {
         String dropStatement = "DROP INDEX IF EXISTS " + makeIndexName(nullColumns);
         return ImmutableList.of(dropStatement);
       }
@@ -346,7 +346,7 @@ class PostgreSQLUniqueIndexAdditionalDeploymentStatements {
 
     private boolean healIndexStatementsNeeded(Collection<AdditionalIndexInfo> additionalConstraintIndexInfos) {
       boolean healIndexStatementsNeeded = strategy.healIndexStatementsNeeded(additionalConstraintIndexInfos);
-      if (log.isDebugEnabled()) log.debug(strategy.getClass().getSimpleName() + ".healIndexStatementsNeeded: " + healIndexStatementsNeeded + ", " + additionalConstraintIndexInfos);
+      if (log.isDebugEnabled()) log.debug(strategy.getClass().getSimpleName() + ".healIndexStatementsNeeded(" + table.getName() + ": " + index.getName() + "): " + healIndexStatementsNeeded + ", " + additionalConstraintIndexInfos);
       return healIndexStatementsNeeded;
     }
 
@@ -377,7 +377,7 @@ class PostgreSQLUniqueIndexAdditionalDeploymentStatements {
       }
 
       // allow logging for full analysis
-      if (log.isDebugEnabled()) log.debug("Unique index [" + index.getName() + "] contains " + nullableIndexColumns.size() + " nullable columns: " + nullableIndexColumns);
+      if (log.isDebugEnabled()) log.debug("Unique index [" + table.getName() + ": " + index.getName() + "] contains " + nullableIndexColumns.size() + " nullable columns: " + nullableIndexColumns);
 
       return nullableIndexColumns;
     }
@@ -441,10 +441,9 @@ class PostgreSQLUniqueIndexAdditionalDeploymentStatements {
      *
      * @param indexName Index name as read from the database.
      * @param indexHash Index hash as read from the index comment.
-     * @param indexResultSet Further information available on the index.
      * @return Optional.empty() if the index name is not an additional supporting constraint.
-     * Optional.isPresent() if the index name is an additional supporting constraint.
-     * This return should then be used for @TODO to validate and heal the supporting indexes.
+     *         Optional.isPresent() if the index name is an additional supporting constraint.
+     * @see #healIndexStatements(Collection, String)
      */
     public static Optional<AdditionalIndexInfo> matchAdditionalIndex(String indexName, String indexHash) throws SQLException {
       Matcher matcher = ADDITIONAL_INDEX_NAME_MATCHER.matcher(indexName);
@@ -468,7 +467,7 @@ class PostgreSQLUniqueIndexAdditionalDeploymentStatements {
       private final String suffixName;
       private final String indexHash;
 
-      public AdditionalIndexInfo(String indexName, String baseName, String suffixName, String indexHash) throws SQLException {
+      public AdditionalIndexInfo(String indexName, String baseName, String suffixName, String indexHash) {
         this.indexName = indexName.toLowerCase();
         this.baseName = baseName.toLowerCase();
         this.suffixName = suffixName;
