@@ -723,7 +723,7 @@ public class DatabaseMetaDataProvider implements Schema {
    * Note: This can be called multiple times for the same index!
    *
    * @param indexName name of the ignored index.
-   * @param indexResultSet
+   * @param indexResultSet resultset on the row with further index information
    * @throws SQLException Upon errors.
    */
   protected void ignoreIndexName(RealName indexName, ResultSet indexResultSet) throws SQLException {

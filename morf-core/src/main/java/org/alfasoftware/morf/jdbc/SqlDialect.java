@@ -4085,7 +4085,7 @@ public abstract class SqlDialect {
   /**
    * Returns any statements needed to automatically heal the given schema.
    *
-   * @param schema Schema to be examined.
+   * @param schemaResource Schema resource that can be examined.
    * @return List of statements to be run.
    */
   public List<String> getSchemaConsistencyStatements(@SuppressWarnings("unused") SchemaResource schemaResource) {
