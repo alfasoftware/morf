@@ -1362,27 +1362,37 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected SchemaResource createSchemaResourceForSchemaConsistencyStatements() {
     final List<Table> tables = ImmutableList.of(
-      table("TableName")
+      table("TableOne")
         .columns(
           column("id", DataType.BIG_INTEGER),
           column("u", DataType.BIG_INTEGER).nullable(),
           column("v", DataType.BIG_INTEGER).nullable(),
           column("x", DataType.BIG_INTEGER).nullable())
         .indexes(
-          index("TableName_1").columns("u").unique(),
-          index("TableName_2").columns("u", "v", "x").unique(),
-          index("TableName_3").columns("x").unique()
+          index("TableOne_1").columns("u").unique(),
+          index("TableOne_2").columns("u", "v", "x").unique(),
+          index("TableOne_3").columns("x").unique()
+        ),
+      table("TableTwo")
+        .columns(
+          column("id", DataType.BIG_INTEGER),
+          column("x", DataType.BIG_INTEGER).nullable())
+        .indexes(
+          index("TableTwo_3").columns("x").unique()
         )
     );
 
     PostgreSQLMetaDataProvider metaDataProvider = mock(PostgreSQLMetaDataProvider.class);
     when(metaDataProvider.tables()).thenReturn(tables);
-    when(metaDataProvider.getAdditionalConstraintIndexes("tablename_1")).thenReturn(ImmutableList.of(
-      PostgreSQLUniqueIndexAdditionalDeploymentStatements.matchAdditionalIndex("TableName_1$null0", "xx/yy").get(),
-      PostgreSQLUniqueIndexAdditionalDeploymentStatements.matchAdditionalIndex("TableName_1$null1", "xx/yy").get()
+    when(metaDataProvider.getAdditionalConstraintIndexes("tableone_1")).thenReturn(ImmutableList.of(
+      PostgreSQLUniqueIndexAdditionalDeploymentStatements.matchAdditionalIndex("TableOne_1$null0", "xx/yy").get(),
+      PostgreSQLUniqueIndexAdditionalDeploymentStatements.matchAdditionalIndex("TableOne_1$null1", "xx/yy").get()
     ));
-    when(metaDataProvider.getAdditionalConstraintIndexes("tablename_3")).thenReturn(ImmutableList.of(
-      PostgreSQLUniqueIndexAdditionalDeploymentStatements.matchAdditionalIndex("TableName_3$null0", "76e4a5e9bce3c23b4feb0675fb0c8366/cfcd208495d565ef66e7dff9f98764da").get()
+    when(metaDataProvider.getAdditionalConstraintIndexes("tableone_3")).thenReturn(ImmutableList.of(
+      PostgreSQLUniqueIndexAdditionalDeploymentStatements.matchAdditionalIndex("TableOne_3$null0", "76e4a5e9bce3c23b4feb0675fb0c8366/cfcd208495d565ef66e7dff9f98764da").get()
+    ));
+    when(metaDataProvider.getAdditionalConstraintIndexes("tabletwo_3")).thenReturn(ImmutableList.of(
+      PostgreSQLUniqueIndexAdditionalDeploymentStatements.matchAdditionalIndex("TableTwo_3$null0", "76e4a5e9bce3c23b4feb0675fb0c8366/cfcd208495d565ef66e7dff9f98764da").get()
     ));
 
     final SchemaResource schemaResource = mock(SchemaResource.class);
@@ -1394,13 +1404,13 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected Matcher<Iterable<? extends String>> expectedSchemaConsistencyStatements() {
     return contains(
-      "-- Healing table: TableName",
-      "DROP INDEX IF EXISTS tablename_1$null0",
-      "DROP INDEX IF EXISTS tablename_1$null1",
-      "CREATE UNIQUE INDEX TableName_1$null0 ON testschema.TableName ((0)) WHERE u IS NULL",
-      "COMMENT ON INDEX TableName_1$null0 IS 'REALNAME:[6285d92226e5112908a10cd51e129b72/cfcd208495d565ef66e7dff9f98764da]'",
-      "CREATE UNIQUE INDEX TableName_2$null ON testschema.TableName ((u ||'§'|| v ||'§'|| x)) WHERE u IS NULL OR v IS NULL OR x IS NULL",
-      "COMMENT ON INDEX TableName_2$null IS 'REALNAME:[47d0d3041096c2ac2e8cbb4a8d0e3fd8]'"
+      "-- Healing table: TableOne",
+      "DROP INDEX IF EXISTS tableone_1$null0",
+      "DROP INDEX IF EXISTS tableone_1$null1",
+      "CREATE UNIQUE INDEX TableOne_1$null0 ON testschema.TableOne ((0)) WHERE u IS NULL",
+      "COMMENT ON INDEX TableOne_1$null0 IS 'REALNAME:[6285d92226e5112908a10cd51e129b72/cfcd208495d565ef66e7dff9f98764da]'",
+      "CREATE UNIQUE INDEX TableOne_2$null ON testschema.TableOne ((u ||'§'|| v ||'§'|| x)) WHERE u IS NULL OR v IS NULL OR x IS NULL",
+      "COMMENT ON INDEX TableOne_2$null IS 'REALNAME:[47d0d3041096c2ac2e8cbb4a8d0e3fd8]'"
     );
   }
 }
