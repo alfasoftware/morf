@@ -156,7 +156,6 @@ import org.alfasoftware.morf.upgrade.ChangeIndex;
 import org.alfasoftware.morf.upgrade.RemoveColumn;
 import org.alfasoftware.morf.upgrade.adapt.AlteredTable;
 import org.apache.commons.lang3.StringUtils;
-import org.hamcrest.Matcher;
 import org.joda.time.LocalDate;
 import org.junit.Assert;
 import org.junit.Before;
@@ -5777,7 +5776,7 @@ public abstract class AbstractSqlDialectTest {
    * Checks the @link org.alfasoftware.morf.jdbc.SqlDialect.getSchemaConsistencyStatements(SchemaResource)} mechanism.
    */
   @Test
-  public void testSchemaConsistencyStatements() throws SQLException {
+  public void testSchemaConsistencyStatements() {
     final SchemaResource schemaResource = createSchemaResourceForSchemaConsistencyStatements();
 
     assertThat(
@@ -5791,7 +5790,7 @@ public abstract class AbstractSqlDialectTest {
     return schemaResource;
   }
 
-  protected Matcher<Iterable<? extends String>> expectedSchemaConsistencyStatements() {
+  protected org.hamcrest.Matcher<java.lang.Iterable<? extends String>> expectedSchemaConsistencyStatements() {
     return emptyIterable();
   }
 
@@ -5801,7 +5800,7 @@ public abstract class AbstractSqlDialectTest {
    * Checks the @link org.alfasoftware.morf.jdbc.SqlDialect.getSchemaConsistencyStatements(SchemaResource)} mechanism fallback.
    */
   @Test
-  public void testSchemaConsistencyStatementsOnNoDatabaseMetaDataProvider() throws SQLException {
+  public void testSchemaConsistencyStatementsOnNoDatabaseMetaDataProvider() {
     final SchemaResource schemaResource = mock(SchemaResource.class);
     when(schemaResource.getDatabaseMetaDataProvider()).thenReturn(Optional.empty());
 
@@ -5816,7 +5815,7 @@ public abstract class AbstractSqlDialectTest {
    * Checks the @link org.alfasoftware.morf.jdbc.SqlDialect.getSchemaConsistencyStatements(SchemaResource)} mechanism fallback.
    */
   @Test
-  public void testSchemaConsistencyStatementsOnWrongDatabaseMetaDataProvider() throws SQLException {
+  public void testSchemaConsistencyStatementsOnWrongDatabaseMetaDataProvider() {
     final SchemaResource schemaResource = mock(SchemaResource.class);
     when(schemaResource.getDatabaseMetaDataProvider()).thenReturn(Optional.of(mock(DatabaseMetaDataProvider.class)));
 

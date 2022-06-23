@@ -30,7 +30,6 @@ import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
-import org.hamcrest.Matcher;
 import org.mockito.Mockito;
 
 import com.google.common.collect.ImmutableList;
@@ -1402,7 +1401,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   }
 
   @Override
-  protected Matcher<Iterable<? extends String>> expectedSchemaConsistencyStatements() {
+  protected org.hamcrest.Matcher<java.lang.Iterable<? extends String>> expectedSchemaConsistencyStatements() {
     return contains(
       "-- Healing table: TableOne",
       "DROP INDEX IF EXISTS tableone_1$null0",
