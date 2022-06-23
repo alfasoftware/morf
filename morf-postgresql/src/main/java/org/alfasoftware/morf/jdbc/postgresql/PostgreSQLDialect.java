@@ -1,5 +1,6 @@
 package org.alfasoftware.morf.jdbc.postgresql;
 
+import static com.google.common.base.Predicates.instanceOf;
 import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
 import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
 import static org.alfasoftware.morf.sql.SelectStatement.select;
@@ -749,6 +750,7 @@ class PostgreSQLDialect extends SqlDialect {
   @Override
   public List<String> getSchemaConsistencyStatements(SchemaResource schemaResource) {
     return schemaResource.getDatabaseMetaDataProvider()
+            .filter(instanceOf(PostgreSQLMetaDataProvider.class))
             .map(PostgreSQLMetaDataProvider.class::cast)
             .map(this::getSchemaConsistencyStatements)
             .orElseGet(() -> super.getSchemaConsistencyStatements(schemaResource));

@@ -6,6 +6,8 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.emptyIterable;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Collection;
 
@@ -533,5 +535,21 @@ public class TestPostgreSQLUniqueIndexAdditionalDeploymentStatements {
         "CREATE UNIQUE INDEX TableName_6$null ON public.TableName ((u ||'§'|| v ||'§'|| x)) WHERE u IS NULL OR v IS NULL OR x IS NULL",
         "COMMENT ON INDEX TableName_6$null IS 'REALNAME:[47d0d3041096c2ac2e8cbb4a8d0e3fd8]'"
       ));
+  }
+
+
+  @Test
+  public void testMatchAdditionalIndexPositiveCases() {
+    assertTrue(PostgreSQLUniqueIndexAdditionalDeploymentStatements.matchAdditionalIndex("TableName_6$null", "abc").isPresent());
+    assertTrue(PostgreSQLUniqueIndexAdditionalDeploymentStatements.matchAdditionalIndex("TableName_6$null0", "abc/def").isPresent());
+    assertTrue(PostgreSQLUniqueIndexAdditionalDeploymentStatements.matchAdditionalIndex("TableName_6$null012", "abc/def").isPresent());
+  }
+
+
+  @Test
+  public void testMatchAdditionalIndexNegativeCase() {
+    assertFalse(PostgreSQLUniqueIndexAdditionalDeploymentStatements.matchAdditionalIndex("TableName_6", "TableName_6").isPresent());
+    assertFalse(PostgreSQLUniqueIndexAdditionalDeploymentStatements.matchAdditionalIndex("TableName_PK", "TableName_6").isPresent());
+    assertFalse(PostgreSQLUniqueIndexAdditionalDeploymentStatements.matchAdditionalIndex("TableName_PRF", "TableName_6").isPresent());
   }
 }

@@ -1,7 +1,13 @@
 package org.alfasoftware.morf.jdbc.postgresql;
 
+import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
+import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.hamcrest.Matchers.contains;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.io.InputStream;
 import java.sql.SQLException;
@@ -9,9 +15,13 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
 import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.SchemaResource;
+import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.CustomHint;
 import org.alfasoftware.morf.sql.PostgreSQLCustomHint;
 import org.alfasoftware.morf.sql.SelectStatement;
@@ -20,6 +30,7 @@ import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.hamcrest.Matcher;
 import org.mockito.Mockito;
 
 import com.google.common.collect.ImmutableList;
@@ -1347,4 +1358,49 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
       " LIMIT 1000)";
   };
 
+
+  @Override
+  protected SchemaResource createSchemaResourceForSchemaConsistencyStatements() {
+    final List<Table> tables = ImmutableList.of(
+      table("TableName")
+        .columns(
+          column("id", DataType.BIG_INTEGER),
+          column("u", DataType.BIG_INTEGER).nullable(),
+          column("v", DataType.BIG_INTEGER).nullable(),
+          column("x", DataType.BIG_INTEGER).nullable())
+        .indexes(
+          index("TableName_1").columns("u").unique(),
+          index("TableName_2").columns("u", "v", "x").unique(),
+          index("TableName_3").columns("x").unique()
+        )
+    );
+
+    PostgreSQLMetaDataProvider metaDataProvider = mock(PostgreSQLMetaDataProvider.class);
+    when(metaDataProvider.tables()).thenReturn(tables);
+    when(metaDataProvider.getAdditionalConstraintIndexes("tablename_1")).thenReturn(ImmutableList.of(
+      PostgreSQLUniqueIndexAdditionalDeploymentStatements.matchAdditionalIndex("TableName_1$null0", "xx/yy").get(),
+      PostgreSQLUniqueIndexAdditionalDeploymentStatements.matchAdditionalIndex("TableName_1$null1", "xx/yy").get()
+    ));
+    when(metaDataProvider.getAdditionalConstraintIndexes("tablename_3")).thenReturn(ImmutableList.of(
+      PostgreSQLUniqueIndexAdditionalDeploymentStatements.matchAdditionalIndex("TableName_3$null0", "76e4a5e9bce3c23b4feb0675fb0c8366/cfcd208495d565ef66e7dff9f98764da").get()
+    ));
+
+    final SchemaResource schemaResource = mock(SchemaResource.class);
+    when(schemaResource.getDatabaseMetaDataProvider()).thenReturn(Optional.of(metaDataProvider));
+
+    return schemaResource;
+  }
+
+  @Override
+  protected Matcher<Iterable<? extends String>> expectedSchemaConsistencyStatements() {
+    return contains(
+      "-- Healing table: TableName",
+      "DROP INDEX IF EXISTS tablename_1$null0",
+      "DROP INDEX IF EXISTS tablename_1$null1",
+      "CREATE UNIQUE INDEX TableName_1$null0 ON testschema.TableName ((0)) WHERE u IS NULL",
+      "COMMENT ON INDEX TableName_1$null0 IS 'REALNAME:[6285d92226e5112908a10cd51e129b72/cfcd208495d565ef66e7dff9f98764da]'",
+      "CREATE UNIQUE INDEX TableName_2$null ON testschema.TableName ((u ||'§'|| v ||'§'|| x)) WHERE u IS NULL OR v IS NULL OR x IS NULL",
+      "COMMENT ON INDEX TableName_2$null IS 'REALNAME:[47d0d3041096c2ac2e8cbb4a8d0e3fd8]'"
+    );
+  }
 }
