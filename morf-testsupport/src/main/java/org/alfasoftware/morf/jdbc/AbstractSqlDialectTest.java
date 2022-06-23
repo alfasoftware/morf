@@ -5790,7 +5790,7 @@ public abstract class AbstractSqlDialectTest {
     return schemaResource;
   }
 
-  protected org.hamcrest.Matcher<java.lang.Iterable<? extends String>> expectedSchemaConsistencyStatements() {
+  protected org.hamcrest.Matcher<java.lang.Iterable<? extends String>> expectedSchemaConsistencyStatements() { //NOSONAR // Remove usage of generic wildcard type // The generic wildcard type comes from hamcrest and is therefore unavoidable
     return emptyIterable();
   }
 
