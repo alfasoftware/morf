@@ -1146,7 +1146,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected List<String> expectedRenameIndexStatements() {
     return ImmutableList.of("ALTER INDEX testschema.Test_1 RENAME TO Test_2",
                             "COMMENT ON INDEX Test_2 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_2]'",
-                            "ALTER INDEX IF EXISTS testschema.TestTest_1$null0 RENAME TO Test_2$null0"
+                            "ALTER INDEX IF EXISTS testschema.Test_1$null0 RENAME TO Test_2$null0"
     );
   }
 

@@ -669,7 +669,7 @@ class PostgreSQLDialect extends SqlDialect {
     }
 
     Index index = Iterables.getOnlyElement(FluentIterable.from(table.indexes()).filter(i -> toIndexName.equalsIgnoreCase(i.getName())));
-    return new PostgreSQLUniqueIndexAdditionalDeploymentStatements(table, index).renameIndexStatements(schemaNamePrefix(table) + table.getName(), fromIndexName, toIndexName);
+    return new PostgreSQLUniqueIndexAdditionalDeploymentStatements(table, index).renameIndexStatements(schemaNamePrefix(table) + fromIndexName, toIndexName);
   }
 
 

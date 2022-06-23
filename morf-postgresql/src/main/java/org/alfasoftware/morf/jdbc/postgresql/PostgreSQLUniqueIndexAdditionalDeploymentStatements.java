@@ -72,7 +72,7 @@ class PostgreSQLUniqueIndexAdditionalDeploymentStatements {
 
       public Iterable<String> createIndexStatements(String prefixedTableName);
 
-      public Iterable<String> renameIndexStatements(String prefixedTableName, String fromIndexName, String toIndexName);
+      public Iterable<String> renameIndexStatements(String prefixedFromIndexName, String toIndexName);
 
       public Iterable<String> dropIndexStatements(String prefixedTableName);
 
@@ -172,15 +172,15 @@ class PostgreSQLUniqueIndexAdditionalDeploymentStatements {
 
 
       @Override
-      public Iterable<String> renameIndexStatements(String prefixedTableName, String fromIndexName, String toIndexName) {
+      public Iterable<String> renameIndexStatements(String prefixedFromIndexName, String toIndexName) {
         return FluentIterable.from(constellations)
-            .transformAndConcat(nullColumns -> renameIndexStatements(prefixedTableName, fromIndexName, toIndexName, nullColumns));
+            .transformAndConcat(nullColumns -> renameIndexStatements(prefixedFromIndexName, toIndexName, nullColumns));
       }
 
 
-      private Iterable<String> renameIndexStatements(String prefixedTableName, String fromIndexName, String toIndexName, Iterable<Integer> nullColumns) {
+      private Iterable<String> renameIndexStatements(String prefixedFromIndexName, String toIndexName, Iterable<Integer> nullColumns) {
         String indexNameSuffix = makeIndexSuffix(nullColumns);
-        String alterStatement = alterIndexSqlStatement(prefixedTableName + fromIndexName + indexNameSuffix, toIndexName + indexNameSuffix);
+        String alterStatement = alterIndexSqlStatement(prefixedFromIndexName + indexNameSuffix, toIndexName + indexNameSuffix);
         return ImmutableList.of(alterStatement);
       }
 
@@ -284,8 +284,8 @@ class PostgreSQLUniqueIndexAdditionalDeploymentStatements {
 
 
       @Override
-      public Iterable<String> renameIndexStatements(String prefixedTableName, String fromIndexName, String toIndexName) {
-        String alterStatement = alterIndexSqlStatement(prefixedTableName + fromIndexName + INDEX_NAME_SUFFIX, toIndexName + INDEX_NAME_SUFFIX);
+      public Iterable<String> renameIndexStatements(String prefixedFromIndexName, String toIndexName) {
+        String alterStatement = alterIndexSqlStatement(prefixedFromIndexName + INDEX_NAME_SUFFIX, toIndexName + INDEX_NAME_SUFFIX);
         return ImmutableList.of(alterStatement);
       }
 
@@ -328,8 +328,8 @@ class PostgreSQLUniqueIndexAdditionalDeploymentStatements {
     }
 
 
-    public Iterable<String> renameIndexStatements(String prefixedTableName, String fromIndexName, String toIndexName) {
-      return strategy.renameIndexStatements(prefixedTableName, fromIndexName, toIndexName);
+    public Iterable<String> renameIndexStatements(String prefixedFromIndexName, String toIndexName) {
+      return strategy.renameIndexStatements(prefixedFromIndexName, toIndexName);
     }
 
 
