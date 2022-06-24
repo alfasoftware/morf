@@ -1282,7 +1282,7 @@ class OracleDialect extends SqlDialect {
       if (hint instanceof ParallelQueryHint) {
         builder.append(" PARALLEL");
         ParallelQueryHint parallelQueryHint = (ParallelQueryHint) hint;
-        builder.append(parallelQueryHint.getDegreeOfParallelism().map(d -> " " + d).orElse(""));
+        builder.append(parallelQueryHint.getDegreeOfParallelism().map(d -> " ("+ d + ")").orElse(""));
       }
       if (hint instanceof OracleCustomHint) {
         builder.append(" ")

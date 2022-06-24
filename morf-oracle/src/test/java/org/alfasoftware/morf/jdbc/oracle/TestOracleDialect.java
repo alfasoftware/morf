@@ -1506,7 +1506,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedHints6() {
-    return "SELECT /*+ PARALLEL 5 */ a, b FROM " + tableName("Foo") + " ORDER BY a NULLS FIRST";
+    return "SELECT /*+ PARALLEL (5) */ a, b FROM " + tableName("Foo") + " ORDER BY a NULLS FIRST";
   }
 
 
