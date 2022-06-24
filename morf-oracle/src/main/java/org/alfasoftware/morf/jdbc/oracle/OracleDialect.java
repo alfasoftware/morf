@@ -60,6 +60,7 @@ import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.AllowParallelDmlHint;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
@@ -1283,6 +1284,9 @@ class OracleDialect extends SqlDialect {
         builder.append(" PARALLEL");
         ParallelQueryHint parallelQueryHint = (ParallelQueryHint) hint;
         builder.append(parallelQueryHint.getDegreeOfParallelism().map(d -> " ("+ d + ")").orElse(""));
+      }
+      if (hint instanceof AllowParallelDmlHint) {
+        builder.append(" ENABLE_PARALLEL_DML");
       }
       if (hint instanceof OracleCustomHint) {
         builder.append(" ")

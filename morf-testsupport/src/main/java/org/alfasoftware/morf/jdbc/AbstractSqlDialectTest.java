@@ -3214,6 +3214,7 @@ public abstract class AbstractSqlDialectTest {
         .optimiseForRowCount(1000)
         .useImplicitJoinOrder()
         .withParallelQueryPlan()
+        .allowParallelDml()
         .withCustomHint(mock(CustomHint.class))
       )
     );
@@ -3251,7 +3252,16 @@ public abstract class AbstractSqlDialectTest {
         .withParallelQueryPlan(5)
       )
     );
-
+    assertEquals(
+      expectedHints6a(),
+      testDialect.convertStatementToSQL(
+        select(field("a"), field("b"))
+        .from(tableRef("Foo"))
+        .orderBy(field("a"))
+        .withParallelQueryPlan(5)
+        .allowParallelDml()
+      )
+    );
     assertEquals(
       expectedHints7(),
       testDialect.convertStatementToSQL(
@@ -5470,6 +5480,14 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL for the {@link SelectStatement#withParallelQueryPlan(int)} directive.
    */
   protected String expectedHints6() {
+    return "SELECT a, b FROM " + tableName("Foo") + " ORDER BY a";
+  }
+
+
+  /**
+   * @return The expected SQL for the {@link SelectStatement#withParallelQueryPlan(int)} and {@link SelectStatement#allowParallelDml()} directive.
+   */
+  protected String expectedHints6a() {
     return "SELECT a, b FROM " + tableName("Foo") + " ORDER BY a";
   }
 
