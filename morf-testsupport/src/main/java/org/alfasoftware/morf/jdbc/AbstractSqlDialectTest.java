@@ -3236,6 +3236,15 @@ public abstract class AbstractSqlDialectTest {
       )
     );
     assertEquals(
+        Lists.newArrayList(expectedHints4a()),
+        testDialect.convertStatementToSQL(
+        insert()
+        .into(tableRef("Foo"))
+        .from(select(field("a"), field("b")).from(tableRef("Foo_1")))
+        .avoidDirectPath()
+        )
+    );
+    assertEquals(
       Lists.newArrayList(expectedHints5()),
       testDialect.convertStatementToSQL(
         insert()
@@ -5464,6 +5473,14 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL for the {@link InsertStatement#useDirectPath()} directive.
    */
   protected String expectedHints4() {
+    return  "INSERT INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
+  }
+
+
+  /**
+   * @return The expected SQL for the {@link InsertStatement#avoidDirectPath()} and {@link SelectStatement#allowParallelDml()} directive.
+   */
+  protected String expectedHints4a() {
     return  "INSERT INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
   }
 

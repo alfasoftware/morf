@@ -225,6 +225,23 @@ public class InsertStatementBuilder implements Builder<InsertStatement> {
    *
    * @return this, for method chaining.
    */
+  public InsertStatementBuilder avoidDirectPath() {
+    getHints().add(NoDirectPathQueryHint.INSTANCE);
+    return this;
+  }
+
+
+  /**
+   * If supported by the dialect, hints to the database that an {@code APPEND} query hint should be used in the insert statement.
+   *
+   * <p>In general, as with all query plan modification, <strong>do not use this unless you know
+   * exactly what you are doing</strong>.</p>
+   *
+   * <p>These directives are applied in the SQL in the order they are called on {@link InsertStatement}.  This usually
+   * affects their precedence or relative importance, depending on the platform.</p>
+   *
+   * @return this, for method chaining.
+   */
   public InsertStatementBuilder useDirectPath() {
     getHints().add(DirectPathQueryHint.INSTANCE);
     return this;

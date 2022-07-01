@@ -1501,6 +1501,16 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   }
 
 
+  //TODO: need to add NOAPPEND into return statement and get test passing
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints4a()
+   */
+  @Override
+  protected String expectedHints4a() {
+    return "INSERT /*+ */ INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints6()
    */
@@ -1511,7 +1521,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints6()
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints6a()
    */
   @Override
   protected String expectedHints6a() {

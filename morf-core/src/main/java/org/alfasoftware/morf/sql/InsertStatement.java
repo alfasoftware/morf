@@ -342,6 +342,26 @@ public class InsertStatement implements Statement,
 
 
   /**
+   * If supported by the dialect, hints to the database that an {@code APPEND} query hint should be used in the insert statement.
+   *
+   * <p>In general, as with all query plan modification, <strong>do not use this unless you know
+   * exactly what you are doing</strong>.</p>
+   *
+   * <p>These directives are applied in the SQL in the order they are called on {@link InsertStatement}.  This usually
+   * affects their precedence or relative importance, depending on the platform.</p>
+   *
+   * @return a new insert statement with the change applied.
+   */
+  public InsertStatement avoidDirectPath() {
+    return copyOnWriteOrMutate(
+        InsertStatementBuilder::avoidDirectPath,
+        () -> this.hints.add(NoDirectPathQueryHint.INSTANCE)
+    );
+  }
+
+
+
+  /**
    * Specifies the defaults to use when inserting new fields
    *
    * @param defaultValues the list of values to use as defaults
