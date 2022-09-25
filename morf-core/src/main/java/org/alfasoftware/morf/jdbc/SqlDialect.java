@@ -1001,7 +1001,7 @@ public abstract class SqlDialect {
    * appends union set operators to the result
    *
    * @param result union set operators will be appended here
-   * @param stmt   statement with set operators
+   * @param stmt statement with set operators
    */
   protected void appendUnionSet(StringBuilder result, SelectStatement stmt) {
     if (stmt.getSetOperators() != null) {
@@ -1305,8 +1305,8 @@ public abstract class SqlDialect {
    * @param operator the minus set operation to convert.
    * @return a string representation of the minus set operation.
    */
-  private String getSqlFrom(MinusSetOperator operator) {
-    return String.format(" MINUS %s",
+  protected String getSqlFrom(MinusSetOperator operator) {
+    return String.format(" EXCEPT %s",
         getSqlFrom(operator.getSelectStatement()));
   }
 

@@ -1339,7 +1339,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSelectWithMinus() {
-    return "SELECT stringField FROM testschema.Test MINUS SELECT stringField FROM testschema.Other ORDER BY stringField";
+    return "SELECT stringField FROM testschema.Test EXCEPT SELECT stringField FROM testschema.Other ORDER BY stringField";
   };
 
 
@@ -1348,7 +1348,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSelectWithMinusAndDbLinkFormer() {
-    return "SELECT stringField FROM MYDBLINKREF.Test MINUS SELECT stringField FROM testschema.Other ORDER BY stringField";
+    return "SELECT stringField FROM MYDBLINKREF.Test EXCEPT SELECT stringField FROM testschema.Other ORDER BY stringField";
   }
 
 
@@ -1357,6 +1357,6 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSelectWithMinusAndDbLinkLatter() {
-    return "SELECT stringField FROM testschema.Test MINUS SELECT stringField FROM MYDBLINKREF.Other ORDER BY stringField";
+    return "SELECT stringField FROM testschema.Test EXCEPT SELECT stringField FROM MYDBLINKREF.Other ORDER BY stringField";
   }
 }
