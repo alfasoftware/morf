@@ -1574,4 +1574,31 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   protected String expectedDeleteWithLimitWithoutWhere() {
     return "DELETE FROM " + tableName(TEST_TABLE) + " WHERE ROWNUM <= 1000";
   }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithMinus()
+   */
+  @Override
+  protected String expectedSelectWithMinus() {
+    return "SELECT stringField FROM TESTSCHEMA.Test MINUS SELECT stringField FROM TESTSCHEMA.Other ORDER BY stringField NULLS FIRST";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithMinusAndDbLinkFormer()
+   */
+  @Override
+  protected String expectedSelectWithMinusAndDbLinkFormer() {
+    return "SELECT stringField FROM Test@MYDBLINKREF MINUS SELECT stringField FROM TESTSCHEMA.Other ORDER BY stringField NULLS FIRST";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithMinusAndDbLinkLatter()
+   */
+  @Override
+  protected String expectedSelectWithMinusAndDbLinkLatter() {
+    return "SELECT stringField FROM TESTSCHEMA.Test MINUS SELECT stringField FROM Other@MYDBLINKREF ORDER BY stringField NULLS FIRST";
+  }
 }

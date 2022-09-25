@@ -42,6 +42,7 @@ import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.sql.element.WhenCondition;
 import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Validate;
 import org.joda.time.LocalDate;
 
 import com.google.common.collect.Iterables;
@@ -76,6 +77,20 @@ public class SqlUtils {
    */
   public static TableReference tableRef(String tableName) {
     return new TableReference(tableName);
+  }
+
+
+  /**
+   * Construct a new table with a given name with provided DB-link.
+   *
+   * @param tableName the name of the table
+   * @param dblink database link if table exists in another database
+   * @return {@link TableReference}
+   */
+  public static TableReference tableRef(String tableName, String dblink) {
+    Validate.notEmpty(tableName, "Table name was not provided.");
+    Validate.notEmpty(dblink, "DB-link name was not provided.");
+    return new TableReference(null, tableName, dblink);
   }
 
 

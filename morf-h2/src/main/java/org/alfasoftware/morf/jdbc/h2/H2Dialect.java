@@ -35,6 +35,7 @@ import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.SqlParameter;
+import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.apache.commons.lang3.StringUtils;
 
@@ -595,5 +596,23 @@ class H2Dialect extends SqlDialect {
   @Override
   protected Optional<String> getDeleteLimitSuffix(int limit) {
     return Optional.of("LIMIT " + limit);
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#dbLinkPrefix(org.alfasoftware.morf.sql.element.TableReference)
+   */
+  @Override
+  protected String dbLinkPrefix(TableReference table) {
+    throw new IllegalStateException("DB Links are not supported in the H2 dialect");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#dbLinkSuffix(org.alfasoftware.morf.sql.element.TableReference)
+   */
+  @Override
+  protected String dbLinkSuffix(TableReference table) {
+    return "";
   }
 }

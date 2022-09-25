@@ -4,6 +4,7 @@ import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.MergeStatement.InputField;
+import org.alfasoftware.morf.sql.MinusSetOperator;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.TruncateStatement;
@@ -259,6 +260,16 @@ public interface SchemaAndDataChangeVisitor {
    * @param unionSetOperator instance of {@link UnionSetOperator} to visit.
    */
   default void visit(UnionSetOperator unionSetOperator) {
+    // Do nothing on default
+  }
+
+
+  /**
+   * Perform visit operation on a {@link MinusSetOperator} instance.
+   *
+   * @param minusSetOperator instance of {@link MinusSetOperator} to visit.
+   */
+  default void visit(MinusSetOperator minusSetOperator) {
     // Do nothing on default
   }
 

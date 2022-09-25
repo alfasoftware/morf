@@ -1322,5 +1322,32 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedDeleteWithLimitWithoutWhere() {
     return "DELETE TOP (1000) FROM " + tableName(TEST_TABLE);
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithMinus()
+   */
+  @Override
+  protected String expectedSelectWithMinus() {
+    return null;
   };
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithMinusAndDbLinkFormer()
+   */
+  @Override
+  protected String expectedSelectWithMinusAndDbLinkFormer() {
+    return null;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithMinusAndDbLinkLatter()
+   */
+  @Override
+  protected String expectedSelectWithMinusAndDbLinkLatter() {
+    return null;
+  }
 }

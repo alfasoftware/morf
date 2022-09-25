@@ -55,12 +55,13 @@ import org.alfasoftware.morf.sql.UseImplicitJoinOrder;
 import org.alfasoftware.morf.sql.UseIndex;
 import org.alfasoftware.morf.sql.UseParallelDml;
 import org.alfasoftware.morf.sql.element.AliasedField;
-import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
+import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.SqlParameter;
+import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -1407,4 +1408,27 @@ class OracleDialect extends SqlDialect {
 
     return builder.append(" */ ").toString();
   }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#dbLinkPrefix(org.alfasoftware.morf.sql.element.TableReference)
+   */
+  @Override
+  protected String dbLinkPrefix(TableReference table) {
+    return "";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#dbLinkSuffix(org.alfasoftware.morf.sql.element.TableReference)
+   */
+  @Override
+  protected String dbLinkSuffix(TableReference table) {
+    if (StringUtils.isEmpty(table.getDblink())) {
+      return "";
+    } else {
+      return "@" + table.getDblink();
+    }
+  }
+
 }

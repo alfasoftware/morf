@@ -28,6 +28,7 @@ import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Joiner;
@@ -309,4 +310,23 @@ public class MockDialect extends SqlDialect {
   protected String getSqlForLastDayOfMonth(AliasedField date) {
     return "DATEADD(dd, -DAY(DATEADD(m,1," + getSqlFrom(date) + ")), DATEADD(m,1," + getSqlFrom(date) + "))";
   }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#dbLinkPrefix(org.alfasoftware.morf.sql.element.TableReference)
+   */
+  @Override
+  protected String dbLinkPrefix(TableReference table) {
+    throw new IllegalStateException("DB Links are not supported in the Mock dialect");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#dbLinkSuffix(org.alfasoftware.morf.sql.element.TableReference)
+   */
+  @Override
+  protected String dbLinkSuffix(TableReference table) {
+    return "";
+  }
+
 }

@@ -50,6 +50,7 @@ import org.alfasoftware.morf.sql.AbstractSelectStatement;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.MergeStatement;
+import org.alfasoftware.morf.sql.MinusSetOperator;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.SelectStatementBuilder;
@@ -745,11 +746,28 @@ public abstract class SqlDialect {
 
 
   /**
+   * @param table The table reference for which a DB-link prefix will be provided
+   * @return a DB-link prefix for the table
+   */
+  protected abstract String dbLinkPrefix(TableReference table);
+
+
+  /**
+   * @param table The table reference for which a DB-link suffix will be provided
+   * @return a DB-link suffix for the table
+   */
+  protected abstract String dbLinkSuffix(TableReference table);
+
+
+  /**
    * @param tableRef The table reference from which the schema name will be extracted
    * @return The schema prefix of the specified table (including the dot), the
    *         dialect's schema prefix or blank if neither is specified (in that order).
    */
   protected String schemaNamePrefix(TableReference tableRef) {
+    if (!StringUtils.isEmpty(tableRef.getDblink()))
+      return dbLinkPrefix(tableRef);
+
     if (StringUtils.isEmpty(tableRef.getSchemaName())) {
       return schemaNamePrefix();
     } else {
@@ -841,6 +859,7 @@ public abstract class SqlDialect {
     appendGroupBy(result, stmt);
     appendHaving(result, stmt);
     appendUnionSet(result, stmt);
+    appendMinusSet(result, stmt);
     appendOrderBy(result, stmt);
 
     if (stmt.isForUpdate()) {
@@ -981,23 +1000,35 @@ public abstract class SqlDialect {
   /**
    * appends union set operators to the result
    *
-   * @throws UnsupportedOperationException if any other than
-   *           {@link UnionSetOperator} set operation found
    * @param result union set operators will be appended here
-   * @param stmt statement with set operators
+   * @param stmt   statement with set operators
    */
   protected void appendUnionSet(StringBuilder result, SelectStatement stmt) {
     if (stmt.getSetOperators() != null) {
       for (SetOperator operator : stmt.getSetOperators()) {
         if (operator instanceof UnionSetOperator) {
           result.append(getSqlFrom((UnionSetOperator) operator));
-        } else {
-          throw new UnsupportedOperationException("Unsupported set operation");
         }
       }
     }
   }
 
+
+  /**
+   * appends minus set operators to the result
+   *
+   * @param result minus set operators will be appended here
+   * @param stmt   statement with set operators
+   */
+  protected void appendMinusSet(StringBuilder result, SelectStatement stmt) {
+    if (stmt.getSetOperators() != null) {
+      for (SetOperator operator : stmt.getSetOperators()) {
+        if (operator instanceof MinusSetOperator) {
+          result.append(getSqlFrom((MinusSetOperator) operator));
+        }
+      }
+    }
+  }
 
   /**
    * appends having clause to the result
@@ -1064,6 +1095,7 @@ public abstract class SqlDialect {
       result.append(" FROM ");
       result.append(schemaNamePrefix(stmt.getTable()));
       result.append(stmt.getTable().getName());
+      result.append(dbLinkSuffix(stmt.getTable()));
 
       // Add a table alias if necessary
       if (!stmt.getTable().getAlias().equals("")) {
@@ -1258,14 +1290,25 @@ public abstract class SqlDialect {
   /**
    * Converts a {@link UnionSetOperator} into SQL.
    *
-   * @param operator the union to convert.
-   * @return a string representation of the field.
+   * @param operator the union set operation to convert.
+   * @return a string representation of the union set operation.
    */
-  protected String getSqlFrom(UnionSetOperator operator) {
+  private String getSqlFrom(UnionSetOperator operator) {
     return String.format(" %s %s", operator.getUnionStrategy() == UnionStrategy.ALL ? "UNION ALL" : "UNION",
       getSqlFrom(operator.getSelectStatement()));
   }
 
+
+  /**
+   * Converts a {@link MinusSetOperator} into SQL.
+   *
+   * @param operator the minus set operation to convert.
+   * @return a string representation of the minus set operation.
+   */
+  private String getSqlFrom(MinusSetOperator operator) {
+    return String.format(" MINUS %s",
+        getSqlFrom(operator.getSelectStatement()));
+  }
 
   /**
    * A database platform may need to specify the null order.

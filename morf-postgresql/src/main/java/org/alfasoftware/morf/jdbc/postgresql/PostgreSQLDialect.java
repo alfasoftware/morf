@@ -83,6 +83,10 @@ class PostgreSQLDialect extends SqlDialect {
     if(tableRef.isTemporary()) {
       return "";
     }
+
+    if (!StringUtils.isEmpty(tableRef.getDblink()))
+      return dbLinkPrefix(tableRef) + ".";
+
     if (StringUtils.isEmpty(tableRef.getSchemaName())) {
       return schemaNamePrefix();
     }
@@ -709,5 +713,23 @@ class PostgreSQLDialect extends SqlDialect {
     sqlBuilder.append(" LIMIT " + statement.getLimit().get() + ")");
 
     return sqlBuilder.toString();
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#dbLinkPrefix(org.alfasoftware.morf.sql.element.TableReference)
+   */
+  @Override
+  protected String dbLinkPrefix(TableReference table) {
+    return table.getDblink();
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#dbLinkSuffix(org.alfasoftware.morf.sql.element.TableReference)
+   */
+  @Override
+  protected String dbLinkSuffix(TableReference table) {
+    return "";
   }
 }

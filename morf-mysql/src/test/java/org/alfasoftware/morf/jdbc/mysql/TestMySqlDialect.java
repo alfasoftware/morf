@@ -1249,4 +1249,31 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   protected List<String> expectedCreateViewOverUnionSelectStatements() {
     return Arrays.asList("CREATE VIEW " + tableName("TestView") + " AS SELECT stringField FROM " + tableName(TEST_TABLE) + " WHERE (stringField = " + stringLiteralPrefix() + "'blah') UNION ALL SELECT stringField FROM " + tableName(OTHER_TABLE) + " WHERE (stringField = " + stringLiteralPrefix() + "'blah')");
   }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithMinus()
+   */
+  @Override
+  protected String expectedSelectWithMinus() {
+    return null;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithMinusAndDbLinkFormer()
+   */
+  @Override
+  protected String expectedSelectWithMinusAndDbLinkFormer() {
+    return null;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithMinusAndDbLinkLatter()
+   */
+  @Override
+  protected String expectedSelectWithMinusAndDbLinkLatter() {
+    return null;
+  }
 }

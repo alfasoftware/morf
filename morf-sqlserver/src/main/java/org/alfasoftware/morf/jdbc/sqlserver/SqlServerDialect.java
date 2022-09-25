@@ -50,6 +50,7 @@ import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.LocalDate;
@@ -1114,4 +1115,23 @@ class SqlServerDialect extends SqlDialect {
   protected Optional<String> getDeleteLimitPreFromClause(int limit) {
     return Optional.of("TOP (" + limit + ")");
   }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#dbLinkPrefix(org.alfasoftware.morf.sql.element.TableReference)
+   */
+  @Override
+  protected String dbLinkPrefix(TableReference table) {
+    throw new IllegalStateException("DB Links are not supported in the Sql Server dialect");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#dbLinkSuffix(org.alfasoftware.morf.sql.element.TableReference)
+   */
+  @Override
+  protected String dbLinkSuffix(TableReference table) {
+    return "";
+  }
+
 }

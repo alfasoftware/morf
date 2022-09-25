@@ -211,6 +211,7 @@ public abstract class AbstractSqlDialectTest {
   private static final String FLOAT_FIELD = "floatField";
   private static final String INT_FIELD = "intField";
   private static final String STRING_FIELD = "stringField";
+  private static final String DBLINK_NAME = "MYDBLINKREF";
 
   private static final byte[] BYTE_ARRAY = new byte[] { 2, 1, (byte) 164, 3, 14, 4, 9, 0, 0, 0, 48, 111, 114, 103, 46, 105, 110, 102, 105,
     110, 105, 115, 112, 97, 110, 46, 117, 116, 105, 108, 46, 99, 111, 110, 99, 117, 114, 114, 101, 110, 116, 46, 67, 111, 110,
@@ -4518,6 +4519,57 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * Tests the generation of SQL string for a MINUS statement and no DB Link.
+   */
+  @Test
+  public void testSelectWithMinusStatementsNoDbLink() {
+    assumeTrue("for dialects with no MINUS operation support the test will be skipped.", expectedSelectWithMinus() != null);
+
+    SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD))
+      .from(new TableReference(TEST_TABLE))
+      .minus(new SelectStatement(new FieldReference(STRING_FIELD)).from(new TableReference(OTHER_TABLE)))
+      .orderBy(new FieldReference(STRING_FIELD));
+    String result = testDialect.convertStatementToSQL(stmt);
+
+    assertEquals("Select script should match expected", expectedSelectWithMinus(), result);
+  }
+
+
+  /**
+   * Tests the generation of SQL string for a MINUS statement with a former select using DB-link
+   */
+  @Test
+  public void testSelectWithMinusStatementsWithDbLinkFormer() {
+    assumeTrue("for dialects with no MINUS operation support the test will be skipped.", expectedSelectWithMinusAndDbLinkFormer() != null);
+
+    SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD))
+        .from(new TableReference(null, TEST_TABLE, DBLINK_NAME))
+        .minus(new SelectStatement(new FieldReference(STRING_FIELD)).from(new TableReference(null, OTHER_TABLE)))
+        .orderBy(new FieldReference(STRING_FIELD));
+    String result = testDialect.convertStatementToSQL(stmt);
+
+    assertEquals("Select script should match expected", expectedSelectWithMinusAndDbLinkFormer(), result);
+  }
+
+
+  /**
+   * Tests the generation of SQL string for a MINUS statement with a latter select using DB-link
+   */
+  @Test
+  public void testSelectWithMinusStatementsWithDbLinkLatter() {
+    assumeTrue("for dialects with no MINUS operation support the test will be skipped.", expectedSelectWithMinusAndDbLinkLatter() != null);
+
+    SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD))
+        .from(new TableReference(null, TEST_TABLE))
+        .minus(new SelectStatement(new FieldReference(STRING_FIELD)).from(new TableReference(null, OTHER_TABLE, DBLINK_NAME)))
+        .orderBy(new FieldReference(STRING_FIELD));
+    String result = testDialect.convertStatementToSQL(stmt);
+
+    assertEquals("Select script should match expected", expectedSelectWithMinusAndDbLinkLatter(), result);
+  }
+
+
+  /**
    * Tests a join with no ON criteria.
    */
   @Test
@@ -5172,6 +5224,29 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL for selecting with an UNION statement.
    */
   protected abstract String expectedSelectWithUnion();
+
+
+  /**
+   * @return The expected SQL for selecting with an MINUS statement, or
+   *         {@code null} if MINUS operation is unsupported.
+   */
+  protected abstract String expectedSelectWithMinus();
+
+
+  /**
+   * @return The expected SQL for selecting with an MINUS statement and DB Link
+   *         (for the former statement), or {@code null} if MINUS operation is
+   *         unsupported.
+   */
+  protected abstract String expectedSelectWithMinusAndDbLinkFormer();
+
+
+  /**
+   * @return The expected SQL for selecting with an MINUS statement and DB Link
+   *         (for the latter statement), or {@code null} if MINUS operation is
+   *         unsupported.
+   */
+  protected abstract String expectedSelectWithMinusAndDbLinkLatter();
 
 
   /**

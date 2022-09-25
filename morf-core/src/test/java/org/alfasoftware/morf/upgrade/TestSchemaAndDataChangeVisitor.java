@@ -6,6 +6,7 @@ import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.MergeStatement.InputField;
+import org.alfasoftware.morf.sql.MinusSetOperator;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.TruncateStatement;
@@ -106,6 +107,9 @@ public class TestSchemaAndDataChangeVisitor {
   private UnionSetOperator unionSetOperator;
 
   @Mock
+  private MinusSetOperator minusSetOperator;
+
+  @Mock
   private BracketedExpression bracketedExpression;
 
   @Mock
@@ -183,6 +187,7 @@ public class TestSchemaAndDataChangeVisitor {
     visitor.visit(truncateStatement);
     visitor.visit(updateStatement);
     visitor.visit(unionSetOperator);
+    visitor.visit(minusSetOperator);
     visitor.visit(bracketedExpression);
     visitor.visit(caseStatement);
     visitor.visit(cast);
@@ -201,7 +206,7 @@ public class TestSchemaAndDataChangeVisitor {
     verifyNoInteractions(addColumn, addTable, removeTable, addIndex, changeColumn, removeColumn, removeIndex, changeIndex,
       renameIndex, renameTable, changePrimaryKeyColumns, addTableFrom, analyseTable, selectFirstStatement, selectStatement,
       deleteStatement, insertStatement, inputField, mergeStatement, portableSqlStatement, truncateStatement, updateStatement,
-      unionSetOperator, bracketedExpression, caseStatement, cast, concatenatedField, criterion, fieldFromSelect,
+      unionSetOperator, minusSetOperator, bracketedExpression, caseStatement, cast, concatenatedField, criterion, fieldFromSelect,
       fieldFromSelectFirst, fieldLiteral, fieldReference, join, mathsField, sqlParameter, whenCondition);
   }
 }

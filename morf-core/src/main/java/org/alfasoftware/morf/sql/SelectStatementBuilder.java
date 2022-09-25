@@ -367,6 +367,20 @@ public class SelectStatementBuilder extends AbstractSelectStatementBuilder<Selec
 
 
   /**
+   * Perform a MINUS set operation with another {@code selectStatement}, retaining
+   * all rows which exist in top select statement only.
+   *
+   * @param selectStatement the other select statement that contains entries that
+   *                          will not be present in the final result set.
+   * @return this, for method chaining.
+   */
+  public SelectStatementBuilder minus(SelectStatement selectStatement) {
+    setOperators.add(new MinusSetOperator(this.build(), selectStatement));
+    return this;
+  }
+
+
+  /**
    * Gets the grouped fields
    *
    * @return the group by fields

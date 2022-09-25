@@ -1472,4 +1472,31 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
   protected String expectedDeleteWithLimitWithoutWhere() {
     return "DELETE FROM " + tableName(TEST_TABLE) + " LIMIT 1000";
   }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithMinus()
+   */
+  @Override
+  protected String expectedSelectWithMinus() {
+    return null;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithMinusAndDbLinkFormer()
+   */
+  @Override
+  protected String expectedSelectWithMinusAndDbLinkFormer() {
+    return null;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithMinusAndDbLinkLatter()
+   */
+  @Override
+  protected String expectedSelectWithMinusAndDbLinkLatter() {
+    return null;
+  }
 }

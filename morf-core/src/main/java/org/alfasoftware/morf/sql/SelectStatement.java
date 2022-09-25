@@ -55,6 +55,7 @@ import com.google.common.collect.Lists;
  *      .having([criterion])               = SELECT [fields] FROM [table] GROUP BY [fields] HAVING [criterion]
  *    .union([SelectStatement])            = SELECT [fields] FROM [table] UNION [SelectStatement]
  *    .unionAll([SelectStatement])         = SELECT [fields] FROM [table] UNION ALL [SelectStatement]
+ *    .minus([SelectStatement])            = SELECT [fields] FROM [table] MINUS [SelectStatement]
  *    .build()</pre></blockquote>
  *
  * @author Copyright (c) Alfa Financial Software 2009
@@ -530,6 +531,27 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
     return copyOnWriteOrMutate(
         (SelectStatementBuilder b) -> b.unionAll(selectStatement),
         () ->  setOperators.add(new UnionSetOperator(UnionStrategy.ALL, this, selectStatement))
+    );
+  }
+
+
+  /**
+   * Perform a MINUS set operation with another {@code selectStatement},
+   * eliminating any rows from the top select statement which exist in the bottom
+   * select statement.
+   * <p>
+   * If an minus operation is performed then all participating select statements
+   * require the same selected column list.
+   * </p>
+   *
+   * @param selectStatement the select statement to be united with the current
+   *                          select statement;
+   * @return a new select statement with the change applied.
+   */
+  public SelectStatement minus(SelectStatement selectStatement) {
+    return copyOnWriteOrMutate(
+        (SelectStatementBuilder b) -> b.minus(selectStatement),
+        () ->  setOperators.add(new MinusSetOperator(this, selectStatement))
     );
   }
 

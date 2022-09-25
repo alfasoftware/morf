@@ -936,4 +936,23 @@ class NuoDBDialect extends SqlDialect {
   protected Optional<String> getDeleteLimitSuffix(int limit) {
     return Optional.of("LIMIT " + limit);
   }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#dbLinkPrefix(org.alfasoftware.morf.sql.element.TableReference)
+   */
+  @Override
+  protected String dbLinkPrefix(TableReference table) {
+    throw new IllegalStateException("DB Links are not supported in the Nuo dialect");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#dbLinkSuffix(org.alfasoftware.morf.sql.element.TableReference)
+   */
+  @Override
+  protected String dbLinkSuffix(TableReference table) {
+    return "";
+  }
+
 }
