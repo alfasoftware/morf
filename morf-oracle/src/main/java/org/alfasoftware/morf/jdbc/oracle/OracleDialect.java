@@ -42,9 +42,9 @@ import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.DirectPathQueryHint;
+import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.Hint;
 import org.alfasoftware.morf.sql.InsertStatement;
-import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.OptimiseForRowCount;
 import org.alfasoftware.morf.sql.OracleCustomHint;
 import org.alfasoftware.morf.sql.ParallelQueryHint;
@@ -1412,23 +1412,14 @@ class OracleDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#dbLinkPrefix(org.alfasoftware.morf.sql.element.TableReference)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#tableNameWithSchemaName(org.alfasoftware.morf.sql.element.TableReference)
    */
   @Override
-  protected String dbLinkPrefix(TableReference table) {
-    return "";
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#dbLinkSuffix(org.alfasoftware.morf.sql.element.TableReference)
-   */
-  @Override
-  protected String dbLinkSuffix(TableReference table) {
-    if (StringUtils.isEmpty(table.getDblink())) {
-      return "";
+  protected String tableNameWithSchemaName(TableReference tableRef) {
+    if (StringUtils.isEmpty(tableRef.getDblink())) {
+      return super.tableNameWithSchemaName(tableRef);
     } else {
-      return "@" + table.getDblink();
+      return super.tableNameWithSchemaName(tableRef) + "@" + tableRef.getDblink();
     }
   }
 

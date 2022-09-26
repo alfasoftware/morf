@@ -746,17 +746,12 @@ public abstract class SqlDialect {
 
 
   /**
-   * @param table The table reference for which a DB-link prefix will be provided
-   * @return a DB-link prefix for the table
+   * @param table The table for which the schema name will be retrieved
+   * @return full table name that includes a schema name and DB-link if present
    */
-  protected abstract String dbLinkPrefix(TableReference table);
-
-
-  /**
-   * @param table The table reference for which a DB-link suffix will be provided
-   * @return a DB-link suffix for the table
-   */
-  protected abstract String dbLinkSuffix(TableReference table);
+  protected String tableNameWithSchemaName(TableReference tableRef) {
+    return schemaNamePrefix(tableRef) + tableRef.getName();
+  }
 
 
   /**
@@ -765,9 +760,6 @@ public abstract class SqlDialect {
    *         dialect's schema prefix or blank if neither is specified (in that order).
    */
   protected String schemaNamePrefix(TableReference tableRef) {
-    if (!StringUtils.isEmpty(tableRef.getDblink()))
-      return dbLinkPrefix(tableRef);
-
     if (StringUtils.isEmpty(tableRef.getSchemaName())) {
       return schemaNamePrefix();
     } else {
@@ -1093,9 +1085,7 @@ public abstract class SqlDialect {
   protected <T extends AbstractSelectStatement<T>> void appendFrom(StringBuilder result, AbstractSelectStatement<T> stmt) {
     if (stmt.getTable() != null) {
       result.append(" FROM ");
-      result.append(schemaNamePrefix(stmt.getTable()));
-      result.append(stmt.getTable().getName());
-      result.append(dbLinkSuffix(stmt.getTable()));
+      result.append(tableNameWithSchemaName(stmt.getTable()));
 
       // Add a table alias if necessary
       if (!stmt.getTable().getAlias().equals("")) {
@@ -1293,7 +1283,7 @@ public abstract class SqlDialect {
    * @param operator the union set operation to convert.
    * @return a string representation of the union set operation.
    */
-  private String getSqlFrom(UnionSetOperator operator) {
+  protected String getSqlFrom(UnionSetOperator operator) {
     return String.format(" %s %s", operator.getUnionStrategy() == UnionStrategy.ALL ? "UNION ALL" : "UNION",
       getSqlFrom(operator.getSelectStatement()));
   }

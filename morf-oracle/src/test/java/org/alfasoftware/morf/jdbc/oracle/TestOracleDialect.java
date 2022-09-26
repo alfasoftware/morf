@@ -1586,11 +1586,20 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithDbLink()
+   */
+  @Override
+  protected String expectedSelectWithDbLink() {
+    return "SELECT stringField FROM TESTSCHEMA.Test@MYDBLINKREF";
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithExceptAndDbLinkFormer()
    */
   @Override
   protected String expectedSelectWithExceptAndDbLinkFormer() {
-    return "SELECT stringField FROM Test@MYDBLINKREF MINUS SELECT stringField FROM TESTSCHEMA.Other ORDER BY stringField NULLS FIRST";
+    return "SELECT stringField FROM TESTSCHEMA.Test@MYDBLINKREF MINUS SELECT stringField FROM TESTSCHEMA.Other ORDER BY stringField NULLS FIRST";
   }
 
 
@@ -1599,6 +1608,6 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedSelectWithExceptAndDbLinkLatter() {
-    return "SELECT stringField FROM TESTSCHEMA.Test MINUS SELECT stringField FROM Other@MYDBLINKREF ORDER BY stringField NULLS FIRST";
+    return "SELECT stringField FROM TESTSCHEMA.Test MINUS SELECT stringField FROM TESTSCHEMA.Other@MYDBLINKREF ORDER BY stringField NULLS FIRST";
   }
 }

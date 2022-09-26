@@ -4519,10 +4519,10 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Tests the generation of SQL string for a EXCEPT statement and no DB Link.
+   * Tests the generation of SQL string for a query with EXCEPT operator.
    */
   @Test
-  public void testSelectWithExceptStatementsNoDbLink() {
+  public void testSelectWithExceptStatement() {
     assumeTrue("for dialects with no EXCEPT operation support the test will be skipped.", expectedSelectWithExcept() != null);
 
     SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD))
@@ -4536,7 +4536,23 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Tests the generation of SQL string for a EXCEPT statement with a former select using DB-link
+   * Tests the generation of SQL string for a query with a DB-link.
+   */
+  @Test
+  public void testSelectWithDbLink() {
+    assumeTrue("for dialects with no EXCEPT operation support the test will be skipped.", expectedSelectWithDbLink() != null);
+
+    SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD))
+        .from(new TableReference(null, TEST_TABLE, DBLINK_NAME));
+    String result = testDialect.convertStatementToSQL(stmt);
+
+    assertEquals("Select script should match expected", expectedSelectWithDbLink(), result);
+  }
+
+
+  /**
+   * Tests the generation of SQL string for a query with EXCEPT operator where a
+   * former select uses DB-link.
    */
   @Test
   public void testSelectWithExceptStatementsWithDbLinkFormer() {
@@ -4553,7 +4569,8 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Tests the generation of SQL string for a EXCEPT statement with a latter select using DB-link
+   * Tests the generation of SQL string for a query with EXCEPT operator where a
+   * latter select uses DB-link.
    */
   @Test
   public void testSelectWithExceptStatementsWithDbLinkLatter() {
@@ -5234,17 +5251,24 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * @return The expected SQL for selecting with a DB Link or {@code null} if DB
+   *         Link is unsupported.
+   */
+  protected abstract String expectedSelectWithDbLink();
+
+
+  /**
    * @return The expected SQL for selecting with an EXCEPT statement and DB Link
-   *         (for the former statement), or {@code null} if EXCEPT operation is
-   *         unsupported.
+   *         (for the former statement), or {@code null} if DB-Link or EXCEPT
+   *         operation is unsupported.
    */
   protected abstract String expectedSelectWithExceptAndDbLinkFormer();
 
 
   /**
    * @return The expected SQL for selecting with an EXCEPT statement and DB Link
-   *         (for the latter statement), or {@code null} if EXCEPT operation is
-   *         unsupported.
+   *         (for the latter statement), or {@code null} if DB-Link or EXCEPT
+   *         operation is unsupported.
    */
   protected abstract String expectedSelectWithExceptAndDbLinkLatter();
 
