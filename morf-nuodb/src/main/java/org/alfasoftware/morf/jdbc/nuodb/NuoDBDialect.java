@@ -39,6 +39,7 @@ import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.Hint;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
@@ -955,4 +956,12 @@ class NuoDBDialect extends SqlDialect {
     return "";
   }
 
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.ExceptSetOperator)
+   */
+  @Override
+  protected String getSqlFrom(ExceptSetOperator operator) {
+    throw new IllegalStateException("EXCEPT set operator is not supported in the Nuo dialect");
+  }
 }

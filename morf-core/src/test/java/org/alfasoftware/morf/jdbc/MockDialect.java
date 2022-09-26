@@ -26,6 +26,7 @@ import java.util.List;
 
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.TableReference;
@@ -329,4 +330,12 @@ public class MockDialect extends SqlDialect {
     return "";
   }
 
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.ExceptSetOperator)
+   */
+  @Override
+  protected String getSqlFrom(ExceptSetOperator operator) {
+    throw new IllegalStateException("EXCEPT set operator is not supported in the Mock dialect");
+  }
 }

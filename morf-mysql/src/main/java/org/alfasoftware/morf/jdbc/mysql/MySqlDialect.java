@@ -45,6 +45,7 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.AbstractSelectStatement;
+import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.Hint;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
@@ -948,5 +949,14 @@ class MySqlDialect extends SqlDialect {
   @Override
   protected String dbLinkSuffix(TableReference table) {
     return "";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.ExceptSetOperator)
+   */
+  @Override
+  protected String getSqlFrom(ExceptSetOperator operator) {
+    throw new IllegalStateException("EXCEPT set operator is not supported in the MySQL dialect");
   }
 }
