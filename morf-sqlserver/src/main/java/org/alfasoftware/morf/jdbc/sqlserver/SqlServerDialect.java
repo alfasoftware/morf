@@ -446,8 +446,7 @@ class SqlServerDialect extends SqlDialect {
     sqlBuilder.append("UPDATE ");
 
     // Now add the table to update
-    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-    sqlBuilder.append(destinationTableName);
+    sqlBuilder.append(tableNameWithSchemaName(statement.getTable()));
 
     // Put in the standard fields
     sqlBuilder.append(getUpdateStatementSetFieldSql(statement.getFields()));
@@ -455,8 +454,7 @@ class SqlServerDialect extends SqlDialect {
     // Add a FROM clause if the table is aliased
     if (!statement.getTable().getAlias().equals("")) {
       sqlBuilder.append(" FROM ");
-      sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-      sqlBuilder.append(destinationTableName);
+      sqlBuilder.append(tableNameWithSchemaName(statement.getTable()));
       sqlBuilder.append(String.format(" %s", statement.getTable().getAlias()));
     }
 
@@ -1053,7 +1051,7 @@ class SqlServerDialect extends SqlDialect {
         UseIndex useIndex = (UseIndex) hint;
         hintsBuilder.append("TABLE HINT(")
           // Includes schema name - see https://msdn.microsoft.com/en-us/library/ms181714.aspx
-          .append(StringUtils.isEmpty(useIndex.getTable().getAlias()) ? schemaNamePrefix(useIndex.getTable()) + useIndex.getTable().getName() : useIndex.getTable().getAlias())
+          .append(StringUtils.isEmpty(useIndex.getTable().getAlias()) ? tableNameWithSchemaName(useIndex.getTable()) : useIndex.getTable().getAlias())
           .append(", INDEX(" + useIndex.getIndexName() + ")")
           .append(")");
       }

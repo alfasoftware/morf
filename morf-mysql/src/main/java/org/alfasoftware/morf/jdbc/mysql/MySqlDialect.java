@@ -776,8 +776,7 @@ class MySqlDialect extends SqlDialect {
       sqlBuilder.append("IGNORE ");
     }
     sqlBuilder.append("INTO ");
-    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-    sqlBuilder.append(destinationTableName);
+    sqlBuilder.append(tableNameWithSchemaName(statement.getTable()));
     sqlBuilder.append("(");
     Iterable<String> intoFields = Iterables.transform(statement.getSelectStatement().getFields(), AliasedField::getImpliedName);
     sqlBuilder.append(Joiner.on(", ").join(intoFields));

@@ -1242,7 +1242,7 @@ public abstract class SqlDialect {
       result.append(join.getSubSelect().getAlias());
     } else {
       // Now add the table name
-      result.append(String.format("%s%s", schemaNamePrefix(join.getTable()), join.getTable().getName()));
+      result.append(tableNameWithSchemaName(join.getTable()));
 
       // And add an alias if necessary
       if (!join.getTable().getAlias().isEmpty()) {
@@ -1360,8 +1360,7 @@ public abstract class SqlDialect {
     StringBuilder stringBuilder = new StringBuilder();
 
     stringBuilder.append(getSqlForInsertInto(stmt));
-    stringBuilder.append(schemaNamePrefix(stmt.getTable()));
-    stringBuilder.append(stmt.getTable().getName());
+    stringBuilder.append(tableNameWithSchemaName(stmt.getTable()));
 
     stringBuilder.append(" ");
 
@@ -2822,8 +2821,7 @@ public abstract class SqlDialect {
     // -- Add the preamble...
     //
     sqlBuilder.append(getSqlForInsertInto(statement));
-    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-    sqlBuilder.append(destinationTableName);
+    sqlBuilder.append(tableNameWithSchemaName(statement.getTable()));
     sqlBuilder.append(" (");
 
     boolean first = true;
@@ -2878,8 +2876,7 @@ public abstract class SqlDialect {
     // -- Add the preamble...
     //
     sqlBuilder.append(getSqlForInsertInto(statement));
-    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-    sqlBuilder.append(destinationTableName);
+    sqlBuilder.append(tableNameWithSchemaName(statement.getTable()));
     sqlBuilder.append(" (");
 
     Set<String> columnNamesAdded = new HashSet<>();
@@ -3033,8 +3030,7 @@ public abstract class SqlDialect {
     sqlBuilder.append("FROM ");
 
     // Now add the from clause
-    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-    sqlBuilder.append(destinationTableName);
+    sqlBuilder.append(tableNameWithSchemaName(statement.getTable()));
 
     // Add a table alias if necessary
     if (!statement.getTable().getAlias().equals("")) {
@@ -3124,8 +3120,7 @@ public abstract class SqlDialect {
     sqlBuilder.append(updateStatementPreTableDirectives(statement));
 
     // Now add the from clause
-    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-    sqlBuilder.append(destinationTableName);
+    sqlBuilder.append(tableNameWithSchemaName(statement.getTable()));
 
     // Add a table alias if necessary
     if (!statement.getTable().getAlias().equals("")) {
@@ -3164,8 +3159,7 @@ public abstract class SqlDialect {
 
     // MERGE INTO schema.Table
     sqlBuilder.append("MERGE INTO ")
-              .append(schemaNamePrefix(statement.getTable()))
-              .append(statement.getTable().getName());
+              .append(tableNameWithSchemaName(statement.getTable()));
 
     // USING (SELECT ...) xmergesource
     sqlBuilder.append(" USING (")
