@@ -4519,53 +4519,53 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Tests the generation of SQL string for a MINUS statement and no DB Link.
+   * Tests the generation of SQL string for a EXCEPT statement and no DB Link.
    */
   @Test
-  public void testSelectWithMinusStatementsNoDbLink() {
-    assumeTrue("for dialects with no MINUS operation support the test will be skipped.", expectedSelectWithMinus() != null);
+  public void testSelectWithExceptStatementsNoDbLink() {
+    assumeTrue("for dialects with no EXCEPT operation support the test will be skipped.", expectedSelectWithExcept() != null);
 
     SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD))
       .from(new TableReference(TEST_TABLE))
-      .minus(new SelectStatement(new FieldReference(STRING_FIELD)).from(new TableReference(OTHER_TABLE)))
+      .except(new SelectStatement(new FieldReference(STRING_FIELD)).from(new TableReference(OTHER_TABLE)))
       .orderBy(new FieldReference(STRING_FIELD));
     String result = testDialect.convertStatementToSQL(stmt);
 
-    assertEquals("Select script should match expected", expectedSelectWithMinus(), result);
+    assertEquals("Select script should match expected", expectedSelectWithExcept(), result);
   }
 
 
   /**
-   * Tests the generation of SQL string for a MINUS statement with a former select using DB-link
+   * Tests the generation of SQL string for a EXCEPT statement with a former select using DB-link
    */
   @Test
-  public void testSelectWithMinusStatementsWithDbLinkFormer() {
-    assumeTrue("for dialects with no MINUS operation support the test will be skipped.", expectedSelectWithMinusAndDbLinkFormer() != null);
+  public void testSelectWithExceptStatementsWithDbLinkFormer() {
+    assumeTrue("for dialects with no EXCEPT operation support the test will be skipped.", expectedSelectWithExceptAndDbLinkFormer() != null);
 
     SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD))
         .from(new TableReference(null, TEST_TABLE, DBLINK_NAME))
-        .minus(new SelectStatement(new FieldReference(STRING_FIELD)).from(new TableReference(null, OTHER_TABLE)))
+        .except(new SelectStatement(new FieldReference(STRING_FIELD)).from(new TableReference(null, OTHER_TABLE)))
         .orderBy(new FieldReference(STRING_FIELD));
     String result = testDialect.convertStatementToSQL(stmt);
 
-    assertEquals("Select script should match expected", expectedSelectWithMinusAndDbLinkFormer(), result);
+    assertEquals("Select script should match expected", expectedSelectWithExceptAndDbLinkFormer(), result);
   }
 
 
   /**
-   * Tests the generation of SQL string for a MINUS statement with a latter select using DB-link
+   * Tests the generation of SQL string for a EXCEPT statement with a latter select using DB-link
    */
   @Test
-  public void testSelectWithMinusStatementsWithDbLinkLatter() {
-    assumeTrue("for dialects with no MINUS operation support the test will be skipped.", expectedSelectWithMinusAndDbLinkLatter() != null);
+  public void testSelectWithExceptStatementsWithDbLinkLatter() {
+    assumeTrue("for dialects with no EXCEPT operation support the test will be skipped.", expectedSelectWithExceptAndDbLinkLatter() != null);
 
     SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD))
         .from(new TableReference(null, TEST_TABLE))
-        .minus(new SelectStatement(new FieldReference(STRING_FIELD)).from(new TableReference(null, OTHER_TABLE, DBLINK_NAME)))
+        .except(new SelectStatement(new FieldReference(STRING_FIELD)).from(new TableReference(null, OTHER_TABLE, DBLINK_NAME)))
         .orderBy(new FieldReference(STRING_FIELD));
     String result = testDialect.convertStatementToSQL(stmt);
 
-    assertEquals("Select script should match expected", expectedSelectWithMinusAndDbLinkLatter(), result);
+    assertEquals("Select script should match expected", expectedSelectWithExceptAndDbLinkLatter(), result);
   }
 
 
@@ -5227,26 +5227,26 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * @return The expected SQL for selecting with an MINUS statement, or
-   *         {@code null} if MINUS operation is unsupported.
+   * @return The expected SQL for selecting with an EXCEPT statement, or
+   *         {@code null} if EXCEPT operation is unsupported.
    */
-  protected abstract String expectedSelectWithMinus();
+  protected abstract String expectedSelectWithExcept();
 
 
   /**
-   * @return The expected SQL for selecting with an MINUS statement and DB Link
-   *         (for the former statement), or {@code null} if MINUS operation is
+   * @return The expected SQL for selecting with an EXCEPT statement and DB Link
+   *         (for the former statement), or {@code null} if EXCEPT operation is
    *         unsupported.
    */
-  protected abstract String expectedSelectWithMinusAndDbLinkFormer();
+  protected abstract String expectedSelectWithExceptAndDbLinkFormer();
 
 
   /**
-   * @return The expected SQL for selecting with an MINUS statement and DB Link
-   *         (for the latter statement), or {@code null} if MINUS operation is
+   * @return The expected SQL for selecting with an EXCEPT statement and DB Link
+   *         (for the latter statement), or {@code null} if EXCEPT operation is
    *         unsupported.
    */
-  protected abstract String expectedSelectWithMinusAndDbLinkLatter();
+  protected abstract String expectedSelectWithExceptAndDbLinkLatter();
 
 
   /**

@@ -1182,28 +1182,28 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithMinus()
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithExcept()
    */
   @Override
-  protected String expectedSelectWithMinus() {
+  protected String expectedSelectWithExcept() {
     return null;
   }
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithMinusAndDbLinkFormer()
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithExceptAndDbLinkFormer()
    */
   @Override
-  protected String expectedSelectWithMinusAndDbLinkFormer() {
+  protected String expectedSelectWithExceptAndDbLinkFormer() {
     return null;
   }
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithMinusAndDbLinkLatter()
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithExceptAndDbLinkLatter()
    */
   @Override
-  protected String expectedSelectWithMinusAndDbLinkLatter() {
+  protected String expectedSelectWithExceptAndDbLinkLatter() {
     return null;
   }
 }

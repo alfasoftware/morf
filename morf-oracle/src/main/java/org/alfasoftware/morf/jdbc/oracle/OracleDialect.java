@@ -44,7 +44,7 @@ import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.DirectPathQueryHint;
 import org.alfasoftware.morf.sql.Hint;
 import org.alfasoftware.morf.sql.InsertStatement;
-import org.alfasoftware.morf.sql.MinusSetOperator;
+import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.OptimiseForRowCount;
 import org.alfasoftware.morf.sql.OracleCustomHint;
 import org.alfasoftware.morf.sql.ParallelQueryHint;
@@ -1434,10 +1434,10 @@ class OracleDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.MinusSetOperator)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.ExceptSetOperator)
    */
   @Override
-  protected String getSqlFrom(MinusSetOperator operator) {
+  protected String getSqlFrom(ExceptSetOperator operator) {
     return String.format(" MINUS %s", // MINUS has been supported by Oracle for a long time and the EXCEPT support was added in 21c
         getSqlFrom(operator.getSelectStatement()));
   }

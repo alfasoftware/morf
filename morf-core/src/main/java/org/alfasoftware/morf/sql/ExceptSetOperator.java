@@ -6,23 +6,23 @@ import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 
 /**
- * Class which encapsulates the generation of a MINUS set operator. It
+ * Class which encapsulates the generation of a EXCEPT set operator. It
  * eliminates any rows from the parent select statement which do not exist in
  * the child select statement.
  * <p>
  * This class cannot be instantiated directly. Instead, use the
- * {@linkplain SelectStatement#minus(SelectStatement)} which encapsulate this
+ * {@linkplain SelectStatement#except(SelectStatement)} which encapsulate this
  * class existence.
  * </p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2022
  */
-public class MinusSetOperator extends AbstractSetOperator implements SetOperator {
+public class ExceptSetOperator extends AbstractSetOperator implements SetOperator {
 
   private final SelectStatement selectStatement;
 
   /**
-   * Creates a new MINUS set operation between the {@code parentSelect} and
+   * Creates a new EXCEPT set operation between the {@code parentSelect} and
    * {@code childSelect}, either removing duplicate records.
    * <p>
    * A reference to the {@code parentSelect} is not maintained as the only way
@@ -30,7 +30,7 @@ public class MinusSetOperator extends AbstractSetOperator implements SetOperator
    * necessary only for validation purposes.
    * </p>
    */
-  MinusSetOperator(SelectStatement parentSelect, SelectStatement childSelect) {
+  ExceptSetOperator(SelectStatement parentSelect, SelectStatement childSelect) {
     validateNotNull(parentSelect, childSelect);
     validateFields(parentSelect, childSelect);
 
@@ -39,11 +39,11 @@ public class MinusSetOperator extends AbstractSetOperator implements SetOperator
 
 
   /**
-   * Constructor used to create a deep copy of a MINUS statement.
+   * Constructor used to create a deep copy of a EXCEPT statement.
    *
-   * @param childSelect the second part of the MINUS statement
+   * @param childSelect the second part of the EXCEPT statement
    */
-  private MinusSetOperator(SelectStatement childSelect) {
+  private ExceptSetOperator(SelectStatement childSelect) {
     this.selectStatement = childSelect;
   }
 
@@ -62,7 +62,7 @@ public class MinusSetOperator extends AbstractSetOperator implements SetOperator
    */
   @Override
   public Builder<SetOperator> deepCopy(DeepCopyTransformation transformer) {
-    return TempTransitionalBuilderWrapper.<SetOperator>wrapper(new MinusSetOperator(transformer.deepCopy(getSelectStatement())));
+    return TempTransitionalBuilderWrapper.<SetOperator>wrapper(new ExceptSetOperator(transformer.deepCopy(getSelectStatement())));
   }
 
 
@@ -107,7 +107,7 @@ public class MinusSetOperator extends AbstractSetOperator implements SetOperator
     if (this == obj) return true;
     if (obj == null) return false;
     if (getClass() != obj.getClass()) return false;
-    MinusSetOperator other = (MinusSetOperator) obj;
+    ExceptSetOperator other = (ExceptSetOperator) obj;
     if (selectStatement == null) {
       if (other.selectStatement != null) return false;
     } else if (!selectStatement.equals(other.selectStatement)) return false;
@@ -120,6 +120,6 @@ public class MinusSetOperator extends AbstractSetOperator implements SetOperator
    */
   @Override
   public String toString() {
-    return "MINUS " + selectStatement;
+    return "EXCEPT " + selectStatement;
   }
 }

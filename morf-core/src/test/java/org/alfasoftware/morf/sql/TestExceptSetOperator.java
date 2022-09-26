@@ -14,11 +14,11 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 /**
- * Unit tests for {@link MinusSetOperator}.
+ * Unit tests for {@link ExceptSetOperator}.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2022
  */
-public class TestMinusSetOperator {
+public class TestExceptSetOperator {
 
   @Mock
   private UpgradeTableResolutionVisitor res;
@@ -30,7 +30,7 @@ public class TestMinusSetOperator {
 
 
   /**
-   * Verifies that the {@linkplain MinusSetOperator} constructor throws an
+   * Verifies that the {@linkplain ExceptSetOperator} constructor throws an
    * {@linkplain IllegalArgumentException} if the {@code parentSelect} reference
    * is null.
    */
@@ -41,7 +41,7 @@ public class TestMinusSetOperator {
     SelectStatement childSelect = new SelectStatement();
 
     // When
-    assertThrows(IllegalArgumentException.class, () -> new MinusSetOperator(parentSelect, childSelect));
+    assertThrows(IllegalArgumentException.class, () -> new ExceptSetOperator(parentSelect, childSelect));
 
     // Then
     // IllegalArgumentException thrown
@@ -49,7 +49,7 @@ public class TestMinusSetOperator {
 
 
   /**
-   * Verifies that the {@linkplain MinusSetOperator} constructor throws an
+   * Verifies that the {@linkplain ExceptSetOperator} constructor throws an
    * {@linkplain IllegalArgumentException} if the {@code childSelect} reference
    * is null.
    */
@@ -60,7 +60,7 @@ public class TestMinusSetOperator {
     SelectStatement childSelect = null;
 
     // When
-    assertThrows(IllegalArgumentException.class, () -> new MinusSetOperator(parentSelect, childSelect));
+    assertThrows(IllegalArgumentException.class, () -> new ExceptSetOperator(parentSelect, childSelect));
 
     // Then
     // IllegalArgumentException thrown
@@ -68,7 +68,7 @@ public class TestMinusSetOperator {
 
 
   /**
-   * Verifies that the {@linkplain MinusSetOperator} constructor throws an
+   * Verifies that the {@linkplain ExceptSetOperator} constructor throws an
    * {@linkplain IllegalArgumentException} if {@code parentSelect} and
    * {@code childSelect} number of fields don't match.
    */
@@ -79,7 +79,7 @@ public class TestMinusSetOperator {
     SelectStatement childSelect = new SelectStatement(new FieldReference("DEF"));
 
     // When
-    assertThrows(IllegalArgumentException.class, () -> new MinusSetOperator(parentSelect, childSelect));
+    assertThrows(IllegalArgumentException.class, () -> new ExceptSetOperator(parentSelect, childSelect));
 
     // Then
     // IllegalArgumentException thrown
@@ -87,7 +87,7 @@ public class TestMinusSetOperator {
 
 
   /**
-   * Verifies that the {@linkplain MinusSetOperator} constructor throws an
+   * Verifies that the {@linkplain ExceptSetOperator} constructor throws an
    * {@linkplain IllegalArgumentException} if {@code parentSelect} and
    * {@code childSelect} number of fields don't match.
    */
@@ -98,7 +98,7 @@ public class TestMinusSetOperator {
     SelectStatement childSelect = new SelectStatement(new FieldReference("DEF"));
 
     // When
-    new MinusSetOperator(parentSelect, childSelect);
+    new ExceptSetOperator(parentSelect, childSelect);
 
     // Then
     // no exceptions
@@ -106,7 +106,7 @@ public class TestMinusSetOperator {
 
 
   /**
-   * Verifies that the {@linkplain MinusSetOperator} constructor does not throw an
+   * Verifies that the {@linkplain ExceptSetOperator} constructor does not throw an
    * exception when the {@code childSelect} parameter contains an order-by
    * statement.
    */
@@ -117,7 +117,7 @@ public class TestMinusSetOperator {
     SelectStatement childSelect = new SelectStatement(new FieldReference("DEF")).orderBy(new FieldReference("XYZ"));
 
     // When
-    new MinusSetOperator(parentSelect, childSelect);
+    new ExceptSetOperator(parentSelect, childSelect);
 
     // Then
     // no exceptions
@@ -125,7 +125,7 @@ public class TestMinusSetOperator {
 
 
   /**
-   * Verifies that the {@linkplain MinusSetOperator} constructor allows the
+   * Verifies that the {@linkplain ExceptSetOperator} constructor allows the
    * creation of a union where the {@code parentSelect} contains an order-by
    * statement.
    */
@@ -136,7 +136,7 @@ public class TestMinusSetOperator {
     SelectStatement childSelect = new SelectStatement();
 
     // When
-    new MinusSetOperator(parentSelect, childSelect);
+    new ExceptSetOperator(parentSelect, childSelect);
 
     // Then
     // no exceptions
@@ -144,7 +144,7 @@ public class TestMinusSetOperator {
 
 
   /**
-   * Verifies that the {@linkplain MinusSetOperator#deepCopy()} method returns a
+   * Verifies that the {@linkplain ExceptSetOperator#deepCopy()} method returns a
    * new instance of the original object, but with different objects.
    */
   @Test
@@ -152,10 +152,10 @@ public class TestMinusSetOperator {
     // Given
     SelectStatement parentSelect = new SelectStatement();
     SelectStatement childSelect = new SelectStatement();
-    MinusSetOperator original = new MinusSetOperator(parentSelect, childSelect);
+    ExceptSetOperator original = new ExceptSetOperator(parentSelect, childSelect);
 
     // When
-    MinusSetOperator copy = (MinusSetOperator) original.deepCopy(noTransformation()).build();
+    ExceptSetOperator copy = (ExceptSetOperator) original.deepCopy(noTransformation()).build();
 
     // Then
     assertNotSame(original, copy);
@@ -165,14 +165,14 @@ public class TestMinusSetOperator {
 
   /**
    * Verifies that UpgradeTableResolutionVisitor interacts with the
-   * MinusSetOperator as expected.
+   * ExceptSetOperator as expected.
    */
   @Test
   public void tableResolutionDetectsAllTables() {
     //given
     SelectStatement parentSelect = mock(SelectStatement.class);
     SelectStatement childSelect = mock(SelectStatement.class);
-    MinusSetOperator original = new MinusSetOperator(parentSelect, childSelect);
+    ExceptSetOperator original = new ExceptSetOperator(parentSelect, childSelect);
 
     //when
     original.accept(res);

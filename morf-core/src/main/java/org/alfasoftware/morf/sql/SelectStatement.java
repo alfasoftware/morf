@@ -55,7 +55,7 @@ import com.google.common.collect.Lists;
  *      .having([criterion])               = SELECT [fields] FROM [table] GROUP BY [fields] HAVING [criterion]
  *    .union([SelectStatement])            = SELECT [fields] FROM [table] UNION [SelectStatement]
  *    .unionAll([SelectStatement])         = SELECT [fields] FROM [table] UNION ALL [SelectStatement]
- *    .minus([SelectStatement])            = SELECT [fields] FROM [table] MINUS [SelectStatement]
+ *    .except([SelectStatement])           = SELECT [fields] FROM [table] EXCEPT [SelectStatement]
  *    .build()</pre></blockquote>
  *
  * @author Copyright (c) Alfa Financial Software 2009
@@ -536,11 +536,11 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
 
 
   /**
-   * Perform a MINUS set operation with another {@code selectStatement},
+   * Perform a EXCEPT set operation with another {@code selectStatement},
    * eliminating any rows from the top select statement which exist in the bottom
    * select statement.
    * <p>
-   * If an minus operation is performed then all participating select statements
+   * If an except operation is performed then all participating select statements
    * require the same selected column list.
    * </p>
    *
@@ -548,10 +548,10 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
    *                          select statement;
    * @return a new select statement with the change applied.
    */
-  public SelectStatement minus(SelectStatement selectStatement) {
+  public SelectStatement except(SelectStatement selectStatement) {
     return copyOnWriteOrMutate(
-        (SelectStatementBuilder b) -> b.minus(selectStatement),
-        () ->  setOperators.add(new MinusSetOperator(this, selectStatement))
+        (SelectStatementBuilder b) -> b.except(selectStatement),
+        () ->  setOperators.add(new ExceptSetOperator(this, selectStatement))
     );
   }
 

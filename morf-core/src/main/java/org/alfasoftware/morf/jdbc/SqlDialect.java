@@ -48,9 +48,9 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.AbstractSelectStatement;
 import org.alfasoftware.morf.sql.DeleteStatement;
+import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.MergeStatement;
-import org.alfasoftware.morf.sql.MinusSetOperator;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.SelectStatementBuilder;
@@ -859,7 +859,7 @@ public abstract class SqlDialect {
     appendGroupBy(result, stmt);
     appendHaving(result, stmt);
     appendUnionSet(result, stmt);
-    appendMinusSet(result, stmt);
+    appendExceptSet(result, stmt);
     appendOrderBy(result, stmt);
 
     if (stmt.isForUpdate()) {
@@ -1015,16 +1015,16 @@ public abstract class SqlDialect {
 
 
   /**
-   * appends minus set operators to the result
+   * appends except set operators to the result
    *
-   * @param result minus set operators will be appended here
+   * @param result except set operators will be appended here
    * @param stmt   statement with set operators
    */
-  protected void appendMinusSet(StringBuilder result, SelectStatement stmt) {
+  protected void appendExceptSet(StringBuilder result, SelectStatement stmt) {
     if (stmt.getSetOperators() != null) {
       for (SetOperator operator : stmt.getSetOperators()) {
-        if (operator instanceof MinusSetOperator) {
-          result.append(getSqlFrom((MinusSetOperator) operator));
+        if (operator instanceof ExceptSetOperator) {
+          result.append(getSqlFrom((ExceptSetOperator) operator));
         }
       }
     }
@@ -1300,12 +1300,12 @@ public abstract class SqlDialect {
 
 
   /**
-   * Converts a {@link MinusSetOperator} into SQL.
+   * Converts a {@link ExceptSetOperator} into SQL.
    *
-   * @param operator the minus set operation to convert.
-   * @return a string representation of the minus set operation.
+   * @param operator the except set operator to convert.
+   * @return a string representation of the except set operator.
    */
-  protected String getSqlFrom(MinusSetOperator operator) {
+  protected String getSqlFrom(ExceptSetOperator operator) {
     return String.format(" EXCEPT %s",
         getSqlFrom(operator.getSelectStatement()));
   }

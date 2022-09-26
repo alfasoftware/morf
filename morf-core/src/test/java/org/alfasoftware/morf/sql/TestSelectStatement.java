@@ -25,7 +25,7 @@ public class TestSelectStatement {
   private AliasedField field, field2;
 
   @Mock
-  private SelectStatement fromSelect, subSelect, unionStatement, minusStatement;
+  private SelectStatement fromSelect, subSelect, unionStatement, exceptStatement;
 
   @Mock
   private Criterion criterion1, onCondition, criterion2;
@@ -43,7 +43,7 @@ public class TestSelectStatement {
   public void tableResolutionDetectsAllTables1() {
     //given
     when(unionStatement.getFields()).thenReturn(Arrays.asList(field2));
-    when(minusStatement.getFields()).thenReturn(Arrays.asList(field2));
+    when(exceptStatement.getFields()).thenReturn(Arrays.asList(field2));
 
     SelectStatement sel1 = select(field)
         .from(fromSelect)
@@ -51,7 +51,7 @@ public class TestSelectStatement {
         .where(criterion2)
         .having(criterion1)
         .union(unionStatement)
-        .minus(minusStatement);
+        .except(exceptStatement);
 
     //when
     sel1.accept(res);
@@ -65,7 +65,7 @@ public class TestSelectStatement {
     verify(criterion2).accept(res);
     verify(criterion1).accept(res);
     verify(unionStatement).accept(res);
-    verify(minusStatement).accept(res);
+    verify(exceptStatement).accept(res);
   }
 }
 
