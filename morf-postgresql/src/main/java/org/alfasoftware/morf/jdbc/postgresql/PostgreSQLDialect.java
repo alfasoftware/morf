@@ -78,15 +78,15 @@ class PostgreSQLDialect extends SqlDialect {
   }
 
 
-  @Override
-  protected String schemaNamePrefix(TableReference tableRef) {
+  private String schemaNamePrefix(TableReference tableRef) {
     if(tableRef.isTemporary()) {
       return "";
     }
     if (StringUtils.isEmpty(tableRef.getSchemaName())) {
       return schemaNamePrefix();
+    } else {
+      return tableRef.getSchemaName() + ".";
     }
-    return tableRef.getSchemaName() + ".";
   }
 
 
@@ -441,8 +441,7 @@ class PostgreSQLDialect extends SqlDialect {
     StringBuilder sqlBuilder = new StringBuilder();
 
     sqlBuilder.append("INSERT INTO ")
-              .append(schemaNamePrefix(statement.getTable()))
-              .append(statement.getTable().getName())
+              .append(tableNameWithSchemaName(statement.getTable()))
               .append(" (")
               .append(Joiner.on(", ").join(destinationFields))
               .append(") ")
@@ -718,7 +717,7 @@ class PostgreSQLDialect extends SqlDialect {
   @Override
   protected String tableNameWithSchemaName(TableReference tableRef) {
     if (StringUtils.isEmpty(tableRef.getDblink())) {
-      return super.tableNameWithSchemaName(tableRef);
+      return schemaNamePrefix(tableRef) + tableRef.getName();
     } else {
       return tableRef.getDblink() + "." + tableRef.getName();
     }

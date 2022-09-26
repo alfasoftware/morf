@@ -750,20 +750,10 @@ public abstract class SqlDialect {
    * @return full table name that includes a schema name and DB-link if present
    */
   protected String tableNameWithSchemaName(TableReference tableRef) {
-    return schemaNamePrefix(tableRef) + tableRef.getName();
-  }
-
-
-  /**
-   * @param tableRef The table reference from which the schema name will be extracted
-   * @return The schema prefix of the specified table (including the dot), the
-   *         dialect's schema prefix or blank if neither is specified (in that order).
-   */
-  protected String schemaNamePrefix(TableReference tableRef) {
     if (StringUtils.isEmpty(tableRef.getSchemaName())) {
-      return schemaNamePrefix();
+      return schemaNamePrefix() + tableRef.getName();
     } else {
-      return tableRef.getSchemaName().toUpperCase() + ".";
+      return tableRef.getSchemaName().toUpperCase() + "." + tableRef.getName();
     }
   }
 

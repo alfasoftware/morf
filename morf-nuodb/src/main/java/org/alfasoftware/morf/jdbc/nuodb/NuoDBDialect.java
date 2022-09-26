@@ -86,19 +86,6 @@ class NuoDBDialect extends SqlDialect {
 
 
   @Override
-  protected String schemaNamePrefix(TableReference tableRef) {
-    if (StringUtils.isEmpty(tableRef.getSchemaName())) {
-      if (TEMPORARY_TABLES.contains(tableRef.getName())) {
-        return "";
-      }
-      return schemaNamePrefix();
-    } else {
-      return tableRef.getSchemaName().toUpperCase() + ".";
-    }
-  }
-
-
-  @Override
   protected String schemaNamePrefix(Table table) {
     if (table.isTemporary()) {
       return "";
@@ -792,8 +779,7 @@ class NuoDBDialect extends SqlDialect {
     // Add the preamble
     StringBuilder sqlBuilder = new StringBuilder("INSERT INTO ");
 
-    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-    sqlBuilder.append(destinationTableName);
+    sqlBuilder.append(tableNameWithSchemaName(statement.getTable()));
     sqlBuilder.append("(");
     Iterable<String> intoFields = Iterables.transform(statement.getSelectStatement().getFields(), AliasedField::getImpliedName);
     sqlBuilder.append(Joiner.on(", ").join(intoFields));
@@ -945,7 +931,14 @@ class NuoDBDialect extends SqlDialect {
   @Override
   protected String tableNameWithSchemaName(TableReference tableRef) {
     if (!StringUtils.isEmpty(tableRef.getDblink())) throw new IllegalStateException("DB Links are not supported in the Nuo dialect. Found dbLink=" + tableRef.getDblink() + " for tableNameWithSchemaName=" + super.tableNameWithSchemaName(tableRef));
-    return super.tableNameWithSchemaName(tableRef);
+    if (StringUtils.isEmpty(tableRef.getSchemaName())) {
+      if (TEMPORARY_TABLES.contains(tableRef.getName())) {
+        return tableRef.getName();
+      }
+      return schemaNamePrefix() + tableRef.getName();
+    } else {
+      return tableRef.getSchemaName().toUpperCase() + "." + tableRef.getName();
+    }
   }
 
 
