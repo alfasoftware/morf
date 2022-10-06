@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.alfasoftware</groupId>
     <artifactId>morf-parent</artifactId>
-    <version>1.7.5</version>
+    <version>1.7.6-SNAPSHOT</version>
   </parent>
   
   <name>Morf - MySQL</name>
