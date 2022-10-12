@@ -42,6 +42,7 @@ import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.DirectPathQueryHint;
+import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.Hint;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.OptimiseForRowCount;
@@ -61,6 +62,7 @@ import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.SqlParameter;
+import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -1407,4 +1409,28 @@ class OracleDialect extends SqlDialect {
 
     return builder.append(" */ ").toString();
   }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#tableNameWithSchemaName(org.alfasoftware.morf.sql.element.TableReference)
+   */
+  @Override
+  protected String tableNameWithSchemaName(TableReference tableRef) {
+    if (StringUtils.isEmpty(tableRef.getDblink())) {
+      return super.tableNameWithSchemaName(tableRef);
+    } else {
+      return super.tableNameWithSchemaName(tableRef) + "@" + tableRef.getDblink();
+    }
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.ExceptSetOperator)
+   */
+  @Override
+  protected String getSqlFrom(ExceptSetOperator operator) {
+    return String.format(" MINUS %s", // MINUS has been supported by Oracle for a long time and the EXCEPT support was added in 21c
+        getSqlFrom(operator.getSelectStatement()));
+  }
+
 }
