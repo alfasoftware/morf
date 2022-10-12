@@ -746,7 +746,7 @@ public abstract class SqlDialect {
 
 
   /**
-   * @param table The table for which the schema name will be retrieved
+   * @param tableRef The table for which the schema name will be retrieved
    * @return full table name that includes a schema name and DB-link if present
    */
   protected String tableNameWithSchemaName(TableReference tableRef) {
