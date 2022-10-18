@@ -27,7 +27,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-import net.jcip.annotations.NotThreadSafe;
 import javax.sql.DataSource;
 
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
@@ -48,6 +47,8 @@ import com.google.common.collect.ImmutableSet;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Inject;
+
+import net.jcip.annotations.NotThreadSafe;
 
 /**
  * Tests that domain classes can be deployed to a database.
@@ -102,6 +103,7 @@ public class TestFullDeployment {
         protected void configure() {
           bind(SqlDialect.class).toInstance(connectionResources.sqlDialect());
           bind(DataSource.class).toInstance(connectionResources.getDataSource()); // TODO Need to discuss more widely about what we want to do here
+          bind(ConnectionResources.class).toInstance(connectionResources);
         }
       }).getInstance(DeploymentFactory.class);
 
