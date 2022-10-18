@@ -51,6 +51,12 @@ public class MorfModule extends AbstractModule {
   /**
    * Singleton provider creating an instance of {@link Upgrade}.
    *
+   * @param connectionResources the connection resources
+   * @param factory the upgrade path factory
+   * @param upgradeStatusTableService the service class for managing the status of temporary upgrade tables
+   * @param viewChangesDeploymentHelper the view deployment helper
+   * @param viewDeploymentValidator the view deployment validator
+   * @param graphBasedUpgradeBuilderFactory the graph based upgrade builder
    * @return the singleton instance of {@link Upgrade}.
    */
   @Provides
