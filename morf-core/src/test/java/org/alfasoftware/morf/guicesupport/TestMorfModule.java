@@ -3,8 +3,6 @@ package org.alfasoftware.morf.guicesupport;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertNotNull;
 
-import javax.sql.DataSource;
-
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeBuilder.GraphBasedUpgradeBuilderFactory;
 import org.alfasoftware.morf.upgrade.Upgrade;
@@ -31,7 +29,6 @@ public class TestMorfModule {
   @Mock ViewChangesDeploymentHelper viewChangesDeploymentHelper;
   @Mock ViewDeploymentValidator viewDeploymentValidator;
   @Mock GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
-  @Mock DataSource dataSource;
 
   private MorfModule module;
 
@@ -50,7 +47,7 @@ public class TestMorfModule {
   @Test
   public void testProvideUpgrade() {
     Upgrade upgrade = module.provideUpgrade(connectionResources, factory, upgradeStatusTableService,
-      viewChangesDeploymentHelper, viewDeploymentValidator, graphBasedUpgradeBuilderFactory, dataSource);
+      viewChangesDeploymentHelper, viewDeploymentValidator, graphBasedUpgradeBuilderFactory);
 
     assertNotNull("Instance of Upgrade should not be null", upgrade);
     assertThat("Instance of Upgrade", upgrade, IsInstanceOf.instanceOf(Upgrade.class));
