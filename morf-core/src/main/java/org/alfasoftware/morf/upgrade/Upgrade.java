@@ -61,6 +61,7 @@ public class Upgrade {
   private final ViewChangesDeploymentHelper viewChangesDeploymentHelper;
   private final ViewDeploymentValidator viewDeploymentValidator;
   private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
+  private final DataSource dataSource;
 
   public Upgrade(
       ConnectionResources connectionResources,
@@ -68,7 +69,8 @@ public class Upgrade {
       UpgradeStatusTableService upgradeStatusTableService,
       ViewChangesDeploymentHelper viewChangesDeploymentHelper,
       ViewDeploymentValidator viewDeploymentValidator,
-      GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory) {
+      GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
+      DataSource dataSource) {
     super();
     this.connectionResources = connectionResources;
     this.factory = factory;
@@ -76,6 +78,7 @@ public class Upgrade {
     this.viewChangesDeploymentHelper = viewChangesDeploymentHelper;
     this.viewDeploymentValidator = viewDeploymentValidator;
     this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
+    this.dataSource = dataSource;
   }
 
 
@@ -125,8 +128,8 @@ public class Upgrade {
     Upgrade upgrade = new Upgrade(
       connectionResources,
       new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition> emptySet(), upgradeStatusTableService),
-      upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()), viewDeploymentValidator, null);
-    return upgrade.findPath(targetSchema, upgradeSteps, Collections.<String> emptySet(), connectionResources.getDataSource());
+      upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()), viewDeploymentValidator, null, null);
+    return upgrade.findPath(targetSchema, upgradeSteps, Collections.<String> emptySet());
   }
 
 
@@ -139,8 +142,8 @@ public class Upgrade {
    * @param dataSource The data source to use to find the upgrade path.
    * @return The upgrade path available
    */
-  public UpgradePath findPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, Collection<String> exceptionRegexes, DataSource dataSource) {
-    return findPath(targetSchema, upgradeSteps, exceptionRegexes, new HashSet<>(), dataSource);
+  public UpgradePath findPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, Collection<String> exceptionRegexes) {
+    return findPath(targetSchema, upgradeSteps, exceptionRegexes, new HashSet<>(), this.dataSource);
   }
 
 
