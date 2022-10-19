@@ -61,7 +61,6 @@ public class Upgrade {
   private final ViewChangesDeploymentHelper viewChangesDeploymentHelper;
   private final ViewDeploymentValidator viewDeploymentValidator;
   private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
-  private final DataSource dataSource;
 
   public Upgrade(
       ConnectionResources connectionResources,
@@ -69,8 +68,7 @@ public class Upgrade {
       UpgradeStatusTableService upgradeStatusTableService,
       ViewChangesDeploymentHelper viewChangesDeploymentHelper,
       ViewDeploymentValidator viewDeploymentValidator,
-      GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
-      DataSource dataSource) {
+      GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory) {
     super();
     this.connectionResources = connectionResources;
     this.factory = factory;
@@ -78,7 +76,6 @@ public class Upgrade {
     this.viewChangesDeploymentHelper = viewChangesDeploymentHelper;
     this.viewDeploymentValidator = viewDeploymentValidator;
     this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
-    this.dataSource = dataSource;
   }
 
 
@@ -128,8 +125,8 @@ public class Upgrade {
     Upgrade upgrade = new Upgrade(
       connectionResources,
       new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition> emptySet(), upgradeStatusTableService),
-      upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()), viewDeploymentValidator, null, null);
-    return upgrade.findPath(targetSchema, upgradeSteps, Collections.<String> emptySet());
+      upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()), viewDeploymentValidator, null);
+    return upgrade.findPath(targetSchema, upgradeSteps, Collections.<String> emptySet(), connectionResources.getDataSource());
   }
 
 
@@ -139,10 +136,11 @@ public class Upgrade {
    * @param targetSchema Target schema to upgrade to.
    * @param upgradeSteps All available upgrade steps.
    * @param exceptionRegexes Regular expression for table exclusions.
+   * @param dataSource The data source to use to find the upgrade path.
    * @return The upgrade path available
    */
-  public UpgradePath findPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, Collection<String> exceptionRegexes) {
-    return findPath(targetSchema, upgradeSteps, exceptionRegexes, new HashSet<>(), this.dataSource);
+  public UpgradePath findPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, Collection<String> exceptionRegexes, DataSource dataSource) {
+    return findPath(targetSchema, upgradeSteps, exceptionRegexes, new HashSet<>(), dataSource);
   }
 
 

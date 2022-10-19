@@ -14,8 +14,6 @@
  */
 package org.alfasoftware.morf.guicesupport;
 
-import javax.sql.DataSource;
-
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeBuilder.GraphBasedUpgradeBuilderFactory;
 import org.alfasoftware.morf.upgrade.TableContribution;
@@ -59,7 +57,6 @@ public class MorfModule extends AbstractModule {
    * @param viewChangesDeploymentHelper the view deployment helper
    * @param viewDeploymentValidator the view deployment validator
    * @param graphBasedUpgradeBuilderFactory the graph based upgrade builder
-   * @param dataSource the default data source
    * @return the singleton instance of {@link Upgrade}.
    */
   @Provides
@@ -69,10 +66,9 @@ public class MorfModule extends AbstractModule {
       UpgradeStatusTableService upgradeStatusTableService,
       ViewChangesDeploymentHelper viewChangesDeploymentHelper,
       ViewDeploymentValidator viewDeploymentValidator,
-      GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
-      DataSource dataSource) {
+      GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory) {
     return new Upgrade(connectionResources, factory, upgradeStatusTableService, viewChangesDeploymentHelper,
-      viewDeploymentValidator, graphBasedUpgradeBuilderFactory, dataSource);
+      viewDeploymentValidator, graphBasedUpgradeBuilderFactory);
   }
 }
 
