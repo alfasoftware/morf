@@ -139,7 +139,6 @@ public class Upgrade {
    * @param targetSchema Target schema to upgrade to.
    * @param upgradeSteps All available upgrade steps.
    * @param exceptionRegexes Regular expression for table exclusions.
-   * @param dataSource The data source to use to find the upgrade path.
    * @return The upgrade path available
    */
   public UpgradePath findPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, Collection<String> exceptionRegexes) {

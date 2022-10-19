@@ -59,6 +59,7 @@ public class MorfModule extends AbstractModule {
    * @param viewChangesDeploymentHelper the view deployment helper
    * @param viewDeploymentValidator the view deployment validator
    * @param graphBasedUpgradeBuilderFactory the graph based upgrade builder
+   * @param dataSource the default data source
    * @return the singleton instance of {@link Upgrade}.
    */
   @Provides

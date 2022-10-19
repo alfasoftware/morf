@@ -14,7 +14,7 @@ import java.lang.annotation.Target;
  * <p>
  * It is also possible to use configuration (so no new app build required) to
  * mark upgrades for exclusive execution. See
- * {@link org.alfasoftware.morf.upgrade.Upgrade#findPath(org.alfasoftware.morf.metadata.Schema, java.util.Collection, java.util.Collection, javax.sql.DataSource)
+ * {@link org.alfasoftware.morf.upgrade.Upgrade#findPath(org.alfasoftware.morf.metadata.Schema, java.util.Collection, java.util.Collection, java.util.Set, javax.sql.DataSource)
  * findPath} for the entry point.
  * </p>
  *
