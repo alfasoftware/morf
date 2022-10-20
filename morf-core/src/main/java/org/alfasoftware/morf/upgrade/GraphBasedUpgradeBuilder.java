@@ -26,7 +26,7 @@ import com.google.inject.Inject;
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2022
  */
-class GraphBasedUpgradeBuilder {
+public class GraphBasedUpgradeBuilder {
 
   private static final Log LOG = LogFactory.getLog(GraphBasedUpgradeBuilder.class);
   private static final Log DRAWIO_GRAPH_PRINT_LOG = LogFactory.getLog(GraphBasedUpgradeBuilder.class.getSimpleName() + ".GraphPrint");
@@ -400,7 +400,7 @@ class GraphBasedUpgradeBuilder {
    *
    * @author Copyright (c) Alfa Financial Software Limited. 2022
    */
-  static class GraphBasedUpgradeBuilderFactory {
+  public static class GraphBasedUpgradeBuilderFactory {
 
     private final GraphBasedUpgradeSchemaChangeVisitorFactory visitorFactory;
     private final GraphBasedUpgradeScriptGeneratorFactory scriptGeneratorFactory;
