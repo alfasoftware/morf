@@ -48,6 +48,7 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.AbstractSelectStatement;
 import org.alfasoftware.morf.sql.DeleteStatement;
+import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
@@ -745,15 +746,14 @@ public abstract class SqlDialect {
 
 
   /**
-   * @param tableRef The table reference from which the schema name will be extracted
-   * @return The schema prefix of the specified table (including the dot), the
-   *         dialect's schema prefix or blank if neither is specified (in that order).
+   * @param tableRef The table for which the schema name will be retrieved
+   * @return full table name that includes a schema name and DB-link if present
    */
-  protected String schemaNamePrefix(TableReference tableRef) {
+  protected String tableNameWithSchemaName(TableReference tableRef) {
     if (StringUtils.isEmpty(tableRef.getSchemaName())) {
-      return schemaNamePrefix();
+      return schemaNamePrefix() + tableRef.getName();
     } else {
-      return tableRef.getSchemaName().toUpperCase() + ".";
+      return tableRef.getSchemaName().toUpperCase() + "." + tableRef.getName();
     }
   }
 
@@ -841,6 +841,7 @@ public abstract class SqlDialect {
     appendGroupBy(result, stmt);
     appendHaving(result, stmt);
     appendUnionSet(result, stmt);
+    appendExceptSet(result, stmt);
     appendOrderBy(result, stmt);
 
     if (stmt.isForUpdate()) {
@@ -981,8 +982,6 @@ public abstract class SqlDialect {
   /**
    * appends union set operators to the result
    *
-   * @throws UnsupportedOperationException if any other than
-   *           {@link UnionSetOperator} set operation found
    * @param result union set operators will be appended here
    * @param stmt statement with set operators
    */
@@ -991,13 +990,27 @@ public abstract class SqlDialect {
       for (SetOperator operator : stmt.getSetOperators()) {
         if (operator instanceof UnionSetOperator) {
           result.append(getSqlFrom((UnionSetOperator) operator));
-        } else {
-          throw new UnsupportedOperationException("Unsupported set operation");
         }
       }
     }
   }
 
+
+  /**
+   * appends except set operators to the result
+   *
+   * @param result except set operators will be appended here
+   * @param stmt   statement with set operators
+   */
+  protected void appendExceptSet(StringBuilder result, SelectStatement stmt) {
+    if (stmt.getSetOperators() != null) {
+      for (SetOperator operator : stmt.getSetOperators()) {
+        if (operator instanceof ExceptSetOperator) {
+          result.append(getSqlFrom((ExceptSetOperator) operator));
+        }
+      }
+    }
+  }
 
   /**
    * appends having clause to the result
@@ -1062,8 +1075,7 @@ public abstract class SqlDialect {
   protected <T extends AbstractSelectStatement<T>> void appendFrom(StringBuilder result, AbstractSelectStatement<T> stmt) {
     if (stmt.getTable() != null) {
       result.append(" FROM ");
-      result.append(schemaNamePrefix(stmt.getTable()));
-      result.append(stmt.getTable().getName());
+      result.append(tableNameWithSchemaName(stmt.getTable()));
 
       // Add a table alias if necessary
       if (!stmt.getTable().getAlias().equals("")) {
@@ -1220,7 +1232,7 @@ public abstract class SqlDialect {
       result.append(join.getSubSelect().getAlias());
     } else {
       // Now add the table name
-      result.append(String.format("%s%s", schemaNamePrefix(join.getTable()), join.getTable().getName()));
+      result.append(tableNameWithSchemaName(join.getTable()));
 
       // And add an alias if necessary
       if (!join.getTable().getAlias().isEmpty()) {
@@ -1258,14 +1270,25 @@ public abstract class SqlDialect {
   /**
    * Converts a {@link UnionSetOperator} into SQL.
    *
-   * @param operator the union to convert.
-   * @return a string representation of the field.
+   * @param operator the union set operation to convert.
+   * @return a string representation of the union set operation.
    */
   protected String getSqlFrom(UnionSetOperator operator) {
     return String.format(" %s %s", operator.getUnionStrategy() == UnionStrategy.ALL ? "UNION ALL" : "UNION",
       getSqlFrom(operator.getSelectStatement()));
   }
 
+
+  /**
+   * Converts a {@link ExceptSetOperator} into SQL.
+   *
+   * @param operator the except set operator to convert.
+   * @return a string representation of the except set operator.
+   */
+  protected String getSqlFrom(ExceptSetOperator operator) {
+    return String.format(" EXCEPT %s",
+        getSqlFrom(operator.getSelectStatement()));
+  }
 
   /**
    * A database platform may need to specify the null order.
@@ -1327,8 +1350,7 @@ public abstract class SqlDialect {
     StringBuilder stringBuilder = new StringBuilder();
 
     stringBuilder.append(getSqlForInsertInto(stmt));
-    stringBuilder.append(schemaNamePrefix(stmt.getTable()));
-    stringBuilder.append(stmt.getTable().getName());
+    stringBuilder.append(tableNameWithSchemaName(stmt.getTable()));
 
     stringBuilder.append(" ");
 
@@ -2789,8 +2811,7 @@ public abstract class SqlDialect {
     // -- Add the preamble...
     //
     sqlBuilder.append(getSqlForInsertInto(statement));
-    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-    sqlBuilder.append(destinationTableName);
+    sqlBuilder.append(tableNameWithSchemaName(statement.getTable()));
     sqlBuilder.append(" (");
 
     boolean first = true;
@@ -2845,8 +2866,7 @@ public abstract class SqlDialect {
     // -- Add the preamble...
     //
     sqlBuilder.append(getSqlForInsertInto(statement));
-    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-    sqlBuilder.append(destinationTableName);
+    sqlBuilder.append(tableNameWithSchemaName(statement.getTable()));
     sqlBuilder.append(" (");
 
     Set<String> columnNamesAdded = new HashSet<>();
@@ -3000,8 +3020,7 @@ public abstract class SqlDialect {
     sqlBuilder.append("FROM ");
 
     // Now add the from clause
-    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-    sqlBuilder.append(destinationTableName);
+    sqlBuilder.append(tableNameWithSchemaName(statement.getTable()));
 
     // Add a table alias if necessary
     if (!statement.getTable().getAlias().equals("")) {
@@ -3091,8 +3110,7 @@ public abstract class SqlDialect {
     sqlBuilder.append(updateStatementPreTableDirectives(statement));
 
     // Now add the from clause
-    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-    sqlBuilder.append(destinationTableName);
+    sqlBuilder.append(tableNameWithSchemaName(statement.getTable()));
 
     // Add a table alias if necessary
     if (!statement.getTable().getAlias().equals("")) {
@@ -3131,8 +3149,7 @@ public abstract class SqlDialect {
 
     // MERGE INTO schema.Table
     sqlBuilder.append("MERGE INTO ")
-              .append(schemaNamePrefix(statement.getTable()))
-              .append(statement.getTable().getName());
+              .append(tableNameWithSchemaName(statement.getTable()));
 
     // USING (SELECT ...) xmergesource
     sqlBuilder.append(" USING (")

@@ -1331,6 +1331,41 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return "DELETE FROM " + tableName(TEST_TABLE) + " WHERE ctid IN (" +
       "SELECT ctid FROM " + tableName(TEST_TABLE) +
       " LIMIT 1000)";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithExcept()
+   */
+  @Override
+  protected String expectedSelectWithExcept() {
+    return "SELECT stringField FROM testschema.Test EXCEPT SELECT stringField FROM testschema.Other ORDER BY stringField";
   };
 
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithDbLink()
+   */
+  @Override
+  protected String expectedSelectWithDbLink() {
+    return "SELECT stringField FROM MYDBLINKREF.Test";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithExceptAndDbLinkFormer()
+   */
+  @Override
+  protected String expectedSelectWithExceptAndDbLinkFormer() {
+    return "SELECT stringField FROM MYDBLINKREF.Test EXCEPT SELECT stringField FROM testschema.Other ORDER BY stringField";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithExceptAndDbLinkLatter()
+   */
+  @Override
+  protected String expectedSelectWithExceptAndDbLinkLatter() {
+    return "SELECT stringField FROM testschema.Test EXCEPT SELECT stringField FROM MYDBLINKREF.Other ORDER BY stringField";
+  }
 }

@@ -1516,7 +1516,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedHints6() {
-    return "SELECT /*+ PARALLEL (5) */ a, b FROM " + tableName("Foo") + " ORDER BY a NULLS FIRST";
+    return "SELECT /*+ PARALLEL(5) */ a, b FROM " + tableName("Foo") + " ORDER BY a NULLS FIRST";
   }
 
 
@@ -1592,5 +1592,41 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedDeleteWithLimitWithoutWhere() {
     return "DELETE FROM " + tableName(TEST_TABLE) + " WHERE ROWNUM <= 1000";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithExcept()
+   */
+  @Override
+  protected String expectedSelectWithExcept() {
+    return "SELECT stringField FROM TESTSCHEMA.Test MINUS SELECT stringField FROM TESTSCHEMA.Other ORDER BY stringField NULLS FIRST";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithDbLink()
+   */
+  @Override
+  protected String expectedSelectWithDbLink() {
+    return "SELECT stringField FROM TESTSCHEMA.Test@MYDBLINKREF";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithExceptAndDbLinkFormer()
+   */
+  @Override
+  protected String expectedSelectWithExceptAndDbLinkFormer() {
+    return "SELECT stringField FROM TESTSCHEMA.Test@MYDBLINKREF MINUS SELECT stringField FROM TESTSCHEMA.Other ORDER BY stringField NULLS FIRST";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithExceptAndDbLinkLatter()
+   */
+  @Override
+  protected String expectedSelectWithExceptAndDbLinkLatter() {
+    return "SELECT stringField FROM TESTSCHEMA.Test MINUS SELECT stringField FROM TESTSCHEMA.Other@MYDBLINKREF ORDER BY stringField NULLS FIRST";
   }
 }

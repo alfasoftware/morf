@@ -36,6 +36,7 @@ public class TestTableReference {
   private final TableReference notEqualDueToSchema = new TableReference("Schema", "A");
   private final TableReference notEqualDueToName = tableRef("B");
   private final TableReference notEqualDueToAlias = tableRef("A").as("X");
+  private final TableReference notEqualDueToDbLink = new TableReference(null, "A", "DB_LINK_REF");
 
   private final TableReference onTestAliased = new TableReference("Schema", "A").as("X");
   private final TableReference isEqualAliased = new TableReference("Schema", "A").as("X");
@@ -56,6 +57,7 @@ public class TestTableReference {
     assertNotEquals(notEqualDueToSchema, onTest);
     assertNotEquals(notEqualDueToName, onTest);
     assertNotEquals(notEqualDueToAlias, onTest);
+    assertNotEquals(notEqualDueToDbLink, onTest);
 
     assertEquals(isEqualAliased, onTestAliased);
     assertNotEquals(differentSchema, onTestAliased);

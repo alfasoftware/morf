@@ -46,7 +46,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.google.common.collect.ImmutableList;
-import com.google.inject.Inject;
 
 /**
  * Entry point for upgrade processing.
@@ -58,20 +57,13 @@ public class Upgrade {
 
   private final UpgradePathFactory factory;
   private final ConnectionResources connectionResources;
-  private final DataSource dataSource;
   private final UpgradeStatusTableService upgradeStatusTableService;
   private final ViewChangesDeploymentHelper viewChangesDeploymentHelper;
   private final ViewDeploymentValidator viewDeploymentValidator;
   private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
 
-
-  /**
-   * Injected Constructor.
-   */
-  @Inject
-  Upgrade(
+  public Upgrade(
       ConnectionResources connectionResources,
-      DataSource dataSource,
       UpgradePathFactory factory,
       UpgradeStatusTableService upgradeStatusTableService,
       ViewChangesDeploymentHelper viewChangesDeploymentHelper,
@@ -79,7 +71,6 @@ public class Upgrade {
       GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory) {
     super();
     this.connectionResources = connectionResources;
-    this.dataSource = dataSource;
     this.factory = factory;
     this.upgradeStatusTableService = upgradeStatusTableService;
     this.viewChangesDeploymentHelper = viewChangesDeploymentHelper;
@@ -132,10 +123,10 @@ public class Upgrade {
       UpgradeStatusTableService upgradeStatusTableService,
       ViewDeploymentValidator viewDeploymentValidator) {
     Upgrade upgrade = new Upgrade(
-      connectionResources, connectionResources.getDataSource(),
+      connectionResources,
       new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition> emptySet(), upgradeStatusTableService),
       upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()), viewDeploymentValidator, null);
-    return upgrade.findPath(targetSchema, upgradeSteps, Collections.<String> emptySet());
+    return upgrade.findPath(targetSchema, upgradeSteps, Collections.<String> emptySet(), connectionResources.getDataSource());
   }
 
 
@@ -145,10 +136,11 @@ public class Upgrade {
    * @param targetSchema Target schema to upgrade to.
    * @param upgradeSteps All available upgrade steps.
    * @param exceptionRegexes Regular expression for table exclusions.
+   * @param dataSource The data source to use to find the upgrade path.
    * @return The upgrade path available
    */
-  public UpgradePath findPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, Collection<String> exceptionRegexes) {
-    return findPath(targetSchema, upgradeSteps, exceptionRegexes, new HashSet<>());
+  public UpgradePath findPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, Collection<String> exceptionRegexes, DataSource dataSource) {
+    return findPath(targetSchema, upgradeSteps, exceptionRegexes, new HashSet<>(), dataSource);
   }
 
 
@@ -160,9 +152,10 @@ public class Upgrade {
    * @param exceptionRegexes        Regular expression for table exclusions.
    * @param exclusiveExecutionSteps names of the upgrade step classes which should
    *                                  be executed in an exclusive way
+   * @param dataSource              The data source to use to find the upgrade path
    * @return The upgrade path available
    */
-  public UpgradePath findPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, Collection<String> exceptionRegexes, Set<String> exclusiveExecutionSteps) {
+  public UpgradePath findPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, Collection<String> exceptionRegexes, Set<String> exclusiveExecutionSteps, DataSource dataSource) {
     final List<String> upgradeStatements = new ArrayList<>();
 
     //Return an upgradePath with the current upgrade status if one is in progress
