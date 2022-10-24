@@ -165,11 +165,11 @@ public class SchemaHomology {
     }
 
     for (String tableName : additionalTablesInSchema1) {
-      difference("Table [" + tableName + "] is present in " + schema1Name + " but was not found in " + schema2Name);
+      difference("Table [" + tableName + "] is present in [" + schema1Name + "] but was not found in [" + schema2Name+"]");
     }
 
     for (String tableName : additionalTablesInSchema2) {
-      difference("Table [" + tableName + "] is present in " + schema2Name + " but was not found in " + schema1Name);
+      difference("Table [" + tableName + "] is present in [" + schema2Name + "] but was not found in [" + schema1Name+"]");
     }
 
     return noDifferences;
@@ -305,14 +305,14 @@ public class SchemaHomology {
     for (Column column1 : columns1) {
       Column column2 = columns2Source.remove(column1.getName().toUpperCase());
       if (column2 == null) {
-        difference("Column [" + column1.getName() + "] on table [" + tableName + "] not found in " + schema2Name);
+        difference("Column [" + column1.getName() + "] on table [" + tableName + "] not found in [" + schema2Name+"]");
       } else {
         checkColumn(tableName, column1, column2);
       }
     }
 
     for (Column column : columns2Source.values()) {
-      difference("Column [" + column.getName() + "] on table [" + tableName + "] not found in " + schema1Name);
+      difference("Column [" + column.getName() + "] on table [" + tableName + "] not found in [" + schema1Name+"]");
     }
   }
 
@@ -336,14 +336,14 @@ public class SchemaHomology {
       Index index2 = sourceIndexes2.remove(index1.getName().toUpperCase());
 
       if (index2 == null) {
-        difference("Index [" + index1.getName() + "] on table [" + tableName + "] not found in " + schema2Name);
+        difference("Index [" + index1.getName() + "] on table [" + tableName + "] not found in [" + schema2Name+"]");
       } else {
         checkIndex(tableName, index1, index2);
       }
     }
 
     for(Index index : sourceIndexes2.values()) {
-      difference("Index [" + index.getName() + "] on table [" + tableName + "] not found in " + schema1Name);
+      difference("Index [" + index.getName() + "] on table [" + tableName + "] not found in [" + schema1Name+"]");
     }
   }
 
@@ -384,7 +384,7 @@ public class SchemaHomology {
    */
   private void matches(String description, Object value1, Object value2) {
     if (ObjectUtils.notEqual(value1, value2)) {
-      difference(String.format("%s does not match: [%s] in %s, [%s] in %s", description, value1, schema1Name, value2, schema2Name));
+      difference(String.format("%s does not match: [%s] in [%s], [%s] in [%s]", description, value1, schema1Name, value2, schema2Name));
     }
   }
 

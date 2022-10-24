@@ -109,13 +109,13 @@ public class UpgradePathFinder {
 
     // We have changes to make. Apply them against the current schema to see whether they get us the right position
     Schema trialUpgradedSchema = schemaChangeSequence.applyToSchema(current);
-    if (!schemasMatch(target, trialUpgradedSchema, "target domain schema", "trial upgraded schema", exceptionRegexes)) {
+    if (!schemasMatch(target, trialUpgradedSchema, "target domain schema (e.g. schema from Java source)", "database or xml schema with upgrades applied", exceptionRegexes)) {
       throw new NoUpgradePathExistsException();
     }
 
     // Now reverse-apply those changes to see whether they get us back to where we started
     Schema reversal = schemaChangeSequence.applyInReverseToSchema(trialUpgradedSchema);
-    if (!schemasMatch(reversal, current, "upgraded schema reversal", "current schema", exceptionRegexes)) {
+    if (!schemasMatch(reversal, current, "upgraded database or xml schema with upgrades reversed", "current database or xml schema", exceptionRegexes)) {
       throw new IllegalStateException("Upgrade reversals are invalid");
     }
 
@@ -199,12 +199,12 @@ public class UpgradePathFinder {
    * @param targetSchema First schema to compare.
    * @param trialSchema Second schema to compare.
    * @param firstSchemaContext Context of the target schema for logging.
-   * @param secondScehmaContext Context of the trial schema for logging.
+   * @param secondSchemaContext Context of the trial schema for logging.
    * @param exceptionRegexes Regular exceptions for the table exceptions.
    * @return True if the schemas match.
    */
-  private boolean schemasMatch(Schema targetSchema, Schema trialSchema, String firstSchemaContext, String secondScehmaContext, Collection<String> exceptionRegexes) {
-    log.info("Comparing schema [" + firstSchemaContext + "] to [" + secondScehmaContext + "]");
+  private boolean schemasMatch(Schema targetSchema, Schema trialSchema, String firstSchemaContext, String secondSchemaContext, Collection<String> exceptionRegexes) {
+    log.info("Comparing schema [" + firstSchemaContext + "] to [" + secondSchemaContext + "]");
     DifferenceWriter differenceWriter = new DifferenceWriter() {
       @Override
       public void difference(String message) {
@@ -212,7 +212,7 @@ public class UpgradePathFinder {
       }
     };
 
-    SchemaHomology homology = new SchemaHomology(differenceWriter, firstSchemaContext, secondScehmaContext );
+    SchemaHomology homology = new SchemaHomology(differenceWriter, firstSchemaContext, secondSchemaContext );
     if (homology.schemasMatch(targetSchema, trialSchema, exceptionRegexes)) {
       log.info("Schemas match");
       return true;

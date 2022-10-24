@@ -96,7 +96,7 @@ public class TestSchemaHomology {
   private Set<String> differences;
 
   /**
-   * @see junit.framework.TestCase#setUp()
+   * See junit.framework.TestCase#setUp()
    */
   @Before
   public void setUp() throws Exception {
@@ -117,7 +117,8 @@ public class TestSchemaHomology {
         column("colour", DataType.STRING).nullable(),
         column("flavour", DataType.DECIMAL).nullable(),
         column("sweet", DataType.BOOLEAN).nullable()
-      ).indexes(        index("sweetness").unique().columns("colour")
+      ).indexes(
+        index("sweetness").unique().columns("colour")
       );
 
     appleTableDuplicate = table("Apple").columns(
@@ -125,7 +126,8 @@ public class TestSchemaHomology {
         column("colour", DataType.STRING).nullable(),
         column("flavour", DataType.DECIMAL).nullable(),
         column("sweet", DataType.BOOLEAN).nullable()
-      ).indexes(        index("sweetness").unique().columns("colour")
+      ).indexes(
+        index("sweetness").unique().columns("colour")
       );
 
 
@@ -134,7 +136,8 @@ public class TestSchemaHomology {
         column("COLOUR", DataType.STRING).nullable(),
         column("FLAVOUR", DataType.DECIMAL).nullable(),
         column("SWEET", DataType.BOOLEAN).nullable()
-      ).indexes(        index("SWEETNESS").unique().columns("COLOUR")
+      ).indexes(
+        index("SWEETNESS").unique().columns("COLOUR")
       );
 
 
@@ -143,7 +146,8 @@ public class TestSchemaHomology {
         column("colour", DataType.STRING).nullable(),
         column("flavour", DataType.DECIMAL).nullable(),
         column("sweet", DataType.BOOLEAN).nullable()
-      ).indexes(        index("sweetness").unique().columns("colour")
+      ).indexes(
+        index("sweetness").unique().columns("colour")
       );
 
 
@@ -153,7 +157,8 @@ public class TestSchemaHomology {
         column("name", DataType.STRING).nullable(),
         column("flavour", DataType.DECIMAL).nullable(),
         column("sweet", DataType.BOOLEAN).nullable()
-      ).indexes(        index("sweetness").unique().columns("colour")
+      ).indexes(
+        index("sweetness").unique().columns("colour")
       );
 
 
@@ -161,7 +166,8 @@ public class TestSchemaHomology {
         autonumber("autonum", 3),
         column("colour", DataType.STRING).nullable(),
         column("flavour", DataType.DECIMAL).nullable()
-      ).indexes(        index("sweetness").unique().columns("colour")
+      ).indexes(
+        index("sweetness").unique().columns("colour")
       );
 
 
@@ -170,7 +176,8 @@ public class TestSchemaHomology {
         column("colour", DataType.STRING).nullable(),
         column("flavor", DataType.DECIMAL).nullable(),
         column("sweet", DataType.BOOLEAN).nullable()
-      ).indexes(        index("sweetness").unique().columns("colour")
+      ).indexes(
+        index("sweetness").unique().columns("colour")
       );
 
 
@@ -179,7 +186,8 @@ public class TestSchemaHomology {
         column("colour", DataType.STRING).nullable(),
         column("flavour", DataType.DECIMAL).nullable(),
         column("sweet", DataType.BOOLEAN).nullable()
-      ).indexes(        index("sweetneess").unique().columns("colour")
+      ).indexes(
+        index("sweetneess").unique().columns("colour")
       );
 
 
@@ -188,7 +196,8 @@ public class TestSchemaHomology {
         column("colour", DataType.STRING).nullable(),
         column("flavour", DataType.DECIMAL).nullable(),
         column("sweet", DataType.BOOLEAN).nullable()
-      ).indexes(        index("sweety").unique().columns("colour")
+      ).indexes(
+        index("sweety").unique().columns("colour")
       );
 
     appleTableNotAutonumbered = table("Apple").columns(
@@ -365,7 +374,7 @@ public class TestSchemaHomology {
     Schema schema2 = schema(appleTable, pearTable);
 
     assertFalse(schemaHomology.schemasMatch(schema1, schema2, Sets.<String>newHashSet()));
-    assertEquals(ImmutableSet.of("Table [MYTABLE] is present in SCHEMA1 but was not found in SCHEMA2"), differences);
+    assertEquals(ImmutableSet.of("Table [MYTABLE] is present in [SCHEMA1] but was not found in [SCHEMA2]"), differences);
   }
 
 
@@ -378,7 +387,7 @@ public class TestSchemaHomology {
     Schema schema2 = schema(appleTable, pearTable, simpleTable);
 
     assertFalse(schemaHomology.schemasMatch(schema1, schema2, Sets.<String>newHashSet()));
-    assertEquals(ImmutableSet.of("Table [MYTABLE] is present in SCHEMA2 but was not found in SCHEMA1"), differences);
+    assertEquals(ImmutableSet.of("Table [MYTABLE] is present in [SCHEMA2] but was not found in [SCHEMA1]"), differences);
   }
 
 
