@@ -1022,7 +1022,7 @@ public class TestDatabaseUpgradeIntegration {
       fail ("Should not upgrade because of forgotten DEFAULT value");
     }
     catch (java.lang.AssertionError e) {
-      assertThat(e.getMessage(), equalToIgnoringCase("[Column [anotherValue] on table [WithDefaultValue] default value does not match: [OLD] in expected, [] in actual]"));
+      assertThat(e.getMessage(), equalToIgnoringCase("[Column [anotherValue] on table [WithDefaultValue] default value does not match: [OLD] in [expected], [] in [actual]]"));
     }
   }
 
