@@ -12,9 +12,11 @@ import org.alfasoftware.morf.sql.Hint;
  */
 public class AllowParallelDmlHint implements Hint {
 
-  public AllowParallelDmlHint() {
+  private AllowParallelDmlHint() {
     super();
   }
+
+  public final static AllowParallelDmlHint INSTANCE = new AllowParallelDmlHint();
 
   /**
    * @see java.lang.Object#toString()
@@ -24,22 +26,5 @@ public class AllowParallelDmlHint implements Hint {
     return  getClass().getSimpleName();
   }
 
-
-  /**
-   * @see java.lang.Object#hashCode()
-   */
-  @Override
-  public int hashCode() {
-    return AllowParallelDmlHint.class.hashCode();
-  }
-
-
-  /**
-   * @see java.lang.Object#equals(java.lang.Object)
-   */
-  @Override
-  public boolean equals(Object obj) {
-    return AllowParallelDmlHint.class.equals(obj);
-  }
 
 }

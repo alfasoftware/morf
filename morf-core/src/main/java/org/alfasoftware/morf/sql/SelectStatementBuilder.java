@@ -304,7 +304,7 @@ public class SelectStatementBuilder extends AbstractSelectStatementBuilder<Selec
    * @see #withParallelQueryPlan()
    */
   public SelectStatementBuilder allowParallelDml() {
-    this.hints.add(new AllowParallelDmlHint());
+    this.hints.add(AllowParallelDmlHint.INSTANCE);
     return this;
   }
 
