@@ -465,7 +465,7 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
    */
   public SelectStatement allowParallelDml() {
     return copyOnWriteOrMutate(
-        (SelectStatementBuilder b) -> b.allowParallelDml(),
+        SelectStatementBuilder::allowParallelDml,
         () -> this.hints.add(new AllowParallelDmlHint())
     );
   }

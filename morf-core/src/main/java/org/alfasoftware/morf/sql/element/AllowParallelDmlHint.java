@@ -13,6 +13,7 @@ import org.alfasoftware.morf.sql.Hint;
 public class AllowParallelDmlHint implements Hint {
 
   public AllowParallelDmlHint() {
+    super();
   }
 
   /**
