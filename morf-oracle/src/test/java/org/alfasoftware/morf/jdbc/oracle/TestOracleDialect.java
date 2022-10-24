@@ -1507,7 +1507,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedHints4a() {
-    return "INSERT /*+ */ INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
+    return "INSERT /*+ NOAPPEND */ INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
   }
 
 

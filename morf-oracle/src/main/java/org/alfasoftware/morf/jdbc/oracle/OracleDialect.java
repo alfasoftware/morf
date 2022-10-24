@@ -45,6 +45,7 @@ import org.alfasoftware.morf.sql.DirectPathQueryHint;
 import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.Hint;
 import org.alfasoftware.morf.sql.InsertStatement;
+import org.alfasoftware.morf.sql.NoDirectPathQueryHint;
 import org.alfasoftware.morf.sql.OptimiseForRowCount;
 import org.alfasoftware.morf.sql.OracleCustomHint;
 import org.alfasoftware.morf.sql.ParallelQueryHint;
@@ -1408,6 +1409,9 @@ class OracleDialect extends SqlDialect {
     for (Hint hint : insertStatement.getHints()) {
       if (hint instanceof DirectPathQueryHint) {
         builder.append(" APPEND");
+      }
+      else if(hint instanceof NoDirectPathQueryHint) {
+        builder.append(" NOAPPEND");
       }
     }
 
