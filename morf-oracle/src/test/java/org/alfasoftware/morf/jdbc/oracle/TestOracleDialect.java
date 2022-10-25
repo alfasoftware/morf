@@ -1501,7 +1501,6 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   }
 
 
-  //TODO: need to add NOAPPEND into return statement and get test passing
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints4a()
    */
