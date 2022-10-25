@@ -247,14 +247,14 @@ public class UpdateStatement implements Statement,
    *
    * <p>Note that the use of parallel DML comes with restrictions, in particular, a table may not be accessed in the same transaction following a parallel DML execution. Please consult the Oracle manual section <em>Restrictions on Parallel DML</em> to check whether this hint is suitable.</p>
    *
-   * @param degreeOfParallelilsm - the degree of parallelism
+   * @param degreeOfParallelism - the degree of parallelism
    * @return this, for method chaining.
    */
-  public UpdateStatement useParallelDml(int degreeOfParallelilsm) {
+  public UpdateStatement useParallelDml(int degreeOfParallelism) {
     if (AliasedField.immutableDslEnabled()) {
-      return shallowCopy().useParallelDml(degreeOfParallelilsm).build();
+      return shallowCopy().useParallelDml(degreeOfParallelism).build();
     } else {
-      hints.add(new UseParallelDml(degreeOfParallelilsm));
+      hints.add(new UseParallelDml(degreeOfParallelism));
       return this;
     }
   }

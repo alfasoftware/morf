@@ -359,6 +359,16 @@ public class InsertStatement implements Statement,
     );
   }
 
+  /**
+   * Request that this statement is executed with a parallel execution plan for data manipulation language (DML). This request will have no effect unless the database implementation supports it and the feature is enabled.
+   *
+   * <p>For statement that will affect a high percentage or rows in the table, a parallel execution plan may reduce the execution time, although the exact effect depends on
+   * the underlying database, the nature of the data and the nature of the query.</p>
+   *
+   * <p>Note that the use of parallel DML comes with restrictions, in particular, a table may not be accessed in the same transaction following a parallel DML execution. Please consult the Oracle manual section <em>Restrictions on Parallel DML</em> to check whether this hint is suitable.</p>
+   *
+   * @return this, for method chaining.
+   */
   public InsertStatement useParallelDml() {
     return copyOnWriteOrMutate(
             InsertStatementBuilder::useParallelDml,
@@ -367,6 +377,17 @@ public class InsertStatement implements Statement,
   }
 
 
+  /**
+   * Request that this statement is executed with a parallel execution plan for data manipulation language (DML). This request will have no effect unless the database implementation supports it and the feature is enabled.
+   *
+   * <p>For statement that will affect a high percentage or rows in the table, a parallel execution plan may reduce the execution time, although the exact effect depends on
+   * the underlying database, the nature of the data and the nature of the query.</p>
+   *
+   * <p>Note that the use of parallel DML comes with restrictions, in particular, a table may not be accessed in the same transaction following a parallel DML execution. Please consult the Oracle manual section <em>Restrictions on Parallel DML</em> to check whether this hint is suitable.</p>
+   *
+   * @param degreeOfParallelism - the degree of parallelism
+   * @return this, for method chaining.
+   */
   public InsertStatement useParallelDml(int degreeOfParallelism) {
     return copyOnWriteOrMutate(
             insertStatementBuilder -> insertStatementBuilder.useParallelDml(degreeOfParallelism),
