@@ -334,7 +334,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#verifyPostInsertStatementsInsertingUnderAutonumLimit(org.alfasoftware.morf.jdbc.SqlScriptExecutor, com.mysql.jdbc.Connection)
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#verifyPostInsertStatementsInsertingUnderAutonumLimit(org.alfasoftware.morf.jdbc.SqlScriptExecutor, java.sql.Connection)
    */
   @Override
   protected void verifyPostInsertStatementsNotInsertingUnderAutonumLimit(SqlScriptExecutor sqlScriptExecutor, Connection connection) {
@@ -1139,7 +1139,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropViewStatement()
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropViewStatements()
    */
   @Override
   protected List<String> expectedDropViewStatements() {
@@ -1479,7 +1479,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedHints2(int rowCount) {
-    return "SELECT /*+ INDEX(Foo Foo_1) FIRST_ROWS(" + rowCount + ") ORDERED PARALLEL */ a, b FROM " + tableName("Foo") + " ORDER BY a NULLS FIRST FOR UPDATE";
+    return "SELECT /*+ INDEX(Foo Foo_1) FIRST_ROWS(" + rowCount + ") ORDERED PARALLEL ENABLE_PARALLEL_DML */ a, b FROM " + tableName("Foo") + " ORDER BY a NULLS FIRST FOR UPDATE";
   }
 
 
@@ -1502,11 +1502,29 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints4a()
+   */
+  @Override
+  protected String expectedHints4a() {
+    return "INSERT /*+ NOAPPEND */ INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints6()
    */
   @Override
   protected String expectedHints6() {
     return "SELECT /*+ PARALLEL(5) */ a, b FROM " + tableName("Foo") + " ORDER BY a NULLS FIRST";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints6a()
+   */
+  @Override
+  protected String expectedHints6a() {
+    return "SELECT /*+ PARALLEL(5) ENABLE_PARALLEL_DML */ a, b FROM " + tableName("Foo") + " ORDER BY a NULLS FIRST";
   }
 
 

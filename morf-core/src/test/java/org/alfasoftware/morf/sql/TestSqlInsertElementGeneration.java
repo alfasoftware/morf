@@ -165,6 +165,17 @@ public class TestSqlInsertElementGeneration {
 
 
   /**
+   * Tests that the {@link NoDirectPathQueryHint} can be added to the insert statement.
+   */
+  @Test
+  public void testInsertIntoTableWithNoDirectPathQueryHint() {
+    InsertStatement stmtBuilder = insert().into(new TableReference("agreement")).avoidDirectPath().build();
+
+    assertTrue("Direct path query hint", stmtBuilder.getHints().contains(NoDirectPathQueryHint.INSTANCE));
+  }
+
+
+  /**
    * Test that deep copy works for insert with fields.
    */
   @Test
@@ -206,5 +217,6 @@ public class TestSqlInsertElementGeneration {
     assertTrue("Should be different instance of table in select statement table", stmt.getSelectStatement().getTable() != stmtCopy.getSelectStatement().getTable());
     assertEquals("Table name in select statement should match", stmt.getSelectStatement().getTable().getName(), stmtCopy.getSelectStatement().getTable().getName());
   }
+
 
 }

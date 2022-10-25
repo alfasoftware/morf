@@ -21,6 +21,7 @@ import java.util.List;
 import org.alfasoftware.morf.sql.UnionSetOperator.UnionStrategy;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
+import org.alfasoftware.morf.sql.element.AllowParallelDmlHint;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.util.Builder;
@@ -285,6 +286,25 @@ public class SelectStatementBuilder extends AbstractSelectStatementBuilder<Selec
    */
   public SelectStatementBuilder withParallelQueryPlan(int degreeOfParallelism) {
     this.hints.add(new ParallelQueryHint(degreeOfParallelism));
+    return this;
+  }
+
+
+  /**
+   * Request that this query can contribute towards a parallel DML execution plan.
+   * If a select statement is used within a DML statement, some dialects require DML parallelisation to be enabled via the select statement.
+   * If the database implementation does not support, or is configured to disable parallel query execution, then this request will have no effect.
+   *
+   * <p>For queries that are likely to change a lot of data, a parallel execution plan may result in the results being written faster, although the exact effect depends on
+   * the underlying database, the nature of the data.</p>
+   *
+   * <p>Note that the use cases of this are rare. Caution is needed because if multiple requests are made by the application to run parallel queries, the resulting resource contention may result in worse performance - this is not intended for queries that are submitted in parallel by the application.</p>
+   *
+   * @return this, for method chaining.
+   * @see #withParallelQueryPlan()
+   */
+  public SelectStatementBuilder allowParallelDml() {
+    this.hints.add(AllowParallelDmlHint.INSTANCE);
     return this;
   }
 

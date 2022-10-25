@@ -45,6 +45,7 @@ import org.alfasoftware.morf.sql.DirectPathQueryHint;
 import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.Hint;
 import org.alfasoftware.morf.sql.InsertStatement;
+import org.alfasoftware.morf.sql.NoDirectPathQueryHint;
 import org.alfasoftware.morf.sql.OptimiseForRowCount;
 import org.alfasoftware.morf.sql.OracleCustomHint;
 import org.alfasoftware.morf.sql.ParallelQueryHint;
@@ -61,6 +62,7 @@ import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.AllowParallelDmlHint;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
@@ -420,7 +422,7 @@ class OracleDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#postInsertWithPresetAutonumStatements(org.alfasoftware.morf.metadata.Table, boolean)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#postInsertWithPresetAutonumStatements(org.alfasoftware.morf.metadata.Table, SqlScriptExecutor, Connection, boolean)
    */
   @Override
   public void postInsertWithPresetAutonumStatements(Table table, SqlScriptExecutor executor,Connection connection, boolean insertingUnderAutonumLimit) {
@@ -505,7 +507,7 @@ class OracleDialect extends SqlDialect {
   /**
    * Turn a string value into an SQL string literal which has that value.
    * <p>
-   * We use {@linkplain StringUtils#isEmpty(String)} because we want to
+   * We use {@linkplain StringUtils#isEmpty(CharSequence)} because we want to
    * differentiate between a single space and an empty string.
    * </p>
    * <p>
@@ -753,7 +755,7 @@ class OracleDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#changePrimaryKeyColumns(java.lang.String, java.util.List, java.util.List)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#changePrimaryKeyColumns(Table, java.util.List, java.util.List)
    */
   @Override
   public Collection<String> changePrimaryKeyColumns(Table table, List<String> oldPrimaryKeyColumns, List<String> newPrimaryKeyColumns) {
@@ -1286,6 +1288,9 @@ class OracleDialect extends SqlDialect {
         ParallelQueryHint parallelQueryHint = (ParallelQueryHint) hint;
         builder.append(parallelQueryHint.getDegreeOfParallelism().map(d -> "(" + d + ")").orElse(""));
       }
+      if (hint instanceof AllowParallelDmlHint) {
+        builder.append(" ENABLE_PARALLEL_DML");
+      }
       if (hint instanceof OracleCustomHint) {
         builder.append(" ")
         .append(((OracleCustomHint)hint).getCustomHint());
@@ -1362,7 +1367,7 @@ class OracleDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect.getSqlForAnalyseTable(Table)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForAnalyseTable(Table)
    */
   @Override
   public Collection<String> getSqlForAnalyseTable(Table table) {
@@ -1404,6 +1409,9 @@ class OracleDialect extends SqlDialect {
     for (Hint hint : insertStatement.getHints()) {
       if (hint instanceof DirectPathQueryHint) {
         builder.append(" APPEND");
+      }
+      else if(hint instanceof NoDirectPathQueryHint) {
+        builder.append(" NOAPPEND");
       }
     }
 
