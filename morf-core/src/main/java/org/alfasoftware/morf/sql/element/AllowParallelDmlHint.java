@@ -10,13 +10,13 @@ import org.alfasoftware.morf.sql.Hint;
  *
  * @author Copyright (c) Alfa Financial Software 2022
  */
-public class AllowParallelDmlHint implements Hint {
+public final class AllowParallelDmlHint implements Hint {
 
   private AllowParallelDmlHint() {
     super();
   }
 
-  public final static AllowParallelDmlHint INSTANCE = new AllowParallelDmlHint();
+  public static final AllowParallelDmlHint INSTANCE = new AllowParallelDmlHint();
 
   /**
    * @see java.lang.Object#toString()
