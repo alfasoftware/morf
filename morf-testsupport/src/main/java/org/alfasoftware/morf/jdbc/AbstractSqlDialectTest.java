@@ -3228,6 +3228,14 @@ public abstract class AbstractSqlDialectTest {
       )
     );
     assertEquals(
+       expectedHints3a(),
+       testDialect.convertStatementToSQL(
+         update(tableRef("Foo"))
+         .set(field("b").as("a"))
+         .useParallelDml(5)
+       )
+    );
+    assertEquals(
       Lists.newArrayList(expectedHints4()),
       testDialect.convertStatementToSQL(
         insert()
@@ -3239,11 +3247,29 @@ public abstract class AbstractSqlDialectTest {
     assertEquals(
         Lists.newArrayList(expectedHints4a()),
         testDialect.convertStatementToSQL(
-        insert()
-        .into(tableRef("Foo"))
-        .from(select(field("a"), field("b")).from(tableRef("Foo_1")))
-        .avoidDirectPath()
+          insert()
+          .into(tableRef("Foo"))
+          .from(select(field("a"), field("b")).from(tableRef("Foo_1")))
+          .avoidDirectPath()
         )
+    );
+    assertEquals(
+         Lists.newArrayList(expectedHints4b()),
+         testDialect.convertStatementToSQL(
+           insert()
+           .into(tableRef("Foo"))
+           .from(select(field("a"), field("b")).from(tableRef("Foo_1")))
+           .useParallelDml()
+         )
+    );
+    assertEquals(
+         Lists.newArrayList(expectedHints4c()),
+         testDialect.convertStatementToSQL(
+           insert()
+           .into(tableRef("Foo"))
+           .from(select(field("a"), field("b")).from(tableRef("Foo_1")))
+           .useParallelDml(5)
+         )
     );
     assertEquals(
       Lists.newArrayList(expectedHints5()),
@@ -5569,6 +5595,14 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * @return The expected SQL for the {@link UpdateStatement#useParallelDml(int)} directive.
+   */
+  protected String expectedHints3a() {
+    return "UPDATE " + tableName("Foo") + " SET a = b";
+  }
+
+
+  /**
    * @return The expected SQL for the {@link InsertStatement#useDirectPath()} directive.
    */
   protected String expectedHints4() {
@@ -5577,9 +5611,25 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * @return The expected SQL for the {@link InsertStatement#avoidDirectPath()} and {@link SelectStatement#allowParallelDml()} directive.
+   * @return The expected SQL for the {@link InsertStatement#avoidDirectPath()} directive.
    */
   protected String expectedHints4a() {
+    return  "INSERT INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
+  }
+
+
+  /**
+   * @return The expected SQL for the {@link InsertStatement#useParallelDml()} ()} directive.
+   */
+  protected String expectedHints4b() {
+    return  "INSERT INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
+  }
+
+
+  /**
+   * @return The expected SQL for the {@link InsertStatement#useParallelDml(int)} directive.
+   */
+  protected String expectedHints4c() {
     return  "INSERT INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
   }
 

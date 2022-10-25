@@ -359,6 +359,20 @@ public class InsertStatement implements Statement,
     );
   }
 
+  public InsertStatement useParallelDml() {
+    return copyOnWriteOrMutate(
+            InsertStatementBuilder::useParallelDml,
+            () -> this.hints.add(new UseParallelDml())
+    );
+  }
+
+
+  public InsertStatement useParallelDml(int degreeOfParallelism) {
+    return copyOnWriteOrMutate(
+            insertStatementBuilder -> insertStatementBuilder.useParallelDml(degreeOfParallelism),
+            () -> this.hints.add(new UseParallelDml(degreeOfParallelism))
+    );
+  }
 
 
   /**

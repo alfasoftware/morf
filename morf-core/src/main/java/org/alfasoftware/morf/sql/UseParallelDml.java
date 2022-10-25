@@ -1,6 +1,7 @@
 package org.alfasoftware.morf.sql;
 
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Represents the hint for executing a data manipulation language (DML) statement using a parallel plan, where supported.
@@ -14,6 +15,23 @@ import java.util.Objects;
  * @author Copyright (c) Alfa Financial Software 2019
  */
 public class UseParallelDml implements Hint {
+
+  private final Integer degreeOfParallelism;
+
+  public UseParallelDml(Integer degreeOfParallelism) {
+    this.degreeOfParallelism = degreeOfParallelism;
+  }
+
+  public UseParallelDml() {
+    this.degreeOfParallelism = null;
+  }
+
+  /**
+   * @return the degree of parallelism for this PARALLEL query hint.
+   */
+  public Optional<Integer> getDegreeOfParallelism() {
+    return Optional.ofNullable(degreeOfParallelism);
+  }
 
   @Override
   public String toString() {

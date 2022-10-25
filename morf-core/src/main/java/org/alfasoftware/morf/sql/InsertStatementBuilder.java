@@ -247,6 +247,15 @@ public class InsertStatementBuilder implements Builder<InsertStatement> {
     return this;
   }
 
+  public InsertStatementBuilder useParallelDml() {
+    getHints().add(new UseParallelDml());
+    return this;
+  }
+
+  public InsertStatementBuilder useParallelDml(int degreeOfParallelism) {
+    getHints().add(new UseParallelDml(degreeOfParallelism));
+    return this;
+  }
 
   /**
    * Specifies the defaults to use when inserting new fields.
