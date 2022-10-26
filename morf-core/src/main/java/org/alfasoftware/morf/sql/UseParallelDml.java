@@ -35,17 +35,22 @@ public class UseParallelDml implements Hint {
 
   @Override
   public String toString() {
-    return getClass().getSimpleName();
+    return "UseParallelDml{" +
+            "degreeOfParallelism=" + degreeOfParallelism +
+            '}';
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    UseParallelDml that = (UseParallelDml) o;
+    return degreeOfParallelism.equals(that.degreeOfParallelism);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getClass());
-  }
-
-  @Override
-  public boolean equals(Object oth) {
-    return oth != null && this.getClass() == oth.getClass();
+    return Objects.hash(degreeOfParallelism);
   }
 }
 
