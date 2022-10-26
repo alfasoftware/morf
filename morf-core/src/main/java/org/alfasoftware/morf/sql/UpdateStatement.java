@@ -247,7 +247,7 @@ public class UpdateStatement implements Statement,
    *
    * <p>Note that the use of parallel DML comes with restrictions, in particular, a table may not be accessed in the same transaction following a parallel DML execution. Please consult the Oracle manual section <em>Restrictions on Parallel DML</em> to check whether this hint is suitable.</p>
    *
-   * @param degreeOfParallelism - the degree of parallelism
+   * @param degreeOfParallelism Degree of parallelism to be specified in the hint.
    * @return this, for method chaining.
    */
   public UpdateStatement useParallelDml(int degreeOfParallelism) {

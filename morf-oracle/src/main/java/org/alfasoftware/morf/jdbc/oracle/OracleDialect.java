@@ -1310,17 +1310,19 @@ class OracleDialect extends SqlDialect {
    */
   @Override
   protected String updateStatementPreTableDirectives(UpdateStatement updateStatement) {
+    if(updateStatement.getHints().isEmpty()) {
+      return "";
+    }
+    StringBuilder builder = new StringBuilder("/*+");
     for (Hint hint : updateStatement.getHints()) {
       if (hint instanceof UseParallelDml) {
-        StringBuilder builder = new StringBuilder("/*+ ENABLE_PARALLEL_DML PARALLEL");
+        builder.append(" ENABLE_PARALLEL_DML PARALLEL");
         builder.append(((UseParallelDml) hint).getDegreeOfParallelism()
                 .map(d -> "(" + d + ")")
                 .orElse(""));
-        builder.append(" */ ");
-        return builder.toString(); // only the single hint supported so return immediately
       }
     }
-    return "";
+    return builder.append(" */ ").toString();
   }
 
 

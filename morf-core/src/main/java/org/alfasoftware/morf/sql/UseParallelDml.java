@@ -16,21 +16,21 @@ import java.util.Optional;
  */
 public class UseParallelDml implements Hint {
 
-  private final Integer degreeOfParallelism;
+  private final Optional<Integer> degreeOfParallelism;
 
   public UseParallelDml(Integer degreeOfParallelism) {
-    this.degreeOfParallelism = degreeOfParallelism;
+    this.degreeOfParallelism = Optional.ofNullable(degreeOfParallelism);
   }
 
   public UseParallelDml() {
-    this.degreeOfParallelism = null;
+    this.degreeOfParallelism = Optional.empty();
   }
 
   /**
    * @return the degree of parallelism for this PARALLEL query hint.
    */
   public Optional<Integer> getDegreeOfParallelism() {
-    return Optional.ofNullable(degreeOfParallelism);
+    return degreeOfParallelism;
   }
 
   @Override
