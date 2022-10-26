@@ -1493,6 +1493,15 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints3
+   */
+  @Override
+  protected String expectedHints3a() {
+    return "UPDATE /*+ ENABLE_PARALLEL_DML PARALLEL(5) */ " + tableName("Foo") + " SET a = b";
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints4()
    */
   @Override
@@ -1507,6 +1516,22 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedHints4a() {
     return "INSERT /*+ NOAPPEND */ INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
+  }
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints4a()
+   */
+  @Override
+  protected String expectedHints4b() {
+    return "INSERT /*+ ENABLE_PARALLEL_DML PARALLEL */ INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
+  }
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints4a()
+   */
+  @Override
+  protected String expectedHints4c() {
+    return "INSERT /*+ ENABLE_PARALLEL_DML PARALLEL(5) */ INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
   }
 
 

@@ -1310,12 +1310,19 @@ class OracleDialect extends SqlDialect {
    */
   @Override
   protected String updateStatementPreTableDirectives(UpdateStatement updateStatement) {
+    if(updateStatement.getHints().isEmpty()) {
+      return "";
+    }
+    StringBuilder builder = new StringBuilder("/*+");
     for (Hint hint : updateStatement.getHints()) {
       if (hint instanceof UseParallelDml) {
-        return "/*+ ENABLE_PARALLEL_DML PARALLEL */ "; // only the single hint supported so return immediately
+        builder.append(" ENABLE_PARALLEL_DML PARALLEL");
+        builder.append(((UseParallelDml) hint).getDegreeOfParallelism()
+                .map(d -> "(" + d + ")")
+                .orElse(""));
       }
     }
-    return "";
+    return builder.append(" */ ").toString();
   }
 
 
@@ -1412,6 +1419,12 @@ class OracleDialect extends SqlDialect {
       }
       else if(hint instanceof NoDirectPathQueryHint) {
         builder.append(" NOAPPEND");
+      }
+      if(hint instanceof UseParallelDml) {
+        builder.append(" ENABLE_PARALLEL_DML PARALLEL");
+        builder.append(((UseParallelDml) hint).getDegreeOfParallelism()
+                .map(d -> "(" + d + ")")
+                .orElse(""));
       }
     }
 

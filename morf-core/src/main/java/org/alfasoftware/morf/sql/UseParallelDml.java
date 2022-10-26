@@ -1,6 +1,7 @@
 package org.alfasoftware.morf.sql;
 
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Represents the hint for executing a data manipulation language (DML) statement using a parallel plan, where supported.
@@ -15,19 +16,41 @@ import java.util.Objects;
  */
 public class UseParallelDml implements Hint {
 
+  private final Optional<Integer> degreeOfParallelism;
+
+  public UseParallelDml(Integer degreeOfParallelism) {
+    this.degreeOfParallelism = Optional.ofNullable(degreeOfParallelism);
+  }
+
+  public UseParallelDml() {
+    this.degreeOfParallelism = Optional.empty();
+  }
+
+  /**
+   * @return the degree of parallelism for this PARALLEL query hint.
+   */
+  public Optional<Integer> getDegreeOfParallelism() {
+    return degreeOfParallelism;
+  }
+
   @Override
   public String toString() {
-    return getClass().getSimpleName();
+    return "UseParallelDml{" +
+            "degreeOfParallelism=" + degreeOfParallelism +
+            '}';
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    UseParallelDml that = (UseParallelDml) o;
+    return degreeOfParallelism.equals(that.degreeOfParallelism);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getClass());
-  }
-
-  @Override
-  public boolean equals(Object oth) {
-    return oth != null && this.getClass() == oth.getClass();
+    return Objects.hash(degreeOfParallelism);
   }
 }
 
