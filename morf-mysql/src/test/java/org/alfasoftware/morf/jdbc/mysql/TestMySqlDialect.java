@@ -34,7 +34,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
+import org.alfasoftware.morf.jdbc.AbstractSqlDialectTestWithNoSupportForWindowFunctions;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
@@ -54,7 +54,7 @@ import com.google.common.collect.ImmutableList;
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-public class TestMySqlDialect extends AbstractSqlDialectTest {
+public class TestMySqlDialect extends AbstractSqlDialectTestWithNoSupportForWindowFunctions {
 
   private final QueryBuilder queryBuilder = mock(QueryBuilder.class);
   private long maxIdValue;

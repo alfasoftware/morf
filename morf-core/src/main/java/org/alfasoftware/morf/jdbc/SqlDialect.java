@@ -74,6 +74,7 @@ import org.alfasoftware.morf.sql.element.FieldFromSelectFirst;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.FunctionType;
 import org.alfasoftware.morf.sql.element.Join;
 import org.alfasoftware.morf.sql.element.JoinType;
 import org.alfasoftware.morf.sql.element.MathsField;
@@ -94,6 +95,7 @@ import org.joda.time.Months;
 import com.google.common.base.Joiner;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -139,6 +141,7 @@ public abstract class SqlDialect {
    */
   private static final String            CANNOT_CONVERT_NULL_STATEMENT_TO_SQL  =  "Cannot convert a null statement to SQL";
 
+  private static final Set<FunctionType> WINDOW_FUNCTION_REQUIRING_ORDERBY = ImmutableSet.of(FunctionType.ROW_NUMBER);
 
 
   /**
@@ -354,6 +357,22 @@ public abstract class SqlDialect {
    *         dialect.
    */
   public abstract String connectionTestStatement();
+
+
+  /**
+   * Windowing function usually have the following syntax
+   * <<FUNCTION>> OVER (<<partitionClause>> <<orderByClause>>)
+   * The partitionClause is generally optional, but the orderByClause is mandatory for certain functions. This method
+   * specifies for which function the orderByClause is mandatory.
+   * Certain dialects may behave differently with respect to this behaviour, which will be overridden as per behaviour
+   * required of the dialect.
+   *
+   * @param function the windowing function
+   * @return true if orderBy clause is mandatory
+   */
+  protected boolean requireOrderBy(Function function) {
+    return WINDOW_FUNCTION_REQUIRING_ORDERBY.contains(function.getType());
+  }
 
 
   /**
@@ -1999,6 +2018,12 @@ public abstract class SqlDialect {
         }
         return getSqlForLastDayOfMonth(function.getArguments().get(0));
 
+      case ROW_NUMBER:
+        if (!function.getArguments().isEmpty()) {
+          throw new IllegalArgumentException("The ROW_NUMBER function should have zero arguments. This function has " + function.getArguments().size());
+        }
+        return getSqlForRowNumber();
+
       default:
         throw new UnsupportedOperationException("This database does not currently support the [" + function.getType() + "] function");
     }
@@ -2333,6 +2358,16 @@ public abstract class SqlDialect {
    * @return a string representation of the SQL for finding the last day of the month.
    */
   protected abstract String getSqlForLastDayOfMonth(AliasedField date);
+
+
+  /**
+   * Produce SQL for getting the row number of the row in the partition
+   *
+   * @return a string representation of the SQL for finding the last day of the month.
+   */
+  protected String getSqlForRowNumber(){
+    return "ROW_NUMBER()";
+  }
 
 
   /**
@@ -4047,6 +4082,10 @@ public abstract class SqlDialect {
    * @return The resulting SQL
    **/
   protected String getSqlFrom(WindowFunction windowFunctionField) {
+
+    if (requireOrderBy(windowFunctionField.getFunction()) && windowFunctionField.getOrderBys().isEmpty()) {
+      throw new IllegalArgumentException("Window function " + windowFunctionField.getFunction().getType() + " requires an order by clause.");
+    }
 
     StringBuilder statement = new StringBuilder().append(getSqlFrom(windowFunctionField.getFunction()));
 

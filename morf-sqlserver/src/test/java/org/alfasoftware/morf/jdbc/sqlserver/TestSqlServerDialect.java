@@ -26,7 +26,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
-import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
+import org.alfasoftware.morf.jdbc.AbstractSqlDialectTestWithNoSupportForWindowFunctions;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.apache.commons.lang3.StringUtils;
@@ -39,7 +39,7 @@ import com.google.common.collect.ImmutableList;
  *
  * @author Copyright (c) Alfa Financial Software 2011
  */
-public class TestSqlServerDialect extends AbstractSqlDialectTest {
+public class TestSqlServerDialect extends AbstractSqlDialectTestWithNoSupportForWindowFunctions {
 
   @SuppressWarnings({"unchecked","rawtypes"})
   private final ArgumentCaptor<List<String>> listCaptor = ArgumentCaptor.forClass((Class<List<String>>)(Class)List.class);

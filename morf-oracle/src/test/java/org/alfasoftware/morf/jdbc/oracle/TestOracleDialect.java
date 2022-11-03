@@ -1653,4 +1653,16 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   protected String expectedSelectWithExceptAndDbLinkLatter() {
     return "SELECT stringField FROM TESTSCHEMA.Test MINUS SELECT stringField FROM TESTSCHEMA.Other@MYDBLINKREF ORDER BY stringField NULLS FIRST";
   }
+
+  @Override
+  protected void verifyNoExceptionForWithoutPartitionClause(String result) {
+    assertEquals("ROW_NUMBER() OVER ( ORDER BY b NULLS FIRST)", result);
+  }
+
+
+  @Override
+  protected void verifyNoExceptionForWithPartitionClause(String result) {
+    assertEquals("ROW_NUMBER() OVER (PARTITION BY a ORDER BY b NULLS FIRST)", result);
+  }
+
 }

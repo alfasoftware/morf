@@ -20,7 +20,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
+import org.alfasoftware.morf.jdbc.AbstractSqlDialectTestWithNoSupportForWindowFunctions;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.apache.commons.lang3.StringUtils;
 
@@ -31,7 +31,7 @@ import com.google.common.collect.ImmutableList;
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-public class TestH2Dialect extends AbstractSqlDialectTest {
+public class TestH2Dialect extends AbstractSqlDialectTestWithNoSupportForWindowFunctions {
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#createTestDialect()

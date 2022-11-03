@@ -145,6 +145,7 @@ import org.alfasoftware.morf.sql.element.NullFieldLiteral;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.sql.element.WhenCondition;
+import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.alfasoftware.morf.upgrade.AddColumn;
 import org.alfasoftware.morf.upgrade.ChangeColumn;
 import org.alfasoftware.morf.upgrade.ChangeIndex;
@@ -2654,6 +2655,60 @@ public abstract class AbstractSqlDialectTest {
   public void shouldGenerateCorrectSqlForMathOperations1() {
     String result = testDialect.getSqlFrom(field("a").divideBy(field("b")).plus(field("c")));
     assertEquals(expectedSqlForMathOperations1(), result);
+  }
+
+
+  @Test
+  public void testRowNumberWithoutPartitionClause() {
+    try {
+      String result = testDialect.getSqlFrom(WindowFunction.over(Function.rowNumber()).orderBy(field("b")).build());
+      verifyNoExceptionForWithoutPartitionClause(result);
+    } catch (UnsupportedOperationException e) {
+      verifyException(e);
+    }
+  }
+
+  protected void verifyNoExceptionForWithoutPartitionClause(String result) {
+    assertEquals("ROW_NUMBER() OVER ( ORDER BY b)", result);
+  }
+
+  protected void verifyException(Exception e) {
+    fail("No exception should be thrown");
+  }
+
+  @Test
+  public void testRowNumberWithPartitionClause() {
+    try {
+      String result = testDialect.getSqlFrom(WindowFunction.over(Function.rowNumber()).partitionBy(field("a")).orderBy(field("b")).build());
+      verifyNoExceptionForWithPartitionClause(result);
+    } catch (UnsupportedOperationException e) {
+      verifyException(e);
+    }
+
+  }
+
+  protected void verifyNoExceptionForWithPartitionClause(String result) {
+    assertEquals("ROW_NUMBER() OVER (PARTITION BY a ORDER BY b)", result);
+  }
+
+  @Test
+  public void testRowNumberWithNoOrderByClause() {
+    try {
+      testDialect.getSqlFrom(WindowFunction.over(Function.rowNumber()).partitionBy(field("a")).build());
+      verifyNoExceptionForWithoutOrderByClause();
+    } catch (Exception e) {
+      verifyExceptionForNoOrderByClause(e);
+    }
+  }
+
+
+  protected void verifyNoExceptionForWithoutOrderByClause() {
+    fail("Should throw exception when order by clause is not specified");
+  }
+
+
+  protected void verifyExceptionForNoOrderByClause(Exception e){
+    assertEquals("Window function ROW_NUMBER requires an order by clause.", e.getMessage());
   }
 
 
