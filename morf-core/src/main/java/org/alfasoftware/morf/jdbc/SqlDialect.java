@@ -361,7 +361,7 @@ public abstract class SqlDialect {
 
   /**
    * Windowing function usually have the following syntax
-   * <<FUNCTION>> OVER (<<partitionClause>> <<orderByClause>>)
+   * <b>FUNCTION</b> OVER (<b>partitionClause</b> <b>orderByClause</b>)
    * The partitionClause is generally optional, but the orderByClause is mandatory for certain functions. This method
    * specifies for which function the orderByClause is mandatory.
    * Certain dialects may behave differently with respect to this behaviour, which will be overridden as per behaviour
