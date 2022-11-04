@@ -34,7 +34,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import org.alfasoftware.morf.jdbc.AbstractSqlDialectTestWithNoSupportForWindowFunctions;
+import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
@@ -54,7 +54,7 @@ import com.google.common.collect.ImmutableList;
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-public class TestMySqlDialect extends AbstractSqlDialectTestWithNoSupportForWindowFunctions {
+public class TestMySqlDialect extends AbstractSqlDialectTest {
 
   private final QueryBuilder queryBuilder = mock(QueryBuilder.class);
   private long maxIdValue;
@@ -231,7 +231,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTestWithNoSupportForWind
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedPostInsertStatements()
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#verifyPostInsertStatementsInsertingUnderAutonumLimit(org.alfasoftware.morf.jdbc.SqlScriptExecutor, java.sql.Connection)
    */
   @Override
   protected void verifyPostInsertStatementsInsertingUnderAutonumLimit(SqlScriptExecutor sqlScriptExecutor,Connection connection) {
@@ -898,7 +898,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTestWithNoSupportForWind
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropViewStatement()
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropViewStatements()
    */
   @Override
   protected List<String> expectedDropViewStatements() {
@@ -1177,15 +1177,6 @@ public class TestMySqlDialect extends AbstractSqlDialectTestWithNoSupportForWind
   @Override
   protected String expectedHints1(int rowCount) {
     return "SELECT * FROM SCHEMA2.Foo STRAIGHT_JOIN Bar ON (a = b) LEFT OUTER JOIN Fo ON (a = b) STRAIGHT_JOIN Fum Fumble ON (a = b) ORDER BY a";
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#supportsWindowFunctions()
-   */
-  @Override
-  protected boolean supportsWindowFunctions() {
-    return false;
   }
 
 

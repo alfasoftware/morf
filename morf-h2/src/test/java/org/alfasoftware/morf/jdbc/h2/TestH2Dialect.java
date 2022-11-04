@@ -20,7 +20,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import org.alfasoftware.morf.jdbc.AbstractSqlDialectTestWithNoSupportForWindowFunctions;
+import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.apache.commons.lang3.StringUtils;
 
@@ -31,7 +31,7 @@ import com.google.common.collect.ImmutableList;
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-public class TestH2Dialect extends AbstractSqlDialectTestWithNoSupportForWindowFunctions {
+public class TestH2Dialect extends AbstractSqlDialectTest {
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#createTestDialect()
@@ -817,7 +817,7 @@ public class TestH2Dialect extends AbstractSqlDialectTestWithNoSupportForWindowF
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropViewStatement()
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropViewStatements()
    */
   @Override
   protected List<String> expectedDropViewStatements() {
@@ -1115,15 +1115,6 @@ public class TestH2Dialect extends AbstractSqlDialectTestWithNoSupportForWindowF
   @Override
   protected String expectedHints1(int rowCount) {
     return "SELECT * FROM SCHEMA2.Foo INNER JOIN TESTSCHEMA.Bar ON (a = b) LEFT OUTER JOIN TESTSCHEMA.Fo ON (a = b) INNER JOIN TESTSCHEMA.Fum Fumble ON (a = b) ORDER BY a";
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#supportsWindowFunctions()
-   */
-  @Override
-  protected boolean supportsWindowFunctions() {
-    return false;
   }
 
 

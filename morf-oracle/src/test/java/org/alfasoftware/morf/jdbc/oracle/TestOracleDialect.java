@@ -1569,15 +1569,6 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
 
 
-  /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#supportsWindowFunctions()
-   */
-  @Override
-  protected boolean supportsWindowFunctions() {
-    return true;
-  }
-
-
   @Override
   protected boolean expectedUsesNVARCHARforStrings() {
     return true; // We do!
@@ -1652,17 +1643,6 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedSelectWithExceptAndDbLinkLatter() {
     return "SELECT stringField FROM TESTSCHEMA.Test MINUS SELECT stringField FROM TESTSCHEMA.Other@MYDBLINKREF ORDER BY stringField NULLS FIRST";
-  }
-
-  @Override
-  protected void verifyNoExceptionForWithoutPartitionClause(String result) {
-    assertEquals("ROW_NUMBER() OVER ( ORDER BY b NULLS FIRST)", result);
-  }
-
-
-  @Override
-  protected void verifyNoExceptionForWithPartitionClause(String result) {
-    assertEquals("ROW_NUMBER() OVER (PARTITION BY a ORDER BY b NULLS FIRST)", result);
   }
 
 }

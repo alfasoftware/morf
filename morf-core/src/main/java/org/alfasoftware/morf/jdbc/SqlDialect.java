@@ -370,7 +370,7 @@ public abstract class SqlDialect {
    * @param function the windowing function
    * @return true if orderBy clause is mandatory
    */
-  protected boolean requireOrderBy(Function function) {
+  protected boolean requiresOrderByForWindowFunction(Function function) {
     return WINDOW_FUNCTION_REQUIRING_ORDERBY.contains(function.getType());
   }
 
@@ -4065,17 +4065,6 @@ public abstract class SqlDialect {
   }
 
 
-   /**
-   * Indicates whether the dialect supports window functions.
-   *
-   * @return true if the dialect supports window functions (e.g. PARTITION BY).
-   *
-   **/
-   public boolean supportsWindowFunctions() {
-     return false;
-   }
-
-
   /**
    * Convert a {@link WindowFunction} into standards compliant SQL.
    * @param windowFunctionField The field to convert
@@ -4083,7 +4072,7 @@ public abstract class SqlDialect {
    **/
   protected String getSqlFrom(WindowFunction windowFunctionField) {
 
-    if (requireOrderBy(windowFunctionField.getFunction()) && windowFunctionField.getOrderBys().isEmpty()) {
+    if (requiresOrderByForWindowFunction(windowFunctionField.getFunction()) && windowFunctionField.getOrderBys().isEmpty()) {
       throw new IllegalArgumentException("Window function " + windowFunctionField.getFunction().getType() + " requires an order by clause.");
     }
 
