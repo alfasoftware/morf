@@ -51,7 +51,6 @@ import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.TableReference;
-import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.LocalDate;
 
