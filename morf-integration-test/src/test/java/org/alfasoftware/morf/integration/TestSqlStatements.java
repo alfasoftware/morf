@@ -3231,9 +3231,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testWindowFunction() {
-//    assumeTrue(TEST_ONLY_RUN_WITH_WINDOW_FUNCTION_SUPPORT,connectionResources.sqlDialect().supportsWindowFunctions());
-
-      System.out.println("Running test for DB " + connectionResources.sqlDialect().getDatabaseType());
     assertResultsMatch(
       select(
        field("id"),
