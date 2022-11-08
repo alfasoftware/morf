@@ -61,12 +61,6 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
-  public boolean supportsWindowFunctions() {
-    return true;
-  }
-
-
-  @Override
   public String schemaNamePrefix() {
     String schemaName = getSchemaName();
 

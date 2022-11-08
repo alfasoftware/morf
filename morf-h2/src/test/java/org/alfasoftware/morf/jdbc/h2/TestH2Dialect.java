@@ -817,7 +817,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropViewStatement()
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropViewStatements()
    */
   @Override
   protected List<String> expectedDropViewStatements() {
@@ -1115,15 +1115,6 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedHints1(int rowCount) {
     return "SELECT * FROM SCHEMA2.Foo INNER JOIN TESTSCHEMA.Bar ON (a = b) LEFT OUTER JOIN TESTSCHEMA.Fo ON (a = b) INNER JOIN TESTSCHEMA.Fum Fumble ON (a = b) ORDER BY a";
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#supportsWindowFunctions()
-   */
-  @Override
-  protected boolean supportsWindowFunctions() {
-    return false;
   }
 
 

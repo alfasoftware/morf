@@ -51,7 +51,6 @@ import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.TableReference;
-import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.LocalDate;
 
@@ -1076,24 +1075,6 @@ class SqlServerDialect extends SqlDialect {
   @Override
   protected String getForUpdateSql() {
     return StringUtils.EMPTY;
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#supportsWindowFunctions()
-   */
-  @Override
-  public boolean supportsWindowFunctions() {
-    return false; // SqlServer does not have full support for window functions before 2012
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.element.WindowFunction)
-   */
-  @Override
-  protected String getSqlFrom(final WindowFunction windowFunctionField) {
-    throw new UnsupportedOperationException(this.getClass().getSimpleName()+" does not support window functions.");
   }
 
 

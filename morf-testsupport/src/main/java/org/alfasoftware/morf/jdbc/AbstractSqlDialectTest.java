@@ -81,6 +81,7 @@ import static org.alfasoftware.morf.sql.element.Function.random;
 import static org.alfasoftware.morf.sql.element.Function.randomString;
 import static org.alfasoftware.morf.sql.element.Function.rightTrim;
 import static org.alfasoftware.morf.sql.element.Function.round;
+import static org.alfasoftware.morf.sql.element.Function.rowNumber;
 import static org.alfasoftware.morf.sql.element.Function.some;
 import static org.alfasoftware.morf.sql.element.Function.substring;
 import static org.alfasoftware.morf.sql.element.Function.sum;
@@ -94,7 +95,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -145,6 +145,7 @@ import org.alfasoftware.morf.sql.element.NullFieldLiteral;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.sql.element.WhenCondition;
+import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.alfasoftware.morf.upgrade.AddColumn;
 import org.alfasoftware.morf.upgrade.ChangeColumn;
 import org.alfasoftware.morf.upgrade.ChangeIndex;
@@ -2654,6 +2655,12 @@ public abstract class AbstractSqlDialectTest {
   public void shouldGenerateCorrectSqlForMathOperations1() {
     String result = testDialect.getSqlFrom(field("a").divideBy(field("b")).plus(field("c")));
     assertEquals(expectedSqlForMathOperations1(), result);
+  }
+
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testRowNumberWithNoOrderByClause() {
+    testDialect.getSqlFrom(WindowFunction.over(rowNumber()).partitionBy(field("a")).build());
   }
 
 
@@ -5773,15 +5780,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   @Test
-  public void testClaimsSupportsWindowFunctions() {
-    assertEquals("Mismatch in expected value of .supportsWindowFunctions()",supportsWindowFunctions(),testDialect.supportsWindowFunctions());
-  }
-
-
-  @Test
   public void testWindowFunctions() {
-    assumeTrue(supportsWindowFunctions());
-
     List<AliasedField> windowFunctions = windowFunctions().toList();
     List<String> expectedSql = expectedWindowFunctionStatements();
     assertEquals("Incorrect test setup, the expected number of window function statements did not match the window function test cases",windowFunctions.size(),expectedSql.size());
@@ -5790,20 +5789,6 @@ public abstract class AbstractSqlDialectTest {
       assertEquals(expectedSql.get(i),testDialect.getSqlFrom(windowFunctions.get(i)));
     }
   }
-
-
-  @Test(expected = UnsupportedOperationException.class)
-  public void testThrowsExceptionForUnsupportedWindowFunction() {
-    assumeFalse(supportsWindowFunctions());
-
-    testDialect.getSqlFrom(windowFunctions().first().get());
-  }
-
-
-  /**
-   * @return true if the dialect under test should claim to support window functions.
-   */
-  protected abstract boolean supportsWindowFunctions();
 
 
   /**
@@ -5819,6 +5804,8 @@ public abstract class AbstractSqlDialectTest {
       "MAX(field1) OVER (PARTITION BY field2, field3 ORDER BY field4"+paddedNullOrder+")",
       "MIN(field1) OVER (PARTITION BY field2, field3 ORDER BY field4 DESC"+paddedNullOrderDesc+", field5"+paddedNullOrder+")",
       "MIN(field1) OVER ( ORDER BY field2"+paddedNullOrder+")",
+      "ROW_NUMBER() OVER (PARTITION BY field2, field3 ORDER BY field4"+paddedNullOrder+")",
+      "ROW_NUMBER() OVER ( ORDER BY field2"+paddedNullOrder+")",
       "(SELECT MIN(field1) OVER ( ORDER BY field2"+paddedNullOrder+") AS window FROM "+tableName("srcTable")+")"
     );
   }
@@ -5835,6 +5822,8 @@ public abstract class AbstractSqlDialectTest {
       windowFunction(max(field("field1"))).partitionBy(field("field2"),field("field3")).orderBy(field("field4").asc()).build(),
       windowFunction(min(field("field1"))).partitionBy(field("field2"),field("field3")).orderBy(field("field4").desc(),field("field5")).build(),
       windowFunction(min(field("field1"))).orderBy(field("field2")).build(),
+      windowFunction(rowNumber()).partitionBy(field("field2"),field("field3")).orderBy(field("field4")).build(),
+      windowFunction(rowNumber()).orderBy(field("field2")).build(),
       select( windowFunction(min(field("field1"))).orderBy(field("field2")).build().as("window")).from(tableRef("srcTable")).asField()
       ));
   }

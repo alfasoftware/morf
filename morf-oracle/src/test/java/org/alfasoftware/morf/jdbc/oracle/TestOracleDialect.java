@@ -1569,15 +1569,6 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
 
 
-  /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#supportsWindowFunctions()
-   */
-  @Override
-  protected boolean supportsWindowFunctions() {
-    return true;
-  }
-
-
   @Override
   protected boolean expectedUsesNVARCHARforStrings() {
     return true; // We do!
@@ -1653,4 +1644,5 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   protected String expectedSelectWithExceptAndDbLinkLatter() {
     return "SELECT stringField FROM TESTSCHEMA.Test MINUS SELECT stringField FROM TESTSCHEMA.Other@MYDBLINKREF ORDER BY stringField NULLS FIRST";
   }
+
 }
