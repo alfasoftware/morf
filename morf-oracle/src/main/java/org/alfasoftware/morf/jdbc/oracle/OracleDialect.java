@@ -235,7 +235,11 @@ class OracleDialect extends SqlDialect {
    */
   private String primaryKeyConstraint(String tableName, List<String> newPrimaryKeyColumns) {
     // truncate down to 27, since we add _PK to the end
-    return "CONSTRAINT "+ primaryKeyConstraintName(tableName) + " PRIMARY KEY (" + Joiner.on(", ").join(newPrimaryKeyColumns) + ")";
+    return "CONSTRAINT "+
+            primaryKeyConstraintName(tableName)
+            + " PRIMARY KEY (" + Joiner.on(", ").join(newPrimaryKeyColumns) + ")"
+            + " USING INDEX (CREATE INDEX " + primaryKeyConstraintName(tableName)
+            + " ON " + truncatedTableName(tableName) + " (" + Joiner.on(", ").join(newPrimaryKeyColumns) + ")";
   }
 
 
@@ -897,7 +901,9 @@ class OracleDialect extends SqlDialect {
     .append(schemaNamePrefix())
     .append(tableName)
     .append(" ADD ")
-    .append(primaryKeyConstraint(tableName, columnNames));
+    .append(primaryKeyConstraint(tableName, columnNames))
+    .append( ")");
+
     return primaryKeyStatement.toString();
   }
 
