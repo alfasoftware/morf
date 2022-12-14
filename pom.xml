@@ -3,7 +3,7 @@
 
   <groupId>org.alfasoftware</groupId>
   <artifactId>morf-parent</artifactId>
-  <version>1.9.3-SNAPSHOT</version>
+  <version>1.9.3</version>
   <packaging>pom</packaging>
 
   <name>Morf</name>
@@ -510,7 +510,7 @@
     <connection>scm:git:https://github.com/alfasoftware/morf.git</connection>
     <developerConnection>scm:git:git@github.com:alfasoftware/morf.git</developerConnection>
     <url>https://github.com/alfasoftware/morf</url>
-    <tag>HEAD</tag>
+    <tag>1.9.3</tag>
   </scm>
   
   <distributionManagement>
