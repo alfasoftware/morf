@@ -15,13 +15,12 @@
 
 package org.alfasoftware.morf.jdbc;
 
-import javax.sql.DataSource;
-
-import org.alfasoftware.morf.jdbc.SqlScriptExecutor.SqlScriptVisitor;
-
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.util.Providers;
+import org.alfasoftware.morf.jdbc.SqlScriptExecutor.SqlScriptVisitor;
+
+import javax.sql.DataSource;
 
 /**
  * Provides SQLScriptExecutors.
@@ -155,6 +154,18 @@ public class SqlScriptExecutorProvider implements Provider<SqlScriptExecutor> {
     @Override
     public void executionEnd() {
       // Defaults to no-op
+    }
+  }
+
+
+  public static class Factory {
+
+    /**
+     * @param connectionResources The connection resources to use.
+     * @return new instance of {@link SqlScriptExecutorProvider}
+     */
+    public SqlScriptExecutorProvider create(final ConnectionResources connectionResources) {
+      return new SqlScriptExecutorProvider(connectionResources.getDataSource(), connectionResources.sqlDialect());
     }
   }
 }
