@@ -206,7 +206,7 @@ class UpgradeStatusTableServiceImpl implements UpgradeStatusTableService {
   }
 
 
-  static class Factory {
+  static class Factory implements UpgradeStatusTableService.Factory {
 
     /**
      * @see UpgradeStatusTableService.Factory#create(ConnectionResources)
