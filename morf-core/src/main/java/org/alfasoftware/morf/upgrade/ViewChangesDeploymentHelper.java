@@ -179,7 +179,7 @@ public class ViewChangesDeploymentHelper {
    *
    * @author Copyright (c) Alfa Financial Software 2022
    */
-  public static final class Factory  {
+  public static class Factory  {
     private final CreateViewListener createViewListener;
     private final DropViewListener dropViewListener;
 
