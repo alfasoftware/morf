@@ -328,6 +328,11 @@ public class Upgrade {
   }
 
 
+  /**
+   * Factory that can be used to create {@link Upgrade}s.
+   *
+   * @author Copyright (c) Alfa Financial Software 2022
+   */
   public static final class Factory  {
     private final UpgradePathFactory upgradePathFactory;
     private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
@@ -336,11 +341,6 @@ public class Upgrade {
     private final ViewDeploymentValidator viewDeploymentValidator;
 
 
-    /**
-     * Factory that can be used to create {@link Upgrade}s.
-     *
-     * @author Copyright (c) Alfa Financial Software 2022
-     */
     @Inject
     public Factory(UpgradePathFactory upgradePathFactory, UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory,
                    GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory, ViewChangesDeploymentHelper viewChangesDeploymentHelper,
