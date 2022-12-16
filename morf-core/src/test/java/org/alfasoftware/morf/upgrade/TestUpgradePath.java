@@ -15,20 +15,11 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
@@ -37,10 +28,19 @@ import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 /**
  * Tests {@link UpgradePath} and {@link UpgradePathFactoryImpl}.
@@ -53,14 +53,21 @@ public class TestUpgradePath {
 
   UpgradeStatusTableService upgradeStatusTableService;
 
+  UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory;
+
   UpgradePathFactory factory;
+
+  ConnectionResources connectionResources;
 
 
   @Before
   public void setUp() {
     sqlDialect = mock(SqlDialect.class);
     upgradeStatusTableService = mock(UpgradeStatusTableService.class);
-    factory = new UpgradePathFactoryImpl(Collections.emptySet(), upgradeStatusTableService);
+    upgradeStatusTableServiceFactory = mock(UpgradeStatusTableService.Factory.class);
+    connectionResources = mock(ConnectionResources.class);
+    when(upgradeStatusTableServiceFactory.create(connectionResources)).thenReturn(upgradeStatusTableService);
+    factory = new UpgradePathFactoryImpl(connectionResources, Collections.emptySet(), upgradeStatusTableServiceFactory);
   }
 
   /**

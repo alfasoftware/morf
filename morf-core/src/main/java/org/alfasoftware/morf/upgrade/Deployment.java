@@ -15,13 +15,9 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.UUID;
-
+import com.google.inject.ImplementedBy;
+import com.google.inject.Inject;
+import com.google.inject.assistedinject.Assisted;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.DatabaseDataSetConsumer;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -36,9 +32,12 @@ import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
 import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 
-import com.google.inject.ImplementedBy;
-import com.google.inject.Inject;
-import com.google.inject.assistedinject.Assisted;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * Deploys a full database schema. Once the deployment is complete, the status of
@@ -167,7 +166,7 @@ public class Deployment {
       new SqlScriptExecutorProvider(connectionResources), connectionResources.sqlDialect());
     try {
       new Deployment(
-        new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition>emptySet(), upgradeStatusTableService),
+        new UpgradePathFactoryImpl(connectionResources, Collections.<UpgradeScriptAddition>emptySet(), UpgradeStatusTableServiceImpl::new),
         connectionResources
       ).deploy(targetSchema, upgradeSteps);
     } finally {

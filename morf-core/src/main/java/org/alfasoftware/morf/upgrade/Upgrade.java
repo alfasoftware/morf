@@ -15,19 +15,8 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.copy;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import javax.sql.DataSource;
-
+import com.google.common.collect.ImmutableList;
+import com.google.inject.Inject;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
@@ -45,7 +34,17 @@ import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import com.google.common.collect.ImmutableList;
+import javax.sql.DataSource;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.alfasoftware.morf.metadata.SchemaUtils.copy;
 
 /**
  * Entry point for upgrade processing.
@@ -124,7 +123,7 @@ public class Upgrade {
       ViewDeploymentValidator viewDeploymentValidator) {
     Upgrade upgrade = new Upgrade(
       connectionResources,
-      new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition> emptySet(), upgradeStatusTableService),
+      new UpgradePathFactoryImpl(connectionResources, Collections.<UpgradeScriptAddition> emptySet(), UpgradeStatusTableServiceImpl::new),
       upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()), viewDeploymentValidator, null);
     return upgrade.findPath(targetSchema, upgradeSteps, Collections.<String> emptySet(), connectionResources.getDataSource());
   }
@@ -325,6 +324,39 @@ public class Upgrade {
       return copy(databaseSchemaResource, exceptionRegexes);
     } finally {
       databaseSchemaResource.close();
+    }
+  }
+
+
+  public static final class Factory  {
+    private final UpgradePathFactory upgradePathFactory;
+    private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
+    private final UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory;
+    private final ViewChangesDeploymentHelper viewChangesDeploymentHelper;
+    private final ViewDeploymentValidator viewDeploymentValidator;
+
+
+    /**
+     * Factory that can be used to create {@link Upgrade}s.
+     *
+     * @author Copyright (c) Alfa Financial Software 2022
+     */
+    @Inject
+    public Factory(UpgradePathFactory upgradePathFactory, UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory,
+                   GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory, ViewChangesDeploymentHelper viewChangesDeploymentHelper,
+                   ViewDeploymentValidator viewDeploymentValidator) {
+      this.upgradePathFactory = upgradePathFactory;
+      this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
+      this.upgradeStatusTableServiceFactory =  upgradeStatusTableServiceFactory;
+      this.viewChangesDeploymentHelper = viewChangesDeploymentHelper;
+      this.viewDeploymentValidator = viewDeploymentValidator;
+    }
+
+    public Upgrade create(ConnectionResources connectionResources) {
+      return new Upgrade(connectionResources, upgradePathFactory,
+                         upgradeStatusTableServiceFactory.create(connectionResources),
+                         viewChangesDeploymentHelper, viewDeploymentValidator,
+                         graphBasedUpgradeBuilderFactory);
     }
   }
 }
