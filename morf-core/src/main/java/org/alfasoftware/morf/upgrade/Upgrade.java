@@ -337,25 +337,29 @@ public class Upgrade {
     private final UpgradePathFactory upgradePathFactory;
     private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
     private final UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory;
-    private final ViewChangesDeploymentHelper viewChangesDeploymentHelper;
+    private final ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory;
     private final ViewDeploymentValidator viewDeploymentValidator;
 
 
     @Inject
-    public Factory(UpgradePathFactory upgradePathFactory, UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory,
-                   GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory, ViewChangesDeploymentHelper viewChangesDeploymentHelper,
+    public Factory(UpgradePathFactory upgradePathFactory,
+                   UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory,
+                   GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
+                   ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory,
                    ViewDeploymentValidator viewDeploymentValidator) {
       this.upgradePathFactory = upgradePathFactory;
       this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
       this.upgradeStatusTableServiceFactory =  upgradeStatusTableServiceFactory;
-      this.viewChangesDeploymentHelper = viewChangesDeploymentHelper;
+      this.viewChangesDeploymentHelperFactory = viewChangesDeploymentHelperFactory;
       this.viewDeploymentValidator = viewDeploymentValidator;
     }
 
     public Upgrade create(ConnectionResources connectionResources) {
-      return new Upgrade(connectionResources, upgradePathFactory,
+      return new Upgrade(connectionResources,
+                         upgradePathFactory,
                          upgradeStatusTableServiceFactory.create(connectionResources),
-                         viewChangesDeploymentHelper, viewDeploymentValidator,
+                         viewChangesDeploymentHelperFactory.create(connectionResources.sqlDialect()),
+                         viewDeploymentValidator,
                          graphBasedUpgradeBuilderFactory);
     }
   }

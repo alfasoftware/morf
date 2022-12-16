@@ -1,22 +1,20 @@
 package org.alfasoftware.morf.upgrade;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableList.Builder;
+import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
+
+import javax.inject.Inject;
+import java.util.List;
+
 import static org.alfasoftware.morf.sql.SqlUtils.delete;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.insert;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-
-import java.util.List;
-
-import javax.inject.Inject;
-
-import org.alfasoftware.morf.jdbc.SqlDialect;
-import org.alfasoftware.morf.metadata.View;
-import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
-
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableList.Builder;
 
 /**
  * View deployment helper.
@@ -173,5 +171,26 @@ public class ViewChangesDeploymentHelper {
     builder.addAll(dropViewListener.deregisterAllViews());
 
     return builder.build();
+  }
+
+
+  /**
+   * Factory that can be used to create {@link ViewChangesDeploymentHelper}s.
+   *
+   * @author Copyright (c) Alfa Financial Software 2022
+   */
+  public static final class Factory  {
+    private final CreateViewListener createViewListener;
+    private final DropViewListener dropViewListener;
+
+    @Inject
+    public Factory(CreateViewListener createViewListener, DropViewListener dropViewListener) {
+      this.createViewListener = createViewListener;
+      this.dropViewListener = dropViewListener;
+    }
+
+    public ViewChangesDeploymentHelper create(SqlDialect sqlDialect) {
+      return new ViewChangesDeploymentHelper(sqlDialect, createViewListener, dropViewListener);
+    }
   }
 }
