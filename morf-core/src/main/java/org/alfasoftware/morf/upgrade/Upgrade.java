@@ -246,14 +246,14 @@ public class Upgrade {
     }
 
     // Build the actual upgrade path
-    return buildUpgradePath(dialect, sourceSchema, targetSchema, upgradeStatements, viewChanges, upgradesToApply, graphBasedUpgradeBuilder);
+    return buildUpgradePath(connectionResources, sourceSchema, targetSchema, upgradeStatements, viewChanges, upgradesToApply, graphBasedUpgradeBuilder);
   }
 
 
   /**
    * Turn the information gathered so far into an {@code UpgradePath}.
    *
-   * @param dialect Database dialect.
+   * @param connectionResources Database connection resources.
    * @param sourceSchema Source schema.
    * @param targetSchema Target schema.
    * @param upgradeStatements Upgrade statements identified.
@@ -262,12 +262,12 @@ public class Upgrade {
    * @return An upgrade path.
    */
   private UpgradePath buildUpgradePath(
-      SqlDialect dialect, Schema sourceSchema, Schema targetSchema,
+      ConnectionResources connectionResources, Schema sourceSchema, Schema targetSchema,
       List<String> upgradeStatements, ViewChanges viewChanges,
       List<UpgradeStep> upgradesToApply,
       GraphBasedUpgradeBuilder graphBasedUpgradeBuilder) {
 
-    UpgradePath path = factory.create(upgradesToApply, dialect, graphBasedUpgradeBuilder);
+    UpgradePath path = factory.create(upgradesToApply, connectionResources, graphBasedUpgradeBuilder);
 
     final boolean deleteFromDeployedViews = sourceSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME) && targetSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME);
     for (View view : viewChanges.getViewsToDrop()) {
@@ -294,12 +294,12 @@ public class Upgrade {
 
       AtomicBoolean first = new AtomicBoolean(true);
       targetSchema.tables().stream()
-        .map(t -> dialect.rebuildTriggers(t))
+        .map(t -> connectionResources.sqlDialect().rebuildTriggers(t))
         .filter(sql -> !sql.isEmpty())
         .peek(sql -> {
             if (first.compareAndSet(true, false)) {
               path.writeSql(ImmutableList.of(
-                  dialect.convertCommentToSQL("Upgrades executed. Rebuilding all triggers to account for potential changes to autonumbered columns")
+                connectionResources.sqlDialect().convertCommentToSQL("Upgrades executed. Rebuilding all triggers to account for potential changes to autonumbered columns")
               ));
             }
         })
