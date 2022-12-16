@@ -15,28 +15,11 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import static com.google.common.collect.FluentIterable.from;
-import static org.alfasoftware.morf.metadata.SchemaUtils.column;
-import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
-import static org.alfasoftware.morf.metadata.SchemaUtils.table;
-import static org.alfasoftware.morf.metadata.SchemaUtils.view;
-import static org.alfasoftware.morf.sql.SqlUtils.field;
-import static org.alfasoftware.morf.sql.SqlUtils.literal;
-import static org.alfasoftware.morf.sql.SqlUtils.select;
-import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.same;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-
+import com.google.common.base.Function;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
@@ -57,10 +40,27 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
-import com.google.common.base.Function;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+
+import static com.google.common.collect.FluentIterable.from;
+import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
+import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.alfasoftware.morf.metadata.SchemaUtils.view;
+import static org.alfasoftware.morf.sql.SqlUtils.field;
+import static org.alfasoftware.morf.sql.SqlUtils.literal;
+import static org.alfasoftware.morf.sql.SqlUtils.select;
+import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.same;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * Test {@link Deployment} works correctly.
@@ -70,6 +70,7 @@ import com.google.common.collect.Sets;
 public class TestDeployment {
 
   private final SqlDialect dialect = mock(SqlDialect.class);
+  private final ConnectionResources connectionResources = mock(ConnectionResources.class);
   private final SqlScriptExecutorProvider executorProvider = mock(SqlScriptExecutorProvider.class);
   private final SqlScriptExecutor executor = mock(SqlScriptExecutor.class);
 
@@ -77,11 +78,12 @@ public class TestDeployment {
 
   @Before
   public void setUp() {
-    when(upgradePathFactory.create(any(SqlDialect.class))).thenAnswer(
+    when(connectionResources.sqlDialect()).thenReturn(dialect);
+    when(upgradePathFactory.create(any(ConnectionResources.class))).thenAnswer(
       new Answer<UpgradePath>() {
         @Override
         public UpgradePath answer(InvocationOnMock invocation) throws Throwable {
-          return new UpgradePath(Sets.<UpgradeScriptAddition>newHashSet(), (SqlDialect)invocation.getArguments()[0], Collections.emptyList(), Collections.emptyList());
+          return new UpgradePath(Sets.<UpgradeScriptAddition>newHashSet(), ((ConnectionResources)invocation.getArguments()[0]).sqlDialect(), Collections.emptyList(), Collections.emptyList());
         }
       });
     when(executorProvider.get()).thenReturn(executor);
@@ -110,7 +112,7 @@ public class TestDeployment {
     );
 
     // When
-    Deployment deployment = new Deployment(dialect, executorProvider, upgradePathFactory, new ViewChangesDeploymentHelper(dialect));
+    Deployment deployment = new Deployment(connectionResources, executorProvider, upgradePathFactory, new ViewChangesDeploymentHelper(dialect));
     UpgradePath path = deployment.getPath(targetSchema, Lists.<Class<? extends UpgradeStep>>newArrayList());
 
     // Then
@@ -150,7 +152,7 @@ public class TestDeployment {
     );
 
 
-    Deployment deployment = new Deployment(dialect, executorProvider, upgradePathFactory, new ViewChangesDeploymentHelper(dialect));
+    Deployment deployment = new Deployment(connectionResources, executorProvider, upgradePathFactory, new ViewChangesDeploymentHelper(dialect));
     UpgradePath path = deployment.getPath(targetSchema, Lists.<Class<? extends UpgradeStep>>newArrayList());
 
     // Then
@@ -191,7 +193,7 @@ public class TestDeployment {
     Schema targetSchema = schema(testTable);
 
     // When
-    Deployment deployment = new Deployment(dialect, executorProvider, upgradePathFactory, new ViewChangesDeploymentHelper(dialect));
+    Deployment deployment = new Deployment(connectionResources, executorProvider, upgradePathFactory, new ViewChangesDeploymentHelper(dialect));
     UpgradePath path = deployment.getPath(targetSchema, stepsToApply);
 
     // Then

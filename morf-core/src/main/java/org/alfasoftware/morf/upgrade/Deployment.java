@@ -20,7 +20,6 @@ import com.google.inject.Inject;
 import com.google.inject.assistedinject.Assisted;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.DatabaseDataSetConsumer;
-import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Schema;
@@ -68,9 +67,10 @@ public class Deployment {
   private final SqlScriptExecutorProvider sqlScriptExecutorProvider;
 
   /**
-   * The SQL dialect.
+   * The connection resources.
    */
-  private final SqlDialect sqlDialect;
+
+  private final ConnectionResources connectionResources;
 
   private final UpgradePathFactory upgradePathFactory;
 
@@ -80,9 +80,9 @@ public class Deployment {
    * Constructor.
    */
   @Inject
-  Deployment(SqlDialect sqlDialect, SqlScriptExecutorProvider sqlScriptExecutorProvider, UpgradePathFactory upgradePathFactory, ViewChangesDeploymentHelper viewChangesDeploymentHelper) {
+  Deployment(ConnectionResources connectionResources, SqlScriptExecutorProvider sqlScriptExecutorProvider, UpgradePathFactory upgradePathFactory, ViewChangesDeploymentHelper viewChangesDeploymentHelper) {
     super();
-    this.sqlDialect = sqlDialect;
+    this.connectionResources = connectionResources;
     this.sqlScriptExecutorProvider = sqlScriptExecutorProvider;
     this.upgradePathFactory = upgradePathFactory;
     this.viewChangesDeploymentHelper = viewChangesDeploymentHelper;
@@ -95,10 +95,9 @@ public class Deployment {
   private Deployment(UpgradePathFactory upgradePathFactory, @Assisted ConnectionResources connectionResources) {
     super();
     this.sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
-    this.sqlDialect = connectionResources.sqlDialect();
+    this.connectionResources = connectionResources;
     this.upgradePathFactory = upgradePathFactory;
-
-    this.viewChangesDeploymentHelper = new ViewChangesDeploymentHelper(sqlDialect);
+    this.viewChangesDeploymentHelper = new ViewChangesDeploymentHelper(connectionResources.sqlDialect());
   }
 
 
@@ -116,7 +115,7 @@ public class Deployment {
     // Iterate through all the tables and deploy them
     for (String tableName : tableNames) {
       Table table = targetSchema.getTable(tableName);
-      sqlStatementWriter.writeSql(sqlDialect.tableDeploymentStatements(table));
+      sqlStatementWriter.writeSql(connectionResources.sqlDialect().tableDeploymentStatements(table));
     }
 
     // Iterate through all the views and deploy them - will deploy in dependency order.
@@ -186,7 +185,7 @@ public class Deployment {
    * @return A path which can be executed to make {@code database} match {@code targetSchema}.
    */
   public UpgradePath getPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps) {
-    final UpgradePath path = upgradePathFactory.create(sqlDialect);
+    final UpgradePath path = upgradePathFactory.create(connectionResources);
     writeStatements(targetSchema, path);
     writeUpgradeSteps(upgradeSteps, path);
     return path;
@@ -207,7 +206,7 @@ public class Deployment {
     for(Class<? extends UpgradeStep> upgradeStep : upgradeSteps) {
       UUID uuid = UpgradePathFinder.readUUID(upgradeStep);
       InsertStatement insertStatement = AuditRecordHelper.createAuditInsertStatement(uuid, upgradeStep.getName());
-      upgradePath.writeSql(sqlDialect.convertStatementToSQL(insertStatement));
+      upgradePath.writeSql(connectionResources.sqlDialect().convertStatementToSQL(insertStatement));
     }
   }
 
@@ -218,7 +217,7 @@ public class Deployment {
    * @author Copyright (c) Alfa Financial Software 2015
    */
   @ImplementedBy(DeploymentFactoryImpl.class)
-  public static interface DeploymentFactory {
+  public interface DeploymentFactory {
 
     /**
      * Creates an instance of {@link Deployment}.
@@ -226,7 +225,7 @@ public class Deployment {
      * @param connectionResources The connection to use.
      * @return The resulting deployment.
      */
-    public Deployment create(ConnectionResources connectionResources);
+    Deployment create(ConnectionResources connectionResources);
   }
 
 
