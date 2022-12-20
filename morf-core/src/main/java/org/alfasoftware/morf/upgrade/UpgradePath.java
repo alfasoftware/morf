@@ -21,7 +21,6 @@ import com.google.common.collect.Lists;
 import com.google.inject.ImplementedBy;
 import com.google.inject.Inject;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
-import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
 import org.apache.commons.logging.Log;
@@ -53,9 +52,9 @@ public class UpgradePath implements SqlStatementWriter {
   private final List<UpgradeStep> steps;
 
   /**
-   * The dialect of the upgrade steps
+   * The connection resources with dialect.
    */
-  private final SqlDialect sqlDialect;
+  private final ConnectionResources connectionResources;
 
   /**
    * Provides SQL to be run-post upgrade.
@@ -96,12 +95,12 @@ public class UpgradePath implements SqlStatementWriter {
    * Create a new complete deployment.
    *
    * @param upgradeScriptAdditions The SQL to be appended to the upgrade.
-   * @param sqlDialect the SQL dialect being used for this upgrade path
+   * @param connectionResources the connection resources being used for this upgrade path
    * @param initialisationSql the SQL to execute before all other, if and only if there is other SQL to execute.
    * @param finalisationSql the SQL to execute after all other, if and only if there is other SQL to execute.
    */
-  public UpgradePath(Set<UpgradeScriptAddition> upgradeScriptAdditions, SqlDialect sqlDialect, List<String> initialisationSql, List<String> finalisationSql) {
-    this(upgradeScriptAdditions, new ArrayList<UpgradeStep>(), sqlDialect, initialisationSql, finalisationSql, null);
+  public UpgradePath(Set<UpgradeScriptAddition> upgradeScriptAdditions, ConnectionResources connectionResources, List<String> initialisationSql, List<String> finalisationSql) {
+    this(upgradeScriptAdditions, new ArrayList<UpgradeStep>(), connectionResources, initialisationSql, finalisationSql, null);
   }
 
 
@@ -110,12 +109,12 @@ public class UpgradePath implements SqlStatementWriter {
    *
    * @param upgradeScriptAdditions The SQL to be appended to the upgrade.
    * @param steps the upgrade steps to run
-   * @param sqlDialect the SQL dialect being used for this upgrade path
+   * @param connectionResources the connection resources being used for this upgrade path
    * @param initialisationSql the SQL to execute before all other, if and only if there is other SQL to execute.
    * @param finalisationSql the SQL to execute after all other, if and only if there is other SQL to execute.
    */
-  public UpgradePath(Set<UpgradeScriptAddition> upgradeScriptAdditions, List<UpgradeStep> steps, SqlDialect sqlDialect, List<String> initialisationSql, List<String> finalisationSql) {
-    this(upgradeScriptAdditions, steps, sqlDialect, initialisationSql, finalisationSql, null);
+  public UpgradePath(Set<UpgradeScriptAddition> upgradeScriptAdditions, List<UpgradeStep> steps, ConnectionResources connectionResources, List<String> initialisationSql, List<String> finalisationSql) {
+    this(upgradeScriptAdditions, steps, connectionResources, initialisationSql, finalisationSql, null);
   }
 
 
@@ -124,15 +123,15 @@ public class UpgradePath implements SqlStatementWriter {
    *
    * @param upgradeScriptAdditions The SQL to be appended to the upgrade.
    * @param steps the upgrade steps to run
-   * @param sqlDialect the SQL dialect being used for this upgrade path
+   * @param connectionResources the connection resources being used for this upgrade path
    * @param initialisationSql the SQL to execute before all other, if and only if there is other SQL to execute.
    * @param finalisationSql the SQL to execute after all other, if and only if there is other SQL to execute.
    * @param graphBasedUpgradeBuilder prepares {@link GraphBasedUpgrade} instance, may be null if graph based upgrade is not available
    */
-  public UpgradePath(Set<UpgradeScriptAddition> upgradeScriptAdditions, List<UpgradeStep> steps, SqlDialect sqlDialect, List<String> initialisationSql, List<String> finalisationSql, GraphBasedUpgradeBuilder graphBasedUpgradeBuilder) {
+  public UpgradePath(Set<UpgradeScriptAddition> upgradeScriptAdditions, List<UpgradeStep> steps, ConnectionResources connectionResources, List<String> initialisationSql, List<String> finalisationSql, GraphBasedUpgradeBuilder graphBasedUpgradeBuilder) {
     super();
     this.steps = Collections.unmodifiableList(steps);
-    this.sqlDialect = sqlDialect;
+    this.connectionResources = connectionResources;
     this.upgradeScriptAdditions = upgradeScriptAdditions;
     this.upgradeStatus = null;
     this.initialisationSql = initialisationSql;
@@ -149,7 +148,7 @@ public class UpgradePath implements SqlStatementWriter {
   UpgradePath(UpgradeStatus upgradeStatus) {
     super();
     this.steps = Collections.emptyList();
-    this.sqlDialect = null;
+    this.connectionResources = null;
     this.upgradeScriptAdditions = Collections.emptySet();
     this.upgradeStatus = upgradeStatus;
     this.initialisationSql = null;
@@ -190,7 +189,7 @@ public class UpgradePath implements SqlStatementWriter {
     results.addAll(sql);
 
     for (UpgradeScriptAddition addition : upgradeScriptAdditions) {
-      Iterables.addAll(results, addition.sql());
+      Iterables.addAll(results, addition.sql(connectionResources));
     }
 
     if (!results.isEmpty())
@@ -251,7 +250,7 @@ public class UpgradePath implements SqlStatementWriter {
   public String getUpgradeSqlScript() {
     final StringBuilder sqlOutput = new StringBuilder();
     for (final String sqlStatement : getSql()) {
-      sqlOutput.append(sqlDialect.formatSqlStatement(sqlStatement));
+      sqlOutput.append(connectionResources.sqlDialect().formatSqlStatement(sqlStatement));
       sqlOutput.append(System.getProperty("line.separator"));
     }
 
@@ -272,7 +271,7 @@ public class UpgradePath implements SqlStatementWriter {
     sqlOutput.append("-- WARNING - If the upgrade is run automatically, the table will be automatically removed at a later point." + separator);
     sqlOutput.append("-- WARNING - If this step is being applied manually, the table must be manually removed - to do so, uncomment the following SQL lines." + separator);
     sqlOutput.append("-- WARNING - Manual removal should not be applied during full deployment of the application to an empty database." + separator);
-    for (String statement : sqlDialect.dropStatements(SchemaUtils.table(UpgradeStatusTableService.UPGRADE_STATUS))) {
+    for (String statement : connectionResources.sqlDialect().dropStatements(SchemaUtils.table(UpgradeStatusTableService.UPGRADE_STATUS))) {
       sqlOutput.append("-- " + statement + separator);
     }
   }
@@ -295,15 +294,6 @@ public class UpgradePath implements SqlStatementWriter {
   @ImplementedBy(UpgradePathFactoryImpl.class)
   public interface UpgradePathFactory {
 
-    /**
-     * Creates an instance of {@link UpgradePath}.
-     * Uses connection resources provided by default.
-     *
-     * @param sqlDialect The SqlDialect.
-     * @return The resulting {@link UpgradePath}.
-     */
-    UpgradePath create(SqlDialect sqlDialect);
-
 
     /**
      * Creates an instance of {@link UpgradePath} with provided connection resources.
@@ -315,17 +305,6 @@ public class UpgradePath implements SqlStatementWriter {
 
 
     /**
-     * Creates an instance of {@link UpgradePath}.
-     * Uses connection resources provided by default.
-     *
-     * @param steps The steps represented by the {@link UpgradePath}.
-     * @param sqlDialect The SqlDialect.
-     * @return The resulting {@link UpgradePath}.
-     */
-    UpgradePath create(List<UpgradeStep> steps, SqlDialect sqlDialect);
-
-
-    /**
      * Creates an instance of {@link UpgradePath} with provided connection resources.
      *
      * @param steps The steps represented by the {@link UpgradePath}.
@@ -333,18 +312,6 @@ public class UpgradePath implements SqlStatementWriter {
      * @return The resulting {@link UpgradePath}.
      */
     UpgradePath create(List<UpgradeStep> steps, ConnectionResources connectionResources);
-
-
-    /**
-     * Creates an instance of {@link UpgradePath}.
-     * Uses connection resources provided by default.
-     *
-     * @param steps The steps represented by the {@link UpgradePath}.
-     * @param sqlDialect The SqlDialect.
-     * @param graphBasedUpgradeBuilder to be used to create a graph based upgrade if needed
-     * @return The resulting {@link UpgradePath}.
-     */
-    UpgradePath create(List<UpgradeStep> steps, SqlDialect sqlDialect, GraphBasedUpgradeBuilder graphBasedUpgradeBuilder);
 
 
     /**
@@ -370,70 +337,39 @@ public class UpgradePath implements SqlStatementWriter {
 
     private final UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory;
 
-    private final ConnectionResources defaultConnectionResources;
-
 
     @Inject
-    UpgradePathFactoryImpl(ConnectionResources defaultConnectionResources, Set<UpgradeScriptAddition> upgradeScriptAdditions,
+    UpgradePathFactoryImpl(Set<UpgradeScriptAddition> upgradeScriptAdditions,
                            UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory) {
       super();
       this.upgradeScriptAdditions = upgradeScriptAdditions;
       this.upgradeStatusTableServiceFactory = upgradeStatusTableServiceFactory;
-      this.defaultConnectionResources = defaultConnectionResources;
-    }
-
-
-    @Override
-    public UpgradePath create(SqlDialect sqlDialect) {
-      UpgradeStatusTableService upgradeStatusTableService = upgradeStatusTableServiceFactory.create(defaultConnectionResources);
-      return new UpgradePath(upgradeScriptAdditions, sqlDialect,
-              upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS),
-              upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.DATA_TRANSFER_REQUIRED));
     }
 
 
     @Override
     public UpgradePath create(ConnectionResources connectionResources) {
       UpgradeStatusTableService upgradeStatusTableService = upgradeStatusTableServiceFactory.create(connectionResources);
-      return new UpgradePath(upgradeScriptAdditions, connectionResources.sqlDialect(),
+      return new UpgradePath(upgradeScriptAdditions, connectionResources,
               upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS),
               upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.DATA_TRANSFER_REQUIRED));
     }
 
 
     @Override
-    public UpgradePath create(List<UpgradeStep> steps, SqlDialect sqlDialect) {
-      UpgradeStatusTableService upgradeStatusTableService = upgradeStatusTableServiceFactory.create(defaultConnectionResources);
-      return new UpgradePath(upgradeScriptAdditions, steps, sqlDialect,
-              upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS),
-              upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED),
-              null);
-    }
-
-
-    @Override
     public UpgradePath create(List<UpgradeStep> steps, ConnectionResources connectionResources) {
       UpgradeStatusTableService upgradeStatusTableService = upgradeStatusTableServiceFactory.create(connectionResources);
-      return new UpgradePath(upgradeScriptAdditions, steps, connectionResources.sqlDialect(),
+      return new UpgradePath(upgradeScriptAdditions, steps, connectionResources,
               upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS),
               upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED),
               null);
     }
 
-
-    @Override
-    public UpgradePath create(List<UpgradeStep> steps, SqlDialect sqlDialect, GraphBasedUpgradeBuilder graphBasedUpgradeBuilder) {
-      UpgradeStatusTableService upgradeStatusTableService = upgradeStatusTableServiceFactory.create(defaultConnectionResources);
-      return new UpgradePath(upgradeScriptAdditions, steps, sqlDialect,
-              upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS),
-              upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED),
-              graphBasedUpgradeBuilder);
-    }
 
     @Override
     public UpgradePath create(List<UpgradeStep> steps,  ConnectionResources connectionResources, GraphBasedUpgradeBuilder graphBasedUpgradeBuilder) {
       UpgradeStatusTableService upgradeStatusTableService = upgradeStatusTableServiceFactory.create(connectionResources);
-      return new UpgradePath(upgradeScriptAdditions, steps, connectionResources.sqlDialect(),
+      return new UpgradePath(upgradeScriptAdditions, steps, connectionResources,
               upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS),
               upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED),
               graphBasedUpgradeBuilder);

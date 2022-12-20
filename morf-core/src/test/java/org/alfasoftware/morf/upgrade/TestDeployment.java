@@ -83,7 +83,7 @@ public class TestDeployment {
       new Answer<UpgradePath>() {
         @Override
         public UpgradePath answer(InvocationOnMock invocation) throws Throwable {
-          return new UpgradePath(Sets.<UpgradeScriptAddition>newHashSet(), ((ConnectionResources)invocation.getArguments()[0]).sqlDialect(), Collections.emptyList(), Collections.emptyList());
+          return new UpgradePath(Sets.<UpgradeScriptAddition>newHashSet(), ((ConnectionResources)invocation.getArguments()[0]), Collections.emptyList(), Collections.emptyList());
         }
       });
     when(executorProvider.get()).thenReturn(executor);

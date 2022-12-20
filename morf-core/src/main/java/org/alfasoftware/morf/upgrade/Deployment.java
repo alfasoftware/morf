@@ -165,7 +165,7 @@ public class Deployment {
       new SqlScriptExecutorProvider(connectionResources), connectionResources.sqlDialect());
     try {
       new Deployment(
-        new UpgradePathFactoryImpl(connectionResources, Collections.<UpgradeScriptAddition>emptySet(), UpgradeStatusTableServiceImpl::new),
+        new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition>emptySet(), UpgradeStatusTableServiceImpl::new),
         connectionResources
       ).deploy(targetSchema, upgradeSteps);
     } finally {

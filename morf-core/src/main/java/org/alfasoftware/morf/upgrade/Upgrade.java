@@ -123,7 +123,7 @@ public class Upgrade {
       ViewDeploymentValidator viewDeploymentValidator) {
     Upgrade upgrade = new Upgrade(
       connectionResources,
-      new UpgradePathFactoryImpl(connectionResources, Collections.<UpgradeScriptAddition> emptySet(), UpgradeStatusTableServiceImpl::new),
+      new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition> emptySet(), UpgradeStatusTableServiceImpl::new),
       upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()), viewDeploymentValidator, null);
     return upgrade.findPath(targetSchema, upgradeSteps, Collections.<String> emptySet(), connectionResources.getDataSource());
   }
@@ -239,7 +239,7 @@ public class Upgrade {
       graphBasedUpgradeBuilder = graphBasedUpgradeBuilderFactory.create(
         sourceSchema,
         targetSchema,
-        dialect,
+        connectionResources,
         exclusiveExecutionSteps,
         schemaChangeSequence,
         viewChanges);
