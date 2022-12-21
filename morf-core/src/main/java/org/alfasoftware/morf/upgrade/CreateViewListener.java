@@ -1,9 +1,9 @@
 package org.alfasoftware.morf.upgrade;
 
-import org.alfasoftware.morf.metadata.View;
-
 import com.google.common.collect.ImmutableList;
 import com.google.inject.ImplementedBy;
+import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.metadata.View;
 
 /**
  *
@@ -31,6 +31,32 @@ public interface CreateViewListener {
     @Override
     public Iterable<String> registerView(View view) {
       return ImmutableList.of();
+    }
+  }
+
+  /**
+   * Factory that could be used to create {@link CreateViewListener}s.
+   *
+   * @author Copyright (c) Alfa Financial Software 2022
+   */
+
+  @ImplementedBy(Factory.NoOpFactory.class)
+  interface Factory  {
+
+    /**
+     * Creates a {@link CreateViewListener} implementation for the given connection details.
+     */
+    CreateViewListener create(ConnectionResources connectionResources);
+
+    /**
+     * NoOp factory implementation.
+     */
+    class NoOpFactory implements CreateViewListener.Factory {
+
+      @Override
+      public CreateViewListener create(ConnectionResources connectionResources) {
+        return new NoOp();
+      }
     }
   }
 }

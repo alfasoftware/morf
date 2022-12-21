@@ -3,6 +3,7 @@ package org.alfasoftware.morf.upgrade;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
+import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
@@ -175,22 +176,27 @@ public class ViewChangesDeploymentHelper {
 
 
   /**
-   * Factory that can be used to create {@link ViewChangesDeploymentHelper}s.
+   * Factory that could be used to create {@link ViewChangesDeploymentHelper}s.
    *
    * @author Copyright (c) Alfa Financial Software 2022
    */
-  public static class Factory  {
-    private final CreateViewListener createViewListener;
-    private final DropViewListener dropViewListener;
+  public class Factory  {
+    private final CreateViewListener.Factory createViewListenerFactory;
+    private final DropViewListener.Factory dropViewListenerFactory;
 
     @Inject
-    public Factory(CreateViewListener createViewListener, DropViewListener dropViewListener) {
-      this.createViewListener = createViewListener;
-      this.dropViewListener = dropViewListener;
+    public Factory(CreateViewListener.Factory createViewListenerFactory, DropViewListener.Factory dropViewListenerFactory) {
+      this.createViewListenerFactory = createViewListenerFactory;
+      this.dropViewListenerFactory = dropViewListenerFactory;
     }
 
-    public ViewChangesDeploymentHelper create(SqlDialect sqlDialect) {
-      return new ViewChangesDeploymentHelper(sqlDialect, createViewListener, dropViewListener);
+    /**
+     * Creates a {@link ViewChangesDeploymentHelper} implementation for the given connection details.
+     */
+    public ViewChangesDeploymentHelper create(ConnectionResources connectionResources) {
+      return new ViewChangesDeploymentHelper(connectionResources.sqlDialect(),
+                                             createViewListenerFactory.create(connectionResources),
+                                             dropViewListenerFactory.create(connectionResources));
     }
   }
 }

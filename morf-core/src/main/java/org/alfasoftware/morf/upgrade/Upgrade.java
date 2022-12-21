@@ -333,12 +333,12 @@ public class Upgrade {
    *
    * @author Copyright (c) Alfa Financial Software 2022
    */
-  public static class Factory  {
+  public class Factory  {
     private final UpgradePathFactory upgradePathFactory;
     private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
     private final UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory;
     private final ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory;
-    private final ViewDeploymentValidator viewDeploymentValidator;
+    private final ViewDeploymentValidator.Factory viewDeploymentValidatorFactory;
 
 
     @Inject
@@ -346,20 +346,20 @@ public class Upgrade {
                    UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory,
                    GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
                    ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory,
-                   ViewDeploymentValidator viewDeploymentValidator) {
+                   ViewDeploymentValidator.Factory viewDeploymentValidatorFactory) {
       this.upgradePathFactory = upgradePathFactory;
       this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
       this.upgradeStatusTableServiceFactory =  upgradeStatusTableServiceFactory;
       this.viewChangesDeploymentHelperFactory = viewChangesDeploymentHelperFactory;
-      this.viewDeploymentValidator = viewDeploymentValidator;
+      this.viewDeploymentValidatorFactory = viewDeploymentValidatorFactory;
     }
 
     public Upgrade create(ConnectionResources connectionResources) {
       return new Upgrade(connectionResources,
                          upgradePathFactory,
                          upgradeStatusTableServiceFactory.create(connectionResources),
-                         viewChangesDeploymentHelperFactory.create(connectionResources.sqlDialect()),
-                         viewDeploymentValidator,
+                         viewChangesDeploymentHelperFactory.create(connectionResources),
+                         viewDeploymentValidatorFactory.create(connectionResources),
                          graphBasedUpgradeBuilderFactory);
     }
   }

@@ -1,8 +1,8 @@
 package org.alfasoftware.morf.upgrade;
 
-import org.alfasoftware.morf.metadata.View;
-
 import com.google.inject.ImplementedBy;
+import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.metadata.View;
 
 /**
  * External view validator for {@link ExistingViewStateLoader#viewChanges(org.alfasoftware.morf.metadata.Schema, org.alfasoftware.morf.metadata.Schema)}.
@@ -50,6 +50,32 @@ public interface ViewDeploymentValidator {
     @Override
     public boolean validateMissingView(View view) {
       return true; // the given new view can be created right away
+    }
+  }
+
+
+  /**
+   * Factory that could be used to create {@link ViewDeploymentValidator}s.
+   *
+   * @author Copyright (c) Alfa Financial Software 2022
+   */
+  @ImplementedBy(Factory.AlwaysValidateFactory.class)
+  interface Factory  {
+
+    /**
+     * Creates a {@link ViewDeploymentValidator} implementation for the given connection details.
+     */
+    ViewDeploymentValidator create(ConnectionResources connectionResources);
+
+    /**
+     * Factory implementation always returning a {@link AlwaysValidate} implementation.
+     */
+    class AlwaysValidateFactory implements ViewDeploymentValidator.Factory {
+
+      @Override
+      public ViewDeploymentValidator create(ConnectionResources connectionResources) {
+        return new AlwaysValidate();
+      }
     }
   }
 }
