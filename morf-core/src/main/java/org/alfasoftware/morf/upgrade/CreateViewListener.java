@@ -46,7 +46,7 @@ public interface CreateViewListener {
     /**
      * Creates a {@link CreateViewListener} implementation for the given connection details.
      */
-    CreateViewListener create(ConnectionResources connectionResources);
+    CreateViewListener createCreateViewListener(ConnectionResources connectionResources);
 
     /**
      * NoOp factory implementation.
@@ -54,7 +54,7 @@ public interface CreateViewListener {
     class NoOpFactory implements CreateViewListener.Factory {
 
       @Override
-      public CreateViewListener create(ConnectionResources connectionResources) {
+      public CreateViewListener createCreateViewListener(ConnectionResources connectionResources) {
         return new NoOp();
       }
     }

@@ -59,7 +59,7 @@ public interface DropViewListener {
     /**
      * Creates a {@link DropViewListener} implementation for the given connection details.
      */
-    DropViewListener create(ConnectionResources connectionResources);
+    DropViewListener createDropViewListener(ConnectionResources connectionResources);
 
     /**
      * NoOp factory implementation.
@@ -67,7 +67,7 @@ public interface DropViewListener {
     class NoOpFactory implements DropViewListener.Factory {
 
       @Override
-      public DropViewListener create(ConnectionResources connectionResources) {
+      public DropViewListener createDropViewListener(ConnectionResources connectionResources) {
         return new NoOp();
       }
     }

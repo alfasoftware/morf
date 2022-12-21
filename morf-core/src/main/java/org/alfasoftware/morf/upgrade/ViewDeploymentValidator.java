@@ -65,7 +65,7 @@ public interface ViewDeploymentValidator {
     /**
      * Creates a {@link ViewDeploymentValidator} implementation for the given connection details.
      */
-    ViewDeploymentValidator create(ConnectionResources connectionResources);
+    ViewDeploymentValidator createViewDeploymentValidator(ConnectionResources connectionResources);
 
     /**
      * Factory implementation always returning a {@link AlwaysValidate} implementation.
@@ -73,7 +73,7 @@ public interface ViewDeploymentValidator {
     class AlwaysValidateFactory implements ViewDeploymentValidator.Factory {
 
       @Override
-      public ViewDeploymentValidator create(ConnectionResources connectionResources) {
+      public ViewDeploymentValidator createViewDeploymentValidator(ConnectionResources connectionResources) {
         return new AlwaysValidate();
       }
     }

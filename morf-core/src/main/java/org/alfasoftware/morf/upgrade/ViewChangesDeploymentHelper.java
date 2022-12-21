@@ -195,8 +195,8 @@ public class ViewChangesDeploymentHelper {
      */
     public ViewChangesDeploymentHelper create(ConnectionResources connectionResources) {
       return new ViewChangesDeploymentHelper(connectionResources.sqlDialect(),
-                                             createViewListenerFactory.create(connectionResources),
-                                             dropViewListenerFactory.create(connectionResources));
+                                             createViewListenerFactory.createCreateViewListener(connectionResources),
+                                             dropViewListenerFactory.createDropViewListener(connectionResources));
     }
   }
 }

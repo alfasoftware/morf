@@ -359,7 +359,7 @@ public class Upgrade {
                          upgradePathFactory,
                          upgradeStatusTableServiceFactory.create(connectionResources),
                          viewChangesDeploymentHelperFactory.create(connectionResources),
-                         viewDeploymentValidatorFactory.create(connectionResources),
+                         viewDeploymentValidatorFactory.createViewDeploymentValidator(connectionResources),
                          graphBasedUpgradeBuilderFactory);
     }
   }
