@@ -333,7 +333,7 @@ public class Upgrade {
    *
    * @author Copyright (c) Alfa Financial Software 2022
    */
-  public class Factory  {
+  public static class Factory  {
     private final UpgradePathFactory upgradePathFactory;
     private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
     private final UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory;
