@@ -100,7 +100,7 @@ public class UpgradePath implements SqlStatementWriter {
    * @param finalisationSql the SQL to execute after all other, if and only if there is other SQL to execute.
    */
   public UpgradePath(Set<UpgradeScriptAddition> upgradeScriptAdditions, ConnectionResources connectionResources, List<String> initialisationSql, List<String> finalisationSql) {
-    this(upgradeScriptAdditions, new ArrayList<UpgradeStep>(), connectionResources, initialisationSql, finalisationSql, null);
+    this(upgradeScriptAdditions, new ArrayList<>(), connectionResources, initialisationSql, finalisationSql, null);
   }
 
 
