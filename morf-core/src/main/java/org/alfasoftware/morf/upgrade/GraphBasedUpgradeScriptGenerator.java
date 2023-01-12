@@ -150,17 +150,17 @@ class GraphBasedUpgradeScriptGenerator {
    * @author Copyright (c) Alfa Financial Software Limited. 2022
    */
   static class GraphBasedUpgradeScriptGeneratorFactory {
-    private final UpgradeStatusTableService upgradeStatusTableService;
+    private final UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory;
     private final Set<UpgradeScriptAddition> upgradeScriptAdditions;
 
     /**
      * Default constructor.
      *
-     * @param upgradeStatusTableService used to generate a script needed to update the transient "zzzUpgradeStatus" table
+     * @param upgradeStatusTableServiceFactory factory for service generating a script needed to update the transient "zzzUpgradeStatus" table
      */
     @Inject
-    public GraphBasedUpgradeScriptGeneratorFactory(UpgradeStatusTableService upgradeStatusTableService, Set<UpgradeScriptAddition> upgradeScriptAdditions) {
-      this.upgradeStatusTableService = upgradeStatusTableService;
+    public GraphBasedUpgradeScriptGeneratorFactory(UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory, Set<UpgradeScriptAddition> upgradeScriptAdditions) {
+      this.upgradeStatusTableServiceFactory = upgradeStatusTableServiceFactory;
       this.upgradeScriptAdditions = upgradeScriptAdditions;
     }
 
@@ -179,7 +179,7 @@ class GraphBasedUpgradeScriptGenerator {
     GraphBasedUpgradeScriptGenerator create(Schema sourceSchema, Schema targetSchema, ConnectionResources connectionResources, Table idTable,
         ViewChanges viewChanges) {
       return new GraphBasedUpgradeScriptGenerator(sourceSchema, targetSchema, connectionResources, idTable, viewChanges,
-          upgradeStatusTableService, upgradeScriptAdditions);
+          upgradeStatusTableServiceFactory.create(connectionResources), upgradeScriptAdditions);
     }
   }
 }

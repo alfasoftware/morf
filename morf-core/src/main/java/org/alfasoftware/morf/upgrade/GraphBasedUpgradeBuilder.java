@@ -261,7 +261,7 @@ public class GraphBasedUpgradeBuilder {
    * Handle nodes without defined dependencies or with explicit exclusive
    * execution requirement.
    *
-   * @param processed previously processed node
+   * @param processedNodes previously processed node
    * @param node      current node
    * @param root      of the graph
    */
@@ -300,7 +300,7 @@ public class GraphBasedUpgradeBuilder {
    * @param node the first node of the graph (or part of the graph) to be logged
    */
   void logGraph(GraphBasedUpgradeNode node) {
-    traverseAndLog(node, new HashSet<GraphBasedUpgradeNode>());
+    traverseAndLog(node, new HashSet<>());
   }
 
 

@@ -64,6 +64,9 @@ public class TestGraphBasedUpgradeScriptGenerator {
   private UpgradeStatusTableService upgradeStatusTableService;
 
   @Mock
+  private UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory;
+
+  @Mock
   private UpgradeScriptAddition upgradeScriptAddition;
 
   @Before
@@ -128,7 +131,7 @@ public class TestGraphBasedUpgradeScriptGenerator {
   @Test
   public void testFactory() {
     // given
-    GraphBasedUpgradeScriptGeneratorFactory factory = new GraphBasedUpgradeScriptGeneratorFactory(upgradeStatusTableService, Sets.newSet(upgradeScriptAddition));
+    GraphBasedUpgradeScriptGeneratorFactory factory = new GraphBasedUpgradeScriptGeneratorFactory(upgradeStatusTableServiceFactory, Sets.newSet(upgradeScriptAddition));
 
     // when
     GraphBasedUpgradeScriptGenerator created = factory.create(sourceSchema, targetSchema, connectionResources, idTable, viewChanges);
