@@ -167,5 +167,14 @@ public class SqlScriptExecutorProvider implements Provider<SqlScriptExecutor> {
     public SqlScriptExecutorProvider create(final ConnectionResources connectionResources) {
       return new SqlScriptExecutorProvider(connectionResources.getDataSource(), connectionResources.sqlDialect());
     }
+
+
+    /**
+     * @param dataSource The database connection source to use
+     * @param sqlDialect The dialect to use for the dataSource
+     */
+    public SqlScriptExecutorProvider create(final DataSource dataSource, final SqlDialect sqlDialect) {
+      return new SqlScriptExecutorProvider(dataSource, sqlDialect);
+    }
   }
 }
