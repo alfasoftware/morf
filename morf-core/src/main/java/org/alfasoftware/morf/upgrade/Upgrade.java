@@ -15,19 +15,8 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.copy;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import javax.sql.DataSource;
-
+import com.google.common.collect.ImmutableList;
+import com.google.inject.Inject;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
@@ -45,7 +34,17 @@ import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import com.google.common.collect.ImmutableList;
+import javax.sql.DataSource;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.alfasoftware.morf.metadata.SchemaUtils.copy;
 
 /**
  * Entry point for upgrade processing.
@@ -124,7 +123,7 @@ public class Upgrade {
       ViewDeploymentValidator viewDeploymentValidator) {
     Upgrade upgrade = new Upgrade(
       connectionResources,
-      new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition> emptySet(), upgradeStatusTableService),
+      new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition> emptySet(), UpgradeStatusTableServiceImpl::new),
       upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()), viewDeploymentValidator, null);
     return upgrade.findPath(targetSchema, upgradeSteps, Collections.<String> emptySet(), connectionResources.getDataSource());
   }
@@ -240,21 +239,21 @@ public class Upgrade {
       graphBasedUpgradeBuilder = graphBasedUpgradeBuilderFactory.create(
         sourceSchema,
         targetSchema,
-        dialect,
+        connectionResources,
         exclusiveExecutionSteps,
         schemaChangeSequence,
         viewChanges);
     }
 
     // Build the actual upgrade path
-    return buildUpgradePath(dialect, sourceSchema, targetSchema, upgradeStatements, viewChanges, upgradesToApply, graphBasedUpgradeBuilder);
+    return buildUpgradePath(connectionResources, sourceSchema, targetSchema, upgradeStatements, viewChanges, upgradesToApply, graphBasedUpgradeBuilder);
   }
 
 
   /**
    * Turn the information gathered so far into an {@code UpgradePath}.
    *
-   * @param dialect Database dialect.
+   * @param connectionResources Database connection resources.
    * @param sourceSchema Source schema.
    * @param targetSchema Target schema.
    * @param upgradeStatements Upgrade statements identified.
@@ -263,12 +262,12 @@ public class Upgrade {
    * @return An upgrade path.
    */
   private UpgradePath buildUpgradePath(
-      SqlDialect dialect, Schema sourceSchema, Schema targetSchema,
+      ConnectionResources connectionResources, Schema sourceSchema, Schema targetSchema,
       List<String> upgradeStatements, ViewChanges viewChanges,
       List<UpgradeStep> upgradesToApply,
       GraphBasedUpgradeBuilder graphBasedUpgradeBuilder) {
 
-    UpgradePath path = factory.create(upgradesToApply, dialect, graphBasedUpgradeBuilder);
+    UpgradePath path = factory.create(upgradesToApply, connectionResources, graphBasedUpgradeBuilder);
 
     final boolean deleteFromDeployedViews = sourceSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME) && targetSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME);
     for (View view : viewChanges.getViewsToDrop()) {
@@ -295,12 +294,12 @@ public class Upgrade {
 
       AtomicBoolean first = new AtomicBoolean(true);
       targetSchema.tables().stream()
-        .map(t -> dialect.rebuildTriggers(t))
+        .map(t -> connectionResources.sqlDialect().rebuildTriggers(t))
         .filter(sql -> !sql.isEmpty())
         .peek(sql -> {
             if (first.compareAndSet(true, false)) {
               path.writeSql(ImmutableList.of(
-                  dialect.convertCommentToSQL("Upgrades executed. Rebuilding all triggers to account for potential changes to autonumbered columns")
+                connectionResources.sqlDialect().convertCommentToSQL("Upgrades executed. Rebuilding all triggers to account for potential changes to autonumbered columns")
               ));
             }
         })
@@ -325,6 +324,43 @@ public class Upgrade {
       return copy(databaseSchemaResource, exceptionRegexes);
     } finally {
       databaseSchemaResource.close();
+    }
+  }
+
+
+  /**
+   * Factory that can be used to create {@link Upgrade}s.
+   *
+   * @author Copyright (c) Alfa Financial Software 2022
+   */
+  public static class Factory  {
+    private final UpgradePathFactory upgradePathFactory;
+    private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
+    private final UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory;
+    private final ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory;
+    private final ViewDeploymentValidator.Factory viewDeploymentValidatorFactory;
+
+
+    @Inject
+    public Factory(UpgradePathFactory upgradePathFactory,
+                   UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory,
+                   GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
+                   ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory,
+                   ViewDeploymentValidator.Factory viewDeploymentValidatorFactory) {
+      this.upgradePathFactory = upgradePathFactory;
+      this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
+      this.upgradeStatusTableServiceFactory =  upgradeStatusTableServiceFactory;
+      this.viewChangesDeploymentHelperFactory = viewChangesDeploymentHelperFactory;
+      this.viewDeploymentValidatorFactory = viewDeploymentValidatorFactory;
+    }
+
+    public Upgrade create(ConnectionResources connectionResources) {
+      return new Upgrade(connectionResources,
+                         upgradePathFactory,
+                         upgradeStatusTableServiceFactory.create(connectionResources),
+                         viewChangesDeploymentHelperFactory.create(connectionResources),
+                         viewDeploymentValidatorFactory.createViewDeploymentValidator(connectionResources),
+                         graphBasedUpgradeBuilderFactory);
     }
   }
 }

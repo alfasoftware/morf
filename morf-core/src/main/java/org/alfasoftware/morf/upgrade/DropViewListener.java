@@ -1,9 +1,9 @@
 package org.alfasoftware.morf.upgrade;
 
-import org.alfasoftware.morf.metadata.View;
-
 import com.google.common.collect.ImmutableList;
 import com.google.inject.ImplementedBy;
+import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.metadata.View;
 
 /**
  *
@@ -44,6 +44,32 @@ public interface DropViewListener {
     @Override
     public Iterable<String> deregisterAllViews() {
       return ImmutableList.of();
+    }
+  }
+
+
+  /**
+   * Factory that could be used to create {@link DropViewListener}s.
+   *
+   * @author Copyright (c) Alfa Financial Software 2022
+   */
+  @ImplementedBy(Factory.NoOpFactory.class)
+  interface Factory  {
+
+    /**
+     * Creates a {@link DropViewListener} implementation for the given connection details.
+     */
+    DropViewListener createDropViewListener(ConnectionResources connectionResources);
+
+    /**
+     * NoOp factory implementation.
+     */
+    class NoOpFactory implements DropViewListener.Factory {
+
+      @Override
+      public DropViewListener createDropViewListener(ConnectionResources connectionResources) {
+        return new NoOp();
+      }
     }
   }
 }

@@ -1,15 +1,8 @@
 package org.alfasoftware.morf.upgrade;
 
 
-import static org.alfasoftware.morf.sql.SqlUtils.literal;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertNotNull;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.nullable;
-import static org.mockito.Mockito.when;
-
-import java.util.List;
-
+import com.google.common.collect.Lists;
+import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
@@ -25,7 +18,14 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.internal.util.collections.Sets;
 
-import com.google.common.collect.Lists;
+import java.util.List;
+
+import static org.alfasoftware.morf.sql.SqlUtils.literal;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.when;
 
 /**
  * Tests of {@link GraphBasedUpgradeScriptGenerator}.
@@ -46,6 +46,9 @@ public class TestGraphBasedUpgradeScriptGenerator {
   private SqlDialect sqlDialect;
 
   @Mock
+  private ConnectionResources connectionResources;
+
+  @Mock
   private Table idTable;
 
   @Mock
@@ -61,12 +64,15 @@ public class TestGraphBasedUpgradeScriptGenerator {
   private UpgradeStatusTableService upgradeStatusTableService;
 
   @Mock
+  private UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory;
+
+  @Mock
   private UpgradeScriptAddition upgradeScriptAddition;
 
   @Before
   public void setup() {
     MockitoAnnotations.openMocks(this);
-    gen = new GraphBasedUpgradeScriptGenerator(sourceSchema, targetSchema, sqlDialect, idTable, viewChanges,
+    gen = new GraphBasedUpgradeScriptGenerator(sourceSchema, targetSchema, connectionResources, idTable, viewChanges,
         upgradeStatusTableService, Sets.newSet(upgradeScriptAddition));
 
 
@@ -76,6 +82,7 @@ public class TestGraphBasedUpgradeScriptGenerator {
   @Test
   public void testPreUpgradeStatementGeneration() {
     // given
+    when(connectionResources.sqlDialect()).thenReturn(sqlDialect);
     when(upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS)).thenReturn(Lists.newArrayList("1"));
     when(sqlDialect.tableDeploymentStatements(idTable)).thenReturn(Lists.newArrayList("2"));
     when(viewChanges.getViewsToDrop()).thenReturn(Lists.newArrayList(view));
@@ -97,6 +104,7 @@ public class TestGraphBasedUpgradeScriptGenerator {
   @Test
   public void testPostUpgradeStatementGeneration() {
     // given
+    when(connectionResources.sqlDialect()).thenReturn(sqlDialect);
     when(sqlDialect.truncateTableStatements(idTable)).thenReturn(Lists.newArrayList("1"));
     when(sqlDialect.dropStatements(idTable)).thenReturn(Lists.newArrayList("2"));
     when(viewChanges.getViewsToDeploy()).thenReturn(Lists.newArrayList(view));
@@ -108,7 +116,7 @@ public class TestGraphBasedUpgradeScriptGenerator {
     when(targetSchema.tables()).thenReturn(Lists.newArrayList(table));
     when(sqlDialect.convertCommentToSQL(any(String.class))).thenReturn("5");
     when(sqlDialect.rebuildTriggers(table)).thenReturn(Lists.newArrayList("6"));
-    when(upgradeScriptAddition.sql()).thenReturn(Lists.newArrayList("7"));
+    when(upgradeScriptAddition.sql(connectionResources)).thenReturn(Lists.newArrayList("7"));
     when(upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED)).thenReturn(Lists.newArrayList("8"));
 
 
@@ -123,10 +131,10 @@ public class TestGraphBasedUpgradeScriptGenerator {
   @Test
   public void testFactory() {
     // given
-    GraphBasedUpgradeScriptGeneratorFactory factory = new GraphBasedUpgradeScriptGeneratorFactory(upgradeStatusTableService, Sets.newSet(upgradeScriptAddition));
+    GraphBasedUpgradeScriptGeneratorFactory factory = new GraphBasedUpgradeScriptGeneratorFactory(upgradeStatusTableServiceFactory, Sets.newSet(upgradeScriptAddition));
 
     // when
-    GraphBasedUpgradeScriptGenerator created = factory.create(sourceSchema, targetSchema, sqlDialect, idTable, viewChanges);
+    GraphBasedUpgradeScriptGenerator created = factory.create(sourceSchema, targetSchema, connectionResources, idTable, viewChanges);
 
     // then
     assertNotNull(created);

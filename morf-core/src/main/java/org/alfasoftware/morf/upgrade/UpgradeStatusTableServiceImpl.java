@@ -76,10 +76,10 @@ class UpgradeStatusTableServiceImpl implements UpgradeStatusTableService {
 
 
   /**
-   * Private constructor to be used with {@link UpgradeStatusTableService.Factory}
+   * To be used with {@link UpgradeStatusTableService.Factory}
    * @param connectionResources
    */
-  private UpgradeStatusTableServiceImpl(ConnectionResources connectionResources) {
+  UpgradeStatusTableServiceImpl(ConnectionResources connectionResources) {
     super();
     this.sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources.getDataSource(), connectionResources.sqlDialect());
     this.sqlDialect = connectionResources.sqlDialect();
@@ -206,7 +206,7 @@ class UpgradeStatusTableServiceImpl implements UpgradeStatusTableService {
   }
 
 
-  static class Factory {
+  static class Factory implements UpgradeStatusTableService.Factory {
 
     /**
      * @see UpgradeStatusTableService.Factory#create(ConnectionResources)

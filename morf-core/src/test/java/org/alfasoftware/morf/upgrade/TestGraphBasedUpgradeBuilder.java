@@ -1,18 +1,8 @@
 package org.alfasoftware.morf.upgrade;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.when;
-
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
@@ -24,8 +14,18 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
 
 /**
  * All tests of {@link GraphBasedUpgradeBuilder}.
@@ -53,6 +53,9 @@ public class TestGraphBasedUpgradeBuilder {
   private SqlDialect sqlDialect;
 
   @Mock
+  private ConnectionResources connectionResources;
+
+  @Mock
   private SchemaChangeSequence schemaChangeSequence;
 
   @Mock
@@ -75,11 +78,12 @@ public class TestGraphBasedUpgradeBuilder {
   @Before
   public void setup() {
     MockitoAnnotations.openMocks(this);
+    when(connectionResources.sqlDialect()).thenReturn(sqlDialect);
 
     when(schemaChangeSequence.getUpgradeTableResolution()).thenReturn(upgradeTableResolution);
     when(schemaChangeSequence.getUpgradeSteps()).thenReturn(upgradeSteps);
 
-    when(scriptGeneratorFactory.create(eq(sourceSchema), eq(targetSchema), eq(sqlDialect), any(Table.class), eq(viewChanges))).thenReturn(scriptGen);
+    when(scriptGeneratorFactory.create(eq(sourceSchema), eq(targetSchema), eq(connectionResources), any(Table.class), eq(viewChanges))).thenReturn(scriptGen);
     when(scriptGen.generatePostUpgradeStatements()).thenReturn(Lists.newArrayList("post"));
     when(scriptGen.generatePreUpgradeStatements()).thenReturn(Lists.newArrayList("pre"));
 
@@ -98,7 +102,7 @@ public class TestGraphBasedUpgradeBuilder {
     u1001 = new U1001();
 
     builder = new GraphBasedUpgradeBuilder(visitorFactory, scriptGeneratorFactory, drawIOGraphPrinter, sourceSchema, targetSchema,
-        sqlDialect, exclusiveExecutionSteps, schemaChangeSequence, viewChanges);
+        connectionResources, exclusiveExecutionSteps, schemaChangeSequence, viewChanges);
   }
 
 
@@ -385,7 +389,7 @@ public class TestGraphBasedUpgradeBuilder {
     GraphBasedUpgradeBuilderFactory factory = new GraphBasedUpgradeBuilderFactory(visitorFactory, scriptGeneratorFactory, drawIOGraphPrinter);
 
     // when
-    GraphBasedUpgradeBuilder created = factory.create(sourceSchema, targetSchema, sqlDialect, exclusiveExecutionSteps, schemaChangeSequence, viewChanges);
+    GraphBasedUpgradeBuilder created = factory.create(sourceSchema, targetSchema, connectionResources, exclusiveExecutionSteps, schemaChangeSequence, viewChanges);
 
     // then
     assertNotNull(created);
