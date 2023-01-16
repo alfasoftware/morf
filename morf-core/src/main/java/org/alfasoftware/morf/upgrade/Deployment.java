@@ -92,12 +92,12 @@ public class Deployment {
   /**
    * Constructor for use by {@link DeploymentFactory}.
    */
-  private Deployment(UpgradePathFactory upgradePathFactory, @Assisted ConnectionResources connectionResources) {
+  private Deployment(UpgradePathFactory upgradePathFactory, ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory, @Assisted ConnectionResources connectionResources) {
     super();
     this.sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
     this.connectionResources = connectionResources;
     this.upgradePathFactory = upgradePathFactory;
-    this.viewChangesDeploymentHelper = new ViewChangesDeploymentHelper(connectionResources.sqlDialect());
+    this.viewChangesDeploymentHelper = viewChangesDeploymentHelperFactory.create(connectionResources);
   }
 
 
@@ -166,6 +166,7 @@ public class Deployment {
     try {
       new Deployment(
         new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition>emptySet(), UpgradeStatusTableServiceImpl::new),
+        new ViewChangesDeploymentHelper.Factory(new CreateViewListener.Factory.NoOpFactory(), new DropViewListener.Factory.NoOpFactory()),
         connectionResources
       ).deploy(targetSchema, upgradeSteps);
     } finally {
@@ -238,14 +239,17 @@ public class Deployment {
 
     private final UpgradePathFactory upgradePathFactory;
 
+    private final ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory;
+
     @Inject
-    public DeploymentFactoryImpl(UpgradePathFactory upgradePathFactory) {
+    public DeploymentFactoryImpl(UpgradePathFactory upgradePathFactory, ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory) {
       this.upgradePathFactory = upgradePathFactory;
+      this.viewChangesDeploymentHelperFactory = viewChangesDeploymentHelperFactory;
     }
 
     @Override
     public Deployment create(ConnectionResources connectionResources) {
-      return new Deployment(upgradePathFactory, connectionResources);
+      return new Deployment(upgradePathFactory, viewChangesDeploymentHelperFactory,  connectionResources);
     }
   }
 }
