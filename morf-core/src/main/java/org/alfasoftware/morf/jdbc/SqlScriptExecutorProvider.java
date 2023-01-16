@@ -67,17 +67,6 @@ public class SqlScriptExecutorProvider implements Provider<SqlScriptExecutor> {
 
 
   /**
-   * @param dataSource The {@link DataSource} to instantiate the
-   *          {@link SqlScriptExecutorProvider} for
-   * @deprecated This constructor does not work for all uses. Use {@link #SqlScriptExecutorProvider(DataSource, SqlDialect)}
-   */
-  @Deprecated
-  public SqlScriptExecutorProvider(final DataSource dataSource) {
-    this(dataSource, (SqlDialect)null);
-  }
-
-
-  /**
    * Gets an instance of a {@link SqlScriptExecutor}.
    *
    * @return an instance of an {@link SqlScriptExecutor}.
