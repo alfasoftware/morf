@@ -602,12 +602,12 @@ public class OracleMetaDataProvider implements Schema {
           String pkIndexUniqueness = resultSet.getString(4);
 
           if (! pkIndexName.endsWith("_PK")) {
-            primaryKeysWithWrongIndex.append("Primary Key on table [" + tableName+ "] column [" + columnName
+            primaryKeysWithWrongIndex.append("Primary Key on table [" + tableName+ "] columns [" + columnName
               + "] backed with an index whose name does not end in _PK [" + pkIndexName + "]" + System.lineSeparator());
           }
 
           if (! "UNIQUE".equals(pkIndexUniqueness)) {
-            primaryKeysWithWrongIndex.append("Primary Key on table [" + tableName+ "] column [" + columnName
+            primaryKeysWithWrongIndex.append("Primary Key on table [" + tableName+ "] columns [" + columnName
               + "] backed with an non-unique index [" + pkIndexName + "]" + System.lineSeparator());
           }
 
