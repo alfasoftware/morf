@@ -107,8 +107,8 @@ public class TestOracleMetaDataProvider {
       fail("Exception expected");
     } catch (RuntimeException e) {
       assertEquals(e.getMessage(),
-              "Primary Key on table [AREALTABLE] column [dateColumn] backed with an index whose name does not end in _PK [PRIMARY_INDEX_NK]" + System.lineSeparator()
-            + "Primary Key on table [AREALTABLE] column [dateColumn] backed with an non-unique index [PRIMARY_INDEX_NK]" + System.lineSeparator());
+              "Primary Key on table [AREALTABLE] columns [dateColumn] backed with an index whose name does not end in _PK [PRIMARY_INDEX_NK]" + System.lineSeparator()
+            + "Primary Key on table [AREALTABLE] columns [dateColumn] backed with an non-unique index [PRIMARY_INDEX_NK]" + System.lineSeparator());
     }
   }
 
