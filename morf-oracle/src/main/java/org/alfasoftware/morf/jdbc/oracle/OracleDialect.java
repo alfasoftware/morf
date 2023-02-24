@@ -57,12 +57,12 @@ import org.alfasoftware.morf.sql.UseImplicitJoinOrder;
 import org.alfasoftware.morf.sql.UseIndex;
 import org.alfasoftware.morf.sql.UseParallelDml;
 import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.element.AllowParallelDmlHint;
 import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
-import org.alfasoftware.morf.sql.element.AllowParallelDmlHint;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
@@ -237,7 +237,7 @@ class OracleDialect extends SqlDialect {
     // truncate down to 27, since we add _PK to the end
     return "CONSTRAINT " + primaryKeyConstraintName(tableName)
             + " PRIMARY KEY (" + Joiner.on(", ").join(newPrimaryKeyColumns) + ")"
-            + " USING INDEX (CREATE INDEX " + schemaNamePrefix() + primaryKeyConstraintName(tableName)
+            + " USING INDEX (CREATE UNIQUE INDEX " + schemaNamePrefix() + primaryKeyConstraintName(tableName)
             + " ON "
             + schemaNamePrefix() + truncatedTableName(tableName)
             + " (" + Joiner.on(", ").join(newPrimaryKeyColumns) + "))";
