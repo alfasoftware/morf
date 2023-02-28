@@ -586,9 +586,12 @@ public class OracleMetaDataProvider implements Schema {
    */
   private Map<String, List<String>> readTableKeys() {
     final Map<String, List<String>> primaryKeys = new HashMap<>();
+    final StringBuilder primaryKeysWithWrongIndex = new StringBuilder();
+    final StringBuilder primaryKeysWithNonUniqueIndex = new StringBuilder();
 
-    final String getConstraintSql = "SELECT A.TABLE_NAME, A.COLUMN_NAME FROM ALL_CONS_COLUMNS A "
+    final String getConstraintSql = "SELECT A.TABLE_NAME, A.COLUMN_NAME, C.INDEX_NAME, I.UNIQUENESS FROM ALL_CONS_COLUMNS A "
         + "JOIN ALL_CONSTRAINTS C  ON A.CONSTRAINT_NAME = C.CONSTRAINT_NAME AND A.OWNER = C.OWNER and A.TABLE_NAME = C.TABLE_NAME "
+        + "JOIN ALL_INDEXES I  ON I.TABLE_NAME = A.TABLE_NAME AND I.INDEX_NAME = C.INDEX_NAME "
         + "WHERE C.TABLE_NAME not like 'BIN$%' AND C.OWNER=? AND C.CONSTRAINT_TYPE = 'P' ORDER BY A.TABLE_NAME, A.POSITION";
 
     runSQL(getConstraintSql, new ResultSetHandler() {
@@ -596,6 +599,18 @@ public class OracleMetaDataProvider implements Schema {
         while (resultSet.next()) {
           String tableName = resultSet.getString(1);
           String columnName = resultSet.getString(2);
+          String pkIndexName = resultSet.getString(3);
+          String pkIndexUniqueness = resultSet.getString(4);
+
+          if (! pkIndexName.endsWith("_PK")) {
+            primaryKeysWithWrongIndex.append("Primary Key on table [" + tableName+ "] columns [" + columnName
+              + "] backed with an index whose name does not end in _PK [" + pkIndexName + "]" + System.lineSeparator());
+          }
+
+          if (! "UNIQUE".equals(pkIndexUniqueness)) {
+            primaryKeysWithNonUniqueIndex.append("Primary Key on table [" + tableName+ "] columns [" + columnName
+              + "] backed with an non-unique index [" + pkIndexName + "]" + System.lineSeparator());
+          }
 
           List<String> columns = primaryKeys.get(tableName);
           if (columns == null) {
@@ -607,6 +622,14 @@ public class OracleMetaDataProvider implements Schema {
         }
       }
     });
+
+    if (primaryKeysWithWrongIndex.length() > 0) {
+      throw new RuntimeException(primaryKeysWithWrongIndex.toString());
+    }
+    if (primaryKeysWithNonUniqueIndex.length() > 0) {
+      log.warn(primaryKeysWithNonUniqueIndex.toString());
+    }
+
     return primaryKeys;
   }
 

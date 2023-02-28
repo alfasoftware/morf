@@ -45,6 +45,7 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.AbstractSelectStatement;
+import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.Hint;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
@@ -56,7 +57,7 @@ import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.SqlParameter;
-import org.alfasoftware.morf.sql.element.WindowFunction;
+import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Joiner;
@@ -774,8 +775,7 @@ class MySqlDialect extends SqlDialect {
       sqlBuilder.append("IGNORE ");
     }
     sqlBuilder.append("INTO ");
-    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-    sqlBuilder.append(destinationTableName);
+    sqlBuilder.append(tableNameWithSchemaName(statement.getTable()));
     sqlBuilder.append("(");
     Iterable<String> intoFields = Iterables.transform(statement.getSelectStatement().getFields(), AliasedField::getImpliedName);
     sqlBuilder.append(Joiner.on(", ").join(intoFields));
@@ -850,15 +850,6 @@ class MySqlDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.element.WindowFunction)
-   */
-  @Override
-  protected String getSqlFrom(final WindowFunction windowFunctionField) {
-    throw new UnsupportedOperationException(this.getClass().getSimpleName()+" does not support window functions.");
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#likeEscapeSuffix()
    */
   @Override
@@ -929,5 +920,24 @@ class MySqlDialect extends SqlDialect {
     statements.add(createTableStatement.toString());
 
     return statements;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#tableNameWithSchemaName(org.alfasoftware.morf.sql.element.TableReference)
+   */
+  @Override
+  protected String tableNameWithSchemaName(TableReference tableRef) {
+    if (!StringUtils.isEmpty(tableRef.getDblink())) throw new IllegalStateException("DB Links are not supported in the MySQL dialect. Found dbLink=" + tableRef.getDblink() + " for tableNameWithSchemaName=" + super.tableNameWithSchemaName(tableRef));
+    return super.tableNameWithSchemaName(tableRef);
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.ExceptSetOperator)
+   */
+  @Override
+  protected String getSqlFrom(ExceptSetOperator operator) {
+    throw new IllegalStateException("EXCEPT set operator is not supported in the MySQL dialect");
   }
 }

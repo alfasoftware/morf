@@ -1,5 +1,17 @@
 package org.alfasoftware.morf.upgrade;
 
+import com.google.common.collect.Sets;
+import com.google.common.collect.Sets.SetView;
+import com.google.inject.Inject;
+import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.upgrade.GraphBasedUpgradeSchemaChangeVisitor.GraphBasedUpgradeSchemaChangeVisitorFactory;
+import org.alfasoftware.morf.upgrade.GraphBasedUpgradeScriptGenerator.GraphBasedUpgradeScriptGeneratorFactory;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -9,24 +21,12 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.alfasoftware.morf.jdbc.SqlDialect;
-import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.upgrade.GraphBasedUpgradeSchemaChangeVisitor.GraphBasedUpgradeSchemaChangeVisitorFactory;
-import org.alfasoftware.morf.upgrade.GraphBasedUpgradeScriptGenerator.GraphBasedUpgradeScriptGeneratorFactory;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-import com.google.common.collect.Sets;
-import com.google.common.collect.Sets.SetView;
-import com.google.inject.Inject;
-
 /**
  * Builds {@link GraphBasedUpgrade} instance which is ready to be executed.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2022
  */
-class GraphBasedUpgradeBuilder {
+public class GraphBasedUpgradeBuilder {
 
   private static final Log LOG = LogFactory.getLog(GraphBasedUpgradeBuilder.class);
   private static final Log DRAWIO_GRAPH_PRINT_LOG = LogFactory.getLog(GraphBasedUpgradeBuilder.class.getSimpleName() + ".GraphPrint");
@@ -36,7 +36,8 @@ class GraphBasedUpgradeBuilder {
   private final DrawIOGraphPrinter drawIOGraphPrinter;
   private final Schema sourceSchema;
   private final Schema targetSchema;
-  private final SqlDialect sqlDialect;
+
+  private final ConnectionResources connectionResources;
   private final Set<String> exclusiveExecutionSteps;
   private final SchemaChangeSequence schemaChangeSequence;
   private final ViewChanges viewChanges;
@@ -54,7 +55,7 @@ class GraphBasedUpgradeBuilder {
    * @param drawIOGraphPrinter      prints graph in a draw.io friendly format
    * @param sourceSchema            source schema
    * @param targetSchema            target schema
-   * @param sqlDialect              dialect to be used
+   * @param connectionResources     connection resources to be used
    * @param exclusiveExecutionSteps names of the upgrade step classes which should
    *                                  be executed in an exclusive way
    * @param schemaChangeSequence    to be used to build a
@@ -68,7 +69,7 @@ class GraphBasedUpgradeBuilder {
       DrawIOGraphPrinter drawIOGraphPrinter,
       Schema sourceSchema,
       Schema targetSchema,
-      SqlDialect sqlDialect,
+      ConnectionResources connectionResources,
       Set<String> exclusiveExecutionSteps,
       SchemaChangeSequence schemaChangeSequence,
       ViewChanges viewChanges) {
@@ -77,7 +78,7 @@ class GraphBasedUpgradeBuilder {
     this.drawIOGraphPrinter = drawIOGraphPrinter;
     this.sourceSchema = sourceSchema;
     this.targetSchema = targetSchema;
-    this.sqlDialect = sqlDialect;
+    this.connectionResources = connectionResources;
     this.exclusiveExecutionSteps = exclusiveExecutionSteps;
     this.schemaChangeSequence = schemaChangeSequence;
     this.viewChanges = viewChanges;
@@ -95,15 +96,15 @@ class GraphBasedUpgradeBuilder {
 
     GraphBasedUpgradeNode root = prepareGraph(nodes);
 
-    Table idTable = SqlDialect.IdTable.withPrefix(sqlDialect, "temp_id_", false);
+    Table idTable = SqlDialect.IdTable.withPrefix(connectionResources.sqlDialect(), "temp_id_", false);
 
     GraphBasedUpgradeSchemaChangeVisitor visitor = visitorFactory.create(
       sourceSchema,
-      sqlDialect,
+      connectionResources.sqlDialect(),
       idTable,
       nodes.stream().collect(Collectors.toMap(GraphBasedUpgradeNode::getName, Function.identity())));
 
-    GraphBasedUpgradeScriptGenerator scriptGenerator = scriptGeneratorFactory.create(sourceSchema, targetSchema, sqlDialect, idTable, viewChanges);
+    GraphBasedUpgradeScriptGenerator scriptGenerator = scriptGeneratorFactory.create(sourceSchema, targetSchema, connectionResources, idTable, viewChanges);
 
     List<String> preUpgStatements = scriptGenerator.generatePreUpgradeStatements();
     schemaChangeSequence.applyTo(visitor);
@@ -260,7 +261,7 @@ class GraphBasedUpgradeBuilder {
    * Handle nodes without defined dependencies or with explicit exclusive
    * execution requirement.
    *
-   * @param processed previously processed node
+   * @param processedNodes previously processed node
    * @param node      current node
    * @param root      of the graph
    */
@@ -299,7 +300,7 @@ class GraphBasedUpgradeBuilder {
    * @param node the first node of the graph (or part of the graph) to be logged
    */
   void logGraph(GraphBasedUpgradeNode node) {
-    traverseAndLog(node, new HashSet<GraphBasedUpgradeNode>());
+    traverseAndLog(node, new HashSet<>());
   }
 
 
@@ -400,7 +401,7 @@ class GraphBasedUpgradeBuilder {
    *
    * @author Copyright (c) Alfa Financial Software Limited. 2022
    */
-  static class GraphBasedUpgradeBuilderFactory {
+  public static class GraphBasedUpgradeBuilderFactory {
 
     private final GraphBasedUpgradeSchemaChangeVisitorFactory visitorFactory;
     private final GraphBasedUpgradeScriptGeneratorFactory scriptGeneratorFactory;
@@ -433,7 +434,7 @@ class GraphBasedUpgradeBuilder {
      *
      * @param sourceSchema            source schema
      * @param targetSchema            target schema
-     * @param sqlDialect              dialect to be used
+     * @param connectionResources     connection resources to be used
      * @param exclusiveExecutionSteps names of the upgrade step classes which should
      *                                  be executed in an exclusive way
      * @param schemaChangeSequence    to be used to build a
@@ -445,7 +446,7 @@ class GraphBasedUpgradeBuilder {
     GraphBasedUpgradeBuilder create(
         Schema sourceSchema,
         Schema targetSchema,
-        SqlDialect sqlDialect,
+        ConnectionResources connectionResources,
         Set<String> exclusiveExecutionSteps,
         SchemaChangeSequence schemaChangeSequence,
         ViewChanges viewChanges) {
@@ -455,7 +456,7 @@ class GraphBasedUpgradeBuilder {
         drawIOGraphPrinter,
         sourceSchema,
         targetSchema,
-        sqlDialect,
+        connectionResources,
         exclusiveExecutionSteps,
         schemaChangeSequence,
         viewChanges);

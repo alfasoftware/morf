@@ -18,7 +18,9 @@ package org.alfasoftware.morf.sql.element;
 import static org.alfasoftware.morf.util.DeepCopyTransformations.transformIterable;
 
 import java.util.List;
+import java.util.Set;
 
+import com.google.common.collect.ImmutableSet;
 import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
@@ -178,13 +180,12 @@ public final class WindowFunction extends AliasedField implements Driver {
     private final List<AliasedField> orderBys    = Lists.newArrayList();
     private final List<AliasedField> partitionBy = Lists.newArrayList();
 
+    private static final Set<FunctionType> SUPPORTED_FUNCTIONS = ImmutableSet.of(
+            FunctionType.AVERAGE, FunctionType.SUM, FunctionType.COUNT, FunctionType.MIN, FunctionType.MAX,
+            FunctionType.ROW_NUMBER);
 
     private BuilderImpl(Function function) {
-      if (!(function.getType() == FunctionType.AVERAGE
-          || function.getType() == FunctionType.SUM
-          || function.getType() == FunctionType.COUNT
-          || function.getType() == FunctionType.MIN
-          || function.getType() == FunctionType.MAX)) {
+      if (!SUPPORTED_FUNCTIONS.contains(function.getType())) {
         throw new IllegalArgumentException("Function of type [" + function.getType() + "] is not supported");
       }
       this.function = function;

@@ -231,7 +231,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedPostInsertStatements()
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#verifyPostInsertStatementsInsertingUnderAutonumLimit(org.alfasoftware.morf.jdbc.SqlScriptExecutor, java.sql.Connection)
    */
   @Override
   protected void verifyPostInsertStatementsInsertingUnderAutonumLimit(SqlScriptExecutor sqlScriptExecutor,Connection connection) {
@@ -898,7 +898,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropViewStatement()
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropViewStatements()
    */
   @Override
   protected List<String> expectedDropViewStatements() {
@@ -1181,15 +1181,6 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#supportsWindowFunctions()
-   */
-  @Override
-  protected boolean supportsWindowFunctions() {
-    return false;
-  }
-
-
-  /**
    * No need for an escape on MySQL
    */
   @Override
@@ -1248,5 +1239,41 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedCreateViewOverUnionSelectStatements() {
     return Arrays.asList("CREATE VIEW " + tableName("TestView") + " AS SELECT stringField FROM " + tableName(TEST_TABLE) + " WHERE (stringField = " + stringLiteralPrefix() + "'blah') UNION ALL SELECT stringField FROM " + tableName(OTHER_TABLE) + " WHERE (stringField = " + stringLiteralPrefix() + "'blah')");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithExcept()
+   */
+  @Override
+  protected String expectedSelectWithExcept() {
+    return null;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithDbLink()
+   */
+  @Override
+  protected String expectedSelectWithDbLink() {
+    return null;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithExceptAndDbLinkFormer()
+   */
+  @Override
+  protected String expectedSelectWithExceptAndDbLinkFormer() {
+    return null;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithExceptAndDbLinkLatter()
+   */
+  @Override
+  protected String expectedSelectWithExceptAndDbLinkLatter() {
+    return null;
   }
 }

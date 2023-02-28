@@ -215,7 +215,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#verifyPostInsertStatementsInsertingUnderAutonumLimit(org.alfasoftware.morf.jdbc.SqlScriptExecutor, com.mysql.jdbc.Connection)
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#verifyPostInsertStatementsInsertingUnderAutonumLimit(org.alfasoftware.morf.jdbc.SqlScriptExecutor, java.sql.Connection)
    */
   @Override
   protected void verifyPostInsertStatementsInsertingUnderAutonumLimit(SqlScriptExecutor sqlScriptExecutor, Connection connection) {
@@ -224,7 +224,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#verifyRepairAutoNumberStartPosition(org.alfasoftware.morf.jdbc.SqlScriptExecutor, com.mysql.jdbc.Connection)
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#verifyRepairAutoNumberStartPosition(org.alfasoftware.morf.jdbc.SqlScriptExecutor, java.sql.Connection)
    */
   @Override
   protected void verifyRepairAutoNumberStartPosition(SqlScriptExecutor sqlScriptExecutor, Connection connection) {
@@ -1146,7 +1146,7 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropViewStatement()
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropViewStatements()
    */
   @Override
   protected List<String> expectedDropViewStatements() {
@@ -1421,15 +1421,6 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#supportsWindowFunctions()
-   */
-  @Override
-  protected boolean supportsWindowFunctions() {
-    return true;
-  }
-
-
-  /**
    * No need for an escape on MySQL
    */
   @Override
@@ -1471,5 +1462,41 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedDeleteWithLimitWithoutWhere() {
     return "DELETE FROM " + tableName(TEST_TABLE) + " LIMIT 1000";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithExcept()
+   */
+  @Override
+  protected String expectedSelectWithExcept() {
+    return null;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithDbLink()
+   */
+  @Override
+  protected String expectedSelectWithDbLink() {
+    return null;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithExceptAndDbLinkFormer()
+   */
+  @Override
+  protected String expectedSelectWithExceptAndDbLinkFormer() {
+    return null;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectWithExceptAndDbLinkLatter()
+   */
+  @Override
+  protected String expectedSelectWithExceptAndDbLinkLatter() {
+    return null;
   }
 }

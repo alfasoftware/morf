@@ -38,6 +38,7 @@ import static org.junit.Assert.fail;
 import java.util.List;
 
 import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.element.AllowParallelDmlHint;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.Direction;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
@@ -1079,12 +1080,14 @@ public class TestSqlSelectElementGeneration {
       select.optimiseForRowCount(1)
           .useImplicitJoinOrder()
           .useIndex(table1, "INDEX_1")
-          .useIndex(table2, "INDEX_2");
+          .useIndex(table2, "INDEX_2")
+          .allowParallelDml();
       assertThat(select.getHints(), contains(
           new OptimiseForRowCount(1),
           new UseImplicitJoinOrder(),
           new UseIndex(table1, "INDEX_1"),
-          new UseIndex(table2, "INDEX_2")
+          new UseIndex(table2, "INDEX_2"),
+          AllowParallelDmlHint.INSTANCE
       ));
 
     });
@@ -1406,25 +1409,29 @@ public class TestSqlSelectElementGeneration {
                       .useImplicitJoinOrder()
                       .useIndex(table1, "INDEX_1")
                       .useIndex(table2, "INDEX_2")
+                      .allowParallelDml()
                       .build()
                       .getHints(), contains(
           new OptimiseForRowCount(1),
           new UseImplicitJoinOrder(),
           new UseIndex(table1, "INDEX_1"),
-          new UseIndex(table2, "INDEX_2")
+          new UseIndex(table2, "INDEX_2"),
+          AllowParallelDmlHint.INSTANCE
       ));
 
       // Implicit copy-on-write
       SelectStatement updated = select.optimiseForRowCount(1)
           .useImplicitJoinOrder()
           .useIndex(table1, "INDEX_1")
-          .useIndex(table2, "INDEX_2");
+          .useIndex(table2, "INDEX_2")
+          .allowParallelDml();
 
       assertThat(updated.getHints(), contains(
           new OptimiseForRowCount(1),
           new UseImplicitJoinOrder(),
           new UseIndex(table1, "INDEX_1"),
-          new UseIndex(table2, "INDEX_2")
+          new UseIndex(table2, "INDEX_2"),
+          AllowParallelDmlHint.INSTANCE
       ));
       assertThat(select.getHints(), empty());
       assertUnsupported(() -> updated.getHints().add(new OptimiseForRowCount(3)));

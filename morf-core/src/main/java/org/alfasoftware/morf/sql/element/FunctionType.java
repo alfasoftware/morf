@@ -221,5 +221,10 @@ public enum FunctionType {
   /**
    * Last day of the month from the date provider as an argument.
    */
-  LAST_DAY_OF_MONTH
+  LAST_DAY_OF_MONTH,
+
+  /**
+   * Calculates the row number on a partition. Generally used as a Window function
+   */
+  ROW_NUMBER
 }

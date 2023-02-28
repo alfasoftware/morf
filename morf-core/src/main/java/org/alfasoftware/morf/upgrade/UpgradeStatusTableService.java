@@ -15,12 +15,12 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import java.util.List;
-import java.util.Optional;
+import com.google.inject.ImplementedBy;
+import org.alfasoftware.morf.jdbc.ConnectionResources;
 
 import javax.sql.DataSource;
-
-import com.google.inject.ImplementedBy;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * Service to manage or generate SQL for a transient table that stores the upgrade status.
@@ -96,5 +96,16 @@ public interface UpgradeStatusTableService {
    * @param dataSource Data source to use.
    */
   void tidyUp(DataSource dataSource);
-}
 
+
+  @ImplementedBy(UpgradeStatusTableServiceImpl.Factory.class)
+  interface Factory {
+
+    /**
+     * Creates a service implementation with given connection resources
+     * @param connectionResources connection resources to use
+     * @return new {@link UpgradeStatusTableService} instance
+     */
+    UpgradeStatusTableService create(final ConnectionResources connectionResources);
+  }
+}

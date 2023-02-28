@@ -35,7 +35,7 @@ import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.SqlParameter;
-import org.alfasoftware.morf.sql.element.WindowFunction;
+import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Joiner;
@@ -56,7 +56,7 @@ class H2Dialect extends SqlDialect {
   public static final String TEMPORARY_TABLE_PREFIX = "TEMP_";
 
   /**
-   * @param h2
+   * @param schemaName
    *
    */
   public H2Dialect(String schemaName) {
@@ -466,7 +466,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#renameTableStatements(java.lang.String, java.lang.String)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#renameTableStatements(org.alfasoftware.morf.metadata.Table, org.alfasoftware.morf.metadata.Table)
    */
   @Override
   public Collection<String> renameTableStatements(Table from, Table to) {
@@ -563,20 +563,11 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForRandomString(int)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForRandomString(org.alfasoftware.morf.sql.element.Function)
    */
   @Override
   protected String getSqlForRandomString(Function function) {
     return String.format("SUBSTRING(REPLACE(RANDOM_UUID(),'-'), 1, %s)", getSqlFrom(function.getArguments().get(0)));
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.element.WindowFunction)
-   */
-  @Override
-  protected String getSqlFrom(final WindowFunction windowFunctionField) {
-    throw new UnsupportedOperationException(this.getClass().getSimpleName()+" does not support window functions.");
   }
 
 
@@ -590,10 +581,20 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect.getDeleteLimitSuffixSql(int)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getDeleteLimitSuffix(int)
    */
   @Override
   protected Optional<String> getDeleteLimitSuffix(int limit) {
     return Optional.of("LIMIT " + limit);
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#tableNameWithSchemaName(org.alfasoftware.morf.sql.element.TableReference)
+   */
+  @Override
+  protected String tableNameWithSchemaName(TableReference tableRef) {
+    if (!StringUtils.isEmpty(tableRef.getDblink())) throw new IllegalStateException("DB Links are not supported in the H2 dialect. Found dbLink=" + tableRef.getDblink() + " for tableNameWithSchemaName=" + super.tableNameWithSchemaName(tableRef));
+    return super.tableNameWithSchemaName(tableRef);
   }
 }

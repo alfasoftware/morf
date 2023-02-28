@@ -42,8 +42,10 @@ import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.DirectPathQueryHint;
+import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.Hint;
 import org.alfasoftware.morf.sql.InsertStatement;
+import org.alfasoftware.morf.sql.NoDirectPathQueryHint;
 import org.alfasoftware.morf.sql.OptimiseForRowCount;
 import org.alfasoftware.morf.sql.OracleCustomHint;
 import org.alfasoftware.morf.sql.ParallelQueryHint;
@@ -55,12 +57,14 @@ import org.alfasoftware.morf.sql.UseImplicitJoinOrder;
 import org.alfasoftware.morf.sql.UseIndex;
 import org.alfasoftware.morf.sql.UseParallelDml;
 import org.alfasoftware.morf.sql.element.AliasedField;
-import org.alfasoftware.morf.sql.element.Cast;
+import org.alfasoftware.morf.sql.element.AllowParallelDmlHint;
 import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
+import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.SqlParameter;
+import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -231,7 +235,12 @@ class OracleDialect extends SqlDialect {
    */
   private String primaryKeyConstraint(String tableName, List<String> newPrimaryKeyColumns) {
     // truncate down to 27, since we add _PK to the end
-    return "CONSTRAINT "+ primaryKeyConstraintName(tableName) + " PRIMARY KEY (" + Joiner.on(", ").join(newPrimaryKeyColumns) + ")";
+    return "CONSTRAINT " + primaryKeyConstraintName(tableName)
+            + " PRIMARY KEY (" + Joiner.on(", ").join(newPrimaryKeyColumns) + ")"
+            + " USING INDEX (CREATE UNIQUE INDEX " + schemaNamePrefix() + primaryKeyConstraintName(tableName)
+            + " ON "
+            + schemaNamePrefix() + truncatedTableName(tableName)
+            + " (" + Joiner.on(", ").join(newPrimaryKeyColumns) + "))";
   }
 
 
@@ -418,7 +427,7 @@ class OracleDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#postInsertWithPresetAutonumStatements(org.alfasoftware.morf.metadata.Table, boolean)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#postInsertWithPresetAutonumStatements(org.alfasoftware.morf.metadata.Table, SqlScriptExecutor, Connection, boolean)
    */
   @Override
   public void postInsertWithPresetAutonumStatements(Table table, SqlScriptExecutor executor,Connection connection, boolean insertingUnderAutonumLimit) {
@@ -503,7 +512,7 @@ class OracleDialect extends SqlDialect {
   /**
    * Turn a string value into an SQL string literal which has that value.
    * <p>
-   * We use {@linkplain StringUtils#isEmpty(String)} because we want to
+   * We use {@linkplain StringUtils#isEmpty(CharSequence)} because we want to
    * differentiate between a single space and an empty string.
    * </p>
    * <p>
@@ -751,7 +760,7 @@ class OracleDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#changePrimaryKeyColumns(java.lang.String, java.util.List, java.util.List)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#changePrimaryKeyColumns(Table, java.util.List, java.util.List)
    */
   @Override
   public Collection<String> changePrimaryKeyColumns(Table table, List<String> oldPrimaryKeyColumns, List<String> newPrimaryKeyColumns) {
@@ -1282,7 +1291,10 @@ class OracleDialect extends SqlDialect {
       if (hint instanceof ParallelQueryHint) {
         builder.append(" PARALLEL");
         ParallelQueryHint parallelQueryHint = (ParallelQueryHint) hint;
-        builder.append(parallelQueryHint.getDegreeOfParallelism().map(d -> " " + d).orElse(""));
+        builder.append(parallelQueryHint.getDegreeOfParallelism().map(d -> "(" + d + ")").orElse(""));
+      }
+      if (hint instanceof AllowParallelDmlHint) {
+        builder.append(" ENABLE_PARALLEL_DML");
       }
       if (hint instanceof OracleCustomHint) {
         builder.append(" ")
@@ -1303,12 +1315,19 @@ class OracleDialect extends SqlDialect {
    */
   @Override
   protected String updateStatementPreTableDirectives(UpdateStatement updateStatement) {
+    if(updateStatement.getHints().isEmpty()) {
+      return "";
+    }
+    StringBuilder builder = new StringBuilder("/*+");
     for (Hint hint : updateStatement.getHints()) {
       if (hint instanceof UseParallelDml) {
-        return "/*+ ENABLE_PARALLEL_DML PARALLEL */ "; // only the single hint supported so return immediately
+        builder.append(" ENABLE_PARALLEL_DML PARALLEL");
+        builder.append(((UseParallelDml) hint).getDegreeOfParallelism()
+                .map(d -> "(" + d + ")")
+                .orElse(""));
       }
     }
-    return "";
+    return builder.append(" */ ").toString();
   }
 
 
@@ -1342,15 +1361,6 @@ class OracleDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#supportsWindowFunctions()
-   */
-  @Override
-  public boolean supportsWindowFunctions() {
-    return true;
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForLastDayOfMonth
    */
   @Override
@@ -1360,7 +1370,7 @@ class OracleDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect.getSqlForAnalyseTable(Table)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForAnalyseTable(Table)
    */
   @Override
   public Collection<String> getSqlForAnalyseTable(Table table) {
@@ -1403,8 +1413,41 @@ class OracleDialect extends SqlDialect {
       if (hint instanceof DirectPathQueryHint) {
         builder.append(" APPEND");
       }
+      else if(hint instanceof NoDirectPathQueryHint) {
+        builder.append(" NOAPPEND");
+      }
+      if(hint instanceof UseParallelDml) {
+        builder.append(" ENABLE_PARALLEL_DML PARALLEL");
+        builder.append(((UseParallelDml) hint).getDegreeOfParallelism()
+                .map(d -> "(" + d + ")")
+                .orElse(""));
+      }
     }
 
     return builder.append(" */ ").toString();
   }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#tableNameWithSchemaName(org.alfasoftware.morf.sql.element.TableReference)
+   */
+  @Override
+  protected String tableNameWithSchemaName(TableReference tableRef) {
+    if (StringUtils.isEmpty(tableRef.getDblink())) {
+      return super.tableNameWithSchemaName(tableRef);
+    } else {
+      return super.tableNameWithSchemaName(tableRef) + "@" + tableRef.getDblink();
+    }
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.ExceptSetOperator)
+   */
+  @Override
+  protected String getSqlFrom(ExceptSetOperator operator) {
+    return String.format(" MINUS %s", // MINUS has been supported by Oracle for a long time and the EXCEPT support was added in 21c
+        getSqlFrom(operator.getSelectStatement()));
+  }
+
 }

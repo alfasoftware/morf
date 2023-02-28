@@ -32,7 +32,7 @@ import org.alfasoftware.morf.util.ObjectTreeTraverser;
  *
  * @author Copyright (c) Alfa Financial Software 2012
  */
-public class UnionSetOperator implements SetOperator {
+public class UnionSetOperator extends AbstractSetOperator implements SetOperator {
 
   /**
    * Identifies the duplicate row elimination strategy for UNION statements.
@@ -87,38 +87,6 @@ public class UnionSetOperator implements SetOperator {
   private UnionSetOperator(UnionStrategy unionStrategy, SelectStatement childSelect) {
     this.selectStatement = childSelect;
     this.unionStrategy = unionStrategy;
-  }
-
-
-  /**
-   * Don't allow {@code null} references to {@linkplain SelectStatement}.
-   *
-   * @param parentSelect the select statement to be validated.
-   * @param childSelect the select statement to be validated.
-   */
-  private void validateNotNull(SelectStatement parentSelect, SelectStatement childSelect) throws IllegalArgumentException {
-    if (parentSelect == null || childSelect == null) {
-      throw new IllegalArgumentException("Select statements cannot be null");
-    }
-  }
-
-
-  /**
-   * Don't allow {@code childSelect} have a different number of fields from
-   * {@code parentSelect}.
-   * <p>
-   * The column names from the parent select statement are used as the column
-   * names for the results returned. Selected columns listed in corresponding
-   * positions of each SELECT statement should have the same data type.
-   * </p>
-   *
-   * @param parentSelect the select statement to be compared against.
-   * @param childSelect the select statement to be validated.
-   */
-  private void validateFields(SelectStatement parentSelect, SelectStatement childSelect) throws IllegalArgumentException {
-    if (parentSelect.getFields().size() != childSelect.getFields().size()) {
-      throw new IllegalArgumentException("Union statement requires selecting the same number of fields on both select statements");
-    }
   }
 
 
@@ -212,6 +180,9 @@ public class UnionSetOperator implements SetOperator {
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.sql.SchemaAndDataChangeVisitable#accept(org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor)
+   */
   @Override
   public void accept(SchemaAndDataChangeVisitor visitor) {
     visitor.visit(this);

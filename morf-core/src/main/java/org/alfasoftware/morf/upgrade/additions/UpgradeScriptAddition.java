@@ -16,6 +16,8 @@
 package org.alfasoftware.morf.upgrade.additions;
 
 
+import org.alfasoftware.morf.jdbc.ConnectionResources;
+
 /**
  * Implementations provide SQL to be appended to the upgrade.
  *
@@ -29,8 +31,8 @@ public interface UpgradeScriptAddition {
 
   /**
    * Returns an ordered series of SQL statements to be appended to the upgrade SQL.
-   *
+   * @param connectionResources the connection details
    * @return SQL statements.
    */
-  public Iterable<String> sql();
+  Iterable<String> sql(ConnectionResources connectionResources);
 }

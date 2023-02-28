@@ -39,6 +39,7 @@ import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.Hint;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
@@ -81,19 +82,6 @@ class NuoDBDialect extends SqlDialect {
    */
   public NuoDBDialect(String schemaName) {
     super(schemaName);
-  }
-
-
-  @Override
-  protected String schemaNamePrefix(TableReference tableRef) {
-    if (StringUtils.isEmpty(tableRef.getSchemaName())) {
-      if (TEMPORARY_TABLES.contains(tableRef.getName())) {
-        return "";
-      }
-      return schemaNamePrefix();
-    } else {
-      return tableRef.getSchemaName().toUpperCase() + ".";
-    }
   }
 
 
@@ -791,8 +779,7 @@ class NuoDBDialect extends SqlDialect {
     // Add the preamble
     StringBuilder sqlBuilder = new StringBuilder("INSERT INTO ");
 
-    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-    sqlBuilder.append(destinationTableName);
+    sqlBuilder.append(tableNameWithSchemaName(statement.getTable()));
     sqlBuilder.append("(");
     Iterable<String> intoFields = Iterables.transform(statement.getSelectStatement().getFields(), AliasedField::getImpliedName);
     sqlBuilder.append(Joiner.on(", ").join(intoFields));
@@ -846,15 +833,6 @@ class NuoDBDialect extends SqlDialect {
   @Override
   protected String likeEscapeSuffix() {
     return ""; // the escape character is \ by default. We don't need to set it, and setting it appears to be challenging anyway as it is a general escape char.
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#supportsWindowFunctions()
-   */
-  @Override
-  public boolean supportsWindowFunctions() {
-    return true;
   }
 
 
@@ -935,5 +913,31 @@ class NuoDBDialect extends SqlDialect {
   @Override
   protected Optional<String> getDeleteLimitSuffix(int limit) {
     return Optional.of("LIMIT " + limit);
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#tableNameWithSchemaName(org.alfasoftware.morf.sql.element.TableReference)
+   */
+  @Override
+  protected String tableNameWithSchemaName(TableReference tableRef) {
+    if (!StringUtils.isEmpty(tableRef.getDblink())) throw new IllegalStateException("DB Links are not supported in the Nuo dialect. Found dbLink=" + tableRef.getDblink() + " for tableNameWithSchemaName=" + super.tableNameWithSchemaName(tableRef));
+    if (StringUtils.isEmpty(tableRef.getSchemaName())) {
+      if (TEMPORARY_TABLES.contains(tableRef.getName())) {
+        return tableRef.getName();
+      }
+      return schemaNamePrefix() + tableRef.getName();
+    } else {
+      return tableRef.getSchemaName().toUpperCase() + "." + tableRef.getName();
+    }
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.ExceptSetOperator)
+   */
+  @Override
+  protected String getSqlFrom(ExceptSetOperator operator) {
+    throw new IllegalStateException("EXCEPT set operator is not supported in the Nuo dialect");
   }
 }

@@ -81,6 +81,7 @@ import static org.alfasoftware.morf.sql.element.Function.random;
 import static org.alfasoftware.morf.sql.element.Function.randomString;
 import static org.alfasoftware.morf.sql.element.Function.rightTrim;
 import static org.alfasoftware.morf.sql.element.Function.round;
+import static org.alfasoftware.morf.sql.element.Function.rowNumber;
 import static org.alfasoftware.morf.sql.element.Function.some;
 import static org.alfasoftware.morf.sql.element.Function.substring;
 import static org.alfasoftware.morf.sql.element.Function.sum;
@@ -97,7 +98,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -150,6 +150,7 @@ import org.alfasoftware.morf.sql.element.NullFieldLiteral;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.sql.element.WhenCondition;
+import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.alfasoftware.morf.upgrade.AddColumn;
 import org.alfasoftware.morf.upgrade.ChangeColumn;
 import org.alfasoftware.morf.upgrade.ChangeIndex;
@@ -216,6 +217,7 @@ public abstract class AbstractSqlDialectTest {
   private static final String FLOAT_FIELD = "floatField";
   private static final String INT_FIELD = "intField";
   private static final String STRING_FIELD = "stringField";
+  private static final String DBLINK_NAME = "MYDBLINKREF";
 
   private static final byte[] BYTE_ARRAY = new byte[] { 2, 1, (byte) 164, 3, 14, 4, 9, 0, 0, 0, 48, 111, 114, 103, 46, 105, 110, 102, 105,
     110, 105, 115, 112, 97, 110, 46, 117, 116, 105, 108, 46, 99, 111, 110, 99, 117, 114, 114, 101, 110, 116, 46, 67, 111, 110,
@@ -2661,6 +2663,12 @@ public abstract class AbstractSqlDialectTest {
   }
 
 
+  @Test(expected = IllegalArgumentException.class)
+  public void testRowNumberWithNoOrderByClause() {
+    testDialect.getSqlFrom(WindowFunction.over(rowNumber()).partitionBy(field("a")).build());
+  }
+
+
   /**
    * @return expected SQL for math operation 1
    */
@@ -3219,6 +3227,7 @@ public abstract class AbstractSqlDialectTest {
         .optimiseForRowCount(1000)
         .useImplicitJoinOrder()
         .withParallelQueryPlan()
+        .allowParallelDml()
         .withCustomHint(mock(CustomHint.class))
       )
     );
@@ -3231,6 +3240,14 @@ public abstract class AbstractSqlDialectTest {
       )
     );
     assertEquals(
+       expectedHints3a(),
+       testDialect.convertStatementToSQL(
+         update(tableRef("Foo"))
+         .set(field("b").as("a"))
+         .useParallelDml(5)
+       )
+    );
+    assertEquals(
       Lists.newArrayList(expectedHints4()),
       testDialect.convertStatementToSQL(
         insert()
@@ -3238,6 +3255,33 @@ public abstract class AbstractSqlDialectTest {
         .from(select(field("a"), field("b")).from(tableRef("Foo_1")))
         .useDirectPath()
       )
+    );
+    assertEquals(
+        Lists.newArrayList(expectedHints4a()),
+        testDialect.convertStatementToSQL(
+          insert()
+          .into(tableRef("Foo"))
+          .from(select(field("a"), field("b")).from(tableRef("Foo_1")))
+          .avoidDirectPath()
+        )
+    );
+    assertEquals(
+         Lists.newArrayList(expectedHints4b()),
+         testDialect.convertStatementToSQL(
+           insert()
+           .into(tableRef("Foo"))
+           .from(select(field("a"), field("b")).from(tableRef("Foo_1")))
+           .useParallelDml()
+         )
+    );
+    assertEquals(
+         Lists.newArrayList(expectedHints4c()),
+         testDialect.convertStatementToSQL(
+           insert()
+           .into(tableRef("Foo"))
+           .from(select(field("a"), field("b")).from(tableRef("Foo_1")))
+           .useParallelDml(5)
+         )
     );
     assertEquals(
       Lists.newArrayList(expectedHints5()),
@@ -3256,7 +3300,16 @@ public abstract class AbstractSqlDialectTest {
         .withParallelQueryPlan(5)
       )
     );
-
+    assertEquals(
+      expectedHints6a(),
+      testDialect.convertStatementToSQL(
+        select(field("a"), field("b"))
+        .from(tableRef("Foo"))
+        .orderBy(field("a"))
+        .withParallelQueryPlan(5)
+        .allowParallelDml()
+      )
+    );
     assertEquals(
       expectedHints7(),
       testDialect.convertStatementToSQL(
@@ -4523,6 +4576,74 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * Tests the generation of SQL string for a query with EXCEPT operator.
+   */
+  @Test
+  public void testSelectWithExceptStatement() {
+    assumeTrue("for dialects with no EXCEPT operation support the test will be skipped.", expectedSelectWithExcept() != null);
+
+    SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD))
+      .from(new TableReference(TEST_TABLE))
+      .except(new SelectStatement(new FieldReference(STRING_FIELD)).from(new TableReference(OTHER_TABLE)))
+      .orderBy(new FieldReference(STRING_FIELD));
+    String result = testDialect.convertStatementToSQL(stmt);
+
+    assertEquals("Select script should match expected", expectedSelectWithExcept(), result);
+  }
+
+
+  /**
+   * Tests the generation of SQL string for a query with a DB-link.
+   */
+  @Test
+  public void testSelectWithDbLink() {
+    assumeTrue("for dialects with no EXCEPT operation support the test will be skipped.", expectedSelectWithDbLink() != null);
+
+    SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD))
+        .from(new TableReference(null, TEST_TABLE, DBLINK_NAME));
+    String result = testDialect.convertStatementToSQL(stmt);
+
+    assertEquals("Select script should match expected", expectedSelectWithDbLink(), result);
+  }
+
+
+  /**
+   * Tests the generation of SQL string for a query with EXCEPT operator where a
+   * former select uses DB-link.
+   */
+  @Test
+  public void testSelectWithExceptStatementsWithDbLinkFormer() {
+    assumeTrue("for dialects with no EXCEPT operation support the test will be skipped.", expectedSelectWithExceptAndDbLinkFormer() != null);
+
+    SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD))
+        .from(new TableReference(null, TEST_TABLE, DBLINK_NAME))
+        .except(new SelectStatement(new FieldReference(STRING_FIELD)).from(new TableReference(null, OTHER_TABLE)))
+        .orderBy(new FieldReference(STRING_FIELD));
+    String result = testDialect.convertStatementToSQL(stmt);
+
+    assertEquals("Select script should match expected", expectedSelectWithExceptAndDbLinkFormer(), result);
+  }
+
+
+  /**
+   * Tests the generation of SQL string for a query with EXCEPT operator where a
+   * latter select uses DB-link.
+   */
+  @Test
+  public void testSelectWithExceptStatementsWithDbLinkLatter() {
+    assumeTrue("for dialects with no EXCEPT operation support the test will be skipped.", expectedSelectWithExceptAndDbLinkLatter() != null);
+
+    SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD))
+        .from(new TableReference(null, TEST_TABLE))
+        .except(new SelectStatement(new FieldReference(STRING_FIELD)).from(new TableReference(null, OTHER_TABLE, DBLINK_NAME)))
+        .orderBy(new FieldReference(STRING_FIELD));
+    String result = testDialect.convertStatementToSQL(stmt);
+
+    assertEquals("Select script should match expected", expectedSelectWithExceptAndDbLinkLatter(), result);
+  }
+
+
+  /**
    * Tests a join with no ON criteria.
    */
   @Test
@@ -5180,6 +5301,36 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * @return The expected SQL for selecting with an EXCEPT statement, or
+   *         {@code null} if EXCEPT operation is unsupported.
+   */
+  protected abstract String expectedSelectWithExcept();
+
+
+  /**
+   * @return The expected SQL for selecting with a DB Link or {@code null} if DB
+   *         Link is unsupported.
+   */
+  protected abstract String expectedSelectWithDbLink();
+
+
+  /**
+   * @return The expected SQL for selecting with an EXCEPT statement and DB Link
+   *         (for the former statement), or {@code null} if DB-Link or EXCEPT
+   *         operation is unsupported.
+   */
+  protected abstract String expectedSelectWithExceptAndDbLinkFormer();
+
+
+  /**
+   * @return The expected SQL for selecting with an EXCEPT statement and DB Link
+   *         (for the latter statement), or {@code null} if DB-Link or EXCEPT
+   *         operation is unsupported.
+   */
+  protected abstract String expectedSelectWithExceptAndDbLinkLatter();
+
+
+  /**
    * @return The expected SQL for selecting with a substring statement.
    */
   protected abstract String expectedSubstring();
@@ -5456,9 +5607,41 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * @return The expected SQL for the {@link UpdateStatement#useParallelDml(int)} directive.
+   */
+  protected String expectedHints3a() {
+    return "UPDATE " + tableName("Foo") + " SET a = b";
+  }
+
+
+  /**
    * @return The expected SQL for the {@link InsertStatement#useDirectPath()} directive.
    */
   protected String expectedHints4() {
+    return  "INSERT INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
+  }
+
+
+  /**
+   * @return The expected SQL for the {@link InsertStatement#avoidDirectPath()} directive.
+   */
+  protected String expectedHints4a() {
+    return  "INSERT INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
+  }
+
+
+  /**
+   * @return The expected SQL for the {@link InsertStatement#useParallelDml()} ()} directive.
+   */
+  protected String expectedHints4b() {
+    return  "INSERT INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
+  }
+
+
+  /**
+   * @return The expected SQL for the {@link InsertStatement#useParallelDml(int)} directive.
+   */
+  protected String expectedHints4c() {
     return  "INSERT INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
   }
 
@@ -5475,6 +5658,14 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL for the {@link SelectStatement#withParallelQueryPlan(int)} directive.
    */
   protected String expectedHints6() {
+    return "SELECT a, b FROM " + tableName("Foo") + " ORDER BY a";
+  }
+
+
+  /**
+   * @return The expected SQL for the {@link SelectStatement#withParallelQueryPlan(int)} and {@link SelectStatement#allowParallelDml()} directive.
+   */
+  protected String expectedHints6a() {
     return "SELECT a, b FROM " + tableName("Foo") + " ORDER BY a";
   }
 
@@ -5594,15 +5785,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   @Test
-  public void testClaimsSupportsWindowFunctions() {
-    assertEquals("Mismatch in expected value of .supportsWindowFunctions()",supportsWindowFunctions(),testDialect.supportsWindowFunctions());
-  }
-
-
-  @Test
   public void testWindowFunctions() {
-    assumeTrue(supportsWindowFunctions());
-
     List<AliasedField> windowFunctions = windowFunctions().toList();
     List<String> expectedSql = expectedWindowFunctionStatements();
     assertEquals("Incorrect test setup, the expected number of window function statements did not match the window function test cases",windowFunctions.size(),expectedSql.size());
@@ -5611,20 +5794,6 @@ public abstract class AbstractSqlDialectTest {
       assertEquals(expectedSql.get(i),testDialect.getSqlFrom(windowFunctions.get(i)));
     }
   }
-
-
-  @Test(expected = UnsupportedOperationException.class)
-  public void testThrowsExceptionForUnsupportedWindowFunction() {
-    assumeFalse(supportsWindowFunctions());
-
-    testDialect.getSqlFrom(windowFunctions().first().get());
-  }
-
-
-  /**
-   * @return true if the dialect under test should claim to support window functions.
-   */
-  protected abstract boolean supportsWindowFunctions();
 
 
   /**
@@ -5640,6 +5809,8 @@ public abstract class AbstractSqlDialectTest {
       "MAX(field1) OVER (PARTITION BY field2, field3 ORDER BY field4"+paddedNullOrder+")",
       "MIN(field1) OVER (PARTITION BY field2, field3 ORDER BY field4 DESC"+paddedNullOrderDesc+", field5"+paddedNullOrder+")",
       "MIN(field1) OVER ( ORDER BY field2"+paddedNullOrder+")",
+      "ROW_NUMBER() OVER (PARTITION BY field2, field3 ORDER BY field4"+paddedNullOrder+")",
+      "ROW_NUMBER() OVER ( ORDER BY field2"+paddedNullOrder+")",
       "(SELECT MIN(field1) OVER ( ORDER BY field2"+paddedNullOrder+") AS window FROM "+tableName("srcTable")+")"
     );
   }
@@ -5656,6 +5827,8 @@ public abstract class AbstractSqlDialectTest {
       windowFunction(max(field("field1"))).partitionBy(field("field2"),field("field3")).orderBy(field("field4").asc()).build(),
       windowFunction(min(field("field1"))).partitionBy(field("field2"),field("field3")).orderBy(field("field4").desc(),field("field5")).build(),
       windowFunction(min(field("field1"))).orderBy(field("field2")).build(),
+      windowFunction(rowNumber()).partitionBy(field("field2"),field("field3")).orderBy(field("field4")).build(),
+      windowFunction(rowNumber()).orderBy(field("field2")).build(),
       select( windowFunction(min(field("field1"))).orderBy(field("field2")).build().as("window")).from(tableRef("srcTable")).asField()
       ));
   }

@@ -50,7 +50,7 @@ import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
-import org.alfasoftware.morf.sql.element.WindowFunction;
+import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.LocalDate;
 
@@ -445,8 +445,7 @@ class SqlServerDialect extends SqlDialect {
     sqlBuilder.append("UPDATE ");
 
     // Now add the table to update
-    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-    sqlBuilder.append(destinationTableName);
+    sqlBuilder.append(tableNameWithSchemaName(statement.getTable()));
 
     // Put in the standard fields
     sqlBuilder.append(getUpdateStatementSetFieldSql(statement.getFields()));
@@ -454,8 +453,7 @@ class SqlServerDialect extends SqlDialect {
     // Add a FROM clause if the table is aliased
     if (!statement.getTable().getAlias().equals("")) {
       sqlBuilder.append(" FROM ");
-      sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-      sqlBuilder.append(destinationTableName);
+      sqlBuilder.append(tableNameWithSchemaName(statement.getTable()));
       sqlBuilder.append(String.format(" %s", statement.getTable().getAlias()));
     }
 
@@ -1052,7 +1050,7 @@ class SqlServerDialect extends SqlDialect {
         UseIndex useIndex = (UseIndex) hint;
         hintsBuilder.append("TABLE HINT(")
           // Includes schema name - see https://msdn.microsoft.com/en-us/library/ms181714.aspx
-          .append(StringUtils.isEmpty(useIndex.getTable().getAlias()) ? schemaNamePrefix(useIndex.getTable()) + useIndex.getTable().getName() : useIndex.getTable().getAlias())
+          .append(StringUtils.isEmpty(useIndex.getTable().getAlias()) ? tableNameWithSchemaName(useIndex.getTable()) : useIndex.getTable().getAlias())
           .append(", INDEX(" + useIndex.getIndexName() + ")")
           .append(")");
       }
@@ -1081,24 +1079,6 @@ class SqlServerDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#supportsWindowFunctions()
-   */
-  @Override
-  public boolean supportsWindowFunctions() {
-    return false; // SqlServer does not have full support for window functions before 2012
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.element.WindowFunction)
-   */
-  @Override
-  protected String getSqlFrom(final WindowFunction windowFunctionField) {
-    throw new UnsupportedOperationException(this.getClass().getSimpleName()+" does not support window functions.");
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForLastDayOfMonth
    */
   @Override
@@ -1113,5 +1093,15 @@ class SqlServerDialect extends SqlDialect {
   @Override
   protected Optional<String> getDeleteLimitPreFromClause(int limit) {
     return Optional.of("TOP (" + limit + ")");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#tableNameWithSchemaName(org.alfasoftware.morf.sql.element.TableReference)
+   */
+  @Override
+  protected String tableNameWithSchemaName(TableReference tableRef) {
+    if (!StringUtils.isEmpty(tableRef.getDblink())) throw new IllegalStateException("DB Links are not supported in the Sql Server dialect. Found dbLink=" + tableRef.getDblink() + " for tableNameWithSchemaName=" + super.tableNameWithSchemaName(tableRef));
+    return super.tableNameWithSchemaName(tableRef);
   }
 }
