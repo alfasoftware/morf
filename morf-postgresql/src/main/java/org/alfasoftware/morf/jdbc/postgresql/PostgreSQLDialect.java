@@ -777,6 +777,8 @@ class PostgreSQLDialect extends SqlDialect {
   private Iterable<String> healIndexes(Collection<AdditionalIndexInfo> additionalConstraintIndexInfo, Table table, Index index) {
     return new PostgreSQLUniqueIndexAdditionalDeploymentStatements(table, index)
             .healIndexStatements(additionalConstraintIndexInfo, schemaNamePrefix(table) + table.getName());
+  }
+  
 
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#tableNameWithSchemaName(org.alfasoftware.morf.sql.element.TableReference)
