@@ -776,12 +776,20 @@ public class TestUpgrade {
 
 
   /**
+   * Test that if there changes in progress - which might be detected early in the upgrade process
+   */
+  @Test
+  public void testInProgressImmediatelyUpgrade() throws SQLException {
+    assertInProgressUpgrade(UpgradeStatus.IN_PROGRESS, UpgradeStatus.IN_PROGRESS, UpgradeStatus.IN_PROGRESS);
+  }
+
+  /**
    * Test that if there changes in progress - which might be detected through no
    * upgrade path being found - an "in progress" path is returned.
    */
   @Test
   public void testInProgressUpgrade() throws SQLException {
-    assertInProgressUpgrade(UpgradeStatus.IN_PROGRESS);
+    assertInProgressUpgrade(NONE, NONE, UpgradeStatus.IN_PROGRESS);
   }
 
 
@@ -790,7 +798,7 @@ public class TestUpgrade {
    */
   @Test
   public void testCompletedUpgrade() throws SQLException {
-    assertInProgressUpgrade(UpgradeStatus.COMPLETED);
+    assertInProgressUpgrade(UpgradeStatus.COMPLETED, UpgradeStatus.COMPLETED, UpgradeStatus.COMPLETED);
   }
 
 
@@ -800,7 +808,7 @@ public class TestUpgrade {
    */
   @Test(expected = UpgradePathFinder.NoUpgradePathExistsException.class)
   public void testNoUpgradePath() throws SQLException {
-    assertInProgressUpgrade(NONE);
+    assertInProgressUpgrade(NONE, NONE, NONE);
   }
 
 
@@ -808,10 +816,10 @@ public class TestUpgrade {
    * Allow verification of an in-progress upgrade. The {@link UpgradePath}
    * should report no steps to apply and that it is in-progress.
    *
-   * @param currentStatus Status to be represented.
+   * @param status1 Status to be represented.
    * @throws SQLException if something goes wrong.
    */
-  private void assertInProgressUpgrade(UpgradeStatus currentStatus) throws SQLException {
+  private void assertInProgressUpgrade(UpgradeStatus status1, UpgradeStatus status2, UpgradeStatus status3) throws SQLException {
     Schema sourceSchema = schema(
       schema(upgradeAudit(), deployedViews(), originalCar())
     );
@@ -835,7 +843,7 @@ public class TestUpgrade {
                                               withResultSet("SELECT name, hash FROM DeployedViews", viewResultSet).
                                               create();
     UpgradeStatusTableService upgradeStatusTableService = mock(UpgradeStatusTableService.class);
-    when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(currentStatus);
+    when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(status1, status2, status3);
 
     UpgradePath path = new Upgrade(connection, upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), viewDeploymentValidator, graphBasedUpgradeScriptGeneratorFactory).findPath(targetSchema, upgradeSteps, new HashSet<String>(), connection.getDataSource());
     assertFalse("Steps to apply", path.hasStepsToApply());
