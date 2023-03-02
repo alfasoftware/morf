@@ -72,6 +72,8 @@ import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.alfasoftware.morf.upgrade.UpgradeStatus.COMPLETED;
+import static org.alfasoftware.morf.upgrade.UpgradeStatus.IN_PROGRESS;
 import static org.alfasoftware.morf.upgrade.UpgradeStatus.NONE;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.Assert.assertEquals;
@@ -779,9 +781,19 @@ public class TestUpgrade {
    * Test that if there changes in progress - which might be detected early in the upgrade process
    */
   @Test
-  public void testInProgressImmediatelyUpgrade() throws SQLException {
-    assertInProgressUpgrade(UpgradeStatus.IN_PROGRESS, UpgradeStatus.IN_PROGRESS, UpgradeStatus.IN_PROGRESS);
+  public void testInProgressEarlyOne() throws SQLException {
+    assertInProgressUpgrade(IN_PROGRESS, IN_PROGRESS, IN_PROGRESS);
   }
+
+
+  /**
+   * Test that if there changes in progress - which might be detected early in the upgrade process
+   */
+  @Test
+  public void testInProgressEarlyTwo() throws SQLException {
+    assertInProgressUpgrade(NONE, IN_PROGRESS, IN_PROGRESS);
+  }
+
 
   /**
    * Test that if there changes in progress - which might be detected through no
@@ -789,7 +801,7 @@ public class TestUpgrade {
    */
   @Test
   public void testInProgressUpgrade() throws SQLException {
-    assertInProgressUpgrade(NONE, NONE, UpgradeStatus.IN_PROGRESS);
+    assertInProgressUpgrade(NONE, NONE, IN_PROGRESS);
   }
 
 
@@ -798,7 +810,7 @@ public class TestUpgrade {
    */
   @Test
   public void testCompletedUpgrade() throws SQLException {
-    assertInProgressUpgrade(UpgradeStatus.COMPLETED, UpgradeStatus.COMPLETED, UpgradeStatus.COMPLETED);
+    assertInProgressUpgrade(COMPLETED, COMPLETED, COMPLETED);
   }
 
 
@@ -817,6 +829,8 @@ public class TestUpgrade {
    * should report no steps to apply and that it is in-progress.
    *
    * @param status1 Status to be represented.
+   * @param status2 Status to be represented.
+   * @param status3 Status to be represented.
    * @throws SQLException if something goes wrong.
    */
   private void assertInProgressUpgrade(UpgradeStatus status1, UpgradeStatus status2, UpgradeStatus status3) throws SQLException {

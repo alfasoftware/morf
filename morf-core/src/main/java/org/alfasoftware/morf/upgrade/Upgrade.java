@@ -51,6 +51,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.copy;
 import static org.alfasoftware.morf.sql.SelectStatement.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.element.Function.count;
+import static org.alfasoftware.morf.upgrade.UpgradeStatus.NONE;
 
 /**
  * Entry point for upgrade processing.
@@ -168,7 +169,7 @@ public class Upgrade {
     long upgradeAuditCount = getUpgradeAuditRowCount(upgradeAuditRowProcessor); //fetch a number of upgrade steps applied previously to do optimistic locking check later
     //Return an upgradePath with the current upgrade status if one is in progress
     UpgradeStatus status = upgradeStatusTableService.getStatus(Optional.of(dataSource));
-    if (status != UpgradeStatus.NONE) {
+    if (status != NONE) {
       return new UpgradePath(status);
     }
 
@@ -194,7 +195,7 @@ public class Upgrade {
     UpgradePathFinder pathFinder = new UpgradePathFinder(upgradeSteps, existingTableState.loadAppliedStepUUIDs());
     SchemaChangeSequence schemaChangeSequence;
     status = upgradeStatusTableService.getStatus(Optional.of(dataSource));
-    if (status != UpgradeStatus.NONE) {
+    if (status != NONE) {
       return new UpgradePath(status);
     }
     try {
@@ -202,7 +203,7 @@ public class Upgrade {
     } catch (NoUpgradePathExistsException e) {
       log.debug("No upgrade path found - checking upgrade status", e);
       status = upgradeStatusTableService.getStatus(Optional.of(dataSource));
-      if (status != UpgradeStatus.NONE) {
+      if (status != NONE) {
         log.info("Schema differences found, but upgrade in progress - no action required until upgrade is complete");
         return new UpgradePath(status);
       }
