@@ -96,6 +96,8 @@ class OracleDialect extends SqlDialect {
    */
   public static final String NULLS_LAST = "NULLS LAST";
 
+  private static final String CANNOT_CONVERT_NULL_STATEMENT_TO_SQL  =  "Cannot convert a null statement to SQL";
+
   /**
    * Database platforms may order nulls first or last. My SQL always orders nulls first, Oracle defaults to ordering nulls last.
    * Fortunately on Oracle it is possible to specify that nulls should be ordered first.
@@ -1109,7 +1111,7 @@ class OracleDialect extends SqlDialect {
     result.add(new StringBuilder()
         .append(createTableStatement(table, true))
         .append(" AS ")
-        .append(convertStatementToSQL(selectStatement))
+        .append(convertStatementToSQL(selectStatement, table))
         .toString()
       );
     result.add("ALTER TABLE " + schemaNamePrefix() + table.getName()  + " NOPARALLEL LOGGING");
@@ -1123,6 +1125,109 @@ class OracleDialect extends SqlDialect {
     return result.build();
   }
 
+  /**
+   * Converts a structured {@link SelectStatement} to the equivalent SQL text.
+   *
+   * @param statement the statement to convert
+   * @return a string containing the SQL to run against the database
+   */
+  public String convertStatementToSQL(SelectStatement statement, Table table) {
+    if (statement == null) {
+      throw new IllegalArgumentException(CANNOT_CONVERT_NULL_STATEMENT_TO_SQL);
+    }
+
+    return getSqlFrom(statement, table);
+  }
+
+
+  /**
+   * Convert a {@link SelectStatement} into standards compliant SQL.
+   * <p>
+   * For example, the following code:
+   * </p>
+   * <blockquote>
+   *
+   * <pre>
+   * SelectStatement stmt = new SelectStatement().from(new Table(&quot;agreement&quot;));
+   *                                                                            String result = sqlgen.getSqlFrom(stmt);
+   * </pre>
+   *
+   * </blockquote>
+   * <p>
+   * Will populate {@code result} with:
+   * </p>
+   * <blockquote>
+   *
+   * <pre>
+   *    SELECT * FROM agreement
+   * </pre>
+   *
+   * </blockquote>
+   *
+   * @param stmt the select statement to generate SQL for
+   * @return a standards compliant SQL SELECT statement
+   */
+  protected String getSqlFrom(SelectStatement stmt, Table table) {
+    StringBuilder result = new StringBuilder("SELECT ");
+
+    // Any hint directives which should be inserted before the field list
+    result.append(selectStatementPreFieldDirectives(stmt));
+
+    // Start by checking if this is a distinct call, then add the field list
+    if (stmt.isDistinct()) {
+      result.append("DISTINCT ");
+    }
+    if (stmt.getFields().isEmpty()) {
+      result.append("*");
+    } else {
+      boolean firstField = true;
+      for (AliasedField currentField : stmt.getFields()) {
+        if (!firstField) {
+          result.append(", ");
+        }
+
+        //Append this as a Cast, Will need the definition from the table being created.
+        //result.append(getSqlFrom(currentField));
+        Column field = table.columns().stream()
+                .filter(n -> n.getName().equals(currentField.getImpliedName()))
+                .findFirst().get();
+
+        String newSelect = "CAST("
+                + field.getName()
+                + " AS "
+                + sqlRepresentationOfColumnType(field, false, false, true)
+                + ") AS "
+                + field.getName();
+
+        result.append(newSelect);
+        // Put an alias in, if requested
+        appendAlias(result, currentField);
+
+        firstField = false;
+      }
+    }
+
+    appendFrom(result, stmt);
+    appendJoins(result, stmt, innerJoinKeyword(stmt));
+    appendWhere(result, stmt);
+    appendGroupBy(result, stmt);
+    appendHaving(result, stmt);
+    appendUnionSet(result, stmt);
+    appendExceptSet(result, stmt);
+    appendOrderBy(result, stmt);
+
+    if (stmt.isForUpdate()) {
+      if (stmt.isDistinct() || !stmt.getGroupBys().isEmpty() || !stmt.getJoins().isEmpty()) {
+        throw new IllegalArgumentException("GROUP BY, JOIN or DISTINCT cannot be combined with FOR UPDATE (H2 limitations)");
+      }
+      result.append(getForUpdateSql());
+    }
+
+    // Any hint directives which should be inserted right at the end of the statement
+    result.append(selectStatementPostStatementDirectives(stmt));
+
+    return result.toString();
+  }
 
   /**
    * Builds the remaining statements (triggers, sequences and comments).
