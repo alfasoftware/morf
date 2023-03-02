@@ -795,6 +795,16 @@ public class TestUpgrade {
 
 
   /**
+   * Test that if there are no changes in progress but there is no upgrade path being found
+   * - the {@link UpgradePathFinder.NoUpgradePathExistsException} is propagated
+   */
+  @Test(expected = UpgradePathFinder.NoUpgradePathExistsException.class)
+  public void testNoUpgradePath() throws SQLException {
+    assertInProgressUpgrade(NONE);
+  }
+
+
+  /**
    * Allow verification of an in-progress upgrade. The {@link UpgradePath}
    * should report no steps to apply and that it is in-progress.
    *
