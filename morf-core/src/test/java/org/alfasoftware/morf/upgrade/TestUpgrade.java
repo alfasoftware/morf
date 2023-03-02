@@ -24,6 +24,7 @@ import com.google.common.collect.Sets;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.MockDialect;
 import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
@@ -175,6 +176,29 @@ public class TestUpgrade {
 
     assertEquals("Should be two steps.", 2, results.getSteps().size());
     assertEquals("Number of SQL statements", 18, results.getSql().size()); // Includes statements to create, truncate and then drop temp table, also 2 comments
+  }
+
+
+  /**
+   * Test for checking the number of the upgrade audit rows.
+   * @throws SQLException
+   */
+  @Test
+  public void testAuditRowCount() throws SQLException {
+    // Given
+    Table upgradeAudit = upgradeAudit();
+
+    ConnectionResources connection = mock(ConnectionResources.class, RETURNS_DEEP_STUBS);
+    when(connection.sqlDialect().convertStatementToSQL(any(SelectStatement.class))).thenReturn("SELECT COUNT(UpgradeAudit.upgradeUUID) FROM UpgradeAudit");
+    SqlScriptExecutor.ResultSetProcessor<Long> upgradeRowProcessor = mock(SqlScriptExecutor.ResultSetProcessor.class);
+
+    // When
+    new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(connection), graphBasedUpgradeScriptGeneratorFactory, viewChangesDeploymentHelperFactory(connection), viewDeploymentValidatorFactory())
+            .create(connection)
+            .getUpgradeAuditRowCount(upgradeRowProcessor);
+
+    // Then
+    verify(upgradeRowProcessor).process(any(ResultSet.class));
   }
 
 
