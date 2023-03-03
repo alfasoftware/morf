@@ -145,7 +145,7 @@ public class OracleMetaDataProvider implements Schema {
    * @see <a href="http://download.oracle.com/docs/cd/B19306_01/server.102/b14237/statviews_2094.htm">ALL_TAB_COLUMNS specification</a>
    */
   private void readTableNames() {
-    if (log.isDebugEnabled()) log.debug("Starting read of table definitions");
+    log.info("Starting read of table definitions");
 
     long start = System.currentTimeMillis();
 
@@ -534,7 +534,7 @@ public class OracleMetaDataProvider implements Schema {
    * @see <a href="http://docs.oracle.com/cd/B19306_01/server.102/b14237/statviews_2117.htm">ALL_VIEWS specification</a>
    */
   private void readViewMap() {
-    if (log.isDebugEnabled()) log.debug("Starting read of view definitions");
+    log.info("Starting read of view definitions");
 
     long start = System.currentTimeMillis();
 
@@ -590,6 +590,9 @@ public class OracleMetaDataProvider implements Schema {
    * @return A map of table name to primary key(s).
    */
   private Map<String, List<String>> readTableKeys() {
+    log.info("Starting read of key definitions");
+    long start = System.currentTimeMillis();
+
     final Map<String, List<String>> primaryKeys = new HashMap<>();
     final StringBuilder primaryKeysWithWrongIndex = new StringBuilder();
 
@@ -623,6 +626,9 @@ public class OracleMetaDataProvider implements Schema {
     if (primaryKeysWithWrongIndex.length() > 0) {
       throw new RuntimeException(primaryKeysWithWrongIndex.toString());
     }
+
+    long end = System.currentTimeMillis();
+    log.info(String.format("Read key metadata in %dms; %d tables", end - start, primaryKeys.size()));
 
     return primaryKeys;
   }
