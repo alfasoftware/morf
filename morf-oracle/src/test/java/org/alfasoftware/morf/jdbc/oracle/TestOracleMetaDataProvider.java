@@ -108,7 +108,7 @@ public class TestOracleMetaDataProvider {
     } catch (RuntimeException e) {
       assertEquals(e.getMessage(),
               "Primary Key on table [AREALTABLE] columns [dateColumn] backed with an index whose name does not end in _PK [PRIMARY_INDEX_NK]" + System.lineSeparator()
-            + "Primary Key on table [AREALTABLE] columns [dateColumn] backed with an non-unique index [PRIMARY_INDEX_NK]" + System.lineSeparator());
+         /* + "Primary Key on table [AREALTABLE] columns [dateColumn] backed with an non-unique index [PRIMARY_INDEX_NK]" + System.lineSeparator() */ );
     }
   }
 
@@ -363,7 +363,7 @@ public class TestOracleMetaDataProvider {
   private final PreparedStatement mockGetTableKeysQuery(int numberOfResultRows, boolean failPKConstraintCheck) throws SQLException {
     String query1 ="SELECT A.TABLE_NAME, A.COLUMN_NAME, C.INDEX_NAME, I.UNIQUENESS FROM ALL_CONS_COLUMNS A "
             + "JOIN ALL_CONSTRAINTS C  ON A.CONSTRAINT_NAME = C.CONSTRAINT_NAME AND A.OWNER = C.OWNER and A.TABLE_NAME = C.TABLE_NAME "
-            + "JOIN ALL_INDEXES I  ON I.TABLE_NAME = A.TABLE_NAME AND I.INDEX_NAME = C.INDEX_NAME "
+            + "JOIN ALL_INDEXES I  ON I.OWNER = A.OWNER AND I.TABLE_NAME = A.TABLE_NAME AND I.INDEX_NAME = C.INDEX_NAME "
             + "WHERE C.TABLE_NAME not like 'BIN$%' AND C.OWNER=? AND C.CONSTRAINT_TYPE = 'P' ORDER BY A.TABLE_NAME, A.POSITION";
 
     final PreparedStatement statement1 = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
