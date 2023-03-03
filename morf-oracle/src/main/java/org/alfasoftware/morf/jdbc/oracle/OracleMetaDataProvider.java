@@ -85,6 +85,12 @@ public class OracleMetaDataProvider implements Schema {
    */
   private Map<String, View> viewMap;
 
+  /**
+   * The value of whether the database was found empty.
+   */
+  private Boolean databaseIsEmpty;
+
+
   private final Connection connection;
   private final String schemaName;
 
@@ -575,7 +581,13 @@ public class OracleMetaDataProvider implements Schema {
     if (tableMap != null && !tableMap.isEmpty())
       return false;
 
-    return readTableKeys().isEmpty();
+    // the call below can be somewhat expensive, therefore we should cache the response
+    if (databaseIsEmpty != null && !databaseIsEmpty)
+      return databaseIsEmpty;
+
+    // make the potentially expensive call
+    databaseIsEmpty = readTableKeys().isEmpty();
+    return databaseIsEmpty;
   }
 
 
