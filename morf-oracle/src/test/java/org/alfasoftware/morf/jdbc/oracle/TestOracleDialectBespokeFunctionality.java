@@ -83,6 +83,45 @@ public class TestOracleDialectBespokeFunctionality {
         assertEquals(expectedResult, result);
     }
 
+    @Test
+    public void testUpdateStatement() {
+        OracleDialect oracleDialect = new OracleDialect("TEST");
+
+        Table table = table("SomeTable")
+                .columns(
+                        column("someField", DataType.STRING, 3).primaryKey(),
+                        column("otherField", DataType.DECIMAL, 3)
+                ).indexes(
+                        index("SomeTable_1").columns("otherField")
+                );
+
+        SelectStatement selectStatement = select().from(tableRef("OtherTable"));
+        SelectStatement distinctSelectStatement = selectStatement.shallowCopy().forUpdate().build();
+
+        String result = oracleDialect.convertStatementToSQL(distinctSelectStatement, table);
+
+        String expectedResult = "SELECT * FROM TEST.OtherTable FOR UPDATE";
+        assertEquals(expectedResult, result);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testUpdateForDistinctStatement() {
+        OracleDialect oracleDialect = new OracleDialect("TEST");
+
+        Table table = table("SomeTable")
+                .columns(
+                        column("someField", DataType.STRING, 3).primaryKey(),
+                        column("otherField", DataType.DECIMAL, 3)
+                ).indexes(
+                        index("SomeTable_1").columns("otherField")
+                );
+
+        SelectStatement selectStatement = select().from(tableRef("OtherTable"));
+        SelectStatement distinctSelectStatement = selectStatement.shallowCopy().forUpdate().distinct().build();
+
+        String result = oracleDialect.convertStatementToSQL(distinctSelectStatement, table);
+    }
+
     @Test(expected = IllegalArgumentException.class)
     public void testIllegalArgumentExeptionIsThrown() {
         OracleDialect oracleDialect = new OracleDialect("TEST");
@@ -98,4 +137,6 @@ public class TestOracleDialectBespokeFunctionality {
 
         oracleDialect.convertStatementToSQL(null, table);
     }
+
+
 }
