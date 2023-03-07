@@ -854,6 +854,16 @@ public abstract class SqlDialect {
       }
     }
 
+   result.append(appendStrings(stmt));
+
+    // Any hint directives which should be inserted right at the end of the statement
+    result.append(selectStatementPostStatementDirectives(stmt));
+
+    return result.toString();
+  }
+
+  protected String appendStrings(SelectStatement stmt) {
+    StringBuilder result = new StringBuilder();
     appendFrom(result, stmt);
     appendJoins(result, stmt, innerJoinKeyword(stmt));
     appendWhere(result, stmt);
@@ -869,13 +879,8 @@ public abstract class SqlDialect {
       }
       result.append(getForUpdateSql());
     }
-
-    // Any hint directives which should be inserted right at the end of the statement
-    result.append(selectStatementPostStatementDirectives(stmt));
-
     return result.toString();
   }
-
 
   /**
    * Returns any SQL code which should be added between a <code>SELECT</code> and the field

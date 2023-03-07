@@ -1184,21 +1184,7 @@ class OracleDialect extends SqlDialect {
       result.append(getFieldsForSelect(table, stmt));
     }
 
-    appendFrom(result, stmt);
-    appendJoins(result, stmt, innerJoinKeyword(stmt));
-    appendWhere(result, stmt);
-    appendGroupBy(result, stmt);
-    appendHaving(result, stmt);
-    appendUnionSet(result, stmt);
-    appendExceptSet(result, stmt);
-    appendOrderBy(result, stmt);
-
-    if (stmt.isForUpdate()) {
-      if (stmt.isDistinct() || !stmt.getGroupBys().isEmpty() || !stmt.getJoins().isEmpty()) {
-        throw new IllegalArgumentException("GROUP BY, JOIN or DISTINCT cannot be combined with FOR UPDATE (H2 limitations)");
-      }
-      result.append(getForUpdateSql());
-    }
+    result.append(appendStrings(stmt));
 
     // Any hint directives which should be inserted right at the end of the statement
     result.append(selectStatementPostStatementDirectives(stmt));
