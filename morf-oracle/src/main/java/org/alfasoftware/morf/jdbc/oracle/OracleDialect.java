@@ -1184,7 +1184,7 @@ class OracleDialect extends SqlDialect {
       result.append(getFieldsForSelect(table, stmt));
     }
 
-    result.append(appendStrings(stmt));
+    result.append(appendPostSelectSQL(stmt));
 
     // Any hint directives which should be inserted right at the end of the statement
     result.append(selectStatementPostStatementDirectives(stmt));

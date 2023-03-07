@@ -854,7 +854,7 @@ public abstract class SqlDialect {
       }
     }
 
-   result.append(appendStrings(stmt));
+   result.append(appendPostSelectSQL(stmt));
 
     // Any hint directives which should be inserted right at the end of the statement
     result.append(selectStatementPostStatementDirectives(stmt));
@@ -862,7 +862,7 @@ public abstract class SqlDialect {
     return result.toString();
   }
 
-  protected String appendStrings(SelectStatement stmt) {
+  protected String appendPostSelectSQL(SelectStatement stmt) {
     StringBuilder result = new StringBuilder();
     appendFrom(result, stmt);
     appendJoins(result, stmt, innerJoinKeyword(stmt));
