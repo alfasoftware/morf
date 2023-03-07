@@ -63,6 +63,7 @@ import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.NullFieldLiteral;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
@@ -1186,20 +1187,14 @@ class OracleDialect extends SqlDialect {
           result.append(", ");
         }
 
-        //Append this as a Cast, Will need the definition from the table being created.
-        //result.append(getSqlFrom(currentField));
-        Column field = table.columns().stream()
-                .filter(n -> n.getName().equals(currentField.getImpliedName()))
-                .findFirst().get();
+        if(currentField instanceof NullFieldLiteral) {
+          result.append(getSqlForNullField(currentField, table, stmt.getFields()));
+        } else if (currentField instanceof FieldReference) {
+          result.append(getSqlField(currentField, table, stmt.getFields()));
+        } else {
+          result.append(getSqlFrom(currentField));
+        }
 
-        String newSelect = "CAST("
-                + field.getName()
-                + " AS "
-                + sqlRepresentationOfColumnType(field, false, false, true)
-                + ") AS "
-                + field.getName();
-
-        result.append(newSelect);
         // Put an alias in, if requested
         appendAlias(result, currentField);
 
@@ -1227,6 +1222,39 @@ class OracleDialect extends SqlDialect {
     result.append(selectStatementPostStatementDirectives(stmt));
 
     return result.toString();
+  }
+
+  /**
+   * Creates the Cast SQL for a given null field.
+   * @param currentField - will be a NullFieldLiteral.
+   * @param table - Table definition for the table being created.
+   * @param fields - All the fields being added to the select.
+   * @return String value of the CAST.
+   */
+  private String getSqlForNullField(AliasedField currentField, Table table, List<AliasedField> fields) {
+    Column column = table.columns().get(fields.indexOf(currentField));
+    return  "CAST(null AS "
+                + sqlRepresentationOfColumnType(column, false, false, true)
+                + ") AS "
+                + column.getName();
+  }
+
+  /**
+   * Creates the Cast SQL for a given field.
+   * @param currentField - will be a FieldReference.
+   * @param table - Table definition for the table being created.
+   * @param fields - All the fields being added to the select.
+   * @return String value of the CAST.
+   */
+  private String getSqlField(AliasedField currentField, Table table, List<AliasedField> fields) {
+    Column column = table.columns().get(fields.indexOf(currentField));
+
+    return  "CAST("
+                + column.getName()
+                + " AS "
+                + sqlRepresentationOfColumnType(column, false, false, true)
+                + ") AS "
+                + column.getName();
   }
 
   /**
