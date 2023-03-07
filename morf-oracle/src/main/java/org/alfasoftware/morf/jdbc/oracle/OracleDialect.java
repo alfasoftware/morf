@@ -1181,25 +1181,7 @@ class OracleDialect extends SqlDialect {
     if (stmt.getFields().isEmpty()) {
       result.append("*");
     } else {
-      boolean firstField = true;
-      for (AliasedField currentField : stmt.getFields()) {
-        if (!firstField) {
-          result.append(", ");
-        }
-
-        if(currentField instanceof NullFieldLiteral) {
-          result.append(getSqlForNullField(currentField, table, stmt.getFields()));
-        } else if (currentField instanceof FieldReference) {
-          result.append(getSqlField(currentField, table, stmt.getFields()));
-        } else {
-          result.append(getSqlFrom(currentField));
-        }
-
-        // Put an alias in, if requested
-        appendAlias(result, currentField);
-
-        firstField = false;
-      }
+      result.append(getFieldsForSelect(table, stmt));
     }
 
     appendFrom(result, stmt);
@@ -1222,6 +1204,35 @@ class OracleDialect extends SqlDialect {
     result.append(selectStatementPostStatementDirectives(stmt));
 
     return result.toString();
+  }
+
+  /**
+   * Returns fields to be used in the select statement.
+   * @param table table definition for the table being created.
+   * @param stmt the select statement.
+   * @return returns all the fields to be included in the select statement in SQL format.
+   */
+  private String getFieldsForSelect(Table table, SelectStatement stmt) {
+    StringBuilder stringBuilder = new StringBuilder();
+    boolean firstField = true;
+    for (AliasedField currentField : stmt.getFields()) {
+      if (!firstField) {
+        stringBuilder.append(", ");
+      }
+
+      if (currentField instanceof NullFieldLiteral) {
+        stringBuilder.append(getSqlForNullField(currentField, table, stmt.getFields()));
+      } else if (currentField instanceof FieldReference) {
+        stringBuilder.append(getSqlField(currentField, table, stmt.getFields()));
+      } else {
+        stringBuilder.append(getSqlFrom(currentField));
+      }
+      // Put an alias in, if requested
+      appendAlias(stringBuilder, currentField);
+
+      firstField = false;
+    }
+    return stringBuilder.toString();
   }
 
   /**
