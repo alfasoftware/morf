@@ -1105,6 +1105,17 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
       "INSERT INTO TESTSCHEMA.SomeTable SELECT someField, otherField FROM TESTSCHEMA.OtherTable"
     );
   }
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddTableFromStatementsNullValue()
+   */
+  @Override
+  protected List<String> expectedAddTableFromStatementsNullValue() {
+    return ImmutableList.of(
+      "CREATE TABLE TESTSCHEMA.SomeTable (someField VARCHAR(3) NOT NULL, otherField DECIMAL(3,0) NOT NULL, nullField VARCHAR(3) NOT NULL, CONSTRAINT SomeTable_PK PRIMARY KEY (someField))",
+      "CREATE INDEX SomeTable_1 ON TESTSCHEMA.SomeTable (otherField)",
+      "INSERT INTO TESTSCHEMA.SomeTable SELECT someField, otherField, null FROM TESTSCHEMA.OtherTable"
+    );
+  }
 
 
   /**
