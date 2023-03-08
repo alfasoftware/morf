@@ -344,7 +344,7 @@ class DataValueLookupBuilderImpl implements DataValueLookupBuilder, Serializable
    * Fetches the value of the specified column, converting it to the target
    * type using the associated {@link ValueConverter} to the target type.
    */
-  private final <STORED, RETURNED> RETURNED getAndConvertByName(String columnName, ValueMapper<STORED, RETURNED> mapper) {
+  private <STORED, RETURNED> RETURNED getAndConvertByName(String columnName, ValueMapper<STORED, RETURNED> mapper) {
     if (metadata == null) return null;
     return getAndConvertByIndex(metadata.getIndexInArray(CaseInsensitiveString.of(columnName)), mapper);
   }
@@ -361,7 +361,7 @@ class DataValueLookupBuilderImpl implements DataValueLookupBuilder, Serializable
    * @return The value.
    */
   @SuppressWarnings("unchecked")
-  private final <STORED, RETURNED> RETURNED getAndConvertByIndex(Integer i, ValueMapper<STORED, RETURNED> mapper) {
+  private <STORED, RETURNED> RETURNED getAndConvertByIndex(Integer i, ValueMapper<STORED, RETURNED> mapper) {
     if (i == null) return null;
     STORED value = (STORED) data[i];
     return mapper.map(value, (ValueConverter<STORED>) toConverter(value));

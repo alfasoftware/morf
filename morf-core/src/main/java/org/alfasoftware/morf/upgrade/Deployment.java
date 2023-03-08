@@ -26,6 +26,7 @@ import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.InsertStatement;
+import org.alfasoftware.morf.sql.element.NullFieldLiteral;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
 import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
@@ -206,7 +207,7 @@ public class Deployment {
   private void writeUpgradeSteps(Collection<Class<? extends UpgradeStep>> upgradeSteps, UpgradePath upgradePath) {
     for(Class<? extends UpgradeStep> upgradeStep : upgradeSteps) {
       UUID uuid = UpgradePathFinder.readUUID(upgradeStep);
-      InsertStatement insertStatement = AuditRecordHelper.createAuditInsertStatement(uuid, upgradeStep.getName());
+      InsertStatement insertStatement = AuditRecordHelper.createAuditInsertStatement(uuid, upgradeStep.getName(), 0);
       upgradePath.writeSql(connectionResources.sqlDialect().convertStatementToSQL(insertStatement));
     }
   }

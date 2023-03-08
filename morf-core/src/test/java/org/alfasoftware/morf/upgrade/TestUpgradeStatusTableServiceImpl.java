@@ -60,7 +60,6 @@ import org.mockito.ArgumentCaptor;
  */
 public class TestUpgradeStatusTableServiceImpl {
 
-  private SqlScriptExecutorProvider         sqlScriptExecutorProvider;
   private SqlScriptExecutor                 sqlScriptExecutor;
   private SqlDialect                        sqlDialect;
   private UpgradeStatusTableService         upgradeStatusTableService;
@@ -75,7 +74,7 @@ public class TestUpgradeStatusTableServiceImpl {
    */
   @Before
   public void setUp() throws SQLException {
-    sqlScriptExecutorProvider = mock(SqlScriptExecutorProvider.class);
+    SqlScriptExecutorProvider sqlScriptExecutorProvider = mock(SqlScriptExecutorProvider.class);
     sqlScriptExecutor = mock(SqlScriptExecutor.class);
     sqlDialect = mock(SqlDialect.class);
     dataSource = mock(DataSource.class);

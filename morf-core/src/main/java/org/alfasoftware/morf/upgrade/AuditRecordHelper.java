@@ -35,19 +35,20 @@ public class AuditRecordHelper {
   /**
    * Add the audit record, writing out the SQL for the insert.
    *
-   * @see org.alfasoftware.morf.upgrade.SchemaChangeVisitor#addAuditRecord(java.util.UUID, java.lang.String)
+   * @see org.alfasoftware.morf.upgrade.SchemaChangeVisitor#addAuditRecord(java.util.UUID, java.lang.String, long)
    *
    * @param visitor The schema change visitor adding the audit record.
    * @param schema The schema to add the audit record to.
    * @param uuid The UUID of the step which has been applied
    * @param description The description of the step.
+   * @param
    */
-  public static void addAuditRecord(SchemaChangeVisitor visitor, Schema schema, UUID uuid, String description) {
+  public static void addAuditRecord(SchemaChangeVisitor visitor, Schema schema, UUID uuid, String description, long runTimeMs) {
     // There's no point adding an UpgradeAudit row if the table isn't there.
     if (!schema.tableExists("UpgradeAudit"))
       return;
 
-    InsertStatement auditRecord = createAuditInsertStatement(uuid, description);
+    InsertStatement auditRecord = createAuditInsertStatement(uuid, description, runTimeMs);
 
     visitor.visit(new ExecuteStatement(auditRecord));
   }
@@ -60,13 +61,13 @@ public class AuditRecordHelper {
    * @param description The description of the step.
    * @return The insert statement
    */
-  public static InsertStatement createAuditInsertStatement(UUID uuid, String description) {
-    InsertStatement auditRecord = new InsertStatement().into(
+  public static InsertStatement createAuditInsertStatement(UUID uuid, String description, long runTimeMs) {
+    return new InsertStatement().into(
       new TableReference("UpgradeAudit")).values(
         new FieldLiteral(uuid.toString()).as("upgradeUUID"),
         new FieldLiteral(description).as("description"),
+        new FieldLiteral(runTimeMs).as("runTimeMs"),
         cast(dateToYyyyMMddHHmmss(now())).asType(DataType.DECIMAL, 14).as("appliedTime")
       );
-    return auditRecord;
   }
 }

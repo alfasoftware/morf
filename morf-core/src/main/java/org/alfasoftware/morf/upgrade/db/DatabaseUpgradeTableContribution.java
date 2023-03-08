@@ -50,7 +50,8 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
         .columns(
           column("upgradeUUID", DataType.STRING, 100).primaryKey(),
           column("description", DataType.STRING, 200).nullable(),
-          column("appliedTime", DataType.DECIMAL, 14).nullable()
+          column("appliedTime", DataType.DECIMAL, 14).nullable(),
+          column("runTimeMs", DataType.DECIMAL, 14).nullable()
         );
   }
 

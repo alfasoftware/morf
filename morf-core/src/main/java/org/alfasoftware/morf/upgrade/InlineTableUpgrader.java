@@ -240,11 +240,11 @@ public class InlineTableUpgrader implements SchemaChangeVisitor {
 
 
   /**
-   * @see org.alfasoftware.morf.upgrade.SchemaChangeVisitor#addAuditRecord(java.util.UUID, java.lang.String)
+   * @see org.alfasoftware.morf.upgrade.SchemaChangeVisitor#addAuditRecord(java.util.UUID, java.lang.String, long)
    */
   @Override
-  public void addAuditRecord(UUID uuid, String description) {
-    AuditRecordHelper.addAuditRecord(this, currentSchema, uuid, description);
+  public void addAuditRecord(UUID uuid, String description, long runTimeMs) {
+    AuditRecordHelper.addAuditRecord(this, currentSchema, uuid, description, runTimeMs);
   }
 
 

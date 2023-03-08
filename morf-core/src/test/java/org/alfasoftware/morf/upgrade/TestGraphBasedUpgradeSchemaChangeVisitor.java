@@ -306,7 +306,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     when(sqlDialect.convertStatementToSQL(any(Statement.class), eq(sourceSchema), eq(idTable))).thenReturn(STATEMENTS);
 
     // when
-    visitor.addAuditRecord(new UUID(1, 1), "xxx");
+    visitor.addAuditRecord(new UUID(1, 1), "xxx", 99);
 
     // then
     verify(n1).addAllUpgradeStatements(ArgumentMatchers.argThat(c-> c.containsAll(STATEMENTS)));

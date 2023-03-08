@@ -1080,7 +1080,7 @@ public class TestDatabaseUpgradeIntegration {
    * @param replacementTables The tables to use as replacements.
    * @return The modified schema.
    */
-  private final Schema replaceTablesInSchema(Table... replacementTables) {
+  private Schema replaceTablesInSchema(Table... replacementTables) {
     Map<String, Table> newTables = Maps.newHashMap();
 
     for (Table table : schema.tables()) {

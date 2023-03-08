@@ -213,7 +213,7 @@ public class TestDeployment {
       }
     }).toList();
 
-    assertEquals("Number of columns", 3, stmt.getValues().size());
+    assertEquals("Number of columns", 4, stmt.getValues().size());
     assertEquals("UUID", "ab1b9f5a-cb3b-473c-8ec6-c6c1134f500f", values.get(0).toString());
     assertEquals("Description", "org.alfasoftware.morf.upgrade.TestDeployment$AddFooTable", values.get(1).toString());
     assertEquals("Date", 1, from(stmt.getValues()).filter(org.alfasoftware.morf.sql.element.Cast.class).toList().size());

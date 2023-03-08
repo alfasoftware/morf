@@ -51,21 +51,23 @@ public class TestAuditRecordHelper {
     Schema schema = mock(Schema.class);
     UUID uuid = UUID.randomUUID();
     String description = "Description";
+    long runTimeMs = 1234;
+
     given(schema.tableExists("UpgradeAudit")).willReturn(true);
 
     // when
-    AuditRecordHelper.addAuditRecord(visitor, schema, uuid, description);
+    AuditRecordHelper.addAuditRecord(visitor, schema, uuid, description, runTimeMs);
 
     // then
     ArgumentCaptor<ExecuteStatement> argument = ArgumentCaptor.forClass(ExecuteStatement.class);
     verify(visitor).visit(argument.capture());
     InsertStatement statement = (InsertStatement) argument.getValue().getStatement();
-    assertAuditInsertStatement(uuid, description, statement);
+    assertAuditInsertStatement(uuid, description, statement, runTimeMs);
   }
 
 
   /**
-   * Verifies that the {@link AuditRecordHelper#createAuditInsertStatement(UUID, String)} returns a correct
+   * Verifies that the {@link AuditRecordHelper#createAuditInsertStatement(UUID, String, long)} returns a correct
    * {@link InsertStatement}.
    */
   @Test
@@ -73,22 +75,24 @@ public class TestAuditRecordHelper {
     // given
     UUID uuid = UUID.randomUUID();
     String description = "Description";
+    long runTimeMs = 789;
 
     // when
-    InsertStatement statement = AuditRecordHelper.createAuditInsertStatement(uuid, description);
+    InsertStatement statement = AuditRecordHelper.createAuditInsertStatement(uuid, description, runTimeMs);
 
     // then
-    assertAuditInsertStatement(uuid, description, statement);
+    assertAuditInsertStatement(uuid, description, statement, runTimeMs);
   }
 
 
-  private void assertAuditInsertStatement(UUID uuid, String description, InsertStatement statement) {
+  private void assertAuditInsertStatement(UUID uuid, String description, InsertStatement statement, long runTimeMs) {
     assertEquals("Table name", "UpgradeAudit", statement.getTable().getName());
     assertEquals("UUID ", uuid.toString(), getValueWithAlias(statement, "upgradeUUID").getValue());
     assertEquals("UUID ", description, getValueWithAlias(statement, "description").getValue());
+    assertEquals("runTimeMs", String.valueOf(runTimeMs), getValueWithAlias(statement, "runTimeMs").getValue());
 
     Cast nowCastRepresentation = getCastWithAlias(statement, "appliedTime");
-    assertEquals("Wraped in integer date function with now function as argument", FunctionType.DATE_TO_YYYYMMDDHHMMSS.toString() + "(" + FunctionType.NOW + "())", nowCastRepresentation.getExpression().toString());
+    assertEquals("Wrapped in integer date function with now function as argument", FunctionType.DATE_TO_YYYYMMDDHHMMSS.toString() + "(" + FunctionType.NOW + "())", nowCastRepresentation.getExpression().toString());
   }
 
 

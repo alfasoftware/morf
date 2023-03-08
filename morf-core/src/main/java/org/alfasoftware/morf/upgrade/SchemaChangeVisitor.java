@@ -146,7 +146,7 @@ public interface SchemaChangeVisitor {
    * @param uuid The UUID of the step which has been applied
    * @param description The description of the step.
    */
-  public void addAuditRecord(java.util.UUID uuid, String description);
+  public void addAuditRecord(java.util.UUID uuid, String description, long runTimeMs);
 
 
   /**

@@ -222,7 +222,7 @@ public class TestXmlDataSetProducer {
    *
    * @param recordsIterable The iterable to use
    */
-  private final void use(Iterable<Record> recordsIterable) {
+  private void use(Iterable<Record> recordsIterable) {
     for (Record record : recordsIterable) {
       log.debug(record.hashCode());
     }

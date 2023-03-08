@@ -139,11 +139,13 @@ public class SchemaChangeSequence {
   public void applyTo(SchemaChangeVisitor visitor) {
     for (UpgradeStepWithChanges changesForStep : allChanges) {
       try {
+        long startTime = System.currentTimeMillis();
         visitor.startStep(changesForStep.getUpgradeClass());
         for (SchemaChange change : changesForStep.getChanges()) {
           change.accept(visitor);
         }
-        visitor.addAuditRecord(changesForStep.getUUID(), changesForStep.getDescription());
+        long endTime = System.currentTimeMillis();
+        visitor.addAuditRecord(changesForStep.getUUID(), changesForStep.getDescription(), endTime-startTime);
       } catch (Exception e) {
         throw new RuntimeException("Failed to apply step: [" + changesForStep.getUpgradeClass() + "]", e);
       }
@@ -370,7 +372,7 @@ public class SchemaChangeSequence {
 
 
     /**
-     * @see org.alfasoftware.morf.upgrade.SchemaEditor#analyseTable(org.alfasoftware.morf.metadata.Table)
+     * @see org.alfasoftware.morf.upgrade.SchemaEditor#analyseTable(String)
      */
     @Override
     public void analyseTable(String tableName) {
@@ -496,7 +498,7 @@ public class SchemaChangeSequence {
 
 
     @Override
-    public void addAuditRecord(java.util.UUID uuid, String description) {
+    public void addAuditRecord(java.util.UUID uuid, String description, long runTimeMs) {
       // no-op here. We don't need to record the UUIDs until we actually apply the changes.
     }
 

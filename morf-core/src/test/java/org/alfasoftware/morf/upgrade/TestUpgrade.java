@@ -98,7 +98,6 @@ public class TestUpgrade {
 
   public UpgradeStatusTableService upgradeStatusTableService;
   public ViewDeploymentValidator viewDeploymentValidator;
-  private DataSource dataSource;
 
   @Mock
   private GraphBasedUpgradeBuilderFactory graphBasedUpgradeScriptGeneratorFactory;
@@ -108,7 +107,7 @@ public class TestUpgrade {
     MockitoAnnotations.openMocks(this);
     upgradeStatusTableService = mock(UpgradeStatusTableService.class);
     viewDeploymentValidator = mock(ViewDeploymentValidator.class);
-    dataSource = mock(DataSource.class);
+    DataSource dataSource = mock(DataSource.class);
     when(upgradeStatusTableService.getStatus(Optional.of(dataSource))).thenReturn(NONE);
     when(viewDeploymentValidator.validateExistingView(any(View.class))).thenReturn(true);
     when(viewDeploymentValidator.validateMissingView(any(View.class))).thenReturn(true);
