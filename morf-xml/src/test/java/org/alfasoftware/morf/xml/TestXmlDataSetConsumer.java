@@ -15,29 +15,23 @@
 
 package org.alfasoftware.morf.xml;
 
-import static org.alfasoftware.morf.metadata.DataSetUtils.record;
-import static org.alfasoftware.morf.metadata.SchemaUtils.column;
-import static org.alfasoftware.morf.metadata.SchemaUtils.idColumn;
-import static org.alfasoftware.morf.metadata.SchemaUtils.index;
-import static org.alfasoftware.morf.metadata.SchemaUtils.table;
-import static org.alfasoftware.morf.metadata.SchemaUtils.versionColumn;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import com.google.common.collect.ImmutableList;
+import org.alfasoftware.morf.dataset.DataSetConsumer;
+import org.alfasoftware.morf.dataset.DataSetConsumer.CloseState;
+import org.alfasoftware.morf.dataset.Record;
+import org.alfasoftware.morf.directory.DirectoryDataSetConsumer;
+import org.alfasoftware.morf.metadata.DataSetUtils;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Table;
+import org.junit.Assert;
+import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.alfasoftware.morf.dataset.DataSetConsumer;
-import org.alfasoftware.morf.dataset.DataSetConsumer.CloseState;
-import org.alfasoftware.morf.dataset.Record;
-import org.alfasoftware.morf.directory.DirectoryDataSetConsumer;
-import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.Table;
-import org.junit.Test;
-
-import com.google.common.collect.ImmutableList;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Test that we can convert data sets to xml.
@@ -54,21 +48,21 @@ public class TestXmlDataSetConsumer {
 
     DummyXmlOutputStreamProvider dummyXmlOutputStreamProvider = new DummyXmlOutputStreamProvider();
     DataSetConsumer testConsumer = new XmlDataSetConsumer(dummyXmlOutputStreamProvider);
-    Table metaData = table("Test").columns(
-        column("id", DataType.BIG_INTEGER).primaryKey().autoNumbered(123),
-        versionColumn(),
-        column("bar", DataType.STRING, 10).nullable(),
-        column("baz", DataType.STRING, 10).nullable(),
-        column("bob", DataType.DECIMAL, 13, 2).nullable()
+    Table metaData = SchemaUtils.table("Test").columns(
+        SchemaUtils.column("id", DataType.BIG_INTEGER).primaryKey().autoNumbered(123),
+        SchemaUtils.versionColumn(),
+        SchemaUtils.column("bar", DataType.STRING, 10).nullable(),
+        SchemaUtils.column("baz", DataType.STRING, 10).nullable(),
+        SchemaUtils.column("bob", DataType.DECIMAL, 13, 2).nullable()
       ).indexes(
-        index("fizz").unique().columns("bar", "baz")
+        SchemaUtils.index("fizz").unique().columns("bar", "baz")
       );
 
     testConsumer.open();
     List<Record> mockRecords = new ArrayList<>();
-    mockRecords.add(record()
-      .setInteger(idColumn().getName(), 1)
-      .setInteger(versionColumn().getName(), 1)
+    mockRecords.add(DataSetUtils.record()
+      .setInteger(SchemaUtils.idColumn().getName(), 1)
+      .setInteger(SchemaUtils.versionColumn().getName(), 1)
       .setString("bar", "abc")
       .setString("baz", "123")
       .setString("bob", "456.78"));
@@ -87,19 +81,19 @@ public class TestXmlDataSetConsumer {
 
     DummyXmlOutputStreamProvider dummyXmlOutputStreamProvider = new DummyXmlOutputStreamProvider();
     DataSetConsumer testConsumer = new XmlDataSetConsumer(dummyXmlOutputStreamProvider);
-    Table metaData = table("Test").columns(
-        idColumn(),
-        versionColumn(),
-        column("noel", DataType.STRING, 10).nullable(),
-        column("edmonds", DataType.STRING, 10).nullable(),
-        column("blobby", DataType.BLOB).nullable()
+    Table metaData = SchemaUtils.table("Test").columns(
+        SchemaUtils.idColumn(),
+        SchemaUtils.versionColumn(),
+        SchemaUtils.column("noel", DataType.STRING, 10).nullable(),
+        SchemaUtils.column("edmonds", DataType.STRING, 10).nullable(),
+        SchemaUtils.column("blobby", DataType.BLOB).nullable()
       );
 
     testConsumer.open();
     List<Record> mockRecords = new ArrayList<>();
-    mockRecords.add(record()
-      .setInteger(idColumn().getName(), 1)
-      .setInteger(versionColumn().getName(), 1)
+    mockRecords.add(DataSetUtils.record()
+      .setInteger(SchemaUtils.idColumn().getName(), 1)
+      .setInteger(SchemaUtils.versionColumn().getName(), 1)
       .setString("noel", "noel")
       .setString("edmonds", "edmonds")
       .setString("blobby", "YmxvYmJ5"));
@@ -118,11 +112,11 @@ public class TestXmlDataSetConsumer {
 
     DummyXmlOutputStreamProvider dummyXmlOutputStreamProvider = new DummyXmlOutputStreamProvider();
     DataSetConsumer testConsumer = new XmlDataSetConsumer(dummyXmlOutputStreamProvider);
-    Table metaData = table("Test").columns(
-        idColumn(),
-        versionColumn(),
-        column("normalColumn", DataType.STRING, 10).nullable(),
-        column("col2", DataType.STRING, 10).primaryKey()
+    Table metaData = SchemaUtils.table("Test").columns(
+        SchemaUtils.idColumn(),
+        SchemaUtils.versionColumn(),
+        SchemaUtils.column("normalColumn", DataType.STRING, 10).nullable(),
+        SchemaUtils.column("col2", DataType.STRING, 10).primaryKey()
       );
 
     testConsumer.open();
@@ -145,7 +139,7 @@ public class TestXmlDataSetConsumer {
       testConsumer.open();
       testConsumer.close(CloseState.COMPLETE);
 
-      assertTrue("cleared", dummyXmlOutputStreamProvider.cleared());
+      Assert.assertTrue("cleared", dummyXmlOutputStreamProvider.cleared());
     }
     {
       DummyXmlOutputStreamProvider dummyXmlOutputStreamProvider = new DummyXmlOutputStreamProvider();
@@ -153,7 +147,7 @@ public class TestXmlDataSetConsumer {
       testConsumer.open();
       testConsumer.close(CloseState.COMPLETE);
 
-      assertTrue("cleared", dummyXmlOutputStreamProvider.cleared());
+      Assert.assertTrue("cleared", dummyXmlOutputStreamProvider.cleared());
     }
     {
       DummyXmlOutputStreamProvider dummyXmlOutputStreamProvider = new DummyXmlOutputStreamProvider();
@@ -161,7 +155,7 @@ public class TestXmlDataSetConsumer {
       testConsumer.open();
       testConsumer.close(CloseState.COMPLETE);
 
-      assertFalse("not cleared", dummyXmlOutputStreamProvider.cleared());
+      Assert.assertFalse("not cleared", dummyXmlOutputStreamProvider.cleared());
     }
   }
 
@@ -174,16 +168,16 @@ public class TestXmlDataSetConsumer {
 
     DummyXmlOutputStreamProvider dummyXmlOutputStreamProvider = new DummyXmlOutputStreamProvider();
     DataSetConsumer testConsumer = new XmlDataSetConsumer(dummyXmlOutputStreamProvider);
-    Table testTable = table("TestTable")
+    Table testTable = SchemaUtils.table("TestTable")
       .columns(
-        column("x", DataType.DECIMAL, 10),
-        column("y", DataType.DECIMAL, 10),
-        column("z", DataType.DECIMAL, 10)
+        SchemaUtils.column("x", DataType.DECIMAL, 10),
+        SchemaUtils.column("y", DataType.DECIMAL, 10),
+        SchemaUtils.column("z", DataType.DECIMAL, 10)
       ).indexes(
-        index("CCC").columns("x"),  // these will get re-ordered on export
-        index("AAA").columns("y"),
-        index("DDD").columns("z"),
-        index("BBB").columns("x", "y")
+        SchemaUtils.index("CCC").columns("x"),  // these will get re-ordered on export
+        SchemaUtils.index("AAA").columns("y"),
+        SchemaUtils.index("DDD").columns("z"),
+        SchemaUtils.index("BBB").columns("x", "y")
       );
 
     testConsumer.open();
@@ -194,7 +188,7 @@ public class TestXmlDataSetConsumer {
     String expectedXML = SourceXML.readResource("testIndexOrdering.xml");
     String actualXML = dummyXmlOutputStreamProvider.getXmlString().trim();
 
-    assertEquals("Serialised data set", expectedXML, actualXML);
+    Assert.assertEquals("Serialised data set", expectedXML, actualXML);
   }
 
 
@@ -202,19 +196,19 @@ public class TestXmlDataSetConsumer {
   public void testWithNullCharacters() {
     DummyXmlOutputStreamProvider dummyXmlOutputStreamProvider = new DummyXmlOutputStreamProvider();
     DataSetConsumer testConsumer = new XmlDataSetConsumer(dummyXmlOutputStreamProvider);
-    Table testTable = table("TestTable")
+    Table testTable = SchemaUtils.table("TestTable")
       .columns(
-        column("x", DataType.STRING, 10)
+        SchemaUtils.column("x", DataType.STRING, 10)
       );
 
     testConsumer.open();
 
     List<Record> records = ImmutableList.<Record>of(
-      record().setString("x", "foo"),
-      record().setString("x", new String(new char[] {'a', 0, 'c'})),
-      record().setString("x", new String(new char[] {0})),
-      record().setString("x", "string with a \\ in it"),
-      record().setString("x", "some \r valid \n things \t in this one")
+      DataSetUtils.record().setString("x", "foo"),
+      DataSetUtils.record().setString("x", new String(new char[] {'a', 0, 'c'})),
+      DataSetUtils.record().setString("x", new String(new char[] {0})),
+      DataSetUtils.record().setString("x", "string with a \\ in it"),
+      DataSetUtils.record().setString("x", "some \r valid \n things \t in this one")
     );
 
     testConsumer.table(testTable, records);
@@ -223,7 +217,7 @@ public class TestXmlDataSetConsumer {
     String actualXML = dummyXmlOutputStreamProvider.getXmlString().trim();
     String expectedXML = SourceXML.readResource("testWithNullCharacters.xml");
 
-    assertEquals("Serialised data set", expectedXML, actualXML);
+    Assert.assertEquals("Serialised data set", expectedXML, actualXML);
 
   }
 }

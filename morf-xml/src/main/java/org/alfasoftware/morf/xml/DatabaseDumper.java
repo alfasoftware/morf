@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-package org.alfasoftware.morf.diagnostics;
+package org.alfasoftware.morf.xml;
 
 import java.io.File;
 import java.io.IOException;
@@ -25,7 +25,6 @@ import org.alfasoftware.morf.dataset.DataSetConsumer;
 import org.alfasoftware.morf.dataset.DataSetProducer;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.DatabaseDataSetProducer;
-import org.alfasoftware.morf.xml.XmlDataSetConsumer;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 

@@ -17,11 +17,8 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumWriter;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.EnumMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;

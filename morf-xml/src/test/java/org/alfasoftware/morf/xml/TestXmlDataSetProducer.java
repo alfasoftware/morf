@@ -15,14 +15,26 @@
 
 package org.alfasoftware.morf.xml;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.column;
-import static org.alfasoftware.morf.metadata.SchemaUtils.table;
-import static org.alfasoftware.morf.xml.SourceXML.readResource;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-import static org.mockito.Mockito.mock;
+import com.google.common.base.Charsets;
+import com.google.common.collect.ImmutableList;
+import org.alfasoftware.morf.dataset.DataSetConnector;
+import org.alfasoftware.morf.dataset.DataSetConsumer;
+import org.alfasoftware.morf.dataset.DataSetConsumer.CloseState;
+import org.alfasoftware.morf.dataset.DataSetProducer;
+import org.alfasoftware.morf.dataset.Record;
+import org.alfasoftware.morf.directory.DirectoryStreamProvider;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.SchemaHomology;
+import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Table;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.junit.Assert;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -34,25 +46,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
-import org.alfasoftware.morf.dataset.DataSetConnector;
-import org.alfasoftware.morf.dataset.DataSetConsumer;
-import org.alfasoftware.morf.dataset.DataSetConsumer.CloseState;
-import org.alfasoftware.morf.dataset.DataSetProducer;
-import org.alfasoftware.morf.dataset.Record;
-import org.alfasoftware.morf.directory.DirectoryStreamProvider;
-import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.SchemaHomology;
-import org.alfasoftware.morf.metadata.Table;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mockito;
-
-import com.google.common.base.Charsets;
-import com.google.common.collect.ImmutableList;
+import static org.alfasoftware.morf.xml.SourceXML.readResource;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Test cases to check XML can be parsed to a data set consumer.
@@ -81,7 +76,7 @@ public class TestXmlDataSetProducer {
 
     new DataSetConnector(producer, testConsumer).connect();
 
-    assertEquals("output should be the same as input", SourceXML.FULL_SAMPLE, dummyXmlOutputStreamProvider.getXmlString().trim());
+    Assert.assertEquals("output should be the same as input", SourceXML.FULL_SAMPLE, dummyXmlOutputStreamProvider.getXmlString().trim());
   }
 
 
@@ -99,7 +94,7 @@ public class TestXmlDataSetProducer {
 
     new DataSetConnector(producer, testConsumer).connect();
 
-    assertEquals("output should be the same as input", SourceXML.FULL_SAMPLE_V1_UPGRADED, dummyXmlOutputStreamProvider.getXmlString().trim());
+    Assert.assertEquals("output should be the same as input", SourceXML.FULL_SAMPLE_V1_UPGRADED, dummyXmlOutputStreamProvider.getXmlString().trim());
   }
 
 
@@ -111,7 +106,7 @@ public class TestXmlDataSetProducer {
   public void testReducedXMLRoundTrip() {
     DataSetProducer producer = new XmlDataSetProducer(new TestXmlInputStreamProvider(SourceXML.REDUCED_SAMPLE));
 
-    DataSetConsumer consumer = mock(DataSetConsumer.class);
+    DataSetConsumer consumer = Mockito.mock(DataSetConsumer.class);
 
     new DataSetConnector(producer, consumer).connect();
 
@@ -123,16 +118,16 @@ public class TestXmlDataSetProducer {
     Mockito.verify(consumer).table(tableCaptor.capture(), iterableCaptor.capture());
 
     SchemaHomology schemaHomology = new SchemaHomology(new SchemaHomology.ThrowingDifferenceWriter());
-    assertTrue(
+    Assert.assertTrue(
       schemaHomology.tablesMatch(
         tableCaptor.getValue(),
-        table("Test")
+        SchemaUtils.table("Test")
         .columns(
-          column("id", DataType.BIG_INTEGER).primaryKey(),
-          column("version", DataType.INTEGER).defaultValue("0"),
-          column("bar", DataType.STRING),
-          column("baz", DataType.STRING),
-          column("bob", DataType.DECIMAL)
+          SchemaUtils.column("id", DataType.BIG_INTEGER).primaryKey(),
+          SchemaUtils.column("version", DataType.INTEGER).defaultValue("0"),
+          SchemaUtils.column("bar", DataType.STRING),
+          SchemaUtils.column("baz", DataType.STRING),
+          SchemaUtils.column("bob", DataType.DECIMAL)
         )
       )
     );
@@ -148,12 +143,12 @@ public class TestXmlDataSetProducer {
   public void testBlobXML() {
     DataSetProducer producer = new XmlDataSetProducer(new TestXmlInputStreamProvider(SourceXML.BLOBBY_SAMPLE));
 
-    assertEquals("exactly 1 table expected in schema", 1, producer.getSchema().tables().size());
-    assertEquals("exactly 5 columns expected in table", 5, producer.getSchema().getTable("Test").columns().size());
+    Assert.assertEquals("exactly 1 table expected in schema", 1, producer.getSchema().tables().size());
+    Assert.assertEquals("exactly 5 columns expected in table", 5, producer.getSchema().getTable("Test").columns().size());
     for (Record record : producer.records("Test")) {
-      assertEquals("record value incorrect", "noel", record.getString("noel"));
-      assertEquals("record value incorrect", "edmonds", record.getString("edmonds"));
-      assertEquals("record value incorrect", "YmxvYmJ5", record.getString("blobby"));
+      Assert.assertEquals("record value incorrect", "noel", record.getString("noel"));
+      Assert.assertEquals("record value incorrect", "edmonds", record.getString("edmonds"));
+      Assert.assertEquals("record value incorrect", "YmxvYmJ5", record.getString("blobby"));
     }
   }
 
@@ -206,13 +201,13 @@ public class TestXmlDataSetProducer {
    */
   private void testTableNamesAgainstProducer(XmlDataSetProducer producer) {
     producer.open();
-    assertTrue("EntityOne", producer.getSchema().tableNames().contains("EntityOne"));
-    assertTrue("EntityTwo", producer.getSchema().tableNames().contains("EntityTwo"));
+    Assert.assertTrue("EntityOne", producer.getSchema().tableNames().contains("EntityOne"));
+    Assert.assertTrue("EntityTwo", producer.getSchema().tableNames().contains("EntityTwo"));
     use(producer.records("EntityOne"));
-    assertTrue("eNTITYoNE", producer.getSchema().tableExists("eNTITYoNE"));
+    Assert.assertTrue("eNTITYoNE", producer.getSchema().tableExists("eNTITYoNE"));
 
     use(producer.records("eNTITYoNE"));
-    assertFalse("Non existant table", producer.getSchema().tableNames().contains("NotExist"));
+    Assert.assertFalse("Non existant table", producer.getSchema().tableNames().contains("NotExist"));
     producer.close();
   }
 
@@ -238,8 +233,8 @@ public class TestXmlDataSetProducer {
     producer.open();
     assertEquals("exactly 1 table expected in schema", 1, producer.getSchema().tables().size());
     assertEquals("exactly 4 columns expected in table", 4, producer.getSchema().getTable("Test").columns().size());
-    assertTrue("first column is primary key", producer.getSchema().getTable("Test").columns().get(0).isPrimaryKey());
-    assertTrue("last column is primary key", producer.getSchema().getTable("Test").columns().get(3).isPrimaryKey());
+    Assert.assertTrue("first column is primary key", producer.getSchema().getTable("Test").columns().get(0).isPrimaryKey());
+    Assert.assertTrue("last column is primary key", producer.getSchema().getTable("Test").columns().get(3).isPrimaryKey());
     producer.close();
   }
 
@@ -256,19 +251,19 @@ public class TestXmlDataSetProducer {
 
     Table fooTable = producer.getSchema().getTable("Foo");
 
-    assertTrue(
+    Assert.assertTrue(
       new SchemaHomology().tablesMatch(
         fooTable,
-        table("Foo")
+        SchemaUtils.table("Foo")
           .columns(
-            column("id", DataType.BIG_INTEGER).primaryKey())
+            SchemaUtils.column("id", DataType.BIG_INTEGER).primaryKey())
           )
       );
 
     List<Record> records = ImmutableList.copyOf(producer.records("Foo"));
 
-    assertEquals(40646L, records.get(0).getLong("id").longValue());
-    assertEquals(40641L, records.get(3).getLong("id").longValue());
+    Assert.assertEquals(40646L, records.get(0).getLong("id").longValue());
+    Assert.assertEquals(40641L, records.get(3).getLong("id").longValue());
 
     producer.close();
   }
@@ -281,11 +276,11 @@ public class TestXmlDataSetProducer {
 
     List<Record> records = ImmutableList.copyOf(producer.records("TestTable"));
 
-    assertEquals("1", records.get(0).getString("x"));
-    assertEquals("2", records.get(1).getString("x"));
+    Assert.assertEquals("1", records.get(0).getString("x"));
+    Assert.assertEquals("2", records.get(1).getString("x"));
 
-    assertEquals("ABC", records.get(0).getString("y"));
-    assertEquals(null, records.get(1).getString("y"));
+    Assert.assertEquals("ABC", records.get(0).getString("y"));
+    Assert.assertEquals(null, records.get(1).getString("y"));
 
     producer.close();
   }
@@ -299,7 +294,7 @@ public class TestXmlDataSetProducer {
 
     try {
       ImmutableList.copyOf(producer.records("TestTable"));
-      fail();
+      Assert.fail();
     } catch(IllegalStateException ise) {
       // ok
     } finally {
@@ -311,9 +306,9 @@ public class TestXmlDataSetProducer {
   private void validateDataSetProducerWithNullsAndBackslashes(DataSetProducer dataSetProducer) {
     dataSetProducer.open();
     ImmutableList<Record> records = ImmutableList.copyOf(dataSetProducer.records("Foo"));
-    assertEquals(new String(new char[] {'A', 0 /*null*/, 'C'}), records.get(0).getString("val"));
-    assertEquals(new String(new char[] { 0 /*null*/ }), records.get(1).getString("val"));
-    assertEquals("escape\\it", records.get(2).getString("val"));
+    Assert.assertEquals(new String(new char[] {'A', 0 /*null*/, 'C'}), records.get(0).getString("val"));
+    Assert.assertEquals(new String(new char[] { 0 /*null*/ }), records.get(1).getString("val"));
+    Assert.assertEquals("escape\\it", records.get(2).getString("val"));
     dataSetProducer.close();
   }
 
@@ -337,16 +332,16 @@ public class TestXmlDataSetProducer {
     try {
       ImmutableList<Record> r = ImmutableList.copyOf(dataSetProducer.records("testWithUnusualCharacters"));
 
-      assertEquals("\u0000", r.get(0).getString("characterValue"));
-      assertEquals("&", r.get(38).getString("characterValue"));
-      assertEquals(">", r.get(62).getString("characterValue"));
-      assertEquals("A", r.get(65).getString("characterValue"));
-      assertEquals("\n", r.get(10).getString("characterValue"));
-      assertEquals("\r", r.get(13).getString("characterValue"));
+      Assert.assertEquals("\u0000", r.get(0).getString("characterValue"));
+      Assert.assertEquals("&", r.get(38).getString("characterValue"));
+      Assert.assertEquals(">", r.get(62).getString("characterValue"));
+      Assert.assertEquals("A", r.get(65).getString("characterValue"));
+      Assert.assertEquals("\n", r.get(10).getString("characterValue"));
+      Assert.assertEquals("\r", r.get(13).getString("characterValue"));
 
-      assertEquals("\ufffd", r.get(344).getString("characterValue"));
-      assertEquals("\ufffe", r.get(345).getString("characterValue"));
-      assertEquals("\uffff", r.get(346).getString("characterValue"));
+      Assert.assertEquals("\ufffd", r.get(344).getString("characterValue"));
+      Assert.assertEquals("\ufffe", r.get(345).getString("characterValue"));
+      Assert.assertEquals("\uffff", r.get(346).getString("characterValue"));
 
     } finally {
       dataSetProducer.close();
@@ -407,7 +402,7 @@ public class TestXmlDataSetProducer {
      */
     @Override
     public InputStream openInputStreamForTable(String tableName) {
-      assertEquals("Table name", this.tableName.toUpperCase(), tableName.toUpperCase());
+      Assert.assertEquals("Table name", this.tableName.toUpperCase(), tableName.toUpperCase());
       return new ByteArrayInputStream(content.getBytes(Charsets.UTF_8));
     }
 

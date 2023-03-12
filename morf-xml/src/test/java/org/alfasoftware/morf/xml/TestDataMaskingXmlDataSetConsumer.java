@@ -15,27 +15,23 @@
 
 package org.alfasoftware.morf.xml;
 
-import static org.alfasoftware.morf.metadata.DataSetUtils.record;
-import static org.alfasoftware.morf.metadata.SchemaUtils.column;
-import static org.alfasoftware.morf.metadata.SchemaUtils.index;
-import static org.alfasoftware.morf.metadata.SchemaUtils.table;
-import static org.alfasoftware.morf.metadata.SchemaUtils.versionColumn;
-import static org.junit.Assert.assertEquals;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+import org.alfasoftware.morf.dataset.DataSetConsumer;
+import org.alfasoftware.morf.dataset.DataSetConsumer.CloseState;
+import org.alfasoftware.morf.dataset.Record;
+import org.alfasoftware.morf.metadata.DataSetUtils;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Table;
+import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.alfasoftware.morf.dataset.DataSetConsumer;
-import org.alfasoftware.morf.dataset.DataSetConsumer.CloseState;
-import org.alfasoftware.morf.dataset.Record;
-import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.Table;
-import org.junit.Test;
-
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Tests for {@linkplain DataMaskingXmlDataSetConsumer}.
@@ -58,19 +54,19 @@ public class TestDataMaskingXmlDataSetConsumer {
     DummyXmlOutputStreamProvider dummyXmlOutputStreamProvider = new DummyXmlOutputStreamProvider();
     DataSetConsumer testConsumer = new DataMaskingXmlDataSetConsumer(dummyXmlOutputStreamProvider, toMask);
 
-    Table metaData = table("Test").columns(
-        column("id", DataType.BIG_INTEGER).primaryKey().autoNumbered(123),
-        versionColumn(),
-        column("bar", DataType.STRING, 10).nullable(),
-        column("baz", DataType.STRING, 10).nullable(),
-        column("bob", DataType.DECIMAL, 13, 2).nullable()
+    Table metaData = SchemaUtils.table("Test").columns(
+        SchemaUtils.column("id", DataType.BIG_INTEGER).primaryKey().autoNumbered(123),
+        SchemaUtils.versionColumn(),
+        SchemaUtils.column("bar", DataType.STRING, 10).nullable(),
+        SchemaUtils.column("baz", DataType.STRING, 10).nullable(),
+        SchemaUtils.column("bob", DataType.DECIMAL, 13, 2).nullable()
       ).indexes(
-        index("fizz").unique().columns("bar", "baz")
+        SchemaUtils.index("fizz").unique().columns("bar", "baz")
       );
 
     testConsumer.open();
     List<Record> mockRecords = new ArrayList<>();
-    mockRecords.add(record()
+    mockRecords.add(DataSetUtils.record()
       .setInteger("id", 1)
       .setInteger("version", 1)
       .setString("bar", "abc")

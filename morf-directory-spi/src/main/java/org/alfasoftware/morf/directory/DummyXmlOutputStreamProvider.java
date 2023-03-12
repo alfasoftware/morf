@@ -13,12 +13,10 @@
  * limitations under the License.
  */
 
-package org.alfasoftware.morf.xml;
+package org.alfasoftware.morf.directory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
-
-import org.alfasoftware.morf.directory.DirectoryStreamProvider;
 
 /**
  * Testing implementation to catch result XML.

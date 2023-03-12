@@ -27,6 +27,8 @@
     <module>morf-postgresql</module>
     <module>morf-sqlserver</module>
     <module>morf-integration-test</module>
+    <module>morf-directory-spi</module>
+    <module>morf-xml</module>
   </modules>
   
   <properties>
@@ -63,9 +65,8 @@
     <log4j.version>1.2.15</log4j.version>
     <mockito.version>3.9.0</mockito.version>
     <ognl.version>2.6.9</ognl.version>
-    <serializer.version>2.7.1</serializer.version>
     <xmlunit.version>2.6.4</xmlunit.version>
-    <slf4j.version>1.5.0</slf4j.version>
+    <slf4j.version>2.0.6</slf4j.version>
     <sonar.coverage.exclusions>
         morf-testsupport/**
     </sonar.coverage.exclusions>
@@ -245,7 +246,17 @@
     <dependencies>
       <dependency>
         <groupId>org.alfasoftware</groupId>
+        <artifactId>morf-avro</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.alfasoftware</groupId>
         <artifactId>morf-core</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.alfasoftware</groupId>
+        <artifactId>morf-directory-spi</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
@@ -288,7 +299,11 @@
         <artifactId>morf-sqlserver</artifactId>
         <version>${project.version}</version>
       </dependency>
-
+      <dependency>
+        <groupId>org.alfasoftware</groupId>
+        <artifactId>morf-xml</artifactId>
+        <version>${project.version}</version>
+      </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
         <artifactId>commons-lang3</artifactId>
@@ -387,11 +402,6 @@
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-simple</artifactId>
         <version>${slf4j.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>xalan</groupId>
-        <artifactId>serializer</artifactId>
-        <version>${serializer.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>

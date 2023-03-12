@@ -37,7 +37,7 @@
   <dependencies>
     <dependency>
       <groupId>org.alfasoftware</groupId>
-      <artifactId>morf-core</artifactId>
+      <artifactId>morf-directory-spi</artifactId>
     </dependency>
     <dependency>
       <groupId>net.sourceforge.jexcelapi</groupId>

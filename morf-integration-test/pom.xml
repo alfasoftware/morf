@@ -101,6 +101,10 @@
       <artifactId>morf-testsupport</artifactId>
       <scope>test</scope>
     </dependency>
+      <dependency>
+          <groupId>org.alfasoftware</groupId>
+          <artifactId>morf-xml</artifactId>
+      </dependency>
     <dependency>
       <groupId>pl.pragmatists</groupId>
       <artifactId>JUnitParams</artifactId>
