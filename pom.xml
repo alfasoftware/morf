@@ -16,6 +16,7 @@
   </organization>
   
   <modules>
+    <module>morf-avro</module>
     <module>morf-core</module>
     <module>morf-testsupport</module>
     <module>morf-excel</module>
