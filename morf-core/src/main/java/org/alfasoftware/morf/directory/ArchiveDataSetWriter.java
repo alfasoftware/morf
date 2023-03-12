@@ -13,19 +13,17 @@
  * limitations under the License.
  */
 
-package org.alfasoftware.morf.xml;
-
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
-
-import org.alfasoftware.morf.directory.DirectoryStreamProvider;
+package org.alfasoftware.morf.directory;
 
 import com.google.common.io.ByteStreams;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 /**
  * Allows reading of data sets based on an archive (zip) file.
@@ -42,7 +40,9 @@ class ArchiveDataSetWriter implements DirectoryStreamProvider.DirectoryOutputStr
   /**
    * Identifies the archive to access.
    */
-  private final File file;
+  private final Path path;
+
+  private final String suffix;
 
   /**
    * References the zip archive.
@@ -50,13 +50,14 @@ class ArchiveDataSetWriter implements DirectoryStreamProvider.DirectoryOutputStr
   private AdaptedZipOutputStream zipOutput;
 
   /**
-   * Creates an archive data set linked to the specified <var>file</var>.
+   * Creates an archive data set linked to the specified <var>path</var>.
    *
-   * @param file The archive file to use.
+   * @param path The archive file to use.
    */
-  public ArchiveDataSetWriter(File file) {
+  ArchiveDataSetWriter(String suffix, Path path) {
     super();
-    this.file = file;
+    this.suffix = suffix;
+    this.path = path;
   }
 
 
@@ -75,18 +76,18 @@ class ArchiveDataSetWriter implements DirectoryStreamProvider.DirectoryOutputStr
   @Override
   public void open() {
     if (zipOutput != null) {
-      throw new IllegalStateException("Archive data set instance for [" + file + "] already open");
+      throw new IllegalStateException("Archive data set instance for [" + path + "] already open");
     }
 
     try {
-      zipOutput = new AdaptedZipOutputStream(new FileOutputStream(file));
+      zipOutput = new AdaptedZipOutputStream(Files.newOutputStream(path));
 
       // Put the read me entry in
       ZipEntry entry = new ZipEntry("_ReadMe.txt");
       zipOutput.putNextEntry(entry);
       ByteStreams.copy(new ByteArrayInputStream(READ_ME.getBytes("UTF-8")), zipOutput);
     } catch (Exception e) {
-      throw new RuntimeException("Error opening zip archive [" + file + "]", e);
+      throw new RuntimeException("Error opening zip archive [" + path + "]", e);
     }
   }
 
@@ -103,7 +104,7 @@ class ArchiveDataSetWriter implements DirectoryStreamProvider.DirectoryOutputStr
     try {
       zipOutput.reallyClose();
     } catch (IOException e) {
-      throw new RuntimeException("Error closing zip archive [" + file + "]", e);
+      throw new RuntimeException("Error closing zip archive [" + path + "]", e);
     }
   }
 
@@ -118,13 +119,13 @@ class ArchiveDataSetWriter implements DirectoryStreamProvider.DirectoryOutputStr
     }
 
     try {
-      ZipEntry entry = new ZipEntry(tableName + ".xml");
+      ZipEntry entry = new ZipEntry(tableName + "." + suffix);
       zipOutput.putNextEntry(entry);
 
       // Make sure the caller can't actually close the underlying stream
       return zipOutput;
     } catch (IOException e) {
-      throw new RuntimeException("Error creating new zip entry in archive [" + file + "]", e);
+      throw new RuntimeException("Error creating new zip entry in archive [" + path + "]", e);
     }
   }
 

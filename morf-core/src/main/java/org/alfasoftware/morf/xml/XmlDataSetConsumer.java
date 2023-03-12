@@ -15,22 +15,14 @@
 
 package org.alfasoftware.morf.xml;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Properties;
-
 import org.alfasoftware.morf.dataset.DataSetConsumer;
 import org.alfasoftware.morf.dataset.Record;
+import org.alfasoftware.morf.directory.DirectoryDataSetConsumer;
+import org.alfasoftware.morf.directory.DirectoryStreamProvider;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.xml.XmlStreamProvider.XmlOutputStreamProvider;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.xml.serializer.Method;
 import org.apache.xml.serializer.OutputPropertiesFactory;
@@ -41,18 +33,27 @@ import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.AttributesImpl;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Properties;
+
 /**
  * Serialises data sets to XML.
  *
  * <p>The output from this class can be sent directly to the file system by using the
  * constructor {@link #XmlDataSetConsumer(File)}. Alternatively the output from this
  * class can be sent to one or many streams by calling the constructor
- * accepting the {@link XmlOutputStreamProvider}.
+ * accepting the {@link DirectoryStreamProvider.DirectoryOutputStreamProvider}.
  * </p>
  *
  * @author Copyright (c) Alfa Financial Software 2009
  */
-public class XmlDataSetConsumer implements DataSetConsumer {
+public class XmlDataSetConsumer extends DirectoryDataSetConsumer implements DataSetConsumer {
 
   /**
    * Attributes implementation for use when no attributes are present on a node.
@@ -66,7 +67,10 @@ public class XmlDataSetConsumer implements DataSetConsumer {
 
   /**
    * Controls the behaviour of the consumer when running against a directory.
+   *
+   * Deprecated - use FileSystemDataSetConsumer#ClearDestinationBehaviour instead. Will be removed in 2.0.0.
    */
+  @Deprecated
   public enum ClearDestinationBehaviour {
     /**
      * Clear the destination out before extracting (the default)
@@ -78,16 +82,6 @@ public class XmlDataSetConsumer implements DataSetConsumer {
      */
     OVERWRITE
   }
-
-  /**
-   * Source of content handlers to send data to.
-   */
-  private final XmlOutputStreamProvider xmlStreamProvider;
-
-  /**
-   * What to do about clearing the destination.
-   */
-  private final ClearDestinationBehaviour clearDestinationBehaviour;
 
   /**
    * Creates a data set consumer that will pipe the data set to the file system location
@@ -104,7 +98,7 @@ public class XmlDataSetConsumer implements DataSetConsumer {
    * @param file The file system location to receive the data set.
    */
   public XmlDataSetConsumer(File file) {
-    this(file, ClearDestinationBehaviour.CLEAR);
+    this(file, DirectoryDataSetConsumer.ClearDestinationBehaviour.CLEAR);
   }
 
 
@@ -123,14 +117,8 @@ public class XmlDataSetConsumer implements DataSetConsumer {
    * @param file The file system location to receive the data set.
    * @param clearDestinationBehaviour Whether to clear the destination directory or not.
    */
-  public XmlDataSetConsumer(File file, ClearDestinationBehaviour clearDestinationBehaviour) {
-    super();
-    if (file.isDirectory()) {
-      this.xmlStreamProvider = new DirectoryDataSet(file);
-    } else {
-      this.xmlStreamProvider = new ArchiveDataSetWriter(file);
-    }
-    this.clearDestinationBehaviour = clearDestinationBehaviour;
+  public XmlDataSetConsumer(File file, DirectoryDataSetConsumer.ClearDestinationBehaviour clearDestinationBehaviour) {
+    super("xml", file.toPath(), clearDestinationBehaviour);
   }
 
 
@@ -141,8 +129,8 @@ public class XmlDataSetConsumer implements DataSetConsumer {
    * @param xmlOutputStreamProvider Provides streams to receive the XML content
    * for the data in the data set.
    */
-  public XmlDataSetConsumer(XmlOutputStreamProvider xmlOutputStreamProvider) {
-    this(xmlOutputStreamProvider, ClearDestinationBehaviour.CLEAR);
+  public XmlDataSetConsumer(DirectoryStreamProvider.DirectoryOutputStreamProvider xmlOutputStreamProvider) {
+    this(xmlOutputStreamProvider, DirectoryDataSetConsumer.ClearDestinationBehaviour.CLEAR);
   }
 
 
@@ -154,35 +142,8 @@ public class XmlDataSetConsumer implements DataSetConsumer {
    * for the data in the data set.
    * @param clearDestinationBehaviour The behaviour of the consumer when running against a directory.
    */
-  public XmlDataSetConsumer(XmlOutputStreamProvider xmlOutputStreamProvider, ClearDestinationBehaviour clearDestinationBehaviour) {
-    super();
-    this.xmlStreamProvider = xmlOutputStreamProvider;
-    this.clearDestinationBehaviour = clearDestinationBehaviour;
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.dataset.DataSetConsumer#open()
-   */
-  @Override
-  public void open() {
-    xmlStreamProvider.open();
-
-    if (clearDestinationBehaviour.equals(ClearDestinationBehaviour.CLEAR)) {
-      // we're outputting, so clear the destination of any previous runs
-      xmlStreamProvider.clearDestination();
-    }
-  }
-
-
-  /**
-   * Fired when a dataset has ended.
-   *
-   * @see org.alfasoftware.morf.dataset.DataSetConsumer#close(org.alfasoftware.morf.dataset.DataSetConsumer.CloseState)
-   */
-  @Override
-  public void close(CloseState closeState) {
-    xmlStreamProvider.close();
+  public XmlDataSetConsumer(DirectoryStreamProvider.DirectoryOutputStreamProvider xmlOutputStreamProvider, DirectoryDataSetConsumer.ClearDestinationBehaviour clearDestinationBehaviour) {
+    super(".xml", xmlOutputStreamProvider, clearDestinationBehaviour);
   }
 
 
@@ -197,7 +158,7 @@ public class XmlDataSetConsumer implements DataSetConsumer {
 
     // Get a content handler for this table
     try {
-      OutputStream outputStream = xmlStreamProvider.openOutputStreamForTable(table.getName());
+      OutputStream outputStream = directoryOutputStreamProvider.openOutputStreamForTable(table.getName());
       try {
         ContentHandler contentHandler = createContentHandler(outputStream);
 

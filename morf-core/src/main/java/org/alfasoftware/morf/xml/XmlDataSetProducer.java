@@ -15,6 +15,29 @@
 
 package org.alfasoftware.morf.xml;
 
+import com.google.common.base.Charsets;
+import com.google.common.io.Closeables;
+import org.alfasoftware.morf.dataset.DataSetProducer;
+import org.alfasoftware.morf.dataset.Record;
+import org.alfasoftware.morf.directory.ArchiveDataSetReader;
+import org.alfasoftware.morf.directory.DirectoryStreamProvider;
+import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.DataSetUtils;
+import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.metadata.View;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import javax.xml.stream.FactoryConfigurationError;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -32,30 +55,6 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
-import javax.xml.stream.FactoryConfigurationError;
-import javax.xml.stream.XMLInputFactory;
-import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamReader;
-
-import org.alfasoftware.morf.dataset.DataSetProducer;
-import org.alfasoftware.morf.dataset.Record;
-import org.alfasoftware.morf.metadata.Column;
-import org.alfasoftware.morf.metadata.DataSetUtils;
-import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
-import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.Index;
-import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.SchemaUtils;
-import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.View;
-import org.alfasoftware.morf.xml.XmlStreamProvider.XmlInputStreamProvider;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-import com.google.common.base.Charsets;
-import com.google.common.io.Closeables;
-
 /**
  * Reads XML and provides it as a data set. Uses XML pull-processing to get the
  * XML efficiently.
@@ -69,7 +68,7 @@ public class XmlDataSetProducer implements DataSetProducer {
   /**
    * Source of streams from which to read XMl.
    */
-  private final XmlInputStreamProvider xmlStreamProvider;
+  private final DirectoryStreamProvider.DirectoryInputStreamProvider xmlStreamProvider;
 
 
   /**
@@ -114,7 +113,7 @@ public class XmlDataSetProducer implements DataSetProducer {
       this.xmlStreamProvider = new DirectoryDataSet(file);
     }
     else if (file.isFile()) {
-      this.xmlStreamProvider = new ArchiveDataSetReader(file);
+      this.xmlStreamProvider = new ArchiveDataSetReader("xml", file);
     }
     else {
       throw new RuntimeException("Could not find [" + file + "] from [" + source + "]");
@@ -127,7 +126,7 @@ public class XmlDataSetProducer implements DataSetProducer {
    *
    * @param xmlStreamProvider Provides streams from which to read XML data.
    */
-  public XmlDataSetProducer(XmlInputStreamProvider xmlStreamProvider) {
+  public XmlDataSetProducer(DirectoryStreamProvider.DirectoryInputStreamProvider xmlStreamProvider) {
     super();
     this.xmlStreamProvider = xmlStreamProvider;
     this.urlHandler = new ViewURLAsFile();
@@ -243,7 +242,7 @@ public class XmlDataSetProducer implements DataSetProducer {
 
 
   /**
-   * Provides meta data based on an {@link XmlInputStreamProvider}.
+   * Provides meta data based on an {@link DirectoryStreamProvider.DirectoryInputStreamProvider}.
    *
    * @author Copyright (c) Alfa Financial Software 2010
    */
@@ -252,13 +251,13 @@ public class XmlDataSetProducer implements DataSetProducer {
     /**
      * The source for data.
      */
-    private final XmlInputStreamProvider xmlStreamProvider;
+    private final DirectoryStreamProvider.DirectoryInputStreamProvider xmlStreamProvider;
 
 
     /**
      * @param xmlStreamProvider The source stream provider.
      */
-    public PullProcessorMetaDataProvider(XmlInputStreamProvider xmlStreamProvider) {
+    public PullProcessorMetaDataProvider(DirectoryStreamProvider.DirectoryInputStreamProvider xmlStreamProvider) {
       super();
       this.xmlStreamProvider = xmlStreamProvider;
     }
@@ -389,7 +388,7 @@ public class XmlDataSetProducer implements DataSetProducer {
 
 
     /**
-     * @param xmlPullParser pull parser that provides the xml data
+     * @param xmlStreamReader pull parser that provides the xml data
      * @param xmlFormatVersion The format version.
      */
     public PullProcessorTableMetaData(XMLStreamReader xmlStreamReader, int xmlFormatVersion) {
@@ -737,7 +736,7 @@ public class XmlDataSetProducer implements DataSetProducer {
 
 
     /**
-     * @param xmlPullParser Input stream containing the source XML data.
+     * @param xmlStreamReader Input stream containing the source XML data.
      */
     public PullProcessorRecordIterator(XMLStreamReader xmlStreamReader) {
       super(xmlStreamReader);

@@ -2,8 +2,8 @@ package org.alfasoftware.morf.directory;
 
 import org.alfasoftware.morf.dataset.DataSetConsumer;
 
-import java.io.File;
-import java.util.function.Function;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 public abstract class DirectoryDataSetConsumer implements DataSetConsumer {
 
@@ -17,6 +17,8 @@ public abstract class DirectoryDataSetConsumer implements DataSetConsumer {
      */
     protected final ClearDestinationBehaviour clearDestinationBehaviour;
 
+    protected final String suffix;
+
     /**
      * Creates a data set consumer that will pipe the data set to the file system location
      * specified by <var>file</var>.
@@ -29,17 +31,18 @@ public abstract class DirectoryDataSetConsumer implements DataSetConsumer {
      * a zip archive containing one file per table in the data set.</li>
      * </ul>
      *
-     * @param file The file system location to receive the data set.
+     * @param path to file system location to receive the data set.
      * @param clearDestinationBehaviour Whether to clear the destination directory or not.
      */
-    public DirectoryDataSetConsumer(File file,
-                                    DirectoryDataSetConsumer.ClearDestinationBehaviour clearDestinationBehaviour,
-                                    Function<File, DirectoryStreamProvider.DirectoryOutputStreamProvider> archiveDataSetWriterFunction) {
+    public DirectoryDataSetConsumer(String suffix,
+                                    Path path,
+                                    DirectoryDataSetConsumer.ClearDestinationBehaviour clearDestinationBehaviour) {
         super();
-        if (file.isDirectory()) {
-            this.directoryOutputStreamProvider = new DirectoryDataSet(file);
+        this.suffix = suffix;
+        if (Files.isDirectory(path)) {
+            this.directoryOutputStreamProvider = new DirectoryDataSet(suffix, path);
         } else {
-            this.directoryOutputStreamProvider = archiveDataSetWriterFunction.apply(file);
+            this.directoryOutputStreamProvider = new ArchiveDataSetWriter(suffix, path);
         }
         this.clearDestinationBehaviour = clearDestinationBehaviour;
     }
@@ -56,13 +59,14 @@ public abstract class DirectoryDataSetConsumer implements DataSetConsumer {
      * a zip archive containing one XML file per table in the data set.</li>
      * </ul>
      *
-     * @param file The file system location to receive the data set.
+     * @param path to file system location to receive the data set.
      */
-    public DirectoryDataSetConsumer(File file, Function<File, DirectoryStreamProvider.DirectoryOutputStreamProvider> archiveDataSetWriterFunction) {
-        this(file, DirectoryDataSetConsumer.ClearDestinationBehaviour.CLEAR, archiveDataSetWriterFunction);
+    public DirectoryDataSetConsumer(String suffix, Path path) {
+        this(suffix, path, DirectoryDataSetConsumer.ClearDestinationBehaviour.CLEAR);
     }
 
-    public DirectoryDataSetConsumer(DirectoryStreamProvider.DirectoryOutputStreamProvider directoryOutputStreamProvider, ClearDestinationBehaviour clearDestinationBehaviour) {
+    public DirectoryDataSetConsumer(String suffix, DirectoryStreamProvider.DirectoryOutputStreamProvider directoryOutputStreamProvider, ClearDestinationBehaviour clearDestinationBehaviour) {
+        this.suffix = suffix;
         this.directoryOutputStreamProvider = directoryOutputStreamProvider;
         this.clearDestinationBehaviour = clearDestinationBehaviour;
     }

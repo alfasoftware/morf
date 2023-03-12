@@ -32,9 +32,9 @@ import java.util.List;
 import org.alfasoftware.morf.dataset.DataSetConsumer;
 import org.alfasoftware.morf.dataset.DataSetConsumer.CloseState;
 import org.alfasoftware.morf.dataset.Record;
+import org.alfasoftware.morf.directory.DirectoryDataSetConsumer;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.xml.XmlDataSetConsumer.ClearDestinationBehaviour;
 import org.junit.Test;
 
 import com.google.common.collect.ImmutableList;
@@ -60,7 +60,8 @@ public class TestXmlDataSetConsumer {
         column("bar", DataType.STRING, 10).nullable(),
         column("baz", DataType.STRING, 10).nullable(),
         column("bob", DataType.DECIMAL, 13, 2).nullable()
-      ).indexes(        index("fizz").unique().columns("bar", "baz")
+      ).indexes(
+        index("fizz").unique().columns("bar", "baz")
       );
 
     testConsumer.open();
@@ -148,7 +149,7 @@ public class TestXmlDataSetConsumer {
     }
     {
       DummyXmlOutputStreamProvider dummyXmlOutputStreamProvider = new DummyXmlOutputStreamProvider();
-      DataSetConsumer testConsumer = new XmlDataSetConsumer(dummyXmlOutputStreamProvider, ClearDestinationBehaviour.CLEAR);
+      DataSetConsumer testConsumer = new XmlDataSetConsumer(dummyXmlOutputStreamProvider, DirectoryDataSetConsumer.ClearDestinationBehaviour.CLEAR);
       testConsumer.open();
       testConsumer.close(CloseState.COMPLETE);
 
@@ -156,7 +157,7 @@ public class TestXmlDataSetConsumer {
     }
     {
       DummyXmlOutputStreamProvider dummyXmlOutputStreamProvider = new DummyXmlOutputStreamProvider();
-      DataSetConsumer testConsumer = new XmlDataSetConsumer(dummyXmlOutputStreamProvider, ClearDestinationBehaviour.OVERWRITE);
+      DataSetConsumer testConsumer = new XmlDataSetConsumer(dummyXmlOutputStreamProvider, DirectoryDataSetConsumer.ClearDestinationBehaviour.OVERWRITE);
       testConsumer.open();
       testConsumer.close(CloseState.COMPLETE);
 

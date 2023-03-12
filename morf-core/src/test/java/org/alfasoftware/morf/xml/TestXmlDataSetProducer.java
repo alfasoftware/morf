@@ -39,10 +39,10 @@ import org.alfasoftware.morf.dataset.DataSetConsumer;
 import org.alfasoftware.morf.dataset.DataSetConsumer.CloseState;
 import org.alfasoftware.morf.dataset.DataSetProducer;
 import org.alfasoftware.morf.dataset.Record;
+import org.alfasoftware.morf.directory.DirectoryStreamProvider;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.SchemaHomology;
 import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.xml.XmlStreamProvider.XmlInputStreamProvider;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.Rule;
@@ -359,7 +359,7 @@ public class TestXmlDataSetProducer {
    *
    * @author Copyright (c) Alfa Financial Software 2010
    */
-  private static final class TestXmlInputStreamProvider implements XmlInputStreamProvider {
+  private static final class TestXmlInputStreamProvider implements DirectoryStreamProvider.DirectoryInputStreamProvider {
 
     private final String content;
     private final String tableName;

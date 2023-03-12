@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-package org.alfasoftware.morf.xml;
+package org.alfasoftware.morf.directory;
 
 import java.io.File;
 import java.io.IOException;
@@ -25,36 +25,36 @@ import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import org.alfasoftware.morf.directory.BaseDataSetReader;
-import org.alfasoftware.morf.directory.DirectoryStreamProvider;
 
 /**
  * Allows reading of data sets based on an archive (zip) file.
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-class ArchiveDataSetReader extends BaseDataSetReader implements DirectoryStreamProvider.DirectoryInputStreamProvider {
+public class ArchiveDataSetReader extends BaseDataSetReader implements DirectoryStreamProvider.DirectoryInputStreamProvider {
 
   /**
    * The file to read the archive from.
    */
   private final File file;
 
+
   /**
    * References the zip archive.
    */
   private ZipFile zipFile;
 
-  private final Pattern filenamePattern = Pattern.compile("(\\w+)\\.xml");
+  private final Pattern filenamePattern;
 
   /**
    * Creates an archive data set linked to the specified <var>file</var>.
    *
    * @param file The archive file to use.
    */
-  public ArchiveDataSetReader(File file) {
+  public ArchiveDataSetReader(String suffix, File file) {
     super();
     this.file = file;
+    this.filenamePattern = Pattern.compile("(\\w+)\\." + suffix);
   }
 
 

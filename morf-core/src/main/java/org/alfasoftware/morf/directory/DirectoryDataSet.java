@@ -15,9 +15,13 @@
 
 package org.alfasoftware.morf.directory;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
-import java.util.Arrays;
+import java.nio.file.Path;
 
 /**
  * Allows reading of a data set from a directory.
@@ -29,27 +33,32 @@ public class DirectoryDataSet extends BaseDataSetReader implements DirectoryStre
   /**
    * The directory to read from.
    */
-  private final File directory;
+  private final Path directory;
+  private final String suffix;
 
   /**
    * Creates a directory based data set reader based on the directory <var>file</var>.
    *
    * @param directory The directory to access.
    */
-  public DirectoryDataSet(File directory) {
+  public DirectoryDataSet(String suffix, Path directory) {
     super();
+    this.suffix = suffix;
     this.directory = directory;
 
-    if (!directory.isDirectory()) {
+    if (!Files.isDirectory(directory)) {
       throw new IllegalArgumentException("[" + directory + "] is not a directory");
     }
 
     // read the files in the directory
     // Do it here because DirectoryDataSet historically did not have to be "open" to be used.
-    for (File file : directory.listFiles()) {
-      if (file.getName().matches(".*\\.xml")) {
-        addTableName(file.getName().replaceAll("\\.xml", ""), file.getName());
-      }
+    try {
+      Files.list(directory).filter(path -> path.endsWith(suffix))
+              .forEach(path -> addTableName(
+                      path.getFileName().toString().replaceAll("\\." + suffix, ""),
+                      path.getFileName().toString()));
+    } catch (IOException e) {
+      e.printStackTrace();
     }
   }
 
@@ -59,25 +68,34 @@ public class DirectoryDataSet extends BaseDataSetReader implements DirectoryStre
    */
   @Override
   public void clearDestination() {
-    for (File file : directory.listFiles()) {
-      // skip files/folders that start with . such as .svn
-      if (file.getName().startsWith(".")) continue;
-
-      deleteFileOrDirectory(file);
+    try {
+      Files.list(directory)
+              .filter(path -> !path.getFileName().startsWith("."))
+              .forEach(this::deleteFileOrDirectory);
+        // skip files/folders that start with . such as .svn
+    } catch (IOException e) {
+      throw new RuntimeException("Exception occurred when trying to clear existing directory", e);
     }
   }
 
 
-  private void deleteFileOrDirectory(File file) {
-    if (file.isDirectory()) {
+  private void deleteFileOrDirectory(Path path) {
+    if (Files.isDirectory(path)) {
       // clear it out (recursively) if needed...
-      if (!Files.isSymbolicLink(file.toPath())) {
-        Arrays.stream(file.listFiles()).forEach(this::deleteFileOrDirectory);
+      if (!Files.isSymbolicLink(path)) {
+        try {
+          Files.list(path).forEach(this::deleteFileOrDirectory);
+        } catch (IOException ex) {
+          throw new RuntimeException("Exception occurred when trying to clear existing directory", ex);
+        }
       }
     }
-    if (!file.delete()) {
-      throw new RuntimeException("Exception cleaning output directory, file [" + file + "]");
+    try {
+      Files.delete(path);
+    } catch (IOException e) {
+      throw new RuntimeException("Exception cleaning output directory, file [" + path + "]");
     }
+
   }
 
 
@@ -87,8 +105,10 @@ public class DirectoryDataSet extends BaseDataSetReader implements DirectoryStre
   @Override
   public InputStream openInputStreamForTable(String tableName) {
     try {
-      return new FileInputStream(new File(directory, fileNameForTable(tableName)));
+      return Files.newInputStream(directory.resolve(fileNameForTable(tableName)));
     } catch (FileNotFoundException e) {
+      throw new RuntimeException("Error opening output stream", e);
+    } catch (IOException e) {
       throw new RuntimeException("Error opening output stream", e);
     }
   }
@@ -100,8 +120,10 @@ public class DirectoryDataSet extends BaseDataSetReader implements DirectoryStre
   @Override
   public OutputStream openOutputStreamForTable(String tableName) {
     try {
-      return new FileOutputStream(new File(directory, tableName + ".xml"));
+      return Files.newOutputStream(directory.resolve(tableName + "." + suffix));
     } catch (FileNotFoundException e) {
+      throw new RuntimeException("Error opening output stream", e);
+    } catch (IOException e) {
       throw new RuntimeException("Error opening output stream", e);
     }
   }
