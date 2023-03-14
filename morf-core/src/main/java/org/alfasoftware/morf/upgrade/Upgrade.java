@@ -207,7 +207,7 @@ public class Upgrade {
         log.info("Schema differences found, but upgrade in progress - no action required until upgrade is complete");
         return new UpgradePath(status);
       }
-      else if (upgradeAuditCount > 0 && upgradeAuditCount != getUpgradeAuditRowCount(upgradeAuditRowProcessor)) {
+      else if (upgradeAuditCount > -1 && upgradeAuditCount != getUpgradeAuditRowCount(upgradeAuditRowProcessor)) {
         //In the meantime another node managed to finish the upgrade steps and flip the status back to NONE. Assuming the upgrade was in progress on another node.
         log.info("Schema differences found, but upgrade was progressed on another node - no action required");
         return new UpgradePath(UpgradeStatus.IN_PROGRESS);
@@ -353,7 +353,7 @@ public class Upgrade {
     SelectStatement selectStatement = select(count(upgradeAuditTable.field("upgradeUUID")))
             .from(upgradeAuditTable)
             .build();
-    long appliedUpgradeStepsCount = 0;
+    long appliedUpgradeStepsCount = -1;
     try {
       SqlScriptExecutorProvider sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
       appliedUpgradeStepsCount = sqlScriptExecutorProvider.get()
