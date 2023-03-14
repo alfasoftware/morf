@@ -1206,10 +1206,8 @@ class OracleDialect extends SqlDialect {
         stringBuilder.append(", ");
       }
 
-      if (currentField instanceof NullFieldLiteral) {
-        stringBuilder.append(getSqlForNullField(currentField, table, stmt.getFields()));
-      } else if (currentField instanceof FieldReference) {
-        stringBuilder.append(getSqlField(currentField, table, stmt.getFields()));
+      if (currentField instanceof NullFieldLiteral || currentField instanceof FieldReference) {
+        stringBuilder.append(getCastSqlFromField(currentField, table, stmt.getFields()));
       } else {
         stringBuilder.append(getSqlFrom(currentField));
       }
@@ -1223,31 +1221,15 @@ class OracleDialect extends SqlDialect {
 
   /**
    * Creates the Cast SQL for a given null field.
-   * @param currentField - will be a NullFieldLiteral.
+   * @param currentField - Field will be either NullFieldLiteral or FieldReference.
    * @param table - Table definition for the table being created.
    * @param fields - All the fields being added to the select.
    * @return String value of the CAST.
    */
-  private String getSqlForNullField(AliasedField currentField, Table table, List<AliasedField> fields) {
+  private String getCastSqlFromField(AliasedField currentField, Table table, List<AliasedField> fields) {
     Column column = table.columns().get(fields.indexOf(currentField));
-    return  "CAST(null AS "
-                + sqlRepresentationOfColumnType(column, false, false, true)
-                + ") AS "
-                + column.getName();
-  }
-
-  /**
-   * Creates the Cast SQL for a given field.
-   * @param currentField - will be a FieldReference.
-   * @param table - Table definition for the table being created.
-   * @param fields - All the fields being added to the select.
-   * @return String value of the CAST.
-   */
-  private String getSqlField(AliasedField currentField, Table table, List<AliasedField> fields) {
-    Column column = table.columns().get(fields.indexOf(currentField));
-
     return  "CAST("
-                + column.getName()
+                + getSqlFrom(currentField)
                 + " AS "
                 + sqlRepresentationOfColumnType(column, false, false, true)
                 + ") AS "
