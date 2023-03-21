@@ -19,11 +19,14 @@ import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.jdbc.SqlScriptExecutor.ResultSetProcessor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaValidator;
 import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.upgrade.ExistingViewStateLoader.Result;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeBuilder.GraphBasedUpgradeBuilderFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
@@ -45,6 +48,10 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.alfasoftware.morf.metadata.SchemaUtils.copy;
+import static org.alfasoftware.morf.sql.SelectStatement.select;
+import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.alfasoftware.morf.sql.element.Function.count;
+import static org.alfasoftware.morf.upgrade.UpgradeStatus.NONE;
 
 /**
  * Entry point for upgrade processing.
@@ -60,6 +67,7 @@ public class Upgrade {
   private final ViewChangesDeploymentHelper viewChangesDeploymentHelper;
   private final ViewDeploymentValidator viewDeploymentValidator;
   private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
+
 
   public Upgrade(
       ConnectionResources connectionResources,
@@ -157,9 +165,11 @@ public class Upgrade {
   public UpgradePath findPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, Collection<String> exceptionRegexes, Set<String> exclusiveExecutionSteps, DataSource dataSource) {
     final List<String> upgradeStatements = new ArrayList<>();
 
+    ResultSetProcessor<Long> upgradeAuditRowProcessor = resultSet -> {resultSet.next(); return resultSet.getLong(1);};
+    long upgradeAuditCount = getUpgradeAuditRowCount(upgradeAuditRowProcessor); //fetch a number of upgrade steps applied previously to do optimistic locking check later
     //Return an upgradePath with the current upgrade status if one is in progress
     UpgradeStatus status = upgradeStatusTableService.getStatus(Optional.of(dataSource));
-    if (status != UpgradeStatus.NONE) {
+    if (status != NONE) {
       return new UpgradePath(status);
     }
 
@@ -185,7 +195,7 @@ public class Upgrade {
     UpgradePathFinder pathFinder = new UpgradePathFinder(upgradeSteps, existingTableState.loadAppliedStepUUIDs());
     SchemaChangeSequence schemaChangeSequence;
     status = upgradeStatusTableService.getStatus(Optional.of(dataSource));
-    if (status != UpgradeStatus.NONE) {
+    if (status != NONE) {
       return new UpgradePath(status);
     }
     try {
@@ -193,10 +203,16 @@ public class Upgrade {
     } catch (NoUpgradePathExistsException e) {
       log.debug("No upgrade path found - checking upgrade status", e);
       status = upgradeStatusTableService.getStatus(Optional.of(dataSource));
-      if (status != UpgradeStatus.NONE) {
+      if (status != NONE) {
         log.info("Schema differences found, but upgrade in progress - no action required until upgrade is complete");
         return new UpgradePath(status);
-      } else {
+      }
+      else if (upgradeAuditCount != getUpgradeAuditRowCount(upgradeAuditRowProcessor)) {
+        //In the meantime another node managed to finish the upgrade steps and flip the status back to NONE. Assuming the upgrade was in progress on another node.
+        log.info("Schema differences found, but upgrade was progressed on another node - no action required");
+        return new UpgradePath(UpgradeStatus.IN_PROGRESS);
+      }
+      else {
         throw e;
       }
     }
@@ -325,6 +341,29 @@ public class Upgrade {
     } finally {
       databaseSchemaResource.close();
     }
+  }
+
+
+  /**
+   * Provides a number of already applied upgrade steps.
+   * @return the number of upgrade steps from the UpgradeAudit table
+   */
+  long getUpgradeAuditRowCount(ResultSetProcessor<Long> processor) {
+    TableReference upgradeAuditTable = tableRef(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME);
+    SelectStatement selectStatement = select(count(upgradeAuditTable.field("upgradeUUID")))
+            .from(upgradeAuditTable)
+            .build();
+    long appliedUpgradeStepsCount = -1;
+    try {
+      SqlScriptExecutorProvider sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
+      appliedUpgradeStepsCount = sqlScriptExecutorProvider.get()
+              .executeQuery(connectionResources.sqlDialect().convertStatementToSQL(selectStatement), processor);
+    }
+    catch (Exception e) {
+      log.warn("Unable to read from UpgradeAudit table", e);
+    }
+    log.debug("Returning number of applied upgrade steps [" + appliedUpgradeStepsCount + "]");
+    return appliedUpgradeStepsCount;
   }
 
 

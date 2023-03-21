@@ -24,6 +24,7 @@ import com.google.common.collect.Sets;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.MockDialect;
 import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
@@ -71,6 +72,8 @@ import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.alfasoftware.morf.upgrade.UpgradeStatus.COMPLETED;
+import static org.alfasoftware.morf.upgrade.UpgradeStatus.IN_PROGRESS;
 import static org.alfasoftware.morf.upgrade.UpgradeStatus.NONE;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.Assert.assertEquals;
@@ -175,6 +178,29 @@ public class TestUpgrade {
 
     assertEquals("Should be two steps.", 2, results.getSteps().size());
     assertEquals("Number of SQL statements", 18, results.getSql().size()); // Includes statements to create, truncate and then drop temp table, also 2 comments
+  }
+
+
+  /**
+   * Test for checking the number of the upgrade audit rows.
+   * @throws SQLException
+   */
+  @Test
+  public void testAuditRowCount() throws SQLException {
+    // Given
+    Table upgradeAudit = upgradeAudit();
+
+    ConnectionResources connection = mock(ConnectionResources.class, RETURNS_DEEP_STUBS);
+    when(connection.sqlDialect().convertStatementToSQL(any(SelectStatement.class))).thenReturn("SELECT COUNT(UpgradeAudit.upgradeUUID) FROM UpgradeAudit");
+    SqlScriptExecutor.ResultSetProcessor<Long> upgradeRowProcessor = mock(SqlScriptExecutor.ResultSetProcessor.class);
+
+    // When
+    new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(connection), graphBasedUpgradeScriptGeneratorFactory, viewChangesDeploymentHelperFactory(connection), viewDeploymentValidatorFactory())
+            .create(connection)
+            .getUpgradeAuditRowCount(upgradeRowProcessor);
+
+    // Then
+    verify(upgradeRowProcessor).process(any(ResultSet.class));
   }
 
 
@@ -752,12 +778,30 @@ public class TestUpgrade {
 
 
   /**
+   * Test that if there changes in progress - which might be detected early in the upgrade process
+   */
+  @Test
+  public void testInProgressEarlyOne() throws SQLException {
+    assertInProgressUpgrade(IN_PROGRESS, IN_PROGRESS, IN_PROGRESS);
+  }
+
+
+  /**
+   * Test that if there changes in progress - which might be detected early in the upgrade process
+   */
+  @Test
+  public void testInProgressEarlyTwo() throws SQLException {
+    assertInProgressUpgrade(NONE, IN_PROGRESS, IN_PROGRESS);
+  }
+
+
+  /**
    * Test that if there changes in progress - which might be detected through no
    * upgrade path being found - an "in progress" path is returned.
    */
   @Test
   public void testInProgressUpgrade() throws SQLException {
-    assertInProgressUpgrade(UpgradeStatus.IN_PROGRESS);
+    assertInProgressUpgrade(NONE, NONE, IN_PROGRESS);
   }
 
 
@@ -766,7 +810,17 @@ public class TestUpgrade {
    */
   @Test
   public void testCompletedUpgrade() throws SQLException {
-    assertInProgressUpgrade(UpgradeStatus.COMPLETED);
+    assertInProgressUpgrade(COMPLETED, COMPLETED, COMPLETED);
+  }
+
+
+  /**
+   * Test that if there are no changes in progress but there is no upgrade path being found
+   * - the {@link UpgradePathFinder.NoUpgradePathExistsException} is propagated
+   */
+  @Test(expected = UpgradePathFinder.NoUpgradePathExistsException.class)
+  public void testNoUpgradePath() throws SQLException {
+    assertInProgressUpgrade(NONE, NONE, NONE);
   }
 
 
@@ -774,10 +828,12 @@ public class TestUpgrade {
    * Allow verification of an in-progress upgrade. The {@link UpgradePath}
    * should report no steps to apply and that it is in-progress.
    *
-   * @param currentStatus Status to be represented.
+   * @param status1 Status to be represented.
+   * @param status2 Status to be represented.
+   * @param status3 Status to be represented.
    * @throws SQLException if something goes wrong.
    */
-  private void assertInProgressUpgrade(UpgradeStatus currentStatus) throws SQLException {
+  private void assertInProgressUpgrade(UpgradeStatus status1, UpgradeStatus status2, UpgradeStatus status3) throws SQLException {
     Schema sourceSchema = schema(
       schema(upgradeAudit(), deployedViews(), originalCar())
     );
@@ -801,7 +857,7 @@ public class TestUpgrade {
                                               withResultSet("SELECT name, hash FROM DeployedViews", viewResultSet).
                                               create();
     UpgradeStatusTableService upgradeStatusTableService = mock(UpgradeStatusTableService.class);
-    when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(currentStatus);
+    when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(status1, status2, status3);
 
     UpgradePath path = new Upgrade(connection, upgradePathFactory(), upgradeStatusTableService, new ViewChangesDeploymentHelper(connection.sqlDialect()), viewDeploymentValidator, graphBasedUpgradeScriptGeneratorFactory).findPath(targetSchema, upgradeSteps, new HashSet<String>(), connection.getDataSource());
     assertFalse("Steps to apply", path.hasStepsToApply());
