@@ -1108,11 +1108,26 @@ class OracleDialect extends SqlDialect {
    */
   @Override
   public Collection<String> addTableFromStatements(Table table, SelectStatement selectStatement) {
+    List<AliasedField> fieldsToInclude = new ArrayList<>();
+
+    for(AliasedField field: selectStatement.getFields()) {
+      if (field instanceof NullFieldLiteral || field instanceof FieldReference) {
+        Column column = table.columns().get(selectStatement.getFields().indexOf(field));
+        fieldsToInclude.add(new Cast(
+                field,
+                column.getType(),
+                column.getWidth(),
+                column.getScale()).as(column.getName()));
+      } else {
+        fieldsToInclude.add(field);
+      }
+    }
+
     Builder<String> result = ImmutableList.<String>builder();
     result.add(new StringBuilder()
         .append(createTableStatement(table, true))
         .append(" AS ")
-        .append(convertStatementToSQL(selectStatement, table))
+        .append(convertStatementToSQL(selectStatement.shallowCopy().withFields(fieldsToInclude).build()))
         .toString()
       );
     result.add("ALTER TABLE " + schemaNamePrefix() + table.getName()  + " NOPARALLEL LOGGING");
@@ -1124,116 +1139,6 @@ class OracleDialect extends SqlDialect {
     result.addAll(buildRemainingStatementsAndComments(table));
 
     return result.build();
-  }
-
-  /**
-   * Converts a structured {@link SelectStatement} to the equivalent SQL text.
-   *
-   * @param statement the statement to convert
-   * @return a string containing the SQL to run against the database
-   */
-  public String convertStatementToSQL(SelectStatement statement, Table table) {
-    if (statement == null) {
-      throw new IllegalArgumentException(CANNOT_CONVERT_NULL_STATEMENT_TO_SQL);
-    }
-
-    return getSqlFrom(statement, table);
-  }
-
-
-  /**
-   * Convert a {@link SelectStatement} into standards compliant SQL.
-   * <p>
-   * For example, the following code:
-   * </p>
-   * <blockquote>
-   *
-   * <pre>
-   * SelectStatement stmt = new SelectStatement().from(new Table(&quot;agreement&quot;));
-   *                                                                            String result = sqlgen.getSqlFrom(stmt);
-   * </pre>
-   *
-   * </blockquote>
-   * <p>
-   * Will populate {@code result} with:
-   * </p>
-   * <blockquote>
-   *
-   * <pre>
-   *    SELECT * FROM agreement
-   * </pre>
-   *
-   * </blockquote>
-   *
-   * @param stmt the select statement to generate SQL for
-   * @return a standards compliant SQL SELECT statement
-   */
-  protected String getSqlFrom(SelectStatement stmt, Table table) {
-    StringBuilder result = new StringBuilder("SELECT ");
-
-    // Any hint directives which should be inserted before the field list
-    result.append(selectStatementPreFieldDirectives(stmt));
-
-    // Start by checking if this is a distinct call, then add the field list
-    if (stmt.isDistinct()) {
-      result.append("DISTINCT ");
-    }
-    if (stmt.getFields().isEmpty()) {
-      result.append("*");
-    } else {
-      result.append(getFieldsForSelect(table, stmt));
-    }
-
-    result.append(appendPostSelectSQL(stmt));
-
-    // Any hint directives which should be inserted right at the end of the statement
-    result.append(selectStatementPostStatementDirectives(stmt));
-
-    return result.toString();
-  }
-
-  /**
-   * Returns fields to be used in the select statement.
-   * @param table table definition for the table being created.
-   * @param stmt the select statement.
-   * @return returns all the fields to be included in the select statement in SQL format.
-   */
-  private String getFieldsForSelect(Table table, SelectStatement stmt) {
-    StringBuilder stringBuilder = new StringBuilder();
-    boolean firstField = true;
-    for (AliasedField currentField : stmt.getFields()) {
-      if (!firstField) {
-        stringBuilder.append(", ");
-      }
-
-      if (currentField instanceof NullFieldLiteral || currentField instanceof FieldReference) {
-        stringBuilder.append(getCastSqlFromField(currentField, table, stmt.getFields()));
-      } else {
-        stringBuilder.append(getSqlFrom(currentField));
-      }
-      // Put an alias in, if requested
-      appendAlias(stringBuilder, currentField);
-
-      firstField = false;
-    }
-    return stringBuilder.toString();
-  }
-
-  /**
-   * Creates the Cast SQL for a given null field.
-   * @param currentField - Field will be either NullFieldLiteral or FieldReference.
-   * @param table - Table definition for the table being created.
-   * @param fields - All the fields being added to the select.
-   * @return String value of the CAST.
-   */
-  private String getCastSqlFromField(AliasedField currentField, Table table, List<AliasedField> fields) {
-    Column column = table.columns().get(fields.indexOf(currentField));
-    return  "CAST("
-                + getSqlFrom(currentField)
-                + " AS "
-                + sqlRepresentationOfColumnType(column, false, false, true)
-                + ") AS "
-                + column.getName();
   }
 
   /**

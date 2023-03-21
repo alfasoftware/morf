@@ -27,13 +27,26 @@ public class TestOracleDialectBespokeFunctionality {
         SelectStatement selectStatement = select(field("someField"), field("otherField"), nullLiteral()).from(tableRef("OtherTable"));
 
         OracleDialect oracleDialect = new OracleDialect("TEST");
-        String result = oracleDialect.convertStatementToSQL(selectStatement, table);
+        String result = oracleDialect.addTableFromStatements(table, selectStatement).toString();
 
-        String expectedResult = "SELECT " +
+        String expectedResult = "[CREATE TABLE TEST.SomeTable (" +
+                "someField  NOT NULL, " +
+                "otherField  NOT NULL, " +
+                "nullField  NOT NULL, " +
+                "CONSTRAINT SomeTable_PK PRIMARY KEY (someField) " +
+                "USING INDEX (CREATE UNIQUE INDEX TEST.SomeTable_PK ON TEST.SomeTable (someField))) " +
+                "PARALLEL NOLOGGING " +
+                "AS SELECT " +
                 "CAST(someField AS NVARCHAR2(3)) AS someField, " +
                 "CAST(otherField AS DECIMAL(3,0)) AS otherField, " +
                 "CAST(null AS NVARCHAR2(3)) AS nullField " +
-                "FROM TEST.OtherTable";
+                "FROM TEST.OtherTable, " +
+                "ALTER TABLE TEST.SomeTable NOPARALLEL LOGGING, " +
+                "ALTER INDEX TEST.SomeTable_PK NOPARALLEL LOGGING, " +
+                "COMMENT ON TABLE TEST.SomeTable IS 'REALNAME:[SomeTable]', " +
+                "COMMENT ON COLUMN TEST.SomeTable.someField IS 'REALNAME:[someField]/TYPE:[STRING]', " +
+                "COMMENT ON COLUMN TEST.SomeTable.otherField IS 'REALNAME:[otherField]/TYPE:[DECIMAL]', " +
+                "COMMENT ON COLUMN TEST.SomeTable.nullField IS 'REALNAME:[nullField]/TYPE:[STRING]']";
         assertEquals(expectedResult, result);
     }
 
@@ -52,12 +65,22 @@ public class TestOracleDialectBespokeFunctionality {
         SelectStatement selectStatement = select(field("someField"), field("otherField")).from(tableRef("OtherTable"));
         SelectStatement distinctSelectStatement = selectStatement.shallowCopy().distinct().build();
 
-        String result = oracleDialect.convertStatementToSQL(distinctSelectStatement, table);
+        String result = oracleDialect.addTableFromStatements(table, distinctSelectStatement).toString();
 
-        String expectedResult = "SELECT DISTINCT " +
+        String expectedResult = "[CREATE TABLE TEST.SomeTable (" +
+                "someField  NOT NULL, " +
+                "otherField  NOT NULL, " +
+                "CONSTRAINT SomeTable_PK PRIMARY KEY (someField) " +
+                "USING INDEX (CREATE UNIQUE INDEX TEST.SomeTable_PK ON TEST.SomeTable (someField))) " +
+                "PARALLEL NOLOGGING " +
+                "AS SELECT DISTINCT " +
                 "CAST(someField AS NVARCHAR2(3)) AS someField, " +
-                "CAST(otherField AS DECIMAL(3,0)) AS otherField " +
-                "FROM TEST.OtherTable";
+                "CAST(otherField AS DECIMAL(3,0)) AS otherField FROM TEST.OtherTable, " +
+                "ALTER TABLE TEST.SomeTable NOPARALLEL LOGGING, " +
+                "ALTER INDEX TEST.SomeTable_PK NOPARALLEL LOGGING, " +
+                "COMMENT ON TABLE TEST.SomeTable IS 'REALNAME:[SomeTable]', " +
+                "COMMENT ON COLUMN TEST.SomeTable.someField IS 'REALNAME:[someField]/TYPE:[STRING]', " +
+                "COMMENT ON COLUMN TEST.SomeTable.otherField IS 'REALNAME:[otherField]/TYPE:[DECIMAL]']";
         assertEquals(expectedResult, result);
     }
 
@@ -77,9 +100,20 @@ public class TestOracleDialectBespokeFunctionality {
         SelectStatement selectStatement = select().from(tableRef("OtherTable"));
         SelectStatement distinctSelectStatement = selectStatement.shallowCopy().distinct().build();
 
-        String result = oracleDialect.convertStatementToSQL(distinctSelectStatement, table);
+        String result = oracleDialect.addTableFromStatements(table, distinctSelectStatement).toString();
 
-        String expectedResult = "SELECT DISTINCT * FROM TEST.OtherTable";
+        String expectedResult = "[CREATE TABLE TEST.SomeTable (" +
+                "someField  NOT NULL, " +
+                "otherField  NOT NULL, " +
+                "CONSTRAINT SomeTable_PK PRIMARY KEY (someField) " +
+                "USING INDEX (CREATE UNIQUE INDEX TEST.SomeTable_PK ON TEST.SomeTable (someField))) " +
+                "PARALLEL NOLOGGING " +
+                "AS SELECT DISTINCT * FROM TEST.OtherTable, " +
+                "ALTER TABLE TEST.SomeTable NOPARALLEL LOGGING, " +
+                "ALTER INDEX TEST.SomeTable_PK NOPARALLEL LOGGING, " +
+                "COMMENT ON TABLE TEST.SomeTable IS 'REALNAME:[SomeTable]', " +
+                "COMMENT ON COLUMN TEST.SomeTable.someField IS 'REALNAME:[someField]/TYPE:[STRING]', " +
+                "COMMENT ON COLUMN TEST.SomeTable.otherField IS 'REALNAME:[otherField]/TYPE:[DECIMAL]']";
         assertEquals(expectedResult, result);
     }
 
@@ -96,11 +130,23 @@ public class TestOracleDialectBespokeFunctionality {
                 );
 
         SelectStatement selectStatement = select().from(tableRef("OtherTable"));
-        SelectStatement distinctSelectStatement = selectStatement.shallowCopy().forUpdate().build();
+        SelectStatement updateSelectStatement = selectStatement.shallowCopy().forUpdate().build();
 
-        String result = oracleDialect.convertStatementToSQL(distinctSelectStatement, table);
+        String result = oracleDialect.addTableFromStatements(table, updateSelectStatement).toString();
 
-        String expectedResult = "SELECT * FROM TEST.OtherTable FOR UPDATE";
+        String expectedResult = "[CREATE TABLE TEST.SomeTable (" +
+                "someField  NOT NULL, " +
+                "otherField  NOT NULL, " +
+                "CONSTRAINT SomeTable_PK PRIMARY KEY (someField) " +
+                "USING INDEX (CREATE UNIQUE INDEX TEST.SomeTable_PK ON TEST.SomeTable (someField))) " +
+                "PARALLEL NOLOGGING " +
+                "AS SELECT * FROM TEST.OtherTable " +
+                "FOR UPDATE, " +
+                "ALTER TABLE TEST.SomeTable NOPARALLEL LOGGING, " +
+                "ALTER INDEX TEST.SomeTable_PK NOPARALLEL LOGGING, " +
+                "COMMENT ON TABLE TEST.SomeTable IS 'REALNAME:[SomeTable]', " +
+                "COMMENT ON COLUMN TEST.SomeTable.someField IS 'REALNAME:[someField]/TYPE:[STRING]', " +
+                "COMMENT ON COLUMN TEST.SomeTable.otherField IS 'REALNAME:[otherField]/TYPE:[DECIMAL]']";
         assertEquals(expectedResult, result);
     }
 
@@ -119,7 +165,7 @@ public class TestOracleDialectBespokeFunctionality {
         SelectStatement selectStatement = select().from(tableRef("OtherTable"));
         SelectStatement distinctSelectStatement = selectStatement.shallowCopy().forUpdate().distinct().build();
 
-        String result = oracleDialect.convertStatementToSQL(distinctSelectStatement, table);
+        String result = oracleDialect.addTableFromStatements(table, distinctSelectStatement).toString();
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -135,7 +181,7 @@ public class TestOracleDialectBespokeFunctionality {
                         index("SomeTable_1").columns("otherField")
                 );
 
-        oracleDialect.convertStatementToSQL(null, table);
+        oracleDialect.convertStatementToSQL((SelectStatement) null);
     }
 
 
