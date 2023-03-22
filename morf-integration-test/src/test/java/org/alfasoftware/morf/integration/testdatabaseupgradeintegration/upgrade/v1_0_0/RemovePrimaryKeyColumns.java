@@ -26,6 +26,6 @@ import com.google.common.collect.ImmutableList;
 public class RemovePrimaryKeyColumns extends AbstractTestUpgradeStep {
   @Override
   public void execute(SchemaEditor schema, DataEditor data) {
-    schema.changePrimaryKeyColumns("BasicTable", ImmutableList.of("stringCol"), ImmutableList.<String>of());
+    schema.removePrimaryKey("BasicTable", ImmutableList.of("stringCol"));
   }
 }
