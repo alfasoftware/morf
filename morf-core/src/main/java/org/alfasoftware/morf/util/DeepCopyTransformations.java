@@ -18,6 +18,11 @@ package org.alfasoftware.morf.util;
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
+import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.element.FieldReference;
+import org.alfasoftware.morf.sql.element.NullFieldLiteral;
+
+import java.util.List;
 
 /**
  * Static collection of DeepCopyTransformation utilities.
@@ -55,6 +60,26 @@ public class DeepCopyTransformations {
     }).toList();
   }
 
+
+  public static DeepCopyTransformation castFields(List<AliasedField> fieldsToCast, List<AliasedField> fieldsToInclude) {
+    return new DeepCopyTransformation() {
+      @SuppressWarnings("unchecked")
+      @Override
+      public <T> T deepCopy(DeepCopyableWithTransformation<T,? extends Builder<T>> element) {
+
+        if(element == null) {
+          return null;
+        }
+
+        if(element instanceof FieldReference || element instanceof NullFieldLiteral) {
+          AliasedField fieldToCast = fieldsToInclude.get(fieldsToCast.indexOf(element));
+          return (T) fieldsToInclude.get(fieldsToCast.indexOf(element));
+        }
+
+        return element.deepCopy(noTransformation()).build();
+      }
+    };
+  }
 
   private static class NoTransformDeepCopyTransformer implements DeepCopyTransformation {
 

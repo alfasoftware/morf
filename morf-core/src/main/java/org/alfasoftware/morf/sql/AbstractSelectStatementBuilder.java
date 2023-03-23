@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.sql;
 
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.alfasoftware.morf.util.DeepCopyTransformations.castFields;
 import static org.alfasoftware.morf.util.DeepCopyTransformations.transformIterable;
 
 import java.util.ArrayList;

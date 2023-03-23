@@ -66,6 +66,7 @@ import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.NullFieldLiteral;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.alfasoftware.morf.util.DeepCopyTransformations;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -1123,11 +1124,13 @@ class OracleDialect extends SqlDialect {
       }
     }
 
+//    SelectStatement deepCopiedStatement = selectStatement.deepCopy(DeepCopyTransformations.castFields(selectStatement.getFields(), fieldsToInclude)).build();
+
     Builder<String> result = ImmutableList.<String>builder();
     result.add(new StringBuilder()
         .append(createTableStatement(table, true))
         .append(" AS ")
-        .append(convertStatementToSQL(selectStatement.shallowCopy().withFields(fieldsToInclude).build()))
+        .append(convertStatementToSQL(selectStatement.deepCopy(DeepCopyTransformations.castFields(selectStatement.getFields(), fieldsToInclude)).build()))
         .toString()
       );
     result.add("ALTER TABLE " + schemaNamePrefix() + table.getName()  + " NOPARALLEL LOGGING");
