@@ -38,6 +38,12 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
 
 
   @Override
+  protected String expectedRowNumber() {
+    return "ROW_NUMBER() OVER()";
+  }
+
+
+  @Override
   protected String expectedRandomFunction() {
     return "RANDOM()";
   }

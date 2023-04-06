@@ -41,6 +41,7 @@ import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.alfasoftware.morf.sql.element.FunctionType;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Joiner;
@@ -90,6 +91,25 @@ class PostgreSQLDialect extends SqlDialect {
       return "";
     }
     return schemaNamePrefix();
+  }
+
+
+  @Override
+  protected String getSqlForRowNumber(){
+    return "ROW_NUMBER() OVER()";
+  }
+
+
+  @Override
+  protected String getSqlForWindowFunction(Function function) {
+    FunctionType functionType = function.getType();
+    switch (functionType) {
+      case ROW_NUMBER:
+        return "ROW_NUMBER()";
+
+      default:
+        return getSqlFrom(function);
+    }
   }
 
 
