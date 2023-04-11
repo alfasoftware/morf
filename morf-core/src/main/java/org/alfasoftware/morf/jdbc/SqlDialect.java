@@ -4076,7 +4076,7 @@ public abstract class SqlDialect {
       throw new IllegalArgumentException("Window function " + windowFunctionField.getFunction().getType() + " requires an order by clause.");
     }
 
-    StringBuilder statement = new StringBuilder().append(getSqlFrom(windowFunctionField.getFunction()));
+    StringBuilder statement = new StringBuilder().append(getSqlForWindowFunction(windowFunctionField.getFunction()));
 
     statement.append(" OVER (");
 
@@ -4112,6 +4112,16 @@ public abstract class SqlDialect {
     statement.append(")");
 
     return statement.toString();
+  }
+
+
+  /**
+   * Generates standards compliant SQL from the function within a window function
+   * @param function The field to convert
+   * @return The resulting SQL
+   */
+  protected String getSqlForWindowFunction(Function function) {
+    return getSqlFrom(function);
   }
 
 

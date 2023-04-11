@@ -1380,6 +1380,20 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+  * Test the row number function in a select.
+  */
+  @Test
+  public void testSelectWithRowNumberFunction() {
+    SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD), rowNumber())
+            .from(new TableReference(ALTERNATE_TABLE))
+            .groupBy(new FieldReference(STRING_FIELD));
+
+    String expectedSql = "SELECT stringField, " + expectedRowNumber() + " FROM " + tableName(ALTERNATE_TABLE) + " GROUP BY stringField";
+    assertEquals("Select with row number function", expectedSql, testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
    * Tests the group by in a select.
    */
   @Test
@@ -5464,6 +5478,14 @@ public abstract class AbstractSqlDialectTest {
    */
   protected String expectedSelectModSQL() {
     return "SELECT MOD(intField, 5) FROM " + tableName(TEST_TABLE);
+  }
+
+
+  /**
+   * @return The expected SQL for retrieving the row number
+   */
+  protected String expectedRowNumber() {
+    return "ROW_NUMBER()";
   }
 
 
