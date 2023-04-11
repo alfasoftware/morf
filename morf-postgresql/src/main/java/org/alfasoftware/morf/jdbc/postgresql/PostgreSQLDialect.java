@@ -108,7 +108,7 @@ class PostgreSQLDialect extends SqlDialect {
         return "ROW_NUMBER()";
 
       default:
-        return getSqlFrom(function);
+        return super.getSqlForWindowFunction(function);
     }
   }
 
