@@ -605,11 +605,11 @@ public class OracleMetaDataProvider implements Schema {
         while (resultSet.next()) {
           String tableName = resultSet.getString(1);
           String columnName = resultSet.getString(2);
-          String pKIndexName = resultSet.getString(3);
+          String pkIndexName = resultSet.getString(3);
 
-          if (! pKIndexName.endsWith("_PK")) {
+          if (pkIndexName == null || !pkIndexName.endsWith("_PK")) {
             primaryKeysWithWrongIndex.append("Primary Key on table [" + tableName+ "] column [" + columnName +
-                    "] backed with an index whose name does not end in _PK ["+pKIndexName+"]"+System.lineSeparator());
+                    "] backed with an index whose name does not end in _PK ["+pkIndexName+"]"+System.lineSeparator());
           }
 
           List<String> columns = primaryKeys.get(tableName);
