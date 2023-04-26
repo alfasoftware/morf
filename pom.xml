@@ -21,7 +21,6 @@
     <module>morf-excel</module>
     <module>morf-h2</module>
     <module>morf-mysql</module>
-    <module>morf-nuodb</module>
     <module>morf-oracle</module>
     <module>morf-postgresql</module>
     <module>morf-sqlserver</module>
