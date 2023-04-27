@@ -15,6 +15,8 @@
 
 package org.alfasoftware.morf.jdbc;
 
+import java.sql.ResultSet;
+
 import javax.sql.DataSource;
 
 import org.alfasoftware.morf.metadata.SchemaResource;
@@ -104,4 +106,24 @@ public interface ConnectionResources {
    * @return the number of statements to cache per connection.
    */
   public int getStatementPoolingMaxStatements();
+
+
+  /**
+   *
+   * The JDBC Fetch Size to use when performing bulk select operations, intended to replace the default in {@link SqlDialect#fetchSizeForBulkSelects()}.
+   *
+   *  @return The number of rows to try and fetch at a time when
+   *          performing bulk select operations.
+   */
+  public int getFetchSizeForBulkSelects();
+
+  /**
+   *
+   * The JDBC Fetch Size to use when performing bulk select operations while allowing connection use, intended to replace the default in {@link SqlDialect#fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming()}.
+   *
+   * @return The number of rows to try and fetch at a time (default) when
+   *         performing bulk select operations and needing to use the connection while
+   *         the {@link ResultSet} is open.
+   */
+  public int getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
 }

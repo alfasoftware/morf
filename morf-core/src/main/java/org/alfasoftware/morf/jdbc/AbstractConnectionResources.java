@@ -140,6 +140,36 @@ public abstract class AbstractConnectionResources implements ConnectionResources
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.ConnectionResources#getFetchSizeForBulkSelects()
+   */
+  @Override
+  public abstract int getFetchSizeForBulkSelects();
+
+
+  /**
+   * Sets the JDBC Fetch Size to use when performing bulk select operations, intended to replace the default in {@link SqlDialect#fetchSizeForBulkSelects()}.
+   *
+   * @param fetchSizeForBulkSelects the JDBC fetch size to use.
+   */
+  public abstract void setFetchSizeForBulkSelects(int fetchSizeForBulkSelects);
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.ConnectionResources#getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming()
+   */
+  @Override
+  public abstract int getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
+
+
+  /**
+   * Sets the JDBC Fetch Size to use when performing bulk select operations while allowing connection use, intended to replace the default in {@link SqlDialect#fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming()}.
+   *
+   * @param fetchSizeForBulkSelects the JDBC fetch size to use.
+   */
+  public abstract void setFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming(int fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming);
+
+
+  /**
    * @return a formatted jdbc url string.
    */
   public final String getJdbcUrl() {

@@ -55,6 +55,9 @@ public class SqlScriptExecutor {
 
   private final SqlDialect sqlDialect;
 
+  private int fetchSizeForBulkSelects;
+  private int fetchSizeForBulkSelectsAllowingConnectionUseDuringStreamingAsString;
+
   /**
    * Create an SQL executor with the given visitor, who will
    * be notified about events.
@@ -66,6 +69,8 @@ public class SqlScriptExecutor {
     super();
     this.dataSource = dataSource;
     this.sqlDialect = sqlDialect;
+    this.fetchSizeForBulkSelects = sqlDialect.fetchSizeForBulkSelects();
+    this.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreamingAsString = sqlDialect.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
     if (visitor == null) {
       this.visitor = new NullVisitor();
     } else {
@@ -73,6 +78,28 @@ public class SqlScriptExecutor {
     }
   }
 
+  /**
+   * Create an SQL executor with the given visitor, who will
+   * be notified about events.
+   *
+   * @param visitor Visitor to notify about execution.
+   * @param dataSource DataSource to use.
+   * @param connectionResources The connection resources to use.
+   */
+  SqlScriptExecutor(SqlScriptVisitor visitor, DataSource dataSource, SqlDialect sqlDialect, ConnectionResources connectionResources) {
+    super();
+    this.dataSource = dataSource;
+    this.sqlDialect = sqlDialect;
+    this.fetchSizeForBulkSelects = connectionResources.getFetchSizeForBulkSelects() > 0
+        ? connectionResources.getFetchSizeForBulkSelects() : sqlDialect.fetchSizeForBulkSelects();
+    this.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreamingAsString = connectionResources.getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming() > 0
+        ? connectionResources.getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming() : sqlDialect.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
+    if (visitor == null) {
+      this.visitor = new NullVisitor();
+    } else {
+      this.visitor = visitor;
+    }
+  }
 
   /**
    * Receives notification about the execution of one or more SQL statements.
@@ -522,9 +549,9 @@ public class SqlScriptExecutor {
       ParseResult parseResult = NamedParameterPreparedStatement.parseSql(sql, sqlDialect);
       try (NamedParameterPreparedStatement preparedStatement = standalone ? parseResult.createForQueryOn(connection) : parseResult.createFor(connection)) {
         if (standalone) {
-          preparedStatement.setFetchSize(sqlDialect.fetchSizeForBulkSelects());
+          preparedStatement.setFetchSize(fetchSizeForBulkSelects);
         } else {
-          preparedStatement.setFetchSize(sqlDialect.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming());
+          preparedStatement.setFetchSize(fetchSizeForBulkSelectsAllowingConnectionUseDuringStreamingAsString);
         }
         return executeQuery(preparedStatement, parameterMetadata, parameterData, resultSetProcessor, maxRows, queryTimeout);
       }

@@ -1341,15 +1341,6 @@ class OracleDialect extends SqlDialect {
 
 
   /**
-   * Fetch rows in blocks of 200, rather than the default of 1.
-   */
-  @Override
-  public int fetchSizeForBulkSelects() {
-    return 200;
-  }
-
-
-  /**
    * We do use NVARCHAR for strings on Oracle.
    *
    * @see org.alfasoftware.morf.jdbc.SqlDialect#usesNVARCHARforStrings()

@@ -186,7 +186,7 @@ public class DatabaseDataSetProducer implements DataSetProducer {
           }
         }
 
-        ResultSetIterator resultSetIterator = new ResultSetIterator(table, columnOrdering, connection, sqlDialect);
+        ResultSetIterator resultSetIterator = new ResultSetIterator(table, columnOrdering, connection, connectionResources, sqlDialect);
         openResultSets.add(resultSetIterator);
         return resultSetIterator;
       }

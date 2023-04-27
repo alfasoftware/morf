@@ -96,6 +96,38 @@ class ResultSetIterator implements Iterator<Record>, AutoCloseable {
 
 
   /**
+   * Creates a {@link ResultSetIterator} using the supplied SQL query,
+   * applying no further result sorting beyond that contained in the SQL query.
+   *
+   * @param table Meta data for the query's result.
+   * @param query The query to run.
+   * @param connection The database connection to use.
+   * @param connectionResources The connection resources to use.
+   * @param sqlDialect The vendor-specific dialect for the database connection.
+   */
+  public ResultSetIterator(Table table, String query, Connection connection, ConnectionResources connectionResources, SqlDialect sqlDialect) {
+    super();
+    this.table = table;
+    this.sqlDialect = sqlDialect;
+
+    if (connection == null) {
+      throw new IllegalStateException("Dataset has not been opened");
+    }
+
+    try {
+      this.statement = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+      this.statement.setFetchDirection(ResultSet.FETCH_FORWARD);
+      this.statement.setFetchSize(connectionResources.getFetchSizeForBulkSelects() > 0 ? connectionResources.getFetchSizeForBulkSelects() : sqlDialect.fetchSizeForBulkSelects());
+      this.resultSet = statement.executeQuery(query);
+      this.sortedMetadata = ResultSetMetadataSorter.sortedCopy(table.columns(), resultSet);
+      advanceResultSet();
+    } catch (SQLException e) {
+      throw new RuntimeSqlException("Error running statement for table [" + table.getName() + "]: " + query, e);
+    }
+  }
+
+
+  /**
    * Creates a {@link ResultSetIterator} by selecting all records from a table,
    * ordering the results using the supplied column ordering.
    *
@@ -106,6 +138,20 @@ class ResultSetIterator implements Iterator<Record>, AutoCloseable {
    */
   public ResultSetIterator(Table table, List<String> columnOrdering, Connection connection, SqlDialect sqlDialect) {
     this(table, buildSqlQuery(table, columnOrdering, sqlDialect), connection, sqlDialect);
+  }
+
+  /**
+   * Creates a {@link ResultSetIterator} by selecting all records from a table,
+   * ordering the results using the supplied column ordering.
+   *
+   * @param table Meta data for the table we want to iterate over.
+   * @param columnOrdering The columns to order by.
+   * @param connection The database connection to use.
+   * @param connectionResources The connection resources to use.
+   * @param sqlDialect The vendor-specific dialect for the database connection.
+   */
+  public ResultSetIterator(Table table, List<String> columnOrdering, Connection connection, ConnectionResources connectionResources, SqlDialect sqlDialect) {
+    this(table, buildSqlQuery(table, columnOrdering, sqlDialect), connection, connectionResources, sqlDialect);
   }
 
 
