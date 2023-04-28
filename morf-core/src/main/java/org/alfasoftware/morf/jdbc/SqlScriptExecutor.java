@@ -90,9 +90,9 @@ public class SqlScriptExecutor {
     super();
     this.dataSource = dataSource;
     this.sqlDialect = sqlDialect;
-    this.fetchSizeForBulkSelects = connectionResources.getFetchSizeForBulkSelects() > 0
+    this.fetchSizeForBulkSelects = connectionResources.getFetchSizeForBulkSelects() != null
         ? connectionResources.getFetchSizeForBulkSelects() : sqlDialect.fetchSizeForBulkSelects();
-    this.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreamingAsString = connectionResources.getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming() > 0
+    this.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreamingAsString = connectionResources.getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming() != null
         ? connectionResources.getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming() : sqlDialect.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
     if (visitor == null) {
       this.visitor = new NullVisitor();
