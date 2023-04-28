@@ -115,7 +115,7 @@ public interface ConnectionResources {
    *  @return The number of rows to try and fetch at a time when
    *          performing bulk select operations.
    */
-  public int getFetchSizeForBulkSelects();
+  public Integer getFetchSizeForBulkSelects();
 
   /**
    *
@@ -125,5 +125,5 @@ public interface ConnectionResources {
    *         performing bulk select operations and needing to use the connection while
    *         the {@link ResultSet} is open.
    */
-  public int getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
+  public Integer getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
 }

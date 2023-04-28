@@ -32,7 +32,7 @@ public class SqlScriptExecutorProvider implements Provider<SqlScriptExecutor> {
 
   private final DataSource dataSource;
   private final Provider<SqlDialect> sqlDialect;
-  private ConnectionResources connectionResources;
+  private final ConnectionResources connectionResources;
 
   /**
    * Constructor for Guice.
@@ -40,7 +40,7 @@ public class SqlScriptExecutorProvider implements Provider<SqlScriptExecutor> {
    * @param dataSource The {@link DataSource} to instantiate the
    *          {@link SqlScriptExecutorProvider} for
    * @param sqlDialect The dialect to use
-   * @param sqlDialect The {@link ConnectionResources} to instantiate the
+   * @param connectionResources The {@link ConnectionResources} to instantiate the
    *                   {@link SqlScriptExecutorProvider} for
    */
   @Inject
@@ -170,6 +170,7 @@ public class SqlScriptExecutorProvider implements Provider<SqlScriptExecutor> {
     /**
      * @param dataSource The database connection source to use
      * @param sqlDialect The dialect to use for the dataSource
+     * @return new instance of {@link SqlScriptExecutorProvider}
      */
     public SqlScriptExecutorProvider create(final DataSource dataSource, final SqlDialect sqlDialect) {
       return new SqlScriptExecutorProvider(dataSource, sqlDialect);

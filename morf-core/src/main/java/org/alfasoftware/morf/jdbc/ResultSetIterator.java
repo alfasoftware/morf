@@ -11,6 +11,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.Column;
@@ -74,24 +75,7 @@ class ResultSetIterator implements Iterator<Record>, AutoCloseable {
    * @param sqlDialect The vendor-specific dialect for the database connection.
    */
   public ResultSetIterator(Table table, String query, Connection connection, SqlDialect sqlDialect) {
-    super();
-    this.table = table;
-    this.sqlDialect = sqlDialect;
-
-    if (connection == null) {
-      throw new IllegalStateException("Dataset has not been opened");
-    }
-
-    try {
-      this.statement = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
-      this.statement.setFetchDirection(ResultSet.FETCH_FORWARD);
-      this.statement.setFetchSize(sqlDialect.fetchSizeForBulkSelects());
-      this.resultSet = statement.executeQuery(query);
-      this.sortedMetadata = ResultSetMetadataSorter.sortedCopy(table.columns(), resultSet);
-      advanceResultSet();
-    } catch (SQLException e) {
-      throw new RuntimeSqlException("Error running statement for table [" + table.getName() + "]: " + query, e);
-    }
+    this(table, query, connection, Optional.empty(), sqlDialect);
   }
 
 
@@ -105,7 +89,7 @@ class ResultSetIterator implements Iterator<Record>, AutoCloseable {
    * @param connectionResources The connection resources to use.
    * @param sqlDialect The vendor-specific dialect for the database connection.
    */
-  public ResultSetIterator(Table table, String query, Connection connection, ConnectionResources connectionResources, SqlDialect sqlDialect) {
+  public ResultSetIterator(Table table, String query, Connection connection, Optional<ConnectionResources> connectionResources, SqlDialect sqlDialect) {
     super();
     this.table = table;
     this.sqlDialect = sqlDialect;
@@ -117,7 +101,8 @@ class ResultSetIterator implements Iterator<Record>, AutoCloseable {
     try {
       this.statement = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
       this.statement.setFetchDirection(ResultSet.FETCH_FORWARD);
-      this.statement.setFetchSize(connectionResources.getFetchSizeForBulkSelects() > 0 ? connectionResources.getFetchSizeForBulkSelects() : sqlDialect.fetchSizeForBulkSelects());
+      this.statement.setFetchSize((connectionResources.isPresent() && connectionResources.get().getFetchSizeForBulkSelects() != null) ?
+          connectionResources.get().getFetchSizeForBulkSelects() : sqlDialect.fetchSizeForBulkSelects());
       this.resultSet = statement.executeQuery(query);
       this.sortedMetadata = ResultSetMetadataSorter.sortedCopy(table.columns(), resultSet);
       advanceResultSet();
@@ -150,7 +135,7 @@ class ResultSetIterator implements Iterator<Record>, AutoCloseable {
    * @param connectionResources The connection resources to use.
    * @param sqlDialect The vendor-specific dialect for the database connection.
    */
-  public ResultSetIterator(Table table, List<String> columnOrdering, Connection connection, ConnectionResources connectionResources, SqlDialect sqlDialect) {
+  public ResultSetIterator(Table table, List<String> columnOrdering, Connection connection, Optional<ConnectionResources> connectionResources, SqlDialect sqlDialect) {
     this(table, buildSqlQuery(table, columnOrdering, sqlDialect), connection, connectionResources, sqlDialect);
   }
 

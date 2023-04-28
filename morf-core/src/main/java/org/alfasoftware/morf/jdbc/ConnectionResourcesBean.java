@@ -89,8 +89,8 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
   private String schemaName;
   private String userName;
   private int statementPoolingMaxStatements;
-  private int fetchSizeForBulkSelects;
-  private int fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming;
+  private Integer fetchSizeForBulkSelects;
+  private Integer fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming;
   private transient String password;
 
 
@@ -252,16 +252,16 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
    * @see ConnectionResources#getFetchSizeForBulkSelects()
    */
   @Override
-  public int getFetchSizeForBulkSelects() {
+  public Integer getFetchSizeForBulkSelects() {
     return fetchSizeForBulkSelects;
   }
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.AbstractConnectionResources#setFetchSizeForBulkSelects(int)
+   * @see org.alfasoftware.morf.jdbc.AbstractConnectionResources#setFetchSizeForBulkSelects(Integer)
    */
   @Override
-  public void setFetchSizeForBulkSelects(int fetchSizeForBulkSelects) {
+  public void setFetchSizeForBulkSelects(Integer fetchSizeForBulkSelects) {
     this.fetchSizeForBulkSelects = fetchSizeForBulkSelects;
   }
 
@@ -270,16 +270,16 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
    * @see ConnectionResources#getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming()
    */
   @Override
-  public int getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming() {
+  public Integer getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming() {
     return fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming;
   }
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.AbstractConnectionResources#setFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming(int)
+   * @see org.alfasoftware.morf.jdbc.AbstractConnectionResources#setFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming(Integer)
    */
   @Override
-  public void setFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming(int fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming) {
+  public void setFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming(Integer fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming) {
     this.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming = fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming;
   }
   /**
