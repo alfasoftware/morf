@@ -32,7 +32,7 @@ public class SqlScriptExecutorProvider implements Provider<SqlScriptExecutor> {
 
   private final DataSource dataSource;
   private final Provider<SqlDialect> sqlDialect;
-  private final ConnectionResources connectionResources;
+  private ConnectionResources connectionResources;
 
   /**
    * Constructor for Guice.
