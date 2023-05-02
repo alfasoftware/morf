@@ -97,7 +97,7 @@ public class TestDatabaseDataSetConsumer {
     Mockito.when(connection.prepareStatement(Mockito.anyString())).thenReturn(statement);
 
     // Create our consumer
-    final DatabaseDataSetConsumer consumer = new DatabaseDataSetConsumer(connectionResources, new SqlScriptExecutorProvider(dataSource, Providers.of(dialect), connectionResources));
+    final DatabaseDataSetConsumer consumer = new DatabaseDataSetConsumer(connectionResources, new SqlScriptExecutorProvider(dataSource, Providers.of(dialect)));
     consumer.open();
 
     // Create a mock schema and records

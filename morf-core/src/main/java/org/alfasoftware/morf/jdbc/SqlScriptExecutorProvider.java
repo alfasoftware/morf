@@ -40,15 +40,25 @@ public class SqlScriptExecutorProvider implements Provider<SqlScriptExecutor> {
    * @param dataSource The {@link DataSource} to instantiate the
    *          {@link SqlScriptExecutorProvider} for
    * @param sqlDialect The dialect to use
-   * @param connectionResources The {@link ConnectionResources} to instantiate the
-   *                   {@link SqlScriptExecutorProvider} for
+   * @param connectionResourcesHolder inner class containing an optional injected {@link ConnectionResources} to instantiate the {@link SqlScriptExecutor} with.
    */
   @Inject
-  public SqlScriptExecutorProvider(final DataSource dataSource, Provider<SqlDialect> sqlDialect, ConnectionResources connectionResources) {
+  public SqlScriptExecutorProvider(final DataSource dataSource, Provider<SqlDialect> sqlDialect, ConnectionResourcesHolder connectionResourcesHolder) {
     super();
     this.dataSource = dataSource;
     this.sqlDialect = sqlDialect;
-    this.connectionResources = connectionResources;
+    this.connectionResources = connectionResourcesHolder.value;
+  }
+
+  /**
+   * @param dataSource The {@link DataSource} to instantiate the
+   *          {@link SqlScriptExecutorProvider} for
+   * @param sqlDialect The dialect to use
+   */
+  public SqlScriptExecutorProvider(final DataSource dataSource, Provider<SqlDialect> sqlDialect) {
+    super();
+    this.dataSource = dataSource;
+    this.sqlDialect = sqlDialect;
   }
 
 
@@ -67,7 +77,10 @@ public class SqlScriptExecutorProvider implements Provider<SqlScriptExecutor> {
    * @param connectionResources The connection to use.
    */
   public SqlScriptExecutorProvider(ConnectionResources connectionResources) {
-    this(connectionResources.getDataSource(), Providers.of(connectionResources.sqlDialect()), connectionResources);
+    super();
+    this.dataSource = connectionResources.getDataSource();
+    this.sqlDialect = Providers.<SqlDialect>of(connectionResources.sqlDialect());
+    this.connectionResources = connectionResources;
   }
 
 
@@ -175,5 +188,12 @@ public class SqlScriptExecutorProvider implements Provider<SqlScriptExecutor> {
     public SqlScriptExecutorProvider create(final DataSource dataSource, final SqlDialect sqlDialect) {
       return new SqlScriptExecutorProvider(dataSource, sqlDialect);
     }
+  }
+
+  /**
+   * Holder class that allows an optional {@link ConnectionResources} to be injected via Guice.
+   */
+  static class ConnectionResourcesHolder {
+    @Inject(optional=true) ConnectionResources value;
   }
 }
