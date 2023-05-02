@@ -551,10 +551,10 @@ public class SqlScriptExecutor {
 
         if (standalone) {
           preparedStatement.setFetchSize(fetchSizeForBulkSelects);
-          log.debug("Executing query [" + sql + "] with standalone = [" + standalone + "] and fetch size: [" + fetchSizeForBulkSelects +"]. Stack trace: [" + Thread.currentThread().getStackTrace().toString());
+          log.debug("Executing query [" + sql + "] with standalone = [" + standalone + "] and fetch size: [" + fetchSizeForBulkSelects +"].");
         } else {
           preparedStatement.setFetchSize(fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming);
-          log.debug("Executing query [" + sql + "] with standalone = [" + standalone + "] and fetch size: [" + fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming +"]. Stack trace: [" + Thread.currentThread().getStackTrace().toString());
+          log.debug("Executing query [" + sql + "] with standalone = [" + standalone + "] and fetch size: [" + fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming +"].");
         }
         return executeQuery(preparedStatement, parameterMetadata, parameterData, resultSetProcessor, maxRows, queryTimeout);
       }
