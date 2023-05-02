@@ -21,6 +21,8 @@ import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Direction;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * Provides data set iterator functionality based on a jdbc result set.
@@ -28,6 +30,8 @@ import org.alfasoftware.morf.sql.element.TableReference;
  * @author Copyright (c) Alfa Financial Software 2017
  */
 class ResultSetIterator implements Iterator<Record>, AutoCloseable {
+  /** Standard logger */
+  private static final Log log = LogFactory.getLog(ResultSetIterator.class);
 
   /**
    * The underlying result set to iterate over.
@@ -103,6 +107,7 @@ class ResultSetIterator implements Iterator<Record>, AutoCloseable {
       this.statement.setFetchDirection(ResultSet.FETCH_FORWARD);
       this.statement.setFetchSize((connectionResources.isPresent() && connectionResources.get().getFetchSizeForBulkSelects() != null) ?
           connectionResources.get().getFetchSizeForBulkSelects() : sqlDialect.fetchSizeForBulkSelects());
+      log.debug("Executing query for table [" + table.getName() + "] with fetch size [" + statement.getFetchSize() + "]. Stack trace: [" + Thread.currentThread().getStackTrace().toString());
       this.resultSet = statement.executeQuery(query);
       this.sortedMetadata = ResultSetMetadataSorter.sortedCopy(table.columns(), resultSet);
       advanceResultSet();

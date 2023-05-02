@@ -56,7 +56,7 @@ public class SqlScriptExecutor {
   private final SqlDialect sqlDialect;
 
   private int fetchSizeForBulkSelects;
-  private int fetchSizeForBulkSelectsAllowingConnectionUseDuringStreamingAsString;
+  private int fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming;
 
   /**
    * Create an SQL executor with the given visitor, who will
@@ -70,7 +70,7 @@ public class SqlScriptExecutor {
     this.dataSource = dataSource;
     this.sqlDialect = sqlDialect;
     this.fetchSizeForBulkSelects = sqlDialect.fetchSizeForBulkSelects();
-    this.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreamingAsString = sqlDialect.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
+    this.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming = sqlDialect.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
     if (visitor == null) {
       this.visitor = new NullVisitor();
     } else {
@@ -92,7 +92,7 @@ public class SqlScriptExecutor {
     this.sqlDialect = sqlDialect;
     this.fetchSizeForBulkSelects = connectionResources.getFetchSizeForBulkSelects() != null
         ? connectionResources.getFetchSizeForBulkSelects() : sqlDialect.fetchSizeForBulkSelects();
-    this.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreamingAsString = connectionResources.getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming() != null
+    this.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming = connectionResources.getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming() != null
         ? connectionResources.getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming() : sqlDialect.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
     if (visitor == null) {
       this.visitor = new NullVisitor();
@@ -548,10 +548,13 @@ public class SqlScriptExecutor {
     try {
       ParseResult parseResult = NamedParameterPreparedStatement.parseSql(sql, sqlDialect);
       try (NamedParameterPreparedStatement preparedStatement = standalone ? parseResult.createForQueryOn(connection) : parseResult.createFor(connection)) {
+
         if (standalone) {
           preparedStatement.setFetchSize(fetchSizeForBulkSelects);
+          log.debug("Executing query [" + sql + "] with standalone = [" + standalone + "] and fetch size: [" + fetchSizeForBulkSelects +"]. Stack trace: [" + Thread.currentThread().getStackTrace().toString());
         } else {
-          preparedStatement.setFetchSize(fetchSizeForBulkSelectsAllowingConnectionUseDuringStreamingAsString);
+          preparedStatement.setFetchSize(fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming);
+          log.debug("Executing query [" + sql + "] with standalone = [" + standalone + "] and fetch size: [" + fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming +"]. Stack trace: [" + Thread.currentThread().getStackTrace().toString());
         }
         return executeQuery(preparedStatement, parameterMetadata, parameterData, resultSetProcessor, maxRows, queryTimeout);
       }

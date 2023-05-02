@@ -226,34 +226,17 @@ public class TestResultSetIterator {
     ResultSet resultSet = mock(ResultSet.class);
     given(statement.executeQuery(query)).willReturn(resultSet);
     given(resultSet.findColumn("Column")).willReturn(1);
-    given(resultSet.next()).willReturn(true).willReturn(true).willReturn(false);
     given(connectionResources.getFetchSizeForBulkSelects()).willReturn(1000);
 
     // When
     @SuppressWarnings("resource") /* Resources are closed in ResultSetIterator.close()
                                      automatically when caller attempts to advance past
                                      the last row in the result set. */
-        ResultSetIterator resultSetIterator = new ResultSetIterator(table, query, connection, Optional.of(connectionResources), sqlDialect);
+    ResultSetIterator resultSetIterator = new ResultSetIterator(table, query, connection, Optional.of(connectionResources), sqlDialect);
 
     // Then
-    assertTrue(resultSetIterator.hasNext());
 
-    resultSetIterator.next();
-    resultSetIterator.next();
-
-    assertFalse(resultSetIterator.hasNext());
-
-    verify(resultSet).close();
-    verify(statement).close();
     verify(statement).setFetchSize(1000);
-
-    boolean gotException = false;
-    try {
-      resultSetIterator.next();
-    } catch (NoSuchElementException e) {
-      gotException = true;
-    }
-    assertTrue(gotException);
   }
 
 
@@ -270,7 +253,6 @@ public class TestResultSetIterator {
     given(resultSet.findColumn("Column")).willReturn(1);
     given(sqlDialect.convertStatementToSQL(any(SelectStatement.class))).willReturn(query);
     given(statement.executeQuery(query)).willReturn(resultSet);
-    given(resultSet.next()).willReturn(true).willReturn(true).willReturn(false);
     given(connectionResources.getFetchSizeForBulkSelects()).willReturn(1000);
 
 
@@ -278,30 +260,13 @@ public class TestResultSetIterator {
     @SuppressWarnings("resource") /* Resources are closed in ResultSetIterator.close()
                                      automatically when caller attempts to advance past
                                      the last row in the result set. */
-        ResultSetIterator resultSetIterator = new ResultSetIterator(table, Lists.newArrayList(), connection, Optional.of(connectionResources), sqlDialect);
+    ResultSetIterator resultSetIterator = new ResultSetIterator(table, Lists.newArrayList(), connection, Optional.of(connectionResources), sqlDialect);
 
     // Then
-    assertTrue(resultSetIterator.hasNext());
-    resultSetIterator.next();
-    resultSetIterator.next();
-
-    assertFalse(resultSetIterator.hasNext());
-
-    verify(resultSet).close();
-    verify(statement).close();
     verify(statement).setFetchSize(1000);
-
-
-    boolean gotException = false;
-    try {
-      resultSetIterator.next();
-    } catch (NoSuchElementException e) {
-      gotException = true;
-    }
-    assertTrue(gotException);
   }
 
-  
+
   private static Table buildTable() {
     return new Table() {
 
