@@ -36,6 +36,7 @@ import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.alfasoftware.morf.sql.element.FunctionType;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Joiner;
@@ -577,6 +578,31 @@ class H2Dialect extends SqlDialect {
   @Override
   protected String getSqlForLastDayOfMonth(AliasedField date) {
     return "DATEADD(dd, -DAY(DATEADD(m,1," + getSqlFrom(date) + ")), DATEADD(m,1," + getSqlFrom(date) + "))";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForRowNumber() 
+   */
+  @Override
+  protected String getSqlForRowNumber() {
+    return "ROW_NUMBER() OVER()";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForWindowFunction(Function) 
+   */
+  @Override
+  protected String getSqlForWindowFunction(Function function) {
+    FunctionType functionType = function.getType();
+    switch (functionType) {
+      case ROW_NUMBER:
+        return "ROW_NUMBER()";
+
+      default:
+        return super.getSqlForWindowFunction(function);
+    }
   }
 
 
