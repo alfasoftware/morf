@@ -93,7 +93,7 @@ public class SqlScriptExecutor {
     this.visitor = checkVisitor(visitor);
   }
 
-  private SqlScriptVisitor checkVisitor(SqlScriptVisitor visitor){
+  private static SqlScriptVisitor checkVisitor(SqlScriptVisitor visitor){
     if (visitor == null) {
       return new NullVisitor();
     } else {

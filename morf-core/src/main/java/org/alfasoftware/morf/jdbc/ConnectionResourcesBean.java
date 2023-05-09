@@ -443,6 +443,8 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
     result = prime * result + port;
     result = prime * result + (schemaName == null ? 0 : schemaName.hashCode());
     result = prime * result + statementPoolingMaxStatements;
+    result = prime * result + fetchSizeForBulkSelects;
+    result = prime * result + fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming;
     result = prime * result + (userName == null ? 0 : userName.hashCode());
     return result;
   }
@@ -472,8 +474,12 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
       if (other.schemaName != null) return false;
     } else if (!schemaName.equals(other.schemaName)) return false;
     if (statementPoolingMaxStatements != other.statementPoolingMaxStatements) return false;
-    if (!fetchSizeForBulkSelects.equals(other.fetchSizeForBulkSelects)) return false;
-    if (!fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming.equals(other.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming)) return false;
+    if (fetchSizeForBulkSelects == null) {
+      if (other.fetchSizeForBulkSelects != null) return false;
+    } else if (!fetchSizeForBulkSelects.equals(other.fetchSizeForBulkSelects)) return false;
+    if (fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming == null) {
+      if (other.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming != null) return false;
+    } else if (!fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming.equals(other.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming)) return false;
     if (userName == null) {
       if (other.userName != null) return false;
     } else if (!userName.equals(other.userName)) return false;
