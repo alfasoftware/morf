@@ -71,11 +71,7 @@ public class SqlScriptExecutor {
     this.sqlDialect = sqlDialect;
     this.fetchSizeForBulkSelects = sqlDialect.fetchSizeForBulkSelects();
     this.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming = sqlDialect.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
-    if (visitor == null) {
-      this.visitor = new NullVisitor();
-    } else {
-      this.visitor = visitor;
-    }
+    this.visitor = checkVisitor(visitor);
   }
 
   /**
@@ -94,10 +90,14 @@ public class SqlScriptExecutor {
         ? connectionResources.getFetchSizeForBulkSelects() : sqlDialect.fetchSizeForBulkSelects();
     this.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming = connectionResources.getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming() != null
         ? connectionResources.getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming() : sqlDialect.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
+    this.visitor = checkVisitor(visitor);
+  }
+
+  private SqlScriptVisitor checkVisitor(SqlScriptVisitor visitor){
     if (visitor == null) {
-      this.visitor = new NullVisitor();
+      return new NullVisitor();
     } else {
-      this.visitor = visitor;
+      return visitor;
     }
   }
 

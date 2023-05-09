@@ -472,8 +472,8 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
       if (other.schemaName != null) return false;
     } else if (!schemaName.equals(other.schemaName)) return false;
     if (statementPoolingMaxStatements != other.statementPoolingMaxStatements) return false;
-    if (fetchSizeForBulkSelects != other.fetchSizeForBulkSelects) return false;
-    if (fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming != other.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming) return false;
+    if (!fetchSizeForBulkSelects.equals(other.fetchSizeForBulkSelects)) return false;
+    if (!fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming.equals(other.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming)) return false;
     if (userName == null) {
       if (other.userName != null) return false;
     } else if (!userName.equals(other.userName)) return false;

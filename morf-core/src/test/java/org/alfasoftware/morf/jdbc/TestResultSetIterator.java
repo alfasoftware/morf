@@ -39,6 +39,7 @@ public class TestResultSetIterator {
   @Mock private ConnectionResources connectionResources;
   @Mock private SqlDialect sqlDialect;
   @Mock private Statement statement;
+  private final int sqlDialectFetchSize = 2000;
 
   @Before
   public void setup() throws SQLException {
@@ -104,7 +105,7 @@ public class TestResultSetIterator {
 
     verify(resultSet).close();
     verify(statement).close();
-    verify(statement).setFetchSize(2000);
+    verify(statement).setFetchSize(sqlDialectFetchSize);
 
     boolean gotException = false;
     try {
@@ -202,7 +203,7 @@ public class TestResultSetIterator {
 
     verify(resultSet).close();
     verify(statement).close();
-    verify(statement).setFetchSize(2000);
+    verify(statement).setFetchSize(sqlDialectFetchSize);
 
     boolean gotException = false;
     try {
@@ -235,7 +236,6 @@ public class TestResultSetIterator {
     ResultSetIterator resultSetIterator = new ResultSetIterator(table, query, connection, Optional.of(connectionResources), sqlDialect);
 
     // Then
-
     verify(statement).setFetchSize(1000);
   }
 
