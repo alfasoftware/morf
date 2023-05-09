@@ -219,6 +219,11 @@ class SqlServerDialect extends SqlDialect {
     return Arrays.asList("DROP INDEX " + indexToBeRemoved.getName() + " ON " + schemaNamePrefix() + table.getName());
   }
 
+  @Override
+  public Collection<String> dropTables(List<Table> tables, boolean ifExists, boolean cascade) {
+    // TODO: In the future, the "cascade" should be handled
+    return super.dropTables(tables, ifExists, false);
+  }
 
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#dropStatements(org.alfasoftware.morf.metadata.View)

@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import com.google.common.collect.Lists;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Column;
@@ -125,7 +126,7 @@ class H2Dialect extends SqlDialect {
    */
   @Override
   public Collection<String> dropStatements(Table table) {
-    return Arrays.asList("drop table " + schemaNamePrefix() + table.getName() + " cascade");
+    return dropTables(Lists.newArrayList(table), false, true);
   }
 
 

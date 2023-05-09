@@ -604,6 +604,25 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * Tests SQL for dropping a tables with optional parameters.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testDropTables() {
+    Table table1 = metadata.getTable(TEST_TABLE);
+    Table table2 = metadata.getTable(OTHER_TABLE);
+
+    compareStatements(
+            expectedDropTables(),
+            testDialect.dropTables(Arrays.asList(table1, table2), false, false));
+
+    compareStatements(
+            expectedDropTablesWithParameters(),
+            testDialect.dropTables(Arrays.asList(table1, table2), true, true));
+  }
+
+
+  /**
    * Tests SQL for selecting literal fields where is a WHERE clause
    */
   @Test
@@ -5026,6 +5045,18 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL statements for dropping the test database tables.
    */
   protected abstract List<String> expectedDropTableStatements();
+
+
+  /**
+   * @return The expected SQL statements for dropping the test database tables.
+   */
+  protected abstract List<String> expectedDropTables();
+
+
+  /**
+   * @return The expected SQL statements for dropping the test database tables with parameters.
+   */
+  protected abstract List<String> expectedDropTablesWithParameters();
 
 
   /**

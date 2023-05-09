@@ -254,6 +254,41 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTables()
+   */
+  @Override
+  protected List<String> expectedDropTables() {
+    return Arrays.asList("BEGIN\n" +
+            "  FOR T IN (\n" +
+            "    SELECT 'TESTSCHEMA.' || TABLE_NAME AS TABLE_NAME\n" +
+            "    FROM (SELECT COLUMN_VALUE AS TABLE_NAME from TABLE(SYS.dbms_debug_vc2coll('TEST', 'OTHER')))\n" +
+            "  )\n" +
+            "  LOOP\n" +
+            "    EXECUTE IMMEDIATE 'DROP TABLE ' || T.TABLE_NAME ;\n" +
+            "  END LOOP;\n" +
+            "END;");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTablesWithParameters()
+   */
+  @Override
+  protected List<String> expectedDropTablesWithParameters() {
+    return Arrays.asList("BEGIN\n" +
+            "  FOR T IN (\n" +
+            "    SELECT 'TESTSCHEMA.' || TABLE_NAME AS TABLE_NAME\n" +
+            "    FROM ALL_TABLES\n" +
+            "   WHERE TABLE_NAME  IN ('TEST', 'OTHER')\n" +
+            "  )\n" +
+            "  LOOP\n" +
+            "    EXECUTE IMMEDIATE 'DROP TABLE ' || T.TABLE_NAME || ' CASCADE CONSTRAINTS ' ;\n" +
+            "  END LOOP;\n" +
+            "END;");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTempTableStatements()
    */
   @Override

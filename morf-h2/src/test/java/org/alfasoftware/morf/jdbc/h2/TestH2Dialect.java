@@ -98,7 +98,25 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedDropTableStatements() {
-    return Arrays.asList("drop table TESTSCHEMA.Test cascade");
+    return Arrays.asList("DROP TABLE TESTSCHEMA.Test CASCADE");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTables()
+   */
+  @Override
+  protected List<String> expectedDropTables() {
+    return Arrays.asList("DROP TABLE TESTSCHEMA.Test, TESTSCHEMA.Other");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTablesWithParameters()
+   */
+  @Override
+  protected List<String> expectedDropTablesWithParameters() {
+    return Arrays.asList("DROP TABLE IF EXISTS TESTSCHEMA.Test, TESTSCHEMA.Other CASCADE");
   }
 
 
@@ -107,7 +125,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedDropTempTableStatements() {
-    return Arrays.asList("drop table TESTSCHEMA.TEMP_TempTest cascade");
+    return Arrays.asList("DROP TABLE TESTSCHEMA.TEMP_TempTest CASCADE");
   }
 
 

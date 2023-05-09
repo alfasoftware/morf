@@ -784,9 +784,25 @@ public abstract class SqlDialect {
    * @return The SQL statements as strings.
    */
   public Collection<String> dropStatements(Table table) {
-    return ImmutableList.of("DROP TABLE " + schemaNamePrefix(table) + table.getName());
+    return dropTables(Lists.newArrayList(table), false, false);
   }
 
+  /**
+   * Creates SQL to drop the named tables.
+   *
+   * @param ifExists Should check if table exists before dropping
+   * @param cascade Drop table cascade
+   * @param tables The tables to drop
+   * @return The SQL statements as strings.
+   */
+  public Collection<String> dropTables(List<Table> tables, boolean ifExists, boolean cascade) {
+    return ImmutableList.of(
+            "DROP TABLE "
+                    + (ifExists ? "IF EXISTS " : "")
+                    + tables.stream().map(table -> schemaNamePrefix(table) + table.getName()).collect(Collectors.joining(", "))
+                    + (cascade ? " CASCADE" : "")
+    );
+  }
 
   /**
    * Creates SQL to drop the named view.

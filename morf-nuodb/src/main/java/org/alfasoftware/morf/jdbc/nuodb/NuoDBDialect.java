@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
@@ -203,6 +204,17 @@ class NuoDBDialect extends SqlDialect {
     }
 
     return dropList;
+  }
+
+
+  @Override
+  public Collection<String> dropTables(List<Table> tables, boolean ifExists, boolean cascade) {
+    return tables.stream()
+            .map(table -> "DROP TABLE "
+                    + (ifExists ? "IF EXISTS " : "")
+                    + schemaNamePrefix(table) + table.getName()
+                    + (cascade ? " CASCADE" : ""))
+            .collect(Collectors.toList());
   }
 
 
