@@ -577,11 +577,18 @@ class H2Dialect extends SqlDialect {
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForRowNumber() 
+   */
   @Override
   protected String getSqlForRowNumber() {
     return "ROW_NUMBER() OVER()";
   }
 
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForWindowFunction(Function) 
+   */
   @Override
   protected String getSqlForWindowFunction(Function function) {
     FunctionType functionType = function.getType();
