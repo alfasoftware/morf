@@ -104,8 +104,7 @@ class ResultSetIterator implements Iterator<Record>, AutoCloseable {
     try {
       this.statement = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
       this.statement.setFetchDirection(ResultSet.FETCH_FORWARD);
-      this.statement.setFetchSize(connectionResources.isPresent() ?
-          connectionResources.map(ConnectionResources::getFetchSizeForBulkSelects).orElse(sqlDialect.fetchSizeForBulkSelects()) : sqlDialect.fetchSizeForBulkSelects());
+      this.statement.setFetchSize(connectionResources.map(ConnectionResources::getFetchSizeForBulkSelects).orElse(sqlDialect.fetchSizeForBulkSelects()));
       log.debug("Executing query [" + query + "] with fetch size [" + statement.getFetchSize() + "].");
       this.resultSet = statement.executeQuery(query);
       this.sortedMetadata = ResultSetMetadataSorter.sortedCopy(table.columns(), resultSet);
