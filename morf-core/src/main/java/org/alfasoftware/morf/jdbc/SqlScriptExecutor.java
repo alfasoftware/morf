@@ -55,6 +55,9 @@ public class SqlScriptExecutor {
 
   private final SqlDialect sqlDialect;
 
+  private int fetchSizeForBulkSelects;
+  private int fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming;
+
   /**
    * Create an SQL executor with the given visitor, who will
    * be notified about events.
@@ -66,13 +69,37 @@ public class SqlScriptExecutor {
     super();
     this.dataSource = dataSource;
     this.sqlDialect = sqlDialect;
-    if (visitor == null) {
-      this.visitor = new NullVisitor();
-    } else {
-      this.visitor = visitor;
-    }
+    this.fetchSizeForBulkSelects = sqlDialect.fetchSizeForBulkSelects();
+    this.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming = sqlDialect.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
+    this.visitor = checkVisitor(visitor);
   }
 
+  /**
+   * Create an SQL executor with the given visitor, who will
+   * be notified about events.
+   *
+   * @param visitor Visitor to notify about execution.
+   * @param dataSource DataSource to use.
+   * @param connectionResources The connection resources to use.
+   */
+  SqlScriptExecutor(SqlScriptVisitor visitor, DataSource dataSource, SqlDialect sqlDialect, ConnectionResources connectionResources) {
+    super();
+    this.dataSource = dataSource;
+    this.sqlDialect = sqlDialect;
+    this.fetchSizeForBulkSelects = connectionResources.getFetchSizeForBulkSelects() != null
+        ? connectionResources.getFetchSizeForBulkSelects() : sqlDialect.fetchSizeForBulkSelects();
+    this.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming = connectionResources.getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming() != null
+        ? connectionResources.getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming() : sqlDialect.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
+    this.visitor = checkVisitor(visitor);
+  }
+
+  private static SqlScriptVisitor checkVisitor(SqlScriptVisitor visitor){
+    if (visitor == null) {
+      return new NullVisitor();
+    } else {
+      return visitor;
+    }
+  }
 
   /**
    * Receives notification about the execution of one or more SQL statements.
@@ -521,10 +548,13 @@ public class SqlScriptExecutor {
     try {
       ParseResult parseResult = NamedParameterPreparedStatement.parseSql(sql, sqlDialect);
       try (NamedParameterPreparedStatement preparedStatement = standalone ? parseResult.createForQueryOn(connection) : parseResult.createFor(connection)) {
+
         if (standalone) {
-          preparedStatement.setFetchSize(sqlDialect.fetchSizeForBulkSelects());
+          preparedStatement.setFetchSize(fetchSizeForBulkSelects);
+          log.debug("Executing query [" + sql + "] with standalone = [" + standalone + "] and fetch size: [" + fetchSizeForBulkSelects +"].");
         } else {
-          preparedStatement.setFetchSize(sqlDialect.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming());
+          preparedStatement.setFetchSize(fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming);
+          log.debug("Executing query [" + sql + "] with standalone = [" + standalone + "] and fetch size: [" + fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming +"].");
         }
         return executeQuery(preparedStatement, parameterMetadata, parameterData, resultSetProcessor, maxRows, queryTimeout);
       }

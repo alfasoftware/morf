@@ -52,6 +52,65 @@ public class TestSqlScriptExecutor {
     when(databaseType.reclassifyException(any(Exception.class))).thenAnswer(invoc -> (Exception) invoc.getArguments()[0]);
   }
 
+  /**
+   * Verify that each {@link SqlScriptExecutor} sets the correct fetch sizes {@link java.sql.PreparedStatement}.
+   */
+  @Test
+  public void testDefaultFetchSizesForSqlScriptExecutor() throws SQLException {
+    verify(sqlDialect, times(1)).fetchSizeForBulkSelects();
+    verify(sqlDialect, times(1)).fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
+  }
+
+
+  /**
+   * Verify that a {@link SqlScriptExecutor} instanstiated with fetch sizes configured with ConnectionResources sets the configured fetch sizes {@link java.sql.PreparedStatement}.
+   */
+  @Test
+  public void testConnectionResourcesWithFetchSizesForSqlScriptExecutor() throws SQLException {
+
+    ConnectionResources connectionResourcesWithFetchSizes = mock(ConnectionResources.class);
+    DataSource testDataSource = mock(DataSource.class);
+    SqlDialect testSqlDialect = mock(SqlDialect.class);
+    when(connectionResourcesWithFetchSizes.getDataSource()).thenReturn(testDataSource);
+    when(connectionResourcesWithFetchSizes.sqlDialect()).thenReturn(testSqlDialect);
+    when(connectionResourcesWithFetchSizes.getFetchSizeForBulkSelects()).thenReturn(1000);
+    when(connectionResourcesWithFetchSizes.getFetchSizeForBulkSelects()).thenReturn(1);
+
+    new SqlScriptExecutorProvider(connectionResourcesWithFetchSizes).get();
+
+    verify(testSqlDialect, times(0)).fetchSizeForBulkSelects();
+    verify(testSqlDialect, times(0)).fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
+
+    verify(connectionResourcesWithFetchSizes, times(2)).getFetchSizeForBulkSelects();
+    verify(connectionResourcesWithFetchSizes, times(2)).getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
+  }
+
+
+  /**
+   * Verify that a {@link SqlScriptExecutor} instanstiated with no fetch sizes configured with ConnectionResources sets the default fetch sizes {@link java.sql.PreparedStatement}.
+   */
+  @Test
+  public void testConnectionResourcesWithoutFetchSizesForSqlScriptExecutor() throws SQLException {
+
+    ConnectionResources connectionResourcesWithoutFetchSizes = mock(ConnectionResources.class);
+    DataSource testDataSource = mock(DataSource.class);
+    SqlDialect testSqlDialect = mock(SqlDialect.class);
+    when(connectionResourcesWithoutFetchSizes.getDataSource()).thenReturn(testDataSource);
+    when(connectionResourcesWithoutFetchSizes.sqlDialect()).thenReturn(testSqlDialect);
+    when(connectionResourcesWithoutFetchSizes.getFetchSizeForBulkSelects()).thenReturn(null);
+    when(connectionResourcesWithoutFetchSizes.getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming()).thenReturn(null);
+    when(testSqlDialect.fetchSizeForBulkSelects()).thenReturn(2000);
+    when(testSqlDialect.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming()).thenReturn(2000);
+
+    new SqlScriptExecutorProvider(connectionResourcesWithoutFetchSizes).get();
+
+    verify(testSqlDialect, times(1)).fetchSizeForBulkSelects();
+    verify(testSqlDialect, times(1)).fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
+
+    verify(connectionResourcesWithoutFetchSizes, times(1)).getFetchSizeForBulkSelects();
+    verify(connectionResourcesWithoutFetchSizes, times(1)).getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
+  }
+
 
   /**
    * Verify that {@link SqlScriptExecutor#execute(Iterable)} returns the number of rows updated.

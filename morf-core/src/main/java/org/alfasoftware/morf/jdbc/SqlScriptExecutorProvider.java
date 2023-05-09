@@ -15,12 +15,13 @@
 
 package org.alfasoftware.morf.jdbc;
 
+import javax.sql.DataSource;
+
+import org.alfasoftware.morf.jdbc.SqlScriptExecutor.SqlScriptVisitor;
+
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.util.Providers;
-import org.alfasoftware.morf.jdbc.SqlScriptExecutor.SqlScriptVisitor;
-
-import javax.sql.DataSource;
 
 /**
  * Provides SQLScriptExecutors.
@@ -31,6 +32,7 @@ public class SqlScriptExecutorProvider implements Provider<SqlScriptExecutor> {
 
   private final DataSource dataSource;
   private final Provider<SqlDialect> sqlDialect;
+  private ConnectionResources connectionResources;
 
   /**
    * Constructor for Guice.
@@ -38,8 +40,21 @@ public class SqlScriptExecutorProvider implements Provider<SqlScriptExecutor> {
    * @param dataSource The {@link DataSource} to instantiate the
    *          {@link SqlScriptExecutorProvider} for
    * @param sqlDialect The dialect to use
+   * @param connectionResourcesHolder inner class containing an optional injected {@link ConnectionResources} to instantiate the {@link SqlScriptExecutor} with.
    */
   @Inject
+  public SqlScriptExecutorProvider(final DataSource dataSource, Provider<SqlDialect> sqlDialect, ConnectionResourcesHolder connectionResourcesHolder) {
+    super();
+    this.dataSource = dataSource;
+    this.sqlDialect = sqlDialect;
+    this.connectionResources = connectionResourcesHolder.value;
+  }
+
+  /**
+   * @param dataSource The {@link DataSource} to instantiate the
+   *          {@link SqlScriptExecutorProvider} for
+   * @param sqlDialect The dialect to use
+   */
   public SqlScriptExecutorProvider(final DataSource dataSource, Provider<SqlDialect> sqlDialect) {
     super();
     this.dataSource = dataSource;
@@ -62,7 +77,10 @@ public class SqlScriptExecutorProvider implements Provider<SqlScriptExecutor> {
    * @param connectionResources The connection to use.
    */
   public SqlScriptExecutorProvider(ConnectionResources connectionResources) {
-    this(connectionResources.getDataSource(), connectionResources.sqlDialect());
+    super();
+    this.dataSource = connectionResources.getDataSource();
+    this.sqlDialect = Providers.<SqlDialect>of(connectionResources.sqlDialect());
+    this.connectionResources = connectionResources;
   }
 
 
@@ -85,7 +103,11 @@ public class SqlScriptExecutorProvider implements Provider<SqlScriptExecutor> {
    * @return an instance of an {@link SqlScriptExecutor}.
    */
   public SqlScriptExecutor get(SqlScriptVisitor visitor) {
-    return new SqlScriptExecutor(defaultVisitor(visitor), dataSource, sqlDialect.get());
+    if (connectionResources != null) {
+      return new SqlScriptExecutor(defaultVisitor(visitor), dataSource, sqlDialect.get(), connectionResources);
+    } else {
+      return new SqlScriptExecutor(defaultVisitor(visitor), dataSource, sqlDialect.get());
+    }
   }
 
 
@@ -154,16 +176,24 @@ public class SqlScriptExecutorProvider implements Provider<SqlScriptExecutor> {
      * @return new instance of {@link SqlScriptExecutorProvider}
      */
     public SqlScriptExecutorProvider create(final ConnectionResources connectionResources) {
-      return new SqlScriptExecutorProvider(connectionResources.getDataSource(), connectionResources.sqlDialect());
+      return new SqlScriptExecutorProvider(connectionResources);
     }
 
 
     /**
      * @param dataSource The database connection source to use
      * @param sqlDialect The dialect to use for the dataSource
+     * @return new instance of {@link SqlScriptExecutorProvider}
      */
     public SqlScriptExecutorProvider create(final DataSource dataSource, final SqlDialect sqlDialect) {
       return new SqlScriptExecutorProvider(dataSource, sqlDialect);
     }
+  }
+
+  /**
+   * Holder class that allows an optional {@link ConnectionResources} to be injected via Guice.
+   */
+  static class ConnectionResourcesHolder {
+    @Inject(optional=true) ConnectionResources value;
   }
 }

@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import javax.sql.DataSource;
@@ -186,7 +187,7 @@ public class DatabaseDataSetProducer implements DataSetProducer {
           }
         }
 
-        ResultSetIterator resultSetIterator = new ResultSetIterator(table, columnOrdering, connection, sqlDialect);
+        ResultSetIterator resultSetIterator = new ResultSetIterator(table, columnOrdering, connection, Optional.of(connectionResources), sqlDialect);
         openResultSets.add(resultSetIterator);
         return resultSetIterator;
       }

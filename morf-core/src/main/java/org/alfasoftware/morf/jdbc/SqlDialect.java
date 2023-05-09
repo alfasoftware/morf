@@ -719,7 +719,7 @@ public abstract class SqlDialect {
    * @see #fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming()
    */
   public int fetchSizeForBulkSelects() {
-    return 1;
+    return 2000;
   }
 
 
