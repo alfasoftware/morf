@@ -15,6 +15,8 @@
 
 package org.alfasoftware.morf.jdbc;
 
+import static org.alfasoftware.morf.sql.SqlUtils.field;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
@@ -25,6 +27,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -95,8 +98,8 @@ import org.joda.time.Months;
 import com.google.common.base.Joiner;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableList.Builder;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -791,7 +794,7 @@ public abstract class SqlDialect {
    * Creates SQL to drop the named tables.
    *
    * @param ifExists Should check if table exists before dropping
-   * @param cascade Drop table cascade
+   * @param cascade If supported by the dialect, will drop tables/views that depend on any of the provided tables
    * @param tables The tables to drop
    * @return The SQL statements as strings.
    */
@@ -3682,6 +3685,56 @@ public abstract class SqlDialect {
         SqlUtils.insert().into(SqlUtils.tableRef(table.getName())).from(selectStatement))
       )
       .build();
+  }
+
+
+  /**
+   * This method:
+   * - Uses the provided update statement to generate a CTAS statement using a temporary name
+   * - Drops the original table
+   * - Renames the new table using the original table's name
+   * - Adds indexes from the original table
+   *
+   * @param schema used to obtain the original table's metadata
+   * @param tableReference the table to be updated via CTAS
+   * @param fieldsToUpdate the list of fields and their obfuscation logic
+   * @param criterion the criterion to be used for the CTAS
+   * @return a list of statements for the CTAS operation
+   */
+  public List<String> replaceTableFromStatements(Table originalTable, UpdateStatement updateStatement) {
+
+    // Due to morf's oracle table length restrictions, our temporary table name cannot be longer than 27 characters
+    final Table newTable = SchemaUtils.table(StringUtils.substring(originalTable.getName(), 0, 26) + "2")
+        .columns(originalTable.columns());
+
+    // Generate the table's field list, using either the passed in AliasedField, or the field from the original table
+    final List<AliasedField> tableFields = Lists.newArrayList();
+    originalTable.columns().forEach(column -> {
+
+      AliasedField aliasedField = updateStatement.getFields().stream()
+          .filter(field -> field.getImpliedName().equals(column.getName()))
+          .findFirst()
+          .orElse(field(column.getName()));
+
+      tableFields.add(aliasedField);
+    });
+
+    // Create the select statement, adding a where clause if one has been passed in
+    final SelectStatementBuilder select = SelectStatement
+        .select(tableFields.toArray(new AliasedField[]{})).from(originalTable.getName())
+        .where(updateStatement.getWhereCriterion());
+
+    // Generate the SQL for the CTAS and post-CTAS operations
+    final List<String> createTableStatements = Lists.newArrayList();
+    createTableStatements.addAll(addTableFromStatements(newTable, select.build()));
+    createTableStatements.addAll(dropTables(Collections.singletonList(originalTable), false, true));
+    createTableStatements.addAll(renameTableStatements(newTable, originalTable));
+
+    originalTable.indexes().forEach(index -> {
+      createTableStatements.addAll(addIndexStatements(originalTable, index));
+    });
+
+    return createTableStatements;
   }
 
 
