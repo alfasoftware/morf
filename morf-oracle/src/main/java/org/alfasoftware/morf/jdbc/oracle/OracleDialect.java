@@ -271,22 +271,29 @@ class OracleDialect extends SqlDialect {
 
   @Override
   public Collection<String> dropTables(List<Table> tables, boolean ifExists, boolean cascade) {
-    String tablesString = tables.stream().map(s -> "'" + s.getName().toUpperCase() + "'").collect(Collectors.joining(", "));
     StringBuilder sb = new StringBuilder();
-    sb.append("BEGIN\n");
-    sb.append("  FOR T IN (\n");
-    sb.append("    SELECT '").append(schemaNamePrefix()).append("' || TABLE_NAME AS TABLE_NAME\n");
-    if (ifExists) {
-      sb.append("    FROM ALL_TABLES\n");
-      sb.append("   WHERE TABLE_NAME  IN (").append(tablesString).append(")\n");
+    if (tables.size() == 1 && !ifExists) {
+      sb.append("DROP TABLE ").append(schemaNamePrefix()).append(tables.get(0).getName());
+      if (cascade) {
+        sb.append(" CASCADE CONSTRAINTS");
+      }
     } else {
-      sb.append("    FROM (SELECT COLUMN_VALUE AS TABLE_NAME from TABLE(SYS.dbms_debug_vc2coll(").append(tablesString).append(")))\n");
+      String tablesString = tables.stream().map(s -> "'" + s.getName().toUpperCase() + "'").collect(Collectors.joining(", "));
+      sb.append("BEGIN\n");
+      sb.append("  FOR T IN (\n");
+      sb.append("    SELECT '").append(schemaNamePrefix()).append("' || TABLE_NAME AS TABLE_NAME\n");
+      if (ifExists) {
+        sb.append("    FROM ALL_TABLES\n");
+        sb.append("   WHERE TABLE_NAME  IN (").append(tablesString).append(")\n");
+      } else {
+        sb.append("    FROM (SELECT COLUMN_VALUE AS TABLE_NAME from TABLE(SYS.dbms_debug_vc2coll(").append(tablesString).append(")))\n");
+      }
+      sb.append("  )\n");
+      sb.append("  LOOP\n");
+      sb.append("    EXECUTE IMMEDIATE 'DROP TABLE ' || T.TABLE_NAME ").append(cascade ? "|| ' CASCADE CONSTRAINTS ' " : "").append(";\n");
+      sb.append("  END LOOP;\n");
+      sb.append("END;");
     }
-    sb.append("  )\n");
-    sb.append("  LOOP\n");
-    sb.append("    EXECUTE IMMEDIATE 'DROP TABLE ' || T.TABLE_NAME ").append(cascade ? "|| ' CASCADE CONSTRAINTS ' " : "").append(";\n");
-    sb.append("  END LOOP;\n");
-    sb.append("END;");
     return Arrays.asList(sb.toString());
   }
 
