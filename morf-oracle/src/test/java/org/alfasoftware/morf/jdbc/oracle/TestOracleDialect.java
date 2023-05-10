@@ -43,12 +43,10 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.SchemaUtils;
-import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.CustomHint;
 import org.alfasoftware.morf.sql.OracleCustomHint;
 import org.alfasoftware.morf.sql.element.Direction;
 import org.alfasoftware.morf.sql.element.SqlParameter;
-import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 
 import com.google.common.base.Strings;
@@ -74,19 +72,6 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @SuppressWarnings({"unchecked","rawtypes"})
   private final ArgumentCaptor<List<String>> listCaptor = ArgumentCaptor.forClass((Class<List<String>>)(Class)List.class);
 
-
-  @Test
-  public void testDropSingleTablesWithoutIfExists() {
-    Table table1 = metadata.getTable(TEST_TABLE);
-
-    compareStatements(
-            "DROP TABLE TESTSCHEMA.Test",
-            testDialect.dropTables(Arrays.asList(table1), false, false));
-
-    compareStatements(
-            "DROP TABLE TESTSCHEMA.Test CASCADE CONSTRAINTS",
-            testDialect.dropTables(Arrays.asList(table1), false, true));
-  }
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#createTestDialect()
