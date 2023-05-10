@@ -52,6 +52,8 @@ import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.joda.time.LocalDate;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -89,6 +91,8 @@ class SqlServerDialect extends SqlDialect {
    * Used to force collation to be case-sensitive.
    */
   private static final String COLLATE = "COLLATE SQL_Latin1_General_CP1_CS_AS";
+
+  private static final Log log = LogFactory.getLog(SqlServerDialect.class);
 
   /**
    * The hint types supported.
@@ -219,11 +223,15 @@ class SqlServerDialect extends SqlDialect {
     return Arrays.asList("DROP INDEX " + indexToBeRemoved.getName() + " ON " + schemaNamePrefix() + table.getName());
   }
 
+
   @Override
   public Collection<String> dropTables(List<Table> tables, boolean ifExists, boolean cascade) {
-    // TODO: In the future, the "cascade" should be handled
+    if (cascade) {
+     log.warn("Cascading table drops in SQL Server is not currently supported");
+    }
     return super.dropTables(tables, ifExists, false);
   }
+
 
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#dropStatements(org.alfasoftware.morf.metadata.View)

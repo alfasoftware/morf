@@ -613,12 +613,17 @@ public abstract class AbstractSqlDialectTest {
     Table table2 = metadata.getTable(OTHER_TABLE);
 
     compareStatements(
-            expectedDropTables(),
-            testDialect.dropTables(Arrays.asList(table1, table2), false, false));
+        expectedDropSingleTable(),
+        testDialect.dropTables(Arrays.asList(table1), false, false)
+    );
 
     compareStatements(
-            expectedDropTablesWithParameters(),
-            testDialect.dropTables(Arrays.asList(table1, table2), true, true));
+        expectedDropTables(),
+        testDialect.dropTables(Arrays.asList(table1, table2), false, false));
+
+    compareStatements(
+        expectedDropTablesWithParameters(),
+        testDialect.dropTables(Arrays.asList(table1, table2), true, true));
   }
 
 
@@ -5045,6 +5050,12 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL statements for dropping the test database tables.
    */
   protected abstract List<String> expectedDropTableStatements();
+
+
+  /**
+   * @return The expected SQL statements for dropping a single test database table.
+   */
+  protected abstract List<String> expectedDropSingleTable();
 
 
   /**
