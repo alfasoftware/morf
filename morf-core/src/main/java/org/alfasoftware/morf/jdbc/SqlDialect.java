@@ -787,6 +787,7 @@ public abstract class SqlDialect {
     return dropTables(Lists.newArrayList(table), false, false);
   }
 
+
   /**
    * Creates SQL to drop the named tables.
    *
@@ -803,6 +804,7 @@ public abstract class SqlDialect {
                     + (cascade ? " CASCADE" : "")
     );
   }
+
 
   /**
    * Creates SQL to drop the named view.

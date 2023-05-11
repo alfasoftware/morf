@@ -606,7 +606,6 @@ public abstract class AbstractSqlDialectTest {
   /**
    * Tests SQL for dropping a tables with optional parameters.
    */
-  @SuppressWarnings("unchecked")
   @Test
   public void testDropTables() {
     Table table1 = metadata.getTable(TEST_TABLE);
@@ -614,16 +613,16 @@ public abstract class AbstractSqlDialectTest {
 
     compareStatements(
         expectedDropSingleTable(),
-        testDialect.dropTables(Arrays.asList(table1), false, false)
+        testDialect.dropTables(ImmutableList.of(table1), false, false)
     );
 
     compareStatements(
         expectedDropTables(),
-        testDialect.dropTables(Arrays.asList(table1, table2), false, false));
+        testDialect.dropTables(ImmutableList.of(table1, table2), false, false));
 
     compareStatements(
         expectedDropTablesWithParameters(),
-        testDialect.dropTables(Arrays.asList(table1, table2), true, true));
+        testDialect.dropTables(ImmutableList.of(table1, table2), true, true));
   }
 
 
