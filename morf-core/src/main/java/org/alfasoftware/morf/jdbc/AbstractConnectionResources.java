@@ -140,10 +140,13 @@ public abstract class AbstractConnectionResources implements ConnectionResources
 
 
   /**
+   * The default behaviour for this method is interpreted as "not set" rather than 0. A default for this value is available at {@link SqlDialect#fetchSizeForBulkSelects()}.
    * @see org.alfasoftware.morf.jdbc.ConnectionResources#getFetchSizeForBulkSelects()
    */
   @Override
-  public abstract Integer getFetchSizeForBulkSelects();
+  public Integer getFetchSizeForBulkSelects(){
+    return null;
+  };
 
 
   /**
@@ -151,14 +154,17 @@ public abstract class AbstractConnectionResources implements ConnectionResources
    *
    * @param fetchSizeForBulkSelects the JDBC fetch size to use.
    */
-  public abstract void setFetchSizeForBulkSelects(Integer fetchSizeForBulkSelects);
+  public void setFetchSizeForBulkSelects(Integer fetchSizeForBulkSelects){};
 
 
   /**
+   * The default behaviour for this method is interpreted as "not set" rather than 0. A default for this value is available at {@link SqlDialect#fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming()}.
    * @see org.alfasoftware.morf.jdbc.ConnectionResources#getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming()
    */
   @Override
-  public abstract Integer getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
+  public Integer getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming(){
+    return null;
+  };
 
 
   /**
@@ -166,7 +172,7 @@ public abstract class AbstractConnectionResources implements ConnectionResources
    *
    * @param fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming the JDBC fetch size to use.
    */
-  public abstract void setFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming(Integer fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming);
+  public void setFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming(Integer fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming){};
 
 
   /**
