@@ -60,6 +60,8 @@ class UpgradeStatusTableServiceImpl implements UpgradeStatusTableService {
    */
   static final String STATUS_COLUMN = "status";
 
+  static final String ID_COLUMN = "id";
+
   private final SqlScriptExecutorProvider sqlScriptExecutorProvider;
   private final SqlDialect sqlDialect;
 
@@ -126,11 +128,11 @@ class UpgradeStatusTableServiceImpl implements UpgradeStatusTableService {
       // Create upgradeStatus table and insert
       statements.addAll(sqlDialect.tableDeploymentStatements(
         table(UpgradeStatusTableService.UPGRADE_STATUS)
-          .columns(column(STATUS_COLUMN, DataType.STRING, 255).defaultValue(fromStatus.name()))));
+          .columns(column(ID_COLUMN, DataType.BIG_INTEGER).primaryKey(), column(STATUS_COLUMN, DataType.STRING, 255).defaultValue(fromStatus.name()))));
 
       statements.addAll(sqlDialect.convertStatementToSQL(
         insert().into(table)
-          .values(literal(toStatus.name()).as(STATUS_COLUMN))));
+          .values(literal(1L).as(ID_COLUMN), literal(toStatus.name()).as(STATUS_COLUMN))));
 
     } else {
       UpdateStatement update = update(table)
