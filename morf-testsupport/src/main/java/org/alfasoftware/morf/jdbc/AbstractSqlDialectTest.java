@@ -4256,6 +4256,23 @@ public abstract class AbstractSqlDialectTest {
   }
 
 
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testReplaceTableFromStatements() {
+
+    Table table = table("SomeTable")
+        .columns(
+            column("someField", DataType.STRING, 3).primaryKey(),
+            column("otherField", DataType.DECIMAL, 3)
+        ).indexes(
+            index("SomeTable_1").columns("otherField")
+        );
+
+    SelectStatement selectStatement = select(field("someField"), field("otherField")).from(tableRef("OtherTable"));
+
+    compareStatements(expectedReplaceTableFromStatements(), getTestDialect().replaceTableFromStatements(table, selectStatement));
+  }
+
   /**
    * On some databases our string literals need prefixing with N to be
    * correctly typed as a unicode string.
@@ -5181,6 +5198,9 @@ public abstract class AbstractSqlDialectTest {
 
 
   protected abstract List<String> expectedAddTableFromStatements();
+
+
+  protected abstract List<String> expectedReplaceTableFromStatements();
 
 
   /**

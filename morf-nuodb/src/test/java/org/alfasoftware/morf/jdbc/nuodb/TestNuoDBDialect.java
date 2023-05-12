@@ -1431,6 +1431,24 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddTableFromStatements()
+   */
+  @Override
+  protected List<String> expectedReplaceTableFromStatements() {
+    return ImmutableList.of(
+        "CREATE TABLE SCM.SomeTable2 (someField VARCHAR(3) NOT NULL, otherField DECIMAL(3,0) NOT NULL, PRIMARY KEY (someField))",
+        "INSERT INTO SCM.SomeTable2 SELECT someField, otherField FROM SCM.SomeTable",
+        "DROP TABLE SCM.SomeTable CASCADE",
+        "DROP INDEX IF EXISTS SCM.\"SOMETABLE2..PRIMARY_KEY\"",
+        "ALTER TABLE SCM.SomeTable2 RENAME TO SCM.SomeTable",
+        "ALTER TABLE SCM.SomeTable ADD PRIMARY KEY (someField)",
+        "DROP INDEX IF EXISTS SCM.SomeTable_1",
+        "CREATE INDEX SomeTable_1 ON SCM.SomeTable (otherField)"
+    );
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints1(int)
    */
   @Override

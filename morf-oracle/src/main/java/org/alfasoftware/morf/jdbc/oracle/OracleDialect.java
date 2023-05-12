@@ -450,6 +450,9 @@ class OracleDialect extends SqlDialect {
     if (DataType.CLOB.equals(cast.getDataType())) {
       return String.format("TO_CLOB(%s)", getSqlFrom(cast.getExpression()));
     }
+    if (DataType.BLOB.equals(cast.getDataType())) {
+      return String.format("TO_BLOB(%s)", getSqlFrom(cast.getExpression()));
+    }
     return super.getSqlFrom(cast);
   }
 
@@ -1137,7 +1140,7 @@ class OracleDialect extends SqlDialect {
     result.add(new StringBuilder()
         .append(createTableStatement(table, true))
         .append(" AS ")
-        .append(convertStatementToSQL(selectStatement))
+        .append(convertStatementToSQL(addCastsToSelect(table, selectStatement)))
         .toString()
       );
     result.add("ALTER TABLE " + schemaNamePrefix() + table.getName()  + " NOPARALLEL LOGGING");

@@ -119,8 +119,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
           "DROP SEQUENCE IF EXISTS testschema.AutoNumber_intField_seq",
           "CREATE SEQUENCE testschema.AutoNumber_intField_seq START 5",
           "CREATE TABLE testschema.AutoNumber (intField NUMERIC(19) DEFAULT nextval('testschema.AutoNumber_intField_seq'), CONSTRAINT AutoNumber_PK PRIMARY KEY(intField))",
-          "COMMENT ON TABLE testschema.AutoNumber IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[AutoNumber]'",
           "ALTER SEQUENCE testschema.AutoNumber_intField_seq OWNED BY testschema.AutoNumber.intField",
+          "COMMENT ON TABLE testschema.AutoNumber IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[AutoNumber]'",
           "COMMENT ON COLUMN testschema.AutoNumber.intField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[BIG_INTEGER]/AUTONUMSTART:[5]'");
   }
 
@@ -1204,13 +1204,36 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAddTableFromStatements() {
     return ImmutableList.of(
-      "CREATE TABLE testschema.SomeTable (someField VARCHAR(3) COLLATE \"POSIX\" NOT NULL, otherField DECIMAL(3,0) NOT NULL, CONSTRAINT SomeTable_PK PRIMARY KEY(someField))",
+      "CREATE TABLE testschema.SomeTable (someField, otherField) AS SELECT CAST(someField AS VARCHAR(3)) COLLATE \"POSIX\", CAST(otherField AS DECIMAL(3,0)) FROM testschema.OtherTable",
+      "ALTER TABLE SomeTable ALTER COLUMN someField SET NOT NULL",
+      "ALTER TABLE SomeTable ALTER COLUMN otherField SET NOT NULL",
+      "ALTER TABLE SomeTable ADD CONSTRAINT SomeTable_PK PRIMARY KEY(someField)",
       "COMMENT ON TABLE testschema.SomeTable IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable]'",
       "COMMENT ON COLUMN testschema.SomeTable.someField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[someField]/TYPE:[STRING]'",
       "COMMENT ON COLUMN testschema.SomeTable.otherField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[otherField]/TYPE:[DECIMAL]'",
       "CREATE INDEX SomeTable_1 ON testschema.SomeTable (otherField)",
-      "COMMENT ON INDEX SomeTable_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_1]'",
-      "INSERT INTO testschema.SomeTable SELECT someField, otherField FROM testschema.OtherTable"
+      "COMMENT ON INDEX SomeTable_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_1]'"
+    );
+  }
+
+
+  @Override
+  protected List<String> expectedReplaceTableFromStatements() {
+    return ImmutableList.of(
+        "CREATE TABLE testschema.SomeTable2 (someField, otherField) AS SELECT CAST(someField AS VARCHAR(3)) COLLATE \"POSIX\", CAST(otherField AS DECIMAL(3,0)) FROM testschema.SomeTable",
+        "ALTER TABLE SomeTable2 ALTER COLUMN someField SET NOT NULL",
+        "ALTER TABLE SomeTable2 ALTER COLUMN otherField SET NOT NULL",
+        "ALTER TABLE SomeTable2 ADD CONSTRAINT SomeTable2_PK PRIMARY KEY(someField)",
+        "COMMENT ON TABLE testschema.SomeTable2 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable2]'",
+        "COMMENT ON COLUMN testschema.SomeTable2.someField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[someField]/TYPE:[STRING]'",
+        "COMMENT ON COLUMN testschema.SomeTable2.otherField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[otherField]/TYPE:[DECIMAL]'",
+        "DROP TABLE testschema.SomeTable CASCADE",
+        "ALTER TABLE testschema.SomeTable2 RENAME TO SomeTable",
+        "ALTER INDEX testschema.SomeTable2_pk RENAME TO SomeTable_pk",
+        "COMMENT ON INDEX SomeTable_pk IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_pk]'",
+        "COMMENT ON TABLE testschema.SomeTable IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable]'",
+        "CREATE INDEX SomeTable_1 ON testschema.SomeTable (otherField)",
+        "COMMENT ON INDEX SomeTable_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_1]'"
     );
   }
 

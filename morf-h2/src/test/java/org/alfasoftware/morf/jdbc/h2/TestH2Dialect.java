@@ -1029,7 +1029,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
 //        + " USING (SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM somewhere) xmergesource"
 //        + " ON (foo.id = xmergesource.id)"
 //        + " WHEN MATCHED THEN UPDATE SET bar = xmergesource.bar + foo.bar"
-//        + " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
+//       ` +` " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
   }
 
 
@@ -1132,6 +1132,21 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
       "INSERT INTO TESTSCHEMA.SomeTable SELECT someField, otherField FROM TESTSCHEMA.OtherTable"
     );
   }
+
+
+  @Override
+  protected List<String> expectedReplaceTableFromStatements() {
+    return ImmutableList.of(
+        "CREATE TABLE TESTSCHEMA.SomeTable2 (someField VARCHAR(3) NOT NULL, otherField DECIMAL(3,0) NOT NULL, CONSTRAINT SomeTable2_PK PRIMARY KEY (someField))",
+        "INSERT INTO TESTSCHEMA.SomeTable2 SELECT someField, otherField FROM TESTSCHEMA.SomeTable",
+        "DROP TABLE TESTSCHEMA.SomeTable CASCADE",
+        "ALTER TABLE TESTSCHEMA.SomeTable2 DROP PRIMARY KEY",
+        "ALTER TABLE TESTSCHEMA.SomeTable2 RENAME TO SomeTable",
+        "ALTER TABLE TESTSCHEMA.SomeTable ADD CONSTRAINT SomeTable_PK PRIMARY KEY (someField)",
+        "CREATE INDEX SomeTable_1 ON TESTSCHEMA.SomeTable (otherField)"
+    );
+  }
+
 
 
   /**
