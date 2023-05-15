@@ -184,10 +184,7 @@ public abstract class SqlDialect {
     Builder<String> statements = ImmutableList.<String>builder();
 
     statements.addAll(internalTableDeploymentStatements(table));
-
-    for (Index index : table.indexes()) {
-      statements.addAll(indexDeploymentStatements(table, index));
-    }
+    statements.addAll(createAllIndexStatements(table));
 
     return statements.build();
   }
@@ -3691,7 +3688,7 @@ public abstract class SqlDialect {
 
   /**
    * This method:
-   * - Uses the provided update statement to generate a CTAS statement using a temporary name
+   * - Uses the provided select statement to generate a CTAS statement using a temporary name
    * - Drops the original table
    * - Renames the new table using the original table's name
    * - Adds indexes from the original table
@@ -3732,10 +3729,7 @@ public abstract class SqlDialect {
     createTableStatements.addAll(addTableFromStatements(newTable, select.build()));
     createTableStatements.addAll(dropTables(ImmutableList.of(originalTable), false, true));
     createTableStatements.addAll(renameTableStatements(newTable, originalTable));
-
-    originalTable.indexes().forEach(index -> {
-      createTableStatements.addAll(addIndexStatements(originalTable, index));
-    });
+    createTableStatements.addAll(createAllIndexStatements(originalTable));
 
     return createTableStatements;
   }
@@ -3764,6 +3758,21 @@ public abstract class SqlDialect {
    */
   public Collection<String> addIndexStatements(Table table, Index index) {
     return indexDeploymentStatements(table, index);
+  }
+
+
+  /**
+   * Helper method to create all index statements defined for a table
+   *
+   * @param table the table to create indexes for
+   * @return a list of index statements
+   */
+  protected List<String> createAllIndexStatements(Table table) {
+    List<String> indexStatements = new ArrayList<>();
+    for (Index index : table.indexes()) {
+      indexStatements.addAll(indexDeploymentStatements(table, index));
+    }
+    return indexStatements;
   }
 
 
@@ -4220,6 +4229,8 @@ public abstract class SqlDialect {
   protected String getSqlForInsertInto(@SuppressWarnings("unused") InsertStatement insertStatement) {
     return "INSERT INTO ";
   }
+
+
 
 
   /**

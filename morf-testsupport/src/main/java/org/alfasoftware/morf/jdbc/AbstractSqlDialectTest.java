@@ -4259,7 +4259,6 @@ public abstract class AbstractSqlDialectTest {
   @Test
   @SuppressWarnings("unchecked")
   public void testReplaceTableFromStatements() {
-
     Table table = table("SomeTable")
         .columns(
             column("someField", DataType.STRING, 3).primaryKey(),

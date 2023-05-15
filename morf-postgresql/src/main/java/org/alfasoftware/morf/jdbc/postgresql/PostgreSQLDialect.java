@@ -182,7 +182,7 @@ class PostgreSQLDialect extends SqlDialect {
         .addAll(createTableStatement(table, selectStatement))
         .addAll(createFieldStatements(table))
         .addAll(createCommentStatements(table))
-        .addAll(createIndexStatements(table))
+        .addAll(createAllIndexStatements(table))
         .build();
   }
 
@@ -301,15 +301,6 @@ class PostgreSQLDialect extends SqlDialect {
     }
 
     return commentStatements;
-  }
-
-
-  private List<String> createIndexStatements(Table table) {
-    List<String> indexStatements = new ArrayList<>();
-    for (Index index : table.indexes()) {
-      indexStatements.addAll(indexDeploymentStatements(table, index));
-    }
-    return indexStatements;
   }
 
 
