@@ -1402,6 +1402,19 @@ public class TestNuoDBDialect extends AbstractSqlDialectTest {
     );
   }
 
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddTableFromStatementsNullValue()
+   */
+  @Override
+  protected List<String> expectedAddTableFromStatementsNullValue() {
+    return ImmutableList.of(
+      "CREATE TABLE SCM.SomeTable (someField VARCHAR(3) NOT NULL, otherField DECIMAL(3,0) NOT NULL, nullField VARCHAR(3) NOT NULL, PRIMARY KEY (someField))",
+      "DROP INDEX IF EXISTS SCM.SomeTable_1",
+      "CREATE INDEX SomeTable_1 ON SCM.SomeTable (otherField)",
+      "INSERT INTO SCM.SomeTable SELECT someField, otherField, null FROM SCM.OtherTable"
+    );
+  }
+
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints1(int)

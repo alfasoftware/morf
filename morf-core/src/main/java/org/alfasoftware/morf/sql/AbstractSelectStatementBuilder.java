@@ -183,6 +183,11 @@ public abstract class AbstractSelectStatementBuilder<U extends AbstractSelectSta
     return fields(Arrays.asList(fields));
   }
 
+  public T withFields(Iterable<? extends AliasedFieldBuilder> fields) {
+    this.fields.clear();
+    Iterables.addAll(this.fields, Builder.Helper.buildAll(fields));
+    return castToChild(this);
+  }
 
   /**
    * Selects fields from a specific table:

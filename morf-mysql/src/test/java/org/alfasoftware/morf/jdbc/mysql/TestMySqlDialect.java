@@ -1168,6 +1168,18 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
     );
   }
 
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddTableFromStatementsNullValue()
+   */
+  @Override
+  protected List<String> expectedAddTableFromStatementsNullValue() {
+    return ImmutableList.of(
+      "CREATE TABLE `SomeTable` (`someField` VARCHAR(3) NOT NULL, `otherField` DECIMAL(3,0) NOT NULL, `nullField` VARCHAR(3) NOT NULL, CONSTRAINT `SomeTable_PK` PRIMARY KEY (`someField`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin",
+      "ALTER TABLE `SomeTable` ADD INDEX `SomeTable_1` (`otherField`)",
+      "INSERT INTO SomeTable SELECT someField, otherField, null FROM OtherTable"
+    );
+  }
+
 
   /**
    * We only support {@link SelectStatement#useImplicitJoinOrder()}, and only to a limited extent.

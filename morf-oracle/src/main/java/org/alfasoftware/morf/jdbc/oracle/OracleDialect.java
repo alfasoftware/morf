@@ -63,6 +63,7 @@ import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.NullFieldLiteral;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
@@ -95,6 +96,8 @@ class OracleDialect extends SqlDialect {
    * Database platforms may order nulls first or last. This is null last.
    */
   public static final String NULLS_LAST = "NULLS LAST";
+
+  private static final String CANNOT_CONVERT_NULL_STATEMENT_TO_SQL  =  "Cannot convert a null statement to SQL";
 
   /**
    * Database platforms may order nulls first or last. My SQL always orders nulls first, Oracle defaults to ordering nulls last.
@@ -1105,11 +1108,26 @@ class OracleDialect extends SqlDialect {
    */
   @Override
   public Collection<String> addTableFromStatements(Table table, SelectStatement selectStatement) {
+    List<AliasedField> fieldsToInclude = new ArrayList<>();
+
+    for(AliasedField field: selectStatement.getFields()) {
+      if (field instanceof NullFieldLiteral || field instanceof FieldReference) {
+        Column column = table.columns().get(selectStatement.getFields().indexOf(field));
+        fieldsToInclude.add(new Cast(
+                field,
+                column.getType(),
+                column.getWidth(),
+                column.getScale()).as(column.getName()));
+      } else {
+        fieldsToInclude.add(field);
+      }
+    }
+
     Builder<String> result = ImmutableList.<String>builder();
     result.add(new StringBuilder()
         .append(createTableStatement(table, true))
         .append(" AS ")
-        .append(convertStatementToSQL(selectStatement))
+        .append(convertStatementToSQL(selectStatement.shallowCopy().withFields(fieldsToInclude).build()))
         .toString()
       );
     result.add("ALTER TABLE " + schemaNamePrefix() + table.getName()  + " NOPARALLEL LOGGING");
@@ -1122,7 +1140,6 @@ class OracleDialect extends SqlDialect {
 
     return result.build();
   }
-
 
   /**
    * Builds the remaining statements (triggers, sequences and comments).
