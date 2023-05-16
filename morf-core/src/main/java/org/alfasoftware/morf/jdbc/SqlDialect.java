@@ -3770,7 +3770,7 @@ public abstract class SqlDialect {
   protected List<String> createAllIndexStatements(Table table) {
     List<String> indexStatements = new ArrayList<>();
     for (Index index : table.indexes()) {
-      indexStatements.addAll(indexDeploymentStatements(table, index));
+      indexStatements.addAll(addIndexStatements(table, index));
     }
     return indexStatements;
   }

@@ -4267,10 +4267,20 @@ public abstract class AbstractSqlDialectTest {
             index("SomeTable_1").columns("otherField")
         );
 
+    Table tableWithAutonumber = table("SomeTable")
+        .columns(
+            column("someField", DataType.STRING, 3).primaryKey(),
+            column("otherField", DataType.DECIMAL, 3).autoNumbered(1)
+        ).indexes(
+            index("SomeTable_1").columns("otherField")
+        );
+
     SelectStatement selectStatement = select(field("someField"), field("otherField")).from(tableRef("OtherTable"));
 
     compareStatements(expectedReplaceTableFromStatements(), getTestDialect().replaceTableFromStatements(table, selectStatement));
+    compareStatements(expectedReplaceTableWithAutonumber(), getTestDialect().replaceTableFromStatements(tableWithAutonumber, selectStatement));
   }
+
 
   /**
    * On some databases our string literals need prefixing with N to be
@@ -5200,6 +5210,9 @@ public abstract class AbstractSqlDialectTest {
 
 
   protected abstract List<String> expectedReplaceTableFromStatements();
+
+
+  protected abstract List<String> expectedReplaceTableWithAutonumber();
 
 
   /**

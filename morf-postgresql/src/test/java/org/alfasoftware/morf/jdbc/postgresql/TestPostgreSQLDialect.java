@@ -1238,6 +1238,31 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   }
 
 
+  protected List<String> expectedReplaceTableWithAutonumber() {
+    return ImmutableList.of(
+        "DROP SEQUENCE IF EXISTS testschema.SomeTable2_otherField_seq",
+        "CREATE SEQUENCE testschema.SomeTable2_otherField_seq START 1",
+        "CREATE TABLE testschema.SomeTable2 (someField, otherField) AS SELECT CAST(someField AS VARCHAR(3)) COLLATE \"POSIX\", CAST(otherField AS DECIMAL(3,0)) FROM testschema.SomeTable",
+        "ALTER TABLE SomeTable2 ALTER COLUMN otherField SET DEFAULT nextval('testschema.SomeTable2_otherField_seq')",
+        "ALTER SEQUENCE testschema.SomeTable2_otherField_seq OWNED BY testschema.SomeTable2.otherField",
+        "ALTER TABLE SomeTable2 ALTER COLUMN someField SET NOT NULL",
+        "ALTER TABLE SomeTable2 ALTER COLUMN otherField SET NOT NULL",
+        "ALTER TABLE SomeTable2 ADD CONSTRAINT SomeTable2_PK PRIMARY KEY(someField)",
+        "COMMENT ON TABLE testschema.SomeTable2 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable2]'",
+        "COMMENT ON COLUMN testschema.SomeTable2.someField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[someField]/TYPE:[STRING]'",
+        "COMMENT ON COLUMN testschema.SomeTable2.otherField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[otherField]/TYPE:[DECIMAL]/AUTONUMSTART:[1]'",
+        "DROP TABLE testschema.SomeTable CASCADE",
+        "ALTER TABLE testschema.SomeTable2 RENAME TO SomeTable",
+        "ALTER INDEX testschema.SomeTable2_pk RENAME TO SomeTable_pk",
+        "COMMENT ON INDEX SomeTable_pk IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_pk]'",
+        "ALTER SEQUENCE SomeTable2_seq RENAME TO SomeTable_seq",
+        "COMMENT ON TABLE testschema.SomeTable IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable]'",
+        "CREATE INDEX SomeTable_1 ON testschema.SomeTable (otherField)",
+        "COMMENT ON INDEX SomeTable_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_1]'"
+    );
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints1(int)
    */

@@ -1276,6 +1276,19 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   }
 
 
+  protected List<String> expectedReplaceTableWithAutonumber() {
+    return ImmutableList.of(
+        "CREATE TABLE TESTSCHEMA.SomeTable2 ([someField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [otherField] NUMERIC(3,0) NOT NULL IDENTITY(1, 1), CONSTRAINT [SomeTable2_PK] PRIMARY KEY ([someField]))",
+        "INSERT INTO TESTSCHEMA.SomeTable2 SELECT someField, otherField FROM TESTSCHEMA.SomeTable",
+        "DROP TABLE TESTSCHEMA.SomeTable",
+        "IF EXISTS (SELECT 1 FROM sys.objects WHERE OBJECT_ID = OBJECT_ID(N'SomeTable2_version_DF') AND type = (N'D')) exec sp_rename N'SomeTable2_version_DF', N'SomeTable_version_DF'",
+        "sp_rename N'SomeTable2.SomeTable2_PK', N'SomeTable_PK', N'INDEX'",
+        "sp_rename N'SomeTable2', N'SomeTable'",
+        "CREATE INDEX SomeTable_1 ON TESTSCHEMA.SomeTable ([otherField])"
+    );
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints1(int)
    */
