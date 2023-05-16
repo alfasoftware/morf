@@ -3693,11 +3693,9 @@ public abstract class SqlDialect {
    * - Renames the new table using the original table's name
    * - Adds indexes from the original table
    *
-   * @param schema used to obtain the original table's metadata
-   * @param tableReference the table to be updated via CTAS
-   * @param fieldsToUpdate the list of fields and their obfuscation logic
-   * @param criterion the criterion to be used for the CTAS
-   * @return a list of statements for the CTAS operation
+   * @param originalTable the original table this method will replace
+   * @param selectStatement the statement used to populate the replacement table via a CTAS
+   * @return a list of statements for the operation
    */
   public List<String> replaceTableFromStatements(Table originalTable, SelectStatement selectStatement) {
 
