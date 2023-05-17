@@ -124,8 +124,7 @@ public interface ConnectionResources {
    * @param fetchSizeForBulkSelects the JDBC fetch size to use.
    */
   public default void setFetchSizeForBulkSelects(Integer fetchSizeForBulkSelects){
-    // Default behavior is no-op
-  };
+  }
 
   /**
    *
@@ -146,6 +145,5 @@ public interface ConnectionResources {
    * @param fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming the JDBC fetch size to use.
    */
   public default void setFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming(Integer fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming){
-    // Default behavior is no-op
-  };
+  }
 }
