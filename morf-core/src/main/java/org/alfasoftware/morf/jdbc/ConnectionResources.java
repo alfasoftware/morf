@@ -116,7 +116,7 @@ public interface ConnectionResources {
    */
   public default Integer getFetchSizeForBulkSelects(){
     return null;
-  };
+  }
 
   /**
    * Sets the JDBC Fetch Size to use when performing bulk select operations, intended to replace the default in {@link SqlDialect#fetchSizeForBulkSelects()}.
@@ -136,7 +136,7 @@ public interface ConnectionResources {
    */
   public default Integer getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming(){
     return null;
-  };
+  }
 
 
   /**
