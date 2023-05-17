@@ -105,14 +105,17 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
           "COMMENT ON COLUMN TESTSCHEMA.Test.blobField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[blobField]/TYPE:[BLOB]'",
           "COMMENT ON COLUMN TESTSCHEMA.Test.bigIntegerField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[bigIntegerField]/TYPE:[BIG_INTEGER]'",
           "COMMENT ON COLUMN TESTSCHEMA.Test.clobField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[clobField]/TYPE:[CLOB]'",
-          "CREATE UNIQUE INDEX TESTSCHEMA.Test_NK ON TESTSCHEMA.Test (stringField)",
-          "CREATE UNIQUE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.Test (intField, floatField)",
+          "CREATE UNIQUE INDEX TESTSCHEMA.Test_NK ON TESTSCHEMA.Test (stringField) PARALLEL NOLOGGING",
+          "ALTER INDEX TESTSCHEMA.Test_NK NOPARALLEL LOGGING",
+          "CREATE UNIQUE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.Test (intField, floatField) PARALLEL NOLOGGING",
+          "ALTER INDEX TESTSCHEMA.Test_1 NOPARALLEL LOGGING",
           "CREATE TABLE TESTSCHEMA.Alternate (id NUMBER(19) NOT NULL, version INTEGER DEFAULT 0, stringField NVARCHAR2(3), CONSTRAINT Alternate_PK PRIMARY KEY (id) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.Alternate_PK ON TESTSCHEMA.Alternate (id)))",
           "COMMENT ON TABLE TESTSCHEMA.Alternate IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[Alternate]'",
           "COMMENT ON COLUMN TESTSCHEMA.Alternate.id IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[id]/TYPE:[BIG_INTEGER]'",
           "COMMENT ON COLUMN TESTSCHEMA.Alternate.version IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[version]/TYPE:[INTEGER]'",
           "COMMENT ON COLUMN TESTSCHEMA.Alternate.stringField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[stringField]/TYPE:[STRING]'",
-          "CREATE INDEX TESTSCHEMA.Alternate_1 ON TESTSCHEMA.Alternate (stringField)",
+          "CREATE INDEX TESTSCHEMA.Alternate_1 ON TESTSCHEMA.Alternate (stringField) PARALLEL NOLOGGING",
+          "ALTER INDEX TESTSCHEMA.Alternate_1 NOPARALLEL LOGGING",
           "CREATE TABLE TESTSCHEMA.NonNull (id NUMBER(19) NOT NULL, version INTEGER DEFAULT 0, stringField NVARCHAR2(3) NOT NULL, intField DECIMAL(8,0) NOT NULL, booleanField DECIMAL(1,0) NOT NULL, dateField DATE NOT NULL, blobField BLOB NOT NULL, CONSTRAINT NonNull_PK PRIMARY KEY (id) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.NonNull_PK ON TESTSCHEMA.NonNull (id)))",
           "COMMENT ON TABLE TESTSCHEMA.NonNull IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[NonNull]'",
           "COMMENT ON COLUMN TESTSCHEMA.NonNull.id IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[id]/TYPE:[BIG_INTEGER]'",
@@ -197,14 +200,17 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
           "COMMENT ON COLUMN TESTSCHEMA.TempTest.blobField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[blobField]/TYPE:[BLOB]'",
           "COMMENT ON COLUMN TESTSCHEMA.TempTest.bigIntegerField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[bigIntegerField]/TYPE:[BIG_INTEGER]'",
           "COMMENT ON COLUMN TESTSCHEMA.TempTest.clobField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[clobField]/TYPE:[CLOB]'",
-          "CREATE UNIQUE INDEX TESTSCHEMA.TempTest_NK ON TESTSCHEMA.TempTest (stringField)",
-          "CREATE INDEX TESTSCHEMA.TempTest_1 ON TESTSCHEMA.TempTest (intField, floatField)",
+          "CREATE UNIQUE INDEX TESTSCHEMA.TempTest_NK ON TESTSCHEMA.TempTest (stringField) PARALLEL NOLOGGING",
+          "ALTER INDEX TESTSCHEMA.TempTest_NK NOPARALLEL LOGGING",
+          "CREATE INDEX TESTSCHEMA.TempTest_1 ON TESTSCHEMA.TempTest (intField, floatField) PARALLEL NOLOGGING",
+          "ALTER INDEX TESTSCHEMA.TempTest_1 NOPARALLEL LOGGING",
           "CREATE GLOBAL TEMPORARY TABLE TESTSCHEMA.TempAlternate (id NUMBER(19) NOT NULL, version INTEGER DEFAULT 0, stringField NVARCHAR2(3), CONSTRAINT TempAlternate_PK PRIMARY KEY (id) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.TempAlternate_PK ON TESTSCHEMA.TempAlternate (id))) ON COMMIT PRESERVE ROWS",
           "COMMENT ON TABLE TESTSCHEMA.TempAlternate IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[TempAlternate]'",
           "COMMENT ON COLUMN TESTSCHEMA.TempAlternate.id IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[id]/TYPE:[BIG_INTEGER]'",
           "COMMENT ON COLUMN TESTSCHEMA.TempAlternate.version IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[version]/TYPE:[INTEGER]'",
           "COMMENT ON COLUMN TESTSCHEMA.TempAlternate.stringField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[stringField]/TYPE:[STRING]'",
-          "CREATE INDEX TESTSCHEMA.TempAlternate_1 ON TESTSCHEMA.TempAlternate (stringField)",
+          "CREATE INDEX TESTSCHEMA.TempAlternate_1 ON TESTSCHEMA.TempAlternate (stringField) PARALLEL NOLOGGING",
+          "ALTER INDEX TESTSCHEMA.TempAlternate_1 NOPARALLEL LOGGING",
           "CREATE GLOBAL TEMPORARY TABLE TESTSCHEMA.TempNonNull (id NUMBER(19) NOT NULL, version INTEGER DEFAULT 0, stringField NVARCHAR2(3) NOT NULL, intField DECIMAL(8,0) NOT NULL, booleanField DECIMAL(1,0) NOT NULL, dateField DATE NOT NULL, blobField BLOB NOT NULL, CONSTRAINT TempNonNull_PK PRIMARY KEY (id) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.TempNonNull_PK ON TESTSCHEMA.TempNonNull (id))) ON COMMIT PRESERVE ROWS",
           "COMMENT ON TABLE TESTSCHEMA.TempNonNull IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[TempNonNull]'",
           "COMMENT ON COLUMN TESTSCHEMA.TempNonNull.id IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[id]/TYPE:[BIG_INTEGER]'",
@@ -239,8 +245,10 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
           "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30
               + ".booleanField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[booleanField]/TYPE:[BOOLEAN]'", "COMMENT ON COLUMN TESTSCHEMA."
               + LONG_TABLE_NAME_TRUNCATED_30 + ".charField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[charField]/TYPE:[STRING]'",
-          "CREATE UNIQUE INDEX TESTSCHEMA.Test_NK ON TESTSCHEMA."+LONG_TABLE_NAME_TRUNCATED_30+" (stringField)",
-          "CREATE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.tableWithANameThatExceedsTwent (intField, floatField)"
+          "CREATE UNIQUE INDEX TESTSCHEMA.Test_NK ON TESTSCHEMA.tableWithANameThatExceedsTwent (stringField) PARALLEL NOLOGGING",
+          "ALTER INDEX TESTSCHEMA.Test_NK NOPARALLEL LOGGING",
+          "CREATE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.tableWithANameThatExceedsTwent (intField, floatField) PARALLEL NOLOGGING",
+          "ALTER INDEX TESTSCHEMA.Test_1 NOPARALLEL LOGGING"
     );
   }
 
@@ -1498,9 +1506,11 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   public List<String> expectedAddTableFromStatements() {
     return ImmutableList.of(
-      "CREATE TABLE TESTSCHEMA.SomeTable (someField  NOT NULL, otherField  NOT NULL, CONSTRAINT SomeTable_PK PRIMARY KEY (someField) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.SomeTable_PK ON TESTSCHEMA.SomeTable (someField))) PARALLEL NOLOGGING AS SELECT someField, otherField FROM TESTSCHEMA.OtherTable",
+      "CREATE TABLE TESTSCHEMA.SomeTable (someField  NOT NULL, otherField  NOT NULL, CONSTRAINT SomeTable_PK PRIMARY KEY (someField) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.SomeTable_PK ON TESTSCHEMA.SomeTable (someField))) PARALLEL NOLOGGING AS SELECT CAST(someField AS NVARCHAR2(3)), CAST(otherField AS DECIMAL(3,0)) FROM TESTSCHEMA.OtherTable",
       "ALTER TABLE TESTSCHEMA.SomeTable NOPARALLEL LOGGING",
       "ALTER INDEX TESTSCHEMA.SomeTable_PK NOPARALLEL LOGGING",
+      "CREATE INDEX TESTSCHEMA.SomeTable_1 ON TESTSCHEMA.SomeTable (otherField) PARALLEL NOLOGGING",
+      "ALTER INDEX TESTSCHEMA.SomeTable_1 NOPARALLEL LOGGING",
       "COMMENT ON TABLE TESTSCHEMA.SomeTable IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable]'",
       "COMMENT ON COLUMN TESTSCHEMA.SomeTable.someField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[someField]/TYPE:[STRING]'",
       "COMMENT ON COLUMN TESTSCHEMA.SomeTable.otherField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[otherField]/TYPE:[DECIMAL]'"
