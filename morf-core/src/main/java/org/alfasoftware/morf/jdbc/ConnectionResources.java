@@ -107,23 +107,45 @@ public interface ConnectionResources {
    */
   public int getStatementPoolingMaxStatements();
 
-
   /**
    *
    * The JDBC Fetch Size to use when performing bulk select operations, intended to replace the default in {@link SqlDialect#fetchSizeForBulkSelects()}.
-   *
+   * The default behaviour for this method is interpreted as "not set" rather than 0.
    *  @return The number of rows to try and fetch at a time when
    *          performing bulk select operations.
    */
-  public Integer getFetchSizeForBulkSelects();
+  public default Integer getFetchSizeForBulkSelects(){
+    return null;
+  };
+
+  /**
+   * Sets the JDBC Fetch Size to use when performing bulk select operations, intended to replace the default in {@link SqlDialect#fetchSizeForBulkSelects()}.
+   * The default behaviour for this method is interpreted as not setting the value.
+   * @param fetchSizeForBulkSelects the JDBC fetch size to use.
+   */
+  public default void setFetchSizeForBulkSelects(Integer fetchSizeForBulkSelects){
+    // Default behavior is no-op
+  };
 
   /**
    *
    * The JDBC Fetch Size to use when performing bulk select operations while allowing connection use, intended to replace the default in {@link SqlDialect#fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming()}.
-   *
-   * @return The number of rows to try and fetch at a time (default) when
+   * The default behaviour for this method is interpreted as "not set" rather than 0.
+   *  @return The number of rows to try and fetch at a time (default) when
    *         performing bulk select operations and needing to use the connection while
    *         the {@link ResultSet} is open.
    */
-  public Integer getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
+  public default Integer getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming(){
+    return null;
+  };
+
+
+  /**
+   * Sets the JDBC Fetch Size to use when performing bulk select operations while allowing connection use, intended to replace the default in {@link SqlDialect#fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming()}.
+   * The default behaviour for this method is interpreted as not setting the value.
+   * @param fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming the JDBC fetch size to use.
+   */
+  public default void setFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming(Integer fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming){
+    // Default behavior is no-op
+  };
 }

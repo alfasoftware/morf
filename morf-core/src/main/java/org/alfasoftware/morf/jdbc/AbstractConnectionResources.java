@@ -138,43 +138,6 @@ public abstract class AbstractConnectionResources implements ConnectionResources
    */
   public abstract void setStatementPoolingMaxStatements(int statementPoolingMaxStatements);
 
-
-  /**
-   * The default behaviour for this method is interpreted as "not set" rather than 0. A default for this value is available at {@link SqlDialect#fetchSizeForBulkSelects()}.
-   * @see org.alfasoftware.morf.jdbc.ConnectionResources#getFetchSizeForBulkSelects()
-   */
-  @Override
-  public Integer getFetchSizeForBulkSelects(){
-    return null;
-  };
-
-
-  /**
-   * Sets the JDBC Fetch Size to use when performing bulk select operations, intended to replace the default in {@link SqlDialect#fetchSizeForBulkSelects()}.
-   *
-   * @param fetchSizeForBulkSelects the JDBC fetch size to use.
-   */
-  public void setFetchSizeForBulkSelects(Integer fetchSizeForBulkSelects){};
-
-
-  /**
-   * The default behaviour for this method is interpreted as "not set" rather than 0. A default for this value is available at {@link SqlDialect#fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming()}.
-   * @see org.alfasoftware.morf.jdbc.ConnectionResources#getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming()
-   */
-  @Override
-  public Integer getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming(){
-    return null;
-  };
-
-
-  /**
-   * Sets the JDBC Fetch Size to use when performing bulk select operations while allowing connection use, intended to replace the default in {@link SqlDialect#fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming()}.
-   *
-   * @param fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming the JDBC fetch size to use.
-   */
-  public void setFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming(Integer fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming){};
-
-
   /**
    * @return a formatted jdbc url string.
    */
