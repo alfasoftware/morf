@@ -1137,8 +1137,8 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedReplaceTableFromStatements() {
     return ImmutableList.of(
-        "CREATE TABLE TESTSCHEMA.SomeTable2 (someField VARCHAR(3) NOT NULL, otherField DECIMAL(3,0) NOT NULL, CONSTRAINT SomeTable2_PK PRIMARY KEY (someField))",
-        "INSERT INTO TESTSCHEMA.SomeTable2 SELECT someField, otherField FROM TESTSCHEMA.SomeTable",
+        "CREATE TABLE TESTSCHEMA.SomeTable2 (someField VARCHAR(3) NOT NULL, otherField DECIMAL(3,0) NOT NULL, thirdField DECIMAL(5,0) NOT NULL, CONSTRAINT SomeTable2_PK PRIMARY KEY (someField))",
+        "INSERT INTO TESTSCHEMA.SomeTable2 SELECT someField, otherField, thirdField FROM TESTSCHEMA.SomeTable",
         "DROP TABLE TESTSCHEMA.SomeTable CASCADE",
         "ALTER TABLE TESTSCHEMA.SomeTable2 DROP PRIMARY KEY",
         "ALTER TABLE TESTSCHEMA.SomeTable2 RENAME TO SomeTable",

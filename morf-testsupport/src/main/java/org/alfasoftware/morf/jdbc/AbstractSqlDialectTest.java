@@ -4262,7 +4262,8 @@ public abstract class AbstractSqlDialectTest {
     Table table = table("SomeTable")
         .columns(
             column("someField", DataType.STRING, 3).primaryKey(),
-            column("otherField", DataType.DECIMAL, 3)
+            column("otherField", DataType.DECIMAL, 3),
+            column("thirdField", DataType.DECIMAL, 5)
         ).indexes(
             index("SomeTable_1").columns("otherField")
         );
@@ -4275,7 +4276,11 @@ public abstract class AbstractSqlDialectTest {
             index("SomeTable_1").columns("otherField")
         );
 
-    SelectStatement selectStatement = select(field("someField"), field("otherField")).from(tableRef("OtherTable"));
+    SelectStatement selectStatement = select(
+        field("someField"),
+        field("otherField"),
+        cast(field("thirdField")).asType(DataType.DECIMAL, 3))
+        .from(tableRef("OtherTable"));
 
     compareStatements(expectedReplaceTableFromStatements(), getTestDialect().replaceTableFromStatements(table, selectStatement));
     compareStatements(expectedReplaceTableWithAutonumber(), getTestDialect().replaceTableFromStatements(tableWithAutonumber, selectStatement));

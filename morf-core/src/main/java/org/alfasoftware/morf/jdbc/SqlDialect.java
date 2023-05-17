@@ -3738,12 +3738,25 @@ public abstract class SqlDialect {
    */
   protected SelectStatement addCastsToSelect(Table table, SelectStatement selectStatement) {
     for (int i = 0; i < table.columns().size(); i++) {
-      Column column = table.columns().get(i);
       AliasedField field = selectStatement.getFields().get(i);
-      field = field.cast().asType(column.getType(), column.getWidth(), column.getScale()).build();
-      selectStatement.getFields().set(i, field);
+      Column column = table.columns().get(i);
+
+      if (fieldRequiresCast(field, column)) {
+        AliasedField fieldWithCast = field.cast().asType(column.getType(), column.getWidth(), column.getScale()).build();
+        selectStatement.getFields().set(i, fieldWithCast);
+      }
     }
     return selectStatement;
+  }
+
+
+  private boolean fieldRequiresCast(AliasedField field, Column column) {
+    if (!(field instanceof Cast)) {
+      return true;
+    }
+
+    Cast cast = (Cast) field;
+    return cast.getDataType() != column.getType() || cast.getWidth() != column.getWidth() || cast.getScale() != column.getScale();
   }
 
 

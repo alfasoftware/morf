@@ -1199,8 +1199,8 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedReplaceTableFromStatements() {
     return ImmutableList.of(
-      "CREATE TABLE `SomeTable2` (`someField` VARCHAR(3) NOT NULL, `otherField` DECIMAL(3,0) NOT NULL, CONSTRAINT `SomeTable2_PK` PRIMARY KEY (`someField`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin",
-          "INSERT INTO SomeTable2 SELECT someField, otherField FROM SomeTable",
+      "CREATE TABLE `SomeTable2` (`someField` VARCHAR(3) NOT NULL, `otherField` DECIMAL(3,0) NOT NULL, `thirdField` DECIMAL(5,0) NOT NULL, CONSTRAINT `SomeTable2_PK` PRIMARY KEY (`someField`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin",
+          "INSERT INTO SomeTable2 SELECT someField, otherField, thirdField FROM SomeTable",
           "FLUSH TABLES `SomeTable`",
           "DROP TABLE `SomeTable` CASCADE",
           "RENAME TABLE SomeTable2 TO SomeTable",

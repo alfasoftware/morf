@@ -1510,12 +1510,13 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
   public List<String> expectedReplaceTableFromStatements() {
     return ImmutableList.of(
-        "CREATE TABLE TESTSCHEMA.SomeTable2 (someField  NOT NULL, otherField  NOT NULL, CONSTRAINT SomeTable2_PK PRIMARY KEY (someField) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.SomeTable2_PK ON TESTSCHEMA.SomeTable2 (someField))) PARALLEL NOLOGGING AS SELECT CAST(someField AS NVARCHAR2(3)), CAST(otherField AS DECIMAL(3,0)) FROM TESTSCHEMA.SomeTable",
+        "CREATE TABLE TESTSCHEMA.SomeTable2 (someField  NOT NULL, otherField  NOT NULL, thirdField  NOT NULL, CONSTRAINT SomeTable2_PK PRIMARY KEY (someField) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.SomeTable2_PK ON TESTSCHEMA.SomeTable2 (someField))) PARALLEL NOLOGGING AS SELECT CAST(someField AS NVARCHAR2(3)), CAST(otherField AS DECIMAL(3,0)), CAST(thirdField AS DECIMAL(5,0)) FROM TESTSCHEMA.SomeTable",
         "ALTER TABLE TESTSCHEMA.SomeTable2 NOPARALLEL LOGGING",
         "ALTER INDEX TESTSCHEMA.SomeTable2_PK NOPARALLEL LOGGING",
         "COMMENT ON TABLE TESTSCHEMA.SomeTable2 IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable2]'",
         "COMMENT ON COLUMN TESTSCHEMA.SomeTable2.someField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[someField]/TYPE:[STRING]'",
         "COMMENT ON COLUMN TESTSCHEMA.SomeTable2.otherField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[otherField]/TYPE:[DECIMAL]'",
+        "COMMENT ON COLUMN TESTSCHEMA.SomeTable2.thirdField IS 'REALNAME:[thirdField]/TYPE:[DECIMAL]'",
         "DROP TABLE TESTSCHEMA.SomeTable CASCADE CONSTRAINTS",
         "ALTER TABLE TESTSCHEMA.SomeTable2 RENAME CONSTRAINT SomeTable2_PK TO SomeTable_PK",
         "ALTER INDEX TESTSCHEMA.SomeTable2_PK RENAME TO SomeTable_PK",

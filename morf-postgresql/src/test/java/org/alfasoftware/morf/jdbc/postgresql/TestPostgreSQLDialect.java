@@ -1220,13 +1220,15 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedReplaceTableFromStatements() {
     return ImmutableList.of(
-        "CREATE TABLE testschema.SomeTable2 (someField, otherField) AS SELECT CAST(someField AS VARCHAR(3)) COLLATE \"POSIX\", CAST(otherField AS DECIMAL(3,0)) FROM testschema.SomeTable",
+        "CREATE TABLE testschema.SomeTable2 (someField, otherField, thirdField) AS SELECT CAST(someField AS VARCHAR(3)) COLLATE \"POSIX\", CAST(otherField AS DECIMAL(3,0)), CAST(thirdField AS DECIMAL(5,0)) FROM testschema.SomeTable",
         "ALTER TABLE SomeTable2 ALTER COLUMN someField SET NOT NULL",
         "ALTER TABLE SomeTable2 ALTER COLUMN otherField SET NOT NULL",
+        "ALTER TABLE SomeTable2 ALTER COLUMN thirdField SET NOT NULL",
         "ALTER TABLE SomeTable2 ADD CONSTRAINT SomeTable2_PK PRIMARY KEY(someField)",
         "COMMENT ON TABLE testschema.SomeTable2 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable2]'",
         "COMMENT ON COLUMN testschema.SomeTable2.someField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[someField]/TYPE:[STRING]'",
         "COMMENT ON COLUMN testschema.SomeTable2.otherField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[otherField]/TYPE:[DECIMAL]'",
+        "COMMENT ON COLUMN testschema.SomeTable2.thirdField IS 'REALNAME:[thirdField]/TYPE:[DECIMAL]'",
         "DROP TABLE testschema.SomeTable CASCADE",
         "ALTER TABLE testschema.SomeTable2 RENAME TO SomeTable",
         "ALTER INDEX testschema.SomeTable2_pk RENAME TO SomeTable_pk",
