@@ -1029,7 +1029,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
 //        + " USING (SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM somewhere) xmergesource"
 //        + " ON (foo.id = xmergesource.id)"
 //        + " WHEN MATCHED THEN UPDATE SET bar = xmergesource.bar + foo.bar"
-//       ` +` " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
+//        + " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
   }
 
 
