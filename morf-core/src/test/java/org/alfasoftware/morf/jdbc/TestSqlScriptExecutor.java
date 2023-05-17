@@ -53,12 +53,14 @@ public class TestSqlScriptExecutor {
   }
 
   /**
-   * Verify that each {@link SqlScriptExecutor} sets the correct fetch sizes {@link java.sql.PreparedStatement}.
+   * Verify that a {@link SqlScriptExecutor} instantiated without ConnectionResources sets the legacy fetch sizes on {@link java.sql.PreparedStatement}.
    */
   @Test
-  public void testDefaultFetchSizesForSqlScriptExecutor() throws SQLException {
-    verify(sqlDialect, times(1)).fetchSizeForBulkSelects();
-    verify(sqlDialect, times(1)).fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
+  public void testLegacyFetchSizesForSqlScriptExecutor() throws SQLException {
+    verify(sqlDialect, times(0)).fetchSizeForBulkSelects();
+    verify(sqlDialect, times(0)).fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
+    verify(sqlDialect, times(1)).legacyFetchSizeForBulkSelects();
+    verify(sqlDialect, times(1)).legacyFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
   }
 
 
@@ -87,7 +89,7 @@ public class TestSqlScriptExecutor {
 
 
   /**
-   * Verify that a {@link SqlScriptExecutor} instanstiated with no fetch sizes configured with ConnectionResources sets the default fetch sizes {@link java.sql.PreparedStatement}.
+   * Verify that a {@link SqlScriptExecutor} constructed with no fetch sizes configured on ConnectionResources sets the default fetch sizes on {@link java.sql.PreparedStatement}.
    */
   @Test
   public void testConnectionResourcesWithoutFetchSizesForSqlScriptExecutor() throws SQLException {

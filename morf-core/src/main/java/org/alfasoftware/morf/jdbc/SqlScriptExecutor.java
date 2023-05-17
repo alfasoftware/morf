@@ -59,18 +59,23 @@ public class SqlScriptExecutor {
   private int fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming;
 
   /**
+   * @deprecated This constructor creates a {@link SqlScriptExecutor} with legacy fetch size values and is primarily for backwards compatibility.
+   * Please use {@link SqlScriptExecutor#SqlScriptExecutor(SqlScriptVisitor, DataSource, SqlDialect, ConnectionResources)} to create a
+   * {@link SqlScriptExecutor} with the new fetch size defaults or optional configured values.
+   *
    * Create an SQL executor with the given visitor, who will
    * be notified about events.
    *
    * @param visitor Visitor to notify about execution.
    * @param dataSource DataSource to use.
    */
+  @Deprecated
   SqlScriptExecutor(SqlScriptVisitor visitor, DataSource dataSource, SqlDialect sqlDialect) {
     super();
     this.dataSource = dataSource;
     this.sqlDialect = sqlDialect;
-    this.fetchSizeForBulkSelects = sqlDialect.fetchSizeForBulkSelects();
-    this.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming = sqlDialect.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
+    this.fetchSizeForBulkSelects = sqlDialect.legacyFetchSizeForBulkSelects();
+    this.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming = sqlDialect.legacyFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
     this.visitor = checkVisitor(visitor);
   }
 
