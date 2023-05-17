@@ -211,28 +211,9 @@ class PostgreSQLDialect extends SqlDialect {
       if (!first) {
         createTableStatement.append(", ");
       }
-      createTableStatement.append(column.getName());
 
-      if (asSelect == null) {
-        createTableStatement.append(" ").append(sqlRepresentationOfColumnType(column));
-      } else {
-        createTableStatement.append(sqlRepresentationOfColumnType(column, false, false, false));
-      }
-
-      if(column.isAutoNumbered()) {
-        int autoNumberStart = column.getAutoNumberStart() == -1 ? 1 : column.getAutoNumberStart();
-        String autoNumberSequenceName = schemaNamePrefix() + table.getName() + "_" + column.getName() + "_seq";
-        preStatements.add("DROP SEQUENCE IF EXISTS " + autoNumberSequenceName);
-        preStatements.add("CREATE SEQUENCE " + autoNumberSequenceName + " START " + autoNumberStart);
-
-        if (asSelect == null) {
-          createTableStatement.append(" DEFAULT nextval('").append(autoNumberSequenceName).append("')");
-        } else {
-          postStatements.add("ALTER TABLE " + table.getName() + " ALTER COLUMN " + column.getName() + " SET DEFAULT nextval('" + autoNumberSequenceName + "')");
-        }
-
-        postStatements.add("ALTER SEQUENCE " + autoNumberSequenceName + " OWNED BY " + schemaNamePrefix() + table.getName() + "." + column.getName());
-      }
+      addColumnDetails(asSelect, createTableStatement, column);
+      handleAutoNumberedColumn(table, asSelect, preStatements, postStatements, createTableStatement, column);
 
       if (column.isPrimaryKey()) {
         primaryKeys.add(column.getName());
@@ -241,15 +222,7 @@ class PostgreSQLDialect extends SqlDialect {
       first = false;
     }
 
-    if (asSelect == null && !primaryKeys.isEmpty()) {
-      createTableStatement
-          .append(", CONSTRAINT ")
-          .append(table.getName())
-          .append("_PK PRIMARY KEY(")
-          .append(Joiner.on(", ").join(primaryKeys))
-          .append(")");
-    }
-
+    addTableConstraints(table, asSelect, createTableStatement, primaryKeys);
     createTableStatement.append(")");
 
     if (asSelect != null) {
@@ -263,6 +236,46 @@ class PostgreSQLDialect extends SqlDialect {
     statements.addAll(postStatements);
 
     return statements.build();
+  }
+
+
+  private void addColumnDetails(SelectStatement asSelect, StringBuilder createTableStatement, Column column) {
+    createTableStatement.append(column.getName());
+    if (asSelect == null) {
+      createTableStatement.append(" ").append(sqlRepresentationOfColumnType(column));
+    } else {
+      createTableStatement.append(sqlRepresentationOfColumnType(column, false, false, false));
+    }
+  }
+
+
+  private void handleAutoNumberedColumn(Table table, SelectStatement asSelect, List<String> preStatements, List<String> postStatements, StringBuilder createTableStatement, Column column) {
+    if(column.isAutoNumbered()) {
+      int autoNumberStart = column.getAutoNumberStart() == -1 ? 1 : column.getAutoNumberStart();
+      String autoNumberSequenceName = schemaNamePrefix() + table.getName() + "_" + column.getName() + "_seq";
+      preStatements.add("DROP SEQUENCE IF EXISTS " + autoNumberSequenceName);
+      preStatements.add("CREATE SEQUENCE " + autoNumberSequenceName + " START " + autoNumberStart);
+
+      if (asSelect == null) {
+        createTableStatement.append(" DEFAULT nextval('").append(autoNumberSequenceName).append("')");
+      } else {
+        postStatements.add("ALTER TABLE " + table.getName() + " ALTER COLUMN " + column.getName() + " SET DEFAULT nextval('" + autoNumberSequenceName + "')");
+      }
+
+      postStatements.add("ALTER SEQUENCE " + autoNumberSequenceName + " OWNED BY " + schemaNamePrefix() + table.getName() + "." + column.getName());
+    }
+  }
+
+
+  private void addTableConstraints(Table table, SelectStatement asSelect, StringBuilder createTableStatement, List<String> primaryKeys) {
+    if (asSelect == null && !primaryKeys.isEmpty()) {
+      createTableStatement
+          .append(", CONSTRAINT ")
+          .append(table.getName())
+          .append("_PK PRIMARY KEY(")
+          .append(Joiner.on(", ").join(primaryKeys))
+          .append(")");
+    }
   }
 
 
