@@ -69,7 +69,7 @@ public class TestUpgradePath {
     upgradeStatusTableService = mock(UpgradeStatusTableService.class);
     upgradeStatusTableServiceFactory = mock(UpgradeStatusTableService.Factory.class);
     when(upgradeStatusTableServiceFactory.create(connectionResources)).thenReturn(upgradeStatusTableService);
-    factory = new UpgradePathFactoryImpl(Collections.emptySet(), upgradeStatusTableServiceFactory);
+    factory = new UpgradePathFactoryImpl(new UpgradeScriptAdditionsProvider.NoOpScriptAdditions(), upgradeStatusTableServiceFactory);
   }
 
   /**

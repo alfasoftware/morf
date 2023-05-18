@@ -32,7 +32,6 @@ import org.alfasoftware.morf.upgrade.GraphBasedUpgradeBuilder.GraphBasedUpgradeB
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
 import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsException;
-import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -131,7 +130,7 @@ public class Upgrade {
       ViewDeploymentValidator viewDeploymentValidator) {
     Upgrade upgrade = new Upgrade(
       connectionResources,
-      new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition> emptySet(), UpgradeStatusTableServiceImpl::new),
+      new UpgradePathFactoryImpl(new UpgradeScriptAdditionsProvider.NoOpScriptAdditions(), UpgradeStatusTableServiceImpl::new),
       upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()), viewDeploymentValidator, null);
     return upgrade.findPath(targetSchema, upgradeSteps, Collections.<String> emptySet(), connectionResources.getDataSource());
   }

@@ -28,12 +28,10 @@ import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
-import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
@@ -165,7 +163,7 @@ public class Deployment {
       new SqlScriptExecutorProvider(connectionResources), connectionResources.sqlDialect());
     try {
       new Deployment(
-        new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition>emptySet(), UpgradeStatusTableServiceImpl::new),
+        new UpgradePathFactoryImpl(new UpgradeScriptAdditionsProvider.NoOpScriptAdditions(), UpgradeStatusTableServiceImpl::new),
         new ViewChangesDeploymentHelper.Factory(new CreateViewListener.Factory.NoOpFactory(), new DropViewListener.Factory.NoOpFactory()),
         connectionResources
       ).deploy(targetSchema, upgradeSteps);
