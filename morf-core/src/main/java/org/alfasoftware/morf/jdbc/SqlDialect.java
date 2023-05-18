@@ -95,8 +95,8 @@ import org.joda.time.Months;
 import com.google.common.base.Joiner;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableList.Builder;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -724,6 +724,20 @@ public abstract class SqlDialect {
 
 
   /**
+   * @deprecated this method returns the legacy value and is primarily for backwards compatibility.
+   * Please use {@link SqlDialect#fetchSizeForBulkSelects()} for the new recommended default value.
+   * @see SqlDialect#fetchSizeForBulkSelects()
+   *
+   * @return The number of rows to try and fetch at a time (default) when
+   *         performing bulk select operations.
+   */
+  @Deprecated
+  public int legacyFetchSizeForBulkSelects() {
+    return 1;
+  }
+
+
+  /**
    * When using a "streaming" {@link ResultSet} (i.e. any where the fetch size indicates that fewer
    * than all the records should be returned at a time), MySQL does not permit the connection
    * to be used for anything else.  Therefore we have an alternative fetch size here specifically
@@ -740,6 +754,20 @@ public abstract class SqlDialect {
    */
   public int fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming() {
     return fetchSizeForBulkSelects();
+  }
+
+
+  /**
+   * @deprecated this method returns the legacy value and is primarily for backwards compatibility.
+   * Please use {@link SqlDialect#fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming()} for the new recommended default value.
+   * @see SqlDialect#fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming()
+   *
+   * @return The number of rows to try and fetch at a time (default) when
+   *         performing bulk select operations.
+   */
+  @Deprecated
+  public int legacyFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming() {
+    return legacyFetchSizeForBulkSelects();
   }
 
 

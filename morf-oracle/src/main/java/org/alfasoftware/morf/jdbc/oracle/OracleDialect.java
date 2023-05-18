@@ -1341,6 +1341,18 @@ class OracleDialect extends SqlDialect {
 
 
   /**
+   * @deprecated this method returns the legacy fetch size value for Oracle and is primarily for backwards compatibility.
+   * Please use {@link SqlDialect#fetchSizeForBulkSelects()} for the new recommended default value.
+   * @see SqlDialect#fetchSizeForBulkSelects()
+   */
+  @Override
+  @Deprecated
+  public int legacyFetchSizeForBulkSelects() {
+    return 200;
+  }
+
+  
+  /**
    * We do use NVARCHAR for strings on Oracle.
    *
    * @see org.alfasoftware.morf.jdbc.SqlDialect#usesNVARCHARforStrings()
