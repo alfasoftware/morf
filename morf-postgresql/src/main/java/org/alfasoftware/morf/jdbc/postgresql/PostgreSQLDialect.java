@@ -170,7 +170,7 @@ class PostgreSQLDialect extends SqlDialect {
   @Override
   protected Collection<String> internalTableDeploymentStatements(Table table) {
     return ImmutableList.<String>builder()
-        .addAll(createTableStatement(table, null))
+        .addAll(createTableStatement(table, null, false))
         .addAll(createCommentStatements(table))
         .build();
   }
@@ -178,16 +178,27 @@ class PostgreSQLDialect extends SqlDialect {
 
   @Override
   public Collection<String> addTableFromStatements(Table table, SelectStatement selectStatement) {
-    return ImmutableList.<String>builder()
-        .addAll(createTableStatement(table, selectStatement))
-        .addAll(createFieldStatements(table))
-        .addAll(createCommentStatements(table))
-        .addAll(createAllIndexStatements(table))
-        .build();
+    return internalAddTableFromStatements(table, selectStatement, false);
   }
 
 
-  private List<String> createTableStatement(Table table, SelectStatement asSelect) {
+  @Override
+  public Collection<String> addTableFromStatementsWithCasting(Table table, SelectStatement selectStatement) {
+    return internalAddTableFromStatements(table, selectStatement, true);
+  }
+
+
+  private Collection<String> internalAddTableFromStatements(Table table, SelectStatement selectStatement, boolean withCasting) {
+    return ImmutableList.<String>builder()
+            .addAll(createTableStatement(table, selectStatement, withCasting))
+            .addAll(createFieldStatements(table))
+            .addAll(createCommentStatements(table))
+            .addAll(createAllIndexStatements(table))
+            .build();
+  }
+
+
+  private List<String> createTableStatement(Table table, SelectStatement asSelect, boolean withCasting) {
     List<String> preStatements = new ArrayList<>();
     List<String> postStatements = new ArrayList<>();
 
@@ -226,7 +237,8 @@ class PostgreSQLDialect extends SqlDialect {
     createTableStatement.append(")");
 
     if (asSelect != null) {
-      createTableStatement.append(" AS ").append(convertStatementToSQL(addCastsToSelect(table, asSelect)));
+      String selectStatement = withCasting ? convertStatementToSQL(addCastsToSelect(table, asSelect)) : convertStatementToSQL(asSelect);
+      createTableStatement.append(" AS ").append(selectStatement);
     }
 
     ImmutableList.Builder<String> statements = ImmutableList.<String>builder()

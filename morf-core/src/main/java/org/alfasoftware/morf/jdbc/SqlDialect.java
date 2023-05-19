@@ -3687,6 +3687,20 @@ public abstract class SqlDialect {
 
 
   /**
+   * Generates the SQL to create a table and insert the data specified in the {@link SelectStatement}.
+   *
+   * This method casts each field in the provided select using the column definition of the provided table.
+   *
+   * @param table The table to create.
+   * @param selectStatement The {@link SelectStatement}
+   * @return A collection of SQL statements
+   */
+  public Collection<String> addTableFromStatementsWithCasting(Table table, SelectStatement selectStatement) {
+    return addTableFromStatements(table, selectStatement);
+  }
+
+
+  /**
    * This method:
    * - Uses the provided select statement to generate a CTAS statement using a temporary name
    * - Drops the original table
@@ -3724,7 +3738,7 @@ public abstract class SqlDialect {
 
     // Generate the SQL for the CTAS and post-CTAS operations
     final List<String> createTableStatements = Lists.newArrayList();
-    createTableStatements.addAll(addTableFromStatements(newTable, select.build()));
+    createTableStatements.addAll(addTableFromStatementsWithCasting(newTable, select.build()));
     createTableStatements.addAll(dropTables(ImmutableList.of(originalTable), false, true));
     createTableStatements.addAll(renameTableStatements(newTable, originalTable));
     createTableStatements.addAll(createAllIndexStatements(originalTable));

@@ -1204,7 +1204,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAddTableFromStatements() {
     return ImmutableList.of(
-      "CREATE TABLE testschema.SomeTable (someField, otherField) AS SELECT CAST(someField AS VARCHAR(3)) COLLATE \"POSIX\", CAST(otherField AS DECIMAL(3,0)) FROM testschema.OtherTable",
+      "CREATE TABLE testschema.SomeTable (someField, otherField) AS SELECT someField, otherField FROM testschema.OtherTable",
       "ALTER TABLE SomeTable ALTER COLUMN someField SET NOT NULL",
       "ALTER TABLE SomeTable ALTER COLUMN otherField SET NOT NULL",
       "ALTER TABLE SomeTable ADD CONSTRAINT SomeTable_PK PRIMARY KEY(someField)",
