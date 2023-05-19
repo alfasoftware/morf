@@ -1209,6 +1209,15 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @return The expected SQL for retrieving the row number
+   */
+  @Override
+  protected String expectedRowNumber() {
+    return "ROW_NUMBER() OVER()";
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#tableName(java.lang.String)
    */
   @Override

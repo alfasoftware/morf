@@ -1384,14 +1384,17 @@ class OracleDialect extends SqlDialect {
 
 
   /**
-   * Fetch rows in blocks of 200, rather than the default of 1.
+   * @deprecated this method returns the legacy fetch size value for Oracle and is primarily for backwards compatibility.
+   * Please use {@link SqlDialect#fetchSizeForBulkSelects()} for the new recommended default value.
+   * @see SqlDialect#fetchSizeForBulkSelects()
    */
   @Override
-  public int fetchSizeForBulkSelects() {
+  @Deprecated
+  public int legacyFetchSizeForBulkSelects() {
     return 200;
   }
 
-
+  
   /**
    * We do use NVARCHAR for strings on Oracle.
    *

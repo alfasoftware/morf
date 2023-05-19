@@ -15,31 +15,6 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import static org.alfasoftware.morf.sql.SqlUtils.insert;
-import static org.alfasoftware.morf.sql.SqlUtils.literal;
-import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.sql.SqlUtils.update;
-import static org.alfasoftware.morf.upgrade.UpgradeStatusTableService.UPGRADE_STATUS;
-import static org.alfasoftware.morf.upgrade.UpgradeStatusTableServiceImpl.STATUS_COLUMN;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.fail;
-import static org.mockito.ArgumentMatchers.nullable;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyList;
-import static org.mockito.Matchers.anyListOf;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.Optional;
-
-import javax.sql.DataSource;
-
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
@@ -52,6 +27,31 @@ import org.alfasoftware.morf.sql.element.TableReference;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Optional;
+
+import static org.alfasoftware.morf.sql.SqlUtils.insert;
+import static org.alfasoftware.morf.sql.SqlUtils.literal;
+import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.alfasoftware.morf.sql.SqlUtils.update;
+import static org.alfasoftware.morf.upgrade.UpgradeStatusTableService.UPGRADE_STATUS;
+import static org.alfasoftware.morf.upgrade.UpgradeStatusTableServiceImpl.ID_COLUMN;
+import static org.alfasoftware.morf.upgrade.UpgradeStatusTableServiceImpl.STATUS_COLUMN;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyList;
+import static org.mockito.Matchers.anyListOf;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * Test {@link UpgradeStatusTableServiceImpl} works correctly.
@@ -136,7 +136,7 @@ public class TestUpgradeStatusTableServiceImpl {
     assertEquals("Table name", tableCaptor.getValue().getName(), UpgradeStatusTableService.UPGRADE_STATUS);
 
     //Verify it inserts the right value
-    String expectedStmt = insert().into(upgradeStatusTable).values(literal(UpgradeStatus.IN_PROGRESS.name()).as(STATUS_COLUMN)).toString();
+    String expectedStmt = insert().into(upgradeStatusTable).values(literal(1L).as(ID_COLUMN), literal(UpgradeStatus.IN_PROGRESS.name()).as(STATUS_COLUMN)).toString();
     ArgumentCaptor<InsertStatement> stmtCaptor = ArgumentCaptor.forClass(InsertStatement.class);
 
     verify(sqlDialect).convertStatementToSQL(stmtCaptor.capture());
