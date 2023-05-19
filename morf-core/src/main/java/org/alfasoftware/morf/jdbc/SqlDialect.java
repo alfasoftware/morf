@@ -719,6 +719,20 @@ public abstract class SqlDialect {
    * @see #fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming()
    */
   public int fetchSizeForBulkSelects() {
+    return 2000;
+  }
+
+
+  /**
+   * @deprecated this method returns the legacy value and is primarily for backwards compatibility.
+   * Please use {@link SqlDialect#fetchSizeForBulkSelects()} for the new recommended default value.
+   * @see SqlDialect#fetchSizeForBulkSelects()
+   *
+   * @return The number of rows to try and fetch at a time (default) when
+   *         performing bulk select operations.
+   */
+  @Deprecated
+  public int legacyFetchSizeForBulkSelects() {
     return 1;
   }
 
@@ -740,6 +754,20 @@ public abstract class SqlDialect {
    */
   public int fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming() {
     return fetchSizeForBulkSelects();
+  }
+
+
+  /**
+   * @deprecated this method returns the legacy value and is primarily for backwards compatibility.
+   * Please use {@link SqlDialect#fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming()} for the new recommended default value.
+   * @see SqlDialect#fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming()
+   *
+   * @return The number of rows to try and fetch at a time (default) when
+   *         performing bulk select operations.
+   */
+  @Deprecated
+  public int legacyFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming() {
+    return legacyFetchSizeForBulkSelects();
   }
 
 
