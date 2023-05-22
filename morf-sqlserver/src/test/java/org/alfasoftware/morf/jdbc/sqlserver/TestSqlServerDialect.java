@@ -1235,6 +1235,18 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
     );
   }
 
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddTableFromStatementsNullValue()
+   */
+  @Override
+  protected List<String> expectedAddTableFromStatementsNullValue() {
+    return ImmutableList.of(
+      "CREATE TABLE TESTSCHEMA.SomeTable ([someField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [otherField] NUMERIC(3,0) NOT NULL, [nullField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, CONSTRAINT [SomeTable_PK] PRIMARY KEY ([someField]))",
+      "CREATE INDEX SomeTable_1 ON TESTSCHEMA.SomeTable ([otherField])",
+      "INSERT INTO TESTSCHEMA.SomeTable SELECT someField, otherField, null FROM TESTSCHEMA.OtherTable"
+    );
+  }
+
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints1(int)

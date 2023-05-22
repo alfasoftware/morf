@@ -33,6 +33,7 @@ import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.insert;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.merge;
+import static org.alfasoftware.morf.sql.SqlUtils.nullLiteral;
 import static org.alfasoftware.morf.sql.SqlUtils.parameter;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.selectDistinct;
@@ -4232,6 +4233,24 @@ public abstract class AbstractSqlDialectTest {
     compareStatements(expectedAddTableFromStatements(), getTestDialect().addTableFromStatements(table, selectStatement));
   }
 
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testAddTableFromStatementsWithNullValue() {
+
+    Table table = table("SomeTable")
+            .columns(
+                    column("someField", DataType.STRING, 3).primaryKey(),
+                    column("otherField", DataType.DECIMAL, 3),
+                    column("nullField", DataType.STRING, 3)
+            ).indexes(
+                    index("SomeTable_1").columns("otherField")
+            );
+
+    SelectStatement selectStatement = select(field("someField"), field("otherField"), nullLiteral()).from(tableRef("OtherTable"));
+
+    compareStatements(expectedAddTableFromStatementsNullValue(), getTestDialect().addTableFromStatements(table, selectStatement));
+  }
+
 
   /**
    * On some databases our string literals need prefixing with N to be
@@ -5141,6 +5160,7 @@ public abstract class AbstractSqlDialectTest {
 
   protected abstract List<String> expectedAddTableFromStatements();
 
+  protected abstract List<String> expectedAddTableFromStatementsNullValue();
 
   /**
    * @return The expected SQL for an insert to Test that inserts an empty string (i.e. NULL).

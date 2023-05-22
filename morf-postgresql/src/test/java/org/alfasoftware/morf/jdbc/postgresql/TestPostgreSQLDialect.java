@@ -1187,6 +1187,23 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     );
   }
 
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddTableFromStatementsNullValue()
+   */
+  @Override
+  protected List<String> expectedAddTableFromStatementsNullValue() {
+    return ImmutableList.of(
+      "CREATE TABLE testschema.SomeTable (someField VARCHAR(3) COLLATE \"POSIX\" NOT NULL, otherField DECIMAL(3,0) NOT NULL, nullField VARCHAR(3) COLLATE \"POSIX\" NOT NULL, CONSTRAINT SomeTable_PK PRIMARY KEY(someField))",
+      "COMMENT ON TABLE testschema.SomeTable IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable]'",
+      "COMMENT ON COLUMN testschema.SomeTable.someField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[someField]/TYPE:[STRING]'",
+      "COMMENT ON COLUMN testschema.SomeTable.otherField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[otherField]/TYPE:[DECIMAL]'",
+      "COMMENT ON COLUMN testschema.SomeTable.nullField IS 'REALNAME:[nullField]/TYPE:[STRING]'",
+      "CREATE INDEX SomeTable_1 ON testschema.SomeTable (otherField)",
+      "COMMENT ON INDEX SomeTable_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_1]'",
+      "INSERT INTO testschema.SomeTable SELECT someField, otherField, null FROM testschema.OtherTable"
+    );
+  }
+
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints1(int)

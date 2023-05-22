@@ -16,7 +16,8 @@
 package org.alfasoftware.morf.jdbc.oracle;
 
 import static org.alfasoftware.morf.jdbc.oracle.OracleDialect.NULLS_LAST;
-import static org.alfasoftware.morf.sql.SqlUtils.parameter;
+import static org.alfasoftware.morf.metadata.SchemaUtils.*;
+import static org.alfasoftware.morf.sql.SqlUtils.*;
 import static org.alfasoftware.morf.sql.element.Direction.ASCENDING;
 import static org.hamcrest.Matchers.contains;
 import static org.junit.Assert.assertEquals;
@@ -43,10 +44,13 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.CustomHint;
 import org.alfasoftware.morf.sql.OracleCustomHint;
+import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.Direction;
 import org.alfasoftware.morf.sql.element.SqlParameter;
+import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 
 import com.google.common.base.Strings;
@@ -1452,12 +1456,28 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   public List<String> expectedAddTableFromStatements() {
     return ImmutableList.of(
-      "CREATE TABLE TESTSCHEMA.SomeTable (someField  NOT NULL, otherField  NOT NULL, CONSTRAINT SomeTable_PK PRIMARY KEY (someField) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.SomeTable_PK ON TESTSCHEMA.SomeTable (someField))) PARALLEL NOLOGGING AS SELECT someField, otherField FROM TESTSCHEMA.OtherTable",
+      "CREATE TABLE TESTSCHEMA.SomeTable (someField  NOT NULL, otherField  NOT NULL, CONSTRAINT SomeTable_PK PRIMARY KEY (someField) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.SomeTable_PK ON TESTSCHEMA.SomeTable (someField))) PARALLEL NOLOGGING AS SELECT CAST(someField AS NVARCHAR2(3)) AS someField, CAST(otherField AS DECIMAL(3,0)) AS otherField FROM TESTSCHEMA.OtherTable",
       "ALTER TABLE TESTSCHEMA.SomeTable NOPARALLEL LOGGING",
       "ALTER INDEX TESTSCHEMA.SomeTable_PK NOPARALLEL LOGGING",
       "COMMENT ON TABLE TESTSCHEMA.SomeTable IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable]'",
       "COMMENT ON COLUMN TESTSCHEMA.SomeTable.someField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[someField]/TYPE:[STRING]'",
       "COMMENT ON COLUMN TESTSCHEMA.SomeTable.otherField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[otherField]/TYPE:[DECIMAL]'"
+    );
+  }
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddTableFromStatementsNullValue()
+   */
+  @Override
+  public List<String> expectedAddTableFromStatementsNullValue() {
+    return ImmutableList.of(
+      "CREATE TABLE TESTSCHEMA.SomeTable (someField  NOT NULL, otherField  NOT NULL, nullField  NOT NULL, CONSTRAINT SomeTable_PK PRIMARY KEY (someField) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.SomeTable_PK ON TESTSCHEMA.SomeTable (someField))) PARALLEL NOLOGGING AS SELECT CAST(someField AS NVARCHAR2(3)) AS someField, CAST(otherField AS DECIMAL(3,0)) AS otherField, CAST(null AS NVARCHAR2(3)) AS nullField FROM TESTSCHEMA.OtherTable",
+      "ALTER TABLE TESTSCHEMA.SomeTable NOPARALLEL LOGGING",
+      "ALTER INDEX TESTSCHEMA.SomeTable_PK NOPARALLEL LOGGING",
+      "COMMENT ON TABLE TESTSCHEMA.SomeTable IS 'REALNAME:[SomeTable]'",
+      "COMMENT ON COLUMN TESTSCHEMA.SomeTable.someField IS 'REALNAME:[someField]/TYPE:[STRING]'",
+      "COMMENT ON COLUMN TESTSCHEMA.SomeTable.otherField IS 'REALNAME:[otherField]/TYPE:[DECIMAL]'",
+      "COMMENT ON COLUMN TESTSCHEMA.SomeTable.nullField IS 'REALNAME:[nullField]/TYPE:[STRING]'"
     );
   }
 
