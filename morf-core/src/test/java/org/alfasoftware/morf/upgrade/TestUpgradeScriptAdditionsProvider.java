@@ -5,25 +5,20 @@ import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
 import org.junit.Test;
 
-import java.lang.annotation.Annotation;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 
 /**
- * Tests of {@link UpgradeScriptAdditionsProvider}.
+ * Tests of {@link UpgradeScriptAdditionsProvider}'s default and NoOp implementations.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2023
  */
 public class TestUpgradeScriptAdditionsProvider {
 
   /**
-   * Tests that all script additions are returned when filtering is disabled.
+   * Tests that no filtering is applied by default.
    */
   @Test
   public void testNoFiltering() {
@@ -31,49 +26,28 @@ public class TestUpgradeScriptAdditionsProvider {
       Set<UpgradeScriptAddition> upgradeScriptAdditions = allScriptAdditions();
 
       //When
-      UpgradeScriptAdditionsProvider upgradeScriptAdditionsProvider = new UpgradeScriptAdditionsProvider.FilteredScriptAdditions(upgradeScriptAdditions);
+      UpgradeScriptAdditionsProvider upgradeScriptAdditionsProvider = new UpgradeScriptAdditionsProvider.DefaultScriptAdditions(
+              upgradeScriptAdditions);
 
       //Then
       Set<UpgradeScriptAddition> filteredResult =  upgradeScriptAdditionsProvider.getUpgradeScriptAdditions();
-      assertEquals(3, filteredResult.size());
+      assertEquals("Expecting all 3 elements", 3, filteredResult.size());
   }
 
-    @Test
-    public void testFilterOneAnnotation() {
-        //Given
-        Set<UpgradeScriptAddition> upgradeScriptAdditions = allScriptAdditions();
+  /**
+   * Tests that NoOp implementation returns and empty set.
+   */
+  @Test
+  public void testNoOp() {
+      //Given
 
-        //When
-        UpgradeScriptAdditionsProvider upgradeScriptAdditionsProvider = new UpgradeScriptAdditionsProvider.FilteredScriptAdditions(upgradeScriptAdditions);
-        List<Class<? extends Annotation>> annotationsForExclusion = new ArrayList<>();
-        annotationsForExclusion.add(DoNotInclude.class);
-        upgradeScriptAdditionsProvider.excludeAnnotatedBy(annotationsForExclusion);
+      //When
+      UpgradeScriptAdditionsProvider upgradeScriptAdditionsProvider = new UpgradeScriptAdditionsProvider.NoOpScriptAdditions();
 
-        //Then
-        Set<UpgradeScriptAddition> filteredResult =  upgradeScriptAdditionsProvider.getUpgradeScriptAdditions();
-        assertEquals(2, filteredResult.size());
-    }
-
-
-    @Test
-    public void testFilterByTwoAnnotations() {
-        //Given
-        Set<UpgradeScriptAddition> upgradeScriptAdditions = allScriptAdditions();
-
-        //When
-        UpgradeScriptAdditionsProvider upgradeScriptAdditionsProvider = new UpgradeScriptAdditionsProvider.FilteredScriptAdditions(upgradeScriptAdditions);
-        List<Class<? extends Annotation>> annotationsForExclusion = new ArrayList<>();
-        annotationsForExclusion.add(DoNotIncludeAgain.class);
-        annotationsForExclusion.add(DoNotInclude.class);
-        upgradeScriptAdditionsProvider.excludeAnnotatedBy(annotationsForExclusion);
-
-        //Then
-        Set<UpgradeScriptAddition> filteredResult =  upgradeScriptAdditionsProvider.getUpgradeScriptAdditions();
-        assertEquals(1, filteredResult.size());
-        UpgradeScriptAddition scriptAddition = filteredResult.iterator().next();
-        assertEquals(scriptAddition.getClass(), ScriptAddition2.class);
-    }
-
+      //Then
+      Set<UpgradeScriptAddition> result =  upgradeScriptAdditionsProvider.getUpgradeScriptAdditions();
+      assertEquals("Expecting empty set", 0, result.size());
+  }
 
 
   private Set<UpgradeScriptAddition> allScriptAdditions() {
@@ -84,7 +58,7 @@ public class TestUpgradeScriptAdditionsProvider {
       return upgradeScriptAdditions;
   }
 
-  @DoNotInclude
+
   public static class ScriptAddition1 implements UpgradeScriptAddition {
     @Override
     public Iterable<String> sql(ConnectionResources connectionResources) {
@@ -100,7 +74,6 @@ public class TestUpgradeScriptAdditionsProvider {
         }
   }
 
-  @DoNotIncludeAgain
   public static class ScriptAddition3 implements UpgradeScriptAddition {
 
     @Override
@@ -108,12 +81,4 @@ public class TestUpgradeScriptAdditionsProvider {
             return null;
         }
   }
-
-  @Retention(RetentionPolicy.RUNTIME)
-   public @interface DoNotInclude {
-  }
-
- @Retention(RetentionPolicy.RUNTIME)
-   public @interface DoNotIncludeAgain {
- }
 }

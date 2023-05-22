@@ -3,24 +3,31 @@ package org.alfasoftware.morf.upgrade;
 
 import com.google.inject.ImplementedBy;
 import com.google.inject.Inject;
-import com.google.inject.Singleton;
 import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
 
-import java.lang.annotation.Annotation;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.function.Predicate;
 
-@ImplementedBy(UpgradeScriptAdditionsProvider.FilteredScriptAdditions.class)
+@ImplementedBy(UpgradeScriptAdditionsProvider.DefaultScriptAdditions.class)
 public interface UpgradeScriptAdditionsProvider {
 
+
+    /**
+     * Returns all script additions with the filtering criteria applied.
+     * The filtering logic should be provided by calling {@link #setAllowedPredicate(Predicate)} first.
+     * @return
+     */
     default Set<UpgradeScriptAddition> getUpgradeScriptAdditions() {
-        return Collections.emptySet(); //NoOp
+        return Collections.emptySet();
     }
 
-    default  void excludeAnnotatedBy(List<Class<? extends Annotation>> annotations) {
+
+    /**
+     * Allows for filtering of script additions.
+     * @param scriptAdditionsPredicate
+     */
+    default void setAllowedPredicate(Predicate<UpgradeScriptAddition> scriptAdditionsPredicate) {
         //NoOp;
     }
 
@@ -32,37 +39,20 @@ public interface UpgradeScriptAdditionsProvider {
 
 
     /**
-     * Provides a filtered set of script addition implementations.
-     * Filtering is based on exclusion annotations.
+     * Provides a default set of script addition implementations.
      */
-    @Singleton
-    class FilteredScriptAdditions implements UpgradeScriptAdditionsProvider {
+    class DefaultScriptAdditions implements UpgradeScriptAdditionsProvider {
 
         private final Set<UpgradeScriptAddition> upgradeScriptAdditions;
 
-        private List<Class<? extends Annotation>> excludeAnnotations = new ArrayList<>();
-
         @Inject
-        public FilteredScriptAdditions(Set<UpgradeScriptAddition> upgradeScriptAdditions) {
+        public DefaultScriptAdditions(Set<UpgradeScriptAddition> upgradeScriptAdditions) {
             this.upgradeScriptAdditions = upgradeScriptAdditions;
         }
 
         @Override
-        public Set<UpgradeScriptAddition> getUpgradeScriptAdditions(){
-            return upgradeScriptAdditions
-                    .stream()
-                    .filter(s -> !isExcluded(s.getClass()))
-                    .collect(Collectors.toSet());
-        }
-
-        @Override
-        public void excludeAnnotatedBy(List<Class<? extends Annotation>> annotations) {
-            excludeAnnotations = annotations;
-        }
-
-
-        private boolean isExcluded(Class additionClass) {
-            return excludeAnnotations.stream().anyMatch(additionClass::isAnnotationPresent);
+        public Set<UpgradeScriptAddition> getUpgradeScriptAdditions() {
+            return upgradeScriptAdditions;
         }
     }
 }
