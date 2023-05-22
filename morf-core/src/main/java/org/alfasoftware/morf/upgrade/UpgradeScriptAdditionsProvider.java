@@ -28,7 +28,6 @@ public interface UpgradeScriptAdditionsProvider {
      * @param scriptAdditionsPredicate
      */
     default void setAllowedPredicate(Predicate<UpgradeScriptAddition> scriptAdditionsPredicate) {
-        //NoOp;
     }
 
 
