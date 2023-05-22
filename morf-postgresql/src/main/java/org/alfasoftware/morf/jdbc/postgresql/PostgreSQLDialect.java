@@ -170,7 +170,7 @@ class PostgreSQLDialect extends SqlDialect {
   @Override
   protected Collection<String> internalTableDeploymentStatements(Table table) {
     return ImmutableList.<String>builder()
-        .addAll(createTableStatement(table, null, false))
+        .addAll(createTableStatement(table))
         .addAll(createCommentStatements(table))
         .build();
   }
@@ -198,22 +198,12 @@ class PostgreSQLDialect extends SqlDialect {
   }
 
 
-  private List<String> createTableStatement(Table table, SelectStatement asSelect, boolean withCasting) {
+  private List<String> createTableStatement(Table table) {
     List<String> preStatements = new ArrayList<>();
     List<String> postStatements = new ArrayList<>();
 
     StringBuilder createTableStatement = new StringBuilder();
-
-    createTableStatement.append("CREATE ");
-
-    if (table.isTemporary()) {
-      createTableStatement.append("TEMP ");
-    }
-
-    createTableStatement.append("TABLE ")
-        .append(schemaNamePrefix(table))
-        .append(table.getName())
-        .append(" (");
+    beginTableStatement(table, createTableStatement);
 
     List<String> primaryKeys = new ArrayList<>();
     boolean first = true;
@@ -223,8 +213,9 @@ class PostgreSQLDialect extends SqlDialect {
         createTableStatement.append(", ");
       }
 
-      addColumnDetails(asSelect, createTableStatement, column);
-      handleAutoNumberedColumn(table, asSelect, preStatements, postStatements, createTableStatement, column);
+      createTableStatement.append(column.getName());
+      createTableStatement.append(" ").append(sqlRepresentationOfColumnType(column));
+      handleAutoNumberedColumn(table, preStatements, postStatements, createTableStatement, column, false);
 
       if (column.isPrimaryKey()) {
         primaryKeys.add(column.getName());
@@ -233,17 +224,20 @@ class PostgreSQLDialect extends SqlDialect {
       first = false;
     }
 
-    addTableConstraints(table, asSelect, createTableStatement, primaryKeys);
-    createTableStatement.append(")");
-
-    if (asSelect != null) {
-      String selectStatement = withCasting ? convertStatementToSQL(addCastsToSelect(table, asSelect)) : convertStatementToSQL(asSelect);
-      createTableStatement.append(" AS ").append(selectStatement);
+    if (!primaryKeys.isEmpty()) {
+      createTableStatement
+              .append(", CONSTRAINT ")
+              .append(table.getName())
+              .append("_PK PRIMARY KEY(")
+              .append(Joiner.on(", ").join(primaryKeys))
+              .append(")");
     }
 
+    createTableStatement.append(")");
+
     ImmutableList.Builder<String> statements = ImmutableList.<String>builder()
-        .addAll(preStatements)
-        .add(createTableStatement.toString());
+            .addAll(preStatements)
+            .add(createTableStatement.toString());
 
     statements.addAll(postStatements);
 
@@ -251,42 +245,70 @@ class PostgreSQLDialect extends SqlDialect {
   }
 
 
-  private void addColumnDetails(SelectStatement asSelect, StringBuilder createTableStatement, Column column) {
-    createTableStatement.append(column.getName());
-    if (asSelect == null) {
-      createTableStatement.append(" ").append(sqlRepresentationOfColumnType(column));
-    } else {
+  private List<String> createTableStatement(Table table, SelectStatement asSelect, boolean withCasting) {
+    List<String> preStatements = new ArrayList<>();
+    List<String> postStatements = new ArrayList<>();
+
+    StringBuilder createTableStatement = new StringBuilder();
+    beginTableStatement(table, createTableStatement);
+
+    boolean first = true;
+
+    for (Column column : table.columns()) {
+      if (!first) {
+        createTableStatement.append(", ");
+      }
+
+      createTableStatement.append(column.getName());
       createTableStatement.append(sqlRepresentationOfColumnType(column, false, false, false));
+      handleAutoNumberedColumn(table, preStatements, postStatements, createTableStatement, column, true);
+
+      first = false;
     }
+
+    createTableStatement.append(")");
+
+    String selectStatement = withCasting ? convertStatementToSQL(addCastsToSelect(table, asSelect)) : convertStatementToSQL(asSelect);
+    createTableStatement.append(" AS ").append(selectStatement);
+
+    ImmutableList.Builder<String> statements = ImmutableList.<String>builder()
+            .addAll(preStatements)
+            .add(createTableStatement.toString());
+
+    statements.addAll(postStatements);
+
+    return statements.build();
   }
 
 
-  private void handleAutoNumberedColumn(Table table, SelectStatement asSelect, List<String> preStatements, List<String> postStatements, StringBuilder createTableStatement, Column column) {
+  private void beginTableStatement(Table table, StringBuilder createTableStatement) {
+    createTableStatement.append("CREATE ");
+
+    if (table.isTemporary()) {
+      createTableStatement.append("TEMP ");
+    }
+
+    createTableStatement.append("TABLE ")
+            .append(schemaNamePrefix(table))
+            .append(table.getName())
+            .append(" (");
+  }
+
+
+  private void handleAutoNumberedColumn(Table table, List<String> preStatements, List<String> postStatements, StringBuilder createTableStatement, Column column, boolean asSelect) {
     if(column.isAutoNumbered()) {
       int autoNumberStart = column.getAutoNumberStart() == -1 ? 1 : column.getAutoNumberStart();
       String autoNumberSequenceName = schemaNamePrefix() + table.getName() + "_" + column.getName() + "_seq";
       preStatements.add("DROP SEQUENCE IF EXISTS " + autoNumberSequenceName);
       preStatements.add("CREATE SEQUENCE " + autoNumberSequenceName + " START " + autoNumberStart);
 
-      if (asSelect == null) {
-        createTableStatement.append(" DEFAULT nextval('").append(autoNumberSequenceName).append("')");
-      } else {
+      if (asSelect) {
         postStatements.add("ALTER TABLE " + table.getName() + " ALTER COLUMN " + column.getName() + " SET DEFAULT nextval('" + autoNumberSequenceName + "')");
+      } else {
+        createTableStatement.append(" DEFAULT nextval('").append(autoNumberSequenceName).append("')");
       }
 
       postStatements.add("ALTER SEQUENCE " + autoNumberSequenceName + " OWNED BY " + schemaNamePrefix() + table.getName() + "." + column.getName());
-    }
-  }
-
-
-  private void addTableConstraints(Table table, SelectStatement asSelect, StringBuilder createTableStatement, List<String> primaryKeys) {
-    if (asSelect == null && !primaryKeys.isEmpty()) {
-      createTableStatement
-          .append(", CONSTRAINT ")
-          .append(table.getName())
-          .append("_PK PRIMARY KEY(")
-          .append(Joiner.on(", ").join(primaryKeys))
-          .append(")");
     }
   }
 
