@@ -1220,7 +1220,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedReplaceTableFromStatements() {
     return ImmutableList.of(
-        "CREATE TABLE testschema.SomeTable2 (someField, otherField, thirdField) AS SELECT CAST(someField AS VARCHAR(3)) COLLATE \"POSIX\", CAST(otherField AS DECIMAL(3,0)), CAST(thirdField AS DECIMAL(5,0)) FROM testschema.SomeTable",
+        "CREATE TABLE testschema.SomeTable2 (someField, otherField, thirdField) AS SELECT CAST(someField AS VARCHAR(3)) COLLATE \"POSIX\" AS someField, CAST(otherField AS DECIMAL(3,0)) AS otherField, CAST(thirdField AS DECIMAL(5,0)) AS thirdField FROM testschema.SomeTable",
         "ALTER TABLE SomeTable2 ALTER COLUMN someField SET NOT NULL",
         "ALTER TABLE SomeTable2 ALTER COLUMN otherField SET NOT NULL",
         "ALTER TABLE SomeTable2 ALTER COLUMN thirdField SET NOT NULL",
@@ -1244,7 +1244,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return ImmutableList.of(
         "DROP SEQUENCE IF EXISTS testschema.SomeTable2_otherField_seq",
         "CREATE SEQUENCE testschema.SomeTable2_otherField_seq START 1",
-        "CREATE TABLE testschema.SomeTable2 (someField, otherField) AS SELECT CAST(someField AS VARCHAR(3)) COLLATE \"POSIX\", CAST(otherField AS DECIMAL(3,0)) FROM testschema.SomeTable",
+        "CREATE TABLE testschema.SomeTable2 (someField, otherField) AS SELECT CAST(someField AS VARCHAR(3)) COLLATE \"POSIX\" AS someField, CAST(otherField AS DECIMAL(3,0)) AS otherField FROM testschema.SomeTable",
         "ALTER TABLE SomeTable2 ALTER COLUMN otherField SET DEFAULT nextval('testschema.SomeTable2_otherField_seq')",
         "ALTER SEQUENCE testschema.SomeTable2_otherField_seq OWNED BY testschema.SomeTable2.otherField",
         "ALTER TABLE SomeTable2 ALTER COLUMN someField SET NOT NULL",

@@ -3745,19 +3745,20 @@ public abstract class SqlDialect {
     final Table newTable = SchemaUtils.table(StringUtils.substring(originalTable.getName(), 0, 26) + "2")
         .columns(originalTable.columns());
 
-    // Generate the table's field list, using either the passed in AliasedField, or the field from the original table
+    // Extract the aliased fields from the select statement
+    final Map<String, AliasedField> fieldsFromSelect = selectStatement.getFields()
+            .stream()
+            .collect(Collectors.toMap(AliasedField::getImpliedName, field -> field));
+
+    // Generate the table's field list, using either the select statement, or the field from the original table
     final List<AliasedField> tableFields = Lists.newArrayList();
+
     originalTable.columns().forEach(column -> {
-
-      AliasedField aliasedField = selectStatement.getFields().stream()
-          .filter(field -> field.getImpliedName().equals(column.getName()))
-          .findFirst()
-          .orElse(field(column.getName()));
-
+      AliasedField aliasedField = fieldsFromSelect.getOrDefault(column.getName(), field(column.getName()));
       tableFields.add(aliasedField);
     });
 
-    // Create the select statement, adding a where clause if one has been passed in
+    // Create a new select statement, adding a where clause if one has been passed in
     final SelectStatementBuilder select = SelectStatement.select(tableFields.toArray(new AliasedField[]{})).from(originalTable.getName());
 
     if (selectStatement.getWhereCriterion() != null) {
@@ -3776,7 +3777,7 @@ public abstract class SqlDialect {
 
 
   /**
-   * This casting is required as the type may not be inferred for every field in the select statement
+   * For some dialects, this casting is required as the type may not be inferred for every field in the select statement.
    */
   protected SelectStatement addCastsToSelect(Table table, SelectStatement selectStatement) {
     for (int i = 0; i < table.columns().size(); i++) {
@@ -3784,7 +3785,7 @@ public abstract class SqlDialect {
       Column column = table.columns().get(i);
 
       if (fieldRequiresCast(field, column)) {
-        AliasedField fieldWithCast = field.cast().asType(column.getType(), column.getWidth(), column.getScale()).build();
+        AliasedField fieldWithCast = field.cast().asType(column.getType(), column.getWidth(), column.getScale()).build().as(column.getName());
         selectStatement.getFields().set(i, fieldWithCast);
       }
     }

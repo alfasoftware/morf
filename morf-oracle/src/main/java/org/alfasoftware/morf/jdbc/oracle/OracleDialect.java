@@ -1146,12 +1146,12 @@ class OracleDialect extends SqlDialect {
   }
 
 
-  private Collection<String> internalAddTableFromStatements(Table table, SelectStatement selectStatement, boolean canAssumeColumnOrder) {
+  private Collection<String> internalAddTableFromStatements(Table table, SelectStatement selectStatement, boolean withCasting) {
     Builder<String> result = ImmutableList.<String>builder();
     result.add(new StringBuilder()
             .append(createTableStatement(table, true))
             .append(" AS ")
-            .append(canAssumeColumnOrder ? convertStatementToSQL(addCastsToSelect(table, selectStatement)) : convertStatementToSQL(selectStatement))
+            .append(withCasting ? convertStatementToSQL(addCastsToSelect(table, selectStatement)) : convertStatementToSQL(selectStatement))
             .toString()
     );
     result.add("ALTER TABLE " + schemaNamePrefix() + table.getName()  + " NOPARALLEL LOGGING");

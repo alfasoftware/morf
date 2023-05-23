@@ -1520,7 +1520,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
   public List<String> expectedReplaceTableFromStatements() {
     return ImmutableList.of(
-        "CREATE TABLE TESTSCHEMA.SomeTable2 (someField  NOT NULL, otherField  NOT NULL, thirdField  NOT NULL, CONSTRAINT SomeTable2_PK PRIMARY KEY (someField) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.SomeTable2_PK ON TESTSCHEMA.SomeTable2 (someField))) PARALLEL NOLOGGING AS SELECT CAST(someField AS NVARCHAR2(3)), CAST(otherField AS DECIMAL(3,0)), CAST(thirdField AS DECIMAL(5,0)) FROM TESTSCHEMA.SomeTable",
+        "CREATE TABLE TESTSCHEMA.SomeTable2 (someField  NOT NULL, otherField  NOT NULL, thirdField  NOT NULL, CONSTRAINT SomeTable2_PK PRIMARY KEY (someField) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.SomeTable2_PK ON TESTSCHEMA.SomeTable2 (someField))) PARALLEL NOLOGGING AS SELECT CAST(someField AS NVARCHAR2(3)) AS someField, CAST(otherField AS DECIMAL(3,0)) AS otherField, CAST(thirdField AS DECIMAL(5,0)) AS thirdField FROM TESTSCHEMA.SomeTable",
         "ALTER TABLE TESTSCHEMA.SomeTable2 NOPARALLEL LOGGING",
         "ALTER INDEX TESTSCHEMA.SomeTable2_PK NOPARALLEL LOGGING",
         "COMMENT ON TABLE TESTSCHEMA.SomeTable2 IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable2]'",
@@ -1540,7 +1540,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
   public List<String> expectedReplaceTableWithAutonumber() {
     return ImmutableList.of(
-        "CREATE TABLE TESTSCHEMA.SomeTable2 (someField  NOT NULL, otherField  NOT NULL, CONSTRAINT SomeTable2_PK PRIMARY KEY (someField) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.SomeTable2_PK ON TESTSCHEMA.SomeTable2 (someField))) PARALLEL NOLOGGING AS SELECT CAST(someField AS NVARCHAR2(3)), CAST(otherField AS DECIMAL(3,0)) FROM TESTSCHEMA.SomeTable",
+        "CREATE TABLE TESTSCHEMA.SomeTable2 (someField  NOT NULL, otherField  NOT NULL, CONSTRAINT SomeTable2_PK PRIMARY KEY (someField) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.SomeTable2_PK ON TESTSCHEMA.SomeTable2 (someField))) PARALLEL NOLOGGING AS SELECT CAST(someField AS NVARCHAR2(3)) AS someField, CAST(otherField AS DECIMAL(3,0)) AS otherField FROM TESTSCHEMA.SomeTable",
         "ALTER TABLE TESTSCHEMA.SomeTable2 NOPARALLEL LOGGING",
         "ALTER INDEX TESTSCHEMA.SomeTable2_PK NOPARALLEL LOGGING",
         "DECLARE ",
