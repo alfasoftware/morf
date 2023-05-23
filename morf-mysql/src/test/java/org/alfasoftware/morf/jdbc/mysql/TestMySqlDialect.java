@@ -1199,11 +1199,11 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedReplaceTableFromStatements() {
     return ImmutableList.of(
-      "CREATE TABLE `SomeTable2` (`someField` VARCHAR(3) NOT NULL, `otherField` DECIMAL(3,0) NOT NULL, `thirdField` DECIMAL(5,0) NOT NULL, CONSTRAINT `SomeTable2_PK` PRIMARY KEY (`someField`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin",
-          "INSERT INTO SomeTable2 SELECT someField, otherField, thirdField FROM SomeTable",
+      "CREATE TABLE `tmp_SomeTable` (`someField` VARCHAR(3) NOT NULL, `otherField` DECIMAL(3,0) NOT NULL, `thirdField` DECIMAL(5,0) NOT NULL, CONSTRAINT `tmp_SomeTable_PK` PRIMARY KEY (`someField`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin",
+          "INSERT INTO tmp_SomeTable SELECT someField, otherField, thirdField FROM SomeTable",
           "FLUSH TABLES `SomeTable`",
           "DROP TABLE `SomeTable` CASCADE",
-          "RENAME TABLE SomeTable2 TO SomeTable",
+          "RENAME TABLE tmp_SomeTable TO SomeTable",
           "ALTER TABLE `SomeTable` ADD INDEX `SomeTable_1` (`otherField`)"
     );
   }
@@ -1212,11 +1212,11 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedReplaceTableWithAutonumber() {
     return ImmutableList.of(
-        "CREATE TABLE `SomeTable2` (`someField` VARCHAR(3) NOT NULL, `otherField` DECIMAL(3,0) AUTO_INCREMENT COMMENT 'AUTONUMSTART:[1]', CONSTRAINT `SomeTable2_PK` PRIMARY KEY (`someField`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin AUTO_INCREMENT=1",
-        "INSERT INTO SomeTable2 SELECT someField, otherField FROM SomeTable",
+        "CREATE TABLE `tmp_SomeTable` (`someField` VARCHAR(3) NOT NULL, `otherField` DECIMAL(3,0) AUTO_INCREMENT COMMENT 'AUTONUMSTART:[1]', CONSTRAINT `tmp_SomeTable_PK` PRIMARY KEY (`someField`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin AUTO_INCREMENT=1",
+        "INSERT INTO tmp_SomeTable SELECT someField, otherField FROM SomeTable",
         "FLUSH TABLES `SomeTable`",
         "DROP TABLE `SomeTable` CASCADE",
-        "RENAME TABLE SomeTable2 TO SomeTable",
+        "RENAME TABLE tmp_SomeTable TO SomeTable",
         "ALTER TABLE `SomeTable` ADD INDEX `SomeTable_1` (`otherField`)"
     );
   }

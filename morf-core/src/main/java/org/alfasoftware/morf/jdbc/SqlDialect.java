@@ -3742,7 +3742,7 @@ public abstract class SqlDialect {
   public List<String> replaceTableFromStatements(Table originalTable, SelectStatement selectStatement) {
 
     // Due to morf's oracle table length restrictions, our temporary table name cannot be longer than 27 characters
-    final Table newTable = SchemaUtils.table(StringUtils.substring(originalTable.getName(), 0, 26) + "2")
+    final Table newTable = SchemaUtils.table("tmp_" + StringUtils.substring(originalTable.getName(), 0, 23))
         .columns(originalTable.columns());
 
     // Extract the aliased fields from the select statement

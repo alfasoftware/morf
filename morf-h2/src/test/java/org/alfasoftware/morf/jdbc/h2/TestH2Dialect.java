@@ -1137,11 +1137,11 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedReplaceTableFromStatements() {
     return ImmutableList.of(
-        "CREATE TABLE TESTSCHEMA.SomeTable2 (someField VARCHAR(3) NOT NULL, otherField DECIMAL(3,0) NOT NULL, thirdField DECIMAL(5,0) NOT NULL, CONSTRAINT SomeTable2_PK PRIMARY KEY (someField))",
-        "INSERT INTO TESTSCHEMA.SomeTable2 SELECT someField, otherField, thirdField FROM TESTSCHEMA.SomeTable",
+        "CREATE TABLE TESTSCHEMA.tmp_SomeTable (someField VARCHAR(3) NOT NULL, otherField DECIMAL(3,0) NOT NULL, thirdField DECIMAL(5,0) NOT NULL, CONSTRAINT tmp_SomeTable_PK PRIMARY KEY (someField))",
+        "INSERT INTO TESTSCHEMA.tmp_SomeTable SELECT someField, otherField, thirdField FROM TESTSCHEMA.SomeTable",
         "DROP TABLE TESTSCHEMA.SomeTable CASCADE",
-        "ALTER TABLE TESTSCHEMA.SomeTable2 DROP PRIMARY KEY",
-        "ALTER TABLE TESTSCHEMA.SomeTable2 RENAME TO SomeTable",
+        "ALTER TABLE TESTSCHEMA.tmp_SomeTable DROP PRIMARY KEY",
+        "ALTER TABLE TESTSCHEMA.tmp_SomeTable RENAME TO SomeTable",
         "ALTER TABLE TESTSCHEMA.SomeTable ADD CONSTRAINT SomeTable_PK PRIMARY KEY (someField)",
         "CREATE INDEX SomeTable_1 ON TESTSCHEMA.SomeTable (otherField)"
     );
@@ -1150,11 +1150,11 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
 
   protected List<String> expectedReplaceTableWithAutonumber() {
     return ImmutableList.of(
-        "CREATE TABLE TESTSCHEMA.SomeTable2 (someField VARCHAR(3) NOT NULL, otherField DECIMAL(3,0) AUTO_INCREMENT(1) COMMENT 'AUTONUMSTART:[1]', CONSTRAINT SomeTable2_PK PRIMARY KEY (someField))",
-        "INSERT INTO TESTSCHEMA.SomeTable2 SELECT someField, otherField FROM TESTSCHEMA.SomeTable",
+        "CREATE TABLE TESTSCHEMA.tmp_SomeTable (someField VARCHAR(3) NOT NULL, otherField DECIMAL(3,0) AUTO_INCREMENT(1) COMMENT 'AUTONUMSTART:[1]', CONSTRAINT tmp_SomeTable_PK PRIMARY KEY (someField))",
+        "INSERT INTO TESTSCHEMA.tmp_SomeTable SELECT someField, otherField FROM TESTSCHEMA.SomeTable",
         "DROP TABLE TESTSCHEMA.SomeTable CASCADE",
-        "ALTER TABLE TESTSCHEMA.SomeTable2 DROP PRIMARY KEY",
-        "ALTER TABLE TESTSCHEMA.SomeTable2 RENAME TO SomeTable",
+        "ALTER TABLE TESTSCHEMA.tmp_SomeTable DROP PRIMARY KEY",
+        "ALTER TABLE TESTSCHEMA.tmp_SomeTable RENAME TO SomeTable",
         "ALTER TABLE TESTSCHEMA.SomeTable ADD CONSTRAINT SomeTable_PK PRIMARY KEY (someField)",
         "CREATE INDEX SomeTable_1 ON TESTSCHEMA.SomeTable (otherField)"
     );
