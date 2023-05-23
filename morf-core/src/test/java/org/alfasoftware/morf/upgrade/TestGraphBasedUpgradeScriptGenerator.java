@@ -69,6 +69,9 @@ public class TestGraphBasedUpgradeScriptGenerator {
   @Mock
   private UpgradeScriptAddition upgradeScriptAddition;
 
+  @Mock
+  private UpgradeScriptAdditionsProvider upgradeScriptAdditionsProvider;
+
   @Before
   public void setup() {
     MockitoAnnotations.openMocks(this);
@@ -131,7 +134,8 @@ public class TestGraphBasedUpgradeScriptGenerator {
   @Test
   public void testFactory() {
     // given
-    GraphBasedUpgradeScriptGeneratorFactory factory = new GraphBasedUpgradeScriptGeneratorFactory(upgradeStatusTableServiceFactory, Sets.newSet(upgradeScriptAddition));
+    when(upgradeScriptAdditionsProvider.getUpgradeScriptAdditions()).thenReturn(Sets.newSet(upgradeScriptAddition));
+    GraphBasedUpgradeScriptGeneratorFactory factory = new GraphBasedUpgradeScriptGeneratorFactory(upgradeStatusTableServiceFactory, upgradeScriptAdditionsProvider);
 
     // when
     GraphBasedUpgradeScriptGenerator created = factory.create(sourceSchema, targetSchema, connectionResources, idTable, viewChanges);
