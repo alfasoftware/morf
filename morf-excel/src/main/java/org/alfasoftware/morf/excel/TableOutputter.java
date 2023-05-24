@@ -26,6 +26,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.alfasoftware.morf.dataset.Record;
@@ -488,7 +489,7 @@ class TableOutputter {
    * @param format The format to apply to the cell
    */
   private void createCell(final WritableSheet currentWorkSheet, Column column, int columnNumber, int rowIndex, Record record, WritableCellFormat format) {
-    WritableCell writableCell = null;
+    WritableCell writableCell;
 
     switch (column.getType()) {
       case STRING:
@@ -498,10 +499,8 @@ class TableOutputter {
       case DECIMAL:
         BigDecimal decimalValue = record.getBigDecimal(column.getName());
         try {
-          writableCell = createBlankWriteableCellIfRequired(decimalValue, columnNumber, rowIndex);
-          if (writableCell == null) {
-            writableCell = new jxl.write.Number(columnNumber, rowIndex, decimalValue.doubleValue());
-          }
+          writableCell = createBlankWriteableCellIfRequired(decimalValue, columnNumber, rowIndex)
+            .orElse(new jxl.write.Number(columnNumber, rowIndex, decimalValue.doubleValue()));
         } catch (Exception e) {
           throw newUnsupportedOperationException("Cannot generate Excel cell (parseDouble) for data [" + decimalValue + "]", column, currentWorkSheet, e);
         }
@@ -511,10 +510,8 @@ class TableOutputter {
       case INTEGER:
         Long longValue = record.getLong(column.getName());
         try {
-          writableCell = createBlankWriteableCellIfRequired(longValue, columnNumber, rowIndex);
-          if (writableCell == null) {
-            writableCell = new jxl.write.Number(columnNumber, rowIndex, longValue);
-          }
+          writableCell = createBlankWriteableCellIfRequired(longValue, columnNumber, rowIndex)
+            .orElse(new jxl.write.Number(columnNumber, rowIndex, longValue));
         } catch (Exception e) {
           throw newUnsupportedOperationException("Cannot generate Excel cell (parseInt) for data [" + longValue + "]", column, currentWorkSheet, e);
         }
@@ -523,10 +520,8 @@ class TableOutputter {
       case CLOB:
         try {
           String stringValue = record.getString(column.getName());
-          writableCell = createBlankWriteableCellIfRequired(stringValue, columnNumber, rowIndex);
-          if (writableCell == null) {
-            writableCell = new Label(columnNumber, rowIndex, StringUtils.substring(stringValue, 0, MAX_CLOB_CHARACTERS));
-          }
+          writableCell = createBlankWriteableCellIfRequired(stringValue, columnNumber, rowIndex)
+            .orElse(new Label(columnNumber, rowIndex, StringUtils.substring(stringValue, 0, MAX_CLOB_CHARACTERS)));
         } catch (Exception e) {
           throw newUnsupportedOperationException("Cannot generate Excel cell for CLOB data", column, currentWorkSheet, e);
         }
@@ -581,14 +576,14 @@ class TableOutputter {
    * @param value the value
    * @param columnNumber the column number
    * @param rowIndex the row index
-   * @return a blank {@link WritableCell} if value is null, otherwise null
+   * @return a blank {@link WritableCell} {@link Optional} if value is null, otherwise {@link Optional#empty()}
    */
-  private WritableCell createBlankWriteableCellIfRequired(Object value, int columnNumber, int rowIndex) {
+  private Optional<WritableCell> createBlankWriteableCellIfRequired(Object value, int columnNumber, int rowIndex) {
     if (value == null) {
-      return new jxl.write.Blank(columnNumber, rowIndex);
+      return Optional.of(new jxl.write.Blank(columnNumber, rowIndex));
     }
 
-    return null;
+    return Optional.empty();
   }
 
 
