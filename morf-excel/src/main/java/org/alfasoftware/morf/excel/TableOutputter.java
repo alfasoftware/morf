@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.excel;
 
 import static org.alfasoftware.morf.metadata.DataType.BIG_INTEGER;
+import static org.alfasoftware.morf.metadata.DataType.CLOB;
 import static org.alfasoftware.morf.metadata.DataType.DECIMAL;
 import static org.alfasoftware.morf.metadata.DataType.INTEGER;
 import static org.alfasoftware.morf.metadata.DataType.STRING;
@@ -80,9 +81,14 @@ class TableOutputter {
   private static final int MAX_EXCEL_COLUMNS = 256;
 
   /**
+   * The maximum number of CLOB characters supported in an XLS cell.
+   */
+  private static final int MAX_CLOB_CHARACTERS = 1000;
+
+  /**
    * The data types we can output to a spreadsheet.
    */
-  private static final Set<DataType> supportedDataTypes = Sets.immutableEnumSet(STRING, DECIMAL, BIG_INTEGER, INTEGER);
+  private static final Set<DataType> supportedDataTypes = Sets.immutableEnumSet(STRING, DECIMAL, BIG_INTEGER, INTEGER, CLOB);
 
   /**
    * A source of non-schema related data.
@@ -513,6 +519,19 @@ class TableOutputter {
           }
         } catch (Exception e) {
           throw new UnsupportedOperationException("Cannot generate Excel cell (parseInt) for data [" + longValue + "] in column [" + column.getName() + "] of table [" + currentWorkSheet.getName() + "]", e);
+        }
+        break;
+
+      case CLOB:
+        try {
+          String stringValue = record.getString(column.getName());
+          if (stringValue == null) {
+            writableCell = new jxl.write.Blank(columnNumber, rowIndex);
+          } else {
+            writableCell = new Label(columnNumber, rowIndex, StringUtils.substring(stringValue, 0, MAX_CLOB_CHARACTERS));
+          }
+        } catch (Exception e) {
+          throw new UnsupportedOperationException("Cannot generate Excel cell for CLOB data in column [" + column.getName() + "] of table [" + currentWorkSheet.getName() + "]", e);
         }
         break;
 
