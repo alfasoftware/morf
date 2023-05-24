@@ -498,13 +498,12 @@ class TableOutputter {
       case DECIMAL:
         BigDecimal decimalValue = record.getBigDecimal(column.getName());
         try {
-          if (decimalValue == null) {
-            writableCell = new jxl.write.Blank(columnNumber, rowIndex);
-          } else {
+          writableCell = createBlankWriteableCellIfRequired(decimalValue, columnNumber, rowIndex);
+          if (writableCell == null) {
             writableCell = new jxl.write.Number(columnNumber, rowIndex, decimalValue.doubleValue());
           }
         } catch (Exception e) {
-          throw new UnsupportedOperationException("Cannot generate Excel cell (parseDouble) for data [" + decimalValue + "] in column [" + column.getName() + "] of table [" + currentWorkSheet.getName() + "]", e);
+          throw newUnsupportedOperationException("Cannot generate Excel cell (parseDouble) for data [" + decimalValue + "]", column, currentWorkSheet, e);
         }
         break;
 
@@ -512,26 +511,24 @@ class TableOutputter {
       case INTEGER:
         Long longValue = record.getLong(column.getName());
         try {
-          if (longValue == null) {
-            writableCell = new jxl.write.Blank(columnNumber, rowIndex);
-          } else {
+          writableCell = createBlankWriteableCellIfRequired(longValue, columnNumber, rowIndex);
+          if (writableCell == null) {
             writableCell = new jxl.write.Number(columnNumber, rowIndex, longValue);
           }
         } catch (Exception e) {
-          throw new UnsupportedOperationException("Cannot generate Excel cell (parseInt) for data [" + longValue + "] in column [" + column.getName() + "] of table [" + currentWorkSheet.getName() + "]", e);
+          throw newUnsupportedOperationException("Cannot generate Excel cell (parseInt) for data [" + longValue + "]", column, currentWorkSheet, e);
         }
         break;
 
       case CLOB:
         try {
           String stringValue = record.getString(column.getName());
-          if (stringValue == null) {
-            writableCell = new jxl.write.Blank(columnNumber, rowIndex);
-          } else {
+          writableCell = createBlankWriteableCellIfRequired(stringValue, columnNumber, rowIndex);
+          if (writableCell == null) {
             writableCell = new Label(columnNumber, rowIndex, StringUtils.substring(stringValue, 0, MAX_CLOB_CHARACTERS));
           }
         } catch (Exception e) {
-          throw new UnsupportedOperationException("Cannot generate Excel cell for CLOB data in column [" + column.getName() + "] of table [" + currentWorkSheet.getName() + "]", e);
+          throw newUnsupportedOperationException("Cannot generate Excel cell for CLOB data", column, currentWorkSheet, e);
         }
         break;
 
@@ -575,5 +572,37 @@ class TableOutputter {
     public RowLimitExceededException(String message) {
       super(message);
     }
+  }
+
+
+  /**
+   * Creates a blank {@link WritableCell} for a given value, column number and row index, if required.
+   *
+   * @param value the value
+   * @param columnNumber the column number
+   * @param rowIndex the row index
+   * @return a blank {@link WritableCell} if value is null, otherwise null
+   */
+  private WritableCell createBlankWriteableCellIfRequired(Object value, int columnNumber, int rowIndex) {
+    if (value == null) {
+      return new jxl.write.Blank(columnNumber, rowIndex);
+    }
+
+    return null;
+  }
+
+
+  /**
+   * Creates an {@link UnsupportedOperationException} for a given prefix {@link String},
+   * {@link Column}, {@link WritableSheet} and {@link Exception}.
+   *
+   * @param prefix the prefix {@link String}
+   * @param column the {@link Column}
+   * @param writableSheet the {@link WritableSheet}
+   * @param e the {@link Exception}
+   * @return the {@link UnsupportedOperationException}
+   */
+  private UnsupportedOperationException newUnsupportedOperationException(String prefix, Column column, WritableSheet writableSheet, Exception e) {
+    return new UnsupportedOperationException(prefix + " in column [" + column.getName() + "] of table [" + writableSheet.getName() + "]", e);
   }
 }
