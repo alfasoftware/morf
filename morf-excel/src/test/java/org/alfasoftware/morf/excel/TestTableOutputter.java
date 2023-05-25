@@ -2,6 +2,7 @@ package org.alfasoftware.morf.excel;
 
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
@@ -168,6 +169,44 @@ public class TestTableOutputter {
     }
 
     assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,0, 0, "Sheet1 [ROWS TRUNCATED]"));
+  }
+
+
+  /**
+   * Tests that a table with fields containing invalid data results in a {@link UnsupportedOperationException}.
+   */
+  @Test
+  public void testUnsupportedOperationExceptionHandling() {
+    // Given
+    Record record1 = mock(Record.class);
+
+    // DECIMAL
+    when(table.columns()).thenReturn(ImmutableList.of(column("Col1", DataType.DECIMAL)));
+    BigDecimal bigDecimal = mock(BigDecimal.class);
+    when(record1.getBigDecimal("Col1")).thenReturn(bigDecimal);
+    when(bigDecimal.doubleValue()).thenThrow(new RuntimeException("BAD BIG DECIMAL"));
+
+    try {
+      // When
+      tableOutputter.table(1, writableWorkbook, table, ImmutableList.<Record>of(record1));
+      fail("UnsupportedOperationException should be thrown");
+    } catch (Exception e) {
+      // Then
+      assertTrue(e.getCause().getMessage().startsWith("Cannot generate Excel cell (parseDouble) for data [Mock for BigDecimal"));
+    }
+
+    // CLOB
+    when(table.columns()).thenReturn(ImmutableList.of(column("Col1", DataType.CLOB)));
+    when(record1.getString("Col1")).thenThrow(new RuntimeException("BAD CLOB"));
+
+    try {
+      // When
+      tableOutputter.table(1, writableWorkbook, table, ImmutableList.<Record>of(record1));
+      fail("UnsupportedOperationException should be thrown");
+    } catch (Exception e) {
+      // Then
+      assertTrue(e.getCause().getMessage().startsWith("Cannot generate Excel cell for CLOB data"));
+    }
   }
 
 
