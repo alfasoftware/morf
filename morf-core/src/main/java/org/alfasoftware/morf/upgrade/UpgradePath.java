@@ -339,10 +339,10 @@ public class UpgradePath implements SqlStatementWriter {
 
 
     @Inject
-    UpgradePathFactoryImpl(Set<UpgradeScriptAddition> upgradeScriptAdditions,
+    UpgradePathFactoryImpl(UpgradeScriptAdditionsProvider upgradeScriptAdditionsProvider,
                            UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory) {
       super();
-      this.upgradeScriptAdditions = upgradeScriptAdditions;
+      this.upgradeScriptAdditions = upgradeScriptAdditionsProvider.getUpgradeScriptAdditions();
       this.upgradeStatusTableServiceFactory = upgradeStatusTableServiceFactory;
     }
 

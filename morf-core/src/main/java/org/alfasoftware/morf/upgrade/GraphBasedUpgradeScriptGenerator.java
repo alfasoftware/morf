@@ -159,9 +159,9 @@ class GraphBasedUpgradeScriptGenerator {
      * @param upgradeStatusTableServiceFactory factory for service generating a script needed to update the transient "zzzUpgradeStatus" table
      */
     @Inject
-    public GraphBasedUpgradeScriptGeneratorFactory(UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory, Set<UpgradeScriptAddition> upgradeScriptAdditions) {
+    public GraphBasedUpgradeScriptGeneratorFactory(UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory, UpgradeScriptAdditionsProvider upgradeScriptAdditionsProvider) {
       this.upgradeStatusTableServiceFactory = upgradeStatusTableServiceFactory;
-      this.upgradeScriptAdditions = upgradeScriptAdditions;
+      this.upgradeScriptAdditions = upgradeScriptAdditionsProvider.getUpgradeScriptAdditions();
     }
 
 
