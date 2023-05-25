@@ -70,12 +70,12 @@ public class TestTableOutputter {
 
 
   /**
-   * Tests that a table with fields containing different data types is written correctly to the worksheet.
+   * Tests that a table with fields containing different populated data types is written correctly to the worksheet.
    *
    * @throws {@link WriteException} if an error occurs
    */
   @Test
-  public void testTableOutput() throws WriteException {
+  public void testTableOutputWithFieldsPopulated() throws WriteException {
     // Given
     Record record1 = mock(Record.class);
     when(record1.getString("Col1")).thenReturn("STRING VALUE");
@@ -104,6 +104,39 @@ public class TestTableOutputter {
     assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,16, 2, Long.valueOf(22).toString()));
     assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,16, 3, Long.valueOf(33).toString()));
     assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,16, 4, "CLOB VALUE"));
+  }
+
+
+  /**
+   * Tests that a table with fields containing different unpopulated data types is written correctly to the worksheet.
+   *
+   * @throws {@link WriteException} if an error occurs
+   */
+  @Test
+  public void testTableOutputWithFieldsUnpopulated() throws WriteException {
+    // Given
+    Record record1 = mock(Record.class);
+    ImmutableList<Record> recordList = ImmutableList.<Record>of(record1);
+
+    // When
+    tableOutputter.table(1, writableWorkbook, table, recordList);
+
+    ArgumentCaptor<WritableCell> writableCellCaptor = ArgumentCaptor.forClass(WritableCell.class);
+    verify(writableSheet, times(36)).addCell(writableCellCaptor.capture());
+    List<WritableCell> capturedWritableCellList = writableCellCaptor.getAllValues();
+    // Example Data
+    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,12, 0, ""));
+    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,12, 1, ""));
+    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,12, 2, "0"));
+    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,12, 3, "0"));
+    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,12, 4, ""));
+
+    // Parameters to Set Up
+    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,16, 0, ""));
+    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,16, 1, ""));
+    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,16, 2, "0"));
+    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,16, 3, "0"));
+    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,16, 4, ""));
   }
 
 
