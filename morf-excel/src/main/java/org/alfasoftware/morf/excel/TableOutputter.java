@@ -500,7 +500,7 @@ class TableOutputter {
         BigDecimal decimalValue = record.getBigDecimal(column.getName());
         try {
           writableCell = createBlankWriteableCellIfRequired(decimalValue, columnNumber, rowIndex)
-            .orElse(new jxl.write.Number(columnNumber, rowIndex, decimalValue.doubleValue()));
+            .orElse(new jxl.write.Number(columnNumber, rowIndex, decimalValue != null ? decimalValue.doubleValue() : 0));
         } catch (Exception e) {
           throw newUnsupportedOperationException("Cannot generate Excel cell (parseDouble) for data [" + decimalValue + "]", column, currentWorkSheet, e);
         }

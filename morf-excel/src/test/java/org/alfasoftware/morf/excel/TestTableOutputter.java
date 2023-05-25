@@ -10,9 +10,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.alfasoftware.morf.dataset.Record;
+import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Table;
 import org.junit.Before;
@@ -67,10 +69,12 @@ public class TestTableOutputter {
 
 
   /**
-   * Tests that cells with different data types are written correctly to the worksheet.
+   * Tests that a table with fields containing different data types is written correctly to the worksheet.
+   *
+   * @throws {@link WriteException} if an error occurs
    */
   @Test
-  public void testTable() throws WriteException {
+  public void testTableOutput() throws WriteException {
     // Given
     Record record1 = mock(Record.class);
     when(record1.getString("Col1")).thenReturn("STRING VALUE");
@@ -99,6 +103,36 @@ public class TestTableOutputter {
     assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,16, 2, Long.valueOf(22).toString()));
     assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,16, 3, Long.valueOf(33).toString()));
     assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,16, 4, "CLOB VALUE"));
+  }
+
+
+  /**
+   * Tests that columns are truncated correctly.
+   *
+   * @throws {@link WriteException} if an error occurs
+   */
+  @Test
+  public void testColumnTruncation() throws WriteException {
+    // Given
+    Record record1 = mock(Record.class);
+    List<Column> columnList = new ArrayList<>();
+
+    for (int c = 1; c <= 257; c++) {
+      columnList.add(column("Col" + c, DataType.STRING));
+      when(record1.getString("Col") + c).thenReturn("Value" + c);
+    }
+
+    when(table.columns()).thenReturn(columnList);
+    ImmutableList<Record> recordList = ImmutableList.<Record>of(record1);
+
+    // When
+    tableOutputter.table(1, writableWorkbook, table, recordList);
+
+    // Then
+    ArgumentCaptor<WritableCell> writableCellCaptor = ArgumentCaptor.forClass(WritableCell.class);
+    verify(writableSheet, times(1547)).addCell(writableCellCaptor.capture());
+    List<WritableCell> capturedWritableCellList = writableCellCaptor.getAllValues();
+    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,260, 13, "[TRUNCATED]"));
   }
 
 
