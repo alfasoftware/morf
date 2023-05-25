@@ -136,6 +136,41 @@ public class TestTableOutputter {
   }
 
 
+
+  /**
+   * Tests that rows are truncated correctly.
+   *
+   * @throws {@link WriteException} if an error occurs
+   */
+  @Test
+  public void testRowTruncation() throws WriteException {
+    // Given
+    Record record1 = mock(Record.class);
+    when(table.columns()).thenReturn(ImmutableList.of(column("Col1", DataType.STRING)));
+    List<Record> recordList = new ArrayList<>();
+
+    for (int r = 1; r < 65537; r++) {
+      recordList.add(mock(Record.class));
+    }
+
+    // When
+    tableOutputter.table(1, writableWorkbook, table, recordList);
+
+    // Then
+    ArgumentCaptor<WritableCell> writableCellCaptor = ArgumentCaptor.forClass(WritableCell.class);
+    verify(writableSheet, times(65535)).addCell(writableCellCaptor.capture());
+    List<WritableCell> capturedWritableCellList = writableCellCaptor.getAllValues();
+
+    for (int i = 0; i < capturedWritableCellList.size(); i++) {
+      if (capturedWritableCellList.get(i).getContents().contains("TRUNC")) {
+        System.out.println("x");
+      }
+    }
+
+    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,0, 0, "Sheet1 [ROWS TRUNCATED]"));
+  }
+
+
   /**
    * Tests whether a given {@link WritableCell} {@link List} contains an entry with a given row, column and value.
    *
