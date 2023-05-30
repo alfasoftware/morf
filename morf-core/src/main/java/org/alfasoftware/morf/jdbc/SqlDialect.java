@@ -185,7 +185,10 @@ public abstract class SqlDialect {
     Builder<String> statements = ImmutableList.<String>builder();
 
     statements.addAll(internalTableDeploymentStatements(table));
-    statements.addAll(createAllIndexStatements(table));
+
+    for (Index index : table.indexes()) {
+      statements.addAll(indexDeploymentStatements(table, index));
+    }
 
     return statements.build();
   }
@@ -3808,16 +3811,17 @@ public abstract class SqlDialect {
    * For some dialects, this casting is required, as the type may not be inferred for every field in the select statement.
    */
   protected SelectStatement addCastsToSelect(Table table, SelectStatement selectStatement) {
+    SelectStatement statementWithCasts = selectStatement.deepCopy();
     for (int i = 0; i < table.columns().size(); i++) {
-      AliasedField field = selectStatement.getFields().get(i);
+      AliasedField field = statementWithCasts.getFields().get(i);
       Column column = table.columns().get(i);
 
       if (fieldRequiresCast(field, column)) {
         AliasedField fieldWithCast = field.cast().asType(column.getType(), column.getWidth(), column.getScale()).build().as(column.getName());
-        selectStatement.getFields().set(i, fieldWithCast);
+        statementWithCasts.getFields().set(i, fieldWithCast);
       }
     }
-    return selectStatement;
+    return statementWithCasts;
   }
 
 
