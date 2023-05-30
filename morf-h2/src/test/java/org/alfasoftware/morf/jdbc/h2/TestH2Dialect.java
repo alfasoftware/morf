@@ -1138,7 +1138,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   protected List<String> expectedReplaceTableFromStatements() {
     return ImmutableList.of(
         "CREATE TABLE TESTSCHEMA.tmp_SomeTable (someField VARCHAR(3) NOT NULL, otherField DECIMAL(3,0) NOT NULL, thirdField DECIMAL(5,0) NOT NULL, CONSTRAINT tmp_SomeTable_PK PRIMARY KEY (someField))",
-        "INSERT INTO TESTSCHEMA.tmp_SomeTable SELECT someField, otherField, thirdField FROM TESTSCHEMA.SomeTable",
+        "INSERT INTO TESTSCHEMA.tmp_SomeTable SELECT someField, otherField, CAST(thirdField AS DECIMAL(5,0)) AS thirdField FROM TESTSCHEMA.OtherTable",
         "DROP TABLE TESTSCHEMA.SomeTable CASCADE",
         "ALTER TABLE TESTSCHEMA.tmp_SomeTable DROP PRIMARY KEY",
         "ALTER TABLE TESTSCHEMA.tmp_SomeTable RENAME TO SomeTable",
@@ -1150,8 +1150,8 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
 
   protected List<String> expectedReplaceTableWithAutonumber() {
     return ImmutableList.of(
-        "CREATE TABLE TESTSCHEMA.tmp_SomeTable (someField VARCHAR(3) NOT NULL, otherField DECIMAL(3,0) AUTO_INCREMENT(1) COMMENT 'AUTONUMSTART:[1]', CONSTRAINT tmp_SomeTable_PK PRIMARY KEY (someField))",
-        "INSERT INTO TESTSCHEMA.tmp_SomeTable SELECT someField, otherField FROM TESTSCHEMA.SomeTable",
+        "CREATE TABLE TESTSCHEMA.tmp_SomeTable (someField VARCHAR(3) NOT NULL, otherField DECIMAL(3,0) AUTO_INCREMENT(1) COMMENT 'AUTONUMSTART:[1]', thirdField DECIMAL(5,0) NOT NULL, CONSTRAINT tmp_SomeTable_PK PRIMARY KEY (someField))",
+        "INSERT INTO TESTSCHEMA.tmp_SomeTable SELECT someField, otherField, CAST(thirdField AS DECIMAL(5,0)) AS thirdField FROM TESTSCHEMA.OtherTable",
         "DROP TABLE TESTSCHEMA.SomeTable CASCADE",
         "ALTER TABLE TESTSCHEMA.tmp_SomeTable DROP PRIMARY KEY",
         "ALTER TABLE TESTSCHEMA.tmp_SomeTable RENAME TO SomeTable",

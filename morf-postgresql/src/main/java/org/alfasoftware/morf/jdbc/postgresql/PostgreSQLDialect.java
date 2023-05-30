@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import java.util.StringJoiner;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -303,7 +304,7 @@ class PostgreSQLDialect extends SqlDialect {
       preStatements.add("CREATE SEQUENCE " + autoNumberSequenceName + " START " + autoNumberStart);
 
       if (asSelect) {
-        postStatements.add("ALTER TABLE " + table.getName() + " ALTER COLUMN " + column.getName() + " SET DEFAULT nextval('" + autoNumberSequenceName + "')");
+        postStatements.add("ALTER TABLE " + table.getName() + " ALTER " + column.getName() + " SET DEFAULT nextval('" + autoNumberSequenceName + "')");
       } else {
         createTableStatement.append(" DEFAULT nextval('").append(autoNumberSequenceName).append("')");
       }
@@ -317,24 +318,27 @@ class PostgreSQLDialect extends SqlDialect {
     List<String> fieldStatements = new ArrayList<>();
     List<String> primaryKeys = new ArrayList<>();
 
+    StringJoiner joiner = new StringJoiner(",", "ALTER TABLE " + table.getName(), "");
+
     for (Column column : table.columns()) {
       if (column.isPrimaryKey()) {
         primaryKeys.add(column.getName());
       }
 
       if (!column.isNullable()) {
-        fieldStatements.add("ALTER TABLE " + table.getName() + " ALTER COLUMN " + column.getName() + " SET NOT NULL");
+        joiner.add(" ALTER " + column.getName() + " SET NOT NULL");
       }
 
       if (StringUtils.isNotEmpty(column.getDefaultValue()) && !column.isAutoNumbered()) {
-        fieldStatements.add("ALTER TABLE " + table.getName() + " ALTER COLUMN " + column.getName() + " SET DEFAULT " + column.getDefaultValue());
+        joiner.add(" ALTER " + column.getName() + " SET DEFAULT " + column.getDefaultValue());
       }
     }
 
     if (!primaryKeys.isEmpty()) {
-      fieldStatements.add("ALTER TABLE " + table.getName() + " ADD CONSTRAINT " + table.getName() + "_PK PRIMARY KEY(" + Joiner.on(", ").join(primaryKeys) + ")");
+      joiner.add(" ADD CONSTRAINT " + table.getName() + "_PK PRIMARY KEY(" + Joiner.on(", ").join(primaryKeys) + ")");
     }
 
+    fieldStatements.add(joiner.toString());
     return fieldStatements;
   }
 

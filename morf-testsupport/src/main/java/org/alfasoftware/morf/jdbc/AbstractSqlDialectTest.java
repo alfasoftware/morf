@@ -93,6 +93,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
@@ -4271,7 +4272,8 @@ public abstract class AbstractSqlDialectTest {
     Table tableWithAutonumber = table("SomeTable")
         .columns(
             column("someField", DataType.STRING, 3).primaryKey(),
-            column("otherField", DataType.DECIMAL, 3).autoNumbered(1)
+            column("otherField", DataType.DECIMAL, 3).autoNumbered(1),
+            column("thirdField", DataType.DECIMAL, 5)
         ).indexes(
             index("SomeTable_1").columns("otherField")
         );
@@ -4279,11 +4281,45 @@ public abstract class AbstractSqlDialectTest {
     SelectStatement selectStatement = select(
         field("someField"),
         field("otherField"),
-        cast(field("thirdField")).asType(DataType.DECIMAL, 3))
+        cast(field("thirdField")).asType(DataType.DECIMAL, 5).as("thirdField"))
         .from(tableRef("OtherTable"));
 
     compareStatements(expectedReplaceTableFromStatements(), getTestDialect().replaceTableFromStatements(table, selectStatement));
     compareStatements(expectedReplaceTableWithAutonumber(), getTestDialect().replaceTableFromStatements(tableWithAutonumber, selectStatement));
+  }
+
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testReplaceTableSelectStatementValidation() {
+    Table table = table("SomeTable")
+            .columns(
+                    column("someField", DataType.STRING, 3).primaryKey(),
+                    column("otherField", DataType.DECIMAL, 3),
+                    column("thirdField", DataType.DECIMAL, 5)
+            ).indexes(
+                    index("SomeTable_1").columns("otherField")
+            );
+
+    SelectStatement withIncorrectFieldCount = select(
+            field("someField"),
+            field("otherField"))
+            .from(tableRef("OtherTable"));
+
+    SelectStatement withIncorrectFieldName = select(
+            field("someField"),
+            field("otherField"),
+            field("wrongField"))
+            .from(tableRef("OtherTable"));
+
+
+    IllegalArgumentException fieldCount =  assertThrows(IllegalArgumentException.class, () -> compareStatements(expectedReplaceTableFromStatements(), getTestDialect().replaceTableFromStatements(table, withIncorrectFieldCount)));
+    IllegalArgumentException fieldName = assertThrows(IllegalArgumentException.class, () -> compareStatements(expectedReplaceTableFromStatements(), getTestDialect().replaceTableFromStatements(table, withIncorrectFieldName)));
+
+    assertEquals("Number of table columns [3] does not match number of select columns [2].", fieldCount.getMessage());
+    assertEquals("Table columns do not match select columns\n"
+            + "Mismatching pairs:\n"
+            + "    thirdField <> wrongField", fieldName.getMessage());
   }
 
 

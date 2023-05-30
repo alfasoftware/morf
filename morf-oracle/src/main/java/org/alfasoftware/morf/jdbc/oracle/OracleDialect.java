@@ -1160,7 +1160,6 @@ class OracleDialect extends SqlDialect {
       result.add("ALTER INDEX " + schemaNamePrefix() + primaryKeyConstraintName(table.getName()) + " NOPARALLEL LOGGING");
     }
 
-    result.addAll(createAllIndexStatements(table));
     result.addAll(buildRemainingStatementsAndComments(table));
 
     return result.build();

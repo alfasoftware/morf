@@ -1205,9 +1205,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected List<String> expectedAddTableFromStatements() {
     return ImmutableList.of(
       "CREATE TABLE testschema.SomeTable (someField, otherField) AS SELECT someField, otherField FROM testschema.OtherTable",
-      "ALTER TABLE SomeTable ALTER COLUMN someField SET NOT NULL",
-      "ALTER TABLE SomeTable ALTER COLUMN otherField SET NOT NULL",
-      "ALTER TABLE SomeTable ADD CONSTRAINT SomeTable_PK PRIMARY KEY(someField)",
+      "ALTER TABLE SomeTable ALTER someField SET NOT NULL, ALTER otherField SET NOT NULL, ADD CONSTRAINT SomeTable_PK PRIMARY KEY(someField)",
       "COMMENT ON TABLE testschema.SomeTable IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable]'",
       "COMMENT ON COLUMN testschema.SomeTable.someField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[someField]/TYPE:[STRING]'",
       "COMMENT ON COLUMN testschema.SomeTable.otherField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[otherField]/TYPE:[DECIMAL]'",
@@ -1220,11 +1218,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedReplaceTableFromStatements() {
     return ImmutableList.of(
-        "CREATE TABLE testschema.tmp_SomeTable (someField, otherField, thirdField) AS SELECT CAST(someField AS VARCHAR(3)) COLLATE \"POSIX\" AS someField, CAST(otherField AS DECIMAL(3,0)) AS otherField, CAST(thirdField AS DECIMAL(5,0)) AS thirdField FROM testschema.SomeTable",
-        "ALTER TABLE tmp_SomeTable ALTER COLUMN someField SET NOT NULL",
-        "ALTER TABLE tmp_SomeTable ALTER COLUMN otherField SET NOT NULL",
-        "ALTER TABLE tmp_SomeTable ALTER COLUMN thirdField SET NOT NULL",
-        "ALTER TABLE tmp_SomeTable ADD CONSTRAINT tmp_SomeTable_PK PRIMARY KEY(someField)",
+        "CREATE TABLE testschema.tmp_SomeTable (someField, otherField, thirdField) AS SELECT CAST(someField AS VARCHAR(3)) COLLATE \"POSIX\" AS someField, CAST(otherField AS DECIMAL(3,0)) AS otherField, CAST(thirdField AS DECIMAL(5,0)) AS thirdField FROM testschema.OtherTable",
+        "ALTER TABLE tmp_SomeTable ALTER someField SET NOT NULL, ALTER otherField SET NOT NULL, ALTER thirdField SET NOT NULL, ADD CONSTRAINT tmp_SomeTable_PK PRIMARY KEY(someField)",
         "COMMENT ON TABLE testschema.tmp_SomeTable IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[tmp_SomeTable]'",
         "COMMENT ON COLUMN testschema.tmp_SomeTable.someField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[someField]/TYPE:[STRING]'",
         "COMMENT ON COLUMN testschema.tmp_SomeTable.otherField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[otherField]/TYPE:[DECIMAL]'",
@@ -1244,15 +1239,14 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return ImmutableList.of(
         "DROP SEQUENCE IF EXISTS testschema.tmp_SomeTable_otherField_seq",
         "CREATE SEQUENCE testschema.tmp_SomeTable_otherField_seq START 1",
-        "CREATE TABLE testschema.tmp_SomeTable (someField, otherField) AS SELECT CAST(someField AS VARCHAR(3)) COLLATE \"POSIX\" AS someField, CAST(otherField AS DECIMAL(3,0)) AS otherField FROM testschema.SomeTable",
-        "ALTER TABLE tmp_SomeTable ALTER COLUMN otherField SET DEFAULT nextval('testschema.tmp_SomeTable_otherField_seq')",
+        "CREATE TABLE testschema.tmp_SomeTable (someField, otherField, thirdField) AS SELECT CAST(someField AS VARCHAR(3)) COLLATE \"POSIX\" AS someField, CAST(otherField AS DECIMAL(3,0)) AS otherField, CAST(thirdField AS DECIMAL(5,0)) AS thirdField FROM testschema.OtherTable",
+        "ALTER TABLE tmp_SomeTable ALTER otherField SET DEFAULT nextval('testschema.tmp_SomeTable_otherField_seq')",
         "ALTER SEQUENCE testschema.tmp_SomeTable_otherField_seq OWNED BY testschema.tmp_SomeTable.otherField",
-        "ALTER TABLE tmp_SomeTable ALTER COLUMN someField SET NOT NULL",
-        "ALTER TABLE tmp_SomeTable ALTER COLUMN otherField SET NOT NULL",
-        "ALTER TABLE tmp_SomeTable ADD CONSTRAINT tmp_SomeTable_PK PRIMARY KEY(someField)",
+        "ALTER TABLE tmp_SomeTable ALTER someField SET NOT NULL, ALTER otherField SET NOT NULL, ALTER thirdField SET NOT NULL, ADD CONSTRAINT tmp_SomeTable_PK PRIMARY KEY(someField)",
         "COMMENT ON TABLE testschema.tmp_SomeTable IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[tmp_SomeTable]'",
         "COMMENT ON COLUMN testschema.tmp_SomeTable.someField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[someField]/TYPE:[STRING]'",
         "COMMENT ON COLUMN testschema.tmp_SomeTable.otherField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[otherField]/TYPE:[DECIMAL]/AUTONUMSTART:[1]'",
+        "COMMENT ON COLUMN testschema.tmp_SomeTable.thirdField IS 'REALNAME:[thirdField]/TYPE:[DECIMAL]'",
         "DROP TABLE testschema.SomeTable CASCADE",
         "ALTER TABLE testschema.tmp_SomeTable RENAME TO SomeTable",
         "ALTER INDEX testschema.tmp_SomeTable_pk RENAME TO SomeTable_pk",
