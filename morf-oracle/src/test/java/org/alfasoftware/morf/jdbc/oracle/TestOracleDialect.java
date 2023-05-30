@@ -239,7 +239,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
           "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30
               + ".booleanField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[booleanField]/TYPE:[BOOLEAN]'", "COMMENT ON COLUMN TESTSCHEMA."
               + LONG_TABLE_NAME_TRUNCATED_30 + ".charField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[charField]/TYPE:[STRING]'",
-          "CREATE UNIQUE INDEX TESTSCHEMA.Test_NK ON TESTSCHEMA.tableWithANameThatExceedsTwent (stringField)",
+          "CREATE UNIQUE INDEX TESTSCHEMA.Test_NK ON TESTSCHEMA"+LONG_TABLE_NAME_TRUNCATED_30+" (stringField)",
           "CREATE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.tableWithANameThatExceedsTwent (intField, floatField)"
     );
   }
