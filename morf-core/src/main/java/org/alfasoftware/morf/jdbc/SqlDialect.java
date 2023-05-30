@@ -3721,7 +3721,9 @@ public abstract class SqlDialect {
   /**
    * Generates the SQL to create a table and insert the data specified in the {@link SelectStatement}.
    *
-   * This method casts each field in the provided select using the column definition of the provided table.
+   * For supported dialects, this method casts each field in the provided select using the column definition of the provided table.
+   *
+   * Validation is performed to confirm that the fields included in the select statement correspond to the table columns.
    *
    * @param table The table to create.
    * @param selectStatement The {@link SelectStatement}
