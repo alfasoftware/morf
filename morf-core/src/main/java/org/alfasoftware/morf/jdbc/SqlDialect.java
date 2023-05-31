@@ -3751,9 +3751,7 @@ public abstract class SqlDialect {
     final Table newTable = SchemaUtils.table("tmp_" + StringUtils.substring(originalTable.getName(), 0, 23))
         .columns(originalTable.columns());
 
-    validateStatement(originalTable, selectStatement).ifPresent(error -> {
-      throw new IllegalArgumentException(error);
-    });
+    validateStatement(originalTable, selectStatement);
 
     // Generate the SQL for the CTAS and post-CTAS operations
     final List<String> createTableStatements = Lists.newArrayList();
@@ -3766,14 +3764,14 @@ public abstract class SqlDialect {
   }
 
 
-  private Optional<String> validateStatement(Table table, SelectStatement selectStatement) {
+  private void validateStatement(Table table, SelectStatement selectStatement) {
     final String separator = "\n    ";
 
     List<String> tableColumns = table.columns().stream().map(Column::getName).collect(toList());
     List<String> selectColumns = selectStatement.getFields().stream().map(SqlDialect::getFieldName).collect(toList());
 
     if (tableColumns.size() != selectColumns.size()) {
-     return Optional.of("Number of table columns [" + tableColumns.size() + "] does not match number of select columns [" + selectColumns.size() + "].");
+     throw new IllegalArgumentException("Number of table columns [" + tableColumns.size() + "] does not match number of select columns [" + selectColumns.size() + "].");
     }
 
     ImmutableList.Builder<Pair<String,String>> differences = ImmutableList.builder();
@@ -3790,11 +3788,9 @@ public abstract class SqlDialect {
 
     List<Pair<String, String>> diffs = differences.build();
     if (!diffs.isEmpty()) {
-      return Optional.of("Table columns do not match select columns"
+      throw new IllegalArgumentException("Table columns do not match select columns"
                       + "\nMismatching pairs:" + separator + diffs.stream().map(p -> p.getLeft() + " <> " + p.getRight()).collect(joining(separator)));
     }
-
-    return Optional.empty();
   }
 
 
