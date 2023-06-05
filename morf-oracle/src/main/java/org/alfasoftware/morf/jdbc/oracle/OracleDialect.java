@@ -30,6 +30,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
@@ -268,6 +269,33 @@ class OracleDialect extends SqlDialect {
     return Arrays.asList("DROP TABLE " + schemaNamePrefix() + table.getName());
   }
 
+  @Override
+  public Collection<String> dropTables(List<Table> tables, boolean ifExists, boolean cascade) {
+    StringBuilder sb = new StringBuilder();
+    if (tables.size() == 1 && !ifExists) {
+      sb.append("DROP TABLE ").append(schemaNamePrefix()).append(tables.get(0).getName());
+      if (cascade) {
+        sb.append(" CASCADE CONSTRAINTS");
+      }
+    } else {
+      String tablesString = tables.stream().map(s -> "'" + s.getName().toUpperCase() + "'").collect(Collectors.joining(", "));
+      sb.append("BEGIN\n");
+      sb.append("  FOR T IN (\n");
+      sb.append("    SELECT '").append(schemaNamePrefix()).append("' || TABLE_NAME AS TABLE_NAME\n");
+      if (ifExists) {
+        sb.append("    FROM ALL_TABLES\n");
+        sb.append("   WHERE TABLE_NAME  IN (").append(tablesString).append(")\n");
+      } else {
+        sb.append("    FROM (SELECT COLUMN_VALUE AS TABLE_NAME from TABLE(SYS.dbms_debug_vc2coll(").append(tablesString).append(")))\n");
+      }
+      sb.append("  )\n");
+      sb.append("  LOOP\n");
+      sb.append("    EXECUTE IMMEDIATE 'DROP TABLE ' || T.TABLE_NAME ").append(cascade ? "|| ' CASCADE CONSTRAINTS ' " : "").append(";\n");
+      sb.append("  END LOOP;\n");
+      sb.append("END;");
+    }
+    return Arrays.asList(sb.toString());
+  }
 
   /**
    * Returns a SQL statement to safely drop a sequence, if it exists.
@@ -421,6 +449,9 @@ class OracleDialect extends SqlDialect {
     // CAST does not directly support any of the LOB datatypes
     if (DataType.CLOB.equals(cast.getDataType())) {
       return String.format("TO_CLOB(%s)", getSqlFrom(cast.getExpression()));
+    }
+    if (DataType.BLOB.equals(cast.getDataType())) {
+      return String.format("TO_BLOB(%s)", getSqlFrom(cast.getExpression()));
     }
     return super.getSqlFrom(cast);
   }
@@ -1105,13 +1136,24 @@ class OracleDialect extends SqlDialect {
    */
   @Override
   public Collection<String> addTableFromStatements(Table table, SelectStatement selectStatement) {
+    return internalAddTableFromStatements(table, selectStatement, false);
+  }
+
+
+  @Override
+  public Collection<String> addTableFromStatementsWithCasting(Table table, SelectStatement selectStatement) {
+    return internalAddTableFromStatements(table, selectStatement, true);
+  }
+
+
+  private Collection<String> internalAddTableFromStatements(Table table, SelectStatement selectStatement, boolean withCasting) {
     Builder<String> result = ImmutableList.<String>builder();
     result.add(new StringBuilder()
-        .append(createTableStatement(table, true))
-        .append(" AS ")
-        .append(convertStatementToSQL(selectStatement))
-        .toString()
-      );
+            .append(createTableStatement(table, true))
+            .append(" AS ")
+            .append(withCasting ? convertStatementToSQL(addCastsToSelect(table, selectStatement)) : convertStatementToSQL(selectStatement))
+            .toString()
+    );
     result.add("ALTER TABLE " + schemaNamePrefix() + table.getName()  + " NOPARALLEL LOGGING");
 
     if (!primaryKeysForTable(table).isEmpty()) {

@@ -151,6 +151,33 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropSingleTable()
+   */
+  @Override
+  protected List<String> expectedDropSingleTable() {
+    return Arrays.asList("FLUSH TABLES `Test`", "DROP TABLE `Test`");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTables()
+   */
+  @Override
+  protected List<String> expectedDropTables() {
+    return Arrays.asList("FLUSH TABLES `Test`, `Other`", "DROP TABLE `Test`, `Other`");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTablesWithParameters()
+   */
+  @Override
+  protected List<String> expectedDropTablesWithParameters() {
+    return Arrays.asList("FLUSH TABLES `Test`, `Other`", "DROP TABLE IF EXISTS `Test`, `Other` CASCADE");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTempTableStatements()
    */
   @Override
@@ -1165,6 +1192,32 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
       "CREATE TABLE `SomeTable` (`someField` VARCHAR(3) NOT NULL, `otherField` DECIMAL(3,0) NOT NULL, CONSTRAINT `SomeTable_PK` PRIMARY KEY (`someField`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin",
       "ALTER TABLE `SomeTable` ADD INDEX `SomeTable_1` (`otherField`)",
       "INSERT INTO SomeTable SELECT someField, otherField FROM OtherTable"
+    );
+  }
+
+
+  @Override
+  protected List<String> expectedReplaceTableFromStatements() {
+    return ImmutableList.of(
+      "CREATE TABLE `tmp_SomeTable` (`someField` VARCHAR(3) NOT NULL, `otherField` DECIMAL(3,0) NOT NULL, `thirdField` DECIMAL(5,0) NOT NULL, CONSTRAINT `tmp_SomeTable_PK` PRIMARY KEY (`someField`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin",
+          "INSERT INTO tmp_SomeTable SELECT someField, otherField, CAST(thirdField AS DECIMAL(5,0)) AS thirdField FROM OtherTable",
+          "FLUSH TABLES `SomeTable`",
+          "DROP TABLE `SomeTable` CASCADE",
+          "RENAME TABLE tmp_SomeTable TO SomeTable",
+          "ALTER TABLE `SomeTable` ADD INDEX `SomeTable_1` (`otherField`)"
+    );
+  }
+
+
+  @Override
+  protected List<String> expectedReplaceTableWithAutonumber() {
+    return ImmutableList.of(
+        "CREATE TABLE `tmp_SomeTable` (`someField` VARCHAR(3) NOT NULL, `otherField` DECIMAL(3,0) AUTO_INCREMENT COMMENT 'AUTONUMSTART:[1]', `thirdField` DECIMAL(5,0) NOT NULL, CONSTRAINT `tmp_SomeTable_PK` PRIMARY KEY (`someField`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin AUTO_INCREMENT=1",
+        "INSERT INTO tmp_SomeTable SELECT someField, otherField, CAST(thirdField AS DECIMAL(5,0)) AS thirdField FROM OtherTable",
+        "FLUSH TABLES `SomeTable`",
+        "DROP TABLE `SomeTable` CASCADE",
+        "RENAME TABLE tmp_SomeTable TO SomeTable",
+        "ALTER TABLE `SomeTable` ADD INDEX `SomeTable_1` (`otherField`)"
     );
   }
 

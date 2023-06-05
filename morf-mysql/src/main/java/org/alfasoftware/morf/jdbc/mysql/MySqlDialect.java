@@ -33,6 +33,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
@@ -278,6 +279,18 @@ class MySqlDialect extends SqlDialect {
     return Arrays.asList(
       "FLUSH TABLES `" + table.getName() + "`",
       "DROP TABLE `" + table.getName() + "`");
+  }
+
+
+  @Override
+  public Collection<String> dropTables(List<Table> tables, boolean ifExists, boolean cascade) {
+    return Arrays.asList(
+        "FLUSH TABLES " + tables.stream().map(table -> "`" + table.getName() + "`").collect(Collectors.joining(", ")),
+        "DROP TABLE "
+          + (ifExists ? "IF EXISTS " : "")
+          + tables.stream().map(table -> "`" + table.getName() + "`").collect(Collectors.joining(", "))
+          + (cascade ? " CASCADE" : "")
+    );
   }
 
 

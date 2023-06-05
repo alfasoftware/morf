@@ -93,6 +93,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
@@ -600,6 +601,29 @@ public abstract class AbstractSqlDialectTest {
     compareStatements(
       expectedDropTableStatements(),
       testDialect.dropStatements(table));
+  }
+
+
+  /**
+   * Tests SQL for dropping a tables with optional parameters.
+   */
+  @Test
+  public void testDropTables() {
+    Table table1 = metadata.getTable(TEST_TABLE);
+    Table table2 = metadata.getTable(OTHER_TABLE);
+
+    compareStatements(
+        expectedDropSingleTable(),
+        testDialect.dropTables(ImmutableList.of(table1), false, false)
+    );
+
+    compareStatements(
+        expectedDropTables(),
+        testDialect.dropTables(ImmutableList.of(table1, table2), false, false));
+
+    compareStatements(
+        expectedDropTablesWithParameters(),
+        testDialect.dropTables(ImmutableList.of(table1, table2), true, true));
   }
 
 
@@ -4233,6 +4257,72 @@ public abstract class AbstractSqlDialectTest {
   }
 
 
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testReplaceTableFromStatements() {
+    Table table = table("SomeTable")
+        .columns(
+            column("someField", DataType.STRING, 3).primaryKey(),
+            column("otherField", DataType.DECIMAL, 3),
+            column("thirdField", DataType.DECIMAL, 5)
+        ).indexes(
+            index("SomeTable_1").columns("otherField")
+        );
+
+    Table tableWithAutonumber = table("SomeTable")
+        .columns(
+            column("someField", DataType.STRING, 3).primaryKey(),
+            column("otherField", DataType.DECIMAL, 3).autoNumbered(1),
+            column("thirdField", DataType.DECIMAL, 5)
+        ).indexes(
+            index("SomeTable_1").columns("otherField")
+        );
+
+    SelectStatement selectStatement = select(
+        field("someField"),
+        field("otherField"),
+        cast(field("thirdField")).asType(DataType.DECIMAL, 5).as("thirdField"))
+        .from(tableRef("OtherTable"));
+
+    compareStatements(expectedReplaceTableFromStatements(), getTestDialect().replaceTableFromStatements(table, selectStatement));
+    compareStatements(expectedReplaceTableWithAutonumber(), getTestDialect().replaceTableFromStatements(tableWithAutonumber, selectStatement));
+  }
+
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testReplaceTableSelectStatementValidation() {
+    Table table = table("SomeTable")
+            .columns(
+                    column("someField", DataType.STRING, 3).primaryKey(),
+                    column("otherField", DataType.DECIMAL, 3),
+                    column("thirdField", DataType.DECIMAL, 5)
+            ).indexes(
+                    index("SomeTable_1").columns("otherField")
+            );
+
+    SelectStatement withIncorrectFieldCount = select(
+            field("someField"),
+            field("otherField"))
+            .from(tableRef("OtherTable"));
+
+    SelectStatement withIncorrectFieldName = select(
+            field("someField"),
+            field("otherField"),
+            field("wrongField"))
+            .from(tableRef("OtherTable"));
+
+
+    IllegalArgumentException fieldCount =  assertThrows(IllegalArgumentException.class, () -> compareStatements(expectedReplaceTableFromStatements(), getTestDialect().replaceTableFromStatements(table, withIncorrectFieldCount)));
+    IllegalArgumentException fieldName = assertThrows(IllegalArgumentException.class, () -> compareStatements(expectedReplaceTableFromStatements(), getTestDialect().replaceTableFromStatements(table, withIncorrectFieldName)));
+
+    assertEquals("Number of table columns [3] does not match number of select columns [2].", fieldCount.getMessage());
+    assertEquals("Table columns do not match select columns\n"
+            + "Mismatching pairs:\n"
+            + "    thirdField <> wrongField", fieldName.getMessage());
+  }
+
+
   /**
    * On some databases our string literals need prefixing with N to be
    * correctly typed as a unicode string.
@@ -5029,6 +5119,24 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * @return The expected SQL statements for dropping a single test database table.
+   */
+  protected abstract List<String> expectedDropSingleTable();
+
+
+  /**
+   * @return The expected SQL statements for dropping the test database tables.
+   */
+  protected abstract List<String> expectedDropTables();
+
+
+  /**
+   * @return The expected SQL statements for dropping the test database tables with parameters.
+   */
+  protected abstract List<String> expectedDropTablesWithParameters();
+
+
+  /**
    * @return The expected SQL statements for dropping the test database view.
    */
   protected abstract List<String> expectedDropViewStatements();
@@ -5140,6 +5248,12 @@ public abstract class AbstractSqlDialectTest {
 
 
   protected abstract List<String> expectedAddTableFromStatements();
+
+
+  protected abstract List<String> expectedReplaceTableFromStatements();
+
+
+  protected abstract List<String> expectedReplaceTableWithAutonumber();
 
 
   /**

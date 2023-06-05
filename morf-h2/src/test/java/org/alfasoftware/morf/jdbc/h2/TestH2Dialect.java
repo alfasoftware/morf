@@ -98,7 +98,34 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedDropTableStatements() {
-    return Arrays.asList("drop table TESTSCHEMA.Test cascade");
+    return Arrays.asList("DROP TABLE TESTSCHEMA.Test CASCADE");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropSingleTable()
+   */
+  @Override
+  protected List<String> expectedDropSingleTable() {
+    return Arrays.asList("DROP TABLE TESTSCHEMA.Test");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTables()
+   */
+  @Override
+  protected List<String> expectedDropTables() {
+    return Arrays.asList("DROP TABLE TESTSCHEMA.Test, TESTSCHEMA.Other");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTablesWithParameters()
+   */
+  @Override
+  protected List<String> expectedDropTablesWithParameters() {
+    return Arrays.asList("DROP TABLE IF EXISTS TESTSCHEMA.Test, TESTSCHEMA.Other CASCADE");
   }
 
 
@@ -107,7 +134,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedDropTempTableStatements() {
-    return Arrays.asList("drop table TESTSCHEMA.TEMP_TempTest cascade");
+    return Arrays.asList("DROP TABLE TESTSCHEMA.TEMP_TempTest CASCADE");
   }
 
 
@@ -1103,6 +1130,33 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
       "CREATE TABLE TESTSCHEMA.SomeTable (someField VARCHAR(3) NOT NULL, otherField DECIMAL(3,0) NOT NULL, CONSTRAINT SomeTable_PK PRIMARY KEY (someField))",
       "CREATE INDEX SomeTable_1 ON TESTSCHEMA.SomeTable (otherField)",
       "INSERT INTO TESTSCHEMA.SomeTable SELECT someField, otherField FROM TESTSCHEMA.OtherTable"
+    );
+  }
+
+
+  @Override
+  protected List<String> expectedReplaceTableFromStatements() {
+    return ImmutableList.of(
+        "CREATE TABLE TESTSCHEMA.tmp_SomeTable (someField VARCHAR(3) NOT NULL, otherField DECIMAL(3,0) NOT NULL, thirdField DECIMAL(5,0) NOT NULL, CONSTRAINT tmp_SomeTable_PK PRIMARY KEY (someField))",
+        "INSERT INTO TESTSCHEMA.tmp_SomeTable SELECT someField, otherField, CAST(thirdField AS DECIMAL(5,0)) AS thirdField FROM TESTSCHEMA.OtherTable",
+        "DROP TABLE TESTSCHEMA.SomeTable CASCADE",
+        "ALTER TABLE TESTSCHEMA.tmp_SomeTable DROP PRIMARY KEY",
+        "ALTER TABLE TESTSCHEMA.tmp_SomeTable RENAME TO SomeTable",
+        "ALTER TABLE TESTSCHEMA.SomeTable ADD CONSTRAINT SomeTable_PK PRIMARY KEY (someField)",
+        "CREATE INDEX SomeTable_1 ON TESTSCHEMA.SomeTable (otherField)"
+    );
+  }
+
+
+  protected List<String> expectedReplaceTableWithAutonumber() {
+    return ImmutableList.of(
+        "CREATE TABLE TESTSCHEMA.tmp_SomeTable (someField VARCHAR(3) NOT NULL, otherField DECIMAL(3,0) AUTO_INCREMENT(1) COMMENT 'AUTONUMSTART:[1]', thirdField DECIMAL(5,0) NOT NULL, CONSTRAINT tmp_SomeTable_PK PRIMARY KEY (someField))",
+        "INSERT INTO TESTSCHEMA.tmp_SomeTable SELECT someField, otherField, CAST(thirdField AS DECIMAL(5,0)) AS thirdField FROM TESTSCHEMA.OtherTable",
+        "DROP TABLE TESTSCHEMA.SomeTable CASCADE",
+        "ALTER TABLE TESTSCHEMA.tmp_SomeTable DROP PRIMARY KEY",
+        "ALTER TABLE TESTSCHEMA.tmp_SomeTable RENAME TO SomeTable",
+        "ALTER TABLE TESTSCHEMA.SomeTable ADD CONSTRAINT SomeTable_PK PRIMARY KEY (someField)",
+        "CREATE INDEX SomeTable_1 ON TESTSCHEMA.SomeTable (otherField)"
     );
   }
 

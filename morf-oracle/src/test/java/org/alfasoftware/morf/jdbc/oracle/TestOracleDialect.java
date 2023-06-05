@@ -72,6 +72,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @SuppressWarnings({"unchecked","rawtypes"})
   private final ArgumentCaptor<List<String>> listCaptor = ArgumentCaptor.forClass((Class<List<String>>)(Class)List.class);
 
+
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#createTestDialect()
    */
@@ -250,6 +251,50 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedDropTableStatements() {
     return Arrays.asList("DROP TABLE TESTSCHEMA.Test");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropSingleTable()
+   */
+  @Override
+  protected List<String> expectedDropSingleTable() {
+    return Arrays.asList("DROP TABLE TESTSCHEMA.Test");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTables()
+   */
+  @Override
+  protected List<String> expectedDropTables() {
+    return Arrays.asList("BEGIN\n" +
+            "  FOR T IN (\n" +
+            "    SELECT 'TESTSCHEMA.' || TABLE_NAME AS TABLE_NAME\n" +
+            "    FROM (SELECT COLUMN_VALUE AS TABLE_NAME from TABLE(SYS.dbms_debug_vc2coll('TEST', 'OTHER')))\n" +
+            "  )\n" +
+            "  LOOP\n" +
+            "    EXECUTE IMMEDIATE 'DROP TABLE ' || T.TABLE_NAME ;\n" +
+            "  END LOOP;\n" +
+            "END;");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTablesWithParameters()
+   */
+  @Override
+  protected List<String> expectedDropTablesWithParameters() {
+    return Arrays.asList("BEGIN\n" +
+            "  FOR T IN (\n" +
+            "    SELECT 'TESTSCHEMA.' || TABLE_NAME AS TABLE_NAME\n" +
+            "    FROM ALL_TABLES\n" +
+            "   WHERE TABLE_NAME  IN ('TEST', 'OTHER')\n" +
+            "  )\n" +
+            "  LOOP\n" +
+            "    EXECUTE IMMEDIATE 'DROP TABLE ' || T.TABLE_NAME || ' CASCADE CONSTRAINTS ' ;\n" +
+            "  END LOOP;\n" +
+            "END;");
   }
 
 
@@ -1446,6 +1491,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
     return "SELECT N'LITERAL' FROM dual WHERE (N'ONE' = N'ONE')";
   }
 
+
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddTableFromStatements()
    */
@@ -1460,6 +1506,79 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
       "COMMENT ON COLUMN TESTSCHEMA.SomeTable.otherField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[otherField]/TYPE:[DECIMAL]'"
     );
   }
+
+
+  public List<String> expectedReplaceTableFromStatements() {
+    return ImmutableList.of(
+        "CREATE TABLE TESTSCHEMA.tmp_SomeTable (someField  NOT NULL, otherField  NOT NULL, thirdField  NOT NULL, CONSTRAINT tmp_SomeTable_PK PRIMARY KEY (someField) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.tmp_SomeTable_PK ON TESTSCHEMA.tmp_SomeTable (someField))) PARALLEL NOLOGGING AS SELECT CAST(someField AS NVARCHAR2(3)) AS someField, CAST(otherField AS DECIMAL(3,0)) AS otherField, CAST(thirdField AS DECIMAL(5,0)) AS thirdField FROM TESTSCHEMA.OtherTable",
+        "ALTER TABLE TESTSCHEMA.tmp_SomeTable NOPARALLEL LOGGING",
+        "ALTER INDEX TESTSCHEMA.tmp_SomeTable_PK NOPARALLEL LOGGING",
+        "COMMENT ON TABLE TESTSCHEMA.tmp_SomeTable IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[tmp_SomeTable]'",
+        "COMMENT ON COLUMN TESTSCHEMA.tmp_SomeTable.someField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[someField]/TYPE:[STRING]'",
+        "COMMENT ON COLUMN TESTSCHEMA.tmp_SomeTable.otherField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[otherField]/TYPE:[DECIMAL]'",
+        "COMMENT ON COLUMN TESTSCHEMA.tmp_SomeTable.thirdField IS 'REALNAME:[thirdField]/TYPE:[DECIMAL]'",
+        "DROP TABLE TESTSCHEMA.SomeTable CASCADE CONSTRAINTS",
+        "ALTER TABLE TESTSCHEMA.tmp_SomeTable RENAME CONSTRAINT tmp_SomeTable_PK TO SomeTable_PK",
+        "ALTER INDEX TESTSCHEMA.tmp_SomeTable_PK RENAME TO SomeTable_PK",
+        "ALTER TABLE TESTSCHEMA.tmp_SomeTable RENAME TO SomeTable",
+        "COMMENT ON TABLE TESTSCHEMA.SomeTable IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable]'",
+        "CREATE INDEX TESTSCHEMA.SomeTable_1 ON TESTSCHEMA.SomeTable (otherField) PARALLEL NOLOGGING",
+        "ALTER INDEX TESTSCHEMA.SomeTable_1 NOPARALLEL LOGGING"
+    );
+  }
+
+
+  public List<String> expectedReplaceTableWithAutonumber() {
+    return ImmutableList.of(
+        "CREATE TABLE TESTSCHEMA.tmp_SomeTable (someField  NOT NULL, otherField  NOT NULL, thirdField  NOT NULL, CONSTRAINT tmp_SomeTable_PK PRIMARY KEY (someField) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.tmp_SomeTable_PK ON TESTSCHEMA.tmp_SomeTable (someField))) PARALLEL NOLOGGING AS SELECT CAST(someField AS NVARCHAR2(3)) AS someField, CAST(otherField AS DECIMAL(3,0)) AS otherField, CAST(thirdField AS DECIMAL(5,0)) AS thirdField FROM TESTSCHEMA.OtherTable",
+        "ALTER TABLE TESTSCHEMA.tmp_SomeTable NOPARALLEL LOGGING",
+        "ALTER INDEX TESTSCHEMA.tmp_SomeTable_PK NOPARALLEL LOGGING",
+        "DECLARE ",
+        "  e exception; ",
+        "  pragma exception_init(e,-4080); ",
+        "BEGIN ",
+        "  EXECUTE IMMEDIATE 'DROP TRIGGER TESTSCHEMA.TMP_SOMETABLE_TG'; ",
+        "EXCEPTION ",
+        "  WHEN e THEN ",
+        "    null; ",
+        "END;",
+        "DECLARE ",
+        "  query CHAR(255); ",
+        "BEGIN ",
+        "  select queryField into query from SYS.DUAL D left outer join (",
+        "    select concat('drop sequence TESTSCHEMA.', sequence_name) as queryField ",
+        "    from ALL_SEQUENCES S ",
+        "    where S.sequence_owner='TESTSCHEMA' AND S.sequence_name = 'TMP_SOMETABLE_SQ' ",
+        "  ) on 1 = 1; ",
+        "  IF query is not null THEN ",
+        "    execute immediate query; ",
+        "  END IF; ",
+        "END;",
+        "CREATE SEQUENCE TESTSCHEMA.TMP_SOMETABLE_SQ START WITH 1 CACHE 2000",
+        "ALTER SESSION SET CURRENT_SCHEMA = testschema",
+        "CREATE TRIGGER TESTSCHEMA.TMP_SOMETABLE_TG ",
+        "BEFORE INSERT ON tmp_SomeTable FOR EACH ROW ",
+        "BEGIN ",
+        "  IF (:new.otherField IS NULL) THEN ",
+        "    SELECT TMP_SOMETABLE_SQ.nextval ",
+        "    INTO :new.otherField ",
+        "    FROM DUAL; ",
+        "  END IF; ",
+        "END;",
+        "COMMENT ON TABLE TESTSCHEMA.tmp_SomeTable IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[tmp_SomeTable]'",
+        "COMMENT ON COLUMN TESTSCHEMA.tmp_SomeTable.someField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[someField]/TYPE:[STRING]'",
+        "COMMENT ON COLUMN TESTSCHEMA.tmp_SomeTable.otherField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[otherField]/TYPE:[DECIMAL]/AUTONUMSTART:[1]'",
+        "COMMENT ON COLUMN TESTSCHEMA.tmp_SomeTable.thirdField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[thirdField]/TYPE:[DECIMAL]'",
+        "DROP TABLE TESTSCHEMA.SomeTable CASCADE CONSTRAINTS",
+        "ALTER TABLE TESTSCHEMA.tmp_SomeTable RENAME CONSTRAINT tmp_SomeTable_PK TO SomeTable_PK",
+        "ALTER INDEX TESTSCHEMA.tmp_SomeTable_PK RENAME TO SomeTable_PK",
+        "ALTER TABLE TESTSCHEMA.tmp_SomeTable RENAME TO SomeTable",
+        "COMMENT ON TABLE TESTSCHEMA.SomeTable IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable]'",
+        "CREATE INDEX TESTSCHEMA.SomeTable_1 ON TESTSCHEMA.SomeTable (otherField) PARALLEL NOLOGGING",
+        "ALTER INDEX TESTSCHEMA.SomeTable_1 NOPARALLEL LOGGING"
+    );
+  }
+
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints1(int)

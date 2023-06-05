@@ -117,6 +117,33 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropSingleTable()
+   */
+  @Override
+  protected List<String> expectedDropSingleTable() {
+    return Arrays.asList("DROP TABLE TESTSCHEMA.Test");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTables()
+   */
+  @Override
+  protected List<String> expectedDropTables() {
+    return Arrays.asList("DROP TABLE TESTSCHEMA.Test, TESTSCHEMA.Other");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTablesWithParameters()
+   */
+  @Override
+  protected List<String> expectedDropTablesWithParameters() {
+    return Arrays.asList("DROP TABLE IF EXISTS TESTSCHEMA.Test, TESTSCHEMA.Other");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTempTableStatements()
    */
   @Override
@@ -1232,6 +1259,32 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
       "CREATE TABLE TESTSCHEMA.SomeTable ([someField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [otherField] NUMERIC(3,0) NOT NULL, CONSTRAINT [SomeTable_PK] PRIMARY KEY ([someField]))",
       "CREATE INDEX SomeTable_1 ON TESTSCHEMA.SomeTable ([otherField])",
       "INSERT INTO TESTSCHEMA.SomeTable SELECT someField, otherField FROM TESTSCHEMA.OtherTable"
+    );
+  }
+
+
+  protected List<String> expectedReplaceTableFromStatements() {
+    return ImmutableList.of(
+        "CREATE TABLE TESTSCHEMA.tmp_SomeTable ([someField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [otherField] NUMERIC(3,0) NOT NULL, [thirdField] NUMERIC(5,0) NOT NULL, CONSTRAINT [tmp_SomeTable_PK] PRIMARY KEY ([someField]))",
+        "INSERT INTO TESTSCHEMA.tmp_SomeTable SELECT someField, otherField, CAST(thirdField AS NUMERIC(5,0)) AS thirdField FROM TESTSCHEMA.OtherTable",
+        "DROP TABLE TESTSCHEMA.SomeTable",
+        "IF EXISTS (SELECT 1 FROM sys.objects WHERE OBJECT_ID = OBJECT_ID(N'tmp_SomeTable_version_DF') AND type = (N'D')) exec sp_rename N'tmp_SomeTable_version_DF', N'SomeTable_version_DF'",
+        "sp_rename N'tmp_SomeTable.tmp_SomeTable_PK', N'SomeTable_PK', N'INDEX'",
+        "sp_rename N'tmp_SomeTable', N'SomeTable'",
+        "CREATE INDEX SomeTable_1 ON TESTSCHEMA.SomeTable ([otherField])"
+    );
+  }
+
+
+  protected List<String> expectedReplaceTableWithAutonumber() {
+    return ImmutableList.of(
+        "CREATE TABLE TESTSCHEMA.tmp_SomeTable ([someField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [otherField] NUMERIC(3,0) NOT NULL IDENTITY(1, 1), [thirdField] NUMERIC(5,0) NOT NULL, CONSTRAINT [tmp_SomeTable_PK] PRIMARY KEY ([someField]))",
+        "INSERT INTO TESTSCHEMA.tmp_SomeTable SELECT someField, otherField, CAST(thirdField AS NUMERIC(5,0)) AS thirdField FROM TESTSCHEMA.OtherTable",
+        "DROP TABLE TESTSCHEMA.SomeTable",
+        "IF EXISTS (SELECT 1 FROM sys.objects WHERE OBJECT_ID = OBJECT_ID(N'tmp_SomeTable_version_DF') AND type = (N'D')) exec sp_rename N'tmp_SomeTable_version_DF', N'SomeTable_version_DF'",
+        "sp_rename N'tmp_SomeTable.tmp_SomeTable_PK', N'SomeTable_PK', N'INDEX'",
+        "sp_rename N'tmp_SomeTable', N'SomeTable'",
+        "CREATE INDEX SomeTable_1 ON TESTSCHEMA.SomeTable ([otherField])"
     );
   }
 
