@@ -15,6 +15,16 @@
 
 package org.alfasoftware.morf.jdbc;
 
+import com.google.common.base.Joiner;
+import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableList.Builder;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.hash.Hashing;
+import com.google.common.io.CharSource;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
@@ -27,6 +37,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +45,6 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataSetUtils;
@@ -89,19 +99,12 @@ import org.alfasoftware.morf.upgrade.ChangeColumn;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.joda.time.LocalDate;
 import org.joda.time.Months;
 
-import com.google.common.base.Joiner;
-import com.google.common.collect.FluentIterable;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableList.Builder;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.hash.Hashing;
-import com.google.common.io.CharSource;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
 
 /**
  * Provides functionality for generating SQL statements.
@@ -3716,6 +3719,121 @@ public abstract class SqlDialect {
 
 
   /**
+   * Generates the SQL to create a table and insert the data specified in the {@link SelectStatement}.
+   *
+   * For supported dialects, this method casts each field in the provided select using the column definition of the provided table.
+   *
+   * Validation is performed to confirm that the fields included in the select statement correspond to the table columns.
+   *
+   * @param table The table to create.
+   * @param selectStatement The {@link SelectStatement}
+   * @return A collection of SQL statements
+   */
+  public Collection<String> addTableFromStatementsWithCasting(Table table, SelectStatement selectStatement) {
+    return addTableFromStatements(table, selectStatement);
+  }
+
+
+  /**
+   * This method:
+   * - Uses the provided select statement to generate a CTAS statement using a temporary name
+   * - Drops the original table
+   * - Renames the new table using the original table's name
+   * - Adds indexes from the original table
+   *
+   * @param originalTable the original table this method will replace
+   * @param selectStatement the statement used to populate the replacement table via a CTAS
+   * @return a list of statements for the operation
+   */
+  public List<String> replaceTableFromStatements(Table originalTable, SelectStatement selectStatement) {
+
+    // Due to morf's oracle table length restrictions, our temporary table name cannot be longer than 27 characters
+    final Table newTable = SchemaUtils.table("tmp_" + StringUtils.substring(originalTable.getName(), 0, 23))
+        .columns(originalTable.columns());
+
+    validateStatement(originalTable, selectStatement);
+
+    // Generate the SQL for the CTAS and post-CTAS operations
+    final List<String> createTableStatements = Lists.newArrayList();
+    createTableStatements.addAll(addTableFromStatementsWithCasting(newTable, selectStatement));
+    createTableStatements.addAll(dropTables(ImmutableList.of(originalTable), false, true));
+    createTableStatements.addAll(renameTableStatements(newTable, originalTable));
+    createTableStatements.addAll(createAllIndexStatements(originalTable));
+
+    return createTableStatements;
+  }
+
+
+  private void validateStatement(Table table, SelectStatement selectStatement) {
+    final String separator = "\n    ";
+
+    List<String> tableColumns = table.columns().stream().map(Column::getName).collect(toList());
+    List<String> selectColumns = selectStatement.getFields().stream().map(SqlDialect::getFieldName).collect(toList());
+
+    if (tableColumns.size() != selectColumns.size()) {
+     throw new IllegalArgumentException("Number of table columns [" + tableColumns.size() + "] does not match number of select columns [" + selectColumns.size() + "].");
+    }
+
+    ImmutableList.Builder<Pair<String,String>> differences = ImmutableList.builder();
+    Iterator<String> tableColumnsIterator = tableColumns.iterator();
+    Iterator<String> selectColumnsIterator = selectColumns.iterator();
+
+    while (tableColumnsIterator.hasNext() && selectColumnsIterator.hasNext()) {
+      String tableColumn = tableColumnsIterator.next();
+      String selectColumn = selectColumnsIterator.next();
+      if (!tableColumn.equalsIgnoreCase(selectColumn)) {
+        differences.add(Pair.of(tableColumn, selectColumn));
+      }
+    }
+
+    List<Pair<String, String>> diffs = differences.build();
+    if (!diffs.isEmpty()) {
+      throw new IllegalArgumentException("Table columns do not match select columns"
+                      + "\nMismatching pairs:" + separator + diffs.stream().map(p -> p.getLeft() + " <> " + p.getRight()).collect(joining(separator)));
+    }
+  }
+
+
+  private static String getFieldName(AliasedField field) {
+    if (!StringUtils.isBlank(field.getAlias())) {
+      return field.getAlias();
+    }
+    if (!StringUtils.isBlank(field.getImpliedName())) {
+      return field.getImpliedName();
+    }
+    return field.toString();
+  }
+
+
+  /**
+   * For some dialects, this casting is required, as the type may not be inferred for every field in the select statement.
+   */
+  protected SelectStatement addCastsToSelect(Table table, SelectStatement selectStatement) {
+    SelectStatement statementWithCasts = selectStatement.deepCopy();
+    for (int i = 0; i < table.columns().size(); i++) {
+      AliasedField field = statementWithCasts.getFields().get(i);
+      Column column = table.columns().get(i);
+
+      if (fieldRequiresCast(field, column)) {
+        AliasedField fieldWithCast = field.cast().asType(column.getType(), column.getWidth(), column.getScale()).build().as(column.getName());
+        statementWithCasts.getFields().set(i, fieldWithCast);
+      }
+    }
+    return statementWithCasts;
+  }
+
+
+  private boolean fieldRequiresCast(AliasedField field, Column column) {
+    if (!(field instanceof Cast)) {
+      return true;
+    }
+
+    Cast cast = (Cast) field;
+    return cast.getDataType() != column.getType() || cast.getWidth() != column.getWidth() || cast.getScale() != column.getScale();
+  }
+
+
+  /**
    * Generates the SQL to add an index to an existing table.
    *
    * @param table The existing table.
@@ -3724,6 +3842,21 @@ public abstract class SqlDialect {
    */
   public Collection<String> addIndexStatements(Table table, Index index) {
     return indexDeploymentStatements(table, index);
+  }
+
+
+  /**
+   * Helper method to create all index statements defined for a table
+   *
+   * @param table the table to create indexes for
+   * @return a list of index statements
+   */
+  protected List<String> createAllIndexStatements(Table table) {
+    List<String> indexStatements = new ArrayList<>();
+    for (Index index : table.indexes()) {
+      indexStatements.addAll(addIndexStatements(table, index));
+    }
+    return indexStatements;
   }
 
 
@@ -4180,6 +4313,8 @@ public abstract class SqlDialect {
   protected String getSqlForInsertInto(@SuppressWarnings("unused") InsertStatement insertStatement) {
     return "INSERT INTO ";
   }
+
+
 
 
   /**

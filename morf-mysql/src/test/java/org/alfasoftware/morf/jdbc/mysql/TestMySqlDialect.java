@@ -1196,6 +1196,32 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   }
 
 
+  @Override
+  protected List<String> expectedReplaceTableFromStatements() {
+    return ImmutableList.of(
+      "CREATE TABLE `tmp_SomeTable` (`someField` VARCHAR(3) NOT NULL, `otherField` DECIMAL(3,0) NOT NULL, `thirdField` DECIMAL(5,0) NOT NULL, CONSTRAINT `tmp_SomeTable_PK` PRIMARY KEY (`someField`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin",
+          "INSERT INTO tmp_SomeTable SELECT someField, otherField, CAST(thirdField AS DECIMAL(5,0)) AS thirdField FROM OtherTable",
+          "FLUSH TABLES `SomeTable`",
+          "DROP TABLE `SomeTable` CASCADE",
+          "RENAME TABLE tmp_SomeTable TO SomeTable",
+          "ALTER TABLE `SomeTable` ADD INDEX `SomeTable_1` (`otherField`)"
+    );
+  }
+
+
+  @Override
+  protected List<String> expectedReplaceTableWithAutonumber() {
+    return ImmutableList.of(
+        "CREATE TABLE `tmp_SomeTable` (`someField` VARCHAR(3) NOT NULL, `otherField` DECIMAL(3,0) AUTO_INCREMENT COMMENT 'AUTONUMSTART:[1]', `thirdField` DECIMAL(5,0) NOT NULL, CONSTRAINT `tmp_SomeTable_PK` PRIMARY KEY (`someField`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin AUTO_INCREMENT=1",
+        "INSERT INTO tmp_SomeTable SELECT someField, otherField, CAST(thirdField AS DECIMAL(5,0)) AS thirdField FROM OtherTable",
+        "FLUSH TABLES `SomeTable`",
+        "DROP TABLE `SomeTable` CASCADE",
+        "RENAME TABLE tmp_SomeTable TO SomeTable",
+        "ALTER TABLE `SomeTable` ADD INDEX `SomeTable_1` (`otherField`)"
+    );
+  }
+
+
   /**
    * We only support {@link SelectStatement#useImplicitJoinOrder()}, and only to a limited extent.
    *

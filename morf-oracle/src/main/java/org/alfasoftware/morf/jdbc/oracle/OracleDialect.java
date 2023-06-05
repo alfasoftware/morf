@@ -450,6 +450,9 @@ class OracleDialect extends SqlDialect {
     if (DataType.CLOB.equals(cast.getDataType())) {
       return String.format("TO_CLOB(%s)", getSqlFrom(cast.getExpression()));
     }
+    if (DataType.BLOB.equals(cast.getDataType())) {
+      return String.format("TO_BLOB(%s)", getSqlFrom(cast.getExpression()));
+    }
     return super.getSqlFrom(cast);
   }
 
@@ -1133,13 +1136,24 @@ class OracleDialect extends SqlDialect {
    */
   @Override
   public Collection<String> addTableFromStatements(Table table, SelectStatement selectStatement) {
+    return internalAddTableFromStatements(table, selectStatement, false);
+  }
+
+
+  @Override
+  public Collection<String> addTableFromStatementsWithCasting(Table table, SelectStatement selectStatement) {
+    return internalAddTableFromStatements(table, selectStatement, true);
+  }
+
+
+  private Collection<String> internalAddTableFromStatements(Table table, SelectStatement selectStatement, boolean withCasting) {
     Builder<String> result = ImmutableList.<String>builder();
     result.add(new StringBuilder()
-        .append(createTableStatement(table, true))
-        .append(" AS ")
-        .append(convertStatementToSQL(selectStatement))
-        .toString()
-      );
+            .append(createTableStatement(table, true))
+            .append(" AS ")
+            .append(withCasting ? convertStatementToSQL(addCastsToSelect(table, selectStatement)) : convertStatementToSQL(selectStatement))
+            .toString()
+    );
     result.add("ALTER TABLE " + schemaNamePrefix() + table.getName()  + " NOPARALLEL LOGGING");
 
     if (!primaryKeysForTable(table).isEmpty()) {
