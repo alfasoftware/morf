@@ -1,21 +1,12 @@
 package org.alfasoftware.morf.upgrade;
 
-import com.google.common.collect.ImmutableList;
-import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import static org.alfasoftware.morf.sql.SqlUtils.insert;
-import static org.alfasoftware.morf.sql.SqlUtils.literal;
-import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME;
 
 /**
  * Helper class to for pre and post upgrade SQL statement generation.
@@ -70,59 +61,4 @@ class UpgradeHelper {
         return upgrades;
     }
 
-
-    /**
-     * postUpgrade - generates a collection of SQL statements to run after he upgrade.
-     * @param targetSchema - Schema which is to be deployed.
-     * @param viewChanges - Changes to be made to views.
-     * @param viewChangesDeploymentHelper - Deployment helper for the view changes.
-     * @param upgradesToApply - upgrades which are to be applied to schema.
-     * @param connectionResources - connection resources to connect to the database.
-     * @return - Collection of SQL Statements.
-     */
-    static Collection<String> postGraphSchemaUpgrade(Schema targetSchema,
-                                                ViewChanges viewChanges,
-                                                ViewChangesDeploymentHelper viewChangesDeploymentHelper,
-                                                List<UpgradeStep> upgradesToApply,
-                                                ConnectionResources connectionResources,
-                                                Table idTable) {
-        List<String> upgrades = new ArrayList<>();
-
-        // temp table drop
-        upgrades.addAll(connectionResources.sqlDialect().truncateTableStatements(idTable));
-        upgrades.addAll(connectionResources.sqlDialect().dropStatements(idTable));
-
-        // recreate views
-        for (View view : viewChanges.getViewsToDeploy()) {
-            upgrades.addAll(connectionResources.sqlDialect().viewDeploymentStatements(view));
-            if (targetSchema.tableExists(DEPLOYED_VIEWS_NAME)) {
-                upgrades.addAll(
-                        connectionResources.sqlDialect().convertStatementToSQL(
-                                insert().into(tableRef(DEPLOYED_VIEWS_NAME))
-                                        .values(
-                                                literal(view.getName().toUpperCase()).as("name"),
-                                                literal(connectionResources.sqlDialect().convertStatementToHash(view.getSelectStatement())).as("hash"),
-                                                connectionResources.sqlDialect().viewDeploymentStatementsAsLiteral(view).as("sqlDefinition"))
-                        ));
-            }
-        }
-
-        // Since Oracle is not able to re-map schema references in trigger code, we need to rebuild all triggers
-        // for id column autonumbering when exporting and importing data between environments.
-        // We will drop-and-recreate triggers whenever there are upgrade steps to execute. Ideally we'd want to do
-        // this step once, however there's no easy way to do that with our upgrade framework.
-        AtomicBoolean first = new AtomicBoolean(true);
-        targetSchema.tables().stream()
-                .map(t -> connectionResources.sqlDialect().rebuildTriggers(t))
-                .filter(triggerSql -> !triggerSql.isEmpty())
-                .peek(triggerSql -> {
-                    if (first.compareAndSet(true, false)) {
-                        upgrades.addAll(ImmutableList.of(
-                                connectionResources.sqlDialect().convertCommentToSQL("Upgrades executed. Rebuilding all triggers to account for potential changes to autonumbered columns")
-                        ));
-                    }
-                })
-                .forEach(upgrades::addAll);
-        return upgrades;
-    }
 }
