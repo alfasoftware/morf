@@ -177,7 +177,7 @@ public class Upgrade {
 
     // Get access to the schema we are starting from
     log.info("Reading current schema");
-    Schema sourceSchema = copySourceSchema(connectionResources, dataSource, exceptionRegexes);
+    Schema sourceSchema = UpgradeHelper.copySourceSchema(connectionResources, dataSource, exceptionRegexes);
     SqlDialect dialect = connectionResources.sqlDialect();
 
     // -- Get the current UUIDs and deployed views...
@@ -283,7 +283,7 @@ public class Upgrade {
 
     UpgradePath path = factory.create(upgradesToApply, connectionResources, graphBasedUpgradeBuilder);
 
-    path.writeSql(UpgradeHelper.preSchemaUpgrade(sourceSchema, targetSchema, viewChanges, viewChangesDeploymentHelper));
+    path.writeSql(UpgradeHelper.preSchemaUpgrade(new UpgradeSchemas(sourceSchema, targetSchema), viewChanges, viewChangesDeploymentHelper));
 
     path.writeSql(upgradeStatements);
 
@@ -310,24 +310,6 @@ public class Upgrade {
     }
 
     return path;
-  }
-
-
-  /**
-   * Gets the source schema from the {@code database}.
-   *
-   * @param database the database to connect to.
-   * @param dataSource the dataSource to use.
-   * @param exceptionRegexes
-   * @return the schema.
-   */
-  private Schema copySourceSchema(ConnectionResources database, DataSource dataSource, Collection<String> exceptionRegexes) {
-    SchemaResource databaseSchemaResource = database.openSchemaResource(dataSource);
-    try {
-      return copy(databaseSchemaResource, exceptionRegexes);
-    } finally {
-      databaseSchemaResource.close();
-    }
   }
 
 

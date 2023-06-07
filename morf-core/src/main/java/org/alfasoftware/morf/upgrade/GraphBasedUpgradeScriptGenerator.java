@@ -20,8 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 class GraphBasedUpgradeScriptGenerator {
 
-  private final Schema sourceSchema;
-  private final Schema targetSchema;
+  private final UpgradeSchemas upgradeSchemas;
   private final ConnectionResources connectionResources;
   private final Table idTable;
   private final ViewChanges viewChanges;
@@ -34,22 +33,20 @@ class GraphBasedUpgradeScriptGenerator {
   /**
    * Default constructor.
    *
-   * @param sourceSchema schema prior to upgrade step
-   * @param targetSchema target schema to upgrade to
+   * @param upgradeSchemas source and target schemas used in the upgrade.
    * @param connectionResources connection resources with a dialect to generate statements for the target database
    * @param idTable table for id generation
    * @param viewChanges view changes which need to be made to match the target schema
    * @param upgradeStatusTableService used to generate a script needed to update the transient "zzzUpgradeStatus" table
    */
-  GraphBasedUpgradeScriptGenerator(UpgradeSchemas schemas,
+  GraphBasedUpgradeScriptGenerator(UpgradeSchemas upgradeSchemas,
                                    ConnectionResources connectionResources,
                                    Table idTable,
                                    ViewChanges viewChanges,
                                    UpgradeStatusTableService upgradeStatusTableService,
                                    Set<UpgradeScriptAddition> upgradeScriptAdditions,
                                    ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory) {
-    this.sourceSchema = schemas.getSourceSchema();
-    this.targetSchema = schemas.getTargetSchema();
+    this.upgradeSchemas = upgradeSchemas;
     this.connectionResources = connectionResources;
     this.idTable = idTable;
     this.viewChanges = viewChanges;
@@ -71,8 +68,7 @@ class GraphBasedUpgradeScriptGenerator {
     // temp table
     statements.addAll(connectionResources.sqlDialect().tableDeploymentStatements(idTable));
 
-    statements.addAll(UpgradeHelper.preSchemaUpgrade(sourceSchema,
-            targetSchema,
+    statements.addAll(UpgradeHelper.preSchemaUpgrade(upgradeSchemas,
             viewChanges,
             viewChangesDeploymentHelperFactory.create(connectionResources)));
 
@@ -90,7 +86,7 @@ class GraphBasedUpgradeScriptGenerator {
     statements.addAll(connectionResources.sqlDialect().truncateTableStatements(idTable));
     statements.addAll(connectionResources.sqlDialect().dropStatements(idTable));
 
-    statements.addAll(UpgradeHelper.postSchemaUpgrade(targetSchema,
+    statements.addAll(UpgradeHelper.postSchemaUpgrade(upgradeSchemas.getTargetSchema(),
             viewChanges,
             viewChangesDeploymentHelperFactory.create(connectionResources)));
 
@@ -99,7 +95,7 @@ class GraphBasedUpgradeScriptGenerator {
     // We will drop-and-recreate triggers whenever there are upgrade steps to execute. Ideally we'd want to do
     // this step once, however there's no easy way to do that with our upgrade framework.
     AtomicBoolean first = new AtomicBoolean(true);
-    targetSchema.tables().stream()
+    upgradeSchemas.getTargetSchema().tables().stream()
       .map(t -> connectionResources.sqlDialect().rebuildTriggers(t))
       .filter(triggerSql -> !triggerSql.isEmpty())
       .peek(triggerSql -> {

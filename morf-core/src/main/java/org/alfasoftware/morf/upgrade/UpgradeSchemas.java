@@ -5,7 +5,7 @@ import org.alfasoftware.morf.metadata.Schema;
 /**
  * Composite object to hold source and target schemas.
  */
-class UpgradeSchemas {
+public class UpgradeSchemas {
 
     /**
      * Object to hold schema pre upgrade.

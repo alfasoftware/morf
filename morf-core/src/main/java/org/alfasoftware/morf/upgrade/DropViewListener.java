@@ -7,7 +7,7 @@ import org.alfasoftware.morf.metadata.View;
 
 /**
  *
- * Listener for calls to {@link ViewChangesDeploymentHelper#dropViewIfExists(View)}.
+ * Listener for calls to {@link ViewChangesDeploymentHelper#dropViewIfExists(View, boolean, UpgradeSchemas)}.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2021
  */
@@ -15,20 +15,42 @@ import org.alfasoftware.morf.metadata.View;
 public interface DropViewListener {
 
   /**
-   * Called during {@link ViewChangesDeploymentHelper#dropViewIfExists(View)}.
+   * Called during {@link ViewChangesDeploymentHelper#dropViewIfExists(View, boolean, UpgradeSchemas)}.
    *
+   * @param view View being de-registered.
+   * @param upgradeSchemas source and target schemas for the upgrade.
+   * @return Should return statements to be part of view removal, after the view is de-registered.
+   */
+
+  public default Iterable<String> deregisterView(View view, UpgradeSchemas upgradeSchemas) {
+    return deregisterView(view);
+  }
+
+  /**
    * @param view View being de-registered.
    * @return Should return statements to be part of view removal, after the view is de-registered.
    */
-  public Iterable<String> deregisterView(View view);
-
+  @Deprecated
+  public default Iterable<String> deregisterView(View view) {
+   return ImmutableList.of();
+  }
 
   /**
-   * Called during {@link ViewChangesDeploymentHelper#deregisterAllViews()}.
+   * Called during {@link ViewChangesDeploymentHelper#dropViewIfExists(View, boolean, UpgradeSchemas)}.
    *
+   * @param view View being de-registered.
+   * @param upgradeSchemas source and target schemas for the upgrade.
+   * @return Should return statements to be part of view removal, after the view is de-registered.
+   */
+  public default Iterable<String> deregisterAllViews(UpgradeSchemas upgradeSchemas) { return deregisterAllViews(); }
+
+  /**
    * @return Should return statements to be part of all views removal.
    */
-  public Iterable<String> deregisterAllViews();
+  @Deprecated
+  public default Iterable<String> deregisterAllViews() {
+    return ImmutableList.of();
+  }
 
 
   /**
