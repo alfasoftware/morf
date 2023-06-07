@@ -312,8 +312,6 @@ public class TestUpgrade {
    */
   @Test
   public void testUpgradeWithNoStepsToApply() {
-
-
     Table upgradeAudit = upgradeAudit();
 
     Schema targetSchema = schema(upgradeAudit);

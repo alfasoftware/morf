@@ -13,9 +13,11 @@ import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.alfasoftware.morf.sql.SqlUtils.*;
+import static org.alfasoftware.morf.sql.SqlUtils.delete;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
+import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME;
 
 /**
@@ -103,12 +105,31 @@ class GraphBasedUpgradeScriptGenerator {
   public List<String> generatePostUpgradeStatements(List<UpgradeStep> upgradeSteps) {
     List<String> statements = new ArrayList<>();
 
-    statements.addAll(UpgradeHelper.postGraphSchemaUpgrade(targetSchema,
+
+    // temp table drop
+    statements.addAll(connectionResources.sqlDialect().truncateTableStatements(idTable));
+    statements.addAll(connectionResources.sqlDialect().dropStatements(idTable));
+
+    statements.addAll(UpgradeHelper.postSchemaUpgrade(targetSchema,
             viewChanges,
-            viewChangesDeploymentHelperFactory.create(connectionResources),
-            upgradeSteps,
-            connectionResources,
-            idTable));
+            viewChangesDeploymentHelperFactory.create(connectionResources)));
+
+    // Since Oracle is not able to re-map schema references in trigger code, we need to rebuild all triggers
+    // for id column autonumbering when exporting and importing data between environments.
+    // We will drop-and-recreate triggers whenever there are upgrade steps to execute. Ideally we'd want to do
+    // this step once, however there's no easy way to do that with our upgrade framework.
+    AtomicBoolean first = new AtomicBoolean(true);
+    targetSchema.tables().stream()
+            .map(t -> connectionResources.sqlDialect().rebuildTriggers(t))
+            .filter(sql -> !sql.isEmpty())
+            .peek(sql -> {
+              if (first.compareAndSet(true, false)) {
+                statements.addAll(ImmutableList.of(
+                        connectionResources.sqlDialect().convertCommentToSQL("Upgrades executed. Rebuilding all triggers to account for potential changes to autonumbered columns")
+                ));
+              }
+            })
+            .forEach(statements::addAll);
 
     // upgrade script additions (if any)
     upgradeScriptAdditions.stream()

@@ -116,12 +116,11 @@ public class Deployment {
       sqlStatementWriter.writeSql(connectionResources.sqlDialect().tableDeploymentStatements(table));
     }
 
-    // Iterate through all the views and deploy them - will deploy in dependency order.
-    final boolean updateDeloyedViews = targetSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME);
     ViewChanges viewChanges = new ViewChanges(targetSchema.views(), new HashSet<>(), targetSchema.views());
-    for (View view : viewChanges.getViewsToDeploy()) {
-      sqlStatementWriter.writeSql(viewChangesDeploymentHelper.createView(view, updateDeloyedViews));
-    }
+    sqlStatementWriter.writeSql(UpgradeHelper.postSchemaUpgrade(targetSchema,
+            viewChanges,
+            viewChangesDeploymentHelper));
+
   }
 
 

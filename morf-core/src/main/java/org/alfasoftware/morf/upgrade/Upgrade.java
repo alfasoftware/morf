@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.upgrade;
 
+import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -43,6 +44,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.alfasoftware.morf.metadata.SchemaUtils.copy;
 import static org.alfasoftware.morf.sql.SelectStatement.select;
@@ -288,7 +290,27 @@ public class Upgrade {
 
     Table idTable = SqlDialect.IdTable.withPrefix(connectionResources.sqlDialect(), "temp_id_", false);
 
-    path.writeSql(UpgradeHelper.postSchemaUpgrade(targetSchema, viewChanges, viewChangesDeploymentHelper, upgradesToApply, connectionResources, idTable));
+    path.writeSql(UpgradeHelper.postSchemaUpgrade(targetSchema, viewChanges, viewChangesDeploymentHelper));
+
+    // Since Oracle is not able to re-map schema references in trigger code, we need to rebuild all triggers
+    // for id column autonumbering when exporting and importing data between environments.
+    // We will drop-and-recreate triggers whenever there are upgrade steps to execute. Ideally we'd want to do
+    // this step once, however there's no easy way to do that with our upgrade framework.
+    if (!upgradesToApply.isEmpty()) {
+
+      AtomicBoolean first = new AtomicBoolean(true);
+      targetSchema.tables().stream()
+        .map(t -> connectionResources.sqlDialect().rebuildTriggers(t))
+        .filter(sql -> !sql.isEmpty())
+        .peek(sql -> {
+            if (first.compareAndSet(true, false)) {
+              path.writeSql(ImmutableList.of(
+                connectionResources.sqlDialect().convertCommentToSQL("Upgrades executed. Rebuilding all triggers to account for potential changes to autonumbered columns")
+              ));
+            }
+        })
+        .forEach(path::writeSql);
+    }
 
     return path;
   }

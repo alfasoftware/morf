@@ -122,18 +122,16 @@ public class TestGraphBasedUpgradeScriptGenerator {
     when(sqlDialect.dropStatements(idTable)).thenReturn(Lists.newArrayList("2"));
     when(viewChanges.getViewsToDeploy()).thenReturn(Lists.newArrayList(view));
     when(view.getName()).thenReturn("x");
-    when(sqlDialect.viewDeploymentStatements(view)).thenReturn(Lists.newArrayList("3"));
     when(sqlDialect.viewDeploymentStatementsAsLiteral(view)).thenReturn(literal("9"));
     when(targetSchema.tableExists(nullable(String.class))).thenReturn(true);
-    when(sqlDialect.convertStatementToSQL(any(InsertStatement.class))).thenReturn(Lists.newArrayList("4"));
     when(targetSchema.tables()).thenReturn(Lists.newArrayList(table));
     when(sqlDialect.convertCommentToSQL(any(String.class))).thenReturn("5");
     when(sqlDialect.rebuildTriggers(table)).thenReturn(Lists.newArrayList("6"));
     when(upgradeScriptAddition.sql(connectionResources)).thenReturn(Lists.newArrayList("7"));
     when(upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED)).thenReturn(Lists.newArrayList("8"));
     when(viewChangesDeploymentHelperFactory.create(any(ConnectionResources.class))).thenReturn(viewChangesDeploymentHelper);
-    when(viewChangesDeploymentHelper.dropViewIfExists(eq(view), any(Boolean.class))).thenReturn(Lists.newArrayList("3"));
-    when(viewChangesDeploymentHelper.deregisterViewIfExists(eq(view), any(Boolean.class))).thenReturn(Lists.newArrayList("4"));
+    when(viewChangesDeploymentHelper.createView(eq(view), eq(true))).thenReturn(Lists.newArrayList("3", "4"));
+
 
 
     // when
