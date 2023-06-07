@@ -15,7 +15,6 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -24,7 +23,7 @@ import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaValidator;
-import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.upgrade.ExistingViewStateLoader.Result;
@@ -44,7 +43,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.alfasoftware.morf.metadata.SchemaUtils.copy;
 import static org.alfasoftware.morf.sql.SelectStatement.select;
@@ -284,42 +282,13 @@ public class Upgrade {
 
     UpgradePath path = factory.create(upgradesToApply, connectionResources, graphBasedUpgradeBuilder);
 
-    final boolean deleteFromDeployedViews = sourceSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME) && targetSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME);
-    for (View view : viewChanges.getViewsToDrop()) {
-      if (sourceSchema.viewExists(view.getName())) {
-        path.writeSql(viewChangesDeploymentHelper.dropViewIfExists(view, deleteFromDeployedViews));
-      }
-      else {
-        path.writeSql(viewChangesDeploymentHelper.deregisterViewIfExists(view, deleteFromDeployedViews));
-      }
-    }
+    path.writeSql(UpgradeHelper.preSchemaUpgrade(sourceSchema, targetSchema, viewChanges, viewChangesDeploymentHelper));
 
     path.writeSql(upgradeStatements);
 
-    final boolean insertToDeployedViews = targetSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME);
-    for (View view : viewChanges.getViewsToDeploy()) {
-      path.writeSql(viewChangesDeploymentHelper.createView(view, insertToDeployedViews));
-    }
+    Table idTable = SqlDialect.IdTable.withPrefix(connectionResources.sqlDialect(), "temp_id_", false);
 
-    // Since Oracle is not able to re-map schema references in trigger code, we need to rebuild all triggers
-    // for id column autonumbering when exporting and importing data between environments.
-    // We will drop-and-recreate triggers whenever there are upgrade steps to execute. Ideally we'd want to do
-    // this step once, however there's no easy way to do that with our upgrade framework.
-    if (!upgradesToApply.isEmpty()) {
-
-      AtomicBoolean first = new AtomicBoolean(true);
-      targetSchema.tables().stream()
-        .map(t -> connectionResources.sqlDialect().rebuildTriggers(t))
-        .filter(sql -> !sql.isEmpty())
-        .peek(sql -> {
-            if (first.compareAndSet(true, false)) {
-              path.writeSql(ImmutableList.of(
-                connectionResources.sqlDialect().convertCommentToSQL("Upgrades executed. Rebuilding all triggers to account for potential changes to autonumbered columns")
-              ));
-            }
-        })
-        .forEach(path::writeSql);
-    }
+    path.writeSql(UpgradeHelper.postSchemaUpgrade(targetSchema, viewChanges, viewChangesDeploymentHelper, upgradesToApply, connectionResources, idTable));
 
     return path;
   }

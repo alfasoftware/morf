@@ -23,8 +23,7 @@ import java.util.List;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertNotNull;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 
 /**
@@ -72,11 +71,20 @@ public class TestGraphBasedUpgradeScriptGenerator {
   @Mock
   private UpgradeScriptAdditionsProvider upgradeScriptAdditionsProvider;
 
+  @Mock
+  private ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory;
+
+  @Mock
+  private SchemaChangeSequence schemaChangeSequence;
+
+  @Mock
+  private ViewChangesDeploymentHelper viewChangesDeploymentHelper;
+
   @Before
   public void setup() {
     MockitoAnnotations.openMocks(this);
     gen = new GraphBasedUpgradeScriptGenerator(sourceSchema, targetSchema, connectionResources, idTable, viewChanges,
-        upgradeStatusTableService, Sets.newSet(upgradeScriptAddition));
+        upgradeStatusTableService, Sets.newSet(upgradeScriptAddition), viewChangesDeploymentHelperFactory);
 
 
   }
@@ -95,7 +103,9 @@ public class TestGraphBasedUpgradeScriptGenerator {
     when(sourceSchema.tableExists(nullable(String.class))).thenReturn(true);
     when(targetSchema.tableExists(nullable(String.class))).thenReturn(true);
     when(sqlDialect.convertStatementToSQL(any(DeleteStatement.class))).thenReturn("4");
-
+    when(viewChangesDeploymentHelperFactory.create(any(ConnectionResources.class))).thenReturn(viewChangesDeploymentHelper);
+    when(viewChangesDeploymentHelper.dropViewIfExists(eq(view), any(Boolean.class))).thenReturn(Lists.newArrayList("3"));
+    when(viewChangesDeploymentHelper.deregisterViewIfExists(eq(view), any(Boolean.class))).thenReturn(Lists.newArrayList("4"));
     // when
     List<String> statements = gen.generatePreUpgradeStatements();
 
@@ -121,10 +131,13 @@ public class TestGraphBasedUpgradeScriptGenerator {
     when(sqlDialect.rebuildTriggers(table)).thenReturn(Lists.newArrayList("6"));
     when(upgradeScriptAddition.sql(connectionResources)).thenReturn(Lists.newArrayList("7"));
     when(upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED)).thenReturn(Lists.newArrayList("8"));
+    when(viewChangesDeploymentHelperFactory.create(any(ConnectionResources.class))).thenReturn(viewChangesDeploymentHelper);
+    when(viewChangesDeploymentHelper.dropViewIfExists(eq(view), any(Boolean.class))).thenReturn(Lists.newArrayList("3"));
+    when(viewChangesDeploymentHelper.deregisterViewIfExists(eq(view), any(Boolean.class))).thenReturn(Lists.newArrayList("4"));
 
 
     // when
-    List<String> statements = gen.generatePostUpgradeStatements();
+    List<String> statements = gen.generatePostUpgradeStatements(schemaChangeSequence.getUpgradeSteps());
 
     // then
     assertThat(statements, Matchers.contains("1", "2", "3", "4", "5", "6", "7", "8"));
@@ -135,7 +148,7 @@ public class TestGraphBasedUpgradeScriptGenerator {
   public void testFactory() {
     // given
     when(upgradeScriptAdditionsProvider.getUpgradeScriptAdditions()).thenReturn(Sets.newSet(upgradeScriptAddition));
-    GraphBasedUpgradeScriptGeneratorFactory factory = new GraphBasedUpgradeScriptGeneratorFactory(upgradeStatusTableServiceFactory, upgradeScriptAdditionsProvider);
+    GraphBasedUpgradeScriptGeneratorFactory factory = new GraphBasedUpgradeScriptGeneratorFactory(upgradeStatusTableServiceFactory, upgradeScriptAdditionsProvider, viewChangesDeploymentHelperFactory);
 
     // when
     GraphBasedUpgradeScriptGenerator created = factory.create(sourceSchema, targetSchema, connectionResources, idTable, viewChanges);
