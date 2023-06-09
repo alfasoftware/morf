@@ -120,16 +120,16 @@ class GraphBasedUpgradeScriptGenerator {
     // this step once, however there's no easy way to do that with our upgrade framework.
     AtomicBoolean first = new AtomicBoolean(true);
     targetSchema.tables().stream()
-            .map(t -> connectionResources.sqlDialect().rebuildTriggers(t))
-            .filter(sql -> !sql.isEmpty())
-            .peek(sql -> {
-              if (first.compareAndSet(true, false)) {
-                statements.addAll(ImmutableList.of(
-                        connectionResources.sqlDialect().convertCommentToSQL("Upgrades executed. Rebuilding all triggers to account for potential changes to autonumbered columns")
-                ));
-              }
-            })
-            .forEach(statements::addAll);
+      .map(t -> connectionResources.sqlDialect().rebuildTriggers(t))
+      .filter(triggerSql -> !triggerSql.isEmpty())
+      .peek(triggerSql -> {
+          if (first.compareAndSet(true, false)) {
+            statements.addAll(ImmutableList.of(
+                    connectionResources.sqlDialect().convertCommentToSQL("Upgrades executed. Rebuilding all triggers to account for potential changes to autonumbered columns")
+            ));
+          }
+      })
+      .forEach(statements::addAll);
 
     // upgrade script additions (if any)
     upgradeScriptAdditions.stream()
