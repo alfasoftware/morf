@@ -108,7 +108,7 @@ public class GraphBasedUpgradeBuilder {
 
     List<String> preUpgStatements = scriptGenerator.generatePreUpgradeStatements();
     schemaChangeSequence.applyTo(visitor);
-    List<String> postUpgStatements = scriptGenerator.generatePostUpgradeStatements(schemaChangeSequence.getUpgradeSteps());
+    List<String> postUpgStatements = scriptGenerator.generatePostUpgradeStatements();
 
     if (LOG.isDebugEnabled()) {
       logGraph(root);

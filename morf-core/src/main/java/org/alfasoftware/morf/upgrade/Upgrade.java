@@ -24,7 +24,6 @@ import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaValidator;
-import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.upgrade.ExistingViewStateLoader.Result;
@@ -287,8 +286,6 @@ public class Upgrade {
     path.writeSql(UpgradeHelper.preSchemaUpgrade(sourceSchema, targetSchema, viewChanges, viewChangesDeploymentHelper));
 
     path.writeSql(upgradeStatements);
-
-    Table idTable = SqlDialect.IdTable.withPrefix(connectionResources.sqlDialect(), "temp_id_", false);
 
     path.writeSql(UpgradeHelper.postSchemaUpgrade(targetSchema, viewChanges, viewChangesDeploymentHelper));
 

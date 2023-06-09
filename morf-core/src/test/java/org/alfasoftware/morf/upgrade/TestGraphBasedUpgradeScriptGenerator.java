@@ -7,8 +7,6 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
-import org.alfasoftware.morf.sql.DeleteStatement;
-import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeScriptGenerator.GraphBasedUpgradeScriptGeneratorFactory;
 import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
 import org.hamcrest.Matchers;
@@ -23,7 +21,9 @@ import java.util.List;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertNotNull;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.when;
 
 /**
@@ -75,15 +75,17 @@ public class TestGraphBasedUpgradeScriptGenerator {
   private ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory;
 
   @Mock
-  private SchemaChangeSequence schemaChangeSequence;
+  private ViewChangesDeploymentHelper viewChangesDeploymentHelper;
 
   @Mock
-  private ViewChangesDeploymentHelper viewChangesDeploymentHelper;
+  private UpgradeSchemas upgradeSchemas;
 
   @Before
   public void setup() {
     MockitoAnnotations.openMocks(this);
-    gen = new GraphBasedUpgradeScriptGenerator(sourceSchema, targetSchema, connectionResources, idTable, viewChanges,
+    when(upgradeSchemas.getSourceSchema()).thenReturn(sourceSchema);
+    when(upgradeSchemas.getTargetSchema()).thenReturn(targetSchema);
+    gen = new GraphBasedUpgradeScriptGenerator(upgradeSchemas, connectionResources, idTable, viewChanges,
         upgradeStatusTableService, Sets.newSet(upgradeScriptAddition), viewChangesDeploymentHelperFactory);
 
 
@@ -99,10 +101,8 @@ public class TestGraphBasedUpgradeScriptGenerator {
     when(viewChanges.getViewsToDrop()).thenReturn(Lists.newArrayList(view));
     when(view.getName()).thenReturn("x");
     when(sourceSchema.viewExists(nullable(String.class))).thenReturn(true);
-    when(sqlDialect.dropStatements(view)).thenReturn(Lists.newArrayList("3"));
     when(sourceSchema.tableExists(nullable(String.class))).thenReturn(true);
     when(targetSchema.tableExists(nullable(String.class))).thenReturn(true);
-    when(sqlDialect.convertStatementToSQL(any(DeleteStatement.class))).thenReturn("4");
     when(viewChangesDeploymentHelperFactory.create(any(ConnectionResources.class))).thenReturn(viewChangesDeploymentHelper);
     when(viewChangesDeploymentHelper.dropViewIfExists(eq(view), any(Boolean.class))).thenReturn(Lists.newArrayList("3"));
     when(viewChangesDeploymentHelper.deregisterViewIfExists(eq(view), any(Boolean.class))).thenReturn(Lists.newArrayList("4"));
@@ -110,7 +110,28 @@ public class TestGraphBasedUpgradeScriptGenerator {
     List<String> statements = gen.generatePreUpgradeStatements();
 
     // then
-    assertThat(statements, Matchers.contains("1", "2", "3", "4"));
+    assertThat(statements, Matchers.contains("1", "2", "3"));
+  }
+
+  @Test
+  public void testPreUpgradeStatementGenerationWhenViewDoesNotExist() {
+    // given
+    when(connectionResources.sqlDialect()).thenReturn(sqlDialect);
+    when(upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS)).thenReturn(Lists.newArrayList("1"));
+    when(sqlDialect.tableDeploymentStatements(idTable)).thenReturn(Lists.newArrayList("2"));
+    when(viewChanges.getViewsToDrop()).thenReturn(Lists.newArrayList(view));
+    when(view.getName()).thenReturn("x");
+    when(sourceSchema.viewExists(nullable(String.class))).thenReturn(false);
+    when(sourceSchema.tableExists(nullable(String.class))).thenReturn(true);
+    when(targetSchema.tableExists(nullable(String.class))).thenReturn(true);
+    when(viewChangesDeploymentHelperFactory.create(any(ConnectionResources.class))).thenReturn(viewChangesDeploymentHelper);
+    when(viewChangesDeploymentHelper.dropViewIfExists(eq(view), any(Boolean.class))).thenReturn(Lists.newArrayList("3"));
+    when(viewChangesDeploymentHelper.deregisterViewIfExists(eq(view), any(Boolean.class))).thenReturn(Lists.newArrayList("4"));
+    // when
+    List<String> statements = gen.generatePreUpgradeStatements();
+
+    // then
+    assertThat(statements, Matchers.contains("1", "2", "4"));
   }
 
 
@@ -135,7 +156,7 @@ public class TestGraphBasedUpgradeScriptGenerator {
 
 
     // when
-    List<String> statements = gen.generatePostUpgradeStatements(schemaChangeSequence.getUpgradeSteps());
+    List<String> statements = gen.generatePostUpgradeStatements();
 
     // then
     assertThat(statements, Matchers.contains("1", "2", "3", "4", "5", "6", "7", "8"));
