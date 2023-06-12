@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.metadata.View;
 import org.apache.commons.logging.Log;
@@ -236,25 +237,17 @@ public class ViewChanges {
       viewIndex);
   }
 
-
   /**
    * Correct case of names with respect to all the views we know about.
    *
    * @return equivalent collection with names case-corrected where possible.
    */
   private Collection<String> correctCase(Collection<String> names) {
-    return newHashSet(Collections2.transform(names, new Function<String, String>() {
-      @Override public String apply(String name) {
-        for (View view: allViews) {
-          if (view.getName().equalsIgnoreCase(name)) {
-            return view.getName();
-          }
-        }
-        return name;
-      }
-    }));
+    Map<String, String> namesMap = names.stream().collect(Collectors.toMap(String::toLowerCase, name -> name, (first, second) -> first));
+    Map<String, String> viewsMap = allViews.stream().collect(Collectors.toMap(view -> view.getName().toLowerCase(), View::getName, (first, second) -> first));
+    namesMap.replaceAll(viewsMap::getOrDefault);
+    return namesMap.values();
   }
-
 
   /**
    * Performs a topological sort using a depth-first search algorithm and returns a sorted list of
