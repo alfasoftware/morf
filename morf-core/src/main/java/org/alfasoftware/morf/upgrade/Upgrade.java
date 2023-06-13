@@ -24,7 +24,6 @@ import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaValidator;
-import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.upgrade.ExistingViewStateLoader.Result;
@@ -284,22 +283,11 @@ public class Upgrade {
 
     UpgradePath path = factory.create(upgradesToApply, connectionResources, graphBasedUpgradeBuilder);
 
-    final boolean deleteFromDeployedViews = sourceSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME) && targetSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME);
-    for (View view : viewChanges.getViewsToDrop()) {
-      if (sourceSchema.viewExists(view.getName())) {
-        path.writeSql(viewChangesDeploymentHelper.dropViewIfExists(view, deleteFromDeployedViews));
-      }
-      else {
-        path.writeSql(viewChangesDeploymentHelper.deregisterViewIfExists(view, deleteFromDeployedViews));
-      }
-    }
+    path.writeSql(UpgradeHelper.preSchemaUpgrade(sourceSchema, targetSchema, viewChanges, viewChangesDeploymentHelper));
 
     path.writeSql(upgradeStatements);
 
-    final boolean insertToDeployedViews = targetSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME);
-    for (View view : viewChanges.getViewsToDeploy()) {
-      path.writeSql(viewChangesDeploymentHelper.createView(view, insertToDeployedViews));
-    }
+    path.writeSql(UpgradeHelper.postSchemaUpgrade(targetSchema, viewChanges, viewChangesDeploymentHelper));
 
     // Since Oracle is not able to re-map schema references in trigger code, we need to rebuild all triggers
     // for id column autonumbering when exporting and importing data between environments.

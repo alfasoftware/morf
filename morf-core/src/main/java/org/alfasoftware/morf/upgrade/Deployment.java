@@ -24,11 +24,9 @@ import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
-import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -116,12 +114,11 @@ public class Deployment {
       sqlStatementWriter.writeSql(connectionResources.sqlDialect().tableDeploymentStatements(table));
     }
 
-    // Iterate through all the views and deploy them - will deploy in dependency order.
-    final boolean updateDeloyedViews = targetSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME);
     ViewChanges viewChanges = new ViewChanges(targetSchema.views(), new HashSet<>(), targetSchema.views());
-    for (View view : viewChanges.getViewsToDeploy()) {
-      sqlStatementWriter.writeSql(viewChangesDeploymentHelper.createView(view, updateDeloyedViews));
-    }
+    sqlStatementWriter.writeSql(UpgradeHelper.postSchemaUpgrade(targetSchema,
+            viewChanges,
+            viewChangesDeploymentHelper));
+
   }
 
 
