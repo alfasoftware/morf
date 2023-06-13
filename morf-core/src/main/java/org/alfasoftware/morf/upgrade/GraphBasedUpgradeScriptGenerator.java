@@ -6,21 +6,11 @@ import com.google.inject.Inject;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.View;
-import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import static org.alfasoftware.morf.sql.SqlUtils.delete;
-import static org.alfasoftware.morf.sql.SqlUtils.field;
-import static org.alfasoftware.morf.sql.SqlUtils.insert;
-import static org.alfasoftware.morf.sql.SqlUtils.literal;
-import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME;
 
 /**
  * Generates pre- and post- upgrade statements to be execute before/after the
@@ -37,6 +27,8 @@ class GraphBasedUpgradeScriptGenerator {
   private final ViewChanges viewChanges;
   private final UpgradeStatusTableService upgradeStatusTableService;
   private final Set<UpgradeScriptAddition> upgradeScriptAdditions;
+  private final ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory;
+
 
 
   /**
@@ -49,15 +41,21 @@ class GraphBasedUpgradeScriptGenerator {
    * @param viewChanges view changes which need to be made to match the target schema
    * @param upgradeStatusTableService used to generate a script needed to update the transient "zzzUpgradeStatus" table
    */
-  GraphBasedUpgradeScriptGenerator(Schema sourceSchema, Schema targetSchema, ConnectionResources connectionResources, Table idTable,
-                                   ViewChanges viewChanges, UpgradeStatusTableService upgradeStatusTableService, Set<UpgradeScriptAddition> upgradeScriptAdditions) {
-    this.sourceSchema = sourceSchema;
-    this.targetSchema = targetSchema;
+  GraphBasedUpgradeScriptGenerator(UpgradeSchemas schemas,
+                                   ConnectionResources connectionResources,
+                                   Table idTable,
+                                   ViewChanges viewChanges,
+                                   UpgradeStatusTableService upgradeStatusTableService,
+                                   Set<UpgradeScriptAddition> upgradeScriptAdditions,
+                                   ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory) {
+    this.sourceSchema = schemas.getSourceSchema();
+    this.targetSchema = schemas.getTargetSchema();
     this.connectionResources = connectionResources;
     this.idTable = idTable;
     this.viewChanges = viewChanges;
     this.upgradeStatusTableService = upgradeStatusTableService;
     this.upgradeScriptAdditions = upgradeScriptAdditions;
+    this.viewChangesDeploymentHelperFactory = viewChangesDeploymentHelperFactory;
   }
 
 
@@ -65,7 +63,7 @@ class GraphBasedUpgradeScriptGenerator {
    * @return pre-upgrade statements to be executed before the Graph Based Upgrade
    */
   public List<String> generatePreUpgradeStatements() {
-    List<String> statements = new ArrayList<>();
+    ImmutableList.Builder<String> statements = ImmutableList.builder();
 
     // zzzUpgradeStatus table
     statements.addAll(upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS));
@@ -73,20 +71,12 @@ class GraphBasedUpgradeScriptGenerator {
     // temp table
     statements.addAll(connectionResources.sqlDialect().tableDeploymentStatements(idTable));
 
-    // drop views
-    for (View view : viewChanges.getViewsToDrop()) {
-      // non-present views can be listed amongst ViewsToDrop due to how we calculate dependencies
-      if (sourceSchema.viewExists(view.getName())) {
-        statements.addAll(connectionResources.sqlDialect().dropStatements(view));
-      }
-      if (sourceSchema.tableExists(DEPLOYED_VIEWS_NAME) && targetSchema.tableExists(DEPLOYED_VIEWS_NAME)) {
-        statements.addAll(ImmutableList.of(
-                connectionResources.sqlDialect().convertStatementToSQL(
-            delete(tableRef(DEPLOYED_VIEWS_NAME)).where(Criterion.eq(field("name"), view.getName().toUpperCase()))
-          )));
-      }
-    }
-    return statements;
+    statements.addAll(UpgradeHelper.preSchemaUpgrade(sourceSchema,
+            targetSchema,
+            viewChanges,
+            viewChangesDeploymentHelperFactory.create(connectionResources)));
+
+    return statements.build();
   }
 
 
@@ -94,26 +84,15 @@ class GraphBasedUpgradeScriptGenerator {
    * @return post-upgrade statements to be executed after the Graph Based Upgrade
    */
   public List<String> generatePostUpgradeStatements() {
-    List<String> statements = new ArrayList<>();
+    ImmutableList.Builder<String> statements = ImmutableList.builder();
 
     // temp table drop
     statements.addAll(connectionResources.sqlDialect().truncateTableStatements(idTable));
     statements.addAll(connectionResources.sqlDialect().dropStatements(idTable));
 
-    // recreate views
-    for (View view : viewChanges.getViewsToDeploy()) {
-      statements.addAll(connectionResources.sqlDialect().viewDeploymentStatements(view));
-      if (targetSchema.tableExists(DEPLOYED_VIEWS_NAME)) {
-        statements.addAll(
-                connectionResources.sqlDialect().convertStatementToSQL(
-            insert().into(tableRef(DEPLOYED_VIEWS_NAME))
-                                 .values(
-                                   literal(view.getName().toUpperCase()).as("name"),
-                                   literal(connectionResources.sqlDialect().convertStatementToHash(view.getSelectStatement())).as("hash"),
-                                         connectionResources.sqlDialect().viewDeploymentStatementsAsLiteral(view).as("sqlDefinition"))
-                                           ));
-      }
-    }
+    statements.addAll(UpgradeHelper.postSchemaUpgrade(targetSchema,
+            viewChanges,
+            viewChangesDeploymentHelperFactory.create(connectionResources)));
 
     // Since Oracle is not able to re-map schema references in trigger code, we need to rebuild all triggers
     // for id column autonumbering when exporting and importing data between environments.
@@ -140,7 +119,7 @@ class GraphBasedUpgradeScriptGenerator {
     // status table
     statements.addAll(upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED));
 
-    return statements;
+    return statements.build();
   }
 
 
@@ -152,6 +131,7 @@ class GraphBasedUpgradeScriptGenerator {
   static class GraphBasedUpgradeScriptGeneratorFactory {
     private final UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory;
     private final Set<UpgradeScriptAddition> upgradeScriptAdditions;
+    private final ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory;
 
     /**
      * Default constructor.
@@ -159,9 +139,12 @@ class GraphBasedUpgradeScriptGenerator {
      * @param upgradeStatusTableServiceFactory factory for service generating a script needed to update the transient "zzzUpgradeStatus" table
      */
     @Inject
-    public GraphBasedUpgradeScriptGeneratorFactory(UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory, UpgradeScriptAdditionsProvider upgradeScriptAdditionsProvider) {
+    public GraphBasedUpgradeScriptGeneratorFactory(UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory,
+                                                   UpgradeScriptAdditionsProvider upgradeScriptAdditionsProvider,
+                                                   ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory) {
       this.upgradeStatusTableServiceFactory = upgradeStatusTableServiceFactory;
       this.upgradeScriptAdditions = upgradeScriptAdditionsProvider.getUpgradeScriptAdditions();
+      this.viewChangesDeploymentHelperFactory = viewChangesDeploymentHelperFactory;
     }
 
 
@@ -178,8 +161,9 @@ class GraphBasedUpgradeScriptGenerator {
      */
     GraphBasedUpgradeScriptGenerator create(Schema sourceSchema, Schema targetSchema, ConnectionResources connectionResources, Table idTable,
         ViewChanges viewChanges) {
-      return new GraphBasedUpgradeScriptGenerator(sourceSchema, targetSchema, connectionResources, idTable, viewChanges,
-          upgradeStatusTableServiceFactory.create(connectionResources), upgradeScriptAdditions);
+      UpgradeSchemas upgradeSchemas = new UpgradeSchemas(sourceSchema, targetSchema);
+      return new GraphBasedUpgradeScriptGenerator(upgradeSchemas, connectionResources, idTable, viewChanges,
+          upgradeStatusTableServiceFactory.create(connectionResources), upgradeScriptAdditions, viewChangesDeploymentHelperFactory);
     }
   }
 }
