@@ -60,13 +60,13 @@ public class UpgradePathFinder {
 
   private final List<CandidateStep> stepsToApply;
 
-  private final String sourceSchema = "expected schema based on application binaries";
+  private static final String applicationSchema = "expected schema based on application binaries";
 
-  private final String upgradedSchema = "database schema with upgrades applied";
+  private static final String upgradedSchema = "database schema with upgrades applied";
 
-  private final String reversedSchema = "upgraded database schema with upgrades reversed";
+  private static final String reversedSchema = "upgraded database schema with upgrades reversed";
 
-  private final String currentSchema = "current database schema";
+  private static final String currentSchema = "current database schema";
 
   /**
    * @param availableUpgradeSteps Steps that are available for building a path.
@@ -117,7 +117,7 @@ public class UpgradePathFinder {
 
     // We have changes to make. Apply them against the current schema to see whether they get us the right position
     Schema trialUpgradedSchema = schemaChangeSequence.applyToSchema(current);
-    if (!schemasMatch(target, trialUpgradedSchema, sourceSchema, upgradedSchema, exceptionRegexes)) {
+    if (!schemasMatch(target, trialUpgradedSchema, applicationSchema, upgradedSchema, exceptionRegexes)) {
       throw new NoUpgradePathExistsException();
     }
 
