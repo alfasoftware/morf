@@ -156,10 +156,10 @@ public class ViewChanges {
   /**
    * Allows us to create a new {@link ViewChanges} internally.
    */
-  private ViewChanges(Collection<View> allViews, Set<String> dropSet, Set<String> deploySet, Map<String, View> index) {
+  private ViewChanges(Collection<View> allViews, Map<String, String> allViewsMap, Set<String> dropSet, Set<String> deploySet, Map<String, View> index) {
     super();
     this.allViews = allViews;
-    this.allViewsMap = allViews.stream().collect(Collectors.toMap(view -> view.getName().toLowerCase(), View::getName, (first, second) -> first));
+    this.allViewsMap = allViewsMap;
     this.knownSet = newHashSet(Collections2.transform(allViews, viewToName()));
     this.dropSet = newHashSet(correctCase(dropSet));
     this.deploySet = newHashSet(deploySet);
@@ -226,6 +226,7 @@ public class ViewChanges {
     newIndex.putAll(viewIndex);
 
     return new ViewChanges(allViews,
+      allViewsMap,
       Sets.union(dropSet, extraViewNames),
       Sets.union(deploySet, Sets.intersection(extraViewNames, knownSet)),
       newIndex);
@@ -239,6 +240,7 @@ public class ViewChanges {
   public ViewChanges deployingAlso(Collection<View> extraViewsToDeploy) {
     Set<String> extraViewNames = ImmutableSet.copyOf(Collections2.transform(extraViewsToDeploy, viewToName()));
     return new ViewChanges(allViews,
+      allViewsMap,
       dropSet,
       Sets.union(deploySet, extraViewNames),
       viewIndex);
