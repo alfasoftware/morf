@@ -75,6 +75,11 @@ public class ViewChanges {
   private final Collection<View> allViews;
 
   /**
+   * A map representation of allViews in with the view name lowercased as the key and the original text as the value
+   */
+  private final Map<String, String> allViewsMap;
+
+  /**
    * Set of names of views to drop.
    */
   private final Set<String> dropSet;
@@ -124,6 +129,7 @@ public class ViewChanges {
     // -- Store our dependency information as we may need to pass it on...
     //
     this.allViews = allViews;
+    this.allViewsMap = allViews.stream().collect(Collectors.toMap(view -> view.getName().toLowerCase(), View::getName, (first, second) -> first));
 
     // -- Work with sets of strings internally, we switch back to views when we return ordered lists...
     //
@@ -153,6 +159,7 @@ public class ViewChanges {
   private ViewChanges(Collection<View> allViews, Set<String> dropSet, Set<String> deploySet, Map<String, View> index) {
     super();
     this.allViews = allViews;
+    this.allViewsMap = allViews.stream().collect(Collectors.toMap(view -> view.getName().toLowerCase(), View::getName, (first, second) -> first));
     this.knownSet = newHashSet(Collections2.transform(allViews, viewToName()));
     this.dropSet = newHashSet(correctCase(dropSet));
     this.deploySet = newHashSet(deploySet);
@@ -244,8 +251,7 @@ public class ViewChanges {
    */
   private Collection<String> correctCase(Collection<String> names) {
     Map<String, String> namesMap = names.stream().collect(Collectors.toMap(String::toLowerCase, name -> name, (first, second) -> first));
-    Map<String, String> viewsMap = allViews.stream().collect(Collectors.toMap(view -> view.getName().toLowerCase(), View::getName, (first, second) -> first));
-    namesMap.replaceAll(viewsMap::getOrDefault);
+    namesMap.replaceAll(allViewsMap::getOrDefault);
     return namesMap.values();
   }
 
