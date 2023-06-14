@@ -60,10 +60,12 @@ public class UpgradePathFinder {
 
   private final List<CandidateStep> stepsToApply;
 
-
   private final String sourceSchema = "expected schema based on application binaries";
+
   private final String upgradedSchema = "database schema with upgrades applied";
+
   private final String reversedSchema = "upgraded database schema with upgrades reversed";
+
   private final String currentSchema = "current database schema";
 
   /**
