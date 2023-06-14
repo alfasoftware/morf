@@ -244,6 +244,7 @@ public class ViewChanges {
       viewIndex);
   }
 
+
   /**
    * Correct case of names with respect to all the views we know about.
    *
@@ -254,6 +255,7 @@ public class ViewChanges {
     namesMap.replaceAll(allViewsMap::getOrDefault);
     return namesMap.values();
   }
+
 
   /**
    * Performs a topological sort using a depth-first search algorithm and returns a sorted list of
