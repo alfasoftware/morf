@@ -100,6 +100,11 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
    */
   private final List<Hint> hints;
 
+  /**
+   * A database type identifier code
+   */
+  private String databaseType;
+
   private int hashCode;
 
 
@@ -143,10 +148,12 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
       this.groupBys = ImmutableList.copyOf(builder.groupBys);
       this.setOperators = ImmutableList.copyOf(builder.setOperators);
       this.hints = ImmutableList.copyOf(builder.hints);
+      this.databaseType = builder.databaseType;
     } else {
       this.groupBys = new ArrayList<>(builder.groupBys);
       this.setOperators = new ArrayList<>(builder.setOperators);
       this.hints = new ArrayList<>(builder.hints);
+      this.databaseType = builder.databaseType;
     }
   }
 
@@ -485,6 +492,19 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
       );
   }
 
+  /**
+   * @param databaseType a database type identifier
+   * @param customHint representation of a custom hint
+   * @return this, for method chaining.
+   */
+  public SelectStatement withCustomHint(String databaseType, CustomHint customHint) {
+    return copyOnWriteOrMutate((SelectStatementBuilder b) -> b.withDatabaseType(databaseType).withCustomHint(customHint),
+      () -> {
+            this.hints.add(customHint);
+            this.databaseType = databaseType;
+    });
+  }
+
 
   /**
    * If supported by the dialect, hints to the database that joins should be applied in the order
@@ -615,6 +635,14 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
 
 
   /**
+   * @return all hints in the order they were declared.
+   */
+  public String getDatabaseType() {
+    return databaseType;
+  }
+
+
+  /**
    * @return the list of set operators to be applied on this select statement.
    */
   public List<SetOperator> getSetOperators() {
@@ -663,6 +691,7 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
     }
     if (StringUtils.isNotEmpty(getAlias())) result.append(" AS ").append(getAlias());
     if (forUpdate) result.append(" (FOR UPDATE)");
+    if (StringUtils.isNotEmpty(databaseType)) result.append(" for database: ").append(databaseType);
     return result.toString();
   }
 
@@ -684,6 +713,7 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
     result = prime * result + (groupBys == null ? 0 : groupBys.hashCode());
     result = prime * result + (having == null ? 0 : having.hashCode());
     result = prime * result + (hints == null ? 0 : hints.hashCode());
+    result = prime * result + (databaseType == null ? 0 : databaseType.hashCode());
     result = prime * result + (setOperators == null ? 0 : setOperators.hashCode());
     return result;
   }
@@ -720,6 +750,11 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
       if (other.hints != null)
         return false;
     } else if (!hints.equals(other.hints))
+      return false;
+    if (databaseType == null) {
+      if (other.databaseType != null)
+        return false;
+    } else if (!databaseType.equals(other.databaseType))
       return false;
     if (setOperators == null) {
       if (other.setOperators != null)

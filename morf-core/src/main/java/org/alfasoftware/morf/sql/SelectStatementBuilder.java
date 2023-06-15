@@ -43,7 +43,7 @@ public class SelectStatementBuilder extends AbstractSelectStatementBuilder<Selec
   final List<AliasedField> groupBys = new ArrayList<>();
   final List<SetOperator> setOperators = new ArrayList<>();
   final List<Hint> hints = new ArrayList<>();
-
+  String databaseType;
 
   SelectStatementBuilder() {
     super();
@@ -63,6 +63,7 @@ public class SelectStatementBuilder extends AbstractSelectStatementBuilder<Selec
     this.groupBys.addAll(copyOf.getGroupBys());
     this.setOperators.addAll(copyOf.getSetOperators());
     this.hints.addAll(copyOf.getHints());
+    this.databaseType = copyOf.getDatabaseType();
   }
 
 
@@ -80,6 +81,7 @@ public class SelectStatementBuilder extends AbstractSelectStatementBuilder<Selec
     this.groupBys.addAll(DeepCopyTransformations.transformIterable(copyOf.getGroupBys(), transformation));
     this.setOperators.addAll(DeepCopyTransformations.transformIterable(copyOf.getSetOperators(),transformation));
     this.hints.addAll(copyOf.getHints()); // FIXME these should get transformed - UseIndex in particular
+    this.databaseType = copyOf.getDatabaseType();
   }
 
 
@@ -322,6 +324,18 @@ public class SelectStatementBuilder extends AbstractSelectStatementBuilder<Selec
 
 
   /**
+   * A database type identifier
+   *
+   * @param databaseType
+   * @return this, for method chaining.
+   */
+  public org.alfasoftware.morf.sql.SelectStatementBuilder withDatabaseType(String databaseType) {
+    this.databaseType = databaseType;
+    return this;
+  }
+
+
+  /**
    * If supported by the dialect, hints to the database that joins should be applied in the order
    * they are written in the SQL statement.
    *
@@ -433,4 +447,6 @@ public class SelectStatementBuilder extends AbstractSelectStatementBuilder<Selec
   public SelectStatement build() {
     return new SelectStatement(this);
   }
+
+
 }
