@@ -3352,13 +3352,12 @@ public abstract class AbstractSqlDialectTest {
       )
     );
 
-    CustomHint customHint = new CustomHint("CustomHint");
     assertEquals(
       expectedHints8(),
       testDialect.convertStatementToSQL(
         select()
         .from(new TableReference("SCHEMA2", "Foo"))
-        .withCustomHint(customHint)
+        .withCustomHint(() -> "CustomHint")
       )
     );
   }
