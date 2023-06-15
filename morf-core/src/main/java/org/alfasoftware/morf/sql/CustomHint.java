@@ -17,24 +17,16 @@ package org.alfasoftware.morf.sql;
 
 /**
  *
- * Generic class for Custom hints
+ * Interface for Custom hints
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2021
  */
-public class CustomHint implements Hint {
-
-  private final String customHint; //NOSONAR
-
-  public CustomHint(String customHint) {
-    this.customHint = customHint;
-  }
+public interface CustomHint extends Hint {
 
   /**
    * Get the string representation of this custom hint
    *
    * @return string, the string representation of this custom hint
    */
-  public String getCustomHint() {
-    return customHint;
-  }
+  public String getCustomHint();
 }

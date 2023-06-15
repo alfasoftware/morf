@@ -2,14 +2,18 @@ package org.alfasoftware.morf.sql;
 
 /**
  * Represents a custom hint for a query
- *
- * @deprecated This class should be removed in the near future as platform specific classes should be outside of core project
  */
-@Deprecated
-public final class PostgreSQLCustomHint extends CustomHint {
+public final class PostgreSQLCustomHint implements CustomHint {
+
+  private final String customHint;
 
   public PostgreSQLCustomHint(String customHint) {
-    super(customHint);
+    this.customHint = customHint;
+  }
+
+  @Override
+  public String getCustomHint() {
+    return customHint;
   }
 
   @Override
