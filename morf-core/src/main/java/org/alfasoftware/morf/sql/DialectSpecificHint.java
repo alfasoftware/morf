@@ -2,14 +2,18 @@ package org.alfasoftware.morf.sql;
 
 import java.util.Objects;
 
-public class DialectSpecificHint {
+/**
+ * A generic {@link org.alfasoftware.morf.sql.Hint} class that holds custom hints for a given database type.
+ * It should be used instead of {@link org.alfasoftware.morf.sql.CustomHint}
+ *
+ */
+public class DialectSpecificHint implements Hint {
 
   private final String databaseType;
 
   private final String hintContents;
 
   /**
-   * A generic class that holds hints for a given database type.
    *
    * @param databaseType a database type identifier. Eg: ORACLE, PGSQL, SQL_SERVER
    * @param hintContents the hint contents themselves, without the delimiters. Eg: without /*+ and *"/ * for Oracle hints
