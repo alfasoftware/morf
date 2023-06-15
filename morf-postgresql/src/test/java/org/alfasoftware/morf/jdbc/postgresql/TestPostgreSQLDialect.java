@@ -1235,6 +1235,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   }
 
 
+  @Override
   protected List<String> expectedReplaceTableWithAutonumber() {
     return ImmutableList.of(
         "DROP SEQUENCE IF EXISTS testschema.tmp_SomeTable_otherField_seq",
@@ -1285,9 +1286,12 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @deprecated
+   * @see org.alfasoftware.morf.sql.PostgreSQLCustomHint
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#provideCustomHint()
    */
   @Override
+  @Deprecated
   protected CustomHint provideCustomHint() {
     return new PostgreSQLCustomHint("Set(random_page_cost 2.0)");
   }

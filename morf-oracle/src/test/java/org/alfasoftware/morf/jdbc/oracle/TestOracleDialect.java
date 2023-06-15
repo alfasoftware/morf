@@ -1508,6 +1508,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   }
 
 
+  @Override
   public List<String> expectedReplaceTableFromStatements() {
     return ImmutableList.of(
         "CREATE TABLE TESTSCHEMA.tmp_SomeTable (someField  NOT NULL, otherField  NOT NULL, thirdField  NOT NULL, CONSTRAINT tmp_SomeTable_PK PRIMARY KEY (someField) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.tmp_SomeTable_PK ON TESTSCHEMA.tmp_SomeTable (someField))) PARALLEL NOLOGGING AS SELECT CAST(someField AS NVARCHAR2(3)) AS someField, CAST(otherField AS DECIMAL(3,0)) AS otherField, CAST(thirdField AS DECIMAL(5,0)) AS thirdField FROM TESTSCHEMA.OtherTable",
@@ -1528,6 +1529,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   }
 
 
+  @Override
   public List<String> expectedReplaceTableWithAutonumber() {
     return ImmutableList.of(
         "CREATE TABLE TESTSCHEMA.tmp_SomeTable (someField  NOT NULL, otherField  NOT NULL, thirdField  NOT NULL, CONSTRAINT tmp_SomeTable_PK PRIMARY KEY (someField) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.tmp_SomeTable_PK ON TESTSCHEMA.tmp_SomeTable (someField))) PARALLEL NOLOGGING AS SELECT CAST(someField AS NVARCHAR2(3)) AS someField, CAST(otherField AS DECIMAL(3,0)) AS otherField, CAST(thirdField AS DECIMAL(5,0)) AS thirdField FROM TESTSCHEMA.OtherTable",
@@ -1682,7 +1684,13 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   }
 
 
+  /**
+   * @deprecated
+   * @see org.alfasoftware.morf.sql.OracleCustomHint
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#provideCustomHint()
+   */
   @Override
+  @Deprecated
   protected CustomHint provideCustomHint() {
     return new OracleCustomHint("opt_param('optimizer_index_caching',100) opt_param('optimizer_index_cost_adj',50) optimizer_features_enable('12.1.0.2') )");
   }
