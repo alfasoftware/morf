@@ -4,18 +4,14 @@
 
 /**
  * Represents a custom hint for a query
+ *
+ * @deprecated This class should be removed in the near future as platform specific classes should be outside of core project
  */
-public final class OracleCustomHint implements CustomHint {
-
-  private final String customHint;
+@Deprecated
+public final class OracleCustomHint extends CustomHint {
 
   public OracleCustomHint(String customHint) {
-    this.customHint = customHint;
-  }
-
-  @Override
-  public String getCustomHint() {
-    return customHint;
+    super(customHint);
   }
 
   @Override
