@@ -487,6 +487,21 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
       );
   }
 
+  /**
+   * Supplies a specified custom hint to the database for a query.
+   *
+   * @param databaseType a database type identifier. Eg: ORACLE, PGSQL, SQL_SERVER
+   * @param hintContents the hint contents themselves, without the delimiters. Eg: without /*+ and *"/ * for Oracle hints
+   * @return this, for method chaining.
+   */
+  public SelectStatement withDialectSpecificHint(String databaseType, String hintContents) {
+    DialectSpecificHint dialectSpecificHint = new DialectSpecificHint(databaseType, hintContents);
+    return copyOnWriteOrMutate(
+      (SelectStatementBuilder b) -> b.withDialectSpecificHint(dialectSpecificHint),
+      () -> this.hints.add(dialectSpecificHint)
+        );
+  }
+
 
   /**
    * If supported by the dialect, hints to the database that joins should be applied in the order

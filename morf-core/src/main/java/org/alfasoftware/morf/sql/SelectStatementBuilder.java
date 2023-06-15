@@ -324,6 +324,18 @@ public class SelectStatementBuilder extends AbstractSelectStatementBuilder<Selec
 
 
   /**
+   * Supplies a specified custom hint and database type to the database for a query.
+   *
+   * @param dialectSpecificHint a custom dialect specific hint
+   * @return this, for method chaining.
+   */
+  public org.alfasoftware.morf.sql.SelectStatementBuilder withDialectSpecificHint(DialectSpecificHint dialectSpecificHint) {
+    this.hints.add(dialectSpecificHint);
+    return this;
+  }
+
+
+  /**
    * If supported by the dialect, hints to the database that joins should be applied in the order
    * they are written in the SQL statement.
    *
