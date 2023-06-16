@@ -11,8 +11,8 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
 import java.util.StringJoiner;
+
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -25,6 +25,7 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.DeleteStatementBuilder;
+import org.alfasoftware.morf.sql.DialectSpecificHint;
 import org.alfasoftware.morf.sql.Hint;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.OptimiseForRowCount;
@@ -642,6 +643,10 @@ class PostgreSQLDialect extends SqlDialect {
       if (hint instanceof PostgreSQLCustomHint) {
         builder.append(" ")
         .append(((PostgreSQLCustomHint)hint).getCustomHint());
+      }
+      if (hint instanceof DialectSpecificHint) {
+        builder.append(" ")
+        .append(((DialectSpecificHint)hint).getHintContents());
       }
     }
 

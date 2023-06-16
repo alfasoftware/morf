@@ -42,6 +42,7 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.sql.DialectSpecificHint;
 import org.alfasoftware.morf.sql.DirectPathQueryHint;
 import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.Hint;
@@ -1342,6 +1343,10 @@ class OracleDialect extends SqlDialect {
         builder.append(" ")
         .append(((OracleCustomHint)hint).getCustomHint());
       }
+      if (hint instanceof DialectSpecificHint) {
+        builder.append(" ")
+        .append(((DialectSpecificHint)hint).getHintContents());
+      }
     }
 
     if (builder.length() == 0) {
@@ -1393,7 +1398,7 @@ class OracleDialect extends SqlDialect {
     return 200;
   }
 
-  
+
   /**
    * We do use NVARCHAR for strings on Oracle.
    *
