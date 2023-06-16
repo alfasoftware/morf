@@ -1235,6 +1235,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   }
 
 
+  @Override
   protected List<String> expectedReplaceTableWithAutonumber() {
     return ImmutableList.of(
         "DROP SEQUENCE IF EXISTS testschema.tmp_SomeTable_otherField_seq",
@@ -1291,6 +1292,24 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected CustomHint provideCustomHint() {
     return new PostgreSQLCustomHint("Set(random_page_cost 2.0)");
   }
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints8a()
+   */
+  @Override
+  protected String expectedHints8a() {
+    return "SELECT /*+ index(customer cust_primary_key_idx) */ * FROM SCHEMA2.Foo";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#provideDatabaseType()
+   */
+  @Override
+  protected String provideDatabaseType() {
+    return PostgreSQL.IDENTIFIER;
+  }
+
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterTableDropColumnWithDefaultStatement()

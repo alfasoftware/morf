@@ -3232,6 +3232,7 @@ public abstract class AbstractSqlDialectTest {
   /**
    * Check that the optimiser hints work.
    */
+  @SuppressWarnings("deprecation")
   @Test
   public void testHints() {
     assertEquals(
@@ -3360,6 +3361,16 @@ public abstract class AbstractSqlDialectTest {
         .withCustomHint(() -> "CustomHint")
       )
     );
+
+    assertEquals(
+      expectedHints8a(),
+      testDialect.convertStatementToSQL(
+        select()
+        .from(new TableReference("SCHEMA2", "Foo"))
+        .withDialectSpecificHint(provideDatabaseType(), "index(customer cust_primary_key_idx)")
+        .withDialectSpecificHint("SOMETHING_ELSE", "unused_hint()")
+          )
+        );
   }
 
 
@@ -3367,8 +3378,17 @@ public abstract class AbstractSqlDialectTest {
    * This method can be overridden in specific dialects to test providing custom hints in each dialect
    * @return a mock CustomHint or an overridden, more specific, CustomHint
    */
+  @SuppressWarnings("deprecation")
   protected CustomHint provideCustomHint() {
     return mock(CustomHint.class);
+  }
+
+  /**
+   * This method can be overridden in specific dialects to test DialectSpecificHint in each dialect
+   * @return a mock database type identifier value or an overridden, dialect specific, database type identfier
+   */
+  protected String provideDatabaseType() {
+    return "SOME_DATABASE_IDENTIFIER";
   }
 
 
@@ -5813,6 +5833,13 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL for the {@link SelectStatement#withCustomHint(CustomHint customHint)} directive. Testing all dialcts do not react to an empty hint being supplied.
    */
   protected  String expectedHints8() {
+    return "SELECT * FROM SCHEMA2.Foo"; //NOSONAR
+  }
+
+  /**
+   * @return The expected SQL for the {@link SelectStatement#withDialectSpecificHint(String, String)} directive. Testing all dialcts do not react to an empty hint being supplied.
+   */
+  protected  String expectedHints8a() {
     return "SELECT * FROM SCHEMA2.Foo"; //NOSONAR
   }
 

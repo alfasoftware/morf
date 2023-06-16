@@ -11,8 +11,8 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
 import java.util.StringJoiner;
+
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -25,6 +25,7 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.DeleteStatementBuilder;
+import org.alfasoftware.morf.sql.DialectSpecificHint;
 import org.alfasoftware.morf.sql.Hint;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.OptimiseForRowCount;
@@ -624,7 +625,7 @@ class PostgreSQLDialect extends SqlDialect {
       if (hint instanceof OptimiseForRowCount) {
         // not available in pg_hint_plan
       }
-      if (hint instanceof UseIndex) {
+      else if (hint instanceof UseIndex) {
         UseIndex useIndex = (UseIndex)hint;
         builder.append(" IndexScan(")
           .append(StringUtils.isEmpty(useIndex.getTable().getAlias()) ? useIndex.getTable().getName() : useIndex.getTable().getAlias())
@@ -632,16 +633,20 @@ class PostgreSQLDialect extends SqlDialect {
           .append(useIndex.getIndexName().toLowerCase())
           .append(")");
       }
-      if (hint instanceof UseImplicitJoinOrder) {
+      else if (hint instanceof UseImplicitJoinOrder) {
         // not available in pg_hint_plan
         // actually, there is Leading hint, which we could abuse
       }
-      if (hint instanceof ParallelQueryHint) {
+      else if (hint instanceof ParallelQueryHint) {
         // not available in pg_hint_plan
       }
-      if (hint instanceof PostgreSQLCustomHint) {
+      else if (hint instanceof PostgreSQLCustomHint) {
         builder.append(" ")
         .append(((PostgreSQLCustomHint)hint).getCustomHint());
+      }
+      else if ( hint instanceof DialectSpecificHint && ((DialectSpecificHint)hint).isSameDatabaseType(PostgreSQL.IDENTIFIER) ) {
+        builder.append(" ")
+        .append(((DialectSpecificHint)hint).getHintContents());
       }
     }
 
