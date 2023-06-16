@@ -1412,7 +1412,7 @@ public class TestSqlSelectElementGeneration {
                       .useIndex(table1, "INDEX_1")
                       .useIndex(table2, "INDEX_2")
                       .allowParallelDml()
-                      .withDialectSpecificHint(new DialectSpecificHint("ORACLE", "index(customer cust_primary_key_idx)"))
+                      .withDialectSpecificHint("ORACLE", "index(customer cust_primary_key_idx)")
                       .build()
                       .getHints(), contains(
           new OptimiseForRowCount(1),

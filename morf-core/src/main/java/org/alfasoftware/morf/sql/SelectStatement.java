@@ -495,10 +495,9 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
    * @return this, for method chaining.
    */
   public SelectStatement withDialectSpecificHint(String databaseType, String hintContents) {
-    DialectSpecificHint dialectSpecificHint = new DialectSpecificHint(databaseType, hintContents);
     return copyOnWriteOrMutate(
-      (SelectStatementBuilder b) -> b.withDialectSpecificHint(dialectSpecificHint),
-      () -> this.hints.add(dialectSpecificHint)
+      (SelectStatementBuilder b) -> b.withDialectSpecificHint(databaseType, hintContents),
+      () -> this.hints.add(new DialectSpecificHint(databaseType, hintContents))
         );
   }
 

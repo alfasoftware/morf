@@ -326,10 +326,12 @@ public class SelectStatementBuilder extends AbstractSelectStatementBuilder<Selec
   /**
    * Supplies a specified custom hint and database type to the database for a query.
    *
-   * @param dialectSpecificHint a custom dialect specific hint
+   * @param databaseType a database type identifier. Eg: ORACLE, PGSQL, SQL_SERVER
+   * @param hintContents the hint contents themselves, without the delimiters. Eg: without /*+ and *"/ * for Oracle hints
    * @return this, for method chaining.
    */
-  public org.alfasoftware.morf.sql.SelectStatementBuilder withDialectSpecificHint(DialectSpecificHint dialectSpecificHint) {
+  public org.alfasoftware.morf.sql.SelectStatementBuilder withDialectSpecificHint(String databaseType, String hintContents) {
+    DialectSpecificHint dialectSpecificHint = new DialectSpecificHint(databaseType, hintContents);
     this.hints.add(dialectSpecificHint);
     return this;
   }
