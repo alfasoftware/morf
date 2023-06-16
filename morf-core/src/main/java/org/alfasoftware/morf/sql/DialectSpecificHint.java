@@ -49,5 +49,11 @@ public class DialectSpecificHint implements Hint {
     DialectSpecificHint other = (DialectSpecificHint) obj;
     return Objects.equals(databaseType, other.databaseType) && Objects.equals(hintContents, other.hintContents);
   }
+
+
+  @Override
+  public String toString() {
+    return "DialectSpecificHint [databaseType=" + databaseType + ", hintContents=" + hintContents + "]";
+  }
 }
 
