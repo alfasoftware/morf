@@ -1,5 +1,6 @@
 package org.alfasoftware.morf.sql;
 
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.junit.Test;
@@ -23,6 +24,12 @@ public class TestDialectSpecificHint {
   public void testConstructorWithSecondParameterEmptyThrowsException() {
     new DialectSpecificHint("not_empty", "");
     fail("Did not catch IllegalArgumentException");
+  }
+
+  @Test
+  public void testIsSameDatabaseType() {
+    DialectSpecificHint dialectSpecificHint = new DialectSpecificHint("SOME_DATABASE_TYPE", "SOME_HINT");
+    assertTrue(dialectSpecificHint.isSameDatabaseType("SOME_DATABASE_TYPE"));
   }
 }
 

@@ -46,6 +46,17 @@ public class DialectSpecificHint implements Hint {
   }
 
 
+  /**
+   * Tests whether the supplied databaseType string is equal to the databaseType that is held by this class.
+   * The test is performed using {@link java.lang.String#equals(Object)}.
+   *
+   * @param databaseType a database type identifier. Eg: ORACLE, PGSQL, SQL_SERVER
+   * @return true if the databaseType parameter is equal to this databaseType, false otherwise
+   */
+  public boolean isSameDatabaseType(String databaseType) {
+    return this.databaseType.equals(databaseType);
+  }
+
   @Override
   public int hashCode() {
     return Objects.hash(databaseType, hintContents);
