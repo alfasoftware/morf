@@ -3367,7 +3367,7 @@ public abstract class AbstractSqlDialectTest {
       testDialect.convertStatementToSQL(
         select()
         .from(new TableReference("SCHEMA2", "Foo"))
-        .withDialectSpecificHint("ORACLE", "index(customer cust_primary_key_idx)")
+        .withDialectSpecificHint("DATABASE_TYPE_IDENTIFIER", "index(customer cust_primary_key_idx)")
           )
         );
   }
