@@ -1301,6 +1301,16 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return "SELECT /*+ index(customer cust_primary_key_idx) */ * FROM SCHEMA2.Foo";
   }
 
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#provideDatabaseType()
+   */
+  @Override
+  protected String provideDatabaseType() {
+    return PostgreSQL.IDENTIFIER;
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterTableDropColumnWithDefaultStatement()
    */

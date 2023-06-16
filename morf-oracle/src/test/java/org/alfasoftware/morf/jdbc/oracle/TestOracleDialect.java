@@ -1698,6 +1698,16 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
     return "SELECT /*+ index(customer cust_primary_key_idx) */ * FROM SCHEMA2.Foo";
   }
 
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#provideDatabaseType()
+   */
+  @Override
+  protected String provideDatabaseType() {
+    return Oracle.IDENTIFIER;
+  }
+
+
   @Override
   protected boolean expectedUsesNVARCHARforStrings() {
     return true; // We do!

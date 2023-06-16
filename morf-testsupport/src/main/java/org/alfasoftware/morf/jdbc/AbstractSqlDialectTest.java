@@ -3367,7 +3367,7 @@ public abstract class AbstractSqlDialectTest {
       testDialect.convertStatementToSQL(
         select()
         .from(new TableReference("SCHEMA2", "Foo"))
-        .withDialectSpecificHint("DATABASE_TYPE_IDENTIFIER", "index(customer cust_primary_key_idx)")
+        .withDialectSpecificHint(provideDatabaseType(), "index(customer cust_primary_key_idx)")
           )
         );
   }
@@ -3380,6 +3380,14 @@ public abstract class AbstractSqlDialectTest {
   @SuppressWarnings("deprecation")
   protected CustomHint provideCustomHint() {
     return mock(CustomHint.class);
+  }
+
+  /**
+   * This method can be overridden in specific dialects to test DialectSpecificHint in each dialect
+   * @return a mock database type identifier value or an overridden, dialect specific, database type identfier
+   */
+  protected String provideDatabaseType() {
+    return "SOME_DATABASE_IDENTIFIER";
   }
 
 
