@@ -3368,6 +3368,7 @@ public abstract class AbstractSqlDialectTest {
         select()
         .from(new TableReference("SCHEMA2", "Foo"))
         .withDialectSpecificHint(provideDatabaseType(), "index(customer cust_primary_key_idx)")
+        .withDialectSpecificHint("SOMETHING_ELSE", "unused_hint()")
           )
         );
   }
