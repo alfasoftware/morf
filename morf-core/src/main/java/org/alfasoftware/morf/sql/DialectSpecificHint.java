@@ -2,6 +2,8 @@ package org.alfasoftware.morf.sql;
 
 import java.util.Objects;
 
+import org.apache.commons.lang3.StringUtils;
+
 /**
  * A generic {@link org.alfasoftware.morf.sql.Hint} class that holds custom hints for a given database type.
  * It should be used instead of {@link org.alfasoftware.morf.sql.CustomHint}
@@ -20,6 +22,15 @@ public class DialectSpecificHint implements Hint {
    */
   public DialectSpecificHint(String databaseType, String hintContents) {
     super();
+
+    if (StringUtils.isBlank(databaseType)) {
+      throw new IllegalArgumentException("databaseType cannot be blank");
+    }
+
+    if (StringUtils.isBlank(hintContents)) {
+      throw new IllegalArgumentException("hintContents cannot be blank");
+    }
+
     this.databaseType = databaseType;
     this.hintContents = hintContents;
   }
