@@ -477,7 +477,7 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
    * @param customHint representation of a custom hint
    *
    * @return this, for method chaining.
-   * @deprecated See {@link org.alfasoftware.morf.sql.CustomHint}
+   * @deprecated Use {@link #withDialectSpecificHint(String, String)} instead. See why this is deprecated at {@link org.alfasoftware.morf.sql.CustomHint}
    */
   @Deprecated
   public SelectStatement withCustomHint(CustomHint customHint) {
