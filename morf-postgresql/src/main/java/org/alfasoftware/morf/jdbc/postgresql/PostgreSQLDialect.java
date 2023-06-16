@@ -625,7 +625,7 @@ class PostgreSQLDialect extends SqlDialect {
       if (hint instanceof OptimiseForRowCount) {
         // not available in pg_hint_plan
       }
-      if (hint instanceof UseIndex) {
+      else if (hint instanceof UseIndex) {
         UseIndex useIndex = (UseIndex)hint;
         builder.append(" IndexScan(")
           .append(StringUtils.isEmpty(useIndex.getTable().getAlias()) ? useIndex.getTable().getName() : useIndex.getTable().getAlias())
@@ -633,18 +633,18 @@ class PostgreSQLDialect extends SqlDialect {
           .append(useIndex.getIndexName().toLowerCase())
           .append(")");
       }
-      if (hint instanceof UseImplicitJoinOrder) {
+      else if (hint instanceof UseImplicitJoinOrder) {
         // not available in pg_hint_plan
         // actually, there is Leading hint, which we could abuse
       }
-      if (hint instanceof ParallelQueryHint) {
+      else if (hint instanceof ParallelQueryHint) {
         // not available in pg_hint_plan
       }
-      if (hint instanceof PostgreSQLCustomHint) {
+      else if (hint instanceof PostgreSQLCustomHint) {
         builder.append(" ")
         .append(((PostgreSQLCustomHint)hint).getCustomHint());
       }
-      if (hint instanceof DialectSpecificHint) {
+      else if (hint instanceof DialectSpecificHint && PostgreSQL.IDENTIFIER.equals( ( (DialectSpecificHint)hint).getDatabaseType() ) ) {
         builder.append(" ")
         .append(((DialectSpecificHint)hint).getHintContents());
       }
