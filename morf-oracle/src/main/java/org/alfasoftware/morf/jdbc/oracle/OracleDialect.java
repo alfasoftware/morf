@@ -1319,7 +1319,7 @@ class OracleDialect extends SqlDialect {
           .append(((OptimiseForRowCount)hint).getRowCount())
           .append(")");
       }
-      if (hint instanceof UseIndex) {
+      else if (hint instanceof UseIndex) {
         UseIndex useIndex = (UseIndex)hint;
         builder.append(" INDEX(")
           // No schema name - see http://docs.oracle.com/cd/B19306_01/server.102/b14200/sql_elements006.htm#BABIEJEB
@@ -1328,22 +1328,22 @@ class OracleDialect extends SqlDialect {
           .append(useIndex.getIndexName())
           .append(")");
       }
-      if (hint instanceof UseImplicitJoinOrder) {
+      else if (hint instanceof UseImplicitJoinOrder) {
         builder.append(" ORDERED");
       }
-      if (hint instanceof ParallelQueryHint) {
+      else if (hint instanceof ParallelQueryHint) {
         builder.append(" PARALLEL");
         ParallelQueryHint parallelQueryHint = (ParallelQueryHint) hint;
         builder.append(parallelQueryHint.getDegreeOfParallelism().map(d -> "(" + d + ")").orElse(""));
       }
-      if (hint instanceof AllowParallelDmlHint) {
+      else if (hint instanceof AllowParallelDmlHint) {
         builder.append(" ENABLE_PARALLEL_DML");
       }
-      if (hint instanceof OracleCustomHint) {
+      else if (hint instanceof OracleCustomHint) {
         builder.append(" ")
         .append(((OracleCustomHint)hint).getCustomHint());
       }
-      if (hint instanceof DialectSpecificHint) {
+      else if ( hint instanceof DialectSpecificHint && ((DialectSpecificHint)hint).isSameDatabaseType(Oracle.IDENTIFIER) ) {
         builder.append(" ")
         .append(((DialectSpecificHint)hint).getHintContents());
       }

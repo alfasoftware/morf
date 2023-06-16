@@ -644,7 +644,7 @@ class PostgreSQLDialect extends SqlDialect {
         builder.append(" ")
         .append(((PostgreSQLCustomHint)hint).getCustomHint());
       }
-      else if (hint instanceof DialectSpecificHint && PostgreSQL.IDENTIFIER.equals( ( (DialectSpecificHint)hint).getDatabaseType() ) ) {
+      else if ( hint instanceof DialectSpecificHint && ((DialectSpecificHint)hint).isSameDatabaseType(PostgreSQL.IDENTIFIER) ) {
         builder.append(" ")
         .append(((DialectSpecificHint)hint).getHintContents());
       }
