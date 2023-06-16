@@ -3360,6 +3360,15 @@ public abstract class AbstractSqlDialectTest {
         .withCustomHint(() -> "CustomHint")
       )
     );
+
+    assertEquals(
+      expectedHints8a(),
+      testDialect.convertStatementToSQL(
+        select()
+        .from(new TableReference("SCHEMA2", "Foo"))
+        .withDialectSpecificHint("ORACLE", "index(customer cust_primary_key_idx)")
+          )
+        );
   }
 
 
@@ -5813,6 +5822,13 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL for the {@link SelectStatement#withCustomHint(CustomHint customHint)} directive. Testing all dialcts do not react to an empty hint being supplied.
    */
   protected  String expectedHints8() {
+    return "SELECT * FROM SCHEMA2.Foo"; //NOSONAR
+  }
+
+  /**
+   * @return The expected SQL for the {@link SelectStatement#withDialectSpecificHint(String, String)} directive. Testing all dialcts do not react to an empty hint being supplied.
+   */
+  protected  String expectedHints8a() {
     return "SELECT * FROM SCHEMA2.Foo"; //NOSONAR
   }
 
