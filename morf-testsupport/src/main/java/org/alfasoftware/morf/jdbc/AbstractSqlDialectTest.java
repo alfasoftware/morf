@@ -3232,6 +3232,7 @@ public abstract class AbstractSqlDialectTest {
   /**
    * Check that the optimiser hints work.
    */
+  @SuppressWarnings("deprecation")
   @Test
   public void testHints() {
     assertEquals(
@@ -3376,6 +3377,7 @@ public abstract class AbstractSqlDialectTest {
    * This method can be overridden in specific dialects to test providing custom hints in each dialect
    * @return a mock CustomHint or an overridden, more specific, CustomHint
    */
+  @SuppressWarnings("deprecation")
   protected CustomHint provideCustomHint() {
     return mock(CustomHint.class);
   }
