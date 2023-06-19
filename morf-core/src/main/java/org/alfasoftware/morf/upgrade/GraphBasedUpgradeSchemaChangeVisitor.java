@@ -179,6 +179,15 @@ class GraphBasedUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
     AuditRecordHelper.addAuditRecord(this, sourceSchema, uuid, description);
   }
 
+  @Override
+  public void updateRunningAuditRecord(UUID uuid) {
+    AuditRecordHelper.updateRunningAuditRecord(this, sourceSchema, uuid);
+  }
+
+  @Override
+  public void updateFinishedAuditRecord(UUID uuid, long processingTimeMs, boolean success) {
+    AuditRecordHelper.updateFinishedAuditRecord(this, sourceSchema, uuid, processingTimeMs, success);
+  }
 
   /**
    * Set the current {@link GraphBasedUpgradeNode} which is being processed.

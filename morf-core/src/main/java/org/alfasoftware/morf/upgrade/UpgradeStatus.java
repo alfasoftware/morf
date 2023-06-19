@@ -44,6 +44,11 @@ public enum UpgradeStatus {
   IN_PROGRESS,
 
   /**
+   * Upgrade failed.
+   */
+  FAILED,
+
+  /**
    * Upgrade has been completed.
    */
   COMPLETED;

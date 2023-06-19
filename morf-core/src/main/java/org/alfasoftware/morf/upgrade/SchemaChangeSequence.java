@@ -32,6 +32,8 @@ import org.alfasoftware.morf.sql.element.FieldLiteral;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import org.joda.time.Instant;
+import org.joda.time.Interval;
 
 /**
  * Tracks a sequence of {@link SchemaChange}s as various {@link SchemaEditor}
@@ -137,14 +139,31 @@ public class SchemaChangeSequence {
    * @param visitor The schema change visitor against which to write the changes.
    */
   public void applyTo(SchemaChangeVisitor visitor) {
+
+    // Add all audit records
+    for (UpgradeStepWithChanges changesForStep : allChanges) {
+        visitor.addAuditRecord(changesForStep.getUUID(), changesForStep.getDescription());
+    }
+
     for (UpgradeStepWithChanges changesForStep : allChanges) {
       try {
+        // Start timer for this UpgradeStep
+        Instant startInstant = Instant.now();
+        // Update Audit record to show upgrade step is running
+        visitor.updateRunningAuditRecord(changesForStep.getUUID());
+        // Run prerequisites
         visitor.startStep(changesForStep.getUpgradeClass());
+
+        // Apply each change
         for (SchemaChange change : changesForStep.getChanges()) {
           change.accept(visitor);
         }
-        visitor.addAuditRecord(changesForStep.getUUID(), changesForStep.getDescription());
+
+        // Update Audit Record will successful run
+        visitor.updateFinishedAuditRecord(changesForStep.getUUID(), new Interval(startInstant, Instant.now()).toDurationMillis(), true);
       } catch (Exception e) {
+        // Set Audit Record to failed then throw runtime exception
+        visitor.updateFinishedAuditRecord(changesForStep.getUUID(), 0, false);
         throw new RuntimeException("Failed to apply step: [" + changesForStep.getUpgradeClass() + "]", e);
       }
     }
@@ -370,7 +389,7 @@ public class SchemaChangeSequence {
 
 
     /**
-     * @see org.alfasoftware.morf.upgrade.SchemaEditor#analyseTable(org.alfasoftware.morf.metadata.Table)
+     * @see org.alfasoftware.morf.upgrade.SchemaEditor#analyseTable(String)
      */
     @Override
     public void analyseTable(String tableName) {
@@ -500,6 +519,15 @@ public class SchemaChangeSequence {
       // no-op here. We don't need to record the UUIDs until we actually apply the changes.
     }
 
+    @Override
+    public void updateRunningAuditRecord(java.util.UUID uuid) {
+      // no-op here. We don't need to record the UUIDs until we actually apply the changes.
+    }
+
+    @Override
+    public void updateFinishedAuditRecord(java.util.UUID uuid, long processingTimeMs, boolean success) {
+      // no-op here. We don't need to record the UUIDs until we actually apply the changes.
+    }
 
     @Override
     public void startStep(Class<? extends UpgradeStep> upgradeClass) {

@@ -16,6 +16,8 @@
 package org.alfasoftware.morf.upgrade;
 
 
+import java.util.UUID;
+
 /**
  * Interface for any upgrade / downgrade strategy which handles all the
  * defined {@link SchemaChange} implementations.
@@ -147,6 +149,13 @@ public interface SchemaChangeVisitor {
    * @param description The description of the step.
    */
   public void addAuditRecord(java.util.UUID uuid, String description);
+
+
+//TODO Javadocs
+  public void updateRunningAuditRecord(UUID uuid);
+
+  //TODO Javadocs
+  public void updateFinishedAuditRecord(UUID uuid, long processingTimeMs, boolean success);
 
 
   /**
