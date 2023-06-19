@@ -64,6 +64,8 @@ public interface ViewDeploymentValidator {
 
     /**
      * Creates a {@link ViewDeploymentValidator} implementation for the given connection details.
+     * @param connectionResources connection resources for the datasource.
+     * @return ViewDeploymentValidator.
      */
     ViewDeploymentValidator createViewDeploymentValidator(ConnectionResources connectionResources);
 

@@ -38,7 +38,6 @@ public interface DropViewListener {
   /**
    * Called during {@link ViewChangesDeploymentHelper#dropViewIfExists(View, boolean, UpgradeSchemas)}.
    *
-   * @param view View being de-registered.
    * @param upgradeSchemas source and target schemas for the upgrade.
    * @return Should return statements to be part of view removal, after the view is de-registered.
    */
@@ -80,6 +79,8 @@ public interface DropViewListener {
 
     /**
      * Creates a {@link DropViewListener} implementation for the given connection details.
+     * @param connectionResources the ConnectionResources for the data source.
+     * @return DropViewListener.
      */
     DropViewListener createDropViewListener(ConnectionResources connectionResources);
 

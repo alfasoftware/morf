@@ -76,7 +76,7 @@ public final class UpgradeHelper {
      *
      * @param database the database to connect to.
      * @param dataSource the dataSource to use.
-     * @param exceptionRegexes
+     * @param exceptionRegexes – Regular expression for table exclusions.
      * @return the schema.
      */
     public static Schema copySourceSchema(ConnectionResources database, DataSource dataSource, Collection<String> exceptionRegexes) {

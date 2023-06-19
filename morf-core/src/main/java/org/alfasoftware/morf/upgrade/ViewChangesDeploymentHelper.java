@@ -197,6 +197,8 @@ public class ViewChangesDeploymentHelper {
 
     /**
      * Creates a {@link ViewChangesDeploymentHelper} implementation for the given connection details.
+     * @param connectionResources connection resources for the data source.
+     * @return ViewChangesDeploymentHelper.
      */
     public ViewChangesDeploymentHelper create(ConnectionResources connectionResources) {
       return new ViewChangesDeploymentHelper(connectionResources.sqlDialect(),

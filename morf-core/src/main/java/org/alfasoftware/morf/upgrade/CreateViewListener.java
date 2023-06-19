@@ -27,9 +27,9 @@ public interface CreateViewListener {
 
   /**
    *
-   * @param view
-   * @return
-   * @deprecated - deprecated method to ensure backwards compatability.
+   * @param view View being created.
+   * @return Should return statements to be part of view creation, after the view has been created.
+   * @deprecated - deprecated method to ensure backwards compatibility.
    */
   @Deprecated
   public default Iterable<String> registerView(@SuppressWarnings("unused") View view) {
@@ -59,6 +59,8 @@ public interface CreateViewListener {
 
     /**
      * Creates a {@link CreateViewListener} implementation for the given connection details.
+     * @param connectionResources the ConnectionResources for the data source.
+     * @return CreateViewListener.
      */
     CreateViewListener createCreateViewListener(ConnectionResources connectionResources);
 
