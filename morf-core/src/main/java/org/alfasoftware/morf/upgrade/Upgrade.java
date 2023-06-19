@@ -22,7 +22,6 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor.ResultSetProcessor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaValidator;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.TableReference;
@@ -45,7 +44,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.copy;
 import static org.alfasoftware.morf.sql.SelectStatement.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.element.Function.count;
