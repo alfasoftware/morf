@@ -22,18 +22,8 @@ public interface DropViewListener {
    * @return Should return statements to be part of view removal, after the view is de-registered.
    */
 
-  public default Iterable<String> deregisterView(View view, UpgradeSchemas upgradeSchemas) {
-    return deregisterView(view);
-  }
+  public Iterable<String> deregisterView(View view, UpgradeSchemas upgradeSchemas);
 
-  /**
-   * @param view View being de-registered.
-   * @return Should return statements to be part of view removal, after the view is de-registered.
-   */
-  @Deprecated
-  public default Iterable<String> deregisterView(View view) {
-   return ImmutableList.of();
-  }
 
   /**
    * Called during {@link ViewChangesDeploymentHelper#dropViewIfExists(View, boolean, UpgradeSchemas)}.
@@ -41,15 +31,8 @@ public interface DropViewListener {
    * @param upgradeSchemas source and target schemas for the upgrade.
    * @return Should return statements to be part of view removal, after the view is de-registered.
    */
-  public default Iterable<String> deregisterAllViews(UpgradeSchemas upgradeSchemas) { return deregisterAllViews(); }
+  public Iterable<String> deregisterAllViews(UpgradeSchemas upgradeSchemas);
 
-  /**
-   * @return Should return statements to be part of all views removal.
-   */
-  @Deprecated
-  public default Iterable<String> deregisterAllViews() {
-    return ImmutableList.of();
-  }
 
 
   /**
@@ -58,12 +41,12 @@ public interface DropViewListener {
   class NoOp implements DropViewListener {
 
     @Override
-    public Iterable<String> deregisterView(View view) {
+    public Iterable<String> deregisterView(View view, UpgradeSchemas upgradeSchemas) {
       return ImmutableList.of();
     }
 
     @Override
-    public Iterable<String> deregisterAllViews() {
+    public Iterable<String> deregisterAllViews(UpgradeSchemas upgradeSchemas) {
       return ImmutableList.of();
     }
   }

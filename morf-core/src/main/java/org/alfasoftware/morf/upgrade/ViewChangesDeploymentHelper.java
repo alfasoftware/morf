@@ -48,10 +48,11 @@ public class ViewChangesDeploymentHelper {
    * Creates SQL statements for creating given view.
    *
    * @param view View to be created.
+   * @param upgradeSchemas source and target schemas for upgrade.
    * @return SQL statements to be run to create the view.
    */
-  public List<String> createView(View view) {
-    return createView(view, true);
+  public List<String> createView(View view, UpgradeSchemas upgradeSchemas) {
+    return createView(view, true, upgradeSchemas);
   }
 
 
@@ -62,7 +63,7 @@ public class ViewChangesDeploymentHelper {
    * @param updateDeloyedViews Whether to update the DeployedViews table.
    * @return SQL statements to be run to create the view.
    */
-  List<String> createView(View view, boolean updateDeloyedViews) {
+  List<String> createView(View view, boolean updateDeloyedViews, UpgradeSchemas upgradeSchemas) {
     Builder<String> builder = ImmutableList.builder();
 
     // create the view
@@ -82,7 +83,7 @@ public class ViewChangesDeploymentHelper {
     }
 
     // add statements from the listener
-    builder.addAll(createViewListener.registerView(view));
+    builder.addAll(createViewListener.registerView(view, upgradeSchemas));
 
     return builder.build();
   }

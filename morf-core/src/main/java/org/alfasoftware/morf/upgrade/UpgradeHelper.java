@@ -65,7 +65,7 @@ public final class UpgradeHelper {
 
         final boolean insertToDeployedViews = targetSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME);
         for (View view : viewChanges.getViewsToDeploy()) {
-            statements.addAll(viewChangesDeploymentHelper.createView(view, insertToDeployedViews));
+            statements.addAll(viewChangesDeploymentHelper.createView(view, insertToDeployedViews, new UpgradeSchemas(null, targetSchema)));
         }
 
         return statements.build();

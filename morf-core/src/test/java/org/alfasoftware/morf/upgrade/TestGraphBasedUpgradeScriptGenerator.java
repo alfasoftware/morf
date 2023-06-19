@@ -151,7 +151,7 @@ public class TestGraphBasedUpgradeScriptGenerator {
     when(upgradeScriptAddition.sql(connectionResources)).thenReturn(Lists.newArrayList("7"));
     when(upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED)).thenReturn(Lists.newArrayList("8"));
     when(viewChangesDeploymentHelperFactory.create(any(ConnectionResources.class))).thenReturn(viewChangesDeploymentHelper);
-    when(viewChangesDeploymentHelper.createView(eq(view), eq(true))).thenReturn(Lists.newArrayList("3", "4"));
+    when(viewChangesDeploymentHelper.createView(eq(view), eq(true), any(UpgradeSchemas.class))).thenReturn(Lists.newArrayList("3", "4"));
 
 
 

@@ -7,7 +7,7 @@ import org.alfasoftware.morf.metadata.View;
 
 /**
  *
- * Listener for calls to {@link ViewChangesDeploymentHelper#createView(View)}.
+ * Listener for calls to {@link ViewChangesDeploymentHelper#createView(View, UpgradeSchemas)}.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2021
  */
@@ -15,26 +15,14 @@ import org.alfasoftware.morf.metadata.View;
 public interface CreateViewListener {
 
   /**
-   * Called during {@link ViewChangesDeploymentHelper#createView(View)}.
+   * Called during {@link ViewChangesDeploymentHelper#createView(View, UpgradeSchemas)}.
    *
    * @param view View being created.
    * @param upgradeSchemas source and target schemas for the upgrade.
    * @return Should return statements to be part of view creation, after the view has been created.
    */
-  public default Iterable<String> registerView(View view, UpgradeSchemas upgradeSchemas) {
-    return registerView(view);
-  }
+  public Iterable<String> registerView(View view, UpgradeSchemas upgradeSchemas);
 
-  /**
-   *
-   * @param view View being created.
-   * @return Should return statements to be part of view creation, after the view has been created.
-   * @deprecated - deprecated method to ensure backwards compatibility.
-   */
-  @Deprecated
-  public default Iterable<String> registerView(@SuppressWarnings("unused") View view) {
-    return ImmutableList.of();
-  }
 
 
   /**
@@ -43,7 +31,7 @@ public interface CreateViewListener {
   class NoOp implements CreateViewListener {
 
     @Override
-    public Iterable<String> registerView(View view) {
+    public Iterable<String> registerView(View view, UpgradeSchemas upgradeSchemas) {
       return ImmutableList.of();
     }
   }
