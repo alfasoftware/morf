@@ -21,9 +21,19 @@ public interface CreateViewListener {
    * @param upgradeSchemas source and target schemas for the upgrade.
    * @return Should return statements to be part of view creation, after the view has been created.
    */
-  public Iterable<String> registerView(View view, UpgradeSchemas upgradeSchemas);
+  Iterable<String> registerView(View view, UpgradeSchemas upgradeSchemas);
 
-
+  /**
+   * Called during {@link ViewChangesDeploymentHelper#createView(View)}.
+   *
+   * @param view View being created.
+   * @return Should return statements to be part of view creation, after the view has been created.
+   * @deprecated Deprecated to ensure backwards compatibility.
+   */
+  @Deprecated
+  default Iterable<String> registerView(View view) {
+    return registerView(view, new UpgradeSchemas());
+  }
 
   /**
    * Empty implementation.
@@ -32,6 +42,11 @@ public interface CreateViewListener {
 
     @Override
     public Iterable<String> registerView(View view, UpgradeSchemas upgradeSchemas) {
+      return ImmutableList.of();
+    }
+
+    @Override
+    public Iterable<String> registerView(View view) {
       return ImmutableList.of();
     }
   }

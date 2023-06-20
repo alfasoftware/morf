@@ -76,15 +76,12 @@ public class TestGraphBasedUpgradeScriptGenerator {
 
   @Mock
   private ViewChangesDeploymentHelper viewChangesDeploymentHelper;
-
-  @Mock
   private UpgradeSchemas upgradeSchemas;
 
   @Before
   public void setup() {
     MockitoAnnotations.openMocks(this);
-    when(upgradeSchemas.getSourceSchema()).thenReturn(sourceSchema);
-    when(upgradeSchemas.getTargetSchema()).thenReturn(targetSchema);
+    upgradeSchemas = new UpgradeSchemas(sourceSchema, targetSchema);
     gen = new GraphBasedUpgradeScriptGenerator(upgradeSchemas, connectionResources, idTable, viewChanges,
         upgradeStatusTableService, Sets.newSet(upgradeScriptAddition), viewChangesDeploymentHelperFactory);
 

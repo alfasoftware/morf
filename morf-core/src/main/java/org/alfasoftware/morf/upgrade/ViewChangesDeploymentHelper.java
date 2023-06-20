@@ -55,22 +55,34 @@ public class ViewChangesDeploymentHelper {
     return createView(view, true, upgradeSchemas);
   }
 
+  /**
+   * Creates SQL statements for creating given view.
+   *
+   * @param view View to be created.
+   * @return SQL statements to be run to create the view.
+   */
+  @Deprecated
+  public List<String> createView(View view) {
+    return createView(view, true);
+  }
+
 
   /**
    * Creates SQL statements for creating given view.
    *
    * @param view View to be created.
-   * @param updateDeloyedViews Whether to update the DeployedViews table.
+   * @param updateDeployedViews Whether to update the DeployedViews table.
+   * @param upgradeSchemas contains source and target schemas for upgrade.
    * @return SQL statements to be run to create the view.
    */
-  List<String> createView(View view, boolean updateDeloyedViews, UpgradeSchemas upgradeSchemas) {
+  List<String> createView(View view, boolean updateDeployedViews, UpgradeSchemas upgradeSchemas) {
     Builder<String> builder = ImmutableList.builder();
 
     // create the view
     builder.addAll(sqlDialect.viewDeploymentStatements(view));
 
     // update deployed views
-    if (updateDeloyedViews) {
+    if (updateDeployedViews) {
       builder.addAll(
         sqlDialect.convertStatementToSQL(
           insert().into(tableRef(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME))
@@ -88,6 +100,17 @@ public class ViewChangesDeploymentHelper {
     return builder.build();
   }
 
+  /**
+   * Creates SQL statements for creating given view.
+   *
+   * @param view View to be created.
+   * @param updateDeployedViews Whether to update the DeployedViews table.
+   * @return SQL statements to be run to create the view.
+   */
+  @Deprecated
+  List<String> createView(View view, boolean updateDeployedViews) {
+    return createView(view, updateDeployedViews, new UpgradeSchemas());
+  }
 
   /**
    * Creates SQL statements for dropping given view.
@@ -100,30 +123,63 @@ public class ViewChangesDeploymentHelper {
     return dropViewIfExists(view, true, true, upgradeSchemas);
   }
 
+  /**
+   * Creates SQL statements for dropping given view.
+   *
+   * @param view View to be dropped.
+   * @return SQL statements to be run to drop the view.
+   */
+  @Deprecated
+  public List<String> dropViewIfExists(View view) {
+    return dropViewIfExists(view, true, true);
+  }
 
   /**
    * Creates SQL statements for dropping given view.
    *
    * @param view View to be dropped.
-   * @param updateDeloyedViews Whether to update the DeployedViews table.
+   * @param updateDeployedViews Whether to update the DeployedViews table.
    * @param upgradeSchemas source and target schemas used for upgrade.
    * @return SQL statements to be run to drop the view.
    */
-  List<String> dropViewIfExists(View view, boolean updateDeloyedViews, UpgradeSchemas upgradeSchemas) {
-    return dropViewIfExists(view, true, updateDeloyedViews, upgradeSchemas);
+  List<String> dropViewIfExists(View view, boolean updateDeployedViews, UpgradeSchemas upgradeSchemas) {
+    return dropViewIfExists(view, true, updateDeployedViews, upgradeSchemas);
   }
 
+  /**
+   * Creates SQL statements for dropping given view.
+   *
+   * @param view View to be dropped.
+   * @param updateDeployedViews Whether to update the DeployedViews table.
+   * @return SQL statements to be run to drop the view.
+   */
+  @Deprecated
+  List<String> dropViewIfExists(View view, boolean updateDeployedViews) {
+    return dropViewIfExists(view, true, updateDeployedViews);
+  }
 
   /**
    * Creates SQL statements for removing given view from the view register.
    *
    * @param view View to be dropped.
-   * @param updateDeloyedViews Whether to update the DeployedViews table.
+   * @param updateDeployedViews Whether to update the DeployedViews table.
    * @param upgradeSchemas source and target schemas used for upgrade.
    * @return SQL statements to be run to drop the view.
    */
-  List<String> deregisterViewIfExists(View view, boolean updateDeloyedViews, UpgradeSchemas upgradeSchemas) {
-    return dropViewIfExists(view, false, updateDeloyedViews, upgradeSchemas);
+  List<String> deregisterViewIfExists(View view, boolean updateDeployedViews, UpgradeSchemas upgradeSchemas) {
+    return dropViewIfExists(view, false, updateDeployedViews, upgradeSchemas);
+  }
+
+  /**
+   * Creates SQL statements for removing given view from the view register.
+   *
+   * @param view View to be dropped.
+   * @param updateDeployedViews Whether to update the DeployedViews table.
+   * @return SQL statements to be run to drop the view.
+   */
+  @Deprecated
+  List<String> deregisterViewIfExists(View view, boolean updateDeployedViews) {
+    return dropViewIfExists(view, false, updateDeployedViews);
   }
 
 
@@ -131,12 +187,12 @@ public class ViewChangesDeploymentHelper {
    * Creates SQL statements for dropping given view.
    *
    * @param view View to be dropped.
-   * @param updateDeloyedViews Whether to update the DeployedViews table.
+   * @param updateDeployedViews Whether to update the DeployedViews table.
    * @param dropTheView Whether to actually drop the view from the database.
    * @param upgradeSchemas source and target schemas used for upgrade.
    * @return SQL statements to be run to drop the view.
    */
-  private List<String> dropViewIfExists(View view, boolean dropTheView, boolean updateDeloyedViews, UpgradeSchemas upgradeSchemas) {
+  private List<String> dropViewIfExists(View view, boolean dropTheView, boolean updateDeployedViews, UpgradeSchemas upgradeSchemas) {
     Builder<String> builder = ImmutableList.builder();
 
     // drop the view
@@ -145,7 +201,7 @@ public class ViewChangesDeploymentHelper {
     }
 
     // update deployed views
-    if (updateDeloyedViews) {
+    if (updateDeployedViews) {
       builder.add(
         sqlDialect.convertStatementToSQL(
           delete(tableRef(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME))
@@ -157,6 +213,20 @@ public class ViewChangesDeploymentHelper {
     builder.addAll(dropViewListener.deregisterView(view, upgradeSchemas));
 
     return builder.build();
+  }
+
+
+  /**
+   * Creates SQL statements for dropping given view.
+   *
+   * @param view View to be dropped.
+   * @param updateDeployedViews Whether to update the DeployedViews table.
+   * @param dropTheView Whether to actually drop the view from the database.
+   * @return SQL statements to be run to drop the view.
+   */
+  @Deprecated
+  private List<String> dropViewIfExists(View view, boolean dropTheView, boolean updateDeployedViews) {
+    return dropViewIfExists(view, dropTheView, updateDeployedViews, new UpgradeSchemas());
   }
 
 
@@ -180,6 +250,14 @@ public class ViewChangesDeploymentHelper {
     return builder.build();
   }
 
+  /**
+   * Creates SQL statements for removing all views from the view register.
+   *
+   * @return SQL statements to be run to de-register all views.
+   */
+  public List<String> deregisterAllViews() {
+    return deregisterAllViews(new UpgradeSchemas());
+  }
 
   /**
    * Factory that could be used to create {@link ViewChangesDeploymentHelper}s.
