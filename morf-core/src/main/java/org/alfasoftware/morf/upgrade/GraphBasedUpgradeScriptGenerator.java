@@ -86,7 +86,7 @@ class GraphBasedUpgradeScriptGenerator {
     statements.addAll(connectionResources.sqlDialect().truncateTableStatements(idTable));
     statements.addAll(connectionResources.sqlDialect().dropStatements(idTable));
 
-    statements.addAll(UpgradeHelper.postSchemaUpgrade(upgradeSchemas.getTargetSchema(),
+    statements.addAll(UpgradeHelper.postSchemaUpgrade(upgradeSchemas,
             viewChanges,
             viewChangesDeploymentHelperFactory.create(connectionResources)));
 
@@ -157,8 +157,7 @@ class GraphBasedUpgradeScriptGenerator {
      */
     GraphBasedUpgradeScriptGenerator create(Schema sourceSchema, Schema targetSchema, ConnectionResources connectionResources, Table idTable,
         ViewChanges viewChanges) {
-      UpgradeSchemas upgradeSchemas = new UpgradeSchemas(sourceSchema, targetSchema);
-      return new GraphBasedUpgradeScriptGenerator(upgradeSchemas, connectionResources, idTable, viewChanges,
+      return new GraphBasedUpgradeScriptGenerator(new UpgradeSchemas(sourceSchema, targetSchema), connectionResources, idTable, viewChanges,
           upgradeStatusTableServiceFactory.create(connectionResources), upgradeScriptAdditions, viewChangesDeploymentHelperFactory);
     }
   }

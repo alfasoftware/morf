@@ -285,7 +285,7 @@ public class Upgrade {
 
     path.writeSql(upgradeStatements);
 
-    path.writeSql(UpgradeHelper.postSchemaUpgrade(targetSchema, viewChanges, viewChangesDeploymentHelper));
+    path.writeSql(UpgradeHelper.postSchemaUpgrade(new UpgradeSchemas(sourceSchema, targetSchema), viewChanges, viewChangesDeploymentHelper));
 
     // Since Oracle is not able to re-map schema references in trigger code, we need to rebuild all triggers
     // for id column autonumbering when exporting and importing data between environments.

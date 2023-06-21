@@ -52,20 +52,20 @@ public final class UpgradeHelper {
 
     /**
      * postUpgrade - generates a collection of SQL statements to run after he upgrade.
-     * @param targetSchema - Schema which is to be deployed.
+     * @param upgradeSchemas - source and target schemas for the upgrade.
      * @param viewChanges - Changes to be made to views.
      * @param viewChangesDeploymentHelper - Deployment helper for the view changes.
      * @return - Collection of SQL Statements.
      */
-    static Collection<String> postSchemaUpgrade(Schema targetSchema,
+    static Collection<String> postSchemaUpgrade(UpgradeSchemas upgradeSchemas,
                                                 ViewChanges viewChanges,
                                                 ViewChangesDeploymentHelper viewChangesDeploymentHelper) {
         ImmutableList.Builder<String> statements = ImmutableList.builder();
 
 
-        final boolean insertToDeployedViews = targetSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME);
+        final boolean insertToDeployedViews = upgradeSchemas.getTargetSchema().tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME);
         for (View view : viewChanges.getViewsToDeploy()) {
-            statements.addAll(viewChangesDeploymentHelper.createView(view, insertToDeployedViews, new UpgradeSchemas(null, targetSchema)));
+            statements.addAll(viewChangesDeploymentHelper.createView(view, insertToDeployedViews, upgradeSchemas));
         }
 
         return statements.build();
@@ -80,11 +80,8 @@ public final class UpgradeHelper {
      * @return the schema.
      */
     public static Schema copySourceSchema(ConnectionResources database, DataSource dataSource, Collection<String> exceptionRegexes) {
-        SchemaResource databaseSchemaResource = database.openSchemaResource(dataSource);
-        try {
+        try (SchemaResource databaseSchemaResource = database.openSchemaResource(dataSource)) {
             return copy(databaseSchemaResource, exceptionRegexes);
-        } finally {
-            databaseSchemaResource.close();
         }
     }
 
