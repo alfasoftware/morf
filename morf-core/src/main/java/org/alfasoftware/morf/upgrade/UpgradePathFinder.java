@@ -60,6 +60,14 @@ public class UpgradePathFinder {
 
   private final List<CandidateStep> stepsToApply;
 
+  private static final String APPLICATION_SCHEMA = "expected schema based on application binaries";
+
+  private static final String UPGRADED_SCHEMA = "database schema with upgrades applied";
+
+  private static final String REVERSED_SCHEMA = "upgraded database schema with upgrades reversed";
+
+  private static final String CURRENT_SCHEMA = "current database schema";
+
   /**
    * @param availableUpgradeSteps Steps that are available for building a path.
    * @param stepsAlreadyApplied The UUIDs of steps which have already been applied.
@@ -109,13 +117,13 @@ public class UpgradePathFinder {
 
     // We have changes to make. Apply them against the current schema to see whether they get us the right position
     Schema trialUpgradedSchema = schemaChangeSequence.applyToSchema(current);
-    if (!schemasMatch(target, trialUpgradedSchema, "target domain schema", "trial upgraded schema", exceptionRegexes)) {
+    if (!schemasMatch(target, trialUpgradedSchema, APPLICATION_SCHEMA, UPGRADED_SCHEMA, exceptionRegexes)) {
       throw new NoUpgradePathExistsException();
     }
 
     // Now reverse-apply those changes to see whether they get us back to where we started
     Schema reversal = schemaChangeSequence.applyInReverseToSchema(trialUpgradedSchema);
-    if (!schemasMatch(reversal, current, "upgraded schema reversal", "current schema", exceptionRegexes)) {
+    if (!schemasMatch(reversal, current, REVERSED_SCHEMA, CURRENT_SCHEMA, exceptionRegexes)) {
       throw new IllegalStateException("Upgrade reversals are invalid");
     }
 
