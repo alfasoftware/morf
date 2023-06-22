@@ -5,6 +5,8 @@ import com.google.inject.ImplementedBy;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.metadata.View;
 
+import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
+
 /**
  *
  * Listener for calls to {@link ViewChangesDeploymentHelper#dropViewIfExists(View, boolean, UpgradeSchemas)}.
@@ -38,21 +40,23 @@ public interface DropViewListener {
    *
    * @param view View being de-registered.
    * @return Should return statements to be part of view removal, after the view is de-registered.
+   * @deprecated kept to ensure backwards compatibility.
    */
   @Deprecated
   default Iterable<String> deregisterView(View view){
-    return deregisterView(view, new UpgradeSchemas());
-  };
+    return deregisterView(view, new UpgradeSchemas(schema(), schema()));
+  }
 
 
   /**
    * Called during {@link ViewChangesDeploymentHelper#deregisterAllViews()}.
    *
    * @return Should return statements to be part of all views removal.
+   * @deprecated kept to ensure backwards compatibility.
    */
   @Deprecated
   default Iterable<String> deregisterAllViews(){
-    return deregisterAllViews(new UpgradeSchemas());
+    return deregisterAllViews(new UpgradeSchemas(schema(), schema()));
   }
 
   /**
@@ -71,11 +75,13 @@ public interface DropViewListener {
     }
 
     @Override
+    @Deprecated
     public Iterable<String> deregisterView(View view) {
       return ImmutableList.of();
     }
 
     @Override
+    @Deprecated
     public Iterable<String> deregisterAllViews() {
       return ImmutableList.of();
     }

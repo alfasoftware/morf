@@ -22,11 +22,6 @@ public final class UpgradeSchemas {
         this.targetSchema = targetSchema;
     }
 
-    public UpgradeSchemas() {
-        this.sourceSchema = null;
-        this.targetSchema = null;
-    }
-
     public Schema getSourceSchema() {
         return sourceSchema;
     }

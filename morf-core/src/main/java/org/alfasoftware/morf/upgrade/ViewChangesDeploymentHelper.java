@@ -11,6 +11,7 @@ import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import javax.inject.Inject;
 import java.util.List;
 
+import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.sql.SqlUtils.delete;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.insert;
@@ -60,6 +61,7 @@ public class ViewChangesDeploymentHelper {
    *
    * @param view View to be created.
    * @return SQL statements to be run to create the view.
+   * @deprecated kept to ensure backwards compatibility.
    */
   @Deprecated
   public List<String> createView(View view) {
@@ -106,10 +108,11 @@ public class ViewChangesDeploymentHelper {
    * @param view View to be created.
    * @param updateDeployedViews Whether to update the DeployedViews table.
    * @return SQL statements to be run to create the view.
+   * @deprecated kept to ensure backwards compatibility.
    */
   @Deprecated
   List<String> createView(View view, boolean updateDeployedViews) {
-    return createView(view, updateDeployedViews, new UpgradeSchemas());
+    return createView(view, updateDeployedViews, new UpgradeSchemas(schema(), schema()));
   }
 
   /**
@@ -128,6 +131,7 @@ public class ViewChangesDeploymentHelper {
    *
    * @param view View to be dropped.
    * @return SQL statements to be run to drop the view.
+   * @deprecated kept to ensure backwards compatibility.
    */
   @Deprecated
   public List<String> dropViewIfExists(View view) {
@@ -152,6 +156,7 @@ public class ViewChangesDeploymentHelper {
    * @param view View to be dropped.
    * @param updateDeployedViews Whether to update the DeployedViews table.
    * @return SQL statements to be run to drop the view.
+   * @deprecated kept to ensure backwards compatibility.
    */
   @Deprecated
   List<String> dropViewIfExists(View view, boolean updateDeployedViews) {
@@ -176,6 +181,7 @@ public class ViewChangesDeploymentHelper {
    * @param view View to be dropped.
    * @param updateDeployedViews Whether to update the DeployedViews table.
    * @return SQL statements to be run to drop the view.
+   * @deprecated kept to ensure backwards compatibility.
    */
   @Deprecated
   List<String> deregisterViewIfExists(View view, boolean updateDeployedViews) {
@@ -223,10 +229,11 @@ public class ViewChangesDeploymentHelper {
    * @param updateDeployedViews Whether to update the DeployedViews table.
    * @param dropTheView Whether to actually drop the view from the database.
    * @return SQL statements to be run to drop the view.
+   * @deprecated kept to ensure backwards compatibility.
    */
   @Deprecated
   private List<String> dropViewIfExists(View view, boolean dropTheView, boolean updateDeployedViews) {
-    return dropViewIfExists(view, dropTheView, updateDeployedViews, new UpgradeSchemas());
+    return dropViewIfExists(view, dropTheView, updateDeployedViews, new UpgradeSchemas(schema(), schema()));
   }
 
 
@@ -256,7 +263,7 @@ public class ViewChangesDeploymentHelper {
    * @return SQL statements to be run to de-register all views.
    */
   public List<String> deregisterAllViews() {
-    return deregisterAllViews(new UpgradeSchemas());
+    return deregisterAllViews(new UpgradeSchemas(schema(), schema()));
   }
 
   /**
