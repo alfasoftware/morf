@@ -261,7 +261,9 @@ public class ViewChangesDeploymentHelper {
    * Creates SQL statements for removing all views from the view register.
    *
    * @return SQL statements to be run to de-register all views.
+   * @deprecated kept to ensure backwards compatibility.
    */
+  @Deprecated
   public List<String> deregisterAllViews() {
     return deregisterAllViews(new UpgradeSchemas(schema(), schema()));
   }

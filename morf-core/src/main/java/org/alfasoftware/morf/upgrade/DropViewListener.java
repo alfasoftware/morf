@@ -24,7 +24,9 @@ public interface DropViewListener {
    * @return Should return statements to be part of view removal, after the view is de-registered.
    */
 
-  Iterable<String> deregisterView(View view, UpgradeSchemas upgradeSchemas);
+  default Iterable<String> deregisterView(View view, UpgradeSchemas upgradeSchemas){
+    return deregisterView(view);
+  }
 
 
   /**
@@ -33,7 +35,9 @@ public interface DropViewListener {
    * @param upgradeSchemas source and target schemas for the upgrade.
    * @return Should return statements to be part of view removal, after the view is de-registered.
    */
-  Iterable<String> deregisterAllViews(UpgradeSchemas upgradeSchemas);
+  default Iterable<String> deregisterAllViews(UpgradeSchemas upgradeSchemas){
+    return deregisterAllViews();
+  }
 
   /**
    * Called during {@link ViewChangesDeploymentHelper#dropViewIfExists(View)}.
@@ -44,7 +48,7 @@ public interface DropViewListener {
    */
   @Deprecated
   default Iterable<String> deregisterView(View view){
-    return deregisterView(view, new UpgradeSchemas(schema(), schema()));
+    throw new IllegalStateException();
   }
 
 
@@ -56,7 +60,7 @@ public interface DropViewListener {
    */
   @Deprecated
   default Iterable<String> deregisterAllViews(){
-    return deregisterAllViews(new UpgradeSchemas(schema(), schema()));
+    throw new IllegalStateException();
   }
 
   /**
