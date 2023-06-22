@@ -268,11 +268,6 @@
       </dependency>
       <dependency>
         <groupId>org.alfasoftware</groupId>
-        <artifactId>morf-nuodb</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.alfasoftware</groupId>
         <artifactId>morf-oracle</artifactId>
         <version>${project.version}</version>
       </dependency>

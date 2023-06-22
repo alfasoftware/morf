@@ -270,8 +270,4 @@ public interface DatabaseType {
   /** @deprecated use AlfaDatabaseType.H2, and carefully consider why you are detecting a specific database type at all. */
   @Deprecated
   public static final String H2 = "H2";
-
-  /** @deprecated use AlfaDatabaseType.NUODB, and carefully consider why you are detecting a specific database type at all. */
-  @Deprecated
-  public static final String NUODB = "NUODB";
 }

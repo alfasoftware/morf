@@ -78,11 +78,6 @@
     </dependency>
     <dependency>
       <groupId>org.alfasoftware</groupId>
-      <artifactId>morf-nuodb</artifactId>
-      <scope>runtime</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.alfasoftware</groupId>
       <artifactId>morf-oracle</artifactId>
       <scope>runtime</scope>
     </dependency>
