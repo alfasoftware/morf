@@ -81,22 +81,46 @@ public interface ViewDeploymentValidator {
    */
   class AlwaysValidate implements ViewDeploymentValidator {
 
+    /**
+     *
+     * @param view View being examined. This is an existing schema view.
+     * @param upgradeSchemas Source and target schemas used for upgrade.
+     * @return boolean true if view is valid.
+     */
     @Override
     public boolean validateExistingView(View view, UpgradeSchemas upgradeSchemas) {
       return true; // the given existing view is okay as is
     }
 
+    /**
+     *
+     * @param view View being examined. This is an existing schema view.
+     * @return boolean true if view is valid.
+     * @deprecated kept to ensure backwards compatibility.
+     */
     @Override
     @Deprecated
     public boolean validateExistingView(View view) {
       return true; // the given existing view is okay as is
     }
 
+    /**
+     *
+     * @param view View being examined. This is a non-existing schema view.
+     * @param upgradeSchemas Source and target schemas used for upgrade.
+     * @return boolean true if view is valid.
+     */
     @Override
     public boolean validateMissingView(View view, UpgradeSchemas upgradeSchemas) {
       return true; // the given new view can be created right away
     }
 
+    /**
+     *
+     * @param view View being examined. This is a non-existing schema view.
+     * @return boolean true if view is valid.
+     * @deprecated kept to ensure backwards compatibility.
+     */
     @Override
     @Deprecated
     public boolean validateMissingView(View view) {

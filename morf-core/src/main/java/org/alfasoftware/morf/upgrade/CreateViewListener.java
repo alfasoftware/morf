@@ -5,8 +5,6 @@ import com.google.inject.ImplementedBy;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.metadata.View;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
-
 /**
  *
  * Listener for calls to {@link ViewChangesDeploymentHelper#createView(View, UpgradeSchemas)}.
@@ -44,11 +42,23 @@ public interface CreateViewListener {
    */
   class NoOp implements CreateViewListener {
 
+    /**
+     *
+     * @param view View being created.
+     * @param upgradeSchemas source and target schemas for the upgrade.
+     * @return List of sql statements.
+     */
     @Override
     public Iterable<String> registerView(View view, UpgradeSchemas upgradeSchemas) {
       return ImmutableList.of();
     }
 
+    /**
+     *
+     * @param view View being created.
+     * @return List of sql statements.
+     * @deprecated kept to ensure backwards compatibility.
+     */
     @Override
     @Deprecated
     public Iterable<String> registerView(View view) {
