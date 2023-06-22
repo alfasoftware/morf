@@ -52,12 +52,8 @@ public interface ApplicationConnectionResources {
     /**
      * An Atomikos connection pool should be used. Necessary when using Atomikos XA/JTA.
      */
-    ATOMIKOS,
+    ATOMIKOS
 
-    /**
-     * A NuoDB connection pool should be used.
-     */
-    NUODB
   }
 
 
