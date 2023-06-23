@@ -19,8 +19,10 @@ import static org.alfasoftware.morf.sql.SqlUtils.cast;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.alfasoftware.morf.sql.element.Function.addDays;
 import static org.alfasoftware.morf.sql.element.Function.dateToYyyyMMddHHmmss;
 import static org.alfasoftware.morf.sql.element.Function.now;
+import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.UPGRADE_STEP_DESCRIPTION_LENGTH;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -41,6 +43,9 @@ public class AuditRecordHelper {
 
 
   private static String serverName;
+
+  // variable to track whether the status, server and processingTimeMs columns have been added
+  private static boolean extendedUpgradeAuditTableRowsPresent;
 
   /*
     //TODO tidy this into proper JavaDocs.
@@ -74,7 +79,7 @@ UpgradeAudit Table Schema:
    * @param description The description of the step.
    */
   @Deprecated
-  public static void addAuditRecordOriginal(SchemaChangeVisitor visitor, Schema schema, UUID uuid, String description) {
+  public static void addAuditRecordNoStatus(SchemaChangeVisitor visitor, Schema schema, UUID uuid, String description) {
     // There's no point adding an UpgradeAudit row if the table isn't there.
     if (!schema.tableExists("UpgradeAudit"))
       return;
@@ -100,6 +105,20 @@ UpgradeAudit Table Schema:
     if (!schema.tableExists("UpgradeAudit"))
       return;
 
+    if ( ! extendedUpgradeAuditTableRowsPresent ) {
+      // adding the extended tables expanded the table from 3 columns to 6. If we have more than 5 columns
+      // we can assume that we have the extended fields
+      if(schema.getTable("UpgradeAudit").columns().size() > 5) {
+        extendedUpgradeAuditTableRowsPresent = true;
+      } else {
+        // If we don't have the expanded fields we can no-op as UpgradeAudit records are only inserted after we
+        // have run the upgrade step
+        return;
+      }
+    }
+
+
+
     InsertStatement auditRecord = createExtendedAuditInsertStatement(uuid, description);
 
     visitor.visit(new ExecuteStatement(auditRecord));
@@ -111,16 +130,41 @@ UpgradeAudit Table Schema:
     if (!schema.tableExists("UpgradeAudit"))
       return;
 
-   UpdateStatement auditRecord = createRunningAuditUpdateStatement(uuid);
+    if ( ! extendedUpgradeAuditTableRowsPresent ) {
+      // adding the extended tables expanded the table from 3 columns to 6. If we have more than 5 columns
+      // we can assume that we have the extended fields
+      if(schema.getTable("UpgradeAudit").columns().size() > 5) {
+        extendedUpgradeAuditTableRowsPresent = true;
+      } else {
+        // If we don't have the expanded fields we can no-op as UpgradeAudit records are only inserted after we
+        // have run the upgrade step
+        return;
+      }
+    }
+
+    UpdateStatement auditRecord = createRunningAuditUpdateStatement(uuid);
 
     visitor.visit(new ExecuteStatement(auditRecord));
   }
 
 
-  public static void updateFinishedAuditRecord(SchemaChangeVisitor visitor, Schema schema, UUID uuid, long processingTimeMs, boolean success) {
+  public static void updateFinishedAuditRecord(SchemaChangeVisitor visitor, Schema schema, UUID uuid, long processingTimeMs, boolean success, String description) {
     // There's no point adding an UpgradeAudit row if the table isn't there.
     if (!schema.tableExists("UpgradeAudit"))
       return;
+
+    if ( ! extendedUpgradeAuditTableRowsPresent ) {
+      // adding the extended tables expanded the table from 3 columns to 6. If we have more than 5 columns
+      // we can assume that we have the extended fields
+      if(schema.getTable("UpgradeAudit").columns().size() > 5) {
+        extendedUpgradeAuditTableRowsPresent = true;
+        // Just extended so will not have a UpgradeAudit table record. So we need to add one, so it can be upgraded afterwards
+        addAuditRecord(visitor, schema, uuid, description);
+      } else {
+        addAuditRecordNoStatus(visitor, schema, uuid, description);
+        return;
+      }
+    }
 
     UpdateStatement auditRecord = createFinishedAuditUpdateStatement(uuid, processingTimeMs, success);
 
@@ -153,7 +197,7 @@ UpgradeAudit Table Schema:
     InsertStatement auditRecord = new InsertStatement().into(
             tableRef("UpgradeAudit")).values(
             literal(uuid.toString()).as("upgradeUUID"),
-            literal(description).as("description"),
+            literal(description.length() > UPGRADE_STEP_DESCRIPTION_LENGTH ? description.substring(0, UPGRADE_STEP_DESCRIPTION_LENGTH) : description).as("description"),
             cast(dateToYyyyMMddHHmmss(now())).asType(DataType.DECIMAL, 14).as("appliedTime"),
             literal(UpgradeStepStatus.SCHEDULED.name()).as("status"),
             new FieldLiteral(getServerName()).as("server")
@@ -192,10 +236,13 @@ UpgradeAudit Table Schema:
    * @return The insert statement
    */
   public static InsertStatement createAuditInsertStatement(UUID uuid, String description) {
+
+
+
     InsertStatement auditRecord = new InsertStatement().into(
       new TableReference("UpgradeAudit")).values(
         new FieldLiteral(uuid.toString()).as("upgradeUUID"),
-        new FieldLiteral(description).as("description"),
+        new FieldLiteral(description.length() > UPGRADE_STEP_DESCRIPTION_LENGTH ? description.substring(0, UPGRADE_STEP_DESCRIPTION_LENGTH) : description).as("description"),
         cast(dateToYyyyMMddHHmmss(now())).asType(DataType.DECIMAL, 14).as("appliedTime")
       );
     return auditRecord;

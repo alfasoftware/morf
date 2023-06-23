@@ -48,6 +48,7 @@ class GraphBasedUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
    * Write statements to the current node
    */
   private void writeStatements(Collection<String> statements) {
+    //TODO jonk - log SQL
     currentNode.addAllUpgradeStatements(statements);
   }
 
@@ -185,8 +186,8 @@ class GraphBasedUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
   }
 
   @Override
-  public void updateFinishedAuditRecord(UUID uuid, long processingTimeMs, boolean success) {
-    AuditRecordHelper.updateFinishedAuditRecord(this, sourceSchema, uuid, processingTimeMs, success);
+  public void updateFinishedAuditRecord(UUID uuid, long processingTimeMs, boolean success, String description) {
+    AuditRecordHelper.updateFinishedAuditRecord(this, sourceSchema, uuid, processingTimeMs, success, description);
   }
 
   /**

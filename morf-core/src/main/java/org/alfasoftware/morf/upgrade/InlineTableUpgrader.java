@@ -254,8 +254,8 @@ public class InlineTableUpgrader implements SchemaChangeVisitor {
   }
 
   @Override
-  public void updateFinishedAuditRecord(UUID uuid, long processingTimeMs, boolean success) {
-    AuditRecordHelper.updateFinishedAuditRecord(this, currentSchema, uuid, processingTimeMs, success);
+  public void updateFinishedAuditRecord(UUID uuid, long processingTimeMs, boolean success, String description) {
+    AuditRecordHelper.updateFinishedAuditRecord(this, currentSchema, uuid, processingTimeMs, success, description);
   }
 
 

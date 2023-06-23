@@ -41,6 +41,7 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
   /** Name of the table containing information on the views deployed within the app's database. */
   public static final String DEPLOYED_VIEWS_NAME = "DeployedViews";
 
+  public static final int UPGRADE_STEP_DESCRIPTION_LENGTH = 200;
 
   /**
    * @return The Table descriptor of UpgradeAudit
@@ -49,7 +50,7 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
     return table(UPGRADE_AUDIT_NAME)
         .columns(
           column("upgradeUUID",      DataType.STRING, 100).primaryKey(),
-          column("description",      DataType.STRING, 200).nullable(),
+          column("description",      DataType.STRING, UPGRADE_STEP_DESCRIPTION_LENGTH).nullable(),
           column("appliedTime",      DataType.DECIMAL, 14).nullable(),
           column("status",           DataType.STRING,  10).nullable(),
           column("server",           DataType.STRING,  100).nullable(),

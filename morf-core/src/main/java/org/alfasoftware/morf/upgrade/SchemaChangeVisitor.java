@@ -155,7 +155,7 @@ public interface SchemaChangeVisitor {
   public void updateRunningAuditRecord(UUID uuid);
 
   //TODO Javadocs
-  public void updateFinishedAuditRecord(UUID uuid, long processingTimeMs, boolean success);
+  public void updateFinishedAuditRecord(UUID uuid, long processingTimeMs, boolean success, String description);
 
 
   /**
