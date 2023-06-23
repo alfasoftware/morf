@@ -56,7 +56,7 @@ public interface ViewDeploymentValidator {
    *         This method can return false to trigger full view re-definition.
    */
   default boolean validateMissingView(View view, UpgradeSchemas upgradeSchemas){
-    return validateExistingView(view);
+    return validateMissingView(view);
   }
 
   /**
