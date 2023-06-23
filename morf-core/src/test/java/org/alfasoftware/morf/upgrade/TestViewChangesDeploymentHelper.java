@@ -55,38 +55,46 @@ public class TestViewChangesDeploymentHelper {
     }
 
     @Test
+    public void testCreateView() {
+        UpgradeSchemas upgradeSchemas = new UpgradeSchemas(schema(), schema());
+        List<String> results = changesDeploymentHelper.createView(testView, upgradeSchemas);
+
+        Assert.assertEquals(List.of("C", "D"), results);
+    }
+
+    @Test
     public void testDeprecatedCreateView() {
         List<String> results = changesDeploymentHelper.createView(testView);
 
-        Assert.assertTrue(results.size() == 2);
+        Assert.assertEquals(List.of("C", "D"), results);
     }
 
     @Test
     public void testDeprecatedDropViewIfExistsWithUpdate() {
         List<String> results = changesDeploymentHelper.dropViewIfExists(testView, true);
 
-        Assert.assertTrue(results.size() == 1);
+        Assert.assertEquals(List.of("G"), results);
     }
 
     @Test
     public void testDeprecatedDropViewIfExists() {
         List<String> results = changesDeploymentHelper.dropViewIfExists(testView);
 
-        Assert.assertTrue(results.size() == 1);
+        Assert.assertEquals(List.of("G"), results);
     }
 
     @Test
     public void testDeprecatedDeregisterViewIfExists() {
         List<String> results = changesDeploymentHelper.deregisterViewIfExists(testView, true);
 
-        Assert.assertTrue(results.size() == 1);
+        Assert.assertEquals(List.of("G"), results);
     }
 
     @Test
     public void testDeprecatedDeregisterAllViews() {
         List<String> results = changesDeploymentHelper.deregisterAllViews();
 
-        Assert.assertTrue(results.size() == 1);
+        Assert.assertEquals(List.of("G"), results);
     }
 
 }
