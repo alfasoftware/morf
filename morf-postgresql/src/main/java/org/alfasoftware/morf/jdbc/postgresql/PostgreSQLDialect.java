@@ -836,7 +836,7 @@ class PostgreSQLDialect extends SqlDialect {
       }
       sqlBuilder.append(getSqlFrom(selectStatement.build()));
 
-      sqlBuilder.append(" LIMIT ").append(statement.getLimit().get()).append(")");
+      sqlBuilder.append(" LIMIT ").append(statement.getLimit().get()).append(")"); //NOSONAR
 
       return sqlBuilder.toString();
     }
