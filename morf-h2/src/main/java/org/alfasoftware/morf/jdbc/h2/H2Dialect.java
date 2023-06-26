@@ -596,10 +596,13 @@ class H2Dialect extends SqlDialect {
   @Override
   protected String getSqlForWindowFunction(Function function) {
     FunctionType functionType = function.getType();
-    if (functionType == FunctionType.ROW_NUMBER) {
-      return "ROW_NUMBER()";
+    switch (functionType) {
+      case ROW_NUMBER:
+        return "ROW_NUMBER()";
+
+      default:
+        return super.getSqlForWindowFunction(function);
     }
-    return super.getSqlForWindowFunction(function);
   }
 
 
