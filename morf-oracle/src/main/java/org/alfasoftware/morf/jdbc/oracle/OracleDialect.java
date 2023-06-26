@@ -171,9 +171,9 @@ class OracleDialect extends SqlDialect {
 
       createTableStatement.append(column.getName());
       if (asSelect) {
-        createTableStatement.append(" " + sqlRepresentationOfColumnType(column, true, true, false));
+        createTableStatement.append(" ").append(sqlRepresentationOfColumnType(column, true, true, false));
       } else {
-        createTableStatement.append(" " + sqlRepresentationOfColumnType(column));
+        createTableStatement.append(" ").append(sqlRepresentationOfColumnType(column));
       }
 
       first = false;
@@ -956,7 +956,7 @@ class OracleDialect extends SqlDialect {
 
     if (column.isAutoNumbered()) {
       int autoNumberStart = column.getAutoNumberStart() == -1 ? 1 : column.getAutoNumberStart();
-      comment.append("/AUTONUMSTART:[" + autoNumberStart + "]");
+      comment.append("/AUTONUMSTART:[").append(autoNumberStart).append("]");
     }
 
     comment.append("'");
@@ -1233,7 +1233,7 @@ class OracleDialect extends SqlDialect {
         log.warn("SQL statement greater than 2499 characters in length but unable to find white space (\" \") to split on.");
         sql.append(sqlStatement);
       } else {
-        sql.append(sqlStatement.substring(0, splitAt));
+        sql.append(sqlStatement, 0, splitAt);
         sql.append(System.getProperty("line.separator"));
         sql.append(splitSqlStatement(sqlStatement.substring(splitAt + 1)));
       }
@@ -1299,7 +1299,7 @@ class OracleDialect extends SqlDialect {
 
   /**
    * @param field the BLOB field literal
-   * @return
+   * @return The SQL got a BLOB field
    */
   @Override
   protected String getSqlFrom(BlobFieldLiteral field) {

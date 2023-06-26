@@ -115,9 +115,6 @@ public class TestSpreadsheetDataSetConsumer {
      */
     private Number rowCountReceived;
 
-    /**
-     * @param additionalSchemaData
-     */
     public MockTableOutputter() {
       super(new DefaultAdditionalSchemaDataImpl());
     }

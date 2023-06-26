@@ -16,7 +16,7 @@ public interface UpgradeScriptAdditionsProvider {
     /**
      * Returns all script additions with the filtering criteria applied.
      * The filtering logic should be provided by calling {@link #setAllowedPredicate(Predicate)} first.
-     * @return
+     * @return The additional upgrade scripts to be run as part of the upgrade
      */
     default Set<UpgradeScriptAddition> getUpgradeScriptAdditions() {
         return Collections.emptySet();

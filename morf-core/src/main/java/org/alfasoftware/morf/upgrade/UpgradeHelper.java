@@ -50,8 +50,6 @@ final class UpgradeHelper {
      * @param targetSchema - Schema which is to be deployed.
      * @param viewChanges - Changes to be made to views.
      * @param viewChangesDeploymentHelper - Deployment helper for the view changes.
-     * @param upgradesToApply - upgrades which are to be applied to schema.
-     * @param connectionResources - connection resources to connect to the database.
      * @return - Collection of SQL Statements.
      */
     static Collection<String> postSchemaUpgrade(Schema targetSchema,

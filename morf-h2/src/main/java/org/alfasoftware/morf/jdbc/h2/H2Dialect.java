@@ -96,7 +96,8 @@ class H2Dialect extends SqlDialect {
       createTableStatement.append(sqlRepresentationOfColumnType(column));
       if (column.isAutoNumbered()) {
         int autoNumberStart = column.getAutoNumberStart() == -1 ? 1 : column.getAutoNumberStart();
-        createTableStatement.append(" AUTO_INCREMENT(" + autoNumberStart + ") COMMENT 'AUTONUMSTART:[" + autoNumberStart + "]'");
+        createTableStatement.append(" AUTO_INCREMENT(").append(autoNumberStart)
+                .append(") COMMENT 'AUTONUMSTART:[").append(autoNumberStart).append("]'");
       }
 
       if (column.isPrimaryKey()) {

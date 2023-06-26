@@ -265,7 +265,7 @@ class SqlServerDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#postInsertWithPresetAutonumStatements(org.alfasoftware.morf.metadata.Table, boolean)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#postInsertWithPresetAutonumStatements(Table, SqlScriptExecutor, Connection, boolean)
    */
   @Override
   public void postInsertWithPresetAutonumStatements(Table table, SqlScriptExecutor executor,Connection connection, boolean insertingUnderAutonumLimit) {
@@ -710,8 +710,9 @@ class SqlServerDialect extends SqlDialect {
 
 
   /**
-   * @param table
-   * @param statements
+   * Drops the primary key from a {@link Table}.
+   *
+   * @param table The table to drop the primary key from
    */
   private String dropPrimaryKey(Table table) {
     StringBuilder dropPkStatement = new StringBuilder();
@@ -727,7 +728,7 @@ class SqlServerDialect extends SqlDialect {
   /**
    * Return the SQL representation for the column on the table.
    *
-   * @see #sqlRepresentationOfColumnType(Table, Column)
+   * @see #sqlRepresentationOfColumnType(Table, Column, boolean)
    * @param table The table
    * @param column The column
    * @param includeDefaultWithValues Whether to include the WITH VALUES clause.
@@ -1083,7 +1084,7 @@ class SqlServerDialect extends SqlDialect {
    * so no need to specify a lock mode.
    *
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getForUpdateSql()
-   * @see http://stackoverflow.com/questions/10935850/when-to-use-select-for-update
+   * @see <a href="http://stackoverflow.com/questions/10935850/when-to-use-select-for-update">When to use select for update</a>
    */
   @Override
   protected String getForUpdateSql() {

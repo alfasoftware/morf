@@ -3015,7 +3015,6 @@ public abstract class SqlDialect {
 
           sqlBuilder.append(fieldWithValue.getAlias());
           values.append(literalValue(fieldWithValue));
-          continue;
         }
 
       }
@@ -3393,7 +3392,6 @@ public abstract class SqlDialect {
       // and move on to the next column
       if (sourceColumns.containsKey(currentColumnName.toUpperCase())) {
         selectStatementBuilder = selectStatementBuilder.fields(new FieldReference(currentColumnName));
-        continue;
       }
     }
     // Set the source table
@@ -3559,8 +3557,8 @@ public abstract class SqlDialect {
    * @return The SQL representation for the column type.
    */
   protected String sqlRepresentationOfColumnType(Column column, boolean includeNullability, boolean includeDefaultValue, boolean includeColumnType) {
-    String sql = "";
-    StringBuilder suffix = new StringBuilder("");
+    String sql;
+    StringBuilder suffix = new StringBuilder();
     if (includeDefaultValue) {
       suffix = new StringBuilder(StringUtils.isNotEmpty(column.getDefaultValue()) ? " DEFAULT " + sqlForDefaultClauseLiteral(column) : "");
     }

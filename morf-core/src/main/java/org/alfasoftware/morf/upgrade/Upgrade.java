@@ -318,7 +318,7 @@ public class Upgrade {
    *
    * @param database the database to connect to.
    * @param dataSource the dataSource to use.
-   * @param exceptionRegexes
+   * @param exceptionRegexes the collection of regexes to define the exclusions
    * @return the schema.
    */
   private Schema copySourceSchema(ConnectionResources database, DataSource dataSource, Collection<String> exceptionRegexes) {

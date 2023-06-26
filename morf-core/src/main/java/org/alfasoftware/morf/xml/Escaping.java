@@ -78,17 +78,17 @@ class Escaping {
     StringBuilder escapedValue = new StringBuilder(recordValue.length());
     for (int i=0; i<recordValue.length(); i++) {
       if (!isCharValidForXml(recordValue.charAt(i))) {
-        escapedValue.append(recordValue.substring(last, i));
+        escapedValue.append(recordValue, last, i);
         escapedValue.append(String.format("\\u%04x", (int)recordValue.charAt(i)));
         last=i+1;
       }
       if (recordValue.charAt(i) == '\\') {
-        escapedValue.append(recordValue.substring(last, i));
+        escapedValue.append(recordValue, last, i);
         escapedValue.append("\\\\");
         last=i+1;
       }
     }
-    escapedValue.append(recordValue.substring(last, recordValue.length()));
+    escapedValue.append(recordValue.substring(last));
 
     return escapedValue.toString();
   }

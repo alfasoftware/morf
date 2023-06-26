@@ -265,7 +265,7 @@ public class ViewChanges {
    *
    * @param allViews all of the database views bound into the target schema.
    * @param index a complete index of all views in both the source and target schema.
-   * @return a topologically sorted list {@link http://en.wikipedia.org/wiki/Topological_sorting} of view names
+   * @return a {@link <a href="http://en.wikipedia.org/wiki/Topological_sorting">topologically sorted list</a>} of view names
    */
   private List<String> topoSortViews(Collection<View> allViews, Map<String, View> index) {
     if (log.isDebugEnabled()) {

@@ -11,6 +11,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.StringJoiner;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
@@ -694,7 +695,7 @@ class PostgreSQLDialect extends SqlDialect {
 
     boolean alterNullable = oldColumn.isNullable() != newColumn.isNullable();
     boolean alterType = oldColumn.getType() != newColumn.getType() || oldColumn.getScale() != newColumn.getScale() || oldColumn.getWidth() != newColumn.getWidth();
-    boolean alterDefaultValue = oldColumn.getDefaultValue() != newColumn.getDefaultValue();
+    boolean alterDefaultValue = !Objects.equals(oldColumn.getDefaultValue(), newColumn.getDefaultValue());
 
     if(alterNullable || alterType || alterDefaultValue) {
       statements.add(addAlterTableConstraint(table, newColumn, alterNullable, alterType, alterDefaultValue));
@@ -713,13 +714,10 @@ class PostgreSQLDialect extends SqlDialect {
   private String addAlterTableConstraint(Table table, Column newColumn, boolean alterNullable, boolean alterType,
       boolean alterDefaultValue) {
     StringBuilder sqlBuilder = new StringBuilder();
-    sqlBuilder.append("ALTER TABLE " + schemaNamePrefix(table) + table.getName()
-                + (alterNullable ? " ALTER COLUMN " + newColumn.getName() + (newColumn.isNullable() ? " DROP NOT NULL" : " SET NOT NULL") : "")
-                + (alterNullable && alterType ? "," : "")
-                + (alterType ? " ALTER COLUMN " + newColumn.getName() + " TYPE " + sqlRepresentationOfColumnType(newColumn, false, false, true) : "")
-                + (alterDefaultValue && (alterNullable || alterType) ? "," : "")
-                + (alterDefaultValue ? " ALTER COLUMN " + newColumn.getName() + (!newColumn.getDefaultValue().isEmpty() ? " SET DEFAULT " + sqlForDefaultClauseLiteral(newColumn) : " DROP DEFAULT") : "")
-        );
+    sqlBuilder.append("ALTER TABLE ").append(schemaNamePrefix(table)).append(table.getName())
+            .append(alterNullable ? " ALTER COLUMN " + newColumn.getName() + (newColumn.isNullable() ? " DROP NOT NULL" : " SET NOT NULL") : "")
+            .append(alterNullable && alterType ? "," : "").append(alterType ? " ALTER COLUMN " + newColumn.getName() + " TYPE " + sqlRepresentationOfColumnType(newColumn, false, false, true) : "")
+            .append(alterDefaultValue && (alterNullable || alterType) ? "," : "").append(alterDefaultValue ? " ALTER COLUMN " + newColumn.getName() + (!newColumn.getDefaultValue().isEmpty() ? " SET DEFAULT " + sqlForDefaultClauseLiteral(newColumn) : " DROP DEFAULT") : "");
     return sqlBuilder.toString();
   }
 
@@ -728,7 +726,7 @@ class PostgreSQLDialect extends SqlDialect {
     StringBuilder comment = new StringBuilder ("COMMENT ON COLUMN " + schemaNamePrefix(table) + table.getName() + "." + column.getName() + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + column.getName() + "]/TYPE:[" + column.getType().toString() + "]");
     if(column.isAutoNumbered()) {
       int autoNumberStart = column.getAutoNumberStart() == -1 ? 1 : column.getAutoNumberStart();
-      comment.append("/AUTONUMSTART:[" + autoNumberStart + "]");
+      comment.append("/AUTONUMSTART:[").append(autoNumberStart).append("]");
     }
     comment.append("'");
     return comment.toString();
@@ -796,7 +794,6 @@ class PostgreSQLDialect extends SqlDialect {
 
       default:
         super.prepareStatementParameters(statement, values, parameter);
-        return;
     }
   }
 
@@ -842,7 +839,7 @@ class PostgreSQLDialect extends SqlDialect {
     }
     sqlBuilder.append(getSqlFrom(selectStatement.build()));
 
-    sqlBuilder.append(" LIMIT " + statement.getLimit().get() + ")");
+    sqlBuilder.append(" LIMIT ").append(statement.getLimit().get()).append(")");
 
     return sqlBuilder.toString();
   }

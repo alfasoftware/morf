@@ -35,7 +35,7 @@ class XmlPullProcessor {
   /**
    * Create a new pull processor using the provided pull parser.
    *
-   * @param xmlPullParser The pull parser to use
+   * @param xmlStreamReader The pull parser to use
    */
   public XmlPullProcessor(XMLStreamReader xmlStreamReader) {
     super();
@@ -58,7 +58,7 @@ class XmlPullProcessor {
    * Reads the next tag from the pull parser and throws an exception if its name does not
    * match <var>expectedTagName</var>.
    *
-   * @param xmlPullParser The pull parser to read from
+   * @param xmlStreamReader The pull parser to read from
    * @param expectedTagName The tag name expected
    */
   public static void readTag(XMLStreamReader xmlStreamReader, String expectedTagName) {
