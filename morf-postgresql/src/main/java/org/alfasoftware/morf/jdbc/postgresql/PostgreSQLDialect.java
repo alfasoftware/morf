@@ -821,27 +821,26 @@ class PostgreSQLDialect extends SqlDialect {
    */
   @Override
   protected String getSqlFrom(DeleteStatement statement) {
-    if (!statement.getLimit().isPresent()) {
-      return super.getSqlFrom(statement);
+    if (statement.getLimit().isPresent()) {
+      StringBuilder sqlBuilder = new StringBuilder();
+
+      DeleteStatementBuilder deleteStatement = DeleteStatement.delete(statement.getTable());
+      sqlBuilder.append(super.getSqlFrom(deleteStatement.build()));
+
+      // Now add the limit clause, using the current table id.
+      sqlBuilder.append(" WHERE ctid IN (");
+
+      SelectStatementBuilder selectStatement = select().fields(field("ctid")).from(statement.getTable());
+      if (statement.getWhereCriterion() != null) {
+        selectStatement = selectStatement.where(statement.getWhereCriterion());
+      }
+      sqlBuilder.append(getSqlFrom(selectStatement.build()));
+
+      sqlBuilder.append(" LIMIT ").append(statement.getLimit().get()).append(")");
+
+      return sqlBuilder.toString();
     }
-
-    StringBuilder sqlBuilder = new StringBuilder();
-
-    DeleteStatementBuilder deleteStatement = DeleteStatement.delete(statement.getTable());
-    sqlBuilder.append(super.getSqlFrom(deleteStatement.build()));
-
-    // Now add the limit clause, using the current table id.
-    sqlBuilder.append(" WHERE ctid IN (");
-
-    SelectStatementBuilder selectStatement = select().fields(field("ctid")).from(statement.getTable());
-    if (statement.getWhereCriterion() != null ) {
-      selectStatement = selectStatement.where(statement.getWhereCriterion());
-    }
-    sqlBuilder.append(getSqlFrom(selectStatement.build()));
-
-    sqlBuilder.append(" LIMIT ").append(statement.getLimit().get()).append(")");
-
-    return sqlBuilder.toString();
+    return super.getSqlFrom(statement);
   }
 
 
