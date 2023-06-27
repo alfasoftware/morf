@@ -42,6 +42,7 @@
     <maven-source-plugin.version>3.0.1</maven-source-plugin.version>
     <maven-surefire-plugin.version>2.22.2</maven-surefire-plugin.version>
     <findbugs-maven-plugin.version>3.0.4</findbugs-maven-plugin.version>
+    <spotbugs-maven-plugin.version>4.7.3.0</spotbugs-maven-plugin.version>
     <maven-checkstyle-plugin.version>2.17</maven-checkstyle-plugin.version>
     <checkstyle.version>8.12</checkstyle.version>
 
@@ -189,7 +190,24 @@
           <executions>
             <execution>
               <id>sca-findbugs</id>
-              <phase>validate</phase>
+              <phase>verify</phase>
+              <goals>
+                <goal>check</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <groupId>com.github.spotbugs</groupId>
+          <artifactId>spotbugs-maven-plugin</artifactId>
+          <version>${spotbugs-maven-plugin.version}</version>
+          <configuration>
+            <excludeFilterFile>../etc/spotbugs-exclude.xml</excludeFilterFile>
+          </configuration>
+          <executions>
+            <execution>
+              <id>sca-spotbugs</id>
+              <phase>verify</phase>
               <goals>
                 <goal>check</goal>
               </goals>
