@@ -1,5 +1,8 @@
 <FindBugsFilter>
      <Match>
+        <Bug code="RV" pattern="RV_RETURN_VALUE_IGNORED_BAD_PRACTICE" />
+     </Match>
+     <Match>
        <Bug code="SnVI" />
      </Match>
      <Match>
