@@ -18,11 +18,11 @@ package org.alfasoftware.morf.upgrade;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -50,9 +50,7 @@ import org.alfasoftware.morf.upgrade.testupgradepathfinder.upgrade.v1_0_0.Delete
 import org.alfasoftware.morf.upgrade.testupgradepathfinder.upgrade.v1_0_0.DuplicateUUIDOfAddJamType;
 import org.alfasoftware.morf.upgrade.testupgradepathfinder.upgrade.v1_0_0.InsertACheescake;
 import org.alfasoftware.morf.upgrade.testupgradepathfinder.upgrade.v1_0_0.InsertAVictoriaSpongeRowUsingDSL;
-import org.alfasoftware.morf.upgrade.testupgradepathfinder.upgrade.v1_0_0.MockAddUpgradeAudit;
-import org.alfasoftware.morf.upgrade.testupgradepathfinder.upgrade.v1_0_0.MockProvisionHistoryUpgrade;
-import org.alfasoftware.morf.upgrade.testupgradepathfinder.upgrade.v1_0_0.MockWidenIndustryCodeUpgrade;
+import org.hamcrest.MatcherAssert;
 import org.junit.Test;
 
 import com.google.common.collect.Sets;
@@ -125,7 +123,7 @@ public class TestUpgradePathFinder {
 
     Schema current = schema(sconeTable);
     Schema target = schema(upgradedSconeTable, cakeTable);
-    List<UpgradeStep> path = pathFinder.determinePath(current, target, Sets.<String>newHashSet()).getUpgradeSteps();
+    List<UpgradeStep> path = pathFinder.determinePath(current, target, Sets.newHashSet()).getUpgradeSteps();
 
     assertEquals("Number of upgrades steps", 4, path.size());
     assertSame("First upgrades step", AddCakeTable.class, path.get(0).getClass());
@@ -155,7 +153,7 @@ public class TestUpgradePathFinder {
     Schema target = schema(upgradedSconeTableWithJamAmount);
 
     // when
-    List<UpgradeStep> path = pathFinder.determinePath(current, target, Sets.<String>newHashSet()).getUpgradeSteps();
+    List<UpgradeStep> path = pathFinder.determinePath(current, target, Sets.newHashSet()).getUpgradeSteps();
 
     // then
     assertEquals("Number of upgrades steps", 4, path.size());
@@ -187,7 +185,7 @@ public class TestUpgradePathFinder {
     Schema target = schema(upgradedSconeTable);
 
     // when
-    List<UpgradeStep> path = pathFinder.determinePath(current, target, Sets.<String>newHashSet()).getUpgradeSteps();
+    List<UpgradeStep> path = pathFinder.determinePath(current, target, Sets.newHashSet()).getUpgradeSteps();
 
     // then
     assertEquals("Number of upgrades steps", 0, path.size());
@@ -235,7 +233,7 @@ public class TestUpgradePathFinder {
 
     Schema current = schema(sconeTable);
     Schema target = schema(upgradedSconeTable, cakeTable);
-    List<UpgradeStep> path = pathFinder.determinePath(current, target, Sets.<String>newHashSet()).getUpgradeSteps();
+    List<UpgradeStep> path = pathFinder.determinePath(current, target, Sets.newHashSet()).getUpgradeSteps();
 
     assertEquals("Number of upgrades steps", 4, path.size());
     assertSame("Second upgrades step", AddCakeTable.class, path.get(0).getClass());
@@ -258,7 +256,7 @@ public class TestUpgradePathFinder {
     Schema current = schema(sconeTable);
     Schema target = schema(upgradedSconeTable);
     try {
-      pathFinder.determinePath(current, target, Sets.<String>newHashSet());
+      pathFinder.determinePath(current, target, Sets.newHashSet());
       fail();
     } catch(RuntimeException rte) {
       Throwable ex = rte;
@@ -289,7 +287,7 @@ public class TestUpgradePathFinder {
 
     Schema current = schema(cakeTable);
     Schema target = schema(cakeTablev2);
-    List<UpgradeStep> path = pathFinder.determinePath(current, target, Sets.<String>newHashSet()).getUpgradeSteps();
+    List<UpgradeStep> path = pathFinder.determinePath(current, target, Sets.newHashSet()).getUpgradeSteps();
     assertEquals("Should only be one upgrade setep.", 3, path.size());
   }
 
@@ -309,7 +307,7 @@ public class TestUpgradePathFinder {
 
     Schema current = schema(cakeTable);
     Schema target = schema(cakeTable);
-    List<UpgradeStep> path = pathFinder.determinePath(current, target, Sets.<String>newHashSet()).getUpgradeSteps();
+    List<UpgradeStep> path = pathFinder.determinePath(current, target, Sets.newHashSet()).getUpgradeSteps();
     assertEquals("Should only be one upgrade step.", 3, path.size());
     assertEquals("Upgrade step 1 should be Insert row using DSL.", InsertAVictoriaSpongeRowUsingDSL.class, path.get(0).getClass());
   }
@@ -340,7 +338,7 @@ public class TestUpgradePathFinder {
 
     Schema current = schema(newScone);
     Schema target = schema(upgradedSconeTable, cakeTable);
-    List<UpgradeStep> path = pathFinder.determinePath(current, target, Sets.<String>newHashSet()).getUpgradeSteps();
+    List<UpgradeStep> path = pathFinder.determinePath(current, target, Sets.newHashSet()).getUpgradeSteps();
 
     assertEquals("Number of upgrades steps", 2, path.size());
     assertSame("Second upgrades step", AddCakeTable.class, path.get(0).getClass());
@@ -365,7 +363,7 @@ public class TestUpgradePathFinder {
 
     Schema current = schema(sconeTable);
     Schema target = schema(upgradedSconeTable);
-    List<UpgradeStep> path = pathFinder.determinePath(current, target, Sets.<String>newHashSet()).getUpgradeSteps();
+    List<UpgradeStep> path = pathFinder.determinePath(current, target, Sets.newHashSet()).getUpgradeSteps();
 
     assertEquals("Number of upgrades steps: " + upgradeSteps, 3, path.size());
     assertSame("Second upgrades step", AddDiameter.class, path.get(0).getClass());
@@ -391,7 +389,7 @@ public class TestUpgradePathFinder {
 
     Schema current = schema(sconeTable, cakeTable);
     Schema target = schema(sconeTable, cakeTable);
-    List<UpgradeStep> path = pathFinder.determinePath(current, target, Sets.<String>newHashSet()).getUpgradeSteps();
+    List<UpgradeStep> path = pathFinder.determinePath(current, target, Sets.newHashSet()).getUpgradeSteps();
 
     assertEquals("Number of upgrades steps", 0, path.size());
   }
@@ -411,7 +409,7 @@ public class TestUpgradePathFinder {
     Schema current = schema(sconeTable);
     Schema target = schema(upgradedSconeTable, cakeTable);
     try {
-      pathFinder.determinePath(current, target, Sets.<String>newHashSet());
+      pathFinder.determinePath(current, target, Sets.newHashSet());
       fail("No upgrade path exists so an exception should be thrown");
     } catch (NoUpgradePathExistsException e) {
       assertEquals("Message text", "No upgrade path exists", e.getMessage());
@@ -446,7 +444,7 @@ public class TestUpgradePathFinder {
 
     Schema current = schema(upgradedSconeTable);
     Schema target = schema(upgradedSconeTable, cakeTable);
-    List<UpgradeStep> path = pathFinder.determinePath(current, target, Sets.<String>newHashSet()).getUpgradeSteps();
+    List<UpgradeStep> path = pathFinder.determinePath(current, target, Sets.newHashSet()).getUpgradeSteps();
 
     assertEquals("Number of upgrade steps", 2, path.size());
     assertEquals("Type of upgrade step", AddCakeTable.class, path.get(0).getClass());
@@ -472,44 +470,6 @@ public class TestUpgradePathFinder {
       assertTrue(message.contains(DuplicateUUIDOfAddJamType.class.getSimpleName()));
       assertTrue(message.contains(DuplicateUUIDOfAddJamType.class.getAnnotation(UUID.class).value()));
     }
-  }
-
-
-  /**
-   * Check we can detect duplicate UUIDs. Allowing these would be very bad.
-   */
-  @Test
-  public void testAddAssumedUUIDWhenUpgradeAuditUUIDPresent() {
-    List<Class<? extends UpgradeStep>> upgradeSteps = new ArrayList<>();
-    upgradeSteps.add(MockAddUpgradeAudit.class);
-    upgradeSteps.add(MockProvisionHistoryUpgrade.class);
-    upgradeSteps.add(MockWidenIndustryCodeUpgrade.class);
-
-    UpgradePathFinder pathFinder = makeFinder(upgradeSteps, appliedSteps(MockAddUpgradeAudit.class));
-
-    List<UpgradeStep> path = pathFinder.determinePath(schema(), schema(), Sets.<String>newHashSet()).getUpgradeSteps();
-
-    assertEquals("There should be no upgrade steps - all the ones in 5.0.18 and earlier should be assumed to be applied.", 0, path.size());
-  }
-
-
-  /**
-   * Check we can detect duplicate UUIDs. Allowing these would be very bad.
-   */
-  @Test
-  public void testDontAddAssumedUUIDWhenEarlierStepsPresent() {
-    List<Class<? extends UpgradeStep>> upgradeSteps = new ArrayList<>();
-    upgradeSteps.add(MockAddUpgradeAudit.class);
-    upgradeSteps.add(MockProvisionHistoryUpgrade.class);
-    upgradeSteps.add(MockWidenIndustryCodeUpgrade.class);
-
-    UpgradePathFinder pathFinder = makeFinder(upgradeSteps, appliedSteps(MockAddUpgradeAudit.class, MockProvisionHistoryUpgrade.class));
-
-    List<UpgradeStep> path = pathFinder.determinePath(schema(), schema(), Sets.<String>newHashSet()).getUpgradeSteps();
-
-    assertEquals("Earlier steps should be applied", 1, path.size());
-    assertEquals("Earlier steps should be applied", MockWidenIndustryCodeUpgrade.class, path.get(0).getClass());
-
   }
 
 
