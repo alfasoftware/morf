@@ -2262,7 +2262,7 @@ public abstract class SqlDialect {
    */
   protected String getSqlForEvery(Function function) {
     return getSqlForMin(function);
-  };
+  }
 
 
   /**
@@ -3015,6 +3015,7 @@ public abstract class SqlDialect {
 
           sqlBuilder.append(fieldWithValue.getAlias());
           values.append(literalValue(fieldWithValue));
+//        continue;  // Commented out because it is technically unnecessary
         }
 
       }
@@ -3146,7 +3147,7 @@ public abstract class SqlDialect {
    */
   protected Optional<String> getDeleteLimitPreFromClause(@SuppressWarnings("unused") int limit) {
     return Optional.empty();
-  };
+  }
 
 
   /**
@@ -3157,7 +3158,7 @@ public abstract class SqlDialect {
    */
   protected Optional<String> getDeleteLimitWhereClause(@SuppressWarnings("unused") int limit) {
     return Optional.empty();
-  };
+  }
 
 
   /**
@@ -3168,7 +3169,7 @@ public abstract class SqlDialect {
    */
   protected Optional<String> getDeleteLimitSuffix(@SuppressWarnings("unused") int limit) {
     return Optional.empty();
-  };
+  }
 
 
   /**
@@ -3392,6 +3393,7 @@ public abstract class SqlDialect {
       // and move on to the next column
       if (sourceColumns.containsKey(currentColumnName.toUpperCase())) {
         selectStatementBuilder = selectStatementBuilder.fields(new FieldReference(currentColumnName));
+//      continue;  // Commented out because it is technically unnecessary
       }
     }
     // Set the source table

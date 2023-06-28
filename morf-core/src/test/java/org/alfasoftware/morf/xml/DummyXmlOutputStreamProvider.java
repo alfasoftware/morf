@@ -77,7 +77,7 @@ public final class DummyXmlOutputStreamProvider implements XmlOutputStreamProvid
    * @return Convert the output to a String
    */
   public String getXmlString() {
-    return testOutputStream.toString();
+    return new String(testOutputStream.toByteArray());
   }
 
 
