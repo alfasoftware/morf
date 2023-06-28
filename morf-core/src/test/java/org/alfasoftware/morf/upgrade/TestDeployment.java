@@ -110,7 +110,7 @@ public class TestDeployment {
     View  testView  = view("FooView", select(field("name")).from(tableRef("Foo")));
     View  testView2  = view("BarView", select(field("name")).from(tableRef("MooView")), "MooView");
     View  testView3  = view("MooView", select(field("name")).from(tableRef("FooView")), "FooView");
-    List<Table> tables = List.of(testTable);
+    List<Table> tables = ImmutableList.of(testTable);
 
     when(dialect.tableDeploymentStatements(same(testTable))).thenReturn(ImmutableList.of("A"));
     when(dialect.viewDeploymentStatements(same(testView))).thenReturn(ImmutableList.of("B"));
@@ -151,7 +151,7 @@ public class TestDeployment {
     Table testTable     = table("Foo").columns(column("name", DataType.STRING, 32));
     Table deployedViews = table(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME).columns(column("name", DataType.STRING, 30), column("hash", DataType.STRING, 64));
     View  testView      = view("FooView", select(field("name")).from(tableRef("Foo")));
-    List<Table> tables = List.of(testTable);
+    List<Table> tables = ImmutableList.of(testTable);
 
     when(dialect.tableDeploymentStatements(same(testTable))).thenReturn(ImmutableList.of("A"));
     when(dialect.tableDeploymentStatements(same(deployedViews))).thenReturn(ImmutableList.of("B"));
@@ -202,7 +202,7 @@ public class TestDeployment {
   public void testGetPathWithUpgradeSteps() {
     // Given
     Table testTable     = table("Foo").columns(column("name", DataType.STRING, 32));
-    List<Table> tables = List.of(testTable);
+    List<Table> tables = ImmutableList.of(testTable);
 
     Collection<Class<? extends UpgradeStep>> stepsToApply = new ArrayList<>();
     stepsToApply.add(AddFooTable.class);
