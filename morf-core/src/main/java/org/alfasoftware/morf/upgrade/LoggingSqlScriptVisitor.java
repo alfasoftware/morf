@@ -37,7 +37,7 @@ public class LoggingSqlScriptVisitor implements SqlScriptVisitor {
 
   /**
    * Facilitates logging with additional info about the currently upgraded schema position.
-   * @param schemaPosition
+   * @param schemaPosition String containing schema position name.
    */
   public LoggingSqlScriptVisitor(String schemaPosition) {
     super();
