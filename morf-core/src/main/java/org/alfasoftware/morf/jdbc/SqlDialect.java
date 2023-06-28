@@ -3015,7 +3015,7 @@ public abstract class SqlDialect {
 
           sqlBuilder.append(fieldWithValue.getAlias());
           values.append(literalValue(fieldWithValue));
-//        continue;  // Commented out because it is technically unnecessary
+          continue;
         }
 
       }
@@ -3393,7 +3393,7 @@ public abstract class SqlDialect {
       // and move on to the next column
       if (sourceColumns.containsKey(currentColumnName.toUpperCase())) {
         selectStatementBuilder = selectStatementBuilder.fields(new FieldReference(currentColumnName));
-//      continue;  // Commented out because it is technically unnecessary
+        continue;
       }
     }
     // Set the source table
