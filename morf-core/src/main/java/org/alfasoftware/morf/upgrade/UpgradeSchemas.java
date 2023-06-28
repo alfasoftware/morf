@@ -5,17 +5,17 @@ import org.alfasoftware.morf.metadata.Schema;
 /**
  * Composite object to hold source and target schemas.
  */
-class UpgradeSchemas {
+public final class UpgradeSchemas {
 
     /**
      * Object to hold schema pre upgrade.
      */
-    private Schema sourceSchema;
+    private final Schema sourceSchema;
 
     /**
      * Object to hold target schema for upgrade.
      */
-    private Schema targetSchema;
+    private final Schema targetSchema;
 
     public UpgradeSchemas(Schema sourceSchema, Schema targetSchema) {
         this.sourceSchema = sourceSchema;
@@ -26,15 +26,7 @@ class UpgradeSchemas {
         return sourceSchema;
     }
 
-    public void setSourceSchema(Schema sourceSchema) {
-        this.sourceSchema = sourceSchema;
-    }
-
     public Schema getTargetSchema() {
         return targetSchema;
-    }
-
-    public void setTargetSchema(Schema targetSchema) {
-        this.targetSchema = targetSchema;
     }
 }
