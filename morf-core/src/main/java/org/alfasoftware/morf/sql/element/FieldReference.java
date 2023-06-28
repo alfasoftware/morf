@@ -32,7 +32,7 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
  * has no concept of the type or representation of a field, only its name, alias and
  * the table on which it exists.
  *
- * <h3>Examples of use:</h3>
+ * <p>Examples of use:</p>
  *
  * <p>Create a field with a given name:</p>
  * <blockquote><pre>
@@ -63,13 +63,13 @@ public class FieldReference extends AliasedField implements Driver {
   /**
    * The direction to use when this field is in an ORDER BY statement.
    * TODO this should be final as soon as we can remove {@link #setDirection(Direction)}
-   * and {@link AliasedField#IMMUTABLE_BUILDERS_ENABLED}.
+   * and AliasedField#IMMUTABLE_BUILDERS_ENABLED.
    */
   private Direction direction;
 
   /**
    * Handling of null values when executing ORDER BY statement.
-   * TODO this vcan be made final when we remove {@link AliasedField#IMMUTABLE_BUILDERS_ENABLED}
+   * TODO this can be made final when we remove AliasedField#IMMUTABLE_BUILDERS_ENABLED
    */
   private Optional<NullValueHandling> nullValueHandling;
 
