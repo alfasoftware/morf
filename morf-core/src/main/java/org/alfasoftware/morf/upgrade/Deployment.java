@@ -114,8 +114,10 @@ public class Deployment {
       sqlStatementWriter.writeSql(connectionResources.sqlDialect().tableDeploymentStatements(table));
     }
 
+    Schema sourceSchema = UpgradeHelper.copySourceSchema(connectionResources, connectionResources.getDataSource(), new HashSet<>());
+    UpgradeSchemas upgradeSchemas = new UpgradeSchemas(sourceSchema, targetSchema);
     ViewChanges viewChanges = new ViewChanges(targetSchema.views(), new HashSet<>(), targetSchema.views());
-    sqlStatementWriter.writeSql(UpgradeHelper.postSchemaUpgrade(targetSchema,
+    sqlStatementWriter.writeSql(UpgradeHelper.postSchemaUpgrade(upgradeSchemas,
             viewChanges,
             viewChangesDeploymentHelper));
 

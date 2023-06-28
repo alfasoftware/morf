@@ -22,7 +22,6 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor.ResultSetProcessor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaValidator;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.TableReference;
@@ -45,7 +44,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.copy;
 import static org.alfasoftware.morf.sql.SelectStatement.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.element.Function.count;
@@ -177,7 +175,7 @@ public class Upgrade {
 
     // Get access to the schema we are starting from
     log.info("Reading current schema");
-    Schema sourceSchema = copySourceSchema(connectionResources, dataSource, exceptionRegexes);
+    Schema sourceSchema = UpgradeHelper.copySourceSchema(connectionResources, dataSource, exceptionRegexes);
     SqlDialect dialect = connectionResources.sqlDialect();
 
     // -- Get the current UUIDs and deployed views...
@@ -283,11 +281,11 @@ public class Upgrade {
 
     UpgradePath path = factory.create(upgradesToApply, connectionResources, graphBasedUpgradeBuilder);
 
-    path.writeSql(UpgradeHelper.preSchemaUpgrade(sourceSchema, targetSchema, viewChanges, viewChangesDeploymentHelper));
+    path.writeSql(UpgradeHelper.preSchemaUpgrade(new UpgradeSchemas(sourceSchema, targetSchema), viewChanges, viewChangesDeploymentHelper));
 
     path.writeSql(upgradeStatements);
 
-    path.writeSql(UpgradeHelper.postSchemaUpgrade(targetSchema, viewChanges, viewChangesDeploymentHelper));
+    path.writeSql(UpgradeHelper.postSchemaUpgrade(new UpgradeSchemas(sourceSchema, targetSchema), viewChanges, viewChangesDeploymentHelper));
 
     // Since Oracle is not able to re-map schema references in trigger code, we need to rebuild all triggers
     // for id column autonumbering when exporting and importing data between environments.
@@ -310,24 +308,6 @@ public class Upgrade {
     }
 
     return path;
-  }
-
-
-  /**
-   * Gets the source schema from the {@code database}.
-   *
-   * @param database the database to connect to.
-   * @param dataSource the dataSource to use.
-   * @param exceptionRegexes the collection of regexes to define the exclusions
-   * @return the schema.
-   */
-  private Schema copySourceSchema(ConnectionResources database, DataSource dataSource, Collection<String> exceptionRegexes) {
-    SchemaResource databaseSchemaResource = database.openSchemaResource(dataSource);
-    try {
-      return copy(databaseSchemaResource, exceptionRegexes);
-    } finally {
-      databaseSchemaResource.close();
-    }
   }
 
 

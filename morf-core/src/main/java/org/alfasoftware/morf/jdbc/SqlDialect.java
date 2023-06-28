@@ -3805,6 +3805,9 @@ public abstract class SqlDialect {
 
   /**
    * For some dialects, this casting is required, as the type may not be inferred for every field in the select statement.
+   * @param table the table to add the casts.
+   * @param selectStatement select statements which the casts need adding to.
+   * @return SelectStatement with casts.
    */
   protected SelectStatement addCastsToSelect(Table table, SelectStatement selectStatement) {
     SelectStatement statementWithCasts = selectStatement.deepCopy();
