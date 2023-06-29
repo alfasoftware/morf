@@ -15,16 +15,9 @@
 
 package org.alfasoftware.morf.jdbc;
 
-import com.google.common.base.Joiner;
-import com.google.common.collect.FluentIterable;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableList.Builder;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.hash.Hashing;
-import com.google.common.io.CharSource;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
@@ -45,6 +38,7 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataSetUtils;
@@ -103,8 +97,16 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.joda.time.LocalDate;
 import org.joda.time.Months;
 
-import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
+import com.google.common.base.Joiner;
+import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableList.Builder;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.hash.Hashing;
+import com.google.common.io.CharSource;
 
 /**
  * Provides functionality for generating SQL statements.
@@ -425,6 +427,9 @@ public abstract class SqlDialect {
   protected boolean isAutonumbered(InsertStatement statement, Schema databaseMetadata) {
     if (statement.getTable() != null) {
       Table tableInserting = databaseMetadata.getTable(statement.getTable().getName());
+      if (tableInserting == null) {
+        throw new IllegalStateException(String.format("Unable to find [%s] in schema", statement.getTable().getName()));
+      }
       for (Column col : tableInserting.columns()) {
         if (col.isAutoNumbered()) {
           return true;
