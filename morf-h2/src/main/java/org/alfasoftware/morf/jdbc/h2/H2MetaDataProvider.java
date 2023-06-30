@@ -42,7 +42,7 @@ class H2MetaDataProvider extends DatabaseMetaDataProvider {
   /**
    * H2 reports its primary key indexes as PRIMARY_KEY_49 or similar.
    *
-   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isPrimaryKeyIndex(java.lang.String)
+   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isPrimaryKeyIndex(RealName)
    */
   @Override
   protected boolean isPrimaryKeyIndex(RealName indexName) {
@@ -51,7 +51,7 @@ class H2MetaDataProvider extends DatabaseMetaDataProvider {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isIgnoredTable(java.lang.String)
+   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isIgnoredTable(RealName)
    */
   @Override
   protected boolean isIgnoredTable(RealName tableName) {
@@ -63,7 +63,7 @@ class H2MetaDataProvider extends DatabaseMetaDataProvider {
   /**
    * H2 can (and must) provide the auto-increment start value from the column remarks.
    *
-   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#setAdditionalColumnMetadata(java.lang.String, org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder, java.sql.ResultSet)
+   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#setAdditionalColumnMetadata(RealName, ColumnBuilder, ResultSet)
    */
   @Override
   protected ColumnBuilder setAdditionalColumnMetadata(RealName tableName, ColumnBuilder columnBuilder, ResultSet columnMetaData) throws SQLException {

@@ -11,8 +11,9 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
+import java.util.Objects;
 import java.util.StringJoiner;
+
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -25,6 +26,7 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.DeleteStatementBuilder;
+import org.alfasoftware.morf.sql.DialectSpecificHint;
 import org.alfasoftware.morf.sql.Hint;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.OptimiseForRowCount;
@@ -624,7 +626,7 @@ class PostgreSQLDialect extends SqlDialect {
       if (hint instanceof OptimiseForRowCount) {
         // not available in pg_hint_plan
       }
-      if (hint instanceof UseIndex) {
+      else if (hint instanceof UseIndex) {
         UseIndex useIndex = (UseIndex)hint;
         builder.append(" IndexScan(")
           .append(StringUtils.isEmpty(useIndex.getTable().getAlias()) ? useIndex.getTable().getName() : useIndex.getTable().getAlias())
@@ -632,16 +634,20 @@ class PostgreSQLDialect extends SqlDialect {
           .append(useIndex.getIndexName().toLowerCase())
           .append(")");
       }
-      if (hint instanceof UseImplicitJoinOrder) {
+      else if (hint instanceof UseImplicitJoinOrder) {
         // not available in pg_hint_plan
         // actually, there is Leading hint, which we could abuse
       }
-      if (hint instanceof ParallelQueryHint) {
+      else if (hint instanceof ParallelQueryHint) {
         // not available in pg_hint_plan
       }
-      if (hint instanceof PostgreSQLCustomHint) {
+      else if (hint instanceof PostgreSQLCustomHint) {
         builder.append(" ")
         .append(((PostgreSQLCustomHint)hint).getCustomHint());
+      }
+      else if ( hint instanceof DialectSpecificHint && ((DialectSpecificHint)hint).isSameDatabaseType(PostgreSQL.IDENTIFIER) ) {
+        builder.append(" ")
+        .append(((DialectSpecificHint)hint).getHintContents());
       }
     }
 
@@ -649,7 +655,7 @@ class PostgreSQLDialect extends SqlDialect {
       return super.selectStatementPreFieldDirectives(selectStatement);
     }
 
-    return "/*+" + builder.append(" */ ").toString();
+    return "/*+" + builder.append(" */ ");
   }
 
 
@@ -689,7 +695,7 @@ class PostgreSQLDialect extends SqlDialect {
 
     boolean alterNullable = oldColumn.isNullable() != newColumn.isNullable();
     boolean alterType = oldColumn.getType() != newColumn.getType() || oldColumn.getScale() != newColumn.getScale() || oldColumn.getWidth() != newColumn.getWidth();
-    boolean alterDefaultValue = oldColumn.getDefaultValue() != newColumn.getDefaultValue();
+    boolean alterDefaultValue = !Objects.equals(oldColumn.getDefaultValue(), newColumn.getDefaultValue());
 
     if(alterNullable || alterType || alterDefaultValue) {
       statements.add(addAlterTableConstraint(table, newColumn, alterNullable, alterType, alterDefaultValue));
@@ -707,15 +713,13 @@ class PostgreSQLDialect extends SqlDialect {
 
   private String addAlterTableConstraint(Table table, Column newColumn, boolean alterNullable, boolean alterType,
       boolean alterDefaultValue) {
-    StringBuilder sqlBuilder = new StringBuilder();
-    sqlBuilder.append("ALTER TABLE " + schemaNamePrefix(table) + table.getName()
-                + (alterNullable ? " ALTER COLUMN " + newColumn.getName() + (newColumn.isNullable() ? " DROP NOT NULL" : " SET NOT NULL") : "")
-                + (alterNullable && alterType ? "," : "")
-                + (alterType ? " ALTER COLUMN " + newColumn.getName() + " TYPE " + sqlRepresentationOfColumnType(newColumn, false, false, true) : "")
-                + (alterDefaultValue && (alterNullable || alterType) ? "," : "")
-                + (alterDefaultValue ? " ALTER COLUMN " + newColumn.getName() + (!newColumn.getDefaultValue().isEmpty() ? " SET DEFAULT " + sqlForDefaultClauseLiteral(newColumn) : " DROP DEFAULT") : "")
-        );
-    return sqlBuilder.toString();
+
+    return "ALTER TABLE " + schemaNamePrefix(table) + table.getName()
+            + (alterNullable ? " ALTER COLUMN " + newColumn.getName() + (newColumn.isNullable() ? " DROP NOT NULL" : " SET NOT NULL") : "")
+            + (alterNullable && alterType ? "," : "")
+            + (alterType ? " ALTER COLUMN " + newColumn.getName() + " TYPE " + sqlRepresentationOfColumnType(newColumn, false, false, true) : "")
+            + (alterDefaultValue && (alterNullable || alterType) ? "," : "")
+            + (alterDefaultValue ? " ALTER COLUMN " + newColumn.getName() + (!newColumn.getDefaultValue().isEmpty() ? " SET DEFAULT " + sqlForDefaultClauseLiteral(newColumn) : " DROP DEFAULT") : "");
   }
 
 
@@ -723,7 +727,7 @@ class PostgreSQLDialect extends SqlDialect {
     StringBuilder comment = new StringBuilder ("COMMENT ON COLUMN " + schemaNamePrefix(table) + table.getName() + "." + column.getName() + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + column.getName() + "]/TYPE:[" + column.getType().toString() + "]");
     if(column.isAutoNumbered()) {
       int autoNumberStart = column.getAutoNumberStart() == -1 ? 1 : column.getAutoNumberStart();
-      comment.append("/AUTONUMSTART:[" + autoNumberStart + "]");
+      comment.append("/AUTONUMSTART:[").append(autoNumberStart).append("]");
     }
     comment.append("'");
     return comment.toString();
@@ -819,27 +823,27 @@ class PostgreSQLDialect extends SqlDialect {
    */
   @Override
   protected String getSqlFrom(DeleteStatement statement) {
-    if (!statement.getLimit().isPresent()) {
-      return super.getSqlFrom(statement);
+    if (statement.getLimit().isPresent()) {
+      StringBuilder sqlBuilder = new StringBuilder();
+
+      DeleteStatementBuilder deleteStatement = DeleteStatement.delete(statement.getTable());
+      sqlBuilder.append(super.getSqlFrom(deleteStatement.build()));
+
+      // Now add the limit clause, using the current table id.
+      sqlBuilder.append(" WHERE ctid IN (");
+
+      SelectStatementBuilder selectStatement = select().fields(field("ctid")).from(statement.getTable());
+      if (statement.getWhereCriterion() != null) {
+        selectStatement = selectStatement.where(statement.getWhereCriterion());
+      }
+      sqlBuilder.append(getSqlFrom(selectStatement.build()));
+
+      // We have already checked statement.getLimit().isPresent() here, but Sonar gives a false postive on the .get() below
+      sqlBuilder.append(" LIMIT ").append(statement.getLimit().get()).append(")"); //NOSONAR
+
+      return sqlBuilder.toString();
     }
-
-    StringBuilder sqlBuilder = new StringBuilder();
-
-    DeleteStatementBuilder deleteStatement = DeleteStatement.delete(statement.getTable());
-    sqlBuilder.append(super.getSqlFrom(deleteStatement.build()));
-
-    // Now add the limit clause, using the current table id.
-    sqlBuilder.append(" WHERE ctid IN (");
-
-    SelectStatementBuilder selectStatement = select().fields(field("ctid")).from(statement.getTable());
-    if (statement.getWhereCriterion() != null ) {
-      selectStatement = selectStatement.where(statement.getWhereCriterion());
-    }
-    sqlBuilder.append(getSqlFrom(selectStatement.build()));
-
-    sqlBuilder.append(" LIMIT " + statement.getLimit().get() + ")");
-
-    return sqlBuilder.toString();
+    return super.getSqlFrom(statement);
   }
 
 

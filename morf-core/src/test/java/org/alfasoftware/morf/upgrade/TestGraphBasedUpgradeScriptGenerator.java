@@ -76,15 +76,12 @@ public class TestGraphBasedUpgradeScriptGenerator {
 
   @Mock
   private ViewChangesDeploymentHelper viewChangesDeploymentHelper;
-
-  @Mock
   private UpgradeSchemas upgradeSchemas;
 
   @Before
   public void setup() {
     MockitoAnnotations.openMocks(this);
-    when(upgradeSchemas.getSourceSchema()).thenReturn(sourceSchema);
-    when(upgradeSchemas.getTargetSchema()).thenReturn(targetSchema);
+    upgradeSchemas = new UpgradeSchemas(sourceSchema, targetSchema);
     gen = new GraphBasedUpgradeScriptGenerator(upgradeSchemas, connectionResources, idTable, viewChanges,
         upgradeStatusTableService, Sets.newSet(upgradeScriptAddition), viewChangesDeploymentHelperFactory);
 
@@ -104,8 +101,29 @@ public class TestGraphBasedUpgradeScriptGenerator {
     when(sourceSchema.tableExists(nullable(String.class))).thenReturn(true);
     when(targetSchema.tableExists(nullable(String.class))).thenReturn(true);
     when(viewChangesDeploymentHelperFactory.create(any(ConnectionResources.class))).thenReturn(viewChangesDeploymentHelper);
-    when(viewChangesDeploymentHelper.dropViewIfExists(eq(view), any(Boolean.class))).thenReturn(Lists.newArrayList("3"));
-    when(viewChangesDeploymentHelper.deregisterViewIfExists(eq(view), any(Boolean.class))).thenReturn(Lists.newArrayList("4"));
+    when(viewChangesDeploymentHelper.dropViewIfExists(eq(view), any(Boolean.class), eq(upgradeSchemas))).thenReturn(Lists.newArrayList("3"));
+    when(viewChangesDeploymentHelper.deregisterViewIfExists(eq(view), any(Boolean.class), eq(upgradeSchemas))).thenReturn(Lists.newArrayList("4"));
+    // when
+    List<String> statements = gen.generatePreUpgradeStatements();
+
+    // then
+    assertThat(statements, Matchers.contains("1", "2", "3"));
+  }
+
+  @Test
+  public void testPreUpgradeStatementGenerationWhenTableDoesntExist() {
+    // given
+    when(connectionResources.sqlDialect()).thenReturn(sqlDialect);
+    when(upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS)).thenReturn(Lists.newArrayList("1"));
+    when(sqlDialect.tableDeploymentStatements(idTable)).thenReturn(Lists.newArrayList("2"));
+    when(viewChanges.getViewsToDrop()).thenReturn(Lists.newArrayList(view));
+    when(view.getName()).thenReturn("x");
+    when(sourceSchema.viewExists(nullable(String.class))).thenReturn(true);
+    when(sourceSchema.tableExists(nullable(String.class))).thenReturn(true);
+    when(targetSchema.tableExists(nullable(String.class))).thenReturn(false);
+    when(viewChangesDeploymentHelperFactory.create(any(ConnectionResources.class))).thenReturn(viewChangesDeploymentHelper);
+    when(viewChangesDeploymentHelper.dropViewIfExists(eq(view), any(Boolean.class), eq(upgradeSchemas))).thenReturn(Lists.newArrayList("3"));
+    when(viewChangesDeploymentHelper.deregisterViewIfExists(eq(view), any(Boolean.class), eq(upgradeSchemas))).thenReturn(Lists.newArrayList("4"));
     // when
     List<String> statements = gen.generatePreUpgradeStatements();
 
@@ -125,8 +143,8 @@ public class TestGraphBasedUpgradeScriptGenerator {
     when(sourceSchema.tableExists(nullable(String.class))).thenReturn(true);
     when(targetSchema.tableExists(nullable(String.class))).thenReturn(true);
     when(viewChangesDeploymentHelperFactory.create(any(ConnectionResources.class))).thenReturn(viewChangesDeploymentHelper);
-    when(viewChangesDeploymentHelper.dropViewIfExists(eq(view), any(Boolean.class))).thenReturn(Lists.newArrayList("3"));
-    when(viewChangesDeploymentHelper.deregisterViewIfExists(eq(view), any(Boolean.class))).thenReturn(Lists.newArrayList("4"));
+    when(viewChangesDeploymentHelper.dropViewIfExists(eq(view), any(Boolean.class), eq(upgradeSchemas))).thenReturn(Lists.newArrayList("3"));
+    when(viewChangesDeploymentHelper.deregisterViewIfExists(eq(view), any(Boolean.class), eq(upgradeSchemas))).thenReturn(Lists.newArrayList("4"));
     // when
     List<String> statements = gen.generatePreUpgradeStatements();
 
@@ -151,7 +169,7 @@ public class TestGraphBasedUpgradeScriptGenerator {
     when(upgradeScriptAddition.sql(connectionResources)).thenReturn(Lists.newArrayList("7"));
     when(upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED)).thenReturn(Lists.newArrayList("8"));
     when(viewChangesDeploymentHelperFactory.create(any(ConnectionResources.class))).thenReturn(viewChangesDeploymentHelper);
-    when(viewChangesDeploymentHelper.createView(eq(view), eq(true))).thenReturn(Lists.newArrayList("3", "4"));
+    when(viewChangesDeploymentHelper.createView(eq(view), eq(true), any(UpgradeSchemas.class))).thenReturn(Lists.newArrayList("3", "4"));
 
 
 

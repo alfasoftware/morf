@@ -19,8 +19,11 @@ package org.alfasoftware.morf.sql;
  *
  * Interface for Custom hints
  *
+ * @deprecated This interface and its implementing classes should be removed in the near future as platform specific classes should be outside of core project
+ *
  * @author Copyright (c) Alfa Financial Software Limited. 2021
  */
+@Deprecated
 public interface CustomHint extends Hint {
 
   /**

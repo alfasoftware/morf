@@ -141,8 +141,8 @@ public class RenameTable implements SchemaChange {
     private final Table baseTable;
 
     /**
-     * @param newName
-     * @param baseTable
+     * @param newName The new name for a {@link Table}
+     * @param baseTable The {@link Table} to be renamed
      */
     RenamedTable(String newName, Table baseTable) {
       super();

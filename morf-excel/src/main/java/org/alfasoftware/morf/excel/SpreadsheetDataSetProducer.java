@@ -123,9 +123,9 @@ public class SpreadsheetDataSetProducer implements DataSetProducer {
 
 
   /**
-   * Parse the workbook at the given location.
+   * Parse the workbook from an {@link InputStream}.
    *
-   * @param file location of the spreadsheet
+   * @param inputStream InputStream from the spreadsheet
    */
   private void parseWorkbook(final InputStream inputStream) {
     Workbook workbook = null;

@@ -42,6 +42,7 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.sql.DialectSpecificHint;
 import org.alfasoftware.morf.sql.DirectPathQueryHint;
 import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.Hint;
@@ -170,9 +171,9 @@ class OracleDialect extends SqlDialect {
 
       createTableStatement.append(column.getName());
       if (asSelect) {
-        createTableStatement.append(" " + sqlRepresentationOfColumnType(column, true, true, false));
+        createTableStatement.append(" ").append(sqlRepresentationOfColumnType(column, true, true, false));
       } else {
-        createTableStatement.append(" " + sqlRepresentationOfColumnType(column));
+        createTableStatement.append(" ").append(sqlRepresentationOfColumnType(column));
       }
 
       first = false;
@@ -955,7 +956,7 @@ class OracleDialect extends SqlDialect {
 
     if (column.isAutoNumbered()) {
       int autoNumberStart = column.getAutoNumberStart() == -1 ? 1 : column.getAutoNumberStart();
-      comment.append("/AUTONUMSTART:[" + autoNumberStart + "]");
+      comment.append("/AUTONUMSTART:[").append(autoNumberStart).append("]");
     }
 
     comment.append("'");
@@ -1232,7 +1233,7 @@ class OracleDialect extends SqlDialect {
         log.warn("SQL statement greater than 2499 characters in length but unable to find white space (\" \") to split on.");
         sql.append(sqlStatement);
       } else {
-        sql.append(sqlStatement.substring(0, splitAt));
+        sql.append(sqlStatement, 0, splitAt);
         sql.append(System.getProperty("line.separator"));
         sql.append(splitSqlStatement(sqlStatement.substring(splitAt + 1)));
       }
@@ -1298,7 +1299,7 @@ class OracleDialect extends SqlDialect {
 
   /**
    * @param field the BLOB field literal
-   * @return
+   * @return The SQL got a BLOB field
    */
   @Override
   protected String getSqlFrom(BlobFieldLiteral field) {
@@ -1318,7 +1319,7 @@ class OracleDialect extends SqlDialect {
           .append(((OptimiseForRowCount)hint).getRowCount())
           .append(")");
       }
-      if (hint instanceof UseIndex) {
+      else if (hint instanceof UseIndex) {
         UseIndex useIndex = (UseIndex)hint;
         builder.append(" INDEX(")
           // No schema name - see http://docs.oracle.com/cd/B19306_01/server.102/b14200/sql_elements006.htm#BABIEJEB
@@ -1327,20 +1328,24 @@ class OracleDialect extends SqlDialect {
           .append(useIndex.getIndexName())
           .append(")");
       }
-      if (hint instanceof UseImplicitJoinOrder) {
+      else if (hint instanceof UseImplicitJoinOrder) {
         builder.append(" ORDERED");
       }
-      if (hint instanceof ParallelQueryHint) {
+      else if (hint instanceof ParallelQueryHint) {
         builder.append(" PARALLEL");
         ParallelQueryHint parallelQueryHint = (ParallelQueryHint) hint;
         builder.append(parallelQueryHint.getDegreeOfParallelism().map(d -> "(" + d + ")").orElse(""));
       }
-      if (hint instanceof AllowParallelDmlHint) {
+      else if (hint instanceof AllowParallelDmlHint) {
         builder.append(" ENABLE_PARALLEL_DML");
       }
-      if (hint instanceof OracleCustomHint) {
+      else if (hint instanceof OracleCustomHint) {
         builder.append(" ")
         .append(((OracleCustomHint)hint).getCustomHint());
+      }
+      else if ( hint instanceof DialectSpecificHint && ((DialectSpecificHint)hint).isSameDatabaseType(Oracle.IDENTIFIER) ) {
+        builder.append(" ")
+        .append(((DialectSpecificHint)hint).getHintContents());
       }
     }
 
@@ -1393,7 +1398,7 @@ class OracleDialect extends SqlDialect {
     return 200;
   }
 
-  
+
   /**
    * We do use NVARCHAR for strings on Oracle.
    *

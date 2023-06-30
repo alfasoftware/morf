@@ -1341,7 +1341,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
               assertEquals("Inserted record 1 - string", "a", resultSet.getString(2));
               break;
             case 3:
-              //AutoNumber cannot be expected to be sequential. E.g. NuoDB
+              //AutoNumber cannot be expected to be sequential.
               assertFalse("Inserted record 2, long, should be unique", expectedAutonumber.contains(resultSet.getLong(1)));
               assertTrue("Inserted record 2, long, should be greater than the autonumber start", resultSet.getLong(1) > 10L);
               assertEquals("Inserted record 2 - string", "b", resultSet.getString(2));

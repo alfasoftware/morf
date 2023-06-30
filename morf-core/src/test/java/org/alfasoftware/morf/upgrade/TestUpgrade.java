@@ -115,8 +115,8 @@ public class TestUpgrade {
     viewDeploymentValidator = mock(ViewDeploymentValidator.class);
     dataSource = mock(DataSource.class);
     when(upgradeStatusTableService.getStatus(Optional.of(dataSource))).thenReturn(NONE);
-    when(viewDeploymentValidator.validateExistingView(any(View.class))).thenReturn(true);
-    when(viewDeploymentValidator.validateMissingView(any(View.class))).thenReturn(true);
+    when(viewDeploymentValidator.validateExistingView(any(View.class), any(UpgradeSchemas.class))).thenReturn(true);
+    when(viewDeploymentValidator.validateMissingView(any(View.class), any(UpgradeSchemas.class))).thenReturn(true);
   }
 
 
