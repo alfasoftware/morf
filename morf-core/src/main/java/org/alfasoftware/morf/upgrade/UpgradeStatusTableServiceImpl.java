@@ -79,7 +79,7 @@ class UpgradeStatusTableServiceImpl implements UpgradeStatusTableService {
 
   /**
    * To be used with {@link UpgradeStatusTableService.Factory}
-   * @param connectionResources
+   * @param connectionResources The {@link ConnectionResources}
    */
   UpgradeStatusTableServiceImpl(ConnectionResources connectionResources) {
     super();
@@ -146,7 +146,7 @@ class UpgradeStatusTableServiceImpl implements UpgradeStatusTableService {
 
 
   /**
-   * @see org.alfasoftware.morf.upgrade.UpgradeStatusTableService#getStatus(javax.sql.DataSource)
+   * @see org.alfasoftware.morf.upgrade.UpgradeStatusTableService#getStatus(Optional)
    */
   @Override
   public UpgradeStatus getStatus(Optional<DataSource> dataSource) {

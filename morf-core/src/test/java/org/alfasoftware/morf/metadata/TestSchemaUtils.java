@@ -23,6 +23,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 import org.junit.Test;
 
@@ -85,8 +86,8 @@ public class TestSchemaUtils {
     //...assert during the copy excluded tables and views are being removed
     assertEquals("2 tables should exist", 2, schema.tables().size());
     assertEquals("1 view should exist", 1, schema.views().size());
-    assertFalse(schema.tables().stream().anyMatch(t -> t.getName() == excludePrefix));
-    assertFalse(schema.views().stream().anyMatch(t -> t.getName() == excludeMatch));
+    assertFalse(schema.tables().stream().anyMatch(t -> Objects.equals(t.getName(), excludePrefix)));
+    assertFalse(schema.views().stream().anyMatch(t -> Objects.equals(t.getName(), excludeMatch)));
   }
 
 

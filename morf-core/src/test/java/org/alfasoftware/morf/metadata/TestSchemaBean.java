@@ -173,7 +173,7 @@ public class TestSchemaBean {
         fail("Table definition from source schema should only be read once");
       }
 
-      if (name.toUpperCase().equals(table.getName().toUpperCase())) {
+      if (name.equalsIgnoreCase(table.getName())) {
         tableCalled = true;
         return table;
       } else {
@@ -200,7 +200,7 @@ public class TestSchemaBean {
      */
     @Override
     public boolean tableExists(String name) {
-      return name.toUpperCase().equals(table.getName().toUpperCase());
+      return name.equalsIgnoreCase(table.getName());
     }
 
 
@@ -236,7 +236,7 @@ public class TestSchemaBean {
      */
     @Override
     public boolean viewExists(String name) {
-      return name.toUpperCase().equals(view.getName().toUpperCase());
+      return name.equalsIgnoreCase(view.getName());
     }
 
 
@@ -249,7 +249,7 @@ public class TestSchemaBean {
         fail("View definition from source schema should only be read once");
       }
 
-      if (name.toUpperCase().equals(view.getName().toUpperCase())) {
+      if (name.equalsIgnoreCase(view.getName())) {
         viewCalled = true;
         return view;
       } else {

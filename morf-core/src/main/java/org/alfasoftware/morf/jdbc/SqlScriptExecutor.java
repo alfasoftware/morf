@@ -579,7 +579,6 @@ public class SqlScriptExecutor {
    * @param preparedStatement Prepared statement to run.
    * @param parameterMetadata the metadata describing the parameters.
    * @param parameterData the values to insert.
-   * @param connection the connection to use.
    * @param processor the code to be run to process the {@link ResultSet}.
    * @param maxRows The maximum number of rows to be returned. Will inform the
    *          JDBC driver to tell the server not to return any more rows than

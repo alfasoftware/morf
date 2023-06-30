@@ -141,7 +141,6 @@ public class OracleMetaDataProvider implements Schema {
   /**
    * A table name reading method which is more efficient than the Oracle driver meta-data version.
    *
-   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#readTableNames()
    * @see <a href="http://download.oracle.com/docs/cd/B19306_01/server.102/b14237/statviews_2094.htm">ALL_TAB_COLUMNS specification</a>
    */
   private void readTableNames() {
@@ -176,7 +175,7 @@ public class OracleMetaDataProvider implements Schema {
             continue;
 
           try {
-            Integer dataLength = null;
+            Integer dataLength;
             if (dataTypeName.contains("CHAR")) {
               dataLength = resultSet.getInt(6);
             } else {
@@ -608,8 +607,9 @@ public class OracleMetaDataProvider implements Schema {
           String pkIndexName = resultSet.getString(3);
 
           if (pkIndexName == null || !pkIndexName.endsWith("_PK")) {
-            primaryKeysWithWrongIndex.append("Primary Key on table [" + tableName+ "] column [" + columnName +
-                    "] backed with an index whose name does not end in _PK ["+pkIndexName+"]"+System.lineSeparator());
+            primaryKeysWithWrongIndex.append("Primary Key on table [").append(tableName)
+                    .append("] column [").append(columnName).append("] backed with an index whose name does not end in _PK [")
+                    .append(pkIndexName).append("]").append(System.lineSeparator());
           }
 
           List<String> columns = primaryKeys.get(tableName);
@@ -683,7 +683,7 @@ public class OracleMetaDataProvider implements Schema {
   /**
    * Oracle sometimes spits back some very odd table names, something to do with the system. We don't want those.
    *
-   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isSystemTable(java.lang.String)
+   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isSystemTable(DatabaseMetaDataProvider.RealName)
    */
   private boolean isSystemTable(String tableName) {
     return !tableName.matches("\\w+") || tableName.matches("DBMS_\\w+") || tableName.matches("SYS_\\w+");
@@ -691,7 +691,7 @@ public class OracleMetaDataProvider implements Schema {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isPrimaryKeyIndex(java.lang.String)
+   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isPrimaryKeyIndex(DatabaseMetaDataProvider.RealName)
    */
   private boolean isPrimaryKeyIndex(String indexName) {
     return indexName.endsWith("_PK");

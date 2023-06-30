@@ -74,9 +74,7 @@ class ExistingTableStateLoader {
          java.sql.Statement statement = connection.createStatement();
          ResultSet resultSet = statement.executeQuery(sql)) {
       while (resultSet.next()) {
-        String uuidString = fixUUIDs(resultSet.getString(1));
-
-        results.add(java.util.UUID.fromString(uuidString));
+        results.add(java.util.UUID.fromString(resultSet.getString(1)));
       }
     } catch (SQLException e) {
       throw new RuntimeSqlException("Failed to load applied UUIDs. SQL: [" + sql + "]", e);
@@ -85,19 +83,4 @@ class ExistingTableStateLoader {
     return Collections.unmodifiableSet(results);
   }
 
-
-  /**
-   * Fix the loaded UUID to deal with problems introduced earlier.
-   *
-   * @param uuid The UUID to tweak.
-   * @return Almost always the same uuid - although it is very occasionally tweaked.
-   */
-  private String fixUUIDs(String uuid) {
-    // This is necessary because AddSegregationTypeToLetterClass had an illegal UUID (with a z in it)
-    // This can be removed once the 5_1_0 upgrade is deprecated.
-    if (uuid.equals("5222ez70-513d-11e0-b8af-0800200c9a66")) {
-      return "5222ef70-513d-11e0-b8af-0800200c9a66";
-    }
-    return uuid;
-  }
 }

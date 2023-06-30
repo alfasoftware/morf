@@ -15,16 +15,9 @@
 
 package org.alfasoftware.morf.jdbc;
 
-import com.google.common.base.Joiner;
-import com.google.common.collect.FluentIterable;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableList.Builder;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.hash.Hashing;
-import com.google.common.io.CharSource;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
@@ -45,6 +38,7 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataSetUtils;
@@ -103,8 +97,16 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.joda.time.LocalDate;
 import org.joda.time.Months;
 
-import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
+import com.google.common.base.Joiner;
+import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableList.Builder;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.hash.Hashing;
+import com.google.common.io.CharSource;
 
 /**
  * Provides functionality for generating SQL statements.
@@ -116,7 +118,7 @@ public abstract class SqlDialect {
   /**
    *
    */
-  protected static final String          ID_INCREMENTOR_TABLE_COLUMN_VALUE = "value";
+  protected static final String          ID_INCREMENTOR_TABLE_COLUMN_VALUE = "nextvalue";
 
   /**
    *
@@ -425,6 +427,9 @@ public abstract class SqlDialect {
   protected boolean isAutonumbered(InsertStatement statement, Schema databaseMetadata) {
     if (statement.getTable() != null) {
       Table tableInserting = databaseMetadata.getTable(statement.getTable().getName());
+      if (tableInserting == null) {
+        throw new IllegalStateException(String.format("Unable to find [%s] in schema", statement.getTable().getName()));
+      }
       for (Column col : tableInserting.columns()) {
         if (col.isAutoNumbered()) {
           return true;
@@ -2262,7 +2267,7 @@ public abstract class SqlDialect {
    */
   protected String getSqlForEvery(Function function) {
     return getSqlForMin(function);
-  };
+  }
 
 
   /**
@@ -3147,7 +3152,7 @@ public abstract class SqlDialect {
    */
   protected Optional<String> getDeleteLimitPreFromClause(@SuppressWarnings("unused") int limit) {
     return Optional.empty();
-  };
+  }
 
 
   /**
@@ -3158,7 +3163,7 @@ public abstract class SqlDialect {
    */
   protected Optional<String> getDeleteLimitWhereClause(@SuppressWarnings("unused") int limit) {
     return Optional.empty();
-  };
+  }
 
 
   /**
@@ -3169,7 +3174,7 @@ public abstract class SqlDialect {
    */
   protected Optional<String> getDeleteLimitSuffix(@SuppressWarnings("unused") int limit) {
     return Optional.empty();
-  };
+  }
 
 
   /**
@@ -3559,8 +3564,8 @@ public abstract class SqlDialect {
    * @return The SQL representation for the column type.
    */
   protected String sqlRepresentationOfColumnType(Column column, boolean includeNullability, boolean includeDefaultValue, boolean includeColumnType) {
-    String sql = "";
-    StringBuilder suffix = new StringBuilder("");
+    String sql;
+    StringBuilder suffix = new StringBuilder();
     if (includeDefaultValue) {
       suffix = new StringBuilder(StringUtils.isNotEmpty(column.getDefaultValue()) ? " DEFAULT " + sqlForDefaultClauseLiteral(column) : "");
     }
@@ -3807,6 +3812,9 @@ public abstract class SqlDialect {
 
   /**
    * For some dialects, this casting is required, as the type may not be inferred for every field in the select statement.
+   * @param table the table to add the casts.
+   * @param selectStatement select statements which the casts need adding to.
+   * @return SelectStatement with casts.
    */
   protected SelectStatement addCastsToSelect(Table table, SelectStatement selectStatement) {
     SelectStatement statementWithCasts = selectStatement.deepCopy();

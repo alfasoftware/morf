@@ -389,7 +389,7 @@ public class XmlDataSetProducer implements DataSetProducer {
 
 
     /**
-     * @param xmlPullParser pull parser that provides the xml data
+     * @param xmlStreamReader pull parser that provides the xml data
      * @param xmlFormatVersion The format version.
      */
     public PullProcessorTableMetaData(XMLStreamReader xmlStreamReader, int xmlFormatVersion) {
@@ -737,7 +737,7 @@ public class XmlDataSetProducer implements DataSetProducer {
 
 
     /**
-     * @param xmlPullParser Input stream containing the source XML data.
+     * @param xmlStreamReader Input stream containing the source XML data.
      */
     public PullProcessorRecordIterator(XMLStreamReader xmlStreamReader) {
       super(xmlStreamReader);

@@ -77,7 +77,7 @@ public class TestHumanReadableStatements {
     assertEquals("Item should be correct", "CHANGE:[Add a nullable column to table_three called column_three [DECIMAL(9,5)], set to 10.0]", results.get(i++));
     assertEquals("Item should be correct", "CHANGE:[Add a non-null column to table_four called column_four [DECIMAL(9,5)], set to 10.0]", results.get(i++));
     assertEquals("Item should be correct", "STEPEND:[AddColumnToTableUpgradeStep]", results.get(i++));
-    assertEquals("Item should be correct", "VERSIONEND:[ALFA v1.0.0]", results.get(i++));
+    assertEquals("Item should be correct", "VERSIONEND:[ALFA v1.0.0]", results.get(i));
   }
 
 
@@ -116,7 +116,7 @@ public class TestHumanReadableStatements {
     assertEquals("Item 17 should be correct", "CHANGE:[Change column column_seven on table_seven from non-null DECIMAL(9,0) to non-null STRING(9)]", results.get(i++));
     assertEquals("Item 18 should be correct", "CHANGE:[Change column column_eight on table_eight from non-null STRING(9) to non-null DECIMAL(9,0)]", results.get(i++));
     assertEquals("Item 19 should be correct", "STEPEND:[ChangeColumnUpgradeStep]", results.get(i++));
-    assertEquals("Item should be correct", "VERSIONEND:[ALFA v1.0.0]", results.get(i++));
+    assertEquals("Item should be correct", "VERSIONEND:[ALFA v1.0.0]", results.get(i));
   }
 
 
@@ -149,7 +149,7 @@ public class TestHumanReadableStatements {
     assertEquals("Item 11 should be correct", "STEPEND:[UpgradeStep5010]", results.get(i++));
     assertEquals("Item 12 should be correct", "STEPSTART:[SAMPLE-3]-[UpgradeStep5010Two]-[5.0.10 Upgrade Step (2)]", results.get(i++));
     assertEquals("Item 13 should be correct", "STEPEND:[UpgradeStep5010Two]", results.get(i++));
-    assertEquals("Item should be correct", "VERSIONEND:[ALFA v1.0.0]", results.get(i++));
+    assertEquals("Item should be correct", "VERSIONEND:[ALFA v1.0.0]", results.get(i));
   }
 
 
@@ -195,7 +195,7 @@ public class TestHumanReadableStatements {
     assertEquals("Item should be correct", "VERSIONSTART:[ALFA v1.0.24]", results.get(i++));
     assertEquals("Item 15 should be correct", "STEPSTART:[SAMPLE-8]-[UpgradeStep5010Four]-[5.0.10 Upgrade Step (4)]", results.get(i++));
     assertEquals("Item 16 should be correct", "STEPEND:[UpgradeStep5010Four]", results.get(i++));
-    assertEquals("Item should be correct", "VERSIONEND:[ALFA v1.0.24]", results.get(i++));
+    assertEquals("Item should be correct", "VERSIONEND:[ALFA v1.0.24]", results.get(i));
   }
 
 
