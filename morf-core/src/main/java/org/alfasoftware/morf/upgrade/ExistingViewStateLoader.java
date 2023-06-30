@@ -83,7 +83,7 @@ class ExistingViewStateLoader {
             log.info(String.format("View [%s] exists but hash not present in %s", targetViewName, DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME));
           } else if (!newHash.equals(existingHash)) {
             log.info(String.format("View [%s] exists in %s, but hash [%s] does not match target schema [%s]", targetViewName, DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME, existingHash, newHash));
-          } else if (!viewDeploymentValidator.validateExistingView(view)) {
+          } else if (!viewDeploymentValidator.validateExistingView(view, new UpgradeSchemas(sourceSchema, targetSchema))) {
             log.info(String.format("View [%s] exists in %s, but was rejected by %s", targetViewName, DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME, viewDeploymentValidator.getClass()));
           } else {
             log.debug(String.format("View [%s] exists in %s and was validated", targetViewName, DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME));
@@ -95,7 +95,7 @@ class ExistingViewStateLoader {
           if (deployedViews.get().containsKey(targetViewName)) {
             log.info(String.format("View [%s] is missing, but %s entry exists; the view may have been deleted", targetViewName, DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME));
             viewsToDrop.put(targetViewName, view);
-          } else if (!viewDeploymentValidator.validateMissingView(view)) {
+          } else if (!viewDeploymentValidator.validateMissingView(view, new UpgradeSchemas(sourceSchema, targetSchema))) {
             log.info(String.format("View [%s] is missing, but was recognized by %s; the view may have been deleted", targetViewName, viewDeploymentValidator.getClass()));
             viewsToDrop.put(targetViewName, view);
           } else {

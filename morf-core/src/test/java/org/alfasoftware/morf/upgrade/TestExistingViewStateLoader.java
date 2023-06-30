@@ -77,8 +77,8 @@ public class TestExistingViewStateLoader {
       }
     });
 
-    when(viewDeploymentValidator.validateExistingView(any(View.class))).thenReturn(true);
-    when(viewDeploymentValidator.validateMissingView(any(View.class))).thenReturn(true);
+    when(viewDeploymentValidator.validateExistingView(any(View.class), any(UpgradeSchemas.class))).thenReturn(true);
+    when(viewDeploymentValidator.validateMissingView(any(View.class), any(UpgradeSchemas.class))).thenReturn(true);
   }
 
 
