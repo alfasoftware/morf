@@ -655,7 +655,7 @@ class PostgreSQLDialect extends SqlDialect {
       return super.selectStatementPreFieldDirectives(selectStatement);
     }
 
-    return "/*+" + builder.append(" */ ").toString();
+    return "/*+" + builder.append(" */ ");
   }
 
 
@@ -713,12 +713,13 @@ class PostgreSQLDialect extends SqlDialect {
 
   private String addAlterTableConstraint(Table table, Column newColumn, boolean alterNullable, boolean alterType,
       boolean alterDefaultValue) {
-    StringBuilder sqlBuilder = new StringBuilder();
-    sqlBuilder.append("ALTER TABLE ").append(schemaNamePrefix(table)).append(table.getName())
-            .append(alterNullable ? " ALTER COLUMN " + newColumn.getName() + (newColumn.isNullable() ? " DROP NOT NULL" : " SET NOT NULL") : "")
-            .append(alterNullable && alterType ? "," : "").append(alterType ? " ALTER COLUMN " + newColumn.getName() + " TYPE " + sqlRepresentationOfColumnType(newColumn, false, false, true) : "")
-            .append(alterDefaultValue && (alterNullable || alterType) ? "," : "").append(alterDefaultValue ? " ALTER COLUMN " + newColumn.getName() + (!newColumn.getDefaultValue().isEmpty() ? " SET DEFAULT " + sqlForDefaultClauseLiteral(newColumn) : " DROP DEFAULT") : "");
-    return sqlBuilder.toString();
+
+    return "ALTER TABLE " + schemaNamePrefix(table) + table.getName()
+            + (alterNullable ? " ALTER COLUMN " + newColumn.getName() + (newColumn.isNullable() ? " DROP NOT NULL" : " SET NOT NULL") : "")
+            + (alterNullable && alterType ? "," : "")
+            + (alterType ? " ALTER COLUMN " + newColumn.getName() + " TYPE " + sqlRepresentationOfColumnType(newColumn, false, false, true) : "")
+            + (alterDefaultValue && (alterNullable || alterType) ? "," : "")
+            + (alterDefaultValue ? " ALTER COLUMN " + newColumn.getName() + (!newColumn.getDefaultValue().isEmpty() ? " SET DEFAULT " + sqlForDefaultClauseLiteral(newColumn) : " DROP DEFAULT") : "");
   }
 
 
@@ -794,6 +795,7 @@ class PostgreSQLDialect extends SqlDialect {
 
       default:
         super.prepareStatementParameters(statement, values, parameter);
+        return;
     }
   }
 
@@ -836,6 +838,7 @@ class PostgreSQLDialect extends SqlDialect {
       }
       sqlBuilder.append(getSqlFrom(selectStatement.build()));
 
+      // We have already checked statement.getLimit().isPresent() here, but Sonar gives a false postive on the .get() below
       sqlBuilder.append(" LIMIT ").append(statement.getLimit().get()).append(")"); //NOSONAR
 
       return sqlBuilder.toString();
