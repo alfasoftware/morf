@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-package org.alfasoftware.morf.upgrade.upgrade.v5_3_25;
+package org.alfasoftware.morf.upgrade.upgrade;
 
 import org.alfasoftware.morf.upgrade.DataEditor;
 import org.alfasoftware.morf.upgrade.SchemaEditor;
