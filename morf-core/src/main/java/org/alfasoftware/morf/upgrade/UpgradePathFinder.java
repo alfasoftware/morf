@@ -234,8 +234,8 @@ public class UpgradePathFinder {
   /**
    * For backwards compatibility, we need to assume the presence of some UUIDs - the ones which were added prior to the introduction of the UpgradeAudit table.
    *
-   * @param loadedUUIDS
-   * @return
+   * @param loadedUUIDS The current Set of loaded UUIDs
+   * @return The Set of loaded UUIDs with assumed UUIDs added
    */
   private Set<java.util.UUID> addAssumedAppliedUUIDs(Set<java.util.UUID> loadedUUIDS) {
 

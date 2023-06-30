@@ -377,7 +377,7 @@ class HumanReadableStatementHelper {
   /**
    * Generates human-readable "Analyse Table" string.
    *
-   * @param The table to analyse.
+   * @param tableName The table to analyse.
    */
   public static String generateAnalyseTableFromString(String tableName) {
     return String.format("Analyse table %s", tableName);
@@ -437,8 +437,8 @@ class HumanReadableStatementHelper {
    * Generates a human-readable "Rename Index" string.
    *
    * @param tableName the name of the table to rename the index on
-   * @param fromIndex the original index name
-   * @param toIndex the replacement name for the index
+   * @param fromIndexName the original index name
+   * @param toIndexName the replacement name for the index
    * @return a string containing the human-readable version of the action
    */
   public static String generateRenameIndexString(final String tableName, final String fromIndexName, final String toIndexName) {
@@ -617,7 +617,7 @@ class HumanReadableStatementHelper {
   /**
    * Generates a human-readable description of a data truncate operation.
    *
-   * @param statement the data upgrade statement to describe
+   * @param table the table to be truncated to describe
    * @return a string containing the human-readable description of the operation
    */
   private static String generateTruncateStatementString(final TableReference table) {

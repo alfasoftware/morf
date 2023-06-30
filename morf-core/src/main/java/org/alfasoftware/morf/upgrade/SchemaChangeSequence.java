@@ -370,7 +370,7 @@ public class SchemaChangeSequence {
 
 
     /**
-     * @see org.alfasoftware.morf.upgrade.SchemaEditor#analyseTable(org.alfasoftware.morf.metadata.Table)
+     * @see org.alfasoftware.morf.upgrade.SchemaEditor#analyseTable(String)
      */
     @Override
     public void analyseTable(String tableName) {

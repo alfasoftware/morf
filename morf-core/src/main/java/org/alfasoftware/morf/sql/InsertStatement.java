@@ -546,7 +546,7 @@ public class InsertStatement implements Statement,
     if (!fields.isEmpty()) result.append(" FIELDS ").append(fields);
     if (!values.isEmpty()) result.append(" VALUES ").append(values);
     if (selectStatement != null) result.append(" FROM SELECT [").append(selectStatement).append("]");
-    if (fromTable != null) result.append(" FROM [" + fromTable + "]");
+    if (fromTable != null) result.append(" FROM [").append(fromTable).append("]");
     if (!fieldDefaults.isEmpty()) result.append(" WITH DEFAULTS ").append(fieldDefaults.values());
     return result.toString();
   }

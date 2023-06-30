@@ -111,7 +111,6 @@ public class DataSetConnectorMultiThreaded {
         closeState = CloseState.COMPLETE;
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        return;
       } finally {
         producer.close();
       }

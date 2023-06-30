@@ -79,7 +79,7 @@ public class TestTableOutputter {
     // Given
     Record record1 = mock(Record.class);
     when(record1.getString("Col1")).thenReturn("STRING VALUE");
-    when(record1.getBigDecimal("Col2")).thenReturn(new BigDecimal(12.34));
+    when(record1.getBigDecimal("Col2")).thenReturn(BigDecimal.valueOf(12.34));
     when(record1.getLong("Col3")).thenReturn(22L);
     when(record1.getLong("Col4")).thenReturn(33L);
     when(record1.getString("Col5")).thenReturn("CLOB VALUE");

@@ -2262,7 +2262,7 @@ public abstract class SqlDialect {
    */
   protected String getSqlForEvery(Function function) {
     return getSqlForMin(function);
-  };
+  }
 
 
   /**
@@ -3147,7 +3147,7 @@ public abstract class SqlDialect {
    */
   protected Optional<String> getDeleteLimitPreFromClause(@SuppressWarnings("unused") int limit) {
     return Optional.empty();
-  };
+  }
 
 
   /**
@@ -3158,7 +3158,7 @@ public abstract class SqlDialect {
    */
   protected Optional<String> getDeleteLimitWhereClause(@SuppressWarnings("unused") int limit) {
     return Optional.empty();
-  };
+  }
 
 
   /**
@@ -3169,7 +3169,7 @@ public abstract class SqlDialect {
    */
   protected Optional<String> getDeleteLimitSuffix(@SuppressWarnings("unused") int limit) {
     return Optional.empty();
-  };
+  }
 
 
   /**
@@ -3559,8 +3559,8 @@ public abstract class SqlDialect {
    * @return The SQL representation for the column type.
    */
   protected String sqlRepresentationOfColumnType(Column column, boolean includeNullability, boolean includeDefaultValue, boolean includeColumnType) {
-    String sql = "";
-    StringBuilder suffix = new StringBuilder("");
+    String sql;
+    StringBuilder suffix = new StringBuilder();
     if (includeDefaultValue) {
       suffix = new StringBuilder(StringUtils.isNotEmpty(column.getDefaultValue()) ? " DEFAULT " + sqlForDefaultClauseLiteral(column) : "");
     }
