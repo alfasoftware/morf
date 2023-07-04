@@ -41,6 +41,7 @@ import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager;
 import org.alfasoftware.morf.testing.TestingDataSourceModule;
 import org.alfasoftware.morf.upgrade.Deployment.DeploymentFactory;
+import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.alfasoftware.morf.upgrade.upgrade.AddExtraLoggingToUpgradeAuditTable;
 import org.junit.After;
 import org.junit.Before;
@@ -142,8 +143,11 @@ public class TestFullDeployment {
     Schema targetSchema = schema(
             table("UpgradeAudit").columns(
                     column("upgradeUUID",      DataType.STRING, 100).primaryKey(),
-                    column("description",      DataType.STRING, 200).nullable(),
-                    column("appliedTime",      DataType.DECIMAL, 14).nullable()
+                    column("description",      DataType.STRING, DatabaseUpgradeTableContribution.UPGRADE_STEP_DESCRIPTION_LENGTH).nullable(),
+                    column("appliedTime",      DataType.DECIMAL, 14).nullable(),
+                    column("status",           DataType.STRING,  10).nullable(),
+                    column("server",           DataType.STRING,  100).nullable(),
+                    column("processingTimeMs", DataType.DECIMAL, 14).nullable()
             ),
             table("FirstTestBean").columns(
                     column("identifier", DataType.DECIMAL, 10).nullable(),
