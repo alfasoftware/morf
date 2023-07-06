@@ -140,6 +140,7 @@ class HumanReadableStatementHelper {
       .put(FunctionType.TRIM, new FunctionTypeMetaData("trimmed ", "", "", false, false))
       .put(FunctionType.UPPER, new FunctionTypeMetaData("upper case ", "", "", false, false))
       .put(FunctionType.LAST_DAY_OF_MONTH, new FunctionTypeMetaData("last day of month ", "", "", false, false))
+      .put(FunctionType.UNIX_TIME, new FunctionTypeMetaData("unix time in milliseconds ", "", "", false, false))
       .build();
 
   /**

@@ -81,6 +81,7 @@ import static org.alfasoftware.morf.sql.element.Function.substring;
 import static org.alfasoftware.morf.sql.element.Function.sum;
 import static org.alfasoftware.morf.sql.element.Function.sumDistinct;
 import static org.alfasoftware.morf.sql.element.Function.trim;
+import static org.alfasoftware.morf.sql.element.Function.unixtime;
 import static org.alfasoftware.morf.sql.element.Function.upperCase;
 import static org.alfasoftware.morf.sql.element.Function.yyyymmddToDate;
 import static org.hamcrest.Matchers.allOf;
@@ -2783,6 +2784,37 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
       }
     });
   }
+
+
+
+    /**
+     * Tests execute now function.
+     *
+     * @throws SQLException if something goes wrong.
+     */
+    @Test
+    public void testUnixTime() throws SQLException {
+        SelectStatement select = select(unixtime());
+
+        SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+
+        executor.executeQuery(convertStatementToSQL(select), connection, new ResultSetProcessor<Void>() {
+            @Override
+            public Void process(ResultSet resultSet) throws SQLException {
+                resultSet.next();
+
+                final long databaseTime = resultSet.getLong(1);
+
+                log.info("Current database time: " + databaseTime);
+
+                assertTrue("Database unix time is set and has a value after July 6th 2023 ", databaseTime > 1688648895428L);
+
+                return null;
+            }
+        });
+    }
+
+
 
 
   @Test

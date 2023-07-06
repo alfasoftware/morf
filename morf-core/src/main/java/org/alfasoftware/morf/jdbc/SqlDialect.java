@@ -2078,6 +2078,11 @@ public abstract class SqlDialect {
         }
         return getSqlForRowNumber();
 
+      case UNIX_TIME:
+        if (!function.getArguments().isEmpty()) {
+          throw new IllegalArgumentException("The UNIXTIME function should have zero arguments. This function has " + function.getArguments().size());
+        }
+        return getSqlForUnixTime();
       default:
         throw new UnsupportedOperationException("This database does not currently support the [" + function.getType() + "] function");
     }
@@ -2417,11 +2422,24 @@ public abstract class SqlDialect {
   /**
    * Produce SQL for getting the row number of the row in the partition
    *
-   * @return a string representation of the SQL for finding the last day of the month.
+   * @return a string representation of the SQL for getting the row number of the row in the partition.
    */
   protected String getSqlForRowNumber(){
     return "ROW_NUMBER()";
   }
+
+
+
+  /**
+   * Produce SQL for getting the unix time
+   *
+   * @return a long representation of the unix time
+   */
+  protected String getSqlForUnixTime(){
+    // Postgres syntax, but works in H2
+    return "trunc(extract(epoch from now() at time zone 'UTC')*1000)";
+  }
+
 
 
   /**

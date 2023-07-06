@@ -376,7 +376,7 @@ class MySqlDialect extends SqlDialect {
    * MySQL defaults to <a href="http://stackoverflow.com/questions/20496616/fetchsize-in-resultset-set-to-0-by-default">fetching
    * <em>all</em> records</a> into memory when a JDBC query is executed, which causes OOM
    * errors when used with large data sets (Cryo and ETLs being prime offenders). Ideally
-   * we would use a nice big paging size here (like 200 as used in {@link OracleDialect})
+   * we would use a nice big paging size here (like 200 as used in OracleDialect)
    * but as noted in the link above, MySQL only supports one record at a time or all at
    * once, with nothing in between.  As a result, we default to one record for bulk loads
    * as the only safe choice.
@@ -660,6 +660,15 @@ class MySqlDialect extends SqlDialect {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForUnixTime()
+   */
+  @Override
+  protected String getSqlForUnixTime() {
+    return "CAST( 1000*UNIX_TIMESTAMP(current_timestamp(3)) AS UNSIGNED INTEGER)";
+  }
+
+
+    /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForDaysBetween(org.alfasoftware.morf.sql.element.AliasedField, org.alfasoftware.morf.sql.element.AliasedField)
    */
   @Override

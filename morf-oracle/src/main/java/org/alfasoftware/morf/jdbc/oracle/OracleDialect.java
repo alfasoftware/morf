@@ -1418,6 +1418,13 @@ class OracleDialect extends SqlDialect {
     return "LAST_DAY(" + getSqlFrom(date) + ")";
   }
 
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForUnixTime()
+   */
+  @Override
+  protected String getSqlForUnixTime() {
+    return "EXTRACT(DAY FROM(sys_extract_utc(systimestamp) - to_timestamp('1970-01-01', 'YYYY-MM-DD'))) * 86400000+ to_number(TO_CHAR(sys_extract_utc(systimestamp), 'SSSSSFF3'))";
+  }
 
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForAnalyseTable(Table)

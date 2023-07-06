@@ -924,6 +924,16 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   }
 
 
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedUnixTime()
+   */
+  @Override
+  protected String expectedUnixTime() {
+    return "CAST( 1000*UNIX_TIMESTAMP(current_timestamp(3)) AS UNSIGNED INTEGER)";
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropViewStatements()
    */

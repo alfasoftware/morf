@@ -87,6 +87,7 @@ import static org.alfasoftware.morf.sql.element.Function.substring;
 import static org.alfasoftware.morf.sql.element.Function.sum;
 import static org.alfasoftware.morf.sql.element.Function.sumDistinct;
 import static org.alfasoftware.morf.sql.element.Function.trim;
+import static org.alfasoftware.morf.sql.element.Function.unixtime;
 import static org.alfasoftware.morf.sql.element.Function.upperCase;
 import static org.alfasoftware.morf.sql.element.Function.yyyymmddToDate;
 import static org.junit.Assert.assertArrayEquals;
@@ -2573,6 +2574,16 @@ public abstract class AbstractSqlDialectTest {
   public void testNow() {
     String result = testDialect.getSqlFrom(now());
     assertEquals(expectedNow(), result);
+  }
+
+
+  /**
+   * Test that unixtime functionality behaves as expected.
+   */
+  @Test
+  public void testUnixTime() {
+    String result = testDialect.getSqlFrom(unixtime());
+    assertEquals(expectedUnixTime(), result);
   }
 
 
@@ -5349,6 +5360,12 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL for now function returning UTC timestamp.
    */
   protected abstract String expectedNow();
+
+
+  /**
+   * @return The expected SQL for now function returning UTC timestamp.
+   */
+  protected abstract String expectedUnixTime();
 
 
   /**

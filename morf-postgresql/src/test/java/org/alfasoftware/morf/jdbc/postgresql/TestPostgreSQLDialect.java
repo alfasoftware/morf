@@ -985,6 +985,14 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return "NOW()";
   }
 
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedUnixTime()
+   */
+  @Override
+  protected String expectedUnixTime() {
+    return "trunc(extract(epoch from now() at time zone 'UTC')*1000)";
+  }
+
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropViewStatements()

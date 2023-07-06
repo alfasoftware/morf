@@ -1222,6 +1222,14 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @return The expected SQL for the unix time stamp in milliseconds
+   */
+  @Override
+  protected String expectedUnixTime() {
+    return "trunc(extract(epoch from now() at time zone 'UTC')*1000)";
+  }
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#tableName(java.lang.String)
    */
   @Override

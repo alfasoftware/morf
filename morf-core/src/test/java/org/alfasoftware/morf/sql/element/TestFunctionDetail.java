@@ -285,4 +285,18 @@ public class TestFunctionDetail {
     assertTrue("First argument should be a field reference", firstArgument instanceof FieldReference);
     assertEquals("First argument should have correct name", "agreementNumber", ((FieldReference) firstArgument).getName());
   }
+
+
+  /**
+   * Tests indirect usage of the <code>unixtime</code> function
+   */
+  @Test
+  public void testUnixTime() {
+    Function function = Function.unixtime();
+
+    assertEquals("Function should be of type UNIX_TIME", FunctionType.UNIX_TIME, function.getType());
+    assertNotNull("Function should have empty arguments", function.getArguments());
+    assertEquals("Function should have no arguments", 0, function.getArguments().size());
+  }
+
 }

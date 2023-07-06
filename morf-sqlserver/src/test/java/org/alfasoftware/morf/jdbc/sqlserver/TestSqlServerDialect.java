@@ -41,8 +41,8 @@ import com.google.common.collect.ImmutableList;
  */
 public class TestSqlServerDialect extends AbstractSqlDialectTest {
 
-  @SuppressWarnings({"unchecked","rawtypes"})
-  private final ArgumentCaptor<List<String>> listCaptor = ArgumentCaptor.forClass((Class<List<String>>)(Class)List.class);
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  private final ArgumentCaptor<List<String>> listCaptor = ArgumentCaptor.forClass((Class<List<String>>) (Class) List.class);
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#createTestDialect()
@@ -62,15 +62,15 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedCreateTableStatements() {
     return Arrays
-        .asList(
-          "CREATE TABLE TESTSCHEMA.Test ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT Test_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS, [intField] INTEGER, [floatField] NUMERIC(13,2) NOT NULL, [dateField] DATE, [booleanField] BIT, [charField] NVARCHAR(1) COLLATE SQL_Latin1_General_CP1_CS_AS, [blobField] IMAGE, [bigIntegerField] BIGINT CONSTRAINT Test_bigIntegerField_DF DEFAULT 12345, [clobField] NVARCHAR(MAX) COLLATE SQL_Latin1_General_CP1_CS_AS, CONSTRAINT [Test_PK] PRIMARY KEY ([id]))",
-          "CREATE UNIQUE NONCLUSTERED INDEX Test_NK ON TESTSCHEMA.Test ([stringField])",
-          "CREATE UNIQUE NONCLUSTERED INDEX Test_1 ON TESTSCHEMA.Test ([intField], [floatField])",
-          "CREATE TABLE TESTSCHEMA.Alternate ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT Alternate_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS, CONSTRAINT [Alternate_PK] PRIMARY KEY ([id]))",
-          "CREATE INDEX Alternate_1 ON TESTSCHEMA.Alternate ([stringField])",
-          "CREATE TABLE TESTSCHEMA.NonNull ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT NonNull_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [intField] NUMERIC(8,0) NOT NULL, [booleanField] BIT NOT NULL, [dateField] DATE NOT NULL, [blobField] IMAGE NOT NULL, CONSTRAINT [NonNull_PK] PRIMARY KEY ([id]))",
-          "CREATE TABLE TESTSCHEMA.CompositePrimaryKey ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT CompositePrimaryKey_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [secondPrimaryKey] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, CONSTRAINT [CompositePrimaryKey_PK] PRIMARY KEY ([id], [secondPrimaryKey]))",
-          "CREATE TABLE TESTSCHEMA.AutoNumber ([intField] BIGINT NOT NULL IDENTITY(5, 1), CONSTRAINT [AutoNumber_PK] PRIMARY KEY ([intField]))"
+            .asList(
+                    "CREATE TABLE TESTSCHEMA.Test ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT Test_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS, [intField] INTEGER, [floatField] NUMERIC(13,2) NOT NULL, [dateField] DATE, [booleanField] BIT, [charField] NVARCHAR(1) COLLATE SQL_Latin1_General_CP1_CS_AS, [blobField] IMAGE, [bigIntegerField] BIGINT CONSTRAINT Test_bigIntegerField_DF DEFAULT 12345, [clobField] NVARCHAR(MAX) COLLATE SQL_Latin1_General_CP1_CS_AS, CONSTRAINT [Test_PK] PRIMARY KEY ([id]))",
+                    "CREATE UNIQUE NONCLUSTERED INDEX Test_NK ON TESTSCHEMA.Test ([stringField])",
+                    "CREATE UNIQUE NONCLUSTERED INDEX Test_1 ON TESTSCHEMA.Test ([intField], [floatField])",
+                    "CREATE TABLE TESTSCHEMA.Alternate ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT Alternate_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS, CONSTRAINT [Alternate_PK] PRIMARY KEY ([id]))",
+                    "CREATE INDEX Alternate_1 ON TESTSCHEMA.Alternate ([stringField])",
+                    "CREATE TABLE TESTSCHEMA.NonNull ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT NonNull_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [intField] NUMERIC(8,0) NOT NULL, [booleanField] BIT NOT NULL, [dateField] DATE NOT NULL, [blobField] IMAGE NOT NULL, CONSTRAINT [NonNull_PK] PRIMARY KEY ([id]))",
+                    "CREATE TABLE TESTSCHEMA.CompositePrimaryKey ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT CompositePrimaryKey_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [secondPrimaryKey] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, CONSTRAINT [CompositePrimaryKey_PK] PRIMARY KEY ([id], [secondPrimaryKey]))",
+                    "CREATE TABLE TESTSCHEMA.AutoNumber ([intField] BIGINT NOT NULL IDENTITY(5, 1), CONSTRAINT [AutoNumber_PK] PRIMARY KEY ([intField]))"
             );
   }
 
@@ -84,13 +84,13 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedCreateTemporaryTableStatements() {
     return Arrays
-        .asList(
-          "CREATE TABLE TESTSCHEMA.#TempTest ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT #TempTest_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS, [intField] INTEGER, [floatField] NUMERIC(13,2) NOT NULL, [dateField] DATE, [booleanField] BIT, [charField] NVARCHAR(1) COLLATE SQL_Latin1_General_CP1_CS_AS, [blobField] IMAGE, [bigIntegerField] BIGINT CONSTRAINT #TempTest_bigIntegerField_DF DEFAULT 12345, [clobField] NVARCHAR(MAX) COLLATE SQL_Latin1_General_CP1_CS_AS, CONSTRAINT [TempTest_PK] PRIMARY KEY ([id]))",
-          "CREATE UNIQUE NONCLUSTERED INDEX TempTest_NK ON TESTSCHEMA.#TempTest ([stringField])",
-          "CREATE INDEX TempTest_1 ON TESTSCHEMA.#TempTest ([intField], [floatField])",
-          "CREATE TABLE TESTSCHEMA.#TempAlternate ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT #TempAlternate_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS, CONSTRAINT [TempAlternate_PK] PRIMARY KEY ([id]))",
-          "CREATE INDEX TempAlternate_1 ON TESTSCHEMA.#TempAlternate ([stringField])",
-            "CREATE TABLE TESTSCHEMA.#TempNonNull ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT #TempNonNull_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [intField] NUMERIC(8,0) NOT NULL, [booleanField] BIT NOT NULL, [dateField] DATE NOT NULL, [blobField] IMAGE NOT NULL, CONSTRAINT [TempNonNull_PK] PRIMARY KEY ([id]))");
+            .asList(
+                    "CREATE TABLE TESTSCHEMA.#TempTest ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT #TempTest_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS, [intField] INTEGER, [floatField] NUMERIC(13,2) NOT NULL, [dateField] DATE, [booleanField] BIT, [charField] NVARCHAR(1) COLLATE SQL_Latin1_General_CP1_CS_AS, [blobField] IMAGE, [bigIntegerField] BIGINT CONSTRAINT #TempTest_bigIntegerField_DF DEFAULT 12345, [clobField] NVARCHAR(MAX) COLLATE SQL_Latin1_General_CP1_CS_AS, CONSTRAINT [TempTest_PK] PRIMARY KEY ([id]))",
+                    "CREATE UNIQUE NONCLUSTERED INDEX TempTest_NK ON TESTSCHEMA.#TempTest ([stringField])",
+                    "CREATE INDEX TempTest_1 ON TESTSCHEMA.#TempTest ([intField], [floatField])",
+                    "CREATE TABLE TESTSCHEMA.#TempAlternate ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT #TempAlternate_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS, CONSTRAINT [TempAlternate_PK] PRIMARY KEY ([id]))",
+                    "CREATE INDEX TempAlternate_1 ON TESTSCHEMA.#TempAlternate ([stringField])",
+                    "CREATE TABLE TESTSCHEMA.#TempNonNull ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT #TempNonNull_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [intField] NUMERIC(8,0) NOT NULL, [booleanField] BIT NOT NULL, [dateField] DATE NOT NULL, [blobField] IMAGE NOT NULL, CONSTRAINT [TempNonNull_PK] PRIMARY KEY ([id]))");
   }
 
 
@@ -100,9 +100,9 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedCreateTableStatementsWithLongTableName() {
     return Arrays.asList(
-      "CREATE TABLE TESTSCHEMA.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS, [intField] NUMERIC(8,0), [floatField] NUMERIC(13,2) NOT NULL, [dateField] DATE, [booleanField] BIT, [charField] NVARCHAR(1) COLLATE SQL_Latin1_General_CP1_CS_AS, CONSTRAINT [tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation_PK] PRIMARY KEY ([id]))",
-      "CREATE UNIQUE NONCLUSTERED INDEX Test_NK ON TESTSCHEMA.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation ([stringField])",
-      "CREATE INDEX Test_1 ON TESTSCHEMA.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation ([intField], [floatField])"
+            "CREATE TABLE TESTSCHEMA.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS, [intField] NUMERIC(8,0), [floatField] NUMERIC(13,2) NOT NULL, [dateField] DATE, [booleanField] BIT, [charField] NVARCHAR(1) COLLATE SQL_Latin1_General_CP1_CS_AS, CONSTRAINT [tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation_PK] PRIMARY KEY ([id]))",
+            "CREATE UNIQUE NONCLUSTERED INDEX Test_NK ON TESTSCHEMA.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation ([stringField])",
+            "CREATE INDEX Test_1 ON TESTSCHEMA.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation ([intField], [floatField])"
     );
   }
 
@@ -203,10 +203,10 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAutoGenerateIdStatement() {
     return Arrays.asList(
-      "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
-      "INSERT INTO TESTSCHEMA.idvalues (name, "+ID_INCREMENTOR_TABLE_COLUMN_VALUE+") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
-      "INSERT INTO TESTSCHEMA.Test (version, stringField, id) SELECT version, stringField, (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 0) FROM TESTSCHEMA.idvalues WHERE (name = 'Test')) + Other.id FROM TESTSCHEMA.Other"
-        );
+            "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
+            "INSERT INTO TESTSCHEMA.idvalues (name, " + ID_INCREMENTOR_TABLE_COLUMN_VALUE + ") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
+            "INSERT INTO TESTSCHEMA.Test (version, stringField, id) SELECT version, stringField, (SELECT COALESCE(" + ID_INCREMENTOR_TABLE_COLUMN_VALUE + ", 0) FROM TESTSCHEMA.idvalues WHERE (name = 'Test')) + Other.id FROM TESTSCHEMA.Other"
+    );
   }
 
 
@@ -216,38 +216,35 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedInsertWithIdAndVersion() {
     return Arrays.asList(
-      "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
-      "INSERT INTO TESTSCHEMA.idvalues (name, "+ID_INCREMENTOR_TABLE_COLUMN_VALUE+") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
-      "INSERT INTO TESTSCHEMA.Test (stringField, id, version) SELECT stringField, (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 0) FROM TESTSCHEMA.idvalues WHERE (name = 'Test')) + Other.id, 0 AS version FROM TESTSCHEMA.Other"
-        );
+            "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
+            "INSERT INTO TESTSCHEMA.idvalues (name, " + ID_INCREMENTOR_TABLE_COLUMN_VALUE + ") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
+            "INSERT INTO TESTSCHEMA.Test (stringField, id, version) SELECT stringField, (SELECT COALESCE(" + ID_INCREMENTOR_TABLE_COLUMN_VALUE + ", 0) FROM TESTSCHEMA.idvalues WHERE (name = 'Test')) + Other.id, 0 AS version FROM TESTSCHEMA.Other"
+    );
   }
 
 
   private List<String> expectedPreInsertStatements() {
     return ImmutableList.of(
-      "SET IDENTITY_INSERT TESTSCHEMA.AutoNumber ON"
-        );
+            "SET IDENTITY_INSERT TESTSCHEMA.AutoNumber ON"
+    );
   }
-
-
 
 
   private void verifyPostInsertStatements(List<String> executedStatements) {
-    assertThat(executedStatements,contains(
-      "SET IDENTITY_INSERT TESTSCHEMA.AutoNumber OFF",
+    assertThat(executedStatements, contains(
+            "SET IDENTITY_INSERT TESTSCHEMA.AutoNumber OFF",
 
-      "IF EXISTS (SELECT 1 FROM TESTSCHEMA.AutoNumber)\n" +
-      "BEGIN\n" +
-      "  DBCC CHECKIDENT (\"TESTSCHEMA.AutoNumber\", RESEED, 4)\n" +
-      "  DBCC CHECKIDENT (\"TESTSCHEMA.AutoNumber\", RESEED)\n" +
-      "END\n" +
-      "ELSE\n" +
-      "BEGIN\n" +
-      "  DBCC CHECKIDENT (\"TESTSCHEMA.AutoNumber\", RESEED, 5)\n" +
-      "END"
+            "IF EXISTS (SELECT 1 FROM TESTSCHEMA.AutoNumber)\n" +
+                    "BEGIN\n" +
+                    "  DBCC CHECKIDENT (\"TESTSCHEMA.AutoNumber\", RESEED, 4)\n" +
+                    "  DBCC CHECKIDENT (\"TESTSCHEMA.AutoNumber\", RESEED)\n" +
+                    "END\n" +
+                    "ELSE\n" +
+                    "BEGIN\n" +
+                    "  DBCC CHECKIDENT (\"TESTSCHEMA.AutoNumber\", RESEED, 5)\n" +
+                    "END"
     ));
   }
-
 
 
   /**
@@ -255,7 +252,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected void verifyPostInsertStatementsInsertingUnderAutonumLimit(SqlScriptExecutor sqlScriptExecutor, Connection connection) {
-    verify(sqlScriptExecutor).execute(listCaptor.capture(),eq(connection));
+    verify(sqlScriptExecutor).execute(listCaptor.capture(), eq(connection));
     verifyPostInsertStatements(listCaptor.getValue());
     verifyNoMoreInteractions(sqlScriptExecutor);
   }
@@ -266,7 +263,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected void verifyPostInsertStatementsNotInsertingUnderAutonumLimit(SqlScriptExecutor sqlScriptExecutor, Connection connection) {
-    verify(sqlScriptExecutor).execute(listCaptor.capture(),eq(connection));
+    verify(sqlScriptExecutor).execute(listCaptor.capture(), eq(connection));
     verifyPostInsertStatements(listCaptor.getValue());
     verifyNoMoreInteractions(sqlScriptExecutor);
   }
@@ -305,10 +302,10 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedSpecifiedValueInsert() {
     return Arrays.asList(
-      "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
-      "INSERT INTO TESTSCHEMA.idvalues (name, "+ID_INCREMENTOR_TABLE_COLUMN_VALUE+") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
-      "INSERT INTO TESTSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, 1, 'X', (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 1) FROM TESTSCHEMA.idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
-        );
+            "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
+            "INSERT INTO TESTSCHEMA.idvalues (name, " + ID_INCREMENTOR_TABLE_COLUMN_VALUE + ") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
+            "INSERT INTO TESTSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, 1, 'X', (SELECT COALESCE(" + ID_INCREMENTOR_TABLE_COLUMN_VALUE + ", 1) FROM TESTSCHEMA.idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
+    );
   }
 
 
@@ -318,9 +315,9 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedSpecifiedValueInsertWithTableInDifferentSchema() {
     return Arrays.asList(
-      "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
-      "INSERT INTO TESTSCHEMA.idvalues (name, "+ID_INCREMENTOR_TABLE_COLUMN_VALUE+") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM MYSCHEMA.Test))",
-      "INSERT INTO MYSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, 1, 'X', (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 1) FROM TESTSCHEMA.idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
+            "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
+            "INSERT INTO TESTSCHEMA.idvalues (name, " + ID_INCREMENTOR_TABLE_COLUMN_VALUE + ") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM MYSCHEMA.Test))",
+            "INSERT INTO MYSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, 1, 'X', (SELECT COALESCE(" + ID_INCREMENTOR_TABLE_COLUMN_VALUE + ", 1) FROM TESTSCHEMA.idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
     );
   }
 
@@ -339,7 +336,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedEmptyStringInsertStatement() {
-    return "INSERT INTO TESTSCHEMA.Test (stringField, id, version, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (NULL, (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 1) FROM TESTSCHEMA.idvalues WHERE (name = 'Test')), 0, 0, 0, null, 0, NULL, null, 12345, null)";
+    return "INSERT INTO TESTSCHEMA.Test (stringField, id, version, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (NULL, (SELECT COALESCE(" + ID_INCREMENTOR_TABLE_COLUMN_VALUE + ", 1) FROM TESTSCHEMA.idvalues WHERE (name = 'Test')), 0, 0, 0, null, 0, NULL, null, 12345, null)";
   }
 
 
@@ -540,8 +537,8 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAlterStringColumnStatement() {
     return Arrays.asList("DROP INDEX Test_NK ON TESTSCHEMA.Test",
-      "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN stringField NVARCHAR(6) COLLATE SQL_Latin1_General_CP1_CS_AS",
-        "CREATE UNIQUE NONCLUSTERED INDEX Test_NK ON TESTSCHEMA.Test ([stringField])");
+            "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN stringField NVARCHAR(6) COLLATE SQL_Latin1_General_CP1_CS_AS",
+            "CREATE UNIQUE NONCLUSTERED INDEX Test_NK ON TESTSCHEMA.Test ([stringField])");
   }
 
 
@@ -560,8 +557,8 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAlterDecimalColumnStatement() {
     return Arrays.asList("DROP INDEX Test_1 ON TESTSCHEMA.Test",
-      "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN floatField NUMERIC(14,3)",
-        "CREATE UNIQUE NONCLUSTERED INDEX Test_1 ON TESTSCHEMA.Test ([intField], [floatField])");
+            "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN floatField NUMERIC(14,3)",
+            "CREATE UNIQUE NONCLUSTERED INDEX Test_1 ON TESTSCHEMA.Test ([intField], [floatField])");
   }
 
 
@@ -580,8 +577,8 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAlterBigIntegerColumnStatement() {
     return Arrays.asList(
-      SqlServerDialect.dropDefaultForColumnSql.replace("{table}", "Test").replace("{column}", "bigIntegerField"),
-        "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN bigIntegerField BIGINT");
+            SqlServerDialect.dropDefaultForColumnSql.replace("{table}", "Test").replace("{column}", "bigIntegerField"),
+            "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN bigIntegerField BIGINT");
   }
 
 
@@ -600,7 +597,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAlterBlobColumnStatement() {
     return Arrays.asList(
-        "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN blobField IMAGE NOT NULL");
+            "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN blobField IMAGE NOT NULL");
   }
 
 
@@ -619,9 +616,9 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAlterColumnWithDefaultStatement() {
     return Arrays.asList(
-      SqlServerDialect.dropDefaultForColumnSql.replace("{table}", "Test").replace("{column}", "bigIntegerField"),
-      "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN bigIntegerField BIGINT CONSTRAINT Test_bigIntegerField_DF DEFAULT 54321 WITH VALUES"
-        );
+            SqlServerDialect.dropDefaultForColumnSql.replace("{table}", "Test").replace("{column}", "bigIntegerField"),
+            "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN bigIntegerField BIGINT CONSTRAINT Test_bigIntegerField_DF DEFAULT 54321 WITH VALUES"
+    );
   }
 
 
@@ -633,7 +630,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAlterBooleanColumnStatement() {
     return Arrays.asList(
-        "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN booleanField BIT NOT NULL");
+            "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN booleanField BIT NOT NULL");
   }
 
 
@@ -661,9 +658,9 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAlterIntegerColumnStatement() {
     return Arrays.asList(
-      "DROP INDEX Test_1 ON TESTSCHEMA.Test",
-      "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN intField INTEGER NOT NULL",
-      "CREATE UNIQUE NONCLUSTERED INDEX Test_1 ON TESTSCHEMA.Test ([intField], [floatField])"
+            "DROP INDEX Test_1 ON TESTSCHEMA.Test",
+            "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN intField INTEGER NOT NULL",
+            "CREATE UNIQUE NONCLUSTERED INDEX Test_1 ON TESTSCHEMA.Test ([intField], [floatField])"
     );
   }
 
@@ -683,7 +680,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAlterDateColumnStatement() {
     return Arrays.asList(
-        "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN dateField DATE NOT NULL");
+            "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN dateField DATE NOT NULL");
   }
 
 
@@ -702,7 +699,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAlterColumnFromNullableToNotNullableStatement() {
     return Arrays.asList(
-        "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN dateField DATE NOT NULL");
+            "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN dateField DATE NOT NULL");
   }
 
 
@@ -712,8 +709,8 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAlterColumnFromNotNullableToNotNullableStatement() {
     return Arrays.asList("DROP INDEX Test_1 ON TESTSCHEMA.Test",
-      "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN floatField NUMERIC(20,3) NOT NULL",
-        "CREATE UNIQUE NONCLUSTERED INDEX Test_1 ON TESTSCHEMA.Test ([intField], [floatField])");
+            "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN floatField NUMERIC(20,3) NOT NULL",
+            "CREATE UNIQUE NONCLUSTERED INDEX Test_1 ON TESTSCHEMA.Test ([intField], [floatField])");
   }
 
 
@@ -723,8 +720,8 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableAlterColumnFromNotNullableToNullableStatement() {
     return Arrays.asList("DROP INDEX Test_1 ON TESTSCHEMA.Test",
-      "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN floatField NUMERIC(20,3)",
-        "CREATE UNIQUE NONCLUSTERED INDEX Test_1 ON TESTSCHEMA.Test ([intField], [floatField])");
+            "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN floatField NUMERIC(20,3)",
+            "CREATE UNIQUE NONCLUSTERED INDEX Test_1 ON TESTSCHEMA.Test ([intField], [floatField])");
   }
 
 
@@ -779,9 +776,9 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterColumnMakePrimaryStatements() {
     return Arrays.asList(
-      "ALTER TABLE TESTSCHEMA.Test DROP CONSTRAINT [Test_PK]",
-      "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN dateField DATE",
-      "ALTER TABLE TESTSCHEMA.Test ADD CONSTRAINT [Test_PK] PRIMARY KEY ([id], [dateField])"
+            "ALTER TABLE TESTSCHEMA.Test DROP CONSTRAINT [Test_PK]",
+            "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN dateField DATE",
+            "ALTER TABLE TESTSCHEMA.Test ADD CONSTRAINT [Test_PK] PRIMARY KEY ([id], [dateField])"
     );
   }
 
@@ -792,9 +789,9 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterPrimaryKeyColumnCompositeKeyStatements() {
     return Arrays.asList(
-      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey DROP CONSTRAINT [CompositePrimaryKey_PK]",
-      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ALTER COLUMN secondPrimaryKey NVARCHAR(5) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL",
-      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ADD CONSTRAINT [CompositePrimaryKey_PK] PRIMARY KEY ([id], [secondPrimaryKey])"
+            "ALTER TABLE TESTSCHEMA.CompositePrimaryKey DROP CONSTRAINT [CompositePrimaryKey_PK]",
+            "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ALTER COLUMN secondPrimaryKey NVARCHAR(5) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL",
+            "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ADD CONSTRAINT [CompositePrimaryKey_PK] PRIMARY KEY ([id], [secondPrimaryKey])"
     );
   }
 
@@ -805,9 +802,9 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterRemoveColumnFromCompositeKeyStatements() {
     return Arrays.asList(
-      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey DROP CONSTRAINT [CompositePrimaryKey_PK]",
-      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ALTER COLUMN secondPrimaryKey NVARCHAR(5) COLLATE SQL_Latin1_General_CP1_CS_AS",
-        "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ADD CONSTRAINT [CompositePrimaryKey_PK] PRIMARY KEY ([id])");
+            "ALTER TABLE TESTSCHEMA.CompositePrimaryKey DROP CONSTRAINT [CompositePrimaryKey_PK]",
+            "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ALTER COLUMN secondPrimaryKey NVARCHAR(5) COLLATE SQL_Latin1_General_CP1_CS_AS",
+            "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ADD CONSTRAINT [CompositePrimaryKey_PK] PRIMARY KEY ([id])");
   }
 
 
@@ -817,10 +814,10 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterPrimaryKeyColumnStatements() {
     return Arrays.asList(
-      "EXEC sp_rename 'TESTSCHEMA.Test.id', 'renamedId', 'COLUMN'",
-      "ALTER TABLE TESTSCHEMA.Test DROP CONSTRAINT [Test_PK]",
-      "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN renamedId BIGINT NOT NULL",
-        "ALTER TABLE TESTSCHEMA.Test ADD CONSTRAINT [Test_PK] PRIMARY KEY ([renamedId])");
+            "EXEC sp_rename 'TESTSCHEMA.Test.id', 'renamedId', 'COLUMN'",
+            "ALTER TABLE TESTSCHEMA.Test DROP CONSTRAINT [Test_PK]",
+            "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN renamedId BIGINT NOT NULL",
+            "ALTER TABLE TESTSCHEMA.Test ADD CONSTRAINT [Test_PK] PRIMARY KEY ([renamedId])");
   }
 
 
@@ -830,8 +827,8 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterColumnRenamingAndChangingNullability() {
     return Arrays.asList(
-      "EXEC sp_rename 'TESTSCHEMA.Other.floatField', 'blahField', 'COLUMN'",
-      "ALTER TABLE TESTSCHEMA.Other ALTER COLUMN blahField NUMERIC(20,3)");
+            "EXEC sp_rename 'TESTSCHEMA.Other.floatField', 'blahField', 'COLUMN'",
+            "ALTER TABLE TESTSCHEMA.Other ALTER COLUMN blahField NUMERIC(20,3)");
   }
 
 
@@ -841,7 +838,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterColumnChangingLengthAndCase() {
     return Arrays.asList("EXEC sp_rename 'TESTSCHEMA.Other.floatField', 'FloatField', 'COLUMN'",
-      "ALTER TABLE TESTSCHEMA.Other ALTER COLUMN FloatField NUMERIC(20,3) NOT NULL");
+            "ALTER TABLE TESTSCHEMA.Other ALTER COLUMN FloatField NUMERIC(20,3) NOT NULL");
   }
 
 
@@ -869,8 +866,8 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAlterTableDropColumnWithDefaultStatement() {
     return ImmutableList.of(
-      SqlServerDialect.dropDefaultForColumnSql.replace("{table}", "Test").replace("{column}", "bigIntegerField"),
-      "ALTER TABLE TESTSCHEMA.Test DROP COLUMN bigIntegerField"
+            SqlServerDialect.dropDefaultForColumnSql.replace("{table}", "Test").replace("{column}", "bigIntegerField"),
+            "ALTER TABLE TESTSCHEMA.Test DROP COLUMN bigIntegerField"
     );
   }
 
@@ -881,18 +878,19 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedChangeIndexFollowedByChangeOfAssociatedColumnStatement() {
     return Arrays.asList(
-      // dropIndexStatements & addIndexStatements
-      "DROP INDEX Test_1 ON TESTSCHEMA.Test",
-      "CREATE INDEX Test_1 ON TESTSCHEMA.Test ([intField])",
-      // changeColumnStatements
-      "DROP INDEX Test_1 ON TESTSCHEMA.Test",
-      "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN intField INTEGER NOT NULL",
-      "CREATE INDEX Test_1 ON TESTSCHEMA.Test ([INTFIELD])");
+            // dropIndexStatements & addIndexStatements
+            "DROP INDEX Test_1 ON TESTSCHEMA.Test",
+            "CREATE INDEX Test_1 ON TESTSCHEMA.Test ([intField])",
+            // changeColumnStatements
+            "DROP INDEX Test_1 ON TESTSCHEMA.Test",
+            "ALTER TABLE TESTSCHEMA.Test ALTER COLUMN intField INTEGER NOT NULL",
+            "CREATE INDEX Test_1 ON TESTSCHEMA.Test ([INTFIELD])");
   }
 
 
   /**
    * {@inheritDoc}
+   *
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAutonumberUpdate()
    */
   @Override
@@ -903,6 +901,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
 
   /**
    * {@inheritDoc}
+   *
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedUpdateWithSelectMinimum()
    */
   @Override
@@ -915,6 +914,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
 
   /**
    * {@inheritDoc}
+   *
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedUpdateUsingAliasedDestinationTable()
    */
   @Override
@@ -938,7 +938,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedUpdateUsingSourceTableInDifferentSchema() {
     return "UPDATE " + tableName("FloatingRateRate") + " SET settlementFrequency = (SELECT settlementFrequency FROM " +
-    		"MYSCHEMA.FloatingRateDetail B WHERE (A.floatingRateDetailId = B.id)) FROM " + tableName("FloatingRateRate") + " A";
+            "MYSCHEMA.FloatingRateDetail B WHERE (A.floatingRateDetailId = B.id)) FROM " + tableName("FloatingRateRate") + " A";
   }
 
 
@@ -977,6 +977,15 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
     return "GETUTCDATE()";
   }
 
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedUnixTime()
+   */
+  @Override
+  protected String expectedUnixTime(){
+    return "DATEDIFF_BIG(MILLISECOND,'1970-01-01 00:00:00.000', SYSUTCDATETIME())";
+  }
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDaysBetween()

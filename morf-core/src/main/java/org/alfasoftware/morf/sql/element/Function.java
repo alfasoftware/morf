@@ -645,6 +645,19 @@ public final class Function extends AliasedField implements Driver {
   }
 
 
+
+  /**
+   * Helper method to create an instance of the "unixtime" SQL function.
+   *
+   * @return an instance of a unixtime function
+   */
+  public static Function unixtime() {
+    return new Function(FunctionType.UNIX_TIME);
+  }
+
+
+
+
   /**
    * @see org.alfasoftware.morf.sql.element.AliasedField#deepCopyInternal(DeepCopyTransformation)
    */
