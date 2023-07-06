@@ -232,5 +232,10 @@ public enum FunctionType {
    * Unix time, milliseconds since 1st January 1970 UTC
    */
 
-   UNIX_TIME
+  UNIX_TIME,
+
+  /**
+   * Identifiable label for the client machine
+   */
+  CLIENT_HOST
 }

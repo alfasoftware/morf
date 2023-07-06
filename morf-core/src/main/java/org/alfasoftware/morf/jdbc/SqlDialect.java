@@ -184,7 +184,7 @@ public abstract class SqlDialect {
    * @return The statements required to deploy the table and its indexes.
    */
   public Collection<String> tableDeploymentStatements(Table table) {
-    Builder<String> statements = ImmutableList.<String>builder();
+    Builder<String> statements = ImmutableList.builder();
 
     statements.addAll(internalTableDeploymentStatements(table));
 
@@ -215,16 +215,15 @@ public abstract class SqlDialect {
     List<String> statements = new ArrayList<>();
 
     // Create the table deployment statement
-    StringBuilder createTableStatement = new StringBuilder();
-    createTableStatement.append("CREATE ");
-    createTableStatement.append("VIEW ");
-    createTableStatement.append(schemaNamePrefix());
-    createTableStatement.append(view.getName());
-    createTableStatement.append(" AS (");
-    createTableStatement.append(convertStatementToSQL(view.getSelectStatement()));
-    createTableStatement.append(")");
+    String createTableStatement = "CREATE " +
+            "VIEW " +
+            schemaNamePrefix() +
+            view.getName() +
+            " AS (" +
+            convertStatementToSQL(view.getSelectStatement()) +
+            ")";
 
-    statements.add(createTableStatement.toString());
+    statements.add(createTableStatement);
 
     return statements;
   }
@@ -1195,10 +1194,7 @@ public abstract class SqlDialect {
       return getSqlForOrderByField((FieldReference) currentOrderByField);
     }
 
-    StringBuilder result = new StringBuilder(getSqlFrom(currentOrderByField));
-    result.append(" ").append(defaultNullOrder());
-
-    return result.toString().trim();
+    return (getSqlFrom(currentOrderByField) + " " + defaultNullOrder()).trim();
   }
 
 
@@ -1325,7 +1321,7 @@ public abstract class SqlDialect {
     } else {
       // MySql supports no ON criteria and ON TRUE, but the other platforms
       // don't, so just keep things simple.
-      result.append(String.format(" ON 1=1"));
+      result.append(" ON 1=1");
     }
   }
 
@@ -1568,7 +1564,7 @@ public abstract class SqlDialect {
         result.append(getOperatorLine(criterion, "<="));
         break;
       case LIKE:
-        result.append(getOperatorLine(criterion, "LIKE") + likeEscapeSuffix());
+        result.append(getOperatorLine(criterion, "LIKE")).append(likeEscapeSuffix());
         break;
       case ISNULL:
         result.append(String.format("%s IS NULL", getSqlFrom(criterion.getField())));
@@ -2080,9 +2076,16 @@ public abstract class SqlDialect {
 
       case UNIX_TIME:
         if (!function.getArguments().isEmpty()) {
-          throw new IllegalArgumentException("The UNIXTIME function should have zero arguments. This function has " + function.getArguments().size());
+          throw new IllegalArgumentException("The UNIX_TIME function should have zero arguments. This function has " + function.getArguments().size());
         }
         return getSqlForUnixTime();
+
+      case CLIENT_HOST:
+        if (!function.getArguments().isEmpty()) {
+          throw new IllegalArgumentException("The CLIENT_HOST function should have zero arguments. This function has " + function.getArguments().size());
+        }
+        return getSqlForClientHost();
+
       default:
         throw new UnsupportedOperationException("This database does not currently support the [" + function.getType() + "] function");
     }
@@ -2194,7 +2197,7 @@ public abstract class SqlDialect {
    * @return a string representation of the SQL
    */
   protected String getSqlForGreatest(Function function) {
-    return getGreatestFunctionName() + '(' + Joiner.on(", ").join(function.getArguments().stream().map(f -> getSqlFrom(f)).iterator()) + ')';
+    return getGreatestFunctionName() + '(' + Joiner.on(", ").join(function.getArguments().stream().map(this::getSqlFrom).iterator()) + ')';
   }
 
 
@@ -2205,7 +2208,7 @@ public abstract class SqlDialect {
    * @return a string representation of the SQL
    */
   protected String getSqlForLeast(Function function) {
-    return getLeastFunctionName() + '(' + Joiner.on(", ").join(function.getArguments().stream().map(f -> getSqlFrom(f)).iterator()) + ')';
+    return getLeastFunctionName() + '(' + Joiner.on(", ").join(function.getArguments().stream().map(this::getSqlFrom).iterator()) + ')';
   }
 
 
@@ -2429,17 +2432,26 @@ public abstract class SqlDialect {
   }
 
 
-
   /**
    * Produce SQL for getting the unix time
    *
-   * @return a long representation of the unix time
+   * @return A string representation of the SQL for the unix time
    */
   protected String getSqlForUnixTime(){
     // Postgres syntax, but works in H2
     return "trunc(extract(epoch from now() at time zone 'UTC')*1000)";
   }
 
+
+  /**
+   * Produce SQL for getting the client host
+   *
+   * @return A string representation of the SQL for the client host
+   */
+  protected String getSqlForClientHost(){
+    // Postgres syntax. Return the IP Address
+    return "inet_client_addr()";
+  }
 
 
   /**
@@ -4210,7 +4222,7 @@ public abstract class SqlDialect {
       .toSet();
 
     List<String> listOfKeyFieldsWithUpdateExpression = FluentIterable.from(onUpdateExpressions.keySet())
-      .filter(a -> keyFields.contains(a))
+      .filter(keyFields::contains)
       .toList();
 
     if (!listOfKeyFieldsWithUpdateExpression.isEmpty()) {

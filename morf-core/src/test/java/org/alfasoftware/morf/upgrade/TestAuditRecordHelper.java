@@ -17,9 +17,11 @@ package org.alfasoftware.morf.upgrade;
 
 import static com.google.common.collect.FluentIterable.from;
 import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import java.text.ParseException;
@@ -56,7 +58,7 @@ public class TestAuditRecordHelper {
     SchemaChangeVisitor visitor = mock(SchemaChangeVisitor.class);
     Schema schema = mock(Schema.class);
     Table table = mock(Table.class);
-    List<Column> columns = Arrays.asList(mock(Column.class), mock(Column.class), mock(Column.class), mock(Column.class), mock(Column.class), mock(Column.class));
+    List<Column> columns = Arrays.asList(mock(Column.class), mock(Column.class), mock(Column.class), mock(Column.class), mock(Column.class), mock(Column.class), mock(Column.class));
 
     UUID uuid = UUID.randomUUID();
     String description = "Description";
@@ -72,6 +74,32 @@ public class TestAuditRecordHelper {
     verify(visitor).visit(argument.capture());
     InsertStatement statement = (InsertStatement) argument.getValue().getStatement();
     assertAuditInsertStatement(uuid, description, statement);
+  }
+
+
+  /**
+   * Tests the upgrade audit record is not created if the UpgradeAudit table is still in the old 3 column format
+   */
+  @Test
+  public void testAddAuditRecordPreExpansion() {
+    // given
+    SchemaChangeVisitor visitor = mock(SchemaChangeVisitor.class);
+    Schema schema = mock(Schema.class);
+    Table table = mock(Table.class);
+    List<Column> columns = Arrays.asList(mock(Column.class), mock(Column.class), mock(Column.class));
+
+    UUID uuid = UUID.randomUUID();
+    String description = "Description";
+    given(schema.tableExists("UpgradeAudit")).willReturn(true);
+    given(schema.getTable("UpgradeAudit")).willReturn(table);
+    given(table.columns()).willReturn(columns);
+
+    // when
+    AuditRecordHelper.addAuditRecord(visitor, schema, uuid, description);
+
+    // then
+    ArgumentCaptor<ExecuteStatement> argument = ArgumentCaptor.forClass(ExecuteStatement.class);
+    assert(argument.getAllValues().size()==0);
   }
 
 
@@ -124,7 +152,7 @@ public class TestAuditRecordHelper {
     assertEquals("UUID ", description, getValueWithAlias(statement, "description").getValue());
 
     Cast nowCastRepresentation = getCastWithAlias(statement, "appliedTime");
-    assertEquals("Wrapped in integer date function with now function as argument", FunctionType.DATE_TO_YYYYMMDDHHMMSS.toString() + "(" + FunctionType.NOW + "())", nowCastRepresentation.getExpression().toString());
+    assertEquals("Wrapped in integer date function with now function as argument", FunctionType.DATE_TO_YYYYMMDDHHMMSS + "(" + FunctionType.NOW + "())", nowCastRepresentation.getExpression().toString());
   }
 
 

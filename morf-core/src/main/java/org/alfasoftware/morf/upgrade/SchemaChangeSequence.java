@@ -147,9 +147,6 @@ public class SchemaChangeSequence {
 
     for (UpgradeStepWithChanges changesForStep : allChanges) {
       try {
-        // Start timer for this UpgradeStep
-        Instant startInstant = Instant.now();
-
 
         //TODO roll up line below into visitor.startStep
         // Update Audit record to show upgrade step is running
@@ -164,10 +161,9 @@ public class SchemaChangeSequence {
         }
 
         // Update Audit Record will successful run
-        visitor.updateFinishedAuditRecord(changesForStep.getUUID(), new Interval(startInstant, Instant.now()).toDurationMillis(), true, changesForStep.getDescription());
+        visitor.updateFinishedAuditRecord(changesForStep.getUUID(), changesForStep.getDescription());
       } catch (Exception e) {
         // Set Audit Record to failed then throw runtime exception
-        visitor.updateFinishedAuditRecord(changesForStep.getUUID(), 0, false, changesForStep.getDescription());
         throw new RuntimeException("Failed to apply step: [" + changesForStep.getUpgradeClass() + "]", e);
       }
     }
@@ -415,8 +411,8 @@ public class SchemaChangeSequence {
 
 
     /**
-     * @param delegate
-     * @param changes
+     * @param delegate Upgrade Step
+     * @param changes List of Schema Changes
      */
     UpgradeStepWithChanges(UpgradeStep delegate, List<SchemaChange> changes) {
       super();
@@ -529,7 +525,7 @@ public class SchemaChangeSequence {
     }
 
     @Override
-    public void updateFinishedAuditRecord(java.util.UUID uuid, long processingTimeMs, boolean success, String description) {
+    public void updateFinishedAuditRecord(java.util.UUID uuid, String description) {
       // no-op here. We don't need to record the UUIDs until we actually apply the changes.
     }
 

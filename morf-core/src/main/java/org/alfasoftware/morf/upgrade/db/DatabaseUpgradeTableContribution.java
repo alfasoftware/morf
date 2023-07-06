@@ -54,7 +54,8 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
           column("appliedTime",      DataType.DECIMAL, 14).nullable(),
           column("status",           DataType.STRING,  10).nullable(),
           column("server",           DataType.STRING,  100).nullable(),
-          column("processingTimeMs", DataType.DECIMAL, 14).nullable()
+          column("processingTimeMs", DataType.DECIMAL, 14).nullable(),
+          column("startTimeMs",      DataType.DECIMAL, 18).nullable()
         );
   }
 

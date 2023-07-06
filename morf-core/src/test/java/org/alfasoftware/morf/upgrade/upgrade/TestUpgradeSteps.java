@@ -34,6 +34,17 @@ public class TestUpgradeSteps {
     }
 
     @Test
+    public void testAddExtraLoggingToUpgradeAuditTable() {
+        AddExtraLoggingToUpgradeAuditTable upgradeStep = new AddExtraLoggingToUpgradeAuditTable();
+        testUpgradeStep(upgradeStep);
+        SchemaEditor schema = mock(SchemaEditor.class);
+        DataEditor dataEditor = mock(DataEditor.class);
+        upgradeStep.execute(schema, dataEditor);
+        verify(schema, times(4)).addColumn(any(), any());
+    }
+
+
+    @Test
     public void testRecreateOracleSequences() {
         RecreateOracleSequences upgradeStep = new RecreateOracleSequences();
         testUpgradeStep(upgradeStep);

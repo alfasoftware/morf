@@ -22,11 +22,6 @@ import static org.alfasoftware.morf.sql.element.Criterion.isNull;
 @UUID("47832d23-f1e1-422f-b6de-b76e57517334")
 public class AddExtraLoggingToUpgradeAuditTable implements UpgradeStep {
 
-    private final String statusColumn = "status";
-    private final String serverColumn = "server";
-    private final String processingTimeMsColumn = "processingTimeMs";
-
-
     @Override
     public String getJiraId() {
         return "MORF-72";
@@ -40,12 +35,18 @@ public class AddExtraLoggingToUpgradeAuditTable implements UpgradeStep {
     @Override
     public void execute(SchemaEditor schema, DataEditor data) {
 
+        String statusColumn = "status";
         schema.addColumn(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME,
                 column(statusColumn, DataType.STRING, 10).nullable());
+        String serverColumn = "server";
         schema.addColumn(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME,
                 column(serverColumn, DataType.STRING, 100).nullable());
+        String processingTimeMsColumn = "processingTimeMs";
         schema.addColumn(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME,
                 column(processingTimeMsColumn, DataType.DECIMAL, 14).nullable());
+        String startTimeMsColumn = "startTimeMs";
+        schema.addColumn(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME,
+                column(startTimeMsColumn, DataType.DECIMAL, 18).nullable());
 
         data.executeStatement(
                 new UpdateStatement(new TableReference(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME))

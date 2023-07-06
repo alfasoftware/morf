@@ -328,11 +328,11 @@ public final class Function extends AliasedField implements Driver {
    * <table>
    * <caption>Database rounding references</caption>
    * <tr><th>Database</th><th>Database Manual</th></tr>
-   * <tr><td>Oracle</td><td>http://docs.oracle.com/cd/B19306_01/server.102/b14200/functions135.htm</td></tr>
-   * <tr><td>MySQL</td><td>http://dev.mysql.com/doc/refman/5.0/en/mathematical-functions.html#function_round</td></tr>
-   * <tr><td>SQLServer</td><td>http://technet.microsoft.com/en-us/library/ms175003.aspx</td></tr>
-   * <tr><td>Db2400</td><td>http://publib.boulder.ibm.com/infocenter/db2luw/v9/index.jsp?topic=%2Fcom.ibm.db2.udb.admin.doc%2Fdoc%2Fr0000845.htm</td></tr>
-   * <tr><td>H2</td><td>http://www.h2database.com/html/functions.html#round</td></tr>
+   * <tr><td>Oracle</td><td><a href="http://docs.oracle.com/cd/B19306_01/server.102/b14200/functions135.htm">Manual</a></td></tr>
+   * <tr><td>MySQL</td><td><a href="http://dev.mysql.com/doc/refman/5.0/en/mathematical-functions.html#function_round">Manual</a></td></tr>
+   * <tr><td>SQLServer</td><td><a href="http://technet.microsoft.com/en-us/library/ms175003.aspx">Manual</a></td></tr>
+   * <tr><td>Db2400</td><td><a href="http://publib.boulder.ibm.com/infocenter/db2luw/v9/index.jsp?topic=%2Fcom.ibm.db2.udb.admin.doc%2Fdoc%2Fr0000845.htm">Manual</a></td></tr>
+   * <tr><td>H2</td><td><a href="http://www.h2database.com/html/functions.html#round">Manual</a></td></tr>
    * </table>
    *
    * @param expression the expression to evaluate
@@ -655,7 +655,14 @@ public final class Function extends AliasedField implements Driver {
     return new Function(FunctionType.UNIX_TIME);
   }
 
-
+  /**
+   * Helper method to create an instance of the "clientHost" SQL function.
+   *
+   * @return an instance of a clientHost function
+   */
+  public static Function clientHost() {
+    return new Function(FunctionType.CLIENT_HOST);
+  }
 
 
   /**

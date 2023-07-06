@@ -299,4 +299,17 @@ public class TestFunctionDetail {
     assertEquals("Function should have no arguments", 0, function.getArguments().size());
   }
 
+  /**
+   * Tests indirect usage of the <code>unixtime</code> function
+   */
+  @Test
+  public void testClientHost() {
+    Function function = Function.clientHost();
+
+    assertEquals("Function should be of type CLIENT_HOST", FunctionType.CLIENT_HOST, function.getType());
+    assertNotNull("Function should have empty arguments", function.getArguments());
+    assertEquals("Function should have no arguments", 0, function.getArguments().size());
+  }
+
+
 }

@@ -141,6 +141,7 @@ class HumanReadableStatementHelper {
       .put(FunctionType.UPPER, new FunctionTypeMetaData("upper case ", "", "", false, false))
       .put(FunctionType.LAST_DAY_OF_MONTH, new FunctionTypeMetaData("last day of month ", "", "", false, false))
       .put(FunctionType.UNIX_TIME, new FunctionTypeMetaData("unix time in milliseconds ", "", "", false, false))
+      .put(FunctionType.CLIENT_HOST, new FunctionTypeMetaData("client hostname ", "", "", false, false))
       .build();
 
   /**
@@ -178,12 +179,10 @@ class HumanReadableStatementHelper {
    * @return a string containing the human-readable version of the action
    */
   public static String generateChangePrimaryKeyColumnsString(String tableName, List<String> oldPrimaryKeyColumns, List<String> newPrimaryKeyColumns) {
-    StringBuilder changePrimaryKeyColumnsBuilder = new StringBuilder();
-    changePrimaryKeyColumnsBuilder.append(String.format("Change primary key columns on %s from %s to %s",
-                                            tableName,
-                                            "(" + Joiner.on(", ").join(oldPrimaryKeyColumns) + ")",
-                                            "(" + Joiner.on(", ").join(newPrimaryKeyColumns) + ")"));
-    return changePrimaryKeyColumnsBuilder.toString();
+    return String.format("Change primary key columns on %s from %s to %s",
+            tableName,
+            "(" + Joiner.on(", ").join(oldPrimaryKeyColumns) + ")",
+            "(" + Joiner.on(", ").join(newPrimaryKeyColumns) + ")");
   }
 
 
@@ -193,11 +192,9 @@ class HumanReadableStatementHelper {
    * @return a string containing the human-readable version of the action
    */
   public static String generateChangePrimaryKeyColumnsString(String tableName, List<String> newPrimaryKeyColumns) {
-    StringBuilder changePrimaryKeyColumnsBuilder = new StringBuilder();
-    changePrimaryKeyColumnsBuilder.append(String.format("Change primary key columns on %s to become %s",
-                                                        tableName,
-                                                        "(" + Joiner.on(", ").join(newPrimaryKeyColumns) + ")"));
-    return changePrimaryKeyColumnsBuilder.toString();
+    return String.format("Change primary key columns on %s to become %s",
+            tableName,
+            "(" + Joiner.on(", ").join(newPrimaryKeyColumns) + ")");
   }
 
 
@@ -391,11 +388,9 @@ class HumanReadableStatementHelper {
    * @return a string containing the human-readable version of the action
    */
   public static String generateRenameTableString(String from, String to) {
-    StringBuilder renameTableBuilder = new StringBuilder();
-    renameTableBuilder.append(String.format("Rename table %s to %s",
-                                from,
-                                to));
-    return renameTableBuilder.toString();
+    return String.format("Rename table %s to %s",
+            from,
+            to);
   }
 
 
@@ -969,7 +964,7 @@ class HumanReadableStatementHelper {
     if (prefix) {
       sb.append("select");
     }
-    if ((AbstractSelectStatement)statement instanceof SelectFirstStatement) {
+    if (statement instanceof SelectFirstStatement) {
       if (sb.length() > 0) {
         sb.append(' ');
       }
