@@ -20,6 +20,7 @@ import org.alfasoftware.morf.upgrade.SchemaEditor;
 import org.alfasoftware.morf.upgrade.Sequence;
 import org.alfasoftware.morf.upgrade.UUID;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
+import org.alfasoftware.morf.upgrade.Version;
 
 /**
  * Recreates sequences for all tables, for Oracle databases only, in order to pick up the
@@ -29,6 +30,7 @@ import org.alfasoftware.morf.upgrade.UpgradeStep;
  */
 @Sequence(1472211132)
 @UUID("6521e032-c06d-40d4-8c16-f89d111d9cb8")
+@Version("5.3.25")
 class RecreateOracleSequences implements UpgradeStep {
 
   /**
