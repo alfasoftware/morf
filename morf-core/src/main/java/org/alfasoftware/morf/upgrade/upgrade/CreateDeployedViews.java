@@ -21,6 +21,7 @@ import org.alfasoftware.morf.upgrade.SchemaEditor;
 import org.alfasoftware.morf.upgrade.Sequence;
 import org.alfasoftware.morf.upgrade.UUID;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
+import org.alfasoftware.morf.upgrade.Version;
 
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 
@@ -34,6 +35,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.table;
  */
 @Sequence(1296040482)
 @UUID("afb66dc0-95dc-4fa2-af5f-c62f8191a6f7")
+@Version("5.1.22")
 public class CreateDeployedViews implements UpgradeStep {
 
   /**
