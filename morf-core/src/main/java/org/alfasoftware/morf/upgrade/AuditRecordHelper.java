@@ -22,7 +22,7 @@ import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.element.Function.clientHost;
 import static org.alfasoftware.morf.sql.element.Function.dateToYyyyMMddHHmmss;
 import static org.alfasoftware.morf.sql.element.Function.now;
-import static org.alfasoftware.morf.sql.element.Function.unixtime;
+import static org.alfasoftware.morf.sql.element.Function.currentUnixTimeMilliseconds;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.UPGRADE_STEP_DESCRIPTION_LENGTH;
 
 import java.net.InetAddress;
@@ -187,13 +187,13 @@ public class AuditRecordHelper {
             .set(cast(dateToYyyyMMddHHmmss(now())).asType(DataType.DECIMAL, 14).as("appliedTime"))
             .set(literal(UpgradeStepStatus.STARTED.name()).as("status"))
             .set(clientHost().as("server"))
-            .set(unixtime().as("startTimeMs"))
+            .set(currentUnixTimeMilliseconds().as("startTimeMs"))
             .where(field("upgradeUUID").eq(uuid.toString()));
   }
 
   public static UpdateStatement createFinishedAuditUpdateStatement(UUID uuid) {
     return new UpdateStatement(new TableReference(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME))
-            .set(unixtime().minus(field("startTimeMs")).as("processingTimeMs"))
+            .set(currentUnixTimeMilliseconds().minus(field("startTimeMs")).as("processingTimeMs"))
             .set(literal( UpgradeStepStatus.COMPLETED.name()).as("status"))
             .where(field("upgradeUUID").eq(uuid.toString()));
   }

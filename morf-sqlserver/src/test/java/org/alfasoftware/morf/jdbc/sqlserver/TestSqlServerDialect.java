@@ -978,14 +978,23 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   }
 
 
-
   /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedUnixTime()
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedCurrentUnixTimeMilliseconds()
    */
   @Override
-  protected String expectedUnixTime(){
+  protected String expectedCurrentUnixTimeMilliseconds(){
     return "DATEDIFF_BIG(MILLISECOND,'1970-01-01 00:00:00.000', SYSUTCDATETIME())";
   }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedClientHost() ()
+   */
+  @Override
+  protected String expectedClientHost(){
+    return "HOST_NAME()";
+  }
+
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDaysBetween()

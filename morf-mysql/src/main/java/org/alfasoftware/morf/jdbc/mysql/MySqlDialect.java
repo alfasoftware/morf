@@ -660,12 +660,21 @@ class MySqlDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForUnixTime()
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForCurrentUnixTimeMilliseconds()
    */
   @Override
-  protected String getSqlForUnixTime() {
+  protected String getSqlForCurrentUnixTimeMilliseconds() {
     return "CAST( 1000*UNIX_TIMESTAMP(current_timestamp(3)) AS UNSIGNED INTEGER)";
   }
+
+
+    /**
+     * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForClientHost()
+     */
+    @Override
+    protected String getSqlForClientHost() {
+        return "SUBSTRING_INDEX(USER(), '@', -1)";
+    }
 
 
     /**

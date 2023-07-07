@@ -232,7 +232,7 @@ public enum FunctionType {
    * Unix time, milliseconds since 1st January 1970 UTC
    */
 
-  UNIX_TIME,
+  CURRENT_UNIX_TIME_MILLISECONDS,
 
   /**
    * Identifiable label for the client machine

@@ -2074,11 +2074,11 @@ public abstract class SqlDialect {
         }
         return getSqlForRowNumber();
 
-      case UNIX_TIME:
+      case CURRENT_UNIX_TIME_MILLISECONDS:
         if (!function.getArguments().isEmpty()) {
-          throw new IllegalArgumentException("The UNIX_TIME function should have zero arguments. This function has " + function.getArguments().size());
+          throw new IllegalArgumentException("The CURRENT_UNIX_TIME_MILLISECONDS function should have zero arguments. This function has " + function.getArguments().size());
         }
-        return getSqlForUnixTime();
+        return getSqlForCurrentUnixTimeMilliseconds();
 
       case CLIENT_HOST:
         if (!function.getArguments().isEmpty()) {
@@ -2433,14 +2433,11 @@ public abstract class SqlDialect {
 
 
   /**
-   * Produce SQL for getting the unix time
+   * Produce SQL for getting the current unix time in milliseconds
    *
-   * @return A string representation of the SQL for the unix time
+   * @return A string representation of the SQL for the current unix time in milliseconds
    */
-  protected String getSqlForUnixTime(){
-    // Postgres syntax, but works in H2
-    return "trunc(extract(epoch from now() at time zone 'UTC')*1000)";
-  }
+  abstract protected String getSqlForCurrentUnixTimeMilliseconds();
 
 
   /**
@@ -2448,10 +2445,7 @@ public abstract class SqlDialect {
    *
    * @return A string representation of the SQL for the client host
    */
-  protected String getSqlForClientHost(){
-    // Postgres syntax. Return the IP Address
-    return "inet_client_addr()";
-  }
+  abstract protected String getSqlForClientHost();
 
 
   /**

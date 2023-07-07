@@ -647,12 +647,12 @@ public final class Function extends AliasedField implements Driver {
 
 
   /**
-   * Helper method to create an instance of the "unixtime" SQL function.
+   * Helper method to create an instance of the "currentUnixTimeMilliseconds" SQL function.
    *
    * @return an instance of a unixtime function
    */
-  public static Function unixtime() {
-    return new Function(FunctionType.UNIX_TIME);
+  public static Function currentUnixTimeMilliseconds() {
+    return new Function(FunctionType.CURRENT_UNIX_TIME_MILLISECONDS);
   }
 
   /**

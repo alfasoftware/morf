@@ -147,7 +147,8 @@ public class TestFullDeployment {
                     column("appliedTime",      DataType.DECIMAL, 14).nullable(),
                     column("status",           DataType.STRING,  10).nullable(),
                     column("server",           DataType.STRING,  100).nullable(),
-                    column("processingTimeMs", DataType.DECIMAL, 14).nullable()
+                    column("processingTimeMs", DataType.DECIMAL, 14).nullable(),
+                    column("startTimeMs",      DataType.DECIMAL, 18).nullable()
             ),
             table("FirstTestBean").columns(
                     column("identifier", DataType.DECIMAL, 10).nullable(),
@@ -199,7 +200,7 @@ public class TestFullDeployment {
       ResultSet resultSetUpgradeAudit = statement.executeQuery("select * from "+schemaNamePrefix+"UpgradeAudit");
       ResultSetMetaData resultSetMetaData = resultSetUpgradeAudit.getMetaData();
 
-      assertEquals("Column Count", 6, resultSetMetaData.getColumnCount());
+      assertEquals("Column Count", 7, resultSetMetaData.getColumnCount());
     } finally {
       upgradeStatusTableService.tidyUp(connectionResources.getDataSource());
       connection.close();
