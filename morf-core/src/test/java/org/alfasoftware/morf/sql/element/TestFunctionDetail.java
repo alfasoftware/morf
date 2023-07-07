@@ -288,19 +288,19 @@ public class TestFunctionDetail {
 
 
   /**
-   * Tests indirect usage of the <code>unixtime</code> function
+   * Tests indirect usage of the <code>CurrentUnixTimeMilliseconds</code> function
    */
   @Test
-  public void testUnixTime() {
-    Function function = Function.unixtime();
+  public void testCurrentUnixTimeMilliseconds() {
+    Function function = Function.currentUnixTimeMilliseconds();
 
-    assertEquals("Function should be of type UNIX_TIME", FunctionType.UNIX_TIME, function.getType());
+    assertEquals("Function should be of type CURRENT_UNIX_TIME_MILLISECONDS", FunctionType.CURRENT_UNIX_TIME_MILLISECONDS, function.getType());
     assertNotNull("Function should have empty arguments", function.getArguments());
     assertEquals("Function should have no arguments", 0, function.getArguments().size());
   }
 
   /**
-   * Tests indirect usage of the <code>unixtime</code> function
+   * Tests indirect usage of the <code>CurrentUnixTimeMilliseconds</code> function
    */
   @Test
   public void testClientHost() {
