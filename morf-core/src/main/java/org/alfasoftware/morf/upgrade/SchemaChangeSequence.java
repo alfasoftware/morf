@@ -32,8 +32,6 @@ import org.alfasoftware.morf.sql.element.FieldLiteral;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import org.joda.time.Instant;
-import org.joda.time.Interval;
 
 /**
  * Tracks a sequence of {@link SchemaChange}s as various {@link SchemaEditor}
@@ -150,7 +148,7 @@ public class SchemaChangeSequence {
 
         //TODO roll up line below into visitor.startStep
         // Update Audit record to show upgrade step is running
-        visitor.updateRunningAuditRecord(changesForStep.getUUID());
+        visitor.updateStartedAuditRecord(changesForStep.getUUID());
         // Run prerequisites
         visitor.startStep(changesForStep.getUpgradeClass());
 
@@ -520,7 +518,7 @@ public class SchemaChangeSequence {
     }
 
     @Override
-    public void updateRunningAuditRecord(java.util.UUID uuid) {
+    public void updateStartedAuditRecord(java.util.UUID uuid) {
       // no-op here. We don't need to record the UUIDs until we actually apply the changes.
     }
 

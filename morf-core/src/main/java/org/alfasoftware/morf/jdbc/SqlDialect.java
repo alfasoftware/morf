@@ -2437,7 +2437,7 @@ public abstract class SqlDialect {
    *
    * @return A string representation of the SQL for the current unix time in milliseconds
    */
-  abstract protected String getSqlForCurrentUnixTimeMilliseconds();
+  protected abstract String getSqlForCurrentUnixTimeMilliseconds();
 
 
   /**
@@ -2445,7 +2445,7 @@ public abstract class SqlDialect {
    *
    * @return A string representation of the SQL for the client host
    */
-  abstract protected String getSqlForClientHost();
+  protected abstract String getSqlForClientHost();
 
 
   /**

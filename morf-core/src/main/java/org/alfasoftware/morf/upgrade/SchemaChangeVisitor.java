@@ -143,7 +143,7 @@ public interface SchemaChangeVisitor {
 
 
   /**
-   * Add the UUID audit record.
+   * Add the UUID audit record in {@link UpgradeStepStatus#SCHEDULED} status
    *
    * @param uuid The UUID of the step which has been applied
    * @param description The description of the step.
@@ -151,10 +151,19 @@ public interface SchemaChangeVisitor {
   void addAuditRecord(java.util.UUID uuid, String description);
 
 
-//TODO Javadocs
-  void updateRunningAuditRecord(UUID uuid);
+  /**
+   * Update an existing audit record to {@link UpgradeStepStatus#STARTED} status
+   *
+   * @param uuid The UUID of the step which has been applied
+   */
+  void updateStartedAuditRecord(UUID uuid);
 
-  //TODO Javadocs
+  /**
+   * Update the UUID audit record to {@link UpgradeStepStatus#SCHEDULED} status
+   *
+   * @param uuid The UUID of the step which has been applied
+   * @param description The description of the step.
+   */
   void updateFinishedAuditRecord(UUID uuid, String description);
 
 
