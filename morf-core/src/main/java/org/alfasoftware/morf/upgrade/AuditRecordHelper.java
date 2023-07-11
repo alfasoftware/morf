@@ -42,6 +42,11 @@ import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
  */
 public class AuditRecordHelper {
 
+  private static final String upgradeAuditTableName = "UpgradeAudit";
+  private static final String upgradeUuidColumnName = "upgradeUUID";
+  private static final String appliedTimeColumnName = "appliedTime";
+  private static final String statusColumnName = "status";
+  private static final String serverColumnName = "server";
 
   private static String serverName;
 
@@ -50,6 +55,7 @@ public class AuditRecordHelper {
 
   /**
    * Add the audit record, writing out the SQL for the insert.
+   * @deprecated
    *
    * @see org.alfasoftware.morf.upgrade.SchemaChangeVisitor#addAuditRecord(java.util.UUID, java.lang.String)
    *
@@ -61,7 +67,7 @@ public class AuditRecordHelper {
   @Deprecated
   public static void addAuditRecordNoStatus(SchemaChangeVisitor visitor, Schema schema, UUID uuid, String description) {
     // There's no point adding an UpgradeAudit row if the table isn't there.
-    if (!schema.tableExists("UpgradeAudit"))
+    if (!schema.tableExists(upgradeAuditTableName))
       return;
 
     InsertStatement auditRecord = createAuditInsertStatement(uuid, description);
@@ -82,13 +88,13 @@ public class AuditRecordHelper {
    */
   public static void addAuditRecord(SchemaChangeVisitor visitor, Schema schema, UUID uuid, String description) {
     // There's no point adding an UpgradeAudit row if the table isn't there.
-    if (!schema.tableExists("UpgradeAudit"))
+    if (!schema.tableExists(upgradeAuditTableName))
       return;
 
     if ( ! extendedUpgradeAuditTableRowsPresent ) {
       // adding the extended tables expanded the table from 3 columns to 6. If we have more than 5 columns
       // we can assume that we have the extended fields
-      if(schema.getTable("UpgradeAudit").columns().size() > 6) {
+      if(schema.getTable(upgradeAuditTableName).columns().size() > 6) {
         extendedUpgradeAuditTableRowsPresent = true;
       } else {
         // If we don't have the expanded fields we can no-op as UpgradeAudit records are only inserted after we
@@ -105,13 +111,13 @@ public class AuditRecordHelper {
 
   public static void updateStartedAuditRecord(SchemaChangeVisitor visitor, Schema schema, UUID uuid) {
     // There's no point adding an UpgradeAudit row if the table isn't there.
-    if (!schema.tableExists("UpgradeAudit"))
+    if (!schema.tableExists(upgradeAuditTableName))
       return;
 
     if ( ! extendedUpgradeAuditTableRowsPresent ) {
       // adding the extended tables expanded the table from 3 columns to 7. If we have more than 6 columns
       // we can assume that we have the extended fields
-      if(schema.getTable("UpgradeAudit").columns().size() > 6) {
+      if(schema.getTable(upgradeAuditTableName).columns().size() > 6) {
         extendedUpgradeAuditTableRowsPresent = true;
       } else {
         // If we don't have the expanded fields we can no-op as UpgradeAudit records are only inserted after we
@@ -128,13 +134,13 @@ public class AuditRecordHelper {
 
   public static void updateFinishedAuditRecord(SchemaChangeVisitor visitor, Schema schema, UUID uuid, String description) {
     // There's no point adding an UpgradeAudit row if the table isn't there.
-    if (!schema.tableExists("UpgradeAudit"))
+    if (!schema.tableExists(upgradeAuditTableName))
       return;
 
     if ( ! extendedUpgradeAuditTableRowsPresent ) {
       // adding the extended tables expanded the table from 3 columns to 7. If we have more than 6 columns
       // we can assume that we have the extended fields
-      if(schema.getTable("UpgradeAudit").columns().size() > 6) {
+      if(schema.getTable(upgradeAuditTableName).columns().size() > 6) {
         extendedUpgradeAuditTableRowsPresent = true;
         // Just extended so will not have a UpgradeAudit table record. So we need to add one, so it can be upgraded afterwards
         addAuditRecord(visitor, schema, uuid, description);
@@ -173,29 +179,29 @@ public class AuditRecordHelper {
   //          Initial insert sets upgradeUUID, description, server, appliedTime, status = SCHEDULED
   public static InsertStatement createExtendedAuditInsertStatement(UUID uuid, String description) {
     return new InsertStatement().into(
-            tableRef("UpgradeAudit")).values(
-            literal(uuid.toString()).as("upgradeUUID"),
+            tableRef(upgradeAuditTableName)).values(
+            literal(uuid.toString()).as(upgradeUuidColumnName),
             literal(description.length() > UPGRADE_STEP_DESCRIPTION_LENGTH ? description.substring(0, UPGRADE_STEP_DESCRIPTION_LENGTH) : description).as("description"),
-            cast(dateToYyyyMMddHHmmss(now())).asType(DataType.DECIMAL, 14).as("appliedTime"),
-            literal(UpgradeStepStatus.SCHEDULED.name()).as("status"),
-            new FieldLiteral(getServerName()).as("server")
+            cast(dateToYyyyMMddHHmmss(now())).asType(DataType.DECIMAL, 14).as(appliedTimeColumnName),
+            literal(UpgradeStepStatus.SCHEDULED.name()).as(statusColumnName),
+            new FieldLiteral(getServerName()).as(serverColumnName)
     );
   }
 
   public static UpdateStatement createStartedAuditUpdateStatement(UUID uuid) {
     return new UpdateStatement(new TableReference(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME))
-            .set(cast(dateToYyyyMMddHHmmss(now())).asType(DataType.DECIMAL, 14).as("appliedTime"))
-            .set(literal(UpgradeStepStatus.STARTED.name()).as("status"))
-            .set(clientHost().as("server"))
+            .set(cast(dateToYyyyMMddHHmmss(now())).asType(DataType.DECIMAL, 14).as(appliedTimeColumnName))
+            .set(literal(UpgradeStepStatus.STARTED.name()).as(statusColumnName))
+            .set(clientHost().as(serverColumnName))
             .set(currentUnixTimeMilliseconds().as("startTimeMs"))
-            .where(field("upgradeUUID").eq(uuid.toString()));
+            .where(field(upgradeUuidColumnName).eq(uuid.toString()));
   }
 
   public static UpdateStatement createFinishedAuditUpdateStatement(UUID uuid) {
     return new UpdateStatement(new TableReference(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME))
             .set(currentUnixTimeMilliseconds().minus(field("startTimeMs")).as("processingTimeMs"))
-            .set(literal( UpgradeStepStatus.COMPLETED.name()).as("status"))
-            .where(field("upgradeUUID").eq(uuid.toString()));
+            .set(literal( UpgradeStepStatus.COMPLETED.name()).as(statusColumnName))
+            .where(field(upgradeUuidColumnName).eq(uuid.toString()));
   }
 
 
@@ -209,10 +215,10 @@ public class AuditRecordHelper {
   public static InsertStatement createAuditInsertStatement(UUID uuid, String description) {
 
     return new InsertStatement().into(
-      new TableReference("UpgradeAudit")).values(
-        new FieldLiteral(uuid.toString()).as("upgradeUUID"),
+      new TableReference(upgradeAuditTableName)).values(
+        new FieldLiteral(uuid.toString()).as(upgradeUuidColumnName),
         new FieldLiteral(description.length() > UPGRADE_STEP_DESCRIPTION_LENGTH ? description.substring(0, UPGRADE_STEP_DESCRIPTION_LENGTH) : description).as("description"),
-        cast(dateToYyyyMMddHHmmss(now())).asType(DataType.DECIMAL, 14).as("appliedTime")
+        cast(dateToYyyyMMddHHmmss(now())).asType(DataType.DECIMAL, 14).as(appliedTimeColumnName)
       );
   }
 }
