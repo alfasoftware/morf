@@ -251,8 +251,7 @@ public abstract class SqlDialect {
    * @return The statements required to deploy the view joined into a script and prepared as literals.
    */
   public AliasedField viewDeploymentStatementsAsLiteral(View view) {
-//    return SqlUtils.literal(viewDeploymentStatementsAsScript(view));
-    return SqlUtils.clobLiteral(viewDeploymentStatementsAsScript(view));
+    return SqlUtils.literal(viewDeploymentStatementsAsScript(view));
   }
 
   /**
@@ -1655,7 +1654,7 @@ public abstract class SqlDialect {
     }
 
     if (field instanceof ClobFieldLiteral) {
-      return getSqlFrom((FieldLiteral) field);
+      return getSqlFrom((ClobFieldLiteral) field);
     }
 
     if (field instanceof FieldLiteral) {
@@ -1773,9 +1772,8 @@ public abstract class SqlDialect {
   protected String getSqlFrom(FieldLiteral field) {
     switch (field.getDataType()) {
       case BOOLEAN:
-        return getSqlFrom(Boolean.valueOf(field.getValue()));//here
+        return getSqlFrom(Boolean.valueOf(field.getValue()));
       case STRING:
-      case CLOB:
         return makeStringLiteral(field.getValue());
       case DATE:
         // This is the ISO standard date literal format
@@ -1783,6 +1781,7 @@ public abstract class SqlDialect {
       case DECIMAL:
       case BIG_INTEGER:
       case INTEGER:
+      case CLOB:
         return field.getValue();
       case NULL:
         if (field.getValue() != null) {
@@ -1805,6 +1804,17 @@ public abstract class SqlDialect {
    */
   protected String getSqlFrom(BlobFieldLiteral field) {
     return String.format("'%s'", field.getValue());
+  }
+
+  /**
+   * Default implementation will just return the Base64 representation of the binary data, which may not necessarily work with all SQL dialects.
+   * Hence appropriate conversions to the appropriate type based on facilities provided by the dialect's SQL vendor implementation should be used.
+   *
+   * @param field the BLOB field literal
+   * @return the SQL construct or base64 string representation of the binary value
+   */
+  protected String getSqlFrom(ClobFieldLiteral field) {
+    return getSqlFrom((FieldLiteral) field);
   }
 
 

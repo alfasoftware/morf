@@ -1,7 +1,6 @@
 package org.alfasoftware.morf.sql.element;
 
 import org.alfasoftware.morf.metadata.DataType;
-import org.apache.commons.codec.binary.Hex;
 
 /**
  * Binary data literal.

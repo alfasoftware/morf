@@ -32,6 +32,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import com.google.common.base.Splitter;
+import com.google.common.collect.FluentIterable;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -53,6 +55,7 @@ import org.alfasoftware.morf.sql.OracleCustomHint;
 import org.alfasoftware.morf.sql.ParallelQueryHint;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.sql.SqlUtils;
 import org.alfasoftware.morf.sql.UpdateStatement;
 import org.alfasoftware.morf.sql.UseImplicitJoinOrder;
 import org.alfasoftware.morf.sql.UseIndex;
@@ -61,7 +64,9 @@ import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.AllowParallelDmlHint;
 import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.Cast;
+import org.alfasoftware.morf.sql.element.ClobFieldLiteral;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
+import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.SqlParameter;
@@ -418,6 +423,22 @@ class OracleDialect extends SqlDialect {
     return Arrays.asList("BEGIN FOR i IN (SELECT null FROM all_views WHERE OWNER='" + getSchemaName().toUpperCase() + "' AND VIEW_NAME='" + view.getName().toUpperCase() + "') LOOP EXECUTE IMMEDIATE 'DROP VIEW " + schemaNamePrefix() + view.getName() + "'; END LOOP; END;");
   }
 
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.element.ClobFieldLiteral)
+   */
+  @Override
+  protected String getSqlFrom(ClobFieldLiteral field) {
+    final int chunkSize = 512;
+    if (field.getValue().length() <= chunkSize) {
+      return getSqlFrom((FieldLiteral) field);
+    }
+    Iterable<String> scriptChunks = Splitter.fixedLength(chunkSize).split(field.getValue());
+    FluentIterable<Cast> concatLiterals = FluentIterable.from(scriptChunks)
+            .transform(chunk -> SqlUtils.cast(SqlUtils.literal(chunk)).asType(DataType.CLOB));
+
+    return String.valueOf(SqlUtils.concat(concatLiterals));
+  }
 
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.element.Cast)
