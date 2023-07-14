@@ -71,6 +71,7 @@ import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.BracketedExpression;
 import org.alfasoftware.morf.sql.element.CaseStatement;
 import org.alfasoftware.morf.sql.element.Cast;
+import org.alfasoftware.morf.sql.element.ClobFieldLiteral;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.FieldFromSelect;
@@ -250,7 +251,8 @@ public abstract class SqlDialect {
    * @return The statements required to deploy the view joined into a script and prepared as literals.
    */
   public AliasedField viewDeploymentStatementsAsLiteral(View view) {
-    return SqlUtils.literal(viewDeploymentStatementsAsScript(view));
+//    return SqlUtils.literal(viewDeploymentStatementsAsScript(view));
+    return SqlUtils.clobLiteral(viewDeploymentStatementsAsScript(view));
   }
 
   /**
@@ -1652,6 +1654,10 @@ public abstract class SqlDialect {
       return getSqlFrom((BlobFieldLiteral)field);
     }
 
+    if (field instanceof ClobFieldLiteral) {
+      return getSqlFrom((FieldLiteral) field);
+    }
+
     if (field instanceof FieldLiteral) {
       return getSqlFrom((FieldLiteral) field);
     }
@@ -1767,8 +1773,9 @@ public abstract class SqlDialect {
   protected String getSqlFrom(FieldLiteral field) {
     switch (field.getDataType()) {
       case BOOLEAN:
-        return getSqlFrom(Boolean.valueOf(field.getValue()));
+        return getSqlFrom(Boolean.valueOf(field.getValue()));//here
       case STRING:
+      case CLOB:
         return makeStringLiteral(field.getValue());
       case DATE:
         // This is the ISO standard date literal format
@@ -1776,7 +1783,6 @@ public abstract class SqlDialect {
       case DECIMAL:
       case BIG_INTEGER:
       case INTEGER:
-      case CLOB:
         return field.getValue();
       case NULL:
         if (field.getValue() != null) {

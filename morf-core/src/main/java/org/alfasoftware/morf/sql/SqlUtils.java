@@ -21,6 +21,8 @@ import static org.alfasoftware.morf.sql.element.Criterion.eq;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 
+import com.google.common.base.Splitter;
+import com.google.common.collect.FluentIterable;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.sql.element.AliasedField;
@@ -29,6 +31,7 @@ import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.BracketedExpression;
 import org.alfasoftware.morf.sql.element.CaseStatement;
 import org.alfasoftware.morf.sql.element.Cast;
+import org.alfasoftware.morf.sql.element.ClobFieldLiteral;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
@@ -382,6 +385,26 @@ public class SqlUtils {
    */
   public static BlobFieldLiteral blobLiteral(String value) {
     return new BlobFieldLiteral(value.getBytes(StandardCharsets.UTF_8));
+  }
+
+  /**
+   * Constructs a new {@link ClobFieldLiteral} from given bytes.
+   *
+   * @param script the literal value to use
+   * @return {@link ClobFieldLiteral}
+   */
+  public static AliasedField clobLiteral(String script) {
+
+    final int chunkSize = 512;
+    if (script.length() <= chunkSize) {
+      return new ClobFieldLiteral(script);
+    }
+
+    Iterable<String> scriptChunks = Splitter.fixedLength(chunkSize).split(script);
+    FluentIterable<Cast> concatLiterals = FluentIterable.from(scriptChunks)
+            .transform(chunk -> SqlUtils.cast(SqlUtils.literal(chunk)).asType(DataType.CLOB));
+
+    return SqlUtils.concat(concatLiterals);
   }
 
 
