@@ -148,12 +148,12 @@ public class DatabaseSchemaManager {
 
       Collection<String> sql = Lists.newLinkedList();
 
-      for (View view : changes.getViewsToDrop()) {
-        sql.addAll(dropViewIfExists(view));
-      }
-
       for (View view : changes.getViewsToDeploy()) {
         sql.addAll(dropTableIfPresent(producerCache, view.getName()));
+      }
+
+      for (View view : changes.getViewsToDrop()) {
+        sql.addAll(dropViewIfExists(view));
       }
 
 
