@@ -29,6 +29,7 @@ import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.BracketedExpression;
 import org.alfasoftware.morf.sql.element.CaseStatement;
 import org.alfasoftware.morf.sql.element.Cast;
+import org.alfasoftware.morf.sql.element.ClobFieldLiteral;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
@@ -382,6 +383,15 @@ public class SqlUtils {
    */
   public static BlobFieldLiteral blobLiteral(String value) {
     return new BlobFieldLiteral(value.getBytes(StandardCharsets.UTF_8));
+  }
+
+  /**
+   * Constructs a new ClobFieldLiteral from a given string.
+   * @param value - the literal value to use.
+   * @return ClobFieldLiteral
+   */
+  public static ClobFieldLiteral clobLiteral(String value) {
+    return new ClobFieldLiteral(value);
   }
 
 

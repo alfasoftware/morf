@@ -32,6 +32,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import com.google.common.base.Splitter;
+import com.google.common.collect.FluentIterable;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -62,6 +64,7 @@ import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.AllowParallelDmlHint;
 import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.Cast;
+import org.alfasoftware.morf.sql.element.ClobFieldLiteral;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
@@ -72,8 +75,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.google.common.base.Joiner;
-import com.google.common.base.Splitter;
-import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.Iterables;
@@ -423,22 +424,19 @@ class OracleDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#viewDeploymentStatementsAsLiteral(org.alfasoftware.morf.metadata.View)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.element.ClobFieldLiteral)
    */
   @Override
-  public AliasedField viewDeploymentStatementsAsLiteral(View view) {
-    final String script = viewDeploymentStatementsAsScript(view);
-
+  protected String getSqlFrom(ClobFieldLiteral field) {
     final int chunkSize = 512;
-    if (script.length() <= chunkSize) {
-      return super.viewDeploymentStatementsAsLiteral(view);
+    if (field.getValue().length() <= chunkSize) {
+      return super.getSqlFrom(field);
     }
-
-    Iterable<String> scriptChunks = Splitter.fixedLength(chunkSize).split(script);
+    Iterable<String> scriptChunks = Splitter.fixedLength(chunkSize).split(field.getValue());
     FluentIterable<Cast> concatLiterals = FluentIterable.from(scriptChunks)
-      .transform(chunk -> SqlUtils.cast(SqlUtils.literal(chunk)).asType(DataType.CLOB));
+            .transform(chunk -> SqlUtils.cast(SqlUtils.clobLiteral(chunk)).asType(DataType.CLOB));
 
-    return SqlUtils.concat(concatLiterals);
+    return getSqlFrom(SqlUtils.concat(concatLiterals));
   }
 
 
