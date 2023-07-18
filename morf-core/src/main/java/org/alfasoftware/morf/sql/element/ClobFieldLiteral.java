@@ -3,9 +3,7 @@ package org.alfasoftware.morf.sql.element;
 import org.alfasoftware.morf.metadata.DataType;
 
 /**
- * Binary data literal.
- *
- * <p>Note: {@link ClobFieldLiteral#getValue()} returns the binary data as hex-encoded string.</p>
+ * Clob field literal.
  */
 public class ClobFieldLiteral extends FieldLiteral {
 

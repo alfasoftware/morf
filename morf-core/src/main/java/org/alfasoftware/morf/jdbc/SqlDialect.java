@@ -1807,11 +1807,10 @@ public abstract class SqlDialect {
   }
 
   /**
-   * Default implementation will just return the Base64 representation of the binary data, which may not necessarily work with all SQL dialects.
-   * Hence appropriate conversions to the appropriate type based on facilities provided by the dialect's SQL vendor implementation should be used.
+   * Default implementation will just return the Field literal implementation of the getSqlFrom method.
    *
-   * @param field the BLOB field literal
-   * @return the SQL construct or base64 string representation of the binary value
+   * @param field the CLOB field literal
+   * @return a string representation of the clob field literal
    */
   protected String getSqlFrom(ClobFieldLiteral field) {
     return getSqlFrom((FieldLiteral) field);
