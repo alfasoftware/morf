@@ -134,6 +134,7 @@ import org.alfasoftware.morf.sql.UpdateStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.CaseStatement;
 import org.alfasoftware.morf.sql.element.Cast;
+import org.alfasoftware.morf.sql.element.ClobFieldLiteral;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Direction;
 import org.alfasoftware.morf.sql.element.FieldFromSelect;
@@ -268,6 +269,8 @@ public abstract class AbstractSqlDialectTest {
   private static final String OLD_BLOB_VALUE = "Old Blob Value";
   protected static final String NEW_BLOB_VALUE_HEX = "4E657720426C6F622056616C7565";
   protected static final String OLD_BLOB_VALUE_HEX = "4F6C6420426C6F622056616C7565";
+
+  private static final String LONG_FIELD_STRING = "CREATE VIEW viewName AS (SELECT tableField1, tableField2, tableField3, tableField4, tableField5, tableField6, tableField7, tableField8, tableField9, tableField10, tableField11, tableField12, tableField13, tableField14, tableField15, tableField16, tableField17, tableField18, tableField19, tableField20, tableField21, tableField22, tableField23, tableField24, tableField25, tableField26, tableField27, tableField28, tableField29, tableField30 FROM table INNER JOIN table2 ON (table1.tableField1 = table2 = tableField1));";
 
 
   /**
@@ -2543,6 +2546,15 @@ public abstract class AbstractSqlDialectTest {
   public void testYYYYMMDDToDate() {
     String result = testDialect.getSqlFrom(yyyymmddToDate(new FieldLiteral("20100101")));
     assertEquals(expectedYYYYMMDDToDate(), result);
+  }
+
+  /**
+   * Test that getSqlFrom((ClobFieldLiteral)) Returns correctly.
+   */
+  @Test
+  public void testClobFieldLiteralWithLongfield() {
+    String result = testDialect.getSqlFrom(new ClobFieldLiteral(LONG_FIELD_STRING));
+    assertEquals(expectedClobLiteralCast(), result);
   }
 
 
@@ -5343,6 +5355,12 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL for conversion of a date to a YYYYMMDDHHmmss integer
    */
   protected abstract String expectedDateToYyyymmddHHmmss();
+
+
+  /**
+   * @return The expected SQL for conversion of a ClobFieldLiteral to string.
+   */
+  protected abstract String expectedClobLiteralCast();
 
 
   /**

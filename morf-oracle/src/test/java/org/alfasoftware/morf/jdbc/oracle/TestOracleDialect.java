@@ -45,8 +45,10 @@ import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.sql.CustomHint;
 import org.alfasoftware.morf.sql.OracleCustomHint;
+import org.alfasoftware.morf.sql.element.ClobFieldLiteral;
 import org.alfasoftware.morf.sql.element.Direction;
 import org.alfasoftware.morf.sql.element.SqlParameter;
+import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 
 import com.google.common.base.Strings;
@@ -1163,6 +1165,11 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedDateToYyyymmddHHmmss() {
     return "TO_NUMBER(TO_CHAR(testField, 'yyyymmddHH24MISS'))";
+  }
+
+  @Override
+  protected String expectedClobLiteralCast() {
+    return "TO_CLOB(N'CREATE VIEW viewName AS (SELECT tableField1, tableField2, tableField3, tableField4, tableField5, tableField6, tableField7, tableField8, tableField9, tableField10, tableField11, tableField12, tableField13, tableField14, tableField15, tableField16, tableField17, tableField18, tableField19, tableField20, tableField21, tableField22, tableField23, tableField24, tableField25, tableField26, tableField27, tableField28, tableField29, tableField30 FROM table INNER JOIN table2 ON (table1.tableField1 = table2 = tableFi') || TO_CLOB(N'eld1));')";
   }
 
 
