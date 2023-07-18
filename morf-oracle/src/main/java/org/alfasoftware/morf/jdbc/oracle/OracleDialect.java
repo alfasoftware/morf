@@ -66,7 +66,6 @@ import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ClobFieldLiteral;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
-import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.SqlParameter;
