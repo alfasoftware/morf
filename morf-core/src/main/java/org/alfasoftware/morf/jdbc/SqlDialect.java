@@ -251,7 +251,7 @@ public abstract class SqlDialect {
    * @return The statements required to deploy the view joined into a script and prepared as literals.
    */
   public AliasedField viewDeploymentStatementsAsLiteral(View view) {
-    return SqlUtils.literal(viewDeploymentStatementsAsScript(view));
+    return SqlUtils.clobLiteral(viewDeploymentStatementsAsScript(view));
   }
 
   /**
@@ -1774,6 +1774,7 @@ public abstract class SqlDialect {
       case BOOLEAN:
         return getSqlFrom(Boolean.valueOf(field.getValue()));
       case STRING:
+      case CLOB:
         return makeStringLiteral(field.getValue());
       case DATE:
         // This is the ISO standard date literal format
@@ -1781,7 +1782,6 @@ public abstract class SqlDialect {
       case DECIMAL:
       case BIG_INTEGER:
       case INTEGER:
-      case CLOB:
         return field.getValue();
       case NULL:
         if (field.getValue() != null) {

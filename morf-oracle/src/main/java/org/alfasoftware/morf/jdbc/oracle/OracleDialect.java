@@ -431,14 +431,15 @@ class OracleDialect extends SqlDialect {
   protected String getSqlFrom(ClobFieldLiteral field) {
     final int chunkSize = 512;
     if (field.getValue().length() <= chunkSize) {
-      return getSqlFrom((FieldLiteral) field);
+      return super.getSqlFrom(field);
     }
     Iterable<String> scriptChunks = Splitter.fixedLength(chunkSize).split(field.getValue());
     FluentIterable<Cast> concatLiterals = FluentIterable.from(scriptChunks)
-            .transform(chunk -> SqlUtils.cast(SqlUtils.literal(chunk)).asType(DataType.CLOB));
+            .transform(chunk -> SqlUtils.cast(SqlUtils.clobLiteral(chunk)).asType(DataType.CLOB));
 
-    return String.valueOf(SqlUtils.concat(concatLiterals));
+    return getSqlFrom(SqlUtils.concat(concatLiterals));
   }
+
 
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.element.Cast)
