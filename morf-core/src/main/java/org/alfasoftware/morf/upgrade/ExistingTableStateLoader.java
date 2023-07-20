@@ -24,6 +24,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 import javax.sql.DataSource;
@@ -75,22 +76,26 @@ class ExistingTableStateLoader {
          java.sql.Statement statement = connection.createStatement();
          ResultSet resultSet = statement.executeQuery(sql)) {
       while (resultSet.next()) {
-        try {
-          results.add(java.util.UUID.fromString(resultSet.getString(1)));
-        } catch (IllegalArgumentException e) {
-           // If we have a historic malformed UUID, ignore it
-           log.warn("Malformed UpgradeAudit Table upgradeUUID column record ["+
-                   resultSet.getString(1)+
-                   "]. Skipping.");
-        }
+          convertToUUID(resultSet.getString(1)).ifPresent(results::add);
       }
-
 
     } catch (SQLException e) {
       throw new RuntimeSqlException("Failed to load applied UUIDs. SQL: [" + sql + "]", e);
     }
 
     return Collections.unmodifiableSet(results);
+  }
+
+  private Optional<java.util.UUID> convertToUUID(String uuidString) {
+    try {
+      return Optional.of(java.util.UUID.fromString(uuidString));
+    } catch (IllegalArgumentException e) {
+      // If we have a historic malformed UUID, ignore it
+      log.warn("Malformed UpgradeAudit Table upgradeUUID column record ["+
+              uuidString+
+              "]. Skipping.");
+      return Optional.empty();
+    }
   }
 
 }
