@@ -65,7 +65,8 @@ class ExistingTableStateLoader {
     Set<java.util.UUID> results = new HashSet<>();
 
     // Query the database to see if the UpgradeAudit
-    SelectStatement upgradeAuditSelect = select(field("upgradeUUID")).from(tableRef(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME));
+    SelectStatement upgradeAuditSelect = select(field("upgradeUUID"))
+            .from(tableRef(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME));
     String sql = dialect.convertStatementToSQL(upgradeAuditSelect);
 
     if (log.isDebugEnabled()) log.debug("Loading UpgradeAudit with SQL [" + sql + "]");
@@ -74,8 +75,17 @@ class ExistingTableStateLoader {
          java.sql.Statement statement = connection.createStatement();
          ResultSet resultSet = statement.executeQuery(sql)) {
       while (resultSet.next()) {
-        results.add(java.util.UUID.fromString(resultSet.getString(1)));
+        try {
+          results.add(java.util.UUID.fromString(resultSet.getString(1)));
+        } catch (IllegalArgumentException e) {
+           // If we have a historic malformed UUID, ignore it
+           log.warn("Malformed UpgradeAudit Table upgradeUUID column record ["+
+                   resultSet.getString(1)+
+                   "]. Skipping.");
+        }
       }
+
+
     } catch (SQLException e) {
       throw new RuntimeSqlException("Failed to load applied UUIDs. SQL: [" + sql + "]", e);
     }
