@@ -21,6 +21,7 @@ import java.util.List;
 import org.alfasoftware.morf.sql.UnionSetOperator.UnionStrategy;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
+import org.alfasoftware.morf.sql.element.AllowParallelDmlHint;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.util.Builder;
@@ -271,6 +272,71 @@ public class SelectStatementBuilder extends AbstractSelectStatementBuilder<Selec
     return this;
   }
 
+
+  /**
+   * Request that this query is executed with a parallel execution plan and with the given degree of parallelism. If the database implementation does not support, or is configured to disable parallel query execution, then this request will have no effect.
+   *
+   * <p>For queries that are likely to conduct a full table scan, a parallel execution plan may result in the results being delivered faster, although the exact effect depends on
+   * the underlying database, the nature of the data and the nature of the query.</p>
+   *
+   * <p>Note that the executed use cases of this are rare. Caution is needed because if multiple requests are made by the application to run parallel queries, the resulting resource contention may result in worse performance - this is not intended for queries that are submitted in parallel by the application.</p>
+   *
+   * @param degreeOfParallelism Degree of parallelism to be specified in the hint.
+   * @return this, for method chaining.
+   */
+  public SelectStatementBuilder withParallelQueryPlan(int degreeOfParallelism) {
+    this.hints.add(new ParallelQueryHint(degreeOfParallelism));
+    return this;
+  }
+
+
+  /**
+   * Request that this query can contribute towards a parallel DML execution plan.
+   * If a select statement is used within a DML statement, some dialects require DML parallelisation to be enabled via the select statement.
+   * If the database implementation does not support, or is configured to disable parallel query execution, then this request will have no effect.
+   *
+   * <p>For queries that are likely to change a lot of data, a parallel execution plan may result in the results being written faster, although the exact effect depends on
+   * the underlying database, the nature of the data.</p>
+   *
+   * <p>Note that the use cases of this are rare. Caution is needed because if multiple requests are made by the application to run parallel queries, the resulting resource contention may result in worse performance - this is not intended for queries that are submitted in parallel by the application.</p>
+   *
+   * @return this, for method chaining.
+   * @see #withParallelQueryPlan()
+   */
+  public SelectStatementBuilder allowParallelDml() {
+    this.hints.add(AllowParallelDmlHint.INSTANCE);
+    return this;
+  }
+
+
+  /**
+   * Supplies a specified custom hint to the database for a query.
+   *
+   * @param customHint representation of a custom hint
+   * @return this, for method chaining.
+   * @deprecated See {@link org.alfasoftware.morf.sql.CustomHint}
+   */
+  @Deprecated
+  public org.alfasoftware.morf.sql.SelectStatementBuilder withCustomHint(CustomHint customHint) {
+    this.hints.add(customHint);
+    return this;
+  }
+
+
+  /**
+   * Supplies a specified custom hint and database type to the database for a query.
+   *
+   * @param databaseType a database type identifier. Eg: ORACLE, PGSQL, SQL_SERVER
+   * @param hintContents the hint contents themselves, without the delimiters. Eg: without /*+ and *"/ * for Oracle hints
+   * @return this, for method chaining.
+   */
+  public org.alfasoftware.morf.sql.SelectStatementBuilder withDialectSpecificHint(String databaseType, String hintContents) {
+    DialectSpecificHint dialectSpecificHint = new DialectSpecificHint(databaseType, hintContents);
+    this.hints.add(dialectSpecificHint);
+    return this;
+  }
+
+
   /**
    * If supported by the dialect, hints to the database that joins should be applied in the order
    * they are written in the SQL statement.
@@ -332,6 +398,20 @@ public class SelectStatementBuilder extends AbstractSelectStatementBuilder<Selec
    */
   public SelectStatementBuilder unionAll(SelectStatement selectStatement) {
     setOperators.add(new UnionSetOperator(UnionStrategy.ALL, this.build(), selectStatement));
+    return this;
+  }
+
+
+  /**
+   * Perform an EXCEPT set operation with another {@code selectStatement}, retaining
+   * all rows which exist in top select statement only.
+   *
+   * @param selectStatement the other select statement that contains entries that
+   *                          will not be present in the final result set.
+   * @return this, for method chaining.
+   */
+  public SelectStatementBuilder except(SelectStatement selectStatement) {
+    setOperators.add(new ExceptSetOperator(this.build(), selectStatement));
     return this;
   }
 

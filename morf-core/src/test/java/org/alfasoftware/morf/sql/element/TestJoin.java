@@ -15,13 +15,21 @@
 
 package org.alfasoftware.morf.sql.element;
 
+import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.mockito.Mockito.verify;
+
 import java.util.Arrays;
 import java.util.List;
 
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.upgrade.UpgradeTableResolutionVisitor;
+import org.junit.Before;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 /**
  * Tests for {@link Join}.
@@ -37,6 +45,15 @@ public class TestJoin extends AbstractDeepCopyableTest<Join> {
   public static final Criterion CRITERION_2 = mockOf(Criterion.class);
   public static final SelectStatement SELECT_1 = mockSelectStatement();
   public static final SelectStatement SELECT_2 = mockSelectStatement();
+
+  @Mock
+  private UpgradeTableResolutionVisitor res;
+
+  @Before
+  public void setUp() throws Exception {
+    MockitoAnnotations.openMocks(this);
+  }
+
 
   @Parameters(name = "{0}")
   public static List<Object[]> data() {
@@ -54,5 +71,34 @@ public class TestJoin extends AbstractDeepCopyableTest<Join> {
       testCase("left select 2", () -> new Join(JoinType.LEFT_OUTER_JOIN, SELECT_1, CRITERION_2)),
       testCase("left select 3", () -> new Join(JoinType.LEFT_OUTER_JOIN, SELECT_2, CRITERION_1))
     );
+  }
+
+
+  @Test
+  public void tableResolutionDetectsAllTables1() {
+    //given
+    Join join = new Join(JoinType.INNER_JOIN, tableRef("table1"), CRITERION_1);
+
+    //when
+    join.accept(res);
+
+    //then
+    verify(res).visit(join);
+    verify(CRITERION_1).accept(res);
+  }
+
+
+  @Test
+  public void tableResolutionDetectsAllTables2() {
+    //given
+    Join join = new Join(JoinType.INNER_JOIN, SELECT_1, CRITERION_1);
+
+    //when
+    join.accept(res);
+
+    //then
+    verify(res).visit(join);
+    verify(CRITERION_1).accept(res);
+    verify(SELECT_1).accept(res);
   }
 }

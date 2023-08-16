@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.sql;
 
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyTransformations;
@@ -90,7 +91,7 @@ public class TruncateStatement implements Statement,
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result + ((table == null) ? 0 : table.hashCode());
+    result = prime * result + (table == null ? 0 : table.hashCode());
     return result;
   }
 
@@ -128,5 +129,11 @@ public class TruncateStatement implements Statement,
   @Override
   public Builder<TruncateStatement> deepCopy(DeepCopyTransformation transformer) {
     return TempTransitionalBuilderWrapper.wrapper(new TruncateStatement(transformer.deepCopy(table)));
+  }
+
+
+  @Override
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
   }
 }

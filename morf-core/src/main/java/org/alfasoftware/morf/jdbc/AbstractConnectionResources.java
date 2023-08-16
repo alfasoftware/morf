@@ -138,7 +138,6 @@ public abstract class AbstractConnectionResources implements ConnectionResources
    */
   public abstract void setStatementPoolingMaxStatements(int statementPoolingMaxStatements);
 
-
   /**
    * @return a formatted jdbc url string.
    */

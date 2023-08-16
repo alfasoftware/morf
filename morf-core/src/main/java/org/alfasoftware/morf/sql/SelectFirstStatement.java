@@ -22,6 +22,7 @@ import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
 import org.alfasoftware.morf.sql.element.FieldFromSelectFirst;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
@@ -158,5 +159,12 @@ public class SelectFirstStatement extends AbstractSelectStatement<SelectFirstSta
   @Override
   public SelectFirstStatementBuilder deepCopy(DeepCopyTransformation transformer) {
     return new SelectFirstStatementBuilder(this, transformer);
+  }
+
+
+  @Override
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
+    super.accept(visitor);
   }
 }

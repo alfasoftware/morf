@@ -17,6 +17,7 @@ package org.alfasoftware.morf.sql.element;
 
 import java.util.List;
 
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
@@ -44,13 +45,27 @@ public class ConcatenatedField extends AliasedField implements Driver {
    *
    * @param fields the fields to be concatenated
    */
-  public ConcatenatedField(AliasedField... fields) {
+  public ConcatenatedField(Iterable<? extends AliasedField> fields) {
     super();
+
+    ImmutableList<AliasedField> copyOfFields = ImmutableList.copyOf(fields);
+
     // We need at least two fields to concatenate
-    if (fields.length < 2) {
+    if (copyOfFields.size() < 2) {
       throw new IllegalArgumentException("A concatenated field requires at least two fields to concatenate.");
     }
-    this.fields = ImmutableList.copyOf(fields);
+
+    this.fields = copyOfFields;
+  }
+
+
+  /**
+   * Constructs a ConcatenatedField.
+   *
+   * @param fields the fields to be concatenated
+   */
+  public ConcatenatedField(AliasedField... fields) {
+    this(ImmutableList.copyOf(fields));
   }
 
 
@@ -108,7 +123,7 @@ public class ConcatenatedField extends AliasedField implements Driver {
   public int hashCode() {
     final int prime = 31;
     int result = super.hashCode();
-    result = prime * result + ((fields == null) ? 0 : fields.hashCode());
+    result = prime * result + (fields == null ? 0 : fields.hashCode());
     return result;
   }
 
@@ -128,5 +143,14 @@ public class ConcatenatedField extends AliasedField implements Driver {
     } else if (!fields.equals(other.fields))
       return false;
     return true;
+  }
+
+
+  @Override
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
+    if(fields != null) {
+      fields.stream().forEach(f -> f.accept(visitor));
+    }
   }
 }

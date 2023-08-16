@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.jdbc.sqlserver;
 
+import static com.google.common.base.Strings.isNullOrEmpty;
 import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
 import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
@@ -49,8 +50,10 @@ import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
-import org.alfasoftware.morf.sql.element.WindowFunction;
+import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.joda.time.LocalDate;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -88,6 +91,8 @@ class SqlServerDialect extends SqlDialect {
    * Used to force collation to be case-sensitive.
    */
   private static final String COLLATE = "COLLATE SQL_Latin1_General_CP1_CS_AS";
+
+  private static final Log log = LogFactory.getLog(SqlServerDialect.class);
 
   /**
    * The hint types supported.
@@ -219,6 +224,15 @@ class SqlServerDialect extends SqlDialect {
   }
 
 
+  @Override
+  public Collection<String> dropTables(List<Table> tables, boolean ifExists, boolean cascade) {
+    if (cascade) {
+     log.warn("Cascading table drops in SQL Server is not currently supported");
+    }
+    return super.dropTables(tables, ifExists, false);
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#dropStatements(org.alfasoftware.morf.metadata.View)
    */
@@ -251,7 +265,7 @@ class SqlServerDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#postInsertWithPresetAutonumStatements(org.alfasoftware.morf.metadata.Table, boolean)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#postInsertWithPresetAutonumStatements(Table, SqlScriptExecutor, Connection, boolean)
    */
   @Override
   public void postInsertWithPresetAutonumStatements(Table table, SqlScriptExecutor executor,Connection connection, boolean insertingUnderAutonumLimit) {
@@ -444,8 +458,7 @@ class SqlServerDialect extends SqlDialect {
     sqlBuilder.append("UPDATE ");
 
     // Now add the table to update
-    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-    sqlBuilder.append(destinationTableName);
+    sqlBuilder.append(tableNameWithSchemaName(statement.getTable()));
 
     // Put in the standard fields
     sqlBuilder.append(getUpdateStatementSetFieldSql(statement.getFields()));
@@ -453,8 +466,7 @@ class SqlServerDialect extends SqlDialect {
     // Add a FROM clause if the table is aliased
     if (!statement.getTable().getAlias().equals("")) {
       sqlBuilder.append(" FROM ");
-      sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-      sqlBuilder.append(destinationTableName);
+      sqlBuilder.append(tableNameWithSchemaName(statement.getTable()));
       sqlBuilder.append(String.format(" %s", statement.getTable().getAlias()));
     }
 
@@ -698,8 +710,9 @@ class SqlServerDialect extends SqlDialect {
 
 
   /**
-   * @param table
-   * @param statements
+   * Drops the primary key from a {@link Table}.
+   *
+   * @param table The table to drop the primary key from
    */
   private String dropPrimaryKey(Table table) {
     StringBuilder dropPkStatement = new StringBuilder();
@@ -715,7 +728,7 @@ class SqlServerDialect extends SqlDialect {
   /**
    * Return the SQL representation for the column on the table.
    *
-   * @see #sqlRepresentationOfColumnType(Table, Column)
+   * @see #sqlRepresentationOfColumnType(Table, Column, boolean)
    * @param table The table
    * @param column The column
    * @param includeDefaultWithValues Whether to include the WITH VALUES clause.
@@ -1031,35 +1044,38 @@ class SqlServerDialect extends SqlDialect {
       return super.selectStatementPreFieldDirectives(selectStatement);
     }
 
-    StringBuilder builder = new StringBuilder().append(" OPTION(");
+    String option = " OPTION(";
 
     boolean comma = false;
 
+    StringBuilder hintsBuilder = new StringBuilder();
     for (Hint hint : selectStatement.getHints()) {
       if (SUPPORTED_HINTS.contains(hint.getClass())) {
         if (comma) {
-          builder.append(", ");
+          hintsBuilder.append(", ");
         } else {
           comma = true;
         }
       }
       if (hint instanceof OptimiseForRowCount) {
-        builder.append("FAST " + ((OptimiseForRowCount)hint).getRowCount());
+        hintsBuilder.append("FAST " + ((OptimiseForRowCount)hint).getRowCount());
       }
       if (hint instanceof UseIndex) {
         UseIndex useIndex = (UseIndex) hint;
-        builder.append("TABLE HINT(")
+        hintsBuilder.append("TABLE HINT(")
           // Includes schema name - see https://msdn.microsoft.com/en-us/library/ms181714.aspx
-          .append(StringUtils.isEmpty(useIndex.getTable().getAlias()) ? schemaNamePrefix(useIndex.getTable()) + useIndex.getTable().getName() : useIndex.getTable().getAlias())
+          .append(StringUtils.isEmpty(useIndex.getTable().getAlias()) ? tableNameWithSchemaName(useIndex.getTable()) : useIndex.getTable().getAlias())
           .append(", INDEX(" + useIndex.getIndexName() + ")")
           .append(")");
       }
       if (hint instanceof UseImplicitJoinOrder) {
-        builder.append("FORCE ORDER");
+        hintsBuilder.append("FORCE ORDER");
       }
     }
 
-    return builder.append(")").toString();
+    option += hintsBuilder.toString() + ")";
+
+    return isNullOrEmpty(hintsBuilder.toString()) ? "" : option;
   }
 
 
@@ -1068,29 +1084,11 @@ class SqlServerDialect extends SqlDialect {
    * so no need to specify a lock mode.
    *
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getForUpdateSql()
-   * @see http://stackoverflow.com/questions/10935850/when-to-use-select-for-update
+   * @see <a href="http://stackoverflow.com/questions/10935850/when-to-use-select-for-update">When to use select for update</a>
    */
   @Override
   protected String getForUpdateSql() {
     return StringUtils.EMPTY;
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#supportsWindowFunctions()
-   */
-  @Override
-  public boolean supportsWindowFunctions() {
-    return false; // SqlServer does not have full support for window functions before 2012
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.element.WindowFunction)
-   */
-  @Override
-  protected String getSqlFrom(final WindowFunction windowFunctionField) {
-    throw new UnsupportedOperationException(this.getClass().getSimpleName()+" does not support window functions.");
   }
 
 
@@ -1109,5 +1107,15 @@ class SqlServerDialect extends SqlDialect {
   @Override
   protected Optional<String> getDeleteLimitPreFromClause(int limit) {
     return Optional.of("TOP (" + limit + ")");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#tableNameWithSchemaName(org.alfasoftware.morf.sql.element.TableReference)
+   */
+  @Override
+  protected String tableNameWithSchemaName(TableReference tableRef) {
+    if (!StringUtils.isEmpty(tableRef.getDblink())) throw new IllegalStateException("DB Links are not supported in the Sql Server dialect. Found dbLink=" + tableRef.getDblink() + " for tableNameWithSchemaName=" + super.tableNameWithSchemaName(tableRef));
+    return super.tableNameWithSchemaName(tableRef);
   }
 }

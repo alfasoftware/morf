@@ -85,7 +85,7 @@ public class InjectMembersRule implements MethodRule {
           try {
             base.evaluate();
           } finally {
-            new ThreadSafeMockingProgress().reset();
+            ThreadSafeMockingProgress.mockingProgress().reset();
           }
         }
       }

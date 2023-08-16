@@ -54,7 +54,7 @@ class UnsupportedDatabaseTestStatement extends Statement {
    */
   @Override
   public void evaluate() {
-    String message = String.format("Test %s ignored by %s as it is marked as unsupported", description.getMethodName(), description.getTestClass().getSimpleName(),
+    String message = String.format("Test %s ignored by %s as it is marked as unsupported", description.getMethodName(),
       description.getTestClass().getSimpleName());
     log.info(message);
     Assume.assumeTrue(message, false);

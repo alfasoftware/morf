@@ -26,6 +26,7 @@ import java.util.function.Function;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
@@ -81,6 +82,11 @@ public class InsertStatement implements Statement,
   private final List<AliasedField>  fields;
 
   /**
+   * Lists the declared hints in the order they were declared.
+   */
+  private final List<Hint> hints;
+
+  /**
    * The primary table to select from
    */
   private TableReference            table;
@@ -126,10 +132,12 @@ public class InsertStatement implements Statement,
     super();
     if (AliasedField.immutableDslEnabled()) {
       this.fields = ImmutableList.of();
+      this.hints = ImmutableList.of();
       this.values = ImmutableList.of();
       this.fieldDefaults = ImmutableMap.of();
     } else {
       this.fields = new ArrayList<>();
+      this.hints = new ArrayList<>();
       this.values = new ArrayList<>();
       this.fieldDefaults = new HashMap<>();
     }
@@ -148,15 +156,18 @@ public class InsertStatement implements Statement,
     this.selectStatement = builder.getSelectStatement();
     if (AliasedField.immutableDslEnabled()) {
       this.fields = ImmutableList.copyOf(builder.getFields());
+      this.hints = ImmutableList.copyOf(builder.getHints());
       this.values = ImmutableList.copyOf(builder.getValues());
       this.fieldDefaults = ImmutableMap.copyOf(builder.getFieldDefaults());
     } else {
       this.fields = new ArrayList<>();
+      this.hints = new ArrayList<>();
       this.values = new ArrayList<>();
       this.fieldDefaults = new HashMap<>();
       this.fields.addAll(builder.getFields());
       this.values.addAll(builder.getValues());
       this.fieldDefaults.putAll(builder.getFieldDefaults());
+      this.hints.addAll(builder.getHints());
     }
   }
 
@@ -312,6 +323,80 @@ public class InsertStatement implements Statement,
 
 
   /**
+   * If supported by the dialect, hints to the database that an {@code APPEND} query hint should be used in the insert statement.
+   *
+   * <p>In general, as with all query plan modification, <strong>do not use this unless you know
+   * exactly what you are doing</strong>.</p>
+   *
+   * <p>These directives are applied in the SQL in the order they are called on {@link InsertStatement}.  This usually
+   * affects their precedence or relative importance, depending on the platform.</p>
+   *
+   * @return a new insert statement with the change applied.
+   */
+  public InsertStatement useDirectPath() {
+    return copyOnWriteOrMutate(
+        InsertStatementBuilder::useDirectPath,
+        () -> this.hints.add(DirectPathQueryHint.INSTANCE)
+    );
+  }
+
+
+  /**
+   * If supported by the dialect, hints to the database that an {@code APPEND} query hint should be used in the insert statement.
+   *
+   * <p>In general, as with all query plan modification, <strong>do not use this unless you know
+   * exactly what you are doing</strong>.</p>
+   *
+   * <p>These directives are applied in the SQL in the order they are called on {@link InsertStatement}.  This usually
+   * affects their precedence or relative importance, depending on the platform.</p>
+   *
+   * @return a new insert statement with the change applied.
+   */
+  public InsertStatement avoidDirectPath() {
+    return copyOnWriteOrMutate(
+        InsertStatementBuilder::avoidDirectPath,
+        () -> this.hints.add(NoDirectPathQueryHint.INSTANCE)
+    );
+  }
+
+  /**
+   * Request that this statement is executed with a parallel execution plan for data manipulation language (DML). This request will have no effect unless the database implementation supports it and the feature is enabled.
+   *
+   * <p>For statement that will affect a high percentage or rows in the table, a parallel execution plan may reduce the execution time, although the exact effect depends on
+   * the underlying database, the nature of the data and the nature of the query.</p>
+   *
+   * <p>Note that the use of parallel DML comes with restrictions, in particular, a table may not be accessed in the same transaction following a parallel DML execution. Please consult the Oracle manual section <em>Restrictions on Parallel DML</em> to check whether this hint is suitable.</p>
+   *
+   * @return this, for method chaining.
+   */
+  public InsertStatement useParallelDml() {
+    return copyOnWriteOrMutate(
+            InsertStatementBuilder::useParallelDml,
+            () -> this.hints.add(new UseParallelDml())
+    );
+  }
+
+
+  /**
+   * Request that this statement is executed with a parallel execution plan for data manipulation language (DML). This request will have no effect unless the database implementation supports it and the feature is enabled.
+   *
+   * <p>For statement that will affect a high percentage or rows in the table, a parallel execution plan may reduce the execution time, although the exact effect depends on
+   * the underlying database, the nature of the data and the nature of the query.</p>
+   *
+   * <p>Note that the use of parallel DML comes with restrictions, in particular, a table may not be accessed in the same transaction following a parallel DML execution. Please consult the Oracle manual section <em>Restrictions on Parallel DML</em> to check whether this hint is suitable.</p>
+   *
+   * @param degreeOfParallelism - the degree of parallelism
+   * @return this, for method chaining.
+   */
+  public InsertStatement useParallelDml(int degreeOfParallelism) {
+    return copyOnWriteOrMutate(
+            insertStatementBuilder -> insertStatementBuilder.useParallelDml(degreeOfParallelism),
+            () -> this.hints.add(new UseParallelDml(degreeOfParallelism))
+    );
+  }
+
+
+  /**
    * Specifies the defaults to use when inserting new fields
    *
    * @param defaultValues the list of values to use as defaults
@@ -362,6 +447,14 @@ public class InsertStatement implements Statement,
    */
   public List<AliasedField> getFields() {
     return fields;
+  }
+
+
+  /**
+   * @return all hints in the order they were declared.
+   */
+  public List<Hint> getHints() {
+    return hints;
   }
 
 
@@ -449,10 +542,11 @@ public class InsertStatement implements Statement,
   @Override
   public String toString() {
     StringBuilder result = new StringBuilder("SQL INSERT INTO [" + table + "]");
+    if (!hints.isEmpty()) result.append(" HINTS ").append(hints);
     if (!fields.isEmpty()) result.append(" FIELDS ").append(fields);
     if (!values.isEmpty()) result.append(" VALUES ").append(values);
     if (selectStatement != null) result.append(" FROM SELECT [").append(selectStatement).append("]");
-    if (fromTable != null) result.append(" FROM [" + fromTable + "]");
+    if (fromTable != null) result.append(" FROM [").append(fromTable).append("]");
     if (!fieldDefaults.isEmpty()) result.append(" WITH DEFAULTS ").append(fieldDefaults.values());
     return result.toString();
   }
@@ -462,12 +556,13 @@ public class InsertStatement implements Statement,
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result + ((fieldDefaults == null) ? 0 : fieldDefaults.hashCode());
-    result = prime * result + ((fields == null) ? 0 : fields.hashCode());
-    result = prime * result + ((fromTable == null) ? 0 : fromTable.hashCode());
-    result = prime * result + ((selectStatement == null) ? 0 : selectStatement.hashCode());
-    result = prime * result + ((table == null) ? 0 : table.hashCode());
-    result = prime * result + ((values == null) ? 0 : values.hashCode());
+    result = prime * result + (fieldDefaults == null ? 0 : fieldDefaults.hashCode());
+    result = prime * result + (hints == null ? 0 : hints.hashCode());
+    result = prime * result + (fields == null ? 0 : fields.hashCode());
+    result = prime * result + (fromTable == null ? 0 : fromTable.hashCode());
+    result = prime * result + (selectStatement == null ? 0 : selectStatement.hashCode());
+    result = prime * result + (table == null ? 0 : table.hashCode());
+    result = prime * result + (values == null ? 0 : values.hashCode());
     return result;
   }
 
@@ -490,6 +585,11 @@ public class InsertStatement implements Statement,
       if (other.fields != null)
         return false;
     } else if (!fields.equals(other.fields))
+      return false;
+    if (hints == null) {
+      if (other.hints != null)
+        return false;
+    } else if (!hints.equals(other.hints))
       return false;
     if (fromTable == null) {
       if (other.fromTable != null)
@@ -527,5 +627,24 @@ public class InsertStatement implements Statement,
       .dispatch(fields)
       .dispatch(values)
       .dispatch(fieldDefaults.values());
+  }
+
+
+  @Override
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
+
+    if(selectStatement != null) {
+      selectStatement.accept(visitor);
+    }
+    if(fields != null) {
+      fields.stream().forEach(f -> f.accept(visitor));
+    }
+    if(values != null) {
+      values.stream().forEach(v -> v.accept(visitor));
+    }
+    if(fieldDefaults != null) {
+      fieldDefaults.values().stream().forEach(f -> f.accept(visitor));
+    }
   }
 }

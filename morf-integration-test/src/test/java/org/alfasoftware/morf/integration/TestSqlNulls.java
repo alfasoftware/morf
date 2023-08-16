@@ -75,6 +75,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 
@@ -88,7 +89,7 @@ import net.jcip.annotations.NotThreadSafe;
  */
 @NotThreadSafe
 public class TestSqlNulls {
-
+  
   @Rule
   public InjectMembersRule injectMembersRule = new InjectMembersRule(new TestingDataSourceModule());
 
@@ -110,7 +111,7 @@ public class TestSqlNulls {
       .columns(
         column("id", DataType.BIG_INTEGER).primaryKey(),
         column("name", DataType.STRING, 10).nullable(),
-        column("value", DataType.DECIMAL, 9, 5).nullable()
+        column("val", DataType.DECIMAL, 9, 5).nullable()
       )
   );
 
@@ -119,19 +120,19 @@ public class TestSqlNulls {
       record()
         .setLong("id", 1L)
         .setString("name", "A")
-        .setBigDecimal("value", new BigDecimal("3.5")),
+        .setBigDecimal("val", new BigDecimal("3.5")),
       record()
         .setLong("id", 2L)
         .setString("name", "N")
-        .setBigDecimal("value", null),
+        .setBigDecimal("val", null),
       record()
         .setLong("id", 3L)
         .setString("name", null)
-        .setBigDecimal("value", BigDecimal.ONE),
+        .setBigDecimal("val", BigDecimal.ONE),
       record()
         .setLong("id", 4L)
         .setString("name", "X")
-        .setBigDecimal("value", null)
+        .setBigDecimal("val", null)
     );
 
   private String databaseType;
@@ -156,7 +157,7 @@ public class TestSqlNulls {
     final SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
 
     SelectStatement statement =
-        select(field("id"), field("name"), field("value"), literal(-7))
+        select(field("id"), field("name"), field("val"), literal(-7))
           .from(tableRef("SimpleTypes"))
           .where(field("id").eq(1));
 
@@ -239,7 +240,7 @@ public class TestSqlNulls {
           // concat
           concat(field("name"), field("name")),
           concat(literal("x"), field("name")),
-          concat(field("name"), literal("x")),
+          concat(ImmutableList.of(field("name"), literal("x"))),
           // last column
           literal(-7))
           .from(tableRef("SimpleTypes"))
@@ -293,23 +294,23 @@ public class TestSqlNulls {
     SelectStatement statement =
         select(
           field("id"),
-          field("value"),
+          field("val"),
           // least, greatest
-          least(field("value"), field("value")),
-          least(field("value"), literal(5)),
-          greatest(field("value"), field("value")),
-          greatest(field("value"), literal(1)),
+          least(field("val"), field("val")),
+          least(field("val"), literal(5)),
+          greatest(field("val"), field("val")),
+          greatest(field("val"), literal(1)),
           // round, floor
-          round(field("value"), literal(2)),
+          round(field("val"), literal(2)),
           round(literal(2.2222), nullLiteral()),
-          floor(field("value")),
+          floor(field("val")),
           // mod, power
-          mod(field("value"), literal(2)),
+          mod(field("val"), literal(2)),
           mod(literal(2.2222), nullLiteral()),
-          power(field("value"), literal(2)),
+          power(field("val"), literal(2)),
           power(literal(2.2222), nullLiteral()),
           // algebra
-          field("value").plus(literal(2)),
+          field("val").plus(literal(2)),
           // last column
           literal(-7))
           .from(tableRef("SimpleTypes"))
@@ -376,16 +377,16 @@ public class TestSqlNulls {
     SelectStatement statement =
         select(
           count(),
-          count(field("value")),
-          countDistinct(field("value")),
+          count(field("val")),
+          countDistinct(field("val")),
           // min, max, avg
-          min(field("value")),
-          max(field("value")),
-          average(field("value")),
-          averageDistinct(field("value")),
+          min(field("val")),
+          max(field("val")),
+          average(field("val")),
+          averageDistinct(field("val")),
           // sum
-          sum(field("value")),
-          sumDistinct(field("value")),
+          sum(field("val")),
+          sumDistinct(field("val")),
           // last column
           literal(-7))
           .from(tableRef("SimpleTypes"))
@@ -421,16 +422,16 @@ public class TestSqlNulls {
     SelectStatement statement =
         select(
           count(),
-          count(field("value")),
-          countDistinct(field("value")),
+          count(field("val")),
+          countDistinct(field("val")),
           // min, max, avg
-          min(field("value")),
-          max(field("value")),
-          average(field("value")),
-          averageDistinct(field("value")),
+          min(field("val")),
+          max(field("val")),
+          average(field("val")),
+          averageDistinct(field("val")),
           // sum
-          sum(field("value")),
-          sumDistinct(field("value")),
+          sum(field("val")),
+          sumDistinct(field("val")),
           // last column
           literal(-7))
           .from(tableRef("SimpleTypes"))
@@ -466,16 +467,16 @@ public class TestSqlNulls {
     SelectStatement statement =
         select(
           count(),
-          count(field("value")),
-          countDistinct(field("value")),
+          count(field("val")),
+          countDistinct(field("val")),
           // min, max, avg
-          min(field("value")),
-          max(field("value")),
-          average(field("value")),
-          averageDistinct(field("value")),
+          min(field("val")),
+          max(field("val")),
+          average(field("val")),
+          averageDistinct(field("val")),
           // sum
-          sum(field("value")),
-          sumDistinct(field("value")),
+          sum(field("val")),
+          sumDistinct(field("val")),
           // last column
           literal(-7))
           .from(tableRef("SimpleTypes"))

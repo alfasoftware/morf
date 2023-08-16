@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.sql.element;
 
+import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.element.Direction.ASCENDING;
 import static org.alfasoftware.morf.sql.element.Direction.DESCENDING;
 import static org.alfasoftware.morf.sql.element.FieldReference.field;
@@ -22,13 +23,18 @@ import static org.alfasoftware.morf.sql.element.NullValueHandling.FIRST;
 import static org.alfasoftware.morf.sql.element.NullValueHandling.LAST;
 import static org.alfasoftware.morf.sql.element.NullValueHandling.NONE;
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.verify;
 
 import java.util.List;
 
+import org.alfasoftware.morf.upgrade.UpgradeTableResolutionVisitor;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import com.google.common.collect.ImmutableList;
 
@@ -39,6 +45,15 @@ import com.google.common.collect.ImmutableList;
  */
 @RunWith(Parameterized.class)
 public class TestFieldReference extends AbstractAliasedFieldTest<FieldReference> {
+
+  @Mock
+  private UpgradeTableResolutionVisitor res;
+
+  @Before
+  public void setUp() throws Exception {
+    MockitoAnnotations.openMocks(this);
+  }
+
 
   @Parameters(name = "{0}")
   public static List<Object[]> data() {
@@ -87,5 +102,18 @@ public class TestFieldReference extends AbstractAliasedFieldTest<FieldReference>
     assertEquals(fr.getName(), frCopy.getName());
     assertEquals(fr.getAlias(), frCopy.getAlias());
     assertEquals(fr.getDirection(), frCopy.getDirection());
+  }
+
+
+  @Test
+  public void tableResolutionDetectsAllTables() {
+    //given
+    FieldReference onTest = new FieldReference(tableRef("table1"), "x");
+
+    //when
+    onTest.accept(res);
+
+    //then
+    verify(res).visit(onTest);
   }
 }

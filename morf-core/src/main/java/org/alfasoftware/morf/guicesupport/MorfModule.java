@@ -14,11 +14,20 @@
  */
 package org.alfasoftware.morf.guicesupport;
 
+import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.upgrade.GraphBasedUpgradeBuilder.GraphBasedUpgradeBuilderFactory;
 import org.alfasoftware.morf.upgrade.TableContribution;
+import org.alfasoftware.morf.upgrade.Upgrade;
+import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
+import org.alfasoftware.morf.upgrade.UpgradeStatusTableService;
+import org.alfasoftware.morf.upgrade.ViewChangesDeploymentHelper;
+import org.alfasoftware.morf.upgrade.ViewDeploymentValidator;
 import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 
 import com.google.inject.AbstractModule;
+import com.google.inject.Provides;
+import com.google.inject.Singleton;
 import com.google.inject.multibindings.Multibinder;
 
 /**
@@ -36,6 +45,30 @@ public class MorfModule extends AbstractModule {
 
     Multibinder<TableContribution> tableMultibinder = Multibinder.newSetBinder(binder(), TableContribution.class);
     tableMultibinder.addBinding().to(DatabaseUpgradeTableContribution.class);
+  }
+
+
+  /**
+   * Singleton provider creating an instance of {@link Upgrade}.
+   *
+   * @param connectionResources the connection resources
+   * @param factory the upgrade path factory
+   * @param upgradeStatusTableService the service class for managing the status of temporary upgrade tables
+   * @param viewChangesDeploymentHelper the view deployment helper
+   * @param viewDeploymentValidator the view deployment validator
+   * @param graphBasedUpgradeBuilderFactory the graph based upgrade builder
+   * @return the singleton instance of {@link Upgrade}.
+   */
+  @Provides
+  @Singleton
+  public Upgrade provideUpgrade(ConnectionResources connectionResources,
+      UpgradePathFactory factory,
+      UpgradeStatusTableService upgradeStatusTableService,
+      ViewChangesDeploymentHelper viewChangesDeploymentHelper,
+      ViewDeploymentValidator viewDeploymentValidator,
+      GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory) {
+    return new Upgrade(connectionResources, factory, upgradeStatusTableService, viewChangesDeploymentHelper,
+      viewDeploymentValidator, graphBasedUpgradeBuilderFactory);
   }
 }
 

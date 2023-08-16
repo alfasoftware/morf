@@ -17,6 +17,7 @@ package org.alfasoftware.morf.sql.element;
 
 import java.util.List;
 
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
@@ -136,8 +137,8 @@ public class CaseStatement extends AliasedField implements Driver {
   public int hashCode() {
     final int prime = 31;
     int result = super.hashCode();
-    result = prime * result + ((defaultValue == null) ? 0 : defaultValue.hashCode());
-    result = prime * result + ((whenConditions == null) ? 0 : whenConditions.hashCode());
+    result = prime * result + (defaultValue == null ? 0 : defaultValue.hashCode());
+    result = prime * result + (whenConditions == null ? 0 : whenConditions.hashCode());
     return result;
   }
 
@@ -162,5 +163,17 @@ public class CaseStatement extends AliasedField implements Driver {
     } else if (!whenConditions.equals(other.whenConditions))
       return false;
     return true;
+  }
+
+
+  @Override
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
+    if(whenConditions != null) {
+      whenConditions.stream().forEach(wc -> wc.accept(visitor));
+    }
+    if(defaultValue != null) {
+      defaultValue.accept(visitor);
+    }
   }
 }

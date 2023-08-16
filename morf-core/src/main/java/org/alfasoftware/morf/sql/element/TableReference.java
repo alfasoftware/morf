@@ -53,6 +53,12 @@ public class TableReference implements DeepCopyableWithTransformation<TableRefer
   private final boolean temporary;
 
   /**
+   * If the table exists in another database then it may be possible to access it with an appropriate database link
+   * (not supported by some database platforms)
+   */
+  private final String dblink;
+
+  /**
    * Constructor used to create the deep copy
    *
    * @param sourceTable the source table to copy the values from
@@ -61,8 +67,10 @@ public class TableReference implements DeepCopyableWithTransformation<TableRefer
     this.name = sourceTable.name;
     this.alias = alias;
     this.schemaName = sourceTable.schemaName;
+    this.dblink = sourceTable.dblink;
     this.temporary = sourceTable.temporary;
   }
+
 
   /**
    * Construct a new table with a given name.
@@ -73,6 +81,7 @@ public class TableReference implements DeepCopyableWithTransformation<TableRefer
     this.name = name;
     this.alias = "";
     this.schemaName = null;
+    this.dblink = "";
     this.temporary = false;
   }
 
@@ -88,6 +97,24 @@ public class TableReference implements DeepCopyableWithTransformation<TableRefer
     this.name = tableName;
     this.schemaName = schemaName;
     this.alias = "";
+    this.dblink = "";
+    this.temporary = false;
+  }
+
+
+  /**
+   * Construct a new table with a given name in a given schema.
+   * Specifies the schema which contains this table.
+   *
+   * @param schemaName the schema which contains this table. (optional - {@code null} value allowed).
+   * @param tableName the name of the table
+   * @param dblink database link if table exists in another database
+   */
+  public TableReference(String schemaName, String tableName, String dblink) {
+    this.name = tableName;
+    this.schemaName = schemaName;
+    this.alias = "";
+    this.dblink = dblink;
     this.temporary = false;
   }
 
@@ -103,6 +130,7 @@ public class TableReference implements DeepCopyableWithTransformation<TableRefer
     this.name = tableName;
     this.schemaName = null;
     this.alias = "";
+    this.dblink = "";
     this.temporary = temporary;
   }
 
@@ -164,6 +192,16 @@ public class TableReference implements DeepCopyableWithTransformation<TableRefer
 
 
   /**
+   * Get the dblink for the table
+   *
+   * @return the dblink
+   */
+  public String getDblink() {
+    return dblink;
+  }
+
+
+  /**
    * @param name the name to set
    * @deprecated Do not modify {@link TableReference} instances. This will be removed very soon.
    */
@@ -201,6 +239,7 @@ public class TableReference implements DeepCopyableWithTransformation<TableRefer
     if(isTemporary()) result.append("/*Temporary table*/ ");
     if (!StringUtils.isEmpty(schemaName)) result.append(schemaName).append(".");
     result.append(name);
+    if (!StringUtils.isEmpty(dblink)) result.append("@").append(dblink);
     if (!StringUtils.isEmpty(alias)) result.append(" ").append(alias);
     return result.toString();
   }
@@ -233,6 +272,7 @@ public class TableReference implements DeepCopyableWithTransformation<TableRefer
         .append(name, rhs.name)
         .append(alias, rhs.alias)
         .append(temporary, rhs.temporary)
+        .append(dblink, rhs.dblink)
         .isEquals();
   }
 
@@ -247,6 +287,7 @@ public class TableReference implements DeepCopyableWithTransformation<TableRefer
         .append(name)
         .append(alias)
         .append(temporary)
+        .append(dblink)
         .toHashCode();
   }
 }

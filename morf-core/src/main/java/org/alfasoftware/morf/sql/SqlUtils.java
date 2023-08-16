@@ -19,14 +19,17 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.sql.element.Criterion.eq;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
+import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.BracketedExpression;
 import org.alfasoftware.morf.sql.element.CaseStatement;
 import org.alfasoftware.morf.sql.element.Cast;
+import org.alfasoftware.morf.sql.element.ClobFieldLiteral;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
@@ -40,7 +43,10 @@ import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.sql.element.WhenCondition;
 import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Validate;
 import org.joda.time.LocalDate;
+
+import com.google.common.collect.Iterables;
 
 /**
  * Utility methods for creating SQL constructs.
@@ -72,6 +78,20 @@ public class SqlUtils {
    */
   public static TableReference tableRef(String tableName) {
     return new TableReference(tableName);
+  }
+
+
+  /**
+   * Construct a new table with a given name with provided DB-link.
+   *
+   * @param tableName the name of the table
+   * @param dblink database link if table exists in another database
+   * @return {@link TableReference}
+   */
+  public static TableReference tableRef(String tableName, String dblink) {
+    Validate.notEmpty(tableName, "Table name was not provided.");
+    Validate.notEmpty(dblink, "DB-link name was not provided.");
+    return new TableReference(null, tableName, dblink);
   }
 
 
@@ -344,6 +364,38 @@ public class SqlUtils {
 
 
   /**
+   * Constructs a new {@link BlobFieldLiteral} from given bytes.
+   *
+   * @param value the literal value to use
+   * @return {@link BlobFieldLiteral}
+   */
+  public static BlobFieldLiteral blobLiteral(byte[] value) {
+    return new BlobFieldLiteral(value);
+  }
+
+
+  /**
+   * Constructs a new {@link BlobFieldLiteral} from given String,
+   * which is turned into bytes using a UTF-8 encoding.
+   *
+   * @param value the literal value to use
+   * @return {@link BlobFieldLiteral}
+   */
+  public static BlobFieldLiteral blobLiteral(String value) {
+    return new BlobFieldLiteral(value.getBytes(StandardCharsets.UTF_8));
+  }
+
+  /**
+   * Constructs a new ClobFieldLiteral from a given string.
+   * @param value - the literal value to use.
+   * @return ClobFieldLiteral
+   */
+  public static ClobFieldLiteral clobLiteral(String value) {
+    return new ClobFieldLiteral(value);
+  }
+
+
+  /**
    * Constructs a new SQL named parameter.  Usage:
    *
    * <pre>parameter("name").type(DataType.INTEGER)
@@ -448,6 +500,30 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
    * @return A builder to create a {@link CaseStatement}.
    */
   public static CaseStatementBuilder caseStatement(WhenCondition... whenClauses) {
+    return new CaseStatementBuilder(whenClauses);
+  }
+
+
+  /**
+   * Builder method for {@link CaseStatement}.
+   *
+   * <p>
+   * Example:
+   * </p>
+   *
+   * <pre>
+   * caseStatement(when(eq(field(&quot;receiptType&quot;), literal(&quot;R&quot;))).then(literal(&quot;Receipt&quot;)),
+   *               when(eq(field(&quot;receiptType&quot;), literal(&quot;S&quot;))).then(literal(&quot;Agreement Suspense&quot;)),
+   *               when(eq(field(&quot;receiptType&quot;), literal(&quot;T&quot;))).then(literal(&quot;General Suspense&quot;)))
+   *              .otherwise(literal(&quot;UNKNOWN&quot;))
+   * </pre>
+   *
+   * @see #when(Criterion)
+   *
+   * @param whenClauses the {@link WhenCondition} portions of the case statement
+   * @return A builder to create a {@link CaseStatement}.
+   */
+  public static CaseStatementBuilder caseStatement(Iterable<? extends WhenCondition> whenClauses) {
     return new CaseStatementBuilder(whenClauses);
   }
 
@@ -581,6 +657,11 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
      */
     private CaseStatementBuilder(WhenCondition... whenClauses) {
       this.whenClauses = whenClauses.clone();
+    }
+
+
+    private CaseStatementBuilder(Iterable<? extends WhenCondition> whenClauses) {
+      this.whenClauses = Iterables.toArray(whenClauses, WhenCondition.class);
     }
 
 
@@ -732,6 +813,17 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
    * @return the expression concatenating the passed expressions.
    */
   public static ConcatenatedField concat(AliasedField... fields) {
+    return new ConcatenatedField(fields);
+  }
+
+
+  /**
+   * Returns an expression concatenating all the passed expressions.
+   *
+   * @param fields the expressions to concatenate.
+   * @return the expression concatenating the passed expressions.
+   */
+  public static ConcatenatedField concat(Iterable<? extends AliasedField> fields) {
     return new ConcatenatedField(fields);
   }
 

@@ -86,7 +86,7 @@ public class MockConnectionResources  {
    * Allow specification of the results of a query.
    *
    * @param query SQL
-   * @param result Results.
+   * @param resultSet Results.
    * @return this.
    */
   public MockConnectionResources withResultSet(String query, ResultSet resultSet) {

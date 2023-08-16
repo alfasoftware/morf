@@ -22,6 +22,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.alfasoftware.morf.sql.SqlUtils.blobLiteral;
 import static org.alfasoftware.morf.sql.SqlUtils.caseStatement;
 import static org.alfasoftware.morf.sql.SqlUtils.cast;
 import static org.alfasoftware.morf.sql.SqlUtils.concat;
@@ -50,6 +51,7 @@ import static org.alfasoftware.morf.sql.element.Criterion.or;
 import static org.alfasoftware.morf.sql.element.Function.addDays;
 import static org.alfasoftware.morf.sql.element.Function.average;
 import static org.alfasoftware.morf.sql.element.Function.averageDistinct;
+import static org.alfasoftware.morf.sql.element.Function.blobLength;
 import static org.alfasoftware.morf.sql.element.Function.coalesce;
 import static org.alfasoftware.morf.sql.element.Function.count;
 import static org.alfasoftware.morf.sql.element.Function.countDistinct;
@@ -201,6 +203,9 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
 
   private static final Log log = LogFactory.getLog(TestSqlStatements.class);
 
+  private static final String BLOB1_VALUE = "A Blob named One";
+  private static final String BLOB2_VALUE = "A Blob named Two";
+
   @Rule public InjectMembersRule injectMembersRule = new InjectMembersRule(new TestingDataSourceModule());
 
   @Inject
@@ -254,6 +259,11 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
       .columns(
         column("column1", DataType.BOOLEAN).nullable(),
         column("column2", DataType.BOOLEAN).nullable()
+      ),
+    table("BlobTable")
+      .columns(
+        column("column1", DataType.BLOB).nullable(),
+        column("column2", DataType.BLOB).nullable()
       ),
     table("AccumulateBooleanTable")
       .columns(
@@ -451,6 +461,11 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
       record()
         .setBoolean("column1", false)
         .setBoolean("column2", true)
+    )
+    .table("BlobTable",
+      record()
+        .setByteArray("column1", BLOB1_VALUE.getBytes())
+        .setByteArray("column2", BLOB2_VALUE.getBytes())
     )
     .table("AccumulateBooleanTable",
       record()
@@ -1326,7 +1341,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
               assertEquals("Inserted record 1 - string", "a", resultSet.getString(2));
               break;
             case 3:
-              //AutoNumber cannot be expected to be sequential. E.g. NuoDB
+              //AutoNumber cannot be expected to be sequential.
               assertFalse("Inserted record 2, long, should be unique", expectedAutonumber.contains(resultSet.getLong(1)));
               assertTrue("Inserted record 2, long, should be greater than the autonumber start", resultSet.getLong(1) > 10L);
               assertEquals("Inserted record 2 - string", "b", resultSet.getString(2));
@@ -1602,7 +1617,80 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
   }
 
 
-  /**
+    /**
+     * Test the behaviour of SELECTs, INSERTs and UPDATEs of blob fields.  In the process
+     * we test a lot of {@link SqlScriptExecutor}'s statement handling capabilities
+     *
+     * @throws SQLException if something goes wrong.
+     */
+    @Test
+    public void testBlobFields() throws SQLException {
+
+        SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+
+        // Set up queries
+        InsertStatement insertStatement = insert()
+                .into(tableRef("BlobTable"))
+                .fields(field("column1"), field("column2"))
+                .values(blobLiteral(BLOB1_VALUE).as("column1"), blobLiteral(BLOB2_VALUE.getBytes()).as("column2"));
+        SelectStatement selectStatementAfterInsert = select(field("column1"), field("column2"))
+                .from(tableRef("BlobTable"))
+                .where(or(
+                        field("column1").eq(blobLiteral(BLOB1_VALUE.getBytes())),
+                        field("column1").eq(blobLiteral(BLOB1_VALUE))
+                ));
+        UpdateStatement updateStatement = update(tableRef("BlobTable"))
+                .set(blobLiteral(BLOB1_VALUE + " Updated").as("column1"), blobLiteral((BLOB2_VALUE + " Updated").getBytes()).as("column2"));
+        SelectStatement selectStatementAfterUpdate = select(field("column1"), field("column2"))
+                .from(tableRef("BlobTable"))
+                .where(or(
+                        field("column1").eq(blobLiteral((BLOB1_VALUE + " Updated").getBytes())),
+                        field("column1").eq(blobLiteral(BLOB1_VALUE + " Updated"))
+                ));
+
+        // Insert
+        executor.execute(convertStatementToSQL(insertStatement, schema, null), connection);
+
+        // Check result - note that this is deliberately not tidy - we are making sure that results get
+        // passed back up to this scope correctly.
+        String sql = convertStatementToSQL(selectStatementAfterInsert);
+        Integer numberOfRecords = executor.executeQuery(sql, connection, new ResultSetProcessor<Integer>() {
+            @Override
+            public Integer process(ResultSet resultSet) throws SQLException {
+                int result = 0;
+                while (resultSet.next()) {
+                    result++;
+                    assertEquals("column1 blob value not correctly set/returned after insert", BLOB1_VALUE, new String(resultSet.getBytes(1)));
+                    assertEquals("column2 blob value not correctly set/returned after insert", BLOB2_VALUE, new String(resultSet.getBytes(2)));
+                }
+                return result;
+            }
+        });
+        assertEquals("Should be exactly two records", 2, numberOfRecords.intValue());
+
+        // Update
+        executor.execute(ImmutableList.of(convertStatementToSQL(updateStatement)), connection);
+
+        // Check result- note that this is deliberately not tidy - we are making sure that results get
+        // passed back up to this scope correctly.
+        sql = convertStatementToSQL(selectStatementAfterUpdate);
+        numberOfRecords = executor.executeQuery(sql, connection, new ResultSetProcessor<Integer>() {
+            @Override
+            public Integer process(ResultSet resultSet) throws SQLException {
+                int result = 0;
+                while (resultSet.next()) {
+                    result++;
+                    assertEquals("column1 blob value not correctly set/returned after update", BLOB1_VALUE + " Updated", new String(resultSet.getBytes(1)));
+                    assertEquals("column2 blob value not correctly set/returned after update", BLOB2_VALUE + " Updated", new String(resultSet.getBytes(2)));
+                }
+                return result;
+            }
+        });
+        assertEquals("Should be exactly two records", 2, numberOfRecords.intValue());
+    }
+
+
+    /**
    * Asserts that the number of records in the table are as expected.
    *
    * @param numberOfRecords The number of records expected.
@@ -1649,8 +1737,8 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
 
 
   /**
-   * Test the behaviour of the {@link org.alfasoftware.morf.sql.SqlUtils.isEmpty(AliasedField)}
-   * and {@link org.alfasoftware.morf.sql.SqlUtils.isNotEmpty(AliasedField)} SQL criteria against all {@linkplain SqlDialect}s
+   * Test the behaviour of the {@link org.alfasoftware.morf.sql.SqlUtils#isEmpty(AliasedField)}
+   * and {@link org.alfasoftware.morf.sql.SqlUtils#isNotEmpty(AliasedField)} SQL criteria against all {@linkplain SqlDialect}s
    *
    * @throws SQLException if something goes wrong.
    */
@@ -2231,7 +2319,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     final byte[] value = "hello world BLOB".getBytes();
 
     SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
-    String sql = convertStatementToSQL(select(field("blobCol"), length(field("blobCol")).as("lengthResult"))
+    String sql = convertStatementToSQL(select(field("blobCol"), blobLength(field("blobCol")).as("lengthResult"))
                                                                         .from(tableRef("SimpleTypes"))
                                                                         .orderBy(field("lengthResult")));
 
@@ -3143,8 +3231,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testWindowFunction() {
-    assumeTrue(TEST_ONLY_RUN_WITH_WINDOW_FUNCTION_SUPPORT,connectionResources.sqlDialect().supportsWindowFunctions());
-
     assertResultsMatch(
       select(
        field("id"),
@@ -3156,7 +3242,8 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
           .orderBy(field("id"))
           .build().as("runningTotal"))
 
-        .from(tableRef("WindowFunctionTable")),
+        .from(tableRef("WindowFunctionTable"))
+        .orderBy(field("partitionValue1")),
 
         "1-A-2.1",
         "2-A-5.3",
@@ -3173,7 +3260,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testWindowFunctionMultiPartitionBy() {
-    assumeTrue(TEST_ONLY_RUN_WITH_WINDOW_FUNCTION_SUPPORT,connectionResources.sqlDialect().supportsWindowFunctions());
 
     assertResultsMatch(
       select(
@@ -3191,15 +3277,16 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
            .partitionBy(field("partitionValue1"),field("partitionValue2"))
            .build().as("countPerPartition"))
 
-        .from(tableRef("WindowFunctionTable")),
+        .from(tableRef("WindowFunctionTable"))
+        .orderBy(field("id")),
 
-        "2-A-Y-3.2-2",
-        "4-A-Y-3.5-2",
         "1-A-Z-2.1-2",
-        "5-A-Z-2-2",
-        "7-B-Y-10.2-1",
+        "2-A-Y-3.2-2",
         "3-B-Z-5.7-2",
-        "6-B-Z-4.55-2");
+        "4-A-Y-3.5-2",
+        "5-A-Z-2-2",
+        "6-B-Z-4.55-2",
+        "7-B-Y-10.2-1");
   }
 
 
@@ -3208,7 +3295,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testWindowFunctionWithOrderByNoPartitionBy() {
-    assumeTrue(TEST_ONLY_RUN_WITH_WINDOW_FUNCTION_SUPPORT,connectionResources.sqlDialect().supportsWindowFunctions());
 
     assertResultsMatch(
       select(
@@ -3216,7 +3302,8 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
          count())
          .orderBy(field("partitionValue1"))
          .build().as("theCount"))
-       .from(tableRef("WindowFunctionTable")),
+       .from(tableRef("WindowFunctionTable"))
+       .orderBy(field("partitionValue1")),
 
        "4","4","4","4","7","7","7");
   }
@@ -3229,7 +3316,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testWindowFunctionWithPartitionByNoOrderBy() {
-    assumeTrue(TEST_ONLY_RUN_WITH_WINDOW_FUNCTION_SUPPORT,connectionResources.sqlDialect().supportsWindowFunctions());
 
     assertResultsMatch(
       select(
@@ -3237,7 +3323,8 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
           sum(field("aggregationValue")))
           .partitionBy(field("partitionValue1"))
           .build().as("unorderedWindowSum"))
-        .from(tableRef("WindowFunctionTable")),
+        .from(tableRef("WindowFunctionTable"))
+        .orderBy(field("partitionValue1")),
 
        "11","11","11","11","19.3","19.3","19.3");
   }
@@ -3248,7 +3335,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testWindowFunctionWithoutOrderByOrPartitionBy() {
-    assumeTrue(TEST_ONLY_RUN_WITH_WINDOW_FUNCTION_SUPPORT,connectionResources.sqlDialect().supportsWindowFunctions());
 
     assertResultsMatch(
       select(

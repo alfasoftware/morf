@@ -93,7 +93,7 @@ class SqlServerMetaDataProvider extends DatabaseMetaDataProvider {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isPrimaryKeyIndex(java.lang.String)
+   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isPrimaryKeyIndex(RealName)
    */
   @Override
   protected boolean isPrimaryKeyIndex(RealName indexName) {
@@ -123,7 +123,7 @@ class SqlServerMetaDataProvider extends DatabaseMetaDataProvider {
    * SQL Server does not return information on auto-increment columns in any way which JDBC can pick up,
    * so we need a customised method for fetching this information.
    *
-   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#setAdditionalColumnMetadata(java.lang.String, org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder, java.sql.ResultSet)
+   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#setAdditionalColumnMetadata(RealName, ColumnBuilder, ResultSet)
    */
   @Override
   protected ColumnBuilder setAdditionalColumnMetadata(RealName tableName, ColumnBuilder columnBuilder, ResultSet columnMetaData)

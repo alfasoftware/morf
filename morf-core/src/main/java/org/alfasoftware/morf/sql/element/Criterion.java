@@ -21,7 +21,9 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.sql.SchemaAndDataChangeVisitable;
 import org.alfasoftware.morf.sql.TempTransitionalBuilderWrapper;
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
@@ -52,7 +54,7 @@ import com.google.common.collect.Lists;
  *
  * @author Copyright (c) Alfa Financial Software 2009
  */
-public class Criterion implements Driver, DeepCopyableWithTransformation<Criterion,Builder<Criterion>>{
+public class Criterion implements Driver, DeepCopyableWithTransformation<Criterion, Builder<Criterion>>, SchemaAndDataChangeVisitable {
 
   /**
    * Operator to use in the criterion
@@ -566,12 +568,21 @@ public class Criterion implements Driver, DeepCopyableWithTransformation<Criteri
       return operator.toString() + " " + selectStatement;
     }
     if (criteria.isEmpty()) {
-      return String.format("%s %s %s", field, operator, value);
+      switch(operator) {
+        case ISNULL:
+        case ISNOTNULL:
+          return String.format("%s %s", field, operator);
+
+        default:
+          return String.format("%s %s %s", field, operator, value);
+      }
     }
     StringBuilder result = new StringBuilder();
-    boolean first = true;
+    boolean only = criteria.size() == 1;
+    boolean first = criteria.size() > 1;
     for (Criterion criterion : criteria) {
-      if (!first)result.append(" ").append(operator).append(" ");
+      if (!only && !first) result.append(" ");
+      if (!first) result.append(operator).append(" ");
       result.append("(").append(criterion).append(")");
       first =  false;
     }
@@ -657,5 +668,18 @@ public class Criterion implements Driver, DeepCopyableWithTransformation<Criteri
     } else if (!value.equals(other.value))
       return false;
     return true;
+  }
+
+
+  @Override
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
+    if(selectStatement != null) {
+      selectStatement.accept(visitor);
+    }
+    criteria.stream().forEach(crit -> crit.accept(visitor));
+    if(field != null) {
+      field.accept(visitor);
+    }
   }
 }

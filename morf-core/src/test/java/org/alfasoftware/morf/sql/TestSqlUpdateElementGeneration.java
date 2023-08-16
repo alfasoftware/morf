@@ -52,6 +52,27 @@ public class TestSqlUpdateElementGeneration {
     assertEquals("Field list should have 1", 1, stmt.getFields().size());
   }
 
+  /**
+   * Tests that the {@link UseParallelDml} hint can be added to the update statement.
+   */
+  @Test
+  public void testUpdateWithUseParallelDmlHintWithoutDegreeOfParallelism() {
+    UpdateStatement stmt = new UpdateStatement(new TableReference("Agreement")).useParallelDml()
+            .set(new FieldLiteral("A1001001").as("agreementNumber"));
+
+    assertTrue("Use parallel dml hint", stmt.getHints().contains(new UseParallelDml()));
+  }
+
+  /**
+   * Tests that the {@link UseParallelDml} hint can be added to the update statement.
+   */
+  @Test
+  public void testUpdateWithUseParallelDmlHintWithDegreeOfParallelism() {
+    UpdateStatement stmt = new UpdateStatement(new TableReference("Agreement")).useParallelDml(4)
+            .set(new FieldLiteral("A1001001").as("agreementNumber"));
+
+    assertTrue("Use parallel dml hint with degreeOfParallelism", stmt.getHints().contains(new UseParallelDml(4)));
+  }
 
   /**
    * Tests update statement with where clause

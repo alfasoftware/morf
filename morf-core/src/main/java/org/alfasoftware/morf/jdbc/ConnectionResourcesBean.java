@@ -73,6 +73,8 @@ import com.google.common.io.Resources;
  *  <dt>userName</dt><dd>The JDBC username.</dd>
  *  <dt>password</dt><dd>The JDBC password.</dd>
  *  <dt>statementPoolingMaxStatements</dt><dd>The maximum number of statements to cache in a statement pool.</dd>
+ *  <dt>fetchSizeForBulkSelects</dt><dd>The JDBC Fetch Size to use when performing bulk select operations, intended to replace the default in {@link SqlDialect#fetchSizeForBulkSelects()}.</dd>
+ *  <dt>fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming</dt><dd>The JDBC Fetch Size to use when performing bulk select operations while allowing connection use, intended to replace the default in {@link SqlDialect#fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming()}.</dd>
  * </dl>
  *
  * @author Copyright (c) Alfa Financial Software 2009
@@ -87,6 +89,8 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
   private String schemaName;
   private String userName;
   private int statementPoolingMaxStatements;
+  private Integer fetchSizeForBulkSelects;
+  private Integer fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming;
   private transient String password;
 
 
@@ -132,6 +136,10 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
     this.userName = properties.getProperty("userName");
     String statementPoolingMaxStatementsAsString = properties.getProperty("statementPoolingMaxStatements");
     if (statementPoolingMaxStatementsAsString != null) this.statementPoolingMaxStatements = Integer.parseInt(statementPoolingMaxStatementsAsString);
+    String fetchSizeForBulkSelectsAsString = properties.getProperty("fetchSizeForBulkSelects");
+    if (fetchSizeForBulkSelectsAsString != null) this.fetchSizeForBulkSelects = Integer.parseInt(fetchSizeForBulkSelectsAsString);
+    String fetchSizeForBulkSelectsAllowingConnectionUseDuringStreamingAsString = properties.getProperty("fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming");
+    if (fetchSizeForBulkSelectsAllowingConnectionUseDuringStreamingAsString != null) this.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming = Integer.parseInt(fetchSizeForBulkSelectsAllowingConnectionUseDuringStreamingAsString);
     this.password = properties.getProperty("password");
   }
 
@@ -240,6 +248,40 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
   }
 
 
+  /**
+   * @see ConnectionResources#getFetchSizeForBulkSelects()
+   */
+  @Override
+  public Integer getFetchSizeForBulkSelects() {
+    return fetchSizeForBulkSelects;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractConnectionResources#setFetchSizeForBulkSelects(Integer)
+   */
+  @Override
+  public void setFetchSizeForBulkSelects(Integer fetchSizeForBulkSelects) {
+    this.fetchSizeForBulkSelects = fetchSizeForBulkSelects;
+  }
+
+
+  /**
+   * @see ConnectionResources#getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming()
+   */
+  @Override
+  public Integer getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming() {
+    return fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractConnectionResources#setFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming(Integer)
+   */
+  @Override
+  public void setFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming(Integer fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming) {
+    this.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming = fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming;
+  }
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractConnectionResources#getHostName()
    */
@@ -401,6 +443,8 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
     result = prime * result + port;
     result = prime * result + (schemaName == null ? 0 : schemaName.hashCode());
     result = prime * result + statementPoolingMaxStatements;
+    result = prime * result + fetchSizeForBulkSelects;
+    result = prime * result + fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming;
     result = prime * result + (userName == null ? 0 : userName.hashCode());
     return result;
   }
@@ -430,6 +474,8 @@ public class ConnectionResourcesBean extends AbstractConnectionResources {
       if (other.schemaName != null) return false;
     } else if (!schemaName.equals(other.schemaName)) return false;
     if (statementPoolingMaxStatements != other.statementPoolingMaxStatements) return false;
+    if (!Objects.equals(fetchSizeForBulkSelects, other.fetchSizeForBulkSelects)) return false;
+    if (!Objects.equals(fetchSizeForBulkSelects, other.fetchSizeForBulkSelects)) return false;
     if (userName == null) {
       if (other.userName != null) return false;
     } else if (!userName.equals(other.userName)) return false;

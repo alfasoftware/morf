@@ -11,6 +11,8 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
+import java.util.StringJoiner;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
@@ -24,13 +26,23 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.DeleteStatementBuilder;
+import org.alfasoftware.morf.sql.DialectSpecificHint;
+import org.alfasoftware.morf.sql.Hint;
 import org.alfasoftware.morf.sql.MergeStatement;
+import org.alfasoftware.morf.sql.OptimiseForRowCount;
+import org.alfasoftware.morf.sql.ParallelQueryHint;
+import org.alfasoftware.morf.sql.PostgreSQLCustomHint;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
+import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.SelectStatementBuilder;
+import org.alfasoftware.morf.sql.UseImplicitJoinOrder;
+import org.alfasoftware.morf.sql.UseIndex;
 import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.FunctionType;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
@@ -38,6 +50,7 @@ import org.apache.commons.lang3.StringUtils;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 
 class PostgreSQLDialect extends SqlDialect {
 
@@ -53,12 +66,6 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
-  public boolean supportsWindowFunctions() {
-    return true;
-  }
-
-
-  @Override
   public String schemaNamePrefix() {
     String schemaName = getSchemaName();
 
@@ -70,15 +77,15 @@ class PostgreSQLDialect extends SqlDialect {
   }
 
 
-  @Override
-  protected String schemaNamePrefix(TableReference tableRef) {
+  private String schemaNamePrefix(TableReference tableRef) {
     if(tableRef.isTemporary()) {
       return "";
     }
     if (StringUtils.isEmpty(tableRef.getSchemaName())) {
       return schemaNamePrefix();
+    } else {
+      return tableRef.getSchemaName() + ".";
     }
-    return tableRef.getSchemaName() + ".";
   }
 
 
@@ -88,6 +95,25 @@ class PostgreSQLDialect extends SqlDialect {
       return "";
     }
     return schemaNamePrefix();
+  }
+
+
+  @Override
+  protected String getSqlForRowNumber(){
+    return "ROW_NUMBER() OVER()";
+  }
+
+
+  @Override
+  protected String getSqlForWindowFunction(Function function) {
+    FunctionType functionType = function.getType();
+    switch (functionType) {
+      case ROW_NUMBER:
+        return "ROW_NUMBER()";
+
+      default:
+        return super.getSqlForWindowFunction(function);
+    }
   }
 
 
@@ -146,21 +172,35 @@ class PostgreSQLDialect extends SqlDialect {
 
   @Override
   protected Collection<String> internalTableDeploymentStatements(Table table) {
+    return ImmutableList.<String>builder()
+        .addAll(createTableStatement(table))
+        .addAll(createCommentStatements(table))
+        .build();
+  }
+
+
+  @Override
+  public Collection<String> addTableFromStatementsWithCasting(Table table, SelectStatement selectStatement) {
+    return internalAddTableFromStatements(table, selectStatement, true);
+  }
+
+
+  private Collection<String> internalAddTableFromStatements(Table table, SelectStatement selectStatement, boolean withCasting) {
+    return ImmutableList.<String>builder()
+            .addAll(createTableStatement(table, selectStatement, withCasting))
+            .addAll(createFieldStatements(table))
+            .addAll(createCommentStatements(table))
+            .addAll(createAllIndexStatements(table))
+            .build();
+  }
+
+
+  private List<String> createTableStatement(Table table) {
     List<String> preStatements = new ArrayList<>();
     List<String> postStatements = new ArrayList<>();
 
     StringBuilder createTableStatement = new StringBuilder();
-
-    createTableStatement.append("CREATE ");
-
-    if(table.isTemporary()) {
-      createTableStatement.append("TEMP ");
-    }
-
-    createTableStatement.append("TABLE ")
-                        .append(schemaNamePrefix(table))
-                        .append(table.getName())
-                        .append(" (");
+    beginTableStatement(table, createTableStatement);
 
     List<String> primaryKeys = new ArrayList<>();
     boolean first = true;
@@ -169,43 +209,145 @@ class PostgreSQLDialect extends SqlDialect {
       if (!first) {
         createTableStatement.append(", ");
       }
-      createTableStatement.append(column.getName())
-                          .append(" ")
-                          .append(sqlRepresentationOfColumnType(column));
-      if(column.isAutoNumbered()) {
-        int autoNumberStart = column.getAutoNumberStart() == -1 ? 1 : column.getAutoNumberStart();
-        String autoNumberSequenceName = schemaNamePrefix() + table.getName() + "_" + column.getName() + "_seq";
-        preStatements.add("DROP SEQUENCE IF EXISTS " + autoNumberSequenceName);
-        preStatements.add("CREATE SEQUENCE " + autoNumberSequenceName + " START " + autoNumberStart);
-        createTableStatement.append(" DEFAULT nextval('")
-                            .append(autoNumberSequenceName)
-                            .append("')");
-        postStatements.add("ALTER SEQUENCE " + autoNumberSequenceName + " OWNED BY " + schemaNamePrefix() + table.getName() + "." + column.getName());
-      }
+
+      createTableStatement.append(column.getName());
+      createTableStatement.append(" ").append(sqlRepresentationOfColumnType(column));
+      handleAutoNumberedColumn(table, preStatements, postStatements, createTableStatement, column, false);
+
       if (column.isPrimaryKey()) {
         primaryKeys.add(column.getName());
       }
-      postStatements.add(addColumnComment(table, column));
+
       first = false;
     }
 
     if (!primaryKeys.isEmpty()) {
       createTableStatement
-            .append(", CONSTRAINT ")
-            .append(table.getName())
-            .append("_PK PRIMARY KEY(")
-            .append(Joiner.on(", ").join(primaryKeys))
-            .append(")");
+              .append(", CONSTRAINT ")
+              .append(table.getName())
+              .append("_PK PRIMARY KEY(")
+              .append(Joiner.on(", ").join(primaryKeys))
+              .append(")");
     }
 
     createTableStatement.append(")");
 
-    return ImmutableList.<String>builder()
-        .addAll(preStatements)
-        .add(createTableStatement.toString())
-        .add(addTableComment(table))
-        .addAll(postStatements)
-        .build();
+    ImmutableList.Builder<String> statements = ImmutableList.<String>builder()
+            .addAll(preStatements)
+            .add(createTableStatement.toString());
+
+    statements.addAll(postStatements);
+
+    return statements.build();
+  }
+
+
+  private List<String> createTableStatement(Table table, SelectStatement asSelect, boolean withCasting) {
+    List<String> preStatements = new ArrayList<>();
+    List<String> postStatements = new ArrayList<>();
+
+    StringBuilder createTableStatement = new StringBuilder();
+    beginTableStatement(table, createTableStatement);
+
+    boolean first = true;
+
+    for (Column column : table.columns()) {
+      if (!first) {
+        createTableStatement.append(", ");
+      }
+
+      createTableStatement.append(column.getName());
+      createTableStatement.append(sqlRepresentationOfColumnType(column, false, false, false));
+      handleAutoNumberedColumn(table, preStatements, postStatements, createTableStatement, column, true);
+
+      first = false;
+    }
+
+    createTableStatement.append(")");
+
+    String selectStatement = withCasting ? convertStatementToSQL(addCastsToSelect(table, asSelect)) : convertStatementToSQL(asSelect);
+    createTableStatement.append(" AS ").append(selectStatement);
+
+    ImmutableList.Builder<String> statements = ImmutableList.<String>builder()
+            .addAll(preStatements)
+            .add(createTableStatement.toString());
+
+    statements.addAll(postStatements);
+
+    return statements.build();
+  }
+
+
+  private void beginTableStatement(Table table, StringBuilder createTableStatement) {
+    createTableStatement.append("CREATE ");
+
+    if (table.isTemporary()) {
+      createTableStatement.append("TEMP ");
+    }
+
+    createTableStatement.append("TABLE ")
+            .append(schemaNamePrefix(table))
+            .append(table.getName())
+            .append(" (");
+  }
+
+
+  private void handleAutoNumberedColumn(Table table, List<String> preStatements, List<String> postStatements, StringBuilder createTableStatement, Column column, boolean asSelect) {
+    if(column.isAutoNumbered()) {
+      int autoNumberStart = column.getAutoNumberStart() == -1 ? 1 : column.getAutoNumberStart();
+      String autoNumberSequenceName = schemaNamePrefix() + table.getName() + "_" + column.getName() + "_seq";
+      preStatements.add("DROP SEQUENCE IF EXISTS " + autoNumberSequenceName);
+      preStatements.add("CREATE SEQUENCE " + autoNumberSequenceName + " START " + autoNumberStart);
+
+      if (asSelect) {
+        postStatements.add("ALTER TABLE " + table.getName() + " ALTER " + column.getName() + " SET DEFAULT nextval('" + autoNumberSequenceName + "')");
+      } else {
+        createTableStatement.append(" DEFAULT nextval('").append(autoNumberSequenceName).append("')");
+      }
+
+      postStatements.add("ALTER SEQUENCE " + autoNumberSequenceName + " OWNED BY " + schemaNamePrefix() + table.getName() + "." + column.getName());
+    }
+  }
+
+
+  private List<String> createFieldStatements(Table table) {
+    List<String> fieldStatements = new ArrayList<>();
+    List<String> primaryKeys = new ArrayList<>();
+
+    StringJoiner joiner = new StringJoiner(",", "ALTER TABLE " + table.getName(), "");
+
+    for (Column column : table.columns()) {
+      if (column.isPrimaryKey()) {
+        primaryKeys.add(column.getName());
+      }
+
+      if (!column.isNullable()) {
+        joiner.add(" ALTER " + column.getName() + " SET NOT NULL");
+      }
+
+      if (StringUtils.isNotEmpty(column.getDefaultValue()) && !column.isAutoNumbered()) {
+        joiner.add(" ALTER " + column.getName() + " SET DEFAULT " + column.getDefaultValue());
+      }
+    }
+
+    if (!primaryKeys.isEmpty()) {
+      joiner.add(" ADD CONSTRAINT " + table.getName() + "_PK PRIMARY KEY(" + Joiner.on(", ").join(primaryKeys) + ")");
+    }
+
+    fieldStatements.add(joiner.toString());
+    return fieldStatements;
+  }
+
+
+  private Collection<String> createCommentStatements(Table table) {
+    List<String> commentStatements = Lists.newArrayList();
+
+    commentStatements.add(addTableComment(table));
+    for (Column column : table.columns()) {
+      commentStatements.add(addColumnComment(table, column));
+    }
+
+    return commentStatements;
   }
 
 
@@ -306,6 +448,10 @@ class PostgreSQLDialect extends SqlDialect {
     return "CONCAT(" + StringUtils.join(sql, ", ") + ")";
   }
 
+  @Override
+  protected String getSqlFrom(BlobFieldLiteral field) {
+    return String.format("E'\\x%s'", field.getValue());
+  }
 
   @Override
   protected String getSqlForDaysBetween(AliasedField toDate, AliasedField fromDate) {
@@ -429,8 +575,7 @@ class PostgreSQLDialect extends SqlDialect {
     StringBuilder sqlBuilder = new StringBuilder();
 
     sqlBuilder.append("INSERT INTO ")
-              .append(schemaNamePrefix(statement.getTable()))
-              .append(statement.getTable().getName())
+              .append(tableNameWithSchemaName(statement.getTable()))
               .append(" (")
               .append(Joiner.on(", ").join(destinationFields))
               .append(") ")
@@ -474,6 +619,47 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
+  protected String selectStatementPreFieldDirectives(SelectStatement selectStatement) {
+    StringBuilder builder = new StringBuilder();
+
+    for (Hint hint : selectStatement.getHints()) {
+      if (hint instanceof OptimiseForRowCount) {
+        // not available in pg_hint_plan
+      }
+      else if (hint instanceof UseIndex) {
+        UseIndex useIndex = (UseIndex)hint;
+        builder.append(" IndexScan(")
+          .append(StringUtils.isEmpty(useIndex.getTable().getAlias()) ? useIndex.getTable().getName() : useIndex.getTable().getAlias())
+          .append(" ")
+          .append(useIndex.getIndexName().toLowerCase())
+          .append(")");
+      }
+      else if (hint instanceof UseImplicitJoinOrder) {
+        // not available in pg_hint_plan
+        // actually, there is Leading hint, which we could abuse
+      }
+      else if (hint instanceof ParallelQueryHint) {
+        // not available in pg_hint_plan
+      }
+      else if (hint instanceof PostgreSQLCustomHint) {
+        builder.append(" ")
+        .append(((PostgreSQLCustomHint)hint).getCustomHint());
+      }
+      else if ( hint instanceof DialectSpecificHint && ((DialectSpecificHint)hint).isSameDatabaseType(PostgreSQL.IDENTIFIER) ) {
+        builder.append(" ")
+        .append(((DialectSpecificHint)hint).getHintContents());
+      }
+    }
+
+    if (builder.length() == 0) {
+      return super.selectStatementPreFieldDirectives(selectStatement);
+    }
+
+    return "/*+" + builder.append(" */ ");
+  }
+
+
+  @Override
   public Collection<String> alterTableAddColumnStatements(Table table, Column column) {
     return ImmutableList.of("ALTER TABLE " + schemaNamePrefix(table) + table.getName() + " ADD COLUMN " + column.getName() + " " + sqlRepresentationOfColumnType(column, true),
         addColumnComment(table, column));
@@ -509,7 +695,7 @@ class PostgreSQLDialect extends SqlDialect {
 
     boolean alterNullable = oldColumn.isNullable() != newColumn.isNullable();
     boolean alterType = oldColumn.getType() != newColumn.getType() || oldColumn.getScale() != newColumn.getScale() || oldColumn.getWidth() != newColumn.getWidth();
-    boolean alterDefaultValue = oldColumn.getDefaultValue() != newColumn.getDefaultValue();
+    boolean alterDefaultValue = !Objects.equals(oldColumn.getDefaultValue(), newColumn.getDefaultValue());
 
     if(alterNullable || alterType || alterDefaultValue) {
       statements.add(addAlterTableConstraint(table, newColumn, alterNullable, alterType, alterDefaultValue));
@@ -527,15 +713,13 @@ class PostgreSQLDialect extends SqlDialect {
 
   private String addAlterTableConstraint(Table table, Column newColumn, boolean alterNullable, boolean alterType,
       boolean alterDefaultValue) {
-    StringBuilder sqlBuilder = new StringBuilder();
-    sqlBuilder.append("ALTER TABLE " + schemaNamePrefix(table) + table.getName()
-                + (alterNullable ? " ALTER COLUMN " + newColumn.getName() + (newColumn.isNullable() ? " DROP NOT NULL" : " SET NOT NULL") : "")
-                + (alterNullable && alterType ? "," : "")
-                + (alterType ? " ALTER COLUMN " + newColumn.getName() + " TYPE " + sqlRepresentationOfColumnType(newColumn, false, false, true) : "")
-                + (alterDefaultValue && (alterNullable || alterType) ? "," : "")
-                + (alterDefaultValue ? " ALTER COLUMN " + newColumn.getName() + (!newColumn.getDefaultValue().isEmpty() ? " SET DEFAULT " + sqlForDefaultClauseLiteral(newColumn) : " DROP DEFAULT") : "")
-        );
-    return sqlBuilder.toString();
+
+    return "ALTER TABLE " + schemaNamePrefix(table) + table.getName()
+            + (alterNullable ? " ALTER COLUMN " + newColumn.getName() + (newColumn.isNullable() ? " DROP NOT NULL" : " SET NOT NULL") : "")
+            + (alterNullable && alterType ? "," : "")
+            + (alterType ? " ALTER COLUMN " + newColumn.getName() + " TYPE " + sqlRepresentationOfColumnType(newColumn, false, false, true) : "")
+            + (alterDefaultValue && (alterNullable || alterType) ? "," : "")
+            + (alterDefaultValue ? " ALTER COLUMN " + newColumn.getName() + (!newColumn.getDefaultValue().isEmpty() ? " SET DEFAULT " + sqlForDefaultClauseLiteral(newColumn) : " DROP DEFAULT") : "");
   }
 
 
@@ -543,7 +727,7 @@ class PostgreSQLDialect extends SqlDialect {
     StringBuilder comment = new StringBuilder ("COMMENT ON COLUMN " + schemaNamePrefix(table) + table.getName() + "." + column.getName() + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + column.getName() + "]/TYPE:[" + column.getType().toString() + "]");
     if(column.isAutoNumbered()) {
       int autoNumberStart = column.getAutoNumberStart() == -1 ? 1 : column.getAutoNumberStart();
-      comment.append("/AUTONUMSTART:[" + autoNumberStart + "]");
+      comment.append("/AUTONUMSTART:[").append(autoNumberStart).append("]");
     }
     comment.append("'");
     return comment.toString();
@@ -580,7 +764,7 @@ class PostgreSQLDialect extends SqlDialect {
              .append(schemaNamePrefix(table))
              .append(table.getName())
              .append(" (")
-             .append(Joiner.on(",").join(index.columnNames()))
+             .append(Joiner.on(", ").join(index.columnNames()))
              .append(")");
 
     return ImmutableList.<String>builder()
@@ -639,26 +823,39 @@ class PostgreSQLDialect extends SqlDialect {
    */
   @Override
   protected String getSqlFrom(DeleteStatement statement) {
-    if (!statement.getLimit().isPresent()) {
-      return super.getSqlFrom(statement);
+    if (statement.getLimit().isPresent()) {
+      StringBuilder sqlBuilder = new StringBuilder();
+
+      DeleteStatementBuilder deleteStatement = DeleteStatement.delete(statement.getTable());
+      sqlBuilder.append(super.getSqlFrom(deleteStatement.build()));
+
+      // Now add the limit clause, using the current table id.
+      sqlBuilder.append(" WHERE ctid IN (");
+
+      SelectStatementBuilder selectStatement = select().fields(field("ctid")).from(statement.getTable());
+      if (statement.getWhereCriterion() != null) {
+        selectStatement = selectStatement.where(statement.getWhereCriterion());
+      }
+      sqlBuilder.append(getSqlFrom(selectStatement.build()));
+
+      // We have already checked statement.getLimit().isPresent() here, but Sonar gives a false postive on the .get() below
+      sqlBuilder.append(" LIMIT ").append(statement.getLimit().get()).append(")"); //NOSONAR
+
+      return sqlBuilder.toString();
     }
+    return super.getSqlFrom(statement);
+  }
 
-    StringBuilder sqlBuilder = new StringBuilder();
 
-    DeleteStatementBuilder deleteStatement = DeleteStatement.delete(statement.getTable());
-    sqlBuilder.append(super.getSqlFrom(deleteStatement.build()));
-
-    // Now add the limit clause, using the current table id.
-    sqlBuilder.append(" WHERE ctid IN (");
-
-    SelectStatementBuilder selectStatement = select().fields(field("ctid")).from(statement.getTable());
-    if (statement.getWhereCriterion() != null ) {
-      selectStatement = selectStatement.where(statement.getWhereCriterion());
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#tableNameWithSchemaName(org.alfasoftware.morf.sql.element.TableReference)
+   */
+  @Override
+  protected String tableNameWithSchemaName(TableReference tableRef) {
+    if (StringUtils.isEmpty(tableRef.getDblink())) {
+      return schemaNamePrefix(tableRef) + tableRef.getName();
+    } else {
+      return tableRef.getDblink() + "." + tableRef.getName();
     }
-    sqlBuilder.append(getSqlFrom(selectStatement.build()));
-
-    sqlBuilder.append(" LIMIT " + statement.getLimit().get() + ")");
-
-    return sqlBuilder.toString();
   }
 }

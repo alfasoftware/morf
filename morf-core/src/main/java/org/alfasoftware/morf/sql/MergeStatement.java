@@ -23,6 +23,7 @@ import java.util.List;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
@@ -103,7 +104,7 @@ public class MergeStatement implements Statement,
    * For updating existing records, references the new field value being merged, i.e. the value provided by the select.
    * This internally implements the {@link MergeStatementBuilder.UpdateValues#input(String)} reference.
    */
-  public static final class InputField extends AliasedField {
+  public static class InputField extends AliasedField {
 
     private final String name;
 
@@ -153,6 +154,12 @@ public class MergeStatement implements Statement,
       InputField that = (InputField) obj;
       return super.equals(that)
           && this.name.equals(that.name);
+    }
+
+
+    @Override
+    public void accept(SchemaAndDataChangeVisitor visitor) {
+      visitor.visit(this);
     }
   }
 
@@ -403,5 +410,21 @@ public class MergeStatement implements Statement,
   @Override
   public MergeStatementBuilder shallowCopy() {
     return new MergeStatementBuilder(this);
+  }
+
+
+  @Override
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
+
+    if(selectStatement != null) {
+      selectStatement.accept(visitor);
+    }
+    if(tableUniqueKey != null) {
+      tableUniqueKey.stream().forEach(tuk -> tuk.accept(visitor));
+    }
+    if(ifUpdating != null) {
+      ifUpdating.stream().forEach(iu -> iu.accept(visitor));
+    }
   }
 }

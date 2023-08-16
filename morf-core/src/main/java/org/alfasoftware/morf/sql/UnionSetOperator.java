@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.sql;
 
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
@@ -31,7 +32,7 @@ import org.alfasoftware.morf.util.ObjectTreeTraverser;
  *
  * @author Copyright (c) Alfa Financial Software 2012
  */
-public class UnionSetOperator implements SetOperator {
+public class UnionSetOperator extends AbstractSetOperator implements SetOperator {
 
   /**
    * Identifies the duplicate row elimination strategy for UNION statements.
@@ -90,38 +91,6 @@ public class UnionSetOperator implements SetOperator {
 
 
   /**
-   * Don't allow {@code null} references to {@linkplain SelectStatement}.
-   *
-   * @param parentSelect the select statement to be validated.
-   * @param childSelect the select statement to be validated.
-   */
-  private void validateNotNull(SelectStatement parentSelect, SelectStatement childSelect) throws IllegalArgumentException {
-    if (parentSelect == null || childSelect == null) {
-      throw new IllegalArgumentException("Select statements cannot be null");
-    }
-  }
-
-
-  /**
-   * Don't allow {@code childSelect} have a different number of fields from
-   * {@code parentSelect}.
-   * <p>
-   * The column names from the parent select statement are used as the column
-   * names for the results returned. Selected columns listed in corresponding
-   * positions of each SELECT statement should have the same data type.
-   * </p>
-   *
-   * @param parentSelect the select statement to be compared against.
-   * @param childSelect the select statement to be validated.
-   */
-  private void validateFields(SelectStatement parentSelect, SelectStatement childSelect) throws IllegalArgumentException {
-    if (parentSelect.getFields().size() != childSelect.getFields().size()) {
-      throw new IllegalArgumentException("Union statement requires selecting the same number of fields on both select statements");
-    }
-  }
-
-
-  /**
    * Don't allow sub-select statements to have ORDER BY statements, as this is
    * an invalid construct in in SQL-92.
    *
@@ -167,8 +136,8 @@ public class UnionSetOperator implements SetOperator {
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result + ((selectStatement == null) ? 0 : selectStatement.hashCode());
-    result = prime * result + ((unionStrategy == null) ? 0 : unionStrategy.hashCode());
+    result = prime * result + (selectStatement == null ? 0 : selectStatement.hashCode());
+    result = prime * result + (unionStrategy == null ? 0 : unionStrategy.hashCode());
     return result;
   }
 
@@ -208,5 +177,15 @@ public class UnionSetOperator implements SetOperator {
   @Override
   public Builder<SetOperator> deepCopy(DeepCopyTransformation transformer) {
     return TempTransitionalBuilderWrapper.<SetOperator>wrapper(new UnionSetOperator(getUnionStrategy(),transformer.deepCopy(getSelectStatement())));
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.sql.SchemaAndDataChangeVisitable#accept(org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor)
+   */
+  @Override
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
+    selectStatement.accept(visitor);
   }
 }

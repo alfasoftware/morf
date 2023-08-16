@@ -21,6 +21,7 @@ import java.util.List;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyTransformations;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
@@ -135,7 +136,7 @@ public class UpdateStatement implements Statement,
   /**
    * Constructor for the builder.
    *
-   * @param sourceStatement {@link UpdateStatement} to create a deep copy from.
+   * @param builder {@link UpdateStatementBuilder} to create a deep copy from.
    */
   UpdateStatement(UpdateStatementBuilder builder) {
     super();
@@ -226,7 +227,7 @@ public class UpdateStatement implements Statement,
    * the underlying database, the nature of the data and the nature of the query.</p>
    *
    * <p>Note that the use of parallel DML comes with restrictions, in particular, a table may not be accessed in the same transaction following a parallel DML execution. Please consult the Oracle manual section <em>Restrictions on Parallel DML</em> to check whether this hint is suitable.</p>
-   *    
+   *
    * @return this, for method chaining.
    */
   public UpdateStatement useParallelDml() {
@@ -234,6 +235,26 @@ public class UpdateStatement implements Statement,
       return shallowCopy().useParallelDml().build();
     } else {
       hints.add(new UseParallelDml());
+      return this;
+    }
+  }
+
+  /**
+   * Request that this statement is executed with a parallel execution plan for data manipulation language (DML). This request will have no effect unless the database implementation supports it and the feature is enabled.
+   *
+   * <p>For statement that will affect a high percentage or rows in the table, a parallel execution plan may reduce the execution time, although the exact effect depends on
+   * the underlying database, the nature of the data and the nature of the query.</p>
+   *
+   * <p>Note that the use of parallel DML comes with restrictions, in particular, a table may not be accessed in the same transaction following a parallel DML execution. Please consult the Oracle manual section <em>Restrictions on Parallel DML</em> to check whether this hint is suitable.</p>
+   *
+   * @param degreeOfParallelism Degree of parallelism to be specified in the hint.
+   * @return this, for method chaining.
+   */
+  public UpdateStatement useParallelDml(int degreeOfParallelism) {
+    if (AliasedField.immutableDslEnabled()) {
+      return shallowCopy().useParallelDml(degreeOfParallelism).build();
+    } else {
+      hints.add(new UseParallelDml(degreeOfParallelism));
       return this;
     }
   }
@@ -308,5 +329,17 @@ public class UpdateStatement implements Statement,
       .dispatch(getWhereCriterion())
       .dispatch(getFields())
       .dispatch(getHints());
+  }
+
+
+  @Override
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
+    if(whereCriterion != null) {
+      whereCriterion.accept(visitor);
+    }
+    if(fields != null) {
+      fields.stream().forEach(f -> f.accept(visitor));
+    }
   }
 }

@@ -18,14 +18,20 @@ package org.alfasoftware.morf.sql.element;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.util.List;
 
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.upgrade.UpgradeTableResolutionVisitor;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import com.google.common.collect.ImmutableList;
 
@@ -36,6 +42,15 @@ import com.google.common.collect.ImmutableList;
  */
 @RunWith(Parameterized.class)
 public class TestFieldFromSelect extends AbstractAliasedFieldTest<FieldFromSelect> {
+
+  @Mock
+  private UpgradeTableResolutionVisitor res;
+
+  @Before
+  public void setUp() throws Exception {
+    MockitoAnnotations.openMocks(this);
+  }
+
 
   @Parameters(name = "{0}")
   public static List<Object[]> data() {
@@ -88,5 +103,20 @@ public class TestFieldFromSelect extends AbstractAliasedFieldTest<FieldFromSelec
     assertEquals("Criterion field names should match", ((FieldReference)ffs.getSelectStatement().getWhereCriterion().getField()).getName(), ((FieldReference)ffsCopy.getSelectStatement().getWhereCriterion().getField()).getName());
     assertEquals("Criterion values should match", ((String) ffs.getSelectStatement().getWhereCriterion().getValue()).toUpperCase(), ((String) ffsCopy.getSelectStatement().getWhereCriterion().getValue()).toUpperCase());
     assertEquals("Alias", ffs.getAlias(), ffsCopy.getAlias());
+  }
+
+
+  @Test
+  public void tableResolutionDetectsAllTables() {
+    //given
+    SelectStatement selectStatement = mock(SelectStatement.class);
+    FieldFromSelect onTest = new FieldFromSelect(selectStatement);
+
+    //when
+    onTest.accept(res);
+
+    //then
+    verify(res).visit(onTest);
+    verify(selectStatement).accept(res);
   }
 }

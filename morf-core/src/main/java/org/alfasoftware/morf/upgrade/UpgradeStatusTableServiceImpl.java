@@ -15,24 +15,8 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.column;
-import static org.alfasoftware.morf.metadata.SchemaUtils.table;
-import static org.alfasoftware.morf.sql.SqlUtils.insert;
-import static org.alfasoftware.morf.sql.SqlUtils.literal;
-import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.sql.SqlUtils.update;
-import static org.alfasoftware.morf.upgrade.UpgradeStatus.IN_PROGRESS;
-import static org.alfasoftware.morf.upgrade.UpgradeStatus.NONE;
-
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-
-import javax.sql.DataSource;
-
+import com.google.inject.Inject;
+import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor.ResultSetProcessor;
@@ -45,7 +29,22 @@ import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import com.google.inject.Inject;
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.alfasoftware.morf.sql.SqlUtils.insert;
+import static org.alfasoftware.morf.sql.SqlUtils.literal;
+import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.alfasoftware.morf.sql.SqlUtils.update;
+import static org.alfasoftware.morf.upgrade.UpgradeStatus.IN_PROGRESS;
+import static org.alfasoftware.morf.upgrade.UpgradeStatus.NONE;
 
 /**
  * Service to manage or generate SQL for the transient table that stores the upgrade status.
@@ -61,6 +60,8 @@ class UpgradeStatusTableServiceImpl implements UpgradeStatusTableService {
    */
   static final String STATUS_COLUMN = "status";
 
+  static final String ID_COLUMN = "id";
+
   private final SqlScriptExecutorProvider sqlScriptExecutorProvider;
   private final SqlDialect sqlDialect;
 
@@ -73,6 +74,17 @@ class UpgradeStatusTableServiceImpl implements UpgradeStatusTableService {
     super();
     this.sqlScriptExecutorProvider = sqlScriptExecutor;
     this.sqlDialect = sqlDialect;
+  }
+
+
+  /**
+   * To be used with {@link UpgradeStatusTableService.Factory}
+   * @param connectionResources The {@link ConnectionResources}
+   */
+  UpgradeStatusTableServiceImpl(ConnectionResources connectionResources) {
+    super();
+    this.sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources.getDataSource(), connectionResources.sqlDialect());
+    this.sqlDialect = connectionResources.sqlDialect();
   }
 
 
@@ -116,11 +128,11 @@ class UpgradeStatusTableServiceImpl implements UpgradeStatusTableService {
       // Create upgradeStatus table and insert
       statements.addAll(sqlDialect.tableDeploymentStatements(
         table(UpgradeStatusTableService.UPGRADE_STATUS)
-          .columns(column(STATUS_COLUMN, DataType.STRING, 255).defaultValue(fromStatus.name()))));
+          .columns(column(ID_COLUMN, DataType.BIG_INTEGER).primaryKey(), column(STATUS_COLUMN, DataType.STRING, 255).defaultValue(fromStatus.name()))));
 
       statements.addAll(sqlDialect.convertStatementToSQL(
         insert().into(table)
-          .values(literal(toStatus.name()).as(STATUS_COLUMN))));
+          .values(literal(1L).as(ID_COLUMN), literal(toStatus.name()).as(STATUS_COLUMN))));
 
     } else {
       UpdateStatement update = update(table)
@@ -134,7 +146,7 @@ class UpgradeStatusTableServiceImpl implements UpgradeStatusTableService {
 
 
   /**
-   * @see org.alfasoftware.morf.upgrade.UpgradeStatusTableService#getStatus(javax.sql.DataSource)
+   * @see org.alfasoftware.morf.upgrade.UpgradeStatusTableService#getStatus(Optional)
    */
   @Override
   public UpgradeStatus getStatus(Optional<DataSource> dataSource) {
@@ -192,6 +204,17 @@ class UpgradeStatusTableServiceImpl implements UpgradeStatusTableService {
       if (getStatus(Optional.of(dataSource)) != NONE) {
         throw e;
       }
+    }
+  }
+
+
+  static class Factory implements UpgradeStatusTableService.Factory {
+
+    /**
+     * @see UpgradeStatusTableService.Factory#create(ConnectionResources)
+     */
+    public UpgradeStatusTableService create(final ConnectionResources connectionResources) {
+      return new UpgradeStatusTableServiceImpl(connectionResources);
     }
   }
 }

@@ -15,13 +15,8 @@
 
 package org.alfasoftware.morf.jdbc;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.column;
-import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
-import static org.alfasoftware.morf.metadata.SchemaUtils.table;
-import static org.alfasoftware.morf.sql.SelectStatement.select;
-import static org.alfasoftware.morf.sql.SqlUtils.insert;
-import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.sql.UnionSetOperator.UnionStrategy.ALL;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -35,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -51,10 +47,12 @@ import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.DataValueLookup;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.AbstractSelectStatement;
 import org.alfasoftware.morf.sql.DeleteStatement;
+import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
@@ -66,11 +64,14 @@ import org.alfasoftware.morf.sql.SqlUtils;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.sql.TruncateStatement;
 import org.alfasoftware.morf.sql.UnionSetOperator;
+import org.alfasoftware.morf.sql.UnionSetOperator.UnionStrategy;
 import org.alfasoftware.morf.sql.UpdateStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.BracketedExpression;
 import org.alfasoftware.morf.sql.element.CaseStatement;
 import org.alfasoftware.morf.sql.element.Cast;
+import org.alfasoftware.morf.sql.element.ClobFieldLiteral;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.FieldFromSelect;
@@ -78,6 +79,7 @@ import org.alfasoftware.morf.sql.element.FieldFromSelectFirst;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.FunctionType;
 import org.alfasoftware.morf.sql.element.Join;
 import org.alfasoftware.morf.sql.element.JoinType;
 import org.alfasoftware.morf.sql.element.MathsField;
@@ -92,6 +94,7 @@ import org.alfasoftware.morf.upgrade.ChangeColumn;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.joda.time.LocalDate;
 import org.joda.time.Months;
 
@@ -99,6 +102,7 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -115,7 +119,7 @@ public abstract class SqlDialect {
   /**
    *
    */
-  protected static final String          ID_INCREMENTOR_TABLE_COLUMN_VALUE = "value";
+  protected static final String          ID_INCREMENTOR_TABLE_COLUMN_VALUE = "nextvalue";
 
   /**
    *
@@ -143,6 +147,7 @@ public abstract class SqlDialect {
    */
   private static final String            CANNOT_CONVERT_NULL_STATEMENT_TO_SQL  =  "Cannot convert a null statement to SQL";
 
+  private static final Set<FunctionType> WINDOW_FUNCTION_REQUIRING_ORDERBY = ImmutableSet.of(FunctionType.ROW_NUMBER);
 
 
   /**
@@ -225,6 +230,29 @@ public abstract class SqlDialect {
     return statements;
   }
 
+
+  /**
+   * Creates SQL script to deploy a database view.
+   *
+   * @param view The meta data for the view to deploy.
+   * @return The statements required to deploy the view joined into a script.
+   */
+  public String viewDeploymentStatementsAsScript(View view) {
+    final String firstLine = "-- " + getDatabaseType().identifier() + "\n";
+    return viewDeploymentStatements(view)
+        .stream().collect(Collectors.joining(";\n", firstLine, ";"));
+  }
+
+
+  /**
+   * Creates SQL script to deploy a database view.
+   *
+   * @param view The meta data for the view to deploy.
+   * @return The statements required to deploy the view joined into a script and prepared as literals.
+   */
+  public AliasedField viewDeploymentStatementsAsLiteral(View view) {
+    return SqlUtils.clobLiteral(viewDeploymentStatementsAsScript(view));
+  }
 
   /**
    * Creates SQL to truncate a table (may require DBA rights on some databases
@@ -338,6 +366,22 @@ public abstract class SqlDialect {
 
 
   /**
+   * Windowing function usually have the following syntax
+   * <b>FUNCTION</b> OVER (<b>partitionClause</b> <b>orderByClause</b>)
+   * The partitionClause is generally optional, but the orderByClause is mandatory for certain functions. This method
+   * specifies for which function the orderByClause is mandatory.
+   * Certain dialects may behave differently with respect to this behaviour, which will be overridden as per behaviour
+   * required of the dialect.
+   *
+   * @param function the windowing function
+   * @return true if orderBy clause is mandatory
+   */
+  protected boolean requiresOrderByForWindowFunction(Function function) {
+    return WINDOW_FUNCTION_REQUIRING_ORDERBY.contains(function.getType());
+  }
+
+
+  /**
    * Converts a {@link Statement} to the equivalent SQL text.
    *
    * @param statement the statement to convert
@@ -384,6 +428,9 @@ public abstract class SqlDialect {
   protected boolean isAutonumbered(InsertStatement statement, Schema databaseMetadata) {
     if (statement.getTable() != null) {
       Table tableInserting = databaseMetadata.getTable(statement.getTable().getName());
+      if (tableInserting == null) {
+        throw new IllegalStateException(String.format("Unable to find [%s] in schema", statement.getTable().getName()));
+      }
       for (Column col : tableInserting.columns()) {
         if (col.isAutoNumbered()) {
           return true;
@@ -644,7 +691,7 @@ public abstract class SqlDialect {
    * @return The SQL represented by the statement
    */
   public String convertStatementToSQL(TruncateStatement statement) {
-    return truncateTableStatements(table(statement.getTable().getName())).iterator().next();
+    return truncateTableStatements(SchemaUtils.table(statement.getTable().getName())).iterator().next();
   }
 
 
@@ -681,6 +728,20 @@ public abstract class SqlDialect {
    * @see #fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming()
    */
   public int fetchSizeForBulkSelects() {
+    return 2000;
+  }
+
+
+  /**
+   * @deprecated this method returns the legacy value and is primarily for backwards compatibility.
+   * Please use {@link SqlDialect#fetchSizeForBulkSelects()} for the new recommended default value.
+   * @see SqlDialect#fetchSizeForBulkSelects()
+   *
+   * @return The number of rows to try and fetch at a time (default) when
+   *         performing bulk select operations.
+   */
+  @Deprecated
+  public int legacyFetchSizeForBulkSelects() {
     return 1;
   }
 
@@ -706,6 +767,20 @@ public abstract class SqlDialect {
 
 
   /**
+   * @deprecated this method returns the legacy value and is primarily for backwards compatibility.
+   * Please use {@link SqlDialect#fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming()} for the new recommended default value.
+   * @see SqlDialect#fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming()
+   *
+   * @return The number of rows to try and fetch at a time (default) when
+   *         performing bulk select operations.
+   */
+  @Deprecated
+  public int legacyFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming() {
+    return legacyFetchSizeForBulkSelects();
+  }
+
+
+  /**
    * @return The schema prefix (including the dot) or blank if the schema's blank.
    */
   public String schemaNamePrefix() {
@@ -727,15 +802,14 @@ public abstract class SqlDialect {
 
 
   /**
-   * @param tableRef The table reference from which the schema name will be extracted
-   * @return The schema prefix of the specified table (including the dot), the
-   *         dialect's schema prefix or blank if neither is specified (in that order).
+   * @param tableRef The table for which the schema name will be retrieved
+   * @return full table name that includes a schema name and DB-link if present
    */
-  protected String schemaNamePrefix(TableReference tableRef) {
+  protected String tableNameWithSchemaName(TableReference tableRef) {
     if (StringUtils.isEmpty(tableRef.getSchemaName())) {
-      return schemaNamePrefix();
+      return schemaNamePrefix() + tableRef.getName();
     } else {
-      return tableRef.getSchemaName().toUpperCase() + ".";
+      return tableRef.getSchemaName().toUpperCase() + "." + tableRef.getName();
     }
   }
 
@@ -747,7 +821,25 @@ public abstract class SqlDialect {
    * @return The SQL statements as strings.
    */
   public Collection<String> dropStatements(Table table) {
-    return ImmutableList.of("DROP TABLE " + schemaNamePrefix(table) + table.getName());
+    return dropTables(Lists.newArrayList(table), false, false);
+  }
+
+
+  /**
+   * Creates SQL to drop the named tables.
+   *
+   * @param ifExists Should check if table exists before dropping
+   * @param cascade If supported by the dialect, will drop tables/views that depend on any of the provided tables
+   * @param tables The tables to drop
+   * @return The SQL statements as strings.
+   */
+  public Collection<String> dropTables(List<Table> tables, boolean ifExists, boolean cascade) {
+    return ImmutableList.of(
+            "DROP TABLE "
+                    + (ifExists ? "IF EXISTS " : "")
+                    + tables.stream().map(table -> schemaNamePrefix(table) + table.getName()).collect(Collectors.joining(", "))
+                    + (cascade ? " CASCADE" : "")
+    );
   }
 
 
@@ -823,6 +915,7 @@ public abstract class SqlDialect {
     appendGroupBy(result, stmt);
     appendHaving(result, stmt);
     appendUnionSet(result, stmt);
+    appendExceptSet(result, stmt);
     appendOrderBy(result, stmt);
 
     if (stmt.isForUpdate()) {
@@ -963,8 +1056,6 @@ public abstract class SqlDialect {
   /**
    * appends union set operators to the result
    *
-   * @throws UnsupportedOperationException if any other than
-   *           {@link UnionSetOperator} set operation found
    * @param result union set operators will be appended here
    * @param stmt statement with set operators
    */
@@ -973,13 +1064,27 @@ public abstract class SqlDialect {
       for (SetOperator operator : stmt.getSetOperators()) {
         if (operator instanceof UnionSetOperator) {
           result.append(getSqlFrom((UnionSetOperator) operator));
-        } else {
-          throw new UnsupportedOperationException("Unsupported set operation");
         }
       }
     }
   }
 
+
+  /**
+   * appends except set operators to the result
+   *
+   * @param result except set operators will be appended here
+   * @param stmt   statement with set operators
+   */
+  protected void appendExceptSet(StringBuilder result, SelectStatement stmt) {
+    if (stmt.getSetOperators() != null) {
+      for (SetOperator operator : stmt.getSetOperators()) {
+        if (operator instanceof ExceptSetOperator) {
+          result.append(getSqlFrom((ExceptSetOperator) operator));
+        }
+      }
+    }
+  }
 
   /**
    * appends having clause to the result
@@ -1044,8 +1149,7 @@ public abstract class SqlDialect {
   protected <T extends AbstractSelectStatement<T>> void appendFrom(StringBuilder result, AbstractSelectStatement<T> stmt) {
     if (stmt.getTable() != null) {
       result.append(" FROM ");
-      result.append(schemaNamePrefix(stmt.getTable()));
-      result.append(stmt.getTable().getName());
+      result.append(tableNameWithSchemaName(stmt.getTable()));
 
       // Add a table alias if necessary
       if (!stmt.getTable().getAlias().equals("")) {
@@ -1202,7 +1306,7 @@ public abstract class SqlDialect {
       result.append(join.getSubSelect().getAlias());
     } else {
       // Now add the table name
-      result.append(String.format("%s%s", schemaNamePrefix(join.getTable()), join.getTable().getName()));
+      result.append(tableNameWithSchemaName(join.getTable()));
 
       // And add an alias if necessary
       if (!join.getTable().getAlias().isEmpty()) {
@@ -1240,14 +1344,25 @@ public abstract class SqlDialect {
   /**
    * Converts a {@link UnionSetOperator} into SQL.
    *
-   * @param operator the union to convert.
-   * @return a string representation of the field.
+   * @param operator the union set operation to convert.
+   * @return a string representation of the union set operation.
    */
   protected String getSqlFrom(UnionSetOperator operator) {
-    return String.format(" %s %s", operator.getUnionStrategy() == ALL ? "UNION ALL" : "UNION",
+    return String.format(" %s %s", operator.getUnionStrategy() == UnionStrategy.ALL ? "UNION ALL" : "UNION",
       getSqlFrom(operator.getSelectStatement()));
   }
 
+
+  /**
+   * Converts a {@link ExceptSetOperator} into SQL.
+   *
+   * @param operator the except set operator to convert.
+   * @return a string representation of the except set operator.
+   */
+  protected String getSqlFrom(ExceptSetOperator operator) {
+    return String.format(" EXCEPT %s",
+        getSqlFrom(operator.getSelectStatement()));
+  }
 
   /**
    * A database platform may need to specify the null order.
@@ -1308,9 +1423,8 @@ public abstract class SqlDialect {
 
     StringBuilder stringBuilder = new StringBuilder();
 
-    stringBuilder.append("INSERT INTO ");
-    stringBuilder.append(schemaNamePrefix(stmt.getTable()));
-    stringBuilder.append(stmt.getTable().getName());
+    stringBuilder.append(getSqlForInsertInto(stmt));
+    stringBuilder.append(tableNameWithSchemaName(stmt.getTable()));
 
     stringBuilder.append(" ");
 
@@ -1535,6 +1649,14 @@ public abstract class SqlDialect {
       return getSqlFrom((SqlParameter)field);
     }
 
+    if (field instanceof BlobFieldLiteral) {
+      return getSqlFrom((BlobFieldLiteral)field);
+    }
+
+    if (field instanceof ClobFieldLiteral) {
+      return getSqlFrom((ClobFieldLiteral) field);
+    }
+
     if (field instanceof FieldLiteral) {
       return getSqlFrom((FieldLiteral) field);
     }
@@ -1652,6 +1774,7 @@ public abstract class SqlDialect {
       case BOOLEAN:
         return getSqlFrom(Boolean.valueOf(field.getValue()));
       case STRING:
+      case CLOB:
         return makeStringLiteral(field.getValue());
       case DATE:
         // This is the ISO standard date literal format
@@ -1659,8 +1782,6 @@ public abstract class SqlDialect {
       case DECIMAL:
       case BIG_INTEGER:
       case INTEGER:
-      case BLOB:
-      case CLOB:
         return field.getValue();
       case NULL:
         if (field.getValue() != null) {
@@ -1671,6 +1792,28 @@ public abstract class SqlDialect {
         throw new UnsupportedOperationException("Cannot convert the specified field literal into an SQL literal: ["
             + field.getValue() + "]");
     }
+  }
+
+
+  /**
+   * Default implementation will just return the Base64 representation of the binary data, which may not necessarily work with all SQL dialects.
+   * Hence appropriate conversions to the appropriate type based on facilities provided by the dialect's SQL vendor implementation should be used.
+   *
+   * @param field the BLOB field literal
+   * @return the SQL construct or base64 string representation of the binary value
+   */
+  protected String getSqlFrom(BlobFieldLiteral field) {
+    return String.format("'%s'", field.getValue());
+  }
+
+  /**
+   * Default implementation will just return the Field literal implementation of the getSqlFrom method.
+   *
+   * @param field the CLOB field literal
+   * @return a string representation of the clob field literal
+   */
+  protected String getSqlFrom(ClobFieldLiteral field) {
+    return getSqlFrom((FieldLiteral) field);
   }
 
 
@@ -1745,64 +1888,47 @@ public abstract class SqlDialect {
         throw new IllegalArgumentException("The COUNT function should have only have one or zero arguments. This function has " + function.getArguments().size());
 
       case COUNT_DISTINCT:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForCountDistinct(function);
 
       case AVERAGE:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForAverage(function);
 
       case AVERAGE_DISTINCT:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForAverageDistinct(function);
 
       case LENGTH:
-      case BLOB_LENGTH:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlforLength(function);
 
+      case BLOB_LENGTH:
+        checkSingleArgument(function);
+        return getSqlforBlobLength(function);
+
       case SOME:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForSome(function);
 
       case EVERY:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForEvery(function);
 
       case MAX:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForMax(function);
 
       case MIN:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForMin(function);
 
       case SUM:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForSum(function);
 
       case SUM_DISTINCT:
-        if (function.getArguments().size() != 1) {
-          throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
-        }
+        checkSingleArgument(function);
         return getSqlForSumDistinct(function);
 
       case IS_NULL:
@@ -1961,8 +2087,20 @@ public abstract class SqlDialect {
         }
         return getSqlForLastDayOfMonth(function.getArguments().get(0));
 
+      case ROW_NUMBER:
+        if (!function.getArguments().isEmpty()) {
+          throw new IllegalArgumentException("The ROW_NUMBER function should have zero arguments. This function has " + function.getArguments().size());
+        }
+        return getSqlForRowNumber();
+
       default:
         throw new UnsupportedOperationException("This database does not currently support the [" + function.getType() + "] function");
+    }
+  }
+
+  private void checkSingleArgument(Function function) {
+    if (function.getArguments().size() != 1) {
+      throw new IllegalArgumentException("The " + function.getType() + " function should have only one argument. This function has " + function.getArguments().size());
     }
   }
 
@@ -2144,7 +2282,7 @@ public abstract class SqlDialect {
    */
   protected String getSqlForEvery(Function function) {
     return getSqlForMin(function);
-  };
+  }
 
 
   /**
@@ -2204,6 +2342,19 @@ public abstract class SqlDialect {
    * @see org.alfasoftware.morf.sql.element.Function#length(AliasedField)
    */
   protected String getSqlforLength(Function function) {
+    return String.format("LENGTH(%s)", getSqlFrom(function.getArguments().get(0)));
+  }
+
+
+  /**
+   * Converts the function get LENGTH of Blob data or field into SQL.
+   * Use LENGTH instead of OCTET_LENGTH as they are synonymous in MySQl and PostGreSQL. In H2 LENGTH returns the correct
+   * number of bytes, whereas OCTET_LENGTH returns 2 times the byte length.
+   * @param function the function to convert.
+   * @return a string representation of the SQL.
+   * @see org.alfasoftware.morf.sql.element.Function#blobLength(AliasedField)
+   */
+  protected String getSqlforBlobLength(Function function) {
     return String.format("LENGTH(%s)", getSqlFrom(function.getArguments().get(0)));
   }
 
@@ -2276,6 +2427,16 @@ public abstract class SqlDialect {
    * @return a string representation of the SQL for finding the last day of the month.
    */
   protected abstract String getSqlForLastDayOfMonth(AliasedField date);
+
+
+  /**
+   * Produce SQL for getting the row number of the row in the partition
+   *
+   * @return a string representation of the SQL for finding the last day of the month.
+   */
+  protected String getSqlForRowNumber(){
+    return "ROW_NUMBER()";
+  }
 
 
   /**
@@ -2753,9 +2914,8 @@ public abstract class SqlDialect {
 
     // -- Add the preamble...
     //
-    sqlBuilder.append("INSERT INTO ");
-    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-    sqlBuilder.append(destinationTableName);
+    sqlBuilder.append(getSqlForInsertInto(statement));
+    sqlBuilder.append(tableNameWithSchemaName(statement.getTable()));
     sqlBuilder.append(" (");
 
     boolean first = true;
@@ -2809,9 +2969,8 @@ public abstract class SqlDialect {
 
     // -- Add the preamble...
     //
-    sqlBuilder.append("INSERT INTO ");
-    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-    sqlBuilder.append(destinationTableName);
+    sqlBuilder.append(getSqlForInsertInto(statement));
+    sqlBuilder.append(tableNameWithSchemaName(statement.getTable()));
     sqlBuilder.append(" (");
 
     Set<String> columnNamesAdded = new HashSet<>();
@@ -2965,8 +3124,7 @@ public abstract class SqlDialect {
     sqlBuilder.append("FROM ");
 
     // Now add the from clause
-    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-    sqlBuilder.append(destinationTableName);
+    sqlBuilder.append(tableNameWithSchemaName(statement.getTable()));
 
     // Add a table alias if necessary
     if (!statement.getTable().getAlias().equals("")) {
@@ -3009,7 +3167,7 @@ public abstract class SqlDialect {
    */
   protected Optional<String> getDeleteLimitPreFromClause(@SuppressWarnings("unused") int limit) {
     return Optional.empty();
-  };
+  }
 
 
   /**
@@ -3020,7 +3178,7 @@ public abstract class SqlDialect {
    */
   protected Optional<String> getDeleteLimitWhereClause(@SuppressWarnings("unused") int limit) {
     return Optional.empty();
-  };
+  }
 
 
   /**
@@ -3031,7 +3189,7 @@ public abstract class SqlDialect {
    */
   protected Optional<String> getDeleteLimitSuffix(@SuppressWarnings("unused") int limit) {
     return Optional.empty();
-  };
+  }
 
 
   /**
@@ -3056,8 +3214,7 @@ public abstract class SqlDialect {
     sqlBuilder.append(updateStatementPreTableDirectives(statement));
 
     // Now add the from clause
-    sqlBuilder.append(schemaNamePrefix(statement.getTable()));
-    sqlBuilder.append(destinationTableName);
+    sqlBuilder.append(tableNameWithSchemaName(statement.getTable()));
 
     // Add a table alias if necessary
     if (!statement.getTable().getAlias().equals("")) {
@@ -3096,8 +3253,7 @@ public abstract class SqlDialect {
 
     // MERGE INTO schema.Table
     sqlBuilder.append("MERGE INTO ")
-              .append(schemaNamePrefix(statement.getTable()))
-              .append(statement.getTable().getName());
+              .append(tableNameWithSchemaName(statement.getTable()));
 
     // USING (SELECT ...) xmergesource
     sqlBuilder.append(" USING (")
@@ -3237,7 +3393,7 @@ public abstract class SqlDialect {
     }
 
     // Build up the select statement from field list
-    SelectStatementBuilder selectStatementBuilder = select();
+    SelectStatementBuilder selectStatementBuilder = SelectStatement.select();
     List<AliasedField> resultFields = new ArrayList<>();
 
     for (Column currentColumn : metadata.getTable(destinationTableName).columns()) {
@@ -3423,8 +3579,8 @@ public abstract class SqlDialect {
    * @return The SQL representation for the column type.
    */
   protected String sqlRepresentationOfColumnType(Column column, boolean includeNullability, boolean includeDefaultValue, boolean includeColumnType) {
-    String sql = "";
-    StringBuilder suffix = new StringBuilder("");
+    String sql;
+    StringBuilder suffix = new StringBuilder();
     if (includeDefaultValue) {
       suffix = new StringBuilder(StringUtils.isNotEmpty(column.getDefaultValue()) ? " DEFAULT " + sqlForDefaultClauseLiteral(column) : "");
     }
@@ -3576,9 +3732,127 @@ public abstract class SqlDialect {
         tableDeploymentStatements(table)
       )
       .addAll(convertStatementToSQL(
-        insert().into(tableRef(table.getName())).from(selectStatement))
+        SqlUtils.insert().into(SqlUtils.tableRef(table.getName())).from(selectStatement))
       )
       .build();
+  }
+
+
+  /**
+   * Generates the SQL to create a table and insert the data specified in the {@link SelectStatement}.
+   *
+   * For supported dialects, this method casts each field in the provided select using the column definition of the provided table.
+   *
+   * Validation is performed to confirm that the fields included in the select statement correspond to the table columns.
+   *
+   * @param table The table to create.
+   * @param selectStatement The {@link SelectStatement}
+   * @return A collection of SQL statements
+   */
+  public Collection<String> addTableFromStatementsWithCasting(Table table, SelectStatement selectStatement) {
+    return addTableFromStatements(table, selectStatement);
+  }
+
+
+  /**
+   * This method:
+   * - Uses the provided select statement to generate a CTAS statement using a temporary name
+   * - Drops the original table
+   * - Renames the new table using the original table's name
+   * - Adds indexes from the original table
+   *
+   * @param originalTable the original table this method will replace
+   * @param selectStatement the statement used to populate the replacement table via a CTAS
+   * @return a list of statements for the operation
+   */
+  public List<String> replaceTableFromStatements(Table originalTable, SelectStatement selectStatement) {
+
+    // Due to morf's oracle table length restrictions, our temporary table name cannot be longer than 27 characters
+    final Table newTable = SchemaUtils.table("tmp_" + StringUtils.substring(originalTable.getName(), 0, 23))
+        .columns(originalTable.columns());
+
+    validateStatement(originalTable, selectStatement);
+
+    // Generate the SQL for the CTAS and post-CTAS operations
+    final List<String> createTableStatements = Lists.newArrayList();
+    createTableStatements.addAll(addTableFromStatementsWithCasting(newTable, selectStatement));
+    createTableStatements.addAll(dropTables(ImmutableList.of(originalTable), false, true));
+    createTableStatements.addAll(renameTableStatements(newTable, originalTable));
+    createTableStatements.addAll(createAllIndexStatements(originalTable));
+
+    return createTableStatements;
+  }
+
+
+  private void validateStatement(Table table, SelectStatement selectStatement) {
+    final String separator = "\n    ";
+
+    List<String> tableColumns = table.columns().stream().map(Column::getName).collect(toList());
+    List<String> selectColumns = selectStatement.getFields().stream().map(SqlDialect::getFieldName).collect(toList());
+
+    if (tableColumns.size() != selectColumns.size()) {
+     throw new IllegalArgumentException("Number of table columns [" + tableColumns.size() + "] does not match number of select columns [" + selectColumns.size() + "].");
+    }
+
+    ImmutableList.Builder<Pair<String,String>> differences = ImmutableList.builder();
+    Iterator<String> tableColumnsIterator = tableColumns.iterator();
+    Iterator<String> selectColumnsIterator = selectColumns.iterator();
+
+    while (tableColumnsIterator.hasNext() && selectColumnsIterator.hasNext()) {
+      String tableColumn = tableColumnsIterator.next();
+      String selectColumn = selectColumnsIterator.next();
+      if (!tableColumn.equalsIgnoreCase(selectColumn)) {
+        differences.add(Pair.of(tableColumn, selectColumn));
+      }
+    }
+
+    List<Pair<String, String>> diffs = differences.build();
+    if (!diffs.isEmpty()) {
+      throw new IllegalArgumentException("Table columns do not match select columns"
+                      + "\nMismatching pairs:" + separator + diffs.stream().map(p -> p.getLeft() + " <> " + p.getRight()).collect(joining(separator)));
+    }
+  }
+
+
+  private static String getFieldName(AliasedField field) {
+    if (!StringUtils.isBlank(field.getAlias())) {
+      return field.getAlias();
+    }
+    if (!StringUtils.isBlank(field.getImpliedName())) {
+      return field.getImpliedName();
+    }
+    return field.toString();
+  }
+
+
+  /**
+   * For some dialects, this casting is required, as the type may not be inferred for every field in the select statement.
+   * @param table the table to add the casts.
+   * @param selectStatement select statements which the casts need adding to.
+   * @return SelectStatement with casts.
+   */
+  protected SelectStatement addCastsToSelect(Table table, SelectStatement selectStatement) {
+    SelectStatement statementWithCasts = selectStatement.deepCopy();
+    for (int i = 0; i < table.columns().size(); i++) {
+      AliasedField field = statementWithCasts.getFields().get(i);
+      Column column = table.columns().get(i);
+
+      if (fieldRequiresCast(field, column)) {
+        AliasedField fieldWithCast = field.cast().asType(column.getType(), column.getWidth(), column.getScale()).build().as(column.getName());
+        statementWithCasts.getFields().set(i, fieldWithCast);
+      }
+    }
+    return statementWithCasts;
+  }
+
+
+  private boolean fieldRequiresCast(AliasedField field, Column column) {
+    if (!(field instanceof Cast)) {
+      return true;
+    }
+
+    Cast cast = (Cast) field;
+    return cast.getDataType() != column.getType() || cast.getWidth() != column.getWidth() || cast.getScale() != column.getScale();
   }
 
 
@@ -3591,6 +3865,21 @@ public abstract class SqlDialect {
    */
   public Collection<String> addIndexStatements(Table table, Index index) {
     return indexDeploymentStatements(table, index);
+  }
+
+
+  /**
+   * Helper method to create all index statements defined for a table
+   *
+   * @param table the table to create indexes for
+   * @return a list of index statements
+   */
+  protected List<String> createAllIndexStatements(Table table) {
+    List<String> indexStatements = new ArrayList<>();
+    for (Index index : table.indexes()) {
+      indexStatements.addAll(addIndexStatements(table, index));
+    }
+    return indexStatements;
   }
 
 
@@ -3953,7 +4242,7 @@ public abstract class SqlDialect {
    *
    */
   protected Table oldTableForChangeColumn(Table table, Column oldColumn, Column newColumn) {
-    return new ChangeColumn(table.getName(), oldColumn, newColumn).reverse(schema(table)).getTable(table.getName());
+    return new ChangeColumn(table.getName(), oldColumn, newColumn).reverse(SchemaUtils.schema(table)).getTable(table.getName());
   }
 
 
@@ -3978,17 +4267,6 @@ public abstract class SqlDialect {
   }
 
 
-   /**
-   * Indicates whether the dialect supports window functions.
-   *
-   * @return true if the dialect supports window functions (e.g. PARTITION BY).
-   *
-   **/
-   public boolean supportsWindowFunctions() {
-     return false;
-   }
-
-
   /**
    * Convert a {@link WindowFunction} into standards compliant SQL.
    * @param windowFunctionField The field to convert
@@ -3996,7 +4274,11 @@ public abstract class SqlDialect {
    **/
   protected String getSqlFrom(WindowFunction windowFunctionField) {
 
-    StringBuilder statement = new StringBuilder().append(getSqlFrom(windowFunctionField.getFunction()));
+    if (requiresOrderByForWindowFunction(windowFunctionField.getFunction()) && windowFunctionField.getOrderBys().isEmpty()) {
+      throw new IllegalArgumentException("Window function " + windowFunctionField.getFunction().getType() + " requires an order by clause.");
+    }
+
+    StringBuilder statement = new StringBuilder().append(getSqlForWindowFunction(windowFunctionField.getFunction()));
 
     statement.append(" OVER (");
 
@@ -4036,6 +4318,29 @@ public abstract class SqlDialect {
 
 
   /**
+   * Generates standards compliant SQL from the function within a window function
+   * @param function The field to convert
+   * @return The resulting SQL
+   */
+  protected String getSqlForWindowFunction(Function function) {
+    return getSqlFrom(function);
+  }
+
+
+  /**
+   * Returns the INSERT INTO statement.
+   *
+   * @param insertStatement he {@linkplain InsertStatement} object which can be used by the overriding methods to customize the INSERT statement.
+   * @return the INSERT INTO statement.
+   */
+  protected String getSqlForInsertInto(@SuppressWarnings("unused") InsertStatement insertStatement) {
+    return "INSERT INTO ";
+  }
+
+
+
+
+  /**
    * Class representing the structor of an ID Table.
    *
    * @author Copyright (c) Alfa Financial Software 2011
@@ -4047,21 +4352,27 @@ public abstract class SqlDialect {
      */
     private final String tableName;
 
+    /**
+     * True if this idTable should be create as a temporary table specific to
+     * dialect
+     */
+    private final boolean isTemporary;
+
 
     /**
      * For testing only - the tableName might not be appropriate for your
-     * dialect!
+     * dialect! The table will be a temporary table, specific to the dialect.
      *
      * @param tableName table name for the id table.
      * @return {@link IdTable}.
      */
     public static IdTable withDeterministicName(String tableName) {
-      return new IdTable(tableName);
+      return new IdTable(tableName, true);
     }
 
 
     /**
-     * Use this to create an {@link IdTable} which is guaranteed to have a legal
+     * Use this to create a temporary {@link IdTable} which is guaranteed to have a legal
      * name for the dialect.
      *
      * @param dialect {@link SqlDialect} that knows what temp table names are
@@ -4070,7 +4381,25 @@ public abstract class SqlDialect {
      * @return {@link IdTable}
      */
     public static IdTable withPrefix(SqlDialect dialect, String prefix) {
-      return new IdTable(dialect.decorateTemporaryTableName(prefix + RandomStringUtils.randomAlphabetic(5)));
+      return withPrefix(dialect, prefix, true);
+    }
+
+
+    /**
+     * Use this to create a temporary or non-temporary {@link IdTable} which is
+     * guaranteed to have a legal name for the dialect. The non-temporary idTables
+     * are necessary to enable access from many sessions/connections in case of some
+     * dialects.
+     *
+     * @param dialect     {@link SqlDialect} that knows what temp table names are
+     *                      allowed.
+     * @param prefix      prefix for the unique name generated.
+     * @param isTemporary if set to true the table will be created as a temporary
+     *                      table specific for the dialect.
+     * @return {@link IdTable}
+     */
+    public static IdTable withPrefix(SqlDialect dialect, String prefix, boolean isTemporary) {
+      return new IdTable(dialect.decorateTemporaryTableName(prefix + RandomStringUtils.randomAlphabetic(5)), isTemporary);
     }
 
 
@@ -4078,9 +4407,11 @@ public abstract class SqlDialect {
      * Constructor used by tests for generating a predictable table name.
      *
      * @param tableName table name for the temporary table.
+     * @param isTemporary if set to true, the table will be a temporary table specific to dialect.
      */
-    private IdTable(String tableName) {
+    private IdTable(String tableName, boolean isTemporary) {
       this.tableName = tableName;
+      this.isTemporary = isTemporary;
     }
 
 
@@ -4108,8 +4439,8 @@ public abstract class SqlDialect {
     @Override
     public List<Column> columns() {
       List<Column> columns = new ArrayList<>();
-      columns.add(column(ID_INCREMENTOR_TABLE_COLUMN_NAME, DataType.STRING, 132).primaryKey());
-      columns.add(column(ID_INCREMENTOR_TABLE_COLUMN_VALUE, DataType.BIG_INTEGER));
+      columns.add(SchemaUtils.column(ID_INCREMENTOR_TABLE_COLUMN_NAME, DataType.STRING, 132).primaryKey());
+      columns.add(SchemaUtils.column(ID_INCREMENTOR_TABLE_COLUMN_VALUE, DataType.BIG_INTEGER));
 
       return columns;
     }
@@ -4122,7 +4453,7 @@ public abstract class SqlDialect {
      */
     @Override
     public boolean isTemporary() {
-      return true;
+      return isTemporary;
     }
   }
 }

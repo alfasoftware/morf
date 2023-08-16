@@ -141,11 +141,10 @@ public class OracleMetaDataProvider implements Schema {
   /**
    * A table name reading method which is more efficient than the Oracle driver meta-data version.
    *
-   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#readTableNames()
    * @see <a href="http://download.oracle.com/docs/cd/B19306_01/server.102/b14237/statviews_2094.htm">ALL_TAB_COLUMNS specification</a>
    */
   private void readTableNames() {
-    if (log.isDebugEnabled()) log.debug("Starting read of table definitions");
+    log.info("Starting read of table definitions");
 
     long start = System.currentTimeMillis();
 
@@ -176,7 +175,7 @@ public class OracleMetaDataProvider implements Schema {
             continue;
 
           try {
-            Integer dataLength = null;
+            Integer dataLength;
             if (dataTypeName.contains("CHAR")) {
               dataLength = resultSet.getInt(6);
             } else {
@@ -331,6 +330,11 @@ public class OracleMetaDataProvider implements Schema {
             if (log.isDebugEnabled()) {
               log.debug(String.format("Ignoring index [%s] on table [%s] as it is a primary key index", indexName, tableName));
             }
+
+            if (!unique) {
+              log.warn("Primary Key on table [" + tableName + "] is backed by non-unique index [" + indexName + "]");
+            }
+
             continue;
           }
 
@@ -529,7 +533,7 @@ public class OracleMetaDataProvider implements Schema {
    * @see <a href="http://docs.oracle.com/cd/B19306_01/server.102/b14237/statviews_2117.htm">ALL_VIEWS specification</a>
    */
   private void readViewMap() {
-    if (log.isDebugEnabled()) log.debug("Starting read of view definitions");
+    log.info("Starting read of view definitions");
 
     long start = System.currentTimeMillis();
 
@@ -585,9 +589,13 @@ public class OracleMetaDataProvider implements Schema {
    * @return A map of table name to primary key(s).
    */
   private Map<String, List<String>> readTableKeys() {
-    final Map<String, List<String>> primaryKeys = new HashMap<>();
+    log.info("Starting read of key definitions");
+    long start = System.currentTimeMillis();
 
-    final String getConstraintSql = "SELECT A.TABLE_NAME, A.COLUMN_NAME FROM ALL_CONS_COLUMNS A "
+    final Map<String, List<String>> primaryKeys = new HashMap<>();
+    final StringBuilder primaryKeysWithWrongIndex = new StringBuilder();
+
+    final String getConstraintSql = "SELECT A.TABLE_NAME, A.COLUMN_NAME, C.INDEX_NAME FROM ALL_CONS_COLUMNS A "
         + "JOIN ALL_CONSTRAINTS C  ON A.CONSTRAINT_NAME = C.CONSTRAINT_NAME AND A.OWNER = C.OWNER and A.TABLE_NAME = C.TABLE_NAME "
         + "WHERE C.TABLE_NAME not like 'BIN$%' AND C.OWNER=? AND C.CONSTRAINT_TYPE = 'P' ORDER BY A.TABLE_NAME, A.POSITION";
 
@@ -596,6 +604,13 @@ public class OracleMetaDataProvider implements Schema {
         while (resultSet.next()) {
           String tableName = resultSet.getString(1);
           String columnName = resultSet.getString(2);
+          String pkIndexName = resultSet.getString(3);
+
+          if (pkIndexName == null || !pkIndexName.endsWith("_PK")) {
+            primaryKeysWithWrongIndex.append("Primary Key on table [").append(tableName)
+                    .append("] column [").append(columnName).append("] backed with an index whose name does not end in _PK [")
+                    .append(pkIndexName).append("]").append(System.lineSeparator());
+          }
 
           List<String> columns = primaryKeys.get(tableName);
           if (columns == null) {
@@ -607,6 +622,14 @@ public class OracleMetaDataProvider implements Schema {
         }
       }
     });
+
+    if (primaryKeysWithWrongIndex.length() > 0) {
+      throw new RuntimeException(primaryKeysWithWrongIndex.toString());
+    }
+
+    long end = System.currentTimeMillis();
+    log.info(String.format("Read key metadata in %dms; %d tables", end - start, primaryKeys.size()));
+
     return primaryKeys;
   }
 
@@ -660,7 +683,7 @@ public class OracleMetaDataProvider implements Schema {
   /**
    * Oracle sometimes spits back some very odd table names, something to do with the system. We don't want those.
    *
-   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isSystemTable(java.lang.String)
+   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isSystemTable(DatabaseMetaDataProvider.RealName)
    */
   private boolean isSystemTable(String tableName) {
     return !tableName.matches("\\w+") || tableName.matches("DBMS_\\w+") || tableName.matches("SYS_\\w+");
@@ -668,7 +691,7 @@ public class OracleMetaDataProvider implements Schema {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isPrimaryKeyIndex(java.lang.String)
+   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isPrimaryKeyIndex(DatabaseMetaDataProvider.RealName)
    */
   private boolean isPrimaryKeyIndex(String indexName) {
     return indexName.endsWith("_PK");

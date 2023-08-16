@@ -20,11 +20,17 @@ import static org.alfasoftware.morf.util.DeepCopyTransformations.noTransformatio
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import org.alfasoftware.morf.sql.element.FieldReference;
+import org.alfasoftware.morf.upgrade.UpgradeTableResolutionVisitor;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 /**
  * Unit tests for {@link UnionSetOperator}.
@@ -38,6 +44,14 @@ public class TestUnionSetOperator {
    */
   @Rule
   public ExpectedException exception = ExpectedException.none();
+
+  @Mock
+  private UpgradeTableResolutionVisitor res;
+
+  @Before
+  public void setUp() throws Exception {
+    MockitoAnnotations.openMocks(this);
+  }
 
 
   /**
@@ -181,4 +195,21 @@ public class TestUnionSetOperator {
     assertEquals(original.getUnionStrategy(), copy.getUnionStrategy());
     assertNotSame(childSelect, copy.getSelectStatement());
   }
+
+
+  @Test
+  public void tableResolutionDetectsAllTables() {
+    //given
+    SelectStatement parentSelect = mock(SelectStatement.class);
+    SelectStatement childSelect = mock(SelectStatement.class);
+    UnionSetOperator original = new UnionSetOperator(ALL, parentSelect, childSelect);
+
+    //when
+    original.accept(res);
+
+    //then
+    verify(res).visit(original);
+    verify(childSelect).accept(res);
+  }
+
 }

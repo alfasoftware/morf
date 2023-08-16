@@ -148,12 +148,12 @@ public class DatabaseSchemaManager {
 
       Collection<String> sql = Lists.newLinkedList();
 
-      for (View view : changes.getViewsToDrop()) {
-        sql.addAll(dropViewIfExists(view));
-      }
-
       for (View view : changes.getViewsToDeploy()) {
         sql.addAll(dropTableIfPresent(producerCache, view.getName()));
+      }
+
+      for (View view : changes.getViewsToDrop()) {
+        sql.addAll(dropViewIfExists(view));
       }
 
 
@@ -297,9 +297,7 @@ public class DatabaseSchemaManager {
       ImmutableList<Table> tablesToDrop = ImmutableList.copyOf(databaseSchema.tables());
       List<String> script = Lists.newArrayList();
       for (Table table : tablesToDrop) {
-        for (String sql : dialect.get().dropStatements(table)) {
-          script.add(sql);
-        }
+        script.addAll(dialect.get().dropStatements(table));
       }
       executeScript(script);
     } finally {
@@ -328,10 +326,7 @@ public class DatabaseSchemaManager {
       ImmutableList<View> viewsToDrop = ImmutableList.copyOf(databaseSchema.views());
       List<String> script = Lists.newArrayList();
       for (View view : viewsToDrop) {
-
-        for (String sql : dialect.get().dropStatements(view)) {
-          script.add(sql);
-        }
+        script.addAll(dialect.get().dropStatements(view));
       }
       executeScript(script);
     } finally {
@@ -424,7 +419,6 @@ public class DatabaseSchemaManager {
    * Deploys the specified table to the database.
    *
    * @param table the table to deploy
-   * @param connectionResources the database to drop it from
    */
   private Collection<String> deployTable(Table table) {
     if (log.isDebugEnabled()) log.debug("Deploying table [" + table.getName() + "]");
@@ -453,7 +447,6 @@ public class DatabaseSchemaManager {
    * Deploys the specified view to the database.
    *
    * @param view the view to deploy
-   * @param connectionResources the database to drop it from
    */
   private Collection<String> deployView(View view) {
     if (log.isDebugEnabled()) log.debug("Deploying view [" + view.getName() + "]");
@@ -482,7 +475,6 @@ public class DatabaseSchemaManager {
    * Truncates the specified table.
    *
    * @param table the table to truncate.
-   * @param connectionResources the database on which the table exists.
    */
   private Collection<String> truncateTable(Table table) {
     if (log.isDebugEnabled()) log.debug("Truncating table [" + table.getName() + "]");
