@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.upgrade;
 
+import java.util.Collections;
 import java.util.List;
 
 import org.alfasoftware.morf.metadata.Column;
@@ -215,5 +216,27 @@ public interface SchemaEditor {
    * @param tableName name of table
    */
   public void analyseTable(String tableName);
+
+
+  /**
+   * Drop the primary key of a table.
+   *
+   * @param tableName The original table name
+   * @param oldPrimaryKeyColumns The current/old primary key columns for the table.
+   */
+  default void removePrimaryKey(String tableName, List<String> oldPrimaryKeyColumns){
+    changePrimaryKeyColumns(tableName, oldPrimaryKeyColumns, Collections.emptyList());
+  }
+
+
+  /**
+   * Create the primary key of a table.
+   *
+   * @param tableName The original table name
+   * @param newPrimaryKeyColumns The new primary key columns for the table.
+   */
+  default void addPrimaryKey(String tableName, List<String> newPrimaryKeyColumns){
+    changePrimaryKeyColumns(tableName, Collections.emptyList(), newPrimaryKeyColumns);
+  }
 
 }

@@ -17,7 +17,9 @@ package org.alfasoftware.morf.sql.element;
 
 import org.alfasoftware.morf.sql.AbstractSelectStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.sql.SchemaAndDataChangeVisitable;
 import org.alfasoftware.morf.sql.TempTransitionalBuilderWrapper;
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
@@ -41,7 +43,7 @@ import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
  *
  * @author Copyright (c) Alfa Financial Software 2009
  */
-public class Join implements Driver, DeepCopyableWithTransformation<Join,Builder<Join>> {
+public class Join implements Driver, DeepCopyableWithTransformation<Join,Builder<Join>>, SchemaAndDataChangeVisitable {
 
   /**
    * The type of join to use
@@ -266,5 +268,17 @@ public class Join implements Driver, DeepCopyableWithTransformation<Join,Builder
   @Override
   public Builder<Join> deepCopy(DeepCopyTransformation transformer) {
     return TempTransitionalBuilderWrapper.wrapper(new Join(this,transformer));
+  }
+
+
+  @Override
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
+    if(subSelect != null) {
+      subSelect.accept(visitor);
+    }
+    if(criterion != null) {
+      criterion.accept(visitor);
+    }
   }
 }

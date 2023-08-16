@@ -165,6 +165,36 @@ public class TestSqlInsertElementGeneration {
 
 
   /**
+   * Tests that the {@link NoDirectPathQueryHint} can be added to the insert statement.
+   */
+  @Test
+  public void testInsertIntoTableWithNoDirectPathQueryHint() {
+    InsertStatement stmtBuilder = insert().into(new TableReference("agreement")).avoidDirectPath().build();
+
+    assertTrue("Direct path query hint", stmtBuilder.getHints().contains(NoDirectPathQueryHint.INSTANCE));
+  }
+
+  /**
+   * Tests that the {@link UseParallelDml} hint can be added to the insert statement.
+   */
+  @Test
+  public void testInsertIntoTableWithUseParallelDmlHintWithoutDegreeOfParallelism() {
+    InsertStatement stmtBuilder = insert().into(new TableReference("agreement")).useParallelDml().build();
+
+    assertTrue("Use parallel dml hint", stmtBuilder.getHints().contains(new UseParallelDml()));
+  }
+
+  /**
+   * Tests that the {@link UseParallelDml} hint with degreeOfParallelism parameter can be added to the insert statement.
+   */
+  @Test
+  public void testInsertIntoTableWithUseParallelDmlHintWithDegreeOfParallelism() {
+    InsertStatement stmtBuilder = insert().into(new TableReference("agreement")).useParallelDml(4).build();
+
+    assertTrue("Use parallel dml hint with degreeOfParallelism", stmtBuilder.getHints().contains(new UseParallelDml(4)));
+  }
+
+  /**
    * Test that deep copy works for insert with fields.
    */
   @Test
@@ -206,5 +236,6 @@ public class TestSqlInsertElementGeneration {
     assertTrue("Should be different instance of table in select statement table", stmt.getSelectStatement().getTable() != stmtCopy.getSelectStatement().getTable());
     assertEquals("Table name in select statement should match", stmt.getSelectStatement().getTable().getName(), stmtCopy.getSelectStatement().getTable().getName());
   }
+
 
 }

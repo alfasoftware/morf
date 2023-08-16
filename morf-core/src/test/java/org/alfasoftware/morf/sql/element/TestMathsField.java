@@ -16,12 +16,19 @@
 package org.alfasoftware.morf.sql.element;
 
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.util.List;
 
+import org.alfasoftware.morf.upgrade.UpgradeTableResolutionVisitor;
+import org.junit.Before;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import com.google.common.collect.ImmutableList;
 
@@ -33,6 +40,15 @@ import com.google.common.collect.ImmutableList;
 @RunWith(Parameterized.class)
 public class TestMathsField extends AbstractAliasedFieldTest<MathsField> {
 
+  @Mock
+  private UpgradeTableResolutionVisitor res;
+
+  @Before
+  public void setUp() throws Exception {
+    MockitoAnnotations.openMocks(this);
+  }
+
+
   @Parameters(name = "{0}")
   public static List<Object[]> data() {
     return ImmutableList.of(
@@ -43,5 +59,22 @@ public class TestMathsField extends AbstractAliasedFieldTest<MathsField> {
         () -> MathsField.plus(literal(1), literal(3))
       )
     );
+  }
+
+
+  @Test
+  public void tableResolutionDetectsAllTables() {
+    //given
+    AliasedField field = mock(AliasedField.class);
+    AliasedField field2 = mock(AliasedField.class);
+    MathsField onTest = MathsField.plus(field, field2);
+
+    //when
+    onTest.accept(res);
+
+    //then
+    verify(res).visit(onTest);
+    verify(field).accept(res);
+    verify(field2).accept(res);
   }
 }

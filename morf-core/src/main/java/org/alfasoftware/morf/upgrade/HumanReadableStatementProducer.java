@@ -236,7 +236,7 @@ public class HumanReadableStatementProducer {
         consumer.schemaChange(HumanReadableStatementHelper.generateAddTableFromString(table, select));
       }
 
-      /** @see org.alfasoftware.morf.upgrade.SchemaEditor#analyseTable(org.alfasoftware.morf.metadata.Table) **/
+      /** @see org.alfasoftware.morf.upgrade.SchemaEditor#analyseTable(String) **/
       @Override
       public void analyseTable(String tableName) {
         consumer.schemaChange(HumanReadableStatementHelper.generateAnalyseTableFromString(tableName));

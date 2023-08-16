@@ -81,6 +81,7 @@ import static org.alfasoftware.morf.sql.element.Function.random;
 import static org.alfasoftware.morf.sql.element.Function.randomString;
 import static org.alfasoftware.morf.sql.element.Function.rightTrim;
 import static org.alfasoftware.morf.sql.element.Function.round;
+import static org.alfasoftware.morf.sql.element.Function.rowNumber;
 import static org.alfasoftware.morf.sql.element.Function.some;
 import static org.alfasoftware.morf.sql.element.Function.substring;
 import static org.alfasoftware.morf.sql.element.Function.sum;
@@ -92,12 +93,12 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -133,6 +134,7 @@ import org.alfasoftware.morf.sql.UpdateStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.CaseStatement;
 import org.alfasoftware.morf.sql.element.Cast;
+import org.alfasoftware.morf.sql.element.ClobFieldLiteral;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Direction;
 import org.alfasoftware.morf.sql.element.FieldFromSelect;
@@ -145,10 +147,12 @@ import org.alfasoftware.morf.sql.element.NullFieldLiteral;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.sql.element.WhenCondition;
+import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.alfasoftware.morf.upgrade.AddColumn;
 import org.alfasoftware.morf.upgrade.ChangeColumn;
 import org.alfasoftware.morf.upgrade.ChangeIndex;
 import org.alfasoftware.morf.upgrade.RemoveColumn;
+import org.alfasoftware.morf.upgrade.adapt.AlteredTable;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.LocalDate;
 import org.junit.Assert;
@@ -180,8 +184,17 @@ import com.google.common.collect.Lists;
 public abstract class AbstractSqlDialectTest {
 
   protected static final String TEST_TABLE = "Test";
+  private static final String TEST_NK = "Test_NK";
+  private static final String TEST_1 = "Test_1";
+  private static final String TEST_2 = "Test_2";
+
+  private static final String TEMP_TEST_TABLE = "TempTest";
+  private static final String TEMP_TEST_NK = "TempTest_NK";
+  private static final String TEMP_TEST_1 = "TempTest_1";
+  private static final String TEMP_TEST_2 = "TempTest_2";
+
   private static final String ALTERNATE_TABLE = "Alternate";
-  private static final String OTHER_TABLE = "Other";
+  protected static final String OTHER_TABLE = "Other";
   private static final String UPPER_TABLE = "UPPER";
   private static final String MIXED_TABLE = "Mixed";
   private static final String NON_NULL_TABLE = "NonNull";
@@ -201,6 +214,10 @@ public abstract class AbstractSqlDialectTest {
   private static final String FLOAT_FIELD = "floatField";
   private static final String INT_FIELD = "intField";
   private static final String STRING_FIELD = "stringField";
+  private static final String DBLINK_NAME = "MYDBLINKREF";
+
+  protected static final String ID_VALUES_TABLE = "idvalues";
+  protected static final String ID_INCREMENTOR_TABLE_COLUMN_VALUE = "nextvalue";
 
   private static final byte[] BYTE_ARRAY = new byte[] { 2, 1, (byte) 164, 3, 14, 4, 9, 0, 0, 0, 48, 111, 114, 103, 46, 105, 110, 102, 105,
     110, 105, 115, 112, 97, 110, 46, 117, 116, 105, 108, 46, 99, 111, 110, 99, 117, 114, 114, 101, 110, 116, 46, 67, 111, 110,
@@ -253,6 +270,8 @@ public abstract class AbstractSqlDialectTest {
   protected static final String NEW_BLOB_VALUE_HEX = "4E657720426C6F622056616C7565";
   protected static final String OLD_BLOB_VALUE_HEX = "4F6C6420426C6F622056616C7565";
 
+  private static final String LONG_FIELD_STRING = "CREATE VIEW viewName AS (SELECT tableField1, tableField2, tableField3, tableField4, tableField5, tableField6, tableField7, tableField8, tableField9, tableField10, tableField11, tableField12, tableField13, tableField14, tableField15, tableField16, tableField17, tableField18, tableField19, tableField20, tableField21, tableField22, tableField23, tableField24, tableField25, tableField26, tableField27, tableField28, tableField29, tableField30 FROM table INNER JOIN table2 ON (table1.tableField1 = table2 = tableField1));";
+
 
   /**
    * Exception verifier.
@@ -266,6 +285,8 @@ public abstract class AbstractSqlDialectTest {
    */
   protected Schema metadata;
   private View testView;
+
+  private View testViewWithUnion;
 
   /**
    * Very long table name to test name truncation.
@@ -312,12 +333,12 @@ public abstract class AbstractSqlDialectTest {
           column(BIG_INTEGER_FIELD, DataType.BIG_INTEGER).nullable().defaultValue("12345"),
           column(CLOB_FIELD, DataType.CLOB).nullable()
             ).indexes(
-              index("Test_NK").unique().columns(STRING_FIELD),
-              index("Test_1").columns(INT_FIELD, FLOAT_FIELD)
+              index(TEST_NK).unique().columns(STRING_FIELD),
+              index(TEST_1).columns(INT_FIELD, FLOAT_FIELD).unique()
                 );
 
     // Temporary version of the main test table
-    testTempTable = table(testDialect.decorateTemporaryTableName("TempTest")).temporary()
+    testTempTable = table(testDialect.decorateTemporaryTableName(TEMP_TEST_TABLE)).temporary()
         .columns(
           idColumn(),
           versionColumn(),
@@ -331,8 +352,8 @@ public abstract class AbstractSqlDialectTest {
           column(BIG_INTEGER_FIELD, DataType.BIG_INTEGER).nullable().defaultValue("12345"),
           column(CLOB_FIELD, DataType.CLOB).nullable()
             ).indexes(
-              index("TempTest_NK").unique().columns(STRING_FIELD),
-              index("TempTest_1").columns(INT_FIELD, FLOAT_FIELD)
+              index(TEMP_TEST_NK).unique().columns(STRING_FIELD),
+              index(TEMP_TEST_1).columns(INT_FIELD, FLOAT_FIELD)
                 );
 
     // Simple alternate test table
@@ -377,8 +398,8 @@ public abstract class AbstractSqlDialectTest {
           column(BOOLEAN_FIELD, DataType.BOOLEAN).nullable(),
           column(CHAR_FIELD, DataType.STRING, 1).nullable()
             ).indexes(
-              index("Test_NK").unique().columns(STRING_FIELD),
-              index("Test_1").columns(INT_FIELD, FLOAT_FIELD)
+              index(TEST_NK).unique().columns(STRING_FIELD),
+              index(TEST_1).columns(INT_FIELD, FLOAT_FIELD)
                 );
 
     Table testTableAllUpperCase = table(UPPER_TABLE)
@@ -438,6 +459,10 @@ public abstract class AbstractSqlDialectTest {
     TableReference tr = new TableReference(TEST_TABLE);
     FieldReference f = new FieldReference(STRING_FIELD);
     testView = view("TestView", select(f).from(tr).where(eq(f, new FieldLiteral("blah"))));
+
+    TableReference tr1 = new TableReference(OTHER_TABLE);
+    testViewWithUnion = view("TestView", select(f).from(tr).where(eq(f, new FieldLiteral("blah")))
+      .unionAll(select(f).from(tr1).where(eq(f, new FieldLiteral("blah")))));
 
     Table inner = table("Inner")
         .columns(
@@ -518,6 +543,18 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * Tests the SQL for creating a view over a union select.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testCreateViewStatementOverUnionSelect() {
+    compareStatements(
+      expectedCreateViewOverUnionSelectStatements(),
+      testDialect.viewDeploymentStatements(testViewWithUnion));
+  }
+
+
+  /**
    * Tests the SQL for creating tables.
    */
   @SuppressWarnings("unchecked")
@@ -570,6 +607,29 @@ public abstract class AbstractSqlDialectTest {
     compareStatements(
       expectedDropTableStatements(),
       testDialect.dropStatements(table));
+  }
+
+
+  /**
+   * Tests SQL for dropping a tables with optional parameters.
+   */
+  @Test
+  public void testDropTables() {
+    Table table1 = metadata.getTable(TEST_TABLE);
+    Table table2 = metadata.getTable(OTHER_TABLE);
+
+    compareStatements(
+        expectedDropSingleTable(),
+        testDialect.dropTables(ImmutableList.of(table1), false, false)
+    );
+
+    compareStatements(
+        expectedDropTables(),
+        testDialect.dropTables(ImmutableList.of(table1, table2), false, false));
+
+    compareStatements(
+        expectedDropTablesWithParameters(),
+        testDialect.dropTables(ImmutableList.of(table1, table2), true, true));
   }
 
 
@@ -1350,6 +1410,20 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+  * Test the row number function in a select.
+  */
+  @Test
+  public void testSelectWithRowNumberFunction() {
+    SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD), rowNumber())
+            .from(new TableReference(ALTERNATE_TABLE))
+            .groupBy(new FieldReference(STRING_FIELD));
+
+    String expectedSql = "SELECT stringField, " + expectedRowNumber() + " FROM " + tableName(ALTERNATE_TABLE) + " GROUP BY stringField";
+    assertEquals("Select with row number function", expectedSql, testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
    * Tests the group by in a select.
    */
   @Test
@@ -1610,7 +1684,7 @@ public abstract class AbstractSqlDialectTest {
       new FieldLiteral(true).as(BOOLEAN_FIELD),
       new FieldLiteral('X').as(CHAR_FIELD)
         );
-    List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName("idvalues"));
+    List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName(ID_VALUES_TABLE));
     assertSQLEquals("Generated SQL not as expected", expectedSpecifiedValueInsert(), sql);
   }
 
@@ -1629,7 +1703,7 @@ public abstract class AbstractSqlDialectTest {
       new FieldLiteral('X').as(CHAR_FIELD)
     );
 
-    List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName("idvalues"));
+    List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName(ID_VALUES_TABLE));
     assertSQLEquals("Generated SQL not as expected", expectedSpecifiedValueInsertWithTableInDifferentSchema(), sql);
   }
 
@@ -1643,7 +1717,7 @@ public abstract class AbstractSqlDialectTest {
     // FIXME The default of '' for a charField is WRONG. This should probably be one of NULL or ' '. Not an empty string, which is an invalid character!
     String expectedSql = "INSERT INTO " + tableName(TEST_TABLE) + " (id, version, stringField, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) SELECT id, version, stringField, intField, floatField, 20010101 AS dateField, 0 AS booleanField, NULL AS charField, null AS blobField, 12345 AS bigIntegerField, null AS clobField FROM " + tableName(OTHER_TABLE);
 
-    List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName("idvalues"));
+    List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName(ID_VALUES_TABLE));
     assertEquals("Insert from select statement with some defaults", ImmutableList.of(expectedSql), sql);
   }
 
@@ -1662,7 +1736,7 @@ public abstract class AbstractSqlDialectTest {
           new FieldReference(STRING_FIELD))
           .from(sourceStmt);
 
-    List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName("idvalues"));
+    List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName(ID_VALUES_TABLE));
     assertSQLEquals("Insert from a select with no default for id", expectedAutoGenerateIdStatement(), sql);
   }
 
@@ -1679,7 +1753,7 @@ public abstract class AbstractSqlDialectTest {
         .fields(new FieldReference(STRING_FIELD))
         .from(sourceStmt);
 
-    List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName("idvalues"));
+    List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName(ID_VALUES_TABLE));
     assertSQLEquals("Insert from a select with no default for id", expectedInsertWithIdAndVersion(), sql);
   }
 
@@ -1699,7 +1773,7 @@ public abstract class AbstractSqlDialectTest {
 
     String expectedSql = "INSERT INTO " + tableName(TEST_TABLE) + " (id, version, stringField, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) SELECT id, version, stringField, intField, floatField, null AS dateField, null AS booleanField, null AS charField, null AS blobField, 12345 AS bigIntegerField, null AS clobField FROM " + tableName(OTHER_TABLE);
 
-    List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName("idvalues"));
+    List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName(ID_VALUES_TABLE));
     assertEquals("Insert with null defaults", ImmutableList.of(expectedSql), sql);
   }
 
@@ -1720,7 +1794,7 @@ public abstract class AbstractSqlDialectTest {
     String value = varCharCast("' '");
     String expectedSql = "INSERT INTO " + tableName(TEST_TABLE) + " (id, version, stringField, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) SELECT id, version, stringField, intField, floatField, null AS dateField, null AS booleanField, " + stringLiteralPrefix() + value +" AS charField, null AS blobField, 12345 AS bigIntegerField, null AS clobField FROM " + tableName(OTHER_TABLE);
 
-    List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName("idvalues"));
+    List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName(ID_VALUES_TABLE));
     assertEquals("Insert with null defaults", ImmutableList.of(expectedSql), sql);
   }
 
@@ -1739,7 +1813,7 @@ public abstract class AbstractSqlDialectTest {
 
     String expectedSql = "INSERT INTO " + tableName(ALTERNATE_TABLE) + " (id, version, stringField) VALUES (1, 0, NULL)";
 
-    List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName("idvalues"));
+    List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName(ID_VALUES_TABLE));
     assertEquals("Insert with null literals", ImmutableList.of(expectedSql).toString().toLowerCase(), sql.toString().replaceAll("/\\*.*?\\*/ ", "").toLowerCase());
   }
 
@@ -1766,7 +1840,7 @@ public abstract class AbstractSqlDialectTest {
 
     String expectedSql = "INSERT INTO " + tableName(OTHER_TABLE) + " (id, version, stringField, intField, floatField) SELECT id, version, stringField, intField, floatField FROM " + tableName(TEST_TABLE);
 
-    List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName("idvalues"));
+    List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName(ID_VALUES_TABLE));
     assertEquals("Insert with explicit field lists", ImmutableList.of(expectedSql), sql);
   }
 
@@ -1793,7 +1867,7 @@ public abstract class AbstractSqlDialectTest {
 
     String expectedSql = "INSERT INTO " + tableName(OTHER_TABLE) + " (id, version, stringField, intField, floatField) SELECT id, version, stringField, intField, floatField FROM " + differentSchemaTableName(TEST_TABLE);
 
-    List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName("idvalues"));
+    List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName(ID_VALUES_TABLE));
     assertEquals("Insert with explicit field lists", ImmutableList.of(expectedSql), sql);
   }
 
@@ -1823,7 +1897,7 @@ public abstract class AbstractSqlDialectTest {
 
     String expectedSql = "INSERT INTO " + tableName(OTHER_TABLE) + " (id, version, stringField, intField, floatField) SELECT id, version, stringField, intField, floatField FROM " + differentSchemaTableName(TEST_TABLE) + " INNER JOIN " + differentSchemaTableName(ALTERNATE_TABLE) + " ON (Test.stringField = Alternate.stringField)";
 
-    List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName("idvalues"));
+    List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName(ID_VALUES_TABLE));
     assertEquals("Insert with explicit field lists", ImmutableList.of(expectedSql), sql);
   }
 
@@ -1850,7 +1924,7 @@ public abstract class AbstractSqlDialectTest {
 
     String expectedSql = "INSERT INTO " + differentSchemaTableName(OTHER_TABLE) + " (id, version, stringField, intField, floatField) SELECT id, version, stringField, intField, floatField FROM " + tableName(TEST_TABLE);
 
-    List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName("idvalues"));
+    List<String> sql = testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName(ID_VALUES_TABLE));
     assertEquals("Insert with explicit field lists", ImmutableList.of(expectedSql), sql);
   }
 
@@ -1875,7 +1949,7 @@ public abstract class AbstractSqlDialectTest {
             "SELECT InnerAlias.innerFieldA, InnerAlias.innerFieldB " +
             "FROM (SELECT innerFieldA AS innerFieldA, innerFieldB AS innerFieldB FROM " + tableName("Inner") + ") InnerAlias";
 
-    assertEquals("Select with join on where clause", ImmutableList.of(expectedSql), testDialect.convertStatementToSQL(insert, metadata, SqlDialect.IdTable.withDeterministicName("idvalues")));
+    assertEquals("Select with join on where clause", ImmutableList.of(expectedSql), testDialect.convertStatementToSQL(insert, metadata, SqlDialect.IdTable.withDeterministicName(ID_VALUES_TABLE)));
   }
 
 
@@ -1901,7 +1975,7 @@ public abstract class AbstractSqlDialectTest {
             "SELECT innerFieldA " +
             "FROM (SELECT innerFieldA AS innerFieldA, innerFieldB AS innerFieldB FROM " + tableName("Inner") + ") InnerAlias";
 
-    assertEquals("Select with join on where clause", ImmutableList.of(expectedSql), testDialect.convertStatementToSQL(insert, metadata, SqlDialect.IdTable.withDeterministicName("idvalues")));
+    assertEquals("Select with join on where clause", ImmutableList.of(expectedSql), testDialect.convertStatementToSQL(insert, metadata, SqlDialect.IdTable.withDeterministicName(ID_VALUES_TABLE)));
   }
 
 
@@ -1913,7 +1987,7 @@ public abstract class AbstractSqlDialectTest {
   public void testInsertFromSelectIgnoresCase() {
     InsertStatement insertStatement = new InsertStatement().into(new TableReference(UPPER_TABLE)).from(new TableReference(MIXED_TABLE));
     String expectedSql = "INSERT INTO " + tableName(UPPER_TABLE) + " (id, version, FIELDA) SELECT id, version, FIELDA FROM " + tableName(MIXED_TABLE);
-    List<String> sql = testDialect.convertStatementToSQL(insertStatement, metadata, SqlDialect.IdTable.withDeterministicName("idvalues"));
+    List<String> sql = testDialect.convertStatementToSQL(insertStatement, metadata, SqlDialect.IdTable.withDeterministicName(ID_VALUES_TABLE));
     assertEquals("Expected INSERT to be case insensitive", expectedSql, sql.get(sql.size() - 1));
   }
 
@@ -1936,7 +2010,7 @@ public abstract class AbstractSqlDialectTest {
           .from(sourceStmt);
 
     try {
-      testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName("idvalues"));
+      testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName(ID_VALUES_TABLE));
       fail("Should error due to mismatched field counts");
     } catch (IllegalArgumentException e) {
       // Expected exception
@@ -2214,7 +2288,7 @@ public abstract class AbstractSqlDialectTest {
 
     InsertStatement insertStmt = new InsertStatement().into(new TableReference(TEST_TABLE)).values(new FieldLiteral("").as(STRING_FIELD));
 
-    List<String> sql = testDialect.convertStatementToSQL(insertStmt, metadata, SqlDialect.IdTable.withDeterministicName("idvalues"));
+    List<String> sql = testDialect.convertStatementToSQL(insertStmt, metadata, SqlDialect.IdTable.withDeterministicName(ID_VALUES_TABLE));
     assertEquals("Insert with literal null", expectedEmptyStringInsertStatement(), sql.get(sql.size() - 1));
   }
 
@@ -2355,7 +2429,7 @@ public abstract class AbstractSqlDialectTest {
     InsertStatement stmt = new InsertStatement().into(new TableReference(TEST_TABLE));
 
     try {
-      testDialect.convertStatementToSQL(stmt, null, SqlDialect.IdTable.withDeterministicName("idvalues"));
+      testDialect.convertStatementToSQL(stmt, null, SqlDialect.IdTable.withDeterministicName(ID_VALUES_TABLE));
       fail("Should have raised an exception when null metadata was supplied");
     } catch(IllegalArgumentException e) {
       // Expected exception
@@ -2371,7 +2445,7 @@ public abstract class AbstractSqlDialectTest {
     InsertStatement stmt = new InsertStatement().into(new TableReference("missingTable"));
 
     try {
-      testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName("idvalues"));
+      testDialect.convertStatementToSQL(stmt, metadata, SqlDialect.IdTable.withDeterministicName(ID_VALUES_TABLE));
       fail("Should have raised an exception when there was no metadata for the table being inserted into");
     } catch(IllegalArgumentException e) {
       // Expected exception
@@ -2472,6 +2546,15 @@ public abstract class AbstractSqlDialectTest {
   public void testYYYYMMDDToDate() {
     String result = testDialect.getSqlFrom(yyyymmddToDate(new FieldLiteral("20100101")));
     assertEquals(expectedYYYYMMDDToDate(), result);
+  }
+
+  /**
+   * Test that getSqlFrom((ClobFieldLiteral)) Returns correctly.
+   */
+  @Test
+  public void testClobFieldLiteralWithLongfield() {
+    String result = testDialect.getSqlFrom(new ClobFieldLiteral(LONG_FIELD_STRING));
+    assertEquals(expectedClobLiteralCast(), result);
   }
 
 
@@ -2625,6 +2708,12 @@ public abstract class AbstractSqlDialectTest {
   public void shouldGenerateCorrectSqlForMathOperations1() {
     String result = testDialect.getSqlFrom(field("a").divideBy(field("b")).plus(field("c")));
     assertEquals(expectedSqlForMathOperations1(), result);
+  }
+
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testRowNumberWithNoOrderByClause() {
+    testDialect.getSqlFrom(WindowFunction.over(rowNumber()).partitionBy(field("a")).build());
   }
 
 
@@ -3158,6 +3247,7 @@ public abstract class AbstractSqlDialectTest {
   /**
    * Check that the optimiser hints work.
    */
+  @SuppressWarnings("deprecation")
   @Test
   public void testHints() {
     assertEquals(
@@ -3186,6 +3276,7 @@ public abstract class AbstractSqlDialectTest {
         .optimiseForRowCount(1000)
         .useImplicitJoinOrder()
         .withParallelQueryPlan()
+        .allowParallelDml()
         .withCustomHint(mock(CustomHint.class))
       )
     );
@@ -3198,6 +3289,14 @@ public abstract class AbstractSqlDialectTest {
       )
     );
     assertEquals(
+       expectedHints3a(),
+       testDialect.convertStatementToSQL(
+         update(tableRef("Foo"))
+         .set(field("b").as("a"))
+         .useParallelDml(5)
+       )
+    );
+    assertEquals(
       Lists.newArrayList(expectedHints4()),
       testDialect.convertStatementToSQL(
         insert()
@@ -3205,6 +3304,33 @@ public abstract class AbstractSqlDialectTest {
         .from(select(field("a"), field("b")).from(tableRef("Foo_1")))
         .useDirectPath()
       )
+    );
+    assertEquals(
+        Lists.newArrayList(expectedHints4a()),
+        testDialect.convertStatementToSQL(
+          insert()
+          .into(tableRef("Foo"))
+          .from(select(field("a"), field("b")).from(tableRef("Foo_1")))
+          .avoidDirectPath()
+        )
+    );
+    assertEquals(
+         Lists.newArrayList(expectedHints4b()),
+         testDialect.convertStatementToSQL(
+           insert()
+           .into(tableRef("Foo"))
+           .from(select(field("a"), field("b")).from(tableRef("Foo_1")))
+           .useParallelDml()
+         )
+    );
+    assertEquals(
+         Lists.newArrayList(expectedHints4c()),
+         testDialect.convertStatementToSQL(
+           insert()
+           .into(tableRef("Foo"))
+           .from(select(field("a"), field("b")).from(tableRef("Foo_1")))
+           .useParallelDml(5)
+         )
     );
     assertEquals(
       Lists.newArrayList(expectedHints5()),
@@ -3223,7 +3349,16 @@ public abstract class AbstractSqlDialectTest {
         .withParallelQueryPlan(5)
       )
     );
-
+    assertEquals(
+      expectedHints6a(),
+      testDialect.convertStatementToSQL(
+        select(field("a"), field("b"))
+        .from(tableRef("Foo"))
+        .orderBy(field("a"))
+        .withParallelQueryPlan(5)
+        .allowParallelDml()
+      )
+    );
     assertEquals(
       expectedHints7(),
       testDialect.convertStatementToSQL(
@@ -3241,6 +3376,16 @@ public abstract class AbstractSqlDialectTest {
         .withCustomHint(() -> "CustomHint")
       )
     );
+
+    assertEquals(
+      expectedHints8a(),
+      testDialect.convertStatementToSQL(
+        select()
+        .from(new TableReference("SCHEMA2", "Foo"))
+        .withDialectSpecificHint(provideDatabaseType(), "index(customer cust_primary_key_idx)")
+        .withDialectSpecificHint("SOMETHING_ELSE", "unused_hint()")
+          )
+        );
   }
 
 
@@ -3248,8 +3393,17 @@ public abstract class AbstractSqlDialectTest {
    * This method can be overridden in specific dialects to test providing custom hints in each dialect
    * @return a mock CustomHint or an overridden, more specific, CustomHint
    */
+  @SuppressWarnings("deprecation")
   protected CustomHint provideCustomHint() {
     return mock(CustomHint.class);
+  }
+
+  /**
+   * This method can be overridden in specific dialects to test DialectSpecificHint in each dialect
+   * @return a mock database type identifier value or an overridden, dialect specific, database type identfier
+   */
+  protected String provideDatabaseType() {
+    return "SOME_DATABASE_IDENTIFIER";
   }
 
 
@@ -3774,12 +3928,12 @@ public abstract class AbstractSqlDialectTest {
     // alter an index
     // note the different case
     ChangeIndex changeIndex = new ChangeIndex(TEST_TABLE,
-      index("Test_1").columns(INT_FIELD, FLOAT_FIELD),
-      index("Test_1").columns("INTFIELD"));
+      index(TEST_1).columns(INT_FIELD, FLOAT_FIELD).unique(),
+      index(TEST_1).columns("INTFIELD"));
     schema = changeIndex.apply(metadata);
     Table tableAfterChangeIndex = schema.getTable(TEST_TABLE);
-    Collection<String> dropIndexStatements = testDialect.indexDropStatements(tableAfterChangeIndex, index("Test_1").columns(INT_FIELD, FLOAT_FIELD));
-    Collection<String> addIndexStatements = testDialect.addIndexStatements(tableAfterChangeIndex, index("Test_1").columns(INT_FIELD));
+    Collection<String> dropIndexStatements = testDialect.indexDropStatements(tableAfterChangeIndex, index(TEST_1).columns(INT_FIELD, FLOAT_FIELD).unique());
+    Collection<String> addIndexStatements = testDialect.addIndexStatements(tableAfterChangeIndex, index(TEST_1).columns(INT_FIELD));
 
     // then alter a column in that index
     ChangeColumn changeColumn = new ChangeColumn(TEST_TABLE,
@@ -3893,6 +4047,20 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * Test adding a unique index.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testAddIndexStatementsUniqueNullable() {
+    Table table = metadata.getTable(TEST_TABLE);
+    Index index = index("indexName").unique().columns(STRING_FIELD, INT_FIELD, FLOAT_FIELD, DATE_FIELD);
+    compareStatements(
+      expectedAddIndexStatementsUniqueNullable(),
+      testDialect.addIndexStatements(table, index));
+  }
+
+
+  /**
    * Test dropping an index.
    */
   @SuppressWarnings("unchecked")
@@ -3928,8 +4096,8 @@ public abstract class AbstractSqlDialectTest {
       column(BIG_INTEGER_FIELD, DataType.BIG_INTEGER).nullable().defaultValue("12345"),
       column(CLOB_FIELD, DataType.CLOB).nullable()
         ).indexes(
-          index("Test_NK").unique().columns(STRING_FIELD),
-          index("Test_1").columns(INT_FIELD, FLOAT_FIELD)
+          index(TEST_NK).unique().columns(STRING_FIELD),
+          index(TEST_1).columns(INT_FIELD, FLOAT_FIELD).unique()
             );
 
     compareStatements(expectedRenameTableStatements(), testDialect.renameTableStatements(fromTable, renamed));
@@ -3980,7 +4148,12 @@ public abstract class AbstractSqlDialectTest {
   @SuppressWarnings("unchecked")
   @Test
   public void testRenameIndexStatements() {
-    compareStatements(expectedRenameIndexStatements(), testDialect.renameIndexStatements(testTable, "Test_1", "Test_2"));
+    AlteredTable alteredTable = new AlteredTable(testTable, null, null,
+      FluentIterable.from(testTable.indexes()).transform(Index::getName).filter(i -> !i.equals(TEST_1)).append(TEST_2),
+      ImmutableList.of(index(TEST_2).columns(INT_FIELD, FLOAT_FIELD).unique())
+    );
+
+    compareStatements(expectedRenameIndexStatements(), testDialect.renameIndexStatements(alteredTable, TEST_1, TEST_2));
   }
 
 
@@ -3990,7 +4163,12 @@ public abstract class AbstractSqlDialectTest {
   @SuppressWarnings("unchecked")
   @Test
   public void testRenameTempIndexStatements() {
-    compareStatements(expectedRenameTempIndexStatements(), testDialect.renameIndexStatements(testTempTable, "TempTest_1", "TempTest_2"));
+    AlteredTable alteredTable = new AlteredTable(testTempTable, null, null,
+      FluentIterable.from(testTempTable.indexes()).transform(Index::getName).filter(i -> !i.equals(TEMP_TEST_1)).append(TEMP_TEST_2),
+      ImmutableList.of(index(TEMP_TEST_2).columns(INT_FIELD, FLOAT_FIELD))
+    );
+
+    compareStatements(expectedRenameTempIndexStatements(), testDialect.renameIndexStatements(alteredTable, TEMP_TEST_1, TEMP_TEST_2));
   }
 
 
@@ -4111,6 +4289,72 @@ public abstract class AbstractSqlDialectTest {
     SelectStatement selectStatement = select(field("someField"), field("otherField")).from(tableRef("OtherTable"));
 
     compareStatements(expectedAddTableFromStatements(), getTestDialect().addTableFromStatements(table, selectStatement));
+  }
+
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testReplaceTableFromStatements() {
+    Table table = table("SomeTable")
+        .columns(
+            column("someField", DataType.STRING, 3).primaryKey(),
+            column("otherField", DataType.DECIMAL, 3),
+            column("thirdField", DataType.DECIMAL, 5)
+        ).indexes(
+            index("SomeTable_1").columns("otherField")
+        );
+
+    Table tableWithAutonumber = table("SomeTable")
+        .columns(
+            column("someField", DataType.STRING, 3).primaryKey(),
+            column("otherField", DataType.DECIMAL, 3).autoNumbered(1),
+            column("thirdField", DataType.DECIMAL, 5)
+        ).indexes(
+            index("SomeTable_1").columns("otherField")
+        );
+
+    SelectStatement selectStatement = select(
+        field("someField"),
+        field("otherField"),
+        cast(field("thirdField")).asType(DataType.DECIMAL, 5).as("thirdField"))
+        .from(tableRef("OtherTable"));
+
+    compareStatements(expectedReplaceTableFromStatements(), getTestDialect().replaceTableFromStatements(table, selectStatement));
+    compareStatements(expectedReplaceTableWithAutonumber(), getTestDialect().replaceTableFromStatements(tableWithAutonumber, selectStatement));
+  }
+
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testReplaceTableSelectStatementValidation() {
+    Table table = table("SomeTable")
+            .columns(
+                    column("someField", DataType.STRING, 3).primaryKey(),
+                    column("otherField", DataType.DECIMAL, 3),
+                    column("thirdField", DataType.DECIMAL, 5)
+            ).indexes(
+                    index("SomeTable_1").columns("otherField")
+            );
+
+    SelectStatement withIncorrectFieldCount = select(
+            field("someField"),
+            field("otherField"))
+            .from(tableRef("OtherTable"));
+
+    SelectStatement withIncorrectFieldName = select(
+            field("someField"),
+            field("otherField"),
+            field("wrongField"))
+            .from(tableRef("OtherTable"));
+
+
+    IllegalArgumentException fieldCount =  assertThrows(IllegalArgumentException.class, () -> compareStatements(expectedReplaceTableFromStatements(), getTestDialect().replaceTableFromStatements(table, withIncorrectFieldCount)));
+    IllegalArgumentException fieldName = assertThrows(IllegalArgumentException.class, () -> compareStatements(expectedReplaceTableFromStatements(), getTestDialect().replaceTableFromStatements(table, withIncorrectFieldName)));
+
+    assertEquals("Number of table columns [3] does not match number of select columns [2].", fieldCount.getMessage());
+    assertEquals("Table columns do not match select columns\n"
+            + "Mismatching pairs:\n"
+            + "    thirdField <> wrongField", fieldName.getMessage());
   }
 
 
@@ -4345,6 +4589,12 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * @return Expected SQL for {@link #testAddIndexStatementsUniqueNullable()}
+   */
+  protected abstract List<String> expectedAddIndexStatementsUniqueNullable();
+
+
+  /**
    * @return Expected SQL for {@link #testIndexDropStatements()}
    */
   protected abstract List<String> expectedIndexDropStatements();
@@ -4456,6 +4706,74 @@ public abstract class AbstractSqlDialectTest {
 
     String result = testDialect.convertStatementToSQL(stmt);
     assertEquals("Select script should match expected", expectedSelectWithUnion(), result);
+  }
+
+
+  /**
+   * Tests the generation of SQL string for a query with EXCEPT operator.
+   */
+  @Test
+  public void testSelectWithExceptStatement() {
+    assumeTrue("for dialects with no EXCEPT operation support the test will be skipped.", expectedSelectWithExcept() != null);
+
+    SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD))
+      .from(new TableReference(TEST_TABLE))
+      .except(new SelectStatement(new FieldReference(STRING_FIELD)).from(new TableReference(OTHER_TABLE)))
+      .orderBy(new FieldReference(STRING_FIELD));
+    String result = testDialect.convertStatementToSQL(stmt);
+
+    assertEquals("Select script should match expected", expectedSelectWithExcept(), result);
+  }
+
+
+  /**
+   * Tests the generation of SQL string for a query with a DB-link.
+   */
+  @Test
+  public void testSelectWithDbLink() {
+    assumeTrue("for dialects with no EXCEPT operation support the test will be skipped.", expectedSelectWithDbLink() != null);
+
+    SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD))
+        .from(new TableReference(null, TEST_TABLE, DBLINK_NAME));
+    String result = testDialect.convertStatementToSQL(stmt);
+
+    assertEquals("Select script should match expected", expectedSelectWithDbLink(), result);
+  }
+
+
+  /**
+   * Tests the generation of SQL string for a query with EXCEPT operator where a
+   * former select uses DB-link.
+   */
+  @Test
+  public void testSelectWithExceptStatementsWithDbLinkFormer() {
+    assumeTrue("for dialects with no EXCEPT operation support the test will be skipped.", expectedSelectWithExceptAndDbLinkFormer() != null);
+
+    SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD))
+        .from(new TableReference(null, TEST_TABLE, DBLINK_NAME))
+        .except(new SelectStatement(new FieldReference(STRING_FIELD)).from(new TableReference(null, OTHER_TABLE)))
+        .orderBy(new FieldReference(STRING_FIELD));
+    String result = testDialect.convertStatementToSQL(stmt);
+
+    assertEquals("Select script should match expected", expectedSelectWithExceptAndDbLinkFormer(), result);
+  }
+
+
+  /**
+   * Tests the generation of SQL string for a query with EXCEPT operator where a
+   * latter select uses DB-link.
+   */
+  @Test
+  public void testSelectWithExceptStatementsWithDbLinkLatter() {
+    assumeTrue("for dialects with no EXCEPT operation support the test will be skipped.", expectedSelectWithExceptAndDbLinkLatter() != null);
+
+    SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD))
+        .from(new TableReference(null, TEST_TABLE))
+        .except(new SelectStatement(new FieldReference(STRING_FIELD)).from(new TableReference(null, OTHER_TABLE, DBLINK_NAME)))
+        .orderBy(new FieldReference(STRING_FIELD));
+    String result = testDialect.convertStatementToSQL(stmt);
+
+    assertEquals("Select script should match expected", expectedSelectWithExceptAndDbLinkLatter(), result);
   }
 
 
@@ -4778,6 +5096,14 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * @return The expected SQL statements for creating the test database view over a union select.
+   */
+  protected List<String> expectedCreateViewOverUnionSelectStatements() {
+    return Arrays.asList("CREATE VIEW " + tableName("TestView") + " AS (SELECT stringField FROM " + tableName(TEST_TABLE) + " WHERE (stringField = " + stringLiteralPrefix() + "'blah') UNION ALL SELECT stringField FROM " + tableName(OTHER_TABLE) + " WHERE (stringField = " + stringLiteralPrefix() + "'blah'))");
+  }
+
+
+  /**
    * @return The expected SQL statement when performing the ANSI daysBetween call
    */
   protected String expectedDaysBetween() {
@@ -4825,6 +5151,24 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL statements for dropping the test database tables.
    */
   protected abstract List<String> expectedDropTableStatements();
+
+
+  /**
+   * @return The expected SQL statements for dropping a single test database table.
+   */
+  protected abstract List<String> expectedDropSingleTable();
+
+
+  /**
+   * @return The expected SQL statements for dropping the test database tables.
+   */
+  protected abstract List<String> expectedDropTables();
+
+
+  /**
+   * @return The expected SQL statements for dropping the test database tables with parameters.
+   */
+  protected abstract List<String> expectedDropTablesWithParameters();
 
 
   /**
@@ -4941,6 +5285,12 @@ public abstract class AbstractSqlDialectTest {
   protected abstract List<String> expectedAddTableFromStatements();
 
 
+  protected abstract List<String> expectedReplaceTableFromStatements();
+
+
+  protected abstract List<String> expectedReplaceTableWithAutonumber();
+
+
   /**
    * @return The expected SQL for an insert to Test that inserts an empty string (i.e. NULL).
    */
@@ -5005,6 +5355,12 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL for conversion of a date to a YYYYMMDDHHmmss integer
    */
   protected abstract String expectedDateToYyyymmddHHmmss();
+
+
+  /**
+   * @return The expected SQL for conversion of a ClobFieldLiteral to string.
+   */
+  protected abstract String expectedClobLiteralCast();
 
 
   /**
@@ -5106,6 +5462,36 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL for selecting with an UNION statement.
    */
   protected abstract String expectedSelectWithUnion();
+
+
+  /**
+   * @return The expected SQL for selecting with an EXCEPT statement, or
+   *         {@code null} if EXCEPT operation is unsupported.
+   */
+  protected abstract String expectedSelectWithExcept();
+
+
+  /**
+   * @return The expected SQL for selecting with a DB Link or {@code null} if DB
+   *         Link is unsupported.
+   */
+  protected abstract String expectedSelectWithDbLink();
+
+
+  /**
+   * @return The expected SQL for selecting with an EXCEPT statement and DB Link
+   *         (for the former statement), or {@code null} if DB-Link or EXCEPT
+   *         operation is unsupported.
+   */
+  protected abstract String expectedSelectWithExceptAndDbLinkFormer();
+
+
+  /**
+   * @return The expected SQL for selecting with an EXCEPT statement and DB Link
+   *         (for the latter statement), or {@code null} if DB-Link or EXCEPT
+   *         operation is unsupported.
+   */
+  protected abstract String expectedSelectWithExceptAndDbLinkLatter();
 
 
   /**
@@ -5251,6 +5637,14 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * @return The expected SQL for retrieving the row number
+   */
+  protected String expectedRowNumber() {
+    return "ROW_NUMBER()";
+  }
+
+
+  /**
    * @return The expected SQL for rounding
    */
   protected String expectedRound() {
@@ -5385,9 +5779,41 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * @return The expected SQL for the {@link UpdateStatement#useParallelDml(int)} directive.
+   */
+  protected String expectedHints3a() {
+    return "UPDATE " + tableName("Foo") + " SET a = b";
+  }
+
+
+  /**
    * @return The expected SQL for the {@link InsertStatement#useDirectPath()} directive.
    */
   protected String expectedHints4() {
+    return  "INSERT INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
+  }
+
+
+  /**
+   * @return The expected SQL for the {@link InsertStatement#avoidDirectPath()} directive.
+   */
+  protected String expectedHints4a() {
+    return  "INSERT INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
+  }
+
+
+  /**
+   * @return The expected SQL for the {@link InsertStatement#useParallelDml()} ()} directive.
+   */
+  protected String expectedHints4b() {
+    return  "INSERT INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
+  }
+
+
+  /**
+   * @return The expected SQL for the {@link InsertStatement#useParallelDml(int)} directive.
+   */
+  protected String expectedHints4c() {
     return  "INSERT INTO " + tableName("Foo") + " SELECT a, b FROM " + tableName("Foo_1");
   }
 
@@ -5409,6 +5835,14 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * @return The expected SQL for the {@link SelectStatement#withParallelQueryPlan(int)} and {@link SelectStatement#allowParallelDml()} directive.
+   */
+  protected String expectedHints6a() {
+    return "SELECT a, b FROM " + tableName("Foo") + " ORDER BY a";
+  }
+
+
+  /**
    * @return The expected SQL for the {@link SelectStatement#withCustomHint(CustomHint customHint)} directive. Testing the OracleDialect adds the hints successfully.
    */
   protected  String expectedHints7() {
@@ -5420,6 +5854,13 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL for the {@link SelectStatement#withCustomHint(CustomHint customHint)} directive. Testing all dialcts do not react to an empty hint being supplied.
    */
   protected  String expectedHints8() {
+    return "SELECT * FROM SCHEMA2.Foo"; //NOSONAR
+  }
+
+  /**
+   * @return The expected SQL for the {@link SelectStatement#withDialectSpecificHint(String, String)} directive. Testing all dialcts do not react to an empty hint being supplied.
+   */
+  protected  String expectedHints8a() {
     return "SELECT * FROM SCHEMA2.Foo"; //NOSONAR
   }
 
@@ -5523,15 +5964,7 @@ public abstract class AbstractSqlDialectTest {
 
 
   @Test
-  public void testClaimsSupportsWindowFunctions() {
-    assertEquals("Mismatch in expected value of .supportsWindowFunctions()",supportsWindowFunctions(),testDialect.supportsWindowFunctions());
-  }
-
-
-  @Test
   public void testWindowFunctions() {
-    assumeTrue(supportsWindowFunctions());
-
     List<AliasedField> windowFunctions = windowFunctions().toList();
     List<String> expectedSql = expectedWindowFunctionStatements();
     assertEquals("Incorrect test setup, the expected number of window function statements did not match the window function test cases",windowFunctions.size(),expectedSql.size());
@@ -5540,20 +5973,6 @@ public abstract class AbstractSqlDialectTest {
       assertEquals(expectedSql.get(i),testDialect.getSqlFrom(windowFunctions.get(i)));
     }
   }
-
-
-  @Test(expected = UnsupportedOperationException.class)
-  public void testThrowsExceptionForUnsupportedWindowFunction() {
-    assumeFalse(supportsWindowFunctions());
-
-    testDialect.getSqlFrom(windowFunctions().first().get());
-  }
-
-
-  /**
-   * @return true if the dialect under test should claim to support window functions.
-   */
-  protected abstract boolean supportsWindowFunctions();
 
 
   /**
@@ -5569,6 +5988,8 @@ public abstract class AbstractSqlDialectTest {
       "MAX(field1) OVER (PARTITION BY field2, field3 ORDER BY field4"+paddedNullOrder+")",
       "MIN(field1) OVER (PARTITION BY field2, field3 ORDER BY field4 DESC"+paddedNullOrderDesc+", field5"+paddedNullOrder+")",
       "MIN(field1) OVER ( ORDER BY field2"+paddedNullOrder+")",
+      "ROW_NUMBER() OVER (PARTITION BY field2, field3 ORDER BY field4"+paddedNullOrder+")",
+      "ROW_NUMBER() OVER ( ORDER BY field2"+paddedNullOrder+")",
       "(SELECT MIN(field1) OVER ( ORDER BY field2"+paddedNullOrder+") AS window FROM "+tableName("srcTable")+")"
     );
   }
@@ -5585,6 +6006,8 @@ public abstract class AbstractSqlDialectTest {
       windowFunction(max(field("field1"))).partitionBy(field("field2"),field("field3")).orderBy(field("field4").asc()).build(),
       windowFunction(min(field("field1"))).partitionBy(field("field2"),field("field3")).orderBy(field("field4").desc(),field("field5")).build(),
       windowFunction(min(field("field1"))).orderBy(field("field2")).build(),
+      windowFunction(rowNumber()).partitionBy(field("field2"),field("field3")).orderBy(field("field4")).build(),
+      windowFunction(rowNumber()).orderBy(field("field2")).build(),
       select( windowFunction(min(field("field1"))).orderBy(field("field2")).build().as("window")).from(tableRef("srcTable")).asField()
       ));
   }

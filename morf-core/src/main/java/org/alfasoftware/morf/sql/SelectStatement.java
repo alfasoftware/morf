@@ -24,9 +24,11 @@ import java.util.List;
 import org.alfasoftware.morf.sql.UnionSetOperator.UnionStrategy;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
+import org.alfasoftware.morf.sql.element.AllowParallelDmlHint;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.FieldFromSelect;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.Builder;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.DeepCopyableWithTransformation;
@@ -54,6 +56,7 @@ import com.google.common.collect.Lists;
  *      .having([criterion])               = SELECT [fields] FROM [table] GROUP BY [fields] HAVING [criterion]
  *    .union([SelectStatement])            = SELECT [fields] FROM [table] UNION [SelectStatement]
  *    .unionAll([SelectStatement])         = SELECT [fields] FROM [table] UNION ALL [SelectStatement]
+ *    .except([SelectStatement])           = SELECT [fields] FROM [table] EXCEPT [SelectStatement]
  *    .build()</pre></blockquote>
  *
  * @author Copyright (c) Alfa Financial Software 2009
@@ -436,6 +439,7 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
    *
    * <p>Note that the executed use cases of this are rare. Caution is needed because if multiple requests are made by the application to run parallel queries, the resulting resource contention may result in worse performance - this is not intended for queries that are submitted in parallel by the application.</p>
    *
+   * @param degreeOfParallelism Degree of parallelism to be specified in the hint.
    * @return this, for method chaining.
    */
   public SelectStatement withParallelQueryPlan(int degreeOfParallelism) {
@@ -447,17 +451,54 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
 
 
   /**
+   * Request that this query can contribute towards a parallel DML execution plan.
+   * If a select statement is used within a DML statement, some dialects require DML parallelisation to be enabled via the select statement.
+   * If the database implementation does not support, or is configured to disable parallel query execution, then this request will have no effect.
+   *
+   * <p>For queries that are likely to change a lot of data, a parallel execution plan may result in the results being written faster, although the exact effect depends on
+   * the underlying database, the nature of the data.</p>
+   *
+   * <p>Note that the use cases of this are rare. Caution is needed because if multiple requests are made by the application to run parallel queries, the resulting resource contention may result in worse performance - this is not intended for queries that are submitted in parallel by the application.</p>
+   *
+   * @return this, for method chaining.
+   * @see #withParallelQueryPlan()
+   */
+  public SelectStatement allowParallelDml() {
+    return copyOnWriteOrMutate(
+        SelectStatementBuilder::allowParallelDml,
+        () -> this.hints.add(AllowParallelDmlHint.INSTANCE)
+    );
+  }
+
+
+  /**
    * Supplies a specified custom hint to the database for a query.
    *
    * @param customHint representation of a custom hint
    *
    * @return this, for method chaining.
+   * @deprecated Use {@link #withDialectSpecificHint(String, String)} instead. See why this is deprecated at {@link org.alfasoftware.morf.sql.CustomHint}
    */
+  @Deprecated
   public SelectStatement withCustomHint(CustomHint customHint) {
       return copyOnWriteOrMutate(
               (SelectStatementBuilder b) -> b.withCustomHint(customHint),
               () -> this.hints.add(customHint)
       );
+  }
+
+  /**
+   * Supplies a specified custom hint to the database for a query.
+   *
+   * @param databaseType a database type identifier. Eg: ORACLE, PGSQL, SQL_SERVER
+   * @param hintContents the hint contents themselves, without the delimiters. Eg: without /*+ and *"/ * for Oracle hints
+   * @return this, for method chaining.
+   */
+  public SelectStatement withDialectSpecificHint(String databaseType, String hintContents) {
+    return copyOnWriteOrMutate(
+      (SelectStatementBuilder b) -> b.withDialectSpecificHint(databaseType, hintContents),
+      () -> this.hints.add(new DialectSpecificHint(databaseType, hintContents))
+        );
   }
 
 
@@ -528,6 +569,27 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
     return copyOnWriteOrMutate(
         (SelectStatementBuilder b) -> b.unionAll(selectStatement),
         () ->  setOperators.add(new UnionSetOperator(UnionStrategy.ALL, this, selectStatement))
+    );
+  }
+
+
+  /**
+   * Perform a EXCEPT set operation with another {@code selectStatement},
+   * eliminating any rows from the top select statement which exist in the bottom
+   * select statement.
+   * <p>
+   * If an except operation is performed then all participating select statements
+   * require the same selected column list.
+   * </p>
+   *
+   * @param selectStatement the select statement to be united with the current
+   *                          select statement;
+   * @return a new select statement with the change applied.
+   */
+  public SelectStatement except(SelectStatement selectStatement) {
+    return copyOnWriteOrMutate(
+        (SelectStatementBuilder b) -> b.except(selectStatement),
+        () ->  setOperators.add(new ExceptSetOperator(this, selectStatement))
     );
   }
 
@@ -704,5 +766,19 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
   @Override
   public SelectStatementBuilder deepCopy(DeepCopyTransformation transformer) {
     return new SelectStatementBuilder(this, transformer);
+  }
+
+
+  @Override
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
+    super.accept(visitor);
+
+    if(having != null) {
+      having.accept(visitor);
+    }
+    if(setOperators != null) {
+      setOperators.stream().forEach(op -> op.accept(visitor));
+    }
   }
 }

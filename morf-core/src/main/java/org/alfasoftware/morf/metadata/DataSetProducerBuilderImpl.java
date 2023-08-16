@@ -33,7 +33,7 @@ class DataSetProducerBuilderImpl implements DataSetProducerBuilder {
   private final Map<String, List<Record>> recordMap = Maps.newHashMap();
 
   /**
-   * @param schema
+   * @param schema The {@link Schema}
    */
   public DataSetProducerBuilderImpl(Schema schema) {
     super();

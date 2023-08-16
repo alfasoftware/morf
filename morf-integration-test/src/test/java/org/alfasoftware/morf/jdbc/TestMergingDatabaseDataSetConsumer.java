@@ -66,7 +66,7 @@ public class TestMergingDatabaseDataSetConsumer {
     // ... a control extract (provided)
 
     // ... a database with some data
-    SqlScriptExecutorProvider sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources.getDataSource(), Providers.of(connectionResources.sqlDialect()));
+    SqlScriptExecutorProvider sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources.getDataSource(), connectionResources.sqlDialect());
 
     log.info("Creating the initial DataSet");
 

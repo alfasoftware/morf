@@ -234,14 +234,14 @@ public class TestDataSetUtilsVolume {
   private RecordBuilder randomiseObjects(RecordBuilder builder) {
     return builder
         .setInteger(INTEGER_COLUMN, RandomUtils.nextInt())
-        .setString(STRING_COLUMN, Long.toString(RandomUtils.nextLong()).toString())
+        .setString(STRING_COLUMN, Long.toString(RandomUtils.nextLong()))
         .setBigDecimal(BIG_DECIMAL_COLUMN, BIG_DECIMAL)
         .setBoolean(BOOLEAN_COLUMN, RandomUtils.nextBoolean())
         .setDate(DATE_COLUMN, java.sql.Date.valueOf(java.time.LocalDate.now()))
         .setLocalDate(LOCAL_DATE_COLUMN, LocalDate.now())
         .setLong(LONG_COLUMN, RandomUtils.nextLong())
-        .setByteArray(BLOB_COLUMN, Long.toString(RandomUtils.nextLong()).toString().getBytes())
-        .value(UNTYPED_COLUMN, Long.toString(RandomUtils.nextLong()).toString());
+        .setByteArray(BLOB_COLUMN, Long.toString(RandomUtils.nextLong()).getBytes())
+        .value(UNTYPED_COLUMN, Long.toString(RandomUtils.nextLong()));
   }
 
 

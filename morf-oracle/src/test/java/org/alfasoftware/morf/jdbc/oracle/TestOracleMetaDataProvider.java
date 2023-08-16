@@ -21,11 +21,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.RETURNS_SMART_NULLS;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -63,6 +59,7 @@ public class TestOracleMetaDataProvider {
   private final Connection connection = mock(Connection.class, RETURNS_SMART_NULLS);
   private DatabaseType oracle;
 
+
   @Before
   public void setup() {
     oracle = DatabaseType.Registry.findByIdentifier(Oracle.IDENTIFIER);
@@ -75,6 +72,7 @@ public class TestOracleMetaDataProvider {
   }
 
 
+
   /**
    * Checks the sql run for an {@link DatabaseMetaDataProvider#isEmptyDatabase()} check.
    *
@@ -83,28 +81,49 @@ public class TestOracleMetaDataProvider {
   @Test
   public void testIsEmptyDatabase() throws SQLException {
 
-    String query1 = "SELECT A.TABLE_NAME, A.COLUMN_NAME FROM ALL_CONS_COLUMNS A JOIN ALL_CONSTRAINTS C  ON A.CONSTRAINT_NAME = C.CONSTRAINT_NAME AND A.OWNER = C.OWNER and A.TABLE_NAME = C.TABLE_NAME WHERE C.TABLE_NAME not like 'BIN$%' AND "
-    + "C.OWNER=? AND C.CONSTRAINT_TYPE = 'P' ORDER BY A.TABLE_NAME, A.POSITION";
 
-    final PreparedStatement statement1 = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
-
-    String query2 = "SELECT A.TABLE_NAME, A.COLUMN_NAME FROM ALL_CONS_COLUMNS A JOIN ALL_CONSTRAINTS C  ON A.CONSTRAINT_NAME = C.CONSTRAINT_NAME AND A.OWNER = C.OWNER and A.TABLE_NAME = C.TABLE_NAME WHERE C.TABLE_NAME not like 'BIN$%' AND "
-    + "C.OWNER=? AND C.CONSTRAINT_TYPE = 'P' ORDER BY A.TABLE_NAME, A.POSITION";
-
-    final PreparedStatement statement2 = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    final PreparedStatement statement1 = mockGetTableKeysQuery(0, false, false);
 
     final Schema oracleMetaDataProvider = oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
-
-    when(connection.prepareStatement(query1)).thenReturn(statement1);
-    when(statement1.executeQuery()).thenAnswer(new ReturnMockResultSet(0));
     assertTrue("Database should be reported empty", oracleMetaDataProvider.isEmptyDatabase());
 
-    when(connection.prepareStatement(query2)).thenReturn(statement2);
-    when(statement2.executeQuery()).thenAnswer(new ReturnMockResultSet(1));
+
+    final PreparedStatement statement2= mockGetTableKeysQuery(1, false, false);
+
     assertFalse("Database should not be reported empty", oracleMetaDataProvider.isEmptyDatabase());
 
     verify(statement1).setString(1, "TESTSCHEMA");
     verify(statement2).setString(1, "TESTSCHEMA");
+  }
+
+  @Test
+  public void testIfCatchesWronglyNamedPrimaryKeyIndex() throws SQLException {
+    mockGetTableKeysQuery(1, true, false);
+
+    final Schema oracleMetaDataProvider = oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
+
+    try {
+      oracleMetaDataProvider.isEmptyDatabase();
+      fail("Exception expected");
+    } catch (RuntimeException e) {
+      assertEquals(e.getMessage(),
+        "Primary Key on table [AREALTABLE] column [dateColumn] backed with an index whose name does not end in _PK [PRIMARY_INDEX_NK]" + System.lineSeparator());
+    }
+  }
+
+  @Test
+  public void testIfCatchesWronglyNamedPrimaryKeyIndexNull() throws SQLException {
+    mockGetTableKeysQuery(1, false, true);
+
+    final Schema oracleMetaDataProvider = oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
+
+    try {
+      oracleMetaDataProvider.isEmptyDatabase();
+      fail("Exception expected");
+    } catch (RuntimeException e) {
+      assertEquals(e.getMessage(),
+          "Primary Key on table [AREALTABLE] column [dateColumn] backed with an index whose name does not end in _PK [null]" + System.lineSeparator());
+    }
   }
 
 
@@ -118,7 +137,7 @@ public class TestOracleMetaDataProvider {
     // Given
     final PreparedStatement statement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
     when(connection.prepareStatement("SELECT view_name FROM ALL_VIEWS WHERE owner=?")).thenReturn(statement);
-    when(statement.executeQuery()).thenAnswer(new ReturnMockResultSet(1));
+    when(statement.executeQuery()).thenAnswer(new ReturnMockResultSet(1, false, false, false));
 
     // When
     final Schema oracleMetaDataProvider = oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
@@ -154,7 +173,7 @@ public class TestOracleMetaDataProvider {
 
     doThrow(new SQLException("Test")).when(statement).setFetchSize(anyInt());
     when(connection.prepareStatement(anyString())).thenReturn(statement);
-    when(statement.executeQuery()).thenAnswer(new ReturnMockResultSet(1));
+    when(statement.executeQuery()).thenAnswer(new ReturnMockResultSet(1, false, false, false));
 
 
     final Schema oracleMetaDataProvider = oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
@@ -177,6 +196,7 @@ public class TestOracleMetaDataProvider {
     // Given
     final PreparedStatement statement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
     when(connection.prepareStatement(anyString())).thenReturn(statement);
+    mockGetTableKeysQuery(0, false, false);
 
 
 
@@ -198,6 +218,8 @@ public class TestOracleMetaDataProvider {
     // Given
     final PreparedStatement statement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
     when(connection.prepareStatement(anyString())).thenReturn(statement);
+
+    mockGetTableKeysQuery(0, false, false);
     // This is the list of tables that's returned.
     when(statement.executeQuery()).thenAnswer(new ReturnTablesMockResultSet(1)).thenAnswer(new ReturnTablesMockResultSet(8));
 
@@ -243,11 +265,15 @@ public class TestOracleMetaDataProvider {
   @Test
   public void testCorrectDataTypeMappingDate() throws SQLException {
     // Given
+
+
     final PreparedStatement statement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
     when(connection.prepareStatement(anyString())).thenReturn(statement);
+    mockGetTableKeysQuery(1, false, false);
+
 
     // This is the list of tables that's returned.
-    when(statement.executeQuery()).thenAnswer(new ReturnTablesMockResultSet(1)).thenAnswer(new ReturnTablesWithDateColumnMockResultSet(2));
+    when(statement.executeQuery()).thenAnswer(new ReturnTablesWithDateColumnMockResultSet(2));
 
     // When
     final Schema oracleMetaDataProvider = oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
@@ -340,6 +366,27 @@ public class TestOracleMetaDataProvider {
     }
   }
 
+  /**
+   * Mocks the constraint validation query in OracleMetaDataProvider.readTableKeys() which throws an exception if the primary key index does not end in _PK
+   *
+   * @param numberOfResultRows
+   * @param failPKConstraintCheck
+   * @return
+   * @throws SQLException
+   */
+  private final PreparedStatement mockGetTableKeysQuery(int numberOfResultRows, boolean failPKConstraintCheck, boolean failNullPKConstraintCheck) throws SQLException {
+    String query1 ="SELECT A.TABLE_NAME, A.COLUMN_NAME, C.INDEX_NAME FROM ALL_CONS_COLUMNS A "
+            + "JOIN ALL_CONSTRAINTS C  ON A.CONSTRAINT_NAME = C.CONSTRAINT_NAME AND A.OWNER = C.OWNER and A.TABLE_NAME = C.TABLE_NAME "
+            + "WHERE C.TABLE_NAME not like 'BIN$%' AND C.OWNER=? AND C.CONSTRAINT_TYPE = 'P' ORDER BY A.TABLE_NAME, A.POSITION";
+
+    final PreparedStatement statement1 = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    final ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
+
+    when(connection.prepareStatement(query1)).thenReturn(statement1);
+    when(statement1.executeQuery()).thenAnswer(new ReturnMockResultSet(numberOfResultRows, true, failPKConstraintCheck, failNullPKConstraintCheck));
+    return statement1;
+  }
+
 
   /**
    * Mockito {@link Answer} that returns a mock result set with a given number of resultRows.
@@ -347,16 +394,24 @@ public class TestOracleMetaDataProvider {
   private static final class ReturnMockResultSet implements Answer<ResultSet> {
 
     private final int numberOfResultRows;
+    private final boolean isConstraintQuery;
+    private final boolean failPKConstraintCheck;
+    private final boolean failNullPKConstraintCheck;
 
 
     /**
      * @param numberOfResultRows
+     * @param isConstraintQuery
+     * @param failPKConstraintCheck
+     * @param failNullPKConstraintCheck
      */
-    private ReturnMockResultSet(int numberOfResultRows) {
+    private ReturnMockResultSet(int numberOfResultRows, boolean isConstraintQuery, boolean failPKConstraintCheck, boolean failNullPKConstraintCheck) {
       super();
       this.numberOfResultRows = numberOfResultRows;
+      this.isConstraintQuery = isConstraintQuery;
+      this.failPKConstraintCheck = failPKConstraintCheck;
+      this.failNullPKConstraintCheck = failNullPKConstraintCheck;
     }
-
 
     @Override
     public ResultSet answer(final InvocationOnMock invocation) throws Throwable {
@@ -370,8 +425,24 @@ public class TestOracleMetaDataProvider {
         }
       });
 
-      when(resultSet.getString(1)).thenReturn("VIEW1");
-      when(resultSet.getString(3)).thenReturn("SOMEPRIMARYKEYCOLUMN");
+      if (isConstraintQuery) {
+        when(resultSet.getString(1)).thenReturn("AREALTABLE");
+        when(resultSet.getString(2)).thenReturn("dateColumn");
+
+        if (failNullPKConstraintCheck) {
+          when(resultSet.getString(3)).thenReturn(null);
+        } else {
+          if (failPKConstraintCheck) {
+            when(resultSet.getString(3)).thenReturn("PRIMARY_INDEX_NK");
+          } else {
+            when(resultSet.getString(3)).thenReturn("PRIMARY_INDEX_PK");
+          }
+        }
+
+      } else {
+        when(resultSet.getString(1)).thenReturn("VIEW1");
+        when(resultSet.getString(3)).thenReturn("SOMEPRIMARYKEYCOLUMN");
+      }
       return resultSet;
     }
   }

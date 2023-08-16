@@ -17,15 +17,20 @@ package org.alfasoftware.morf.sql.element;
 
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.verify;
 
 import java.math.BigDecimal;
 import java.util.List;
 
+import org.alfasoftware.morf.upgrade.UpgradeTableResolutionVisitor;
 import org.joda.time.LocalDate;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import com.google.common.collect.ImmutableList;
 
@@ -36,6 +41,15 @@ import com.google.common.collect.ImmutableList;
  */
 @RunWith(Parameterized.class)
 public class TestFieldLiteral extends AbstractAliasedFieldTest<FieldLiteral> {
+
+  @Mock
+  private UpgradeTableResolutionVisitor res;
+
+  @Before
+  public void setUp() throws Exception {
+    MockitoAnnotations.openMocks(this);
+  }
+
 
   @Parameters(name = "{0}")
   public static List<Object[]> data() {
@@ -102,5 +116,18 @@ public class TestFieldLiteral extends AbstractAliasedFieldTest<FieldLiteral> {
     assertEquals("Field literal value matches", f1.getValue(), flCopy.getValue());
     assertEquals("Field literal data type matches", f1.getDataType(), flCopy.getDataType());
     assertEquals("Field literal alias matches", f1.getAlias(), flCopy.getAlias());
+  }
+
+
+  @Test
+  public void tableResolutionDetectsAllTables() {
+    //given
+    FieldLiteral f1 = (FieldLiteral) onTestAliased;
+
+    //when
+    f1.accept(res);
+
+    //then
+    verify(res).visit(f1);
   }
 }

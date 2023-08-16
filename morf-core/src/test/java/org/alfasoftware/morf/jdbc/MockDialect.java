@@ -26,8 +26,10 @@ import java.util.List;
 
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Joiner;
@@ -89,11 +91,11 @@ public class MockDialect extends SqlDialect {
       if (!first) {
         createTableStatement.append(", ");
       }
-      createTableStatement.append(column.getName() + " ");
+      createTableStatement.append(column.getName()).append(" ");
       createTableStatement.append(sqlRepresentationOfColumnType(column));
       if (column.isAutoNumbered()) {
         int autoNumberStart = column.getAutoNumberStart() == -1 ? 1 : column.getAutoNumberStart();
-        createTableStatement.append(" AUTO_INCREMENT(" + autoNumberStart + ") COMMENT 'AUTONUMSTART:[" + autoNumberStart + "]'");
+        createTableStatement.append(" AUTO_INCREMENT(").append(autoNumberStart).append(") COMMENT 'AUTONUMSTART:[").append(autoNumberStart).append("]'");
       }
 
       if (column.isPrimaryKey()) {
@@ -308,5 +310,24 @@ public class MockDialect extends SqlDialect {
   @Override
   protected String getSqlForLastDayOfMonth(AliasedField date) {
     return "DATEADD(dd, -DAY(DATEADD(m,1," + getSqlFrom(date) + ")), DATEADD(m,1," + getSqlFrom(date) + "))";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#tableNameWithSchemaName(org.alfasoftware.morf.sql.element.TableReference)
+   */
+  @Override
+  protected String tableNameWithSchemaName(TableReference tableRef) {
+    if (!StringUtils.isEmpty(tableRef.getDblink())) throw new IllegalStateException("DB Links are not supported in the Mock dialect. Found dbLink=" + tableRef.getDblink() + " for tableNameWithSchemaName=" + super.tableNameWithSchemaName(tableRef));
+    return super.tableNameWithSchemaName(tableRef);
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.ExceptSetOperator)
+   */
+  @Override
+  protected String getSqlFrom(ExceptSetOperator operator) {
+    throw new IllegalStateException("EXCEPT set operator is not supported in the Mock dialect");
   }
 }

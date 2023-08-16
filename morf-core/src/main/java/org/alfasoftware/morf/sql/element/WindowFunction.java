@@ -18,7 +18,10 @@ package org.alfasoftware.morf.sql.element;
 import static org.alfasoftware.morf.util.DeepCopyTransformations.transformIterable;
 
 import java.util.List;
+import java.util.Set;
 
+import com.google.common.collect.ImmutableSet;
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.alfasoftware.morf.util.ObjectTreeTraverser.Driver;
@@ -177,13 +180,12 @@ public final class WindowFunction extends AliasedField implements Driver {
     private final List<AliasedField> orderBys    = Lists.newArrayList();
     private final List<AliasedField> partitionBy = Lists.newArrayList();
 
+    private static final Set<FunctionType> SUPPORTED_FUNCTIONS = ImmutableSet.of(
+            FunctionType.AVERAGE, FunctionType.SUM, FunctionType.COUNT, FunctionType.MIN, FunctionType.MAX,
+            FunctionType.ROW_NUMBER);
 
     private BuilderImpl(Function function) {
-      if (!(function.getType() == FunctionType.AVERAGE
-          || function.getType() == FunctionType.SUM
-          || function.getType() == FunctionType.COUNT
-          || function.getType() == FunctionType.MIN
-          || function.getType() == FunctionType.MAX)) {
+      if (!SUPPORTED_FUNCTIONS.contains(function.getType())) {
         throw new IllegalArgumentException("Function of type [" + function.getType() + "] is not supported");
       }
       this.function = function;
@@ -284,9 +286,9 @@ public final class WindowFunction extends AliasedField implements Driver {
   public int hashCode() {
     final int prime = 31;
     int result = super.hashCode();
-    result = prime * result + ((function == null) ? 0 : function.hashCode());
-    result = prime * result + ((orderBys == null) ? 0 : orderBys.hashCode());
-    result = prime * result + ((partitionBys == null) ? 0 : partitionBys.hashCode());
+    result = prime * result + (function == null ? 0 : function.hashCode());
+    result = prime * result + (orderBys == null ? 0 : orderBys.hashCode());
+    result = prime * result + (partitionBys == null ? 0 : partitionBys.hashCode());
     return result;
   }
 
@@ -344,5 +346,20 @@ public final class WindowFunction extends AliasedField implements Driver {
       .dispatch(getFunction())
       .dispatch(getOrderBys())
       .dispatch(getPartitionBys());
+  }
+
+
+  @Override
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
+    if(function != null) {
+      function.accept(visitor);
+    }
+    if(orderBys !=null) {
+      orderBys.stream().forEach(arg -> arg.accept(visitor));
+    }
+    if(partitionBys !=null) {
+      partitionBys.stream().forEach(arg -> arg.accept(visitor));
+    }
   }
 }

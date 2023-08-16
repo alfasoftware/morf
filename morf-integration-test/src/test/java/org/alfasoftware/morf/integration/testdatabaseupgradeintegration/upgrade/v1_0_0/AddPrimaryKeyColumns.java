@@ -26,6 +26,6 @@ import com.google.common.collect.ImmutableList;
 public class AddPrimaryKeyColumns extends AbstractTestUpgradeStep {
   @Override
   public void execute(SchemaEditor schema, DataEditor data) {
-    schema.changePrimaryKeyColumns("KeylessTable", ImmutableList.<String>of(), ImmutableList.of("keyCol1", "keyCol2"));
+    schema.addPrimaryKey("KeylessTable", ImmutableList.of("keyCol1", "keyCol2"));
   }
 }

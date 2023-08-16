@@ -30,7 +30,10 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
+import com.google.common.base.Splitter;
+import com.google.common.collect.FluentIterable;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -41,9 +44,12 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.sql.DialectSpecificHint;
 import org.alfasoftware.morf.sql.DirectPathQueryHint;
+import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.Hint;
 import org.alfasoftware.morf.sql.InsertStatement;
+import org.alfasoftware.morf.sql.NoDirectPathQueryHint;
 import org.alfasoftware.morf.sql.OptimiseForRowCount;
 import org.alfasoftware.morf.sql.OracleCustomHint;
 import org.alfasoftware.morf.sql.ParallelQueryHint;
@@ -55,19 +61,20 @@ import org.alfasoftware.morf.sql.UseImplicitJoinOrder;
 import org.alfasoftware.morf.sql.UseIndex;
 import org.alfasoftware.morf.sql.UseParallelDml;
 import org.alfasoftware.morf.sql.element.AliasedField;
-import org.alfasoftware.morf.sql.element.Cast;
+import org.alfasoftware.morf.sql.element.AllowParallelDmlHint;
 import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
+import org.alfasoftware.morf.sql.element.Cast;
+import org.alfasoftware.morf.sql.element.ClobFieldLiteral;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.SqlParameter;
+import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.google.common.base.Joiner;
-import com.google.common.base.Splitter;
-import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.Iterables;
@@ -165,9 +172,9 @@ class OracleDialect extends SqlDialect {
 
       createTableStatement.append(column.getName());
       if (asSelect) {
-        createTableStatement.append(" " + sqlRepresentationOfColumnType(column, true, true, false));
+        createTableStatement.append(" ").append(sqlRepresentationOfColumnType(column, true, true, false));
       } else {
-        createTableStatement.append(" " + sqlRepresentationOfColumnType(column));
+        createTableStatement.append(" ").append(sqlRepresentationOfColumnType(column));
       }
 
       first = false;
@@ -231,7 +238,12 @@ class OracleDialect extends SqlDialect {
    */
   private String primaryKeyConstraint(String tableName, List<String> newPrimaryKeyColumns) {
     // truncate down to 27, since we add _PK to the end
-    return "CONSTRAINT "+ primaryKeyConstraintName(tableName) + " PRIMARY KEY (" + Joiner.on(", ").join(newPrimaryKeyColumns) + ")";
+    return "CONSTRAINT " + primaryKeyConstraintName(tableName)
+            + " PRIMARY KEY (" + Joiner.on(", ").join(newPrimaryKeyColumns) + ")"
+            + " USING INDEX (CREATE UNIQUE INDEX " + schemaNamePrefix() + primaryKeyConstraintName(tableName)
+            + " ON "
+            + schemaNamePrefix() + truncatedTableName(tableName)
+            + " (" + Joiner.on(", ").join(newPrimaryKeyColumns) + "))";
   }
 
 
@@ -259,6 +271,33 @@ class OracleDialect extends SqlDialect {
     return Arrays.asList("DROP TABLE " + schemaNamePrefix() + table.getName());
   }
 
+  @Override
+  public Collection<String> dropTables(List<Table> tables, boolean ifExists, boolean cascade) {
+    StringBuilder sb = new StringBuilder();
+    if (tables.size() == 1 && !ifExists) {
+      sb.append("DROP TABLE ").append(schemaNamePrefix()).append(tables.get(0).getName());
+      if (cascade) {
+        sb.append(" CASCADE CONSTRAINTS");
+      }
+    } else {
+      String tablesString = tables.stream().map(s -> "'" + s.getName().toUpperCase() + "'").collect(Collectors.joining(", "));
+      sb.append("BEGIN\n");
+      sb.append("  FOR T IN (\n");
+      sb.append("    SELECT '").append(schemaNamePrefix()).append("' || TABLE_NAME AS TABLE_NAME\n");
+      if (ifExists) {
+        sb.append("    FROM ALL_TABLES\n");
+        sb.append("   WHERE TABLE_NAME  IN (").append(tablesString).append(")\n");
+      } else {
+        sb.append("    FROM (SELECT COLUMN_VALUE AS TABLE_NAME from TABLE(SYS.dbms_debug_vc2coll(").append(tablesString).append(")))\n");
+      }
+      sb.append("  )\n");
+      sb.append("  LOOP\n");
+      sb.append("    EXECUTE IMMEDIATE 'DROP TABLE ' || T.TABLE_NAME ").append(cascade ? "|| ' CASCADE CONSTRAINTS ' " : "").append(";\n");
+      sb.append("  END LOOP;\n");
+      sb.append("END;");
+    }
+    return Arrays.asList(sb.toString());
+  }
 
   /**
    * Returns a SQL statement to safely drop a sequence, if it exists.
@@ -385,22 +424,19 @@ class OracleDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#viewDeploymentStatementsAsLiteral(org.alfasoftware.morf.metadata.View)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.element.ClobFieldLiteral)
    */
   @Override
-  public AliasedField viewDeploymentStatementsAsLiteral(View view) {
-    final String script = viewDeploymentStatementsAsScript(view);
-
+  protected String getSqlFrom(ClobFieldLiteral field) {
     final int chunkSize = 512;
-    if (script.length() <= chunkSize) {
-      return super.viewDeploymentStatementsAsLiteral(view);
+    if (field.getValue().length() <= chunkSize) {
+      return super.getSqlFrom(field);
     }
-
-    Iterable<String> scriptChunks = Splitter.fixedLength(chunkSize).split(script);
+    Iterable<String> scriptChunks = Splitter.fixedLength(chunkSize).split(field.getValue());
     FluentIterable<Cast> concatLiterals = FluentIterable.from(scriptChunks)
-      .transform(chunk -> SqlUtils.cast(SqlUtils.literal(chunk)).asType(DataType.CLOB));
+            .transform(chunk -> SqlUtils.cast(SqlUtils.clobLiteral(chunk)).asType(DataType.CLOB));
 
-    return SqlUtils.concat(concatLiterals);
+    return getSqlFrom(SqlUtils.concat(concatLiterals));
   }
 
 
@@ -413,12 +449,15 @@ class OracleDialect extends SqlDialect {
     if (DataType.CLOB.equals(cast.getDataType())) {
       return String.format("TO_CLOB(%s)", getSqlFrom(cast.getExpression()));
     }
+    if (DataType.BLOB.equals(cast.getDataType())) {
+      return String.format("TO_BLOB(%s)", getSqlFrom(cast.getExpression()));
+    }
     return super.getSqlFrom(cast);
   }
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#postInsertWithPresetAutonumStatements(org.alfasoftware.morf.metadata.Table, boolean)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#postInsertWithPresetAutonumStatements(org.alfasoftware.morf.metadata.Table, SqlScriptExecutor, Connection, boolean)
    */
   @Override
   public void postInsertWithPresetAutonumStatements(Table table, SqlScriptExecutor executor,Connection connection, boolean insertingUnderAutonumLimit) {
@@ -503,7 +542,7 @@ class OracleDialect extends SqlDialect {
   /**
    * Turn a string value into an SQL string literal which has that value.
    * <p>
-   * We use {@linkplain StringUtils#isEmpty(String)} because we want to
+   * We use {@linkplain StringUtils#isEmpty(CharSequence)} because we want to
    * differentiate between a single space and an empty string.
    * </p>
    * <p>
@@ -751,7 +790,7 @@ class OracleDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#changePrimaryKeyColumns(java.lang.String, java.util.List, java.util.List)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#changePrimaryKeyColumns(Table, java.util.List, java.util.List)
    */
   @Override
   public Collection<String> changePrimaryKeyColumns(Table table, List<String> oldPrimaryKeyColumns, List<String> newPrimaryKeyColumns) {
@@ -915,7 +954,7 @@ class OracleDialect extends SqlDialect {
 
     if (column.isAutoNumbered()) {
       int autoNumberStart = column.getAutoNumberStart() == -1 ? 1 : column.getAutoNumberStart();
-      comment.append("/AUTONUMSTART:[" + autoNumberStart + "]");
+      comment.append("/AUTONUMSTART:[").append(autoNumberStart).append("]");
     }
 
     comment.append("'");
@@ -1096,13 +1135,24 @@ class OracleDialect extends SqlDialect {
    */
   @Override
   public Collection<String> addTableFromStatements(Table table, SelectStatement selectStatement) {
+    return internalAddTableFromStatements(table, selectStatement, false);
+  }
+
+
+  @Override
+  public Collection<String> addTableFromStatementsWithCasting(Table table, SelectStatement selectStatement) {
+    return internalAddTableFromStatements(table, selectStatement, true);
+  }
+
+
+  private Collection<String> internalAddTableFromStatements(Table table, SelectStatement selectStatement, boolean withCasting) {
     Builder<String> result = ImmutableList.<String>builder();
     result.add(new StringBuilder()
-        .append(createTableStatement(table, true))
-        .append(" AS ")
-        .append(convertStatementToSQL(selectStatement))
-        .toString()
-      );
+            .append(createTableStatement(table, true))
+            .append(" AS ")
+            .append(withCasting ? convertStatementToSQL(addCastsToSelect(table, selectStatement)) : convertStatementToSQL(selectStatement))
+            .toString()
+    );
     result.add("ALTER TABLE " + schemaNamePrefix() + table.getName()  + " NOPARALLEL LOGGING");
 
     if (!primaryKeysForTable(table).isEmpty()) {
@@ -1181,7 +1231,7 @@ class OracleDialect extends SqlDialect {
         log.warn("SQL statement greater than 2499 characters in length but unable to find white space (\" \") to split on.");
         sql.append(sqlStatement);
       } else {
-        sql.append(sqlStatement.substring(0, splitAt));
+        sql.append(sqlStatement, 0, splitAt);
         sql.append(System.getProperty("line.separator"));
         sql.append(splitSqlStatement(sqlStatement.substring(splitAt + 1)));
       }
@@ -1247,7 +1297,7 @@ class OracleDialect extends SqlDialect {
 
   /**
    * @param field the BLOB field literal
-   * @return
+   * @return The SQL got a BLOB field
    */
   @Override
   protected String getSqlFrom(BlobFieldLiteral field) {
@@ -1267,7 +1317,7 @@ class OracleDialect extends SqlDialect {
           .append(((OptimiseForRowCount)hint).getRowCount())
           .append(")");
       }
-      if (hint instanceof UseIndex) {
+      else if (hint instanceof UseIndex) {
         UseIndex useIndex = (UseIndex)hint;
         builder.append(" INDEX(")
           // No schema name - see http://docs.oracle.com/cd/B19306_01/server.102/b14200/sql_elements006.htm#BABIEJEB
@@ -1276,17 +1326,24 @@ class OracleDialect extends SqlDialect {
           .append(useIndex.getIndexName())
           .append(")");
       }
-      if (hint instanceof UseImplicitJoinOrder) {
+      else if (hint instanceof UseImplicitJoinOrder) {
         builder.append(" ORDERED");
       }
-      if (hint instanceof ParallelQueryHint) {
+      else if (hint instanceof ParallelQueryHint) {
         builder.append(" PARALLEL");
         ParallelQueryHint parallelQueryHint = (ParallelQueryHint) hint;
-        builder.append(parallelQueryHint.getDegreeOfParallelism().map(d -> " " + d).orElse(""));
+        builder.append(parallelQueryHint.getDegreeOfParallelism().map(d -> "(" + d + ")").orElse(""));
       }
-      if (hint instanceof OracleCustomHint) {
+      else if (hint instanceof AllowParallelDmlHint) {
+        builder.append(" ENABLE_PARALLEL_DML");
+      }
+      else if (hint instanceof OracleCustomHint) {
         builder.append(" ")
         .append(((OracleCustomHint)hint).getCustomHint());
+      }
+      else if ( hint instanceof DialectSpecificHint && ((DialectSpecificHint)hint).isSameDatabaseType(Oracle.IDENTIFIER) ) {
+        builder.append(" ")
+        .append(((DialectSpecificHint)hint).getHintContents());
       }
     }
 
@@ -1303,12 +1360,19 @@ class OracleDialect extends SqlDialect {
    */
   @Override
   protected String updateStatementPreTableDirectives(UpdateStatement updateStatement) {
+    if(updateStatement.getHints().isEmpty()) {
+      return "";
+    }
+    StringBuilder builder = new StringBuilder("/*+");
     for (Hint hint : updateStatement.getHints()) {
       if (hint instanceof UseParallelDml) {
-        return "/*+ ENABLE_PARALLEL_DML PARALLEL */ "; // only the single hint supported so return immediately
+        builder.append(" ENABLE_PARALLEL_DML PARALLEL");
+        builder.append(((UseParallelDml) hint).getDegreeOfParallelism()
+                .map(d -> "(" + d + ")")
+                .orElse(""));
       }
     }
-    return "";
+    return builder.append(" */ ").toString();
   }
 
 
@@ -1322,10 +1386,13 @@ class OracleDialect extends SqlDialect {
 
 
   /**
-   * Fetch rows in blocks of 200, rather than the default of 1.
+   * @deprecated this method returns the legacy fetch size value for Oracle and is primarily for backwards compatibility.
+   * Please use {@link SqlDialect#fetchSizeForBulkSelects()} for the new recommended default value.
+   * @see SqlDialect#fetchSizeForBulkSelects()
    */
   @Override
-  public int fetchSizeForBulkSelects() {
+  @Deprecated
+  public int legacyFetchSizeForBulkSelects() {
     return 200;
   }
 
@@ -1342,15 +1409,6 @@ class OracleDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#supportsWindowFunctions()
-   */
-  @Override
-  public boolean supportsWindowFunctions() {
-    return true;
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForLastDayOfMonth
    */
   @Override
@@ -1360,7 +1418,7 @@ class OracleDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect.getSqlForAnalyseTable(Table)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForAnalyseTable(Table)
    */
   @Override
   public Collection<String> getSqlForAnalyseTable(Table table) {
@@ -1403,8 +1461,41 @@ class OracleDialect extends SqlDialect {
       if (hint instanceof DirectPathQueryHint) {
         builder.append(" APPEND");
       }
+      else if(hint instanceof NoDirectPathQueryHint) {
+        builder.append(" NOAPPEND");
+      }
+      if(hint instanceof UseParallelDml) {
+        builder.append(" ENABLE_PARALLEL_DML PARALLEL");
+        builder.append(((UseParallelDml) hint).getDegreeOfParallelism()
+                .map(d -> "(" + d + ")")
+                .orElse(""));
+      }
     }
 
     return builder.append(" */ ").toString();
   }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#tableNameWithSchemaName(org.alfasoftware.morf.sql.element.TableReference)
+   */
+  @Override
+  protected String tableNameWithSchemaName(TableReference tableRef) {
+    if (StringUtils.isEmpty(tableRef.getDblink())) {
+      return super.tableNameWithSchemaName(tableRef);
+    } else {
+      return super.tableNameWithSchemaName(tableRef) + "@" + tableRef.getDblink();
+    }
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.ExceptSetOperator)
+   */
+  @Override
+  protected String getSqlFrom(ExceptSetOperator operator) {
+    return String.format(" MINUS %s", // MINUS has been supported by Oracle for a long time and the EXCEPT support was added in 21c
+        getSqlFrom(operator.getSelectStatement()));
+  }
+
 }

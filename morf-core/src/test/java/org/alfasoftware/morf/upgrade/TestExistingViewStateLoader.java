@@ -55,6 +55,7 @@ import com.google.common.collect.ImmutableMap;
 public class TestExistingViewStateLoader {
 
   private final ExistingViewHashLoader existingViewHashLoader = mock(ExistingViewHashLoader.class, RETURNS_SMART_NULLS);
+  private final ViewDeploymentValidator viewDeploymentValidator = mock(ViewDeploymentValidator.class, RETURNS_SMART_NULLS);
   private final SqlDialect dialect = mock(SqlDialect.class, RETURNS_SMART_NULLS);
 
   private ExistingViewStateLoader onTest;
@@ -65,7 +66,7 @@ public class TestExistingViewStateLoader {
    */
   @Before
   public void setUp() throws Exception {
-    onTest = new ExistingViewStateLoader(dialect, existingViewHashLoader);
+    onTest = new ExistingViewStateLoader(dialect, existingViewHashLoader, viewDeploymentValidator);
 
     // All hash requests should return the field value + the table name.
     when(dialect.convertStatementToHash(any(SelectStatement.class))).thenAnswer(new Answer<String>() {
@@ -75,6 +76,9 @@ public class TestExistingViewStateLoader {
         return ((FieldLiteral)statement.getFields().get(0)).getValue() + statement.getTable().getName();
       }
     });
+
+    when(viewDeploymentValidator.validateExistingView(any(View.class), any(UpgradeSchemas.class))).thenReturn(true);
+    when(viewDeploymentValidator.validateMissingView(any(View.class), any(UpgradeSchemas.class))).thenReturn(true);
   }
 
 

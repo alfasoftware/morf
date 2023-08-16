@@ -15,6 +15,39 @@
 
 package org.alfasoftware.morf.upgrade;
 
+import com.google.common.base.Function;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
+import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaResource;
+import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.sql.InsertStatement;
+import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.element.FieldLiteral;
+import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
+import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
+import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+
 import static com.google.common.collect.FluentIterable.from;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
@@ -32,36 +65,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-
-import org.alfasoftware.morf.jdbc.SqlDialect;
-import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
-import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
-import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.View;
-import org.alfasoftware.morf.sql.InsertStatement;
-import org.alfasoftware.morf.sql.SelectStatement;
-import org.alfasoftware.morf.sql.element.AliasedField;
-import org.alfasoftware.morf.sql.element.FieldLiteral;
-import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
-import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
-import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
-
-import com.google.common.base.Function;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-
 /**
  * Test {@link Deployment} works correctly.
  *
@@ -70,18 +73,27 @@ import com.google.common.collect.Sets;
 public class TestDeployment {
 
   private final SqlDialect dialect = mock(SqlDialect.class);
+  private final ConnectionResources connectionResources = mock(ConnectionResources.class);
   private final SqlScriptExecutorProvider executorProvider = mock(SqlScriptExecutorProvider.class);
   private final SqlScriptExecutor executor = mock(SqlScriptExecutor.class);
 
   private final UpgradePathFactory upgradePathFactory = mock(UpgradePathFactory.class);
+  @Mock
+  private SchemaResource schemaResource;
+
+  @Mock
+  private ConnectionResources connectionResourcesMock;
+
 
   @Before
   public void setUp() {
-    when(upgradePathFactory.create(any(SqlDialect.class))).thenAnswer(
+    MockitoAnnotations.openMocks(this);
+    when(connectionResources.sqlDialect()).thenReturn(dialect);
+    when(upgradePathFactory.create(any(ConnectionResources.class))).thenAnswer(
       new Answer<UpgradePath>() {
         @Override
         public UpgradePath answer(InvocationOnMock invocation) throws Throwable {
-          return new UpgradePath(Sets.<UpgradeScriptAddition>newHashSet(), (SqlDialect)invocation.getArguments()[0], Collections.emptyList(), Collections.emptyList());
+          return new UpgradePath(Sets.<UpgradeScriptAddition>newHashSet(), ((ConnectionResources)invocation.getArguments()[0]), Collections.emptyList(), Collections.emptyList());
         }
       });
     when(executorProvider.get()).thenReturn(executor);
@@ -98,11 +110,14 @@ public class TestDeployment {
     View  testView  = view("FooView", select(field("name")).from(tableRef("Foo")));
     View  testView2  = view("BarView", select(field("name")).from(tableRef("MooView")), "MooView");
     View  testView3  = view("MooView", select(field("name")).from(tableRef("FooView")), "FooView");
+    List<Table> tables = ImmutableList.of(testTable);
 
     when(dialect.tableDeploymentStatements(same(testTable))).thenReturn(ImmutableList.of("A"));
     when(dialect.viewDeploymentStatements(same(testView))).thenReturn(ImmutableList.of("B"));
     when(dialect.viewDeploymentStatements(same(testView2))).thenReturn(ImmutableList.of("C"));
     when(dialect.viewDeploymentStatements(same(testView3))).thenReturn(ImmutableList.of("D"));
+    when(connectionResources.openSchemaResource(any())).thenReturn(schemaResource);
+    when(schemaResource.tables()).thenReturn(tables);
 
     Schema targetSchema = schema(
       schema(testTable),
@@ -110,7 +125,7 @@ public class TestDeployment {
     );
 
     // When
-    Deployment deployment = new Deployment(dialect, executorProvider, upgradePathFactory, new ViewChangesDeploymentHelper(dialect));
+    Deployment deployment = new Deployment(connectionResources, executorProvider, upgradePathFactory, new ViewChangesDeploymentHelper(dialect));
     UpgradePath path = deployment.getPath(targetSchema, Lists.<Class<? extends UpgradeStep>>newArrayList());
 
     // Then
@@ -136,6 +151,7 @@ public class TestDeployment {
     Table testTable     = table("Foo").columns(column("name", DataType.STRING, 32));
     Table deployedViews = table(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME).columns(column("name", DataType.STRING, 30), column("hash", DataType.STRING, 64));
     View  testView      = view("FooView", select(field("name")).from(tableRef("Foo")));
+    List<Table> tables = ImmutableList.of(testTable);
 
     when(dialect.tableDeploymentStatements(same(testTable))).thenReturn(ImmutableList.of("A"));
     when(dialect.tableDeploymentStatements(same(deployedViews))).thenReturn(ImmutableList.of("B"));
@@ -143,6 +159,8 @@ public class TestDeployment {
     when(dialect.convertStatementToSQL(any(InsertStatement.class))).thenReturn(ImmutableList.of("D"));
     when(dialect.convertStatementToHash(any(SelectStatement.class))).thenReturn("E");
     when(dialect.viewDeploymentStatementsAsLiteral(same(testView))).thenReturn(literal("F"));
+    when(connectionResources.openSchemaResource(any())).thenReturn(schemaResource);
+    when(schemaResource.tables()).thenReturn(tables);
 
     Schema targetSchema = schema(
       schema(testTable, deployedViews),
@@ -150,7 +168,7 @@ public class TestDeployment {
     );
 
 
-    Deployment deployment = new Deployment(dialect, executorProvider, upgradePathFactory, new ViewChangesDeploymentHelper(dialect));
+    Deployment deployment = new Deployment(connectionResources, executorProvider, upgradePathFactory, new ViewChangesDeploymentHelper(dialect));
     UpgradePath path = deployment.getPath(targetSchema, Lists.<Class<? extends UpgradeStep>>newArrayList());
 
     // Then
@@ -184,14 +202,18 @@ public class TestDeployment {
   public void testGetPathWithUpgradeSteps() {
     // Given
     Table testTable     = table("Foo").columns(column("name", DataType.STRING, 32));
+    List<Table> tables = ImmutableList.of(testTable);
+
     Collection<Class<? extends UpgradeStep>> stepsToApply = new ArrayList<>();
     stepsToApply.add(AddFooTable.class);
     when(dialect.tableDeploymentStatements(same(testTable))).thenReturn(ImmutableList.of("A"));
+    when(connectionResources.openSchemaResource(any())).thenReturn(schemaResource);
+    when(schemaResource.tables()).thenReturn(tables);
 
     Schema targetSchema = schema(testTable);
 
     // When
-    Deployment deployment = new Deployment(dialect, executorProvider, upgradePathFactory, new ViewChangesDeploymentHelper(dialect));
+    Deployment deployment = new Deployment(connectionResources, executorProvider, upgradePathFactory, new ViewChangesDeploymentHelper(dialect));
     UpgradePath path = deployment.getPath(targetSchema, stepsToApply);
 
     // Then
@@ -212,8 +234,8 @@ public class TestDeployment {
     }).toList();
 
     assertEquals("Number of columns", 3, stmt.getValues().size());
-    assertEquals("UUID", "ab1b9f5a-cb3b-473c-8ec6-c6c1134f500f", values.get(0).toString());
-    assertEquals("Description", "org.alfasoftware.morf.upgrade.TestDeployment$AddFooTable", values.get(1).toString());
+    assertEquals("UUID", "ab1b9f5a-cb3b-473c-8ec6-c6c1134f500f", values.get(0));
+    assertEquals("Description", "org.alfasoftware.morf.upgrade.TestDeployment$AddFooTable", values.get(1));
     assertEquals("Date", 1, from(stmt.getValues()).filter(org.alfasoftware.morf.sql.element.Cast.class).toList().size());
 
     // When

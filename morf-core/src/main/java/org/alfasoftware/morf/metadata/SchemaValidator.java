@@ -224,7 +224,7 @@ public class SchemaValidator {
    *
    * @see #MAX_LENGTH
    *
-   * @param word the string to establish if its within the allowed length
+   * @param name the string to establish if its within the allowed length
    * @return true if its within the allowed length otherwise false.
    */
   boolean isEntityNameLengthValid(String name){
@@ -262,9 +262,9 @@ public class SchemaValidator {
 
 
   /**
-   * Validates a {@link Table} meets the rules.
+   * Validates a {@link View} meets the rules.
    *
-   * @param table The {@link Table} to validate.
+   * @param view The {@link View} to validate.
    */
   private void validateView(View view) {
     validateName(view.getName());
@@ -312,9 +312,9 @@ public class SchemaValidator {
   }
 
   /**
-   * Validates a {@link Table}'s {@link Column}s meet the rules.
+   * Validates a {@link Table} or {@link View}'s {@link Column}s meet the rules.
    *
-   * @param table The {@link Table} on which to validate columns.
+   * @param tableOrViewName The Table or View on which to validate columns.
    */
   private void validateColumnNames(Collection<String> columnNames, String tableOrViewName) {
     for (String columnName : columnNames) {

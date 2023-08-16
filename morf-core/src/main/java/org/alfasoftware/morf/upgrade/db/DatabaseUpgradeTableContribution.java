@@ -73,7 +73,7 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
    */
   @Override
   public Collection<Table> tables() {
-    return ImmutableList.<Table>of(
+    return ImmutableList.of(
       deployedViewsTable(),
       upgradeAuditTable()
     );
@@ -86,12 +86,7 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
   @Override
   public Collection<Class<? extends UpgradeStep>> schemaUpgradeClassses() {
     List<Class<? extends UpgradeStep>> result = Lists.newLinkedList();
-
-    result.addAll(org.alfasoftware.morf.upgrade.db.v5_1_20.UpgradeSteps.LIST);
-    result.addAll(org.alfasoftware.morf.upgrade.db.v5_1_22.UpgradeSteps.LIST);
-    result.addAll(org.alfasoftware.morf.upgrade.upgrade.v5_3_25.UpgradeSteps.LIST);
     result.addAll(org.alfasoftware.morf.upgrade.upgrade.UpgradeSteps.LIST);
-
     return ImmutableList.copyOf(result);
   }
 }

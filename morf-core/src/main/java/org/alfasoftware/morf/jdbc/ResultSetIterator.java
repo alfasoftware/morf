@@ -11,6 +11,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.Column;
@@ -20,6 +21,8 @@ import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Direction;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * Provides data set iterator functionality based on a jdbc result set.
@@ -27,6 +30,7 @@ import org.alfasoftware.morf.sql.element.TableReference;
  * @author Copyright (c) Alfa Financial Software 2017
  */
 class ResultSetIterator implements Iterator<Record>, AutoCloseable {
+  private static final Log log = LogFactory.getLog(ResultSetIterator.class);
 
   /**
    * The underlying result set to iterate over.
@@ -74,6 +78,21 @@ class ResultSetIterator implements Iterator<Record>, AutoCloseable {
    * @param sqlDialect The vendor-specific dialect for the database connection.
    */
   public ResultSetIterator(Table table, String query, Connection connection, SqlDialect sqlDialect) {
+    this(table, query, connection, Optional.empty(), sqlDialect);
+  }
+
+
+  /**
+   * Creates a {@link ResultSetIterator} using the supplied SQL query,
+   * applying no further result sorting beyond that contained in the SQL query.
+   *
+   * @param table Meta data for the query's result.
+   * @param query The query to run.
+   * @param connection The database connection to use.
+   * @param connectionResources The connection resources to use.
+   * @param sqlDialect The vendor-specific dialect for the database connection.
+   */
+  public ResultSetIterator(Table table, String query, Connection connection, Optional<ConnectionResources> connectionResources, SqlDialect sqlDialect) {
     super();
     this.table = table;
     this.sqlDialect = sqlDialect;
@@ -85,7 +104,8 @@ class ResultSetIterator implements Iterator<Record>, AutoCloseable {
     try {
       this.statement = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
       this.statement.setFetchDirection(ResultSet.FETCH_FORWARD);
-      this.statement.setFetchSize(sqlDialect.fetchSizeForBulkSelects());
+      this.statement.setFetchSize(connectionResources.map(ConnectionResources::getFetchSizeForBulkSelects).orElse(sqlDialect.fetchSizeForBulkSelects()));
+      log.debug("Executing query [" + query + "] with fetch size [" + statement.getFetchSize() + "].");
       this.resultSet = statement.executeQuery(query);
       this.sortedMetadata = ResultSetMetadataSorter.sortedCopy(table.columns(), resultSet);
       advanceResultSet();
@@ -106,6 +126,20 @@ class ResultSetIterator implements Iterator<Record>, AutoCloseable {
    */
   public ResultSetIterator(Table table, List<String> columnOrdering, Connection connection, SqlDialect sqlDialect) {
     this(table, buildSqlQuery(table, columnOrdering, sqlDialect), connection, sqlDialect);
+  }
+
+  /**
+   * Creates a {@link ResultSetIterator} by selecting all records from a table,
+   * ordering the results using the supplied column ordering.
+   *
+   * @param table Meta data for the table we want to iterate over.
+   * @param columnOrdering The columns to order by.
+   * @param connection The database connection to use.
+   * @param connectionResources The connection resources to use.
+   * @param sqlDialect The vendor-specific dialect for the database connection.
+   */
+  public ResultSetIterator(Table table, List<String> columnOrdering, Connection connection, Optional<ConnectionResources> connectionResources, SqlDialect sqlDialect) {
+    this(table, buildSqlQuery(table, columnOrdering, sqlDialect), connection, connectionResources, sqlDialect);
   }
 
 

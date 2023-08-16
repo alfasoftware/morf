@@ -225,11 +225,58 @@ public class InsertStatementBuilder implements Builder<InsertStatement> {
    *
    * @return this, for method chaining.
    */
+  public InsertStatementBuilder avoidDirectPath() {
+    getHints().add(NoDirectPathQueryHint.INSTANCE);
+    return this;
+  }
+
+
+  /**
+   * If supported by the dialect, hints to the database that an {@code APPEND} query hint should be used in the insert statement.
+   *
+   * <p>In general, as with all query plan modification, <strong>do not use this unless you know
+   * exactly what you are doing</strong>.</p>
+   *
+   * <p>These directives are applied in the SQL in the order they are called on {@link InsertStatement}.  This usually
+   * affects their precedence or relative importance, depending on the platform.</p>
+   *
+   * @return this, for method chaining.
+   */
   public InsertStatementBuilder useDirectPath() {
     getHints().add(DirectPathQueryHint.INSTANCE);
     return this;
   }
 
+  /**
+   * Request that this statement is executed with a parallel execution plan for data manipulation language (DML). This request will have no effect unless the database implementation supports it and the feature is enabled.
+   *
+   * <p>For statement that will affect a high percentage or rows in the table, a parallel execution plan may reduce the execution time, although the exact effect depends on
+   * the underlying database, the nature of the data and the nature of the query.</p>
+   *
+   * <p>Note that the use of parallel DML comes with restrictions, in particular, a table may not be accessed in the same transaction following a parallel DML execution. Please consult the Oracle manual section <em>Restrictions on Parallel DML</em> to check whether this hint is suitable.</p>
+   *
+   * @return this, for method chaining.
+   */
+  public InsertStatementBuilder useParallelDml() {
+    getHints().add(new UseParallelDml());
+    return this;
+  }
+
+  /**
+   * Request that this statement is executed with a parallel execution plan for data manipulation language (DML). This request will have no effect unless the database implementation supports it and the feature is enabled.
+   *
+   * <p>For statement that will affect a high percentage or rows in the table, a parallel execution plan may reduce the execution time, although the exact effect depends on
+   * the underlying database, the nature of the data and the nature of the query.</p>
+   *
+   * <p>Note that the use of parallel DML comes with restrictions, in particular, a table may not be accessed in the same transaction following a parallel DML execution. Please consult the Oracle manual section <em>Restrictions on Parallel DML</em> to check whether this hint is suitable.</p>
+   *
+   * @param degreeOfParallelism - the degree of parallelism to be used
+   * @return this, for method chaining.
+   */
+  public InsertStatementBuilder useParallelDml(int degreeOfParallelism) {
+    getHints().add(new UseParallelDml(degreeOfParallelism));
+    return this;
+  }
 
   /**
    * Specifies the defaults to use when inserting new fields.
