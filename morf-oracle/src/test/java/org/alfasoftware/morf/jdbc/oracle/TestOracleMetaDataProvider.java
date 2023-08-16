@@ -84,13 +84,14 @@ public class TestOracleMetaDataProvider {
 
     final PreparedStatement statement1 = mockGetTableKeysQuery(0, false, false);
 
-    final Schema oracleMetaDataProvider = oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
-    assertTrue("Database should be reported empty", oracleMetaDataProvider.isEmptyDatabase());
+    final Schema oracleMetaDataProvider1 = oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
+    assertTrue("Database should be reported empty", oracleMetaDataProvider1.isEmptyDatabase());
 
 
     final PreparedStatement statement2= mockGetTableKeysQuery(1, false, false);
 
-    assertFalse("Database should not be reported empty", oracleMetaDataProvider.isEmptyDatabase());
+    final Schema oracleMetaDataProvider2 = oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
+    assertFalse("Database should not be reported empty", oracleMetaDataProvider2.isEmptyDatabase());
 
     verify(statement1).setString(1, "TESTSCHEMA");
     verify(statement2).setString(1, "TESTSCHEMA");
