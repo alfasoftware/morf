@@ -75,14 +75,8 @@ public class OracleMetaDataProvider implements Schema {
    */
   private static final Pattern realnameCommentMatcher = Pattern.compile(".*"+OracleDialect.REAL_NAME_COMMENT_LABEL+":\\[([^\\]]*)\\](/TYPE:\\[([^\\]]*)\\])?.*");
 
-  /**
-   * The map of table data.
-   */
+  private Map<String, List<String>> keyMap;
   private Map<String, Table> tableMap;
-
-  /**
-   * The map of view data.
-   */
   private Map<String, View> viewMap;
 
   private final Connection connection;
@@ -116,7 +110,7 @@ public class OracleMetaDataProvider implements Schema {
     }
 
     tableMap = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-    readTableNames();
+    expensiveReadTableNames();
     return tableMap;
   }
 
@@ -143,14 +137,14 @@ public class OracleMetaDataProvider implements Schema {
    *
    * @see <a href="http://download.oracle.com/docs/cd/B19306_01/server.102/b14237/statviews_2094.htm">ALL_TAB_COLUMNS specification</a>
    */
-  private void readTableNames() {
+  private void expensiveReadTableNames() {
     log.info("Starting read of table definitions");
 
     long start = System.currentTimeMillis();
 
     // -- Stage 1: identify tables & keys...
     //
-    final Map<String, List<String>> primaryKeys = readTableKeys();
+    final Map<String, List<String>> primaryKeys = keyMap();
 
     // -- Stage 2: get column data...
     //
@@ -575,11 +569,24 @@ public class OracleMetaDataProvider implements Schema {
    */
   @Override
   public boolean isEmptyDatabase() {
-    // ...however, we still want the check to be free if the full metadata has been loaded.
-    if (tableMap != null && !tableMap.isEmpty())
-      return false;
+    return keyMap().isEmpty();
+  }
 
-    return readTableKeys().isEmpty();
+
+  /**
+   * Use to access the metadata for the primary keys in the specified connection.
+   * Lazily initialises the metadata, and only loads it once.
+   *
+   * @return Primary keys metadata.
+   */
+  private Map<String, List<String>> keyMap() {
+    if (keyMap != null) {
+      return keyMap;
+    }
+
+    keyMap = new HashMap<>();
+    expensiveReadTableKeys();
+    return keyMap;
   }
 
 
@@ -588,11 +595,10 @@ public class OracleMetaDataProvider implements Schema {
    *
    * @return A map of table name to primary key(s).
    */
-  private Map<String, List<String>> readTableKeys() {
+  private Map<String, List<String>> expensiveReadTableKeys() {
     log.info("Starting read of key definitions");
     long start = System.currentTimeMillis();
 
-    final Map<String, List<String>> primaryKeys = new HashMap<>();
     final StringBuilder primaryKeysWithWrongIndex = new StringBuilder();
 
     final String getConstraintSql = "SELECT A.TABLE_NAME, A.COLUMN_NAME, C.INDEX_NAME FROM ALL_CONS_COLUMNS A "
@@ -612,10 +618,10 @@ public class OracleMetaDataProvider implements Schema {
                     .append(pkIndexName).append("]").append(System.lineSeparator());
           }
 
-          List<String> columns = primaryKeys.get(tableName);
+          List<String> columns = keyMap.get(tableName);
           if (columns == null) {
             columns = new ArrayList<>();
-            primaryKeys.put(tableName, columns);
+            keyMap.put(tableName, columns);
           }
 
           columns.add(columnName);
@@ -628,9 +634,9 @@ public class OracleMetaDataProvider implements Schema {
     }
 
     long end = System.currentTimeMillis();
-    log.info(String.format("Read key metadata in %dms; %d tables", end - start, primaryKeys.size()));
+    log.info(String.format("Read key metadata in %dms; %d tables", end - start, keyMap.size()));
 
-    return primaryKeys;
+    return keyMap;
   }
 
 
