@@ -31,11 +31,20 @@ import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
  */
 class H2MetaDataProvider extends DatabaseMetaDataProvider {
 
-    /**
+  /**
    * @param connection DataSource to provide meta data for.
    */
   public H2MetaDataProvider(Connection connection) {
-    super(connection, null);
+    super(connection, H2Dialect.isVersion2()?"PUBLIC":null);
+  }
+
+
+  /**
+   * @param connection DataSource to provide meta data for.
+   * @param schemaName Schema to provide meta data for.
+   */
+  public H2MetaDataProvider(Connection connection, String schemaName) {
+    super(connection, schemaName);
   }
 
 

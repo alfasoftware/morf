@@ -34,6 +34,7 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
@@ -52,6 +53,9 @@ import com.google.common.collect.Iterables;
  */
 class H2Dialect extends SqlDialect {
 
+
+  private static boolean isVersion2 = true;
+
   /**
    * The prefix to add to all temporary tables.
    */
@@ -65,6 +69,15 @@ class H2Dialect extends SqlDialect {
     super(schemaName);
   }
 
+
+  /**
+   * Returns false if H2 version 1, true otherwise
+   *
+   * @return True if version 2 or later
+   */
+  public static boolean isVersion2() {
+    return isVersion2;
+  }
 
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#tableDeploymentStatements(org.alfasoftware.morf.metadata.Table)
@@ -361,6 +374,22 @@ class H2Dialect extends SqlDialect {
     return TEMPORARY_TABLE_PREFIX + undecoratedName;
   }
 
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(Boolean)
+   */
+  @Override
+  protected String getSqlFrom(Boolean literalValue) {
+    return isVersion2 ?  (literalValue ? "true" : "false") : (literalValue ? "1" : "0");
+  }
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(BlobFieldLiteral)
+   */
+  @Override
+  protected String getSqlFrom(BlobFieldLiteral field) {
+    return isVersion2 ? (String.format("X'%s'", field.getValue())) : (String.format("'%s'", field.getValue()));
+  }
 
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForYYYYMMDDToDate(org.alfasoftware.morf.sql.element.Function)

@@ -174,7 +174,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedParameterisedInsertStatement() {
-    return "INSERT INTO "+TEST_SCHEMA+".Test (id, version, stringField, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (5, CAST(:version AS INTEGER), CAST('Escap''d' AS VARCHAR(7)), 7, CAST(:floatField AS DECIMAL(13,2)), 20100405, 1, CAST(:charField AS VARCHAR(1)), CAST(:blobField AS LONGVARBINARY), CAST(:bigIntegerField AS BIGINT), CAST(:clobField AS NCLOB))";
+    return "INSERT INTO "+TEST_SCHEMA+".Test (id, version, stringField, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (5, CAST(:version AS INTEGER), CAST('Escap''d' AS VARCHAR(7)), 7, CAST(:floatField AS DECIMAL(13,2)), 20100405, "+expectedBooleanLiteral(true)+", CAST(:charField AS VARCHAR(1)), CAST(:blobField AS LONGVARBINARY), CAST(:bigIntegerField AS BIGINT), CAST(:clobField AS NCLOB))";
   }
 
 
@@ -183,7 +183,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedParameterisedInsertStatementWithTableInDifferentSchema() {
-    return "INSERT INTO MYSCHEMA.Test (id, version, stringField, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (5, CAST(:version AS INTEGER), CAST('Escap''d' AS VARCHAR(7)), 7, CAST(:floatField AS DECIMAL(13,2)), 20100405, 1, CAST(:charField AS VARCHAR(1)), CAST(:blobField AS LONGVARBINARY), CAST(:bigIntegerField AS BIGINT), CAST(:clobField AS NCLOB))";
+    return "INSERT INTO MYSCHEMA.Test (id, version, stringField, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (5, CAST(:version AS INTEGER), CAST('Escap''d' AS VARCHAR(7)), 7, CAST(:floatField AS DECIMAL(13,2)), 20100405, "+expectedBooleanLiteral(true)+", CAST(:charField AS VARCHAR(1)), CAST(:blobField AS LONGVARBINARY), CAST(:bigIntegerField AS BIGINT), CAST(:clobField AS NCLOB))";
   }
 
 
@@ -219,9 +219,9 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedSpecifiedValueInsert() {
     return Arrays.asList(
-      "DELETE FROM "+TEST_SCHEMA+"."+ID_VALUES_TABLE+" where name = 'Test'",
-      "INSERT INTO "+TEST_SCHEMA+"."+ID_VALUES_TABLE+" (name, "+ID_INCREMENTOR_TABLE_COLUMN_VALUE+") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM "+TEST_SCHEMA+".Test))",
-      "INSERT INTO "+TEST_SCHEMA+".Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES (CAST('Escap''d' AS VARCHAR(7)), 7, 11.25, 20100405, 1, CAST('X' AS VARCHAR(1)), (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 1) FROM "+TEST_SCHEMA+"."+ID_VALUES_TABLE+" WHERE (name = CAST('Test' AS VARCHAR(4)))), 0, null, 12345, null)"
+            "DELETE FROM "+TEST_SCHEMA+"."+ID_VALUES_TABLE+" where name = 'Test'",
+            "INSERT INTO "+TEST_SCHEMA+"."+ID_VALUES_TABLE+" (name, "+ID_INCREMENTOR_TABLE_COLUMN_VALUE+") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM "+TEST_SCHEMA+".Test))",
+            "INSERT INTO "+TEST_SCHEMA+".Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES (CAST('Escap''d' AS VARCHAR(7)), 7, 11.25, 20100405, "+expectedBooleanLiteral(true)+", CAST('X' AS VARCHAR(1)), (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 1) FROM "+TEST_SCHEMA+"."+ID_VALUES_TABLE+" WHERE (name = CAST('Test' AS VARCHAR(4)))), 0, null, 12345, null)"
     );
   }
 
@@ -234,7 +234,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
     return Arrays.asList(
       "DELETE FROM "+TEST_SCHEMA+"."+ID_VALUES_TABLE+" where name = 'Test'",
       "INSERT INTO "+TEST_SCHEMA+"."+ID_VALUES_TABLE+" (name, "+ID_INCREMENTOR_TABLE_COLUMN_VALUE+") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM MYSCHEMA.Test))",
-      "INSERT INTO MYSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES (CAST('Escap''d' AS VARCHAR(7)), 7, 11.25, 20100405, 1, CAST('X' AS VARCHAR(1)), (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 1) FROM "+TEST_SCHEMA+"."+ID_VALUES_TABLE+" WHERE (name = CAST('Test' AS VARCHAR(4)))), 0, null, 12345, null)"
+      "INSERT INTO MYSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES (CAST('Escap''d' AS VARCHAR(7)), 7, 11.25, 20100405, "+expectedBooleanLiteral(true)+", CAST('X' AS VARCHAR(1)), (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 1) FROM "+TEST_SCHEMA+"."+ID_VALUES_TABLE+" WHERE (name = CAST('Test' AS VARCHAR(4)))), 0, null, 12345, null)"
     );
   }
 
@@ -253,7 +253,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedEmptyStringInsertStatement() {
-    return "INSERT INTO "+TEST_SCHEMA+".Test (stringField, id, version, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (NULL, (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 1) FROM "+TEST_SCHEMA+"."+ID_VALUES_TABLE+" WHERE (name = CAST('Test' AS VARCHAR(4)))), 0, 0, 0, null, 0, NULL, null, 12345, null)";
+    return "INSERT INTO "+TEST_SCHEMA+".Test (stringField, id, version, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (NULL, (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 1) FROM "+TEST_SCHEMA+"."+ID_VALUES_TABLE+" WHERE (name = CAST('Test' AS VARCHAR(4)))), 0, 0, 0, null, "+expectedBooleanLiteral(false)+", NULL, null, 12345, null)";
   }
 
 
@@ -317,6 +317,24 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedIsNull() {
     return "COALESCE(CAST('A' AS VARCHAR(1)), CAST('B' AS VARCHAR(1)))";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedBlobLiteral(String)
+   */
+  @Override
+  protected String expectedBlobLiteral(String value) {
+    return H2Dialect.isVersion2() ? (String.format("X'%s'", value)) : (String.format("'%s'", value));
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedBooleanLiteral(boolean)
+   */
+  @Override
+  protected String expectedBooleanLiteral(boolean value) {
+    return H2Dialect.isVersion2() ?  (value ? "true" : "false") : (value ? "1" : "0");
   }
 
 
