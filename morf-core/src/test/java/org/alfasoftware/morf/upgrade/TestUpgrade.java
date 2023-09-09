@@ -179,7 +179,7 @@ public class TestUpgrade {
         .findPath(targetSchema, upgradeSteps, Lists.newArrayList("^Drivers$", "^EXCLUDE_.*$"), mockConnectionResources.getDataSource());
 
     assertEquals("Should be two steps.", 2, results.getSteps().size());
-    assertEquals("Number of SQL statements", 18, results.getSql().size()); // Includes statements to create, truncate and then drop temp table, also 2 comments
+    assertEquals("Number of SQL statements", 22, results.getSql().size()); // Includes statements to create, truncate and then drop temp table, also 2 comments
   }
 
 
@@ -885,7 +885,11 @@ public class TestUpgrade {
           versionColumn(),
           column("upgradeUUID", DataType.STRING, 100).nullable(),
           column("description", DataType.STRING, 200).nullable(),
-          column("appliedTime", DataType.BIG_INTEGER).nullable()
+          column("appliedTime", DataType.BIG_INTEGER).nullable(),
+          column("status", DataType.STRING,  10).nullable(),
+          column("server", DataType.STRING,  100).nullable(),
+          column("processingTimeMs", DataType.DECIMAL, 14).nullable(),
+          column("startTimeMs", DataType.DECIMAL, 18).nullable()
         );
   }
 

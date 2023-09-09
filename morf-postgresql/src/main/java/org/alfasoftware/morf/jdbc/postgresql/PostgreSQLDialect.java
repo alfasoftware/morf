@@ -552,6 +552,22 @@ class PostgreSQLDialect extends SqlDialect {
     return "ROUND((" + getSqlFrom(function.getArguments().get(0)) + ") :: NUMERIC, " + getSqlFrom(function.getArguments().get(1)) + ")";
   }
 
+  /**
+   * @see SqlDialect#getSqlForCurrentUnixTimeMilliseconds()
+   */
+  @Override
+  protected String getSqlForCurrentUnixTimeMilliseconds(){
+    return "trunc(extract(epoch from now() at time zone 'UTC')*1000)";
+  }
+
+  /**
+   * @see SqlDialect#getSqlForClientHost()
+   */
+  @Override
+  protected String getSqlForClientHost() {
+    return "inet_client_addr()";
+  }
+
 
   @Override
   protected String getSqlFrom(MergeStatement statement) {

@@ -285,4 +285,31 @@ public class TestFunctionDetail {
     assertTrue("First argument should be a field reference", firstArgument instanceof FieldReference);
     assertEquals("First argument should have correct name", "agreementNumber", ((FieldReference) firstArgument).getName());
   }
+
+
+  /**
+   * Tests indirect usage of the <code>CurrentUnixTimeMilliseconds</code> function
+   */
+  @Test
+  public void testCurrentUnixTimeMilliseconds() {
+    Function function = Function.currentUnixTimeMilliseconds();
+
+    assertEquals("Function should be of type CURRENT_UNIX_TIME_MILLISECONDS", FunctionType.CURRENT_UNIX_TIME_MILLISECONDS, function.getType());
+    assertNotNull("Function should have empty arguments", function.getArguments());
+    assertEquals("Function should have no arguments", 0, function.getArguments().size());
+  }
+
+  /**
+   * Tests indirect usage of the <code>CurrentUnixTimeMilliseconds</code> function
+   */
+  @Test
+  public void testClientHost() {
+    Function function = Function.clientHost();
+
+    assertEquals("Function should be of type CLIENT_HOST", FunctionType.CLIENT_HOST, function.getType());
+    assertNotNull("Function should have empty arguments", function.getArguments());
+    assertEquals("Function should have no arguments", 0, function.getArguments().size());
+  }
+
+
 }

@@ -52,6 +52,7 @@ import static org.alfasoftware.morf.sql.element.Function.addDays;
 import static org.alfasoftware.morf.sql.element.Function.average;
 import static org.alfasoftware.morf.sql.element.Function.averageDistinct;
 import static org.alfasoftware.morf.sql.element.Function.blobLength;
+import static org.alfasoftware.morf.sql.element.Function.clientHost;
 import static org.alfasoftware.morf.sql.element.Function.coalesce;
 import static org.alfasoftware.morf.sql.element.Function.count;
 import static org.alfasoftware.morf.sql.element.Function.countDistinct;
@@ -81,6 +82,7 @@ import static org.alfasoftware.morf.sql.element.Function.substring;
 import static org.alfasoftware.morf.sql.element.Function.sum;
 import static org.alfasoftware.morf.sql.element.Function.sumDistinct;
 import static org.alfasoftware.morf.sql.element.Function.trim;
+import static org.alfasoftware.morf.sql.element.Function.currentUnixTimeMilliseconds;
 import static org.alfasoftware.morf.sql.element.Function.upperCase;
 import static org.alfasoftware.morf.sql.element.Function.yyyymmddToDate;
 import static org.hamcrest.Matchers.allOf;
@@ -2783,6 +2785,63 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
       }
     });
   }
+
+
+
+    /**
+     * Tests execute current unix time in milliseconds function.
+     *
+     * @throws SQLException if something goes wrong.
+     */
+    @Test
+    public void testCurrentUnixTimeMilliseconds() throws SQLException {
+        SelectStatement select = select(currentUnixTimeMilliseconds());
+
+        SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+
+        executor.executeQuery(convertStatementToSQL(select), connection, new ResultSetProcessor<Void>() {
+            @Override
+            public Void process(ResultSet resultSet) throws SQLException {
+                resultSet.next();
+
+                final long databaseTime = resultSet.getLong(1);
+
+                log.info("Current database time: " + databaseTime);
+
+                assertTrue("Database unix time is set and has a value after July 6th 2023 ", databaseTime > 1688648895428L);
+
+                return null;
+            }
+        });
+    }
+
+
+    /**
+     * Tests execute unix time function.
+     *
+     * @throws SQLException if something goes wrong.
+     */
+    @Test
+    public void testClientHost() throws SQLException {
+        SelectStatement select = select(clientHost());
+
+        SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+
+        executor.executeQuery(convertStatementToSQL(select), connection, new ResultSetProcessor<Void>() {
+            @Override
+            public Void process(ResultSet resultSet) throws SQLException {
+                resultSet.next();
+
+                final String clientHost = resultSet.getString(1);
+
+                log.info("Current host: " + clientHost);
+
+                assertFalse("Client Host returns a non-empty string", clientHost.isEmpty());
+
+                return null;
+            }
+        });
+    }
 
 
   @Test

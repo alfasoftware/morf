@@ -490,6 +490,24 @@ class H2Dialect extends SqlDialect {
 
 
   /**
+   * @see SqlDialect#getSqlForClientHost()
+   */
+  @Override
+  protected String getSqlForClientHost() {
+    return "CAST(SESSION_ID() AS VARCHAR2)";
+  }
+
+
+  /**
+   * @see SqlDialect#getSqlForCurrentUnixTimeMilliseconds()
+   */
+  @Override
+  protected String getSqlForCurrentUnixTimeMilliseconds(){
+    return "trunc(extract(epoch from now() at time zone 'UTC')*1000)";
+  }
+
+
+  /**
    *  TODO
    * The following is a workaround to a bug in H2 version 1.4.200 whereby the MERGE...USING statement does not release the source select statement
    * Please remove this method once <a href="https://github.com/h2database/h2database/issues/2196">issue 2196</a> has been fixed and H2 upgraded to the fixed version

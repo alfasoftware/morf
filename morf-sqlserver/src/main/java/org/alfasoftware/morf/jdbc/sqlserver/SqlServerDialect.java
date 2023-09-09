@@ -812,7 +812,25 @@ class SqlServerDialect extends SqlDialect {
   }
 
 
-  /**
+    /**
+     * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForCurrentUnixTimeMilliseconds()
+     */
+    @Override
+    protected String getSqlForCurrentUnixTimeMilliseconds() {
+        return "DATEDIFF_BIG(MILLISECOND,'1970-01-01 00:00:00.000', SYSUTCDATETIME())";
+    }
+
+
+    /**
+     * @see SqlDialect#getSqlForClientHost() ()
+     */
+    @Override
+    protected String getSqlForClientHost() {
+        return "HOST_NAME()";
+    }
+
+
+    /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForDaysBetween(org.alfasoftware.morf.sql.element.AliasedField, org.alfasoftware.morf.sql.element.AliasedField)
    */
   @Override

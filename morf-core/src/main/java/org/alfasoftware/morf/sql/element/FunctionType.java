@@ -226,5 +226,16 @@ public enum FunctionType {
   /**
    * Calculates the row number on a partition. Generally used as a Window function
    */
-  ROW_NUMBER
+  ROW_NUMBER,
+
+  /**
+   * Unix time, milliseconds since 1st January 1970 UTC
+   */
+
+  CURRENT_UNIX_TIME_MILLISECONDS,
+
+  /**
+   * Identifiable label for the client machine
+   */
+  CLIENT_HOST
 }

@@ -33,6 +33,7 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertThat;
 
+import java.sql.SQLException;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.function.Consumer;

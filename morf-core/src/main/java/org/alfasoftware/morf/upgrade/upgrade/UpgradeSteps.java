@@ -11,6 +11,7 @@ public class UpgradeSteps {
   public static final List<Class<? extends UpgradeStep>> LIST = ImmutableList.of(
           CreateDeployedViews.class,
           RecreateOracleSequences.class,
-          AddDeployedViewsSqlDefinition.class
+          AddDeployedViewsSqlDefinition.class,
+          AddExtraLoggingToUpgradeAuditTable.class
   );
 }

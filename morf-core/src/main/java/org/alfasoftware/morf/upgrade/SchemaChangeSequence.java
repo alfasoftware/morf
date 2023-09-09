@@ -137,14 +137,31 @@ public class SchemaChangeSequence {
    * @param visitor The schema change visitor against which to write the changes.
    */
   public void applyTo(SchemaChangeVisitor visitor) {
+
+    // Add all audit records
+    for (UpgradeStepWithChanges changesForStep : allChanges) {
+        visitor.addAuditRecord(changesForStep.getUUID(), changesForStep.getDescription());
+    }
+
     for (UpgradeStepWithChanges changesForStep : allChanges) {
       try {
+
+        //TODO roll up line below into visitor.startStep
+        // Update Audit record to show upgrade step is running
+        visitor.updateStartedAuditRecord(changesForStep.getUUID());
+        // Run prerequisites
         visitor.startStep(changesForStep.getUpgradeClass());
+
+
+        // Apply each change
         for (SchemaChange change : changesForStep.getChanges()) {
           change.accept(visitor);
         }
-        visitor.addAuditRecord(changesForStep.getUUID(), changesForStep.getDescription());
+
+        // Update Audit Record will successful run
+        visitor.updateFinishedAuditRecord(changesForStep.getUUID(), changesForStep.getDescription());
       } catch (Exception e) {
+        // Set Audit Record to failed then throw runtime exception
         throw new RuntimeException("Failed to apply step: [" + changesForStep.getUpgradeClass() + "]", e);
       }
     }
@@ -392,8 +409,8 @@ public class SchemaChangeSequence {
 
 
     /**
-     * @param delegate
-     * @param changes
+     * @param delegate Upgrade Step
+     * @param changes List of Schema Changes
      */
     UpgradeStepWithChanges(UpgradeStep delegate, List<SchemaChange> changes) {
       super();
@@ -500,6 +517,15 @@ public class SchemaChangeSequence {
       // no-op here. We don't need to record the UUIDs until we actually apply the changes.
     }
 
+    @Override
+    public void updateStartedAuditRecord(java.util.UUID uuid) {
+      // no-op here. We don't need to record the UUIDs until we actually apply the changes.
+    }
+
+    @Override
+    public void updateFinishedAuditRecord(java.util.UUID uuid, String description) {
+      // no-op here. We don't need to record the UUIDs until we actually apply the changes.
+    }
 
     @Override
     public void startStep(Class<? extends UpgradeStep> upgradeClass) {

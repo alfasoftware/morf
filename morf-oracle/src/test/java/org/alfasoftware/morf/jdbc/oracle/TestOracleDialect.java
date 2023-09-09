@@ -1183,6 +1183,24 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedCurrentUnixTimeMilliseconds()
+   */
+  @Override
+  protected String expectedCurrentUnixTimeMilliseconds() {
+    return "EXTRACT(DAY FROM(sys_extract_utc(systimestamp) - to_timestamp('1970-01-01', 'YYYY-MM-DD'))) * 86400000+ to_number(TO_CHAR(sys_extract_utc(systimestamp), 'SSSSSFF3'))";
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedClientHost() ()
+   */
+  @Override
+  protected String expectedClientHost() {
+    return "SYS_CONTEXT('USERENV','HOST')";
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDaysBetween()
    */
   @Override

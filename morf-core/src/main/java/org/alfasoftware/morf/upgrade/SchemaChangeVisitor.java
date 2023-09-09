@@ -16,6 +16,8 @@
 package org.alfasoftware.morf.upgrade;
 
 
+import java.util.UUID;
+
 /**
  * Interface for any upgrade / downgrade strategy which handles all the
  * defined {@link SchemaChange} implementations.
@@ -33,7 +35,7 @@ public interface SchemaChangeVisitor {
    *
    * @param addColumn instance of {@link AddColumn} to visit.
    */
-  public void visit(AddColumn addColumn);
+  void visit(AddColumn addColumn);
 
 
   /**
@@ -41,7 +43,7 @@ public interface SchemaChangeVisitor {
    *
    * @param addTable instance of {@link AddTable} to visit.
    */
-  public void visit(AddTable addTable);
+  void visit(AddTable addTable);
 
 
   /**
@@ -49,7 +51,7 @@ public interface SchemaChangeVisitor {
    *
    * @param removeTable instance of {@link RemoveTable} to visit.
    */
-  public void visit(RemoveTable removeTable);
+  void visit(RemoveTable removeTable);
 
 
   /**
@@ -57,7 +59,7 @@ public interface SchemaChangeVisitor {
    *
    * @param addIndex instance of {@link AddIndex} to visit.
    */
-  public void visit(AddIndex addIndex);
+  void visit(AddIndex addIndex);
 
 
   /**
@@ -65,7 +67,7 @@ public interface SchemaChangeVisitor {
    *
    * @param changeColumn instance of {@link ChangeColumn} to visit.
    */
-  public void visit(ChangeColumn changeColumn);
+  void visit(ChangeColumn changeColumn);
 
 
   /**
@@ -73,7 +75,7 @@ public interface SchemaChangeVisitor {
    *
    * @param removeColumn instance of {@link RemoveColumn} to visit.
    */
-  public void visit(RemoveColumn removeColumn);
+  void visit(RemoveColumn removeColumn);
 
 
   /**
@@ -81,7 +83,7 @@ public interface SchemaChangeVisitor {
    *
    * @param removeIndex instance of {@link RemoveIndex} to visit.
    */
-  public void visit(RemoveIndex removeIndex);
+  void visit(RemoveIndex removeIndex);
 
 
   /**
@@ -89,7 +91,7 @@ public interface SchemaChangeVisitor {
    *
    * @param changeIndex instance of {@link ChangeIndex} to visit.
    */
-  public void visit(ChangeIndex changeIndex);
+  void visit(ChangeIndex changeIndex);
 
 
   /**
@@ -97,7 +99,7 @@ public interface SchemaChangeVisitor {
    *
    * @param renameIndex instance of {@link RenameIndex} to visit.
    */
-  public void visit(RenameIndex renameIndex);
+  void visit(RenameIndex renameIndex);
 
 
 
@@ -106,7 +108,7 @@ public interface SchemaChangeVisitor {
    *
    * @param executeStatement instance of {@link ExecuteStatement} to visit.
    */
-  public void visit(ExecuteStatement executeStatement);
+  void visit(ExecuteStatement executeStatement);
 
 
   /**
@@ -114,14 +116,14 @@ public interface SchemaChangeVisitor {
    *
    * @param renameTable instance of {@link RenameTable} to visit.
    */
-  public void visit(RenameTable renameTable);
+  void visit(RenameTable renameTable);
 
   /**
    * Perform visit operation on a {@link ChangePrimaryKeyColumns} instance.
    *
    * @param renameTable instance of {@link ChangePrimaryKeyColumns} to visit.
    */
-  public void visit(ChangePrimaryKeyColumns renameTable);
+  void visit(ChangePrimaryKeyColumns renameTable);
 
 
   /**
@@ -129,7 +131,7 @@ public interface SchemaChangeVisitor {
    *
    * @param addTableFrom instance of {@link AddTableFrom} to visit.
    */
-  public void visit(AddTableFrom addTableFrom);
+  void visit(AddTableFrom addTableFrom);
 
 
   /**
@@ -137,16 +139,32 @@ public interface SchemaChangeVisitor {
    * 
    * @param analyseTable instance of {@link AnalyseTable} to visit.
    */
-  public void visit(AnalyseTable analyseTable);
+  void visit(AnalyseTable analyseTable);
 
 
   /**
-   * Add the UUID audit record.
+   * Add the UUID audit record in {@link UpgradeStepStatus#SCHEDULED} status
    *
    * @param uuid The UUID of the step which has been applied
    * @param description The description of the step.
    */
-  public void addAuditRecord(java.util.UUID uuid, String description);
+  void addAuditRecord(java.util.UUID uuid, String description);
+
+
+  /**
+   * Update an existing audit record to {@link UpgradeStepStatus#STARTED} status
+   *
+   * @param uuid The UUID of the step which has been applied
+   */
+  void updateStartedAuditRecord(UUID uuid);
+
+  /**
+   * Update the UUID audit record to {@link UpgradeStepStatus#SCHEDULED} status
+   *
+   * @param uuid The UUID of the step which has been applied
+   * @param description The description of the step.
+   */
+  void updateFinishedAuditRecord(UUID uuid, String description);
 
 
   /**
@@ -154,5 +172,5 @@ public interface SchemaChangeVisitor {
    *
    * @param upgradeClass The upgrade step being started.
    */
-  public void startStep(Class<? extends UpgradeStep> upgradeClass);
+  void startStep(Class<? extends UpgradeStep> upgradeClass);
 }

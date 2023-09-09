@@ -58,6 +58,7 @@ import static org.alfasoftware.morf.sql.element.Function.addDays;
 import static org.alfasoftware.morf.sql.element.Function.addMonths;
 import static org.alfasoftware.morf.sql.element.Function.average;
 import static org.alfasoftware.morf.sql.element.Function.averageDistinct;
+import static org.alfasoftware.morf.sql.element.Function.clientHost;
 import static org.alfasoftware.morf.sql.element.Function.coalesce;
 import static org.alfasoftware.morf.sql.element.Function.count;
 import static org.alfasoftware.morf.sql.element.Function.countDistinct;
@@ -87,6 +88,7 @@ import static org.alfasoftware.morf.sql.element.Function.substring;
 import static org.alfasoftware.morf.sql.element.Function.sum;
 import static org.alfasoftware.morf.sql.element.Function.sumDistinct;
 import static org.alfasoftware.morf.sql.element.Function.trim;
+import static org.alfasoftware.morf.sql.element.Function.currentUnixTimeMilliseconds;
 import static org.alfasoftware.morf.sql.element.Function.upperCase;
 import static org.alfasoftware.morf.sql.element.Function.yyyymmddToDate;
 import static org.junit.Assert.assertArrayEquals;
@@ -2587,6 +2589,25 @@ public abstract class AbstractSqlDialectTest {
     assertEquals(expectedNow(), result);
   }
 
+
+  /**
+   * Test that current unix time in milliseconds functionality behaves as expected.
+   */
+  @Test
+  public void testCurrentUnixTimeMilliseconds() {
+    String result = testDialect.getSqlFrom(currentUnixTimeMilliseconds());
+    assertEquals(expectedCurrentUnixTimeMilliseconds(), result);
+  }
+
+
+  /**
+   * Test that client host functionality behaves as expected.
+   */
+  @Test
+  public void testClientHost() {
+    String result = testDialect.getSqlFrom(clientHost());
+    assertEquals(expectedClientHost(), result);
+  }
 
   /**
    * Test that AddDays functionality behaves as expected.
@@ -5340,19 +5361,19 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * @return The expected SQL for conversion of YYYYMMDD into a date
+   * @return The expected SQL for conversion of YYYYMMDD into a date.
    */
   protected abstract String expectedYYYYMMDDToDate();
 
 
   /**
-   * @return The expected SQL for conversion of a date to a YYYYMMDD integer
+   * @return The expected SQL for conversion of a date to a YYYYMMDD integer.
    */
   protected abstract String expectedDateToYyyymmdd();
 
 
   /**
-   * @return The expected SQL for conversion of a date to a YYYYMMDDHHmmss integer
+   * @return The expected SQL for conversion of a date to a YYYYMMDDHHmmss integer.
    */
   protected abstract String expectedDateToYyyymmddHHmmss();
 
@@ -5370,13 +5391,25 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * @return The expected SQL for adding days
+   * @return The expected SQL for current unix time in milliseconds function returning milliseconds since 01/01/1970 UTC.
+   */
+  protected abstract String expectedCurrentUnixTimeMilliseconds();
+
+
+  /**
+   * @return The expected SQL for client host function.
+   */
+  protected abstract String expectedClientHost();
+
+
+  /**
+   * @return The expected SQL for adding days.
    */
   protected abstract String expectedAddDays();
 
 
   /**
-   * @return The expected SQL for adding days
+   * @return The expected SQL for adding days.
    */
   protected abstract String expectedAddMonths();
 

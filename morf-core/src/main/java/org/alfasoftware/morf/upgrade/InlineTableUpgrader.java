@@ -248,6 +248,17 @@ public class InlineTableUpgrader implements SchemaChangeVisitor {
   }
 
 
+  @Override
+  public void updateStartedAuditRecord(UUID uuid) {
+    AuditRecordHelper.updateStartedAuditRecord(this,currentSchema, uuid);
+  }
+
+  @Override
+  public void updateFinishedAuditRecord(UUID uuid, String description) {
+    AuditRecordHelper.updateFinishedAuditRecord(this, currentSchema, uuid, description);
+  }
+
+
   /**
    * @see org.alfasoftware.morf.upgrade.SchemaChangeVisitor#startStep(java.lang.Class)
    */

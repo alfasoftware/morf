@@ -24,11 +24,14 @@ import static org.junit.Assert.assertTrue;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 
 import javax.sql.DataSource;
 
+import com.google.common.collect.ImmutableList;
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
 import org.alfasoftware.morf.guicesupport.MorfModule;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
@@ -38,6 +41,8 @@ import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager;
 import org.alfasoftware.morf.testing.TestingDataSourceModule;
 import org.alfasoftware.morf.upgrade.Deployment.DeploymentFactory;
+import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
+import org.alfasoftware.morf.upgrade.upgrade.AddExtraLoggingToUpgradeAuditTable;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -126,4 +131,82 @@ public class TestFullDeployment {
       connection.close();
     }
   }
+
+
+
+  /**
+   * Tests full deployment with two simple domain classes
+   * @throws SQLException If database access fails.
+   */
+  @Test
+  public void testTwoClassDeploymentWithUpgradeSteps() throws SQLException {
+    Schema targetSchema = schema(
+            table("UpgradeAudit").columns(
+                    column("upgradeUUID",      DataType.STRING, 100).primaryKey(),
+                    column("description",      DataType.STRING, DatabaseUpgradeTableContribution.UPGRADE_STEP_DESCRIPTION_LENGTH).nullable(),
+                    column("appliedTime",      DataType.DECIMAL, 14).nullable(),
+                    column("status",           DataType.STRING,  10).nullable(),
+                    column("server",           DataType.STRING,  100).nullable(),
+                    column("processingTimeMs", DataType.DECIMAL, 14).nullable(),
+                    column("startTimeMs",      DataType.DECIMAL, 18).nullable()
+            ),
+            table("FirstTestBean").columns(
+                    column("identifier", DataType.DECIMAL, 10).nullable(),
+                    column("stringColumn", DataType.STRING, 10).nullable(),
+                    column("doubleColumn", DataType.DECIMAL, 13, 2)
+            ),
+            table("SecondTestBean").columns(
+                    column("identifier", DataType.DECIMAL, 10).nullable(),
+                    column("intColumn", DataType.DECIMAL, 10).nullable()
+            )
+    );
+
+    final List<Class<? extends UpgradeStep>> upgradeStepList = ImmutableList.of(
+            AddExtraLoggingToUpgradeAuditTable.class
+    );
+
+    // Try accessing the new database
+    Connection connection = dataSource.getConnection();
+    try {
+      // -- Set up the database...
+      //
+      DeploymentFactory deploymentFactory = Guice.createInjector(new MorfModule(), new AbstractModule() {
+        @Override
+        protected void configure() {
+          bind(SqlDialect.class).toInstance(connectionResources.sqlDialect());
+          bind(DataSource.class).toInstance(connectionResources.getDataSource()); // TODO Need to discuss more widely about what we want to do here
+          bind(ConnectionResources.class).toInstance(connectionResources);
+        }
+      }).getInstance(DeploymentFactory.class);
+
+      deploymentFactory.create(connectionResources).deploy(targetSchema);
+
+
+      Upgrade.performUpgrade(targetSchema, upgradeStepList, connectionResources, new ViewDeploymentValidator.AlwaysValidate());
+
+      String schemaNamePrefix = connectionResources.sqlDialect().schemaNamePrefix();
+
+      // A simple query
+      Statement statement = connection.createStatement();
+      assertFalse("Empty select results", statement.executeQuery("select * from "+schemaNamePrefix+"FirstTestBean").next());
+
+      // An insert followed by a read
+      statement.execute("insert into "+schemaNamePrefix+"SecondTestBean values(0, 33)");
+      ResultSet resultSet = statement.executeQuery("select * from "+schemaNamePrefix+"SecondTestBean");
+      assertTrue("Second result set has a record", resultSet.next());
+      assertEquals("Column value", 33, resultSet.getInt("intColumn"));
+      assertFalse("Second result set has exactly one record", resultSet.next());
+
+      ResultSet resultSetUpgradeAudit = statement.executeQuery("select * from "+schemaNamePrefix+"UpgradeAudit");
+      ResultSetMetaData resultSetMetaData = resultSetUpgradeAudit.getMetaData();
+
+      assertEquals("Column Count", 7, resultSetMetaData.getColumnCount());
+    } finally {
+      upgradeStatusTableService.tidyUp(connectionResources.getDataSource());
+      connection.close();
+    }
+  }
+
+
+
 }

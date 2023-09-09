@@ -314,6 +314,24 @@ public class MockDialect extends SqlDialect {
 
 
   /**
+   * @see SqlDialect#getSqlForClientHost()
+   */
+  @Override
+  protected String getSqlForClientHost() {
+    return "'CLIENT'";
+  }
+
+
+  /**
+   * @see SqlDialect#getSqlForCurrentUnixTimeMilliseconds()
+   */
+  @Override
+  protected String getSqlForCurrentUnixTimeMilliseconds() {
+    return "123456789";
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#tableNameWithSchemaName(org.alfasoftware.morf.sql.element.TableReference)
    */
   @Override
