@@ -80,6 +80,11 @@ class TableOutputter {
   private static final int MAX_EXCEL_COLUMNS = 256;
 
   /**
+   * The maximum number of characters supported in an XLS cell.
+   */
+  private static final int MAX_CELL_CHARACTERS = 32767;
+
+  /**
    * The data types we can output to a spreadsheet.
    */
   private static final Set<DataType> supportedDataTypes = Sets.immutableEnumSet(STRING, DECIMAL, BIG_INTEGER, INTEGER, CLOB);
@@ -511,7 +516,7 @@ class TableOutputter {
       case CLOB:
         try {
           String stringValue = record.getString(column.getName());
-          writableCell = stringValue == null ? createBlankWriteableCell(columnNumber, rowIndex) : new Label(columnNumber, rowIndex, stringValue);
+          writableCell = stringValue == null ? createBlankWriteableCell(columnNumber, rowIndex) : new Label(columnNumber, rowIndex, StringUtils.substring(stringValue, 0, MAX_CELL_CHARACTERS));
         } catch (Exception e) {
           throw new UnsupportedOperationException("Cannot generate Excel cell for CLOB data" + unsupportedOperationExceptionMessageSuffix(column, currentWorkSheet), e);
         }

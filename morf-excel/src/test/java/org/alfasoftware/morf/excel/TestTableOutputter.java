@@ -206,6 +206,44 @@ public class TestTableOutputter {
 
 
   /**
+   * Tests that a clob value that exceeds the max length supported by Excel is truncated before being written to the worksheet.
+   *
+   * @throws {@link WriteException} if an error occurs
+   */
+  @Test
+  public void testClobTruncation() throws WriteException {
+    // Given
+    when(table.columns()).thenReturn(ImmutableList.of(
+        column("Col1", DataType.CLOB)
+    ));
+
+    Record record1 = mock(Record.class);
+
+    String clobValue = "";
+
+    for (int c = 0; c < 35000; c++) {
+      clobValue += "X";
+    }
+
+    when(record1.getString("Col1")).thenReturn(clobValue);
+    ImmutableList<Record> recordList = ImmutableList.<Record>of(record1);
+    int expectedMaxClobLength = 32767;
+
+    // When
+    tableOutputter.table(1, writableWorkbook, table, recordList);
+
+    ArgumentCaptor<WritableCell> writableCellCaptor = ArgumentCaptor.forClass(WritableCell.class);
+    verify(writableSheet, times(12)).addCell(writableCellCaptor.capture());
+    List<WritableCell> capturedWritableCellList = writableCellCaptor.getAllValues();
+    // Example Data
+    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,12, 0, clobValue.substring(0, expectedMaxClobLength)));
+
+    // Parameters to Set Up
+    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,12, 0, clobValue.substring(0, expectedMaxClobLength)));
+  }
+
+
+  /**
    * Tests that a table with fields containing invalid data results in a {@link UnsupportedOperationException}.
    */
   @Test
