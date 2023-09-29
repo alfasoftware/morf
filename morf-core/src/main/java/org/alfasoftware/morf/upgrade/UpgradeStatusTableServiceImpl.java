@@ -199,6 +199,7 @@ class UpgradeStatusTableServiceImpl implements UpgradeStatusTableService {
   public void tidyUp(DataSource dataSource) {
     try {
       new SqlScriptExecutorProvider(dataSource, sqlDialect).get().execute(sqlDialect.dropStatements(table(UpgradeStatusTableService.UPGRADE_STATUS)));
+      log.info("[" + UPGRADE_STATUS + "] table has been removed, upgrade finished!");
     } catch (RuntimeSqlException e) {
       //Throw exception only if the table still exists
       if (getStatus(Optional.of(dataSource)) != NONE) {
