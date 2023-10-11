@@ -41,7 +41,7 @@ import java.util.UUID;
  * at this point (for example, transferring in a start position using
  * {@link DatabaseDataSetConsumer}) and, once complete, call {@link UpgradeStatusTableService#writeStatusFromStatus(UpgradeStatus, UpgradeStatus)}.
  *
- * <h3>Usage</h3>
+ * <b>Usage</b>
  * <pre><code>
  * deployment.deploy(targetSchema);
  * if (upgradeStatusTableService.writeStatusFromStatus(DATA_TRANSFER_REQUIRED, DATA_TRANSFER_IN_PROGRESS) == 1) {
