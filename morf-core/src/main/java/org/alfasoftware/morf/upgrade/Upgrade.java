@@ -15,14 +15,31 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import com.google.common.collect.ImmutableList;
-import com.google.inject.Inject;
+import static org.alfasoftware.morf.sql.InsertStatement.insert;
+import static org.alfasoftware.morf.sql.SelectStatement.select;
+import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.alfasoftware.morf.sql.element.Criterion.eq;
+import static org.alfasoftware.morf.sql.element.Function.count;
+import static org.alfasoftware.morf.upgrade.UpgradeStatus.NONE;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import javax.sql.DataSource;
+
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor.ResultSetProcessor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaValidator;
+import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.upgrade.ExistingViewStateLoader.Result;
@@ -34,20 +51,8 @@ import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import javax.sql.DataSource;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import static org.alfasoftware.morf.sql.SelectStatement.select;
-import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.sql.element.Function.count;
-import static org.alfasoftware.morf.upgrade.UpgradeStatus.NONE;
+import com.google.common.collect.ImmutableList;
+import com.google.inject.Inject;
 
 /**
  * Entry point for upgrade processing.
@@ -258,7 +263,7 @@ public class Upgrade {
     }
 
     // Build the actual upgrade path
-    return buildUpgradePath(connectionResources, sourceSchema, targetSchema, upgradeStatements, viewChanges, upgradesToApply, graphBasedUpgradeBuilder);
+    return buildUpgradePath(connectionResources, sourceSchema, targetSchema, upgradeStatements, viewChanges, upgradesToApply, graphBasedUpgradeBuilder, upgradeAuditCount);
   }
 
 
@@ -277,9 +282,12 @@ public class Upgrade {
       ConnectionResources connectionResources, Schema sourceSchema, Schema targetSchema,
       List<String> upgradeStatements, ViewChanges viewChanges,
       List<UpgradeStep> upgradesToApply,
-      GraphBasedUpgradeBuilder graphBasedUpgradeBuilder) {
+      GraphBasedUpgradeBuilder graphBasedUpgradeBuilder,
+      long upgradeAuditCount) {
 
-    UpgradePath path = factory.create(upgradesToApply, connectionResources, graphBasedUpgradeBuilder);
+    List<String> optimisticLockingInitialisationSql = addOptimisticLockingInitialisationSql(upgradeAuditCount);
+
+    UpgradePath path = factory.create(upgradesToApply, connectionResources, graphBasedUpgradeBuilder, optimisticLockingInitialisationSql);
 
     path.writeSql(UpgradeHelper.preSchemaUpgrade(new UpgradeSchemas(sourceSchema, targetSchema), viewChanges, viewChangesDeploymentHelper));
 
@@ -316,10 +324,7 @@ public class Upgrade {
    * @return the number of upgrade steps from the UpgradeAudit table
    */
   long getUpgradeAuditRowCount(ResultSetProcessor<Long> processor) {
-    TableReference upgradeAuditTable = tableRef(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME);
-    SelectStatement selectStatement = select(count(upgradeAuditTable.field("upgradeUUID")))
-            .from(upgradeAuditTable)
-            .build();
+    SelectStatement selectStatement = selectUpgradeAuditTableCount();
     long appliedUpgradeStepsCount = -1;
     try {
       SqlScriptExecutorProvider sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
@@ -331,6 +336,34 @@ public class Upgrade {
     }
     log.debug("Returning number of applied upgrade steps [" + appliedUpgradeStepsCount + "]");
     return appliedUpgradeStepsCount;
+  }
+
+
+  /**
+   *
+   * @param upgradeAuditCount
+   * @return
+   */
+  private List<String> addOptimisticLockingInitialisationSql(long upgradeAuditCount) {
+    TableReference upgradeStatusTable = tableRef(UpgradeStatusTableService.UPGRADE_STATUS);
+
+    SelectStatement selectStatement = select().from(upgradeStatusTable)
+        .where(eq(selectUpgradeAuditTableCount().asField(), upgradeAuditCount))
+        .build();
+
+    InsertStatement insertStatement = insert().into(upgradeStatusTable)
+        .from(selectStatement)
+        .build();
+
+    return connectionResources.sqlDialect().convertStatementToSQL(insertStatement);
+  }
+
+
+  private SelectStatement selectUpgradeAuditTableCount() {
+    TableReference upgradeAuditTable = tableRef(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME);
+    return select(count(upgradeAuditTable.field("upgradeUUID")))
+        .from(upgradeAuditTable)
+        .build();
   }
 
 
