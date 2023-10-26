@@ -35,12 +35,12 @@ import static org.alfasoftware.morf.sql.element.Function.count;
 import static org.alfasoftware.morf.sql.element.Function.sum;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyZeroInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -742,7 +742,7 @@ public class TestResultSetComparer {
 
     resultSetComparer.compare(new int[]{}, left1, right, connection, callBackMock);
 
-    verifyZeroInteractions(callBackMock);
+    verifyNoMoreInteractions(callBackMock);
   }
 
 
