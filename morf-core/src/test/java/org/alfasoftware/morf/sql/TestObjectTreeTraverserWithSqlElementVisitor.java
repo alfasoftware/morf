@@ -35,9 +35,10 @@ import static org.alfasoftware.morf.sql.element.Criterion.not;
 import static org.alfasoftware.morf.sql.element.Function.min;
 import static org.alfasoftware.morf.sql.element.Function.sum;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import java.util.Optional;
 
@@ -58,7 +59,7 @@ import org.junit.Test;
  */
 public class TestObjectTreeTraverserWithSqlElementVisitor {
 
-  private final SqlElementCallback callback = spy(SqlElementCallback.class);
+  private final ObjectTreeTraverser.Callback callback = mock(ObjectTreeTraverser.Callback.class);
   private final ObjectTreeTraverser traverser = ObjectTreeTraverser.forCallback(callback);
 
   private final TableReference two = tableRef("two");
@@ -102,6 +103,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
     verify(callback).visit(select2);
     verify(callback).visit(selectsAsField);
     verify(callback).visit(select2.getFields().get(0));
+    verifyNoMoreInteractions(callback);
   }
 
 
@@ -158,6 +160,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
     verify(callback).visit(three);
     verify(callback).visit(select1);
     verify(callback).visit(select2);
+    verifyNoMoreInteractions(callback);
   }
 
 
@@ -197,6 +200,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
     verify(callback).visit(thirteen);
     verify(callback).visit(twelve);
     verify(callback).visit(four);
+    verifyNoMoreInteractions(callback);
   }
 
 
@@ -225,6 +229,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
     verify(callback).visit(six);
     verify(callback).visit(nine);
     verify(callback).visit(ten);
+    verifyNoMoreInteractions(callback);
   }
 
 
@@ -268,6 +273,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
     verify(callback).visit(four);
     verify(callback).visit(five);
     verify(callback).visit(six);
+    verifyNoMoreInteractions(callback);
   }
 
 
@@ -290,6 +296,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
     verify(callback).visit(driver);
     verify(callback).visit(select2);
     verify(callback).visit(two);
+    verifyNoMoreInteractions(callback);
   }
 
 
@@ -309,6 +316,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
     verify(callback).visit(select.getFields().get(1));
     verify(callback).visit(two);
     verify(callback).visit(three);
+    verifyNoMoreInteractions(callback);
   }
 
 
@@ -332,6 +340,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
     verify(callback).visit(two);
     verify(callback).visit(three);
     verify(callback).visit(Optional.of(limit));
+    verifyNoMoreInteractions(callback);
   }
 
 
@@ -357,6 +366,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
     verify(callback).visit(two);
     verify(callback).visit(three);
     verify(callback).visit(four);
+    verifyNoMoreInteractions(callback);
   }
 
 
@@ -380,6 +390,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
     verify(callback).visit(two);
     verify(callback).visit(three);
     verify(callback).visit(four);
+    verifyNoMoreInteractions(callback);
   }
 
 
@@ -414,6 +425,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
     verify(callback).visit(four);
     verify(callback).visit(insert.getFields().get(0));
     verify(callback).visit(insert.getFields().get(1));
+    verifyNoMoreInteractions(callback);
   }
 
 
@@ -444,6 +456,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
     verify(callback).visit(two);
     verify(callback).visit(three);
     verify(callback).visit(four);
+    verifyNoMoreInteractions(callback);
   }
 
 
@@ -459,5 +472,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
 
     verify(callback).visit(table);
     verify(callback).visit(truncate);
+
+    verifyNoMoreInteractions(callback);
   }
 }
