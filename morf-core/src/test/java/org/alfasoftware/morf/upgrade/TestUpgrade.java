@@ -189,7 +189,7 @@ public class TestUpgrade {
     assertEquals("Should be two steps.", 2, results.getSteps().size());
     List<String> sql = results.getSql();
     assertEquals("Number of SQL statements", 19, sql.size()); // Includes statements to add optimistic locking; create, truncate and then drop temp table; also 2 comments
-    assertEquals("First entry should be the initialisation SQL", "INSERT INTO zzzUpgradeStatus SELECT * FROM zzzUpgradeStatus WHERE ((SELECT COUNT(UpgradeAudit.upgradeUUID) FROM UpgradeAudit) = " + upgradeAuditCount + ")", sql.get(0));
+    assertEquals("First entry should be the initialisation SQL", "INSERT INTO zzzUpgradeStatus SELECT * FROM zzzUpgradeStatus WHERE ((SELECT COUNT(UpgradeAudit.upgradeUUID) FROM UpgradeAudit) <> " + upgradeAuditCount + ")", sql.get(0));
   }
 
 
