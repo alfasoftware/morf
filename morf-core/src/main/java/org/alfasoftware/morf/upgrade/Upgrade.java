@@ -18,7 +18,7 @@ package org.alfasoftware.morf.upgrade;
 import static org.alfasoftware.morf.sql.InsertStatement.insert;
 import static org.alfasoftware.morf.sql.SelectStatement.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.sql.element.Criterion.eq;
+import static org.alfasoftware.morf.sql.element.Criterion.neq;
 import static org.alfasoftware.morf.sql.element.Function.count;
 import static org.alfasoftware.morf.upgrade.UpgradeStatus.NONE;
 
@@ -276,6 +276,8 @@ public class Upgrade {
    * @param upgradeStatements Upgrade statements identified.
    * @param viewChanges Changes needed to the views.
    * @param upgradesToApply Upgrade steps identified.
+   * @param graphBasedUpgradeBuilder Builder for the Graph Based Upgrade
+   * @param upgradeAuditCount Number of already applied upgrade steps
    * @return An upgrade path.
    */
   private UpgradePath buildUpgradePath(
@@ -285,7 +287,7 @@ public class Upgrade {
       GraphBasedUpgradeBuilder graphBasedUpgradeBuilder,
       long upgradeAuditCount) {
 
-    List<String> optimisticLockingInitialisationSql = addOptimisticLockingInitialisationSql(upgradeAuditCount);
+    List<String> optimisticLockingInitialisationSql = getOptimisticLockingInitialisationSql(upgradeAuditCount);
 
     UpgradePath path = factory.create(upgradesToApply, connectionResources, graphBasedUpgradeBuilder, optimisticLockingInitialisationSql);
 
@@ -340,15 +342,13 @@ public class Upgrade {
 
 
   /**
-   *
-   * @param upgradeAuditCount
-   * @return
+   * Generates SQL to be run at the start of the upgrade script which ensures the upgrade can't be run twice
    */
-  private List<String> addOptimisticLockingInitialisationSql(long upgradeAuditCount) {
+  private List<String> getOptimisticLockingInitialisationSql(long upgradeAuditCount) {
     TableReference upgradeStatusTable = tableRef(UpgradeStatusTableService.UPGRADE_STATUS);
 
     SelectStatement selectStatement = select().from(upgradeStatusTable)
-        .where(eq(selectUpgradeAuditTableCount().asField(), upgradeAuditCount))
+        .where(neq(selectUpgradeAuditTableCount().asField(), upgradeAuditCount))
         .build();
 
     InsertStatement insertStatement = insert().into(upgradeStatusTable)
@@ -359,6 +359,9 @@ public class Upgrade {
   }
 
 
+  /**
+   * Creates a select statement which can be used to count the number of upgrade steps that have already been run
+   */
   private SelectStatement selectUpgradeAuditTableCount() {
     TableReference upgradeAuditTable = tableRef(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME);
     return select(count(upgradeAuditTable.field("upgradeUUID")))

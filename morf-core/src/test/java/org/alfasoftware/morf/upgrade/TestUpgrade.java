@@ -16,52 +16,6 @@
 package org.alfasoftware.morf.upgrade;
 
 
-import com.google.common.base.Function;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-import org.alfasoftware.morf.jdbc.ConnectionResources;
-import org.alfasoftware.morf.jdbc.MockDialect;
-import org.alfasoftware.morf.jdbc.SqlDialect;
-import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
-import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.SchemaResource;
-import org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder;
-import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.View;
-import org.alfasoftware.morf.sql.DeleteStatement;
-import org.alfasoftware.morf.sql.InsertStatement;
-import org.alfasoftware.morf.sql.SelectStatement;
-import org.alfasoftware.morf.upgrade.GraphBasedUpgradeBuilder.GraphBasedUpgradeBuilderFactory;
-import org.alfasoftware.morf.upgrade.MockConnectionResources.StubSchemaResource;
-import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
-import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
-import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
-import org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.ChangeCar;
-import org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.ChangeDriver;
-import org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.CreateDeployedViews;
-import org.apache.commons.lang3.StringUtils;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
-
-import javax.sql.DataSource;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.idColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
@@ -81,6 +35,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyListOf;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
@@ -91,6 +46,53 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+
+import javax.sql.DataSource;
+
+import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.jdbc.MockDialect;
+import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaResource;
+import org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder;
+import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.sql.DeleteStatement;
+import org.alfasoftware.morf.sql.InsertStatement;
+import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.upgrade.GraphBasedUpgradeBuilder.GraphBasedUpgradeBuilderFactory;
+import org.alfasoftware.morf.upgrade.MockConnectionResources.StubSchemaResource;
+import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
+import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
+import org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.ChangeCar;
+import org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.ChangeDriver;
+import org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.CreateDeployedViews;
+import org.apache.commons.lang3.StringUtils;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
+
+import com.google.common.base.Function;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 
 /**
  * Test {@link Upgrade} works correctly.
@@ -165,10 +167,16 @@ public class TestUpgrade {
     when(upgradeResultSet.getString(1)).thenReturn("0fde0d93-f57e-405c-81e9-245ef1ba0594", "0fde0d93-f57e-405c-81e9-245ef1ba0595");
     when(upgradeResultSet.next()).thenReturn(false);
 
+    ResultSet upgradeAuditCountResultSet = mock(ResultSet.class);
+    when(upgradeAuditCountResultSet.next()).thenReturn(true, false);
+    long upgradeAuditCount = 17L;
+    when(upgradeAuditCountResultSet.getLong(1)).thenReturn(upgradeAuditCount);
+
     ConnectionResources mockConnectionResources = new MockConnectionResources().
-                                              withResultSet("SELECT upgradeUUID FROM UpgradeAudit", upgradeResultSet).
-                                              withResultSet("SELECT name, hash FROM DeployedViews", viewResultSet).
-                                              create();
+        withResultSet("SELECT upgradeUUID FROM UpgradeAudit", upgradeResultSet).
+        withResultSet("SELECT name, hash FROM DeployedViews", viewResultSet).
+        withResultSet("SELECT COUNT(UpgradeAudit.upgradeUUID) FROM UpgradeAudit", upgradeAuditCountResultSet).
+        create();
 
     SchemaResource schemaResource = mock(SchemaResource.class);
     when(mockConnectionResources.openSchemaResource(eq(mockConnectionResources.getDataSource()))).thenReturn(schemaResource);
@@ -179,7 +187,9 @@ public class TestUpgrade {
         .findPath(targetSchema, upgradeSteps, Lists.newArrayList("^Drivers$", "^EXCLUDE_.*$"), mockConnectionResources.getDataSource());
 
     assertEquals("Should be two steps.", 2, results.getSteps().size());
-    assertEquals("Number of SQL statements", 18, results.getSql().size()); // Includes statements to create, truncate and then drop temp table, also 2 comments
+    List<String> sql = results.getSql();
+    assertEquals("Number of SQL statements", 19, sql.size()); // Includes statements to add optimistic locking; create, truncate and then drop temp table; also 2 comments
+    assertEquals("First entry should be the initialisation SQL", "INSERT INTO zzzUpgradeStatus SELECT * FROM zzzUpgradeStatus WHERE ((SELECT COUNT(UpgradeAudit.upgradeUUID) FROM UpgradeAudit) = " + upgradeAuditCount + ")", sql.get(0));
   }
 
 
@@ -220,6 +230,10 @@ public class TestUpgrade {
     ResultSet upgradeResultSet = mock(ResultSet.class);
     when(upgradeResultSet.next()).thenReturn(false);
 
+    ResultSet upgradeAuditCountResultSet = mock(ResultSet.class);
+    when(upgradeAuditCountResultSet.next()).thenReturn(true, false);
+    when(upgradeAuditCountResultSet.getLong(1)).thenReturn(17L);
+
     SqlDialect dialect = spy(new MockDialect());
     when(dialect.rebuildTriggers(any(Table.class))).thenReturn(ImmutableList.of("A"));
 
@@ -227,6 +241,7 @@ public class TestUpgrade {
                                               withSchema(schema(upgradeAudit(), deployedViews(), originalCar())).
                                               withResultSet("SELECT upgradeUUID FROM UpgradeAudit", upgradeResultSet).
                                               withResultSet("SELECT name, hash FROM DeployedViews", viewResultSet).
+                                              withResultSet("SELECT COUNT(UpgradeAudit.upgradeUUID) FROM UpgradeAudit", upgradeAuditCountResultSet).
                                               create();
     when(connection.sqlDialect()).thenReturn(dialect);
 
@@ -242,15 +257,10 @@ public class TestUpgrade {
   }
 
 
-  /**
-   * @return
-   */
-  @SuppressWarnings("unchecked")
   private UpgradePathFactory upgradePathFactory() {
     UpgradePathFactory upgradePathFactory = mock(UpgradePathFactory.class);
-    when(upgradePathFactory.create(anyListOf(UpgradeStep.class), any(ConnectionResources.class), nullable(GraphBasedUpgradeBuilder.class))).thenAnswer(invocation -> {
-      return new UpgradePath(Sets.<UpgradeScriptAddition>newHashSet(), (List<UpgradeStep>)invocation.getArguments()[0], ((ConnectionResources)invocation.getArguments()[1]), Collections.emptyList(), Collections.emptyList());
-    });
+    when(upgradePathFactory.create(anyListOf(UpgradeStep.class), any(ConnectionResources.class), nullable(GraphBasedUpgradeBuilder.class), anyList()))
+        .thenAnswer(invocation -> new UpgradePath(Sets.newHashSet(), invocation.getArgument(0), invocation.getArgument(1), invocation.getArgument(3), Collections.emptyList()));
 
     return upgradePathFactory;
   }
@@ -358,6 +368,7 @@ public class TestUpgrade {
     when(connection.openSchemaResource(eq(connection.getDataSource()))).thenReturn(new StubSchemaResource(sourceSchema));
     when(connection.sqlDialect().truncateTableStatements(any(Table.class))).thenReturn(Lists.newArrayList("1"));
     when(connection.sqlDialect().dropStatements(any(Table.class))).thenReturn(Lists.newArrayList("2"));
+    when(connection.sqlDialect().convertStatementToSQL(any(InsertStatement.class))).thenReturn(ImmutableList.of("C"));
 
     // When
     UpgradePath result = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(connection), graphBasedUpgradeScriptGeneratorFactory, viewChangesDeploymentHelperFactory(connection), viewDeploymentValidatorFactory())
@@ -369,7 +380,7 @@ public class TestUpgrade {
     assertEquals("Marker step JIRA ID", "\u2014", result.getSteps().get(0).getJiraId());
     assertEquals("Marker step description", "Update database views", result.getSteps().get(0).getDescription());
 
-    assertEquals("SQL", "[A]", result.getSql().toString());
+    assertEquals("SQL", "[C, A]", result.getSql().toString());
   }
 
 
@@ -403,6 +414,7 @@ public class TestUpgrade {
     when(connection.openSchemaResource(eq(connection.getDataSource()))).thenReturn(new StubSchemaResource(sourceSchema));
     when(connection.sqlDialect().truncateTableStatements(any(Table.class))).thenReturn(Lists.newArrayList("1"));
     when(connection.sqlDialect().dropStatements(any(Table.class))).thenReturn(Lists.newArrayList("2"));
+    when(connection.sqlDialect().convertStatementToSQL(any(InsertStatement.class))).thenReturn(ImmutableList.of("C"));
 
     // When
     UpgradePath result = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(connection), graphBasedUpgradeScriptGeneratorFactory, viewChangesDeploymentHelperFactory(connection), viewDeploymentValidatorFactory())
@@ -414,7 +426,7 @@ public class TestUpgrade {
     assertEquals("Marker step JIRA ID", "\u2014", result.getSteps().get(0).getJiraId());
     assertEquals("Marker step description", "Update database views", result.getSteps().get(0).getDescription());
 
-    assertEquals("SQL", "[X, A]", result.getSql().toString());
+    assertEquals("SQL", "[C, X, A]", result.getSql().toString());
   }
 
 
@@ -467,11 +479,16 @@ public class TestUpgrade {
     ResultSet upgradeResultSet = mock(ResultSet.class);
     when(upgradeResultSet.next()).thenReturn(false);
 
+    ResultSet upgradeAuditCountResultSet = mock(ResultSet.class);
+    when(upgradeAuditCountResultSet.next()).thenReturn(true, false);
+    when(upgradeAuditCountResultSet.getLong(1)).thenReturn(17L);
+
     ConnectionResources connection = new MockConnectionResources().
                                               withDialect(sqlDialect).
                                               withSchema(sourceSchema).
                                               withResultSet("SELECT upgradeUUID FROM UpgradeAudit", upgradeResultSet).
                                               withResultSet("SELECT name, hash FROM DeployedViews", viewResultSet).
+                                              withResultSet("SELECT COUNT(UpgradeAudit.upgradeUUID) FROM UpgradeAudit", upgradeAuditCountResultSet).
                                               create();
 
     // When
@@ -483,7 +500,7 @@ public class TestUpgrade {
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
     assertEquals("Upgrade class", ChangeCar.class, result.getSteps().get(0).getClass());
     // no drop view, only delete from DeployedViews
-    assertEquals("SQL", "[G, IdTable, CM, A, C]", result.getSql().toString());
+    assertEquals("SQL", "[C, G, IdTable, CM, A, C]", result.getSql().toString());
   }
 
 
@@ -537,11 +554,16 @@ public class TestUpgrade {
     ResultSet upgradeResultSet = mock(ResultSet.class);
     when(upgradeResultSet.next()).thenReturn(false);
 
+    ResultSet upgradeAuditCountResultSet = mock(ResultSet.class);
+    when(upgradeAuditCountResultSet.next()).thenReturn(true, false);
+    when(upgradeAuditCountResultSet.getLong(1)).thenReturn(17L);
+
     ConnectionResources connection = new MockConnectionResources().
                                               withDialect(sqlDialect).
                                               withSchema(sourceSchema).
                                               withResultSet("SELECT upgradeUUID FROM UpgradeAudit", upgradeResultSet).
                                               withResultSet("SELECT name, hash FROM DeployedViews", viewResultSet).
+                                              withResultSet("SELECT COUNT(UpgradeAudit.upgradeUUID) FROM UpgradeAudit", upgradeAuditCountResultSet).
                                               create();
     // When
     UpgradePath result = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(connection), graphBasedUpgradeScriptGeneratorFactory, viewChangesDeploymentHelperFactory(connection), viewDeploymentValidatorFactory())
@@ -552,7 +574,7 @@ public class TestUpgrade {
     assertEquals("Steps to apply " + result.getSteps(), 1, result.getSteps().size());
     assertEquals("Upgrade class", ChangeCar.class, result.getSteps().get(0).getClass());
 
-    assertEquals("SQL", "[X, G, IdTable, CM, A, C]", result.getSql().toString());
+    assertEquals("SQL", "[C, X, G, IdTable, CM, A, C]", result.getSql().toString());
   }
 
 
@@ -598,11 +620,16 @@ public class TestUpgrade {
     ResultSet upgradeResultSet = mock(ResultSet.class);
     when(upgradeResultSet.next()).thenReturn(false);
 
+    ResultSet upgradeAuditCountResultSet = mock(ResultSet.class);
+    when(upgradeAuditCountResultSet.next()).thenReturn(true, false);
+    when(upgradeAuditCountResultSet.getLong(1)).thenReturn(17L);
+
     ConnectionResources connection = new MockConnectionResources().
                                               withDialect(sqlDialect).
                                               withSchema(sourceSchema).
                                               withResultSet("SELECT upgradeUUID FROM UpgradeAudit", upgradeResultSet).
                                               withResultSet("SELECT name, hash FROM DeployedViews", viewResultSet).
+                                              withResultSet("SELECT COUNT(UpgradeAudit.upgradeUUID) FROM UpgradeAudit", upgradeAuditCountResultSet).
                                               create();
     // When
     UpgradePath result = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(connection), graphBasedUpgradeScriptGeneratorFactory, viewChangesDeploymentHelperFactory(connection), viewDeploymentValidatorFactory())
@@ -614,7 +641,7 @@ public class TestUpgrade {
     assertEquals("Marker step JIRA ID", "\u2014", result.getSteps().get(0).getJiraId());
     assertEquals("Marker step description", "Update database views", result.getSteps().get(0).getDescription());
     // no drop view, only delete from DeployedViews
-    assertEquals("SQL", "[D, A, C]", result.getSql().toString());
+    assertEquals("SQL", "[C, D, A, C]", result.getSql().toString());
   }
 
 
@@ -655,7 +682,7 @@ public class TestUpgrade {
     assertEquals("Marker step JIRA ID", "\u2014", result.getSteps().get(0).getJiraId());
     assertEquals("Marker step description", "Update database views", result.getSteps().get(0).getDescription());
 
-    assertEquals("SQL", "[A, C]", result.getSql().toString());
+    assertEquals("SQL", "[C, A, C]", result.getSql().toString());
   }
 
 
@@ -735,7 +762,7 @@ public class TestUpgrade {
     assertEquals("JIRA ID", "WEB-18348", result.getSteps().get(0).getJiraId());
     assertEquals("Description", "Foo", result.getSteps().get(0).getDescription());
 
-    assertEquals("SQL", "[B, B, IdTable, CM, DeployedViews, A, C, A, C]", result.getSql().toString());
+    assertEquals("SQL", "[C, B, B, IdTable, CM, DeployedViews, A, C, A, C]", result.getSql().toString());
   }
 
 

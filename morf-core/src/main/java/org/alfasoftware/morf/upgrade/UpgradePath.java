@@ -321,7 +321,7 @@ public class UpgradePath implements SqlStatementWriter {
      * @param steps The steps represented by the {@link UpgradePath}.
      * @param connectionResources The ConnectionResources.
      * @param graphBasedUpgradeBuilder to be used to create a graph based upgrade if needed
-     * @param optimisticLockingInitialisationSql statement to be run at the start of the script to provide optimistic locking
+     * @param optimisticLockingInitialisationSql statement to be run at the start of the upgrade to provide optimistic locking
      * @return The resulting {@link UpgradePath}.
      */
     UpgradePath create(List<UpgradeStep> steps, ConnectionResources connectionResources, GraphBasedUpgradeBuilder graphBasedUpgradeBuilder, List<String> optimisticLockingInitialisationSql);
@@ -369,7 +369,7 @@ public class UpgradePath implements SqlStatementWriter {
 
 
     @Override
-    public UpgradePath create(List<UpgradeStep> steps,  ConnectionResources connectionResources, GraphBasedUpgradeBuilder graphBasedUpgradeBuilder, List<String> optimisticLockingInitialisationSql) {
+    public UpgradePath create(List<UpgradeStep> steps, ConnectionResources connectionResources, GraphBasedUpgradeBuilder graphBasedUpgradeBuilder, List<String> optimisticLockingInitialisationSql) {
       UpgradeStatusTableService upgradeStatusTableService = upgradeStatusTableServiceFactory.create(connectionResources);
       return new UpgradePath(upgradeScriptAdditions, steps, connectionResources,
               combineInitialisationSql(upgradeStatusTableService, optimisticLockingInitialisationSql),
@@ -378,9 +378,14 @@ public class UpgradePath implements SqlStatementWriter {
     }
 
 
+    /**
+     * Creates the initialisation SQL by combining the creation of the upgrade status table, followed by the optimised locking SQL.
+     * The optimised locking statement should always come after, as the locking may be dependent on the upgrade status table.
+     */
     private List<String> combineInitialisationSql(UpgradeStatusTableService upgradeStatusTableService, List<String> optimisticLockingInitialisationSql) {
-      optimisticLockingInitialisationSql.addAll(upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS));
-      return optimisticLockingInitialisationSql;
+      List<String> updateTableSql = upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS);
+      updateTableSql.addAll(optimisticLockingInitialisationSql);
+      return updateTableSql;
     }
   }
 }
