@@ -1,7 +1,18 @@
 package org.alfasoftware.morf.upgrade;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
@@ -14,18 +25,8 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.when;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 
 /**
  * All tests of {@link GraphBasedUpgradeBuilder}.
@@ -75,6 +76,8 @@ public class TestGraphBasedUpgradeBuilder {
 
   private UpgradeStep u1, u2, u3, u4, u5, fu1, fu2, fu3, fu4, eu1, eu2, u1000, u1001;
 
+  private final List<String> initialisationSql = new ArrayList<>();
+
   @Before
   public void setup() {
     MockitoAnnotations.openMocks(this);
@@ -85,7 +88,7 @@ public class TestGraphBasedUpgradeBuilder {
 
     when(scriptGeneratorFactory.create(eq(sourceSchema), eq(targetSchema), eq(connectionResources), any(Table.class), eq(viewChanges))).thenReturn(scriptGen);
     when(scriptGen.generatePostUpgradeStatements()).thenReturn(Lists.newArrayList("post"));
-    when(scriptGen.generatePreUpgradeStatements()).thenReturn(Lists.newArrayList("pre"));
+    when(scriptGen.generatePreUpgradeStatements(any())).thenReturn(Lists.newArrayList("pre"));
 
     u1 = new U1();
     u2 = new U2();
@@ -120,7 +123,7 @@ public class TestGraphBasedUpgradeBuilder {
     upgradeSteps.addAll(Lists.newArrayList(u1, u2, u3, u4));
 
     // when
-    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade();
+    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade(initialisationSql);
 
     // then
     checkParentChild(upgrade, u1, u2);
@@ -149,7 +152,7 @@ public class TestGraphBasedUpgradeBuilder {
     upgradeSteps.addAll(Lists.newArrayList(u1, u2, u3, u4, u5));
 
     // when
-    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade();
+    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade(initialisationSql);
 
     // then
     checkParentChild(upgrade, u1, u2);
@@ -180,7 +183,7 @@ public class TestGraphBasedUpgradeBuilder {
     upgradeSteps.addAll(Lists.newArrayList(fu1, fu2, fu3, fu4));
 
     // when
-    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade();
+    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade(initialisationSql);
 
     // then
     checkParentChild(upgrade, fu1, fu2);
@@ -207,7 +210,7 @@ public class TestGraphBasedUpgradeBuilder {
     upgradeSteps.addAll(Lists.newArrayList(u1, u2, eu1, eu2));
 
     // when
-    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade();
+    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade(initialisationSql);
 
     // then
     checkParentChild(upgrade, u1, eu1);
@@ -235,7 +238,7 @@ public class TestGraphBasedUpgradeBuilder {
     exclusiveExecutionSteps.addAll(Lists.newArrayList(U3.class.getName(), U4.class.getName()));
 
     // when
-    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade();
+    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade(initialisationSql);
 
     // then
     checkParentChild(upgrade, u1, u3);
@@ -264,7 +267,7 @@ public class TestGraphBasedUpgradeBuilder {
     upgradeSteps.addAll(Lists.newArrayList(u1, u2, u3, u4));
 
     // when
-    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade();
+    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade(initialisationSql);
 
     // then
     checkParentChild(upgrade, u1, u3);
@@ -293,7 +296,7 @@ public class TestGraphBasedUpgradeBuilder {
     upgradeSteps.addAll(Lists.newArrayList(u1, u2, fu1, fu2));
 
     // when
-    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade();
+    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade(initialisationSql);
 
     // then
     checkParentChild(upgrade, u2, fu1);
@@ -314,7 +317,7 @@ public class TestGraphBasedUpgradeBuilder {
     upgradeSteps.addAll(Lists.newArrayList(eu1, eu2));
 
     // when
-    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade();
+    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade(initialisationSql);
 
     // then
     checkParentChild(upgrade, eu1, eu2);
@@ -331,7 +334,7 @@ public class TestGraphBasedUpgradeBuilder {
     upgradeSteps.addAll(Lists.newArrayList(eu1, eu2, u1000));
 
     // when
-    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade();
+    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade(initialisationSql);
 
     // then
     checkParentChild(upgrade, eu1, eu2);
@@ -352,7 +355,7 @@ public class TestGraphBasedUpgradeBuilder {
     upgradeSteps.addAll(Lists.newArrayList(eu1, u1000, u1001));
 
     // when
-    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade();
+    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade(initialisationSql);
 
     // then
     checkParentChild(upgrade, eu1, u1000);
@@ -373,7 +376,7 @@ public class TestGraphBasedUpgradeBuilder {
     upgradeSteps.addAll(Lists.newArrayList(eu1, u1, u2));
 
     // when
-    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade();
+    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade(initialisationSql);
 
     // then
     checkParentChild(upgrade, u1, u2);

@@ -137,7 +137,7 @@ public class UpgradePath implements SqlStatementWriter {
     this.upgradeStatus = null;
     this.initialisationSql = initialisationSql;
     this.finalisationSql = finalisationSql;
-    this.graphBasedUpgradeSupplier = Suppliers.memoize(() -> graphBasedUpgradeBuilder != null ? graphBasedUpgradeBuilder.prepareGraphBasedUpgrade() : null);
+    this.graphBasedUpgradeSupplier = Suppliers.memoize(() -> graphBasedUpgradeBuilder != null ? graphBasedUpgradeBuilder.prepareGraphBasedUpgrade(initialisationSql) : null);
   }
 
 
@@ -312,7 +312,8 @@ public class UpgradePath implements SqlStatementWriter {
      * @param connectionResources The ConnectionResources.
      * @return The resulting {@link UpgradePath}.
      */
-    UpgradePath create(List<UpgradeStep> steps, ConnectionResources connectionResources);
+    UpgradePath create(List<UpgradeStep> steps,
+                       ConnectionResources connectionResources);
 
 
     /**
@@ -324,7 +325,10 @@ public class UpgradePath implements SqlStatementWriter {
      * @param optimisticLockingInitialisationSql statement to be run at the start of the upgrade to provide optimistic locking
      * @return The resulting {@link UpgradePath}.
      */
-    UpgradePath create(List<UpgradeStep> steps, ConnectionResources connectionResources, GraphBasedUpgradeBuilder graphBasedUpgradeBuilder, List<String> optimisticLockingInitialisationSql);
+    UpgradePath create(List<UpgradeStep> steps,
+                       ConnectionResources connectionResources,
+                       GraphBasedUpgradeBuilder graphBasedUpgradeBuilder,
+                       List<String> optimisticLockingInitialisationSql);
   }
 
 
@@ -359,7 +363,8 @@ public class UpgradePath implements SqlStatementWriter {
 
 
     @Override
-    public UpgradePath create(List<UpgradeStep> steps, ConnectionResources connectionResources) {
+    public UpgradePath create(List<UpgradeStep> steps,
+                              ConnectionResources connectionResources) {
       UpgradeStatusTableService upgradeStatusTableService = upgradeStatusTableServiceFactory.create(connectionResources);
       return new UpgradePath(upgradeScriptAdditions, steps, connectionResources,
               upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS),
@@ -369,7 +374,10 @@ public class UpgradePath implements SqlStatementWriter {
 
 
     @Override
-    public UpgradePath create(List<UpgradeStep> steps, ConnectionResources connectionResources, GraphBasedUpgradeBuilder graphBasedUpgradeBuilder, List<String> optimisticLockingInitialisationSql) {
+    public UpgradePath create(List<UpgradeStep> steps,
+                              ConnectionResources connectionResources,
+                              GraphBasedUpgradeBuilder graphBasedUpgradeBuilder,
+                              List<String> optimisticLockingInitialisationSql) {
       UpgradeStatusTableService upgradeStatusTableService = upgradeStatusTableServiceFactory.create(connectionResources);
       return new UpgradePath(upgradeScriptAdditions, steps, connectionResources,
               combineInitialisationSql(upgradeStatusTableService, optimisticLockingInitialisationSql),
@@ -382,7 +390,8 @@ public class UpgradePath implements SqlStatementWriter {
      * Creates the initialisation SQL by combining the creation of the upgrade status table, followed by the optimised locking SQL.
      * The optimised locking statement should always come after, as the locking may be dependent on the upgrade status table.
      */
-    private List<String> combineInitialisationSql(UpgradeStatusTableService upgradeStatusTableService, List<String> optimisticLockingInitialisationSql) {
+    private List<String> combineInitialisationSql(UpgradeStatusTableService upgradeStatusTableService,
+                                                  List<String> optimisticLockingInitialisationSql) {
       List<String> updateTableSql = upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS);
       updateTableSql.addAll(optimisticLockingInitialisationSql);
       return updateTableSql;

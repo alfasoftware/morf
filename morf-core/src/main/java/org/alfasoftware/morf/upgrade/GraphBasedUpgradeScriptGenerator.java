@@ -1,16 +1,17 @@
 package org.alfasoftware.morf.upgrade;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-import com.google.inject.Inject;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
 
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+import com.google.inject.Inject;
 
 /**
  * Generates pre- and post- upgrade statements to be execute before/after the
@@ -59,11 +60,11 @@ class GraphBasedUpgradeScriptGenerator {
   /**
    * @return pre-upgrade statements to be executed before the Graph Based Upgrade
    */
-  public List<String> generatePreUpgradeStatements() {
+  public List<String> generatePreUpgradeStatements(List<String> initialisationSql) {
     ImmutableList.Builder<String> statements = ImmutableList.builder();
 
-    // zzzUpgradeStatus table
-    statements.addAll(upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS));
+    // Initialisation SQL (zzzUpgradeStatus table & optimistic locking to prevent duplicate execution of upgrade script)
+    statements.addAll(initialisationSql);
 
     // temp table
     statements.addAll(connectionResources.sqlDialect().tableDeploymentStatements(idTable));

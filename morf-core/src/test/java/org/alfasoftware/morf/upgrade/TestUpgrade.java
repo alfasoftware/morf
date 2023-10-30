@@ -195,13 +195,10 @@ public class TestUpgrade {
 
   /**
    * Test for checking the number of the upgrade audit rows.
-   * @throws SQLException
    */
   @Test
   public void testAuditRowCount() throws SQLException {
     // Given
-    Table upgradeAudit = upgradeAudit();
-
     ConnectionResources connection = mock(ConnectionResources.class, RETURNS_DEEP_STUBS);
     when(connection.sqlDialect().convertStatementToSQL(any(SelectStatement.class))).thenReturn("SELECT COUNT(UpgradeAudit.upgradeUUID) FROM UpgradeAudit");
     SqlScriptExecutor.ResultSetProcessor<Long> upgradeRowProcessor = mock(SqlScriptExecutor.ResultSetProcessor.class);

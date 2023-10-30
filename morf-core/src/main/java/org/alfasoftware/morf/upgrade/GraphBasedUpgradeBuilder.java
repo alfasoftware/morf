@@ -1,8 +1,14 @@
 package org.alfasoftware.morf.upgrade;
 
-import com.google.common.collect.Sets;
-import com.google.common.collect.Sets.SetView;
-import com.google.inject.Inject;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
@@ -12,14 +18,9 @@ import org.alfasoftware.morf.upgrade.GraphBasedUpgradeScriptGenerator.GraphBased
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import com.google.common.collect.Sets;
+import com.google.common.collect.Sets.SetView;
+import com.google.inject.Inject;
 
 /**
  * Builds {@link GraphBasedUpgrade} instance which is ready to be executed.
@@ -89,7 +90,7 @@ public class GraphBasedUpgradeBuilder {
    * Builds {@link GraphBasedUpgrade} instance.
    * @return ready to execute {@link GraphBasedUpgrade} instance
    */
-  public GraphBasedUpgrade prepareGraphBasedUpgrade() {
+  public GraphBasedUpgrade prepareGraphBasedUpgrade(List<String> initialisationSql) {
     UpgradeStepToUpgradeNode mapper = new UpgradeStepToUpgradeNode(schemaChangeSequence.getUpgradeTableResolution());
 
     List<GraphBasedUpgradeNode> nodes = produceNodes(schemaChangeSequence.getUpgradeSteps(), mapper);
@@ -106,7 +107,7 @@ public class GraphBasedUpgradeBuilder {
 
     GraphBasedUpgradeScriptGenerator scriptGenerator = scriptGeneratorFactory.create(sourceSchema, targetSchema, connectionResources, idTable, viewChanges);
 
-    List<String> preUpgStatements = scriptGenerator.generatePreUpgradeStatements();
+    List<String> preUpgStatements = scriptGenerator.generatePreUpgradeStatements(initialisationSql);
     schemaChangeSequence.applyTo(visitor);
     List<String> postUpgStatements = scriptGenerator.generatePostUpgradeStatements();
 
