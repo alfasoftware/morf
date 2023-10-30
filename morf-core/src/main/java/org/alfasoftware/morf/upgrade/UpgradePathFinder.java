@@ -202,7 +202,7 @@ public class UpgradePathFinder {
    */
   private boolean schemasNotMatch(Schema targetSchema, Schema trialSchema, String firstSchemaContext, String secondScehmaContext, Collection<String> exceptionRegexes) {
     log.info("Comparing schema [" + firstSchemaContext + "] to [" + secondScehmaContext + "]");
-    DifferenceWriter differenceWriter = log::info;
+    DifferenceWriter differenceWriter = log::warn;
 
     SchemaHomology homology = new SchemaHomology(differenceWriter, firstSchemaContext, secondScehmaContext );
     if (homology.schemasMatch(targetSchema, trialSchema, exceptionRegexes)) {
