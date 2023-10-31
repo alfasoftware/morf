@@ -600,7 +600,7 @@ public class NamedParameterPreparedStatement implements AutoCloseable {
             c = '?'; // Replace the parameter with question mark
 
             //CHECKSTYLE:OFF ModifiedControlVariableCheck
-            i += name.length();; // Skip past the end of the parameter
+            i += name.length(); // Skip past the end of the parameter
             //CHECKSTYLE:ON:
 
             List<Integer> indexList = indexMap.get(name);

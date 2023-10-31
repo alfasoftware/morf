@@ -32,7 +32,7 @@ import org.junit.Test;
 /**
  * Tests {@link NamedParameterPreparedStatement}.
  *
- * @author Copyright (c) Alfa Financial Software 2023
+ * @author Copyright (c) Alfa Financial Software 2014
  */
 public class TestNamedParameterPreparedStatement {
 
