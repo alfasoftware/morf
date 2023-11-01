@@ -210,14 +210,14 @@ public class TestNamedParameterPreparedStatement {
   @Test
   public void testParseWithCommentAtEndOfLine() {
     // Given a SQL query with a comment at the end of a line
-    String sql = "SELECT id, name, value FROM products WHERE name = :name AND value > :minValue\n-- comment at the end of the line";
+    String sql = "SELECT id, name, value FROM products WHERE name = :name AND value > :minValue -- comment at the end of the line";
 
     // When we parse the SQL query
     ParseResult parseResult = NamedParameterPreparedStatement.parseSql(sql, mock(SqlDialect.class));
 
     // Then the parsed SQL should retain the comment at the end of the line as is
     assertEquals("Parsed SQL",
-        "SELECT id, name, value FROM products WHERE name = ? AND value > ?\n-- comment at the end of the line",
+        "SELECT id, name, value FROM products WHERE name = ? AND value > ? -- comment at the end of the line",
         parseResult.getParsedSql()
     );
 
