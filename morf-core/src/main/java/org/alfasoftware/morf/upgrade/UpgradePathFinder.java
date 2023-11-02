@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Determines an upgrade path if possible between the current schema definition and a target.
@@ -214,6 +215,46 @@ public class UpgradePathFinder {
     }
   }
 
+  /**
+   * Finds discrepancies between a provided upgrade audit map and the list of steps to apply.
+   * This method compares the UUIDs associated with each upgrade step in the provided list with the corresponding UUIDs
+   * in the upgrade audit map. If discrepancies are found, it logs an error message and throws an IllegalStateException.
+   * Additionally, it logs a warning for any upgrade step with a UUID mismatch in the audit map.
+   *
+   * @param upgradeAudit A Map representing the upgrade audit information, where keys are step names and
+   *                     values are corresponding UUIDs.
+   * @throws IllegalStateException If discrepancies are found between upgrade steps and their associated UUIDs in the
+   *                               provided map.
+   */
+  public void findDiscrepancies(Map<String, String> upgradeAudit) {
+    List<String> mismatchedSteps = stepsToApply.stream()
+            .filter(step -> upgradeAudit.containsKey(step.getName()) &&
+                    !step.getUuid().toString().equals(upgradeAudit.get(step.getName())))
+            .map(CandidateStep::getName)
+            .collect(Collectors.toList());
+
+    if (!mismatchedSteps.isEmpty()) {
+      String message = String.format("Some upgrade steps could have run before with different UUID. The following have been detected:%n%s",
+              String.join("\n", mismatchedSteps));
+      log.error(message);
+      throw new IllegalStateException(message);
+    }
+
+    stepsToApply.stream()
+            .filter(step -> upgradeAudit.containsValue(step.getUuid().toString()))
+            .filter(step -> checkNamesAreNotEqual(step, upgradeAudit))
+            .peek(s -> log.warn(String.format("Upgrade step with uuid %s has a mismatched package/name!", s.getUuid())));
+
+  }
+
+  private boolean checkNamesAreNotEqual(CandidateStep step, Map<String, String> upgradeAudit) {
+    for(Map.Entry<String, String> entry : upgradeAudit.entrySet()) {
+      if(entry.getValue().equals(step.getUuid().toString()) && !entry.getKey().equals(step.getName())) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   /**
    * Helper class encapsulating the logic relevant to individual upgrade steps.
