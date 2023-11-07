@@ -34,7 +34,7 @@ import static org.alfasoftware.morf.sql.element.Criterion.exists;
 import static org.alfasoftware.morf.sql.element.Criterion.not;
 import static org.alfasoftware.morf.sql.element.Function.min;
 import static org.alfasoftware.morf.sql.element.Function.sum;
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -59,7 +59,7 @@ import org.junit.Test;
  */
 public class TestObjectTreeTraverserWithSqlElementVisitor {
 
-  private final SqlElementCallback callback = mock(SqlElementCallback.class);
+  private final ObjectTreeTraverser.Callback callback = mock(ObjectTreeTraverser.Callback.class);
   private final ObjectTreeTraverser traverser = ObjectTreeTraverser.forCallback(callback);
 
   private final TableReference two = tableRef("two");
@@ -472,6 +472,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
 
     verify(callback).visit(table);
     verify(callback).visit(truncate);
+
     verifyNoMoreInteractions(callback);
   }
 }
