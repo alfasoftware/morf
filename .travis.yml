@@ -9,33 +9,39 @@ jdk: openjdk17
 dist: xenial
 jobs:
   include:
+# Push to main
     - if: repo = alfasoftware/morf AND branch = main AND NOT type = pull_request
       name: "Test"
       script:
         - git fetch --unshallow --quiet
         - mvn clean verify sonar:sonar -Pcoverage -B -U
-    - if: repo = alfasoftware/morf AND NOT branch = main AND NOT type = pull_request
+# Push to a non-PR feature branch - we ignore tags to avoid a double build with the deploy step below
+    - if: repo = alfasoftware/morf AND NOT tag IS present AND NOT branch = main AND NOT type = pull_request
       name: "Test"
       script:
         - git fetch --unshallow --quiet
         - mvn clean verify sonar:sonar -Pcoverage -B -U -Dsonar.branch.name=$TRAVIS_BRANCH
+# Push to a PR feature branch
     - if: repo = alfasoftware/morf AND head_repo = alfasoftware/morf AND type = pull_request
       name: "Test"
       script:
         - git fetch --unshallow --quiet
         - mvn clean verify sonar:sonar -Pcoverage -B -U -Dsonar.pullrequest.key=$TRAVIS_PULL_REQUEST -Dsonar.pullrequest.branch=$TRAVIS_PULL_REQUEST_BRANCH -Dsonar.pullrequest.base=$TRAVIS_BRANCH
-    - if: repo = alfasoftware/morf AND branch = main AND NOT type = pull_request
-      name: "Deploy From Main"
-      script:
-        - echo $GPG_SECRET_KEYS | base64 --decode | $GPG_EXECUTABLE --import
-        - echo $GPG_OWNERTRUST | base64 --decode | $GPG_EXECUTABLE --import-ownertrust
-        - mvn clean deploy --settings .maven-settings.xml -B -U -Prelease
+#   Avoid a double build on pushes to main - we shouldn't need to deploy SNAPSHOTS as they are not used.
+#   - if: repo = alfasoftware/morf AND branch = main AND NOT type = pull_request
+#      name: "Deploy From Main"
+#      script:
+#        - echo $GPG_SECRET_KEYS | base64 --decode | $GPG_EXECUTABLE --import
+#        - echo $GPG_OWNERTRUST | base64 --decode | $GPG_EXECUTABLE --import-ownertrust
+#        - mvn clean deploy --settings .maven-settings.xml -B -U -Prelease
+# Push to a tag from working group members (i.e. a release)
     - if: repo = alfasoftware/morf AND tag IS present AND NOT type = pull_request AND sender in (capgen628, gilleain, jsimlo, therealluigi, okeating, wnicholson)
       name: "Deploy From Tag"
       script:
         - echo $GPG_SECRET_KEYS | base64 --decode | $GPG_EXECUTABLE --import
         - echo $GPG_OWNERTRUST | base64 --decode | $GPG_EXECUTABLE --import-ownertrust
         - mvn clean deploy --settings .maven-settings.xml -B -U -Prelease
+# Builds from other forks - we can't run sonar on these
     - if: (repo = alfasoftware/morf AND NOT head_repo = alfasoftware/morf AND type = pull_request) OR NOT repo = alfasoftware/morf 
       name: "Test"
       script:
