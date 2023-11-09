@@ -3,6 +3,7 @@ package org.alfasoftware.morf.sql;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.upgrade.UpgradeTableResolutionVisitor;
@@ -30,6 +31,7 @@ public class TestMergeStatement {
   @Before
   public void setUp() throws Exception {
     MockitoAnnotations.openMocks(this);
+    when(field.build()).thenReturn(field);
   }
 
 

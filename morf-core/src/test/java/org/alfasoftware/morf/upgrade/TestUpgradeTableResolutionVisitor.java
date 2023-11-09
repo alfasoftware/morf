@@ -45,13 +45,10 @@ public class TestUpgradeTableResolutionVisitor {
   private Column col, col2;
 
   @Mock
-  private AliasedField field, field2;
+  private AliasedField field;
 
   @Mock
-  private Table table, table2, table3;
-
-  @Mock
-  private Statement statement;
+  private Table table;
 
   @Mock
   private Index index;
@@ -81,6 +78,8 @@ public class TestUpgradeTableResolutionVisitor {
     when(col2.getType()).thenReturn(DataType.STRING);
 
     when(table.getName()).thenReturn("t3");
+
+    when(field.build()).thenReturn(field);
   }
 
 

@@ -45,9 +45,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.nullable;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyList;
-import static org.mockito.Matchers.anyListOf;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -274,12 +273,12 @@ public class TestUpgradeStatusTableServiceImpl {
   @Test
   public void testWriteStatusFromStatusWithCurrentStatusEqualsFromStatus() {
     when(sqlScriptExecutor.executeQuery(any(), any())).thenReturn(UpgradeStatus.IN_PROGRESS);
-    when(sqlScriptExecutor.execute(anyListOf(String.class)))
+    when(sqlScriptExecutor.execute(anyList()))
         .thenThrow(new RuntimeSqlException(new SQLException()))
         .thenReturn(0);
 
     upgradeStatusTableService.writeStatusFromStatus(UpgradeStatus.IN_PROGRESS, UpgradeStatus.DATA_TRANSFER_REQUIRED);
-    verify(sqlScriptExecutor, times(2)).execute(anyListOf(String.class));
+    verify(sqlScriptExecutor, times(2)).execute(anyList());
   }
 
 
@@ -291,7 +290,7 @@ public class TestUpgradeStatusTableServiceImpl {
   public void testWriteStatusFromStatusWithCurrentStatusNotEqualsFromStatusOrToStatus() {
     RuntimeSqlException triggeringException = new RuntimeSqlException(new SQLException());
     when(sqlScriptExecutor.executeQuery(any(), any())).thenReturn(UpgradeStatus.DATA_TRANSFER_IN_PROGRESS);
-    when(sqlScriptExecutor.execute(anyListOf(String.class)))
+    when(sqlScriptExecutor.execute(anyList()))
         .thenThrow(triggeringException)
         .thenReturn(0);
 
@@ -299,7 +298,7 @@ public class TestUpgradeStatusTableServiceImpl {
       upgradeStatusTableService.writeStatusFromStatus(UpgradeStatus.IN_PROGRESS, UpgradeStatus.DATA_TRANSFER_REQUIRED);
       fail("Expected RuntimeSqlException");
     } catch (RuntimeSqlException e) {
-      verify(sqlScriptExecutor, times(1)).execute(anyListOf(String.class));
+      verify(sqlScriptExecutor, times(1)).execute(anyList());
       assertSame("Exception", triggeringException, e);
     }
   }

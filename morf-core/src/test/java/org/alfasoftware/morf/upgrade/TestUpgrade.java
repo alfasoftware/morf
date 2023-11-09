@@ -36,7 +36,6 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyListOf;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.ArgumentMatchers.same;
@@ -256,7 +255,7 @@ public class TestUpgrade {
 
   private UpgradePathFactory upgradePathFactory() {
     UpgradePathFactory upgradePathFactory = mock(UpgradePathFactory.class);
-    when(upgradePathFactory.create(anyListOf(UpgradeStep.class), any(ConnectionResources.class), nullable(GraphBasedUpgradeBuilder.class), anyList()))
+    when(upgradePathFactory.create(anyList(), any(ConnectionResources.class), nullable(GraphBasedUpgradeBuilder.class), anyList()))
         .thenAnswer(invocation -> new UpgradePath(Sets.newHashSet(), invocation.getArgument(0), invocation.getArgument(1), invocation.getArgument(3), Collections.emptyList()));
 
     return upgradePathFactory;
