@@ -86,9 +86,9 @@ public class TestGraphBasedUpgradeBuilder {
     when(schemaChangeSequence.getUpgradeTableResolution()).thenReturn(upgradeTableResolution);
     when(schemaChangeSequence.getUpgradeSteps()).thenReturn(upgradeSteps);
 
-    when(scriptGeneratorFactory.create(eq(sourceSchema), eq(targetSchema), eq(connectionResources), any(Table.class), eq(viewChanges))).thenReturn(scriptGen);
+    when(scriptGeneratorFactory.create(eq(sourceSchema), eq(targetSchema), eq(connectionResources), any(Table.class), eq(viewChanges), eq(initialisationSql))).thenReturn(scriptGen);
     when(scriptGen.generatePostUpgradeStatements()).thenReturn(Lists.newArrayList("post"));
-    when(scriptGen.generatePreUpgradeStatements(any())).thenReturn(Lists.newArrayList("pre"));
+    when(scriptGen.generatePreUpgradeStatements()).thenReturn(Lists.newArrayList("pre"));
 
     u1 = new U1();
     u2 = new U2();

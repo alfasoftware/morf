@@ -28,17 +28,19 @@ class GraphBasedUpgradeScriptGenerator {
   private final UpgradeStatusTableService upgradeStatusTableService;
   private final Set<UpgradeScriptAddition> upgradeScriptAdditions;
   private final ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory;
+  private final List<String> initialisationSql;
 
 
 
   /**
    * Default constructor.
    *
-   * @param upgradeSchemas source and target schemas used in the upgrade.
-   * @param connectionResources connection resources with a dialect to generate statements for the target database
-   * @param idTable table for id generation
-   * @param viewChanges view changes which need to be made to match the target schema
+   * @param upgradeSchemas            source and target schemas used in the upgrade.
+   * @param connectionResources       connection resources with a dialect to generate statements for the target database
+   * @param idTable                   table for id generation
+   * @param viewChanges               view changes which need to be made to match the target schema
    * @param upgradeStatusTableService used to generate a script needed to update the transient "zzzUpgradeStatus" table
+   * @param initialisationSql         statements to be executed at the beginning of the upgrade script
    */
   GraphBasedUpgradeScriptGenerator(UpgradeSchemas upgradeSchemas,
                                    ConnectionResources connectionResources,
@@ -46,7 +48,8 @@ class GraphBasedUpgradeScriptGenerator {
                                    ViewChanges viewChanges,
                                    UpgradeStatusTableService upgradeStatusTableService,
                                    Set<UpgradeScriptAddition> upgradeScriptAdditions,
-                                   ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory) {
+                                   ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory,
+                                   List<String> initialisationSql) {
     this.upgradeSchemas = upgradeSchemas;
     this.connectionResources = connectionResources;
     this.idTable = idTable;
@@ -54,13 +57,14 @@ class GraphBasedUpgradeScriptGenerator {
     this.upgradeStatusTableService = upgradeStatusTableService;
     this.upgradeScriptAdditions = upgradeScriptAdditions;
     this.viewChangesDeploymentHelperFactory = viewChangesDeploymentHelperFactory;
+    this.initialisationSql = initialisationSql;
   }
 
 
   /**
    * @return pre-upgrade statements to be executed before the Graph Based Upgrade
    */
-  public List<String> generatePreUpgradeStatements(List<String> initialisationSql) {
+  public List<String> generatePreUpgradeStatements() {
     ImmutableList.Builder<String> statements = ImmutableList.builder();
 
     // Initialisation SQL (zzzUpgradeStatus table & optimistic locking to prevent duplicate execution of upgrade script)
@@ -157,9 +161,9 @@ class GraphBasedUpgradeScriptGenerator {
      * @return new {@link GraphBasedUpgradeScriptGenerator} instance
      */
     GraphBasedUpgradeScriptGenerator create(Schema sourceSchema, Schema targetSchema, ConnectionResources connectionResources, Table idTable,
-        ViewChanges viewChanges) {
+        ViewChanges viewChanges, List<String> initialisationSql) {
       return new GraphBasedUpgradeScriptGenerator(new UpgradeSchemas(sourceSchema, targetSchema), connectionResources, idTable, viewChanges,
-          upgradeStatusTableServiceFactory.create(connectionResources), upgradeScriptAdditions, viewChangesDeploymentHelperFactory);
+          upgradeStatusTableServiceFactory.create(connectionResources), upgradeScriptAdditions, viewChangesDeploymentHelperFactory, initialisationSql);
     }
   }
 }

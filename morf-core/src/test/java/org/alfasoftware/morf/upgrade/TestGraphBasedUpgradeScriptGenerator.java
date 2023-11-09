@@ -77,6 +77,9 @@ public class TestGraphBasedUpgradeScriptGenerator {
 
   @Mock
   private ViewChangesDeploymentHelper viewChangesDeploymentHelper;
+
+  private final List<String> initialisationSql = Lists.newArrayList("1");
+
   private UpgradeSchemas upgradeSchemas;
 
   @Before
@@ -84,7 +87,7 @@ public class TestGraphBasedUpgradeScriptGenerator {
     MockitoAnnotations.openMocks(this);
     upgradeSchemas = new UpgradeSchemas(sourceSchema, targetSchema);
     gen = new GraphBasedUpgradeScriptGenerator(upgradeSchemas, connectionResources, idTable, viewChanges,
-        upgradeStatusTableService, Sets.newSet(upgradeScriptAddition), viewChangesDeploymentHelperFactory);
+        upgradeStatusTableService, Sets.newSet(upgradeScriptAddition), viewChangesDeploymentHelperFactory, initialisationSql);
 
 
   }
@@ -104,7 +107,7 @@ public class TestGraphBasedUpgradeScriptGenerator {
     when(viewChangesDeploymentHelper.dropViewIfExists(eq(view), any(Boolean.class), eq(upgradeSchemas))).thenReturn(Lists.newArrayList("3"));
     when(viewChangesDeploymentHelper.deregisterViewIfExists(eq(view), any(Boolean.class), eq(upgradeSchemas))).thenReturn(Lists.newArrayList("4"));
     // when
-    List<String> statements = gen.generatePreUpgradeStatements(Lists.newArrayList("1"));
+    List<String> statements = gen.generatePreUpgradeStatements();
 
     // then
     assertThat(statements, Matchers.contains("1", "2", "3"));
@@ -124,7 +127,7 @@ public class TestGraphBasedUpgradeScriptGenerator {
     when(viewChangesDeploymentHelper.dropViewIfExists(eq(view), any(Boolean.class), eq(upgradeSchemas))).thenReturn(Lists.newArrayList("3"));
     when(viewChangesDeploymentHelper.deregisterViewIfExists(eq(view), any(Boolean.class), eq(upgradeSchemas))).thenReturn(Lists.newArrayList("4"));
     // when
-    List<String> statements = gen.generatePreUpgradeStatements(Lists.newArrayList("1"));
+    List<String> statements = gen.generatePreUpgradeStatements();
 
     // then
     assertThat(statements, Matchers.contains("1", "2", "3"));
@@ -144,7 +147,7 @@ public class TestGraphBasedUpgradeScriptGenerator {
     when(viewChangesDeploymentHelper.dropViewIfExists(eq(view), any(Boolean.class), eq(upgradeSchemas))).thenReturn(Lists.newArrayList("3"));
     when(viewChangesDeploymentHelper.deregisterViewIfExists(eq(view), any(Boolean.class), eq(upgradeSchemas))).thenReturn(Lists.newArrayList("4"));
     // when
-    List<String> statements = gen.generatePreUpgradeStatements(Lists.newArrayList("1"));
+    List<String> statements = gen.generatePreUpgradeStatements();
 
     // then
     assertThat(statements, Matchers.contains("1", "2", "4"));
@@ -186,7 +189,7 @@ public class TestGraphBasedUpgradeScriptGenerator {
     GraphBasedUpgradeScriptGeneratorFactory factory = new GraphBasedUpgradeScriptGeneratorFactory(upgradeStatusTableServiceFactory, upgradeScriptAdditionsProvider, viewChangesDeploymentHelperFactory);
 
     // when
-    GraphBasedUpgradeScriptGenerator created = factory.create(sourceSchema, targetSchema, connectionResources, idTable, viewChanges);
+    GraphBasedUpgradeScriptGenerator created = factory.create(sourceSchema, targetSchema, connectionResources, idTable, viewChanges, initialisationSql);
 
     // then
     assertNotNull(created);

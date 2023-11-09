@@ -105,9 +105,9 @@ public class GraphBasedUpgradeBuilder {
       idTable,
       nodes.stream().collect(Collectors.toMap(GraphBasedUpgradeNode::getName, Function.identity())));
 
-    GraphBasedUpgradeScriptGenerator scriptGenerator = scriptGeneratorFactory.create(sourceSchema, targetSchema, connectionResources, idTable, viewChanges);
+    GraphBasedUpgradeScriptGenerator scriptGenerator = scriptGeneratorFactory.create(sourceSchema, targetSchema, connectionResources, idTable, viewChanges, initialisationSql);
 
-    List<String> preUpgStatements = scriptGenerator.generatePreUpgradeStatements(initialisationSql);
+    List<String> preUpgStatements = scriptGenerator.generatePreUpgradeStatements();
     schemaChangeSequence.applyTo(visitor);
     List<String> postUpgStatements = scriptGenerator.generatePostUpgradeStatements();
 
