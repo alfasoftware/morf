@@ -32,7 +32,7 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
  * has no concept of the type or representation of a field, only its name, alias and
  * the table on which it exists.
  *
- * <h3>Examples of use:</h3>
+ * <b>Examples of use:</b>
  *
  * <p>Create a field with a given name:</p>
  * <blockquote><pre>

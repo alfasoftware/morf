@@ -2,6 +2,7 @@ package org.alfasoftware.morf.sql;
 
 import static org.alfasoftware.morf.sql.SqlUtils.selectFirst;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Criterion;
@@ -34,6 +35,7 @@ public class TestSelectFirstStatement {
   @Before
   public void setUp() throws Exception {
     MockitoAnnotations.openMocks(this);
+    when(field.build()).thenReturn(field);
   }
 
 
