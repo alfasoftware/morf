@@ -149,7 +149,7 @@ public class TestUpgradePathFinder {
     try {
       pathFinder.findDiscrepancies(upgradeAudit);
     } catch (IllegalStateException e) {
-      assertTrue(e.getMessage().contains(InsertAVictoriaSpongeRowUsingDSL.class.getName()));
+      assertTrue(e.getMessage().contains(InsertAVictoriaSpongeRowUsingDSL.class.getAnnotation(UUID.class).value().toString()));
       throw e;
     }
   }
