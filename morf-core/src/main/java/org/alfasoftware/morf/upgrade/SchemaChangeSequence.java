@@ -143,8 +143,7 @@ public class SchemaChangeSequence {
         for (SchemaChange change : changesForStep.getChanges()) {
           change.accept(visitor);
         }
-        visitor.addAuditRecord(changesForStep.getUUID(), changesForStep.getDescription());//This is correct, unless getDescriptionReturnsPath/Classname.#
-        //Try and find a way to run this as a test to see what is being added here.
+        visitor.addAuditRecord(changesForStep.getUUID(), changesForStep.getDescription());
       } catch (Exception e) {
         throw new RuntimeException("Failed to apply step: [" + changesForStep.getUpgradeClass() + "]", e);
       }
