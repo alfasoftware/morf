@@ -218,7 +218,6 @@ public class UpgradePathFinder {
    * Finds discrepancies between a provided upgrade audit map and the list of steps to apply.
    * This method compares the UUIDs associated with each upgrade step in the provided list with the corresponding UUIDs
    * in the upgrade audit map. If discrepancies are found, it logs an error message and throws an IllegalStateException.
-   * Additionally, it logs a warning for any upgrade step with a UUID mismatch in the audit map.
    *
    * @param upgradeAudit A Map representing the upgrade audit information, where keys are step names and
    *                     values are corresponding UUIDs.
@@ -238,94 +237,21 @@ public class UpgradePathFinder {
       log.error(message);
       throw new IllegalStateException(message);
     }
-
-    stepsToApply.stream()
-            .filter(step -> upgradeAudit.containsValue(step.getUuid().toString()))
-            .filter(step -> checkNamesAreNotEqual(step, upgradeAudit))
-            .forEach(s -> log.warn(String.format("Upgrade step with uuid %s has a mismatched package/name!", s.getUuid())));
-
   }
 
   /**
-   * Checks if a given CandidateStep is duplicated based on its name or description in the upgradeAudit map.
-   * A CandidateStep is considered duplicated if it has the same name or description but a different UUID
+   * Checks if a given CandidateStep is duplicated based on its name in the upgradeAudit map.
+   * A CandidateStep is considered duplicated if it has the same name but a different UUID
    * compared to the entries in the upgradeAudit map.
    *
    * @param step The CandidateStep to be checked for duplication.
-   * @param upgradeAudit A Map<String, String> representing the upgrade audit information, where keys are step names
-   *                     or descriptions, and values are corresponding UUIDs.
+   * @param upgradeAudit A Map<String, String> representing the upgrade audit information, where keys are step names,
+   *                     and values are corresponding UUIDs.
    * @return {@code true} if the CandidateStep is duplicated, {@code false} otherwise.
    */
   private boolean isStepDuplicated(CandidateStep step, Map<String, String> upgradeAudit) {
     String name = step.getName();
-    return upgradeAudit.containsKey(name) && !upgradeAudit.get(name).equals(step.getUuid().toString());
-  }
-
-  /**
-   * Checks whether the uuid associated with a given {@code CandidateStep} instance are not equal
-   * in the provided {@code upgradeAudit} map when the names appear in the upgradeAudit map.
-   *
-   * @param step The {@code CandidateStep} instance to check.
-   * @param upgradeAudit The map containing upgrade audit information (UUIDs and associated names).
-   * @return {@code true} if the names are not equal or if there are conflicts in the upgrade audit, {@code false} otherwise.
-   */
-  private boolean checkNamesAreNotEqual(CandidateStep step, Map<String, String> upgradeAudit) {
-    if (areAllValuesDistinct(upgradeAudit)) {
-      return checkDistinctValues(step, upgradeAudit);
-    } else {
-      return checkDuplicateValues(step, upgradeAudit);
-    }
-  }
-
-  /**
-   * Checks if all values in the given map are distinct.
-   *
-   * @param map The map to check.
-   * @return {@code true} if all values are distinct, {@code false} otherwise.
-   */
-  private boolean areAllValuesDistinct(Map<String, String> map) {
-    return map.values().stream().distinct().count() == map.size();
-  }
-
-  /**
-   * Checks distinct values in the upgrade audit map.
-   *
-   * @param step The {@code CandidateStep} instance to check.
-   * @param upgradeAudit The map containing upgrade audit information (UUIDs and associated names).
-   * @return {@code true} if the names are not equal, {@code false} otherwise.
-   */
-  private boolean checkDistinctValues(CandidateStep step, Map<String, String> upgradeAudit) {
-    if (upgradeAudit.containsValue(step.getUuid().toString())) {
-      Map<String, String> swappedUpgradeAudit = swapKeysAndValues(upgradeAudit);
-      return !swappedUpgradeAudit.get(step.getUuid().toString()).equals(step.getName());
-    }
-    return false;
-  }
-
-  /**
-   * Checks duplicate values in the upgrade audit map.
-   *
-   * @param step The {@code CandidateStep} instance to check.
-   * @param upgradeAudit The map containing upgrade audit information (UUIDs and associated names).
-   * @return {@code true} if there are conflicts, {@code false} otherwise.
-   */
-  private boolean checkDuplicateValues(CandidateStep step, Map<String, String> upgradeAudit) {
-    for (Map.Entry<String, String> entry : upgradeAudit.entrySet()) {
-      if (entry.getValue().equals(step.getUuid().toString()) && !entry.getKey().equals(step.getName())) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * Swaps keys and values in the given map.
-   *
-   * @param map The map to swap keys and values.
-   * @return A new map with keys and values swapped.
-   */
-  private Map<String, String> swapKeysAndValues(Map<String, String> map) {
-    return map.entrySet().stream().collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
+    return upgradeAudit.get(name) != null && !upgradeAudit.get(name).equals(step.getUuid().toString());
   }
 
   /**

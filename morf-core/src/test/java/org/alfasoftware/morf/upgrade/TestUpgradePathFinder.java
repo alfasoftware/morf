@@ -149,23 +149,9 @@ public class TestUpgradePathFinder {
     try {
       pathFinder.findDiscrepancies(upgradeAudit);
     } catch (IllegalStateException e) {
-      assertTrue(e.getMessage().contains(InsertAVictoriaSpongeRowUsingDSL.class.getAnnotation(UUID.class).value().toString()));
+      assertTrue(e.getMessage().contains(InsertAVictoriaSpongeRowUsingDSL.class.getAnnotation(UUID.class).value()));
       throw e;
     }
-  }
-
-  @Test
-  public void testfindDiscrepanciesReturnsSuccess() {
-    //Returns successful when an upgrade step with different names but the same uuid is checked.
-    List<Class<? extends UpgradeStep>> upgradeSteps = new ArrayList<>();
-    upgradeSteps.add(AddJamType.class);
-    upgradeSteps.add(AddCakeTable.class);
-    upgradeSteps.add(AddDiameter.class);
-    UpgradePathFinder pathFinder = makeFinder(upgradeSteps, appliedSteps(AddJamType.class, AddCakeTable.class));
-
-    Map<String, String> upgradeAudit = new HashMap<>();
-    upgradeAudit.put(InsertAVictoriaSpongeRowUsingDSL.class.getName(), "6bb40ce0-2578-11e0-ac64-0800200c9a66");
-    pathFinder.findDiscrepancies(upgradeAudit);
   }
 
   @Test
