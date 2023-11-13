@@ -28,6 +28,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -251,7 +252,7 @@ public class UpgradePathFinder {
    */
   private boolean isStepDuplicated(CandidateStep step, Map<String, String> upgradeAudit) {
     String name = step.getName();
-    return upgradeAudit.get(name) != null && !upgradeAudit.get(name).equals(step.getUuid().toString());
+    return upgradeAudit.get(name) != null && !Objects.equals(upgradeAudit.get(name), step.getUuid().toString());
   }
 
   /**
