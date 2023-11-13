@@ -252,7 +252,8 @@ public class UpgradePathFinder {
    */
   private boolean isStepDuplicated(CandidateStep step, Map<String, String> upgradeAudit) {
     String name = step.getName();
-    return upgradeAudit.get(name) != null && !Objects.equals(upgradeAudit.get(name), step.getUuid().toString());
+    String auditUUID = upgradeAudit.get(name);
+    return auditUUID != null && !Objects.equals(auditUUID, step.getUuid().toString());
   }
 
   /**
