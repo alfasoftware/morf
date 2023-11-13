@@ -19,11 +19,11 @@ import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import com.google.common.collect.ImmutableList;
 
 /**
- * Implementation of {@link DatabaseUpgradeLockService}
+ * Implementation of {@link DatabaseUpgradePathValidationService}
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2023
  */
-public class DatabaseUpgradeLockServiceImpl implements DatabaseUpgradeLockService {
+public class DatabaseUpgradePathValidationServiceImpl implements DatabaseUpgradePathValidationService {
 
   private final ConnectionResources connectionResources;
   private final UpgradeStatusTableService upgradeStatusTableService;
@@ -32,24 +32,24 @@ public class DatabaseUpgradeLockServiceImpl implements DatabaseUpgradeLockServic
    * Used for direct injection
    */
   @Inject
-  DatabaseUpgradeLockServiceImpl(ConnectionResources connectionResources,
-                                 UpgradeStatusTableService upgradeStatusTableService) {
+  DatabaseUpgradePathValidationServiceImpl(ConnectionResources connectionResources,
+                                           UpgradeStatusTableService upgradeStatusTableService) {
     this.connectionResources = connectionResources;
     this.upgradeStatusTableService = upgradeStatusTableService;
   }
 
   /**
-   * Used by {@link org.alfasoftware.morf.upgrade.DatabaseUpgradeLockService.Factory}
+   * Used by {@link DatabaseUpgradePathValidationService.Factory}
    */
-  DatabaseUpgradeLockServiceImpl(ConnectionResources connectionResources,
-                                 UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory) {
+  DatabaseUpgradePathValidationServiceImpl(ConnectionResources connectionResources,
+                                           UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory) {
     this.connectionResources = connectionResources;
     this.upgradeStatusTableService = upgradeStatusTableServiceFactory.create(connectionResources);
   }
 
 
   @Override
-  public List<String> getInitialisationSql(long upgradeAuditCount) {
+  public List<String> getPathValidationSql(long upgradeAuditCount) {
     ImmutableList.Builder<String> statements = ImmutableList.builder();
     statements.addAll(upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS));
     statements.addAll(getOptimisticLockingInitialisationSql(upgradeAuditCount));
@@ -86,7 +86,7 @@ public class DatabaseUpgradeLockServiceImpl implements DatabaseUpgradeLockServic
   }
 
 
-  static class Factory implements DatabaseUpgradeLockService.Factory {
+  static class Factory implements DatabaseUpgradePathValidationService.Factory {
 
     private final UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory;
 
@@ -97,8 +97,8 @@ public class DatabaseUpgradeLockServiceImpl implements DatabaseUpgradeLockServic
 
 
     @Override
-    public DatabaseUpgradeLockService create(ConnectionResources connectionResources) {
-      return new DatabaseUpgradeLockServiceImpl(connectionResources, upgradeStatusTableServiceFactory);
+    public DatabaseUpgradePathValidationService create(ConnectionResources connectionResources) {
+      return new DatabaseUpgradePathValidationServiceImpl(connectionResources, upgradeStatusTableServiceFactory);
     }
   }
 

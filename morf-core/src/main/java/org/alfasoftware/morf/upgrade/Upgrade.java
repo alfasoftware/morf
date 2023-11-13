@@ -65,7 +65,7 @@ public class Upgrade {
   private final ViewChangesDeploymentHelper viewChangesDeploymentHelper;
   private final ViewDeploymentValidator viewDeploymentValidator;
   private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
-  private final DatabaseUpgradeLockService databaseUpgradeLockService;
+  private final DatabaseUpgradePathValidationService databaseUpgradePathValidationService;
 
 
   public Upgrade(
@@ -75,7 +75,7 @@ public class Upgrade {
       ViewChangesDeploymentHelper viewChangesDeploymentHelper,
       ViewDeploymentValidator viewDeploymentValidator,
       GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
-      DatabaseUpgradeLockService databaseUpgradeLockService) {
+      DatabaseUpgradePathValidationService databaseUpgradePathValidationService) {
     super();
     this.connectionResources = connectionResources;
     this.factory = factory;
@@ -83,7 +83,7 @@ public class Upgrade {
     this.viewChangesDeploymentHelper = viewChangesDeploymentHelper;
     this.viewDeploymentValidator = viewDeploymentValidator;
     this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
-    this.databaseUpgradeLockService = databaseUpgradeLockService;
+    this.databaseUpgradePathValidationService = databaseUpgradePathValidationService;
   }
 
 
@@ -100,9 +100,9 @@ public class Upgrade {
   public static void performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, ViewDeploymentValidator viewDeploymentValidator) {
     SqlScriptExecutorProvider sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
     UpgradeStatusTableService upgradeStatusTableService = new UpgradeStatusTableServiceImpl(sqlScriptExecutorProvider, connectionResources.sqlDialect());
-    DatabaseUpgradeLockService databaseUpgradeLockService = new DatabaseUpgradeLockServiceImpl(connectionResources, upgradeStatusTableService);
+    DatabaseUpgradePathValidationService databaseUpgradePathValidationService = new DatabaseUpgradePathValidationServiceImpl(connectionResources, upgradeStatusTableService);
     try {
-      UpgradePath path = Upgrade.createPath(targetSchema, upgradeSteps, connectionResources, upgradeStatusTableService, viewDeploymentValidator, databaseUpgradeLockService);
+      UpgradePath path = Upgrade.createPath(targetSchema, upgradeSteps, connectionResources, upgradeStatusTableService, viewDeploymentValidator, databaseUpgradePathValidationService);
       if (path.hasStepsToApply()) {
         sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor()).execute(path.getSql());
       }
@@ -131,11 +131,11 @@ public class Upgrade {
       ConnectionResources connectionResources,
       UpgradeStatusTableService upgradeStatusTableService,
       ViewDeploymentValidator viewDeploymentValidator,
-      DatabaseUpgradeLockService databaseUpgradeLockService) {
+      DatabaseUpgradePathValidationService databaseUpgradePathValidationService) {
     Upgrade upgrade = new Upgrade(
       connectionResources,
       new UpgradePathFactoryImpl(new UpgradeScriptAdditionsProvider.NoOpScriptAdditions(), UpgradeStatusTableServiceImpl::new),
-      upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()), viewDeploymentValidator, null, databaseUpgradeLockService);
+      upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()), viewDeploymentValidator, null, databaseUpgradePathValidationService);
     return upgrade.findPath(targetSchema, upgradeSteps, Collections.<String> emptySet(), connectionResources.getDataSource());
   }
 
@@ -289,9 +289,9 @@ public class Upgrade {
       GraphBasedUpgradeBuilder graphBasedUpgradeBuilder,
       long upgradeAuditCount) {
 
-    List<String> initialisationSql = databaseUpgradeLockService.getInitialisationSql(upgradeAuditCount);
+    List<String> pathValidationSql = databaseUpgradePathValidationService.getPathValidationSql(upgradeAuditCount);
 
-    UpgradePath path = factory.create(upgradesToApply, connectionResources, graphBasedUpgradeBuilder, initialisationSql);
+    UpgradePath path = factory.create(upgradesToApply, connectionResources, graphBasedUpgradeBuilder, pathValidationSql);
 
     path.writeSql(UpgradeHelper.preSchemaUpgrade(new UpgradeSchemas(sourceSchema, targetSchema), viewChanges, viewChangesDeploymentHelper));
 
@@ -365,7 +365,7 @@ public class Upgrade {
     private final UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory;
     private final ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory;
     private final ViewDeploymentValidator.Factory viewDeploymentValidatorFactory;
-    private final DatabaseUpgradeLockService.Factory databaseUpgradeLockServiceFactory;
+    private final DatabaseUpgradePathValidationService.Factory databaseUpgradeLockServiceFactory;
 
 
     @Inject
@@ -374,7 +374,7 @@ public class Upgrade {
                    GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
                    ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory,
                    ViewDeploymentValidator.Factory viewDeploymentValidatorFactory,
-                   DatabaseUpgradeLockService.Factory databaseUpgradeLockServiceFactory) {
+                   DatabaseUpgradePathValidationService.Factory databaseUpgradeLockServiceFactory) {
       this.upgradePathFactory = upgradePathFactory;
       this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
       this.upgradeStatusTableServiceFactory =  upgradeStatusTableServiceFactory;

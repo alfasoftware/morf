@@ -322,13 +322,13 @@ public class UpgradePath implements SqlStatementWriter {
      * @param steps The steps represented by the {@link UpgradePath}.
      * @param connectionResources The ConnectionResources.
      * @param graphBasedUpgradeBuilder to be used to create a graph based upgrade if needed
-     * @param optimisticLockingInitialisationSql statement to be run at the start of the upgrade to provide optimistic locking
+     * @param pathValidationSql statement to be run at the start of the upgrade to provide path validation
      * @return The resulting {@link UpgradePath}.
      */
     UpgradePath create(List<UpgradeStep> steps,
                        ConnectionResources connectionResources,
                        GraphBasedUpgradeBuilder graphBasedUpgradeBuilder,
-                       List<String> optimisticLockingInitialisationSql);
+                       List<String> pathValidationSql);
   }
 
 
@@ -377,9 +377,9 @@ public class UpgradePath implements SqlStatementWriter {
     public UpgradePath create(List<UpgradeStep> steps,
                               ConnectionResources connectionResources,
                               GraphBasedUpgradeBuilder graphBasedUpgradeBuilder,
-                              List<String> initialisationSql) {
+                              List<String> pathValidationSql) {
       UpgradeStatusTableService upgradeStatusTableService = upgradeStatusTableServiceFactory.create(connectionResources);
-      return new UpgradePath(upgradeScriptAdditions, steps, connectionResources, initialisationSql,
+      return new UpgradePath(upgradeScriptAdditions, steps, connectionResources, pathValidationSql,
           upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED),
           graphBasedUpgradeBuilder);
     }
