@@ -377,24 +377,12 @@ public class UpgradePath implements SqlStatementWriter {
     public UpgradePath create(List<UpgradeStep> steps,
                               ConnectionResources connectionResources,
                               GraphBasedUpgradeBuilder graphBasedUpgradeBuilder,
-                              List<String> optimisticLockingInitialisationSql) {
+                              List<String> initialisationSql) {
       UpgradeStatusTableService upgradeStatusTableService = upgradeStatusTableServiceFactory.create(connectionResources);
-      return new UpgradePath(upgradeScriptAdditions, steps, connectionResources,
-              combineInitialisationSql(upgradeStatusTableService, optimisticLockingInitialisationSql),
-              upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED),
-              graphBasedUpgradeBuilder);
+      return new UpgradePath(upgradeScriptAdditions, steps, connectionResources, initialisationSql,
+          upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED),
+          graphBasedUpgradeBuilder);
     }
 
-
-    /**
-     * Creates the initialisation SQL by combining the creation of the upgrade status table, followed by the optimised locking SQL.
-     * The optimised locking statement should always come after, as the locking may be dependent on the upgrade status table.
-     */
-    private List<String> combineInitialisationSql(UpgradeStatusTableService upgradeStatusTableService,
-                                                  List<String> optimisticLockingInitialisationSql) {
-      List<String> updateTableSql = upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS);
-      updateTableSql.addAll(optimisticLockingInitialisationSql);
-      return updateTableSql;
-    }
   }
 }

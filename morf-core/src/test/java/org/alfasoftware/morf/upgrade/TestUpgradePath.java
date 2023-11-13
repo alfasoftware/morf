@@ -181,18 +181,16 @@ public class TestUpgradePath {
    * uses the optimisation SQL in combination with {@link UpgradeStatusTableService} for upgrades.
    */
   @Test
-  public void testFactoryCreateUpgradeWithOptimisation() {
+  public void testFactoryCreateUpgradeWithInitialisationSql() {
 
-    when(upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS)).thenReturn(Lists.newArrayList("INIT1", "INIT2"));
     when(upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED)).thenReturn(ImmutableList.of("FIN1", "FIN2"));
 
-    UpgradePath path = factory.create(ImmutableList.of(mock(UpgradeStep.class)), connectionResources, mock(GraphBasedUpgradeBuilder.class), ImmutableList.of("OPT1, OPT2"));
+    UpgradePath path = factory.create(ImmutableList.of(mock(UpgradeStep.class)), connectionResources, mock(GraphBasedUpgradeBuilder.class), ImmutableList.of("INIT1", "INIT2"));
     path.writeSql(ImmutableList.of("XYZZY"));
 
     List<String> sql = path.getSql();
-    assertEquals("Result", "[INIT1, INIT2, OPT1, OPT2, XYZZY, FIN1, FIN2]", sql.toString());
+    assertEquals("Result", "[INIT1, INIT2, XYZZY, FIN1, FIN2]", sql.toString());
 
-    verify(upgradeStatusTableService, times(1)).updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS);
     verify(upgradeStatusTableService, times(1)).updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED);
     verifyNoMoreInteractions(upgradeStatusTableService);
   }
