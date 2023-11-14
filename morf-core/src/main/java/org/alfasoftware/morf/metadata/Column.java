@@ -31,6 +31,17 @@ public interface Column extends ColumnType {
 
 
   /**
+   * The name of the column in upper case.
+   * Ideally implementations should support this directly via an interned string.
+   *
+   * @return the column name in upper case.
+   */
+  public default String getUpperCaseName() {
+    return getName().toUpperCase();
+  }
+
+
+  /**
    * Indicates whether this column is part of the primary key on the table it
    * belongs to.
    *

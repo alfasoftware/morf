@@ -18,6 +18,7 @@ package org.alfasoftware.morf.metadata;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.sql.SelectStatement;
 
@@ -726,16 +727,10 @@ public final class SchemaUtils {
    * List the primary key columns for a given table.
    *
    * @param table The table
-   * @return The primary keys
+   * @return The primary key columns
    */
   public static List<Column> primaryKeysForTable(Table table) {
-    List<Column> result = Lists.newArrayList();
-    for (Column column : table.columns()) {
-      if (column.isPrimaryKey()) {
-        result.add(column);
-      }
-    }
-    return result;
+    return table.columns().stream().filter(Column::isPrimaryKey).collect(Collectors.toList());
   }
 
 
@@ -743,16 +738,10 @@ public final class SchemaUtils {
    * List auto-numbered columns for a given table.
    *
    * @param table The table
-   * @return The primary keys
+   * @return The auto-numbered columns
    */
   public static List<Column> autoNumbersForTable(Table table) {
-    List<Column> result = Lists.newArrayList();
-    for (Column column : table.columns()) {
-      if (column.isAutoNumbered()) {
-        result.add(column);
-      }
-    }
-    return result;
+    return table.columns().stream().filter(Column::isAutoNumbered).collect(Collectors.toList());
   }
 
 
@@ -772,6 +761,16 @@ public final class SchemaUtils {
   }
 
 
+  public static List<String> upperCaseNamesOfColumns(List<Column> columns) {
+    return Lists.transform(columns, new Function<Column, String>() {
+      @Override
+      public String apply(Column column) {
+        return column.getUpperCaseName();
+      }
+    });
+  }
+
+
   /**
    * Convert all the strings in a list to upper case.
    *
@@ -779,11 +778,6 @@ public final class SchemaUtils {
    * @return A new list of strings, with each string converted to upper case
    */
   public static List<String> toUpperCase(List<String> listOfStrings) {
-    return FluentIterable.from(listOfStrings).transform(new Function<String, String>() {
-      @Override
-      public String apply(String value) {
-        return value.toUpperCase();
-      }
-    }).toList();
+    return listOfStrings.stream().map(String::toUpperCase).collect(Collectors.toList());
   }
 }

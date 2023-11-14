@@ -15,11 +15,11 @@
 
 package org.alfasoftware.morf.metadata;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
-import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
 import static java.util.regex.Pattern.CASE_INSENSITIVE;
+import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
+import static org.alfasoftware.morf.metadata.SchemaUtils.toUpperCase;
+import static org.alfasoftware.morf.metadata.SchemaUtils.upperCaseNamesOfColumns;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -240,21 +240,21 @@ public class SchemaHomology {
 
     checkIndexes(table1.getName(), table1.indexes(), table2.indexes());
 
-    checkPrimaryKeys(table1.getName(), namesOfColumns(primaryKeysForTable(table1)), namesOfColumns(primaryKeysForTable(table2)));
+    checkPrimaryKeys(table1.getName(), upperCaseNamesOfColumns(primaryKeysForTable(table1)), upperCaseNamesOfColumns(primaryKeysForTable(table2)));
   }
 
 
   /**
    * Checks the ordering of the primary keys.
    */
-  private void checkPrimaryKeys(String tableName, List<String> table1Keys, List<String> table2Keys) {
-    if (table1Keys.size() != table2Keys.size()) {
-      difference(String.format("Primary key column count on table [%s] does not match. Column are [%s] and [%s]", tableName, table1Keys, table2Keys));
+  private void checkPrimaryKeys(String tableName, List<String> table1UpperCaseKeys, List<String> table2UpperCaseKeys) {
+    if (table1UpperCaseKeys.size() != table2UpperCaseKeys.size()) {
+      difference(String.format("Primary key column count on table [%s] does not match. Column are [%s] and [%s]", tableName, table1UpperCaseKeys, table2UpperCaseKeys));
       return;
     }
-    for (int i = 0 ; i < table1Keys.size(); i++) {
-      if (!StringUtils.equalsIgnoreCase(table1Keys.get(i), table2Keys.get(i))) {
-        difference(String.format("Primary key at index [%d] on table [%s] does not match. Columns are [%s] and [%s]", i, tableName, table1Keys.get(i), table2Keys.get(i)));
+    for (int i = 0 ; i < table1UpperCaseKeys.size(); i++) {
+      if (!StringUtils.equals(table1UpperCaseKeys.get(i), table2UpperCaseKeys.get(i))) {
+        difference(String.format("Primary key at index [%d] on table [%s] does not match. Columns are [%s] and [%s]", i, tableName, table1UpperCaseKeys.get(i), table2UpperCaseKeys.get(i)));
       }
     }
   }
@@ -266,7 +266,7 @@ public class SchemaHomology {
    * @param column2 Second column to compare.
    */
   private void checkColumn(String tableName, Column column1, Column column2) {
-    matches("Column name", column1.getName().toUpperCase(), column2.getName().toUpperCase());
+    matches("Column name", column1.getUpperCaseName(), column2.getUpperCaseName());
     String prefix = "Column [" + column1.getName() + "] " + (tableName == null ? "" :  "on table [" + tableName + "] ");
     matches(prefix + "data type", column1.getType(), column2.getType());
     matches(prefix + "nullable", column1.isNullable(), column2.isNullable());
@@ -299,11 +299,11 @@ public class SchemaHomology {
 
     Map<String, Column> columns2Source = new HashMap<>();
     for (Column column : columns2) {
-      columns2Source.put(column.getName().toUpperCase(), column);
+      columns2Source.put(column.getUpperCaseName(), column);
     }
 
     for (Column column1 : columns1) {
-      Column column2 = columns2Source.remove(column1.getName().toUpperCase());
+      Column column2 = columns2Source.remove(column1.getUpperCaseName());
       if (column2 == null) {
         difference("Column [" + column1.getName() + "] on table [" + tableName + "] not found in " + schema2Name);
       } else {
@@ -358,20 +358,6 @@ public class SchemaHomology {
     matches("Index name on table [" + tableName + "]", index1.getName().toUpperCase(), index2.getName().toUpperCase());
     matches("Index [" + index1.getName() + "] on table [" + tableName + "] uniqueness", index1.isUnique(), index2.isUnique());
     matches("Index [" + index1.getName() + "] on table [" + tableName + "] columnNames", toUpperCase(index1.columnNames()), toUpperCase(index2.columnNames()));
-  }
-
-
-  /**
-   * Convert a list of Strings to upper case.
-   * @param strings The source
-   * @return The strings converted to upper case.
-   */
-  private List<String> toUpperCase(List<String> strings) {
-    List<String> result = new ArrayList<String>();
-    for(String source : strings) {
-      result.add(source.toUpperCase());
-    }
-    return result;
   }
 
 
