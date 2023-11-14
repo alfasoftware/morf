@@ -33,11 +33,11 @@ import org.junit.Test;
 import org.junit.rules.MethodRule;
 
 /**
- * Test for {@link DatabaseUpgradeLockService}
+ * Test for {@link DatabaseUpgradePathValidationService}
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2023
  */
-public class TestDatabaseUpgradeLockService {
+public class TestDatabaseUpgradePathValidationService {
 
   @Rule
   public MethodRule injectorRule = new InjectMembersRule(new TestingDataSourceModule());
@@ -52,7 +52,7 @@ public class TestDatabaseUpgradeLockService {
   private ConnectionResources connectionResources;
 
   @Inject
-  private DatabaseUpgradeLockService databaseUpgradeLockService;
+  private DatabaseUpgradePathValidationService databaseUpgradePathValidationService;
 
   private final Schema schema = SchemaUtils.schema(upgradeAuditTable());
 
@@ -90,7 +90,7 @@ public class TestDatabaseUpgradeLockService {
   @Test
   public void testInitialisationSql() {
     // Given
-    List<String> initialisationSql = databaseUpgradeLockService.getInitialisationSql(2); // 2 records added to UpgradeAudit in test setup
+    List<String> initialisationSql = databaseUpgradePathValidationService.getPathValidationSql(2); // 2 records added to UpgradeAudit in test setup
 
     // When
     // Execute initialisation SQL for the first time (perform an upgrade)
