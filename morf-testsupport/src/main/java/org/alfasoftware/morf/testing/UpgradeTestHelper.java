@@ -181,10 +181,7 @@ public class UpgradeTestHelper {
    * For example UUID, Sequence, JIRA ID and Description are all populated.
    */
   public void validateUpgradeStepProperties(Iterable<Class<? extends UpgradeStep>> upgradeSteps) {
-    if (upgradeSteps instanceof Collection) {
-      instantiateAndValidateUpgradeSteps((Collection<Class<? extends UpgradeStep>>)upgradeSteps);
-    }
-    instantiateAndValidateUpgradeSteps(Streams.stream(upgradeSteps).collect(Collectors.toSet()));
+    instantiateAndValidateUpgradeSteps(upgradeSteps);
   }
 
 
@@ -245,8 +242,8 @@ public class UpgradeTestHelper {
   /**
    * Turn the list of classes into a list of objects.
    */
-  private List<UpgradeStep> instantiateAndValidateUpgradeSteps(Collection<Class<? extends UpgradeStep>> stepClasses) {
-    return stepClasses.stream()
+  private List<UpgradeStep> instantiateAndValidateUpgradeSteps(Iterable<Class<? extends UpgradeStep>> stepClasses) {
+    return Streams.stream(stepClasses)
         .map(stepClass -> {
           UpgradeStep upgradeStep;
           try {
