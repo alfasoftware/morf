@@ -23,13 +23,16 @@ import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.alfasoftware.morf.metadata.DataType;
@@ -50,7 +53,6 @@ import org.alfasoftware.morf.upgrade.testupgradepathfinder.upgrade.v1_0_0.Delete
 import org.alfasoftware.morf.upgrade.testupgradepathfinder.upgrade.v1_0_0.DuplicateUUIDOfAddJamType;
 import org.alfasoftware.morf.upgrade.testupgradepathfinder.upgrade.v1_0_0.InsertACheescake;
 import org.alfasoftware.morf.upgrade.testupgradepathfinder.upgrade.v1_0_0.InsertAVictoriaSpongeRowUsingDSL;
-import org.hamcrest.MatcherAssert;
 import org.junit.Test;
 
 import com.google.common.collect.Sets;
@@ -129,6 +131,39 @@ public class TestUpgradePathFinder {
     assertSame("First upgrades step", AddCakeTable.class, path.get(0).getClass());
     assertSame("Second upgrades step", AddDiameter.class, path.get(1).getClass());
     assertSame("Third upgrades step", AddJamType.class, path.get(2).getClass());
+  }
+
+  @Test
+  public void testfindDiscrepanciesThrowsException() {
+    // This test will check that an IllegalStateException is thrown as we are trying to run an upgrade step that has already run
+    List<Class<? extends UpgradeStep>> upgradeSteps = new ArrayList<>();
+    upgradeSteps.add(AddJamType.class);
+    upgradeSteps.add(AddCakeTable.class);
+    upgradeSteps.add(AddDiameter.class);
+    upgradeSteps.add(InsertAVictoriaSpongeRowUsingDSL.class);
+    UpgradePathFinder pathFinder = makeFinder(upgradeSteps, appliedSteps(AddJamType.class, AddCakeTable.class));
+
+    Map<String, String> upgradeAudit = new HashMap<>();
+    upgradeAudit.put(InsertAVictoriaSpongeRowUsingDSL.class.getName(), "0fde0d93-f57e-405c-81e9-245ef1ba0591");
+    upgradeAudit.put(AddDiameter.class.getName(), "6bb40ce0-2578-11e0-ac64-0800200c9a61");
+
+    IllegalStateException e = assertThrows(IllegalStateException.class, () -> pathFinder.findDiscrepancies(upgradeAudit));
+    assertTrue(e.getMessage().contains(InsertAVictoriaSpongeRowUsingDSL.class.getAnnotation(UUID.class).value()));
+  }
+
+  @Test
+  public void testfindDiscrepancies() {
+    //Returns successful when everything is in order.
+    List<Class<? extends UpgradeStep>> upgradeSteps = new ArrayList<>();
+    upgradeSteps.add(AddJamType.class);
+    upgradeSteps.add(AddCakeTable.class);
+    upgradeSteps.add(AddDiameter.class);
+    upgradeSteps.add(InsertAVictoriaSpongeRowUsingDSL.class);
+    UpgradePathFinder pathFinder = makeFinder(upgradeSteps, appliedSteps(AddJamType.class, AddCakeTable.class, AddDiameter.class));
+
+    Map<String, String> upgradeAudit = new HashMap<>();
+    upgradeAudit.put(AddDiameter.class.getName(), "6bb40ce0-2578-11e0-ac64-0800200c9a66");
+    pathFinder.findDiscrepancies(upgradeAudit);
   }
 
 

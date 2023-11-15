@@ -45,11 +45,16 @@ import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
 import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsException;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
+
 
 /**
  * Entry point for upgrade processing.
@@ -196,6 +201,8 @@ public class Upgrade {
     log.info("Searching for upgrade path from [" + sourceSchema + "] to [" + targetSchema + "]");
     ExistingTableStateLoader existingTableState = new ExistingTableStateLoader(dataSource, dialect);
     UpgradePathFinder pathFinder = new UpgradePathFinder(upgradeSteps, existingTableState.loadAppliedStepUUIDs());
+    pathFinder.findDiscrepancies(getUpgradeAuditRecords());
+
     SchemaChangeSequence schemaChangeSequence;
     status = upgradeStatusTableService.getStatus(Optional.of(dataSource));
     if (status != NONE) {
@@ -340,6 +347,58 @@ public class Upgrade {
     }
     log.debug("Returning number of applied upgrade steps [" + appliedUpgradeStepsCount + "]");
     return appliedUpgradeStepsCount;
+  }
+
+  /**
+   * This method queries the database for upgrade audit information, including
+   * upgrade UUIDs and their corresponding descriptions.
+   *
+   * @return A Map<String, String> containing upgrade audit information.
+   *         The keys are upgrade descriptions and the values are corresponding UUIDs.
+   *         If an error occurs during the retrieval, an empty map is returned.
+   */
+  private Map<String, String> getUpgradeAuditRecords() {
+    Map<String, String> upgradeAuditMap = new HashMap<>();
+    try {
+      TableReference upgradeAuditTable = tableRef(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME);
+
+      SelectStatement selectStatement = select(
+              upgradeAuditTable.field("upgradeUUID"),
+              upgradeAuditTable.field("description")
+      )
+              .from(upgradeAuditTable)
+              .build();
+
+      SqlScriptExecutorProvider sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
+      upgradeAuditMap = sqlScriptExecutorProvider.get().executeQuery(
+              connectionResources.sqlDialect().convertStatementToSQL(selectStatement),
+              resultSetProcessor()
+      );
+    } catch (Exception e) {
+      log.warn("Unable to read from UpgradeAudit table", e);
+    }
+    return upgradeAuditMap;
+  }
+
+  /**
+   * Returns a ResultSetProcessor that processes a ResultSet into a Map<String, String>.
+   *
+   * @return A ResultSetProcessor that converts a ResultSet into a Map<String, String>.
+   */
+  private ResultSetProcessor<Map<String, String>> resultSetProcessor() {
+    return resultSet -> {
+      Map<String, String> upgradeAudit = new HashMap<>();
+      try {
+        while(resultSet.next()) {
+          String description = resultSet.getString("description");
+          String upgradeUUID = resultSet.getString("upgradeUUID");
+          upgradeAudit.put(description, upgradeUUID);
+        }
+      } catch (SQLException e) {
+        e.printStackTrace();
+      }
+      return upgradeAudit;
+    };
   }
 
 

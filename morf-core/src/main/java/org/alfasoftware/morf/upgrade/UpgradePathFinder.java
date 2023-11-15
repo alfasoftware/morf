@@ -28,6 +28,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -214,6 +215,46 @@ public class UpgradePathFinder {
     }
   }
 
+  /**
+   * Finds discrepancies between a provided upgrade audit map and the list of steps to apply.
+   * This method compares the UUIDs associated with each upgrade step in the provided list with the corresponding UUIDs
+   * in the upgrade audit map. If discrepancies are found, it logs an error message and throws an IllegalStateException.
+   *
+   * @param upgradeAudit A Map representing the upgrade audit information, where keys are step names and
+   *                     values are corresponding UUIDs.
+   * @throws IllegalStateException If discrepancies are found between upgrade steps and their associated UUIDs in the
+   *                               provided map.
+   */
+  public void findDiscrepancies(Map<String, String> upgradeAudit) {
+
+    List<String> discrepancies = stepsToApply.stream()
+            .filter(step -> isStepDuplicated(step, upgradeAudit))
+            .map(step -> step.getUuid().toString())
+            .collect(Collectors.toList());
+
+    if (!discrepancies.isEmpty()) {
+      String message = String.format("Some upgrade steps could have run before with different UUID. The following have been detected:%n%s",
+              String.join("\n", discrepancies));
+      log.error(message);
+      throw new IllegalStateException(message);
+    }
+  }
+
+  /**
+   * Checks if a given CandidateStep is duplicated based on its name in the upgradeAudit map.
+   * A CandidateStep is considered duplicated if it has the same name but a different UUID
+   * compared to the entries in the upgradeAudit map.
+   *
+   * @param step The CandidateStep to be checked for duplication.
+   * @param upgradeAudit A Map<String, String> representing the upgrade audit information, where keys are step names,
+   *                     and values are corresponding UUIDs.
+   * @return {@code true} if the CandidateStep is duplicated, {@code false} otherwise.
+   */
+  private boolean isStepDuplicated(CandidateStep step, Map<String, String> upgradeAudit) {
+    String name = step.getName();
+    String auditUUID = upgradeAudit.get(name);
+    return auditUUID != null && !Objects.equals(auditUUID, step.getUuid().toString());
+  }
 
   /**
    * Helper class encapsulating the logic relevant to individual upgrade steps.
@@ -304,6 +345,9 @@ public class UpgradePathFinder {
       }
     }
 
+    public String getDescription() {
+      return this.createStep().getDescription();
+    }
 
     @Override
     public String toString() {
