@@ -691,6 +691,7 @@ public class DatabaseMetaDataProvider implements Schema {
               continue;
             }
             if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName.getDbName())) {
+              log.info("Ignoring index: ["+indexName.getDbName()+"]");
               continue;
             }
 
