@@ -558,47 +558,49 @@ public class NamedParameterPreparedStatement implements AutoCloseable {
 
 
     /**
-     * Parses a query with named parameters. The parameter-index mappings are put
-     * into the map, and the parsed query is returned.
+     * Parses a SQL query with named parameters. The parameter-index mappings are extracted
+     * and stored in a map, and the parsed query with parameter placeholders is returned.
      *
-     * @param query query to parse
-     * @return the parsed query
+     * @param query The SQL query to parse, which may contain named parameters.
+     * @return The parsed SQL query with named parameters replaced by placeholders.
      */
     private String parse(String query) {
-      // I was originally using regular expressions, but they didn't work well for
-      // ignoring
-      // parameter-like strings inside quotes.
       int length = query.length();
       StringBuffer parsedQuery = new StringBuffer(length);
-      boolean inSingleQuote = false;
-      boolean inDoubleQuote = false;
-      int index = 1;
+      boolean inSingleQuote = false; // Tracks if inside a single-quoted string
+      boolean inDoubleQuote = false; // Tracks if inside a double-quoted string
+      boolean inComment = false; // Tracks if inside a SQL comment
+      int index = 1; // Index for parameter placeholders
 
       for (int i = 0; i < length; i++) {
         char c = query.charAt(i);
-        if (inSingleQuote) {
-          if (c == '\'') {
-            inSingleQuote = false;
+
+        if (inComment) {
+          // If inside a SQL comment, skip until the end of the line
+          if (c == '\n') {
+            inComment = false; // End of SQL comment
           }
-        } else if (inDoubleQuote) {
-          if (c == '"') {
-            inDoubleQuote = false;
-          }
-        } else {
+        } else if (inSingleQuote && c == '\'') {
+          inSingleQuote = false; // End of single-quoted string
+        } else if (inDoubleQuote && c == '"') {
+          inDoubleQuote = false; // End of double-quoted string
+        } else if (!inSingleQuote && !inDoubleQuote) {
           if (c == '\'') {
-            inSingleQuote = true;
+            inSingleQuote = true; // Start of single-quoted string
           } else if (c == '"') {
-            inDoubleQuote = true;
+            inDoubleQuote = true; // Start of double-quoted string
+          } else if (c == '-' && i + 1 < length && query.charAt(i + 1) == '-') {
+            inComment = true; // Start of SQL comment
           } else if (c == ':' && i + 1 < length && Character.isJavaIdentifierStart(query.charAt(i + 1))) {
             int j = i + 2;
             while (j < length && Character.isJavaIdentifierPart(query.charAt(j))) {
               j++;
             }
             String name = query.substring(i + 1, j);
-            c = '?'; // replace the parameter with a question mark
+            c = '?'; // Replace the parameter with question mark
 
             //CHECKSTYLE:OFF ModifiedControlVariableCheck
-            i += name.length(); // skip past the end if the parameter
+            i += name.length(); // Skip past the end of the parameter
             //CHECKSTYLE:ON:
 
             List<Integer> indexList = indexMap.get(name);

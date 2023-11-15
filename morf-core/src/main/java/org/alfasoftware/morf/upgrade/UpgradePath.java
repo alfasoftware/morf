@@ -15,17 +15,6 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import com.google.common.base.Suppliers;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
-import com.google.inject.ImplementedBy;
-import com.google.inject.Inject;
-import org.alfasoftware.morf.jdbc.ConnectionResources;
-import org.alfasoftware.morf.metadata.SchemaUtils;
-import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -33,6 +22,18 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
+
+import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import com.google.common.base.Suppliers;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
+import com.google.inject.ImplementedBy;
+import com.google.inject.Inject;
 
 /**
  * Encapsulates a list of upgrade steps and can return the SQL to enact them.
@@ -136,7 +137,7 @@ public class UpgradePath implements SqlStatementWriter {
     this.upgradeStatus = null;
     this.initialisationSql = initialisationSql;
     this.finalisationSql = finalisationSql;
-    this.graphBasedUpgradeSupplier = Suppliers.memoize(() -> graphBasedUpgradeBuilder != null ? graphBasedUpgradeBuilder.prepareGraphBasedUpgrade() : null);
+    this.graphBasedUpgradeSupplier = Suppliers.memoize(() -> graphBasedUpgradeBuilder != null ? graphBasedUpgradeBuilder.prepareGraphBasedUpgrade(initialisationSql) : null);
   }
 
 
@@ -311,7 +312,8 @@ public class UpgradePath implements SqlStatementWriter {
      * @param connectionResources The ConnectionResources.
      * @return The resulting {@link UpgradePath}.
      */
-    UpgradePath create(List<UpgradeStep> steps, ConnectionResources connectionResources);
+    UpgradePath create(List<UpgradeStep> steps,
+                       ConnectionResources connectionResources);
 
 
     /**
@@ -320,9 +322,13 @@ public class UpgradePath implements SqlStatementWriter {
      * @param steps The steps represented by the {@link UpgradePath}.
      * @param connectionResources The ConnectionResources.
      * @param graphBasedUpgradeBuilder to be used to create a graph based upgrade if needed
+     * @param pathValidationSql statement to be run at the start of the upgrade to provide path validation
      * @return The resulting {@link UpgradePath}.
      */
-    UpgradePath create(List<UpgradeStep> steps, ConnectionResources connectionResources, GraphBasedUpgradeBuilder graphBasedUpgradeBuilder);
+    UpgradePath create(List<UpgradeStep> steps,
+                       ConnectionResources connectionResources,
+                       GraphBasedUpgradeBuilder graphBasedUpgradeBuilder,
+                       List<String> pathValidationSql);
   }
 
 
@@ -357,7 +363,8 @@ public class UpgradePath implements SqlStatementWriter {
 
 
     @Override
-    public UpgradePath create(List<UpgradeStep> steps, ConnectionResources connectionResources) {
+    public UpgradePath create(List<UpgradeStep> steps,
+                              ConnectionResources connectionResources) {
       UpgradeStatusTableService upgradeStatusTableService = upgradeStatusTableServiceFactory.create(connectionResources);
       return new UpgradePath(upgradeScriptAdditions, steps, connectionResources,
               upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS),
@@ -367,12 +374,15 @@ public class UpgradePath implements SqlStatementWriter {
 
 
     @Override
-    public UpgradePath create(List<UpgradeStep> steps,  ConnectionResources connectionResources, GraphBasedUpgradeBuilder graphBasedUpgradeBuilder) {
+    public UpgradePath create(List<UpgradeStep> steps,
+                              ConnectionResources connectionResources,
+                              GraphBasedUpgradeBuilder graphBasedUpgradeBuilder,
+                              List<String> pathValidationSql) {
       UpgradeStatusTableService upgradeStatusTableService = upgradeStatusTableServiceFactory.create(connectionResources);
-      return new UpgradePath(upgradeScriptAdditions, steps, connectionResources,
-              upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS),
-              upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED),
-              graphBasedUpgradeBuilder);
+      return new UpgradePath(upgradeScriptAdditions, steps, connectionResources, pathValidationSql,
+          upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED),
+          graphBasedUpgradeBuilder);
     }
+
   }
 }
