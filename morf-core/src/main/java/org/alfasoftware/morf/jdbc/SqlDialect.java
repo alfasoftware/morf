@@ -3389,7 +3389,7 @@ public abstract class SqlDialect {
     for (Column currentColumn : metadata.getTable(sourceTableName).columns()) {
       // Convert everything to the same case to avoid match failure based on
       // case.
-      sourceColumns.put(currentColumn.getName().toUpperCase(), currentColumn);
+      sourceColumns.put(currentColumn.getUpperCaseName(), currentColumn);
     }
 
     // Build up the select statement from field list
@@ -3411,7 +3411,7 @@ public abstract class SqlDialect {
       // If there is a column in the source table with the same name then link
       // them
       // and move on to the next column
-      if (sourceColumns.containsKey(currentColumnName.toUpperCase())) {
+      if (sourceColumns.containsKey(currentColumn.getUpperCaseName())) {
         selectStatementBuilder = selectStatementBuilder.fields(new FieldReference(currentColumnName));
         continue;
       }

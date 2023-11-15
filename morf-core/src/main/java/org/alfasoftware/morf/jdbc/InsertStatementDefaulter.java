@@ -131,7 +131,7 @@ public class InsertStatementDefaulter {
     }
 
     for (Column column : table.columns()) {
-      columnsWithValues.add(column.getName().toUpperCase());
+      columnsWithValues.add(column.getUpperCaseName());
     }
   }
 
@@ -151,7 +151,7 @@ public class InsertStatementDefaulter {
     List<AliasedFieldBuilder> aliasedFieldBuilders = Lists.newArrayList();
     for (Column currentColumn : table.columns()) {
       // Default date columns to null and skip columns we've already added.
-      if (columnsWithValues.contains(currentColumn.getName().toUpperCase())) {
+      if (columnsWithValues.contains(currentColumn.getUpperCaseName())) {
         continue;
       }
 

@@ -17,13 +17,13 @@ package org.alfasoftware.morf.dataset;
 
 import java.util.Collection;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
-import com.google.common.base.Function;
+
 import com.google.common.base.Predicate;
 import com.google.common.collect.Collections2;
-import com.google.common.collect.FluentIterable;
 
 /**
  * {@link DataSetProducer} implementation which filters out files other than those specified.
@@ -53,16 +53,9 @@ public class FilteredDataSetProducerAdapter extends DataSetProducerAdapter {
    */
   public FilteredDataSetProducerAdapter(DataSetProducer producer, Collection<String> includedTables) {
     super(producer);
-    final Set<String> includedSet = FluentIterable.from(includedTables)
-                                                  .transform(new Function<String, String>() {
-                                                     @Override
-                                                     public String apply(String str) {
-                                                       return str.toUpperCase();
-                                                     }
-                                                   })
-                                                  .toSet();
+    final Set<String> includedSet = includedTables.stream().map(String::toUpperCase).collect(Collectors.toSet());
 
-    this.includingPredicate = new Predicate<String>() {
+    this.includingPredicate = new Predicate<>() {
       @Override
       public boolean apply(String input) {
         return includedSet.contains(input);
@@ -108,12 +101,7 @@ public class FilteredDataSetProducerAdapter extends DataSetProducerAdapter {
        */
       @Override
       public Collection<String> tableNames() {
-        return Collections2.filter(delegate.tableNames(), new Predicate<String>() {
-          @Override
-          public boolean apply(String table) {
-            return includeTable(table);
-          }
-        });
+        return Collections2.filter(delegate.tableNames(), includingPredicate);
       }
 
 
@@ -123,12 +111,7 @@ public class FilteredDataSetProducerAdapter extends DataSetProducerAdapter {
        */
       @Override
       public Collection<Table> tables() {
-        return Collections2.filter(delegate.tables(), new Predicate<Table>() {
-          @Override
-          public boolean apply(Table table) {
-            return includeTable(table.getName());
-          }
-        });
+        return Collections2.filter(delegate.tables(), t -> includingPredicate.apply(t.getName()));
       }
     };
   }

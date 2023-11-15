@@ -63,11 +63,11 @@ public class AlteredTable implements Table {
       this.columns = new ArrayList<>();
       Map<String, Column> columnMap = new HashMap<>();
       for (Column column : baseTable.columns()) {
-        columnMap.put(column.getName().toUpperCase(), column);
+        columnMap.put(column.getUpperCaseName(), column);
       }
       if (newColumnDefinitions != null) {
         for (Column column : newColumnDefinitions) {
-          columnMap.put(column.getName().toUpperCase(), column);
+          columnMap.put(column.getUpperCaseName(), column);
         }
       }
       for (String name : columnOrder) {

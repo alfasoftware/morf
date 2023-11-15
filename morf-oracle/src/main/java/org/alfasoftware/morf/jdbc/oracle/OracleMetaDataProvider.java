@@ -874,6 +874,7 @@ public class OracleMetaDataProvider implements Schema {
   private static final class DeferredTypeColumn implements Column {
 
     private final String columnName;
+    private final Supplier<String> upperCaseName;
     private final boolean nullable;
     private final boolean primaryKey;
     private final boolean autoIncrement;
@@ -882,10 +883,11 @@ public class OracleMetaDataProvider implements Schema {
 
     private final com.google.common.base.Supplier<ColumnType> columnType;
 
-    DeferredTypeColumn(String dataTypeName, int dataLength, int precision, int scale, String commentType, String columName,
+    DeferredTypeColumn(String dataTypeName, int dataLength, int precision, int scale, String commentType, String columnName,
         boolean nullable, boolean primaryKey, boolean autoIncrement, int autoIncrementFrom, String defaultValue) {
       super();
-      this.columnName = columName;
+      this.columnName = columnName;
+      this.upperCaseName = Suppliers.memoize(columnName::toUpperCase);
       this.nullable = nullable;
       this.primaryKey = primaryKey;
       this.autoIncrement = autoIncrement;
@@ -928,6 +930,11 @@ public class OracleMetaDataProvider implements Schema {
     @Override
     public String getName() {
       return columnName;
+    }
+
+    @Override
+    public String getUpperCaseName() {
+      return upperCaseName.get();
     }
 
     @Override
