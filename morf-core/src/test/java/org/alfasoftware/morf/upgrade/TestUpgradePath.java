@@ -15,10 +15,20 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Table;
@@ -28,19 +38,10 @@ import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 
 /**
  * Tests {@link UpgradePath} and {@link UpgradePathFactoryImpl}.
@@ -170,6 +171,26 @@ public class TestUpgradePath {
     assertEquals("Result", "[INIT1, INIT2, XYZZY, FIN1, FIN2]", sql.toString());
 
     verify(upgradeStatusTableService, times(1)).updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS);
+    verify(upgradeStatusTableService, times(1)).updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED);
+    verifyNoMoreInteractions(upgradeStatusTableService);
+  }
+
+
+  /**
+   * Test that {@link UpgradePathFactoryImpl#create(List, ConnectionResources, GraphBasedUpgradeBuilder, List)} correctly
+   * uses the optimisation SQL in combination with {@link UpgradeStatusTableService} for upgrades.
+   */
+  @Test
+  public void testFactoryCreateUpgradeWithInitialisationSql() {
+
+    when(upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED)).thenReturn(ImmutableList.of("FIN1", "FIN2"));
+
+    UpgradePath path = factory.create(ImmutableList.of(mock(UpgradeStep.class)), connectionResources, mock(GraphBasedUpgradeBuilder.class), ImmutableList.of("INIT1", "INIT2"));
+    path.writeSql(ImmutableList.of("XYZZY"));
+
+    List<String> sql = path.getSql();
+    assertEquals("Result", "[INIT1, INIT2, XYZZY, FIN1, FIN2]", sql.toString());
+
     verify(upgradeStatusTableService, times(1)).updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED);
     verifyNoMoreInteractions(upgradeStatusTableService);
   }

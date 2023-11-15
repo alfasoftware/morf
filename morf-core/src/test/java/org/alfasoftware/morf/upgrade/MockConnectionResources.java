@@ -24,6 +24,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
@@ -123,8 +124,12 @@ public class MockConnectionResources  {
       
       for (String query : resultSets.keySet()) {
         ResultSet resultSet = resultSets.get(query);
-        
+
         when(statement.executeQuery(StringUtils.isEmpty(query) ? anyString() : eq(query))).thenReturn(resultSet);
+
+        PreparedStatement preparedStatement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+        when(preparedStatement.executeQuery()).thenReturn(resultSet);
+        when(connection.prepareStatement(StringUtils.isEmpty(query) ? anyString() : eq(query))).thenReturn(preparedStatement);
       }
 
       return mockConnectionResources;

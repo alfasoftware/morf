@@ -15,8 +15,22 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import com.google.common.collect.ImmutableList;
-import com.google.inject.Inject;
+import static org.alfasoftware.morf.sql.SelectStatement.select;
+import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.alfasoftware.morf.sql.element.Function.count;
+import static org.alfasoftware.morf.upgrade.UpgradeStatus.NONE;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import javax.sql.DataSource;
+
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor.ResultSetProcessor;
@@ -34,20 +48,8 @@ import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import javax.sql.DataSource;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import static org.alfasoftware.morf.sql.SelectStatement.select;
-import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.sql.element.Function.count;
-import static org.alfasoftware.morf.upgrade.UpgradeStatus.NONE;
+import com.google.common.collect.ImmutableList;
+import com.google.inject.Inject;
 
 /**
  * Entry point for upgrade processing.
@@ -63,6 +65,7 @@ public class Upgrade {
   private final ViewChangesDeploymentHelper viewChangesDeploymentHelper;
   private final ViewDeploymentValidator viewDeploymentValidator;
   private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
+  private final DatabaseUpgradePathValidationService databaseUpgradePathValidationService;
 
 
   public Upgrade(
@@ -71,7 +74,8 @@ public class Upgrade {
       UpgradeStatusTableService upgradeStatusTableService,
       ViewChangesDeploymentHelper viewChangesDeploymentHelper,
       ViewDeploymentValidator viewDeploymentValidator,
-      GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory) {
+      GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
+      DatabaseUpgradePathValidationService databaseUpgradePathValidationService) {
     super();
     this.connectionResources = connectionResources;
     this.factory = factory;
@@ -79,6 +83,7 @@ public class Upgrade {
     this.viewChangesDeploymentHelper = viewChangesDeploymentHelper;
     this.viewDeploymentValidator = viewDeploymentValidator;
     this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
+    this.databaseUpgradePathValidationService = databaseUpgradePathValidationService;
   }
 
 
@@ -95,8 +100,9 @@ public class Upgrade {
   public static void performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, ViewDeploymentValidator viewDeploymentValidator) {
     SqlScriptExecutorProvider sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
     UpgradeStatusTableService upgradeStatusTableService = new UpgradeStatusTableServiceImpl(sqlScriptExecutorProvider, connectionResources.sqlDialect());
+    DatabaseUpgradePathValidationService databaseUpgradePathValidationService = new DatabaseUpgradePathValidationServiceImpl(connectionResources, upgradeStatusTableService);
     try {
-      UpgradePath path = Upgrade.createPath(targetSchema, upgradeSteps, connectionResources, upgradeStatusTableService, viewDeploymentValidator);
+      UpgradePath path = Upgrade.createPath(targetSchema, upgradeSteps, connectionResources, upgradeStatusTableService, viewDeploymentValidator, databaseUpgradePathValidationService);
       if (path.hasStepsToApply()) {
         sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor()).execute(path.getSql());
       }
@@ -124,11 +130,12 @@ public class Upgrade {
       Collection<Class<? extends UpgradeStep>> upgradeSteps,
       ConnectionResources connectionResources,
       UpgradeStatusTableService upgradeStatusTableService,
-      ViewDeploymentValidator viewDeploymentValidator) {
+      ViewDeploymentValidator viewDeploymentValidator,
+      DatabaseUpgradePathValidationService databaseUpgradePathValidationService) {
     Upgrade upgrade = new Upgrade(
       connectionResources,
       new UpgradePathFactoryImpl(new UpgradeScriptAdditionsProvider.NoOpScriptAdditions(), UpgradeStatusTableServiceImpl::new),
-      upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()), viewDeploymentValidator, null);
+      upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()), viewDeploymentValidator, null, databaseUpgradePathValidationService);
     return upgrade.findPath(targetSchema, upgradeSteps, Collections.<String> emptySet(), connectionResources.getDataSource());
   }
 
@@ -258,7 +265,7 @@ public class Upgrade {
     }
 
     // Build the actual upgrade path
-    return buildUpgradePath(connectionResources, sourceSchema, targetSchema, upgradeStatements, viewChanges, upgradesToApply, graphBasedUpgradeBuilder);
+    return buildUpgradePath(connectionResources, sourceSchema, targetSchema, upgradeStatements, viewChanges, upgradesToApply, graphBasedUpgradeBuilder, upgradeAuditCount);
   }
 
 
@@ -271,15 +278,20 @@ public class Upgrade {
    * @param upgradeStatements Upgrade statements identified.
    * @param viewChanges Changes needed to the views.
    * @param upgradesToApply Upgrade steps identified.
+   * @param graphBasedUpgradeBuilder Builder for the Graph Based Upgrade
+   * @param upgradeAuditCount Number of already applied upgrade steps
    * @return An upgrade path.
    */
   private UpgradePath buildUpgradePath(
       ConnectionResources connectionResources, Schema sourceSchema, Schema targetSchema,
       List<String> upgradeStatements, ViewChanges viewChanges,
       List<UpgradeStep> upgradesToApply,
-      GraphBasedUpgradeBuilder graphBasedUpgradeBuilder) {
+      GraphBasedUpgradeBuilder graphBasedUpgradeBuilder,
+      long upgradeAuditCount) {
 
-    UpgradePath path = factory.create(upgradesToApply, connectionResources, graphBasedUpgradeBuilder);
+    List<String> pathValidationSql = databaseUpgradePathValidationService.getPathValidationSql(upgradeAuditCount);
+
+    UpgradePath path = factory.create(upgradesToApply, connectionResources, graphBasedUpgradeBuilder, pathValidationSql);
 
     path.writeSql(UpgradeHelper.preSchemaUpgrade(new UpgradeSchemas(sourceSchema, targetSchema), viewChanges, viewChangesDeploymentHelper));
 
@@ -316,10 +328,7 @@ public class Upgrade {
    * @return the number of upgrade steps from the UpgradeAudit table
    */
   long getUpgradeAuditRowCount(ResultSetProcessor<Long> processor) {
-    TableReference upgradeAuditTable = tableRef(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME);
-    SelectStatement selectStatement = select(count(upgradeAuditTable.field("upgradeUUID")))
-            .from(upgradeAuditTable)
-            .build();
+    SelectStatement selectStatement = selectUpgradeAuditTableCount();
     long appliedUpgradeStepsCount = -1;
     try {
       SqlScriptExecutorProvider sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
@@ -335,6 +344,17 @@ public class Upgrade {
 
 
   /**
+   * Creates a select statement which can be used to count the number of upgrade steps that have already been run
+   */
+  private SelectStatement selectUpgradeAuditTableCount() {
+    TableReference upgradeAuditTable = tableRef(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME);
+    return select(count(upgradeAuditTable.field("upgradeUUID")))
+        .from(upgradeAuditTable)
+        .build();
+  }
+
+
+  /**
    * Factory that can be used to create {@link Upgrade}s.
    *
    * @author Copyright (c) Alfa Financial Software 2022
@@ -345,6 +365,7 @@ public class Upgrade {
     private final UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory;
     private final ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory;
     private final ViewDeploymentValidator.Factory viewDeploymentValidatorFactory;
+    private final DatabaseUpgradePathValidationService.Factory databaseUpgradeLockServiceFactory;
 
 
     @Inject
@@ -352,12 +373,14 @@ public class Upgrade {
                    UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory,
                    GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
                    ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory,
-                   ViewDeploymentValidator.Factory viewDeploymentValidatorFactory) {
+                   ViewDeploymentValidator.Factory viewDeploymentValidatorFactory,
+                   DatabaseUpgradePathValidationService.Factory databaseUpgradeLockServiceFactory) {
       this.upgradePathFactory = upgradePathFactory;
       this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
       this.upgradeStatusTableServiceFactory =  upgradeStatusTableServiceFactory;
       this.viewChangesDeploymentHelperFactory = viewChangesDeploymentHelperFactory;
       this.viewDeploymentValidatorFactory = viewDeploymentValidatorFactory;
+      this.databaseUpgradeLockServiceFactory = databaseUpgradeLockServiceFactory;
     }
 
     public Upgrade create(ConnectionResources connectionResources) {
@@ -366,7 +389,8 @@ public class Upgrade {
                          upgradeStatusTableServiceFactory.create(connectionResources),
                          viewChangesDeploymentHelperFactory.create(connectionResources),
                          viewDeploymentValidatorFactory.createViewDeploymentValidator(connectionResources),
-                         graphBasedUpgradeBuilderFactory);
+                         graphBasedUpgradeBuilderFactory,
+                         databaseUpgradeLockServiceFactory.create(connectionResources));
     }
   }
 }

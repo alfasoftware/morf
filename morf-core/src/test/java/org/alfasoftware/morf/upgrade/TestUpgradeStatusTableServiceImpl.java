@@ -15,25 +15,6 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import org.alfasoftware.morf.jdbc.RuntimeSqlException;
-import org.alfasoftware.morf.jdbc.SqlDialect;
-import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
-import org.alfasoftware.morf.jdbc.SqlScriptExecutor.ResultSetProcessor;
-import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
-import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.sql.InsertStatement;
-import org.alfasoftware.morf.sql.UpdateStatement;
-import org.alfasoftware.morf.sql.element.TableReference;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.ArgumentCaptor;
-
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.Optional;
-
 import static org.alfasoftware.morf.sql.SqlUtils.insert;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
@@ -44,13 +25,35 @@ import static org.alfasoftware.morf.upgrade.UpgradeStatusTableServiceImpl.STATUS
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.fail;
-import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.Optional;
+
+import javax.sql.DataSource;
+
+import org.alfasoftware.morf.jdbc.RuntimeSqlException;
+import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
+import org.alfasoftware.morf.jdbc.SqlScriptExecutor.ResultSetProcessor;
+import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
+import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.sql.InsertStatement;
+import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.sql.UpdateStatement;
+import org.alfasoftware.morf.sql.element.TableReference;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 
 /**
  * Test {@link UpgradeStatusTableServiceImpl} works correctly.
@@ -81,6 +84,9 @@ public class TestUpgradeStatusTableServiceImpl {
 
     when(dataSource.getConnection()).thenReturn(mock(Connection.class));
     when(sqlScriptExecutorProvider.get()).thenReturn(sqlScriptExecutor);
+    when(sqlDialect.convertStatementToSQL(any(InsertStatement.class))).thenReturn(List.of());
+    when(sqlDialect.convertStatementToSQL(any(UpdateStatement.class))).thenReturn("");
+    when(sqlDialect.convertStatementToSQL(any(SelectStatement.class))).thenReturn("");
     upgradeStatusTableService = new UpgradeStatusTableServiceImpl(sqlScriptExecutorProvider, sqlDialect);
   }
 

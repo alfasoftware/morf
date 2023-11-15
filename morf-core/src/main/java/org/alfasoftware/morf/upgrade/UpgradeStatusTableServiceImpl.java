@@ -15,7 +15,23 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import com.google.inject.Inject;
+import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.alfasoftware.morf.sql.SqlUtils.insert;
+import static org.alfasoftware.morf.sql.SqlUtils.literal;
+import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.alfasoftware.morf.sql.SqlUtils.update;
+import static org.alfasoftware.morf.upgrade.UpgradeStatus.IN_PROGRESS;
+import static org.alfasoftware.morf.upgrade.UpgradeStatus.NONE;
+
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.Optional;
+
+import javax.sql.DataSource;
+
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -29,22 +45,8 @@ import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-
-import static org.alfasoftware.morf.metadata.SchemaUtils.column;
-import static org.alfasoftware.morf.metadata.SchemaUtils.table;
-import static org.alfasoftware.morf.sql.SqlUtils.insert;
-import static org.alfasoftware.morf.sql.SqlUtils.literal;
-import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.sql.SqlUtils.update;
-import static org.alfasoftware.morf.upgrade.UpgradeStatus.IN_PROGRESS;
-import static org.alfasoftware.morf.upgrade.UpgradeStatus.NONE;
+import com.google.common.collect.ImmutableList;
+import com.google.inject.Inject;
 
 /**
  * Service to manage or generate SQL for the transient table that stores the upgrade status.
@@ -122,7 +124,7 @@ class UpgradeStatusTableServiceImpl implements UpgradeStatusTableService {
    */
   @Override
   public List<String> updateTableScript(UpgradeStatus fromStatus, UpgradeStatus toStatus) {
-    List<String> statements = new ArrayList<>();
+    ImmutableList.Builder<String> statements = ImmutableList.builder();
     TableReference table = tableRef(UpgradeStatusTableService.UPGRADE_STATUS);
     if (fromStatus == NONE && toStatus == IN_PROGRESS) {
       // Create upgradeStatus table and insert
@@ -141,7 +143,7 @@ class UpgradeStatusTableServiceImpl implements UpgradeStatusTableService {
       statements.add(sqlDialect.convertStatementToSQL(update));
     }
 
-    return statements;
+    return statements.build();
   }
 
 

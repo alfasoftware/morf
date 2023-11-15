@@ -15,6 +15,7 @@
 package org.alfasoftware.morf.guicesupport;
 
 import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.upgrade.DatabaseUpgradePathValidationService;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeBuilder.GraphBasedUpgradeBuilderFactory;
 import org.alfasoftware.morf.upgrade.TableContribution;
 import org.alfasoftware.morf.upgrade.Upgrade;
@@ -66,9 +67,10 @@ public class MorfModule extends AbstractModule {
       UpgradeStatusTableService upgradeStatusTableService,
       ViewChangesDeploymentHelper viewChangesDeploymentHelper,
       ViewDeploymentValidator viewDeploymentValidator,
-      GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory) {
+      GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
+      DatabaseUpgradePathValidationService databaseUpgradePathValidationService) {
     return new Upgrade(connectionResources, factory, upgradeStatusTableService, viewChangesDeploymentHelper,
-      viewDeploymentValidator, graphBasedUpgradeBuilderFactory);
+      viewDeploymentValidator, graphBasedUpgradeBuilderFactory, databaseUpgradePathValidationService);
   }
 }
 

@@ -4,6 +4,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertNotNull;
 
 import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.upgrade.DatabaseUpgradePathValidationService;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeBuilder.GraphBasedUpgradeBuilderFactory;
 import org.alfasoftware.morf.upgrade.Upgrade;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
@@ -29,6 +30,8 @@ public class TestMorfModule {
   @Mock ViewChangesDeploymentHelper viewChangesDeploymentHelper;
   @Mock ViewDeploymentValidator viewDeploymentValidator;
   @Mock GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
+  @Mock
+  DatabaseUpgradePathValidationService databaseUpgradePathValidationService;
 
   private MorfModule module;
 
@@ -47,7 +50,7 @@ public class TestMorfModule {
   @Test
   public void testProvideUpgrade() {
     Upgrade upgrade = module.provideUpgrade(connectionResources, factory, upgradeStatusTableService,
-      viewChangesDeploymentHelper, viewDeploymentValidator, graphBasedUpgradeBuilderFactory);
+      viewChangesDeploymentHelper, viewDeploymentValidator, graphBasedUpgradeBuilderFactory, databaseUpgradePathValidationService);
 
     assertNotNull("Instance of Upgrade should not be null", upgrade);
     assertThat("Instance of Upgrade", upgrade, IsInstanceOf.instanceOf(Upgrade.class));
