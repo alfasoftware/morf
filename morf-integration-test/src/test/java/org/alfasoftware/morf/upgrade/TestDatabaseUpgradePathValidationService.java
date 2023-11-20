@@ -103,8 +103,26 @@ public class TestDatabaseUpgradePathValidationService {
     // Then
     RuntimeSqlException exception = assertThrows(RuntimeSqlException.class, () -> sqlScriptExecutorProvider.get().execute(initialisationSql));
     // SQL State 23505 indicates a unique constraint violation on H2/PGSQL and 23000 on Oracle, so match based on either
-    String upgradeStatusUniqueConstraintViolationRegex = "Error executing SQL \\[INSERT INTO [A-Za-z0-9]*[_.]?zzzUpgradeStatus .*? SQL state \\[(23505|23000)]";
+    String upgradeStatusUniqueConstraintViolationRegex = "Error executing SQL \\[INSERT INTO [A-Za-z0-9_]*[.]?zzzUpgradeStatus .*? SQL state \\[(23505|23000)]";
     assertTrue("Should have been a unique constraint violation exception thrown", exception.getMessage().matches(upgradeStatusUniqueConstraintViolationRegex));
+  }
+
+
+  /**
+   * Test that the initialisation SQL produced does not result in an exception being thrown if the upgrade audit count
+   * supplied is -1, indicating we could not connect to the UpgradeAudit table
+   */
+  @Test
+  public void testInitialisationSqlWhenUnableToConnectToUpgradeAudit() {
+    // Given
+    List<String> initialisationSql = databaseUpgradePathValidationService.getPathValidationSql(-1); // -1 count returned when unable to connect to UpgradeAudit table
+
+    // When
+    // Execute initialisation SQL for the first time (perform an upgrade)
+    int rowsUpdated = sqlScriptExecutorProvider.get().execute(initialisationSql);
+
+    // Then
+    // No exception being thrown indicates the statement does not insert a duplicate record when the count is -1
   }
 
 
