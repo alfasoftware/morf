@@ -6,6 +6,7 @@ import static org.alfasoftware.morf.sql.InsertStatement.insert;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.upgradeAuditTable;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -123,6 +124,7 @@ public class TestDatabaseUpgradePathValidationService {
 
     // Then
     // No exception being thrown indicates the statement does not insert a duplicate record when the count is -1
+    assertEquals("There should be 1 row updated, a single insertion into zzzUpgradeStatus", 1, rowsUpdated);
   }
 
 
