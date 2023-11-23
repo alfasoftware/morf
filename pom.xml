@@ -68,6 +68,8 @@
         morf-testsupport/**
     </sonar.coverage.exclusions>
     <test.threadCount>4</test.threadCount>
+    <!-- Empty default for when we're not using JaCoCo coverage --> 
+    <argLine></argLine>
   </properties>
   
   <build>
@@ -114,7 +116,7 @@
               <log4j.configuration>file:${basedir}/../etc/log4j-maven.properties</log4j.configuration>
             </systemPropertyVariables>
             <argLine>
-              --add-opens=java.base/java.lang=ALL-UNNAMED
+              @{argLine} --add-opens=java.base/java.lang=ALL-UNNAMED
             </argLine>
           </configuration>
         </plugin>
