@@ -23,6 +23,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -227,17 +228,24 @@ public class UpgradePathFinder {
    */
   public void findDiscrepancies(Map<String, String> upgradeAudit) {
 
-    List<String> discrepancies = stepsToApply.stream()
+    //Change this so that we are extracting the name and both UUID
+    List<String[]> discrepancies = stepsToApply.stream()
             .filter(step -> isStepDuplicated(step, upgradeAudit))
-            .map(step -> step.getUuid().toString())
+            .map(step -> extractDetails(step, upgradeAudit))
             .collect(Collectors.toList());
 
     if (!discrepancies.isEmpty()) {
       String message = String.format("Some upgrade steps could have run before with different UUID. The following have been detected:%n%s",
-              String.join("\n", discrepancies));
-      log.error(message);
+              discrepancies.stream()
+                      .map(d -> String.format("Name: %s, Old UUID: %s, Current UUID: %s", d[0], d[1], d[2]))
+                      .collect(Collectors.joining("\n")));
       throw new IllegalStateException(message);
     }
+  }
+
+  private String[] extractDetails(CandidateStep step, Map<String, String> upgradeAudit) {
+    String name = step.getName();
+    return new String[]{name, step.getUuid().toString(), upgradeAudit.get(name)};
   }
 
   /**
