@@ -23,7 +23,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -228,7 +227,6 @@ public class UpgradePathFinder {
    */
   public void findDiscrepancies(Map<String, String> upgradeAudit) {
 
-    //Change this so that we are extracting the name and both UUID
     List<String[]> discrepancies = stepsToApply.stream()
             .filter(step -> isStepDuplicated(step, upgradeAudit))
             .map(step -> extractDetails(step, upgradeAudit))
