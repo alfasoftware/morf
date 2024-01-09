@@ -20,6 +20,7 @@ import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.junit.Test;
 import org.mockito.Mockito;
 
 import com.google.common.collect.ImmutableList;

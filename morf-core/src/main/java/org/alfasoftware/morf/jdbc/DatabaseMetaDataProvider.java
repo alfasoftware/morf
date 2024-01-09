@@ -54,6 +54,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 
+import static org.alfasoftware.morf.util.SchemaValidatorUtil.validateSchemaName;
+
 /**
  * Provides meta data based on a database connection.
  *
@@ -111,7 +113,7 @@ public class DatabaseMetaDataProvider implements Schema {
   protected DatabaseMetaDataProvider(Connection connection, String schemaName) {
     super();
     this.connection = connection;
-    this.schemaName = schemaName;
+    this.schemaName = validateSchemaName(schemaName);
   }
 
 
