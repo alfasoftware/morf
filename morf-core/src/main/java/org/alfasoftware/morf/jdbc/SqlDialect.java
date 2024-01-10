@@ -17,6 +17,7 @@ package org.alfasoftware.morf.jdbc;
 
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
+import static org.alfasoftware.morf.util.SchemaValidatorUtil.validateSchemaName;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -155,6 +156,8 @@ public abstract class SqlDialect {
    */
   protected static final String MERGE_SOURCE_ALIAS = "xmergesource";
 
+
+
   /**
    * Database schema name.
    */
@@ -174,7 +177,7 @@ public abstract class SqlDialect {
    */
   public SqlDialect(String schemaName) {
     super();
-    this.schemaName = schemaName;
+    this.schemaName = validateSchemaName(schemaName);
   }
 
 
