@@ -5,7 +5,7 @@ package org.alfasoftware.morf.util;
  */
 public class SchemaValidatorUtil {
 
-    private static final String pattern = "^[A-Za-z0-9_]*$";
+    private static final String schemaNameValidationPattern = "^[A-Za-z0-9_]*$";
 
     /**
      * throws a IllegalArgumentException when schemaName contains illegal chars.
@@ -14,8 +14,8 @@ public class SchemaValidatorUtil {
      * @throws IllegalArgumentException - when the schemaName contains invalid chars.
      */
     public static String validateSchemaName(String schemaName) {
-        if(!schemaName.matches(pattern)) {
-            throw new IllegalArgumentException("schemaName has failed validation check.");
+        if(!schemaName.matches(schemaNameValidationPattern)) {
+            throw new IllegalArgumentException("schemaName [" + schemaName + "] failed validation check.");
         };
         return schemaName;
     }
