@@ -26,6 +26,6 @@ public class TestSchemaValidatorUtil {
     public void testSchemaNameWithSpecialCharsIsNotValid(){
         String unvalidatedName = "S;chemaName";
          IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> validateSchemaName(unvalidatedName));
-         assertTrue(e.getMessage().contains("schemaName has failed validation check"));
+         assertTrue(e.getMessage().contains("schemaName [" + unvalidatedName + "] failed validation check."));
     }
 }
