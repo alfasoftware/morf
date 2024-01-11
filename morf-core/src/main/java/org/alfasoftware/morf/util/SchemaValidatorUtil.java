@@ -14,7 +14,7 @@ public class SchemaValidatorUtil {
      * @throws IllegalArgumentException - when the schemaName contains invalid chars.
      */
     public static String validateSchemaName(String schemaName) {
-        if(!schemaName.matches(schemaNameValidationPattern)) {
+        if(schemaName != null && !schemaName.matches(schemaNameValidationPattern)) {
             throw new IllegalArgumentException("schemaName [" + schemaName + "] failed validation check.");
         };
         return schemaName;
