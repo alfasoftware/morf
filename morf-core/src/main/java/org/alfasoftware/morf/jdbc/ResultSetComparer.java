@@ -697,7 +697,7 @@ public class ResultSetComparer {
 
 
   /**
-   * Implement this interface to handle validation of the left {@link ResultSet} from:
+   * Implement this interface to handle validation of the left and right {@link ResultSet}s from:
    * {@link ResultSetComparer#compare(int[], SelectStatement, SelectStatement, Connection, Connection, CompareCallback, ResultSetValidator)}
    * or
    * {@link ResultSetComparer#compare(int[], SelectStatement, SelectStatement, Connection, Connection, CompareCallback, StatementParameters, StatementParameters, ResultSetValidator)}
