@@ -790,7 +790,7 @@ public class TestResultSetComparer {
     CompareCallback callBackMock = mock(CompareCallback.class);
     ArgumentCaptor<ResultSetMismatch> rsMismatchCaptor = ArgumentCaptor.forClass(ResultSetMismatch.class);
 
-    int mismatchCount = resultSetComparer.compare(new int[]{}, left, right, connection, connection, callBackMock, leftParams, rightParams, true);
+    int mismatchCount = resultSetComparer.compare(new int[]{}, left, right, connection, connection, callBackMock, leftParams, rightParams, (leftRs, rightRs) -> {});
 
     verify(callBackMock).mismatch(rsMismatchCaptor.capture());
     assertEquals("Row count should have 1 mismatch", 1, mismatchCount);
@@ -812,10 +812,48 @@ public class TestResultSetComparer {
     CompareCallback callBackMock = mock(CompareCallback.class);
     ArgumentCaptor<ResultSetMismatch> rsMismatchCaptor = ArgumentCaptor.forClass(ResultSetMismatch.class);
 
-    int mismatchCount = resultSetComparer.compare(new int[]{}, left, right, connection, connection, callBackMock, leftParams, rightParams, true);
+    int mismatchCount = resultSetComparer.compare(new int[]{}, left, right, connection, connection, callBackMock, leftParams, rightParams, (leftRs, rightRs) -> {});
 
     verify(callBackMock).mismatch(rsMismatchCaptor.capture());
     assertEquals("Row count should have 1 mismatch", 1, mismatchCount);
     checkMismatch(rsMismatchCaptor.getValue(), MISMATCH, "1", "3", 1);
+  }
+
+
+  /**
+   * Tests the validation of the left result set.
+   */
+  @Test(expected = IllegalStateException.class)
+  public void testLeftResultSetValidation()  {
+    SelectStatement left = select(field("intKey")).from(tableRef("MultiKeyLeft")).where(field("intKey").eq(parameter("param1").type(INTEGER)));
+    SelectStatement right = select(count()).from(tableRef("MultiKeyMatchRight"));
+
+    StatementParameters leftParams = DataSetUtils.statementParameters().setInteger("param1", 99); // <-- Does not exist
+    StatementParameters rightParams = DataSetUtils.statementParameters();
+
+    resultSetComparer.compare(new int[]{}, left, right, connection, connection, mock(CompareCallback.class), leftParams, rightParams, (leftRs, rightRs) -> {
+      if (!leftRs.isBeforeFirst()) {
+        throw new IllegalStateException("Validation exception");
+      }
+    });
+  }
+
+
+  /**
+   * Tests the validation of the right result set.
+   */
+  @Test(expected = IllegalStateException.class)
+  public void testRightResultSetValidation()  {
+    SelectStatement left = select(field("intKey")).from(tableRef("MultiKeyLeft"));
+    SelectStatement right = select(count()).from(tableRef("MultiKeyMatchRight")).where(field("intKey").eq(parameter("param1").type(INTEGER)));
+
+    StatementParameters leftParams = DataSetUtils.statementParameters();
+    StatementParameters rightParams = DataSetUtils.statementParameters().setInteger("param1", 99); // <-- Does not exist
+
+    resultSetComparer.compare(new int[]{}, left, right, connection, connection, mock(CompareCallback.class), leftParams, rightParams, (leftRs, rightRs) -> {
+      if (!rightRs.isBeforeFirst()) {
+        throw new IllegalStateException("Validation exception");
+      }
+    });
   }
 }
