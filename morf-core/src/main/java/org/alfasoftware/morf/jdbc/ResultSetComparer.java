@@ -75,6 +75,7 @@ import com.google.inject.Provider;
  */
 public class ResultSetComparer {
 
+
   /**
    * Factory to create {@link ResultSetComparer} instances
    *
@@ -206,7 +207,7 @@ public class ResultSetComparer {
    * @return the number of mismatches between the two data sets.
    */
   public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection connection, CompareCallback callback) {
-    return compare(keyColumns, left, right, connection, connection, callback, true);
+    return compare(keyColumns, left, right, connection, connection, callback, rs -> {});
   }
 
 
@@ -224,19 +225,17 @@ public class ResultSetComparer {
    * @param leftConnection a database connection to use for the left statement.
    * @param rightConnection a database connection to use for the right statement.
    * @param callback the mismatch callback interface implementation.
-   * @param allowZeroSourceRecordCount whether a zero record count result should be allowed by the comparison.
+   * @param leftResultSetValidator allows to validate of the left result set by implementing {@link ResultSetValidator}.
    * @return the number of mismatches between the two data sets.
    */
-  public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback, boolean allowZeroSourceRecordCount) {
+  public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback, ResultSetValidator leftResultSetValidator) {
     String leftSql = leftSqlDialect.convertStatementToSQL(left);
     String rightSql = rightSqlDialect.convertStatementToSQL(right);
     try (Statement statementLeft = leftConnection.createStatement();
          Statement statementRight = rightConnection.createStatement();
          ResultSet rsLeft = statementLeft.executeQuery(leftSql);
          ResultSet rsRight = statementRight.executeQuery(rightSql)) {
-      if (!allowZeroSourceRecordCount && !rsLeft.isBeforeFirst()) {
-        throw new RuntimeException("The following query should return at least one record: " + left);
-      }
+      leftResultSetValidator.validate(rsLeft);
       return compare(keyColumns, rsLeft, rsRight, callback);
     } catch (SQLException e) {
       throw new RuntimeSqlException("Error comparing SQL statements [" + leftSql + ", " + rightSql + "]", e);
@@ -261,7 +260,7 @@ public class ResultSetComparer {
    * @return the number of mismatches between the two data sets.
    */
   public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback) {
-    return compare(keyColumns, left, right, leftConnection, rightConnection, callback, true);
+    return compare(keyColumns, left, right, leftConnection, rightConnection, callback, rs -> {});
   }
 
 
@@ -284,18 +283,16 @@ public class ResultSetComparer {
    * @param callback the mismatch callback interface implementation.
    * @param leftStatementParameters the statement parameters to use for the left statement.
    * @param rightStatementParameters the statement parameters to use for the right statement.
-   * @param allowZeroSourceRecordCount whether a zero record count result should be allowed by the comparison.
+   * @param leftResultSetValidator allows to validate of the left result set by implementing {@link ResultSetValidator}.
    * @return the number of mismatches between the two data sets.
    */
   public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback,
-                     StatementParameters leftStatementParameters, StatementParameters rightStatementParameters, boolean allowZeroSourceRecordCount) {
+                     StatementParameters leftStatementParameters, StatementParameters rightStatementParameters, ResultSetValidator leftResultSetValidator) {
     try (NamedParameterPreparedStatement statementLeft = NamedParameterPreparedStatement.parseSql(leftSqlDialect.convertStatementToSQL(left), leftSqlDialect).createForQueryOn(leftConnection);
          NamedParameterPreparedStatement statementRight = NamedParameterPreparedStatement.parseSql(rightSqlDialect.convertStatementToSQL(right), rightSqlDialect).createForQueryOn(rightConnection);
          ResultSet rsLeft = parameteriseAndExecute(statementLeft, left, leftStatementParameters, leftSqlDialect);
          ResultSet rsRight = parameteriseAndExecute(statementRight, right, rightStatementParameters, rightSqlDialect)) {
-      if (!allowZeroSourceRecordCount && !rsLeft.isBeforeFirst()) {
-        throw new RuntimeException("The following query should return at least one record: " + left);
-      }
+      leftResultSetValidator.validate(rsLeft);
       return compare(keyColumns, rsLeft, rsRight, callback);
     } catch (SQLException e) {
       throw new RuntimeSqlException("Error comparing SQL statements [" + left + ", " + right + "]", e);
@@ -326,7 +323,7 @@ public class ResultSetComparer {
    */
   public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback,
                      StatementParameters leftStatementParameters, StatementParameters rightStatementParameters) {
-    return compare(keyColumns, left, right, leftConnection, rightConnection, callback, leftStatementParameters, rightStatementParameters, true);
+    return compare(keyColumns, left, right, leftConnection, rightConnection, callback, leftStatementParameters, rightStatementParameters, rs -> {});
   }
 
 
@@ -685,7 +682,7 @@ public class ResultSetComparer {
 
   /**
    * Implement this interface to handle reconciliation mismatch callbacks from
-   * {@link ResultSetComparer#compare(int[], SelectStatement, SelectStatement, Connection, CompareCallback)}
+   * {@link ResultSetComparer#compare(int[], SelectStatement, SelectStatement, Connection, Connection, CompareCallback)}
    *
    * @author Copyright (c) Alfa Financial Software 2014
    */
@@ -696,5 +693,24 @@ public class ResultSetComparer {
      * @param mismatch The mismatch details.
      */
     void mismatch(ResultSetMismatch mismatch);
+  }
+
+
+  /**
+   * Implement this interface to handle validation of the left {@link ResultSet} from:
+   * {@link ResultSetComparer#compare(int[], SelectStatement, SelectStatement, Connection, Connection, CompareCallback, ResultSetValidator)}
+   * or
+   * {@link ResultSetComparer#compare(int[], SelectStatement, SelectStatement, Connection, Connection, CompareCallback, StatementParameters, StatementParameters, ResultSetValidator)}
+   *
+   * @author Copyright (c) Alfa Financial Software Limited. 2024
+   */
+  public interface ResultSetValidator {
+
+    /**
+     * Handle the validation.
+     *
+     * @param rs the {@link ResultSet} to validate.
+     */
+    void validate(ResultSet rs) throws SQLException;
   }
 }
