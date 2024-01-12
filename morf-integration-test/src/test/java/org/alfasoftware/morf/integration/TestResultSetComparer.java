@@ -790,7 +790,7 @@ public class TestResultSetComparer {
     CompareCallback callBackMock = mock(CompareCallback.class);
     ArgumentCaptor<ResultSetMismatch> rsMismatchCaptor = ArgumentCaptor.forClass(ResultSetMismatch.class);
 
-    int mismatchCount = resultSetComparer.compare(new int[]{}, left, right, connection, connection, callBackMock, leftParams, rightParams);
+    int mismatchCount = resultSetComparer.compare(new int[]{}, left, right, connection, connection, callBackMock, leftParams, rightParams, true);
 
     verify(callBackMock).mismatch(rsMismatchCaptor.capture());
     assertEquals("Row count should have 1 mismatch", 1, mismatchCount);
@@ -812,7 +812,7 @@ public class TestResultSetComparer {
     CompareCallback callBackMock = mock(CompareCallback.class);
     ArgumentCaptor<ResultSetMismatch> rsMismatchCaptor = ArgumentCaptor.forClass(ResultSetMismatch.class);
 
-    int mismatchCount = resultSetComparer.compare(new int[]{}, left, right, connection, connection, callBackMock, leftParams, rightParams);
+    int mismatchCount = resultSetComparer.compare(new int[]{}, left, right, connection, connection, callBackMock, leftParams, rightParams, true);
 
     verify(callBackMock).mismatch(rsMismatchCaptor.capture());
     assertEquals("Row count should have 1 mismatch", 1, mismatchCount);

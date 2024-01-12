@@ -206,7 +206,41 @@ public class ResultSetComparer {
    * @return the number of mismatches between the two data sets.
    */
   public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection connection, CompareCallback callback) {
-    return compare(keyColumns, left, right, connection, connection, callback);
+    return compare(keyColumns, left, right, connection, connection, callback, true);
+  }
+
+
+  /**
+   * Given 2 data sets, return the number of mismatches between them, and
+   * callback with the details of any mismatches as they are found. This method
+   * will generate the result sets itself by executing two select statements
+   * using the supplied connection. See {@link ResultSetMismatch} for definition
+   * of a mismatch.
+   *
+   * @param keyColumns The indexes of the key columns common to both data sets.
+   *          If this is empty, the result sets must return only one record.
+   * @param left The left hand data set {@link SelectStatement}
+   * @param right The right hand data set {@link SelectStatement}
+   * @param leftConnection a database connection to use for the left statement.
+   * @param rightConnection a database connection to use for the right statement.
+   * @param callback the mismatch callback interface implementation.
+   * @param allowZeroSourceRecordCount whether a zero record count result should be allowed by the comparison.
+   * @return the number of mismatches between the two data sets.
+   */
+  public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback, boolean allowZeroSourceRecordCount) {
+    String leftSql = leftSqlDialect.convertStatementToSQL(left);
+    String rightSql = rightSqlDialect.convertStatementToSQL(right);
+    try (Statement statementLeft = leftConnection.createStatement();
+         Statement statementRight = rightConnection.createStatement();
+         ResultSet rsLeft = statementLeft.executeQuery(leftSql);
+         ResultSet rsRight = statementRight.executeQuery(rightSql)) {
+      if (!allowZeroSourceRecordCount && !rsLeft.isBeforeFirst()) {
+        throw new RuntimeException("The following query should return at least one record: " + left);
+      }
+      return compare(keyColumns, rsLeft, rsRight, callback);
+    } catch (SQLException e) {
+      throw new RuntimeSqlException("Error comparing SQL statements [" + leftSql + ", " + rightSql + "]", e);
+    }
   }
 
 
@@ -227,15 +261,44 @@ public class ResultSetComparer {
    * @return the number of mismatches between the two data sets.
    */
   public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback) {
-    String leftSql = leftSqlDialect.convertStatementToSQL(left);
-    String rightSql = rightSqlDialect.convertStatementToSQL(right);
-    try (Statement statementLeft = leftConnection.createStatement();
-         Statement statementRight = rightConnection.createStatement();
-         ResultSet rsLeft = statementLeft.executeQuery(leftSql);
-         ResultSet rsRight = statementRight.executeQuery(rightSql)) {
+    return compare(keyColumns, left, right, leftConnection, rightConnection, callback, true);
+  }
+
+
+  /**
+   * Given 2 data sets, return the number of mismatches between them, and
+   * callback with the details of any mismatches as they are found. This method
+   * will generate the result sets itself by executing two select statements
+   * using the supplied connection, using the provided statement parameters.
+   *
+   * Avoid using this method if it is known that there are no parameters in the statements.
+   *
+   * See {@link ResultSetMismatch} for definition of a mismatch.
+   *
+   * @param keyColumns The indexes of the key columns common to both data sets.
+   *          If this is empty, the result sets must return only one record.
+   * @param left The left hand data set {@link SelectStatement}
+   * @param right The right hand data set {@link SelectStatement}
+   * @param leftConnection a database connection to use for the left statement.
+   * @param rightConnection a database connection to use for the right statement.
+   * @param callback the mismatch callback interface implementation.
+   * @param leftStatementParameters the statement parameters to use for the left statement.
+   * @param rightStatementParameters the statement parameters to use for the right statement.
+   * @param allowZeroSourceRecordCount whether a zero record count result should be allowed by the comparison.
+   * @return the number of mismatches between the two data sets.
+   */
+  public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback,
+                     StatementParameters leftStatementParameters, StatementParameters rightStatementParameters, boolean allowZeroSourceRecordCount) {
+    try (NamedParameterPreparedStatement statementLeft = NamedParameterPreparedStatement.parseSql(leftSqlDialect.convertStatementToSQL(left), leftSqlDialect).createForQueryOn(leftConnection);
+         NamedParameterPreparedStatement statementRight = NamedParameterPreparedStatement.parseSql(rightSqlDialect.convertStatementToSQL(right), rightSqlDialect).createForQueryOn(rightConnection);
+         ResultSet rsLeft = parameteriseAndExecute(statementLeft, left, leftStatementParameters, leftSqlDialect);
+         ResultSet rsRight = parameteriseAndExecute(statementRight, right, rightStatementParameters, rightSqlDialect)) {
+      if (!allowZeroSourceRecordCount && !rsLeft.isBeforeFirst()) {
+        throw new RuntimeException("The following query should return at least one record: " + left);
+      }
       return compare(keyColumns, rsLeft, rsRight, callback);
     } catch (SQLException e) {
-      throw new RuntimeSqlException("Error comparing SQL statements [" + leftSql + ", " + rightSql + "]", e);
+      throw new RuntimeSqlException("Error comparing SQL statements [" + left + ", " + right + "]", e);
     }
   }
 
@@ -263,14 +326,7 @@ public class ResultSetComparer {
    */
   public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback,
                      StatementParameters leftStatementParameters, StatementParameters rightStatementParameters) {
-    try (NamedParameterPreparedStatement statementLeft = NamedParameterPreparedStatement.parseSql(leftSqlDialect.convertStatementToSQL(left), leftSqlDialect).createForQueryOn(leftConnection);
-         NamedParameterPreparedStatement statementRight = NamedParameterPreparedStatement.parseSql(rightSqlDialect.convertStatementToSQL(right), rightSqlDialect).createForQueryOn(rightConnection);
-         ResultSet rsLeft = parameteriseAndExecute(statementLeft, left, leftStatementParameters, leftSqlDialect);
-         ResultSet rsRight = parameteriseAndExecute(statementRight, right, rightStatementParameters, rightSqlDialect)) {
-      return compare(keyColumns, rsLeft, rsRight, callback);
-    } catch (SQLException e) {
-      throw new RuntimeSqlException("Error comparing SQL statements [" + left + ", " + right + "]", e);
-    }
+    return compare(keyColumns, left, right, leftConnection, rightConnection, callback, leftStatementParameters, rightStatementParameters, true);
   }
 
 
