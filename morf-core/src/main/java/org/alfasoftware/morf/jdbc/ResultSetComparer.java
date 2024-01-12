@@ -207,7 +207,7 @@ public class ResultSetComparer {
    * @return the number of mismatches between the two data sets.
    */
   public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection connection, CompareCallback callback) {
-    return compare(keyColumns, left, right, connection, connection, callback, rs -> {});
+    return compare(keyColumns, left, right, connection, connection, callback, (leftRs, rightRs) -> {});
   }
 
 
@@ -225,17 +225,17 @@ public class ResultSetComparer {
    * @param leftConnection a database connection to use for the left statement.
    * @param rightConnection a database connection to use for the right statement.
    * @param callback the mismatch callback interface implementation.
-   * @param leftResultSetValidator allows to validate of the left result set by implementing {@link ResultSetValidator}.
+   * @param resultSetValidator allows to validate of the result sets by implementing {@link ResultSetValidator}.
    * @return the number of mismatches between the two data sets.
    */
-  public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback, ResultSetValidator leftResultSetValidator) {
+  public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback, ResultSetValidator resultSetValidator) {
     String leftSql = leftSqlDialect.convertStatementToSQL(left);
     String rightSql = rightSqlDialect.convertStatementToSQL(right);
     try (Statement statementLeft = leftConnection.createStatement();
          Statement statementRight = rightConnection.createStatement();
          ResultSet rsLeft = statementLeft.executeQuery(leftSql);
          ResultSet rsRight = statementRight.executeQuery(rightSql)) {
-      leftResultSetValidator.validate(rsLeft);
+      resultSetValidator.validate(rsLeft, rsRight);
       return compare(keyColumns, rsLeft, rsRight, callback);
     } catch (SQLException e) {
       throw new RuntimeSqlException("Error comparing SQL statements [" + leftSql + ", " + rightSql + "]", e);
@@ -260,7 +260,7 @@ public class ResultSetComparer {
    * @return the number of mismatches between the two data sets.
    */
   public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback) {
-    return compare(keyColumns, left, right, leftConnection, rightConnection, callback, rs -> {});
+    return compare(keyColumns, left, right, leftConnection, rightConnection, callback, (leftRs, rightRs) -> {});
   }
 
 
@@ -283,16 +283,16 @@ public class ResultSetComparer {
    * @param callback the mismatch callback interface implementation.
    * @param leftStatementParameters the statement parameters to use for the left statement.
    * @param rightStatementParameters the statement parameters to use for the right statement.
-   * @param leftResultSetValidator allows to validate of the left result set by implementing {@link ResultSetValidator}.
+   * @param resultSetValidator allows to validate of the result sets by implementing {@link ResultSetValidator}.
    * @return the number of mismatches between the two data sets.
    */
   public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback,
-                     StatementParameters leftStatementParameters, StatementParameters rightStatementParameters, ResultSetValidator leftResultSetValidator) {
+                     StatementParameters leftStatementParameters, StatementParameters rightStatementParameters, ResultSetValidator resultSetValidator) {
     try (NamedParameterPreparedStatement statementLeft = NamedParameterPreparedStatement.parseSql(leftSqlDialect.convertStatementToSQL(left), leftSqlDialect).createForQueryOn(leftConnection);
          NamedParameterPreparedStatement statementRight = NamedParameterPreparedStatement.parseSql(rightSqlDialect.convertStatementToSQL(right), rightSqlDialect).createForQueryOn(rightConnection);
          ResultSet rsLeft = parameteriseAndExecute(statementLeft, left, leftStatementParameters, leftSqlDialect);
          ResultSet rsRight = parameteriseAndExecute(statementRight, right, rightStatementParameters, rightSqlDialect)) {
-      leftResultSetValidator.validate(rsLeft);
+      resultSetValidator.validate(rsLeft, rsRight);
       return compare(keyColumns, rsLeft, rsRight, callback);
     } catch (SQLException e) {
       throw new RuntimeSqlException("Error comparing SQL statements [" + left + ", " + right + "]", e);
@@ -323,7 +323,7 @@ public class ResultSetComparer {
    */
   public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback,
                      StatementParameters leftStatementParameters, StatementParameters rightStatementParameters) {
-    return compare(keyColumns, left, right, leftConnection, rightConnection, callback, leftStatementParameters, rightStatementParameters, rs -> {});
+    return compare(keyColumns, left, right, leftConnection, rightConnection, callback, leftStatementParameters, rightStatementParameters, (leftRs, rightRs) -> {});
   }
 
 
@@ -709,8 +709,9 @@ public class ResultSetComparer {
     /**
      * Handle the validation.
      *
-     * @param rs the {@link ResultSet} to validate.
+     * @param leftRs the left {@link ResultSet} to validate.
+     * @param rightRs the right {@link ResultSet} to validate.
      */
-    void validate(ResultSet rs) throws SQLException;
+    void validate(ResultSet leftRs, ResultSet rigthRs) throws SQLException;
   }
 }
