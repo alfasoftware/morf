@@ -700,7 +700,7 @@ public class ResultSetComparer {
    * Implement this interface to handle validation of the left and right {@link ResultSet}s from:
    * {@link ResultSetComparer#compare(int[], SelectStatement, SelectStatement, Connection, Connection, CompareCallback, ResultSetValidator)}
    * or
-   * {@link ResultSetComparer#compare(int[], SelectStatement, SelectStatement, Connection, Connection, CompareCallback, StatementParameters, StatementParameters, ResultSetValidator)}
+   * {@link ResultSetComparer#compare(int[], SelectStatement, SelectStatement, Connection, Connection, CompareCallback, StatementParameters, StatementParameters, ResultSetValidator)}.
    *
    * @author Copyright (c) Alfa Financial Software Limited. 2024
    */
