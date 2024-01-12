@@ -712,6 +712,6 @@ public class ResultSetComparer {
      * @param leftRs the left {@link ResultSet} to validate.
      * @param rightRs the right {@link ResultSet} to validate.
      */
-    void validate(ResultSet leftRs, ResultSet rigthRs) throws SQLException;
+    void validate(ResultSet leftRs, ResultSet rightRs) throws SQLException;
   }
 }
