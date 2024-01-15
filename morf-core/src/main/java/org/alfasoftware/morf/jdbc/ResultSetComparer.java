@@ -711,47 +711,36 @@ public class ResultSetComparer {
    */
   public enum ResultSetValidation {
 
-     NO_VALIDATION((leftRs, rightRs) -> {}),
+     NO_VALIDATION() {
+      @Override
+      void validate(ResultSet leftRs, ResultSet rightRs) {}
+     },
 
-     NON_ZERO_RECORD_COUNT_ON_LEFT((leftRs, rightRs) -> {
-       try {
-         if (!leftRs.isBeforeFirst()) {
-           throw new IllegalStateException(format("The following query should return at least one record: [%s]", leftRs.getStatement()));
-         }
-       } catch (SQLException e) {
-          ExceptionUtils.rethrow(e);
-       }
-     }),
+     NON_ZERO_RECORD_COUNT_ON_LEFT() {
+      @Override
+      void validate(ResultSet leftRs, ResultSet rightRs) {
+        try {
+          if (!leftRs.isBeforeFirst()) {
+            throw new IllegalStateException(format("The following query should return at least one record: [%s]", leftRs.getStatement()));
+            }
+          } catch (SQLException e) {
+           ExceptionUtils.rethrow(e);
+          }
+        }
+     },
 
-     NON_ZERO_RECORD_COUNT_ON_RIGHT((leftRs, rightRs) -> {
-       try {
-         if (!rightRs.isBeforeFirst()) {
-           throw new IllegalStateException(format("The following query should return at least one record: [%s]", rightRs.getStatement()));
-         }
-       } catch (SQLException e) {
-          ExceptionUtils.rethrow(e);
-       }
-     });
-
-    private Validator resultSetValidator;
-
-
-    ResultSetValidation(Validator resultSetValidator) {
-      this.resultSetValidator = resultSetValidator;
-    }
-
-
-    public void validate(ResultSet leftRs, ResultSet rightRs) {
-      resultSetValidator.validate(leftRs, rightRs);
-    }
-
-    /**
-     * Inner validation interface.
-     *
-     * @author Copyright (c) Alfa Financial Software Limited. 2024
-     */
-    @FunctionalInterface
-    private interface Validator {
+     NON_ZERO_RECORD_COUNT_ON_RIGHT() {
+      @Override
+      void validate(ResultSet leftRs, ResultSet rightRs) {
+        try {
+            if (!rightRs.isBeforeFirst()) {
+              throw new IllegalStateException(format("The following query should return at least one record: [%s]", rightRs.getStatement()));
+            }
+          } catch (SQLException e) {
+             ExceptionUtils.rethrow(e);
+          }
+        }
+      };
 
       /**
        * Handle the validation.
@@ -759,8 +748,7 @@ public class ResultSetComparer {
        * @param leftRs the left {@link ResultSet} to validate.
        * @param rightRs the right {@link ResultSet} to validate.
        */
-      void validate(ResultSet leftRs, ResultSet rightRs);
-    }
- }
+      abstract void validate(ResultSet leftRs, ResultSet rightRs);
+  }
 
 }
