@@ -17,7 +17,6 @@ package org.alfasoftware.morf.integration;
 
 import static java.lang.String.format;
 import static org.alfasoftware.morf.jdbc.ResultSetComparer.ResultSetValidator.NON_ZERO_RECORD_COUNT_ON_LEFT;
-import static org.alfasoftware.morf.jdbc.ResultSetComparer.ResultSetValidator.NON_ZERO_RECORD_COUNT_ON_LEFT_AND_RIGHT;
 import static org.alfasoftware.morf.jdbc.ResultSetComparer.ResultSetValidator.NON_ZERO_RECORD_COUNT_ON_RIGHT;
 import static org.alfasoftware.morf.jdbc.ResultSetComparer.ResultSetValidator.NO_VALIDATION;
 import static org.alfasoftware.morf.jdbc.ResultSetMismatch.MismatchType.MISMATCH;
@@ -859,20 +858,4 @@ public class TestResultSetComparer {
       () -> resultSetComparer.compare(new int[]{}, left, right, connection, connection, mock(CompareCallback.class), leftParams, rightParams, NON_ZERO_RECORD_COUNT_ON_RIGHT));
   }
 
-
-  /**
-   * Tests the validation of the left and right result set.
-   */
-  @Test
-  public void testLeftOrRightResultSetValidation()  {
-    SelectStatement left = select(field("intKey")).from(tableRef("MultiKeyLeft")).where(field("intKey").eq(parameter("param1").type(INTEGER)));
-    SelectStatement right = select(field("intKey")).from(tableRef("MultiKeyMatchRight")).where(field("stringKey").eq(parameter("param2").type(STRING)));
-
-    StatementParameters leftParams = DataSetUtils.statementParameters().setInteger("param1", 88); // <-- Does not exist
-    StatementParameters rightParams = DataSetUtils.statementParameters().setString("param2", "NonExistent"); // <-- Does not exist
-
-    assertThrows(format("The following queries should return at least one record: [%s], [%s]", left, right),
-      IllegalStateException.class,
-      () -> resultSetComparer.compare(new int[]{}, left, right, connection, connection, mock(CompareCallback.class), leftParams, rightParams, NON_ZERO_RECORD_COUNT_ON_LEFT_AND_RIGHT));
-  }
 }

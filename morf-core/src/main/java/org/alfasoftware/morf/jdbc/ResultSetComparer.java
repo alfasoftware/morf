@@ -233,7 +233,7 @@ public class ResultSetComparer {
    * @param leftConnection a database connection to use for the left statement.
    * @param rightConnection a database connection to use for the right statement.
    * @param callback the mismatch callback interface implementation.
-   * @param resultSetValidator allows to validate of the result sets by implementing {@link ResultSetValidator}.
+   * @param resultSetValidators allows to validate of the result sets by specifying one or more {@link ResultSetValidator}s.
    * @return the number of mismatches between the two data sets.
    */
   public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback, ResultSetValidator... resultSetValidators) {
@@ -291,7 +291,7 @@ public class ResultSetComparer {
    * @param callback the mismatch callback interface implementation.
    * @param leftStatementParameters the statement parameters to use for the left statement.
    * @param rightStatementParameters the statement parameters to use for the right statement.
-   * @param resultSetValidator allows to validate of the result sets by implementing {@link ResultSetValidator}.
+   * @param resultSetValidators allows to validate of the result sets by specifying one or more {@link ResultSetValidator}s.
    * @return the number of mismatches between the two data sets.
    */
   public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback,
@@ -727,16 +727,6 @@ public class ResultSetComparer {
        try {
          if (!rightRs.isBeforeFirst()) {
            throw new IllegalStateException(format("The following query should return at least one record: [%s]", rightRs.getStatement()));
-         }
-      } catch (SQLException e) {
-        ExceptionUtils.rethrow(e);
-      }
-     }),
-
-     NON_ZERO_RECORD_COUNT_ON_LEFT_AND_RIGHT((leftRs, rightRs) -> {
-       try {
-         if (!leftRs.isBeforeFirst() && !rightRs.isBeforeFirst()) {
-           throw new IllegalStateException(format("The following queries should both return at least one record: [%s], [%s]", leftRs.getStatement(), rightRs.getStatement()));
          }
       } catch (SQLException e) {
         ExceptionUtils.rethrow(e);
