@@ -149,10 +149,6 @@ public class ResultSetComparer {
   /** Value used to represent a field value where the record does not exist in the record set */
   public static final String RECORD_NOT_PRESENT = "<Not present>";
 
-  public static final ResultSet leftRs = null;
-
-  public static final ResultSet rightRs = null;
-
   private final SqlDialect leftSqlDialect;
   private final SqlDialect rightSqlDialect;
   private final Optional<Predicate<Void>> terminatePredicate;
