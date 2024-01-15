@@ -233,7 +233,7 @@ public class ResultSetComparer {
    * @param leftConnection a database connection to use for the left statement.
    * @param rightConnection a database connection to use for the right statement.
    * @param callback the mismatch callback interface implementation.
-   * @param resultSetValidators allows to validate of the result sets by specifying one or more {@link ResultSetValidator}s.
+   * @param resultSetValidators allows to validate the result sets by specifying one or more {@link ResultSetValidator}s.
    * @return the number of mismatches between the two data sets.
    */
   public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback, ResultSetValidator... resultSetValidators) {
@@ -291,7 +291,7 @@ public class ResultSetComparer {
    * @param callback the mismatch callback interface implementation.
    * @param leftStatementParameters the statement parameters to use for the left statement.
    * @param rightStatementParameters the statement parameters to use for the right statement.
-   * @param resultSetValidators allows to validate of the result sets by specifying one or more {@link ResultSetValidator}s.
+   * @param resultSetValidators allows to validate the result sets by specifying one or more {@link ResultSetValidator}s.
    * @return the number of mismatches between the two data sets.
    */
   public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback,
