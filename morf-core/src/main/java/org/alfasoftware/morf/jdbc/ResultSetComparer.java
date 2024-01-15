@@ -32,7 +32,7 @@ import static java.sql.Types.SMALLINT;
 import static java.sql.Types.TINYINT;
 import static java.sql.Types.VARCHAR;
 import static java.util.Arrays.asList;
-import static org.alfasoftware.morf.jdbc.ResultSetComparer.ResultSetValidator.NO_VALIDATION;
+import static org.alfasoftware.morf.jdbc.ResultSetComparer.ResultSetValidation.NO_VALIDATION;
 import static org.alfasoftware.morf.jdbc.ResultSetMismatch.MismatchType.MISMATCH;
 import static org.alfasoftware.morf.jdbc.ResultSetMismatch.MismatchType.MISSING_LEFT;
 import static org.alfasoftware.morf.jdbc.ResultSetMismatch.MismatchType.MISSING_RIGHT;
@@ -233,17 +233,17 @@ public class ResultSetComparer {
    * @param leftConnection a database connection to use for the left statement.
    * @param rightConnection a database connection to use for the right statement.
    * @param callback the mismatch callback interface implementation.
-   * @param resultSetValidators allows to validate the result sets by specifying one or more {@link ResultSetValidator}s.
+   * @param resultSetValidations allows to validate the result sets by specifying one or more {@link ResultSetValidation}s.
    * @return the number of mismatches between the two data sets.
    */
-  public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback, ResultSetValidator... resultSetValidators) {
+  public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback, ResultSetValidation... resultSetValidations) {
     String leftSql = leftSqlDialect.convertStatementToSQL(left);
     String rightSql = rightSqlDialect.convertStatementToSQL(right);
     try (Statement statementLeft = leftConnection.createStatement();
          Statement statementRight = rightConnection.createStatement();
          ResultSet rsLeft = statementLeft.executeQuery(leftSql);
          ResultSet rsRight = statementRight.executeQuery(rightSql)) {
-      asList(resultSetValidators).forEach(validator -> validator.validate(rsLeft, rsRight));
+      asList(resultSetValidations).forEach(validator -> validator.validate(rsLeft, rsRight));
       return compare(keyColumns, rsLeft, rsRight, callback);
     } catch (SQLException e) {
       throw new RuntimeSqlException("Error comparing SQL statements [" + leftSql + ", " + rightSql + "]", e);
@@ -291,16 +291,16 @@ public class ResultSetComparer {
    * @param callback the mismatch callback interface implementation.
    * @param leftStatementParameters the statement parameters to use for the left statement.
    * @param rightStatementParameters the statement parameters to use for the right statement.
-   * @param resultSetValidators allows to validate the result sets by specifying one or more {@link ResultSetValidator}s.
+   * @param resultSetValidations allows to validate the result sets by specifying one or more {@link ResultSetValidation}s.
    * @return the number of mismatches between the two data sets.
    */
   public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback,
-                     StatementParameters leftStatementParameters, StatementParameters rightStatementParameters, ResultSetValidator... resultSetValidators) {
+                     StatementParameters leftStatementParameters, StatementParameters rightStatementParameters, ResultSetValidation... resultSetValidations) {
     try (NamedParameterPreparedStatement statementLeft = NamedParameterPreparedStatement.parseSql(leftSqlDialect.convertStatementToSQL(left), leftSqlDialect).createForQueryOn(leftConnection);
          NamedParameterPreparedStatement statementRight = NamedParameterPreparedStatement.parseSql(rightSqlDialect.convertStatementToSQL(right), rightSqlDialect).createForQueryOn(rightConnection);
          ResultSet rsLeft = parameteriseAndExecute(statementLeft, left, leftStatementParameters, leftSqlDialect);
          ResultSet rsRight = parameteriseAndExecute(statementRight, right, rightStatementParameters, rightSqlDialect)) {
-      asList(resultSetValidators).forEach(validator -> validator.validate(rsLeft, rsRight));
+      asList(resultSetValidations).forEach(validator -> validator.validate(rsLeft, rsRight));
       return compare(keyColumns, rsLeft, rsRight, callback);
     } catch (SQLException e) {
       throw new RuntimeSqlException("Error comparing SQL statements [" + left + ", " + right + "]", e);
@@ -709,7 +709,7 @@ public class ResultSetComparer {
    *
    * @author Copyright (c) Alfa Financial Software Limited. 2024
    */
-  public enum ResultSetValidator {
+  public enum ResultSetValidation {
 
      NO_VALIDATION((leftRs, rightRs) -> {}),
 
@@ -718,9 +718,9 @@ public class ResultSetComparer {
          if (!leftRs.isBeforeFirst()) {
            throw new IllegalStateException(format("The following query should return at least one record: [%s]", leftRs.getStatement()));
          }
-      } catch (SQLException e) {
-        ExceptionUtils.rethrow(e);
-      }
+       } catch (SQLException e) {
+          ExceptionUtils.rethrow(e);
+       }
      }),
 
      NON_ZERO_RECORD_COUNT_ON_RIGHT((leftRs, rightRs) -> {
@@ -728,15 +728,15 @@ public class ResultSetComparer {
          if (!rightRs.isBeforeFirst()) {
            throw new IllegalStateException(format("The following query should return at least one record: [%s]", rightRs.getStatement()));
          }
-      } catch (SQLException e) {
-        ExceptionUtils.rethrow(e);
-      }
+       } catch (SQLException e) {
+          ExceptionUtils.rethrow(e);
+       }
      });
 
     private Validator resultSetValidator;
 
 
-    ResultSetValidator(Validator resultSetValidator) {
+    ResultSetValidation(Validator resultSetValidator) {
       this.resultSetValidator = resultSetValidator;
     }
 

@@ -16,9 +16,9 @@
 package org.alfasoftware.morf.integration;
 
 import static java.lang.String.format;
-import static org.alfasoftware.morf.jdbc.ResultSetComparer.ResultSetValidator.NON_ZERO_RECORD_COUNT_ON_LEFT;
-import static org.alfasoftware.morf.jdbc.ResultSetComparer.ResultSetValidator.NON_ZERO_RECORD_COUNT_ON_RIGHT;
-import static org.alfasoftware.morf.jdbc.ResultSetComparer.ResultSetValidator.NO_VALIDATION;
+import static org.alfasoftware.morf.jdbc.ResultSetComparer.ResultSetValidation.NON_ZERO_RECORD_COUNT_ON_LEFT;
+import static org.alfasoftware.morf.jdbc.ResultSetComparer.ResultSetValidation.NON_ZERO_RECORD_COUNT_ON_RIGHT;
+import static org.alfasoftware.morf.jdbc.ResultSetComparer.ResultSetValidation.NO_VALIDATION;
 import static org.alfasoftware.morf.jdbc.ResultSetMismatch.MismatchType.MISMATCH;
 import static org.alfasoftware.morf.jdbc.ResultSetMismatch.MismatchType.MISSING_LEFT;
 import static org.alfasoftware.morf.jdbc.ResultSetMismatch.MismatchType.MISSING_RIGHT;
