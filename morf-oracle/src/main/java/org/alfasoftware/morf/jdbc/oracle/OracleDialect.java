@@ -141,7 +141,7 @@ class OracleDialect extends SqlDialect {
 
   private Collection<String> tableDeploymentStatements(Table table, boolean asSelect) {
     return ImmutableList.<String>builder()
-            .addAll(createStatementsForCreateTables(table, asSelect))
+            .add(createTableStatement(table, asSelect))
             .addAll(buildRemainingStatementsAndComments(table))
             .build();
   }
@@ -199,18 +199,7 @@ class OracleDialect extends SqlDialect {
     return createTableStatement.toString();
   }
 
-  private Collection<String> createStatementsForCreateTables(Table table, Boolean asSelect){
-    ImmutableList<String> statements = ImmutableList.<String>builder()
-    .add(createTableStatement(table, asSelect)).build();
-
-    if (!primaryKeysForTable(table).isEmpty() && asSelect) {
-      statements.add(addTableAlterForPrimaryKeyStatement(table, asSelect));
-    }
-
-    return statements;
-  }
-
-  private String addTableAlterForPrimaryKeyStatement(Table table, Boolean asSelect) {
+  private String addTableAlterForPrimaryKeyStatement(Table table) {
       StringBuilder updateTableStatement =new StringBuilder();
       updateTableStatement.append("ALTER TABLE " + schemaNamePrefix() + table.getName()  + " ADD " + primaryKeyConstraint(table));
       return updateTableStatement.toString();
@@ -1169,7 +1158,7 @@ class OracleDialect extends SqlDialect {
             .append(withCasting ? convertStatementToSQL(addCastsToSelect(table, selectStatement)) : convertStatementToSQL(selectStatement))
             .toString()
     );
-    result.add(addTableAlterForPrimaryKeyStatement(table, true));
+    result.add(addTableAlterForPrimaryKeyStatement(table));
 
     result.add("ALTER TABLE " + schemaNamePrefix() + table.getName()  + " NOPARALLEL LOGGING");
 
