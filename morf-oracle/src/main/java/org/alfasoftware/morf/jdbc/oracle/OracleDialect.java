@@ -141,9 +141,9 @@ class OracleDialect extends SqlDialect {
 
   private Collection<String> tableDeploymentStatements(Table table, boolean asSelect) {
     return ImmutableList.<String>builder()
-      .add(createTableStatement(table, asSelect))
-      .addAll(buildRemainingStatementsAndComments(table))
-      .build();
+            .addAll(createStatementsForCreateTables(table, asSelect))
+            .addAll(buildRemainingStatementsAndComments(table))
+            .build();
   }
 
 
@@ -181,7 +181,7 @@ class OracleDialect extends SqlDialect {
     }
 
     // Put on the primary key constraint
-    if (!primaryKeysForTable(table).isEmpty()) {
+    if (!primaryKeysForTable(table).isEmpty() && !asSelect) {
       createTableStatement.append(", ");
       createTableStatement.append(primaryKeyConstraint(table));
     }
@@ -199,6 +199,22 @@ class OracleDialect extends SqlDialect {
     return createTableStatement.toString();
   }
 
+  private Collection<String> createStatementsForCreateTables(Table table, Boolean asSelect){
+    ImmutableList<String> statements = ImmutableList.<String>builder()
+    .add(createTableStatement(table, asSelect)).build();
+
+    if (!primaryKeysForTable(table).isEmpty() && asSelect) {
+      statements.add(addTableAlterForPrimaryKeyStatement(table, asSelect));
+    }
+
+    return statements;
+  }
+
+  private String addTableAlterForPrimaryKeyStatement(Table table, Boolean asSelect) {
+      StringBuilder updateTableStatement =new StringBuilder();
+      updateTableStatement.append("ALTER TABLE " + schemaNamePrefix() + table.getName()  + " ADD " + primaryKeyConstraint(table));
+      return updateTableStatement.toString();
+  }
 
   private Collection<String> createColumnComments(Table table) {
 
@@ -1153,6 +1169,8 @@ class OracleDialect extends SqlDialect {
             .append(withCasting ? convertStatementToSQL(addCastsToSelect(table, selectStatement)) : convertStatementToSQL(selectStatement))
             .toString()
     );
+    result.add(addTableAlterForPrimaryKeyStatement(table, true));
+
     result.add("ALTER TABLE " + schemaNamePrefix() + table.getName()  + " NOPARALLEL LOGGING");
 
     if (!primaryKeysForTable(table).isEmpty()) {
