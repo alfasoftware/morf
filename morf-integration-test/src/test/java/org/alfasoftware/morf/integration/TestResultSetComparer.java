@@ -15,6 +15,10 @@
 
 package org.alfasoftware.morf.integration;
 
+import static java.lang.String.format;
+import static org.alfasoftware.morf.jdbc.ResultSetComparer.ResultSetValidation.NON_ZERO_RECORD_COUNT_ON_LEFT;
+import static org.alfasoftware.morf.jdbc.ResultSetComparer.ResultSetValidation.NON_ZERO_RECORD_COUNT_ON_RIGHT;
+import static org.alfasoftware.morf.jdbc.ResultSetComparer.ResultSetValidation.NO_VALIDATION;
 import static org.alfasoftware.morf.jdbc.ResultSetMismatch.MismatchType.MISMATCH;
 import static org.alfasoftware.morf.jdbc.ResultSetMismatch.MismatchType.MISSING_LEFT;
 import static org.alfasoftware.morf.jdbc.ResultSetMismatch.MismatchType.MISSING_RIGHT;
@@ -35,6 +39,7 @@ import static org.alfasoftware.morf.sql.element.Function.count;
 import static org.alfasoftware.morf.sql.element.Function.sum;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -790,7 +795,7 @@ public class TestResultSetComparer {
     CompareCallback callBackMock = mock(CompareCallback.class);
     ArgumentCaptor<ResultSetMismatch> rsMismatchCaptor = ArgumentCaptor.forClass(ResultSetMismatch.class);
 
-    int mismatchCount = resultSetComparer.compare(new int[]{}, left, right, connection, connection, callBackMock, leftParams, rightParams);
+    int mismatchCount = resultSetComparer.compare(new int[]{}, left, right, connection, connection, callBackMock, leftParams, rightParams, NO_VALIDATION);
 
     verify(callBackMock).mismatch(rsMismatchCaptor.capture());
     assertEquals("Row count should have 1 mismatch", 1, mismatchCount);
@@ -812,10 +817,45 @@ public class TestResultSetComparer {
     CompareCallback callBackMock = mock(CompareCallback.class);
     ArgumentCaptor<ResultSetMismatch> rsMismatchCaptor = ArgumentCaptor.forClass(ResultSetMismatch.class);
 
-    int mismatchCount = resultSetComparer.compare(new int[]{}, left, right, connection, connection, callBackMock, leftParams, rightParams);
+    int mismatchCount = resultSetComparer.compare(new int[]{}, left, right, connection, connection, callBackMock, leftParams, rightParams, NO_VALIDATION);
 
     verify(callBackMock).mismatch(rsMismatchCaptor.capture());
     assertEquals("Row count should have 1 mismatch", 1, mismatchCount);
     checkMismatch(rsMismatchCaptor.getValue(), MISMATCH, "1", "3", 1);
   }
+
+
+  /**
+   * Tests the validation of the left result set.
+   */
+  @Test
+  public void testLeftResultSetValidation()  {
+    SelectStatement left = select(field("intKey")).from(tableRef("MultiKeyLeft")).where(field("intKey").eq(parameter("param1").type(INTEGER)));
+    SelectStatement right = select(field("intKey")).from(tableRef("MultiKeyMatchRight"));
+
+    StatementParameters leftParams = DataSetUtils.statementParameters().setInteger("param1", 99); // <-- Does not exist
+    StatementParameters rightParams = DataSetUtils.statementParameters();
+
+    assertThrows(format("The following query should return at least one record: [%s]", left),
+      IllegalStateException.class,
+      () -> resultSetComparer.compare(new int[]{}, left, right, connection, connection, mock(CompareCallback.class), leftParams, rightParams, NON_ZERO_RECORD_COUNT_ON_LEFT));
+  }
+
+
+  /**
+   * Tests the validation of the right result set.
+   */
+  @Test
+  public void testRightResultSetValidation()  {
+    SelectStatement left = select(field("intKey")).from(tableRef("MultiKeyLeft"));
+    SelectStatement right = select(field("intKey")).from(tableRef("MultiKeyMatchRight")).where(field("intKey").eq(parameter("param1").type(INTEGER)));
+
+    StatementParameters leftParams = DataSetUtils.statementParameters();
+    StatementParameters rightParams = DataSetUtils.statementParameters().setInteger("param1", 99); // <-- Does not exist
+
+    assertThrows(format("The following query should return at least one record: [%s]", right),
+      IllegalStateException.class,
+      () -> resultSetComparer.compare(new int[]{}, left, right, connection, connection, mock(CompareCallback.class), leftParams, rightParams, NON_ZERO_RECORD_COUNT_ON_RIGHT));
+  }
+
 }
