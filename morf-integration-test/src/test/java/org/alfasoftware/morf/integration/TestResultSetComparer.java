@@ -15,9 +15,6 @@
 
 package org.alfasoftware.morf.integration;
 
-import static java.lang.String.format;
-import static org.alfasoftware.morf.jdbc.ResultSetComparer.ResultSetValidation.NON_ZERO_RECORD_COUNT_ON_LEFT;
-import static org.alfasoftware.morf.jdbc.ResultSetComparer.ResultSetValidation.NON_ZERO_RECORD_COUNT_ON_RIGHT;
 import static org.alfasoftware.morf.jdbc.ResultSetComparer.ResultSetValidation.NO_VALIDATION;
 import static org.alfasoftware.morf.jdbc.ResultSetMismatch.MismatchType.MISMATCH;
 import static org.alfasoftware.morf.jdbc.ResultSetMismatch.MismatchType.MISSING_LEFT;
@@ -40,6 +37,7 @@ import static org.alfasoftware.morf.sql.element.Function.sum;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -59,6 +57,7 @@ import org.alfasoftware.morf.guicesupport.InjectMembersRule;
 import org.alfasoftware.morf.jdbc.DatabaseDataSetConsumer;
 import org.alfasoftware.morf.jdbc.ResultSetComparer;
 import org.alfasoftware.morf.jdbc.ResultSetComparer.CompareCallback;
+import org.alfasoftware.morf.jdbc.ResultSetComparer.ResultSetValidation;
 import org.alfasoftware.morf.jdbc.ResultSetMismatch;
 import org.alfasoftware.morf.jdbc.ResultSetMismatch.MismatchType;
 import org.alfasoftware.morf.metadata.DataSetUtils;
@@ -826,36 +825,66 @@ public class TestResultSetComparer {
 
 
   /**
-   * Tests the validation of the left result set.
+   * Tests the validation of a non empty left result set.
    */
   @Test
-  public void testLeftResultSetValidation()  {
+  public void testNonEmptyLeftResultSetValidation()  {
     SelectStatement left = select(field("intKey")).from(tableRef("MultiKeyLeft")).where(field("intKey").eq(parameter("param1").type(INTEGER)));
     SelectStatement right = select(field("intKey")).from(tableRef("MultiKeyMatchRight"));
 
     StatementParameters leftParams = DataSetUtils.statementParameters().setInteger("param1", 99); // <-- Does not exist
     StatementParameters rightParams = DataSetUtils.statementParameters();
 
-    assertThrows(format("The following query should return at least one record: [%s]", left),
-      IllegalStateException.class,
-      () -> resultSetComparer.compare(new int[]{}, left, right, connection, connection, mock(CompareCallback.class), leftParams, rightParams, NON_ZERO_RECORD_COUNT_ON_LEFT));
+    IllegalStateException exception = assertThrows(IllegalStateException.class, () -> resultSetComparer.compare(new int[]{}, left, right, connection, connection, mock(CompareCallback.class), leftParams, rightParams, ResultSetValidation.NON_EMPTY_RESULT_ON_LEFT));
+    assertTrue(exception.getMessage().contains("The following query should return at least one record"));
   }
 
 
   /**
-   * Tests the validation of the right result set.
+   * Tests the validation of a non empty right result set.
    */
   @Test
-  public void testRightResultSetValidation()  {
+  public void testNonEmptyRightResultSetValidation()  {
     SelectStatement left = select(field("intKey")).from(tableRef("MultiKeyLeft"));
     SelectStatement right = select(field("intKey")).from(tableRef("MultiKeyMatchRight")).where(field("intKey").eq(parameter("param1").type(INTEGER)));
 
     StatementParameters leftParams = DataSetUtils.statementParameters();
     StatementParameters rightParams = DataSetUtils.statementParameters().setInteger("param1", 99); // <-- Does not exist
 
-    assertThrows(format("The following query should return at least one record: [%s]", right),
-      IllegalStateException.class,
-      () -> resultSetComparer.compare(new int[]{}, left, right, connection, connection, mock(CompareCallback.class), leftParams, rightParams, NON_ZERO_RECORD_COUNT_ON_RIGHT));
+    IllegalStateException exception = assertThrows(IllegalStateException.class, () -> resultSetComparer.compare(new int[]{}, left, right, connection, connection, mock(CompareCallback.class), leftParams, rightParams, ResultSetValidation.NON_EMPTY_RESULT_ON_RIGHT));
+    assertTrue(exception.getMessage().contains("The following query should return at least one record"));
+  }
+
+
+  /**
+   * Tests the validation of a non zero count left result set.
+   */
+  @Test
+  public void testNonZeroCountLeftResultSetValidation()  {
+    SelectStatement left = select(count()).from(tableRef("MultiKeyLeft")).where(field("intKey").eq(parameter("param1").type(INTEGER)));
+    SelectStatement right = select(count()).from(tableRef("MultiKeyMatchRight"));
+
+    StatementParameters leftParams = DataSetUtils.statementParameters().setInteger("param1", 99); // <-- Does not exist
+    StatementParameters rightParams = DataSetUtils.statementParameters();
+
+    IllegalStateException exception = assertThrows(IllegalStateException.class, () -> resultSetComparer.compare(new int[]{}, left, right, connection, connection, mock(CompareCallback.class), leftParams, rightParams, ResultSetValidation.NON_ZERO_RECORD_COUNT_ON_LEFT));
+    assertTrue(exception.getMessage().contains("The following query should return a non zero record count result"));
+  }
+
+
+  /**
+   * Tests the validation of a non zero count right result set.
+   */
+  @Test
+  public void testNonZeroCountRightResultSetValidation()  {
+    SelectStatement left = select(count()).from(tableRef("MultiKeyLeft"));
+    SelectStatement right = select(count()).from(tableRef("MultiKeyMatchRight")).where(field("intKey").eq(parameter("param1").type(INTEGER)));
+
+    StatementParameters leftParams = DataSetUtils.statementParameters();
+    StatementParameters rightParams = DataSetUtils.statementParameters().setInteger("param1", 99); // <-- Does not exist
+
+    IllegalStateException exception = assertThrows(IllegalStateException.class, () -> resultSetComparer.compare(new int[]{}, left, right, connection, connection, mock(CompareCallback.class), leftParams, rightParams, ResultSetValidation.NON_ZERO_RECORD_COUNT_ON_RIGHT));
+    assertTrue(exception.getMessage().contains("The following query should return a non zero record count result"));
   }
 
 }

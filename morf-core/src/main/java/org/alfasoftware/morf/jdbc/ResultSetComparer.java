@@ -39,6 +39,7 @@ import static org.alfasoftware.morf.jdbc.ResultSetMismatch.MismatchType.MISSING_
 
 import java.math.BigDecimal;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -239,8 +240,8 @@ public class ResultSetComparer {
          Statement statementRight = rightConnection.createStatement();
          ResultSet rsLeft = statementLeft.executeQuery(leftSql);
          ResultSet rsRight = statementRight.executeQuery(rightSql)) {
-      asList(resultSetValidations).forEach(validator -> validator.validate(rsLeft, rsRight));
-      return compare(keyColumns, rsLeft, rsRight, callback);
+      asList(resultSetValidations).forEach(validator -> validator.validateBeforeNext(rsLeft, rsRight));
+      return compare(keyColumns, rsLeft, rsRight, callback, resultSetValidations);
     } catch (SQLException e) {
       throw new RuntimeSqlException("Error comparing SQL statements [" + leftSql + ", " + rightSql + "]", e);
     }
@@ -296,8 +297,8 @@ public class ResultSetComparer {
          NamedParameterPreparedStatement statementRight = NamedParameterPreparedStatement.parseSql(rightSqlDialect.convertStatementToSQL(right), rightSqlDialect).createForQueryOn(rightConnection);
          ResultSet rsLeft = parameteriseAndExecute(statementLeft, left, leftStatementParameters, leftSqlDialect);
          ResultSet rsRight = parameteriseAndExecute(statementRight, right, rightStatementParameters, rightSqlDialect)) {
-      asList(resultSetValidations).forEach(validator -> validator.validate(rsLeft, rsRight));
-      return compare(keyColumns, rsLeft, rsRight, callback);
+      asList(resultSetValidations).forEach(validator -> validator.validateBeforeNext(rsLeft, rsRight));
+      return compare(keyColumns, rsLeft, rsRight, callback, resultSetValidations);
     } catch (SQLException e) {
       throw new RuntimeSqlException("Error comparing SQL statements [" + left + ", " + right + "]", e);
     }
@@ -347,9 +348,10 @@ public class ResultSetComparer {
    * @param left The left hand data set.
    * @param right The right hand data set.
    * @param callBack the mismatch callback interface implementation.
+   * @param resultSetValidations
    * @return the number of mismatches between the two data sets.
    */
-  public int compare(int[] keyColumns, ResultSet left, ResultSet right, CompareCallback callBack) {
+  public int compare(int[] keyColumns, ResultSet left, ResultSet right, CompareCallback callBack, ResultSetValidation... resultSetValidations) {
     boolean expectingSingleRowResult = keyColumns.length == 0;
     int misMatchCount = 0;
     try {
@@ -408,6 +410,9 @@ public class ResultSetComparer {
           }
           if (!rightHasRow) {
             misMatchCount += callbackValueMismatches(left, right, callBack, metadataRight, valueCols, keys, MISSING_RIGHT);
+          }
+          if (leftHasRow && rightHasRow) {
+            asList(resultSetValidations).forEach(validator -> validator.validateSingleResult(left, right));
           }
         }
 
@@ -707,14 +712,11 @@ public class ResultSetComparer {
    */
   public enum ResultSetValidation {
 
-     NO_VALIDATION() {
-        @Override
-        void validate(ResultSet leftRs, ResultSet rightRs) {}
-     },
+     NO_VALIDATION,
 
-     NON_ZERO_RECORD_COUNT_ON_LEFT() {
+     NON_EMPTY_RESULT_ON_LEFT {
         @Override
-        void validate(ResultSet leftRs, ResultSet rightRs) {
+        void validateBeforeNext(ResultSet leftRs, ResultSet rightRs) {
           try {
              if (!leftRs.isBeforeFirst()) {
                 throw new IllegalStateException(format("The following query should return at least one record: [%s]", leftRs.getStatement()));
@@ -725,9 +727,9 @@ public class ResultSetComparer {
         }
      },
 
-     NON_ZERO_RECORD_COUNT_ON_RIGHT() {
+     NON_EMPTY_RESULT_ON_RIGHT {
         @Override
-        void validate(ResultSet leftRs, ResultSet rightRs) {
+        void validateBeforeNext(ResultSet leftRs, ResultSet rightRs) {
            try {
               if (!rightRs.isBeforeFirst()) {
                  throw new IllegalStateException(format("The following query should return at least one record: [%s]", rightRs.getStatement()));
@@ -736,15 +738,63 @@ public class ResultSetComparer {
              ExceptionUtils.rethrow(e);
            }
         }
-     };
+     },
 
-     /**
-      * Handle the validation.
-      *
-      * @param leftRs the left {@link ResultSet} to validate.
-      * @param rightRs the right {@link ResultSet} to validate.
-      */
-     abstract void validate(ResultSet leftRs, ResultSet rightRs);
+     NON_ZERO_RECORD_COUNT_ON_LEFT {
+       @Override
+       void validateSingleResult(ResultSet leftRs, ResultSet rightRs) {
+         try {
+            if (leftRs.getStatement() instanceof PreparedStatement) {
+                ResultSetMetaData metaData = ((PreparedStatement) leftRs.getStatement()).getMetaData();
+                if (metaData.getColumnCount() == 1
+                    && metaData.getColumnType(1) == Types.BIGINT
+                    && metaData.getColumnName(1).toLowerCase().contains("count")
+                    && leftRs.getLong(1) == 0L) {
+                  throw new IllegalStateException(format("The following query should return a non zero record count result: [%s]", leftRs.getStatement()));
+                }
+            }
+         } catch (SQLException e) {
+           ExceptionUtils.rethrow(e);
+         }
+       }
+    },
+
+    NON_ZERO_RECORD_COUNT_ON_RIGHT {
+       @Override
+       void validateSingleResult(ResultSet leftRs, ResultSet rightRs) {
+          try {
+            if (rightRs.getStatement() instanceof PreparedStatement) {
+              ResultSetMetaData metaData = ((PreparedStatement) rightRs.getStatement()).getMetaData();
+              if (metaData.getColumnCount() == 1
+                  && metaData.getColumnType(1) == Types.BIGINT
+                  && metaData.getColumnName(1).toLowerCase().contains("count")
+                  && rightRs.getLong(1) == 0L) {
+                throw new IllegalStateException(format("The following query should return a non zero record count result: [%s]", rightRs.getStatement()));
+              }
+          }
+          } catch (SQLException e) {
+            ExceptionUtils.rethrow(e);
+          }
+       }
+    };
+
+    /**
+     * Handles validation of the left and right {@link ResultSet} prior to the first invocation of {@code ResultSet#next()}.
+     *
+     * @param leftRs the left {@link ResultSet} to validate.
+     * @param rightRs the right {@link ResultSet} to validate.
+     */
+    @SuppressWarnings("unused")
+    void validateBeforeNext(ResultSet leftRs, ResultSet rightRs) { /* Default empty implementation */ }
+
+    /**
+     * Handles validation of the left and right {@link ResultSet} when a single result is expected.
+     *
+     * @param leftRs the left {@link ResultSet} to validate.
+     * @param rightRs the right {@link ResultSet} to validate.
+     */
+    @SuppressWarnings("unused")
+    void validateSingleResult(ResultSet leftRs, ResultSet rightRs) { /* Default empty implementation */ }
   }
 
 }
