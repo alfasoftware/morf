@@ -698,13 +698,13 @@ public class ResultSetComparer {
             if (leftRs.getStatement() instanceof PreparedStatement) {
                 ResultSetMetaData metaData = ((PreparedStatement) leftRs.getStatement()).getMetaData();
                 if (metaData.getColumnCount() == 1
-                    && metaData.getColumnType(1) == Types.BIGINT
                     && metaData.getColumnName(1).toLowerCase().contains("count")
+                    && Number.class.isAssignableFrom(Class.forName(metaData.getColumnClassName(1)))
                     && leftRs.getLong(1) == 0L) {
                   throw new IllegalStateException(format("The following query should return a non zero record count result: [%s]", leftRs.getStatement()));
                 }
             }
-         } catch (SQLException e) {
+         } catch (SQLException | ClassNotFoundException e) {
            ExceptionUtils.rethrow(e);
          }
        }
@@ -713,19 +713,19 @@ public class ResultSetComparer {
     NON_ZERO_RECORD_COUNT_ON_RIGHT {
        @Override
        void validateSingleResult(ResultSet leftRs, ResultSet rightRs) {
-          try {
-            if (rightRs.getStatement() instanceof PreparedStatement) {
-              ResultSetMetaData metaData = ((PreparedStatement) rightRs.getStatement()).getMetaData();
-              if (metaData.getColumnCount() == 1
-                  && metaData.getColumnType(1) == Types.BIGINT
-                  && metaData.getColumnName(1).toLowerCase().contains("count")
-                  && rightRs.getLong(1) == 0L) {
-                throw new IllegalStateException(format("The following query should return a non zero record count result: [%s]", rightRs.getStatement()));
-              }
-          }
-          } catch (SQLException e) {
-            ExceptionUtils.rethrow(e);
-          }
+         try {
+           if (rightRs.getStatement() instanceof PreparedStatement) {
+               ResultSetMetaData metaData = ((PreparedStatement) rightRs.getStatement()).getMetaData();
+               if (metaData.getColumnCount() == 1
+                   && metaData.getColumnName(1).toLowerCase().contains("count")
+                   && Number.class.isAssignableFrom(Class.forName(metaData.getColumnClassName(1)))
+                   && rightRs.getLong(1) == 0L) {
+                 throw new IllegalStateException(format("The following query should return a non zero record count result: [%s]", rightRs.getStatement()));
+               }
+           }
+        } catch (SQLException | ClassNotFoundException e) {
+          ExceptionUtils.rethrow(e);
+        }
        }
     };
 
