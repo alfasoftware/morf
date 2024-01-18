@@ -299,7 +299,7 @@ public class ResultSetComparer {
    * @param left The left hand data set.
    * @param right The right hand data set.
    * @param callBack the mismatch callback interface implementation.
-   * @param resultSetValidations
+   * @param resultSetValidations additional result set validations.
    * @return the number of mismatches between the two data sets.
    */
   public int compare(int[] keyColumns, ResultSet left, ResultSet right, CompareCallback callBack, ResultSetValidation... resultSetValidations) {
@@ -642,7 +642,7 @@ public class ResultSetComparer {
 
   /**
    * Implement this interface to handle reconciliation mismatch callbacks from
-   * {@link ResultSetComparer#compare(int[], SelectStatement, SelectStatement, Connection, Connection, CompareCallback, ResultSetValidation)}
+   * {@link ResultSetComparer#compare(int[], SelectStatement, SelectStatement, Connection, Connection, CompareCallback, ResultSetValidation...)}
    *
    * @author Copyright (c) Alfa Financial Software 2014
    */
