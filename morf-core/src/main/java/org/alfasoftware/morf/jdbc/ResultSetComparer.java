@@ -357,15 +357,15 @@ public class ResultSetComparer {
         // Remember to check the situation where a single row data set comparison might
         // actually have yielded no rows on one side, or the other, or both.
         if (expectingSingleRowResult) {
+          // Execute additional validations on the single row result, if both results are present
+          if (leftHasRow && rightHasRow) {
+            asList(resultSetValidations).forEach(validator -> validator.validateSingleResult(left, right));
+          }
           if (!leftHasRow) {
             misMatchCount += callbackValueMismatches(left, right, callBack, metadataRight, valueCols, keys, MISSING_LEFT);
           }
           if (!rightHasRow) {
             misMatchCount += callbackValueMismatches(left, right, callBack, metadataRight, valueCols, keys, MISSING_RIGHT);
-          }
-          // Execute additional validations on the single row result, if both results are present
-          if (leftHasRow && rightHasRow) {
-            asList(resultSetValidations).forEach(validator -> validator.validateSingleResult(left, right));
           }
         }
 
