@@ -15,7 +15,6 @@
 
 package org.alfasoftware.morf.integration;
 
-import static org.alfasoftware.morf.jdbc.ResultSetComparer.ResultSetValidation.NO_VALIDATION;
 import static org.alfasoftware.morf.jdbc.ResultSetMismatch.MismatchType.MISMATCH;
 import static org.alfasoftware.morf.jdbc.ResultSetMismatch.MismatchType.MISSING_LEFT;
 import static org.alfasoftware.morf.jdbc.ResultSetMismatch.MismatchType.MISSING_RIGHT;
@@ -794,7 +793,7 @@ public class TestResultSetComparer {
     CompareCallback callBackMock = mock(CompareCallback.class);
     ArgumentCaptor<ResultSetMismatch> rsMismatchCaptor = ArgumentCaptor.forClass(ResultSetMismatch.class);
 
-    int mismatchCount = resultSetComparer.compare(new int[]{}, left, right, connection, connection, callBackMock, leftParams, rightParams, NO_VALIDATION);
+    int mismatchCount = resultSetComparer.compare(new int[]{}, left, right, connection, connection, callBackMock, leftParams, rightParams);
 
     verify(callBackMock).mismatch(rsMismatchCaptor.capture());
     assertEquals("Row count should have 1 mismatch", 1, mismatchCount);
@@ -816,7 +815,7 @@ public class TestResultSetComparer {
     CompareCallback callBackMock = mock(CompareCallback.class);
     ArgumentCaptor<ResultSetMismatch> rsMismatchCaptor = ArgumentCaptor.forClass(ResultSetMismatch.class);
 
-    int mismatchCount = resultSetComparer.compare(new int[]{}, left, right, connection, connection, callBackMock, leftParams, rightParams, NO_VALIDATION);
+    int mismatchCount = resultSetComparer.compare(new int[]{}, left, right, connection, connection, callBackMock, leftParams, rightParams);
 
     verify(callBackMock).mismatch(rsMismatchCaptor.capture());
     assertEquals("Row count should have 1 mismatch", 1, mismatchCount);

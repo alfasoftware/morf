@@ -263,6 +263,26 @@ public class ResultSetComparer {
   }
 
 
+  /**
+   * Given 2 data sets, return the number of mismatches between them, and
+   * callback with the details of any mismatches as they are found. This method
+   * will generate the result sets itself by executing two select statements
+   * using the supplied connection. See {@link ResultSetMismatch} for definition
+   * of a mismatch.
+   *
+   * @param keyColumns The indexes of the key columns common to both data sets.
+   *          If this is empty, the result sets must return only one record.
+   * @param left The left hand data set {@link SelectStatement}
+   * @param right The right hand data set {@link SelectStatement}
+   * @param connection a database connection
+   * @param callback the mismatch callback interface implementation.
+   * @return the number of mismatches between the two data sets.
+   */
+  public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection connection, CompareCallback callback) {
+    return compare(keyColumns, left, right, connection, connection, callback);
+  }
+
+
   private static ResultSet parameteriseAndExecute(NamedParameterPreparedStatement statement, SelectStatement select, StatementParameters parameters, SqlDialect dialect) throws SQLException {
     dialect.prepareStatementParameters(statement, dialect.extractParameters(select), parameters);
     return statement.executeQuery();
