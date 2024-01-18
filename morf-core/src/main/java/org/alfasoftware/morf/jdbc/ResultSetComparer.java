@@ -255,6 +255,7 @@ public class ResultSetComparer {
          NamedParameterPreparedStatement statementRight = NamedParameterPreparedStatement.parseSql(rightSqlDialect.convertStatementToSQL(right), rightSqlDialect).createForQueryOn(rightConnection);
          ResultSet rsLeft = parameteriseAndExecute(statementLeft, left, leftStatementParameters, leftSqlDialect);
          ResultSet rsRight = parameteriseAndExecute(statementRight, right, rightStatementParameters, rightSqlDialect)) {
+      // Execute additional validations on the result sets prior to moving the cursor to the first row
       asList(resultSetValidations).forEach(validator -> validator.validateBeforeNext(rsLeft, rsRight));
       return compare(keyColumns, rsLeft, rsRight, callback, resultSetValidations);
     } catch (SQLException e) {
@@ -362,6 +363,7 @@ public class ResultSetComparer {
           if (!rightHasRow) {
             misMatchCount += callbackValueMismatches(left, right, callBack, metadataRight, valueCols, keys, MISSING_RIGHT);
           }
+          // Execute additional validations on the single row result, if both results are present
           if (leftHasRow && rightHasRow) {
             asList(resultSetValidations).forEach(validator -> validator.validateSingleResult(left, right));
           }
