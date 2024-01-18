@@ -38,7 +38,6 @@ import static org.alfasoftware.morf.jdbc.ResultSetMismatch.MismatchType.MISSING_
 
 import java.math.BigDecimal;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -357,10 +356,19 @@ public class ResultSetComparer {
         // Remember to check the situation where a single row data set comparison might
         // actually have yielded no rows on one side, or the other, or both.
         if (expectingSingleRowResult) {
-          // Execute additional validations on the single row result, if both results are present
+          // Execute additional validations on the single row left and right results, if both results are present
           if (leftHasRow && rightHasRow) {
-            asList(resultSetValidations).forEach(validator -> validator.validateSingleResult(left, right));
+            asList(resultSetValidations).forEach(validator -> {
+              try {
+                validator.validateSingleResult(
+                  columnToValue(left, 1, metadataLeft.getColumnType(1)),
+                  columnToValue(right, 1, metadataRight.getColumnType(1)));
+              } catch (SQLException e) {
+                ExceptionUtils.rethrow(e);
+              }
+            });
           }
+
           if (!leftHasRow) {
             misMatchCount += callbackValueMismatches(left, right, callBack, metadataRight, valueCols, keys, MISSING_LEFT);
           }
@@ -665,12 +673,12 @@ public class ResultSetComparer {
    */
   public enum ResultSetValidation {
 
-     NON_EMPTY_RESULT_ON_LEFT {
+     NON_EMPTY_RESULT {
         @Override
         void validateBeforeNext(ResultSet leftRs, ResultSet rightRs) {
           try {
-             if (!leftRs.isBeforeFirst()) {
-                throw new IllegalStateException(format("The following query should return at least one record: [%s]", leftRs.getStatement()));
+             if (!leftRs.isBeforeFirst() || !rightRs.isBeforeFirst()) {
+                throw new IllegalStateException(format("The following queries should return at least one record: [%s]%n[%s]", leftRs.getStatement(), leftRs.getStatement()));
              }
           } catch (SQLException e) {
             ExceptionUtils.rethrow(e);
@@ -678,55 +686,17 @@ public class ResultSetComparer {
         }
      },
 
-     NON_EMPTY_RESULT_ON_RIGHT {
-        @Override
-        void validateBeforeNext(ResultSet leftRs, ResultSet rightRs) {
-           try {
-              if (!rightRs.isBeforeFirst()) {
-                 throw new IllegalStateException(format("The following query should return at least one record: [%s]", rightRs.getStatement()));
-              }
-           } catch (SQLException e) {
-             ExceptionUtils.rethrow(e);
-           }
-        }
-     },
-
-     NON_ZERO_RECORD_COUNT_ON_LEFT {
+     NON_ZERO_RESULT {
        @Override
-       void validateSingleResult(ResultSet leftRs, ResultSet rightRs) {
-         try {
-            if (leftRs.getStatement() instanceof PreparedStatement) {
-                ResultSetMetaData metaData = ((PreparedStatement) leftRs.getStatement()).getMetaData();
-                if (metaData.getColumnCount() == 1
-                    && metaData.getColumnName(1).toLowerCase().contains("count")
-                    && Number.class.isAssignableFrom(Class.forName(metaData.getColumnClassName(1)))
-                    && leftRs.getLong(1) == 0L) {
-                  throw new IllegalStateException(format("The following query should return a non zero record count result: [%s]", leftRs.getStatement()));
-                }
-            }
-         } catch (SQLException | ClassNotFoundException e) {
-           ExceptionUtils.rethrow(e);
+       void validateSingleResult(Comparable<?> leftValue, Comparable<?> rightValue) {
+         if (!(leftValue instanceof BigDecimal) || !(rightValue instanceof BigDecimal)) {
+           throw new IllegalStateException(format("Incorrect value type for this validator. Expecting a BigDecimal but got [%s] for the left value and [%s] for the right value.", leftValue.getClass().getName(), rightValue.getClass().getName()));
          }
-       }
-    },
 
-    NON_ZERO_RECORD_COUNT_ON_RIGHT {
-       @Override
-       void validateSingleResult(ResultSet leftRs, ResultSet rightRs) {
-         try {
-           if (rightRs.getStatement() instanceof PreparedStatement) {
-               ResultSetMetaData metaData = ((PreparedStatement) rightRs.getStatement()).getMetaData();
-               if (metaData.getColumnCount() == 1
-                   && metaData.getColumnName(1).toLowerCase().contains("count")
-                   && Number.class.isAssignableFrom(Class.forName(metaData.getColumnClassName(1)))
-                   && rightRs.getLong(1) == 0L) {
-                 throw new IllegalStateException(format("The following query should return a non zero record count result: [%s]", rightRs.getStatement()));
-               }
-           }
-        } catch (SQLException | ClassNotFoundException e) {
-          ExceptionUtils.rethrow(e);
-        }
-       }
+         if (((BigDecimal) leftValue).equals(BigDecimal.ZERO) && ((BigDecimal) rightValue).equals(BigDecimal.ZERO)) {
+           throw new IllegalStateException("Left and right record queries returned zero");
+         }
+      }
     };
 
     /**
@@ -739,13 +709,13 @@ public class ResultSetComparer {
     void validateBeforeNext(ResultSet leftRs, ResultSet rightRs) { /* Default empty implementation */ }
 
     /**
-     * Handles validation of the left and right {@link ResultSet} when a single result is expected.
+     * Handles validation of the left and right {@link Comparable} values when a single result is expected.
      *
-     * @param leftRs the left {@link ResultSet} to validate.
-     * @param rightRs the right {@link ResultSet} to validate.
+     * @param leftValue the left {@link Comparable} value to validate.
+     * @param rightValue the right {@link Comparable} value to validate.
      */
     @SuppressWarnings("unused")
-    void validateSingleResult(ResultSet leftRs, ResultSet rightRs) { /* Default empty implementation */ }
+    void validateSingleResult(Comparable<?> leftValue, Comparable<?> rightValue) { /* Default empty implementation */ }
   }
 
 }
