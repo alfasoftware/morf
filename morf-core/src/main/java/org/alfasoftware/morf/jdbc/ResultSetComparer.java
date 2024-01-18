@@ -674,7 +674,7 @@ public class ResultSetComparer {
   public enum ResultSetValidation {
 
     /**
-     * Validates that a left and right result sets both contain at least one record.
+     * Validates that the left and right result sets contain at least one record.
      *
      * @author Copyright (c) Alfa Financial Software Limited. 2024
      */
@@ -692,7 +692,7 @@ public class ResultSetComparer {
      },
 
     /**
-     * Validates that a left and right results are both numeric and are not equal to zero.
+     * Validates that the left and right result values are both numeric and are not equal to zero.
      *
      * @author Copyright (c) Alfa Financial Software Limited. 2024
      */
