@@ -673,7 +673,12 @@ public class ResultSetComparer {
    */
   public enum ResultSetValidation {
 
-     NON_EMPTY_RESULT {
+    /**
+     * Validates that a left and right result sets both contain at least one record.
+     *
+     * @author Copyright (c) Alfa Financial Software Limited. 2024
+     */
+    NON_EMPTY_RESULT {
         @Override
         void validateBeforeNext(ResultSet leftRs, ResultSet rightRs) {
           try {
@@ -686,7 +691,12 @@ public class ResultSetComparer {
         }
      },
 
-     NON_ZERO_RESULT {
+    /**
+     * Validates that a left and right results are both numeric and are not equal to zero.
+     *
+     * @author Copyright (c) Alfa Financial Software Limited. 2024
+     */
+    NON_ZERO_RESULT {
        @Override
        void validateSingleResult(Comparable<?> leftValue, Comparable<?> rightValue) {
          if (!(leftValue instanceof BigDecimal) || !(rightValue instanceof BigDecimal)) {
