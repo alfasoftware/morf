@@ -642,7 +642,7 @@ public class ResultSetComparer {
 
   /**
    * Implement this interface to handle reconciliation mismatch callbacks from
-   * {@link ResultSetComparer#compare(int[], SelectStatement, SelectStatement, Connection, Connection, CompareCallback)}
+   * {@link ResultSetComparer#compare(int[], SelectStatement, SelectStatement, Connection, Connection, CompareCallback, ResultSetValidation)}
    *
    * @author Copyright (c) Alfa Financial Software 2014
    */
