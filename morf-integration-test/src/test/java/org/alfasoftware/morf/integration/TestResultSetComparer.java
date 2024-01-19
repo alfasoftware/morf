@@ -824,10 +824,10 @@ public class TestResultSetComparer {
 
 
   /**
-   * Tests the validation of a non empty result set.
+   * Tests the validation of a non empty result sets.
    */
   @Test
-  public void testNonEmptyLeftResultSetValidation()  {
+  public void testNonEmptyResultSetValidation()  {
     SelectStatement left = select(field("intKey")).from(tableRef("MultiKeyLeft")).where(field("intKey").eq(parameter("param1").type(INTEGER)));
     SelectStatement right = select(field("intKey")).from(tableRef("MultiKeyMatchRight")).where(field("intKey").eq(parameter("param1").type(INTEGER)));
 

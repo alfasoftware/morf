@@ -682,7 +682,7 @@ public class ResultSetComparer {
         @Override
         void validateBeforeNext(ResultSet leftRs, ResultSet rightRs) {
           try {
-             if (!leftRs.isBeforeFirst() || !rightRs.isBeforeFirst()) {
+             if (!leftRs.isBeforeFirst() && !rightRs.isBeforeFirst()) {
                 throw new IllegalStateException(format("The following queries should return at least one record: [%s]%n[%s]", leftRs.getStatement(), leftRs.getStatement()));
              }
           } catch (SQLException e) {
