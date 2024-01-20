@@ -42,6 +42,7 @@ import org.joda.time.LocalDate;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Iterators;
 
 /**
  * Implements {@link DataValueLookupBuilder}.
@@ -199,7 +200,7 @@ class DataValueLookupBuilderImpl implements DataValueLookupBuilder, Serializable
     if (metadata == null)
       return Collections.emptyList();
 
-    return () -> new Iterator<DataValue>() {
+    return () -> new Iterator<>() {
 
       private int i;
       private final Iterator<CaseInsensitiveString> keyIter = metadata.getColumnNames().iterator();
@@ -377,5 +378,17 @@ class DataValueLookupBuilderImpl implements DataValueLookupBuilder, Serializable
   @VisibleForTesting
   boolean hasSameMetadata(DataValueLookupBuilderImpl other) {
     return other.metadata.equals(this.metadata);
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.DataSetUtils.DataValueLookupBuilder#copyFrom(org.alfasoftware.morf.metadata.StatementParameters)
+   */
+  @Override
+  public DataValueLookupBuilder copyFrom(StatementParameters statementParameters) {
+    if (data != null) {
+      throw new IllegalStateException("Can't create a new statement parameters builder after values have been specified.");
+    }
+    return new StatementParametersBuilderImpl((DataValueLookupBuilderImpl) statementParameters, Iterators.size(((DataValueLookupBuilderImpl) statementParameters).getValues().iterator()));
   }
 }

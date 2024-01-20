@@ -92,4 +92,9 @@ class StatementParametersBuilderImpl extends DataValueLookupBuilderImpl implemen
   public StatementParametersBuilder setByteArray(String columnName, byte[] value) {
     return (StatementParametersBuilder) super.setByteArray(columnName, value);
   }
+
+  @Override
+  public StatementParametersBuilder copyFrom(StatementParameters statementParameters) {
+    return (StatementParametersBuilder) super.copyFrom(statementParameters);
+  }
 }

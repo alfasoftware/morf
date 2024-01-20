@@ -232,6 +232,14 @@ public final class DataSetUtils {
      * @return this, for method chaining.
      */
     DataValueLookupBuilder setObject(String columnName, Object value);
+
+
+    /**
+     * Creates an instance of {@link DataValueLookupBuilder} by copying the given {@link StatementParameters}.
+     * @param statementParameters the statement parameters to copy.
+     * @return this, for method chaining.
+     */
+    DataValueLookupBuilder copyFrom(StatementParameters statementParameters);
   }
 
 
@@ -328,6 +336,8 @@ public final class DataSetUtils {
     StatementParametersBuilder setBigDecimal(String columnName, BigDecimal value);
     @Override
     StatementParametersBuilder setByteArray(String columnName, byte[] value);
+    @Override
+    StatementParametersBuilder copyFrom(StatementParameters statementParameters);
   }
 
 
@@ -379,7 +389,7 @@ public final class DataSetUtils {
     /** Lambdas struggle with introspecting primitive arrays as generic parameters, so we do this
      * the old fashioned way.
      */
-    static final ValueMapper<Object, byte[]> OBJECT_TO_BYTE_ARRAY = new ValueMapper<Object, byte[]>() {
+    static final ValueMapper<Object, byte[]> OBJECT_TO_BYTE_ARRAY = new ValueMapper<>() {
       @Override
       public byte[] map(Object o, ValueConverter<Object> c) {
         return c.byteArrayValue(o);
