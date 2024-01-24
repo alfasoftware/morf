@@ -1158,7 +1158,10 @@ class OracleDialect extends SqlDialect {
             .append(withCasting ? convertStatementToSQL(addCastsToSelect(table, selectStatement)) : convertStatementToSQL(selectStatement))
             .toString()
     );
-    result.add(addTableAlterForPrimaryKeyStatement(table));
+
+    if (!primaryKeysForTable(table).isEmpty()) {
+      result.add(addTableAlterForPrimaryKeyStatement(table));
+    }
 
     result.add("ALTER TABLE " + schemaNamePrefix() + table.getName()  + " NOPARALLEL LOGGING");
 
