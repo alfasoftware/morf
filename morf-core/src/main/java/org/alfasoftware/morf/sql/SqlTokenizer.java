@@ -531,7 +531,7 @@ public final class SqlTokenizer {
       while (i < length) {
         char c = query.charAt(i);
 
-        // end of the multi-line comment
+        // end of the single-line comment
         if (c == '\n')
           return i + 1;
         if (c == '\r' && i+1 < length && query.charAt(i+1) == '\n')
@@ -620,7 +620,7 @@ public final class SqlTokenizer {
   private static boolean isIdentifierMidCharacter(char c) {
     return isIdentifierStartCharacter(c)
         || '0' <= c && c <= '9'
-      //|| c == '#' // Oracle allows # in identifiers
+      //|| c == '#' // Oracle allows # in identifiers; but we do not currently support it
         || c == '$';
   }
 
