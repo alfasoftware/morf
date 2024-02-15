@@ -25,14 +25,16 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLTimeoutException;
 import java.sql.Statement;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import org.alfasoftware.morf.sql.SqlTokenizer;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
+import com.google.common.collect.Multimap;
 
 /**
  * A wrapped around {@link PreparedStatement} which allows for named parameters.  Parser is the
@@ -48,7 +50,7 @@ public class NamedParameterPreparedStatement implements AutoCloseable {
   private final PreparedStatement statement;
 
   /** Maps parameter names to the list of index positions at which this parameter appears. */
-  private final Map<String, List<Integer>> indexMap;
+  private final Map<String, Collection<Integer>> indexMap;
 
   /** The statement - for logging and exceptions. */
   private final ParseResult sql;
@@ -89,7 +91,7 @@ public class NamedParameterPreparedStatement implements AutoCloseable {
    * @param queryOnly Set up the statement for bulk queries.
    * @throws SQLException if the statement could not be created
    */
-  NamedParameterPreparedStatement(Connection connection, String query, Map<String, List<Integer>> indexMap, boolean queryOnly, ParseResult sql) throws SQLException {
+  NamedParameterPreparedStatement(Connection connection, String query, Map<String, Collection<Integer>> indexMap, boolean queryOnly, ParseResult sql) throws SQLException {
     this.indexMap = indexMap;
     this.sql = sql;
     if (queryOnly) {
@@ -237,12 +239,12 @@ public class NamedParameterPreparedStatement implements AutoCloseable {
    * Allows arbitrary code to be executed for each index position at which the named parameter can be found.
    */
   private void forEachOccurrenceOfParameter(SqlParameter parameter, Operation operation) throws SQLException {
-    List<Integer> indexes = indexMap.get(parameter.getImpliedName());
+    Collection<Integer> indexes = indexMap.get(parameter.getImpliedName());
     if (indexes == null) {
       throw new IllegalArgumentException("Parameter not found: " + parameter.getImpliedName());
     }
-    for (int i = 0; i < indexes.size(); i++) {
-      operation.apply(indexes.get(i));
+    for (int i : indexes) {
+      operation.apply(i);
     }
   }
 
@@ -488,7 +490,7 @@ public class NamedParameterPreparedStatement implements AutoCloseable {
 
     private final String query;
     private final SqlDialect dialect;
-    private final Map<String, List<Integer>> indexMap = Maps.newHashMap();
+    private final Multimap<String, Integer> indexMap = HashMultimap.create();
 
     /**
      * Private constructor.
@@ -515,9 +517,7 @@ public class NamedParameterPreparedStatement implements AutoCloseable {
      * parameter can be found.
      */
     List<Integer> getIndexesForParameter(String parameterName) {
-      return indexMap.get(parameterName) == null
-          ? ImmutableList.<Integer>of()
-          : ImmutableList.copyOf(indexMap.get(parameterName));
+      return ImmutableList.copyOf(indexMap.get(parameterName));
     }
 
 
@@ -539,7 +539,7 @@ public class NamedParameterPreparedStatement implements AutoCloseable {
      * @throws SQLException if the statement could not be created
      */
     public NamedParameterPreparedStatement createFor(Connection connection) throws SQLException {
-      return new NamedParameterPreparedStatement(connection, query, indexMap, false, this);
+      return new NamedParameterPreparedStatement(connection, query, indexMap.asMap(), false, this);
     }
 
 
@@ -553,7 +553,7 @@ public class NamedParameterPreparedStatement implements AutoCloseable {
      * @throws SQLException if the statement could not be created
      */
     public NamedParameterPreparedStatement createForQueryOn(Connection connection) throws SQLException {
-      return new NamedParameterPreparedStatement(connection, query, indexMap, true, this);
+      return new NamedParameterPreparedStatement(connection, query, indexMap.asMap(), true, this);
     }
 
 
@@ -565,56 +565,56 @@ public class NamedParameterPreparedStatement implements AutoCloseable {
      * @return The parsed SQL query with named parameters replaced by placeholders.
      */
     private String parse(String query) {
-      int length = query.length();
-      StringBuffer parsedQuery = new StringBuffer(length);
-      boolean inSingleQuote = false; // Tracks if inside a single-quoted string
-      boolean inDoubleQuote = false; // Tracks if inside a double-quoted string
-      boolean inComment = false; // Tracks if inside a SQL comment
-      int index = 1; // Index for parameter placeholders
+      final String databaseType = dialect != null ? dialect.getDatabaseType().identifier() : null;
+      final StringBuilder parsedQuery = new StringBuilder();
+      final var foundColon = new Object(){ Boolean value = Boolean.FALSE; };
+      final var index = new Object(){ Integer value = 0; };
+      final String colon = ":";
 
-      for (int i = 0; i < length; i++) {
-        char c = query.charAt(i);
-
-        if (inComment) {
-          // If inside a SQL comment, skip until the end of the line
-          if (c == '\n') {
-            inComment = false; // End of SQL comment
-          }
-        } else if (inSingleQuote && c == '\'') {
-          inSingleQuote = false; // End of single-quoted string
-        } else if (inDoubleQuote && c == '"') {
-          inDoubleQuote = false; // End of double-quoted string
-        } else if (!inSingleQuote && !inDoubleQuote) {
-          if (c == '\'') {
-            inSingleQuote = true; // Start of single-quoted string
-          } else if (c == '"') {
-            inDoubleQuote = true; // Start of double-quoted string
-          } else if (c == '-' && i + 1 < length && query.charAt(i + 1) == '-') {
-            inComment = true; // Start of SQL comment
-          } else if (c == ':' && i + 1 < length && Character.isJavaIdentifierStart(query.charAt(i + 1))) {
-            int j = i + 2;
-            while (j < length && Character.isJavaIdentifierPart(query.charAt(j))) {
-              j++;
+      SqlTokenizer.tokenizeSqlQuery(databaseType, query, token -> {
+        switch(token.getType()) {
+          case OPERATOR:
+            if (foundColon.value) {
+              parsedQuery.append(colon);
+              foundColon.value = false;
             }
-            String name = query.substring(i + 1, j);
-            c = '?'; // Replace the parameter with question mark
-
-            //CHECKSTYLE:OFF ModifiedControlVariableCheck
-            i += name.length(); // Skip past the end of the parameter
-            //CHECKSTYLE:ON:
-
-            List<Integer> indexList = indexMap.get(name);
-            if (indexList == null) {
-              indexList = Lists.newArrayList();
-              indexMap.put(name, indexList);
+            if (colon.equals(token.getString())) {
+              foundColon.value = true;
+            } else {
+              parsedQuery.append(token.getString());
             }
-            indexList.add(index);
+            break;
 
-            index++;
-          }
+          case STRING:
+          case DSTRING:
+          case WHITESPACE:
+          case MCOMMENT:
+          case SCOMMENT:
+          case DQUOTED:
+          case NUMBER:
+            if (foundColon.value) {
+              parsedQuery.append(colon);
+              foundColon.value = false;
+            }
+            parsedQuery.append(token.getString());
+            break;
+
+          case IDENTIFIER:
+            if (foundColon.value) { // colon followed by identifier
+              foundColon.value = false;
+              index.value++;
+              parsedQuery.append("?"); // Replace the parameter with question mark
+              indexMap.put(token.getString(), index.value); // remember the index
+            } else {
+              parsedQuery.append(token.getString());
+            }
+            break;
+
+          default:
+          case ILLEGAL:
+            throw new IllegalStateException(token.getType() + " token at position " + token.getPosition() + " found: " + token.getString());
         }
-        parsedQuery.append(c);
-      }
+      });
 
       return parsedQuery.toString();
     }
