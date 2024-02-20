@@ -515,9 +515,7 @@ public class NamedParameterPreparedStatement implements AutoCloseable {
      * parameter can be found.
      */
     List<Integer> getIndexesForParameter(String parameterName) {
-      return indexMap.get(parameterName) == null
-          ? ImmutableList.<Integer>of()
-          : ImmutableList.copyOf(indexMap.get(parameterName));
+      return ImmutableList.copyOf(indexMap.get(parameterName));
     }
 
 
