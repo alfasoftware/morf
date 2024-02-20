@@ -28,6 +28,8 @@ import java.sql.Statement;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.alfasoftware.morf.sql.SqlTokenizer;
 import org.alfasoftware.morf.sql.element.SqlParameter;
@@ -567,19 +569,19 @@ public class NamedParameterPreparedStatement implements AutoCloseable {
     private String parse(String query) {
       final String databaseType = dialect != null ? dialect.getDatabaseType().identifier() : null;
       final StringBuilder parsedQuery = new StringBuilder();
-      final var foundColon = new Object(){ Boolean value = Boolean.FALSE; };
-      final var index = new Object(){ Integer value = 0; };
+      final AtomicBoolean foundColon = new AtomicBoolean(false);
+      final AtomicInteger index = new AtomicInteger(0);
       final String colon = ":";
 
       SqlTokenizer.tokenizeSqlQuery(databaseType, query, token -> {
         switch(token.getType()) {
           case OPERATOR:
-            if (foundColon.value) {
+            if (foundColon.get()) {
               parsedQuery.append(colon);
-              foundColon.value = false;
+              foundColon.set(false);
             }
             if (colon.equals(token.getString())) {
-              foundColon.value = true;
+              foundColon.set(true);
             } else {
               parsedQuery.append(token.getString());
             }
@@ -592,19 +594,19 @@ public class NamedParameterPreparedStatement implements AutoCloseable {
           case SCOMMENT:
           case DQUOTED:
           case NUMBER:
-            if (foundColon.value) {
+            if (foundColon.get()) {
               parsedQuery.append(colon);
-              foundColon.value = false;
+              foundColon.set(false);
             }
             parsedQuery.append(token.getString());
             break;
 
           case IDENTIFIER:
-            if (foundColon.value) { // colon followed by identifier
-              foundColon.value = false;
-              index.value++;
+            if (foundColon.get()) { // colon followed by identifier
+              foundColon.set(false);
+              index.incrementAndGet();
               parsedQuery.append("?"); // Replace the parameter with question mark
-              indexMap.put(token.getString(), index.value); // remember the index
+              indexMap.put(token.getString(), index.get()); // remember the index
             } else {
               parsedQuery.append(token.getString());
             }
