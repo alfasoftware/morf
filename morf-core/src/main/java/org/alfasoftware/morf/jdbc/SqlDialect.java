@@ -2084,6 +2084,12 @@ public abstract class SqlDialect {
         }
         return getSqlForLeftPad(function.getArguments().get(0), function.getArguments().get(1), function.getArguments().get(2));
 
+      case RIGHT_PAD:
+        if (function.getArguments().size() != 3) {
+          throw new IllegalArgumentException("The RIGHT_PAD function should have three arguments. This function has " + function.getArguments().size());
+        }
+        return getSqlForRightPad(function.getArguments().get(0), function.getArguments().get(1), function.getArguments().get(2));
+
       case LAST_DAY_OF_MONTH:
         if (function.getArguments().size() != 1) {
           throw new IllegalArgumentException("The LAST_DAY_OF_MONTH function should have one argument. This function has " + function.getArguments().size());
@@ -2608,7 +2614,7 @@ public abstract class SqlDialect {
 
   /**
    * Converts the LEFT_PAD function into SQL. This is the same format used for
-   * H2, MySQL and Oracle. SqlServer implementation overrides this function.
+   * H2, MySQL, Oracle and PostgreSQL. SqlServer implementation overrides this function.
    *
    * @param field The field to pad
    * @param length The length of the padding
@@ -2617,6 +2623,20 @@ public abstract class SqlDialect {
    */
   protected String getSqlForLeftPad(AliasedField field, AliasedField length, AliasedField character) {
     return "LPAD(" + getSqlFrom(field) + ", " + getSqlFrom(length) + ", " + getSqlFrom(character) + ")";
+  }
+
+
+  /**
+   * Converts the RIGHT_PAD function into SQL. This is the same format used for
+   * H2, MySQL, Oracle and PostgreSQL. SqlServer implementation overrides this function.
+   *
+   * @param field The field to pad
+   * @param length The length of the padding
+   * @param character The character to use for the padding
+   * @return string representation of the SQL.
+   */
+  protected String getSqlForRightPad(AliasedField field, AliasedField length, AliasedField character) {
+    return "RPAD(" + getSqlFrom(field) + ", " + getSqlFrom(length) + ", " + getSqlFrom(character) + ")";
   }
 
 

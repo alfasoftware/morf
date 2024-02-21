@@ -116,6 +116,7 @@ class HumanReadableStatementHelper {
       .put(FunctionType.FLOOR, new FunctionTypeMetaData("floor(", ")", "", false, false))
       .put(FunctionType.IS_NULL, new FunctionTypeMetaData("", " if null", " or ", true, false))
       .put(FunctionType.LEFT_PAD, new FunctionTypeMetaData("leftPad(", ")", ", ", false, false))
+      .put(FunctionType.RIGHT_PAD, new FunctionTypeMetaData("rightPad(", ")", ", ", false, false))
       .put(FunctionType.LEFT_TRIM, new FunctionTypeMetaData("left trimmed ", "", "", false, false))
       .put(FunctionType.LENGTH, new FunctionTypeMetaData("length of ", "", "", false, false))
       .put(FunctionType.BLOB_LENGTH, new FunctionTypeMetaData("length of blob ", "", "", false, false))
