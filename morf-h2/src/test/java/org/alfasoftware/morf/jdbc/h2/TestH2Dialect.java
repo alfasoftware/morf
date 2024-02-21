@@ -32,10 +32,10 @@ import com.google.common.collect.ImmutableList;
  * @author Copyright (c) Alfa Financial Software 2010
  */
 public class TestH2Dialect extends AbstractSqlDialectTest {
-  
-  
+
+
   private final static String TEST_SCHEMA = "TESTSCHEMA";
-  
+
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#createTestDialect()
@@ -436,6 +436,15 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedLeftPad() {
     return "SELECT LPAD(stringField, 10, CAST('j' AS VARCHAR(1))) FROM "+TEST_SCHEMA+".Test";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRightPad()
+   */
+  @Override
+  protected String expectedRightPad() {
+    return "SELECT RPAD(stringField, 10, CAST('j' AS VARCHAR(1))) FROM "+TEST_SCHEMA+".Test";
   }
 
 
@@ -1157,6 +1166,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   }
 
 
+  @Override
   protected List<String> expectedReplaceTableWithAutonumber() {
     return ImmutableList.of(
         "CREATE TABLE "+TEST_SCHEMA+".tmp_SomeTable (someField VARCHAR(3) NOT NULL, otherField DECIMAL(3,0) AUTO_INCREMENT(1) COMMENT 'AUTONUMSTART:[1]', thirdField DECIMAL(5,0) NOT NULL, CONSTRAINT tmp_SomeTable_PK PRIMARY KEY (someField))",
