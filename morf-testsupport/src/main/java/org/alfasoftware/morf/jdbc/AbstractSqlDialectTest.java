@@ -3581,16 +3581,16 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Tests that the Left pad works.
+   * Tests that the right pad works.
    */
   @Test
   public void testGetSqlForRightPad() {
     // Given
     Function rightPad = rightPad(new FieldReference(STRING_FIELD), new FieldLiteral(10), new FieldLiteral("j"));
-    SelectStatement leftPadStatement = new SelectStatement(rightPad).from(new TableReference(TEST_TABLE));
+    SelectStatement rightPadStatement = new SelectStatement(rightPad).from(new TableReference(TEST_TABLE));
 
     // When
-    String result = testDialect.convertStatementToSQL(leftPadStatement);
+    String result = testDialect.convertStatementToSQL(rightPadStatement);
 
     // Then
     assertEquals("Right pad script must match the expected", expectedRightPad(), result);
