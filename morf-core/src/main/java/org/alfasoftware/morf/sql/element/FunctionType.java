@@ -199,6 +199,11 @@ public enum FunctionType {
   LEFT_PAD,
 
   /**
+   * Right Pad function. Pads the specified character on the right of specified field to stretch it to the length specified.
+   */
+  RIGHT_PAD,
+
+  /**
    * Length function.
    */
   LENGTH,

@@ -614,6 +614,21 @@ public final class Function extends AliasedField implements Driver {
 
 
   /**
+   * Helper method to create an instance of the <code>RPAD</code> SQL function.
+   * <p>Pads the <code>character</code> on the right of <code>field</code> so that the size equals <code>length</code></p>
+   * <p>The field should be of type {@link org.alfasoftware.morf.metadata.DataType#STRING}</p>
+   *
+   * @param field     String field to pad.
+   * @param length    target length.
+   * @param character character to pad.
+   * @return an instance of RPAD function.
+   */
+  public static Function rightPad(AliasedField field, AliasedField length, AliasedField character) {
+    return new Function(FunctionType.RIGHT_PAD, field, length, character);
+  }
+
+
+  /**
    * Convenience helper method to create an instance of the <code>LPAD</code> SQL function.
    * <p>Pads the <code>character</code> on the left of <code>field</code> so that the size equals <code>length</code></p>
    * <p>The field should be of type {@link org.alfasoftware.morf.metadata.DataType#STRING}</p>
@@ -625,6 +640,21 @@ public final class Function extends AliasedField implements Driver {
    */
   public static Function leftPad(AliasedField field, int length, String character) {
     return new Function(FunctionType.LEFT_PAD, field, literal(length), literal(character));
+  }
+
+
+  /**
+   * Convenience helper method to create an instance of the <code>RPAD</code> SQL function.
+   * <p>Pads the <code>character</code> on the right of <code>field</code> so that the size equals <code>length</code></p>
+   * <p>The field should be of type {@link org.alfasoftware.morf.metadata.DataType#STRING}</p>
+   *
+   * @param field     String field to pad.
+   * @param length    target length.
+   * @param character character to pad.
+   * @return an instance of RPAD function.
+   */
+  public static Function rightPad(AliasedField field, int length, String character) {
+    return new Function(FunctionType.RIGHT_PAD, field, literal(length), literal(character));
   }
 
 

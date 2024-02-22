@@ -739,6 +739,7 @@ public class TestHumanReadableStatementHelper {
     final Function lowerCase = Function.lowerCase(new FieldReference("foo"));
     final Function upperCase = Function.upperCase(new FieldReference("foo"));
     final Function leftPad = Function.leftPad(new FieldReference("foo"), new FieldLiteral(32), new FieldLiteral(' '));
+    final Function rightPad = Function.rightPad(new FieldReference("foo"), new FieldLiteral(32), new FieldLiteral(' '));
     final Function now = Function.now();
     final Function lastDayOfMonth = Function.lastDayOfMonth(new FieldReference("foo"));
 
@@ -772,6 +773,7 @@ public class TestHumanReadableStatementHelper {
     assertEquals("LOWER_CASE", String.format("%n    - Set bar to lower case foo"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(lowerCase.as("bar")));
     assertEquals("UPPER_CASE", String.format("%n    - Set bar to upper case foo"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(upperCase.as("bar")));
     assertEquals("LEFT_PAD", String.format("%n    - Set bar to leftPad(foo, 32, ' ')"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(leftPad.as("bar")));
+    assertEquals("RIGHT_PAD", String.format("%n    - Set bar to rightPad(foo, 32, ' ')"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(rightPad.as("bar")));
     assertEquals("NOW", String.format("%n    - Set bar to now"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(now.as("bar")));
     assertEquals("LAST_DAY_OF_MONTH", String.format("%n    - Set bar to last day of month foo"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(lastDayOfMonth.as("bar")));
   }

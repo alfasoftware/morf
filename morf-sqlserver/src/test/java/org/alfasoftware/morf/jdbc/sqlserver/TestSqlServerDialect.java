@@ -1211,6 +1211,15 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRightPad()
+   */
+  @Override
+  protected String expectedRightPad() {
+    return "SELECT CASE WHEN LEN(stringField) > 10 THEN LEFT(stringField, 10) ELSE RIGHT(stringField + REPLICATE('j', 10), 10) END FROM TESTSCHEMA.Test";
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectOrderByNullsLast()
    */
   @Override
@@ -1268,6 +1277,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   }
 
 
+  @Override
   protected List<String> expectedReplaceTableFromStatements() {
     return ImmutableList.of(
         "CREATE TABLE TESTSCHEMA.tmp_SomeTable ([someField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [otherField] NUMERIC(3,0) NOT NULL, [thirdField] NUMERIC(5,0) NOT NULL, CONSTRAINT [tmp_SomeTable_PK] PRIMARY KEY ([someField]))",
@@ -1281,6 +1291,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   }
 
 
+  @Override
   protected List<String> expectedReplaceTableWithAutonumber() {
     return ImmutableList.of(
         "CREATE TABLE TESTSCHEMA.tmp_SomeTable ([someField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [otherField] NUMERIC(3,0) NOT NULL IDENTITY(1, 1), [thirdField] NUMERIC(5,0) NOT NULL, CONSTRAINT [tmp_SomeTable_PK] PRIMARY KEY ([someField]))",

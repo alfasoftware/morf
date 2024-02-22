@@ -45,10 +45,8 @@ import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.sql.CustomHint;
 import org.alfasoftware.morf.sql.OracleCustomHint;
-import org.alfasoftware.morf.sql.element.ClobFieldLiteral;
 import org.alfasoftware.morf.sql.element.Direction;
 import org.alfasoftware.morf.sql.element.SqlParameter;
-import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 
 import com.google.common.base.Strings;
@@ -1460,6 +1458,15 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedLeftPad() {
     return "SELECT LPAD(stringField, 10, N'j') FROM TESTSCHEMA.Test";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRightPad()
+   */
+  @Override
+  protected String expectedRightPad() {
+    return "SELECT RPAD(stringField, 10, N'j') FROM TESTSCHEMA.Test";
   }
 
 
