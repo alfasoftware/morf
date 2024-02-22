@@ -1,8 +1,8 @@
 # ![Alfa Morf](https://github.com/alfasoftware/morf/wiki/morf.png)
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Build Status](https://travis-ci.com/alfasoftware/morf.svg?branch=main)](https://app.travis-ci.com/alfasoftware/morf)
-[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=org.alfasoftware%3Amorf-parent&metric=alert_status)](https://sonarcloud.io/project/overview?id=org.alfasoftware:morf-parent)
+[![Build Status](https://travis-ci.com/alfasoftware/morf.svg?branch=release%2F2.8.3.x)](https://app.travis-ci.com/alfasoftware/morf)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=org.alfasoftware%3Amorf-parent&metric=alert_status&branch=release%2F2.8.3.x)](https://sonarcloud.io/project/overview?id=org.alfasoftware:morf-parent)
 [![Changelog](https://img.shields.io/badge/-Changelog-grey.svg)](https://github.com/alfasoftware/morf/releases)
 
 Morf is a library for cross-platform evolutionary relational database mechanics, database access and database imaging/cloning.  It has been developed over many years at Alfa and is used to manage all of our RDBMS-backed applications.
