@@ -9,27 +9,11 @@ jdk: openjdk11
 dist: xenial
 jobs:
   include:
-    - if: repo = alfasoftware/morf AND branch = main AND NOT type = pull_request
-      name: "Test"
-      script:
-        - git fetch --unshallow --quiet
-        - mvn clean verify sonar:sonar -Pcoverage -B -U
-    - if: repo = alfasoftware/morf AND NOT branch = main AND NOT type = pull_request
-      name: "Test"
-      script:
-        - git fetch --unshallow --quiet
-        - mvn clean verify sonar:sonar -Pcoverage -B -U -Dsonar.branch.name=$TRAVIS_BRANCH
     - if: repo = alfasoftware/morf AND head_repo = alfasoftware/morf AND type = pull_request
       name: "Test"
       script:
         - git fetch --unshallow --quiet
-        - mvn clean verify sonar:sonar -Pcoverage -B -U -Dsonar.pullrequest.key=$TRAVIS_PULL_REQUEST -Dsonar.pullrequest.branch=$TRAVIS_PULL_REQUEST_BRANCH -Dsonar.pullrequest.base=$TRAVIS_BRANCH
-    - if: repo = alfasoftware/morf AND branch = main AND NOT type = pull_request
-      name: "Deploy From Main"
-      script:
-        - echo $GPG_SECRET_KEYS | base64 --decode | $GPG_EXECUTABLE --import
-        - echo $GPG_OWNERTRUST | base64 --decode | $GPG_EXECUTABLE --import-ownertrust
-        - mvn clean deploy --settings .maven-settings.xml -B -U -Prelease
+        - mvn clean verify -Pcoverage -B -U
     - if: repo = alfasoftware/morf AND tag IS present AND NOT type = pull_request AND sender in (capgen628, gilleain, jsimlo, therealluigi, okeating, wnicholson)
       name: "Deploy From Tag"
       script:
