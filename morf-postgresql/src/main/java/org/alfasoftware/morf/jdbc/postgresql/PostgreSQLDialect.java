@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.StringJoiner;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
@@ -884,9 +885,7 @@ class PostgreSQLDialect extends SqlDialect {
 
   @Override
   public List<String> getSchemaConsistencyStatements(SchemaResource schemaResource) {
-    return schemaResource.getDatabaseMetaDataProvider()
-            .filter(instanceOf(PostgreSQLMetaDataProvider.class))
-            .map(PostgreSQLMetaDataProvider.class::cast)
+    return getPostgreSQLMetaDataProvider(schemaResource)
             .map(this::getSchemaConsistencyStatements)
             .orElseGet(() -> super.getSchemaConsistencyStatements(schemaResource));
   }
@@ -920,7 +919,14 @@ class PostgreSQLDialect extends SqlDialect {
     return new PostgreSQLUniqueIndexAdditionalDeploymentStatements(table, index)
             .healIndexStatements(additionalConstraintIndexInfo, schemaNamePrefix(table) + table.getName());
   }
-  
+
+
+  private Optional<PostgreSQLMetaDataProvider> getPostgreSQLMetaDataProvider(SchemaResource schemaResource) {
+    return schemaResource.getDatabaseMetaDataProvider()
+            .filter(instanceOf(PostgreSQLMetaDataProvider.class))
+            .map(PostgreSQLMetaDataProvider.class::cast);
+  }
+
 
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#tableNameWithSchemaName(org.alfasoftware.morf.sql.element.TableReference)
