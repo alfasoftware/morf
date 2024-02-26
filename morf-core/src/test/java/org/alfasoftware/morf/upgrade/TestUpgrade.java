@@ -35,7 +35,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyListOf;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -178,7 +177,7 @@ public class TestUpgrade {
 
     SchemaResource schemaResource = mock(SchemaResource.class);
     when(mockConnectionResources.openSchemaResource(eq(mockConnectionResources.getDataSource()))).thenReturn(schemaResource);
-    when(mockConnectionResources.sqlDialect().getSchemaConsistencyStatements(schemaResource)).thenReturn(ImmutableList.of("I", "J"));
+    when(mockConnectionResources.sqlDialect().getSchemaConsistencyStatements(schemaResource)).thenReturn(ImmutableList.of("CONS1", "CONS2"));
     when(schemaResource.tables()).thenReturn(tables);
 
     UpgradePath results = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(mockConnectionResources), graphBasedUpgradeScriptGeneratorFactory, viewChangesDeploymentHelperFactory(mockConnectionResources), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory())
@@ -186,14 +185,11 @@ public class TestUpgrade {
         .findPath(targetSchema, upgradeSteps, Lists.newArrayList("^Drivers$", "^EXCLUDE_.*$"), mockConnectionResources.getDataSource());
 
     assertEquals("Should be two steps.", 2, results.getSteps().size());
-    assertEquals("Number of SQL statements", 20, results.getSql().size()); // Includes statements to create, truncate and then drop temp table, also 2 comments
+    assertEquals("Number of SQL statements", 21, results.getSql().size()); // Includes statements to add optimistic locking; create, truncate and then drop temp table; also 2 comments
 
-    assertEquals("SQL", "[I, J]", results.getSql().subList(0, 2).toString()); // schema consistency statements
-    assertEquals("SQL", "-- Upgrade step: org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.ChangeCar", results.getSql().get(3).toString()); // upgrade ChangeCar begins
-    assertEquals("SQL", "-- Upgrade step: org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.ChangeDriver", results.getSql().get(10).toString()); // upgrade ChangeDriver begins
-
-    TODO
-    assertEquals("Number of SQL statements", 19, results.getSql().size()); // Includes statements to add optimistic locking; create, truncate and then drop temp table; also 2 comments
+    assertEquals("SQL", "[INIT, CONS1, CONS2]", results.getSql().subList(0, 3).toString()); // schema consistency statements
+    assertEquals("SQL", "-- Upgrade step: org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.ChangeCar", results.getSql().get(4).toString()); // upgrade ChangeCar begins
+    assertEquals("SQL", "-- Upgrade step: org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.ChangeDriver", results.getSql().get(11).toString()); // upgrade ChangeDriver begins
   }
 
 
@@ -255,15 +251,8 @@ public class TestUpgrade {
 
   private UpgradePathFactory upgradePathFactory() {
     UpgradePathFactory upgradePathFactory = mock(UpgradePathFactory.class);
-//<<<<<<< nullable-columns-in-unique-indexes
-    when(upgradePathFactory.create(anyListOf(UpgradeStep.class), any(ConnectionResources.class), nullable(GraphBasedUpgradeBuilder.class))).thenAnswer(invocation -> {
-      return new UpgradePath(Sets.<UpgradeScriptAddition>newHashSet(), (List<UpgradeStep>)invocation.getArguments()[0], (ConnectionResources)invocation.getArguments()[1], Collections.emptyList(), Collections.emptyList());
-    });
-///=======
     when(upgradePathFactory.create(anyList(), any(ConnectionResources.class), nullable(GraphBasedUpgradeBuilder.class), anyList()))
         .thenAnswer(invocation -> new UpgradePath(Sets.newHashSet(), invocation.getArgument(0), invocation.getArgument(1), invocation.getArgument(3), Collections.emptyList()));
-///>>>>>>> main
-
     return upgradePathFactory;
   }
 
@@ -371,17 +360,17 @@ public class TestUpgrade {
 
     ConnectionResources connection = mock(ConnectionResources.class, RETURNS_DEEP_STUBS);
     when(connection.openSchemaResource(eq(connection.getDataSource()))).thenReturn(schemaResource);
-    when(connection.sqlDialect().getSchemaConsistencyStatements(schemaResource)).thenReturn(ImmutableList.of("I", "J"));
+    when(connection.sqlDialect().getSchemaConsistencyStatements(schemaResource)).thenReturn(ImmutableList.of("CONS1", "CONS2"));
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
 
     // When
-    UpgradePath results = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(connection), graphBasedUpgradeScriptGeneratorFactory, viewChangesDeploymentHelperFactory(connection), viewDeploymentValidatorFactory())
+    UpgradePath results = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(connection), graphBasedUpgradeScriptGeneratorFactory, viewChangesDeploymentHelperFactory(connection), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory())
             .create(connection)
             .findPath(targetSchema, upgradeSteps, new HashSet<>(), connection.getDataSource());
 
     // Then
     assertTrue("No steps to apply", results.getSteps().isEmpty());
-    assertEquals("SQL", "[I, J]", results.getSql().toString());
+    assertEquals("SQL", "[INIT, CONS1, CONS2]", results.getSql().toString());
   }
 
 
@@ -409,15 +398,10 @@ public class TestUpgrade {
     when(connection.sqlDialect().viewDeploymentStatements(same(testView))).thenReturn(ImmutableList.of("A"));
     when(connection.sqlDialect().viewDeploymentStatementsAsLiteral(any(View.class))).thenReturn(literal("W"));
     when(connection.sqlDialect().rebuildTriggers(any(Table.class))).thenReturn(Collections.<String>emptyList());
-///<<<<<<< nullable-columns-in-unique-indexes
     when(connection.sqlDialect().getSchemaConsistencyStatements(schemaResource)).thenReturn(ImmutableList.of());
     when(connection.openSchemaResource(eq(connection.getDataSource()))).thenReturn(schemaResource);
-    when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
-///=======
-    when(connection.openSchemaResource(eq(connection.getDataSource()))).thenReturn(new StubSchemaResource(sourceSchema));
     when(connection.sqlDialect().truncateTableStatements(any(Table.class))).thenReturn(Lists.newArrayList("1"));
     when(connection.sqlDialect().dropStatements(any(Table.class))).thenReturn(Lists.newArrayList("2"));
-///>>>>>>> main
 
     // When
     UpgradePath result = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(connection), graphBasedUpgradeScriptGeneratorFactory, viewChangesDeploymentHelperFactory(connection), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory())
@@ -462,15 +446,10 @@ public class TestUpgrade {
     when(connection.sqlDialect().viewDeploymentStatements(same(testView))).thenReturn(ImmutableList.of("A"));
     when(connection.sqlDialect().viewDeploymentStatementsAsLiteral(any(View.class))).thenReturn(literal("W"));
     when(connection.sqlDialect().rebuildTriggers(any(Table.class))).thenReturn(Collections.<String>emptyList());
-///<<<<<<< nullable-columns-in-unique-indexes
     when(connection.sqlDialect().getSchemaConsistencyStatements(schemaResource)).thenReturn(ImmutableList.of());
     when(connection.openSchemaResource(eq(connection.getDataSource()))).thenReturn(schemaResource);
-    when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
-///=======
-    when(connection.openSchemaResource(eq(connection.getDataSource()))).thenReturn(new StubSchemaResource(sourceSchema));
     when(connection.sqlDialect().truncateTableStatements(any(Table.class))).thenReturn(Lists.newArrayList("1"));
     when(connection.sqlDialect().dropStatements(any(Table.class))).thenReturn(Lists.newArrayList("2"));
-///>>>>>>> main
 
     // When
     UpgradePath result = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(connection), graphBasedUpgradeScriptGeneratorFactory, viewChangesDeploymentHelperFactory(connection), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory())
