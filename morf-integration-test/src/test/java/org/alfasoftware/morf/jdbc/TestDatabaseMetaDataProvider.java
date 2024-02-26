@@ -143,6 +143,7 @@ public class TestDatabaseMetaDataProvider {
 
   @Before
   public void before() throws SQLException {
+
     databaseType = database.getDatabaseType();
 
     schemaManager.dropAllViews();

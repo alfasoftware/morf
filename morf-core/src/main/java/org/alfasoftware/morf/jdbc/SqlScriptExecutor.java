@@ -55,24 +55,56 @@ public class SqlScriptExecutor {
 
   private final SqlDialect sqlDialect;
 
+  private int fetchSizeForBulkSelects;
+  private int fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming;
+
   /**
+   * @deprecated This constructor creates a {@link SqlScriptExecutor} with legacy fetch size values and is primarily for backwards compatibility.
+   * Please use {@link SqlScriptExecutor#SqlScriptExecutor(SqlScriptVisitor, DataSource, SqlDialect, ConnectionResources)} to create a
+   * {@link SqlScriptExecutor} with the new fetch size defaults or optional configured values.
+   *
    * Create an SQL executor with the given visitor, who will
    * be notified about events.
    *
    * @param visitor Visitor to notify about execution.
    * @param dataSource DataSource to use.
    */
+  @Deprecated
   SqlScriptExecutor(SqlScriptVisitor visitor, DataSource dataSource, SqlDialect sqlDialect) {
     super();
     this.dataSource = dataSource;
     this.sqlDialect = sqlDialect;
-    if (visitor == null) {
-      this.visitor = new NullVisitor();
-    } else {
-      this.visitor = visitor;
-    }
+    this.fetchSizeForBulkSelects = sqlDialect.legacyFetchSizeForBulkSelects();
+    this.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming = sqlDialect.legacyFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
+    this.visitor = checkVisitor(visitor);
   }
 
+  /**
+   * Create an SQL executor with the given visitor, who will
+   * be notified about events.
+   *
+   * @param visitor Visitor to notify about execution.
+   * @param dataSource DataSource to use.
+   * @param connectionResources The connection resources to use.
+   */
+  SqlScriptExecutor(SqlScriptVisitor visitor, DataSource dataSource, SqlDialect sqlDialect, ConnectionResources connectionResources) {
+    super();
+    this.dataSource = dataSource;
+    this.sqlDialect = sqlDialect;
+    this.fetchSizeForBulkSelects = connectionResources.getFetchSizeForBulkSelects() != null
+        ? connectionResources.getFetchSizeForBulkSelects() : sqlDialect.fetchSizeForBulkSelects();
+    this.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming = connectionResources.getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming() != null
+        ? connectionResources.getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming() : sqlDialect.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
+    this.visitor = checkVisitor(visitor);
+  }
+
+  private static SqlScriptVisitor checkVisitor(SqlScriptVisitor visitor){
+    if (visitor == null) {
+      return new NullVisitor();
+    } else {
+      return visitor;
+    }
+  }
 
   /**
    * Receives notification about the execution of one or more SQL statements.
@@ -521,10 +553,13 @@ public class SqlScriptExecutor {
     try {
       ParseResult parseResult = NamedParameterPreparedStatement.parseSql(sql, sqlDialect);
       try (NamedParameterPreparedStatement preparedStatement = standalone ? parseResult.createForQueryOn(connection) : parseResult.createFor(connection)) {
+
         if (standalone) {
-          preparedStatement.setFetchSize(sqlDialect.fetchSizeForBulkSelects());
+          preparedStatement.setFetchSize(fetchSizeForBulkSelects);
+          log.debug("Executing query [" + sql + "] with standalone = [" + standalone + "] and fetch size: [" + fetchSizeForBulkSelects +"].");
         } else {
-          preparedStatement.setFetchSize(sqlDialect.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming());
+          preparedStatement.setFetchSize(fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming);
+          log.debug("Executing query [" + sql + "] with standalone = [" + standalone + "] and fetch size: [" + fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming +"].");
         }
         return executeQuery(preparedStatement, parameterMetadata, parameterData, resultSetProcessor, maxRows, queryTimeout);
       }
@@ -544,7 +579,6 @@ public class SqlScriptExecutor {
    * @param preparedStatement Prepared statement to run.
    * @param parameterMetadata the metadata describing the parameters.
    * @param parameterData the values to insert.
-   * @param connection the connection to use.
    * @param processor the code to be run to process the {@link ResultSet}.
    * @param maxRows The maximum number of rows to be returned. Will inform the
    *          JDBC driver to tell the server not to return any more rows than

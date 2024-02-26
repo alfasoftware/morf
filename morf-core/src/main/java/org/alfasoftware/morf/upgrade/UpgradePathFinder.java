@@ -15,17 +15,7 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.lang.reflect.Constructor;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
+import com.google.common.collect.Lists;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaHomology;
 import org.alfasoftware.morf.metadata.SchemaHomology.DifferenceWriter;
@@ -33,9 +23,14 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import com.google.common.base.Predicate;
-import com.google.common.collect.FluentIterable;
-import com.google.common.collect.Lists;
+import java.lang.reflect.Constructor;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Determines an upgrade path if possible between the current schema definition and a target.
@@ -60,13 +55,21 @@ public class UpgradePathFinder {
 
   private final List<CandidateStep> stepsToApply;
 
+  private static final String APPLICATION_SCHEMA = "expected schema based on application binaries";
+
+  private static final String UPGRADED_SCHEMA = "database schema with upgrades applied";
+
+  private static final String REVERSED_SCHEMA = "upgraded database schema with upgrades reversed";
+
+  private static final String CURRENT_SCHEMA = "current database schema";
+
   /**
    * @param availableUpgradeSteps Steps that are available for building a path.
    * @param stepsAlreadyApplied The UUIDs of steps which have already been applied.
    */
   public UpgradePathFinder(Collection<Class<? extends UpgradeStep>> availableUpgradeSteps, Set<java.util.UUID> stepsAlreadyApplied) {
     this.upgradeGraph = new UpgradeGraph(availableUpgradeSteps);
-    this.stepsAlreadyApplied = addAssumedAppliedUUIDs(stepsAlreadyApplied);
+    this.stepsAlreadyApplied = stepsAlreadyApplied;
 
     this.stepsToApply = upgradeStepsToApply();
   }
@@ -109,13 +112,13 @@ public class UpgradePathFinder {
 
     // We have changes to make. Apply them against the current schema to see whether they get us the right position
     Schema trialUpgradedSchema = schemaChangeSequence.applyToSchema(current);
-    if (!schemasMatch(target, trialUpgradedSchema, "target domain schema", "trial upgraded schema", exceptionRegexes)) {
+    if (schemasNotMatch(target, trialUpgradedSchema, APPLICATION_SCHEMA, UPGRADED_SCHEMA, exceptionRegexes)) {
       throw new NoUpgradePathExistsException();
     }
 
     // Now reverse-apply those changes to see whether they get us back to where we started
     Schema reversal = schemaChangeSequence.applyInReverseToSchema(trialUpgradedSchema);
-    if (!schemasMatch(reversal, current, "upgraded schema reversal", "current schema", exceptionRegexes)) {
+    if (schemasNotMatch(reversal, current, REVERSED_SCHEMA, CURRENT_SCHEMA, exceptionRegexes)) {
       throw new IllegalStateException("Upgrade reversals are invalid");
     }
 
@@ -159,14 +162,9 @@ public class UpgradePathFinder {
   private List<CandidateStep> upgradeStepsToApply() {
     final Map<java.util.UUID, CandidateStep> candidateSteps = candidateStepsByUUID();
 
-    List<CandidateStep> steps = FluentIterable.from(candidateSteps.values())
-        .filter(new Predicate<CandidateStep>() {
-          @Override public boolean apply(CandidateStep step) {
-            return step.isApplicable(stepsAlreadyApplied, candidateSteps);
-          }})
-        .toList();
-
-    return steps;
+    return candidateSteps.values().stream()
+            .filter(step -> step.isApplicable(stepsAlreadyApplied, candidateSteps))
+            .collect(Collectors.toList());
   }
 
 
@@ -201,63 +199,68 @@ public class UpgradePathFinder {
    * @param firstSchemaContext Context of the target schema for logging.
    * @param secondScehmaContext Context of the trial schema for logging.
    * @param exceptionRegexes Regular exceptions for the table exceptions.
-   * @return True if the schemas match.
+   * @return True if the schemas don't match.
    */
-  private boolean schemasMatch(Schema targetSchema, Schema trialSchema, String firstSchemaContext, String secondScehmaContext, Collection<String> exceptionRegexes) {
+  private boolean schemasNotMatch(Schema targetSchema, Schema trialSchema, String firstSchemaContext, String secondScehmaContext, Collection<String> exceptionRegexes) {
     log.info("Comparing schema [" + firstSchemaContext + "] to [" + secondScehmaContext + "]");
-    DifferenceWriter differenceWriter = new DifferenceWriter() {
-      @Override
-      public void difference(String message) {
-        log.info(message);
-      }
-    };
+    DifferenceWriter differenceWriter = log::warn;
 
     SchemaHomology homology = new SchemaHomology(differenceWriter, firstSchemaContext, secondScehmaContext );
     if (homology.schemasMatch(targetSchema, trialSchema, exceptionRegexes)) {
       log.info("Schemas match");
-      return true;
+      return false;
     } else {
       log.info("Schema differences found");
-      return false;
+      return true;
     }
   }
-
 
   /**
-   * For backwards compatibility, we need to assume the presence of some UUIDs - the ones which were added prior to the introduction of the UpgradeAudit table.
+   * Finds discrepancies between a provided upgrade audit map and the list of steps to apply.
+   * This method compares the UUIDs associated with each upgrade step in the provided list with the corresponding UUIDs
+   * in the upgrade audit map. If discrepancies are found, it logs an error message and throws an IllegalStateException.
    *
-   * @param loadedUUIDS
-   * @return
+   * @param upgradeAudit A Map representing the upgrade audit information, where keys are step names and
+   *                     values are corresponding UUIDs.
+   * @throws IllegalStateException If discrepancies are found between upgrade steps and their associated UUIDs in the
+   *                               provided map.
    */
-  private Set<java.util.UUID> addAssumedAppliedUUIDs(Set<java.util.UUID> loadedUUIDS) {
+  public void findDiscrepancies(Map<String, String> upgradeAudit) {
 
-    // The UpgradeAudit table was added in 5.0.18
-    java.util.UUID addUpgradeAuditUUID = java.util.UUID.fromString("5521d849-39b7-4f6f-b95d-5625eac947a7");
+    List<String[]> discrepancies = stepsToApply.stream()
+            .filter(step -> isStepDuplicated(step, upgradeAudit))
+            .map(step -> extractDetails(step, upgradeAudit))
+            .collect(Collectors.toList());
 
-    // This step (ProvisionHistoryUpgrade, but it doesn't really matter) was added in 5.0.17
-    java.util.UUID some5017UUID = java.util.UUID.fromString("521cb292-9722-4655-a462-aaee8ee19185");
-
-    if (loadedUUIDS.contains(addUpgradeAuditUUID) && !loadedUUIDS.contains(some5017UUID)) {
-      log.debug("Assuming the presence of steps in 5.0.18 and earlier");
-
-      Set<java.util.UUID> result = new HashSet<>(loadedUUIDS);
-      try (BufferedReader reader = new BufferedReader(new InputStreamReader(UpgradePathFinder.class.getResourceAsStream("AssumedUUIDs.txt"), "UTF-8"))) {
-        // these are all the steps from the start of time to the end of 5.0.18
-        String line = reader.readLine();
-        while (line != null) {
-          result.add(java.util.UUID.fromString(line));
-          line = reader.readLine();
-        }
-      } catch (IOException ioe) {
-        throw new RuntimeException(ioe);
-      }
-      return result;
-    } else {
-      log.debug("Using literal content of UpgradeAudit");
-      return loadedUUIDS;
+    if (!discrepancies.isEmpty()) {
+      String message = String.format("Some upgrade steps could have run before with different UUID. The following have been detected:%n%s",
+              discrepancies.stream()
+                      .map(d -> String.format("Name: %s, Old UUID: %s, Current UUID: %s", d[0], d[1], d[2]))
+                      .collect(Collectors.joining("\n")));
+      throw new IllegalStateException(message);
     }
   }
 
+  private String[] extractDetails(CandidateStep step, Map<String, String> upgradeAudit) {
+    String name = step.getName();
+    return new String[]{name, step.getUuid().toString(), upgradeAudit.get(name)};
+  }
+
+  /**
+   * Checks if a given CandidateStep is duplicated based on its name in the upgradeAudit map.
+   * A CandidateStep is considered duplicated if it has the same name but a different UUID
+   * compared to the entries in the upgradeAudit map.
+   *
+   * @param step The CandidateStep to be checked for duplication.
+   * @param upgradeAudit A Map<String, String> representing the upgrade audit information, where keys are step names,
+   *                     and values are corresponding UUIDs.
+   * @return {@code true} if the CandidateStep is duplicated, {@code false} otherwise.
+   */
+  private boolean isStepDuplicated(CandidateStep step, Map<String, String> upgradeAudit) {
+    String name = step.getName();
+    String auditUUID = upgradeAudit.get(name);
+    return auditUUID != null && !Objects.equals(auditUUID, step.getUuid().toString());
+  }
 
   /**
    * Helper class encapsulating the logic relevant to individual upgrade steps.
@@ -348,6 +351,9 @@ public class UpgradePathFinder {
       }
     }
 
+    public String getDescription() {
+      return this.createStep().getDescription();
+    }
 
     @Override
     public String toString() {

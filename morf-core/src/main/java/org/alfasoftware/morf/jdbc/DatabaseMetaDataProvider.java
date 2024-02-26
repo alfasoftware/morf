@@ -54,6 +54,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 
+import static org.alfasoftware.morf.util.SchemaValidatorUtil.validateSchemaName;
+
 /**
  * Provides meta data based on a database connection.
  *
@@ -111,7 +113,7 @@ public class DatabaseMetaDataProvider implements Schema {
   protected DatabaseMetaDataProvider(Connection connection, String schemaName) {
     super();
     this.connection = connection;
-    this.schemaName = schemaName;
+    this.schemaName = validateSchemaName(schemaName);
   }
 
 
@@ -279,6 +281,19 @@ public class DatabaseMetaDataProvider implements Schema {
 
 
   /**
+   * Identify whether or not the view is one owned by the system, or owned by
+   * our application. The default implementation assumes that all views we can
+   * access in the schema are under our control.
+   *
+   * @param viewName The view which we are accessing.
+   * @return <var>true</var> if the view is owned by the system
+   */
+  protected boolean isSystemView(@SuppressWarnings("unused") RealName viewName) {
+    return false;
+  }
+
+
+  /**
    * Identify whether or not the specified table should be ignored in the metadata. This is
    * typically used to filter temporary tables.
    *
@@ -286,6 +301,18 @@ public class DatabaseMetaDataProvider implements Schema {
    * @return <var>true</var> if the table should be ignored, false otherwise.
    */
   protected boolean isIgnoredTable(@SuppressWarnings("unused") RealName tableName) {
+    return false;
+  }
+
+
+  /**
+   * Identify whether or not the specified view should be ignored in the metadata. This is
+   * typically used to filter temporary tables.
+   *
+   * @param viewName The view which we are accessing.
+   * @return <var>true</var> if the table should be ignored, false otherwise.
+   */
+  protected boolean isIgnoredView(@SuppressWarnings("unused") RealName viewName) {
     return false;
   }
 
@@ -350,7 +377,7 @@ public class DatabaseMetaDataProvider implements Schema {
 
         // Maps.transformValues creates a view over the given map of builders
         // Therefore we need to make a copy to avoid building the builders repeatedly
-        return ImmutableMap.copyOf(Maps.transformValues(columnMappingBuilders, v -> v.build()));
+        return ImmutableMap.copyOf(Maps.transformValues(columnMappingBuilders, ImmutableMap.Builder::build));
       }
     }
     catch (SQLException e) {
@@ -772,12 +799,16 @@ public class DatabaseMetaDataProvider implements Schema {
       try (ResultSet viewResultSet = databaseMetaData.getTables(null, schemaName, null, tableTypesForViews())) {
         while (viewResultSet.next()) {
           RealName viewName = readViewName(viewResultSet);
-
-          if (log.isDebugEnabled()) {
-            log.debug("Found view [" + viewName + "]");
+          if (isSystemView(viewName) || isIgnoredView(viewName)){
+            if (log.isDebugEnabled()) {
+              log.debug("Skipped system/ignored view [" + viewName + "]" );
+            }
+          } else {
+            if (log.isDebugEnabled()) {
+              log.debug("Found view [" + viewName + "]");
+            }
+            viewNameMappings.put(viewName, viewName);
           }
-
-          viewNameMappings.put(viewName, viewName);
         }
 
         return viewNameMappings.build();
@@ -1096,15 +1127,13 @@ public class DatabaseMetaDataProvider implements Schema {
 
     @Override
     public String toString() {
-      return new StringBuilder()
-          .append("Column-").append(columnName)
-          .append("-").append("UNSUPPORTED")
-          .append("-").append(typeName)
-          .append("-").append(typeCode)
-          .append("-").append(width)
-          .append("-").append(scale)
-          .append("-").append(columnResultSet)
-          .toString();
+      return "Column-" + columnName +
+              "-" + "UNSUPPORTED" +
+              "-" + typeName +
+              "-" + typeCode +
+              "-" + width +
+              "-" + scale +
+              "-" + columnResultSet;
     }
 
     @Override

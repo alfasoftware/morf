@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import com.google.common.collect.Lists;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Column;
@@ -36,6 +37,7 @@ import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.alfasoftware.morf.sql.element.FunctionType;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Joiner;
@@ -44,7 +46,7 @@ import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.Iterables;
 
 /**
- * Implements database specific statement generation for MySQL version 5.
+ * Implements database specific statement generation for H2.
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
@@ -56,7 +58,7 @@ class H2Dialect extends SqlDialect {
   public static final String TEMPORARY_TABLE_PREFIX = "TEMP_";
 
   /**
-   * @param schemaName
+   * @param schemaName Name of the schema to connect to
    *
    */
   public H2Dialect(String schemaName) {
@@ -90,11 +92,12 @@ class H2Dialect extends SqlDialect {
       if (!first) {
         createTableStatement.append(", ");
       }
-      createTableStatement.append(column.getName() + " ");
+      createTableStatement.append(column.getName()).append(" ");
       createTableStatement.append(sqlRepresentationOfColumnType(column));
       if (column.isAutoNumbered()) {
         int autoNumberStart = column.getAutoNumberStart() == -1 ? 1 : column.getAutoNumberStart();
-        createTableStatement.append(" AUTO_INCREMENT(" + autoNumberStart + ") COMMENT 'AUTONUMSTART:[" + autoNumberStart + "]'");
+        createTableStatement.append(" AUTO_INCREMENT(").append(autoNumberStart)
+                .append(") COMMENT 'AUTONUMSTART:[").append(autoNumberStart).append("]'");
       }
 
       if (column.isPrimaryKey()) {
@@ -125,7 +128,7 @@ class H2Dialect extends SqlDialect {
    */
   @Override
   public Collection<String> dropStatements(Table table) {
-    return Arrays.asList("drop table " + schemaNamePrefix() + table.getName() + " cascade");
+    return dropTables(Lists.newArrayList(table), false, true);
   }
 
 
@@ -198,10 +201,10 @@ class H2Dialect extends SqlDialect {
    */
   @Override
   public Collection<String> alterTableAddColumnStatements(Table table, Column column) {
-    StringBuilder statement = new StringBuilder().append("ALTER TABLE ").append(schemaNamePrefix()).append(table.getName()).append(" ADD COLUMN ")
-        .append(column.getName()).append(' ').append(sqlRepresentationOfColumnType(column, true));
+    String statement = "ALTER TABLE " + schemaNamePrefix() + table.getName() + " ADD COLUMN " +
+            column.getName() + ' ' + sqlRepresentationOfColumnType(column, true);
 
-    return Collections.singletonList(statement.toString());
+    return Collections.singletonList(statement);
   }
 
 
@@ -257,11 +260,10 @@ class H2Dialect extends SqlDialect {
    */
   @Override
   public Collection<String> alterTableDropColumnStatements(Table table, Column column) {
-    StringBuilder statement = new StringBuilder()
-      .append("ALTER TABLE ").append(schemaNamePrefix()).append(table.getName())
-      .append(" DROP COLUMN ").append(column.getName());
+    String statement = "ALTER TABLE " + schemaNamePrefix() + table.getName() +
+            " DROP COLUMN " + column.getName();
 
-    return Collections.singletonList(statement.toString());
+    return Collections.singletonList(statement);
   }
 
 
@@ -286,7 +288,7 @@ class H2Dialect extends SqlDialect {
 
   /**
    * @param table The table to add the constraint for
-   * @param primaryKeyColumnNames
+   * @param primaryKeyColumnNames List of the column names of the primary key
    * @return The statement
    */
   private String addPrimaryKeyConstraintStatement(Table table, List<String> primaryKeyColumnNames) {
@@ -471,7 +473,7 @@ class H2Dialect extends SqlDialect {
   @Override
   public Collection<String> renameTableStatements(Table from, Table to) {
 
-    Builder<String> builder = ImmutableList.<String>builder();
+    Builder<String> builder = ImmutableList.builder();
 
     if (!primaryKeysForTable(from).isEmpty()) {
       builder.add(dropPrimaryKeyConstraintStatement(from));
@@ -490,7 +492,7 @@ class H2Dialect extends SqlDialect {
   /**
    *  TODO
    * The following is a workaround to a bug in H2 version 1.4.200 whereby the MERGE...USING statement does not release the source select statement
-   * Please remove this method once https://github.com/h2database/h2database/issues/2196 has been fixed and H2 upgraded to the fixed version
+   * Please remove this method once <a href="https://github.com/h2database/h2database/issues/2196">issue 2196</a> has been fixed and H2 upgraded to the fixed version
    * This workaround uses the following alternative syntax, which fortunately does not lead to the same bug:
    *
    * <pre>
@@ -502,7 +504,7 @@ class H2Dialect extends SqlDialect {
    *     WHEN NOT MATCHED THEN INSERT ...
    * </pre>
    *
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.MergeStatement)
+   * @see SqlDialect#getSqlFrom(MergeStatement)
    */
   @Override
   protected String getSqlFrom(MergeStatement statement) {
@@ -577,6 +579,31 @@ class H2Dialect extends SqlDialect {
   @Override
   protected String getSqlForLastDayOfMonth(AliasedField date) {
     return "DATEADD(dd, -DAY(DATEADD(m,1," + getSqlFrom(date) + ")), DATEADD(m,1," + getSqlFrom(date) + "))";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForRowNumber() 
+   */
+  @Override
+  protected String getSqlForRowNumber() {
+    return "ROW_NUMBER() OVER()";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForWindowFunction(Function) 
+   */
+  @Override
+  protected String getSqlForWindowFunction(Function function) {
+    FunctionType functionType = function.getType();
+    switch (functionType) {
+      case ROW_NUMBER:
+        return "ROW_NUMBER()";
+
+      default:
+        return super.getSqlForWindowFunction(function);
+    }
   }
 
 

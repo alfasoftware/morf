@@ -23,7 +23,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import org.alfasoftware.morf.sql.element.AliasedField;
@@ -34,7 +34,7 @@ import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 
 /**
  * Test {@link SelectFirstStatement} element generation
@@ -59,6 +59,7 @@ public class TestSelectFirstElementGeneration {
    */
   @Test
   public void testConstruction() {
+    when(field.build()).thenReturn(field);
     SelectFirstStatement selectFirst = selectFirst(field).from(table).where(criterion).orderBy(field);
 
     assertEquals("should be one field selected",1,selectFirst.getFields().size());

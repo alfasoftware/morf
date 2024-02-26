@@ -424,7 +424,7 @@ public class TestXmlDataSetProducer {
      */
     @Override
     public boolean tableExists(String name) {
-      return name.toUpperCase().equals(tableName.toUpperCase());
+      return name.equalsIgnoreCase(tableName);
     }
   }
 

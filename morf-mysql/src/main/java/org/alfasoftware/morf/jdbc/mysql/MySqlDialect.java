@@ -33,6 +33,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
@@ -118,7 +119,7 @@ class MySqlDialect extends SqlDialect {
       createTableStatement.append(sqlRepresentationOfColumnType(column));
       if (column.isAutoNumbered()) {
         autoNumberStart = column.getAutoNumberStart() == -1 ? 1 : column.getAutoNumberStart();
-        createTableStatement.append(" AUTO_INCREMENT COMMENT 'AUTONUMSTART:[" + autoNumberStart + "]'");
+        createTableStatement.append(" AUTO_INCREMENT COMMENT 'AUTONUMSTART:[").append(autoNumberStart).append("]'");
         autoIncrementColumn = column;
       }
 
@@ -137,7 +138,7 @@ class MySqlDialect extends SqlDialect {
     createTableStatement.append(") ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin");
 
     if (autoIncrementColumn != null && autoIncrementColumn.getAutoNumberStart() != 0) {
-      createTableStatement.append(" AUTO_INCREMENT=" + autoNumberStart);
+      createTableStatement.append(" AUTO_INCREMENT=").append(autoNumberStart);
     }
 
     statements.add(createTableStatement.toString());
@@ -281,6 +282,18 @@ class MySqlDialect extends SqlDialect {
   }
 
 
+  @Override
+  public Collection<String> dropTables(List<Table> tables, boolean ifExists, boolean cascade) {
+    return Arrays.asList(
+        "FLUSH TABLES " + tables.stream().map(table -> "`" + table.getName() + "`").collect(Collectors.joining(", ")),
+        "DROP TABLE "
+          + (ifExists ? "IF EXISTS " : "")
+          + tables.stream().map(table -> "`" + table.getName() + "`").collect(Collectors.joining(", "))
+          + (cascade ? " CASCADE" : "")
+    );
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#dropStatements(org.alfasoftware.morf.metadata.View)
    */
@@ -291,7 +304,7 @@ class MySqlDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#postInsertWithPresetAutonumStatements(org.alfasoftware.morf.metadata.Table, boolean)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#postInsertWithPresetAutonumStatements(Table, SqlScriptExecutor, Connection, boolean) 
    */
   @Override
   public void postInsertWithPresetAutonumStatements(Table table, SqlScriptExecutor executor,Connection connection, boolean insertingUnderAutonumLimit) {
@@ -300,7 +313,7 @@ class MySqlDialect extends SqlDialect {
 
 
  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#repairAutoNumberStartPosition(org.alfasoftware.morf.metadata.Table)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#repairAutoNumberStartPosition(Table, SqlScriptExecutor, Connection) 
    */
   @Override
   public void repairAutoNumberStartPosition(Table table, SqlScriptExecutor executor,Connection connection) {
@@ -558,7 +571,7 @@ class MySqlDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#changePrimaryKeyColumns(java.lang.String, java.util.List, java.util.List)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#changePrimaryKeyColumns(Table, List, List) 
    */
   @Override
   public Collection<String> changePrimaryKeyColumns(Table table, List<String> oldPrimaryKeyColumns, List<String> newPrimaryKeyColumns) {
@@ -741,7 +754,7 @@ class MySqlDialect extends SqlDialect {
   /**
    * Backslashes in MySQL denote escape sequences and have to themselves be escaped.
    *
-   * @see http://dev.mysql.com/doc/refman/5.0/en/string-literals.html
+   * @see <a href="http://dev.mysql.com/doc/refman/5.0/en/string-literals.html">String Literals</a>
    * @see org.alfasoftware.morf.jdbc.SqlDialect#makeStringLiteral(java.lang.String)
    */
   @Override
@@ -887,7 +900,7 @@ class MySqlDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect.getDeleteLimitSuffixSql(int)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getDeleteLimitSuffix(int)
    */
   @Override
   protected Optional<String> getDeleteLimitSuffix(int limit) {
@@ -913,7 +926,7 @@ class MySqlDialect extends SqlDialect {
     createTableStatement.append("VIEW ");
     createTableStatement.append(schemaNamePrefix());
     createTableStatement.append(view.getName());
-    createTableStatement.append(" AS" + (selectStmntContainsUnion ? " " : " ("));
+    createTableStatement.append(" AS").append(selectStmntContainsUnion ? " " : " (");
     createTableStatement.append(convertedSqlStatement);
     createTableStatement.append(selectStmntContainsUnion ? "" : ")");
 

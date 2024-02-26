@@ -117,6 +117,33 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropSingleTable()
+   */
+  @Override
+  protected List<String> expectedDropSingleTable() {
+    return Arrays.asList("DROP TABLE TESTSCHEMA.Test");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTables()
+   */
+  @Override
+  protected List<String> expectedDropTables() {
+    return Arrays.asList("DROP TABLE TESTSCHEMA.Test, TESTSCHEMA.Other");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTablesWithParameters()
+   */
+  @Override
+  protected List<String> expectedDropTablesWithParameters() {
+    return Arrays.asList("DROP TABLE IF EXISTS TESTSCHEMA.Test, TESTSCHEMA.Other");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTempTableStatements()
    */
   @Override
@@ -177,8 +204,8 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   protected List<String> expectedAutoGenerateIdStatement() {
     return Arrays.asList(
       "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
-      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
-      "INSERT INTO TESTSCHEMA.Test (version, stringField, id) SELECT version, stringField, (SELECT COALESCE(value, 0) FROM TESTSCHEMA.idvalues WHERE (name = 'Test')) + Other.id FROM TESTSCHEMA.Other"
+      "INSERT INTO TESTSCHEMA.idvalues (name, "+ID_INCREMENTOR_TABLE_COLUMN_VALUE+") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
+      "INSERT INTO TESTSCHEMA.Test (version, stringField, id) SELECT version, stringField, (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 0) FROM TESTSCHEMA.idvalues WHERE (name = 'Test')) + Other.id FROM TESTSCHEMA.Other"
         );
   }
 
@@ -190,8 +217,8 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   protected List<String> expectedInsertWithIdAndVersion() {
     return Arrays.asList(
       "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
-      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
-      "INSERT INTO TESTSCHEMA.Test (stringField, id, version) SELECT stringField, (SELECT COALESCE(value, 0) FROM TESTSCHEMA.idvalues WHERE (name = 'Test')) + Other.id, 0 AS version FROM TESTSCHEMA.Other"
+      "INSERT INTO TESTSCHEMA.idvalues (name, "+ID_INCREMENTOR_TABLE_COLUMN_VALUE+") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
+      "INSERT INTO TESTSCHEMA.Test (stringField, id, version) SELECT stringField, (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 0) FROM TESTSCHEMA.idvalues WHERE (name = 'Test')) + Other.id, 0 AS version FROM TESTSCHEMA.Other"
         );
   }
 
@@ -279,8 +306,8 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   protected List<String> expectedSpecifiedValueInsert() {
     return Arrays.asList(
       "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
-      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
-      "INSERT INTO TESTSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, 1, 'X', (SELECT COALESCE(value, 1) FROM TESTSCHEMA.idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
+      "INSERT INTO TESTSCHEMA.idvalues (name, "+ID_INCREMENTOR_TABLE_COLUMN_VALUE+") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
+      "INSERT INTO TESTSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, 1, 'X', (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 1) FROM TESTSCHEMA.idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
         );
   }
 
@@ -292,8 +319,8 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   protected List<String> expectedSpecifiedValueInsertWithTableInDifferentSchema() {
     return Arrays.asList(
       "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
-      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM MYSCHEMA.Test))",
-      "INSERT INTO MYSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, 1, 'X', (SELECT COALESCE(value, 1) FROM TESTSCHEMA.idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
+      "INSERT INTO TESTSCHEMA.idvalues (name, "+ID_INCREMENTOR_TABLE_COLUMN_VALUE+") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM MYSCHEMA.Test))",
+      "INSERT INTO MYSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, 1, 'X', (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 1) FROM TESTSCHEMA.idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
     );
   }
 
@@ -312,7 +339,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedEmptyStringInsertStatement() {
-    return "INSERT INTO TESTSCHEMA.Test (stringField, id, version, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (NULL, (SELECT COALESCE(value, 1) FROM TESTSCHEMA.idvalues WHERE (name = 'Test')), 0, 0, 0, null, 0, NULL, null, 12345, null)";
+    return "INSERT INTO TESTSCHEMA.Test (stringField, id, version, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (NULL, (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 1) FROM TESTSCHEMA.idvalues WHERE (name = 'Test')), 0, 0, 0, null, 0, NULL, null, 12345, null)";
   }
 
 
@@ -941,6 +968,11 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
     return "REPLACE(REPLACE(REPLACE(CONVERT(VARCHAR(19),testField, 120),'-',''), ':', ''), ' ', '')";
   }
 
+  @Override
+  protected String expectedClobLiteralCast() {
+    return "'CREATE VIEW viewName AS (SELECT tableField1, tableField2, tableField3, tableField4, tableField5, tableField6, tableField7, tableField8, tableField9, tableField10, tableField11, tableField12, tableField13, tableField14, tableField15, tableField16, tableField17, tableField18, tableField19, tableField20, tableField21, tableField22, tableField23, tableField24, tableField25, tableField26, tableField27, tableField28, tableField29, tableField30 FROM table INNER JOIN table2 ON (table1.tableField1 = table2 = tableField1));'";
+  }
+
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedNow()
@@ -1232,6 +1264,32 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
       "CREATE TABLE TESTSCHEMA.SomeTable ([someField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [otherField] NUMERIC(3,0) NOT NULL, CONSTRAINT [SomeTable_PK] PRIMARY KEY ([someField]))",
       "CREATE INDEX SomeTable_1 ON TESTSCHEMA.SomeTable ([otherField])",
       "INSERT INTO TESTSCHEMA.SomeTable SELECT someField, otherField FROM TESTSCHEMA.OtherTable"
+    );
+  }
+
+
+  protected List<String> expectedReplaceTableFromStatements() {
+    return ImmutableList.of(
+        "CREATE TABLE TESTSCHEMA.tmp_SomeTable ([someField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [otherField] NUMERIC(3,0) NOT NULL, [thirdField] NUMERIC(5,0) NOT NULL, CONSTRAINT [tmp_SomeTable_PK] PRIMARY KEY ([someField]))",
+        "INSERT INTO TESTSCHEMA.tmp_SomeTable SELECT someField, otherField, CAST(thirdField AS NUMERIC(5,0)) AS thirdField FROM TESTSCHEMA.OtherTable",
+        "DROP TABLE TESTSCHEMA.SomeTable",
+        "IF EXISTS (SELECT 1 FROM sys.objects WHERE OBJECT_ID = OBJECT_ID(N'tmp_SomeTable_version_DF') AND type = (N'D')) exec sp_rename N'tmp_SomeTable_version_DF', N'SomeTable_version_DF'",
+        "sp_rename N'tmp_SomeTable.tmp_SomeTable_PK', N'SomeTable_PK', N'INDEX'",
+        "sp_rename N'tmp_SomeTable', N'SomeTable'",
+        "CREATE INDEX SomeTable_1 ON TESTSCHEMA.SomeTable ([otherField])"
+    );
+  }
+
+
+  protected List<String> expectedReplaceTableWithAutonumber() {
+    return ImmutableList.of(
+        "CREATE TABLE TESTSCHEMA.tmp_SomeTable ([someField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [otherField] NUMERIC(3,0) NOT NULL IDENTITY(1, 1), [thirdField] NUMERIC(5,0) NOT NULL, CONSTRAINT [tmp_SomeTable_PK] PRIMARY KEY ([someField]))",
+        "INSERT INTO TESTSCHEMA.tmp_SomeTable SELECT someField, otherField, CAST(thirdField AS NUMERIC(5,0)) AS thirdField FROM TESTSCHEMA.OtherTable",
+        "DROP TABLE TESTSCHEMA.SomeTable",
+        "IF EXISTS (SELECT 1 FROM sys.objects WHERE OBJECT_ID = OBJECT_ID(N'tmp_SomeTable_version_DF') AND type = (N'D')) exec sp_rename N'tmp_SomeTable_version_DF', N'SomeTable_version_DF'",
+        "sp_rename N'tmp_SomeTable.tmp_SomeTable_PK', N'SomeTable_PK', N'INDEX'",
+        "sp_rename N'tmp_SomeTable', N'SomeTable'",
+        "CREATE INDEX SomeTable_1 ON TESTSCHEMA.SomeTable ([otherField])"
     );
   }
 

@@ -20,14 +20,14 @@ import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.SqlUtils.update;
 import static org.alfasoftware.morf.upgrade.UpgradeStatusTableService.UPGRADE_STATUS;
+import static org.alfasoftware.morf.upgrade.UpgradeStatusTableServiceImpl.ID_COLUMN;
 import static org.alfasoftware.morf.upgrade.UpgradeStatusTableServiceImpl.STATUS_COLUMN;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.nullable;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyList;
-import static org.mockito.Matchers.anyListOf;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -36,6 +36,7 @@ import static org.mockito.Mockito.when;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Optional;
 
 import javax.sql.DataSource;
@@ -47,6 +48,7 @@ import org.alfasoftware.morf.jdbc.SqlScriptExecutor.ResultSetProcessor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.InsertStatement;
+import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.UpdateStatement;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.junit.Before;
@@ -82,6 +84,9 @@ public class TestUpgradeStatusTableServiceImpl {
 
     when(dataSource.getConnection()).thenReturn(mock(Connection.class));
     when(sqlScriptExecutorProvider.get()).thenReturn(sqlScriptExecutor);
+    when(sqlDialect.convertStatementToSQL(any(InsertStatement.class))).thenReturn(List.of());
+    when(sqlDialect.convertStatementToSQL(any(UpdateStatement.class))).thenReturn("");
+    when(sqlDialect.convertStatementToSQL(any(SelectStatement.class))).thenReturn("");
     upgradeStatusTableService = new UpgradeStatusTableServiceImpl(sqlScriptExecutorProvider, sqlDialect);
   }
 
@@ -136,7 +141,7 @@ public class TestUpgradeStatusTableServiceImpl {
     assertEquals("Table name", tableCaptor.getValue().getName(), UpgradeStatusTableService.UPGRADE_STATUS);
 
     //Verify it inserts the right value
-    String expectedStmt = insert().into(upgradeStatusTable).values(literal(UpgradeStatus.IN_PROGRESS.name()).as(STATUS_COLUMN)).toString();
+    String expectedStmt = insert().into(upgradeStatusTable).values(literal(1L).as(ID_COLUMN), literal(UpgradeStatus.IN_PROGRESS.name()).as(STATUS_COLUMN)).toString();
     ArgumentCaptor<InsertStatement> stmtCaptor = ArgumentCaptor.forClass(InsertStatement.class);
 
     verify(sqlDialect).convertStatementToSQL(stmtCaptor.capture());
@@ -274,12 +279,12 @@ public class TestUpgradeStatusTableServiceImpl {
   @Test
   public void testWriteStatusFromStatusWithCurrentStatusEqualsFromStatus() {
     when(sqlScriptExecutor.executeQuery(any(), any())).thenReturn(UpgradeStatus.IN_PROGRESS);
-    when(sqlScriptExecutor.execute(anyListOf(String.class)))
+    when(sqlScriptExecutor.execute(anyList()))
         .thenThrow(new RuntimeSqlException(new SQLException()))
         .thenReturn(0);
 
     upgradeStatusTableService.writeStatusFromStatus(UpgradeStatus.IN_PROGRESS, UpgradeStatus.DATA_TRANSFER_REQUIRED);
-    verify(sqlScriptExecutor, times(2)).execute(anyListOf(String.class));
+    verify(sqlScriptExecutor, times(2)).execute(anyList());
   }
 
 
@@ -291,7 +296,7 @@ public class TestUpgradeStatusTableServiceImpl {
   public void testWriteStatusFromStatusWithCurrentStatusNotEqualsFromStatusOrToStatus() {
     RuntimeSqlException triggeringException = new RuntimeSqlException(new SQLException());
     when(sqlScriptExecutor.executeQuery(any(), any())).thenReturn(UpgradeStatus.DATA_TRANSFER_IN_PROGRESS);
-    when(sqlScriptExecutor.execute(anyListOf(String.class)))
+    when(sqlScriptExecutor.execute(anyList()))
         .thenThrow(triggeringException)
         .thenReturn(0);
 
@@ -299,7 +304,7 @@ public class TestUpgradeStatusTableServiceImpl {
       upgradeStatusTableService.writeStatusFromStatus(UpgradeStatus.IN_PROGRESS, UpgradeStatus.DATA_TRANSFER_REQUIRED);
       fail("Expected RuntimeSqlException");
     } catch (RuntimeSqlException e) {
-      verify(sqlScriptExecutor, times(1)).execute(anyListOf(String.class));
+      verify(sqlScriptExecutor, times(1)).execute(anyList());
       assertSame("Exception", triggeringException, e);
     }
   }

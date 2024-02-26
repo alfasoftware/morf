@@ -173,9 +173,7 @@ public class TableLoader {
   /**
    * Insert the records into the database using a {@link PreparedStatement}.
    *
-   * @param table The table metadata
    * @param records The records to insert
-   * @param bulk Indicates if we should call {@link SqlDialect#preInsertStatements(Table)} and {@link SqlDialect#postInsertStatements(Table)}
    */
   private void insertOrMergeRecords(Iterable<Record> records) {
     // Important: This transformation must be applied in a large-data-streaming-friendly fashion.

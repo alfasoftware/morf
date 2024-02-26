@@ -45,8 +45,10 @@ import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.sql.CustomHint;
 import org.alfasoftware.morf.sql.OracleCustomHint;
+import org.alfasoftware.morf.sql.element.ClobFieldLiteral;
 import org.alfasoftware.morf.sql.element.Direction;
 import org.alfasoftware.morf.sql.element.SqlParameter;
+import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 
 import com.google.common.base.Strings;
@@ -71,6 +73,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
   @SuppressWarnings({"unchecked","rawtypes"})
   private final ArgumentCaptor<List<String>> listCaptor = ArgumentCaptor.forClass((Class<List<String>>)(Class)List.class);
+
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#createTestDialect()
@@ -254,6 +257,50 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropSingleTable()
+   */
+  @Override
+  protected List<String> expectedDropSingleTable() {
+    return Arrays.asList("DROP TABLE TESTSCHEMA.Test");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTables()
+   */
+  @Override
+  protected List<String> expectedDropTables() {
+    return Arrays.asList("BEGIN\n" +
+            "  FOR T IN (\n" +
+            "    SELECT 'TESTSCHEMA.' || TABLE_NAME AS TABLE_NAME\n" +
+            "    FROM (SELECT COLUMN_VALUE AS TABLE_NAME from TABLE(SYS.dbms_debug_vc2coll('TEST', 'OTHER')))\n" +
+            "  )\n" +
+            "  LOOP\n" +
+            "    EXECUTE IMMEDIATE 'DROP TABLE ' || T.TABLE_NAME ;\n" +
+            "  END LOOP;\n" +
+            "END;");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTablesWithParameters()
+   */
+  @Override
+  protected List<String> expectedDropTablesWithParameters() {
+    return Arrays.asList("BEGIN\n" +
+            "  FOR T IN (\n" +
+            "    SELECT 'TESTSCHEMA.' || TABLE_NAME AS TABLE_NAME\n" +
+            "    FROM ALL_TABLES\n" +
+            "   WHERE TABLE_NAME  IN ('TEST', 'OTHER')\n" +
+            "  )\n" +
+            "  LOOP\n" +
+            "    EXECUTE IMMEDIATE 'DROP TABLE ' || T.TABLE_NAME || ' CASCADE CONSTRAINTS ' ;\n" +
+            "  END LOOP;\n" +
+            "END;");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTempTableStatements()
    */
   @Override
@@ -314,8 +361,8 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   protected List<String> expectedAutoGenerateIdStatement() {
     return ImmutableList.of(
       "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
-      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
-      "INSERT INTO TESTSCHEMA.Test (version, stringField, id) SELECT version, stringField, (SELECT COALESCE(value, 0) FROM TESTSCHEMA.idvalues WHERE (name = N'Test')) + Other.id FROM TESTSCHEMA.Other"
+      "INSERT INTO TESTSCHEMA.idvalues (name, "+ID_INCREMENTOR_TABLE_COLUMN_VALUE+") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
+      "INSERT INTO TESTSCHEMA.Test (version, stringField, id) SELECT version, stringField, (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 0) FROM TESTSCHEMA.idvalues WHERE (name = N'Test')) + Other.id FROM TESTSCHEMA.Other"
     );
   }
 
@@ -327,8 +374,8 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   protected List<String> expectedInsertWithIdAndVersion() {
     return Arrays.asList(
       "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
-      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
-      "INSERT INTO TESTSCHEMA.Test (stringField, id, version) SELECT stringField, (SELECT COALESCE(value, 0) FROM TESTSCHEMA.idvalues WHERE (name = N'Test')) + Other.id, 0 AS version FROM TESTSCHEMA.Other"
+      "INSERT INTO TESTSCHEMA.idvalues (name, "+ID_INCREMENTOR_TABLE_COLUMN_VALUE+") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
+      "INSERT INTO TESTSCHEMA.Test (stringField, id, version) SELECT stringField, (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 0) FROM TESTSCHEMA.idvalues WHERE (name = N'Test')) + Other.id, 0 AS version FROM TESTSCHEMA.Other"
     );
   }
 
@@ -432,8 +479,8 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   protected List<String> expectedSpecifiedValueInsert() {
     return Arrays.asList(
       "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
-      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
-      "INSERT INTO TESTSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES (N'Escap''d', 7, 11.25, 20100405, 1, N'X', (SELECT COALESCE(value, 1) FROM TESTSCHEMA.idvalues WHERE (name = N'Test')), 0, null, 12345, null)"
+      "INSERT INTO TESTSCHEMA.idvalues (name, "+ID_INCREMENTOR_TABLE_COLUMN_VALUE+") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM TESTSCHEMA.Test))",
+      "INSERT INTO TESTSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES (N'Escap''d', 7, 11.25, 20100405, 1, N'X', (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 1) FROM TESTSCHEMA.idvalues WHERE (name = N'Test')), 0, null, 12345, null)"
     );
   }
 
@@ -445,8 +492,8 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   protected List<String> expectedSpecifiedValueInsertWithTableInDifferentSchema() {
     return Arrays.asList(
       "DELETE FROM TESTSCHEMA.idvalues where name = 'Test'",
-      "INSERT INTO TESTSCHEMA.idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM MYSCHEMA.Test))",
-      "INSERT INTO MYSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES (N'Escap''d', 7, 11.25, 20100405, 1, N'X', (SELECT COALESCE(value, 1) FROM TESTSCHEMA.idvalues WHERE (name = N'Test')), 0, null, 12345, null)"
+      "INSERT INTO TESTSCHEMA.idvalues (name, "+ID_INCREMENTOR_TABLE_COLUMN_VALUE+") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM MYSCHEMA.Test))",
+      "INSERT INTO MYSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES (N'Escap''d', 7, 11.25, 20100405, 1, N'X', (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 1) FROM TESTSCHEMA.idvalues WHERE (name = N'Test')), 0, null, 12345, null)"
     );
   }
 
@@ -465,7 +512,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedEmptyStringInsertStatement() {
-    return "INSERT INTO TESTSCHEMA.Test (stringField, id, version, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (NULL, (SELECT COALESCE(value, 1) FROM TESTSCHEMA.idvalues WHERE (name = N'Test')), 0, 0, 0, null, 0, NULL, null, 12345, null)";
+    return "INSERT INTO TESTSCHEMA.Test (stringField, id, version, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (NULL, (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 1) FROM TESTSCHEMA.idvalues WHERE (name = N'Test')), 0, 0, 0, null, 0, NULL, null, 12345, null)";
   }
 
 
@@ -1120,6 +1167,11 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
     return "TO_NUMBER(TO_CHAR(testField, 'yyyymmddHH24MISS'))";
   }
 
+  @Override
+  protected String expectedClobLiteralCast() {
+    return "TO_CLOB(N'CREATE VIEW viewName AS (SELECT tableField1, tableField2, tableField3, tableField4, tableField5, tableField6, tableField7, tableField8, tableField9, tableField10, tableField11, tableField12, tableField13, tableField14, tableField15, tableField16, tableField17, tableField18, tableField19, tableField20, tableField21, tableField22, tableField23, tableField24, tableField25, tableField26, tableField27, tableField28, tableField29, tableField30 FROM table INNER JOIN table2 ON (table1.tableField1 = table2 = tableFi') || TO_CLOB(N'eld1));')";
+  }
+
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedNow()
@@ -1446,13 +1498,15 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
     return "SELECT N'LITERAL' FROM dual WHERE (N'ONE' = N'ONE')";
   }
 
+
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddTableFromStatements()
    */
   @Override
   public List<String> expectedAddTableFromStatements() {
     return ImmutableList.of(
-      "CREATE TABLE TESTSCHEMA.SomeTable (someField  NOT NULL, otherField  NOT NULL, CONSTRAINT SomeTable_PK PRIMARY KEY (someField) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.SomeTable_PK ON TESTSCHEMA.SomeTable (someField))) PARALLEL NOLOGGING AS SELECT someField, otherField FROM TESTSCHEMA.OtherTable",
+      "CREATE TABLE TESTSCHEMA.SomeTable (someField  NOT NULL, otherField  NOT NULL) PARALLEL NOLOGGING AS SELECT someField, otherField FROM TESTSCHEMA.OtherTable",
+      "ALTER TABLE TESTSCHEMA.SomeTable ADD CONSTRAINT SomeTable_PK PRIMARY KEY (someField) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.SomeTable_PK ON TESTSCHEMA.SomeTable (someField))",
       "ALTER TABLE TESTSCHEMA.SomeTable NOPARALLEL LOGGING",
       "ALTER INDEX TESTSCHEMA.SomeTable_PK NOPARALLEL LOGGING",
       "COMMENT ON TABLE TESTSCHEMA.SomeTable IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable]'",
@@ -1460,6 +1514,83 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
       "COMMENT ON COLUMN TESTSCHEMA.SomeTable.otherField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[otherField]/TYPE:[DECIMAL]'"
     );
   }
+
+
+  @Override
+  public List<String> expectedReplaceTableFromStatements() {
+    return ImmutableList.of(
+        "CREATE TABLE TESTSCHEMA.tmp_SomeTable (someField  NOT NULL, otherField  NOT NULL, thirdField  NOT NULL) PARALLEL NOLOGGING AS SELECT CAST(someField AS NVARCHAR2(3)) AS someField, CAST(otherField AS DECIMAL(3,0)) AS otherField, CAST(thirdField AS DECIMAL(5,0)) AS thirdField FROM TESTSCHEMA.OtherTable",
+        "ALTER TABLE TESTSCHEMA.tmp_SomeTable ADD CONSTRAINT tmp_SomeTable_PK PRIMARY KEY (someField) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.tmp_SomeTable_PK ON TESTSCHEMA.tmp_SomeTable (someField))",
+        "ALTER TABLE TESTSCHEMA.tmp_SomeTable NOPARALLEL LOGGING",
+        "ALTER INDEX TESTSCHEMA.tmp_SomeTable_PK NOPARALLEL LOGGING",
+        "COMMENT ON TABLE TESTSCHEMA.tmp_SomeTable IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[tmp_SomeTable]'",
+        "COMMENT ON COLUMN TESTSCHEMA.tmp_SomeTable.someField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[someField]/TYPE:[STRING]'",
+        "COMMENT ON COLUMN TESTSCHEMA.tmp_SomeTable.otherField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[otherField]/TYPE:[DECIMAL]'",
+        "COMMENT ON COLUMN TESTSCHEMA.tmp_SomeTable.thirdField IS 'REALNAME:[thirdField]/TYPE:[DECIMAL]'",
+        "DROP TABLE TESTSCHEMA.SomeTable CASCADE CONSTRAINTS",
+        "ALTER TABLE TESTSCHEMA.tmp_SomeTable RENAME CONSTRAINT tmp_SomeTable_PK TO SomeTable_PK",
+        "ALTER INDEX TESTSCHEMA.tmp_SomeTable_PK RENAME TO SomeTable_PK",
+        "ALTER TABLE TESTSCHEMA.tmp_SomeTable RENAME TO SomeTable",
+        "COMMENT ON TABLE TESTSCHEMA.SomeTable IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable]'",
+        "CREATE INDEX TESTSCHEMA.SomeTable_1 ON TESTSCHEMA.SomeTable (otherField) PARALLEL NOLOGGING",
+        "ALTER INDEX TESTSCHEMA.SomeTable_1 NOPARALLEL LOGGING"
+    );
+  }
+
+
+  @Override
+  public List<String> expectedReplaceTableWithAutonumber() {
+    return ImmutableList.of(
+        "CREATE TABLE TESTSCHEMA.tmp_SomeTable (someField  NOT NULL, otherField  NOT NULL, thirdField  NOT NULL) PARALLEL NOLOGGING AS SELECT CAST(someField AS NVARCHAR2(3)) AS someField, CAST(otherField AS DECIMAL(3,0)) AS otherField, CAST(thirdField AS DECIMAL(5,0)) AS thirdField FROM TESTSCHEMA.OtherTable",
+        "ALTER TABLE TESTSCHEMA.tmp_SomeTable ADD CONSTRAINT tmp_SomeTable_PK PRIMARY KEY (someField) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.tmp_SomeTable_PK ON TESTSCHEMA.tmp_SomeTable (someField))",
+        "ALTER TABLE TESTSCHEMA.tmp_SomeTable NOPARALLEL LOGGING",
+        "ALTER INDEX TESTSCHEMA.tmp_SomeTable_PK NOPARALLEL LOGGING",
+        "DECLARE ",
+        "  e exception; ",
+        "  pragma exception_init(e,-4080); ",
+        "BEGIN ",
+        "  EXECUTE IMMEDIATE 'DROP TRIGGER TESTSCHEMA.TMP_SOMETABLE_TG'; ",
+        "EXCEPTION ",
+        "  WHEN e THEN ",
+        "    null; ",
+        "END;",
+        "DECLARE ",
+        "  query CHAR(255); ",
+        "BEGIN ",
+        "  select queryField into query from SYS.DUAL D left outer join (",
+        "    select concat('drop sequence TESTSCHEMA.', sequence_name) as queryField ",
+        "    from ALL_SEQUENCES S ",
+        "    where S.sequence_owner='TESTSCHEMA' AND S.sequence_name = 'TMP_SOMETABLE_SQ' ",
+        "  ) on 1 = 1; ",
+        "  IF query is not null THEN ",
+        "    execute immediate query; ",
+        "  END IF; ",
+        "END;",
+        "CREATE SEQUENCE TESTSCHEMA.TMP_SOMETABLE_SQ START WITH 1 CACHE 2000",
+        "ALTER SESSION SET CURRENT_SCHEMA = testschema",
+        "CREATE TRIGGER TESTSCHEMA.TMP_SOMETABLE_TG ",
+        "BEFORE INSERT ON tmp_SomeTable FOR EACH ROW ",
+        "BEGIN ",
+        "  IF (:new.otherField IS NULL) THEN ",
+        "    SELECT TMP_SOMETABLE_SQ.nextval ",
+        "    INTO :new.otherField ",
+        "    FROM DUAL; ",
+        "  END IF; ",
+        "END;",
+        "COMMENT ON TABLE TESTSCHEMA.tmp_SomeTable IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[tmp_SomeTable]'",
+        "COMMENT ON COLUMN TESTSCHEMA.tmp_SomeTable.someField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[someField]/TYPE:[STRING]'",
+        "COMMENT ON COLUMN TESTSCHEMA.tmp_SomeTable.otherField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[otherField]/TYPE:[DECIMAL]/AUTONUMSTART:[1]'",
+        "COMMENT ON COLUMN TESTSCHEMA.tmp_SomeTable.thirdField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[thirdField]/TYPE:[DECIMAL]'",
+        "DROP TABLE TESTSCHEMA.SomeTable CASCADE CONSTRAINTS",
+        "ALTER TABLE TESTSCHEMA.tmp_SomeTable RENAME CONSTRAINT tmp_SomeTable_PK TO SomeTable_PK",
+        "ALTER INDEX TESTSCHEMA.tmp_SomeTable_PK RENAME TO SomeTable_PK",
+        "ALTER TABLE TESTSCHEMA.tmp_SomeTable RENAME TO SomeTable",
+        "COMMENT ON TABLE TESTSCHEMA.SomeTable IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable]'",
+        "CREATE INDEX TESTSCHEMA.SomeTable_1 ON TESTSCHEMA.SomeTable (otherField) PARALLEL NOLOGGING",
+        "ALTER INDEX TESTSCHEMA.SomeTable_1 NOPARALLEL LOGGING"
+    );
+  }
+
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints1(int)
@@ -1568,6 +1699,23 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
     return new OracleCustomHint("opt_param('optimizer_index_caching',100) opt_param('optimizer_index_cost_adj',50) optimizer_features_enable('12.1.0.2') )");
   }
 
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints8a()
+   */
+  @Override
+  protected String expectedHints8a() {
+    return "SELECT /*+ index(customer cust_primary_key_idx) */ * FROM SCHEMA2.Foo";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#provideDatabaseType()
+   */
+  @Override
+  protected String provideDatabaseType() {
+    return Oracle.IDENTIFIER;
+  }
 
 
   @Override

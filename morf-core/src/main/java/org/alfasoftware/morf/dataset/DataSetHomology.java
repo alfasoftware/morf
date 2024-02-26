@@ -18,12 +18,12 @@ package org.alfasoftware.morf.dataset;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaHomology;
@@ -108,7 +108,7 @@ public class DataSetHomology {
       Set<String> tables1 = convertToUppercase(schema1.tableNames());
       Set<String> tables2 = convertToUppercase(schema2.tableNames());
 
-      Collection<String> commonTables = Sets.intersection(tables1, tables2);
+      Set<String> commonTables = Sets.intersection(tables1, tables2);
 
       // look for extra tables
       Collection<String> extraTablesIn1 = subtractTable(tables1, commonTables);
@@ -122,7 +122,7 @@ public class DataSetHomology {
 
       // only compare the tables that are common
       for(String tableName : commonTables) {
-        TableDataHomology tableDataHomology = new TableDataHomology(Optional.ofNullable(orderComparators.get(tableName.toUpperCase())), columnsToExclude);
+        TableDataHomology tableDataHomology = new TableDataHomology(Optional.ofNullable(orderComparators.get(tableName)), columnsToExclude);
         tableDataHomology.compareTable(
           schema1.getTable(tableName),
           producer1.records(tableName),
@@ -144,13 +144,10 @@ public class DataSetHomology {
   /**
    * Subtract the common tables from the tables provided
    */
-  private Set<String> subtractTable(Collection<String> tables, Collection<String> commonTables) {
-    HashSet<String> resultOfSubtraction = Sets.newHashSet(tables);
-    for (String tableToRemove : commonTables) {
-      resultOfSubtraction.remove(tableToRemove);
-    }
-    return resultOfSubtraction;
+  private Set<String> subtractTable(Set<String> tables, Set<String> commonTables) {
+    return Sets.difference(tables, commonTables);
   }
+
 
   /**
    * @return The list of differences detected by the comparison.
@@ -167,11 +164,6 @@ public class DataSetHomology {
    * @return a new collection containing only uppercase strings
    */
   private Set<String> convertToUppercase(final Collection<String> source) {
-    Set<String> temp = new HashSet<>();
-
-    for(String table : source) {
-      temp.add(table.toUpperCase());
-    }
-    return temp;
+    return source.stream().map(String::toUpperCase).collect(Collectors.toSet());
   }
 }

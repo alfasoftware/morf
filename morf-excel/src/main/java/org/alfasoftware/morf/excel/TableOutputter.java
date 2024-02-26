@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.excel;
 
 import static org.alfasoftware.morf.metadata.DataType.BIG_INTEGER;
+import static org.alfasoftware.morf.metadata.DataType.CLOB;
 import static org.alfasoftware.morf.metadata.DataType.DECIMAL;
 import static org.alfasoftware.morf.metadata.DataType.INTEGER;
 import static org.alfasoftware.morf.metadata.DataType.STRING;
@@ -38,7 +39,6 @@ import org.apache.commons.logging.LogFactory;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
-
 import jxl.Cell;
 import jxl.format.Alignment;
 import jxl.format.Border;
@@ -80,9 +80,14 @@ class TableOutputter {
   private static final int MAX_EXCEL_COLUMNS = 256;
 
   /**
+   * The maximum number of characters supported in an XLS cell.
+   */
+  private static final int MAX_CELL_CHARACTERS = 32767;
+
+  /**
    * The data types we can output to a spreadsheet.
    */
-  private static final Set<DataType> supportedDataTypes = Sets.immutableEnumSet(STRING, DECIMAL, BIG_INTEGER, INTEGER);
+  private static final Set<DataType> supportedDataTypes = Sets.immutableEnumSet(STRING, DECIMAL, BIG_INTEGER, INTEGER, CLOB);
 
   /**
    * A source of non-schema related data.
@@ -482,7 +487,7 @@ class TableOutputter {
    * @param format The format to apply to the cell
    */
   private void createCell(final WritableSheet currentWorkSheet, Column column, int columnNumber, int rowIndex, Record record, WritableCellFormat format) {
-    WritableCell writableCell = null;
+    WritableCell writableCell;
 
     switch (column.getType()) {
       case STRING:
@@ -492,13 +497,9 @@ class TableOutputter {
       case DECIMAL:
         BigDecimal decimalValue = record.getBigDecimal(column.getName());
         try {
-          if (decimalValue == null) {
-            writableCell = new jxl.write.Blank(columnNumber, rowIndex);
-          } else {
-            writableCell = new jxl.write.Number(columnNumber, rowIndex, decimalValue.doubleValue());
-          }
+          writableCell = decimalValue == null ? createBlankWriteableCell(columnNumber, rowIndex) : new jxl.write.Number(columnNumber, rowIndex, decimalValue.doubleValue());
         } catch (Exception e) {
-          throw new UnsupportedOperationException("Cannot generate Excel cell (parseDouble) for data [" + decimalValue + "] in column [" + column.getName() + "] of table [" + currentWorkSheet.getName() + "]", e);
+          throw new UnsupportedOperationException("Cannot generate Excel cell (parseDouble) for data [" + decimalValue + "]" + unsupportedOperationExceptionMessageSuffix(column, currentWorkSheet), e);
         }
         break;
 
@@ -506,13 +507,18 @@ class TableOutputter {
       case INTEGER:
         Long longValue = record.getLong(column.getName());
         try {
-          if (longValue == null) {
-            writableCell = new jxl.write.Blank(columnNumber, rowIndex);
-          } else {
-            writableCell = new jxl.write.Number(columnNumber, rowIndex, longValue);
-          }
+          writableCell = longValue == null ? createBlankWriteableCell(columnNumber, rowIndex) :  new jxl.write.Number(columnNumber, rowIndex, longValue);
         } catch (Exception e) {
-          throw new UnsupportedOperationException("Cannot generate Excel cell (parseInt) for data [" + longValue + "] in column [" + column.getName() + "] of table [" + currentWorkSheet.getName() + "]", e);
+          throw new UnsupportedOperationException("Cannot generate Excel cell (parseInt) for data [" + longValue + "]" + unsupportedOperationExceptionMessageSuffix(column, currentWorkSheet), e);
+        }
+        break;
+
+      case CLOB:
+        try {
+          String stringValue = record.getString(column.getName());
+          writableCell = stringValue == null ? createBlankWriteableCell(columnNumber, rowIndex) : new Label(columnNumber, rowIndex, StringUtils.substring(stringValue, 0, MAX_CELL_CHARACTERS));
+        } catch (Exception e) {
+          throw new UnsupportedOperationException("Cannot generate Excel cell for CLOB data" + unsupportedOperationExceptionMessageSuffix(column, currentWorkSheet), e);
         }
         break;
 
@@ -556,5 +562,30 @@ class TableOutputter {
     public RowLimitExceededException(String message) {
       super(message);
     }
+  }
+
+
+  /**
+   * Creates a blank {@link WritableCell} for a given column number and row index.
+   *
+   * @param columnNumber the column number
+   * @param rowIndex the row index
+   * @return a blank {@link WritableCell}
+   */
+  private WritableCell createBlankWriteableCell(int columnNumber, int rowIndex) {
+    return new jxl.write.Blank(columnNumber, rowIndex);
+  }
+
+
+  /**
+   * Creates an {@link UnsupportedOperationException} message suffix for a given
+   * {@link Column} and {@link WritableSheet}.
+   *
+   * @param column the {@link Column}
+   * @param writableSheet the {@link WritableSheet}
+   * @return the {@link UnsupportedOperationException} message suffix
+   */
+  private String unsupportedOperationExceptionMessageSuffix(Column column, WritableSheet writableSheet) {
+    return " in column [" + column.getName() + "] of table [" + writableSheet.getName() + "]";
   }
 }

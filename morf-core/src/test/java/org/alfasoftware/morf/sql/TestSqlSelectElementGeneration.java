@@ -1081,13 +1081,15 @@ public class TestSqlSelectElementGeneration {
           .useImplicitJoinOrder()
           .useIndex(table1, "INDEX_1")
           .useIndex(table2, "INDEX_2")
-          .allowParallelDml();
+          .allowParallelDml()
+          .withDialectSpecificHint("ORACLE", "index(customer cust_primary_key_idx)");
       assertThat(select.getHints(), contains(
           new OptimiseForRowCount(1),
           new UseImplicitJoinOrder(),
           new UseIndex(table1, "INDEX_1"),
           new UseIndex(table2, "INDEX_2"),
-          AllowParallelDmlHint.INSTANCE
+          AllowParallelDmlHint.INSTANCE,
+          new DialectSpecificHint("ORACLE", "index(customer cust_primary_key_idx)")
       ));
 
     });
@@ -1410,13 +1412,15 @@ public class TestSqlSelectElementGeneration {
                       .useIndex(table1, "INDEX_1")
                       .useIndex(table2, "INDEX_2")
                       .allowParallelDml()
+                      .withDialectSpecificHint("ORACLE", "index(customer cust_primary_key_idx)")
                       .build()
                       .getHints(), contains(
           new OptimiseForRowCount(1),
           new UseImplicitJoinOrder(),
           new UseIndex(table1, "INDEX_1"),
           new UseIndex(table2, "INDEX_2"),
-          AllowParallelDmlHint.INSTANCE
+          AllowParallelDmlHint.INSTANCE,
+          new DialectSpecificHint("ORACLE", "index(customer cust_primary_key_idx)")
       ));
 
       // Implicit copy-on-write
@@ -1424,14 +1428,16 @@ public class TestSqlSelectElementGeneration {
           .useImplicitJoinOrder()
           .useIndex(table1, "INDEX_1")
           .useIndex(table2, "INDEX_2")
-          .allowParallelDml();
+          .allowParallelDml()
+          .withDialectSpecificHint("ORACLE", "index(customer cust_primary_key_idx)");
 
       assertThat(updated.getHints(), contains(
           new OptimiseForRowCount(1),
           new UseImplicitJoinOrder(),
           new UseIndex(table1, "INDEX_1"),
           new UseIndex(table2, "INDEX_2"),
-          AllowParallelDmlHint.INSTANCE
+          AllowParallelDmlHint.INSTANCE,
+          new DialectSpecificHint("ORACLE", "index(customer cust_primary_key_idx)")
       ));
       assertThat(select.getHints(), empty());
       assertUnsupported(() -> updated.getHints().add(new OptimiseForRowCount(3)));

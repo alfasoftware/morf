@@ -15,7 +15,11 @@
 
 package org.alfasoftware.morf.metadata;
 
+import java.util.function.Supplier;
+
 import org.apache.commons.lang3.StringUtils;
+
+import com.google.common.base.Suppliers;
 
 /**
  * Implements {@link ColumnBean} as a bean.
@@ -25,6 +29,7 @@ import org.apache.commons.lang3.StringUtils;
 class ColumnBean extends ColumnTypeBean implements Column {
 
   private final String name;
+  private final Supplier<String> upperCaseName;
   private final boolean  primaryKey;
   private final String defaultValue;
   private final boolean autoNumber;
@@ -104,7 +109,8 @@ class ColumnBean extends ColumnTypeBean implements Column {
    */
   ColumnBean(String name, DataType type, int width, int scale, boolean nullable, String defaultValue, boolean primaryKey, boolean autonumber, int autonumberStart) {
     super(type, width, scale, nullable);
-    this.name = name;
+    this.name = name == null ? null : name.intern();
+    this.upperCaseName = Suppliers.memoize(() -> name == null ? null : name.toUpperCase().intern());
     this.primaryKey = primaryKey;
     this.defaultValue = defaultValue;
     this.autoNumber = autonumber;
@@ -157,6 +163,15 @@ class ColumnBean extends ColumnTypeBean implements Column {
   @Override
   public String getName() {
     return name;
+  }
+
+
+  /**
+   * @return the upper case name
+   */
+  @Override
+  public String getUpperCaseName() {
+    return upperCaseName.get();
   }
 
 

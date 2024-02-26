@@ -48,6 +48,12 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
 
 
   @Override
+  protected String expectedRowNumber() {
+    return "ROW_NUMBER() OVER()";
+  }
+
+
+  @Override
   protected String expectedRandomFunction() {
     return "RANDOM()";
   }
@@ -127,8 +133,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
           "DROP SEQUENCE IF EXISTS testschema.AutoNumber_intField_seq",
           "CREATE SEQUENCE testschema.AutoNumber_intField_seq START 5",
           "CREATE TABLE testschema.AutoNumber (intField NUMERIC(19) DEFAULT nextval('testschema.AutoNumber_intField_seq'), CONSTRAINT AutoNumber_PK PRIMARY KEY(intField))",
-          "COMMENT ON TABLE testschema.AutoNumber IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[AutoNumber]'",
           "ALTER SEQUENCE testschema.AutoNumber_intField_seq OWNED BY testschema.AutoNumber.intField",
+          "COMMENT ON TABLE testschema.AutoNumber IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[AutoNumber]'",
           "COMMENT ON COLUMN testschema.AutoNumber.intField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[BIG_INTEGER]/AUTONUMSTART:[5]'");
   }
 
@@ -216,6 +222,33 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropSingleTable()
+   */
+  @Override
+  protected List<String> expectedDropSingleTable() {
+    return Arrays.asList("DROP TABLE testschema.Test");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTables()
+   */
+  @Override
+  protected List<String> expectedDropTables() {
+    return Arrays.asList("DROP TABLE testschema.Test, testschema.Other");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTablesWithParameters()
+   */
+  @Override
+  protected List<String> expectedDropTablesWithParameters() {
+    return Arrays.asList("DROP TABLE IF EXISTS testschema.Test, testschema.Other CASCADE");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTempTableStatements()
    */
   @Override
@@ -276,8 +309,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected List<String> expectedAutoGenerateIdStatement() {
     return Arrays.asList(
       "DELETE FROM idvalues where name = 'Test'",
-      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM testschema.Test))",
-      "INSERT INTO testschema.Test (version, stringField, id) SELECT version, stringField, (SELECT COALESCE(value, 0) FROM idvalues WHERE (name = 'Test')) + Other.id FROM testschema.Other"
+      "INSERT INTO idvalues (name, "+ID_INCREMENTOR_TABLE_COLUMN_VALUE+") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM testschema.Test))",
+      "INSERT INTO testschema.Test (version, stringField, id) SELECT version, stringField, (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 0) FROM idvalues WHERE (name = 'Test')) + Other.id FROM testschema.Other"
     );
   }
 
@@ -289,8 +322,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected List<String> expectedInsertWithIdAndVersion() {
     return Arrays.asList(
       "DELETE FROM idvalues where name = 'Test'",
-      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM testschema.Test))",
-      "INSERT INTO testschema.Test (stringField, id, version) SELECT stringField, (SELECT COALESCE(value, 0) FROM idvalues WHERE (name = 'Test')) + Other.id, 0 AS version FROM testschema.Other"
+      "INSERT INTO idvalues (name, "+ID_INCREMENTOR_TABLE_COLUMN_VALUE+") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM testschema.Test))",
+      "INSERT INTO testschema.Test (stringField, id, version) SELECT stringField, (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 0) FROM idvalues WHERE (name = 'Test')) + Other.id, 0 AS version FROM testschema.Other"
     );
   }
 
@@ -302,8 +335,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected List<String> expectedSpecifiedValueInsert() {
     return Arrays.asList(
       "DELETE FROM idvalues where name = 'Test'",
-      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM testschema.Test))",
-      "INSERT INTO testschema.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, TRUE, 'X', (SELECT COALESCE(value, 1) FROM idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
+      "INSERT INTO idvalues (name, "+ID_INCREMENTOR_TABLE_COLUMN_VALUE+") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM testschema.Test))",
+      "INSERT INTO testschema.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, TRUE, 'X', (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 1) FROM idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
     );
   }
 
@@ -315,8 +348,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected List<String> expectedSpecifiedValueInsertWithTableInDifferentSchema() {
     return Arrays.asList(
       "DELETE FROM idvalues where name = 'Test'",
-      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM MYSCHEMA.Test))",
-      "INSERT INTO MYSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, TRUE, 'X', (SELECT COALESCE(value, 1) FROM idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
+      "INSERT INTO idvalues (name, "+ID_INCREMENTOR_TABLE_COLUMN_VALUE+") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM MYSCHEMA.Test))",
+      "INSERT INTO MYSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, TRUE, 'X', (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 1) FROM idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
     );
   }
 
@@ -335,7 +368,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedEmptyStringInsertStatement() {
-    return "INSERT INTO testschema.Test (stringField, id, version, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (NULL, (SELECT COALESCE(value, 1) FROM idvalues WHERE (name = 'Test')), 0, 0, 0, null, FALSE, NULL, null, 12345, null)";
+    return "INSERT INTO testschema.Test (stringField, id, version, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (NULL, (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 1) FROM idvalues WHERE (name = 'Test')), 0, 0, 0, null, FALSE, NULL, null, 12345, null)";
   }
 
 
@@ -965,6 +998,11 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return "TO_CHAR(testField,'YYYYMMDDHH24MISS') :: NUMERIC";
   }
 
+  @Override
+  protected String expectedClobLiteralCast() {
+    return "'CREATE VIEW viewName AS (SELECT tableField1, tableField2, tableField3, tableField4, tableField5, tableField6, tableField7, tableField8, tableField9, tableField10, tableField11, tableField12, tableField13, tableField14, tableField15, tableField16, tableField17, tableField18, tableField19, tableField20, tableField21, tableField22, tableField23, tableField24, tableField25, tableField26, tableField27, tableField28, tableField29, tableField30 FROM table INNER JOIN table2 ON (table1.tableField1 = table2 = tableField1));'";
+  }
+
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedNow()
@@ -1206,6 +1244,51 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   }
 
 
+  @Override
+  protected List<String> expectedReplaceTableFromStatements() {
+    return ImmutableList.of(
+        "CREATE TABLE testschema.tmp_SomeTable (someField, otherField, thirdField) AS SELECT CAST(someField AS VARCHAR(3)) COLLATE \"POSIX\" AS someField, CAST(otherField AS DECIMAL(3,0)) AS otherField, CAST(thirdField AS DECIMAL(5,0)) AS thirdField FROM testschema.OtherTable",
+        "ALTER TABLE tmp_SomeTable ALTER someField SET NOT NULL, ALTER otherField SET NOT NULL, ALTER thirdField SET NOT NULL, ADD CONSTRAINT tmp_SomeTable_PK PRIMARY KEY(someField)",
+        "COMMENT ON TABLE testschema.tmp_SomeTable IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[tmp_SomeTable]'",
+        "COMMENT ON COLUMN testschema.tmp_SomeTable.someField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[someField]/TYPE:[STRING]'",
+        "COMMENT ON COLUMN testschema.tmp_SomeTable.otherField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[otherField]/TYPE:[DECIMAL]'",
+        "COMMENT ON COLUMN testschema.tmp_SomeTable.thirdField IS 'REALNAME:[thirdField]/TYPE:[DECIMAL]'",
+        "DROP TABLE testschema.SomeTable CASCADE",
+        "ALTER TABLE testschema.tmp_SomeTable RENAME TO SomeTable",
+        "ALTER INDEX testschema.tmp_SomeTable_pk RENAME TO SomeTable_pk",
+        "COMMENT ON INDEX SomeTable_pk IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_pk]'",
+        "COMMENT ON TABLE testschema.SomeTable IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable]'",
+        "CREATE INDEX SomeTable_1 ON testschema.SomeTable (otherField)",
+        "COMMENT ON INDEX SomeTable_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_1]'"
+    );
+  }
+
+
+  @Override
+  protected List<String> expectedReplaceTableWithAutonumber() {
+    return ImmutableList.of(
+        "DROP SEQUENCE IF EXISTS testschema.tmp_SomeTable_otherField_seq",
+        "CREATE SEQUENCE testschema.tmp_SomeTable_otherField_seq START 1",
+        "CREATE TABLE testschema.tmp_SomeTable (someField, otherField, thirdField) AS SELECT CAST(someField AS VARCHAR(3)) COLLATE \"POSIX\" AS someField, CAST(otherField AS DECIMAL(3,0)) AS otherField, CAST(thirdField AS DECIMAL(5,0)) AS thirdField FROM testschema.OtherTable",
+        "ALTER TABLE tmp_SomeTable ALTER otherField SET DEFAULT nextval('testschema.tmp_SomeTable_otherField_seq')",
+        "ALTER SEQUENCE testschema.tmp_SomeTable_otherField_seq OWNED BY testschema.tmp_SomeTable.otherField",
+        "ALTER TABLE tmp_SomeTable ALTER someField SET NOT NULL, ALTER otherField SET NOT NULL, ALTER thirdField SET NOT NULL, ADD CONSTRAINT tmp_SomeTable_PK PRIMARY KEY(someField)",
+        "COMMENT ON TABLE testschema.tmp_SomeTable IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[tmp_SomeTable]'",
+        "COMMENT ON COLUMN testschema.tmp_SomeTable.someField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[someField]/TYPE:[STRING]'",
+        "COMMENT ON COLUMN testschema.tmp_SomeTable.otherField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[otherField]/TYPE:[DECIMAL]/AUTONUMSTART:[1]'",
+        "COMMENT ON COLUMN testschema.tmp_SomeTable.thirdField IS 'REALNAME:[thirdField]/TYPE:[DECIMAL]'",
+        "DROP TABLE testschema.SomeTable CASCADE",
+        "ALTER TABLE testschema.tmp_SomeTable RENAME TO SomeTable",
+        "ALTER INDEX testschema.tmp_SomeTable_pk RENAME TO SomeTable_pk",
+        "COMMENT ON INDEX SomeTable_pk IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_pk]'",
+        "ALTER SEQUENCE tmp_SomeTable_seq RENAME TO SomeTable_seq",
+        "COMMENT ON TABLE testschema.SomeTable IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable]'",
+        "CREATE INDEX SomeTable_1 ON testschema.SomeTable (otherField)",
+        "COMMENT ON INDEX SomeTable_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_1]'"
+    );
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints1(int)
    */
@@ -1238,6 +1321,24 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected CustomHint provideCustomHint() {
     return new PostgreSQLCustomHint("Set(random_page_cost 2.0)");
   }
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedHints8a()
+   */
+  @Override
+  protected String expectedHints8a() {
+    return "SELECT /*+ index(customer cust_primary_key_idx) */ * FROM SCHEMA2.Foo";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#provideDatabaseType()
+   */
+  @Override
+  protected String provideDatabaseType() {
+    return PostgreSQL.IDENTIFIER;
+  }
+
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterTableDropColumnWithDefaultStatement()

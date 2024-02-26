@@ -172,8 +172,8 @@ public class PortableSqlStatement implements Statement {
     StringBuffer buffer = new StringBuffer(sourceSQL);
     int currentIndex = 0;
     while (currentIndex < buffer.length()) {
-      int startPosition = 0;
-      int endPosition = 0;
+      int startPosition;
+      int endPosition;
       startPosition = buffer.indexOf("{", currentIndex);
       endPosition = buffer.indexOf("}", startPosition);
       if (startPosition == -1) {

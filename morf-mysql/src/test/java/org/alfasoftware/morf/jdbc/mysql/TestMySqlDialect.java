@@ -151,6 +151,33 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropSingleTable()
+   */
+  @Override
+  protected List<String> expectedDropSingleTable() {
+    return Arrays.asList("FLUSH TABLES `Test`", "DROP TABLE `Test`");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTables()
+   */
+  @Override
+  protected List<String> expectedDropTables() {
+    return Arrays.asList("FLUSH TABLES `Test`, `Other`", "DROP TABLE `Test`, `Other`");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTablesWithParameters()
+   */
+  @Override
+  protected List<String> expectedDropTablesWithParameters() {
+    return Arrays.asList("FLUSH TABLES `Test`, `Other`", "DROP TABLE IF EXISTS `Test`, `Other` CASCADE");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTempTableStatements()
    */
   @Override
@@ -211,8 +238,8 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   protected List<String> expectedAutoGenerateIdStatement() {
     return ImmutableList.of(
       "DELETE FROM idvalues where name = 'Test'",
-      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM Test))",
-      "INSERT INTO Test (version, stringField, id) SELECT version, stringField, (SELECT COALESCE(value, 0) FROM idvalues WHERE (name = 'Test')) + Other.id FROM Other"
+      "INSERT INTO idvalues (name, "+ID_INCREMENTOR_TABLE_COLUMN_VALUE+") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM Test))",
+      "INSERT INTO Test (version, stringField, id) SELECT version, stringField, (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 0) FROM idvalues WHERE (name = 'Test')) + Other.id FROM Other"
     );
   }
 
@@ -224,8 +251,8 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   protected List<String> expectedInsertWithIdAndVersion() {
     return Arrays.asList(
       "DELETE FROM idvalues where name = 'Test'",
-      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM Test))",
-      "INSERT INTO Test (stringField, id, version) SELECT stringField, (SELECT COALESCE(value, 0) FROM idvalues WHERE (name = 'Test')) + Other.id, 0 AS version FROM Other"
+      "INSERT INTO idvalues (name, "+ID_INCREMENTOR_TABLE_COLUMN_VALUE+") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM Test))",
+      "INSERT INTO Test (stringField, id, version) SELECT stringField, (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 0) FROM idvalues WHERE (name = 'Test')) + Other.id, 0 AS version FROM Other"
     );
   }
 
@@ -277,8 +304,8 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   protected List<String> expectedSpecifiedValueInsert() {
     return Arrays.asList(
       "DELETE FROM idvalues where name = 'Test'",
-      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM Test))",
-      "INSERT INTO Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, 1, 'X', (SELECT COALESCE(value, 1) FROM idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
+      "INSERT INTO idvalues (name, "+ID_INCREMENTOR_TABLE_COLUMN_VALUE+") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM Test))",
+      "INSERT INTO Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, 1, 'X', (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 1) FROM idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
     );
   }
 
@@ -290,8 +317,8 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   protected List<String> expectedSpecifiedValueInsertWithTableInDifferentSchema() {
     return Arrays.asList(
       "DELETE FROM idvalues where name = 'Test'",
-      "INSERT INTO idvalues (name, value) VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM MYSCHEMA.Test))",
-      "INSERT INTO MYSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, 1, 'X', (SELECT COALESCE(value, 1) FROM idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
+      "INSERT INTO idvalues (name, "+ID_INCREMENTOR_TABLE_COLUMN_VALUE+") VALUES('Test', (SELECT COALESCE(MAX(id) + 1, 1) AS CurrentValue FROM MYSCHEMA.Test))",
+      "INSERT INTO MYSCHEMA.Test (stringField, intField, floatField, dateField, booleanField, charField, id, version, blobField, bigIntegerField, clobField) VALUES ('Escap''d', 7, 11.25, 20100405, 1, 'X', (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 1) FROM idvalues WHERE (name = 'Test')), 0, null, 12345, null)"
     );
   }
 
@@ -310,7 +337,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedEmptyStringInsertStatement() {
-    return "INSERT INTO Test (stringField, id, version, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (NULL, (SELECT COALESCE(value, 1) FROM idvalues WHERE (name = 'Test')), 0, 0, 0, null, 0, NULL, null, 12345, null)";
+    return "INSERT INTO Test (stringField, id, version, intField, floatField, dateField, booleanField, charField, blobField, bigIntegerField, clobField) VALUES (NULL, (SELECT COALESCE("+ID_INCREMENTOR_TABLE_COLUMN_VALUE+", 1) FROM idvalues WHERE (name = 'Test')), 0, 0, 0, null, 0, NULL, null, 12345, null)";
   }
 
 
@@ -887,6 +914,11 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
     return "CAST(DATE_FORMAT(testField, '%Y%m%d%H%i%s') AS DECIMAL(14))";
   }
 
+  @Override
+  protected String expectedClobLiteralCast() {
+    return "'CREATE VIEW viewName AS (SELECT tableField1, tableField2, tableField3, tableField4, tableField5, tableField6, tableField7, tableField8, tableField9, tableField10, tableField11, tableField12, tableField13, tableField14, tableField15, tableField16, tableField17, tableField18, tableField19, tableField20, tableField21, tableField22, tableField23, tableField24, tableField25, tableField26, tableField27, tableField28, tableField29, tableField30 FROM table INNER JOIN table2 ON (table1.tableField1 = table2 = tableField1));'";
+  }
+
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedNow()
@@ -1165,6 +1197,32 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
       "CREATE TABLE `SomeTable` (`someField` VARCHAR(3) NOT NULL, `otherField` DECIMAL(3,0) NOT NULL, CONSTRAINT `SomeTable_PK` PRIMARY KEY (`someField`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin",
       "ALTER TABLE `SomeTable` ADD INDEX `SomeTable_1` (`otherField`)",
       "INSERT INTO SomeTable SELECT someField, otherField FROM OtherTable"
+    );
+  }
+
+
+  @Override
+  protected List<String> expectedReplaceTableFromStatements() {
+    return ImmutableList.of(
+      "CREATE TABLE `tmp_SomeTable` (`someField` VARCHAR(3) NOT NULL, `otherField` DECIMAL(3,0) NOT NULL, `thirdField` DECIMAL(5,0) NOT NULL, CONSTRAINT `tmp_SomeTable_PK` PRIMARY KEY (`someField`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin",
+          "INSERT INTO tmp_SomeTable SELECT someField, otherField, CAST(thirdField AS DECIMAL(5,0)) AS thirdField FROM OtherTable",
+          "FLUSH TABLES `SomeTable`",
+          "DROP TABLE `SomeTable` CASCADE",
+          "RENAME TABLE tmp_SomeTable TO SomeTable",
+          "ALTER TABLE `SomeTable` ADD INDEX `SomeTable_1` (`otherField`)"
+    );
+  }
+
+
+  @Override
+  protected List<String> expectedReplaceTableWithAutonumber() {
+    return ImmutableList.of(
+        "CREATE TABLE `tmp_SomeTable` (`someField` VARCHAR(3) NOT NULL, `otherField` DECIMAL(3,0) AUTO_INCREMENT COMMENT 'AUTONUMSTART:[1]', `thirdField` DECIMAL(5,0) NOT NULL, CONSTRAINT `tmp_SomeTable_PK` PRIMARY KEY (`someField`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin AUTO_INCREMENT=1",
+        "INSERT INTO tmp_SomeTable SELECT someField, otherField, CAST(thirdField AS DECIMAL(5,0)) AS thirdField FROM OtherTable",
+        "FLUSH TABLES `SomeTable`",
+        "DROP TABLE `SomeTable` CASCADE",
+        "RENAME TABLE tmp_SomeTable TO SomeTable",
+        "ALTER TABLE `SomeTable` ADD INDEX `SomeTable_1` (`otherField`)"
     );
   }
 

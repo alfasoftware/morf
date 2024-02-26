@@ -4,7 +4,10 @@
 
 /**
  * Represents a custom hint for a query
+ *
+ * @deprecated See {@link org.alfasoftware.morf.sql.CustomHint}
  */
+@Deprecated
 public final class OracleCustomHint implements CustomHint {
 
   private final String customHint;

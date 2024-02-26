@@ -151,10 +151,10 @@ public class TableDataHomology {
 
 
   private Predicate<Column> excludingExcludedColumns() {
-    return new Predicate<Column>() {
+    return new Predicate<>() {
       @Override
       public boolean apply(Column input) {
-        return !columnsToExclude.contains(input.getName().toUpperCase());
+        return !columnsToExclude.contains(input.getUpperCaseName());
       }
     };
   }

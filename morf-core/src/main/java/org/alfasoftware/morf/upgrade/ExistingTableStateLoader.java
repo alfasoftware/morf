@@ -24,6 +24,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 import javax.sql.DataSource;
@@ -65,7 +66,8 @@ class ExistingTableStateLoader {
     Set<java.util.UUID> results = new HashSet<>();
 
     // Query the database to see if the UpgradeAudit
-    SelectStatement upgradeAuditSelect = select(field("upgradeUUID")).from(tableRef(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME));
+    SelectStatement upgradeAuditSelect = select(field("upgradeUUID"))
+            .from(tableRef(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME));
     String sql = dialect.convertStatementToSQL(upgradeAuditSelect);
 
     if (log.isDebugEnabled()) log.debug("Loading UpgradeAudit with SQL [" + sql + "]");
@@ -74,10 +76,9 @@ class ExistingTableStateLoader {
          java.sql.Statement statement = connection.createStatement();
          ResultSet resultSet = statement.executeQuery(sql)) {
       while (resultSet.next()) {
-        String uuidString = fixUUIDs(resultSet.getString(1));
-
-        results.add(java.util.UUID.fromString(uuidString));
+          convertToUUID(resultSet.getString(1)).ifPresent(results::add);
       }
+
     } catch (SQLException e) {
       throw new RuntimeSqlException("Failed to load applied UUIDs. SQL: [" + sql + "]", e);
     }
@@ -85,19 +86,16 @@ class ExistingTableStateLoader {
     return Collections.unmodifiableSet(results);
   }
 
-
-  /**
-   * Fix the loaded UUID to deal with problems introduced earlier.
-   *
-   * @param uuid The UUID to tweak.
-   * @return Almost always the same uuid - although it is very occasionally tweaked.
-   */
-  private String fixUUIDs(String uuid) {
-    // This is necessary because AddSegregationTypeToLetterClass had an illegal UUID (with a z in it)
-    // This can be removed once the 5_1_0 upgrade is deprecated.
-    if (uuid.equals("5222ez70-513d-11e0-b8af-0800200c9a66")) {
-      return "5222ef70-513d-11e0-b8af-0800200c9a66";
+  private Optional<java.util.UUID> convertToUUID(String uuidString) {
+    try {
+      return Optional.of(java.util.UUID.fromString(uuidString));
+    } catch (IllegalArgumentException e) {
+      // If we have a historic malformed UUID, ignore it
+      log.warn("Malformed UpgradeAudit Table upgradeUUID column record ["+
+              uuidString+
+              "]. Skipping.");
+      return Optional.empty();
     }
-    return uuid;
   }
+
 }

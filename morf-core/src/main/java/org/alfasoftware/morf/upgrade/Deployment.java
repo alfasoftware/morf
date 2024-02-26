@@ -24,16 +24,12 @@ import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
-import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
-import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
@@ -45,7 +41,7 @@ import java.util.UUID;
  * at this point (for example, transferring in a start position using
  * {@link DatabaseDataSetConsumer}) and, once complete, call {@link UpgradeStatusTableService#writeStatusFromStatus(UpgradeStatus, UpgradeStatus)}.
  *
- * <h3>Usage</h3>
+ * <b>Usage</b>
  * <pre><code>
  * deployment.deploy(targetSchema);
  * if (upgradeStatusTableService.writeStatusFromStatus(DATA_TRANSFER_REQUIRED, DATA_TRANSFER_IN_PROGRESS) == 1) {
@@ -118,12 +114,13 @@ public class Deployment {
       sqlStatementWriter.writeSql(connectionResources.sqlDialect().tableDeploymentStatements(table));
     }
 
-    // Iterate through all the views and deploy them - will deploy in dependency order.
-    final boolean updateDeloyedViews = targetSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME);
+    Schema sourceSchema = UpgradeHelper.copySourceSchema(connectionResources, connectionResources.getDataSource(), new HashSet<>());
+    UpgradeSchemas upgradeSchemas = new UpgradeSchemas(sourceSchema, targetSchema);
     ViewChanges viewChanges = new ViewChanges(targetSchema.views(), new HashSet<>(), targetSchema.views());
-    for (View view : viewChanges.getViewsToDeploy()) {
-      sqlStatementWriter.writeSql(viewChangesDeploymentHelper.createView(view, updateDeloyedViews));
-    }
+    sqlStatementWriter.writeSql(UpgradeHelper.postSchemaUpgrade(upgradeSchemas,
+            viewChanges,
+            viewChangesDeploymentHelper));
+
   }
 
 
@@ -165,7 +162,7 @@ public class Deployment {
       new SqlScriptExecutorProvider(connectionResources), connectionResources.sqlDialect());
     try {
       new Deployment(
-        new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition>emptySet(), UpgradeStatusTableServiceImpl::new),
+        new UpgradePathFactoryImpl(new UpgradeScriptAdditionsProvider.NoOpScriptAdditions(), UpgradeStatusTableServiceImpl::new),
         new ViewChangesDeploymentHelper.Factory(new CreateViewListener.Factory.NoOpFactory(), new DropViewListener.Factory.NoOpFactory()),
         connectionResources
       ).deploy(targetSchema, upgradeSteps);

@@ -15,26 +15,11 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import com.google.common.collect.ImmutableList;
-import com.google.inject.Inject;
-import org.alfasoftware.morf.jdbc.ConnectionResources;
-import org.alfasoftware.morf.jdbc.SqlDialect;
-import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
-import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.SchemaResource;
-import org.alfasoftware.morf.metadata.SchemaValidator;
-import org.alfasoftware.morf.metadata.View;
-import org.alfasoftware.morf.upgrade.ExistingViewStateLoader.Result;
-import org.alfasoftware.morf.upgrade.GraphBasedUpgradeBuilder.GraphBasedUpgradeBuilderFactory;
-import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
-import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
-import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsException;
-import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
-import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import static org.alfasoftware.morf.sql.SelectStatement.select;
+import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.alfasoftware.morf.sql.element.Function.count;
+import static org.alfasoftware.morf.upgrade.UpgradeStatus.NONE;
 
-import javax.sql.DataSource;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -44,7 +29,32 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.copy;
+import javax.sql.DataSource;
+
+import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.jdbc.SqlScriptExecutor.ResultSetProcessor;
+import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
+import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaValidator;
+import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.sql.element.TableReference;
+import org.alfasoftware.morf.upgrade.ExistingViewStateLoader.Result;
+import org.alfasoftware.morf.upgrade.GraphBasedUpgradeBuilder.GraphBasedUpgradeBuilderFactory;
+import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
+import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
+import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsException;
+import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import com.google.common.collect.ImmutableList;
+import com.google.inject.Inject;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
+
 
 /**
  * Entry point for upgrade processing.
@@ -60,6 +70,8 @@ public class Upgrade {
   private final ViewChangesDeploymentHelper viewChangesDeploymentHelper;
   private final ViewDeploymentValidator viewDeploymentValidator;
   private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
+  private final DatabaseUpgradePathValidationService databaseUpgradePathValidationService;
+
 
   public Upgrade(
       ConnectionResources connectionResources,
@@ -67,7 +79,8 @@ public class Upgrade {
       UpgradeStatusTableService upgradeStatusTableService,
       ViewChangesDeploymentHelper viewChangesDeploymentHelper,
       ViewDeploymentValidator viewDeploymentValidator,
-      GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory) {
+      GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
+      DatabaseUpgradePathValidationService databaseUpgradePathValidationService) {
     super();
     this.connectionResources = connectionResources;
     this.factory = factory;
@@ -75,6 +88,7 @@ public class Upgrade {
     this.viewChangesDeploymentHelper = viewChangesDeploymentHelper;
     this.viewDeploymentValidator = viewDeploymentValidator;
     this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
+    this.databaseUpgradePathValidationService = databaseUpgradePathValidationService;
   }
 
 
@@ -91,8 +105,9 @@ public class Upgrade {
   public static void performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, ViewDeploymentValidator viewDeploymentValidator) {
     SqlScriptExecutorProvider sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
     UpgradeStatusTableService upgradeStatusTableService = new UpgradeStatusTableServiceImpl(sqlScriptExecutorProvider, connectionResources.sqlDialect());
+    DatabaseUpgradePathValidationService databaseUpgradePathValidationService = new DatabaseUpgradePathValidationServiceImpl(connectionResources, upgradeStatusTableService);
     try {
-      UpgradePath path = Upgrade.createPath(targetSchema, upgradeSteps, connectionResources, upgradeStatusTableService, viewDeploymentValidator);
+      UpgradePath path = Upgrade.createPath(targetSchema, upgradeSteps, connectionResources, upgradeStatusTableService, viewDeploymentValidator, databaseUpgradePathValidationService);
       if (path.hasStepsToApply()) {
         sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor()).execute(path.getSql());
       }
@@ -120,11 +135,12 @@ public class Upgrade {
       Collection<Class<? extends UpgradeStep>> upgradeSteps,
       ConnectionResources connectionResources,
       UpgradeStatusTableService upgradeStatusTableService,
-      ViewDeploymentValidator viewDeploymentValidator) {
+      ViewDeploymentValidator viewDeploymentValidator,
+      DatabaseUpgradePathValidationService databaseUpgradePathValidationService) {
     Upgrade upgrade = new Upgrade(
       connectionResources,
-      new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition> emptySet(), UpgradeStatusTableServiceImpl::new),
-      upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()), viewDeploymentValidator, null);
+      new UpgradePathFactoryImpl(new UpgradeScriptAdditionsProvider.NoOpScriptAdditions(), UpgradeStatusTableServiceImpl::new),
+      upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()), viewDeploymentValidator, null, databaseUpgradePathValidationService);
     return upgrade.findPath(targetSchema, upgradeSteps, Collections.<String> emptySet(), connectionResources.getDataSource());
   }
 
@@ -157,9 +173,11 @@ public class Upgrade {
   public UpgradePath findPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, Collection<String> exceptionRegexes, Set<String> exclusiveExecutionSteps, DataSource dataSource) {
     final List<String> upgradeStatements = new ArrayList<>();
 
+    ResultSetProcessor<Long> upgradeAuditRowProcessor = resultSet -> {resultSet.next(); return resultSet.getLong(1);};
+    long upgradeAuditCount = getUpgradeAuditRowCount(upgradeAuditRowProcessor); //fetch a number of upgrade steps applied previously to do optimistic locking check later
     //Return an upgradePath with the current upgrade status if one is in progress
     UpgradeStatus status = upgradeStatusTableService.getStatus(Optional.of(dataSource));
-    if (status != UpgradeStatus.NONE) {
+    if (status != NONE) {
       return new UpgradePath(status);
     }
 
@@ -183,9 +201,11 @@ public class Upgrade {
     log.info("Searching for upgrade path from [" + sourceSchema + "] to [" + targetSchema + "]");
     ExistingTableStateLoader existingTableState = new ExistingTableStateLoader(dataSource, dialect);
     UpgradePathFinder pathFinder = new UpgradePathFinder(upgradeSteps, existingTableState.loadAppliedStepUUIDs());
+    pathFinder.findDiscrepancies(getUpgradeAuditRecords());
+
     SchemaChangeSequence schemaChangeSequence;
     status = upgradeStatusTableService.getStatus(Optional.of(dataSource));
-    if (status != UpgradeStatus.NONE) {
+    if (status != NONE) {
       return new UpgradePath(status);
     }
     try {
@@ -193,10 +213,16 @@ public class Upgrade {
     } catch (NoUpgradePathExistsException e) {
       log.debug("No upgrade path found - checking upgrade status", e);
       status = upgradeStatusTableService.getStatus(Optional.of(dataSource));
-      if (status != UpgradeStatus.NONE) {
+      if (status != NONE) {
         log.info("Schema differences found, but upgrade in progress - no action required until upgrade is complete");
         return new UpgradePath(status);
-      } else {
+      }
+      else if (upgradeAuditCount != getUpgradeAuditRowCount(upgradeAuditRowProcessor)) {
+        //In the meantime another node managed to finish the upgrade steps and flip the status back to NONE. Assuming the upgrade was in progress on another node.
+        log.info("Schema differences found, but upgrade was progressed on another node - no action required");
+        return new UpgradePath(UpgradeStatus.IN_PROGRESS);
+      }
+      else {
         throw e;
       }
     }
@@ -246,7 +272,7 @@ public class Upgrade {
     }
 
     // Build the actual upgrade path
-    return buildUpgradePath(connectionResources, sourceSchema, targetSchema, upgradeStatements, viewChanges, upgradesToApply, graphBasedUpgradeBuilder);
+    return buildUpgradePath(connectionResources, sourceSchema, targetSchema, upgradeStatements, viewChanges, upgradesToApply, graphBasedUpgradeBuilder, upgradeAuditCount);
   }
 
 
@@ -259,32 +285,26 @@ public class Upgrade {
    * @param upgradeStatements Upgrade statements identified.
    * @param viewChanges Changes needed to the views.
    * @param upgradesToApply Upgrade steps identified.
+   * @param graphBasedUpgradeBuilder Builder for the Graph Based Upgrade
+   * @param upgradeAuditCount Number of already applied upgrade steps
    * @return An upgrade path.
    */
   private UpgradePath buildUpgradePath(
       ConnectionResources connectionResources, Schema sourceSchema, Schema targetSchema,
       List<String> upgradeStatements, ViewChanges viewChanges,
       List<UpgradeStep> upgradesToApply,
-      GraphBasedUpgradeBuilder graphBasedUpgradeBuilder) {
+      GraphBasedUpgradeBuilder graphBasedUpgradeBuilder,
+      long upgradeAuditCount) {
 
-    UpgradePath path = factory.create(upgradesToApply, connectionResources, graphBasedUpgradeBuilder);
+    List<String> pathValidationSql = databaseUpgradePathValidationService.getPathValidationSql(upgradeAuditCount);
 
-    final boolean deleteFromDeployedViews = sourceSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME) && targetSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME);
-    for (View view : viewChanges.getViewsToDrop()) {
-      if (sourceSchema.viewExists(view.getName())) {
-        path.writeSql(viewChangesDeploymentHelper.dropViewIfExists(view, deleteFromDeployedViews));
-      }
-      else {
-        path.writeSql(viewChangesDeploymentHelper.deregisterViewIfExists(view, deleteFromDeployedViews));
-      }
-    }
+    UpgradePath path = factory.create(upgradesToApply, connectionResources, graphBasedUpgradeBuilder, pathValidationSql);
+
+    path.writeSql(UpgradeHelper.preSchemaUpgrade(new UpgradeSchemas(sourceSchema, targetSchema), viewChanges, viewChangesDeploymentHelper));
 
     path.writeSql(upgradeStatements);
 
-    final boolean insertToDeployedViews = targetSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME);
-    for (View view : viewChanges.getViewsToDeploy()) {
-      path.writeSql(viewChangesDeploymentHelper.createView(view, insertToDeployedViews));
-    }
+    path.writeSql(UpgradeHelper.postSchemaUpgrade(new UpgradeSchemas(sourceSchema, targetSchema), viewChanges, viewChangesDeploymentHelper));
 
     // Since Oracle is not able to re-map schema references in trigger code, we need to rebuild all triggers
     // for id column autonumbering when exporting and importing data between environments.
@@ -324,7 +344,89 @@ public class Upgrade {
     try (SchemaResource databaseSchemaResource = database.openSchemaResource(dataSource)) {
       upgradeStatements.addAll(database.sqlDialect().getSchemaConsistencyStatements(databaseSchemaResource));
       return copy(databaseSchemaResource, exclusionRegExes);
+  }
+
+
+  /**
+   * Provides a number of already applied upgrade steps.
+   * @return the number of upgrade steps from the UpgradeAudit table
+   */
+  long getUpgradeAuditRowCount(ResultSetProcessor<Long> processor) {
+    SelectStatement selectStatement = selectUpgradeAuditTableCount();
+    long appliedUpgradeStepsCount = -1;
+    try {
+      SqlScriptExecutorProvider sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
+      appliedUpgradeStepsCount = sqlScriptExecutorProvider.get()
+              .executeQuery(connectionResources.sqlDialect().convertStatementToSQL(selectStatement), processor);
     }
+    catch (Exception e) {
+      log.warn("Unable to read from UpgradeAudit table", e);
+    }
+    log.debug("Returning number of applied upgrade steps [" + appliedUpgradeStepsCount + "]");
+    return appliedUpgradeStepsCount;
+  }
+
+  /**
+   * This method queries the database for upgrade audit information, including
+   * upgrade UUIDs and their corresponding descriptions.
+   *
+   * @return A Map<String, String> containing upgrade audit information.
+   *         The keys are upgrade descriptions and the values are corresponding UUIDs.
+   *         If an error occurs during the retrieval, an empty map is returned.
+   */
+  private Map<String, String> getUpgradeAuditRecords() {
+    Map<String, String> upgradeAuditMap = new HashMap<>();
+    try {
+      TableReference upgradeAuditTable = tableRef(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME);
+
+      SelectStatement selectStatement = select(
+              upgradeAuditTable.field("upgradeUUID"),
+              upgradeAuditTable.field("description")
+      )
+              .from(upgradeAuditTable)
+              .build();
+
+      SqlScriptExecutorProvider sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
+      upgradeAuditMap = sqlScriptExecutorProvider.get().executeQuery(
+              connectionResources.sqlDialect().convertStatementToSQL(selectStatement),
+              resultSetProcessor()
+      );
+    } catch (Exception e) {
+      log.warn("Unable to read from UpgradeAudit table", e);
+    }
+    return upgradeAuditMap;
+  }
+
+  /**
+   * Returns a ResultSetProcessor that processes a ResultSet into a Map<String, String>.
+   *
+   * @return A ResultSetProcessor that converts a ResultSet into a Map<String, String>.
+   */
+  private ResultSetProcessor<Map<String, String>> resultSetProcessor() {
+    return resultSet -> {
+      Map<String, String> upgradeAudit = new HashMap<>();
+      try {
+        while(resultSet.next()) {
+          String description = resultSet.getString("description");
+          String upgradeUUID = resultSet.getString("upgradeUUID");
+          upgradeAudit.put(description, upgradeUUID);
+        }
+      } catch (SQLException e) {
+        e.printStackTrace();
+      }
+      return upgradeAudit;
+    };
+  }
+
+
+  /**
+   * Creates a select statement which can be used to count the number of upgrade steps that have already been run
+   */
+  private SelectStatement selectUpgradeAuditTableCount() {
+    TableReference upgradeAuditTable = tableRef(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME);
+    return select(count(upgradeAuditTable.field("upgradeUUID")))
+        .from(upgradeAuditTable)
+        .build();
   }
 
 
@@ -339,6 +441,7 @@ public class Upgrade {
     private final UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory;
     private final ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory;
     private final ViewDeploymentValidator.Factory viewDeploymentValidatorFactory;
+    private final DatabaseUpgradePathValidationService.Factory databaseUpgradeLockServiceFactory;
 
 
     @Inject
@@ -346,12 +449,14 @@ public class Upgrade {
                    UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory,
                    GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
                    ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory,
-                   ViewDeploymentValidator.Factory viewDeploymentValidatorFactory) {
+                   ViewDeploymentValidator.Factory viewDeploymentValidatorFactory,
+                   DatabaseUpgradePathValidationService.Factory databaseUpgradeLockServiceFactory) {
       this.upgradePathFactory = upgradePathFactory;
       this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
       this.upgradeStatusTableServiceFactory =  upgradeStatusTableServiceFactory;
       this.viewChangesDeploymentHelperFactory = viewChangesDeploymentHelperFactory;
       this.viewDeploymentValidatorFactory = viewDeploymentValidatorFactory;
+      this.databaseUpgradeLockServiceFactory = databaseUpgradeLockServiceFactory;
     }
 
     public Upgrade create(ConnectionResources connectionResources) {
@@ -360,7 +465,8 @@ public class Upgrade {
                          upgradeStatusTableServiceFactory.create(connectionResources),
                          viewChangesDeploymentHelperFactory.create(connectionResources),
                          viewDeploymentValidatorFactory.createViewDeploymentValidator(connectionResources),
-                         graphBasedUpgradeBuilderFactory);
+                         graphBasedUpgradeBuilderFactory,
+                         databaseUpgradeLockServiceFactory.create(connectionResources));
     }
   }
 }
