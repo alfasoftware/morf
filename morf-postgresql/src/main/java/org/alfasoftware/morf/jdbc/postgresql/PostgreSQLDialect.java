@@ -902,7 +902,7 @@ class PostgreSQLDialect extends SqlDialect {
     Iterable<String> statements = healIndexes(metaDataProvider, table);
 
     if (statements.iterator().hasNext()) {
-      List<String> intro = ImmutableList.of(convertCommentToSQL("Healing table: " + table.getName()));
+      List<String> intro = ImmutableList.of(convertCommentToSQL("Auto-Healing table: " + table.getName()));
       return Iterables.concat(intro, statements);
     }
     return ImmutableList.of();
