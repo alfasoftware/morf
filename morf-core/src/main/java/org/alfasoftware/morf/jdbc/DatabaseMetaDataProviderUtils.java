@@ -36,6 +36,10 @@ public class DatabaseMetaDataProviderUtils {
    * Regex for extracting the data type from column comments
    */
   private static final Pattern DATA_TYPE_REGEX = Pattern.compile("TYPE:\\[(\\w+)\\]");
+  /**
+   * Regex for matching ignored indexes
+   */
+  private static final Pattern IGNORE_INDEX_REGEX = Pattern.compile(".*_PRF\\d+$");
 
   /**
    * Get the auto increment start value (if available) from the column comments
@@ -72,10 +76,14 @@ public class DatabaseMetaDataProviderUtils {
    *
    * eg. Schedule_PRF1
    *
+   * Also any indexes with a $ character will be ignored:
+   * this allows technical indexes to be added to the schema.
+   *
    * @param indexName The name of an index
    * @return Whether it should be ignored
    */
   public static boolean shouldIgnoreIndex(String indexName) {
-    return indexName.toUpperCase().matches(".*_PRF\\d+$");
+    return IGNORE_INDEX_REGEX.matcher(indexName.toUpperCase()).matches()
+        || indexName.indexOf('$') > -1;
   }
 }

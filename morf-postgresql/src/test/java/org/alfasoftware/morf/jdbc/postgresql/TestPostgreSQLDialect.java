@@ -1,7 +1,13 @@
 package org.alfasoftware.morf.jdbc.postgresql;
 
+import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
+import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.hamcrest.Matchers.contains;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.io.InputStream;
 import java.sql.SQLException;
@@ -9,9 +15,13 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
 import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.SchemaResource;
+import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.CustomHint;
 import org.alfasoftware.morf.sql.PostgreSQLCustomHint;
 import org.alfasoftware.morf.sql.SelectStatement;
@@ -92,8 +102,12 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
           "COMMENT ON COLUMN testschema.Test.clobField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[clobField]/TYPE:[CLOB]'",
           "CREATE UNIQUE INDEX Test_NK ON testschema.Test (stringField)",
           "COMMENT ON INDEX Test_NK IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_NK]'",
+          "CREATE UNIQUE INDEX Test_NK$null0 ON testschema.Test ((0)) WHERE stringField IS NULL",
+          "COMMENT ON INDEX Test_NK$null0 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[e069928444ba25d94fe4d5f64e1423ae/cfcd208495d565ef66e7dff9f98764da]'",
           "CREATE UNIQUE INDEX Test_1 ON testschema.Test (intField, floatField)",
           "COMMENT ON INDEX Test_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_1]'",
+          "CREATE UNIQUE INDEX Test_1$null0 ON testschema.Test (floatField) WHERE intField IS NULL",
+          "COMMENT ON INDEX Test_1$null0 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[9c2e9ac2612f55025a2656b5c2cc9316/cfcd208495d565ef66e7dff9f98764da]'",
           "CREATE TABLE testschema.Alternate (id NUMERIC(19) NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3) COLLATE \"POSIX\", CONSTRAINT Alternate_PK PRIMARY KEY(id))",
           "COMMENT ON TABLE testschema.Alternate IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Alternate]'",
           "COMMENT ON COLUMN testschema.Alternate.id IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[id]/TYPE:[BIG_INTEGER]'",
@@ -147,6 +161,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
             "COMMENT ON COLUMN TempTest.clobField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[clobField]/TYPE:[CLOB]'",
             "CREATE UNIQUE INDEX TempTest_NK ON TempTest (stringField)",
             "COMMENT ON INDEX TempTest_NK IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[TempTest_NK]'",
+            "CREATE UNIQUE INDEX TempTest_NK$null0 ON TempTest ((0)) WHERE stringField IS NULL",
+            "COMMENT ON INDEX TempTest_NK$null0 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[e069928444ba25d94fe4d5f64e1423ae/cfcd208495d565ef66e7dff9f98764da]'",
             "CREATE INDEX TempTest_1 ON TempTest (intField, floatField)",
             "COMMENT ON INDEX TempTest_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[TempTest_1]'",
             "CREATE TEMP TABLE TempAlternate (id NUMERIC(19) NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3) COLLATE \"POSIX\", CONSTRAINT TempAlternate_PK PRIMARY KEY(id))",
@@ -188,6 +204,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
             "COMMENT ON COLUMN testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation.charField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[charField]/TYPE:[STRING]'",
             "CREATE UNIQUE INDEX Test_NK ON testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation (stringField)",
             "COMMENT ON INDEX Test_NK IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_NK]'",
+            "CREATE UNIQUE INDEX Test_NK$null0 ON testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation ((0)) WHERE stringField IS NULL",
+            "COMMENT ON INDEX Test_NK$null0 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[e069928444ba25d94fe4d5f64e1423ae/cfcd208495d565ef66e7dff9f98764da]'",
             "CREATE INDEX Test_1 ON testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation (intField, floatField)",
             "COMMENT ON INDEX Test_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_1]'"
         );
@@ -769,6 +787,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected List<String> expectedChangeIndexFollowedByChangeOfAssociatedColumnStatement() {
     return Arrays.asList(
       "DROP INDEX Test_1",
+      "DROP INDEX IF EXISTS Test_1$null0",
       "CREATE INDEX Test_1 ON testschema.Test (intField)",
       "COMMENT ON INDEX Test_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_1]'",
       "ALTER TABLE testschema.Test ALTER COLUMN intField SET NOT NULL",
@@ -812,7 +831,10 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAddIndexStatementsUniqueNullable() {
     return Arrays.asList("CREATE UNIQUE INDEX indexName ON testschema.Test (stringField, intField, floatField, dateField)",
-                         "COMMENT ON INDEX indexName IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[indexName]'");
+                         "COMMENT ON INDEX indexName IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[indexName]'",
+                         "CREATE UNIQUE INDEX indexName$null ON testschema.Test ((stringField ||'§'|| intField ||'§'|| floatField ||'§'|| dateField)) WHERE stringField IS NULL OR intField IS NULL OR dateField IS NULL",
+                         "COMMENT ON INDEX indexName$null IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[121e97b2b38f63cc6840445595b4177c]'"
+    );
   }
 
 
@@ -1171,7 +1193,9 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedRenameIndexStatements() {
     return ImmutableList.of("ALTER INDEX testschema.Test_1 RENAME TO Test_2",
-                            "COMMENT ON INDEX Test_2 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_2]'");
+                            "COMMENT ON INDEX Test_2 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_2]'",
+                            "ALTER INDEX IF EXISTS testschema.Test_1$null0 RENAME TO Test_2$null0"
+    );
   }
 
 
@@ -1433,6 +1457,62 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected String expectedSelectWithExcept() {
     return "SELECT stringField FROM testschema.Test EXCEPT SELECT stringField FROM testschema.Other ORDER BY stringField";
   };
+
+
+  @Override
+  protected SchemaResource createSchemaResourceForSchemaConsistencyStatements() {
+    final List<Table> tables = ImmutableList.of(
+      table("TableOne")
+        .columns(
+          column("id", DataType.BIG_INTEGER),
+          column("u", DataType.BIG_INTEGER).nullable(),
+          column("v", DataType.BIG_INTEGER).nullable(),
+          column("x", DataType.BIG_INTEGER).nullable())
+        .indexes(
+          index("TableOne_1").columns("u").unique(),
+          index("TableOne_2").columns("u", "v", "x").unique(),
+          index("TableOne_3").columns("x").unique()
+        ),
+      table("TableTwo")
+        .columns(
+          column("id", DataType.BIG_INTEGER),
+          column("x", DataType.BIG_INTEGER).nullable())
+        .indexes(
+          index("TableTwo_3").columns("x").unique()
+        )
+    );
+
+    PostgreSQLMetaDataProvider metaDataProvider = mock(PostgreSQLMetaDataProvider.class);
+    when(metaDataProvider.tables()).thenReturn(tables);
+    when(metaDataProvider.getAdditionalConstraintIndexes("tableone_1")).thenReturn(ImmutableList.of(
+      PostgreSQLUniqueIndexAdditionalDeploymentStatements.matchAdditionalIndex("TableOne_1$null0", "xx/yy").get(),
+      PostgreSQLUniqueIndexAdditionalDeploymentStatements.matchAdditionalIndex("TableOne_1$null1", "xx/yy").get()
+    ));
+    when(metaDataProvider.getAdditionalConstraintIndexes("tableone_3")).thenReturn(ImmutableList.of(
+      PostgreSQLUniqueIndexAdditionalDeploymentStatements.matchAdditionalIndex("TableOne_3$null0", "76e4a5e9bce3c23b4feb0675fb0c8366/cfcd208495d565ef66e7dff9f98764da").get()
+    ));
+    when(metaDataProvider.getAdditionalConstraintIndexes("tabletwo_3")).thenReturn(ImmutableList.of(
+      PostgreSQLUniqueIndexAdditionalDeploymentStatements.matchAdditionalIndex("TableTwo_3$null0", "76e4a5e9bce3c23b4feb0675fb0c8366/cfcd208495d565ef66e7dff9f98764da").get()
+    ));
+
+    final SchemaResource schemaResource = mock(SchemaResource.class);
+    when(schemaResource.getDatabaseMetaDataProvider()).thenReturn(Optional.of(metaDataProvider));
+
+    return schemaResource;
+  }
+
+  @Override
+  protected org.hamcrest.Matcher<java.lang.Iterable<? extends String>> expectedSchemaConsistencyStatements() {
+    return contains(
+      "-- Healing table: TableOne",
+      "DROP INDEX IF EXISTS tableone_1$null0",
+      "DROP INDEX IF EXISTS tableone_1$null1",
+      "CREATE UNIQUE INDEX TableOne_1$null0 ON testschema.TableOne ((0)) WHERE u IS NULL",
+      "COMMENT ON INDEX TableOne_1$null0 IS 'REALNAME:[6285d92226e5112908a10cd51e129b72/cfcd208495d565ef66e7dff9f98764da]'",
+      "CREATE UNIQUE INDEX TableOne_2$null ON testschema.TableOne ((u ||'§'|| v ||'§'|| x)) WHERE u IS NULL OR v IS NULL OR x IS NULL",
+      "COMMENT ON INDEX TableOne_2$null IS 'REALNAME:[47d0d3041096c2ac2e8cbb4a8d0e3fd8]'"
+    );
+  }
 
 
   /**

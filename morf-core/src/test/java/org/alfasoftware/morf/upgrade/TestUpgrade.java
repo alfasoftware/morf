@@ -177,6 +177,7 @@ public class TestUpgrade {
 
     SchemaResource schemaResource = mock(SchemaResource.class);
     when(mockConnectionResources.openSchemaResource(eq(mockConnectionResources.getDataSource()))).thenReturn(schemaResource);
+    when(mockConnectionResources.sqlDialect().getSchemaConsistencyStatements(schemaResource)).thenReturn(ImmutableList.of("CONS1", "CONS2"));
     when(schemaResource.tables()).thenReturn(tables);
 
     UpgradePath results = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(mockConnectionResources), graphBasedUpgradeScriptGeneratorFactory, viewChangesDeploymentHelperFactory(mockConnectionResources), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory())
@@ -184,8 +185,11 @@ public class TestUpgrade {
         .findPath(targetSchema, upgradeSteps, Lists.newArrayList("^Drivers$", "^EXCLUDE_.*$"), mockConnectionResources.getDataSource());
 
     assertEquals("Should be two steps.", 2, results.getSteps().size());
-    List<String> sql = results.getSql();
-    assertEquals("Number of SQL statements", 19, sql.size()); // Includes statements to add optimistic locking; create, truncate and then drop temp table; also 2 comments
+    assertEquals("Number of SQL statements", 21, results.getSql().size()); // Includes statements to add optimistic locking; create, truncate and then drop temp table; also 2 comments
+
+    assertEquals("SQL", "[INIT, CONS1, CONS2]", results.getSql().subList(0, 3).toString()); // schema consistency statements
+    assertEquals("SQL", "-- Upgrade step: org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.ChangeCar", results.getSql().get(4).toString()); // upgrade ChangeCar begins
+    assertEquals("SQL", "-- Upgrade step: org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.ChangeDriver", results.getSql().get(11).toString()); // upgrade ChangeDriver begins
   }
 
 
@@ -249,7 +253,6 @@ public class TestUpgrade {
     UpgradePathFactory upgradePathFactory = mock(UpgradePathFactory.class);
     when(upgradePathFactory.create(anyList(), any(ConnectionResources.class), nullable(GraphBasedUpgradeBuilder.class), anyList()))
         .thenAnswer(invocation -> new UpgradePath(Sets.newHashSet(), invocation.getArgument(0), invocation.getArgument(1), invocation.getArgument(3), Collections.emptyList()));
-
     return upgradePathFactory;
   }
 
@@ -324,6 +327,7 @@ public class TestUpgrade {
 
     ConnectionResources mockConnectionResources = mock(ConnectionResources.class, RETURNS_DEEP_STUBS);
     SchemaResource schemaResource = mock(SchemaResource.class);
+    when(mockConnectionResources.sqlDialect().getSchemaConsistencyStatements(schemaResource)).thenReturn(ImmutableList.of());
     when(mockConnectionResources.openSchemaResource(eq(mockConnectionResources.getDataSource()))).thenReturn(schemaResource);
     when(schemaResource.tables()).thenReturn(Arrays.asList(upgradeAudit));
     when(mockConnectionResources.sqlDialect().truncateTableStatements(any(Table.class))).thenReturn(Lists.newArrayList("1"));
@@ -335,6 +339,38 @@ public class TestUpgrade {
       upgradeSteps, new HashSet<>(), mockConnectionResources.getDataSource());
     assertTrue("No steps to apply", results.getSteps().isEmpty());
     assertTrue("No SQL statements", results.getSql().isEmpty());
+  }
+
+
+  /**
+   * Test that even if there are no upgrades to apply,
+   * but there are schema consistency statements to be deployed,
+   * that those schema consistency statements are still added to the resulting SQL.
+   */
+  @Test
+  public void testUpgradeWithOnlySchemaConsistencyStatementsToDeploy() {
+    // Given
+    Table upgradeAudit = upgradeAudit();
+    Schema sourceSchema = schema(upgradeAudit);
+    Schema targetSchema = schema(upgradeAudit);
+
+    Collection<Class<? extends UpgradeStep>> upgradeSteps = Collections.emptySet();
+
+    SchemaResource schemaResource = new StubSchemaResource(sourceSchema);
+
+    ConnectionResources connection = mock(ConnectionResources.class, RETURNS_DEEP_STUBS);
+    when(connection.openSchemaResource(eq(connection.getDataSource()))).thenReturn(schemaResource);
+    when(connection.sqlDialect().getSchemaConsistencyStatements(schemaResource)).thenReturn(ImmutableList.of("CONS1", "CONS2"));
+    when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
+
+    // When
+    UpgradePath results = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(connection), graphBasedUpgradeScriptGeneratorFactory, viewChangesDeploymentHelperFactory(connection), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory())
+            .create(connection)
+            .findPath(targetSchema, upgradeSteps, new HashSet<>(), connection.getDataSource());
+
+    // Then
+    assertTrue("No steps to apply", results.getSteps().isEmpty());
+    assertEquals("SQL", "[INIT, CONS1, CONS2]", results.getSql().toString());
   }
 
 
@@ -356,11 +392,14 @@ public class TestUpgrade {
 
     Collection<Class<? extends UpgradeStep>> upgradeSteps = Collections.emptySet();
 
+    SchemaResource schemaResource = new StubSchemaResource(sourceSchema);
+
     ConnectionResources connection = mock(ConnectionResources.class, RETURNS_DEEP_STUBS);
     when(connection.sqlDialect().viewDeploymentStatements(same(testView))).thenReturn(ImmutableList.of("A"));
     when(connection.sqlDialect().viewDeploymentStatementsAsLiteral(any(View.class))).thenReturn(literal("W"));
     when(connection.sqlDialect().rebuildTriggers(any(Table.class))).thenReturn(Collections.<String>emptyList());
-    when(connection.openSchemaResource(eq(connection.getDataSource()))).thenReturn(new StubSchemaResource(sourceSchema));
+    when(connection.sqlDialect().getSchemaConsistencyStatements(schemaResource)).thenReturn(ImmutableList.of());
+    when(connection.openSchemaResource(eq(connection.getDataSource()))).thenReturn(schemaResource);
     when(connection.sqlDialect().truncateTableStatements(any(Table.class))).thenReturn(Lists.newArrayList("1"));
     when(connection.sqlDialect().dropStatements(any(Table.class))).thenReturn(Lists.newArrayList("2"));
 
@@ -400,12 +439,15 @@ public class TestUpgrade {
 
     Collection<Class<? extends UpgradeStep>> upgradeSteps = Collections.emptySet();
 
+    SchemaResource schemaResource = new StubSchemaResource(sourceSchema);
+
     ConnectionResources connection = mock(ConnectionResources.class, RETURNS_DEEP_STUBS);
     when(connection.sqlDialect().dropStatements(any(View.class))).thenReturn(ImmutableList.of("X"));
     when(connection.sqlDialect().viewDeploymentStatements(same(testView))).thenReturn(ImmutableList.of("A"));
     when(connection.sqlDialect().viewDeploymentStatementsAsLiteral(any(View.class))).thenReturn(literal("W"));
     when(connection.sqlDialect().rebuildTriggers(any(Table.class))).thenReturn(Collections.<String>emptyList());
-    when(connection.openSchemaResource(eq(connection.getDataSource()))).thenReturn(new StubSchemaResource(sourceSchema));
+    when(connection.sqlDialect().getSchemaConsistencyStatements(schemaResource)).thenReturn(ImmutableList.of());
+    when(connection.openSchemaResource(eq(connection.getDataSource()))).thenReturn(schemaResource);
     when(connection.sqlDialect().truncateTableStatements(any(Table.class))).thenReturn(Lists.newArrayList("1"));
     when(connection.sqlDialect().dropStatements(any(Table.class))).thenReturn(Lists.newArrayList("2"));
 
@@ -642,12 +684,15 @@ public class TestUpgrade {
 
     Collection<Class<? extends UpgradeStep>> upgradeSteps = Collections.emptySet();
 
+    SchemaResource schemaResource = new StubSchemaResource(sourceSchema);
+
     ConnectionResources connection = mock(ConnectionResources.class, RETURNS_DEEP_STUBS);
     when(connection.sqlDialect().viewDeploymentStatements(same(testView))).thenReturn(ImmutableList.of("A"));
     when(connection.sqlDialect().viewDeploymentStatementsAsLiteral(any(View.class))).thenReturn(literal("W"));
     when(connection.sqlDialect().convertStatementToSQL(any(InsertStatement.class))).thenReturn(ImmutableList.of("C"));
     when(connection.sqlDialect().rebuildTriggers(any(Table.class))).thenReturn(Collections.<String>emptyList());
-    when(connection.openSchemaResource(eq(connection.getDataSource()))).thenReturn(new StubSchemaResource(sourceSchema));
+    when(connection.sqlDialect().getSchemaConsistencyStatements(schemaResource)).thenReturn(ImmutableList.of());
+    when(connection.openSchemaResource(eq(connection.getDataSource()))).thenReturn(schemaResource);
     when(upgradeStatusTableService.getStatus(Optional.of(connection.getDataSource()))).thenReturn(NONE);
     when(connection.sqlDialect().truncateTableStatements(any(Table.class))).thenReturn(Lists.newArrayList("1"));
     when(connection.sqlDialect().dropStatements(any(Table.class))).thenReturn(Lists.newArrayList("2"));

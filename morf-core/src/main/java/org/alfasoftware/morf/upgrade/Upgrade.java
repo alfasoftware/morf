@@ -15,16 +15,20 @@
 
 package org.alfasoftware.morf.upgrade;
 
+import static org.alfasoftware.morf.metadata.SchemaUtils.copy;
 import static org.alfasoftware.morf.sql.SelectStatement.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.element.Function.count;
 import static org.alfasoftware.morf.upgrade.UpgradeStatus.NONE;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -36,6 +40,7 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor.ResultSetProcessor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaValidator;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.TableReference;
@@ -45,15 +50,11 @@ import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
 import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsException;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
-import java.sql.SQLException;
-import java.util.HashMap;
-import java.util.Map;
 
 
 /**
@@ -187,11 +188,21 @@ public class Upgrade {
 
     // Get access to the schema we are starting from
     log.info("Reading current schema");
-    Schema sourceSchema = UpgradeHelper.copySourceSchema(connectionResources, dataSource, exceptionRegexes);
-    SqlDialect dialect = connectionResources.sqlDialect();
+    List<String> schemaConsistencyStatements;
+    Schema sourceSchema;
+    try (SchemaResource databaseSchemaResource = connectionResources.openSchemaResource(dataSource)) {
+      sourceSchema = copy(databaseSchemaResource, exceptionRegexes);
+      schemaConsistencyStatements = connectionResources.sqlDialect().getSchemaConsistencyStatements(databaseSchemaResource);
+      if (!schemaConsistencyStatements.isEmpty()) {
+        log.warn("Auto-healing statements have been generated (" + schemaConsistencyStatements.size() + " statements in total); this usually implies auto-healing being carried out."
+            + " It this is shown on each subsequent start-up, it can be a symptom of auto-healing failing to achieve an acceptable stable healthful state."
+            + " Examine the upgrade statements (the upgrade script, or the upgrade logs below) to investigate further.");
+      }
+    }
 
     // -- Get the current UUIDs and deployed views...
     log.info("Examining current views");    //
+    SqlDialect dialect = connectionResources.sqlDialect();
     ExistingViewStateLoader existingViewState = new ExistingViewStateLoader(dialect, new ExistingViewHashLoader(dataSource, dialect), viewDeploymentValidator);
     Result viewChangeInfo = existingViewState.viewChanges(sourceSchema, targetSchema);
     ViewChanges viewChanges = new ViewChanges(targetSchema.views(), viewChangeInfo.getViewsToDrop(), viewChangeInfo.getViewsToDeploy());

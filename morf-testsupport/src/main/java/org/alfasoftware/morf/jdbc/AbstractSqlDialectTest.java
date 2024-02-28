@@ -89,6 +89,9 @@ import static org.alfasoftware.morf.sql.element.Function.sumDistinct;
 import static org.alfasoftware.morf.sql.element.Function.trim;
 import static org.alfasoftware.morf.sql.element.Function.upperCase;
 import static org.alfasoftware.morf.sql.element.Function.yyyymmddToDate;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.emptyIterable;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -116,12 +119,14 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.CustomHint;
@@ -6121,6 +6126,59 @@ public abstract class AbstractSqlDialectTest {
     Record record = testDialect.resultSetToRecord(resultSet, columns);
 
     columns.forEach(c -> assertNull(record.getObject(c)));
+  }
+
+
+  /**
+   * Checks the @link org.alfasoftware.morf.jdbc.SqlDialect.getSchemaConsistencyStatements(SchemaResource)} mechanism.
+   */
+  @Test
+  public void testSchemaConsistencyStatements() {
+    final SchemaResource schemaResource = createSchemaResourceForSchemaConsistencyStatements();
+
+    assertThat(
+      testDialect.getSchemaConsistencyStatements(schemaResource),
+      expectedSchemaConsistencyStatements());
+  }
+
+  protected SchemaResource createSchemaResourceForSchemaConsistencyStatements() {
+    final SchemaResource schemaResource = mock(SchemaResource.class);
+    when(schemaResource.getDatabaseMetaDataProvider()).thenReturn(Optional.empty());
+    return schemaResource;
+  }
+
+  protected org.hamcrest.Matcher<java.lang.Iterable<? extends String>> expectedSchemaConsistencyStatements() { //NOSONAR // Remove usage of generic wildcard type // The generic wildcard type comes from hamcrest and is therefore unavoidable
+    return emptyIterable();
+  }
+
+
+
+  /**
+   * Checks the @link org.alfasoftware.morf.jdbc.SqlDialect.getSchemaConsistencyStatements(SchemaResource)} mechanism fallback.
+   */
+  @Test
+  public void testSchemaConsistencyStatementsOnNoDatabaseMetaDataProvider() {
+    final SchemaResource schemaResource = mock(SchemaResource.class);
+    when(schemaResource.getDatabaseMetaDataProvider()).thenReturn(Optional.empty());
+
+    assertThat(
+      testDialect.getSchemaConsistencyStatements(schemaResource),
+      empty());
+  }
+
+
+
+  /**
+   * Checks the @link org.alfasoftware.morf.jdbc.SqlDialect.getSchemaConsistencyStatements(SchemaResource)} mechanism fallback.
+   */
+  @Test
+  public void testSchemaConsistencyStatementsOnWrongDatabaseMetaDataProvider() {
+    final SchemaResource schemaResource = mock(SchemaResource.class);
+    when(schemaResource.getDatabaseMetaDataProvider()).thenReturn(Optional.of(mock(DatabaseMetaDataProvider.class)));
+
+    assertThat(
+      testDialect.getSchemaConsistencyStatements(schemaResource),
+      empty());
   }
 
 

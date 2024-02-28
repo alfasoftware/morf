@@ -1,5 +1,6 @@
 package org.alfasoftware.morf.jdbc.postgresql;
 
+import static com.google.common.base.Predicates.instanceOf;
 import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
 import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
 import static org.alfasoftware.morf.sql.SelectStatement.select;
@@ -12,15 +13,18 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.StringJoiner;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.jdbc.postgresql.PostgreSQLUniqueIndexAdditionalDeploymentStatements.AdditionalIndexInfo;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.DataValueLookup;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
@@ -48,6 +52,7 @@ import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Joiner;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -373,15 +378,6 @@ class PostgreSQLDialect extends SqlDialect {
         .addAll(renamePk)
         .addAll(renameSeq)
         .add(addTableComment(to))
-        .build();
-  }
-
-
-  @Override
-  public Collection<String> renameIndexStatements(Table table, String fromIndexName, String toIndexName) {
-    return ImmutableList.<String>builder()
-        .addAll(super.renameIndexStatements(table, fromIndexName, toIndexName))
-        .add(addIndexComment(toIndexName))
         .build();
   }
 
@@ -770,12 +766,52 @@ class PostgreSQLDialect extends SqlDialect {
     return ImmutableList.<String>builder()
       .add(statement.toString())
       .add(addIndexComment(index.getName()))
+      .addAll(additionalUniqueIndexDeploymentStatements(table, index))
       .build();
+  }
+
+
+  @Override
+  public Collection<String> renameIndexStatements(Table table, String fromIndexName, String toIndexName) {
+    return ImmutableList.<String>builder()
+        .addAll(super.renameIndexStatements(table, fromIndexName, toIndexName))
+        .add(addIndexComment(toIndexName))
+        .addAll(additionalUniqueIndexRenameStatements(table, fromIndexName, toIndexName))
+        .build();
+  }
+
+
+  @Override
+  public Collection<String> indexDropStatements(Table table, Index indexToBeRemoved) {
+    return ImmutableList.<String>builder()
+        .addAll(super.indexDropStatements(table, indexToBeRemoved))
+        .addAll(additionalUniqueIndexDropStatements(table, indexToBeRemoved))
+        .build();
   }
 
 
   private String addIndexComment(String indexName) {
     return "COMMENT ON INDEX " + indexName + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + indexName + "]'";
+  }
+
+
+  private Iterable<String> additionalUniqueIndexDeploymentStatements(Table table, Index index) {
+    return new PostgreSQLUniqueIndexAdditionalDeploymentStatements(table, index).createIndexStatements(schemaNamePrefix(table) + table.getName());
+  }
+
+
+  private Iterable<String> additionalUniqueIndexRenameStatements(Table table, String fromIndexName, String toIndexName) {
+    if (toIndexName.endsWith("_pk") && fromIndexName.equals(table.getName() + "_pk")) {
+      return ImmutableList.of();
+    }
+
+    Index index = Iterables.getOnlyElement(FluentIterable.from(table.indexes()).filter(i -> toIndexName.equalsIgnoreCase(i.getName())));
+    return new PostgreSQLUniqueIndexAdditionalDeploymentStatements(table, index).renameIndexStatements(schemaNamePrefix(table) + fromIndexName, toIndexName);
+  }
+
+
+  private Iterable<String> additionalUniqueIndexDropStatements(Table table, Index index) {
+    return new PostgreSQLUniqueIndexAdditionalDeploymentStatements(table, index).dropIndexStatements(schemaNamePrefix(table) + table.getName());
   }
 
 
@@ -844,6 +880,51 @@ class PostgreSQLDialect extends SqlDialect {
       return sqlBuilder.toString();
     }
     return super.getSqlFrom(statement);
+  }
+
+
+  @Override
+  public List<String> getSchemaConsistencyStatements(SchemaResource schemaResource) {
+    return getPostgreSQLMetaDataProvider(schemaResource)
+            .map(this::getSchemaConsistencyStatements)
+            .orElseGet(() -> super.getSchemaConsistencyStatements(schemaResource));
+  }
+
+
+  private List<String> getSchemaConsistencyStatements(PostgreSQLMetaDataProvider metaDataProvider) {
+    return FluentIterable.from(metaDataProvider.tables())
+            .transformAndConcat(table -> healTable(metaDataProvider, table))
+            .toList(); // turn all the concatenated fluent iterables into a firm immutable list
+  }
+
+
+  private Iterable<String> healTable(PostgreSQLMetaDataProvider metaDataProvider, Table table) {
+    Iterable<String> statements = healIndexes(metaDataProvider, table);
+
+    if (statements.iterator().hasNext()) {
+      List<String> intro = ImmutableList.of(convertCommentToSQL("Auto-Healing table: " + table.getName()));
+      return Iterables.concat(intro, statements);
+    }
+    return ImmutableList.of();
+  }
+
+
+  private Iterable<String> healIndexes(PostgreSQLMetaDataProvider metaDataProvider, Table table) {
+    return FluentIterable.from(table.indexes())
+            .transformAndConcat(index -> healIndexes(metaDataProvider.getAdditionalConstraintIndexes(index.getName().toLowerCase()), table, index));
+  }
+
+
+  private Iterable<String> healIndexes(Collection<AdditionalIndexInfo> additionalConstraintIndexInfo, Table table, Index index) {
+    return new PostgreSQLUniqueIndexAdditionalDeploymentStatements(table, index)
+            .healIndexStatements(additionalConstraintIndexInfo, schemaNamePrefix(table) + table.getName());
+  }
+
+
+  private Optional<PostgreSQLMetaDataProvider> getPostgreSQLMetaDataProvider(SchemaResource schemaResource) {
+    return schemaResource.getDatabaseMetaDataProvider()
+            .filter(instanceOf(PostgreSQLMetaDataProvider.class))
+            .map(PostgreSQLMetaDataProvider.class::cast);
   }
 
 
