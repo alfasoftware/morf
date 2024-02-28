@@ -188,11 +188,21 @@ public class Upgrade {
 
     // Get access to the schema we are starting from
     log.info("Reading current schema");
-    Schema sourceSchema = readSourceDatabaseSchema(connectionResources, dataSource, exceptionRegexes, upgradeStatements);
-    SqlDialect dialect = connectionResources.sqlDialect();
+    List<String> schemaConsistencyStatements;
+    Schema sourceSchema;
+    try (SchemaResource databaseSchemaResource = connectionResources.openSchemaResource(dataSource)) {
+      sourceSchema = copy(databaseSchemaResource, exceptionRegexes);
+      schemaConsistencyStatements = connectionResources.sqlDialect().getSchemaConsistencyStatements(databaseSchemaResource);
+      if (!schemaConsistencyStatements.isEmpty()) {
+        log.warn("Auto-healing statements have been generated (" + schemaConsistencyStatements.size() + " statements in total); this usually implies auto-healing being carried out."
+            + " It this is shown on each subsequent start-up, it can be a symptom of auto-healing failing to achieve an acceptable stable healthful state."
+            + " Examine the upgrade statements (the upgrade script, or the upgrade logs below) to investigate further.");
+      }
+    }
 
     // -- Get the current UUIDs and deployed views...
     log.info("Examining current views");    //
+    SqlDialect dialect = connectionResources.sqlDialect();
     ExistingViewStateLoader existingViewState = new ExistingViewStateLoader(dialect, new ExistingViewHashLoader(dataSource, dialect), viewDeploymentValidator);
     Result viewChangeInfo = existingViewState.viewChanges(sourceSchema, targetSchema);
     ViewChanges viewChanges = new ViewChanges(targetSchema.views(), viewChangeInfo.getViewsToDrop(), viewChangeInfo.getViewsToDeploy());
@@ -328,30 +338,6 @@ public class Upgrade {
     }
 
     return path;
-  }
-
-
-  /**
-   * Gets a copy of the source schema from the {@code database}.
-   * Also gathers up any schema consistency statements.
-   *
-   * @param database the database to connect to.
-   * @param dataSource the dataSource to use.
-   * @param exclusionRegExes collection of regular expressions describing tables/views to exclude from the schema.
-   * @param upgradeStatements adds schema consistency statements to this list.
-   * @return the schema.
-   */
-  private static Schema readSourceDatabaseSchema(ConnectionResources database, DataSource dataSource, Collection<String> exclusionRegExes, List<String> upgradeStatements) {
-    try (SchemaResource databaseSchemaResource = database.openSchemaResource(dataSource)) {
-      List<String> schemaConsistencyStatements = database.sqlDialect().getSchemaConsistencyStatements(databaseSchemaResource);
-      if (!schemaConsistencyStatements.isEmpty()) {
-        log.warn("Auto-healing statements have been generated (" + schemaConsistencyStatements.size() + " statements in total); this usually implies auto-healing being carried out."
-            + " It this is shown on each subsequent start-up, it can be a symptom of auto-healing failing to achieve an acceptable stable healthful state."
-            + " Examine the upgrade statements (the upgrade script, or the upgrade logs below) to investigate further.");
-      }
-      upgradeStatements.addAll(schemaConsistencyStatements);
-      return copy(databaseSchemaResource, exclusionRegExes);
-    }
   }
 
 
