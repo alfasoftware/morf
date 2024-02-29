@@ -413,7 +413,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedRightPad() {
-    return "SELECT RPAD(stringField, 10, CAST('j' AS VARCHAR(1))) FROM TEST_SCHEMA.Test";
+    return "SELECT RPAD(stringField, 10, CAST('j' AS VARCHAR(1))) FROM TESTSCHEMA.Test";
   }
 
 
