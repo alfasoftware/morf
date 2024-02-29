@@ -409,6 +409,15 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRightPad()
+   */
+  @Override
+  protected String expectedRightPad() {
+    return "SELECT RPAD(stringField, 10, CAST('j' AS VARCHAR(1))) FROM TEST_SCHEMA.Test";
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterTableAddBlobColumnStatement()
    */
   @Override

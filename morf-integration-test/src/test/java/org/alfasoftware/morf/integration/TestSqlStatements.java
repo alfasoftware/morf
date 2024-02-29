@@ -75,6 +75,7 @@ import static org.alfasoftware.morf.sql.element.Function.now;
 import static org.alfasoftware.morf.sql.element.Function.power;
 import static org.alfasoftware.morf.sql.element.Function.random;
 import static org.alfasoftware.morf.sql.element.Function.randomString;
+import static org.alfasoftware.morf.sql.element.Function.rightPad;
 import static org.alfasoftware.morf.sql.element.Function.rightTrim;
 import static org.alfasoftware.morf.sql.element.Function.some;
 import static org.alfasoftware.morf.sql.element.Function.substring;
@@ -95,7 +96,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.junit.Assume.assumeTrue;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -276,6 +276,11 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         column("stringColumn", DataType.STRING, 30)
       ),
     table("LeftPaddingTable")
+      .columns(
+        column("id", DataType.INTEGER).primaryKey(),
+        column("invoiceNumber", DataType.STRING, 30)
+      ),
+    table("RightPaddingTable")
       .columns(
         column("id", DataType.INTEGER).primaryKey(),
         column("invoiceNumber", DataType.STRING, 30)
@@ -530,6 +535,17 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         .setString("field2", "4")
     )
     .table("LeftPaddingTable",
+      record()
+        .setInteger("id", 1)
+        .setString("invoiceNumber", "Invoice100"),
+      record()
+        .setInteger("id", 2)
+        .setString("invoiceNumber", "BigInvoiceNumber1000"),
+      record()
+        .setInteger("id", 3)
+        .setString("invoiceNumber", "ExactFifteeeeen")
+    )
+    .table("RightPaddingTable",
       record()
         .setInteger("id", 1)
         .setString("invoiceNumber", "Invoice100"),
@@ -1872,6 +1888,60 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
       @Override
       public Void process(ResultSet resultSet) throws SQLException {
         List<String> expectedResult = ImmutableList.of("jjjjjInvoice100", "BigInvoiceNumbe", "ExactFifteeeeen");
+        int count = 0;
+        while (resultSet.next()) {
+          assertEquals(expectedResult.get(count), resultSet.getString(1));
+          count++;
+        }
+        return null;
+      };
+    });
+  }
+
+
+  /**
+   * Tests the behaviour of right_pad function against all {@linkplain SqlDialect}s
+   *
+   * @throws SQLException in case of error.
+   */
+  @Test
+  public void testRightPadding() throws SQLException {
+    SelectStatement rightPadStat = select( rightPad(field("invoiceNumber"), literal(15), literal("j"))).from(tableRef("RightPaddingTable")).orderBy(field("id"));
+
+    String sql = convertStatementToSQL(rightPadStat);
+
+    sqlScriptExecutorProvider.get().executeQuery(sql, new ResultSetProcessor<Void>() {
+
+      @Override
+      public Void process(ResultSet resultSet) throws SQLException {
+        List<String> expectedResult = ImmutableList.of("Invoice100jjjjj", "BigInvoiceNumbe", "ExactFifteeeeen");
+        int count = 0;
+        while (resultSet.next()) {
+          assertEquals(expectedResult.get(count), resultSet.getString(1));
+          count++;
+        }
+        return null;
+      };
+    });
+  }
+
+
+  /**
+   * Tests the behaviour of right_pad function against all {@linkplain SqlDialect}s
+   *
+   * @throws SQLException in case of error.
+   */
+  @Test
+  public void testRightPaddingConvenientMethod() throws SQLException {
+    SelectStatement rightPadStat = select( rightPad(field("invoiceNumber"), 15, "j")).from(tableRef("RightPaddingTable")).orderBy(field("id"));
+
+    String sql = convertStatementToSQL(rightPadStat);
+
+    sqlScriptExecutorProvider.get().executeQuery(sql, new ResultSetProcessor<Void>() {
+
+      @Override
+      public Void process(ResultSet resultSet) throws SQLException {
+        List<String> expectedResult = ImmutableList.of("Invoice100jjjjj", "BigInvoiceNumbe", "ExactFifteeeeen");
         int count = 0;
         while (resultSet.next()) {
           assertEquals(expectedResult.get(count), resultSet.getString(1));

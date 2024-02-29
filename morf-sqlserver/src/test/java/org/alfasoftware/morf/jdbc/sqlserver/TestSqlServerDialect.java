@@ -1179,6 +1179,15 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRightPad()
+   */
+  @Override
+  protected String expectedRightPad() {
+    return "SELECT CASE WHEN LEN(stringField) > 10 THEN LEFT(stringField, 10) ELSE RIGHT(stringField + REPLICATE('j', 10), 10) END FROM TESTSCHEMA.Test";
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSelectOrderByNullsLast()
    */
   @Override

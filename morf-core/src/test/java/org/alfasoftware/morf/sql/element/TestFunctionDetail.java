@@ -237,6 +237,30 @@ public class TestFunctionDetail {
 
 
   /**
+   * Tests the indirect usage of rightPad
+   */
+  @Test
+  public void testRightPad() {
+    Function function = Function.rightPad(new FieldReference("invoiceNumber"), new FieldLiteral(10), new FieldLiteral('j'));
+
+    assertEquals("Function must be of type RIGHT_PAD", FunctionType.RIGHT_PAD, function.getType());
+    assertEquals("Function should have 3 arguments", 3, function.getArguments().size());
+  }
+
+
+  /**
+   * Tests the indirect usage of rightPad
+   */
+  @Test
+  public void testRightPadConvenientMethod() {
+    Function function = Function.rightPad(new FieldReference("invoiceNumber"), 10, "j");
+
+    assertEquals("Function must be of type RIGHT_PAD", FunctionType.RIGHT_PAD, function.getType());
+    assertEquals("Function should have 3 arguments", 3, function.getArguments().size());
+  }
+
+
+  /**
    * Tests indirect usage of the mod function
    */
   @Test
