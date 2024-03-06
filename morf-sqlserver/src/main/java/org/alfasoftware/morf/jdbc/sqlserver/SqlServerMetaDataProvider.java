@@ -15,18 +15,17 @@
 
 package org.alfasoftware.morf.jdbc.sqlserver;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Types;
+import java.sql.*;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.google.common.collect.ImmutableMap;
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * Specialisation of {@link DatabaseMetaDataProvider} for SQL Server.
@@ -34,6 +33,8 @@ import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
  * @author Copyright (c) Alfa Financial Software 2010
  */
 class SqlServerMetaDataProvider extends DatabaseMetaDataProvider {
+
+  private static final Log log = LogFactory.getLog(SqlServerMetaDataProvider.class);
 
   /**
    * Query to fetch identity columns.
@@ -136,4 +137,91 @@ class SqlServerMetaDataProvider extends DatabaseMetaDataProvider {
     }
     return columnBuilder;
   }
+
+
+  /**
+   * @see DatabaseMetaDataProvider#getSequenceResultSet(String)
+   */
+  @Override
+  public Map<AName, RealName> getSequenceResultSet(String schemaName) {
+    final ImmutableMap.Builder<AName, RealName> sequenceNames = ImmutableMap.builder();
+
+    log.info("Starting read of sequence definitions");
+
+    long start = System.currentTimeMillis();
+
+    StringBuilder sequenceSqlBuilder = new StringBuilder();
+    sequenceSqlBuilder.append("SELECT name FROM sys.all_objects WHERE type='SO'");
+
+    if (schemaName!= null && !schemaName.isBlank()) {
+      sequenceSqlBuilder.append(" AND SCHEMA_NAME(schema_id)=?");
+    }
+
+    runSQL(sequenceSqlBuilder.toString(), schemaName, new ResultSetHandler() {
+      @Override
+      public void handle(ResultSet resultSet) throws SQLException {
+        while (resultSet.next()) {
+          RealName realName = readSequenceName(resultSet);
+          if (isSystemSequence(realName)) {
+            continue;
+          }
+          sequenceNames.put(realName, realName);
+        }
+      }
+    });
+
+    long end = System.currentTimeMillis();
+
+    Map<AName, RealName> sequenceNamesMap = sequenceNames.build();
+
+    log.info(String.format("Read sequence metadata in %dms; %d sequences", end-start, sequenceNamesMap.size()));
+    return sequenceNamesMap;
+  }
+
+
+  /**
+   * Handler for {@link ResultSet}s from some SQL.
+   */
+  private interface ResultSetHandler {
+    /**
+     * handle the results.
+     * @param resultSet The result set to handle
+     * @throws SQLException If an db exception occurs.
+     */
+    void handle(ResultSet resultSet) throws SQLException;
+  }
+
+
+  /**
+   * Run some SQL, and tidy up afterwards.
+   *
+   * Note this assumes a predicate on the schema name will be present with a single parameter in position "1".
+   *
+   * @param sql The SQL to run.
+   * @param handler The handler to handle the result-set.
+   */
+  private void runSQL(String sql, String schemaName, ResultSetHandler handler) {
+    try {
+      PreparedStatement statement = connection.prepareStatement(sql);
+      try {
+
+        // pass through the schema name
+        if (schemaName != null && !schemaName.isBlank()) {
+          statement.setString(1, schemaName);
+        }
+
+        ResultSet resultSet = statement.executeQuery();
+        try {
+          handler.handle(resultSet);
+        } finally {
+          resultSet.close();
+        }
+      } finally {
+        statement.close();
+      }
+    } catch (SQLException sqle) {
+      throw new RuntimeSqlException("Error running SQL: " + sql, sqle);
+    }
+  }
+
 }

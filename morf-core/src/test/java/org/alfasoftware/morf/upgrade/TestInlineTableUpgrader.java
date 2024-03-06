@@ -36,6 +36,7 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
@@ -395,4 +396,44 @@ public class TestInlineTableUpgrader {
     verify(sqlDialect).getSqlForAnalyseTable(nullable(Table.class));
     verify(sqlStatementWriter).writeSql(anyCollection());
   }
+
+
+  /**
+   * Test method for
+   * {@link org.alfasoftware.morf.upgrade.InlineTableUpgrader#visit(org.alfasoftware.morf.upgrade.AddSequence)}.
+   */
+  @Test
+  public void testVisitAddSequence() {
+    // given
+    AddSequence addSequence = mock(AddSequence.class);
+    given(addSequence.apply(schema)).willReturn(schema);
+
+    // when
+    upgrader.visit(addSequence);
+
+    // then
+    verify(addSequence).apply(schema);
+    verify(sqlDialect, atLeastOnce()).sequenceDeploymentStatements(nullable(Sequence.class));
+    verify(sqlStatementWriter).writeSql(anyCollection()); // deploying the specified table and indexes
+  }
+
+
+  /**
+   * Test method for {@link org.alfasoftware.morf.upgrade.InlineTableUpgrader#visit(org.alfasoftware.morf.upgrade.RemoveSequence)}.
+   */
+  @Test
+  public void testVisitRemoveSequence() {
+    // given
+    RemoveSequence removeSequence = mock(RemoveSequence.class);
+    given(removeSequence.apply(schema)).willReturn(schema);
+
+    // when
+    upgrader.visit(removeSequence);
+
+    // then
+    verify(removeSequence).apply(schema);
+    verify(sqlDialect).dropStatements(nullable(Sequence.class));
+    verify(sqlStatementWriter).writeSql(anyCollection());
+  }
+
 }

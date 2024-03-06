@@ -17,11 +17,13 @@ package org.alfasoftware.morf.upgrade.adapt;
 
 import static com.google.common.base.Predicates.not;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 import java.util.TreeSet;
 
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 
 import com.google.common.base.Predicate;
@@ -51,6 +53,37 @@ public class FilteredSchema extends TableSetSchema {
         Set<String> caseInsensitiveSet = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         Collections.addAll(caseInsensitiveSet, removedTables);
         return caseInsensitiveSet.contains(table.getName());
+      }
+    })), baseSchema.sequences());
+  }
+
+
+  /**
+   * Construct a new {@link FilteredSchema} identical to the <var>baseSchema</var>
+   * in all respects save the removal of the named tables and sequences. Note that tables are
+   * removed regardless of the case of their names.
+   *
+   * @param baseSchema base schema to adapt.
+   * @param removedTables names of tables to remove.
+   * @param removedSequences names of sequences to remove
+   */
+  public FilteredSchema(final Schema baseSchema, final Collection<String> removedTables,
+                        final String... removedSequences) {
+    super(Collections2.filter(baseSchema.tables(), not(new Predicate<Table>() {
+      @Override
+      public boolean apply(Table table) {
+        // String.CASE_INSENSITIVE_ORDER lets you use case-insensitive .contains(Object)
+        Set<String> caseInsensitiveSet = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        caseInsensitiveSet.addAll(removedTables);
+        return caseInsensitiveSet.contains(table.getName());
+      }
+    })), Collections2.filter(baseSchema.sequences(), not(new Predicate<Sequence>() {
+      @Override
+      public boolean apply(Sequence sequence) {
+        // String.CASE_INSENSITIVE_ORDER lets you use case-insensitive .contains(Object)
+        Set<String> caseInsensitiveSet = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        Collections.addAll(caseInsensitiveSet, removedSequences);
+        return caseInsensitiveSet.contains(sequence.getName());
       }
     })));
   }

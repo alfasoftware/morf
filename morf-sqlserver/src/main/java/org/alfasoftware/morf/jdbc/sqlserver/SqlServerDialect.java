@@ -32,25 +32,9 @@ import java.util.Set;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
-import org.alfasoftware.morf.metadata.Column;
-import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.Index;
-import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.View;
-import org.alfasoftware.morf.sql.Hint;
-import org.alfasoftware.morf.sql.OptimiseForRowCount;
-import org.alfasoftware.morf.sql.SelectFirstStatement;
-import org.alfasoftware.morf.sql.SelectStatement;
-import org.alfasoftware.morf.sql.UpdateStatement;
-import org.alfasoftware.morf.sql.UseImplicitJoinOrder;
-import org.alfasoftware.morf.sql.UseIndex;
-import org.alfasoftware.morf.sql.element.AliasedField;
-import org.alfasoftware.morf.sql.element.Cast;
-import org.alfasoftware.morf.sql.element.ConcatenatedField;
-import org.alfasoftware.morf.sql.element.FieldLiteral;
-import org.alfasoftware.morf.sql.element.FieldReference;
-import org.alfasoftware.morf.sql.element.Function;
-import org.alfasoftware.morf.sql.element.TableReference;
+import org.alfasoftware.morf.metadata.*;
+import org.alfasoftware.morf.sql.*;
+import org.alfasoftware.morf.sql.element.*;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -154,6 +138,31 @@ class SqlServerDialect extends SqlDialect {
     return statements;
   }
 
+
+  /**
+   * @see SqlDialect#internalSequenceDeploymentStatements(Sequence)
+   */
+  @Override
+  protected Collection<String> internalSequenceDeploymentStatements(Sequence sequence) {
+    List <String> statements = new ArrayList<>();
+
+    StringBuilder createSequenceStatement = new StringBuilder();
+    createSequenceStatement.append("CREATE ");
+
+    createSequenceStatement.append("SEQUENCE ");
+    createSequenceStatement.append(schemaNamePrefix());
+    createSequenceStatement.append(sequence.getName());
+    createSequenceStatement.append(" ");
+
+    if (sequence.getStartsWith() != null) {
+      createSequenceStatement.append("START WITH ");
+      createSequenceStatement.append(sequence.getStartsWith());
+    }
+
+    statements.add(createSequenceStatement.toString());
+
+    return statements;
+  }
 
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getFromDummyTable()
@@ -479,7 +488,28 @@ class SqlServerDialect extends SqlDialect {
     return sqlBuilder.toString();
   }
 
+
   /**
+   * @see SqlServerDialect#getSqlFrom(SequenceReference)
+   */
+  @Override
+    protected String getSqlFrom(SequenceReference sequenceReference) {
+    StringBuilder result = new StringBuilder();
+
+    switch (sequenceReference.getTypeOfOperation()) {
+      case NEXT_VALUE:
+        result.append("NEXT VALUE FOR ");
+        break;
+      case CURRENT_VALUE:
+        return "current_value FROM sys.sequences WHERE name = '" + sequenceReference.getName() + "'";
+    }
+
+    result.append(sequenceReference.getName());
+
+    return result.toString();
+    }
+
+    /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#alterTableAddColumnStatements(org.alfasoftware.morf.metadata.Table, org.alfasoftware.morf.metadata.Column)
    */
   @Override

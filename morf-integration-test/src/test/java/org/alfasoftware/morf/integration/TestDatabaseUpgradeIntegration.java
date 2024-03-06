@@ -22,13 +22,7 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toSet;
 import static org.alfasoftware.morf.metadata.DataSetUtils.dataSetProducer;
 import static org.alfasoftware.morf.metadata.DataSetUtils.record;
-import static org.alfasoftware.morf.metadata.SchemaUtils.column;
-import static org.alfasoftware.morf.metadata.SchemaUtils.copy;
-import static org.alfasoftware.morf.metadata.SchemaUtils.idColumn;
-import static org.alfasoftware.morf.metadata.SchemaUtils.index;
-import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
-import static org.alfasoftware.morf.metadata.SchemaUtils.table;
-import static org.alfasoftware.morf.metadata.SchemaUtils.view;
+import static org.alfasoftware.morf.metadata.SchemaUtils.*;
 import static org.alfasoftware.morf.sql.SqlUtils.caseStatement;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.insert;
@@ -48,10 +42,8 @@ import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
 
@@ -60,34 +52,7 @@ import org.alfasoftware.morf.dataset.DataSetProducer;
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.dataset.TableDataHomology;
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddBasicTable;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddColumn;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddColumnDropDefaultValue;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddColumnWithoutDropDefaultValue;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddDataToAutonumberedColumn;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddDataToIdColumn;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddPrimaryKeyColumns;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ChangeColumnDataType;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ChangeColumnLengthAndCase;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ChangePrimaryKeyColumnOrder;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ChangePrimaryKeyColumns;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.CorrectPrimaryKeyOrder;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.CorrectPrimaryKeyOrderNoOp;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.CreateTableAsSelect;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.DropLurkingDefaultValue;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.DropPrimaryKey;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ReduceStringColumnWidth;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RemoveAutoNumbered;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RemoveColumnFromCompositePrimaryKey;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RemoveColumnWithDefault;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RemovePrimaryKeyColumns;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RemoveSimpleColumn;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RenameIndex;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RenameKeylessTable;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RenameTable;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RepeatedAdditionOfTable;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ReplacePrimaryKey;
-import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ReplaceTableWithView;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.*;
 import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.DatabaseDataSetConsumer;
@@ -97,14 +62,9 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor.ResultSetProcessor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
-import org.alfasoftware.morf.metadata.Column;
-import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.SchemaHomology;
+import org.alfasoftware.morf.metadata.*;
 import org.alfasoftware.morf.metadata.SchemaHomology.CollectingDifferenceWriter;
 import org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder;
-import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
@@ -241,6 +201,10 @@ public class TestDatabaseUpgradeIntegration {
       view("view2", select(field("valCol"), field("keyCol1")).from("view1"), "view1"),
       view("viewId", select(field("id"), field("someValue")).from("IdTable")),
       view("veryLongView", veryLongViewDefinition())
+    ),
+    schema(
+      sequence("sequence1", 1, false),
+      sequence("sequence3", 6, false)
     )
   );
 
@@ -341,6 +305,7 @@ public class TestDatabaseUpgradeIntegration {
   public void before() {
     defaultLocale = Locale.getDefault();
     Locale.setDefault(new Locale("en", "GB"));
+    schemaManager.get().dropAllSequences();
     schemaManager.get().dropAllViews();
     schemaManager.get().dropAllTables();
     schemaManager.get().mutateToSupportSchema(schema, TruncationBehavior.ALWAYS);
@@ -403,7 +368,9 @@ public class TestDatabaseUpgradeIntegration {
     newTables.remove("BasicTable");
     newTables.put("BasicTableRenamed", newTable);
 
-    verifyUpgrade(schema(newTables.values()), RenameTable.class);
+    Schema expectedSchema = schema(schema(newTables.values()), schema(new ArrayList<>(schema.sequences())));
+
+    verifyUpgrade(expectedSchema, RenameTable.class);
   }
 
 
@@ -429,7 +396,9 @@ public class TestDatabaseUpgradeIntegration {
     newTables.remove("KeylessTable");
     newTables.put("RenamedKeylessTable", newTable);
 
-    verifyUpgrade(schema(newTables.values()), RenameKeylessTable.class);
+    Schema expectedSchema = schema(schema(newTables.values()), schema(new ArrayList<>(schema.sequences())));
+
+    verifyUpgrade(expectedSchema, RenameKeylessTable.class);
   }
 
 
@@ -616,7 +585,9 @@ public class TestDatabaseUpgradeIntegration {
     List<Table> tables = Lists.newArrayList(schema.tables());
     tables.add(newTable);
 
-    verifyUpgrade(schema(tables), ImmutableList.<Class<? extends UpgradeStep>>of(RenameTable.class, AddBasicTable.class));
+    Schema expectedSchema = schema(schema(tables), schema(new ArrayList<>(schema.sequences())));
+
+    verifyUpgrade(expectedSchema, ImmutableList.<Class<? extends UpgradeStep>>of(RenameTable.class, AddBasicTable.class));
   }
 
 
@@ -673,6 +644,32 @@ public class TestDatabaseUpgradeIntegration {
     Schema expected = replaceTablesInSchema(tableWithExtraBigIntegerColumn);
 
     verifyUpgrade(expected, DropPrimaryKey.class);
+  }
+
+
+  /**
+   * Tests adding a basic sequence to a schema.
+   */
+  @Test
+  public void testAddBasicSequence() {
+    Sequence basicSequence = sequence("BasicSequence", 1, false);
+
+    Schema expected = addSequencesToSchema(basicSequence);
+
+    verifyUpgrade(expected, AddBasicSequence.class);
+  }
+
+
+  /**
+   * Test removing a basic sequence from a schema
+   */
+  @Test
+  public void testRemoveBasicSequence() {
+    Sequence sequenceToRemove = sequence("sequence3", 6, false);
+
+    Schema expectedSchema = removeSequencesFromSchema(sequenceToRemove);
+
+    verifyUpgrade(expectedSchema, RemoveSequence.class);
   }
 
 
@@ -741,7 +738,7 @@ public class TestDatabaseUpgradeIntegration {
     newTables.remove("AutoNumTable");
     newTables.put("AutoNumTable", newTable);
 
-    verifyUpgrade(schema(newTables.values()), RemoveAutoNumbered.class);
+    verifyUpgrade(schema(schema(newTables.values()), schema(new ArrayList<>(schema.sequences()))), RemoveAutoNumbered.class);
   }
 
 
@@ -850,7 +847,9 @@ public class TestDatabaseUpgradeIntegration {
     List<Table> tables = Lists.newArrayList(schema.tables());
     tables.add(CreateTableAsSelect.tableToAdd());
 
-    verifyUpgrade(schema(tables), CreateTableAsSelect.class);
+    Schema expectedSchema = schema(schema(tables), schema(new ArrayList<>(schema.sequences())));
+
+    verifyUpgrade(expectedSchema, CreateTableAsSelect.class);
 
     DataSetProducer expectedRecords = dataSetProducer(schema(tables))
         .table("TableAsSelect",
@@ -865,6 +864,42 @@ public class TestDatabaseUpgradeIntegration {
           .setBigDecimal("decimalTenZeroCol", new BigDecimal("32"))
           .setBigDecimal("nullableBigIntegerCol", new BigDecimal("892375"))
         );
+
+    compareTableRecords("TableAsSelect", expectedRecords.records("TableAsSelect"));
+  }
+
+
+  /**
+   * Tests that it is possible to create and populate a table with a single
+   * statement (CTAS - Create Table As Select).
+   */
+  @Test
+  public void testCreateTableAsSelectWithSequence() {
+    List<Table> tables = Lists.newArrayList(schema.tables());
+    tables.add(CreateTableAsSelectWithSequence.tableToAdd());
+
+    List<Sequence> sequences = Lists.newArrayList(schema.sequences());
+    sequences.add(CreateTableAsSelectWithSequence.sequenceToAdd());
+
+    Schema expectedSchema = schema(schema(tables), schema(sequences));
+
+    verifyUpgrade(expectedSchema, CreateTableAsSelectWithSequence.class);
+
+    DataSetProducer expectedRecords = dataSetProducer(schema(tables))
+      .table("TableAsSelect",
+        record()
+          .setInteger("idCol", 1)
+          .setString("stringCol", "hello world AA")
+          .setString("stringColNullable", "hello world AA")
+          .setBigDecimal("decimalTenZeroCol", new BigDecimal("9817236"))
+          .setBigDecimal("nullableBigIntegerCol", new BigDecimal("56732")),
+        record()
+          .setInteger("idCol", 2)
+          .setString("stringCol", "hello world BB")
+          .setString("stringColNullable", "hello world BB")
+          .setBigDecimal("decimalTenZeroCol", new BigDecimal("32"))
+          .setBigDecimal("nullableBigIntegerCol", new BigDecimal("892375"))
+      );
 
     compareTableRecords("TableAsSelect", expectedRecords.records("TableAsSelect"));
   }
@@ -1068,7 +1103,7 @@ public class TestDatabaseUpgradeIntegration {
       .append(newView) // and add the new BasicTable view
       .toList();
 
-    Schema expectedSchema = schema(schema(newSchemaTables), schema(newSchemaViews));
+    Schema expectedSchema = schema(schema(newSchemaTables), schema(newSchemaViews), schema(new ArrayList<>(schema.sequences())));
 
     verifyUpgrade(expectedSchema, ReplaceTableWithView.class);
   }
@@ -1090,7 +1125,48 @@ public class TestDatabaseUpgradeIntegration {
       newTables.put(table.getName(), table);
     }
 
-    return schema(schema(newTables.values()), schema(schema.views()));
+    return schema(schema(newTables.values()), schema(schema.views()), schema(new ArrayList<>(schema.sequences())));
+  }
+
+
+  /**
+   * Helper to manipulate the test schema - adds sequences to the schema with the ones provided. (By name)
+   *
+   * @param additionalSequences The sequences to use as replacements.
+   * @return The modified schema.
+   */
+  private final Schema addSequencesToSchema(Sequence... additionalSequences) {
+    Map<String, Sequence> newSequences = Maps.newHashMap();
+
+    for (Sequence sequence : schema.sequences()) {
+      newSequences.put(sequence.getName(), sequence);
+    }
+    for (Sequence sequence : additionalSequences) {
+      newSequences.put(sequence.getName(), sequence);
+    }
+
+    return schema(schema(schema.tables()), schema(schema.views()), schema(new ArrayList<>(newSequences.values())));
+  }
+
+
+  /**
+   * Helper to manipulate the test schema - removes sequences from the schema with the ones provided. (By name)
+   *
+   * @param sequencesToBeRemoved The sequences tobe removed.
+   * @return The modified schema.
+   */
+  private final Schema removeSequencesFromSchema(Sequence... sequencesToBeRemoved) {
+    Map<String, Sequence> replacementSequences = Maps.newHashMap();
+
+    List<String> sequenceNamesBeingRemoved = Arrays.stream(sequencesToBeRemoved).map(Sequence::getName).collect(Collectors.toList());
+
+    for (Sequence sequence : schema.sequences()) {
+      if (!sequenceNamesBeingRemoved.contains(sequence.getName())) {
+        replacementSequences.put(sequence.getName(), sequence);
+      }
+    }
+
+    return schema(schema(schema.tables()), schema(schema.views()), schema(new ArrayList<>(replacementSequences.values())));
   }
 
 
@@ -1134,6 +1210,10 @@ public class TestDatabaseUpgradeIntegration {
       assertEquals(
         expectedSchema.views().stream().map(View::getName).map(String::toLowerCase).collect(toSet()),
         actualSchema.views().stream().map(View::getName).map(String::toLowerCase).collect(toSet()));
+
+      assertEquals(
+        expectedSchema.sequences().stream().map(Sequence::getName).map(String::toLowerCase).collect(toSet()),
+        actualSchema.sequences().stream().map(Sequence::getName).map(String::toLowerCase).collect(toSet()));
 
     } finally {
       producer.close();

@@ -15,9 +15,6 @@
 
 package org.alfasoftware.morf.jdbc.h2;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
-import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -28,22 +25,17 @@ import java.util.Optional;
 import com.google.common.collect.Lists;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.SqlDialect;
-import org.alfasoftware.morf.metadata.Column;
-import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.Index;
-import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.metadata.*;
 import org.alfasoftware.morf.sql.MergeStatement;
-import org.alfasoftware.morf.sql.element.AliasedField;
-import org.alfasoftware.morf.sql.element.Function;
-import org.alfasoftware.morf.sql.element.SqlParameter;
-import org.alfasoftware.morf.sql.element.TableReference;
-import org.alfasoftware.morf.sql.element.FunctionType;
+import org.alfasoftware.morf.sql.element.*;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.Iterables;
+
+import static org.alfasoftware.morf.metadata.SchemaUtils.*;
 
 /**
  * Implements database specific statement generation for H2.
@@ -56,6 +48,9 @@ class H2Dialect extends SqlDialect {
    * The prefix to add to all temporary tables.
    */
   public static final String TEMPORARY_TABLE_PREFIX = "TEMP_";
+  public static final String SYSTEM_SEQUENCE_PREFIX = "SYSTEM_SEQUENCE_";
+
+
 
   /**
    * @param schemaName Name of the schema to connect to
@@ -118,6 +113,33 @@ class H2Dialect extends SqlDialect {
     createTableStatement.append(")");
 
     statements.add(createTableStatement.toString());
+
+    return statements;
+  }
+
+
+  /**
+   * @see SqlDialect#internalSequenceDeploymentStatements(Sequence)
+   */
+  @Override
+  public Collection<String> internalSequenceDeploymentStatements(Sequence sequence) {
+    List<String> statements = new ArrayList<>();
+
+    // Create the sequence deployment statement
+    StringBuilder createSequenceStatement = new StringBuilder();
+    createSequenceStatement.append("CREATE ");
+
+    createSequenceStatement.append("SEQUENCE ");
+    createSequenceStatement.append(schemaNamePrefix());
+    createSequenceStatement.append(sequence.getName());
+    createSequenceStatement.append(" ");
+
+    if (sequence.getStartsWith() != null) {
+      createSequenceStatement.append("START WITH ");
+      createSequenceStatement.append(sequence.getStartsWith());
+    }
+
+    statements.add(createSequenceStatement.toString());
 
     return statements;
   }
@@ -563,6 +585,27 @@ class H2Dialect extends SqlDialect {
     return String.format("CAST(:%s AS %s)", sqlParameter.getMetadata().getName(), sqlRepresentationOfColumnType(sqlParameter.getMetadata(), false));
   }
 
+
+  /**
+   * @see SqlDialect#getSqlFrom(SequenceReference)
+   */
+  @Override
+  public String getSqlFrom(SequenceReference sequenceReference) {
+    StringBuilder result = new StringBuilder();
+
+    result.append(sequenceReference.getName());
+
+    switch (sequenceReference.getTypeOfOperation()) {
+      case NEXT_VALUE:
+        result.append(".NEXTVAL");
+        break;
+      case CURRENT_VALUE:
+        result.append(".CURRVAL");
+        break;
+    }
+
+    return result.toString();
+  }
 
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForRandomString(org.alfasoftware.morf.sql.element.Function)

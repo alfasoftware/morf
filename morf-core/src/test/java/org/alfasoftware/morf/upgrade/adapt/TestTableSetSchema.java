@@ -15,8 +15,7 @@
 
 package org.alfasoftware.morf.upgrade.adapt;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.column;
-import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.alfasoftware.morf.metadata.SchemaUtils.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -25,6 +24,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.alfasoftware.morf.metadata.Sequence;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -52,7 +52,12 @@ public class TestTableSetSchema {
     Set<Table> tables = new HashSet<Table>();
     tables.add(table("Apple").columns(column("firmness", DataType.STRING, 10).nullable()));
     tables.add(table("Mango").columns(column("smell", DataType.STRING, 10).nullable()));
-    schema = new TableSetSchema(tables);
+
+    Set<Sequence> sequences = new HashSet<Sequence>();
+    sequences.add(sequence("First", 1, false));
+    sequences.add(sequence("Second", 5, false));
+
+    schema = new TableSetSchema(tables, sequences);
   }
 
 
@@ -124,6 +129,80 @@ public class TestTableSetSchema {
 
     // When...
     schema.getTable(wrongTable);
+
+    // Then...
+    // RuntimeException should've been raised
+  }
+
+
+  /**
+   * Test that the SequenceSet schema can report whether a sequence exists by name
+   */
+  @Test
+  public void testSequenceExists() {
+    assertTrue(schema.sequenceExists("First"));
+    assertFalse(schema.tableExists("Third"));
+  }
+
+
+  /**
+   * Sequences should not be treated as case sensitive
+   */
+  @Test
+  public void testSequenceExistsNotCaseSensitive() {
+    assertTrue(schema.sequenceExists("FIRST"));
+    assertTrue(schema.sequenceExists("first"));
+  }
+
+
+  /**
+   * Tests that the SequenceSet return the correct {@linkplain Sequence} reference.
+   */
+  @Test
+  public void testGetSequence() {
+    // Given...
+    final String sequenceName = "First";
+
+    // When...
+    Sequence firstSequence = schema.getSequence(sequenceName);
+
+    // Then...
+    assertNotNull(firstSequence);
+    assertEquals(sequenceName, firstSequence.getName());
+  }
+
+
+  /**
+   * Sequences should not be treated as case sensitive
+   */
+  @Test
+  public void testGetSequenceCaseInsensitive() {
+    // Given...
+    final String sequenceName = "First";
+
+    // When...
+    Sequence uppercaseSequence = schema.getSequence(sequenceName.toUpperCase());
+    Sequence lowercaseSequence = schema.getSequence(sequenceName.toLowerCase());
+
+    // Then...
+    assertNotNull(uppercaseSequence);
+    assertNotNull(lowercaseSequence);
+  }
+
+
+  /**
+   * {@link TableSetSchema#getSequence(String)} should throw an exception if the
+   * sequence doesn't exist in the schema set
+   *
+   * <p>N.B.: Peach should always throw an exception.</p>
+   */
+  @Test(expected = RuntimeException.class)
+  public void testGetSequenceWhenSequenceDoesntExist() {
+    // Given..
+    final String wrongSequence = "Third";
+
+    // When...
+    schema.getSequence(wrongSequence);
 
     // Then...
     // RuntimeException should've been raised

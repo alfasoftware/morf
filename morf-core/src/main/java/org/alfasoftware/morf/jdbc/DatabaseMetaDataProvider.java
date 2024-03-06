@@ -15,12 +15,7 @@
 
 package org.alfasoftware.morf.jdbc;
 
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.sql.Types;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -32,15 +27,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import org.alfasoftware.morf.metadata.Column;
-import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.Index;
-import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.*;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
 import org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder;
-import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -104,6 +93,9 @@ public class DatabaseMetaDataProvider implements Schema {
 
   private final Supplier<Map<AName, RealName>> viewNames = Suppliers.memoize(this::loadAllViewNames);
   private final LoadingCache<AName, View> viewCache = CacheBuilder.newBuilder().build(CacheLoader.from(this::loadView));
+
+  private final Supplier<Map<AName, RealName>> sequenceNames = Suppliers.memoize(this::loadAllSequenceNames);
+  private final LoadingCache<AName, Sequence> sequenceCache = CacheBuilder.newBuilder().build(CacheLoader.from(this::loadSequence));
 
 
   /**
@@ -195,6 +187,44 @@ public class DatabaseMetaDataProvider implements Schema {
   @Override
   public Collection<View> views() {
     return viewNames.get().values().stream().map(RealName::getRealName).map(this::getView).collect(Collectors.toList());
+  }
+
+
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#sequenceExists(String)
+   */
+  @Override
+  public boolean sequenceExists(String name) {
+    return sequenceNames.get().containsKey(named(name));
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#getSequence(String)
+   */
+  @Override
+  public Sequence getSequence(String name) {
+    return sequenceCache.getUnchecked(named(name));
+  }
+
+
+  /**
+   * @see Schema#sequenceNames()
+   */
+  @Override
+  public Collection<String> sequenceNames() {
+    return sequenceNames.get().values().stream().map(RealName::getRealName).collect(Collectors.toList());
+  }
+
+
+  /**
+   * @see Schema#sequences()
+   */
+  @Override
+  public Collection<Sequence> sequences() {
+    return sequenceNames.get().values().stream().map(RealName::getRealName).map(this::getSequence).collect(Collectors.toList());
   }
 
 
@@ -294,6 +324,19 @@ public class DatabaseMetaDataProvider implements Schema {
 
 
   /**
+   * Identify whether or not the sequence is one owned by the system, or owned by
+   * our application. The default implementation assumes that all sequences we can
+   * access in the schema are under our control.
+   *
+   * @param sequenceName The sequence which we are accessing.
+   * @return <var>true</var> if the sequence is owned by the system
+   */
+  protected boolean isSystemSequence(@SuppressWarnings("unused") RealName sequenceName) {
+    return false;
+  }
+
+
+  /**
    * Identify whether or not the specified table should be ignored in the metadata. This is
    * typically used to filter temporary tables.
    *
@@ -313,6 +356,18 @@ public class DatabaseMetaDataProvider implements Schema {
    * @return <var>true</var> if the table should be ignored, false otherwise.
    */
   protected boolean isIgnoredView(@SuppressWarnings("unused") RealName viewName) {
+    return false;
+  }
+
+
+  /**
+   * Identify whether or not the specified sequence should be ignored in the metadata. This is
+   * typically used to filter temporary sequence.
+   *
+   * @param sequenceName The sequence which we are accessing.
+   * @return <var>true</var> if the sequence should be ignored, false otherwise.
+   */
+  protected boolean isIgnoredSequence(@SuppressWarnings("unused") RealName sequenceName) {
     return false;
   }
 
@@ -826,6 +881,19 @@ public class DatabaseMetaDataProvider implements Schema {
 
 
   /**
+   * Retrieves sequence name from a result set.
+   *
+   * @param sequenceResultSet Result set to be read.
+   * @return Name of the sequence.
+   * @throws SQLException Upon errors.
+   */
+  protected RealName readSequenceName(ResultSet sequenceResultSet) throws SQLException {
+    String sequenceName = sequenceResultSet.getString(1);
+    return createRealName(sequenceName, sequenceName);
+  }
+
+
+  /**
    * Loads a view.
    *
    * @param viewName Name of the view.
@@ -868,6 +936,49 @@ public class DatabaseMetaDataProvider implements Schema {
 
 
   /**
+   * Creates a map of all sequence names,
+   * indexed by their case-agnostic names.
+   *
+   * @return Map of real sequence names.
+   */
+  protected Map<AName, RealName> loadAllSequenceNames() {
+    return getSequenceResultSet(schemaName);
+  }
+
+
+  /**
+   * Loads a sequence.
+   *
+   * @param sequenceName Name of the sequence.
+   * @return The sequence metadata.
+   */
+  protected Sequence loadSequence(AName sequenceName) {
+    final RealName realSequenceName = sequenceNames.get().get(sequenceName);
+
+    if (realSequenceName == null) {
+      throw new IllegalArgumentException("Sequence [" + sequenceName + "] not found.");
+    }
+
+    return new Sequence() {
+      @Override
+      public String getName() {
+        return realSequenceName.getRealName();
+      }
+
+      @Override
+      public Integer getStartsWith() {
+        return 0;
+      }
+
+      @Override
+      public boolean isTemporary() {
+        return false;
+      }
+    };
+  }
+
+
+  /**
    * Creates {@link AName} for searching the maps within this metadata provider.
    *
    * <p>
@@ -887,6 +998,17 @@ public class DatabaseMetaDataProvider implements Schema {
     return new AName(name);
   }
 
+
+  /**
+   * Creates a map of all sequence names, indexed by their case-agnostic names. The sequences are retrieved from the
+   * JDBC connection as a result set, where the result set is converted into a map of real sequence names with system
+   * sequences not included.
+   *
+   * @return Map of real sequence names.
+   */
+  public Map<AName, RealName> getSequenceResultSet(String schemaName) {
+    return ImmutableMap.of();
+  }
 
   /**
    * Creates {@link RealName}, which contractually remembers two versions of a

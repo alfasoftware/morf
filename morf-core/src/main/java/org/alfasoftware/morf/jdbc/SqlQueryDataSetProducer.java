@@ -66,7 +66,7 @@ public class SqlQueryDataSetProducer implements DataSetProducer {
    * @param sqlDialect The SQL dialect.
    */
   public SqlQueryDataSetProducer(Table table, String query, DataSource dataSource, SqlDialect sqlDialect) {
-    this.schema = new TableSetSchema(Collections.singleton(table));
+    this.schema = new TableSetSchema(Collections.singleton(table), Collections.emptyList());
     this.dataSource = dataSource;
     this.query = query;
     this.sqlDialect = sqlDialect;

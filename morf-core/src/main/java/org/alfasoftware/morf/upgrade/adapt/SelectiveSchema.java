@@ -49,6 +49,6 @@ public class SelectiveSchema extends TableSetSchema {
         Collections.addAll(caseInsensitiveSet, tablesToInclude);
         return caseInsensitiveSet.contains(table.getName());
       }
-    }));
+    }), baseSchema.sequences());
   }
 }

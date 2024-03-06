@@ -183,8 +183,72 @@ class CompositeSchema implements Schema {
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#sequenceExists(String)
+   */
+  @Override
+  public boolean sequenceExists(String name) {
+    for (Schema schema : delegates)
+      if (schema.sequenceExists(name))
+        return true;
+
+    return false;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#getSequence(String)
+   */
+  @Override
+  public Sequence getSequence(String name) {
+    for (Schema schema : delegates)
+      if (schema.sequenceExists(name))
+        return schema.getSequence(name);
+
+    throw new IllegalArgumentException("Unknown sequence [" + name + "]");
+  }
+
+
+  /**
+   * @see Schema#sequenceNames()
+   */
+  @Override
+  public Collection<String> sequenceNames() {
+    Set<String> result = Sets.newHashSet();
+    Set<String> seenSequences = Sets.newHashSet();
+    for (Schema schema : delegates) {
+      for (Sequence sequence : schema.sequences()) {
+        if (seenSequences.add(sequence.getName().toUpperCase())) {
+          result.add(sequence.getName());
+        }
+      }
+    }
+
+    return result;
+  }
+
+
+  /**
+   * @see Schema#sequences()
+   */
+  @Override
+  public Collection<Sequence> sequences() {
+    Set<Sequence> result = Sets.newHashSet();
+    Set<String> seenSequences = Sets.newHashSet();
+    for (Schema schema : delegates) {
+      for (Sequence sequence : schema.sequences()) {
+        if (seenSequences.add(sequence.getName().toUpperCase())) {
+          result.add(sequence);
+        }
+      }
+    }
+
+    return result;
+  }
+
+
   @Override
   public String toString() {
-    return "Schema[" + tables().size() + " tables, " + views().size() + " views]";
+    return "Schema[" + tables().size() + " tables, " + views().size() + " views, " + sequences().size() + " sequences]";
   }
 }

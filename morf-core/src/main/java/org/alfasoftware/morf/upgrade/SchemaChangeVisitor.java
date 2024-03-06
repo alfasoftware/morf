@@ -141,6 +141,22 @@ public interface SchemaChangeVisitor {
 
 
   /**
+   * Perform visit operation on an {@link AddSequence} instance.
+   *
+   * @param addSequence instance of {@link AddSequence} to visit.
+   */
+  public void visit(AddSequence addSequence);
+
+
+  /**
+   * Perform visit operation on an {@link RemoveSequence} instance.
+   *
+   * @param removeSequence instance of {@link RemoveSequence} to visit.
+   */
+  public void visit(RemoveSequence removeSequence);
+
+
+  /**
    * Add the UUID audit record.
    *
    * @param uuid The UUID of the step which has been applied

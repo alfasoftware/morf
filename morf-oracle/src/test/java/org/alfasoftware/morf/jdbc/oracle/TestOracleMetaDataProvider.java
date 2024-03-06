@@ -34,11 +34,7 @@ import javax.sql.DataSource;
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
-import org.alfasoftware.morf.metadata.Column;
-import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.Index;
-import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.metadata.*;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.junit.Before;
 import org.junit.Test;
@@ -58,7 +54,6 @@ public class TestOracleMetaDataProvider {
   private final DataSource dataSource = mock(DataSource.class, RETURNS_SMART_NULLS);
   private final Connection connection = mock(Connection.class, RETURNS_SMART_NULLS);
   private DatabaseType oracle;
-
 
   @Before
   public void setup() {
@@ -162,6 +157,37 @@ public class TestOracleMetaDataProvider {
 
     verify(statement).setString(1, "TESTSCHEMA");
   }
+
+
+  /**
+   * Checks the SQL run for retrieving sequences information
+   *
+   * @throws SQLException exception
+   */
+  @Test
+  public void testLoadSequences() throws SQLException {
+    // Given
+    final PreparedStatement statement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    when(connection.prepareStatement("SELECT sequence_name FROM ALL_SEQUENCES WHERE sequence_owner=?")).thenReturn(statement);
+    when(statement.executeQuery()).thenAnswer(new ReturnMockResultSetWithSequence(1, false, false, false));
+
+    // When
+    final Schema oracleMetaDataProvider = oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
+    assertEquals("Sequence names", "[SEQUENCE1]", oracleMetaDataProvider.sequenceNames().toString());
+    Sequence sequence = oracleMetaDataProvider.sequences().iterator().next();
+    assertEquals("Sequence name", "SEQUENCE1", sequence.getName());
+
+    try {
+      Integer startsWith = sequence.getStartsWith();
+      fail("Expected UnsupportedOperationException, got " + startsWith);
+    } catch (UnsupportedOperationException e) {
+      assertEquals("Message", "Cannot return startsWith as [SEQUENCE1] has been loaded from the database",
+        e.getMessage());
+    }
+
+    verify(statement).setString(1, "TESTSCHEMA");
+  }
+
 
   /**
    * Checks that if an exception is thrown by the {@link OracleMetaDataProvider} while the connection is open that the statement being used is correctly closed.
@@ -442,6 +468,66 @@ public class TestOracleMetaDataProvider {
 
       } else {
         when(resultSet.getString(1)).thenReturn("VIEW1");
+        when(resultSet.getString(3)).thenReturn("SOMEPRIMARYKEYCOLUMN");
+      }
+      return resultSet;
+    }
+  }
+
+
+  /**
+   * Mockito {@link Answer} that returns a mock result set with a given number of resultRows.
+   */
+  private static final class ReturnMockResultSetWithSequence implements Answer<ResultSet> {
+
+    private final int numberOfResultRows;
+    private final boolean isConstraintQuery;
+    private final boolean failPKConstraintCheck;
+    private final boolean failNullPKConstraintCheck;
+
+
+    /**
+     * @param numberOfResultRows
+     * @param isConstraintQuery
+     * @param failPKConstraintCheck
+     * @param failNullPKConstraintCheck
+     */
+    private ReturnMockResultSetWithSequence(int numberOfResultRows, boolean isConstraintQuery, boolean failPKConstraintCheck, boolean failNullPKConstraintCheck) {
+      super();
+      this.numberOfResultRows = numberOfResultRows;
+      this.isConstraintQuery = isConstraintQuery;
+      this.failPKConstraintCheck = failPKConstraintCheck;
+      this.failNullPKConstraintCheck = failNullPKConstraintCheck;
+    }
+
+    @Override
+    public ResultSet answer(final InvocationOnMock invocation) throws Throwable {
+      final ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
+      when(resultSet.next()).thenAnswer(new Answer<Boolean>() {
+        private int counter;
+
+        @Override
+        public Boolean answer(InvocationOnMock invocation) throws Throwable {
+          return counter++ < numberOfResultRows;
+        }
+      });
+
+      if (isConstraintQuery) {
+        when(resultSet.getString(1)).thenReturn("AREALTABLE");
+        when(resultSet.getString(2)).thenReturn("dateColumn");
+
+        if (failNullPKConstraintCheck) {
+          when(resultSet.getString(3)).thenReturn(null);
+        } else {
+          if (failPKConstraintCheck) {
+            when(resultSet.getString(3)).thenReturn("PRIMARY_INDEX_NK");
+          } else {
+            when(resultSet.getString(3)).thenReturn("PRIMARY_INDEX_PK");
+          }
+        }
+
+      } else {
+        when(resultSet.getString(1)).thenReturn("SEQUENCE1");
         when(resultSet.getString(3)).thenReturn("SOMEPRIMARYKEYCOLUMN");
       }
       return resultSet;

@@ -10,21 +10,7 @@ import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.TruncateStatement;
 import org.alfasoftware.morf.sql.UnionSetOperator;
 import org.alfasoftware.morf.sql.UpdateStatement;
-import org.alfasoftware.morf.sql.element.BracketedExpression;
-import org.alfasoftware.morf.sql.element.CaseStatement;
-import org.alfasoftware.morf.sql.element.Cast;
-import org.alfasoftware.morf.sql.element.ConcatenatedField;
-import org.alfasoftware.morf.sql.element.Criterion;
-import org.alfasoftware.morf.sql.element.FieldFromSelect;
-import org.alfasoftware.morf.sql.element.FieldFromSelectFirst;
-import org.alfasoftware.morf.sql.element.FieldLiteral;
-import org.alfasoftware.morf.sql.element.FieldReference;
-import org.alfasoftware.morf.sql.element.Function;
-import org.alfasoftware.morf.sql.element.Join;
-import org.alfasoftware.morf.sql.element.MathsField;
-import org.alfasoftware.morf.sql.element.SqlParameter;
-import org.alfasoftware.morf.sql.element.WhenCondition;
-import org.alfasoftware.morf.sql.element.WindowFunction;
+import org.alfasoftware.morf.sql.element.*;
 
 /**
  * Visitor of the schema and data changes.
@@ -60,6 +46,26 @@ public interface SchemaAndDataChangeVisitor {
    * @param removeTable instance of {@link RemoveTable} to visit.
    */
   default void visit(RemoveTable removeTable) {
+    // Do nothing on default
+  }
+
+
+  /**
+   * Perform visit operation on an {@link AddSequence} instance.
+   *
+   * @param addSequence instance of {@link AddSequence} to visit.
+   */
+  default void visit(AddSequence addSequence) {
+    // Do nothing on default
+  }
+
+
+  /**
+   * Perform visit operation on an {@link RemoveSequence} instance.
+   *
+   * @param removeSequence instance of {@link RemoveSequence} to visit.
+   */
+  default void visit(RemoveSequence removeSequence) {
     // Do nothing on default
   }
 
@@ -400,6 +406,16 @@ public interface SchemaAndDataChangeVisitor {
    * @param sqlParameter instance of {@link SqlParameter} to visit.
    */
   default void visit(SqlParameter sqlParameter) {
+    // Do nothing on default
+  }
+
+
+  /**
+   * Perform visit operation on a {@link SequenceReference} instance.
+   *
+   * @param sequenceReference instance of {@link SequenceReference} to visit.
+   */
+  default void visit(SequenceReference sequenceReference) {
     // Do nothing on default
   }
 

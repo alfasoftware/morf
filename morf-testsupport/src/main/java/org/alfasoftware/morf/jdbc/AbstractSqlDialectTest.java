@@ -18,14 +18,7 @@ package org.alfasoftware.morf.jdbc;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static org.alfasoftware.morf.metadata.DataSetUtils.statementParameters;
-import static org.alfasoftware.morf.metadata.SchemaUtils.autonumber;
-import static org.alfasoftware.morf.metadata.SchemaUtils.column;
-import static org.alfasoftware.morf.metadata.SchemaUtils.idColumn;
-import static org.alfasoftware.morf.metadata.SchemaUtils.index;
-import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
-import static org.alfasoftware.morf.metadata.SchemaUtils.table;
-import static org.alfasoftware.morf.metadata.SchemaUtils.versionColumn;
-import static org.alfasoftware.morf.metadata.SchemaUtils.view;
+import static org.alfasoftware.morf.metadata.SchemaUtils.*;
 import static org.alfasoftware.morf.sql.SqlUtils.blobLiteral;
 import static org.alfasoftware.morf.sql.SqlUtils.bracket;
 import static org.alfasoftware.morf.sql.SqlUtils.cast;
@@ -118,12 +111,8 @@ import java.util.Collections;
 import java.util.List;
 
 import org.alfasoftware.morf.dataset.Record;
-import org.alfasoftware.morf.metadata.Column;
-import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.Index;
-import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.metadata.*;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.sql.CustomHint;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
@@ -131,27 +120,8 @@ import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.UpdateStatement;
-import org.alfasoftware.morf.sql.element.AliasedField;
-import org.alfasoftware.morf.sql.element.CaseStatement;
-import org.alfasoftware.morf.sql.element.Cast;
-import org.alfasoftware.morf.sql.element.ClobFieldLiteral;
-import org.alfasoftware.morf.sql.element.ConcatenatedField;
-import org.alfasoftware.morf.sql.element.Direction;
-import org.alfasoftware.morf.sql.element.FieldFromSelect;
-import org.alfasoftware.morf.sql.element.FieldLiteral;
-import org.alfasoftware.morf.sql.element.FieldReference;
-import org.alfasoftware.morf.sql.element.Function;
-import org.alfasoftware.morf.sql.element.MathsField;
-import org.alfasoftware.morf.sql.element.MathsOperator;
-import org.alfasoftware.morf.sql.element.NullFieldLiteral;
-import org.alfasoftware.morf.sql.element.SqlParameter;
-import org.alfasoftware.morf.sql.element.TableReference;
-import org.alfasoftware.morf.sql.element.WhenCondition;
-import org.alfasoftware.morf.sql.element.WindowFunction;
-import org.alfasoftware.morf.upgrade.AddColumn;
-import org.alfasoftware.morf.upgrade.ChangeColumn;
-import org.alfasoftware.morf.upgrade.ChangeIndex;
-import org.alfasoftware.morf.upgrade.RemoveColumn;
+import org.alfasoftware.morf.sql.element.*;
+import org.alfasoftware.morf.upgrade.*;
 import org.alfasoftware.morf.upgrade.adapt.AlteredTable;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.LocalDate;
@@ -287,6 +257,8 @@ public abstract class AbstractSqlDialectTest {
   private View testView;
 
   private View testViewWithUnion;
+
+  private Sequence testSequence;
 
   /**
    * Very long table name to test name truncation.
@@ -460,6 +432,9 @@ public abstract class AbstractSqlDialectTest {
     FieldReference f = new FieldReference(STRING_FIELD);
     testView = view("TestView", select(f).from(tr).where(eq(f, new FieldLiteral("blah"))));
 
+    //Test sequence
+    testSequence = sequence("TestSequence", 1, false);
+
     TableReference tr1 = new TableReference(OTHER_TABLE);
     testViewWithUnion = view("TestView", select(f).from(tr).where(eq(f, new FieldLiteral("blah")))
       .unionAll(select(f).from(tr1).where(eq(f, new FieldLiteral("blah")))));
@@ -539,6 +514,60 @@ public abstract class AbstractSqlDialectTest {
     compareStatements(
       expectedCreateViewStatements(),
       testDialect.viewDeploymentStatements(testView));
+  }
+
+
+  /**
+   * Tests the SQL for creating sequences.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testCreateSequencesStatements() {
+    compareStatements(
+      expectedCreateSequenceStatements(),
+      testDialect.sequenceDeploymentStatements(testSequence));
+  }
+
+
+  /**
+   * Tests the SQL for creating temporary sequences.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testCreateTemporarySequencesStatements() {
+    testSequence = sequence("TestSequence", 1, true);
+
+    compareStatements(
+      expectedCreateTemporarySequenceStatements(),
+      testDialect.sequenceDeploymentStatements(testSequence));
+  }
+
+
+  /**
+   * Tests the SQL for creating sequences.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testGetSqlFromSequenceReferenceWithNextValue() {
+    SequenceReference sequenceReference = new SequenceReference(testSequence.getName());
+
+    sequenceReference.nextValue();
+
+    assertEquals(expectedNextValForSequence(), testDialect.getSqlFrom(sequenceReference));
+  }
+
+
+  /**
+   * Tests the SQL for creating sequences.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testGetSqlFromSequenceReferenceWithCurrentValue() {
+    SequenceReference sequenceReference = new SequenceReference(testSequence.getName());
+
+    sequenceReference.currentValue();
+
+    assertEquals(expectedCurrValForSequence(), testDialect.getSqlFrom(sequenceReference));
   }
 
 
@@ -656,6 +685,18 @@ public abstract class AbstractSqlDialectTest {
     compareStatements(
       expectedDropViewStatements(),
       testDialect.dropStatements(testView));
+  }
+
+
+  /**
+   * Tests SQL for dropping a view.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testDropSequenceStatements() {
+    compareStatements(
+      expectedDropSequenceStatements(),
+      testDialect.dropStatements(testSequence));
   }
 
 
@@ -5096,6 +5137,18 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * @return The expected SQL statements for creating the test database sequence.
+   */
+  protected abstract List<String> expectedCreateSequenceStatements();
+
+
+  /**
+   * @return The expected SQL statements for creating the test database sequence.
+   */
+  protected abstract List<String> expectedCreateTemporarySequenceStatements();
+
+
+  /**
    * @return The expected SQL statements for creating the test database view over a union select.
    */
   protected List<String> expectedCreateViewOverUnionSelectStatements() {
@@ -5175,6 +5228,14 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL statements for dropping the test database view.
    */
   protected abstract List<String> expectedDropViewStatements();
+
+
+  /**
+   * @return The expected SQL statements for dropping the test database view.
+   */
+  protected List<String> expectedDropSequenceStatements() {
+    return Arrays.asList("DROP SEQUENCE IF EXISTS " + tableName("TestSequence"));
+  };
 
 
   /**
@@ -5498,6 +5559,18 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL for selecting with a substring statement.
    */
   protected abstract String expectedSubstring();
+
+
+  /**
+   * @return The expected SQL for requesting the next value of a sequence.
+   */
+  protected abstract String expectedNextValForSequence();
+
+
+  /**
+   * @return The expected SQL for requesting the current value of a sequence
+   */
+  protected abstract String expectedCurrValForSequence();
 
 
   /**

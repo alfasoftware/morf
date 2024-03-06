@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import com.google.common.collect.Maps;
@@ -43,6 +44,11 @@ public class MockDataSetProducer implements DataSetProducer, Schema {
    *
    */
   private final Map<String, View> views = Maps.newLinkedHashMap();
+
+  /**
+   * Holds sequence meta data.
+   */
+  private final Map<String, Sequence> sequences = Maps.newLinkedHashMap();
 
   /**
    * Holds all the mocked data.
@@ -70,6 +76,17 @@ public class MockDataSetProducer implements DataSetProducer, Schema {
    */
   public MockDataSetProducer addView(View view) {
     this.views.put(view.getName().toUpperCase(), view);
+    return this;
+  }
+
+
+  /**
+   * Add a sequence to the mock data set producer.
+   * @param sequence The meta data for the sequence
+   * @return this
+   */
+  public MockDataSetProducer addSequence(Sequence sequence) {
+    this.sequences.put(sequence.getName().toUpperCase(), sequence);
     return this;
   }
 
@@ -190,4 +207,41 @@ public class MockDataSetProducer implements DataSetProducer, Schema {
   public Collection<View> views() {
     return views.values();
   }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#sequenceExists(String)
+   */
+  @Override
+  public boolean sequenceExists(String name) {
+    return sequences.containsKey(name.toUpperCase());
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#getSequence(String)
+   */
+  @Override
+  public Sequence getSequence(String name) {
+    return sequences.get(name.toUpperCase());
+  }
+
+
+  /**
+   * @see Schema#sequenceNames()
+   */
+  @Override
+  public Collection<String> sequenceNames() {
+    return sequences.keySet();
+  }
+
+
+  /**
+   * @see Schema#sequences()
+   */
+  @Override
+  public Collection<Sequence> sequences() {
+    return sequences.values();
+  }
+
 }

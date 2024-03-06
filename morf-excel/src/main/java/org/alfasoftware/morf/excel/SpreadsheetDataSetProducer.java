@@ -30,11 +30,8 @@ import java.util.regex.Pattern;
 
 import org.alfasoftware.morf.dataset.DataSetProducer;
 import org.alfasoftware.morf.dataset.Record;
-import org.alfasoftware.morf.metadata.DataSetUtils;
+import org.alfasoftware.morf.metadata.*;
 import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
-import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.View;
 import org.apache.commons.lang3.StringUtils;
 
 import jxl.Cell;
@@ -439,6 +436,26 @@ public class SpreadsheetDataSetProducer implements DataSetProducer {
 
       @Override
       public Collection<View> views() {
+        return Collections.emptySet();
+      }
+
+      @Override
+      public boolean sequenceExists(String name) {
+        return false;
+      }
+
+      @Override
+      public Sequence getSequence(String name) {
+        throw new IllegalArgumentException("Invalid sequence [" + name + "]. Sequences are not supported in spreadsheets");
+      }
+
+      @Override
+      public Collection<String> sequenceNames() {
+        return Collections.emptySet();
+      }
+
+      @Override
+      public Collection<Sequence> sequences() {
         return Collections.emptySet();
       }
     };

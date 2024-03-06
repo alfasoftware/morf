@@ -12,19 +12,7 @@ import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.TruncateStatement;
 import org.alfasoftware.morf.sql.UnionSetOperator;
 import org.alfasoftware.morf.sql.UpdateStatement;
-import org.alfasoftware.morf.sql.element.BracketedExpression;
-import org.alfasoftware.morf.sql.element.CaseStatement;
-import org.alfasoftware.morf.sql.element.Cast;
-import org.alfasoftware.morf.sql.element.ConcatenatedField;
-import org.alfasoftware.morf.sql.element.Criterion;
-import org.alfasoftware.morf.sql.element.FieldFromSelect;
-import org.alfasoftware.morf.sql.element.FieldFromSelectFirst;
-import org.alfasoftware.morf.sql.element.FieldLiteral;
-import org.alfasoftware.morf.sql.element.FieldReference;
-import org.alfasoftware.morf.sql.element.Join;
-import org.alfasoftware.morf.sql.element.MathsField;
-import org.alfasoftware.morf.sql.element.SqlParameter;
-import org.alfasoftware.morf.sql.element.WhenCondition;
+import org.alfasoftware.morf.sql.element.*;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -148,6 +136,15 @@ public class TestSchemaAndDataChangeVisitor {
   @Mock
   private WhenCondition whenCondition;
 
+  @Mock
+  private AddSequence addSequence;
+
+  @Mock
+  private RemoveSequence removeSequence;
+
+  @Mock
+  private SequenceReference sequenceReference;
+
   @Before
   public void setUp() throws Exception {
     MockitoAnnotations.openMocks(this);
@@ -201,13 +198,17 @@ public class TestSchemaAndDataChangeVisitor {
     visitor.visit(mathsField);
     visitor.visit(sqlParameter);
     visitor.visit(whenCondition);
+    visitor.visit(addSequence);
+    visitor.visit(removeSequence);
+    visitor.visit(sequenceReference);
 
     // then
     verifyNoInteractions(addColumn, addTable, removeTable, addIndex, changeColumn, removeColumn, removeIndex, changeIndex,
       renameIndex, renameTable, changePrimaryKeyColumns, addTableFrom, analyseTable, selectFirstStatement, selectStatement,
       deleteStatement, insertStatement, inputField, mergeStatement, portableSqlStatement, truncateStatement, updateStatement,
       unionSetOperator, exceptSetOperator, bracketedExpression, caseStatement, cast, concatenatedField, criterion, fieldFromSelect,
-      fieldFromSelectFirst, fieldLiteral, fieldReference, join, mathsField, sqlParameter, whenCondition);
+      fieldFromSelectFirst, fieldLiteral, fieldReference, join, mathsField, sqlParameter, whenCondition, addSequence,
+      removeSequence, sequenceReference);
   }
 }
 

@@ -53,6 +53,7 @@ public class TableOverrideSchema extends TableSetSchema {
         })),
         // plus the override
         Arrays.asList(new Table[] {overridingTable})
-      )));
+      )),
+      baseSchema.sequences());
   }
 }

@@ -21,6 +21,7 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.Statement;
@@ -369,6 +370,42 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     // then
     verify(analyseTable).apply(sourceSchema);
     verify(n1).addAllUpgradeStatements(ArgumentMatchers.argThat(c-> c.containsAll(STATEMENTS)));
+  }
+
+
+  @Test
+  public void testAddSequence() {
+    // given
+    visitor.startStep(U1.class);
+    AddSequence addSequence = mock(AddSequence.class);
+    when(addSequence.apply(sourceSchema)).thenReturn(sourceSchema);
+    when(addSequence.getSequence()).thenReturn(mock(Sequence.class));
+    when(sqlDialect.sequenceDeploymentStatements(any(Sequence.class))).thenReturn(STATEMENTS);
+
+    //When
+    visitor.visit(addSequence);
+
+    //then
+    verify(addSequence).apply(sourceSchema);
+    verify(n1).addAllUpgradeStatements(ArgumentMatchers.argThat(c -> c.containsAll(STATEMENTS)));
+  }
+
+
+  @Test
+  public void testRemoveSequence() {
+    // given
+    visitor.startStep(U1.class);
+    RemoveSequence removeSequence = mock(RemoveSequence.class);
+    when(removeSequence.apply(sourceSchema)).thenReturn(sourceSchema);
+    when(removeSequence.getSequence()).thenReturn(mock(Sequence.class));
+    when(sqlDialect.dropStatements(any(Sequence.class))).thenReturn(STATEMENTS);
+
+    //When
+    visitor.visit(removeSequence);
+
+    //then
+    verify(removeSequence).apply(sourceSchema);
+    verify(n1).addAllUpgradeStatements(ArgumentMatchers.argThat(c -> c.containsAll(STATEMENTS)));
   }
 
 

@@ -23,25 +23,7 @@ import java.nio.charset.StandardCharsets;
 
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.sql.element.AliasedField;
-import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
-import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
-import org.alfasoftware.morf.sql.element.BracketedExpression;
-import org.alfasoftware.morf.sql.element.CaseStatement;
-import org.alfasoftware.morf.sql.element.Cast;
-import org.alfasoftware.morf.sql.element.ClobFieldLiteral;
-import org.alfasoftware.morf.sql.element.ConcatenatedField;
-import org.alfasoftware.morf.sql.element.Criterion;
-import org.alfasoftware.morf.sql.element.FieldLiteral;
-import org.alfasoftware.morf.sql.element.FieldReference;
-import org.alfasoftware.morf.sql.element.Function;
-import org.alfasoftware.morf.sql.element.MathsField;
-import org.alfasoftware.morf.sql.element.MathsOperator;
-import org.alfasoftware.morf.sql.element.NullFieldLiteral;
-import org.alfasoftware.morf.sql.element.SqlParameter;
-import org.alfasoftware.morf.sql.element.TableReference;
-import org.alfasoftware.morf.sql.element.WhenCondition;
-import org.alfasoftware.morf.sql.element.WindowFunction;
+import org.alfasoftware.morf.sql.element.*;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 import org.joda.time.LocalDate;
@@ -78,6 +60,17 @@ public class SqlUtils {
    */
   public static TableReference tableRef(String tableName) {
     return new TableReference(tableName);
+  }
+
+
+  /**
+   * Construct a new sequence with a given name.
+   *
+   * @param sequenceName the name of the table
+   * @return {@link SequenceReference}
+   */
+  public static SequenceReference sequenceRef(String sequenceName) {
+    return new SequenceReference(sequenceName);
   }
 
 

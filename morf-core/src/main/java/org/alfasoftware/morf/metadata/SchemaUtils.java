@@ -94,13 +94,24 @@ public final class SchemaUtils {
 
 
   /**
-   * Build a {@link Schema} from a list of {@link Table}s.
+   * Build a {@link Schema} from a list of {@link View}s.
    *
    * @param views The views to use.
    * @return A {@link Schema} implementation
    */
   public static Schema schema(View... views) {
     return new SchemaBean(views);
+  }
+
+
+  /**
+   * Build a {@link Schema} from a list of {@link Table}s.
+   *
+   * @param sequences The views to use.
+   * @return A {@link Schema} implementation
+   */
+  public static Schema schema(Sequence... sequences) {
+    return new SchemaBean(sequences);
   }
 
 
@@ -122,7 +133,18 @@ public final class SchemaUtils {
    * @return A {@link Schema} implementation
    */
   public static Schema schema(Collection<View> views) {
-    return new SchemaBean(ImmutableList.of(), views);
+    return new SchemaBean(ImmutableList.of(), views, ImmutableList.of());
+  }
+
+
+  /**
+   * Build a {@link Schema} from a list of {@link Sequence}s.
+   *
+   * @param sequences The sequences to use.
+   * @return A {@link Schema} implementation
+   */
+  public static Schema schema(List<Sequence> sequences) {
+    return new SchemaBean(ImmutableList.of(), ImmutableList.of(), sequences);
   }
 
 
@@ -167,7 +189,12 @@ public final class SchemaUtils {
         schema(FluentIterable.from(schema.views())
           .filter(view -> !isMatching(exclusionRegExes, view.getName()))
           .transform(SchemaUtils::copy)
-            .toList()));
+            .toList()),
+        schema(FluentIterable.from(schema.sequences())
+          .filter(sequence -> !isMatching(exclusionRegExes, sequence.getName()))
+          .transform(SchemaUtils::copy)
+          .toList())
+      );
   }
 
   /**
@@ -345,6 +372,29 @@ public final class SchemaUtils {
    */
   public static View copy(View view) {
     return new ViewBean(view);
+  }
+
+
+  /**
+   * Create a sequence.
+   *
+   * @param sequenceName The name of the sequence.
+   * @param startsWith The integer at which the sequence starts.
+   * @param isTemporary whether the sequence is temporary or not.
+   */
+  public static Sequence sequence(String sequenceName, Integer startsWith, boolean isTemporary) {
+    return new SequenceBean(sequenceName, startsWith, isTemporary);
+  }
+
+
+  /**
+   * Create a copy of a sequence.
+   *
+   * @param sequence The {@link Sequence} to copy.
+   * @return {@link Sequence} implementation copied from the provided sequence.
+   */
+  public static Sequence copy(Sequence sequence) {
+    return new SequenceBean(sequence);
   }
 
 
