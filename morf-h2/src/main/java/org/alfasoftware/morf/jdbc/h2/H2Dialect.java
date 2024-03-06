@@ -25,9 +25,18 @@ import java.util.Optional;
 import com.google.common.collect.Lists;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.SqlDialect;
-import org.alfasoftware.morf.metadata.*;
+import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.Sequence;
+import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.MergeStatement;
-import org.alfasoftware.morf.sql.element.*;
+import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.FunctionType;
+import org.alfasoftware.morf.sql.element.SequenceReference;
+import org.alfasoftware.morf.sql.element.SqlParameter;
+import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Joiner;
@@ -35,7 +44,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.Iterables;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.*;
+import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
+import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
 
 /**
  * Implements database specific statement generation for H2.

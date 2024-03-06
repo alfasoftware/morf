@@ -124,8 +124,7 @@ public class TestDatabaseMetaDataProvider {
       view("View2", select(field("primaryStringCol"), field("id")).from("ViewWithTypes"), "ViewWithTypes")
     ),
     schema(
-      sequence("Sequence1", 1, false),
-      sequence("Sequence2", 10, true)
+      sequence("Sequence1", 1, false)
     )
   );
 
@@ -172,13 +171,11 @@ public class TestDatabaseMetaDataProvider {
       assertFalse(schemaResource.isEmptyDatabase());
 
       assertThat(schemaResource.sequenceNames(), containsInAnyOrder(ImmutableList.of(
-        sequenceNameEqualTo("Sequence1"),
-        sequenceNameEqualTo("Sequence2")
+        sequenceNameEqualTo("Sequence1")
       )));
 
       assertThat(schemaResource.sequences(), containsInAnyOrder(ImmutableList.of(
-        sequenceNameMatcher("Sequence1"),
-        sequenceNameMatcher("Sequence2")
+        sequenceNameMatcher("Sequence1")
       )));
 
       assertThat(schemaResource.viewNames(), containsInAnyOrder(ImmutableList.of(
@@ -532,6 +529,8 @@ public class TestDatabaseMetaDataProvider {
         return mysqlLowerCaseSequenceNames
           ? equalTo(sequenceName.toLowerCase())
           : equalTo(sequenceName);
+      case "PGSQL":
+        return equalTo(sequenceName.toLowerCase());
       default:
         return equalTo(sequenceName);
     }

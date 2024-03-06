@@ -30,8 +30,12 @@ import java.util.regex.Pattern;
 
 import org.alfasoftware.morf.dataset.DataSetProducer;
 import org.alfasoftware.morf.dataset.Record;
-import org.alfasoftware.morf.metadata.*;
+import org.alfasoftware.morf.metadata.DataSetUtils;
+import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.Sequence;
+import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
+import org.alfasoftware.morf.metadata.View;
 import org.apache.commons.lang3.StringUtils;
 
 import jxl.Cell;
