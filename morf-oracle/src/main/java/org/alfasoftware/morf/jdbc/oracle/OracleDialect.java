@@ -140,10 +140,6 @@ class OracleDialect extends SqlDialect {
 
     createSequenceStatement.append("CREATE ");
 
-    if (sequence.isTemporary()) {
-      createSequenceStatement.append("SESSION ");
-    }
-
     createSequenceStatement.append("SEQUENCE ");
 
     String truncatedSequenceName = truncatedSequenceName(sequence.getName());
@@ -151,6 +147,10 @@ class OracleDialect extends SqlDialect {
     createSequenceStatement.append(schemaNamePrefix());
     createSequenceStatement.append(truncatedSequenceName);
     createSequenceStatement.append(" ");
+
+    if (sequence.isTemporary()) {
+      createSequenceStatement.append("SESSION ");
+    }
 
     if (sequence.getStartsWith() != null) {
       createSequenceStatement.append("START WITH ");
@@ -1341,7 +1341,12 @@ class OracleDialect extends SqlDialect {
   protected String getSqlFrom(SequenceReference sequenceReference) {
     StringBuilder result = new StringBuilder();
 
-    result.append(sequenceReference.getName());
+    if (getSchemaName() != null || !getSchemaName().isBlank()) {
+      result.append(getSchemaName());
+      result.append(".");
+    }
+
+    result.append(sequenceReference.getName().toUpperCase());
 
     switch (sequenceReference.getTypeOfOperation()) {
       case NEXT_VALUE:

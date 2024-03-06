@@ -31,9 +31,11 @@ public class TestSequenceBean {
   public void testConstructors() {
     Sequence sequence;
     Sequence sequence2 = new SequenceBean("a", 1, true);
+    Sequence sequence3 = new SequenceBean("c", null, false);
 
     sequence = new SequenceBean(sequence2);
     assertEquals("Test 1 name successful",sequence2.getName(), sequence.getName());
+    assertTrue("Test 1 knows starts with flag successful", sequence.knowsStartsWith());
     assertEquals("Test 1 starts with successful",sequence2.getStartsWith(), sequence.getStartsWith());
     assertEquals("Test 1 temporary flag successful",sequence2.isTemporary(), sequence.isTemporary());
 
@@ -41,10 +43,27 @@ public class TestSequenceBean {
 
     sequence = new SequenceBean("b", 10, false);
     assertEquals("Test 2 name successful", "b", sequence.getName());
+    assertTrue("Test 2 knows starts with flag successful", sequence.knowsStartsWith());
     assertEquals("Test 2 starts with successful", 10, sequence.getStartsWith().intValue());
     assertFalse("Test 2 temporary flag successful", sequence.isTemporary());
 
     assertEquals("toString() correct", "Sequence-b", sequence.toString());
+
+    sequence = new SequenceBean(sequence3);
+    assertEquals("Test 3 name successful", "c", sequence.getName());
+    assertFalse("Test 3 knows starts with flag successful", sequence.knowsStartsWith());
+    assertNull("Test 3 starts with successful", sequence.getStartsWith());
+    assertFalse("Test 3 temporary flag successful", sequence.isTemporary());
+
+    assertEquals("toString() correct", "Sequence-c", sequence.toString());
+
+    sequence = new SequenceBean("d", null, false);
+    assertEquals("Test 4 name successful", "d", sequence.getName());
+    assertFalse("Test 4 knows starts with flag successful", sequence.knowsStartsWith());
+    assertNull("Test 4 starts with successful", sequence.getStartsWith());
+    assertFalse("Test 4 temporary flag successful", sequence.isTemporary());
+
+    assertEquals("toString() correct", "Sequence-d", sequence.toString());
   }
 
 }

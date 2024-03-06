@@ -583,7 +583,7 @@ public class OracleMetaDataProvider implements Schema {
 
     long start = System.currentTimeMillis();
 
-    final String sequencesSql = "SELECT sequence_name FROM ALL_SEQUENCES WHERE sequence_owner=?";
+    final String sequencesSql = "SELECT sequence_name FROM ALL_SEQUENCES WHERE cache_size != 2000 AND sequence_owner=?";
     runSQL(sequencesSql, new ResultSetHandler() {
       @Override
       public void handle(ResultSet resultSet) throws SQLException {
@@ -594,6 +594,11 @@ public class OracleMetaDataProvider implements Schema {
 
           sequenceMap.put(sequenceName.toUpperCase(), new Sequence() {
             @Override public String getName() { return sequenceName; }
+
+            @Override
+            public boolean knowsStartsWith() {
+              return false;
+            }
 
             @Override
             public Integer getStartsWith() {

@@ -944,7 +944,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedCreateSequenceStatements() {
-    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence") + " STARTS WITH 1");
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence") + " START WITH 1");
   }
 
 

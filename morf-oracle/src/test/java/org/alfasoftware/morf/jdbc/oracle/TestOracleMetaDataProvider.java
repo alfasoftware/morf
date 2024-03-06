@@ -168,7 +168,7 @@ public class TestOracleMetaDataProvider {
   public void testLoadSequences() throws SQLException {
     // Given
     final PreparedStatement statement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
-    when(connection.prepareStatement("SELECT sequence_name FROM ALL_SEQUENCES WHERE sequence_owner=?")).thenReturn(statement);
+    when(connection.prepareStatement("SELECT sequence_name FROM ALL_SEQUENCES WHERE cache_size != 2000 AND sequence_owner=?")).thenReturn(statement);
     when(statement.executeQuery()).thenAnswer(new ReturnMockResultSetWithSequence(1, false, false, false));
 
     // When

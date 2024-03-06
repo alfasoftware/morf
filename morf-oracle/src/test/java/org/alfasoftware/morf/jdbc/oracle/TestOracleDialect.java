@@ -1215,7 +1215,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedCreateTemporarySequenceStatements() {
-    return Arrays.asList("CREATE SESSION SEQUENCE " + tableName("TestSequence") + " START WITH 1");
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence") + " SESSION START WITH 1");
   }
 
 
@@ -1828,7 +1828,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedNextValForSequence() {
-    return "TestSequence.NEXTVAL";
+    return "testschema.TESTSEQUENCE.NEXTVAL";
   }
 
 
@@ -1837,6 +1837,6 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedCurrValForSequence() {
-    return "TestSequence.CURRVAL";
+    return "testschema.TESTSEQUENCE.CURRVAL";
   }
 }
