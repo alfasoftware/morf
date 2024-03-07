@@ -94,16 +94,10 @@ class H2MetaDataProvider extends DatabaseMetaDataProvider {
 
 
   /**
-   * @see DatabaseMetaDataProvider#getSequenceNamesMap(String)
+   * @see DatabaseMetaDataProvider#buildSequenceSql(String)
    */
   @Override
-  public Map<AName, RealName> getSequenceNamesMap(String schemaName) {
-    final ImmutableMap.Builder<AName, RealName> sequenceNames = ImmutableMap.builder();
-
-    log.info("Starting read of sequence definitions");
-
-    long start = System.currentTimeMillis();
-
+  protected String buildSequenceSql(String schemaName) {
     StringBuilder sequenceSqlBuilder = new StringBuilder();
     sequenceSqlBuilder.append("SELECT SEQUENCE_NAME FROM INFORMATION_SCHEMA.SEQUENCES");
 
@@ -111,25 +105,6 @@ class H2MetaDataProvider extends DatabaseMetaDataProvider {
       sequenceSqlBuilder.append(" WHERE SEQUENCE_SCHEMA =?");
     }
 
-    runSQL(sequenceSqlBuilder.toString(), schemaName, new ResultSetHandler() {
-      @Override
-      public void handle(ResultSet resultSet) throws SQLException {
-        while (resultSet.next()) {
-          RealName realName = readSequenceName(resultSet);
-          if (isSystemSequence(realName)) {
-            continue;
-          }
-          sequenceNames.put(realName, realName);
-        }
-      }
-    });
-
-    long end = System.currentTimeMillis();
-
-    Map<AName, RealName> sequenceNamesMap = sequenceNames.build();
-
-    log.info(String.format("Read sequence metadata in %dms; %d sequences", end - start, sequenceNamesMap.size()));
-    return sequenceNamesMap;
+    return sequenceSqlBuilder.toString();
   }
-
 }

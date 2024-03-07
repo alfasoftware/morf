@@ -949,13 +949,44 @@ public class DatabaseMetaDataProvider implements Schema {
 
 
   /**
-   * Creates a map of all sequence names,
-   * indexed by their case-agnostic names.
+   * Creates a map of all sequence names, indexed by their case-agnostic names. The sequences are retrieved from the
+   * JDBC connection as a result set, where the result set is converted into a map of real sequence names with system
+   * sequences not included.
    *
    * @return Map of real sequence names.
    */
   protected Map<AName, RealName> loadAllSequenceNames() {
-    return getSequenceNamesMap(schemaName);
+    final ImmutableMap.Builder<AName, RealName> sequenceNames = ImmutableMap.builder();
+
+    log.info("Starting read of sequence definitions");
+
+    long start = System.currentTimeMillis();
+
+    String sequenceSql = buildSequenceSql(schemaName);
+
+    //If there is no SQL to run, then we should just return an empty map
+    if (sequenceSql == null)
+      return sequenceNames.build();
+
+    runSQL(sequenceSql, schemaName, new ResultSetHandler() {
+      @Override
+      public void handle(ResultSet resultSet) throws SQLException {
+        while (resultSet.next()) {
+          RealName realName = readSequenceName(resultSet);
+          if (isSystemSequence(realName)) {
+            continue;
+          }
+          sequenceNames.put(realName, realName);
+        }
+      }
+    });
+
+    long end = System.currentTimeMillis();
+
+    Map<AName, RealName> sequenceNamesMap = sequenceNames.build();
+
+    log.info(String.format("Read sequence metadata in %dms; %d sequences", end-start, sequenceNamesMap.size()));
+    return sequenceNamesMap;
   }
 
 
@@ -1013,14 +1044,12 @@ public class DatabaseMetaDataProvider implements Schema {
 
 
   /**
-   * Creates a map of all sequence names, indexed by their case-agnostic names. The sequences are retrieved from the
-   * JDBC connection as a result set, where the result set is converted into a map of real sequence names with system
-   * sequences not included.
-   *
-   * @return Map of real sequence names.
+   * Build the SQL to return sequence information from the metadata.
+   * @param schemaName
+   * @return
    */
-  public Map<AName, RealName> getSequenceNamesMap(String schemaName) {
-    return ImmutableMap.of();
+  protected String buildSequenceSql(String schemaName) {
+    return null;
   }
 
 

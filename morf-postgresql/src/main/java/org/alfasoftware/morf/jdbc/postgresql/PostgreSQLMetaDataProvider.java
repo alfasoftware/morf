@@ -174,16 +174,10 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider {
 
 
   /**
-   * @see DatabaseMetaDataProvider#getSequenceNamesMap(String)
+   * @see DatabaseMetaDataProvider#buildSequenceSql(String)
    */
   @Override
-  public Map<AName, RealName> getSequenceNamesMap(String schemaName) {
-    final ImmutableMap.Builder<AName, RealName> sequenceNames = ImmutableMap.builder();
-
-    log.info("Starting read of sequence definitions");
-
-    long start = System.currentTimeMillis();
-
+  protected String buildSequenceSql(String schemaName) {
     StringBuilder sequenceSqlBuilder = new StringBuilder("SELECT S.relname FROM pg_class S LEFT JOIN pg_depend D ON " +
       "(S.oid = D.objid AND D.deptype = 'a') LEFT JOIN pg_namespace N on (N.oid = S.relnamespace) WHERE S.relkind = " +
       "'S' AND D.objid IS NULL");
@@ -192,25 +186,6 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider {
       sequenceSqlBuilder.append(" AND N.nspname=?");
     }
 
-    runSQL(sequenceSqlBuilder.toString(), schemaName, new ResultSetHandler() {
-      @Override
-      public void handle(ResultSet resultSet) throws SQLException {
-        while (resultSet.next()) {
-         RealName realName = readSequenceName(resultSet);
-         if (PostgreSQLMetaDataProvider.super.isSystemSequence(realName)) {
-           continue;
-         }
-         sequenceNames.put(realName, realName);
-        }
-      }
-    });
-
-    long end = System.currentTimeMillis();
-
-    Map<AName, RealName> sequenceNamesMap = sequenceNames.build();
-
-    log.info(String.format("Read sequence metadata in %dms; %d sequences", end-start, sequenceNamesMap.size()));
-    return sequenceNamesMap;
+    return sequenceSqlBuilder.toString();
   }
-
 }
