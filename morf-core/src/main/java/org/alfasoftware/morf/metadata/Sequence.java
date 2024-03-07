@@ -21,7 +21,7 @@ package org.alfasoftware.morf.metadata;
  * <p>Instead of implementing this class to define a sequence, use the DSL provided by
  * {@link SchemaUtils}.
  *
- * @see SchemaUtils#sequence(String, Integer, boolean)
+ * @see SchemaUtils#sequence(String)
  * @author Copyright (c) Alfa Financial Software 2024
  */
 public interface Sequence {

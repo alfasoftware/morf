@@ -85,6 +85,7 @@ public class SequenceBean implements Sequence {
         return startsWith;
     }
 
+
     /**
      * @see Sequence#isTemporary()
      */
@@ -92,6 +93,7 @@ public class SequenceBean implements Sequence {
     public boolean isTemporary() {
         return isTemporary;
     }
+
 
     @Override
     public String toString() {

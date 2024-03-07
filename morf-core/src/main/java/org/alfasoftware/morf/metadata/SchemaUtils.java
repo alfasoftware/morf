@@ -450,10 +450,23 @@ public final class SchemaUtils {
   }
 
 
+  /**
+   * Builds {@link Sequence} implementation.
+   */
   public interface SequenceBuilder extends Sequence {
 
+    /**
+     * Sets the starts with value for the sequence.
+     *
+     * @return this sequence builder, for method chaining.
+     */
     public SequenceBuilder startsWith(Integer startWith);
 
+    /**
+     * Creates a temporary sequence.
+     *
+     * @return this sequence builder, for method chaining.
+     */
     public SequenceBuilder temporary();
 
   }
@@ -605,6 +618,9 @@ public final class SchemaUtils {
   }
 
 
+  /**
+   * Private implementation of {@link SequenceBuilder}.
+   */
   private static final class SequenceBuilderImpl extends SequenceBean implements SequenceBuilder {
 
     private SequenceBuilderImpl(String name) {
