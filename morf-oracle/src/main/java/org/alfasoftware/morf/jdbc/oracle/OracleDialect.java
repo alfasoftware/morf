@@ -177,14 +177,13 @@ class OracleDialect extends SqlDialect {
 
     createSequenceStatement.append(schemaNamePrefix());
     createSequenceStatement.append(truncatedSequenceName);
-    createSequenceStatement.append(" ");
 
     if (sequence.isTemporary()) {
-      createSequenceStatement.append("SESSION ");
+      createSequenceStatement.append(" SESSION");
     }
 
     if (sequence.getStartsWith() != null) {
-      createSequenceStatement.append("START WITH ");
+      createSequenceStatement.append(" START WITH ");
       createSequenceStatement.append(sequence.getStartsWith());
     }
 
@@ -588,7 +587,7 @@ class OracleDialect extends SqlDialect {
 
 
   /**
-   * Truncate table names to 30 characters since this is the maximum supported by Oracle.
+   * Truncate sequence names to 30 characters since this is the maximum supported by Oracle.
    */
   private String truncatedSequenceName(String sequenceName) {
     return StringUtils.substring(sequenceName, 0, 30);

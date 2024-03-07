@@ -82,7 +82,7 @@ public class TableSetSchema implements Schema {
    */
   @Override
   public boolean isEmptyDatabase() {
-    return tables.isEmpty() && sequences.isEmpty();
+    return tables.isEmpty();
   }
 
 

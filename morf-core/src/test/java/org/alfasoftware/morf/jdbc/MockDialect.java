@@ -75,19 +75,19 @@ public class MockDialect extends SqlDialect {
 
     StringBuilder result = new StringBuilder();
 
+    result.append(sequenceReference.getName());
+
     switch (sequenceReference.getTypeOfOperation()) {
       case NEXT_VALUE:
-        result.append("nextval('");
+        result.append(".NEXTVAL");
         break;
       case CURRENT_VALUE:
-        result.append("currval('");
+        result.append(".CURRVAL");
         break;
     }
 
-    result.append(sequenceReference.getName());
-    result.append("')");
-
     return result.toString();
+
   }
 
   
@@ -164,10 +164,13 @@ public class MockDialect extends SqlDialect {
     createSequenceStatement.append("SEQUENCE ");
     createSequenceStatement.append(schemaNamePrefix());
     createSequenceStatement.append(sequence.getName());
-    createSequenceStatement.append(" ");
+
+    if (sequence.isTemporary()) {
+      createSequenceStatement.append(" SESSION");
+    }
 
     if (sequence.getStartsWith() != null) {
-      createSequenceStatement.append("START WITH ");
+      createSequenceStatement.append(" START WITH ");
       createSequenceStatement.append(sequence.getStartsWith());
     }
 

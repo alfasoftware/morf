@@ -124,6 +124,27 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
     return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence") + " START WITH 1");
   }
 
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateSequenceStatementsWithNoStartWith()
+   * @return
+   */
+  @Override
+  protected List<String> expectedCreateSequenceStatementsWithNoStartWith() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence"));
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateTemporarySequenceStatementsWithNoStartWith()
+   * @return
+   */
+  @Override
+  protected List<String> expectedCreateTemporarySequenceStatementsWithNoStartWith() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence"));
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTableStatements()
    */
@@ -1432,7 +1453,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedNextValForSequence() {
-    return "NEXT VALUE FOR TestSequence";
+    return "SELECT NEXT VALUE FOR TestSequence";
   }
 
 
@@ -1441,6 +1462,6 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedCurrValForSequence() {
-    return "current_value FROM sys.sequences WHERE name = 'TestSequence'";
+    return "SELECT (SELECT current_value FROM sys.sequences WHERE name = 'TestSequence')";
   }
 }

@@ -4,7 +4,6 @@ import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.getAutoIn
 import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.getDataTypeFromColumnComment;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -175,10 +174,10 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider {
 
 
   /**
-   * @see DatabaseMetaDataProvider#getSequenceResultSet(String)
+   * @see DatabaseMetaDataProvider#getSequenceNamesMap(String)
    */
   @Override
-  public Map<AName, RealName> getSequenceResultSet(String schemaName) {
+  public Map<AName, RealName> getSequenceNamesMap(String schemaName) {
     final ImmutableMap.Builder<AName, RealName> sequenceNames = ImmutableMap.builder();
 
     log.info("Starting read of sequence definitions");
@@ -212,52 +211,6 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider {
 
     log.info(String.format("Read sequence metadata in %dms; %d sequences", end-start, sequenceNamesMap.size()));
     return sequenceNamesMap;
-  }
-
-
-  /**
-   * Handler for {@link ResultSet}s from some SQL.
-   */
-  private interface ResultSetHandler {
-    /**
-     * handle the results.
-     * @param resultSet The result set to handle
-     * @throws SQLException If an db exception occurs.
-     */
-    void handle(ResultSet resultSet) throws SQLException;
-  }
-
-
-  /**
-   * Run some SQL, and tidy up afterwards.
-   *
-   * Note this assumes a predicate on the schema name will be present with a single parameter in position "1".
-   *
-   * @param sql The SQL to run.
-   * @param handler The handler to handle the result-set.
-   */
-  private void runSQL(String sql, String schemaName, ResultSetHandler handler) {
-    try {
-      PreparedStatement statement = connection.prepareStatement(sql);
-      try {
-
-        // pass through the schema name
-        if (schemaName != null && !schemaName.isBlank()) {
-          statement.setString(1, schemaName);
-        }
-
-        ResultSet resultSet = statement.executeQuery();
-        try {
-          handler.handle(resultSet);
-        } finally {
-          resultSet.close();
-        }
-      } finally {
-        statement.close();
-      }
-    } catch (SQLException sqle) {
-      throw new RuntimeSqlException("Error running SQL: " + sql, sqle);
-    }
   }
 
 }

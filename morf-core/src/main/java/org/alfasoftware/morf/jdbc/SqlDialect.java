@@ -1869,6 +1869,7 @@ public abstract class SqlDialect {
     return String.format("'%s'", field.getValue());
   }
 
+
   /**
    * Default implementation will just return the Field literal implementation of the getSqlFrom method.
    *

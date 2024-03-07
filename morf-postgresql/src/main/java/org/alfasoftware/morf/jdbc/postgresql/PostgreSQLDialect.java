@@ -282,11 +282,10 @@ class PostgreSQLDialect extends SqlDialect {
 
     createSequenceStatement.append("SEQUENCE ")
         .append(schemaNamePrefix(sequence))
-        .append(sequence.getName())
-        .append(" ");
+        .append(sequence.getName());
 
     if (sequence.getStartsWith() != null) {
-      createSequenceStatement.append("START WITH ");
+      createSequenceStatement.append(" START WITH ");
       createSequenceStatement.append(sequence.getStartsWith());
     }
 

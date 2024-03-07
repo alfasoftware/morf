@@ -57,7 +57,7 @@ public class TestSqlServerMetaDataProvider {
 
     when(dataSource.getConnection()).thenReturn(connection);
     when(connection.createStatement()).thenReturn(createStatement);
-    when(createStatement.executeQuery(any())).thenAnswer(new ReturnMockResultSetWithSequence(1, false, false, false));
+    when(createStatement.executeQuery(any())).thenAnswer(new ReturnMockResultSetWithSequence(1));
   }
 
 
@@ -73,7 +73,7 @@ public class TestSqlServerMetaDataProvider {
 
     when(connection.prepareStatement("SELECT name FROM sys.all_objects WHERE type='SO' AND SCHEMA_NAME(schema_id)=?")).thenReturn(statement);
 
-    when(statement.executeQuery()).thenAnswer(new ReturnMockResultSetWithSequence(1, false, false, false));
+    when(statement.executeQuery()).thenAnswer(new ReturnMockResultSetWithSequence(1));
 
     // When
     final Schema sqlServerMetaDataProvider = sqlServer.openSchema(connection, "TestDatabase", "TestSchema");
@@ -91,23 +91,14 @@ public class TestSqlServerMetaDataProvider {
   private static final class ReturnMockResultSetWithSequence implements Answer<ResultSet> {
 
     private final int numberOfResultRows;
-    private final boolean isConstraintQuery;
-    private final boolean failPKConstraintCheck;
-    private final boolean failNullPKConstraintCheck;
 
 
     /**
      * @param numberOfResultRows
-     * @param isConstraintQuery
-     * @param failPKConstraintCheck
-     * @param failNullPKConstraintCheck
      */
-    private ReturnMockResultSetWithSequence(int numberOfResultRows, boolean isConstraintQuery, boolean failPKConstraintCheck, boolean failNullPKConstraintCheck) {
+    private ReturnMockResultSetWithSequence(int numberOfResultRows) {
       super();
       this.numberOfResultRows = numberOfResultRows;
-      this.isConstraintQuery = isConstraintQuery;
-      this.failPKConstraintCheck = failPKConstraintCheck;
-      this.failNullPKConstraintCheck = failNullPKConstraintCheck;
     }
 
     @Override
@@ -122,23 +113,8 @@ public class TestSqlServerMetaDataProvider {
         }
       });
 
-      if (isConstraintQuery) {
-        when(resultSet.getString(1)).thenReturn("AREALTABLE");
-        when(resultSet.getString(2)).thenReturn("dateColumn");
+      when(resultSet.getString(1)).thenReturn("Sequence1");
 
-        if (failNullPKConstraintCheck) {
-          when(resultSet.getString(3)).thenReturn(null);
-        } else {
-          if (failPKConstraintCheck) {
-            when(resultSet.getString(3)).thenReturn("PRIMARY_INDEX_NK");
-          } else {
-            when(resultSet.getString(3)).thenReturn("PRIMARY_INDEX_PK");
-          }
-        }
-
-      } else {
-        when(resultSet.getString(1)).thenReturn("Sequence1");
-      }
       return resultSet;
     }
   }

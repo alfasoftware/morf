@@ -142,10 +142,9 @@ class H2Dialect extends SqlDialect {
     createSequenceStatement.append("SEQUENCE ");
     createSequenceStatement.append(schemaNamePrefix());
     createSequenceStatement.append(sequence.getName());
-    createSequenceStatement.append(" ");
 
     if (sequence.getStartsWith() != null) {
-      createSequenceStatement.append("START WITH ");
+      createSequenceStatement.append(" START WITH ");
       createSequenceStatement.append(sequence.getStartsWith());
     }
 
@@ -600,7 +599,7 @@ class H2Dialect extends SqlDialect {
    * @see SqlDialect#getSqlFrom(SequenceReference)
    */
   @Override
-  public String getSqlFrom(SequenceReference sequenceReference) {
+  protected String getSqlFrom(SequenceReference sequenceReference) {
     StringBuilder result = new StringBuilder();
 
     result.append(sequenceReference.getName());

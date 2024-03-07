@@ -145,6 +145,26 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see AbstractSqlDialectTest#expectedCreateSequenceStatementsWithNoStartWith()
+   * @return
+   */
+  @Override
+  protected List<String> expectedCreateSequenceStatementsWithNoStartWith() {
+    return new ArrayList<>();
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateTemporarySequenceStatementsWithNoStartWith()
+   * @return
+   */
+  @Override
+  protected List<String> expectedCreateTemporarySequenceStatementsWithNoStartWith() {
+    return new ArrayList<>();
+  }
+
+
+  /**
    * @see AbstractSqlDialectTest#expectedDropSequenceStatements()
    */
   @Override
@@ -1369,7 +1389,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedNextValForSequence() {
-    return "NULL";
+    return "SELECT NULL FROM dual";
   }
 
 
@@ -1378,6 +1398,6 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedCurrValForSequence() {
-    return "NULL";
+    return "SELECT NULL FROM dual";
   }
 }

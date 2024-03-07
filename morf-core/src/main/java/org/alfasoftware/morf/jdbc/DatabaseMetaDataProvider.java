@@ -17,6 +17,7 @@ package org.alfasoftware.morf.jdbc;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -954,7 +955,7 @@ public class DatabaseMetaDataProvider implements Schema {
    * @return Map of real sequence names.
    */
   protected Map<AName, RealName> loadAllSequenceNames() {
-    return getSequenceResultSet(schemaName);
+    return getSequenceNamesMap(schemaName);
   }
 
 
@@ -1023,9 +1024,56 @@ public class DatabaseMetaDataProvider implements Schema {
    *
    * @return Map of real sequence names.
    */
-  public Map<AName, RealName> getSequenceResultSet(String schemaName) {
+  public Map<AName, RealName> getSequenceNamesMap(String schemaName) {
     return ImmutableMap.of();
   }
+
+
+  /**
+   * Run some SQL, and tidy up afterwards.
+   *
+   * Note this assumes a predicate on the schema name will be present with a single parameter in position "1".
+   *
+   * @param sql The SQL to run.
+   * @param handler The handler to handle the result-set.
+   */
+  protected void runSQL(String sql, String schemaName, ResultSetHandler handler) {
+    try {
+      PreparedStatement statement = connection.prepareStatement(sql);
+      try {
+
+        // pass through the schema name
+        if (schemaName != null && !schemaName.isBlank()) {
+          statement.setString(1, schemaName);
+        }
+
+        ResultSet resultSet = statement.executeQuery();
+        try {
+          handler.handle(resultSet);
+        } finally {
+          resultSet.close();
+        }
+      } finally {
+        statement.close();
+      }
+    } catch (SQLException sqle) {
+      throw new RuntimeSqlException("Error running SQL: " + sql, sqle);
+    }
+  }
+
+
+  /**
+   * Handler for {@link ResultSet}s from some SQL.
+   */
+  protected interface ResultSetHandler {
+    /**
+     * handle the results.
+     * @param resultSet The result set to handle
+     * @throws SQLException If an db exception occurs.
+     */
+    void handle(ResultSet resultSet) throws SQLException;
+  }
+
 
   /**
    * Creates {@link RealName}, which contractually remembers two versions of a

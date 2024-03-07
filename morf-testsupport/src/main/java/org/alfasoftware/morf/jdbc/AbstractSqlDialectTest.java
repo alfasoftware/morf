@@ -578,30 +578,62 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * Tests the SQL for creating sequences.
+   * Tests the SQL for creating sequences when no explicit 'START WITH' value is specified.
    */
   @SuppressWarnings("unchecked")
   @Test
-  public void testGetSqlFromSequenceReferenceWithNextValue() {
-    SequenceReference sequenceReference = new SequenceReference(testSequence.getName());
+  public void testCreateSequencesStatementWhenNoStartWithSpecified() {
+    testSequence = sequence("TestSequence", null, false);
 
-    sequenceReference.nextValue();
-
-    assertEquals(expectedNextValForSequence(), testDialect.getSqlFrom(sequenceReference));
+    compareStatements(
+      expectedCreateSequenceStatementsWithNoStartWith(),
+      testDialect.sequenceDeploymentStatements(testSequence));
   }
 
 
   /**
-   * Tests the SQL for creating sequences.
+   * Tests the SQL for creating temporary sequences when no explicit 'START WITH' value is specified.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testCreateTemporarySequencesStatementWhenNoStartWithSpecified() {
+    testSequence = sequence("TestSequence", null, true);
+
+    compareStatements(
+      expectedCreateTemporarySequenceStatementsWithNoStartWith(),
+      testDialect.sequenceDeploymentStatements(testSequence));
+  }
+
+
+  /**
+   * Tests the SQL for returning the next value from a sequence.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testGetSqlFromSequenceReferenceWithNextValue() {
+    // Given
+    SequenceReference sequenceReference = new SequenceReference(testSequence.getName()).nextValue();
+    SelectStatement stmt = new SelectStatement(sequenceReference);
+
+    String result = testDialect.convertStatementToSQL(stmt);
+
+    assertEquals(expectedNextValForSequence(), result);
+  }
+
+
+  /**
+   * Tests the SQL for returning the current value of a sequence.
    */
   @SuppressWarnings("unchecked")
   @Test
   public void testGetSqlFromSequenceReferenceWithCurrentValue() {
-    SequenceReference sequenceReference = new SequenceReference(testSequence.getName());
+    // Given
+    SequenceReference sequenceReference = new SequenceReference(testSequence.getName()).currentValue();
+    SelectStatement stmt = new SelectStatement(sequenceReference);
 
-    sequenceReference.currentValue();
+    String result = testDialect.convertStatementToSQL(stmt);
 
-    assertEquals(expectedCurrValForSequence(), testDialect.getSqlFrom(sequenceReference));
+    assertEquals(expectedCurrValForSequence(), result);
   }
 
 
@@ -5180,6 +5212,18 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL statements for creating the test database sequence.
    */
   protected abstract List<String> expectedCreateTemporarySequenceStatements();
+
+
+  /**
+   * @return The expected SQL statements for creating the test database sequence.
+   */
+  protected abstract List<String> expectedCreateSequenceStatementsWithNoStartWith();
+
+
+  /**
+   * @return The expected SQL statements for creating the test database sequence.
+   */
+  protected abstract List<String> expectedCreateTemporarySequenceStatementsWithNoStartWith();
 
 
   /**

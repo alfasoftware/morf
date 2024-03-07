@@ -169,7 +169,7 @@ public class TestOracleMetaDataProvider {
     // Given
     final PreparedStatement statement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
     when(connection.prepareStatement("SELECT sequence_name FROM ALL_SEQUENCES WHERE cache_size != 2000 AND sequence_owner=?")).thenReturn(statement);
-    when(statement.executeQuery()).thenAnswer(new ReturnMockResultSetWithSequence(1, false, false, false));
+    when(statement.executeQuery()).thenAnswer(new ReturnMockResultSetWithSequence(1));
 
     // When
     final Schema oracleMetaDataProvider = oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
@@ -481,23 +481,14 @@ public class TestOracleMetaDataProvider {
   private static final class ReturnMockResultSetWithSequence implements Answer<ResultSet> {
 
     private final int numberOfResultRows;
-    private final boolean isConstraintQuery;
-    private final boolean failPKConstraintCheck;
-    private final boolean failNullPKConstraintCheck;
 
 
     /**
      * @param numberOfResultRows
-     * @param isConstraintQuery
-     * @param failPKConstraintCheck
-     * @param failNullPKConstraintCheck
      */
-    private ReturnMockResultSetWithSequence(int numberOfResultRows, boolean isConstraintQuery, boolean failPKConstraintCheck, boolean failNullPKConstraintCheck) {
+    private ReturnMockResultSetWithSequence(int numberOfResultRows) {
       super();
       this.numberOfResultRows = numberOfResultRows;
-      this.isConstraintQuery = isConstraintQuery;
-      this.failPKConstraintCheck = failPKConstraintCheck;
-      this.failNullPKConstraintCheck = failNullPKConstraintCheck;
     }
 
     @Override
@@ -512,24 +503,8 @@ public class TestOracleMetaDataProvider {
         }
       });
 
-      if (isConstraintQuery) {
-        when(resultSet.getString(1)).thenReturn("AREALTABLE");
-        when(resultSet.getString(2)).thenReturn("dateColumn");
+      when(resultSet.getString(1)).thenReturn("SEQUENCE1");
 
-        if (failNullPKConstraintCheck) {
-          when(resultSet.getString(3)).thenReturn(null);
-        } else {
-          if (failPKConstraintCheck) {
-            when(resultSet.getString(3)).thenReturn("PRIMARY_INDEX_NK");
-          } else {
-            when(resultSet.getString(3)).thenReturn("PRIMARY_INDEX_PK");
-          }
-        }
-
-      } else {
-        when(resultSet.getString(1)).thenReturn("SEQUENCE1");
-        when(resultSet.getString(3)).thenReturn("SOMEPRIMARYKEYCOLUMN");
-      }
       return resultSet;
     }
   }

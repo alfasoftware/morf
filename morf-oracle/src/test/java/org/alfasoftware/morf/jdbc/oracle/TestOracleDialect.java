@@ -1220,6 +1220,26 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see AbstractSqlDialectTest#expectedCreateSequenceStatementsWithNoStartWith()
+   * @return
+   */
+  @Override
+  protected List<String> expectedCreateSequenceStatementsWithNoStartWith() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence"));
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateTemporarySequenceStatementsWithNoStartWith()
+   * @return
+   */
+  @Override
+  protected List<String> expectedCreateTemporarySequenceStatementsWithNoStartWith() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence") + " SESSION");
+  }
+
+
+  /**
    * @see AbstractSqlDialectTest#expectedCreateTemporarySequenceStatements()
    */
   @Override
@@ -1828,7 +1848,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedNextValForSequence() {
-    return "testschema.TESTSEQUENCE.NEXTVAL";
+    return "SELECT testschema.TESTSEQUENCE.NEXTVAL FROM dual";
   }
 
 
@@ -1837,6 +1857,6 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedCurrValForSequence() {
-    return "testschema.TESTSEQUENCE.CURRVAL";
+    return "SELECT testschema.TESTSEQUENCE.CURRVAL FROM dual";
   }
 }

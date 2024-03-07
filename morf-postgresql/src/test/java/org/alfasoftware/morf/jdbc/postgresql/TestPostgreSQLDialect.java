@@ -956,6 +956,27 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return Arrays.asList("CREATE TEMPORARY SEQUENCE TestSequence START WITH 1");
   }
 
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateSequenceStatementsWithNoStartWith()
+   * @return
+   */
+  @Override
+  protected List<String> expectedCreateSequenceStatementsWithNoStartWith() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence"));
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateTemporarySequenceStatementsWithNoStartWith()
+   * @return
+   */
+  @Override
+  protected List<String> expectedCreateTemporarySequenceStatementsWithNoStartWith() {
+    return Arrays.asList("CREATE TEMPORARY SEQUENCE TestSequence");
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedCreateViewOverUnionSelectStatements()
    */
@@ -1483,12 +1504,12 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    * @see AbstractSqlDialectTest#expectedNextValForSequence()
    */
   @Override
-  protected String expectedNextValForSequence() { return "nextval('TestSequence')"; }
+  protected String expectedNextValForSequence() { return "SELECT nextval('TestSequence')"; }
 
 
   /**
    * @see AbstractSqlDialectTest#expectedCurrValForSequence()
    */
   @Override
-  protected String expectedCurrValForSequence() { return "currval('TestSequence')"; }
+  protected String expectedCurrValForSequence() { return "SELECT currval('TestSequence')"; }
 }

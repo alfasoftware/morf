@@ -170,10 +170,9 @@ class SqlServerDialect extends SqlDialect {
     createSequenceStatement.append("SEQUENCE ");
     createSequenceStatement.append(schemaNamePrefix());
     createSequenceStatement.append(sequence.getName());
-    createSequenceStatement.append(" ");
 
     if (sequence.getStartsWith() != null) {
-      createSequenceStatement.append("START WITH ");
+      createSequenceStatement.append(" START WITH ");
       createSequenceStatement.append(sequence.getStartsWith());
     }
 
@@ -511,7 +510,7 @@ class SqlServerDialect extends SqlDialect {
    * @see SqlServerDialect#getSqlFrom(SequenceReference)
    */
   @Override
-    protected String getSqlFrom(SequenceReference sequenceReference) {
+  protected String getSqlFrom(SequenceReference sequenceReference) {
     StringBuilder result = new StringBuilder();
 
     switch (sequenceReference.getTypeOfOperation()) {
@@ -519,13 +518,13 @@ class SqlServerDialect extends SqlDialect {
         result.append("NEXT VALUE FOR ");
         break;
       case CURRENT_VALUE:
-        return "current_value FROM sys.sequences WHERE name = '" + sequenceReference.getName() + "'";
+        return "(SELECT current_value FROM sys.sequences WHERE name = '" + sequenceReference.getName() + "')";
     }
 
     result.append(sequenceReference.getName());
 
     return result.toString();
-    }
+  }
 
     /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#alterTableAddColumnStatements(org.alfasoftware.morf.metadata.Table, org.alfasoftware.morf.metadata.Column)
