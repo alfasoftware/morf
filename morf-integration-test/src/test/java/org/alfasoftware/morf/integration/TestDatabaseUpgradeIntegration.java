@@ -203,8 +203,8 @@ public class TestDatabaseUpgradeIntegration {
       view("veryLongView", veryLongViewDefinition())
     ),
     schema(
-      sequence("sequence1", 1, false),
-      sequence("sequence3", 6, false)
+      sequence("sequence1"),
+      sequence("sequence3").startsWith(6)
     )
   );
 
@@ -652,7 +652,7 @@ public class TestDatabaseUpgradeIntegration {
    */
   @Test
   public void testAddBasicSequence() {
-    Sequence basicSequence = sequence("BasicSequence", 1, false);
+    Sequence basicSequence = sequence("BasicSequence");
 
     Schema expected = addSequencesToSchema(basicSequence);
 
@@ -665,7 +665,7 @@ public class TestDatabaseUpgradeIntegration {
    */
   @Test
   public void testRemoveBasicSequence() {
-    Sequence sequenceToRemove = sequence("sequence3", 6, false);
+    Sequence sequenceToRemove = sequence("sequence3");
 
     Schema expectedSchema = removeSequencesFromSchema(sequenceToRemove);
 

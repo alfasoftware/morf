@@ -178,9 +178,6 @@ public class TestSchemaBean {
       }
 
       @Override
-      public boolean knowsStartsWith() { return true; }
-
-      @Override
       public Integer getStartsWith() {
         return 1;
       }

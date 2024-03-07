@@ -77,14 +77,27 @@ public class TestSequenceReference {
   }
 
 
+  @Test
+  public void testTypeOfOperationImmutability() {
+    AliasedField.withImmutableBuildersEnabled(() -> {
+      // Should get the same object with immutable builders on
+      assertEquals(isEqual.nextValue(), onTest.nextValue());
+      assertEquals(isEqual.currentValue().nextValue(), onTest.nextValue());
+      assertNotEquals(isEqual.nextValue(), onTest.currentValue());
+      assertNotSame(onTest, onTest.nextValue());
+    });
+  }
+
+
   /**
    * Remove this test when immutability is permananently enabled.
    */
   @Test
-  public void testAliasMutablity() {
+  public void testTypeOfOperationMutablity() {
     AliasedField.withImmutableBuildersDisabled(() -> {
       // Should get the same object with immutable builders off
-      assertSame(onTest, onTest.as("A"));
+      assertSame(onTest, onTest.currentValue());
+      assertSame(onTest, onTest.nextValue());
     });
   }
 

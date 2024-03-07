@@ -75,8 +75,7 @@ public class TestSchemaUtils {
 
     Schema schema  = new SchemaBean(ImmutableList.<Table>of(table("EXCLUDE_Boo"), table("EXCLUDE_Foo"), table("table1"), table("table2")),
       ImmutableList.of(SchemaUtils.view("Driver", select()), SchemaUtils.view("Drivers", select())),
-      ImmutableList.of(SchemaUtils.sequence("Sequence1", 1, false), SchemaUtils.sequence("SequenceExclude", 1,
-        false)));
+      ImmutableList.of(SchemaUtils.sequence("Sequence1"), SchemaUtils.sequence("SequenceExclude")));
 
     assertEquals("4 tables should exist", 4, schema.tables().size());
     assertEquals("2 views should exist", 2, schema.views().size());

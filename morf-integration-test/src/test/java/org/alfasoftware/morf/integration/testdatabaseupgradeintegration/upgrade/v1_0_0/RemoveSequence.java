@@ -34,7 +34,7 @@ public class RemoveSequence extends AbstractTestUpgradeStep {
 
   @Override
   public void execute(SchemaEditor schema, DataEditor data) {
-    schema.removeSequence(sequence("sequence3", 6, false));
+    schema.removeSequence(sequence("sequence3"));
 
   }
 }

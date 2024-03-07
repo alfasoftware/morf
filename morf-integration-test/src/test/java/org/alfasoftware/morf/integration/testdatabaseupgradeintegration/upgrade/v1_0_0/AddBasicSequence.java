@@ -34,7 +34,7 @@ public class AddBasicSequence extends AbstractTestUpgradeStep {
 
   @Override
   public void execute(SchemaEditor schema, DataEditor data) {
-    schema.addSequence(sequence("BasicSequence", 1, false));
+    schema.addSequence(sequence("BasicSequence"));
   }
 
 }

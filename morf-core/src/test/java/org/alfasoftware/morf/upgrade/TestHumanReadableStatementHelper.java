@@ -811,7 +811,7 @@ public class TestHumanReadableStatementHelper {
    */
   @Test
   public void testAddSequenceGeneration() {
-    final Sequence sequence = SchemaUtils.sequence("Test", 1, false);
+    final Sequence sequence = SchemaUtils.sequence("Test");
 
     assertEquals("Incorrect string generated", "Create sequence " + sequence.getName() + " starting with " + sequence.getStartsWith(),
       HumanReadableStatementHelper.generateAddSequenceString(sequence));
@@ -823,7 +823,7 @@ public class TestHumanReadableStatementHelper {
    */
   @Test
   public void testRemoveSequenceGeneration() {
-    final Sequence sequence = SchemaUtils.sequence("Test", 1, false);
+    final Sequence sequence = SchemaUtils.sequence("Test");
 
     assertEquals("Incorrect string generated", "Remove sequence " + sequence.getName(),
       HumanReadableStatementHelper.generateRemoveSequenceString(sequence));

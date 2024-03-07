@@ -192,11 +192,11 @@ public class TestSchemaValidator {
   @Test
   public void testValidSequenceNames() {
     SchemaValidator validator = new SchemaValidator();
-    validator.validate(sequence("Sequence_with_underscores", 1, false));
-    validator.validate(sequence(EDGE_CASE_VALID_NAME_30_CHARACTERS,  1, false));
-    validator.validate(sequence("ABCDEFGHIJKLMNOPQRSTUVWXYZ", 1, false));
-    validator.validate(sequence("abcdefghijklmnopqrstuvwxyz", 1, false));
-    validator.validate(sequence("a1234567890", 1, false));
+    validator.validate(sequence("Sequence_with_underscores"));
+    validator.validate(sequence(EDGE_CASE_VALID_NAME_30_CHARACTERS));
+    validator.validate(sequence("ABCDEFGHIJKLMNOPQRSTUVWXYZ"));
+    validator.validate(sequence("abcdefghijklmnopqrstuvwxyz"));
+    validator.validate(sequence("a1234567890"));
   }
 
 
@@ -207,7 +207,7 @@ public class TestSchemaValidator {
   public void testInvalidSequenceNames() {
     try {
       SchemaValidator validator = new SchemaValidator();
-      validator.validate(sequence(INVALID_NAME_31_CHARACTERS, 1, false));
+      validator.validate(sequence(INVALID_NAME_31_CHARACTERS));
       fail("should have thrown an exception");
     } catch (RuntimeException e) {
       assertTrue("Expected [ " + INVALID_NAME_31_CHARACTERS + "] in error message", e.getMessage().contains(INVALID_NAME_31_CHARACTERS));
@@ -216,7 +216,7 @@ public class TestSchemaValidator {
     final String badSequenceName = "NameWithBadCharacter!";
     try {
       SchemaValidator validator = new SchemaValidator();
-      validator.validate(sequence(badSequenceName, 1, false));
+      validator.validate(sequence(badSequenceName));
       fail("should have thrown an exception");
     } catch (RuntimeException e) {
       assertTrue("Expected [ " + badSequenceName + "] in error message", e.getMessage().contains(badSequenceName));

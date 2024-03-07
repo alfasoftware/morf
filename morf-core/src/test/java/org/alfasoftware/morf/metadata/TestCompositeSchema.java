@@ -39,7 +39,7 @@ public class TestCompositeSchema {
 
   private final Schema schema1 = new SchemaBean(ImmutableList.<Table>of(table("Bobby"), table("Foo"), table("Bar")),
                                                 ImmutableList.of(view("View1", select())),
-                                                ImmutableList.of(sequence("Sequence1", 1, false)));
+                                                ImmutableList.of(sequence("Sequence1")));
   private final Schema schema2 = new SchemaBean(table("BAR"), table("Baz"));
 
 

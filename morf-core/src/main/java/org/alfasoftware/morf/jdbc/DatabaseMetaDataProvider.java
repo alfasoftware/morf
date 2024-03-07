@@ -979,13 +979,8 @@ public class DatabaseMetaDataProvider implements Schema {
       }
 
       @Override
-      public boolean knowsStartsWith() {
-        return false;
-      }
-
-      @Override
       public Integer getStartsWith() {
-        return 0;
+        return null;
       }
 
       @Override

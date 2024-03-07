@@ -467,7 +467,7 @@ public abstract class AbstractSqlDialectTest {
     testView = view("TestView", select(f).from(tr).where(eq(f, new FieldLiteral("blah"))));
 
     //Test sequence
-    testSequence = sequence("TestSequence", 1, false);
+    testSequence = sequence("TestSequence");
 
     TableReference tr1 = new TableReference(OTHER_TABLE);
     testViewWithUnion = view("TestView", select(f).from(tr).where(eq(f, new FieldLiteral("blah")))
@@ -569,7 +569,7 @@ public abstract class AbstractSqlDialectTest {
   @SuppressWarnings("unchecked")
   @Test
   public void testCreateTemporarySequencesStatements() {
-    testSequence = sequence("TestSequence", 1, true);
+    testSequence = sequence("TestSequence").temporary();
 
     compareStatements(
       expectedCreateTemporarySequenceStatements(),
@@ -583,7 +583,7 @@ public abstract class AbstractSqlDialectTest {
   @SuppressWarnings("unchecked")
   @Test
   public void testCreateSequencesStatementWhenNoStartWithSpecified() {
-    testSequence = sequence("TestSequence", null, false);
+    testSequence = sequence("TestSequence").startsWith(null);
 
     compareStatements(
       expectedCreateSequenceStatementsWithNoStartWith(),
@@ -597,7 +597,7 @@ public abstract class AbstractSqlDialectTest {
   @SuppressWarnings("unchecked")
   @Test
   public void testCreateTemporarySequencesStatementWhenNoStartWithSpecified() {
-    testSequence = sequence("TestSequence", null, true);
+    testSequence = sequence("TestSequence").startsWith(null).temporary();
 
     compareStatements(
       expectedCreateTemporarySequenceStatementsWithNoStartWith(),

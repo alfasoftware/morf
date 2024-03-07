@@ -379,11 +379,9 @@ public final class SchemaUtils {
    * Create a sequence.
    *
    * @param sequenceName The name of the sequence.
-   * @param startsWith The integer at which the sequence starts.
-   * @param isTemporary whether the sequence is temporary or not.
    */
-  public static Sequence sequence(String sequenceName, Integer startsWith, boolean isTemporary) {
-    return new SequenceBean(sequenceName, startsWith, isTemporary);
+  public static SequenceBuilder sequence(String sequenceName) {
+    return new SequenceBuilderImpl(sequenceName);
   }
 
 
@@ -449,6 +447,15 @@ public final class SchemaUtils {
       builder = builder.nullable();
     }
     return builder;
+  }
+
+
+  public interface SequenceBuilder extends Sequence {
+
+    public SequenceBuilder startsWith(Integer startWith);
+
+    public SequenceBuilder temporary();
+
   }
 
 
@@ -596,6 +603,29 @@ public final class SchemaUtils {
      */
     public IndexBuilder unique();
   }
+
+
+  private static final class SequenceBuilderImpl extends SequenceBean implements SequenceBuilder {
+
+    private SequenceBuilderImpl(String name) {
+      super(name);
+    }
+
+    private SequenceBuilderImpl(String name, Integer startsWith, boolean isTemporary) {
+      super(name, startsWith, isTemporary);
+    }
+
+    @Override
+    public SequenceBuilder startsWith(Integer startsWith) {
+      return new SequenceBuilderImpl(getName(), startsWith, isTemporary());
+    }
+
+    @Override
+    public SequenceBuilder temporary() {
+      return new SequenceBuilderImpl(getName(), getStartsWith(), true);
+    }
+  }
+
 
   /**
    * Private implementation of {@link TableBuilder}.

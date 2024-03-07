@@ -43,9 +43,9 @@ public class TestFilteredSchema {
     Table mixedCaseTable = table("Mixed").columns(column("col", DataType.STRING, 10).nullable());
     Table upperCaseTable = table("UPPER").columns(column("col", DataType.STRING, 10).nullable());
 
-    Sequence lowerCaseSequence= sequence("lower", 1,false);
-    Sequence mixedCaseSequence = sequence("Mixed", 5, false);
-    Sequence upperCaseSequence = sequence("UPPER", 10, false);
+    Sequence lowerCaseSequence= sequence("lower");
+    Sequence mixedCaseSequence = sequence("Mixed").startsWith(5);
+    Sequence upperCaseSequence = sequence("UPPER").startsWith(10);
 
     Schema testSchema = schema(schema(lowerCaseTable, mixedCaseTable, upperCaseTable),
       schema(),
@@ -71,9 +71,9 @@ public class TestFilteredSchema {
     Table mixedCaseTable = table("Mixed").columns(column("col", DataType.STRING, 10).nullable());
     Table upperCaseTable = table("UPPER").columns(column("col", DataType.STRING, 10).nullable());
 
-    Sequence lowerCaseSequence= sequence("lower", 1,false);
-    Sequence mixedCaseSequence = sequence("Mixed", 5, false);
-    Sequence upperCaseSequence = sequence("UPPER", 10, false);
+    Sequence lowerCaseSequence= sequence("lower").startsWith(1);
+    Sequence mixedCaseSequence = sequence("Mixed").startsWith(5);
+    Sequence upperCaseSequence = sequence("UPPER").startsWith(10);
 
     Schema testSchema = schema(schema(lowerCaseTable, mixedCaseTable, upperCaseTable),
       schema(),

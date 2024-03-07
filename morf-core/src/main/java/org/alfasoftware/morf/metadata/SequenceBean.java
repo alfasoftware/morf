@@ -27,8 +27,6 @@ public class SequenceBean implements Sequence {
 
     private final Integer startsWith;
 
-    private final boolean knowsStartsWith;
-
     private final boolean isTemporary;
 
 
@@ -43,7 +41,6 @@ public class SequenceBean implements Sequence {
         super();
         this.name = name;
         this.startsWith = startsWith;
-        this.knowsStartsWith = startsWith != null;
         this.isTemporary = isTemporary;
     }
 
@@ -56,10 +53,20 @@ public class SequenceBean implements Sequence {
     SequenceBean(Sequence sequence) {
         super();
         this.name = sequence.getName();
-        this.startsWith = sequence.knowsStartsWith() ? sequence.getStartsWith() : null;
-        this.knowsStartsWith = startsWith != null;
+        this.startsWith = sequence.getStartsWith() != null ? sequence.getStartsWith() : null;
         this.isTemporary = sequence.isTemporary();
     }
+
+
+    /**
+     * Creates a sequence bean.
+     *
+     * @param sequenceName Name of the sequence to represent.
+     */
+    SequenceBean(String sequenceName) {
+        this(sequenceName, 1, false);
+    }
+
 
     /**
      * @see Sequence#getName()
@@ -67,15 +74,6 @@ public class SequenceBean implements Sequence {
     @Override
     public String getName() {
         return name;
-    }
-
-
-    /**
-     * @see Sequence#knowsStartsWith()
-     */
-    @Override
-    public boolean knowsStartsWith() {
-        return knowsStartsWith;
     }
 
 

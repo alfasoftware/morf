@@ -124,7 +124,7 @@ public class TestDatabaseMetaDataProvider {
       view("View2", select(field("primaryStringCol"), field("id")).from("ViewWithTypes"), "ViewWithTypes")
     ),
     schema(
-      sequence("Sequence1", 1, false)
+      sequence("Sequence1")
     )
   );
 

@@ -58,9 +58,9 @@ public class TestAddSequence {
 
     bravoTable = table("Bravo").columns(column("col", DataType.STRING, 10).nullable());
 
-    appleSequence = sequence("Apple", 1, false);
+    appleSequence = sequence("Apple");
 
-    mangoSequence = sequence("Mango", 2, true);
+    mangoSequence = sequence("Mango").startsWith(2).temporary();
 
     addSequence = new AddSequence(appleSequence);
 
@@ -127,7 +127,7 @@ public class TestAddSequence {
       schema(mangoSequence, appleSequence));
 
     try {
-      Sequence sequence = sequence("Apple", 1, false);
+      Sequence sequence = sequence("Apple");
       addSequence = new AddSequence(sequence);
       addSequence.apply(testSchema);
       fail("Should fail since sequence is already present");

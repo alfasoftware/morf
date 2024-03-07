@@ -17,6 +17,7 @@ package org.alfasoftware.morf.jdbc.oracle;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -176,14 +177,8 @@ public class TestOracleMetaDataProvider {
     assertEquals("Sequence names", "[SEQUENCE1]", oracleMetaDataProvider.sequenceNames().toString());
     Sequence sequence = oracleMetaDataProvider.sequences().iterator().next();
     assertEquals("Sequence name", "SEQUENCE1", sequence.getName());
-
-    try {
-      Integer startsWith = sequence.getStartsWith();
-      fail("Expected UnsupportedOperationException, got " + startsWith);
-    } catch (UnsupportedOperationException e) {
-      assertEquals("Message", "Cannot return startsWith as [SEQUENCE1] has been loaded from the database",
-        e.getMessage());
-    }
+    assertNull("Sequence starts with", sequence.getStartsWith());
+    assertFalse("Sequence temporary flag", sequence.isTemporary());
 
     verify(statement).setString(1, "TESTSCHEMA");
   }

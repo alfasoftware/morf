@@ -33,7 +33,7 @@ public class CreateTableAsSelectWithSequence extends AbstractTestUpgradeStep {
   }
 
   public static org.alfasoftware.morf.metadata.Sequence sequenceToAdd() {
-    return SchemaUtils.sequence("TableAsSelectSeq", 1 , false);
+    return SchemaUtils.sequence("TableAsSelectSeq");
   }
 
   @Override

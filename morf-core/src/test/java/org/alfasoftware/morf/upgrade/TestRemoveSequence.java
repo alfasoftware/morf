@@ -57,9 +57,9 @@ public class TestRemoveSequence {
 
     bravoTable = table("Bravo").columns(column("col", DataType.STRING, 10).nullable());
 
-    appleSequence = sequence("Apple", 1, false);
+    appleSequence = sequence("Apple");
 
-    mangoSequence = sequence("Mango", 2, false);
+    mangoSequence = sequence("Mango").startsWith(2);
 
     removeSequence = new RemoveSequence(appleSequence);
 
@@ -126,7 +126,7 @@ public class TestRemoveSequence {
       schema(appleSequence));
 
     try {
-      Sequence sequence = sequence("Orange", 5, true);
+      Sequence sequence = sequence("Orange").startsWith(5).temporary();
       removeSequence = new RemoveSequence(sequence);
       removeSequence.apply(testSchema);
       fail("Should fail since sequence is not there");

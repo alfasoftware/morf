@@ -604,14 +604,8 @@ public class OracleMetaDataProvider implements Schema {
             @Override public String getName() { return sequenceName; }
 
             @Override
-            public boolean knowsStartsWith() {
-              return false;
-            }
-
-            @Override
             public Integer getStartsWith() {
-              throw new UnsupportedOperationException("Cannot return startsWith as [" + sequenceName + "] has been " +
-                "loaded from the database");
+              return null;
             }
 
             @Override

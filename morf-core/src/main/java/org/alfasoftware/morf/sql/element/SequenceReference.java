@@ -29,7 +29,6 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 public class SequenceReference extends AliasedField {
 
     private final String name;
-
     private SequenceOperation typeOfOperation;
 
     private SequenceReference(String alias, String name) {
@@ -44,6 +43,19 @@ public class SequenceReference extends AliasedField {
      */
     public SequenceReference(String name) {
         this("", name);
+    }
+
+
+    /**
+     * Constructor used to create the deep copy
+     *
+     * @param sourceSequence the source sequence to copy the values from
+     * @param operation the operation to be performed on the sequence
+     */
+    public SequenceReference(SequenceReference sourceSequence, SequenceOperation operation) {
+        super(sourceSequence.getAlias());
+        this.name = sourceSequence.name;
+        this.typeOfOperation = operation;
     }
 
 
@@ -69,20 +81,31 @@ public class SequenceReference extends AliasedField {
 
     /**
      * Sets the operation type of the sequence to return the next value
-     * @return the {@link SequenceReference}
+     *
+     * @return an updated {@link SequenceReference}
      */
     public SequenceReference nextValue() {
-        this.typeOfOperation = SequenceOperation.NEXT_VALUE;
-        return this;
+        if (immutableDslEnabled()) {
+            return new SequenceReference(this, SequenceOperation.NEXT_VALUE);
+        } else {
+            this.typeOfOperation = SequenceOperation.NEXT_VALUE;
+            return this;
+        }
     }
+
 
     /**
      * Sets the operation type of the sequence to return the current value
-     * @return the {@link SequenceReference}
+     *
+     * @return an updated {@link SequenceReference}
      */
     public SequenceReference currentValue() {
-        this.typeOfOperation = SequenceOperation.CURRENT_VALUE;
-        return this;
+        if (immutableDslEnabled()) {
+            return new SequenceReference(this, SequenceOperation.CURRENT_VALUE);
+        } else {
+            this.typeOfOperation = SequenceOperation.CURRENT_VALUE;
+            return this;
+        }
     }
 
 
@@ -98,7 +121,7 @@ public class SequenceReference extends AliasedField {
      */
     @Override
     protected AliasedFieldBuilder deepCopyInternal(DeepCopyTransformation transformer) {
-        return new SequenceReference(getAlias(), name);
+        return new SequenceReference(this, SequenceReference.this.typeOfOperation);
     }
 
 

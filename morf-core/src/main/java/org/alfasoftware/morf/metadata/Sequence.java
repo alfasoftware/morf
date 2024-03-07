@@ -36,13 +36,6 @@ public interface Sequence {
      */
     public Integer getStartsWith();
 
-
-    /**
-     * @return Will {@link #getStartsWith()} ()} return something useful? If the sequence
-     *   has been loaded from an external store, this may not be the case.
-     */
-    public boolean knowsStartsWith();
-
     /**
      * @return Indicates whether the sequence is temporary
      */

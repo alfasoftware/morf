@@ -54,8 +54,8 @@ public class TestTableSetSchema {
     tables.add(table("Mango").columns(column("smell", DataType.STRING, 10).nullable()));
 
     Set<Sequence> sequences = new HashSet<Sequence>();
-    sequences.add(sequence("First", 1, false));
-    sequences.add(sequence("Second", 5, false));
+    sequences.add(sequence("First"));
+    sequences.add(sequence("Second").startsWith(5));
 
     schema = new TableSetSchema(tables, sequences);
   }

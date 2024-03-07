@@ -38,7 +38,6 @@ import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.SchemaHomology.DifferenceWriter;
 import org.alfasoftware.morf.metadata.View;
-import org.alfasoftware.morf.upgrade.SequenceChanges;
 import org.alfasoftware.morf.upgrade.ViewChanges;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -155,11 +154,6 @@ public class DatabaseSchemaManager {
       // note that if this class deployed the sequence already, then leave it alone as it means the sequence must be based on the current definition
       Collection<Sequence> sequencesToDrop = sequenceCache(producerCache).values().stream().filter(s->!sequencesDeployedByThis.get().contains(s.getName().toUpperCase())).collect(toList());
       Collection<Sequence> sequencesToDeploy = schema.sequences().stream().filter(s->!sequencesDeployedByThis.get().contains(s.getName().toUpperCase())).collect(toList());
-      SequenceChanges sequenceChanges = new SequenceChanges(
-        schema.sequences(),
-        sequencesToDrop,
-        sequencesToDeploy
-      );
 
       Collection<String> sql = Lists.newLinkedList();
 
@@ -177,11 +171,11 @@ public class DatabaseSchemaManager {
         sql.addAll(deployView(view));
       }
 
-      for (Sequence sequence : sequenceChanges.getSequencesToDrop()) {
+      for (Sequence sequence : sequencesToDrop) {
         sql.addAll(dropSequenceIfExists(sequence));
       }
 
-      for (Sequence sequence : sequenceChanges.getSequencesToDeploy()) {
+      for (Sequence sequence : sequencesToDeploy) {
         sql.addAll(deploySequence(sequence));
       }
 

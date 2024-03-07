@@ -67,8 +67,7 @@ public class FilteredSchema extends TableSetSchema {
    * @param removedTables names of tables to remove.
    * @param removedSequences names of sequences to remove
    */
-  public FilteredSchema(final Schema baseSchema, final Collection<String> removedTables,
-                        final String... removedSequences) {
+  public FilteredSchema(final Schema baseSchema, final Collection<String> removedTables, final String... removedSequences) {
     super(Collections2.filter(baseSchema.tables(), not(new Predicate<Table>() {
       @Override
       public boolean apply(Table table) {
