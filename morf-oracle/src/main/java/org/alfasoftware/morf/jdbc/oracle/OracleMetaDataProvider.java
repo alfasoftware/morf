@@ -591,6 +591,11 @@ public class OracleMetaDataProvider implements Schema {
 
     long start = System.currentTimeMillis();
 
+    /**
+     * Here we filter out any sequences which have been created to as part of a table autonumber column as we only want to consider
+     * sequences that are effectively schema level as we do with other dialects.
+     * @see OracleDialect#createNewSequence(Table, Column) for more context on how table level sequences are created.
+     */
     final String sequencesSql = "SELECT sequence_name FROM ALL_SEQUENCES WHERE cache_size != 2000 AND sequence_owner=?";
     runSQL(sequencesSql, new ResultSetHandler() {
       @Override

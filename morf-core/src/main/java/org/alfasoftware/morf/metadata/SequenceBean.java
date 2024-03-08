@@ -53,7 +53,7 @@ public class SequenceBean implements Sequence {
     SequenceBean(Sequence sequence) {
         super();
         this.name = sequence.getName();
-        this.startsWith = sequence.getStartsWith() != null ? sequence.getStartsWith() : null;
+        this.startsWith = sequence.getStartsWith();
         this.isTemporary = sequence.isTemporary();
     }
 
