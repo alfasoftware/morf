@@ -63,7 +63,7 @@ import static org.alfasoftware.morf.util.SchemaValidatorUtil.validateSchemaName;
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-public class DatabaseMetaDataProvider implements Schema {
+public abstract class DatabaseMetaDataProvider implements Schema {
 
   private static final Log log = LogFactory.getLog(DatabaseMetaDataProvider.class);
 
@@ -956,7 +956,7 @@ public class DatabaseMetaDataProvider implements Schema {
    * @return Map of real sequence names.
    */
   protected Map<AName, RealName> loadAllSequenceNames() {
-    final ImmutableMap.Builder<AName, RealName> sequenceNames = ImmutableMap.builder();
+    final ImmutableMap.Builder<AName, RealName> sequences = ImmutableMap.builder();
 
     log.info("Starting read of sequence definitions");
 
@@ -966,7 +966,7 @@ public class DatabaseMetaDataProvider implements Schema {
 
     //If there is no SQL to run, then we should just return an empty map
     if (sequenceSql == null)
-      return sequenceNames.build();
+      return sequences.build();
 
     runSQL(sequenceSql, schemaName, new ResultSetHandler() {
       @Override
@@ -976,14 +976,14 @@ public class DatabaseMetaDataProvider implements Schema {
           if (isSystemSequence(realName)) {
             continue;
           }
-          sequenceNames.put(realName, realName);
+          sequences.put(realName, realName);
         }
       }
     });
 
     long end = System.currentTimeMillis();
 
-    Map<AName, RealName> sequenceNamesMap = sequenceNames.build();
+    Map<AName, RealName> sequenceNamesMap = sequences.build();
 
     log.info(String.format("Read sequence metadata in %dms; %d sequences", end-start, sequenceNamesMap.size()));
     return sequenceNamesMap;
@@ -1048,9 +1048,7 @@ public class DatabaseMetaDataProvider implements Schema {
    * @param schemaName
    * @return
    */
-  protected String buildSequenceSql(String schemaName) {
-    return null;
-  }
+  protected abstract String buildSequenceSql(String schemaName);
 
 
   /**

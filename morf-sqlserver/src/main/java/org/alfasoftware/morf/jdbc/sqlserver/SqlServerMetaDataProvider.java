@@ -27,8 +27,6 @@ import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
 /**
  * Specialisation of {@link DatabaseMetaDataProvider} for SQL Server.
@@ -36,8 +34,6 @@ import org.apache.commons.logging.LogFactory;
  * @author Copyright (c) Alfa Financial Software 2010
  */
 class SqlServerMetaDataProvider extends DatabaseMetaDataProvider {
-
-  private static final Log log = LogFactory.getLog(SqlServerMetaDataProvider.class);
 
   /**
    * Query to fetch identity columns.

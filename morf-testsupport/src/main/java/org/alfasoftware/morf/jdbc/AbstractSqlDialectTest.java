@@ -152,7 +152,6 @@ import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.sql.element.WhenCondition;
 import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.alfasoftware.morf.upgrade.AddColumn;
-import org.alfasoftware.morf.upgrade.AddSequence;
 import org.alfasoftware.morf.upgrade.ChangeColumn;
 import org.alfasoftware.morf.upgrade.ChangeIndex;
 import org.alfasoftware.morf.upgrade.RemoveColumn;
@@ -219,6 +218,8 @@ public abstract class AbstractSqlDialectTest {
   private static final String INT_FIELD = "intField";
   private static final String STRING_FIELD = "stringField";
   private static final String DBLINK_NAME = "MYDBLINKREF";
+
+  private static final String SEQUENCE_NAME = "TestSequence";
 
   protected static final String ID_VALUES_TABLE = "idvalues";
   protected static final String ID_INCREMENTOR_TABLE_COLUMN_VALUE = "nextvalue";
@@ -467,7 +468,7 @@ public abstract class AbstractSqlDialectTest {
     testView = view("TestView", select(f).from(tr).where(eq(f, new FieldLiteral("blah"))));
 
     //Test sequence
-    testSequence = sequence("TestSequence");
+    testSequence = sequence(SEQUENCE_NAME);
 
     TableReference tr1 = new TableReference(OTHER_TABLE);
     testViewWithUnion = view("TestView", select(f).from(tr).where(eq(f, new FieldLiteral("blah")))
@@ -569,7 +570,7 @@ public abstract class AbstractSqlDialectTest {
   @SuppressWarnings("unchecked")
   @Test
   public void testCreateTemporarySequencesStatements() {
-    testSequence = sequence("TestSequence").temporary();
+    testSequence = sequence(SEQUENCE_NAME).temporary();
 
     compareStatements(
       expectedCreateTemporarySequenceStatements(),
@@ -583,7 +584,7 @@ public abstract class AbstractSqlDialectTest {
   @SuppressWarnings("unchecked")
   @Test
   public void testCreateSequencesStatementWhenNoStartWithSpecified() {
-    testSequence = sequence("TestSequence").startsWith(null);
+    testSequence = sequence(SEQUENCE_NAME).startsWith(null);
 
     compareStatements(
       expectedCreateSequenceStatementsWithNoStartWith(),
@@ -597,7 +598,7 @@ public abstract class AbstractSqlDialectTest {
   @SuppressWarnings("unchecked")
   @Test
   public void testCreateTemporarySequencesStatementWhenNoStartWithSpecified() {
-    testSequence = sequence("TestSequence").startsWith(null).temporary();
+    testSequence = sequence(SEQUENCE_NAME).startsWith(null).temporary();
 
     compareStatements(
       expectedCreateTemporarySequenceStatementsWithNoStartWith(),
@@ -5312,7 +5313,7 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL statements for dropping the test database view.
    */
   protected List<String> expectedDropSequenceStatements() {
-    return Arrays.asList("DROP SEQUENCE IF EXISTS " + tableName("TestSequence"));
+    return Arrays.asList("DROP SEQUENCE IF EXISTS " + tableName(SEQUENCE_NAME));
   }
 
 
