@@ -5313,7 +5313,7 @@ public abstract class AbstractSqlDialectTest {
    */
   protected List<String> expectedDropSequenceStatements() {
     return Arrays.asList("DROP SEQUENCE IF EXISTS " + tableName("TestSequence"));
-  };
+  }
 
 
   /**

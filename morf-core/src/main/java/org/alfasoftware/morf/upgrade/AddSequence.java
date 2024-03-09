@@ -20,7 +20,6 @@ import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaValidator;
 import org.alfasoftware.morf.metadata.Sequence;
-import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.adapt.AugmentedSchema;
 import org.alfasoftware.morf.upgrade.adapt.FilteredSchema;
 

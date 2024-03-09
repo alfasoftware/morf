@@ -255,12 +255,7 @@ public class DatabaseSchemaManager {
   private void cacheSequences(Iterable<Sequence> newSequences) {
     // Create disconnected copies of the sequences in case we run across connections/data sources
     Iterable<Sequence> copies = Iterables.transform(newSequences, new CopySequences());
-    sequences.get().putAll(Maps.uniqueIndex(copies, new Function<Sequence, String>() {
-      @Override
-      public String apply(Sequence sequence) {
-        return sequence.getName().toUpperCase();
-      }
-    }));
+    sequences.get().putAll(Maps.uniqueIndex(copies, sequence -> sequence.getName().toUpperCase()));
     sequencesLoaded.set(true);
   }
 
