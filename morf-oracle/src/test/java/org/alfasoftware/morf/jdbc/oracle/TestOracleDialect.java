@@ -47,6 +47,7 @@ import org.alfasoftware.morf.sql.CustomHint;
 import org.alfasoftware.morf.sql.OracleCustomHint;
 import org.alfasoftware.morf.sql.element.ClobFieldLiteral;
 import org.alfasoftware.morf.sql.element.Direction;
+import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -1201,6 +1202,53 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see AbstractSqlDialectTest#expectedCreateSequenceStatements()
+   */
+  @Override
+  protected List<String> expectedCreateSequenceStatements() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence") + " START WITH 1");
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateTemporarySequenceStatements()
+   */
+  @Override
+  protected List<String> expectedCreateTemporarySequenceStatements() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence") + " SESSION START WITH 1");
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateSequenceStatementsWithNoStartWith()
+   * @return
+   */
+  @Override
+  protected List<String> expectedCreateSequenceStatementsWithNoStartWith() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence"));
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateTemporarySequenceStatementsWithNoStartWith()
+   * @return
+   */
+  @Override
+  protected List<String> expectedCreateTemporarySequenceStatementsWithNoStartWith() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence") + " SESSION");
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateTemporarySequenceStatements()
+   */
+  @Override
+  protected List<String> expectedDropSequenceStatements() {
+    return Arrays.asList("DROP SEQUENCE " + tableName("TestSequence"));
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSubstring()
    */
   @Override
@@ -1794,4 +1842,21 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
     return "SELECT stringField FROM TESTSCHEMA.Test MINUS SELECT stringField FROM TESTSCHEMA.Other@MYDBLINKREF ORDER BY stringField NULLS FIRST";
   }
 
+
+  /**
+   * @see AbstractSqlDialectTest#expectedNextValForSequence()
+   */
+  @Override
+  protected String expectedNextValForSequence() {
+    return "SELECT testschema.TESTSEQUENCE.NEXTVAL FROM dual";
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCurrValForSequence()
+   */
+  @Override
+  protected String expectedCurrValForSequence() {
+    return "SELECT testschema.TESTSEQUENCE.CURRVAL FROM dual";
+  }
 }

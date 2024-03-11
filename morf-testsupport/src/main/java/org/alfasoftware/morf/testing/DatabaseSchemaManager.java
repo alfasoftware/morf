@@ -33,9 +33,10 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaHomology;
-import org.alfasoftware.morf.metadata.SchemaHomology.DifferenceWriter;
 import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.metadata.SchemaHomology.DifferenceWriter;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.upgrade.ViewChanges;
 import org.apache.commons.logging.Log;
@@ -81,10 +82,13 @@ public class DatabaseSchemaManager {
   private static final ThreadLocal<SqlDialect> dialect = new ThreadLocal<>();
   private static final ThreadLocal<Map<String, Table>> tables = ThreadLocal.withInitial(HashMap::new);
   private static final ThreadLocal<Map<String, View>> views = ThreadLocal.withInitial(HashMap::new);
+  private static final ThreadLocal<Map<String, Sequence>> sequences = ThreadLocal.withInitial(HashMap::new);
   private static final ThreadLocal<Set<String>> tablesNotNeedingTruncate = ThreadLocal.withInitial(HashSet::new);
   private static final ThreadLocal<Set<String>> viewsDeployedByThis = ThreadLocal.withInitial(HashSet::new);
+  private static final ThreadLocal<Set<String>> sequencesDeployedByThis = ThreadLocal.withInitial(HashSet::new);
   private static final ThreadLocal<Boolean> tablesLoaded = ThreadLocal.withInitial(() -> false);
   private static final ThreadLocal<Boolean> viewsLoaded = ThreadLocal.withInitial(() -> false);
+  private static final ThreadLocal<Boolean> sequencesLoaded = ThreadLocal.withInitial(() -> false);
 
   private final DataSource dataSource;
   private final SqlScriptExecutorProvider executor;
@@ -146,6 +150,11 @@ public class DatabaseSchemaManager {
         viewToDeploy
       );
 
+      // Drop all sequences in the schema and create the ones we need.
+      // note that if this class deployed the sequence already, then leave it alone as it means the sequence must be based on the current definition
+      Collection<Sequence> sequencesToDrop = sequenceCache(producerCache).values().stream().filter(s->!sequencesDeployedByThis.get().contains(s.getName().toUpperCase())).collect(toList());
+      Collection<Sequence> sequencesToDeploy = schema.sequences().stream().filter(s->!sequencesDeployedByThis.get().contains(s.getName().toUpperCase())).collect(toList());
+
       Collection<String> sql = Lists.newLinkedList();
 
       for (View view : changes.getViewsToDeploy()) {
@@ -156,11 +165,18 @@ public class DatabaseSchemaManager {
         sql.addAll(dropViewIfExists(view));
       }
 
-
       sql.addAll(tableStatements);
 
       for (View view: changes.getViewsToDeploy()) {
         sql.addAll(deployView(view));
+      }
+
+      for (Sequence sequence : sequencesToDrop) {
+        sql.addAll(dropSequenceIfExists(sequence));
+      }
+
+      for (Sequence sequence : sequencesToDeploy) {
+        sql.addAll(deploySequence(sequence));
       }
 
       executeScript(sql);
@@ -225,6 +241,25 @@ public class DatabaseSchemaManager {
   }
 
 
+  /**
+   * Returns the cached set of sequences in the database.
+   */
+  private Map<String, Sequence> sequenceCache(ProducerCache producerCache) {
+    if (!sequencesLoaded.get()) {
+      cacheSequences(producerCache.get().getSchema().sequences());
+    }
+    return sequences.get();
+  }
+
+
+  private void cacheSequences(Iterable<Sequence> newSequences) {
+    // Create disconnected copies of the sequences in case we run across connections/data sources
+    Iterable<Sequence> copies = Iterables.transform(newSequences, new CopySequences());
+    sequences.get().putAll(Maps.uniqueIndex(copies, sequence -> sequence.getName().toUpperCase()));
+    sequencesLoaded.set(true);
+  }
+
+
   private Table getTable(ProducerCache producerCache, String name) {
     return tableCache(producerCache).get(name.toUpperCase());
   }
@@ -245,10 +280,13 @@ public class DatabaseSchemaManager {
   private void clearCache() {
     tables.get().clear();
     views.get().clear();
+    sequences.get().clear();
     tablesNotNeedingTruncate.get().clear();
     tablesLoaded.set(false);
     viewsLoaded.set(false);
+    sequencesLoaded.set(false);
     viewsDeployedByThis.get().clear();
+    sequencesDeployedByThis.get().clear();
   }
 
 
@@ -334,6 +372,28 @@ public class DatabaseSchemaManager {
     }
     views.get().clear();
     viewsDeployedByThis.get().clear();
+  }
+
+
+  /**
+   * Drop all sequences.
+   */
+  public void dropAllSequences() {
+    ProducerCache producerCache = new ProducerCache();
+    log.debug("Dropping all sequences");
+    try {
+      Schema databaseSchema = producerCache.get().getSchema();
+      ImmutableList<Sequence> sequencesToDrop = ImmutableList.copyOf(databaseSchema.sequences());
+      List<String> script = Lists.newArrayList();
+      for (Sequence sequence : sequencesToDrop) {
+        script.addAll(dialect.get().dropStatements(sequence));
+      }
+      executeScript(script);
+    } finally {
+      producerCache.close();
+    }
+    sequences.get().clear();
+    sequencesDeployedByThis.get().clear();
   }
 
 
@@ -444,6 +504,33 @@ public class DatabaseSchemaManager {
 
 
   /**
+   * Deploys the specified sequence to the database.
+   *
+   * @param sequence the sequence to deploy
+   */
+  private Collection<String> deploySequence(Sequence sequence) {
+    if (log.isDebugEnabled()) log.debug("Deploying sequence [" + sequence.getName() + "]");
+    sequences.get().put(sequence.getName().toUpperCase(), SchemaUtils.copy(sequence));
+    sequencesDeployedByThis.get().add(sequence.getName().toUpperCase());
+    return dialect.get().sequenceDeploymentStatements(sequence);
+  }
+
+
+  /**
+   * Removes the specified sequence from the database, if it exists.   Otherwise
+   * do nothing.  To allow for JDBC implementations that do not support
+   * conditional dropping of sequences, this will trap and ignore
+   *
+   * @param sequence the sequence to drop
+   */
+  private Collection<String> dropSequenceIfExists(Sequence sequence) {
+    if (log.isDebugEnabled()) log.debug("Dropping any existing sequence [" + sequence.getName() + "]");
+    sequences.get().remove(sequence.getName().toUpperCase());
+    return dialect.get().dropStatements(sequence);
+  }
+
+
+  /**
    * Deploys the specified view to the database.
    *
    * @param view the view to deploy
@@ -503,6 +590,19 @@ public class DatabaseSchemaManager {
       if (producer != null) {
         producer.close();
       }
+    }
+  }
+
+
+  /**
+   * Function which creates copies of sequences.
+   *
+   * @author Copyright (c) Alfa Financial Software 2024
+   */
+  private static class CopySequences implements Function<Sequence, Sequence> {
+    @Override
+    public Sequence apply(Sequence sequence) {
+      return SchemaUtils.copy(sequence);
     }
   }
 

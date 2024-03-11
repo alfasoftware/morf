@@ -22,11 +22,12 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 
 /**
- * Implementation of {@link Schema} which stores a collection of Tables.
+ * Implementation of {@link Schema} which stores a collection of Tables and sequences.
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
@@ -36,14 +37,22 @@ public class TableSetSchema implements Schema {
   private final Set<Table> tables;
 
 
+  /** Set of sequences that constitute this schema*/
+  private final Set<Sequence> sequences;
+
+
   /**
-   * Construct a TableSet which represents the specified set of tables.
+   * Construct a TableSet which represents the specified set of tables and sequences.
    *
    * @param tables that constitute this schema.
+   * @param sequences that constitute this schema
    */
-  public TableSetSchema(Collection<Table> tables) {
+  public TableSetSchema(Collection<Table> tables, Collection<Sequence> sequences) {
     this.tables = new HashSet<>();
+    this.sequences = new HashSet<>();
+
     this.tables.addAll(tables);
+    this.sequences.addAll(sequences);
   }
 
 
@@ -132,5 +141,48 @@ public class TableSetSchema implements Schema {
   @Override
   public Collection<View> views() {
     return Collections.emptySet();
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#sequenceExists(String)
+   */
+  @Override
+  public boolean sequenceExists(String name) {
+    return sequences.stream().anyMatch(sequence -> sequence.getName().equalsIgnoreCase(name));
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#getSequence(String)
+   */
+  @Override
+  public Sequence getSequence(String name) {
+    return sequences.stream()
+      .filter(sequence -> sequence.getName().equalsIgnoreCase(name))
+      .findFirst()
+      .orElseThrow(() -> new IllegalArgumentException(String.format("Requested sequence [%s] does not exist.", name)));
+  }
+
+
+  /**
+   * @see Schema#sequenceNames()
+   */
+  @Override
+  public Collection<String> sequenceNames() {
+    ArrayList<String> names = new ArrayList<>();
+    for (Sequence sequence : sequences) {
+      names.add(sequence.getName());
+    }
+    return names;
+  }
+
+
+  /**
+   * @see Schema#sequences()
+   */
+  @Override
+  public Collection<Sequence> sequences() {
+    return Collections.unmodifiableCollection(sequences);
   }
 }

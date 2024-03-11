@@ -22,6 +22,7 @@ import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.DataValueLookup;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.DeleteStatement;
@@ -43,6 +44,7 @@ import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.FunctionType;
+import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
@@ -96,6 +98,16 @@ class PostgreSQLDialect extends SqlDialect {
     }
     return schemaNamePrefix();
   }
+
+
+  @Override
+  protected String schemaNamePrefix(Sequence sequence) {
+    if (sequence.isTemporary()) {
+      return "";
+    }
+    return schemaNamePrefix();
+  }
+
 
 
   @Override
@@ -179,6 +191,17 @@ class PostgreSQLDialect extends SqlDialect {
   }
 
 
+  /**
+   * @see SqlDialect#internalSequenceDeploymentStatements(Sequence)
+   */
+  @Override
+  protected Collection<String> internalSequenceDeploymentStatements(Sequence sequence) {
+    return ImmutableList.<String>builder()
+        .add(createSequenceStatement(sequence))
+        .build();
+  }
+
+
   @Override
   public Collection<String> addTableFromStatementsWithCasting(Table table, SelectStatement selectStatement) {
     return internalAddTableFromStatements(table, selectStatement, true);
@@ -239,6 +262,35 @@ class PostgreSQLDialect extends SqlDialect {
     statements.addAll(postStatements);
 
     return statements.build();
+  }
+
+
+  /**
+   * Private method to form the SQL statement required to create a sequence in the schema.
+   *
+   * @param sequence The {@link Sequence} for which a create sequence SQL statement should be created.
+   * @return A create sequence SQL statement
+   */
+  private String createSequenceStatement(Sequence sequence) {
+
+    StringBuilder createSequenceStatement = new StringBuilder();
+    createSequenceStatement.append("CREATE ");
+
+    if (sequence.isTemporary()) {
+      createSequenceStatement.append("TEMPORARY ");
+    }
+
+    createSequenceStatement.append("SEQUENCE ")
+        .append(schemaNamePrefix(sequence))
+        .append(sequence.getName());
+
+    if (sequence.getStartsWith() != null) {
+      createSequenceStatement.append(" START WITH ");
+      createSequenceStatement.append(sequence.getStartsWith());
+    }
+
+    return createSequenceStatement.toString();
+
   }
 
 
@@ -594,6 +646,30 @@ class PostgreSQLDialect extends SqlDialect {
     return sqlBuilder.toString();
   }
 
+
+  /**
+   * @see SqlDialect#getSqlFrom(SequenceReference)
+   */
+  @Override
+  protected String getSqlFrom(SequenceReference sequenceReference) {
+    StringBuilder result = new StringBuilder();
+
+    switch (sequenceReference.getTypeOfOperation()) {
+      case NEXT_VALUE:
+        result.append("nextval('");
+        break;
+      case CURRENT_VALUE:
+        result.append("currval('");
+        break;
+    }
+
+    result.append(sequenceReference.getName());
+
+    result.append("')");
+
+    return result.toString();
+
+  }
 
   @Override
   protected String getSqlFrom(MergeStatement.InputField field) {

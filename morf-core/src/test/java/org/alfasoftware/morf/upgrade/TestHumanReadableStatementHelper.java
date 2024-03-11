@@ -26,6 +26,8 @@ import static org.junit.Assert.assertTrue;
 import java.util.List;
 
 import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
@@ -801,5 +803,29 @@ public class TestHumanReadableStatementHelper {
     assertEquals("Incorrect string generated",
       String.format("%n    - Set bar to (foo + 42)"),
       HumanReadableStatementHelper.generateAliasedFieldAssignmentString(bracketExpression));
+  }
+
+
+  /**
+   * Tests the generation of "Add Sequence" text.
+   */
+  @Test
+  public void testAddSequenceGeneration() {
+    final Sequence sequence = SchemaUtils.sequence("Test");
+
+    assertEquals("Incorrect string generated", "Create sequence " + sequence.getName() + " starting with " + sequence.getStartsWith(),
+      HumanReadableStatementHelper.generateAddSequenceString(sequence));
+  }
+
+
+  /**
+   * Tests the generation of "Remove Sequence" text.
+   */
+  @Test
+  public void testRemoveSequenceGeneration() {
+    final Sequence sequence = SchemaUtils.sequence("Test");
+
+    assertEquals("Incorrect string generated", "Remove sequence " + sequence.getName(),
+      HumanReadableStatementHelper.generateRemoveSequenceString(sequence));
   }
 }

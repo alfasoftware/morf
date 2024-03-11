@@ -15,11 +15,7 @@
 
 package org.alfasoftware.morf.metadata;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.column;
-import static org.alfasoftware.morf.metadata.SchemaUtils.index;
-import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
-import static org.alfasoftware.morf.metadata.SchemaUtils.table;
-import static org.alfasoftware.morf.metadata.SchemaUtils.view;
+import static org.alfasoftware.morf.metadata.SchemaUtils.*;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.junit.Assert.assertFalse;
@@ -186,6 +182,44 @@ public class TestSchemaValidator {
       fail("should have thrown an exception");
     } catch (RuntimeException e) {
       assertTrue("Expected [ " + badViewName + "] in error message", e.getMessage().contains(badViewName));
+    }
+  }
+
+
+  /**
+   * Tests a schema containing sequence names which should be valid.
+   */
+  @Test
+  public void testValidSequenceNames() {
+    SchemaValidator validator = new SchemaValidator();
+    validator.validate(sequence("Sequence_with_underscores"));
+    validator.validate(sequence(EDGE_CASE_VALID_NAME_30_CHARACTERS));
+    validator.validate(sequence("ABCDEFGHIJKLMNOPQRSTUVWXYZ"));
+    validator.validate(sequence("abcdefghijklmnopqrstuvwxyz"));
+    validator.validate(sequence("a1234567890"));
+  }
+
+
+  /**
+   * Tests a schema containing sequence names which should not be valid.
+   */
+  @Test
+  public void testInvalidSequenceNames() {
+    try {
+      SchemaValidator validator = new SchemaValidator();
+      validator.validate(sequence(INVALID_NAME_31_CHARACTERS));
+      fail("should have thrown an exception");
+    } catch (RuntimeException e) {
+      assertTrue("Expected [ " + INVALID_NAME_31_CHARACTERS + "] in error message", e.getMessage().contains(INVALID_NAME_31_CHARACTERS));
+    }
+
+    final String badSequenceName = "NameWithBadCharacter!";
+    try {
+      SchemaValidator validator = new SchemaValidator();
+      validator.validate(sequence(badSequenceName));
+      fail("should have thrown an exception");
+    } catch (RuntimeException e) {
+      assertTrue("Expected [ " + badSequenceName + "] in error message", e.getMessage().contains(badSequenceName));
     }
   }
 

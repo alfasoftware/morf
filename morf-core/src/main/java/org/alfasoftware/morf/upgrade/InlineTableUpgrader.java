@@ -275,4 +275,24 @@ public class InlineTableUpgrader implements SchemaChangeVisitor {
     currentSchema = analyseTable.apply(currentSchema);
     writeStatements(sqlDialect.getSqlForAnalyseTable(currentSchema.getTable(analyseTable.getTableName())));
   }
+
+
+  /**
+   * @see org.alfasoftware.morf.upgrade.SchemaChangeVisitor#visit(org.alfasoftware.morf.upgrade.AddSequence)
+   */
+  @Override
+  public void visit(AddSequence addSequence) {
+    currentSchema = addSequence.apply(currentSchema);
+    writeStatements(sqlDialect.sequenceDeploymentStatements(addSequence.getSequence()));
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.upgrade.SchemaChangeVisitor#visit(org.alfasoftware.morf.upgrade.RemoveSequence)
+   */
+  @Override
+  public void visit(RemoveSequence removeSequence) {
+    currentSchema = removeSequence.apply(currentSchema);
+    writeStatements(sqlDialect.dropStatements(removeSequence.getSequence()));
+  }
 }

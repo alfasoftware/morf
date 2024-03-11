@@ -43,13 +43,14 @@ import java.util.stream.Collectors;
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataSetUtils;
-import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.DataValueLookup;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.AbstractSelectStatement;
 import org.alfasoftware.morf.sql.DeleteStatement;
@@ -87,6 +88,7 @@ import org.alfasoftware.morf.sql.element.MathsField;
 import org.alfasoftware.morf.sql.element.MathsOperator;
 import org.alfasoftware.morf.sql.element.NullFieldLiteral;
 import org.alfasoftware.morf.sql.element.Operator;
+import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.sql.element.WhenCondition;
@@ -207,6 +209,15 @@ public abstract class SqlDialect {
    * @return The statements required to deploy the table.
    */
   protected abstract Collection<String> internalTableDeploymentStatements(Table table);
+
+
+  /**
+   * Creates the SQL to deploy a database sequence.
+   *
+   * @param sequence The meta data for the sequence to deploy.
+   * @return The statements required to deploy the table.
+   */
+  protected abstract Collection<String> internalSequenceDeploymentStatements(Sequence sequence);
 
 
   /**
@@ -805,6 +816,15 @@ public abstract class SqlDialect {
 
 
   /**
+   * @param sequence The sequence for which the schema name will be retrieved
+   * @return Base implementation calls {@link #schemaNamePrefix()}.
+   */
+  protected String schemaNamePrefix(@SuppressWarnings("unused") Sequence sequence) {
+    return schemaNamePrefix();
+  }
+
+
+  /**
    * @param tableRef The table for which the schema name will be retrieved
    * @return full table name that includes a schema name and DB-link if present
    */
@@ -854,6 +874,33 @@ public abstract class SqlDialect {
    */
   public Collection<String> dropStatements(View view) {
     return ImmutableList.of("DROP VIEW " + schemaNamePrefix() + view.getName() + " IF EXISTS CASCADE");
+  }
+
+
+  /**
+   * Creates SQL to deploy a database sequence.
+   *
+   * @param sequence The meta data for the sequence to deploy.
+   * @return The statements required to deploy the sequence.
+   */
+  public Collection<String> sequenceDeploymentStatements(Sequence sequence) {
+    Builder<String> statements = ImmutableList.<String>builder();
+
+    // Create the table deployment statement
+    statements.addAll(internalSequenceDeploymentStatements(sequence));
+
+    return statements.build();
+  }
+
+
+  /**
+   * Creates SQL to drop the named sequence.
+   *
+   * @param sequence The sequence to drop
+   * @return The SQL statements as strings.
+   */
+  public Collection<String> dropStatements(Sequence sequence) {
+    return ImmutableList.of("DROP SEQUENCE IF EXISTS " + schemaNamePrefix() + sequence.getName());
   }
 
 
@@ -1718,6 +1765,10 @@ public abstract class SqlDialect {
     if (field instanceof MergeStatement.InputField) {
       return getSqlFrom((MergeStatement.InputField) field);
     }
+    
+    if (field instanceof SequenceReference) {
+      return getSqlFrom((SequenceReference) field);
+    }
 
     throw new IllegalArgumentException("Aliased Field of type [" + field.getClass().getSimpleName() + "] is not supported");
   }
@@ -1799,6 +1850,15 @@ public abstract class SqlDialect {
 
 
   /**
+   * Converts the operation on the sequence into SQL.
+   *
+   * @param sequenceReference the sequence on which the operation is being performed.
+   * @return a string representation of the SQL.
+   */
+  protected abstract String getSqlFrom(SequenceReference sequenceReference);
+
+
+  /**
    * Default implementation will just return the Base64 representation of the binary data, which may not necessarily work with all SQL dialects.
    * Hence appropriate conversions to the appropriate type based on facilities provided by the dialect's SQL vendor implementation should be used.
    *
@@ -1808,6 +1868,7 @@ public abstract class SqlDialect {
   protected String getSqlFrom(BlobFieldLiteral field) {
     return String.format("'%s'", field.getValue());
   }
+
 
   /**
    * Default implementation will just return the Field literal implementation of the getSqlFrom method.

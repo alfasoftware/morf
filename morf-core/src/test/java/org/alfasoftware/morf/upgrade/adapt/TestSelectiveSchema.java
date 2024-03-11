@@ -15,12 +15,11 @@
 
 package org.alfasoftware.morf.upgrade.adapt;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.column;
-import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
-import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.alfasoftware.morf.metadata.SchemaUtils.*;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import org.alfasoftware.morf.metadata.Sequence;
 import org.junit.Test;
 
 import org.alfasoftware.morf.metadata.DataType;
@@ -42,11 +41,23 @@ public class TestSelectiveSchema {
     Table lowerCaseTable = table("lower").columns(column("col", DataType.STRING, 10).nullable());
     Table mixedCaseTable = table("Mixed").columns(column("col", DataType.STRING, 10).nullable());
     Table upperCaseTable = table("UPPER").columns(column("col", DataType.STRING, 10).nullable());
-    Schema testSchema = schema(lowerCaseTable, mixedCaseTable, upperCaseTable);
+
+    Sequence lowerCaseSequence = sequence("lowersequence");
+    Sequence mixedCaseSequence = sequence("MixedSequence").startsWith(5);
+    Sequence upperCaseSequence = sequence("UPPERSEQUENCE").startsWith(10);
+
+    Schema testSchema = schema(
+      schema(lowerCaseTable, mixedCaseTable, upperCaseTable),
+      schema(lowerCaseSequence, mixedCaseSequence, upperCaseSequence)
+    );
 
     TableSetSchema schema = new SelectiveSchema(testSchema, "LOWER", "upPEr");
     assertTrue("Lowercase table exists ", schema.tableExists("lower"));
     assertFalse("Mixed case table exists", schema.tableExists("Mixed"));
     assertTrue("Uppercase table exists", schema.tableExists("UPPER"));
+
+    assertFalse("Lowercase sequence exists ", schema.sequenceExists("lowersequence"));
+    assertFalse("Mixed case sequence exists", schema.sequenceExists("MixedSequence"));
+    assertFalse("Uppercase sequence exists", schema.sequenceExists("UPPERSEQUENCE"));
   }
 }

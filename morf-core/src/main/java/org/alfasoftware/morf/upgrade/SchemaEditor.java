@@ -20,6 +20,7 @@ import java.util.List;
 
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.UpdateStatement;
@@ -238,5 +239,21 @@ public interface SchemaEditor {
   default void addPrimaryKey(String tableName, List<String> newPrimaryKeyColumns){
     changePrimaryKeyColumns(tableName, Collections.emptyList(), newPrimaryKeyColumns);
   }
+
+
+  /**
+   * Causes an add sequence schema change to be added to the change sequence.
+   *
+   * @param sequence {@link Sequence} to be added.
+   */
+  public void addSequence(Sequence sequence);
+
+
+  /**
+   * Causes a remove sequence schema change to be added to the change sequence.
+   *
+   * @param sequence {@link Sequence} to be removed.
+   */
+  public void removeSequence(Sequence sequence);
 
 }

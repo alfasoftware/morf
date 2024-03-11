@@ -812,6 +812,44 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedCreateViewStatements()
+   */
+  @Override
+  protected List<String> expectedCreateSequenceStatements() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence") + " START WITH 1");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedCreateViewStatements()
+   */
+  @Override
+  protected List<String> expectedCreateTemporarySequenceStatements() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence") + " START WITH 1");
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateSequenceStatementsWithNoStartWith()
+   * @return
+   */
+  @Override
+  protected List<String> expectedCreateSequenceStatementsWithNoStartWith() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence"));
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateTemporarySequenceStatementsWithNoStartWith()
+   * @return
+   */
+  @Override
+  protected List<String> expectedCreateTemporarySequenceStatementsWithNoStartWith() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence"));
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedYYYYMMDDToDate()
    */
   @Override
@@ -1277,5 +1315,24 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedSelectWithExceptAndDbLinkLatter() {
     return null;
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedNextValForSequence()
+   * @return
+   */
+  @Override
+  protected String expectedNextValForSequence() {
+    return "SELECT TestSequence.NEXTVAL FROM dual";
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCurrValForSequence()
+   */
+  @Override
+  protected String expectedCurrValForSequence() {
+    return "SELECT TestSequence.CURRVAL FROM dual";
   }
 }

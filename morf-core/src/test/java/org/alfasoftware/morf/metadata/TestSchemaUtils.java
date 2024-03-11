@@ -71,23 +71,29 @@ public class TestSchemaUtils {
   public void testCopySchemaWithExclusions() {
     String excludePrefix = "^EXCLUDE_.*$";
     String excludeMatch= "^Drivers$";
+    String exlcudeSequenceMatch = "^SequenceExclude$";
 
     Schema schema  = new SchemaBean(ImmutableList.<Table>of(table("EXCLUDE_Boo"), table("EXCLUDE_Foo"), table("table1"), table("table2")),
-      ImmutableList.of(SchemaUtils.view("Driver", select()), SchemaUtils.view("Drivers", select())));
+      ImmutableList.of(SchemaUtils.view("Driver", select()), SchemaUtils.view("Drivers", select())),
+      ImmutableList.of(SchemaUtils.sequence("Sequence1"), SchemaUtils.sequence("SequenceExclude")));
 
     assertEquals("4 tables should exist", 4, schema.tables().size());
     assertEquals("2 views should exist", 2, schema.views().size());
+    assertEquals("2 sequences should exist", 2, schema.sequences().size());
     assertTrue(schema.tables().stream().anyMatch(t -> t.getName().equals("EXCLUDE_Boo")));
     assertTrue(schema.views().stream().anyMatch(t -> t.getName().equals("Drivers")));
+    assertTrue(schema.sequences().stream().anyMatch(t -> t.getName().equals("SequenceExclude")));
 
     //method under test
-    schema = copy(schema, Lists.newArrayList(excludePrefix, excludeMatch));
+    schema = copy(schema, Lists.newArrayList(excludePrefix, excludeMatch, exlcudeSequenceMatch));
 
-    //...assert during the copy excluded tables and views are being removed
+    //...assert during the copy excluded tables, views and sequences are being removed
     assertEquals("2 tables should exist", 2, schema.tables().size());
     assertEquals("1 view should exist", 1, schema.views().size());
+    assertEquals("1 sequence should exist", 1, schema.sequences().size());
     assertFalse(schema.tables().stream().anyMatch(t -> Objects.equals(t.getName(), excludePrefix)));
     assertFalse(schema.views().stream().anyMatch(t -> Objects.equals(t.getName(), excludeMatch)));
+    assertFalse(schema.sequences().stream().anyMatch(t -> Objects.equals(t.getName(), exlcudeSequenceMatch)));
   }
 
 

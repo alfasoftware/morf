@@ -108,6 +108,44 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see AbstractSqlDialectTest#expectedCreateSequenceStatements()
+   */
+  @Override
+  protected List<String> expectedCreateSequenceStatements() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence") + " START WITH 1");
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateTemporarySequenceStatements()
+   */
+  @Override
+  protected List<String> expectedCreateTemporarySequenceStatements() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence") + " START WITH 1");
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateSequenceStatementsWithNoStartWith()
+   * @return
+   */
+  @Override
+  protected List<String> expectedCreateSequenceStatementsWithNoStartWith() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence"));
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateTemporarySequenceStatementsWithNoStartWith()
+   * @return
+   */
+  @Override
+  protected List<String> expectedCreateTemporarySequenceStatementsWithNoStartWith() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence"));
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDropTableStatements()
    */
   @Override
@@ -1407,5 +1445,23 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedSelectWithExceptAndDbLinkLatter() {
     return null;
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedNextValForSequence()
+   */
+  @Override
+  protected String expectedNextValForSequence() {
+    return "SELECT NEXT VALUE FOR TestSequence";
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCurrValForSequence()
+   */
+  @Override
+  protected String expectedCurrValForSequence() {
+    return "SELECT (SELECT current_value FROM sys.sequences WHERE name = 'TestSequence')";
   }
 }

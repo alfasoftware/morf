@@ -17,6 +17,7 @@ package org.alfasoftware.morf.jdbc;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -37,9 +38,10 @@ import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Sequence;
+import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
 import org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder;
-import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.apache.commons.logging.Log;
@@ -61,7 +63,7 @@ import static org.alfasoftware.morf.util.SchemaValidatorUtil.validateSchemaName;
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-public class DatabaseMetaDataProvider implements Schema {
+public abstract class DatabaseMetaDataProvider implements Schema {
 
   private static final Log log = LogFactory.getLog(DatabaseMetaDataProvider.class);
 
@@ -104,6 +106,9 @@ public class DatabaseMetaDataProvider implements Schema {
 
   private final Supplier<Map<AName, RealName>> viewNames = Suppliers.memoize(this::loadAllViewNames);
   private final LoadingCache<AName, View> viewCache = CacheBuilder.newBuilder().build(CacheLoader.from(this::loadView));
+
+  private final Supplier<Map<AName, RealName>> sequenceNames = Suppliers.memoize(this::loadAllSequenceNames);
+  private final LoadingCache<AName, Sequence> sequenceCache = CacheBuilder.newBuilder().build(CacheLoader.from(this::loadSequence));
 
 
   /**
@@ -195,6 +200,44 @@ public class DatabaseMetaDataProvider implements Schema {
   @Override
   public Collection<View> views() {
     return viewNames.get().values().stream().map(RealName::getRealName).map(this::getView).collect(Collectors.toList());
+  }
+
+
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#sequenceExists(String)
+   */
+  @Override
+  public boolean sequenceExists(String name) {
+    return sequenceNames.get().containsKey(named(name));
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#getSequence(String)
+   */
+  @Override
+  public Sequence getSequence(String name) {
+    return sequenceCache.getUnchecked(named(name));
+  }
+
+
+  /**
+   * @see Schema#sequenceNames()
+   */
+  @Override
+  public Collection<String> sequenceNames() {
+    return sequenceNames.get().values().stream().map(RealName::getRealName).collect(Collectors.toList());
+  }
+
+
+  /**
+   * @see Schema#sequences()
+   */
+  @Override
+  public Collection<Sequence> sequences() {
+    return sequenceNames.get().values().stream().map(RealName::getRealName).map(this::getSequence).collect(Collectors.toList());
   }
 
 
@@ -294,6 +337,19 @@ public class DatabaseMetaDataProvider implements Schema {
 
 
   /**
+   * Identify whether or not the sequence is one owned by the system, or owned by
+   * our application. The default implementation assumes that all sequences we can
+   * access in the schema are under our control.
+   *
+   * @param sequenceName The sequence which we are accessing.
+   * @return <var>true</var> if the sequence is owned by the system
+   */
+  protected boolean isSystemSequence(@SuppressWarnings("unused") RealName sequenceName) {
+    return false;
+  }
+
+
+  /**
    * Identify whether or not the specified table should be ignored in the metadata. This is
    * typically used to filter temporary tables.
    *
@@ -313,6 +369,18 @@ public class DatabaseMetaDataProvider implements Schema {
    * @return <var>true</var> if the table should be ignored, false otherwise.
    */
   protected boolean isIgnoredView(@SuppressWarnings("unused") RealName viewName) {
+    return false;
+  }
+
+
+  /**
+   * Identify whether or not the specified sequence should be ignored in the metadata. This is
+   * typically used to filter temporary sequence.
+   *
+   * @param sequenceName The sequence which we are accessing.
+   * @return <var>true</var> if the sequence should be ignored, false otherwise.
+   */
+  protected boolean isIgnoredSequence(@SuppressWarnings("unused") RealName sequenceName) {
     return false;
   }
 
@@ -826,6 +894,19 @@ public class DatabaseMetaDataProvider implements Schema {
 
 
   /**
+   * Retrieves sequence name from a result set.
+   *
+   * @param sequenceResultSet Result set to be read.
+   * @return Name of the sequence.
+   * @throws SQLException Upon errors.
+   */
+  protected RealName readSequenceName(ResultSet sequenceResultSet) throws SQLException {
+    String sequenceName = sequenceResultSet.getString(1);
+    return createRealName(sequenceName, sequenceName);
+  }
+
+
+  /**
    * Loads a view.
    *
    * @param viewName Name of the view.
@@ -868,6 +949,80 @@ public class DatabaseMetaDataProvider implements Schema {
 
 
   /**
+   * Creates a map of all sequence names, indexed by their case-agnostic names. The sequences are retrieved from the
+   * JDBC connection as a result set, where the result set is converted into a map of real sequence names with system
+   * sequences not included.
+   *
+   * @return Map of real sequence names.
+   */
+  protected Map<AName, RealName> loadAllSequenceNames() {
+    final ImmutableMap.Builder<AName, RealName> sequences = ImmutableMap.builder();
+
+    log.info("Starting read of sequence definitions");
+
+    long start = System.currentTimeMillis();
+
+    String sequenceSql = buildSequenceSql(schemaName);
+
+    //If there is no SQL to run, then we should just return an empty map
+    if (sequenceSql == null)
+      return sequences.build();
+
+    runSQL(sequenceSql, schemaName, new ResultSetHandler() {
+      @Override
+      public void handle(ResultSet resultSet) throws SQLException {
+        while (resultSet.next()) {
+          RealName realName = readSequenceName(resultSet);
+          if (isSystemSequence(realName)) {
+            continue;
+          }
+          sequences.put(realName, realName);
+        }
+      }
+    });
+
+    long end = System.currentTimeMillis();
+
+    Map<AName, RealName> sequenceNamesMap = sequences.build();
+
+    log.info(String.format("Read sequence metadata in %dms; %d sequences", end-start, sequenceNamesMap.size()));
+    return sequenceNamesMap;
+  }
+
+
+  /**
+   * Loads a sequence.
+   *
+   * @param sequenceName Name of the sequence.
+   * @return The sequence metadata.
+   */
+  protected Sequence loadSequence(AName sequenceName) {
+    final RealName realSequenceName = sequenceNames.get().get(sequenceName);
+
+    if (realSequenceName == null) {
+      throw new IllegalArgumentException("Sequence [" + sequenceName + "] not found.");
+    }
+
+    return new Sequence() {
+      @Override
+      public String getName() {
+        return realSequenceName.getRealName();
+      }
+
+      @Override
+      public Integer getStartsWith() {
+        return null;
+      }
+
+      @Override
+      public boolean isTemporary() {
+        return false;
+      }
+    };
+  }
+
+
+  /**
    * Creates {@link AName} for searching the maps within this metadata provider.
    *
    * <p>
@@ -885,6 +1040,60 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   protected static AName named(String name) {
     return new AName(name);
+  }
+
+
+  /**
+   * Build the SQL to return sequence information from the metadata.
+   * @param schemaName
+   * @return
+   */
+  protected abstract String buildSequenceSql(String schemaName);
+
+
+  /**
+   * Run some SQL, and tidy up afterwards.
+   *
+   * Note this assumes a predicate on the schema name will be present with a single parameter in position "1".
+   *
+   * @param sql The SQL to run.
+   * @param handler The handler to handle the result-set.
+   */
+  protected void runSQL(String sql, String schemaName, ResultSetHandler handler) {
+    try {
+      PreparedStatement statement = connection.prepareStatement(sql);
+      try {
+
+        // pass through the schema name
+        if (schemaName != null && !schemaName.isBlank()) {
+          statement.setString(1, schemaName);
+        }
+
+        ResultSet resultSet = statement.executeQuery();
+        try {
+          handler.handle(resultSet);
+        } finally {
+          resultSet.close();
+        }
+      } finally {
+        statement.close();
+      }
+    } catch (SQLException sqle) {
+      throw new RuntimeSqlException("Error running SQL: " + sql, sqle);
+    }
+  }
+
+
+  /**
+   * Handler for {@link ResultSet}s from some SQL.
+   */
+  protected interface ResultSetHandler {
+    /**
+     * handle the results.
+     * @param resultSet The result set to handle
+     * @throws SQLException If an db exception occurs.
+     */
+    void handle(ResultSet resultSet) throws SQLException;
   }
 
 

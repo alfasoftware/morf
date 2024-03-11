@@ -43,12 +43,13 @@ import org.alfasoftware.morf.dataset.DataSetProducer;
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataSetUtils;
-import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.xml.XmlStreamProvider.XmlInputStreamProvider;
 import org.apache.commons.lang3.StringUtils;
@@ -365,6 +366,43 @@ public class XmlDataSetProducer implements DataSetProducer {
     public Collection<View> views() {
       return Collections.emptySet();
     }
+
+
+    /**
+     * @see org.alfasoftware.morf.metadata.Schema#sequenceExists(String)
+     */
+    @Override
+    public boolean sequenceExists(String name) {
+      return false;
+    }
+
+
+    /**
+     * @see org.alfasoftware.morf.metadata.Schema#getSequence(String)
+     */
+    @Override
+    public Sequence getSequence(String name) {
+      throw new IllegalArgumentException("No sequence named [" + name + "]. Sequences not supported in XML datasets");
+    }
+
+
+    /**
+     * @see Schema#sequenceNames()
+     */
+    @Override
+    public Collection<String> sequenceNames() {
+      return Collections.emptySet();
+    }
+
+
+    /**
+     * @see Schema#sequences()
+     */
+    @Override
+    public Collection<Sequence> sequences() {
+      return Collections.emptySet();
+    }
+
   }
 
 

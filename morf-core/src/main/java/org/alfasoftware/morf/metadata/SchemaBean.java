@@ -46,7 +46,13 @@ class SchemaBean implements Schema {
 
 
   /**
-   * Creates a schema. Views and tables from the schema are cloned.
+   * Holds all the Sequences represented in this schema.
+   */
+  private final Map<String, Sequence> sequences = new HashMap<>();
+
+
+  /**
+   * Creates a schema. Views, tables, and sequences from the schema are cloned.
    *
    * @param schema Schema to copy.
    */
@@ -61,6 +67,11 @@ class SchemaBean implements Schema {
       View clone = copy(view);
       views.put(clone.getName().toUpperCase(), clone);
     }
+
+    for (Sequence sequence : schema.sequences()) {
+      Sequence clone = copy(sequence);
+      sequences.put(clone.getName().toUpperCase(), clone);
+    }
   }
 
 
@@ -68,7 +79,7 @@ class SchemaBean implements Schema {
    * Create an empty schema.
    */
   SchemaBean() {
-    this(Collections.<Table>emptyList(), Collections.<View>emptyList());
+    this(Collections.<Table>emptyList(), Collections.<View>emptyList(), Collections.<Sequence>emptyList());
   }
 
 
@@ -78,7 +89,7 @@ class SchemaBean implements Schema {
    * @param tables The tables included in the schema.
    */
   SchemaBean(Table... tables) {
-    this(ImmutableList.copyOf(tables), Collections.<View>emptyList());
+    this(ImmutableList.copyOf(tables), Collections.<View>emptyList(), Collections.<Sequence>emptyList());
   }
 
 
@@ -88,7 +99,17 @@ class SchemaBean implements Schema {
    * @param views The views included in the schema.
    */
   SchemaBean(View... views) {
-    this(Collections.<Table>emptyList(), ImmutableList.copyOf(views));
+    this(Collections.<Table>emptyList(), ImmutableList.copyOf(views), Collections.<Sequence>emptyList());
+  }
+
+
+  /**
+   * Creates a schema.
+   *
+   * @param sequences The sequences included in the schema.
+   */
+  SchemaBean(Sequence... sequences) {
+    this(Collections.<Table>emptyList(), Collections.<View>emptyList(), ImmutableList.copyOf(sequences));
   }
 
 
@@ -97,8 +118,9 @@ class SchemaBean implements Schema {
    *
    * @param tables The tables included in the schema.
    * @param views The views included in the schema.
+   * @param sequences The sequences included in the schema
    */
-  SchemaBean(Iterable<Table> tables, Iterable<View> views) {
+  SchemaBean(Iterable<Table> tables, Iterable<View> views, Iterable<Sequence> sequences) {
     super();
     for (Table table : tables) {
       this.tables.put(table.getName().toUpperCase(), table);
@@ -106,6 +128,10 @@ class SchemaBean implements Schema {
 
     for (View view : views) {
       this.views.put(view.getName().toUpperCase(), view);
+    }
+
+    for (Sequence sequence: sequences) {
+      this.sequences.put(sequence.getName().toUpperCase(), sequence);
     }
   }
 
@@ -116,7 +142,7 @@ class SchemaBean implements Schema {
    * @param tables The tables included in the schema.
    */
   SchemaBean(Iterable<Table> tables) {
-    this(tables, Collections.<View>emptyList());
+    this(tables, Collections.<View>emptyList(), Collections.<Sequence>emptyList());
   }
 
 
@@ -221,8 +247,49 @@ class SchemaBean implements Schema {
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#sequenceExists(String)
+   */
+  @Override
+  public boolean sequenceExists(String name) {
+    return sequences.containsKey(name.toUpperCase());
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#getSequence(String)
+   */
+  @Override
+  public Sequence getSequence(String name) {
+    return sequences.get(name.toUpperCase());
+  }
+
+
+  /**
+   * @see Schema#sequenceNames()
+   */
+  @Override
+  public Collection<String> sequenceNames() {
+    // Implemented like this rather than sequences.keySet() to retain case
+    Set<String> names = new HashSet<>();
+    for (Sequence sequence : sequences.values()) {
+      names.add(sequence.getName());
+    }
+    return names;
+  }
+
+
+  /**
+   * @see Schema#sequences()
+   */
+  @Override
+  public Collection<Sequence> sequences() {
+    return sequences.values();
+  }
+
+
   @Override
   public String toString() {
-    return "Schema[" + tables().size() + " tables, " + views().size() + " views]";
+    return "Schema[" + tables().size() + " tables, " + views().size() + " views, " + sequences.size() + " sequences]";
   }
 }

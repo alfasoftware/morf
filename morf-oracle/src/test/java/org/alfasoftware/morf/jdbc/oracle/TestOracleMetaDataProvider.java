@@ -17,6 +17,7 @@ package org.alfasoftware.morf.jdbc.oracle;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -34,11 +35,7 @@ import javax.sql.DataSource;
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
-import org.alfasoftware.morf.metadata.Column;
-import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.Index;
-import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.metadata.*;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.junit.Before;
 import org.junit.Test;
@@ -58,7 +55,6 @@ public class TestOracleMetaDataProvider {
   private final DataSource dataSource = mock(DataSource.class, RETURNS_SMART_NULLS);
   private final Connection connection = mock(Connection.class, RETURNS_SMART_NULLS);
   private DatabaseType oracle;
-
 
   @Before
   public void setup() {
@@ -162,6 +158,31 @@ public class TestOracleMetaDataProvider {
 
     verify(statement).setString(1, "TESTSCHEMA");
   }
+
+
+  /**
+   * Checks the SQL run for retrieving sequences information
+   *
+   * @throws SQLException exception
+   */
+  @Test
+  public void testLoadSequences() throws SQLException {
+    // Given
+    final PreparedStatement statement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    when(connection.prepareStatement("SELECT sequence_name FROM ALL_SEQUENCES WHERE cache_size != 2000 AND sequence_owner=?")).thenReturn(statement);
+    when(statement.executeQuery()).thenAnswer(new ReturnMockResultSetWithSequence(1));
+
+    // When
+    final Schema oracleMetaDataProvider = oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
+    assertEquals("Sequence names", "[SEQUENCE1]", oracleMetaDataProvider.sequenceNames().toString());
+    Sequence sequence = oracleMetaDataProvider.sequences().iterator().next();
+    assertEquals("Sequence name", "SEQUENCE1", sequence.getName());
+    assertNull("Sequence starts with", sequence.getStartsWith());
+    assertFalse("Sequence temporary flag", sequence.isTemporary());
+
+    verify(statement).setString(1, "TESTSCHEMA");
+  }
+
 
   /**
    * Checks that if an exception is thrown by the {@link OracleMetaDataProvider} while the connection is open that the statement being used is correctly closed.
@@ -444,6 +465,41 @@ public class TestOracleMetaDataProvider {
         when(resultSet.getString(1)).thenReturn("VIEW1");
         when(resultSet.getString(3)).thenReturn("SOMEPRIMARYKEYCOLUMN");
       }
+      return resultSet;
+    }
+  }
+
+
+  /**
+   * Mockito {@link Answer} that returns a mock result set with a given number of resultRows.
+   */
+  private static final class ReturnMockResultSetWithSequence implements Answer<ResultSet> {
+
+    private final int numberOfResultRows;
+
+
+    /**
+     * @param numberOfResultRows
+     */
+    private ReturnMockResultSetWithSequence(int numberOfResultRows) {
+      super();
+      this.numberOfResultRows = numberOfResultRows;
+    }
+
+    @Override
+    public ResultSet answer(final InvocationOnMock invocation) throws Throwable {
+      final ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
+      when(resultSet.next()).thenAnswer(new Answer<Boolean>() {
+        private int counter;
+
+        @Override
+        public Boolean answer(InvocationOnMock invocation) throws Throwable {
+          return counter++ < numberOfResultRows;
+        }
+      });
+
+      when(resultSet.getString(1)).thenReturn("SEQUENCE1");
+
       return resultSet;
     }
   }

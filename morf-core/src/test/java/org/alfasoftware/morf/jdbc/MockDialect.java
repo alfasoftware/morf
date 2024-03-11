@@ -15,8 +15,7 @@
 
 package org.alfasoftware.morf.jdbc;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
-import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
+import static org.alfasoftware.morf.metadata.SchemaUtils.*;
 import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
@@ -25,10 +24,12 @@ import java.util.Collections;
 import java.util.List;
 
 import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
 
@@ -66,6 +67,30 @@ public class MockDialect extends SqlDialect {
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(SequenceReference)
+   */
+  @Override
+  protected String getSqlFrom(SequenceReference sequenceReference) {
+
+    StringBuilder result = new StringBuilder();
+
+    result.append(sequenceReference.getName());
+
+    switch (sequenceReference.getTypeOfOperation()) {
+      case NEXT_VALUE:
+        result.append(".NEXTVAL");
+        break;
+      case CURRENT_VALUE:
+        result.append(".CURRVAL");
+        break;
+    }
+
+    return result.toString();
+
+  }
+
+  
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#internalTableDeploymentStatements(org.alfasoftware.morf.metadata.Table)
    */
@@ -116,6 +141,40 @@ public class MockDialect extends SqlDialect {
     createTableStatement.append(")");
 
     statements.add(createTableStatement.toString());
+
+    return statements;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#internalSequenceDeploymentStatements(Sequence) 
+   */
+  @Override
+  protected Collection<String> internalSequenceDeploymentStatements(Sequence sequence) {
+
+    List<String> statements = new ArrayList<>();
+
+    StringBuilder createSequenceStatement = new StringBuilder();
+    createSequenceStatement.append("CREATE ");
+
+    if (sequence.isTemporary()) {
+      createSequenceStatement.append("TEMPORARY ");
+    }
+
+    createSequenceStatement.append("SEQUENCE ");
+    createSequenceStatement.append(schemaNamePrefix());
+    createSequenceStatement.append(sequence.getName());
+
+    if (sequence.isTemporary()) {
+      createSequenceStatement.append(" SESSION");
+    }
+
+    if (sequence.getStartsWith() != null) {
+      createSequenceStatement.append(" START WITH ");
+      createSequenceStatement.append(sequence.getStartsWith());
+    }
+
+    statements.add(createSequenceStatement.toString());
 
     return statements;
   }

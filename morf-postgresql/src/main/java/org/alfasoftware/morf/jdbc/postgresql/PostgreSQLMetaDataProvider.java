@@ -171,4 +171,21 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider {
     }
     return null;
   }
+
+
+  /**
+   * @see DatabaseMetaDataProvider#buildSequenceSql(String)
+   */
+  @Override
+  protected String buildSequenceSql(String schemaName) {
+    StringBuilder sequenceSqlBuilder = new StringBuilder("SELECT S.relname FROM pg_class S LEFT JOIN pg_depend D ON " +
+      "(S.oid = D.objid AND D.deptype = 'a') LEFT JOIN pg_namespace N on (N.oid = S.relnamespace) WHERE S.relkind = " +
+      "'S' AND D.objid IS NULL");
+
+    if (schemaName != null && !schemaName.isBlank()) {
+      sequenceSqlBuilder.append(" AND N.nspname=?");
+    }
+
+    return sequenceSqlBuilder.toString();
+  }
 }

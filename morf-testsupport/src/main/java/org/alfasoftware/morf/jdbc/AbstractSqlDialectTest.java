@@ -23,6 +23,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.idColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
+import static org.alfasoftware.morf.metadata.SchemaUtils.sequence;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.metadata.SchemaUtils.versionColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.view;
@@ -123,6 +124,7 @@ import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.CustomHint;
 import org.alfasoftware.morf.sql.DeleteStatement;
@@ -144,6 +146,7 @@ import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.MathsField;
 import org.alfasoftware.morf.sql.element.MathsOperator;
 import org.alfasoftware.morf.sql.element.NullFieldLiteral;
+import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.sql.element.WhenCondition;
@@ -216,6 +219,8 @@ public abstract class AbstractSqlDialectTest {
   private static final String STRING_FIELD = "stringField";
   private static final String DBLINK_NAME = "MYDBLINKREF";
 
+  private static final String SEQUENCE_NAME = "TestSequence";
+
   protected static final String ID_VALUES_TABLE = "idvalues";
   protected static final String ID_INCREMENTOR_TABLE_COLUMN_VALUE = "nextvalue";
 
@@ -287,6 +292,8 @@ public abstract class AbstractSqlDialectTest {
   private View testView;
 
   private View testViewWithUnion;
+
+  private Sequence testSequence;
 
   /**
    * Very long table name to test name truncation.
@@ -460,6 +467,9 @@ public abstract class AbstractSqlDialectTest {
     FieldReference f = new FieldReference(STRING_FIELD);
     testView = view("TestView", select(f).from(tr).where(eq(f, new FieldLiteral("blah"))));
 
+    //Test sequence
+    testSequence = sequence(SEQUENCE_NAME);
+
     TableReference tr1 = new TableReference(OTHER_TABLE);
     testViewWithUnion = view("TestView", select(f).from(tr).where(eq(f, new FieldLiteral("blah")))
       .unionAll(select(f).from(tr1).where(eq(f, new FieldLiteral("blah")))));
@@ -539,6 +549,92 @@ public abstract class AbstractSqlDialectTest {
     compareStatements(
       expectedCreateViewStatements(),
       testDialect.viewDeploymentStatements(testView));
+  }
+
+
+  /**
+   * Tests the SQL for creating sequences.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testCreateSequencesStatements() {
+    compareStatements(
+      expectedCreateSequenceStatements(),
+      testDialect.sequenceDeploymentStatements(testSequence));
+  }
+
+
+  /**
+   * Tests the SQL for creating temporary sequences.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testCreateTemporarySequencesStatements() {
+    testSequence = sequence(SEQUENCE_NAME).temporary();
+
+    compareStatements(
+      expectedCreateTemporarySequenceStatements(),
+      testDialect.sequenceDeploymentStatements(testSequence));
+  }
+
+
+  /**
+   * Tests the SQL for creating sequences when no explicit 'START WITH' value is specified.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testCreateSequencesStatementWhenNoStartWithSpecified() {
+    testSequence = sequence(SEQUENCE_NAME).startsWith(null);
+
+    compareStatements(
+      expectedCreateSequenceStatementsWithNoStartWith(),
+      testDialect.sequenceDeploymentStatements(testSequence));
+  }
+
+
+  /**
+   * Tests the SQL for creating temporary sequences when no explicit 'START WITH' value is specified.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testCreateTemporarySequencesStatementWhenNoStartWithSpecified() {
+    testSequence = sequence(SEQUENCE_NAME).startsWith(null).temporary();
+
+    compareStatements(
+      expectedCreateTemporarySequenceStatementsWithNoStartWith(),
+      testDialect.sequenceDeploymentStatements(testSequence));
+  }
+
+
+  /**
+   * Tests the SQL for returning the next value from a sequence.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testGetSqlFromSequenceReferenceWithNextValue() {
+    // Given
+    SequenceReference sequenceReference = new SequenceReference(testSequence.getName()).nextValue();
+    SelectStatement stmt = new SelectStatement(sequenceReference);
+
+    String result = testDialect.convertStatementToSQL(stmt);
+
+    assertEquals(expectedNextValForSequence(), result);
+  }
+
+
+  /**
+   * Tests the SQL for returning the current value of a sequence.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testGetSqlFromSequenceReferenceWithCurrentValue() {
+    // Given
+    SequenceReference sequenceReference = new SequenceReference(testSequence.getName()).currentValue();
+    SelectStatement stmt = new SelectStatement(sequenceReference);
+
+    String result = testDialect.convertStatementToSQL(stmt);
+
+    assertEquals(expectedCurrValForSequence(), result);
   }
 
 
@@ -656,6 +752,18 @@ public abstract class AbstractSqlDialectTest {
     compareStatements(
       expectedDropViewStatements(),
       testDialect.dropStatements(testView));
+  }
+
+
+  /**
+   * Tests SQL for dropping a view.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testDropSequenceStatements() {
+    compareStatements(
+      expectedDropSequenceStatements(),
+      testDialect.dropStatements(testSequence));
   }
 
 
@@ -5096,6 +5204,30 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * @return The expected SQL statements for creating the test database sequence.
+   */
+  protected abstract List<String> expectedCreateSequenceStatements();
+
+
+  /**
+   * @return The expected SQL statements for creating the test database sequence.
+   */
+  protected abstract List<String> expectedCreateTemporarySequenceStatements();
+
+
+  /**
+   * @return The expected SQL statements for creating the test database sequence.
+   */
+  protected abstract List<String> expectedCreateSequenceStatementsWithNoStartWith();
+
+
+  /**
+   * @return The expected SQL statements for creating the test database sequence.
+   */
+  protected abstract List<String> expectedCreateTemporarySequenceStatementsWithNoStartWith();
+
+
+  /**
    * @return The expected SQL statements for creating the test database view over a union select.
    */
   protected List<String> expectedCreateViewOverUnionSelectStatements() {
@@ -5175,6 +5307,14 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL statements for dropping the test database view.
    */
   protected abstract List<String> expectedDropViewStatements();
+
+
+  /**
+   * @return The expected SQL statements for dropping the test database view.
+   */
+  protected List<String> expectedDropSequenceStatements() {
+    return Arrays.asList("DROP SEQUENCE IF EXISTS " + tableName(SEQUENCE_NAME));
+  }
 
 
   /**
@@ -5498,6 +5638,18 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL for selecting with a substring statement.
    */
   protected abstract String expectedSubstring();
+
+
+  /**
+   * @return The expected SQL for requesting the next value of a sequence.
+   */
+  protected abstract String expectedNextValForSequence();
+
+
+  /**
+   * @return The expected SQL for requesting the current value of a sequence
+   */
+  protected abstract String expectedCurrValForSequence();
 
 
   /**

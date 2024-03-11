@@ -106,6 +106,7 @@ public class UpgradeTestHelper {
     schemaChangeSequence.applyToSchema(fromSchema);
 
     // We need a fully clean sheet since we are going to inspect the DB at the end
+    schemaManager.get().dropAllSequences();
     schemaManager.get().dropAllViews();
     schemaManager.get().dropAllTables();
 

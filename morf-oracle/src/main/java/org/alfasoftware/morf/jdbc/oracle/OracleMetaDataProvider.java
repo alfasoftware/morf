@@ -47,6 +47,7 @@ import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
@@ -78,6 +79,7 @@ public class OracleMetaDataProvider implements Schema {
   private Map<String, List<String>> keyMap;
   private Map<String, Table> tableMap;
   private Map<String, View> viewMap;
+  private Map<String, Sequence> sequenceMap;
 
   private final Connection connection;
   private final String schemaName;
@@ -129,6 +131,23 @@ public class OracleMetaDataProvider implements Schema {
     viewMap = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     readViewMap();
     return viewMap;
+  }
+
+
+  /**
+   * Use to access the metadata for the views in the specified connection.
+   * Lazily initialises the metadata, and only loads it once.
+   *
+   * @return Sequence metadata.
+   */
+  private Map<String, Sequence> sequenceMap() {
+    if (sequenceMap != null) {
+      return sequenceMap;
+    }
+
+    sequenceMap = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    readSequenceMap();
+    return sequenceMap;
   }
 
 
@@ -562,6 +581,53 @@ public class OracleMetaDataProvider implements Schema {
 
 
   /**
+   * Populate {@link #sequenceMap} with information from the database. Since JDBC metadata reading
+   * is slow on Oracle, this uses an optimised query.
+   *
+   * @see <a href="http://docs.oracle.com/cd/B19306_01/server.102/b14237/statviews_2117.htm">ALL_VIEWS specification</a>
+   */
+  private void readSequenceMap() {
+    log.info("Starting read of sequence definitions");
+
+    long start = System.currentTimeMillis();
+
+    /**
+     * Here we filter out any sequences which have been created to as part of a table autonumber column as we only want to consider
+     * sequences that are effectively schema level as we do with other dialects.
+     * @see OracleDialect#createNewSequence(Table, Column) for more context on how table level sequences are created.
+     */
+    final String sequencesSql = "SELECT sequence_name FROM ALL_SEQUENCES WHERE cache_size != 2000 AND sequence_owner=?";
+    runSQL(sequencesSql, new ResultSetHandler() {
+      @Override
+      public void handle(ResultSet resultSet) throws SQLException {
+        while (resultSet.next()) {
+          final String sequenceName = resultSet.getString(1);
+          if (isSystemSequence(sequenceName))
+            continue;
+
+          sequenceMap.put(sequenceName.toUpperCase(), new Sequence() {
+            @Override public String getName() { return sequenceName; }
+
+            @Override
+            public Integer getStartsWith() {
+              return null;
+            }
+
+            @Override
+            public boolean isTemporary() {
+              return false;
+            }
+          });
+        }
+      }
+    });
+
+    long end = System.currentTimeMillis();
+    log.info(String.format("Read sequence metadata in %dms; %d sequences", end - start, sequenceMap.size()));
+  }
+
+
+  /**
    * Reading all the table metadata is slow on Oracle, so we can optimise the empty
    * database check by just seeing if there are any tables.
    *
@@ -693,6 +759,16 @@ public class OracleMetaDataProvider implements Schema {
    */
   private boolean isSystemTable(String tableName) {
     return !tableName.matches("\\w+") || tableName.matches("DBMS_\\w+") || tableName.matches("SYS_\\w+");
+  }
+
+
+  /**
+   * Oracle sometimes spits back some very odd sequence names, something to do with the system. We don't want those.
+   *
+   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isSystemSequence(DatabaseMetaDataProvider.RealName)
+   */
+  private boolean isSystemSequence(String sequenceName) {
+    return !sequenceName.matches("\\w+") || sequenceName.matches("DBMS_\\w+") || sequenceName.matches("SYS_\\w+");
   }
 
 
@@ -832,6 +908,42 @@ public class OracleMetaDataProvider implements Schema {
   @Override
   public Collection<View> views() {
     return viewMap().values();
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#sequenceExists(java.lang.String)
+   */
+  @Override
+  public boolean sequenceExists(String name) {
+    return sequenceMap().containsKey(name.toUpperCase());
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#getSequence(String)
+   */
+  @Override
+  public Sequence getSequence(String name) {
+    return sequenceMap().get(name.toUpperCase());
+  }
+
+
+  /**
+   * @see Schema#sequenceNames()
+   */
+  @Override
+  public Collection<String> sequenceNames() {
+    return sequenceMap().keySet();
+  }
+
+
+  /**
+   * @see Schema#sequences()
+   */
+  @Override
+  public Collection<Sequence> sequences() {
+    return sequenceMap().values();
   }
 
 

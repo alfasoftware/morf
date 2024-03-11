@@ -38,6 +38,7 @@ import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.MathsField;
 import org.alfasoftware.morf.sql.element.MathsOperator;
 import org.alfasoftware.morf.sql.element.NullFieldLiteral;
+import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.sql.element.WhenCondition;
@@ -78,6 +79,17 @@ public class SqlUtils {
    */
   public static TableReference tableRef(String tableName) {
     return new TableReference(tableName);
+  }
+
+
+  /**
+   * Construct a new sequence with a given name.
+   *
+   * @param sequenceName the name of the table
+   * @return {@link SequenceReference}
+   */
+  public static SequenceReference sequenceRef(String sequenceName) {
+    return new SequenceReference(sequenceName);
   }
 
 

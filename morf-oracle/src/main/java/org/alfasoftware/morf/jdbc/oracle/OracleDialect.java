@@ -42,6 +42,7 @@ import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.DialectSpecificHint;
@@ -68,6 +69,7 @@ import org.alfasoftware.morf.sql.element.ClobFieldLiteral;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
@@ -139,11 +141,53 @@ class OracleDialect extends SqlDialect {
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#tableDeploymentStatements(org.alfasoftware.morf.metadata.Table)
+   */
+  @Override
+  public Collection<String> internalSequenceDeploymentStatements(Sequence sequence) {
+    return ImmutableList.<String>builder()
+      .add(createSequenceStatement(sequence))
+      .build();
+  }
+
+
   private Collection<String> tableDeploymentStatements(Table table, boolean asSelect) {
     return ImmutableList.<String>builder()
             .add(createTableStatement(table, asSelect))
             .addAll(buildRemainingStatementsAndComments(table))
             .build();
+  }
+
+
+  /**
+   * Private method to form the SQL statement required to create a sequence in the schema.
+   *
+   * @param sequence The {@link Sequence} for which a create sequence SQL statement should be created.
+   * @return A create sequence SQL statement
+   */
+  private String createSequenceStatement(Sequence sequence) {
+    StringBuilder createSequenceStatement = new StringBuilder();
+
+    createSequenceStatement.append("CREATE ");
+
+    createSequenceStatement.append("SEQUENCE ");
+
+    String truncatedSequenceName = truncatedSequenceName(sequence.getName());
+
+    createSequenceStatement.append(schemaNamePrefix());
+    createSequenceStatement.append(truncatedSequenceName);
+
+    if (sequence.isTemporary()) {
+      createSequenceStatement.append(" SESSION");
+    }
+
+    if (sequence.getStartsWith() != null) {
+      createSequenceStatement.append(" START WITH ");
+      createSequenceStatement.append(sequence.getStartsWith());
+    }
+
+    return createSequenceStatement.toString();
   }
 
 
@@ -428,6 +472,12 @@ class OracleDialect extends SqlDialect {
   }
 
 
+  @Override
+  public Collection<String> dropStatements(Sequence sequence) {
+    return ImmutableList.of("DROP SEQUENCE " + schemaNamePrefix() + sequence.getName());
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.element.ClobFieldLiteral)
    */
@@ -533,6 +583,14 @@ class OracleDialect extends SqlDialect {
    */
   private String truncatedTableName(String tableName) {
     return StringUtils.substring(tableName, 0, 30);
+  }
+
+
+  /**
+   * Truncate sequence names to 30 characters since this is the maximum supported by Oracle.
+   */
+  private String truncatedSequenceName(String sequenceName) {
+    return StringUtils.substring(sequenceName, 0, 30);
   }
 
 
@@ -1303,6 +1361,33 @@ class OracleDialect extends SqlDialect {
     appendWhere(result, stmt);
 
     return result.toString().trim();
+  }
+
+
+  /**
+   * @see SqlDialect#getSqlFrom(SequenceReference)
+   */
+  @Override
+  protected String getSqlFrom(SequenceReference sequenceReference) {
+    StringBuilder result = new StringBuilder();
+
+    if (getSchemaName() != null || !getSchemaName().isBlank()) {
+      result.append(getSchemaName());
+      result.append(".");
+    }
+
+    result.append(sequenceReference.getName().toUpperCase());
+
+    switch (sequenceReference.getTypeOfOperation()) {
+      case NEXT_VALUE:
+        result.append(".NEXTVAL");
+        break;
+      case CURRENT_VALUE:
+        result.append(".CURRVAL");
+        break;
+    }
+
+    return result.toString();
   }
 
   /**

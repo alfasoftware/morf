@@ -940,6 +940,44 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see AbstractSqlDialectTest#expectedCreateSequenceStatements()
+   */
+  @Override
+  protected List<String> expectedCreateSequenceStatements() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence") + " START WITH 1");
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateTemporarySequenceStatements()
+   */
+  @Override
+  protected List<String> expectedCreateTemporarySequenceStatements() {
+    return Arrays.asList("CREATE TEMPORARY SEQUENCE TestSequence START WITH 1");
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateSequenceStatementsWithNoStartWith()
+   * @return
+   */
+  @Override
+  protected List<String> expectedCreateSequenceStatementsWithNoStartWith() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence"));
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateTemporarySequenceStatementsWithNoStartWith()
+   * @return
+   */
+  @Override
+  protected List<String> expectedCreateTemporarySequenceStatementsWithNoStartWith() {
+    return Arrays.asList("CREATE TEMPORARY SEQUENCE TestSequence");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedCreateViewOverUnionSelectStatements()
    */
   @Override
@@ -1460,4 +1498,18 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected String expectedSelectWithExceptAndDbLinkLatter() {
     return "SELECT stringField FROM testschema.Test EXCEPT SELECT stringField FROM MYDBLINKREF.Other ORDER BY stringField";
   }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedNextValForSequence()
+   */
+  @Override
+  protected String expectedNextValForSequence() { return "SELECT nextval('TestSequence')"; }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCurrValForSequence()
+   */
+  @Override
+  protected String expectedCurrValForSequence() { return "SELECT currval('TestSequence')"; }
 }
