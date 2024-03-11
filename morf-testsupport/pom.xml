@@ -36,6 +36,16 @@
   
   <dependencies>
     <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>42.5.0</version>
+    </dependency>
+    <dependency>
+      <groupId>oracle</groupId>
+      <artifactId>oracle-jdbc</artifactId>
+      <version>19.3.0.0</version>
+    </dependency>
+    <dependency>
       <groupId>org.alfasoftware</groupId>
       <artifactId>morf-core</artifactId>
     </dependency>
