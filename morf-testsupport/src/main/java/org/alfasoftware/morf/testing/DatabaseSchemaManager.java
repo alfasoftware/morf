@@ -36,7 +36,6 @@ import org.alfasoftware.morf.metadata.SchemaHomology;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.SchemaHomology.DifferenceWriter;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.upgrade.ViewChanges;
 import org.apache.commons.logging.Log;
@@ -133,6 +132,8 @@ public class DatabaseSchemaManager {
    */
   public void mutateToSupportSchema(Schema schema, TruncationBehavior truncationBehavior) {
     ProducerCache producerCache = new ProducerCache();
+    if (log.isDebugEnabled()) log.debug("Mutating schema to: " + schema.tables().size() + " tables, " + schema.views().size() + " views, " + schema.sequences().size() + " sequences");
+
     try {
       log.debug("Cached tables: " + tables.get().keySet());
       log.debug("Cached views: " + views.get().keySet());
@@ -432,13 +433,6 @@ public class DatabaseSchemaManager {
     boolean deployRequired;
     boolean truncateRequired;
 
-    DifferenceWriter differenceWriter = new DifferenceWriter() {
-      @Override
-      public void difference(String message) {
-        log.debug(message);
-      }
-    };
-
     if (requiredTable.getName().length() > 27) {
       log.warn("Required table name [" + requiredTable.getName() + "] is [" + requiredTable.getName().length() + "] characters long!");
     }
@@ -446,7 +440,7 @@ public class DatabaseSchemaManager {
     // if we have an existing table, check it's identical
     Table existingTable = getTable(producerCache, requiredTable.getName());
     if (existingTable != null) {
-      if (new SchemaHomology(differenceWriter, "cache", "required").tablesMatch(existingTable, requiredTable)) {
+      if (new SchemaHomology(message -> log.debug(message), "cache", "required").tablesMatch(existingTable, requiredTable)) {
         // they match - it's identical, so we can re-use it
         dropRequired = false;
         deployRequired = false;
