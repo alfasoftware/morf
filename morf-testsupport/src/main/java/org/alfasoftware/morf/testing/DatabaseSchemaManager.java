@@ -440,7 +440,7 @@ public class DatabaseSchemaManager {
     // if we have an existing table, check it's identical
     Table existingTable = getTable(producerCache, requiredTable.getName());
     if (existingTable != null) {
-      if (new SchemaHomology(message -> log.debug(message), "cache", "required").tablesMatch(existingTable, requiredTable)) {
+      if (new SchemaHomology(log::debug, "cache", "required").tablesMatch(existingTable, requiredTable)) {
         // they match - it's identical, so we can re-use it
         dropRequired = false;
         deployRequired = false;
