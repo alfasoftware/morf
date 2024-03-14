@@ -13,6 +13,7 @@ import java.util.List;
 import javax.inject.Inject;
 
 import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.TableReference;
@@ -65,6 +66,8 @@ public class DatabaseUpgradePathValidationServiceImpl implements DatabaseUpgrade
    * were unable to connect to the UpgradeAudit table to read the count prior to generating the script
    */
   private List<String> getOptimisticLockingInitialisationSql(long upgradeAuditCount) {
+    final SqlDialect sqlDialect = connectionResources.sqlDialect();
+
     TableReference upgradeStatusTable = tableRef(UpgradeStatusTableService.UPGRADE_STATUS);
 
     SelectStatement selectStatement = select().from(upgradeStatusTable)
@@ -75,7 +78,15 @@ public class DatabaseUpgradePathValidationServiceImpl implements DatabaseUpgrade
         .from(selectStatement)
         .build();
 
-    return connectionResources.sqlDialect().convertStatementToSQL(insertStatement);
+    List<String> insertStatementSql = sqlDialect.convertStatementToSQL(insertStatement);
+
+    return ImmutableList.<String>builder()
+        .add(sqlDialect.convertCommentToSQL("If the following statement fails, it means the UpgradeAudit table does not contain the expected number of rows."))
+        .add(sqlDialect.convertCommentToSQL("That row number was correct in the database where this upgrade script was originally generated."))
+        .add(sqlDialect.convertCommentToSQL("It is therefore possible some upgrade steps have since been applied to this database, potentially rendering this script outdated."))
+        .add(sqlDialect.convertCommentToSQL("Further investigation is advised before continuing to determine why the UpgradeAudit now contains unexpected number of rows."))
+        .addAll(insertStatementSql)
+        .build();
   }
 
 
