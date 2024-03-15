@@ -9,7 +9,13 @@ import java.util.Set;
  */
 public class UpgradeConfiguration {
 
+  /**
+   * Set of full names of upgrade step classes which should be executed non-parallel.
+   * No other other upgrade step will be running while listed upgrade steps are being executed.
+   * This impacts Graph-Based Upgrade only.
+   */
   private Set<String> exclusiveExecutionSteps = Set.of();
+
 
   public Set<String> getExclusiveExecutionSteps() {
     return exclusiveExecutionSteps;
