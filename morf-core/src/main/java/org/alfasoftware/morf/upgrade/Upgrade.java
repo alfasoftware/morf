@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.sql.DataSource;
@@ -137,11 +138,22 @@ public class Upgrade {
       UpgradeStatusTableService upgradeStatusTableService,
       ViewDeploymentValidator viewDeploymentValidator,
       DatabaseUpgradePathValidationService databaseUpgradePathValidationService) {
+
+    UpgradeScriptAdditionsProvider upgradeScriptAdditionsProvider = new UpgradeScriptAdditionsProvider.NoOpScriptAdditions();
+    UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory = UpgradeStatusTableServiceImpl::new;
+    UpgradePathFactory upgradePathFactory = new UpgradePathFactoryImpl(upgradeScriptAdditionsProvider, upgradeStatusTableServiceFactory);
+    ViewChangesDeploymentHelper viewChangesDeploymentHelper = new ViewChangesDeploymentHelper(connectionResources.sqlDialect());
+    GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory = null;
+    UpgradeConfiguration upgradeConfiguration = new UpgradeConfiguration();
+
     Upgrade upgrade = new Upgrade(
       connectionResources,
-      new UpgradePathFactoryImpl(new UpgradeScriptAdditionsProvider.NoOpScriptAdditions(), UpgradeStatusTableServiceImpl::new),
-      upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()), viewDeploymentValidator, databaseUpgradePathValidationService, null, new UpgradeConfiguration());
-    return upgrade.findPath(targetSchema, upgradeSteps, Collections.<String> emptySet(), connectionResources.getDataSource());
+      upgradePathFactory, upgradeStatusTableService, viewChangesDeploymentHelper, viewDeploymentValidator, databaseUpgradePathValidationService,
+      graphBasedUpgradeBuilderFactory, upgradeConfiguration);
+
+    Set<String> exceptionRegexes = Collections.emptySet();
+
+    return upgrade.findPath(targetSchema, upgradeSteps, exceptionRegexes, connectionResources.getDataSource());
   }
 
 
