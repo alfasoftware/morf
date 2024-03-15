@@ -68,11 +68,11 @@ public class MorfModule extends AbstractModule {
       UpgradeStatusTableService upgradeStatusTableService,
       ViewChangesDeploymentHelper viewChangesDeploymentHelper,
       ViewDeploymentValidator viewDeploymentValidator,
-      GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
       DatabaseUpgradePathValidationService databaseUpgradePathValidationService,
+      GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
       UpgradeConfiguration upgradeConfiguration) {
     return new Upgrade(connectionResources, factory, upgradeStatusTableService, viewChangesDeploymentHelper,
-      viewDeploymentValidator, graphBasedUpgradeBuilderFactory, databaseUpgradePathValidationService,
+      viewDeploymentValidator, databaseUpgradePathValidationService, graphBasedUpgradeBuilderFactory,
       upgradeConfiguration);
   }
 }

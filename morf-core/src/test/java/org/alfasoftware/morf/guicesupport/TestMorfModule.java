@@ -51,7 +51,7 @@ public class TestMorfModule {
   @Test
   public void testProvideUpgrade() {
     Upgrade upgrade = module.provideUpgrade(connectionResources, factory, upgradeStatusTableService,
-      viewChangesDeploymentHelper, viewDeploymentValidator, graphBasedUpgradeBuilderFactory, databaseUpgradePathValidationService, upgradeConfiguration);
+      viewChangesDeploymentHelper, viewDeploymentValidator, databaseUpgradePathValidationService, graphBasedUpgradeBuilderFactory, upgradeConfiguration);
 
     assertNotNull("Instance of Upgrade should not be null", upgrade);
     assertThat("Instance of Upgrade", upgrade, IsInstanceOf.instanceOf(Upgrade.class));

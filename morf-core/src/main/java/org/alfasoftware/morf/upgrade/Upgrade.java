@@ -61,13 +61,13 @@ import com.google.inject.Inject;
 public class Upgrade {
   private static final Log log = LogFactory.getLog(Upgrade.class);
 
-  private final UpgradePathFactory upgradePathFactory;
   private final ConnectionResources connectionResources;
+  private final UpgradePathFactory upgradePathFactory;
   private final UpgradeStatusTableService upgradeStatusTableService;
   private final ViewChangesDeploymentHelper viewChangesDeploymentHelper;
   private final ViewDeploymentValidator viewDeploymentValidator;
-  private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
   private final DatabaseUpgradePathValidationService databaseUpgradePathValidationService;
+  private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
   private final UpgradeConfiguration upgradeConfiguration;
 
 
@@ -77,8 +77,8 @@ public class Upgrade {
       UpgradeStatusTableService upgradeStatusTableService,
       ViewChangesDeploymentHelper viewChangesDeploymentHelper,
       ViewDeploymentValidator viewDeploymentValidator,
-      GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
       DatabaseUpgradePathValidationService databaseUpgradePathValidationService,
+      GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
       UpgradeConfiguration upgradeConfiguration) {
     super();
     this.connectionResources = connectionResources;
@@ -86,8 +86,8 @@ public class Upgrade {
     this.upgradeStatusTableService = upgradeStatusTableService;
     this.viewChangesDeploymentHelper = viewChangesDeploymentHelper;
     this.viewDeploymentValidator = viewDeploymentValidator;
-    this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
     this.databaseUpgradePathValidationService = databaseUpgradePathValidationService;
+    this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
     this.upgradeConfiguration = upgradeConfiguration;
   }
 
@@ -140,7 +140,7 @@ public class Upgrade {
     Upgrade upgrade = new Upgrade(
       connectionResources,
       new UpgradePathFactoryImpl(new UpgradeScriptAdditionsProvider.NoOpScriptAdditions(), UpgradeStatusTableServiceImpl::new),
-      upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()), viewDeploymentValidator, null, databaseUpgradePathValidationService, new UpgradeConfiguration());
+      upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()), viewDeploymentValidator, databaseUpgradePathValidationService, null, new UpgradeConfiguration());
     return upgrade.findPath(targetSchema, upgradeSteps, Collections.<String> emptySet(), connectionResources.getDataSource());
   }
 
@@ -404,27 +404,27 @@ public class Upgrade {
    */
   public static class Factory  {
     private final UpgradePathFactory upgradePathFactory;
-    private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
     private final UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory;
     private final ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory;
     private final ViewDeploymentValidator.Factory viewDeploymentValidatorFactory;
-    private final DatabaseUpgradePathValidationService.Factory databaseUpgradeLockServiceFactory;
+    private final DatabaseUpgradePathValidationService.Factory databaseUpgradePathValidationServiceFactory;
+    private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
 
     private UpgradeConfiguration upgradeConfiguration = new UpgradeConfiguration();
 
     @Inject
     public Factory(UpgradePathFactory upgradePathFactory,
                    UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory,
-                   GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
                    ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory,
                    ViewDeploymentValidator.Factory viewDeploymentValidatorFactory,
-                   DatabaseUpgradePathValidationService.Factory databaseUpgradeLockServiceFactory) {
+                   DatabaseUpgradePathValidationService.Factory databaseUpgradePathValidationServiceFactory,
+                   GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory) {
       this.upgradePathFactory = upgradePathFactory;
-      this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
       this.upgradeStatusTableServiceFactory =  upgradeStatusTableServiceFactory;
       this.viewChangesDeploymentHelperFactory = viewChangesDeploymentHelperFactory;
       this.viewDeploymentValidatorFactory = viewDeploymentValidatorFactory;
-      this.databaseUpgradeLockServiceFactory = databaseUpgradeLockServiceFactory;
+      this.databaseUpgradePathValidationServiceFactory = databaseUpgradePathValidationServiceFactory;
+      this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
     }
 
     public Factory withUpgradeConfiguration(UpgradeConfiguration upgradeConfiguration) {
@@ -438,8 +438,8 @@ public class Upgrade {
                          upgradeStatusTableServiceFactory.create(connectionResources),
                          viewChangesDeploymentHelperFactory.create(connectionResources),
                          viewDeploymentValidatorFactory.createViewDeploymentValidator(connectionResources),
+                         databaseUpgradePathValidationServiceFactory.create(connectionResources),
                          graphBasedUpgradeBuilderFactory,
-                         databaseUpgradeLockServiceFactory.create(connectionResources),
                          upgradeConfiguration);
     }
   }
