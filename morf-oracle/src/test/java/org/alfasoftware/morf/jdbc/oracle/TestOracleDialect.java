@@ -1206,7 +1206,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedCreateSequenceStatements() {
-    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence") + " START WITH 1");
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence") + " CACHE 100000 START WITH 1");
   }
 
 
@@ -1215,7 +1215,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedCreateTemporarySequenceStatements() {
-    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence") + " SESSION START WITH 1");
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence") + " CACHE 100000 SESSION START WITH 1");
   }
 
 
@@ -1225,7 +1225,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedCreateSequenceStatementsWithNoStartWith() {
-    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence"));
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence") + " CACHE 100000");
   }
 
 
@@ -1235,7 +1235,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> expectedCreateTemporarySequenceStatementsWithNoStartWith() {
-    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence") + " SESSION");
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence") + " CACHE 100000 SESSION");
   }
 
 

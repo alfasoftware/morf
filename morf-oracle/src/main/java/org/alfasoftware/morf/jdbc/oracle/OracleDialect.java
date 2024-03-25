@@ -178,6 +178,8 @@ class OracleDialect extends SqlDialect {
     createSequenceStatement.append(schemaNamePrefix());
     createSequenceStatement.append(truncatedSequenceName);
 
+    createSequenceStatement.append(" CACHE 100000");
+
     if (sequence.isTemporary()) {
       createSequenceStatement.append(" SESSION");
     }
