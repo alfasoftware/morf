@@ -249,9 +249,6 @@ class OracleDialect extends SqlDialect {
     // Create index
     result.add(primaryKeyConstraintAsSelectParallel(table));
 
-    // // set logging and no parallel
-    // result.add(primaryKeyConstraintSetLoggingNoParallel(table));
-
     StringBuilder updateTableStatement = new StringBuilder();
 
     // add pk constraint
@@ -357,19 +354,6 @@ class OracleDialect extends SqlDialect {
    */
   private String primaryKeyConstraintAsSelectParallel(Table table) {
     return primaryKeyConstraintParallel(table.getName(), namesOfColumns(primaryKeysForTable(table)));
-  }
-
-  /*
-   * ALTER INDEX DEF_PK LOGGING NOPARALLEL
-   */
-  private String primaryKeyConstraintSetLoggingNoParallel(Table table) {
-    StringBuilder alterIndexLoggingNoParallel = new StringBuilder();
-    alterIndexLoggingNoParallel
-            .append("ALTER INDEX ")
-            .append(schemaNamePrefix())
-            .append(primaryKeyConstraintName(table.getName()))
-            .append(" LOGGING NOPARALLEL");
-    return alterIndexLoggingNoParallel.toString();
   }
 
   /**
