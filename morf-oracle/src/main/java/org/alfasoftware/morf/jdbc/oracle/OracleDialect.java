@@ -102,16 +102,6 @@ class OracleDialect extends SqlDialect {
   public static final String NULLS_LAST = "NULLS LAST";
 
   /**
-   * Constant to be reused. This is ALTER INDEX.
-   */
-  public static final String ALTER_INDEX = "ALTER INDEX ";
-
-  /**
-   * Constant to be reused. This is NOPARALLEL LOGGING.
-   */
-  public static final String NOPARALLEL_LOGGING = " NOPARALLEL LOGGING";
-
-  /**
    * Database platforms may order nulls first or last. My SQL always orders nulls first, Oracle defaults to ordering nulls last.
    * Fortunately on Oracle it is possible to specify that nulls should be ordered first.
    */
@@ -297,7 +287,7 @@ class OracleDialect extends SqlDialect {
   }
 
   private String disableParallelAndEnableLoggingForPrimaryKey(Table table) {
-    return ALTER_INDEX + schemaNamePrefix() + primaryKeyConstraintName(table.getName()) + NOPARALLEL_LOGGING;
+    return "ALTER INDEX " + schemaNamePrefix() + primaryKeyConstraintName(table.getName()) + " NOPARALLEL LOGGING";
   }
 
   /**
@@ -844,10 +834,10 @@ class OracleDialect extends SqlDialect {
    */
   private String indexPostDeploymentStatements(Index index) {
     return new StringBuilder()
-      .append(ALTER_INDEX)
+      .append("ALTER INDEX ")
       .append(schemaNamePrefix())
       .append(index.getName())
-      .append(NOPARALLEL_LOGGING)
+      .append(" NOPARALLEL LOGGING")
       .toString();
   }
 
@@ -1207,7 +1197,7 @@ class OracleDialect extends SqlDialect {
       // Rename the PK constraint
       statements.add("ALTER TABLE " + schemaNamePrefix() + from + " RENAME CONSTRAINT " + fromConstraint + " TO " + toConstraint);
       // Rename the index for the PK constraint the Oracle uses to manage the PK
-      statements.add(ALTER_INDEX + schemaNamePrefix() + fromConstraint + " RENAME TO " + toConstraint);
+      statements.add("ALTER INDEX " + schemaNamePrefix() + fromConstraint + " RENAME TO " + toConstraint);
     }
 
     // Rename the table itself
@@ -1246,7 +1236,7 @@ class OracleDialect extends SqlDialect {
       result.add(addTableAlterForPrimaryKeyStatement(table));
     }
 
-    result.add("ALTER TABLE " + schemaNamePrefix() + table.getName()  + NOPARALLEL_LOGGING);
+    result.add("ALTER TABLE " + schemaNamePrefix() + table.getName()  + " NOPARALLEL LOGGING");
 
     if (!primaryKeysForTable(table).isEmpty()) {
       result.add(disableParallelAndEnableLoggingForPrimaryKey(table));
