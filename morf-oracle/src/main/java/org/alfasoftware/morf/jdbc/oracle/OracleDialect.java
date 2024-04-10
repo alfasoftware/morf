@@ -155,7 +155,7 @@ class OracleDialect extends SqlDialect {
   private Collection<String> tableDeploymentStatements(Table table, boolean asSelect) {
     ImmutableList.Builder<String> builder =   ImmutableList.<String>builder()
             .add(createTableStatement(table, asSelect));
-    if (!primaryKeysForTable(table).isEmpty()) {
+    if (!primaryKeysForTable(table).isEmpty() && !table.isTemporary()) {
       builder.add(disableParallelAndEnableLoggingForPrimaryKey(table));
     }
     builder.addAll(buildRemainingStatementsAndComments(table));
@@ -293,21 +293,27 @@ class OracleDialect extends SqlDialect {
   /**
    * CONSTRAINT DEF_PK PRIMARY KEY (X, Y, Z) USING INDEX (CREATE UNIQUE INDEX ... NOLOGGING PARALLEL)
    */
-  private String primaryKeyConstraint(String tableName, List<String> newPrimaryKeyColumns) {
+  private String primaryKeyConstraint(String tableName, List<String> newPrimaryKeyColumns, boolean isTempTable) {
     // truncate down to 27, since we add _PK to the end
-    return "CONSTRAINT " + primaryKeyConstraintName(tableName)
+    String constraintClause = "CONSTRAINT " + primaryKeyConstraintName(tableName)
             + " PRIMARY KEY (" + Joiner.on(", ").join(newPrimaryKeyColumns) + ")"
             + " USING INDEX (CREATE UNIQUE INDEX " + schemaNamePrefix() + primaryKeyConstraintName(tableName)
             + " ON "
             + schemaNamePrefix() + truncatedTableName(tableName)
-            + " (" + Joiner.on(", ").join(newPrimaryKeyColumns) + ") NOLOGGING PARALLEL)";
+            + " (" + Joiner.on(", ").join(newPrimaryKeyColumns) + ")";
+    if (!isTempTable) {
+      constraintClause += " NOLOGGING PARALLEL)";
+    } else {
+      constraintClause += ")";
+    }
+    return constraintClause;
   }
 
   /**
    * CONSTRAINT DEF_PK PRIMARY KEY (X, Y, Z)
    */
   private String primaryKeyConstraint(Table table) {
-    return primaryKeyConstraint(table.getName(), namesOfColumns(primaryKeysForTable(table)));
+    return primaryKeyConstraint(table.getName(), namesOfColumns(primaryKeysForTable(table)), table.isTemporary());
   }
 
   /**
@@ -875,7 +881,7 @@ class OracleDialect extends SqlDialect {
 
     //Create new primary key constraint
     if (!newPrimaryKeyColumns.isEmpty()) {
-      result.add(generatePrimaryKeyStatement(newPrimaryKeyColumns, table.getName()));
+      result.add(generatePrimaryKeyStatement(newPrimaryKeyColumns, table.getName(), table.isTemporary()));
     }
 
     return result;
@@ -978,8 +984,10 @@ class OracleDialect extends SqlDialect {
     }
 
     if (recreatePrimaryKey && !primaryKeysForTable(table).isEmpty()) {
-      result.add(generatePrimaryKeyStatement(namesOfColumns(SchemaUtils.primaryKeysForTable(table)), truncatedTableName));
-      result.add(disableParallelAndEnableLoggingForPrimaryKey(table));
+      result.add(generatePrimaryKeyStatement(namesOfColumns(SchemaUtils.primaryKeysForTable(table)), truncatedTableName, table.isTemporary()));
+      if (!table.isTemporary()) {
+        result.add(disableParallelAndEnableLoggingForPrimaryKey(table));
+      }
     }
 
     for (Index index : table.indexes()) {
@@ -996,13 +1004,13 @@ class OracleDialect extends SqlDialect {
   }
 
 
-  private String generatePrimaryKeyStatement(List<String> columnNames, String tableName) {
+  private String generatePrimaryKeyStatement(List<String> columnNames, String tableName, boolean isTempTable) {
     StringBuilder primaryKeyStatement = new StringBuilder();
     primaryKeyStatement.append("ALTER TABLE ")
     .append(schemaNamePrefix())
     .append(tableName)
     .append(" ADD ")
-    .append(primaryKeyConstraint(tableName, columnNames));
+    .append(primaryKeyConstraint(tableName, columnNames, isTempTable));
     return primaryKeyStatement.toString();
   }
 
