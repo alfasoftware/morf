@@ -153,10 +153,13 @@ class OracleDialect extends SqlDialect {
 
 
   private Collection<String> tableDeploymentStatements(Table table, boolean asSelect) {
-    return ImmutableList.<String>builder()
-            .add(createTableStatement(table, asSelect))
-            .addAll(buildRemainingStatementsAndComments(table))
-            .build();
+    ImmutableList.Builder<String> builder =   ImmutableList.<String>builder()
+            .add(createTableStatement(table, asSelect));
+    if (!primaryKeysForTable(table).isEmpty()) {
+      builder.add(disableParallelAndEnableLoggingForPrimaryKey(table));
+    }
+    builder.addAll(buildRemainingStatementsAndComments(table));
+    return builder.build();
   }
 
 
@@ -245,20 +248,10 @@ class OracleDialect extends SqlDialect {
     return createTableStatement.toString();
   }
 
-  private void addTableAlterForPrimaryKeyStatement(Table table, Builder<String> result) {
-    // Create index
-    result.add(primaryKeyConstraintAsSelectParallel(table));
-
-    StringBuilder updateTableStatement = new StringBuilder();
-
-    // add pk constraint
-    updateTableStatement.append("ALTER TABLE ")
-            .append(schemaNamePrefix())
-            .append(table.getName())
-            .append(" ADD ")
-            .append(primaryKeyConstraintReusingIndex(table.getName(), namesOfColumns(primaryKeysForTable(table))));
-
-    result.add(updateTableStatement.toString());
+  private String addTableAlterForPrimaryKeyStatement(Table table) {
+    StringBuilder updateTableStatement =new StringBuilder();
+    updateTableStatement.append("ALTER TABLE " + schemaNamePrefix() + table.getName()  + " ADD " + primaryKeyConstraint(table));
+    return updateTableStatement.toString();
   }
 
   private Collection<String> createColumnComments(Table table) {
@@ -293,9 +286,12 @@ class OracleDialect extends SqlDialect {
     return "COMMENT ON TABLE " + schemaNamePrefix() + truncatedTableName + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + truncatedTableName + "]'";
   }
 
+  private String disableParallelAndEnableLoggingForPrimaryKey(Table table) {
+    return "ALTER INDEX " + schemaNamePrefix() + primaryKeyConstraintName(table.getName()) + " NOPARALLEL LOGGING";
+  }
 
   /**
-   * CONSTRAINT DEF_PK PRIMARY KEY (X, Y, Z) USING INDEX (CREATE UNIQUE INDEX ...)
+   * CONSTRAINT DEF_PK PRIMARY KEY (X, Y, Z) USING INDEX (CREATE UNIQUE INDEX ... NOLOGGING PARALLEL)
    */
   private String primaryKeyConstraint(String tableName, List<String> newPrimaryKeyColumns) {
     // truncate down to 27, since we add _PK to the end
@@ -304,17 +300,7 @@ class OracleDialect extends SqlDialect {
             + " USING INDEX (CREATE UNIQUE INDEX " + schemaNamePrefix() + primaryKeyConstraintName(tableName)
             + " ON "
             + schemaNamePrefix() + truncatedTableName(tableName)
-            + " (" + Joiner.on(", ").join(newPrimaryKeyColumns) + "))";
-  }
-
-  /**
-   * CONSTRAINT DEF_PK PRIMARY KEY (X, Y, Z) USING INDEX DEF_PK
-   */
-  private String primaryKeyConstraintReusingIndex(String tableName, List<String> newPrimaryKeyColumns) {
-    // truncate down to 27, since we add _PK to the end
-    return "CONSTRAINT " + primaryKeyConstraintName(tableName)
-            + " PRIMARY KEY (" + Joiner.on(", ").join(newPrimaryKeyColumns) + ")"
-            + " USING INDEX " + schemaNamePrefix() + primaryKeyConstraintName(tableName);
+            + " (" + Joiner.on(", ").join(newPrimaryKeyColumns) + ") NOLOGGING PARALLEL)";
   }
 
   /**
@@ -322,38 +308,6 @@ class OracleDialect extends SqlDialect {
    */
   private String primaryKeyConstraint(Table table) {
     return primaryKeyConstraint(table.getName(), namesOfColumns(primaryKeysForTable(table)));
-  }
-
-
-  /**
-   * CREATE UNIQUE INDEX DEF_PK ON DEF (X, Y, Z) NOLOGGING PARALLEL
-   */
-  private String primaryKeyConstraintParallel(String tableName, List<String> newPrimaryKeyColumns) {
-    // truncate down to 27, since we add _PK to the end
-    StringBuilder createIndexStatement = new StringBuilder();
-    createIndexStatement
-            .append("CREATE UNIQUE INDEX ")
-            .append(schemaNamePrefix())
-            .append(primaryKeyConstraintName(tableName))
-
-            // Specify which table the index is over
-            .append(" ON ")
-            .append(schemaNamePrefix())
-            .append(truncatedTableName(truncatedTableName(tableName)))
-            // Specify the fields that are used in the index
-            .append(" (")
-            .append(Joiner.on(", ").join(newPrimaryKeyColumns))
-            .append(") NOLOGGING PARALLEL");
-    return createIndexStatement.toString();
-  }
-
-
-
-  /**
-   * CREATE UNIQUE INDEX DEF_PK PRIMARY KEY (X, Y, Z) NOLOGGING PARALLEL
-   */
-  private String primaryKeyConstraintAsSelectParallel(Table table) {
-    return primaryKeyConstraintParallel(table.getName(), namesOfColumns(primaryKeysForTable(table)));
   }
 
   /**
@@ -1025,6 +979,7 @@ class OracleDialect extends SqlDialect {
 
     if (recreatePrimaryKey && !primaryKeysForTable(table).isEmpty()) {
       result.add(generatePrimaryKeyStatement(namesOfColumns(SchemaUtils.primaryKeysForTable(table)), truncatedTableName));
+      result.add(disableParallelAndEnableLoggingForPrimaryKey(table));
     }
 
     for (Index index : table.indexes()) {
@@ -1270,13 +1225,13 @@ class OracleDialect extends SqlDialect {
     );
 
     if (!primaryKeysForTable(table).isEmpty()) {
-      addTableAlterForPrimaryKeyStatement(table, result);
+      result.add(addTableAlterForPrimaryKeyStatement(table));
     }
 
     result.add("ALTER TABLE " + schemaNamePrefix() + table.getName()  + " NOPARALLEL LOGGING");
 
     if (!primaryKeysForTable(table).isEmpty()) {
-      result.add("ALTER INDEX " + schemaNamePrefix() + primaryKeyConstraintName(table.getName()) + " NOPARALLEL LOGGING");
+      result.add(disableParallelAndEnableLoggingForPrimaryKey(table));
     }
 
     result.addAll(buildRemainingStatementsAndComments(table));
