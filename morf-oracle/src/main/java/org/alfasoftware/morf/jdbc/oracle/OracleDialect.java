@@ -153,10 +153,13 @@ class OracleDialect extends SqlDialect {
 
 
   private Collection<String> tableDeploymentStatements(Table table, boolean asSelect) {
-    return ImmutableList.<String>builder()
-            .add(createTableStatement(table, asSelect))
-            .addAll(buildRemainingStatementsAndComments(table))
-            .build();
+    ImmutableList.Builder<String> builder =   ImmutableList.<String>builder()
+            .add(createTableStatement(table, asSelect));
+    if (!primaryKeysForTable(table).isEmpty() && !table.isTemporary()) {
+      builder.add(disableParallelAndEnableLoggingForPrimaryKey(table));
+    }
+    builder.addAll(buildRemainingStatementsAndComments(table));
+    return builder.build();
   }
 
 
@@ -246,9 +249,9 @@ class OracleDialect extends SqlDialect {
   }
 
   private String addTableAlterForPrimaryKeyStatement(Table table) {
-      StringBuilder updateTableStatement =new StringBuilder();
-      updateTableStatement.append("ALTER TABLE " + schemaNamePrefix() + table.getName()  + " ADD " + primaryKeyConstraint(table));
-      return updateTableStatement.toString();
+    StringBuilder updateTableStatement =new StringBuilder();
+    updateTableStatement.append("ALTER TABLE " + schemaNamePrefix() + table.getName()  + " ADD " + primaryKeyConstraint(table));
+    return updateTableStatement.toString();
   }
 
   private Collection<String> createColumnComments(Table table) {
@@ -283,28 +286,35 @@ class OracleDialect extends SqlDialect {
     return "COMMENT ON TABLE " + schemaNamePrefix() + truncatedTableName + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + truncatedTableName + "]'";
   }
 
+  private String disableParallelAndEnableLoggingForPrimaryKey(Table table) {
+    return "ALTER INDEX " + schemaNamePrefix() + primaryKeyConstraintName(table.getName()) + " NOPARALLEL LOGGING";
+  }
 
   /**
-   * CONSTRAINT DEF_PK PRIMARY KEY (X, Y, Z)
+   * CONSTRAINT DEF_PK PRIMARY KEY (X, Y, Z) USING INDEX (CREATE UNIQUE INDEX ... NOLOGGING PARALLEL)
    */
-  private String primaryKeyConstraint(String tableName, List<String> newPrimaryKeyColumns) {
+  private String primaryKeyConstraint(String tableName, List<String> newPrimaryKeyColumns, boolean isTempTable) {
     // truncate down to 27, since we add _PK to the end
-    return "CONSTRAINT " + primaryKeyConstraintName(tableName)
+    String constraintClause = "CONSTRAINT " + primaryKeyConstraintName(tableName)
             + " PRIMARY KEY (" + Joiner.on(", ").join(newPrimaryKeyColumns) + ")"
             + " USING INDEX (CREATE UNIQUE INDEX " + schemaNamePrefix() + primaryKeyConstraintName(tableName)
             + " ON "
             + schemaNamePrefix() + truncatedTableName(tableName)
-            + " (" + Joiner.on(", ").join(newPrimaryKeyColumns) + "))";
+            + " (" + Joiner.on(", ").join(newPrimaryKeyColumns) + ")";
+    if (!isTempTable) {
+      constraintClause += " NOLOGGING PARALLEL)";
+    } else {
+      constraintClause += ")";
+    }
+    return constraintClause;
   }
-
 
   /**
    * CONSTRAINT DEF_PK PRIMARY KEY (X, Y, Z)
    */
   private String primaryKeyConstraint(Table table) {
-    return primaryKeyConstraint(table.getName(), namesOfColumns(primaryKeysForTable(table)));
+    return primaryKeyConstraint(table.getName(), namesOfColumns(primaryKeysForTable(table)), table.isTemporary());
   }
-
 
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#dropStatements(org.alfasoftware.morf.metadata.Table)
@@ -871,7 +881,7 @@ class OracleDialect extends SqlDialect {
 
     //Create new primary key constraint
     if (!newPrimaryKeyColumns.isEmpty()) {
-      result.add(generatePrimaryKeyStatement(newPrimaryKeyColumns, table.getName()));
+      result.add(generatePrimaryKeyStatement(newPrimaryKeyColumns, table.getName(), table.isTemporary()));
     }
 
     return result;
@@ -974,7 +984,10 @@ class OracleDialect extends SqlDialect {
     }
 
     if (recreatePrimaryKey && !primaryKeysForTable(table).isEmpty()) {
-      result.add(generatePrimaryKeyStatement(namesOfColumns(SchemaUtils.primaryKeysForTable(table)), truncatedTableName));
+      result.add(generatePrimaryKeyStatement(namesOfColumns(SchemaUtils.primaryKeysForTable(table)), truncatedTableName, table.isTemporary()));
+      if (!table.isTemporary()) {
+        result.add(disableParallelAndEnableLoggingForPrimaryKey(table));
+      }
     }
 
     for (Index index : table.indexes()) {
@@ -991,13 +1004,13 @@ class OracleDialect extends SqlDialect {
   }
 
 
-  private String generatePrimaryKeyStatement(List<String> columnNames, String tableName) {
+  private String generatePrimaryKeyStatement(List<String> columnNames, String tableName, boolean isTempTable) {
     StringBuilder primaryKeyStatement = new StringBuilder();
     primaryKeyStatement.append("ALTER TABLE ")
     .append(schemaNamePrefix())
     .append(tableName)
     .append(" ADD ")
-    .append(primaryKeyConstraint(tableName, columnNames));
+    .append(primaryKeyConstraint(tableName, columnNames, isTempTable));
     return primaryKeyStatement.toString();
   }
 
@@ -1226,7 +1239,7 @@ class OracleDialect extends SqlDialect {
     result.add("ALTER TABLE " + schemaNamePrefix() + table.getName()  + " NOPARALLEL LOGGING");
 
     if (!primaryKeysForTable(table).isEmpty()) {
-      result.add("ALTER INDEX " + schemaNamePrefix() + primaryKeyConstraintName(table.getName()) + " NOPARALLEL LOGGING");
+      result.add(disableParallelAndEnableLoggingForPrimaryKey(table));
     }
 
     result.addAll(buildRemainingStatementsAndComments(table));
