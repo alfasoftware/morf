@@ -20,11 +20,13 @@ import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.element.Function.count;
 import static org.alfasoftware.morf.upgrade.UpgradeStatus.NONE;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -45,15 +47,11 @@ import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
 import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsException;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
-import java.sql.SQLException;
-import java.util.HashMap;
-import java.util.Map;
 
 
 /**
@@ -64,31 +62,34 @@ import java.util.Map;
 public class Upgrade {
   private static final Log log = LogFactory.getLog(Upgrade.class);
 
-  private final UpgradePathFactory factory;
   private final ConnectionResources connectionResources;
+  private final UpgradePathFactory upgradePathFactory;
   private final UpgradeStatusTableService upgradeStatusTableService;
   private final ViewChangesDeploymentHelper viewChangesDeploymentHelper;
   private final ViewDeploymentValidator viewDeploymentValidator;
-  private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
   private final DatabaseUpgradePathValidationService databaseUpgradePathValidationService;
+  private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
+  private final UpgradeConfiguration upgradeConfiguration;
 
 
   public Upgrade(
       ConnectionResources connectionResources,
-      UpgradePathFactory factory,
+      UpgradePathFactory upgradePathFactory,
       UpgradeStatusTableService upgradeStatusTableService,
       ViewChangesDeploymentHelper viewChangesDeploymentHelper,
       ViewDeploymentValidator viewDeploymentValidator,
+      DatabaseUpgradePathValidationService databaseUpgradePathValidationService,
       GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
-      DatabaseUpgradePathValidationService databaseUpgradePathValidationService) {
+      UpgradeConfiguration upgradeConfiguration) {
     super();
     this.connectionResources = connectionResources;
-    this.factory = factory;
+    this.upgradePathFactory = upgradePathFactory;
     this.upgradeStatusTableService = upgradeStatusTableService;
     this.viewChangesDeploymentHelper = viewChangesDeploymentHelper;
     this.viewDeploymentValidator = viewDeploymentValidator;
-    this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
     this.databaseUpgradePathValidationService = databaseUpgradePathValidationService;
+    this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
+    this.upgradeConfiguration = upgradeConfiguration;
   }
 
 
@@ -137,11 +138,22 @@ public class Upgrade {
       UpgradeStatusTableService upgradeStatusTableService,
       ViewDeploymentValidator viewDeploymentValidator,
       DatabaseUpgradePathValidationService databaseUpgradePathValidationService) {
+
+    UpgradeScriptAdditionsProvider upgradeScriptAdditionsProvider = new UpgradeScriptAdditionsProvider.NoOpScriptAdditions();
+    UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory = UpgradeStatusTableServiceImpl::new;
+    UpgradePathFactory upgradePathFactory = new UpgradePathFactoryImpl(upgradeScriptAdditionsProvider, upgradeStatusTableServiceFactory);
+    ViewChangesDeploymentHelper viewChangesDeploymentHelper = new ViewChangesDeploymentHelper(connectionResources.sqlDialect());
+    GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory = null;
+    UpgradeConfiguration upgradeConfiguration = new UpgradeConfiguration();
+
     Upgrade upgrade = new Upgrade(
       connectionResources,
-      new UpgradePathFactoryImpl(new UpgradeScriptAdditionsProvider.NoOpScriptAdditions(), UpgradeStatusTableServiceImpl::new),
-      upgradeStatusTableService, new ViewChangesDeploymentHelper(connectionResources.sqlDialect()), viewDeploymentValidator, null, databaseUpgradePathValidationService);
-    return upgrade.findPath(targetSchema, upgradeSteps, Collections.<String> emptySet(), connectionResources.getDataSource());
+      upgradePathFactory, upgradeStatusTableService, viewChangesDeploymentHelper, viewDeploymentValidator, databaseUpgradePathValidationService,
+      graphBasedUpgradeBuilderFactory, upgradeConfiguration);
+
+    Set<String> exceptionRegexes = Collections.emptySet();
+
+    return upgrade.findPath(targetSchema, upgradeSteps, exceptionRegexes, connectionResources.getDataSource());
   }
 
 
@@ -155,22 +167,6 @@ public class Upgrade {
    * @return The upgrade path available
    */
   public UpgradePath findPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, Collection<String> exceptionRegexes, DataSource dataSource) {
-    return findPath(targetSchema, upgradeSteps, exceptionRegexes, new HashSet<>(), dataSource);
-  }
-
-
-  /**
-   * Find an upgrade path.
-   *
-   * @param targetSchema            Target schema to upgrade to.
-   * @param upgradeSteps            All available upgrade steps.
-   * @param exceptionRegexes        Regular expression for table exclusions.
-   * @param exclusiveExecutionSteps names of the upgrade step classes which should
-   *                                  be executed in an exclusive way
-   * @param dataSource              The data source to use to find the upgrade path
-   * @return The upgrade path available
-   */
-  public UpgradePath findPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, Collection<String> exceptionRegexes, Set<String> exclusiveExecutionSteps, DataSource dataSource) {
     final List<String> upgradeStatements = new ArrayList<>();
 
     ResultSetProcessor<Long> upgradeAuditRowProcessor = resultSet -> {resultSet.next(); return resultSet.getLong(1);};
@@ -266,7 +262,7 @@ public class Upgrade {
         sourceSchema,
         targetSchema,
         connectionResources,
-        exclusiveExecutionSteps,
+        upgradeConfiguration.getExclusiveExecutionSteps(),
         schemaChangeSequence,
         viewChanges);
     }
@@ -298,7 +294,7 @@ public class Upgrade {
 
     List<String> pathValidationSql = databaseUpgradePathValidationService.getPathValidationSql(upgradeAuditCount);
 
-    UpgradePath path = factory.create(upgradesToApply, connectionResources, graphBasedUpgradeBuilder, pathValidationSql);
+    UpgradePath path = upgradePathFactory.create(upgradesToApply, connectionResources, graphBasedUpgradeBuilder, pathValidationSql);
 
     path.writeSql(UpgradeHelper.preSchemaUpgrade(new UpgradeSchemas(sourceSchema, targetSchema), viewChanges, viewChangesDeploymentHelper));
 
@@ -420,26 +416,32 @@ public class Upgrade {
    */
   public static class Factory  {
     private final UpgradePathFactory upgradePathFactory;
-    private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
     private final UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory;
     private final ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory;
     private final ViewDeploymentValidator.Factory viewDeploymentValidatorFactory;
-    private final DatabaseUpgradePathValidationService.Factory databaseUpgradeLockServiceFactory;
+    private final DatabaseUpgradePathValidationService.Factory databaseUpgradePathValidationServiceFactory;
+    private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
 
+    private UpgradeConfiguration upgradeConfiguration = new UpgradeConfiguration();
 
     @Inject
     public Factory(UpgradePathFactory upgradePathFactory,
                    UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory,
-                   GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
                    ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory,
                    ViewDeploymentValidator.Factory viewDeploymentValidatorFactory,
-                   DatabaseUpgradePathValidationService.Factory databaseUpgradeLockServiceFactory) {
+                   DatabaseUpgradePathValidationService.Factory databaseUpgradePathValidationServiceFactory,
+                   GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory) {
       this.upgradePathFactory = upgradePathFactory;
-      this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
       this.upgradeStatusTableServiceFactory =  upgradeStatusTableServiceFactory;
       this.viewChangesDeploymentHelperFactory = viewChangesDeploymentHelperFactory;
       this.viewDeploymentValidatorFactory = viewDeploymentValidatorFactory;
-      this.databaseUpgradeLockServiceFactory = databaseUpgradeLockServiceFactory;
+      this.databaseUpgradePathValidationServiceFactory = databaseUpgradePathValidationServiceFactory;
+      this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
+    }
+
+    public Factory withUpgradeConfiguration(UpgradeConfiguration upgradeConfiguration) {
+      this.upgradeConfiguration = upgradeConfiguration;
+      return this;
     }
 
     public Upgrade create(ConnectionResources connectionResources) {
@@ -448,8 +450,9 @@ public class Upgrade {
                          upgradeStatusTableServiceFactory.create(connectionResources),
                          viewChangesDeploymentHelperFactory.create(connectionResources),
                          viewDeploymentValidatorFactory.createViewDeploymentValidator(connectionResources),
+                         databaseUpgradePathValidationServiceFactory.create(connectionResources),
                          graphBasedUpgradeBuilderFactory,
-                         databaseUpgradeLockServiceFactory.create(connectionResources));
+                         upgradeConfiguration);
     }
   }
 }
