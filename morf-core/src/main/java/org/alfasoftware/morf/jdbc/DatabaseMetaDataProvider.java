@@ -15,6 +15,8 @@
 
 package org.alfasoftware.morf.jdbc;
 
+import static org.alfasoftware.morf.util.SchemaValidatorUtil.validateSchemaName;
+
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
@@ -38,10 +40,10 @@ import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaUtils;
-import org.alfasoftware.morf.metadata.Sequence;
-import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
 import org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder;
+import org.alfasoftware.morf.metadata.Sequence;
+import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.apache.commons.logging.Log;
@@ -55,8 +57,6 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
-
-import static org.alfasoftware.morf.util.SchemaValidatorUtil.validateSchemaName;
 
 /**
  * Provides meta data based on a database connection.
@@ -250,6 +250,9 @@ public abstract class DatabaseMetaDataProvider implements Schema {
   protected Map<AName, RealName> loadAllTableNames() {
     final ImmutableMap.Builder<AName, RealName> tableNameMappings = ImmutableMap.builder();
 
+    if (log.isDebugEnabled()) log.debug("Reading table names");
+    long start = System.currentTimeMillis();
+
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
@@ -277,7 +280,10 @@ public abstract class DatabaseMetaDataProvider implements Schema {
           }
         }
 
-        return tableNameMappings.build();
+        long end = System.currentTimeMillis();
+        Map<AName, RealName> tableNameMap = tableNameMappings.build();
+        if (log.isDebugEnabled()) log.debug(String.format("Read table names in %dms; %d tables", end-start, tableNameMap.size()));
+        return tableNameMap;
       }
     }
     catch (SQLException e) {
@@ -395,6 +401,9 @@ public abstract class DatabaseMetaDataProvider implements Schema {
   protected Map<AName, Map<AName, ColumnBuilder>> loadAllColumns() {
     final Map<AName, ImmutableMap.Builder<AName, ColumnBuilder>> columnMappingBuilders = Maps.toMap(tableNames.get().keySet(), k -> ImmutableMap.builder());
 
+    if (log.isDebugEnabled()) log.debug("Reading table columns");
+    long start = System.currentTimeMillis();
+
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
@@ -442,6 +451,9 @@ public abstract class DatabaseMetaDataProvider implements Schema {
             throw new RuntimeSqlException("Error reading metadata for column ["+columnName+"] on table ["+tableName+"]", e);
           }
         }
+
+        long end = System.currentTimeMillis();
+        if (log.isDebugEnabled()) log.debug(String.format("Read table columns in %dms; %d tables", end-start, columnMappingBuilders.size()));
 
         // Maps.transformValues creates a view over the given map of builders
         // Therefore we need to make a copy to avoid building the builders repeatedly
@@ -629,6 +641,8 @@ public abstract class DatabaseMetaDataProvider implements Schema {
   protected Table loadTable(AName tableName) {
     final RealName realTableName = tableNames.get().get(tableName);
 
+    if (log.isTraceEnabled()) log.trace("Loading table " + tableName);
+
     if (realTableName == null) {
       throw new IllegalArgumentException("Table [" + tableName + "] not found.");
     }
@@ -671,6 +685,9 @@ public abstract class DatabaseMetaDataProvider implements Schema {
   protected Map<AName, Integer> loadTablePrimaryKey(RealName tableName) {
     final ImmutableMap.Builder<AName, Integer> columns = ImmutableMap.builder();
 
+    if (log.isTraceEnabled()) log.trace("Reading table primary key for " + tableName);
+    long start = System.currentTimeMillis();
+
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
@@ -685,7 +702,10 @@ public abstract class DatabaseMetaDataProvider implements Schema {
           log.debug("Found primary key [" + columns.build() + "] on table [" + tableName + "]");
         }
 
-        return columns.build();
+        long end = System.currentTimeMillis();
+        Map<AName, Integer> primaryKeysMap = columns.build();
+        if (log.isTraceEnabled()) log.trace(String.format("Read table primary key for %s in %dms; %d primary keys", tableName, end-start, primaryKeysMap.size()));
+        return primaryKeysMap;
       }
     }
     catch (SQLException e) {
@@ -747,6 +767,9 @@ public abstract class DatabaseMetaDataProvider implements Schema {
     final Map<RealName, ImmutableList.Builder<RealName>> indexColumns = new HashMap<>();
     final Map<RealName, Boolean> indexUniqueness = new HashMap<>();
 
+    if (log.isTraceEnabled()) log.trace("Reading table indexes for " + tableName);
+    long start = System.currentTimeMillis();
+
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
@@ -783,6 +806,9 @@ public abstract class DatabaseMetaDataProvider implements Schema {
             throw new RuntimeSqlException("Error reading metadata for index ["+indexName+"] on table ["+tableName+"]", e);
           }
         }
+
+        long end = System.currentTimeMillis();
+        if (log.isTraceEnabled()) log.trace(String.format("Read table indexes for %s in %dms; %d indexes; %d unique", tableName, end-start, indexColumns.size(), indexUniqueness.size()));
 
         return indexColumns.entrySet().stream()
             .map(e -> createIndexFrom(e.getKey(), indexUniqueness.get(e.getKey()), e.getValue().build()))
@@ -843,6 +869,9 @@ public abstract class DatabaseMetaDataProvider implements Schema {
   protected Map<AName, RealName> loadAllViewNames() {
     final ImmutableMap.Builder<AName, RealName> viewNameMappings = ImmutableMap.builder();
 
+    if (log.isDebugEnabled()) log.debug("Reading view definitions");
+    long start = System.currentTimeMillis();
+
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
@@ -861,7 +890,10 @@ public abstract class DatabaseMetaDataProvider implements Schema {
           }
         }
 
-        return viewNameMappings.build();
+        long end = System.currentTimeMillis();
+        Map<AName, RealName> viewNameMap = viewNameMappings.build();
+        if (log.isDebugEnabled()) log.debug(String.format("Read view metadata in %dms; %d views", end-start, viewNameMap.size()));
+        return viewNameMap;
       }
     } catch (SQLException e) {
       throw new RuntimeSqlException("Error reading metadata for views", e);
@@ -956,17 +988,18 @@ public abstract class DatabaseMetaDataProvider implements Schema {
    * @return Map of real sequence names.
    */
   protected Map<AName, RealName> loadAllSequenceNames() {
-    final ImmutableMap.Builder<AName, RealName> sequences = ImmutableMap.builder();
+    final ImmutableMap.Builder<AName, RealName> sequenceNameMappings = ImmutableMap.builder();
 
-    log.info("Starting read of sequence definitions");
-
+    if (log.isDebugEnabled()) log.debug("Reading sequence definitions");
     long start = System.currentTimeMillis();
 
     String sequenceSql = buildSequenceSql(schemaName);
 
     //If there is no SQL to run, then we should just return an empty map
-    if (sequenceSql == null)
-      return sequences.build();
+    if (sequenceSql == null) {
+      if (log.isDebugEnabled()) log.debug("No sequence metadata available; 0 sequences");
+      return sequenceNameMappings.build();
+    }
 
     runSQL(sequenceSql, schemaName, new ResultSetHandler() {
       @Override
@@ -976,17 +1009,15 @@ public abstract class DatabaseMetaDataProvider implements Schema {
           if (isSystemSequence(realName)) {
             continue;
           }
-          sequences.put(realName, realName);
+          sequenceNameMappings.put(realName, realName);
         }
       }
     });
 
     long end = System.currentTimeMillis();
-
-    Map<AName, RealName> sequenceNamesMap = sequences.build();
-
-    log.info(String.format("Read sequence metadata in %dms; %d sequences", end-start, sequenceNamesMap.size()));
-    return sequenceNamesMap;
+    Map<AName, RealName> sequenceNameMap = sequenceNameMappings.build();
+    if (log.isDebugEnabled()) log.debug(String.format("Read sequence metadata in %dms; %d sequences", end-start, sequenceNameMap.size()));
+    return sequenceNameMap;
   }
 
 
@@ -1060,6 +1091,7 @@ public abstract class DatabaseMetaDataProvider implements Schema {
    * @param handler The handler to handle the result-set.
    */
   protected void runSQL(String sql, String schemaName, ResultSetHandler handler) {
+    if (log.isTraceEnabled()) log.trace("runSQL: " + sql);
     try {
       PreparedStatement statement = connection.prepareStatement(sql);
       try {
