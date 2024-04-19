@@ -167,7 +167,7 @@ class PostgreSQLUniqueIndexAdditionalDeploymentStatements {
 
         String commentStatement = commentOnIndexSqlStatement(fullIndexName, indexHash);
 
-        return ImmutableList.of(createStatement, commentStatement);
+        return ImmutableList.of(createIndexStatementBlock(createStatement, commentStatement));
       }
 
 
@@ -279,7 +279,7 @@ class PostgreSQLUniqueIndexAdditionalDeploymentStatements {
 
         String commentStatement = commentOnIndexSqlStatement(fullIndexName, indexHash);
 
-        return ImmutableList.of(createStatement, commentStatement);
+        return ImmutableList.of(createIndexStatementBlock(createStatement, commentStatement));
       }
 
 
@@ -454,6 +454,18 @@ class PostgreSQLUniqueIndexAdditionalDeploymentStatements {
 
     private static String dropIndexSqlStatement(String fullIndexName) {
       return "DROP INDEX IF EXISTS " + fullIndexName;
+    }
+
+
+    private static String createIndexStatementBlock(String createStatement, String commentStatement) {
+      return  "DO $IndexAutoHealing$" + "\n"
+            + "BEGIN" + "\n"
+            + "  " + createStatement + ";\n"
+            + "  " + commentStatement + ";\n"
+            + "EXCEPTION" + "\n"
+            + "  WHEN UNIQUE_VIOLATION THEN" + "\n"
+            + "    NULL; -- ignore the error" + "\n"
+            + "END $IndexAutoHealing$";
     }
 
 
