@@ -16,6 +16,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.StringJoiner;
 
+import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -910,6 +911,15 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   private Iterable<String> healIndexes(PostgreSQLMetaDataProvider metaDataProvider, Table table) {
+    // Postgres 15 can deal with this problem on it's own
+    if (Integer.parseInt(metaDataProvider.getDatabaseInformation().get(DatabaseMetaDataProvider.DATABASE_MAJOR_VERSION)) >= 15) {
+      // TODO
+      // See https://www.postgresql.org/docs/current/sql-createindex.html
+      // Once we support Postgres 15, we should introduce CREATE INDEX ... NULLS NOT DISTINCT
+      // And drop any existing AdditionalConstraintIndexes already created
+    }
+
+    // Older PG requires additional indexes to be added
     return FluentIterable.from(table.indexes())
             .transformAndConcat(index -> healIndexes(metaDataProvider.getAdditionalConstraintIndexes(index.getName().toLowerCase()), table, index));
   }
