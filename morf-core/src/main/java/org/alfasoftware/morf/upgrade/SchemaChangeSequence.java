@@ -25,6 +25,7 @@ import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.Statement;
@@ -240,6 +241,28 @@ public class SchemaChangeSequence {
 
 
     /**
+     * @see SchemaEditor#addSequence(Sequence)
+     */
+    @Override
+    public void addSequence(Sequence sequence) {
+      AddSequence addSequence = new AddSequence(sequence);
+      visitor.visit(addSequence);
+      schemaAndDataChangeVisitor.visit(addSequence);
+    }
+
+
+    /**
+     * @see SchemaEditor#removeSequence(Sequence)
+     */
+    @Override
+    public void removeSequence(Sequence sequence) {
+      RemoveSequence removeSequence = new RemoveSequence(sequence);
+      visitor.visit(removeSequence);
+      schemaAndDataChangeVisitor.visit(removeSequence);
+    }
+
+
+    /**
      * @see org.alfasoftware.morf.upgrade.SchemaEditor#changeColumn(java.lang.String, org.alfasoftware.morf.metadata.Column, org.alfasoftware.morf.metadata.Column)
      */
     @Override
@@ -370,7 +393,7 @@ public class SchemaChangeSequence {
 
 
     /**
-     * @see org.alfasoftware.morf.upgrade.SchemaEditor#analyseTable(org.alfasoftware.morf.metadata.Table)
+     * @see org.alfasoftware.morf.upgrade.SchemaEditor#analyseTable(String)
      */
     @Override
     public void analyseTable(String tableName) {
@@ -539,6 +562,24 @@ public class SchemaChangeSequence {
     @Override
     public void visit(AnalyseTable analyseTable) {
       changes.add(analyseTable);
+    }
+
+
+    /**
+     * @see SchemaChangeVisitor#visit(AddSequence)
+     */
+    @Override
+    public void visit(AddSequence addSequence) {
+      changes.add(addSequence);
+    }
+
+
+    /**
+     * @see SchemaChangeVisitor#visit(RemoveSequence)
+     */
+    @Override
+    public void visit(RemoveSequence removeSequence) {
+      changes.add(removeSequence);
     }
   }
 }

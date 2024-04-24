@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.upgrade.UpgradeTableResolutionVisitor;
+import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -144,7 +145,7 @@ public class TestExceptSetOperator {
 
 
   /**
-   * Verifies that the {@linkplain ExceptSetOperator#deepCopy()} method returns a
+   * Verifies that the {@linkplain ExceptSetOperator#deepCopy(DeepCopyTransformation)} method returns a
    * new instance of the original object, but with different objects.
    */
   @Test

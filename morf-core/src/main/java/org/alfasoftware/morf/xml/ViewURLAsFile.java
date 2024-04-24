@@ -106,7 +106,7 @@ class ViewURLAsFile implements Closeable {
 
             try (JarInputStream input = new JarInputStream(jar.getJarFileURL().openStream())) {
               String prefix = jar.getJarEntry().getName();
-              ZipEntry entry = null;
+              ZipEntry entry;
               while ((entry = input.getNextEntry()) != null) { // NOPMD
                 if (entry.getName().startsWith(prefix) && !entry.isDirectory()) {
                   File target = new File(result, entry.getName().substring(prefix.length()));

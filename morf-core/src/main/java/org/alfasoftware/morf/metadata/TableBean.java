@@ -91,7 +91,7 @@ class TableBean implements Table {
    * Creates a table bean.
    *
    * @param toCopy Table to copy.
-   * @throws RuntimeException Thrown when {@link UnexpectedDataTypeException} is caught.
+   * @throws RuntimeException Thrown when {@link org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider.UnexpectedDataTypeException} is caught.
    */
   TableBean(Table toCopy) {
     this(toCopy.getName());

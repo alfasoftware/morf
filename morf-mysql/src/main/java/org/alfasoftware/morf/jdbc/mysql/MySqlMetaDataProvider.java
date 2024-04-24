@@ -63,7 +63,7 @@ class MySqlMetaDataProvider extends DatabaseMetaDataProvider {
   /**
    * MySQL can (and must) provide the auto-increment start value from the column remarks.
    *
-   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#setAdditionalColumnMetadata(java.lang.String, org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder, java.sql.ResultSet)
+   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#setAdditionalColumnMetadata(RealName, ColumnBuilder, ResultSet)
    */
   @Override
   protected ColumnBuilder setAdditionalColumnMetadata(RealName tableName, ColumnBuilder columnBuilder, ResultSet columnMetaData) throws SQLException {
@@ -74,5 +74,14 @@ class MySqlMetaDataProvider extends DatabaseMetaDataProvider {
     } else {
       return columnBuilder;
     }
+  }
+
+
+  /**
+   * @see DatabaseMetaDataProvider#buildSequenceSql(String) 
+   */
+  @Override
+  protected String buildSequenceSql(String schemaName) {
+    return null;
   }
 }

@@ -15,8 +15,11 @@
 
 package org.alfasoftware.morf.jdbc;
 
+import static org.alfasoftware.morf.util.SchemaValidatorUtil.validateSchemaName;
+
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -39,6 +42,7 @@ import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
 import org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
@@ -59,7 +63,7 @@ import com.google.common.collect.Maps;
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-public class DatabaseMetaDataProvider implements Schema {
+public abstract class DatabaseMetaDataProvider implements Schema {
 
   private static final Log log = LogFactory.getLog(DatabaseMetaDataProvider.class);
 
@@ -103,6 +107,9 @@ public class DatabaseMetaDataProvider implements Schema {
   private final Supplier<Map<AName, RealName>> viewNames = Suppliers.memoize(this::loadAllViewNames);
   private final LoadingCache<AName, View> viewCache = CacheBuilder.newBuilder().build(CacheLoader.from(this::loadView));
 
+  private final Supplier<Map<AName, RealName>> sequenceNames = Suppliers.memoize(this::loadAllSequenceNames);
+  private final LoadingCache<AName, Sequence> sequenceCache = CacheBuilder.newBuilder().build(CacheLoader.from(this::loadSequence));
+
 
   /**
    * @param connection The database connection from which meta data should be provided.
@@ -111,7 +118,7 @@ public class DatabaseMetaDataProvider implements Schema {
   protected DatabaseMetaDataProvider(Connection connection, String schemaName) {
     super();
     this.connection = connection;
-    this.schemaName = schemaName;
+    this.schemaName = validateSchemaName(schemaName);
   }
 
 
@@ -196,6 +203,44 @@ public class DatabaseMetaDataProvider implements Schema {
   }
 
 
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#sequenceExists(String)
+   */
+  @Override
+  public boolean sequenceExists(String name) {
+    return sequenceNames.get().containsKey(named(name));
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#getSequence(String)
+   */
+  @Override
+  public Sequence getSequence(String name) {
+    return sequenceCache.getUnchecked(named(name));
+  }
+
+
+  /**
+   * @see Schema#sequenceNames()
+   */
+  @Override
+  public Collection<String> sequenceNames() {
+    return sequenceNames.get().values().stream().map(RealName::getRealName).collect(Collectors.toList());
+  }
+
+
+  /**
+   * @see Schema#sequences()
+   */
+  @Override
+  public Collection<Sequence> sequences() {
+    return sequenceNames.get().values().stream().map(RealName::getRealName).map(this::getSequence).collect(Collectors.toList());
+  }
+
+
   /**
    * Creates a map of all table names,
    * indexed by their case-agnostic names.
@@ -204,6 +249,9 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   protected Map<AName, RealName> loadAllTableNames() {
     final ImmutableMap.Builder<AName, RealName> tableNameMappings = ImmutableMap.builder();
+
+    if (log.isDebugEnabled()) log.debug("Reading table names");
+    long start = System.currentTimeMillis();
 
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
@@ -232,7 +280,10 @@ public class DatabaseMetaDataProvider implements Schema {
           }
         }
 
-        return tableNameMappings.build();
+        long end = System.currentTimeMillis();
+        Map<AName, RealName> tableNameMap = tableNameMappings.build();
+        if (log.isDebugEnabled()) log.debug(String.format("Read table names in %dms; %d tables", end-start, tableNameMap.size()));
+        return tableNameMap;
       }
     }
     catch (SQLException e) {
@@ -279,6 +330,32 @@ public class DatabaseMetaDataProvider implements Schema {
 
 
   /**
+   * Identify whether or not the view is one owned by the system, or owned by
+   * our application. The default implementation assumes that all views we can
+   * access in the schema are under our control.
+   *
+   * @param viewName The view which we are accessing.
+   * @return <var>true</var> if the view is owned by the system
+   */
+  protected boolean isSystemView(@SuppressWarnings("unused") RealName viewName) {
+    return false;
+  }
+
+
+  /**
+   * Identify whether or not the sequence is one owned by the system, or owned by
+   * our application. The default implementation assumes that all sequences we can
+   * access in the schema are under our control.
+   *
+   * @param sequenceName The sequence which we are accessing.
+   * @return <var>true</var> if the sequence is owned by the system
+   */
+  protected boolean isSystemSequence(@SuppressWarnings("unused") RealName sequenceName) {
+    return false;
+  }
+
+
+  /**
    * Identify whether or not the specified table should be ignored in the metadata. This is
    * typically used to filter temporary tables.
    *
@@ -286,6 +363,30 @@ public class DatabaseMetaDataProvider implements Schema {
    * @return <var>true</var> if the table should be ignored, false otherwise.
    */
   protected boolean isIgnoredTable(@SuppressWarnings("unused") RealName tableName) {
+    return false;
+  }
+
+
+  /**
+   * Identify whether or not the specified view should be ignored in the metadata. This is
+   * typically used to filter temporary tables.
+   *
+   * @param viewName The view which we are accessing.
+   * @return <var>true</var> if the table should be ignored, false otherwise.
+   */
+  protected boolean isIgnoredView(@SuppressWarnings("unused") RealName viewName) {
+    return false;
+  }
+
+
+  /**
+   * Identify whether or not the specified sequence should be ignored in the metadata. This is
+   * typically used to filter temporary sequence.
+   *
+   * @param sequenceName The sequence which we are accessing.
+   * @return <var>true</var> if the sequence should be ignored, false otherwise.
+   */
+  protected boolean isIgnoredSequence(@SuppressWarnings("unused") RealName sequenceName) {
     return false;
   }
 
@@ -299,6 +400,9 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   protected Map<AName, Map<AName, ColumnBuilder>> loadAllColumns() {
     final Map<AName, ImmutableMap.Builder<AName, ColumnBuilder>> columnMappingBuilders = Maps.toMap(tableNames.get().keySet(), k -> ImmutableMap.builder());
+
+    if (log.isDebugEnabled()) log.debug("Reading table columns");
+    long start = System.currentTimeMillis();
 
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
@@ -348,9 +452,12 @@ public class DatabaseMetaDataProvider implements Schema {
           }
         }
 
+        long end = System.currentTimeMillis();
+        if (log.isDebugEnabled()) log.debug(String.format("Read table columns in %dms; %d tables", end-start, columnMappingBuilders.size()));
+
         // Maps.transformValues creates a view over the given map of builders
         // Therefore we need to make a copy to avoid building the builders repeatedly
-        return ImmutableMap.copyOf(Maps.transformValues(columnMappingBuilders, v -> v.build()));
+        return ImmutableMap.copyOf(Maps.transformValues(columnMappingBuilders, ImmutableMap.Builder::build));
       }
     }
     catch (SQLException e) {
@@ -534,6 +641,8 @@ public class DatabaseMetaDataProvider implements Schema {
   protected Table loadTable(AName tableName) {
     final RealName realTableName = tableNames.get().get(tableName);
 
+    if (log.isTraceEnabled()) log.trace("Loading table " + tableName);
+
     if (realTableName == null) {
       throw new IllegalArgumentException("Table [" + tableName + "] not found.");
     }
@@ -576,6 +685,9 @@ public class DatabaseMetaDataProvider implements Schema {
   protected Map<AName, Integer> loadTablePrimaryKey(RealName tableName) {
     final ImmutableMap.Builder<AName, Integer> columns = ImmutableMap.builder();
 
+    if (log.isTraceEnabled()) log.trace("Reading table primary key for " + tableName);
+    long start = System.currentTimeMillis();
+
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
@@ -590,7 +702,10 @@ public class DatabaseMetaDataProvider implements Schema {
           log.debug("Found primary key [" + columns.build() + "] on table [" + tableName + "]");
         }
 
-        return columns.build();
+        long end = System.currentTimeMillis();
+        Map<AName, Integer> primaryKeysMap = columns.build();
+        if (log.isTraceEnabled()) log.trace(String.format("Read table primary key for %s in %dms; %d primary keys", tableName, end-start, primaryKeysMap.size()));
+        return primaryKeysMap;
       }
     }
     catch (SQLException e) {
@@ -652,6 +767,9 @@ public class DatabaseMetaDataProvider implements Schema {
     final Map<RealName, ImmutableList.Builder<RealName>> indexColumns = new HashMap<>();
     final Map<RealName, Boolean> indexUniqueness = new HashMap<>();
 
+    if (log.isTraceEnabled()) log.trace("Reading table indexes for " + tableName);
+    long start = System.currentTimeMillis();
+
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
@@ -666,6 +784,7 @@ public class DatabaseMetaDataProvider implements Schema {
               continue;
             }
             if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName.getDbName())) {
+              log.info("Ignoring index: ["+indexName.getDbName()+"]");
               continue;
             }
 
@@ -687,6 +806,9 @@ public class DatabaseMetaDataProvider implements Schema {
             throw new RuntimeSqlException("Error reading metadata for index ["+indexName+"] on table ["+tableName+"]", e);
           }
         }
+
+        long end = System.currentTimeMillis();
+        if (log.isTraceEnabled()) log.trace(String.format("Read table indexes for %s in %dms; %d indexes; %d unique", tableName, end-start, indexColumns.size(), indexUniqueness.size()));
 
         return indexColumns.entrySet().stream()
             .map(e -> createIndexFrom(e.getKey(), indexUniqueness.get(e.getKey()), e.getValue().build()))
@@ -747,21 +869,31 @@ public class DatabaseMetaDataProvider implements Schema {
   protected Map<AName, RealName> loadAllViewNames() {
     final ImmutableMap.Builder<AName, RealName> viewNameMappings = ImmutableMap.builder();
 
+    if (log.isDebugEnabled()) log.debug("Reading view definitions");
+    long start = System.currentTimeMillis();
+
     try {
       final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
       try (ResultSet viewResultSet = databaseMetaData.getTables(null, schemaName, null, tableTypesForViews())) {
         while (viewResultSet.next()) {
           RealName viewName = readViewName(viewResultSet);
-
-          if (log.isDebugEnabled()) {
-            log.debug("Found view [" + viewName + "]");
+          if (isSystemView(viewName) || isIgnoredView(viewName)){
+            if (log.isDebugEnabled()) {
+              log.debug("Skipped system/ignored view [" + viewName + "]" );
+            }
+          } else {
+            if (log.isDebugEnabled()) {
+              log.debug("Found view [" + viewName + "]");
+            }
+            viewNameMappings.put(viewName, viewName);
           }
-
-          viewNameMappings.put(viewName, viewName);
         }
 
-        return viewNameMappings.build();
+        long end = System.currentTimeMillis();
+        Map<AName, RealName> viewNameMap = viewNameMappings.build();
+        if (log.isDebugEnabled()) log.debug(String.format("Read view metadata in %dms; %d views", end-start, viewNameMap.size()));
+        return viewNameMap;
       }
     } catch (SQLException e) {
       throw new RuntimeSqlException("Error reading metadata for views", e);
@@ -790,6 +922,19 @@ public class DatabaseMetaDataProvider implements Schema {
   protected RealName readViewName(ResultSet viewResultSet) throws SQLException {
     String viewName = viewResultSet.getString(TABLE_NAME);
     return createRealName(viewName, viewName);
+  }
+
+
+  /**
+   * Retrieves sequence name from a result set.
+   *
+   * @param sequenceResultSet Result set to be read.
+   * @return Name of the sequence.
+   * @throws SQLException Upon errors.
+   */
+  protected RealName readSequenceName(ResultSet sequenceResultSet) throws SQLException {
+    String sequenceName = sequenceResultSet.getString(1);
+    return createRealName(sequenceName, sequenceName);
   }
 
 
@@ -836,6 +981,79 @@ public class DatabaseMetaDataProvider implements Schema {
 
 
   /**
+   * Creates a map of all sequence names, indexed by their case-agnostic names. The sequences are retrieved from the
+   * JDBC connection as a result set, where the result set is converted into a map of real sequence names with system
+   * sequences not included.
+   *
+   * @return Map of real sequence names.
+   */
+  protected Map<AName, RealName> loadAllSequenceNames() {
+    final ImmutableMap.Builder<AName, RealName> sequenceNameMappings = ImmutableMap.builder();
+
+    if (log.isDebugEnabled()) log.debug("Reading sequence definitions");
+    long start = System.currentTimeMillis();
+
+    String sequenceSql = buildSequenceSql(schemaName);
+
+    //If there is no SQL to run, then we should just return an empty map
+    if (sequenceSql == null) {
+      if (log.isDebugEnabled()) log.debug("No sequence metadata available; 0 sequences");
+      return sequenceNameMappings.build();
+    }
+
+    runSQL(sequenceSql, schemaName, new ResultSetHandler() {
+      @Override
+      public void handle(ResultSet resultSet) throws SQLException {
+        while (resultSet.next()) {
+          RealName realName = readSequenceName(resultSet);
+          if (isSystemSequence(realName)) {
+            continue;
+          }
+          sequenceNameMappings.put(realName, realName);
+        }
+      }
+    });
+
+    long end = System.currentTimeMillis();
+    Map<AName, RealName> sequenceNameMap = sequenceNameMappings.build();
+    if (log.isDebugEnabled()) log.debug(String.format("Read sequence metadata in %dms; %d sequences", end-start, sequenceNameMap.size()));
+    return sequenceNameMap;
+  }
+
+
+  /**
+   * Loads a sequence.
+   *
+   * @param sequenceName Name of the sequence.
+   * @return The sequence metadata.
+   */
+  protected Sequence loadSequence(AName sequenceName) {
+    final RealName realSequenceName = sequenceNames.get().get(sequenceName);
+
+    if (realSequenceName == null) {
+      throw new IllegalArgumentException("Sequence [" + sequenceName + "] not found.");
+    }
+
+    return new Sequence() {
+      @Override
+      public String getName() {
+        return realSequenceName.getRealName();
+      }
+
+      @Override
+      public Integer getStartsWith() {
+        return null;
+      }
+
+      @Override
+      public boolean isTemporary() {
+        return false;
+      }
+    };
+  }
+
+
+  /**
    * Creates {@link AName} for searching the maps within this metadata provider.
    *
    * <p>
@@ -853,6 +1071,61 @@ public class DatabaseMetaDataProvider implements Schema {
    */
   protected static AName named(String name) {
     return new AName(name);
+  }
+
+
+  /**
+   * Build the SQL to return sequence information from the metadata.
+   * @param schemaName
+   * @return
+   */
+  protected abstract String buildSequenceSql(String schemaName);
+
+
+  /**
+   * Run some SQL, and tidy up afterwards.
+   *
+   * Note this assumes a predicate on the schema name will be present with a single parameter in position "1".
+   *
+   * @param sql The SQL to run.
+   * @param handler The handler to handle the result-set.
+   */
+  protected void runSQL(String sql, String schemaName, ResultSetHandler handler) {
+    if (log.isTraceEnabled()) log.trace("runSQL: " + sql);
+    try {
+      PreparedStatement statement = connection.prepareStatement(sql);
+      try {
+
+        // pass through the schema name
+        if (schemaName != null && !schemaName.isBlank()) {
+          statement.setString(1, schemaName);
+        }
+
+        ResultSet resultSet = statement.executeQuery();
+        try {
+          handler.handle(resultSet);
+        } finally {
+          resultSet.close();
+        }
+      } finally {
+        statement.close();
+      }
+    } catch (SQLException sqle) {
+      throw new RuntimeSqlException("Error running SQL: " + sql, sqle);
+    }
+  }
+
+
+  /**
+   * Handler for {@link ResultSet}s from some SQL.
+   */
+  protected interface ResultSetHandler {
+    /**
+     * handle the results.
+     * @param resultSet The result set to handle
+     * @throws SQLException If an db exception occurs.
+     */
+    void handle(ResultSet resultSet) throws SQLException;
   }
 
 
@@ -1077,15 +1350,13 @@ public class DatabaseMetaDataProvider implements Schema {
 
     @Override
     public String toString() {
-      return new StringBuilder()
-          .append("Column-").append(columnName)
-          .append("-").append("UNSUPPORTED")
-          .append("-").append(typeName)
-          .append("-").append(typeCode)
-          .append("-").append(width)
-          .append("-").append(scale)
-          .append("-").append(columnResultSet)
-          .toString();
+      return "Column-" + columnName +
+              "-" + "UNSUPPORTED" +
+              "-" + typeName +
+              "-" + typeCode +
+              "-" + width +
+              "-" + scale +
+              "-" + columnResultSet;
     }
 
     @Override

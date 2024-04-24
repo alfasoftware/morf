@@ -629,6 +629,13 @@ public final class Function extends AliasedField implements Driver {
 
 
   /**
+   *
+   * @return an instance or ROW_NUMBER function
+   */
+  public static Function rowNumber() {
+    return new Function(FunctionType.ROW_NUMBER);
+  }
+  /**
    * Get the type of the function.
    *
    * @return the type

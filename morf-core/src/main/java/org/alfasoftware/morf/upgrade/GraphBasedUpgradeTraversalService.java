@@ -131,11 +131,11 @@ public class GraphBasedUpgradeTraversalService {
    * Caller of this method will be blocked awaiting moment when at least one new
    * node is available for execution or all the nodes of the upgrade have been
    * executed. When the upgrade reaches that point the block will be released and
-   * the method will be completed. Note that the the fact that at the time of the
+   * the method will be completed. Note that the fact that at the time of the
    * block at least one new node has been available doesn't guarantee that it will
    * still be available later. It may be potentially acquired by another thread.
    *
-   * @throws InterruptedException
+   * @throws InterruptedException - thrown by GraphBasedUpgradeService.waitForAllNodesToBeCompleted.
    */
   public void waitForReadyToExecuteNode() throws InterruptedException {
     lock.lock();

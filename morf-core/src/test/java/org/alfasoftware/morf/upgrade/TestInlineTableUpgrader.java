@@ -23,8 +23,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Matchers.anyCollectionOf;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -36,6 +36,7 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
@@ -115,7 +116,7 @@ public class TestInlineTableUpgrader {
     // then
     verify(addTable).apply(schema);
     verify(sqlDialect, atLeastOnce()).tableDeploymentStatements(nullable(Table.class));
-    verify(sqlStatementWriter).writeSql(anyCollectionOf(String.class)); // deploying the specified table and indexes
+    verify(sqlStatementWriter).writeSql(anyCollection()); // deploying the specified table and indexes
   }
 
 
@@ -134,7 +135,7 @@ public class TestInlineTableUpgrader {
     // then
     verify(removeTable).apply(schema);
     verify(sqlDialect).dropStatements(nullable(Table.class));
-    verify(sqlStatementWriter).writeSql(anyCollectionOf(String.class));
+    verify(sqlStatementWriter).writeSql(anyCollection());
   }
 
 
@@ -153,7 +154,7 @@ public class TestInlineTableUpgrader {
     // then
     verify(addIndex).apply(schema);
     verify(sqlDialect).addIndexStatements(nullable(Table.class), nullable(Index.class));
-    verify(sqlStatementWriter).writeSql(anyCollectionOf(String.class));
+    verify(sqlStatementWriter).writeSql(anyCollection());
   }
 
 
@@ -172,7 +173,7 @@ public class TestInlineTableUpgrader {
     // then
     verify(addColumn).apply(schema);
     verify(sqlDialect).alterTableAddColumnStatements(nullable(Table.class), nullable(Column.class));
-    verify(sqlStatementWriter).writeSql(anyCollectionOf(String.class));
+    verify(sqlStatementWriter).writeSql(anyCollection());
   }
 
 
@@ -191,7 +192,7 @@ public class TestInlineTableUpgrader {
     // then
     verify(changeColumn).apply(schema);
     verify(sqlDialect).alterTableChangeColumnStatements(nullable(Table.class), nullable(Column.class), nullable(Column.class));
-    verify(sqlStatementWriter).writeSql(anyCollectionOf(String.class));
+    verify(sqlStatementWriter).writeSql(anyCollection());
   }
 
 
@@ -210,7 +211,7 @@ public class TestInlineTableUpgrader {
     // then
     verify(removeColumn).apply(schema);
     verify(sqlDialect).alterTableDropColumnStatements(nullable(Table.class), nullable(Column.class));
-    verify(sqlStatementWriter).writeSql(anyCollectionOf(String.class));
+    verify(sqlStatementWriter).writeSql(anyCollection());
   }
 
 
@@ -229,7 +230,7 @@ public class TestInlineTableUpgrader {
     // then
     verify(removeIndex).apply(schema);
     verify(sqlDialect).indexDropStatements(nullable(Table.class), nullable(Index.class));
-    verify(sqlStatementWriter).writeSql(anyCollectionOf(String.class));
+    verify(sqlStatementWriter).writeSql(anyCollection());
   }
 
 
@@ -249,7 +250,7 @@ public class TestInlineTableUpgrader {
     verify(changeIndex).apply(schema);
     verify(sqlDialect).indexDropStatements(nullable(Table.class), nullable(Index.class));
     verify(sqlDialect).addIndexStatements(nullable(Table.class), nullable(Index.class));
-    verify(sqlStatementWriter, times(2)).writeSql(anyCollectionOf(String.class)); // index drop and index deployment
+    verify(sqlStatementWriter, times(2)).writeSql(anyCollection()); // index drop and index deployment
   }
 
 
@@ -271,7 +272,7 @@ public class TestInlineTableUpgrader {
     ArgumentCaptor<SqlDialect.IdTable> captor = ArgumentCaptor.forClass(SqlDialect.IdTable.class);
     verify(sqlDialect).convertStatementToSQL(Mockito.eq(insertStatement), Mockito.eq(schema), captor.capture());
     assertEquals("Id Table name differed", ID_TABLE_NAME, captor.getValue().getName());
-    verify(sqlStatementWriter).writeSql(anyCollectionOf(String.class));
+    verify(sqlStatementWriter).writeSql(anyCollection());
   }
 
 
@@ -292,7 +293,7 @@ public class TestInlineTableUpgrader {
 
     // then
     verify(sqlDialect).convertStatementToSQL(updateStatement);
-    verify(sqlStatementWriter).writeSql(anyCollectionOf(String.class));
+    verify(sqlStatementWriter).writeSql(anyCollection());
   }
 
 
@@ -313,7 +314,7 @@ public class TestInlineTableUpgrader {
 
     // then
     verify(sqlDialect).convertStatementToSQL(deleteStatement);
-    verify(sqlStatementWriter).writeSql(anyCollectionOf(String.class));
+    verify(sqlStatementWriter).writeSql(anyCollection());
   }
 
 
@@ -334,7 +335,7 @@ public class TestInlineTableUpgrader {
 
     // then
     verify(sqlDialect).convertStatementToSQL(mergeStatement);
-    verify(sqlStatementWriter).writeSql(anyCollectionOf(String.class));
+    verify(sqlStatementWriter).writeSql(anyCollection());
   }
 
 
@@ -378,7 +379,7 @@ public class TestInlineTableUpgrader {
 
     // then
     verify(statement).getStatement(eq("Foo"), nullable(String.class));
-    verify(sqlStatementWriter).writeSql(anyCollectionOf(String.class));
+    verify(sqlStatementWriter).writeSql(anyCollection());
   }
 
 
@@ -393,6 +394,46 @@ public class TestInlineTableUpgrader {
 
     // then
     verify(sqlDialect).getSqlForAnalyseTable(nullable(Table.class));
-    verify(sqlStatementWriter).writeSql(anyCollectionOf(String.class));
+    verify(sqlStatementWriter).writeSql(anyCollection());
   }
+
+
+  /**
+   * Test method for
+   * {@link org.alfasoftware.morf.upgrade.InlineTableUpgrader#visit(org.alfasoftware.morf.upgrade.AddSequence)}.
+   */
+  @Test
+  public void testVisitAddSequence() {
+    // given
+    AddSequence addSequence = mock(AddSequence.class);
+    given(addSequence.apply(schema)).willReturn(schema);
+
+    // when
+    upgrader.visit(addSequence);
+
+    // then
+    verify(addSequence).apply(schema);
+    verify(sqlDialect, atLeastOnce()).sequenceDeploymentStatements(nullable(Sequence.class));
+    verify(sqlStatementWriter).writeSql(anyCollection()); // deploying the specified table and indexes
+  }
+
+
+  /**
+   * Test method for {@link org.alfasoftware.morf.upgrade.InlineTableUpgrader#visit(org.alfasoftware.morf.upgrade.RemoveSequence)}.
+   */
+  @Test
+  public void testVisitRemoveSequence() {
+    // given
+    RemoveSequence removeSequence = mock(RemoveSequence.class);
+    given(removeSequence.apply(schema)).willReturn(schema);
+
+    // when
+    upgrader.visit(removeSequence);
+
+    // then
+    verify(removeSequence).apply(schema);
+    verify(sqlDialect).dropStatements(nullable(Sequence.class));
+    verify(sqlStatementWriter).writeSql(anyCollection());
+  }
+
 }

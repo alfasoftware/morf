@@ -25,12 +25,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.alfasoftware.morf.metadata.Column;
-import org.alfasoftware.morf.metadata.DataSetUtils;
-import org.alfasoftware.morf.metadata.Index;
-import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.metadata.*;
 import org.junit.Test;
 
 /**
@@ -228,6 +223,26 @@ public class TestWithMetaDataAdapter {
 
       @Override
       public Collection<View> views() {
+        return Collections.emptySet();
+      }
+
+      @Override
+      public boolean sequenceExists(String name) {
+        return false;
+      }
+
+      @Override
+      public Sequence getSequence(String name) {
+        return null;
+      }
+
+      @Override
+      public Collection<String> sequenceNames() {
+        return Collections.emptySet();
+      }
+
+      @Override
+      public Collection<Sequence> sequences() {
         return Collections.emptySet();
       }
     };

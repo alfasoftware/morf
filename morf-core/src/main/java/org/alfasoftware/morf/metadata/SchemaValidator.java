@@ -158,6 +158,9 @@ public class SchemaValidator {
     for (View view : schema.views()) {
       validateView(view);
     }
+    for (Sequence sequence : schema.sequences()) {
+      validateSequence(sequence);
+    }
 
     checkForValidationErrors();
   }
@@ -182,6 +185,18 @@ public class SchemaValidator {
    */
   public void validate(View view) {
     validateView(view);
+
+    checkForValidationErrors();
+  }
+
+
+  /**
+   * Validate a {@link Sequence} meets the rules
+   *
+   * @param sequence The {@link Sequence} to validate
+   */
+  public void validate(Sequence sequence) {
+    validateSequence(sequence);
 
     checkForValidationErrors();
   }
@@ -224,7 +239,7 @@ public class SchemaValidator {
    *
    * @see #MAX_LENGTH
    *
-   * @param word the string to establish if its within the allowed length
+   * @param name the string to establish if its within the allowed length
    * @return true if its within the allowed length otherwise false.
    */
   boolean isEntityNameLengthValid(String name){
@@ -262,9 +277,9 @@ public class SchemaValidator {
 
 
   /**
-   * Validates a {@link Table} meets the rules.
+   * Validates a {@link View} meets the rules.
    *
-   * @param table The {@link Table} to validate.
+   * @param view The {@link View} to validate.
    */
   private void validateView(View view) {
     validateName(view.getName());
@@ -275,19 +290,30 @@ public class SchemaValidator {
 
 
   /**
+   * Validates a {@link Sequence} meets the rules.
+   *
+   * @param sequence The {@link Sequence} to validate.
+   */
+  private void validateSequence(Sequence sequence) {
+    validateName(sequence.getName());
+  }
+
+
+  /**
    * Validates the basic naming rules for a database object (currently a table or view).
    */
-  private void validateName(String tableOrViewName) {
-    if (!isEntityNameLengthValid(tableOrViewName)) {
-      validationFailures.add("Name of table or view [" + tableOrViewName + "] is not allowed - it is over " + MAX_LENGTH + " characters long");
+  private void validateName(String tableOrViewOrSequenceName) {
+    if (!isEntityNameLengthValid(tableOrViewOrSequenceName)) {
+      validationFailures.add("Name of table or view or sequence [" + tableOrViewOrSequenceName + "] is not allowed - it is " +
+        "over " + MAX_LENGTH + " characters long");
     }
 
-    if (isSQLReservedWord(tableOrViewName)) {
-      validationFailures.add("Name of table or view [" + tableOrViewName + "] is not allowed - it is an SQL reserved word");
+    if (isSQLReservedWord(tableOrViewOrSequenceName)) {
+      validationFailures.add("Name of table or view or sequence [" + tableOrViewOrSequenceName + "] is not allowed - it is an SQL reserved word");
     }
 
-    if (!isNameConventional(tableOrViewName)) {
-      validationFailures.add("Name of table or view [" + tableOrViewName + "] is not allowed - it must match " + validNamePattern.toString());
+    if (!isNameConventional(tableOrViewOrSequenceName)) {
+      validationFailures.add("Name of table or view or sequence [" + tableOrViewOrSequenceName + "] is not allowed - it must match " + validNamePattern.toString());
     }
   }
 
@@ -312,9 +338,9 @@ public class SchemaValidator {
   }
 
   /**
-   * Validates a {@link Table}'s {@link Column}s meet the rules.
+   * Validates a {@link Table} or {@link View}'s {@link Column}s meet the rules.
    *
-   * @param table The {@link Table} on which to validate columns.
+   * @param tableOrViewName The Table or View on which to validate columns.
    */
   private void validateColumnNames(Collection<String> columnNames, String tableOrViewName) {
     for (String columnName : columnNames) {

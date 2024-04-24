@@ -35,6 +35,7 @@ import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.Hint;
@@ -50,9 +51,11 @@ import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.TableReference;
-import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.joda.time.LocalDate;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -90,6 +93,8 @@ class SqlServerDialect extends SqlDialect {
    * Used to force collation to be case-sensitive.
    */
   private static final String COLLATE = "COLLATE SQL_Latin1_General_CP1_CS_AS";
+
+  private static final Log log = LogFactory.getLog(SqlServerDialect.class);
 
   /**
    * The hint types supported.
@@ -151,6 +156,30 @@ class SqlServerDialect extends SqlDialect {
     return statements;
   }
 
+
+  /**
+   * @see SqlDialect#internalSequenceDeploymentStatements(Sequence)
+   */
+  @Override
+  protected Collection<String> internalSequenceDeploymentStatements(Sequence sequence) {
+    List <String> statements = new ArrayList<>();
+
+    StringBuilder createSequenceStatement = new StringBuilder();
+    createSequenceStatement.append("CREATE ");
+
+    createSequenceStatement.append("SEQUENCE ");
+    createSequenceStatement.append(schemaNamePrefix());
+    createSequenceStatement.append(sequence.getName());
+
+    if (sequence.getStartsWith() != null) {
+      createSequenceStatement.append(" START WITH ");
+      createSequenceStatement.append(sequence.getStartsWith());
+    }
+
+    statements.add(createSequenceStatement.toString());
+
+    return statements;
+  }
 
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getFromDummyTable()
@@ -221,6 +250,15 @@ class SqlServerDialect extends SqlDialect {
   }
 
 
+  @Override
+  public Collection<String> dropTables(List<Table> tables, boolean ifExists, boolean cascade) {
+    if (cascade) {
+     log.warn("Cascading table drops in SQL Server is not currently supported");
+    }
+    return super.dropTables(tables, ifExists, false);
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#dropStatements(org.alfasoftware.morf.metadata.View)
    */
@@ -253,7 +291,7 @@ class SqlServerDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#postInsertWithPresetAutonumStatements(org.alfasoftware.morf.metadata.Table, boolean)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#postInsertWithPresetAutonumStatements(Table, SqlScriptExecutor, Connection, boolean)
    */
   @Override
   public void postInsertWithPresetAutonumStatements(Table table, SqlScriptExecutor executor,Connection connection, boolean insertingUnderAutonumLimit) {
@@ -467,7 +505,28 @@ class SqlServerDialect extends SqlDialect {
     return sqlBuilder.toString();
   }
 
+
   /**
+   * @see SqlServerDialect#getSqlFrom(SequenceReference)
+   */
+  @Override
+  protected String getSqlFrom(SequenceReference sequenceReference) {
+    StringBuilder result = new StringBuilder();
+
+    switch (sequenceReference.getTypeOfOperation()) {
+      case NEXT_VALUE:
+        result.append("NEXT VALUE FOR ");
+        break;
+      case CURRENT_VALUE:
+        return "(SELECT current_value FROM sys.sequences WHERE name = '" + sequenceReference.getName() + "')";
+    }
+
+    result.append(sequenceReference.getName());
+
+    return result.toString();
+  }
+
+    /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#alterTableAddColumnStatements(org.alfasoftware.morf.metadata.Table, org.alfasoftware.morf.metadata.Column)
    */
   @Override
@@ -698,8 +757,9 @@ class SqlServerDialect extends SqlDialect {
 
 
   /**
-   * @param table
-   * @param statements
+   * Drops the primary key from a {@link Table}.
+   *
+   * @param table The table to drop the primary key from
    */
   private String dropPrimaryKey(Table table) {
     StringBuilder dropPkStatement = new StringBuilder();
@@ -715,7 +775,7 @@ class SqlServerDialect extends SqlDialect {
   /**
    * Return the SQL representation for the column on the table.
    *
-   * @see #sqlRepresentationOfColumnType(Table, Column)
+   * @see #sqlRepresentationOfColumnType(Table, Column, boolean)
    * @param table The table
    * @param column The column
    * @param includeDefaultWithValues Whether to include the WITH VALUES clause.
@@ -1071,29 +1131,11 @@ class SqlServerDialect extends SqlDialect {
    * so no need to specify a lock mode.
    *
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getForUpdateSql()
-   * @see http://stackoverflow.com/questions/10935850/when-to-use-select-for-update
+   * @see <a href="http://stackoverflow.com/questions/10935850/when-to-use-select-for-update">When to use select for update</a>
    */
   @Override
   protected String getForUpdateSql() {
     return StringUtils.EMPTY;
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#supportsWindowFunctions()
-   */
-  @Override
-  public boolean supportsWindowFunctions() {
-    return false; // SqlServer does not have full support for window functions before 2012
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.element.WindowFunction)
-   */
-  @Override
-  protected String getSqlFrom(final WindowFunction windowFunctionField) {
-    throw new UnsupportedOperationException(this.getClass().getSimpleName()+" does not support window functions.");
   }
 
 

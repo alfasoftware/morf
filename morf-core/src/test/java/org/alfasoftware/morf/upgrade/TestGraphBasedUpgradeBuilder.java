@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
@@ -53,6 +54,9 @@ public class TestGraphBasedUpgradeBuilder {
   private SqlDialect sqlDialect;
 
   @Mock
+  private ConnectionResources connectionResources;
+
+  @Mock
   private SchemaChangeSequence schemaChangeSequence;
 
   @Mock
@@ -72,14 +76,17 @@ public class TestGraphBasedUpgradeBuilder {
 
   private UpgradeStep u1, u2, u3, u4, u5, fu1, fu2, fu3, fu4, eu1, eu2, u1000, u1001;
 
+  private final List<String> initialisationSql = new ArrayList<>();
+
   @Before
   public void setup() {
     MockitoAnnotations.openMocks(this);
+    when(connectionResources.sqlDialect()).thenReturn(sqlDialect);
 
     when(schemaChangeSequence.getUpgradeTableResolution()).thenReturn(upgradeTableResolution);
     when(schemaChangeSequence.getUpgradeSteps()).thenReturn(upgradeSteps);
 
-    when(scriptGeneratorFactory.create(eq(sourceSchema), eq(targetSchema), eq(sqlDialect), any(Table.class), eq(viewChanges))).thenReturn(scriptGen);
+    when(scriptGeneratorFactory.create(eq(sourceSchema), eq(targetSchema), eq(connectionResources), any(Table.class), eq(viewChanges), eq(initialisationSql))).thenReturn(scriptGen);
     when(scriptGen.generatePostUpgradeStatements()).thenReturn(Lists.newArrayList("post"));
     when(scriptGen.generatePreUpgradeStatements()).thenReturn(Lists.newArrayList("pre"));
 
@@ -98,7 +105,7 @@ public class TestGraphBasedUpgradeBuilder {
     u1001 = new U1001();
 
     builder = new GraphBasedUpgradeBuilder(visitorFactory, scriptGeneratorFactory, drawIOGraphPrinter, sourceSchema, targetSchema,
-        sqlDialect, exclusiveExecutionSteps, schemaChangeSequence, viewChanges);
+        connectionResources, exclusiveExecutionSteps, schemaChangeSequence, viewChanges);
   }
 
 
@@ -116,7 +123,7 @@ public class TestGraphBasedUpgradeBuilder {
     upgradeSteps.addAll(Lists.newArrayList(u1, u2, u3, u4));
 
     // when
-    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade();
+    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade(initialisationSql);
 
     // then
     checkParentChild(upgrade, u1, u2);
@@ -145,7 +152,7 @@ public class TestGraphBasedUpgradeBuilder {
     upgradeSteps.addAll(Lists.newArrayList(u1, u2, u3, u4, u5));
 
     // when
-    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade();
+    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade(initialisationSql);
 
     // then
     checkParentChild(upgrade, u1, u2);
@@ -176,7 +183,7 @@ public class TestGraphBasedUpgradeBuilder {
     upgradeSteps.addAll(Lists.newArrayList(fu1, fu2, fu3, fu4));
 
     // when
-    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade();
+    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade(initialisationSql);
 
     // then
     checkParentChild(upgrade, fu1, fu2);
@@ -203,7 +210,7 @@ public class TestGraphBasedUpgradeBuilder {
     upgradeSteps.addAll(Lists.newArrayList(u1, u2, eu1, eu2));
 
     // when
-    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade();
+    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade(initialisationSql);
 
     // then
     checkParentChild(upgrade, u1, eu1);
@@ -231,7 +238,7 @@ public class TestGraphBasedUpgradeBuilder {
     exclusiveExecutionSteps.addAll(Lists.newArrayList(U3.class.getName(), U4.class.getName()));
 
     // when
-    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade();
+    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade(initialisationSql);
 
     // then
     checkParentChild(upgrade, u1, u3);
@@ -260,7 +267,7 @@ public class TestGraphBasedUpgradeBuilder {
     upgradeSteps.addAll(Lists.newArrayList(u1, u2, u3, u4));
 
     // when
-    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade();
+    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade(initialisationSql);
 
     // then
     checkParentChild(upgrade, u1, u3);
@@ -289,7 +296,7 @@ public class TestGraphBasedUpgradeBuilder {
     upgradeSteps.addAll(Lists.newArrayList(u1, u2, fu1, fu2));
 
     // when
-    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade();
+    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade(initialisationSql);
 
     // then
     checkParentChild(upgrade, u2, fu1);
@@ -310,7 +317,7 @@ public class TestGraphBasedUpgradeBuilder {
     upgradeSteps.addAll(Lists.newArrayList(eu1, eu2));
 
     // when
-    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade();
+    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade(initialisationSql);
 
     // then
     checkParentChild(upgrade, eu1, eu2);
@@ -327,7 +334,7 @@ public class TestGraphBasedUpgradeBuilder {
     upgradeSteps.addAll(Lists.newArrayList(eu1, eu2, u1000));
 
     // when
-    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade();
+    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade(initialisationSql);
 
     // then
     checkParentChild(upgrade, eu1, eu2);
@@ -348,7 +355,7 @@ public class TestGraphBasedUpgradeBuilder {
     upgradeSteps.addAll(Lists.newArrayList(eu1, u1000, u1001));
 
     // when
-    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade();
+    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade(initialisationSql);
 
     // then
     checkParentChild(upgrade, eu1, u1000);
@@ -369,7 +376,7 @@ public class TestGraphBasedUpgradeBuilder {
     upgradeSteps.addAll(Lists.newArrayList(eu1, u1, u2));
 
     // when
-    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade();
+    GraphBasedUpgrade upgrade = builder.prepareGraphBasedUpgrade(initialisationSql);
 
     // then
     checkParentChild(upgrade, u1, u2);
@@ -385,7 +392,7 @@ public class TestGraphBasedUpgradeBuilder {
     GraphBasedUpgradeBuilderFactory factory = new GraphBasedUpgradeBuilderFactory(visitorFactory, scriptGeneratorFactory, drawIOGraphPrinter);
 
     // when
-    GraphBasedUpgradeBuilder created = factory.create(sourceSchema, targetSchema, sqlDialect, exclusiveExecutionSteps, schemaChangeSequence, viewChanges);
+    GraphBasedUpgradeBuilder created = factory.create(sourceSchema, targetSchema, connectionResources, exclusiveExecutionSteps, schemaChangeSequence, viewChanges);
 
     // then
     assertNotNull(created);

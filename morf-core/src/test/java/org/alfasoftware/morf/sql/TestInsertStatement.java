@@ -31,6 +31,9 @@ public class TestInsertStatement {
   @Before
   public void setUp() throws Exception {
     MockitoAnnotations.openMocks(this);
+    when(field.build()).thenReturn(field);
+    when(field2.build()).thenReturn(field2);
+    when(field3.build()).thenReturn(field3);
   }
 
 

@@ -209,6 +209,29 @@ class GraphBasedUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
 
 
   /**
+   * Produce and write the statement based on {@link AddSequence}.
+   *
+   * @param addSequence The {@link AddSequence}
+   */  @Override
+  public void visit(AddSequence addSequence) {
+    sourceSchema = addSequence.apply(sourceSchema);
+    writeStatements(sqlDialect.sequenceDeploymentStatements(addSequence.getSequence()));
+  }
+
+
+  /**
+   * Produce and write the statement based on {@link RemoveSequence}.
+   *
+   * @param removeSequence The {@link RemoveSequence}
+   */
+  @Override
+  public void visit(RemoveSequence removeSequence) {
+    sourceSchema = removeSequence.apply(sourceSchema);
+    writeStatements(sqlDialect.dropStatements(removeSequence.getSequence()));
+  }
+
+
+  /**
    * Factory of {@link GraphBasedUpgradeSchemaChangeVisitor} instances.
    *
    * @author Copyright (c) Alfa Financial Software Limited. 2022

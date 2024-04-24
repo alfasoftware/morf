@@ -29,6 +29,7 @@ import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.BracketedExpression;
 import org.alfasoftware.morf.sql.element.CaseStatement;
 import org.alfasoftware.morf.sql.element.Cast;
+import org.alfasoftware.morf.sql.element.ClobFieldLiteral;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
@@ -37,6 +38,7 @@ import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.MathsField;
 import org.alfasoftware.morf.sql.element.MathsOperator;
 import org.alfasoftware.morf.sql.element.NullFieldLiteral;
+import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.sql.element.WhenCondition;
@@ -77,6 +79,17 @@ public class SqlUtils {
    */
   public static TableReference tableRef(String tableName) {
     return new TableReference(tableName);
+  }
+
+
+  /**
+   * Construct a new sequence with a given name.
+   *
+   * @param sequenceName the name of the table
+   * @return {@link SequenceReference}
+   */
+  public static SequenceReference sequenceRef(String sequenceName) {
+    return new SequenceReference(sequenceName);
   }
 
 
@@ -382,6 +395,15 @@ public class SqlUtils {
    */
   public static BlobFieldLiteral blobLiteral(String value) {
     return new BlobFieldLiteral(value.getBytes(StandardCharsets.UTF_8));
+  }
+
+  /**
+   * Constructs a new ClobFieldLiteral from a given string.
+   * @param value - the literal value to use.
+   * @return ClobFieldLiteral
+   */
+  public static ClobFieldLiteral clobLiteral(String value) {
+    return new ClobFieldLiteral(value);
   }
 
 

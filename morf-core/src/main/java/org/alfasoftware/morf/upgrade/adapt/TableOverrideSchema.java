@@ -48,11 +48,12 @@ public class TableOverrideSchema extends TableSetSchema {
         Collections2.filter(baseSchema.tables(), not(new Predicate<Table>() {
           @Override
           public boolean apply(Table table) {
-            return table.getName().toUpperCase().equals(overridingTable.getName().toUpperCase());
+            return table.getName().equalsIgnoreCase(overridingTable.getName());
           }
         })),
         // plus the override
         Arrays.asList(new Table[] {overridingTable})
-      )));
+      )),
+      baseSchema.sequences());
   }
 }

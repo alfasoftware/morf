@@ -1,22 +1,12 @@
 package org.alfasoftware.morf.upgrade;
 
-import static org.alfasoftware.morf.sql.SqlUtils.delete;
-import static org.alfasoftware.morf.sql.SqlUtils.field;
-import static org.alfasoftware.morf.sql.SqlUtils.insert;
-import static org.alfasoftware.morf.sql.SqlUtils.literal;
-import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME;
-
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.View;
-import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
 
 import com.google.common.collect.ImmutableList;
@@ -31,34 +21,43 @@ import com.google.inject.Inject;
  */
 class GraphBasedUpgradeScriptGenerator {
 
-  private final Schema sourceSchema;
-  private final Schema targetSchema;
-  private final SqlDialect sqlDialect;
+  private final UpgradeSchemas upgradeSchemas;
+  private final ConnectionResources connectionResources;
   private final Table idTable;
   private final ViewChanges viewChanges;
   private final UpgradeStatusTableService upgradeStatusTableService;
   private final Set<UpgradeScriptAddition> upgradeScriptAdditions;
+  private final ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory;
+  private final List<String> initialisationSql;
+
 
 
   /**
    * Default constructor.
    *
-   * @param sourceSchema schema prior to upgrade step
-   * @param targetSchema target schema to upgrade to
-   * @param sqlDialect dialect to generate statements for the target database
-   * @param idTable table for id generation
-   * @param viewChanges view changes which need to be made to match the target schema
+   * @param upgradeSchemas            source and target schemas used in the upgrade.
+   * @param connectionResources       connection resources with a dialect to generate statements for the target database
+   * @param idTable                   table for id generation
+   * @param viewChanges               view changes which need to be made to match the target schema
    * @param upgradeStatusTableService used to generate a script needed to update the transient "zzzUpgradeStatus" table
+   * @param initialisationSql         statements to be executed at the beginning of the upgrade script
    */
-  GraphBasedUpgradeScriptGenerator(Schema sourceSchema, Schema targetSchema, SqlDialect sqlDialect, Table idTable,
-      ViewChanges viewChanges, UpgradeStatusTableService upgradeStatusTableService, Set<UpgradeScriptAddition> upgradeScriptAdditions) {
-    this.sourceSchema = sourceSchema;
-    this.targetSchema = targetSchema;
-    this.sqlDialect = sqlDialect;
+  GraphBasedUpgradeScriptGenerator(UpgradeSchemas upgradeSchemas,
+                                   ConnectionResources connectionResources,
+                                   Table idTable,
+                                   ViewChanges viewChanges,
+                                   UpgradeStatusTableService upgradeStatusTableService,
+                                   Set<UpgradeScriptAddition> upgradeScriptAdditions,
+                                   ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory,
+                                   List<String> initialisationSql) {
+    this.upgradeSchemas = upgradeSchemas;
+    this.connectionResources = connectionResources;
     this.idTable = idTable;
     this.viewChanges = viewChanges;
     this.upgradeStatusTableService = upgradeStatusTableService;
     this.upgradeScriptAdditions = upgradeScriptAdditions;
+    this.viewChangesDeploymentHelperFactory = viewChangesDeploymentHelperFactory;
+    this.initialisationSql = initialisationSql;
   }
 
 
@@ -66,28 +65,19 @@ class GraphBasedUpgradeScriptGenerator {
    * @return pre-upgrade statements to be executed before the Graph Based Upgrade
    */
   public List<String> generatePreUpgradeStatements() {
-    List<String> statements = new ArrayList<>();
+    ImmutableList.Builder<String> statements = ImmutableList.builder();
 
-    // zzzUpgradeStatus table
-    statements.addAll(upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS));
+    // Initialisation SQL (zzzUpgradeStatus table & optimistic locking to prevent duplicate execution of upgrade script)
+    statements.addAll(initialisationSql);
 
     // temp table
-    statements.addAll(sqlDialect.tableDeploymentStatements(idTable));
+    statements.addAll(connectionResources.sqlDialect().tableDeploymentStatements(idTable));
 
-    // drop views
-    for (View view : viewChanges.getViewsToDrop()) {
-      // non-present views can be listed amongst ViewsToDrop due to how we calculate dependencies
-      if (sourceSchema.viewExists(view.getName())) {
-        statements.addAll(sqlDialect.dropStatements(view));
-      }
-      if (sourceSchema.tableExists(DEPLOYED_VIEWS_NAME) && targetSchema.tableExists(DEPLOYED_VIEWS_NAME)) {
-        statements.addAll(ImmutableList.of(
-          sqlDialect.convertStatementToSQL(
-            delete(tableRef(DEPLOYED_VIEWS_NAME)).where(Criterion.eq(field("name"), view.getName().toUpperCase()))
-          )));
-      }
-    }
-    return statements;
+    statements.addAll(UpgradeHelper.preSchemaUpgrade(upgradeSchemas,
+            viewChanges,
+            viewChangesDeploymentHelperFactory.create(connectionResources)));
+
+    return statements.build();
   }
 
 
@@ -95,39 +85,28 @@ class GraphBasedUpgradeScriptGenerator {
    * @return post-upgrade statements to be executed after the Graph Based Upgrade
    */
   public List<String> generatePostUpgradeStatements() {
-    List<String> statements = new ArrayList<>();
+    ImmutableList.Builder<String> statements = ImmutableList.builder();
 
     // temp table drop
-    statements.addAll(sqlDialect.truncateTableStatements(idTable));
-    statements.addAll(sqlDialect.dropStatements(idTable));
+    statements.addAll(connectionResources.sqlDialect().truncateTableStatements(idTable));
+    statements.addAll(connectionResources.sqlDialect().dropStatements(idTable));
 
-    // recreate views
-    for (View view : viewChanges.getViewsToDeploy()) {
-      statements.addAll(sqlDialect.viewDeploymentStatements(view));
-      if (targetSchema.tableExists(DEPLOYED_VIEWS_NAME)) {
-        statements.addAll(
-          sqlDialect.convertStatementToSQL(
-            insert().into(tableRef(DEPLOYED_VIEWS_NAME))
-                                 .values(
-                                   literal(view.getName().toUpperCase()).as("name"),
-                                   literal(sqlDialect.convertStatementToHash(view.getSelectStatement())).as("hash"),
-                                   sqlDialect.viewDeploymentStatementsAsLiteral(view).as("sqlDefinition"))
-                                           ));
-      }
-    }
+    statements.addAll(UpgradeHelper.postSchemaUpgrade(upgradeSchemas,
+            viewChanges,
+            viewChangesDeploymentHelperFactory.create(connectionResources)));
 
     // Since Oracle is not able to re-map schema references in trigger code, we need to rebuild all triggers
     // for id column autonumbering when exporting and importing data between environments.
     // We will drop-and-recreate triggers whenever there are upgrade steps to execute. Ideally we'd want to do
     // this step once, however there's no easy way to do that with our upgrade framework.
     AtomicBoolean first = new AtomicBoolean(true);
-    targetSchema.tables().stream()
-      .map(t -> sqlDialect.rebuildTriggers(t))
+    upgradeSchemas.getTargetSchema().tables().stream()
+      .map(t -> connectionResources.sqlDialect().rebuildTriggers(t))
       .filter(triggerSql -> !triggerSql.isEmpty())
       .peek(triggerSql -> {
           if (first.compareAndSet(true, false)) {
             statements.addAll(ImmutableList.of(
-              sqlDialect.convertCommentToSQL("Upgrades executed. Rebuilding all triggers to account for potential changes to autonumbered columns")
+                    connectionResources.sqlDialect().convertCommentToSQL("Upgrades executed. Rebuilding all triggers to account for potential changes to autonumbered columns")
             ));
           }
       })
@@ -135,13 +114,13 @@ class GraphBasedUpgradeScriptGenerator {
 
     // upgrade script additions (if any)
     upgradeScriptAdditions.stream()
-      .map(add -> Lists.newArrayList(add.sql()))
+      .map(add -> Lists.newArrayList(add.sql(connectionResources)))
       .forEach(statements::addAll);
 
     // status table
     statements.addAll(upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED));
 
-    return statements;
+    return statements.build();
   }
 
 
@@ -151,18 +130,22 @@ class GraphBasedUpgradeScriptGenerator {
    * @author Copyright (c) Alfa Financial Software Limited. 2022
    */
   static class GraphBasedUpgradeScriptGeneratorFactory {
-    private final UpgradeStatusTableService upgradeStatusTableService;
+    private final UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory;
     private final Set<UpgradeScriptAddition> upgradeScriptAdditions;
+    private final ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory;
 
     /**
      * Default constructor.
      *
-     * @param upgradeStatusTableService used to generate a script needed to update the transient "zzzUpgradeStatus" table
+     * @param upgradeStatusTableServiceFactory factory for service generating a script needed to update the transient "zzzUpgradeStatus" table
      */
     @Inject
-    public GraphBasedUpgradeScriptGeneratorFactory(UpgradeStatusTableService upgradeStatusTableService, Set<UpgradeScriptAddition> upgradeScriptAdditions) {
-      this.upgradeStatusTableService = upgradeStatusTableService;
-      this.upgradeScriptAdditions = upgradeScriptAdditions;
+    public GraphBasedUpgradeScriptGeneratorFactory(UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory,
+                                                   UpgradeScriptAdditionsProvider upgradeScriptAdditionsProvider,
+                                                   ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory) {
+      this.upgradeStatusTableServiceFactory = upgradeStatusTableServiceFactory;
+      this.upgradeScriptAdditions = upgradeScriptAdditionsProvider.getUpgradeScriptAdditions();
+      this.viewChangesDeploymentHelperFactory = viewChangesDeploymentHelperFactory;
     }
 
 
@@ -171,16 +154,16 @@ class GraphBasedUpgradeScriptGenerator {
      *
      * @param sourceSchema schema prior to upgrade step
      * @param targetSchema target schema to upgrade to
-     * @param sqlDialect   dialect to generate statements for the target database
+     * @param connectionResources connection resources with a dialect to generate statements for the target database
      * @param idTable      table for id generation
      * @param viewChanges  view changes which need to be made to match the target
      *                       schema
      * @return new {@link GraphBasedUpgradeScriptGenerator} instance
      */
-    GraphBasedUpgradeScriptGenerator create(Schema sourceSchema, Schema targetSchema, SqlDialect sqlDialect, Table idTable,
-        ViewChanges viewChanges) {
-      return new GraphBasedUpgradeScriptGenerator(sourceSchema, targetSchema, sqlDialect, idTable, viewChanges,
-          upgradeStatusTableService, upgradeScriptAdditions);
+    GraphBasedUpgradeScriptGenerator create(Schema sourceSchema, Schema targetSchema, ConnectionResources connectionResources, Table idTable,
+        ViewChanges viewChanges, List<String> initialisationSql) {
+      return new GraphBasedUpgradeScriptGenerator(new UpgradeSchemas(sourceSchema, targetSchema), connectionResources, idTable, viewChanges,
+          upgradeStatusTableServiceFactory.create(connectionResources), upgradeScriptAdditions, viewChangesDeploymentHelperFactory, initialisationSql);
     }
   }
 }

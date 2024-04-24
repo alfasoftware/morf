@@ -15,15 +15,16 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Matchers.eq;
-import static org.mockito.Matchers.same;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.RETURNS_SMART_NULLS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
@@ -86,7 +87,7 @@ public class MockConnectionResources  {
    * Allow specification of the results of a query.
    *
    * @param query SQL
-   * @param result Results.
+   * @param resultSet Results.
    * @return this.
    */
   public MockConnectionResources withResultSet(String query, ResultSet resultSet) {
@@ -123,8 +124,12 @@ public class MockConnectionResources  {
       
       for (String query : resultSets.keySet()) {
         ResultSet resultSet = resultSets.get(query);
-        
+
         when(statement.executeQuery(StringUtils.isEmpty(query) ? anyString() : eq(query))).thenReturn(resultSet);
+
+        PreparedStatement preparedStatement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+        when(preparedStatement.executeQuery()).thenReturn(resultSet);
+        when(connection.prepareStatement(StringUtils.isEmpty(query) ? anyString() : eq(query))).thenReturn(preparedStatement);
       }
 
       return mockConnectionResources;

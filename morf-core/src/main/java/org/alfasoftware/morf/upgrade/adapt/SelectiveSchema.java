@@ -27,7 +27,7 @@ import com.google.common.collect.Collections2;
 
 /**
  * A {@link Schema} adapted from a base schema by selective inclusion (i.e. filtering
- * in) of specified tables.  Views are excluded.
+ * in) of specified tables.  Views and sequences are excluded.
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
@@ -35,7 +35,7 @@ public class SelectiveSchema extends TableSetSchema {
 
   /**
    * Construct a new {@link SelectiveSchema} identical to the <var>baseSchema</var>
-   * in all respects save the removal of views and all tables not explicitly listed.
+   * in all respects save the removal of views, sequences and all tables not explicitly listed.
    *
    * @param baseSchema base schema to adapt.
    * @param tablesToInclude names of tables to include.
@@ -49,6 +49,6 @@ public class SelectiveSchema extends TableSetSchema {
         Collections.addAll(caseInsensitiveSet, tablesToInclude);
         return caseInsensitiveSet.contains(table.getName());
       }
-    }));
+    }), Collections.emptyList());
   }
 }

@@ -568,12 +568,21 @@ public class Criterion implements Driver, DeepCopyableWithTransformation<Criteri
       return operator.toString() + " " + selectStatement;
     }
     if (criteria.isEmpty()) {
-      return String.format("%s %s %s", field, operator, value);
+      switch(operator) {
+        case ISNULL:
+        case ISNOTNULL:
+          return String.format("%s %s", field, operator);
+
+        default:
+          return String.format("%s %s %s", field, operator, value);
+      }
     }
     StringBuilder result = new StringBuilder();
-    boolean first = true;
+    boolean only = criteria.size() == 1;
+    boolean first = criteria.size() > 1;
     for (Criterion criterion : criteria) {
-      if (!first)result.append(" ").append(operator).append(" ");
+      if (!only && !first) result.append(" ");
+      if (!first) result.append(operator).append(" ");
       result.append("(").append(criterion).append(")");
       first =  false;
     }

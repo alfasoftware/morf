@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 
@@ -125,6 +126,26 @@ public class WithMetaDataAdapter extends DataSetProducerAdapter {
         @Override
         public Collection<View> views() {
           return targetSchema.views();
+        }
+
+        @Override
+        public boolean sequenceExists(String name) {
+          return targetSchema.sequenceExists(name);
+        }
+
+        @Override
+        public Sequence getSequence(String name) {
+          return targetSchema.getSequence(name);
+        }
+
+        @Override
+        public Collection<String> sequenceNames() {
+          return targetSchema.sequenceNames();
+        }
+
+        @Override
+        public Collection<Sequence> sequences() {
+          return targetSchema.sequences();
         }
       };
     }

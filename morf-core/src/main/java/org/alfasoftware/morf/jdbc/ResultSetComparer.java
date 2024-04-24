@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.jdbc;
 
+import static java.lang.String.format;
 import static java.sql.Types.BIGINT;
 import static java.sql.Types.CHAR;
 import static java.sql.Types.DECIMAL;
@@ -30,6 +31,7 @@ import static java.sql.Types.REAL;
 import static java.sql.Types.SMALLINT;
 import static java.sql.Types.TINYINT;
 import static java.sql.Types.VARCHAR;
+import static java.util.Arrays.asList;
 import static org.alfasoftware.morf.jdbc.ResultSetMismatch.MismatchType.MISMATCH;
 import static org.alfasoftware.morf.jdbc.ResultSetMismatch.MismatchType.MISSING_LEFT;
 import static org.alfasoftware.morf.jdbc.ResultSetMismatch.MismatchType.MISSING_RIGHT;
@@ -50,6 +52,7 @@ import org.alfasoftware.morf.metadata.StatementParameters;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.stringcomparator.DatabaseEquivalentStringComparator;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.Lists;
@@ -74,6 +77,7 @@ import com.google.inject.Provider;
  * @author Copyright (c) Alfa Financial Software 2014
  */
 public class ResultSetComparer {
+
 
   /**
    * Factory to create {@link ResultSetComparer} instances
@@ -201,39 +205,21 @@ public class ResultSetComparer {
    *          If this is empty, the result sets must return only one record.
    * @param left The left hand data set {@link SelectStatement}
    * @param right The right hand data set {@link SelectStatement}
-   * @param connection a database connection
-   * @param callback the mismatch callback interface implementation.
-   * @return the number of mismatches between the two data sets.
-   */
-  public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection connection, CompareCallback callback) {
-    return compare(keyColumns, left, right, connection, connection, callback);
-  }
-
-
-  /**
-   * Given 2 data sets, return the number of mismatches between them, and
-   * callback with the details of any mismatches as they are found. This method
-   * will generate the result sets itself by executing two select statements
-   * using the supplied connection. See {@link ResultSetMismatch} for definition
-   * of a mismatch.
-   *
-   * @param keyColumns The indexes of the key columns common to both data sets.
-   *          If this is empty, the result sets must return only one record.
-   * @param left The left hand data set {@link SelectStatement}
-   * @param right The right hand data set {@link SelectStatement}
    * @param leftConnection a database connection to use for the left statement.
    * @param rightConnection a database connection to use for the right statement.
    * @param callback the mismatch callback interface implementation.
+   * @param resultSetValidations allows to validate the result sets by specifying one or more {@link ResultSetValidation}s.
    * @return the number of mismatches between the two data sets.
    */
-  public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback) {
+  public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback, ResultSetValidation... resultSetValidations) {
     String leftSql = leftSqlDialect.convertStatementToSQL(left);
     String rightSql = rightSqlDialect.convertStatementToSQL(right);
     try (Statement statementLeft = leftConnection.createStatement();
          Statement statementRight = rightConnection.createStatement();
          ResultSet rsLeft = statementLeft.executeQuery(leftSql);
          ResultSet rsRight = statementRight.executeQuery(rightSql)) {
-      return compare(keyColumns, rsLeft, rsRight, callback);
+      asList(resultSetValidations).forEach(validator -> validator.validateBeforeNext(rsLeft, rsRight));
+      return compare(keyColumns, rsLeft, rsRight, callback, resultSetValidations);
     } catch (SQLException e) {
       throw new RuntimeSqlException("Error comparing SQL statements [" + leftSql + ", " + rightSql + "]", e);
     }
@@ -259,18 +245,41 @@ public class ResultSetComparer {
    * @param callback the mismatch callback interface implementation.
    * @param leftStatementParameters the statement parameters to use for the left statement.
    * @param rightStatementParameters the statement parameters to use for the right statement.
+   * @param resultSetValidations allows to validate the result sets by specifying one or more {@link ResultSetValidation}s.
    * @return the number of mismatches between the two data sets.
    */
   public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection leftConnection, Connection rightConnection, CompareCallback callback,
-                     StatementParameters leftStatementParameters, StatementParameters rightStatementParameters) {
+                     StatementParameters leftStatementParameters, StatementParameters rightStatementParameters, ResultSetValidation... resultSetValidations) {
     try (NamedParameterPreparedStatement statementLeft = NamedParameterPreparedStatement.parseSql(leftSqlDialect.convertStatementToSQL(left), leftSqlDialect).createForQueryOn(leftConnection);
          NamedParameterPreparedStatement statementRight = NamedParameterPreparedStatement.parseSql(rightSqlDialect.convertStatementToSQL(right), rightSqlDialect).createForQueryOn(rightConnection);
          ResultSet rsLeft = parameteriseAndExecute(statementLeft, left, leftStatementParameters, leftSqlDialect);
          ResultSet rsRight = parameteriseAndExecute(statementRight, right, rightStatementParameters, rightSqlDialect)) {
-      return compare(keyColumns, rsLeft, rsRight, callback);
+      // Execute additional validations on the result sets prior to moving the cursor to the first row
+      asList(resultSetValidations).forEach(validator -> validator.validateBeforeNext(rsLeft, rsRight));
+      return compare(keyColumns, rsLeft, rsRight, callback, resultSetValidations);
     } catch (SQLException e) {
       throw new RuntimeSqlException("Error comparing SQL statements [" + left + ", " + right + "]", e);
     }
+  }
+
+
+  /**
+   * Given 2 data sets, return the number of mismatches between them, and
+   * callback with the details of any mismatches as they are found. This method
+   * will generate the result sets itself by executing two select statements
+   * using the supplied connection. See {@link ResultSetMismatch} for definition
+   * of a mismatch.
+   *
+   * @param keyColumns The indexes of the key columns common to both data sets.
+   *          If this is empty, the result sets must return only one record.
+   * @param left The left hand data set {@link SelectStatement}
+   * @param right The right hand data set {@link SelectStatement}
+   * @param connection a database connection
+   * @param callback the mismatch callback interface implementation.
+   * @return the number of mismatches between the two data sets.
+   */
+  public int compare(int[] keyColumns, SelectStatement left, SelectStatement right, Connection connection, CompareCallback callback) {
+    return compare(keyColumns, left, right, connection, connection, callback);
   }
 
 
@@ -290,9 +299,10 @@ public class ResultSetComparer {
    * @param left The left hand data set.
    * @param right The right hand data set.
    * @param callBack the mismatch callback interface implementation.
+   * @param resultSetValidations additional result set validations.
    * @return the number of mismatches between the two data sets.
    */
-  public int compare(int[] keyColumns, ResultSet left, ResultSet right, CompareCallback callBack) {
+  public int compare(int[] keyColumns, ResultSet left, ResultSet right, CompareCallback callBack, ResultSetValidation... resultSetValidations) {
     boolean expectingSingleRowResult = keyColumns.length == 0;
     int misMatchCount = 0;
     try {
@@ -346,6 +356,19 @@ public class ResultSetComparer {
         // Remember to check the situation where a single row data set comparison might
         // actually have yielded no rows on one side, or the other, or both.
         if (expectingSingleRowResult) {
+          // Execute additional validations on the single row left and right results, if both results are present
+          if (leftHasRow && rightHasRow) {
+            asList(resultSetValidations).forEach(validator -> {
+              try {
+                validator.validateSingleResult(
+                  columnToValue(left, 1, metadataLeft.getColumnType(1)),
+                  columnToValue(right, 1, metadataRight.getColumnType(1)));
+              } catch (SQLException e) {
+                ExceptionUtils.rethrow(e);
+              }
+            });
+          }
+
           if (!leftHasRow) {
             misMatchCount += callbackValueMismatches(left, right, callBack, metadataRight, valueCols, keys, MISSING_LEFT);
           }
@@ -629,7 +652,7 @@ public class ResultSetComparer {
 
   /**
    * Implement this interface to handle reconciliation mismatch callbacks from
-   * {@link ResultSetComparer#compare(int[], SelectStatement, SelectStatement, Connection, CompareCallback)}
+   * {@link ResultSetComparer#compare(int[], SelectStatement, SelectStatement, Connection, Connection, CompareCallback, ResultSetValidation...)}
    *
    * @author Copyright (c) Alfa Financial Software 2014
    */
@@ -641,4 +664,68 @@ public class ResultSetComparer {
      */
     void mismatch(ResultSetMismatch mismatch);
   }
+
+
+  /**
+   * Enum class representing validations of the left and right {@link ResultSet}s.
+   *
+   * @author Copyright (c) Alfa Financial Software Limited. 2024
+   */
+  public enum ResultSetValidation {
+
+    /**
+     * Validates that the left and right result sets contain at least one record.
+     *
+     * @author Copyright (c) Alfa Financial Software Limited. 2024
+     */
+    NON_EMPTY_RESULT {
+        @Override
+        void validateBeforeNext(ResultSet leftRs, ResultSet rightRs) {
+          try {
+             if (!leftRs.isBeforeFirst() && !rightRs.isBeforeFirst()) {
+                throw new IllegalStateException(format("The following queries should return at least one record: [%s]%n[%s]", leftRs.getStatement(), leftRs.getStatement()));
+             }
+          } catch (SQLException e) {
+            ExceptionUtils.rethrow(e);
+          }
+        }
+     },
+
+    /**
+     * Validates that the left and right result values are both numeric and are not equal to zero.
+     *
+     * @author Copyright (c) Alfa Financial Software Limited. 2024
+     */
+    NON_ZERO_RESULT {
+       @Override
+       void validateSingleResult(Comparable<?> leftValue, Comparable<?> rightValue) {
+         if (!(leftValue instanceof BigDecimal) || !(rightValue instanceof BigDecimal)) {
+           throw new IllegalStateException(format("Incorrect value type for this validator. Expecting a BigDecimal but got [%s] for the left value and [%s] for the right value.", leftValue.getClass().getName(), rightValue.getClass().getName()));
+         }
+
+         if (((BigDecimal) leftValue).equals(BigDecimal.ZERO) && ((BigDecimal) rightValue).equals(BigDecimal.ZERO)) {
+           throw new IllegalStateException("Left and right record queries returned zero");
+         }
+      }
+    };
+
+    /**
+     * Handles validation of the left and right {@link ResultSet} prior to the first invocation of {@code ResultSet#next()}.
+     *
+     * @param leftRs the left {@link ResultSet} to validate.
+     * @param rightRs the right {@link ResultSet} to validate.
+     */
+    @SuppressWarnings("unused")
+    void validateBeforeNext(ResultSet leftRs, ResultSet rightRs) { /* Default empty implementation */ }
+
+    /**
+     * Handles validation of the left and right {@link Comparable} values when a single result is expected.
+     *
+     * @param leftValue the left {@link Comparable} value to validate.
+     * @param rightValue the right {@link Comparable} value to validate.
+     */
+    @SuppressWarnings("unused")
+    void validateSingleResult(Comparable<?> leftValue, Comparable<?> rightValue) { /* Default empty implementation */ }
+  }
+
 }

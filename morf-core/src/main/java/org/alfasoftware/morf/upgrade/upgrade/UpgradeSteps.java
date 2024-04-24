@@ -9,6 +9,8 @@ import com.google.common.collect.ImmutableList;
 public class UpgradeSteps {
 
   public static final List<Class<? extends UpgradeStep>> LIST = ImmutableList.of(
-    AddDeployedViewsSqlDefinition.class
+          CreateDeployedViews.class,
+          RecreateOracleSequences.class,
+          AddDeployedViewsSqlDefinition.class
   );
 }

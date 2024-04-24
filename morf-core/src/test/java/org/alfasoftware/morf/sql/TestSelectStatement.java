@@ -36,6 +36,8 @@ public class TestSelectStatement {
   @Before
   public void setUp() throws Exception {
     MockitoAnnotations.openMocks(this);
+    when(field.build()).thenReturn(field);
+    when(field2.build()).thenReturn(field2);
   }
 
 

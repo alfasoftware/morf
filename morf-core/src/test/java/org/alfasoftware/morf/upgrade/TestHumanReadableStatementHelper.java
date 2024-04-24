@@ -26,6 +26,8 @@ import static org.junit.Assert.assertTrue;
 import java.util.List;
 
 import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
@@ -374,7 +376,7 @@ public class TestHumanReadableStatementHelper {
           .where(Criterion.eq(new FieldReference("extracted"), "N")));
 
   assertEquals("Data upgrade description incorrect",
-    String.format("Add records into AgrmmentBllngAddrssFrmTmp: agreementNumber and billingAddressFrameAgreement from AgreementbillingAddressFrame where extracted is 'N'"),
+          "Add records into AgrmmentBllngAddrssFrmTmp: agreementNumber and billingAddressFrameAgreement from AgreementbillingAddressFrame where extracted is 'N'",
     HumanReadableStatementHelper.generateDataUpgradeString(statement, null));
   }
 
@@ -411,7 +413,7 @@ public class TestHumanReadableStatementHelper {
       String.format("Update Agreement where documentCode is not null and (productCode is null or documentCode is not in Document)"
         + "%n    - Set frequency to null"
         + "%n    - Set unit to null"),
-      HumanReadableStatementHelper.generateDataUpgradeString(statement, null));
+            HumanReadableStatementHelper.generateDataUpgradeString(statement, null));
   }
 
 
@@ -423,8 +425,8 @@ public class TestHumanReadableStatementHelper {
     final DeleteStatement statement = new DeleteStatement(new TableReference("TransactionCode"));
 
     assertEquals("Data upgrade description incorrect",
-      String.format("Delete all records in TransactionCode"),
-      HumanReadableStatementHelper.generateDataUpgradeString(statement, null));
+            "Delete all records in TransactionCode",
+            HumanReadableStatementHelper.generateDataUpgradeString(statement, null));
   }
 
 
@@ -437,8 +439,8 @@ public class TestHumanReadableStatementHelper {
       .where(Criterion.in(new FieldReference("transactionCode"), "Z02", "Z03"));
 
     assertEquals("Data upgrade description incorrect",
-      String.format("Delete records in TransactionCode where transactionCode is in ('Z02', 'Z03')"),
-      HumanReadableStatementHelper.generateDataUpgradeString(statement, null));
+            "Delete records in TransactionCode where transactionCode is in ('Z02', 'Z03')",
+            HumanReadableStatementHelper.generateDataUpgradeString(statement, null));
   }
 
 
@@ -450,8 +452,8 @@ public class TestHumanReadableStatementHelper {
     final TruncateStatement statement = new TruncateStatement(new TableReference("TransactionCode"));
 
     assertEquals("Data upgrade description incorrect",
-      String.format("Delete all records in TransactionCode"),
-      HumanReadableStatementHelper.generateDataUpgradeString(statement, null));
+            "Delete all records in TransactionCode",
+            HumanReadableStatementHelper.generateDataUpgradeString(statement, null));
   }
 
 
@@ -465,8 +467,8 @@ public class TestHumanReadableStatementHelper {
       .into(new TableReference("AgrmmentBllngAddrssFrmTmp"));
 
     assertEquals("Data upgrade description incorrect",
-      String.format("Merge records into AgrmmentBllngAddrssFrmTmp from AgreementbillingAddressFrame"),
-      HumanReadableStatementHelper.generateDataUpgradeString(statement, null));
+            "Merge records into AgrmmentBllngAddrssFrmTmp from AgreementbillingAddressFrame",
+            HumanReadableStatementHelper.generateDataUpgradeString(statement, null));
   }
 
 
@@ -480,8 +482,8 @@ public class TestHumanReadableStatementHelper {
     .into(new TableReference("AgrmmentBllngAddrssFrmTmp"));
 
   assertEquals("Data upgrade description incorrect",
-    String.format("Merge records into AgrmmentBllngAddrssFrmTmp from AgreementbillingAddressFrame where extracted is 'N'"),
-    HumanReadableStatementHelper.generateDataUpgradeString(statement, null));
+          "Merge records into AgrmmentBllngAddrssFrmTmp from AgreementbillingAddressFrame where extracted is 'N'",
+          HumanReadableStatementHelper.generateDataUpgradeString(statement, null));
   }
 
 
@@ -801,5 +803,29 @@ public class TestHumanReadableStatementHelper {
     assertEquals("Incorrect string generated",
       String.format("%n    - Set bar to (foo + 42)"),
       HumanReadableStatementHelper.generateAliasedFieldAssignmentString(bracketExpression));
+  }
+
+
+  /**
+   * Tests the generation of "Add Sequence" text.
+   */
+  @Test
+  public void testAddSequenceGeneration() {
+    final Sequence sequence = SchemaUtils.sequence("Test");
+
+    assertEquals("Incorrect string generated", "Create sequence " + sequence.getName() + " starting with " + sequence.getStartsWith(),
+      HumanReadableStatementHelper.generateAddSequenceString(sequence));
+  }
+
+
+  /**
+   * Tests the generation of "Remove Sequence" text.
+   */
+  @Test
+  public void testRemoveSequenceGeneration() {
+    final Sequence sequence = SchemaUtils.sequence("Test");
+
+    assertEquals("Incorrect string generated", "Remove sequence " + sequence.getName(),
+      HumanReadableStatementHelper.generateRemoveSequenceString(sequence));
   }
 }

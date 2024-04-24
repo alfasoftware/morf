@@ -1341,7 +1341,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
               assertEquals("Inserted record 1 - string", "a", resultSet.getString(2));
               break;
             case 3:
-              //AutoNumber cannot be expected to be sequential. E.g. NuoDB
+              //AutoNumber cannot be expected to be sequential.
               assertFalse("Inserted record 2, long, should be unique", expectedAutonumber.contains(resultSet.getLong(1)));
               assertTrue("Inserted record 2, long, should be greater than the autonumber start", resultSet.getLong(1) > 10L);
               assertEquals("Inserted record 2 - string", "b", resultSet.getString(2));
@@ -1737,8 +1737,8 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
 
 
   /**
-   * Test the behaviour of the {@link org.alfasoftware.morf.sql.SqlUtils.isEmpty(AliasedField)}
-   * and {@link org.alfasoftware.morf.sql.SqlUtils.isNotEmpty(AliasedField)} SQL criteria against all {@linkplain SqlDialect}s
+   * Test the behaviour of the {@link org.alfasoftware.morf.sql.SqlUtils#isEmpty(AliasedField)}
+   * and {@link org.alfasoftware.morf.sql.SqlUtils#isNotEmpty(AliasedField)} SQL criteria against all {@linkplain SqlDialect}s
    *
    * @throws SQLException if something goes wrong.
    */
@@ -3231,8 +3231,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testWindowFunction() {
-    assumeTrue(TEST_ONLY_RUN_WITH_WINDOW_FUNCTION_SUPPORT,connectionResources.sqlDialect().supportsWindowFunctions());
-
     assertResultsMatch(
       select(
        field("id"),
@@ -3244,7 +3242,8 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
           .orderBy(field("id"))
           .build().as("runningTotal"))
 
-        .from(tableRef("WindowFunctionTable")),
+        .from(tableRef("WindowFunctionTable"))
+        .orderBy(field("partitionValue1")),
 
         "1-A-2.1",
         "2-A-5.3",
@@ -3261,7 +3260,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testWindowFunctionMultiPartitionBy() {
-    assumeTrue(TEST_ONLY_RUN_WITH_WINDOW_FUNCTION_SUPPORT,connectionResources.sqlDialect().supportsWindowFunctions());
 
     assertResultsMatch(
       select(
@@ -3279,15 +3277,16 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
            .partitionBy(field("partitionValue1"),field("partitionValue2"))
            .build().as("countPerPartition"))
 
-        .from(tableRef("WindowFunctionTable")),
+        .from(tableRef("WindowFunctionTable"))
+        .orderBy(field("id")),
 
-        "2-A-Y-3.2-2",
-        "4-A-Y-3.5-2",
         "1-A-Z-2.1-2",
-        "5-A-Z-2-2",
-        "7-B-Y-10.2-1",
+        "2-A-Y-3.2-2",
         "3-B-Z-5.7-2",
-        "6-B-Z-4.55-2");
+        "4-A-Y-3.5-2",
+        "5-A-Z-2-2",
+        "6-B-Z-4.55-2",
+        "7-B-Y-10.2-1");
   }
 
 
@@ -3296,7 +3295,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testWindowFunctionWithOrderByNoPartitionBy() {
-    assumeTrue(TEST_ONLY_RUN_WITH_WINDOW_FUNCTION_SUPPORT,connectionResources.sqlDialect().supportsWindowFunctions());
 
     assertResultsMatch(
       select(
@@ -3304,7 +3302,8 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
          count())
          .orderBy(field("partitionValue1"))
          .build().as("theCount"))
-       .from(tableRef("WindowFunctionTable")),
+       .from(tableRef("WindowFunctionTable"))
+       .orderBy(field("partitionValue1")),
 
        "4","4","4","4","7","7","7");
   }
@@ -3317,7 +3316,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testWindowFunctionWithPartitionByNoOrderBy() {
-    assumeTrue(TEST_ONLY_RUN_WITH_WINDOW_FUNCTION_SUPPORT,connectionResources.sqlDialect().supportsWindowFunctions());
 
     assertResultsMatch(
       select(
@@ -3325,7 +3323,8 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
           sum(field("aggregationValue")))
           .partitionBy(field("partitionValue1"))
           .build().as("unorderedWindowSum"))
-        .from(tableRef("WindowFunctionTable")),
+        .from(tableRef("WindowFunctionTable"))
+        .orderBy(field("partitionValue1")),
 
        "11","11","11","11","19.3","19.3","19.3");
   }
@@ -3336,7 +3335,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void testWindowFunctionWithoutOrderByOrPartitionBy() {
-    assumeTrue(TEST_ONLY_RUN_WITH_WINDOW_FUNCTION_SUPPORT,connectionResources.sqlDialect().supportsWindowFunctions());
 
     assertResultsMatch(
       select(

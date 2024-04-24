@@ -58,6 +58,11 @@ public class TestSchemaBean {
     assertTrue("Lower case", schema.viewExists("view1"));
     assertTrue("Mixed case", schema.viewExists("View1"));
 
+    // All of these sequences should exist
+    assertTrue("Upper case", schema.sequenceExists("SEQUENCE1"));
+    assertTrue("Lower case", schema.sequenceExists("sequence1"));
+    assertTrue("Mixed case", schema.sequenceExists("Sequence1"));
+
     // Table is found
     Table table = schema.getTable("TABLE1");
     assertEquals("Table returned", "Table1", table.getName());
@@ -79,11 +84,13 @@ public class TestSchemaBean {
     //
     private boolean tableCalled;
     private boolean viewCalled;
+    private boolean sequenceCalled;
 
     // -- Track which methods have been called...
     //
     private boolean tableNamesCalled;
     private boolean viewNamesCalled;
+    private boolean sequenceNamesCalled;
 
     /**
      * Table for our mock schema.
@@ -163,6 +170,26 @@ public class TestSchemaBean {
 
 
     /**
+     * Sequence for our schema.
+     */
+    private final Sequence sequence = new Sequence() {
+      @Override public String getName() {
+        return "Sequence1";
+      }
+
+      @Override
+      public Integer getStartsWith() {
+        return 1;
+      }
+
+      @Override
+      public boolean isTemporary() {
+        return false;
+      }
+    };
+
+
+    /**
      * {@inheritDoc}
      *
      * @see org.alfasoftware.morf.metadata.Schema#getTable(java.lang.String)
@@ -173,7 +200,7 @@ public class TestSchemaBean {
         fail("Table definition from source schema should only be read once");
       }
 
-      if (name.toUpperCase().equals(table.getName().toUpperCase())) {
+      if (name.equalsIgnoreCase(table.getName())) {
         tableCalled = true;
         return table;
       } else {
@@ -200,7 +227,7 @@ public class TestSchemaBean {
      */
     @Override
     public boolean tableExists(String name) {
-      return name.toUpperCase().equals(table.getName().toUpperCase());
+      return name.equalsIgnoreCase(table.getName());
     }
 
 
@@ -236,7 +263,7 @@ public class TestSchemaBean {
      */
     @Override
     public boolean viewExists(String name) {
-      return name.toUpperCase().equals(view.getName().toUpperCase());
+      return name.equalsIgnoreCase(view.getName());
     }
 
 
@@ -249,7 +276,7 @@ public class TestSchemaBean {
         fail("View definition from source schema should only be read once");
       }
 
-      if (name.toUpperCase().equals(view.getName().toUpperCase())) {
+      if (name.equalsIgnoreCase(view.getName())) {
         viewCalled = true;
         return view;
       } else {
@@ -277,6 +304,56 @@ public class TestSchemaBean {
     @Override
     public Collection<View> views() {
       return ImmutableList.of(view);
+    }
+
+
+    /**
+     * @see org.alfasoftware.morf.metadata.Schema#sequenceExists(String)
+     */
+    @Override
+    public boolean sequenceExists(String name) {
+      return name.equalsIgnoreCase(sequence.getName());
+    }
+
+
+    /**
+     * @see org.alfasoftware.morf.metadata.Schema#getSequence(String)
+     */
+    @Override
+    public Sequence getSequence(String name) {
+      if (sequenceCalled) {
+        fail("Sequence definition from source schema should only be read once");
+      }
+
+      if (name.equalsIgnoreCase(sequence.getName())) {
+        sequenceCalled = true;
+        return sequence;
+      } else {
+        throw new IllegalArgumentException("Sequence not known");
+      }
+    }
+
+
+    /**
+     * @see Schema#sequenceNames()
+     */
+    @Override
+    public Collection<String> sequenceNames() {
+      if (sequenceNamesCalled) {
+        fail("Sequence names on source schema should only be read once");
+      }
+
+      sequenceNamesCalled = true;
+      return Arrays.asList(sequence.getName());
+    }
+
+
+    /**
+     * @see Schema#sequences()
+     */
+    @Override
+    public Collection<Sequence> sequences() {
+      return ImmutableList.of(sequence);
     }
   }
 }

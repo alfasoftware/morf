@@ -21,6 +21,7 @@ import java.util.Map;
 
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.AbstractSelectStatement;
 import org.alfasoftware.morf.sql.DeleteStatement;
@@ -377,7 +378,7 @@ class HumanReadableStatementHelper {
   /**
    * Generates human-readable "Analyse Table" string.
    *
-   * @param The table to analyse.
+   * @param tableName The table to analyse.
    */
   public static String generateAnalyseTableFromString(String tableName) {
     return String.format("Analyse table %s", tableName);
@@ -437,8 +438,8 @@ class HumanReadableStatementHelper {
    * Generates a human-readable "Rename Index" string.
    *
    * @param tableName the name of the table to rename the index on
-   * @param fromIndex the original index name
-   * @param toIndex the replacement name for the index
+   * @param fromIndexName the original index name
+   * @param toIndexName the replacement name for the index
    * @return a string containing the human-readable version of the action
    */
   public static String generateRenameIndexString(final String tableName, final String fromIndexName, final String toIndexName) {
@@ -617,7 +618,7 @@ class HumanReadableStatementHelper {
   /**
    * Generates a human-readable description of a data truncate operation.
    *
-   * @param statement the data upgrade statement to describe
+   * @param table the table to be truncated to describe
    * @return a string containing the human-readable description of the operation
    */
   private static String generateTruncateStatementString(final TableReference table) {
@@ -1152,6 +1153,28 @@ class HumanReadableStatementHelper {
     } else {
       return String.format("%n    - Set %s to %s", generateFieldSymbolString(field), generateFieldValueString(field));
     }
+  }
+
+
+  /**
+   * Generates a human-readable "Add Sequence" string.
+   *
+   * @param sequence the new {@link Sequence}
+   * @return a string containing the human-readable version of the action
+   */
+  public static String generateAddSequenceString(final Sequence sequence) {
+    return String.format("Create sequence %s starting with %d", sequence.getName(), sequence.getStartsWith());
+  }
+
+
+  /**
+   * Generates a human-readable "Remove Sequence" string.
+   *
+   * @param sequence the name of the sequence which will be removed
+   * @return a string containing the human-readable version of the action
+   */
+  public static String generateRemoveSequenceString(final Sequence sequence) {
+    return String.format("Remove sequence %s", sequence.getName());
   }
 
 }

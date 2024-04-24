@@ -61,6 +61,8 @@ public class TestConnectionResourcesBean {
     assertNull(onTest.getUserName());
     assertNull(onTest.getPassword());
     assertEquals(0, onTest.getStatementPoolingMaxStatements());
+    assertNull(onTest.getFetchSizeForBulkSelects());
+    assertNull(onTest.getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming());
   }
 
 
@@ -86,6 +88,8 @@ public class TestConnectionResourcesBean {
     assertNull(onTest.getUserName());
     assertNull(onTest.getPassword());
     assertEquals(0, onTest.getStatementPoolingMaxStatements());
+    assertNull(onTest.getFetchSizeForBulkSelects());
+    assertNull(onTest.getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming());
   }
 
 
@@ -105,6 +109,8 @@ public class TestConnectionResourcesBean {
     properties.setProperty("userName", "username1");
     properties.setProperty("password", "password1");
     properties.setProperty("statementPoolingMaxStatements", "456");
+    properties.setProperty("fetchSizeForBulkSelects", "1000");
+    properties.setProperty("fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming", "1");
     properties.setProperty("randomStuffWeDontCareAbout", "wibble");
 
     // When
@@ -120,6 +126,8 @@ public class TestConnectionResourcesBean {
     assertEquals("username1", onTest.getUserName());
     assertEquals("password1", onTest.getPassword());
     assertEquals(456, onTest.getStatementPoolingMaxStatements());
+    assertEquals(1000, onTest.getFetchSizeForBulkSelects().intValue());
+    assertEquals(1, onTest.getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming().intValue());
   }
 
 
@@ -139,6 +147,8 @@ public class TestConnectionResourcesBean {
     properties.setProperty("userName", "username1");
     properties.setProperty("password", "password1");
     properties.setProperty("statementPoolingMaxStatements", "456");
+    properties.setProperty("fetchSizeForBulkSelects", "1000");
+    properties.setProperty("fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming", "1");
     properties.setProperty("randomStuffWeDontCareAbout", "wibble");
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -158,6 +168,8 @@ public class TestConnectionResourcesBean {
     assertEquals("username1", onTest.getUserName());
     assertEquals("password1", onTest.getPassword());
     assertEquals(456, onTest.getStatementPoolingMaxStatements());
+    assertEquals(1000, onTest.getFetchSizeForBulkSelects().intValue());
+    assertEquals(1, onTest.getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming().intValue());
   }
 
 
@@ -182,5 +194,7 @@ public class TestConnectionResourcesBean {
     assertNull(onTest.getUserName());
     assertNull(onTest.getPassword());
     assertEquals(0, onTest.getStatementPoolingMaxStatements());
+    assertNull(onTest.getFetchSizeForBulkSelects());
+    assertNull(onTest.getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming());
   }
 }

@@ -19,9 +19,11 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
 import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
 import static org.alfasoftware.morf.metadata.SchemaUtils.toUpperCase;
+import static org.alfasoftware.morf.metadata.SchemaUtils.upperCaseNamesOfColumns;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.metadata.Column;
@@ -31,6 +33,7 @@ import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.adapt.AlteredTable;
 import org.alfasoftware.morf.upgrade.adapt.TableOverrideSchema;
+
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -94,16 +97,16 @@ public class ChangePrimaryKeyColumns implements SchemaChange {
     ImmutableMap<String, Column> columnsMap = Maps.uniqueIndex(table.columns(), new Function<Column, String>() {
       @Override
       public String apply(Column input) {
-        return input.getName().toUpperCase();
+        return input.getUpperCaseName();
       }
     });
 
     assertExistingPrimaryKey(from, table);
 
-    verifyNewPrimaryKeyIsNotIndexed(table, to);
+    verifyNewPrimaryKeyIsNotIndexed(table, newPrimaryKeyColumnsUpperCase);
 
     // Do the "to" primary key columns exist?
-    List<String> allColumns = toUpperCase(namesOfColumns(table.columns()));
+    List<String> allColumns = table.columns().stream().map(Column::getUpperCaseName).collect(Collectors.toList());
 
     // Build up the columns in the correct order
     List<Column> newColumns = new ArrayList<>();
@@ -112,7 +115,7 @@ public class ChangePrimaryKeyColumns implements SchemaChange {
     List<Column> nonPrimaries = Lists.newArrayList(table.columns());
 
     for (String newPrimaryColumn : newPrimaryKeyColumnsUpperCase) {
-      if (allColumns.contains(newPrimaryColumn.toUpperCase())) {
+      if (allColumns.contains(newPrimaryColumn)) {
         Column pk = columnsMap.get(newPrimaryColumn);
         newColumns.add(column(pk).primaryKey());
         nonPrimaries.remove(pk);
@@ -137,7 +140,7 @@ public class ChangePrimaryKeyColumns implements SchemaChange {
    */
   protected void assertExistingPrimaryKey(List<String> from, Table table) {
     List<String> fromUpperCase = toUpperCase(from);
-    List<String> existingUpperCase = toUpperCase(namesOfColumns(primaryKeysForTable(table)));
+    List<String> existingUpperCase = upperCaseNamesOfColumns(primaryKeysForTable(table));
     if (!fromUpperCase.equals(existingUpperCase)) {
       throw new RuntimeException(String.format("Expected existing primary key columns do not match schema. Expected: %s, schema: %S", fromUpperCase, existingUpperCase));
     }
@@ -147,9 +150,7 @@ public class ChangePrimaryKeyColumns implements SchemaChange {
   /**
    * Verify that the proposed PK does not already exist as an index. Permitting this confuses Oracle.
    */
-  private void verifyNewPrimaryKeyIsNotIndexed(Table table, List<String> newPrimaryKeyColumns) {
-    List<String> newPrimaryKeyColumnsUpperCase = toUpperCase(newPrimaryKeyColumns);
-
+  private void verifyNewPrimaryKeyIsNotIndexed(Table table, List<String> newPrimaryKeyColumnsUpperCase) {
     for (Index index : table.indexes()) {
       List<String> indexColumnNames = toUpperCase(index.columnNames());
 

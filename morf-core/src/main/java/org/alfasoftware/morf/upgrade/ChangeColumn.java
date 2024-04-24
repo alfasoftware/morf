@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import org.alfasoftware.morf.jdbc.ConnectionResources;
@@ -32,7 +33,7 @@ import org.alfasoftware.morf.metadata.SchemaHomology.CollectingDifferenceWriter;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.adapt.AlteredTable;
 import org.alfasoftware.morf.upgrade.adapt.TableOverrideSchema;
-import java.util.Objects;
+
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
 
@@ -109,7 +110,7 @@ public class ChangeColumn implements SchemaChange {
       String currentColumnName = column.getName();
 
       // If we're looking at the column being changed...
-      if (currentColumnName.equalsIgnoreCase(columnStartPoint.getName())) {
+      if (column.getUpperCaseName().equalsIgnoreCase(columnStartPoint.getUpperCaseName())) {
 
         // check the current column matches the specified source column
         CollectingDifferenceWriter differences = new SchemaHomology.CollectingDifferenceWriter();
@@ -122,7 +123,7 @@ public class ChangeColumn implements SchemaChange {
         foundMatch = true;
       }
 
-      if (!processedColumns.add(currentColumnName.toUpperCase())) {
+      if (!processedColumns.add(column.getUpperCaseName())) {
         throw new IllegalArgumentException(String.format("Cannot change column name from [%s] to [%s] on table [%s] as column with that name already exists", columnStartPoint.getName(), columnEndPoint.getName(), tableName));
       }
 
@@ -134,7 +135,7 @@ public class ChangeColumn implements SchemaChange {
     }
 
     // If the column is being renamed, check it isn't contained in an index
-    if (!columnStartPoint.getName().equalsIgnoreCase(columnEndPoint.getName())) {
+    if (!columnStartPoint.getUpperCaseName().equals(columnEndPoint.getUpperCaseName())) {
       for (Index index : original.indexes()) {
         for (String indexedColumnName : index.columnNames()) {
           if (indexedColumnName.equalsIgnoreCase(columnStartPoint.getName())) {

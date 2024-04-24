@@ -15,30 +15,24 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.UUID;
-
+import com.google.inject.ImplementedBy;
+import com.google.inject.Inject;
+import com.google.inject.assistedinject.Assisted;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.DatabaseDataSetConsumer;
-import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
-import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
-import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 
-import com.google.inject.ImplementedBy;
-import com.google.inject.Inject;
-import com.google.inject.assistedinject.Assisted;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * Deploys a full database schema. Once the deployment is complete, the status of
@@ -47,7 +41,7 @@ import com.google.inject.assistedinject.Assisted;
  * at this point (for example, transferring in a start position using
  * {@link DatabaseDataSetConsumer}) and, once complete, call {@link UpgradeStatusTableService#writeStatusFromStatus(UpgradeStatus, UpgradeStatus)}.
  *
- * <h3>Usage</h3>
+ * <b>Usage</b>
  * <pre><code>
  * deployment.deploy(targetSchema);
  * if (upgradeStatusTableService.writeStatusFromStatus(DATA_TRANSFER_REQUIRED, DATA_TRANSFER_IN_PROGRESS) == 1) {
@@ -69,9 +63,10 @@ public class Deployment {
   private final SqlScriptExecutorProvider sqlScriptExecutorProvider;
 
   /**
-   * The SQL dialect.
+   * The connection resources.
    */
-  private final SqlDialect sqlDialect;
+
+  private final ConnectionResources connectionResources;
 
   private final UpgradePathFactory upgradePathFactory;
 
@@ -81,9 +76,9 @@ public class Deployment {
    * Constructor.
    */
   @Inject
-  Deployment(SqlDialect sqlDialect, SqlScriptExecutorProvider sqlScriptExecutorProvider, UpgradePathFactory upgradePathFactory, ViewChangesDeploymentHelper viewChangesDeploymentHelper) {
+  Deployment(ConnectionResources connectionResources, SqlScriptExecutorProvider sqlScriptExecutorProvider, UpgradePathFactory upgradePathFactory, ViewChangesDeploymentHelper viewChangesDeploymentHelper) {
     super();
-    this.sqlDialect = sqlDialect;
+    this.connectionResources = connectionResources;
     this.sqlScriptExecutorProvider = sqlScriptExecutorProvider;
     this.upgradePathFactory = upgradePathFactory;
     this.viewChangesDeploymentHelper = viewChangesDeploymentHelper;
@@ -93,13 +88,12 @@ public class Deployment {
   /**
    * Constructor for use by {@link DeploymentFactory}.
    */
-  private Deployment(UpgradePathFactory upgradePathFactory, @Assisted ConnectionResources connectionResources) {
+  private Deployment(UpgradePathFactory upgradePathFactory, ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory, @Assisted ConnectionResources connectionResources) {
     super();
     this.sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
-    this.sqlDialect = connectionResources.sqlDialect();
+    this.connectionResources = connectionResources;
     this.upgradePathFactory = upgradePathFactory;
-
-    this.viewChangesDeploymentHelper = new ViewChangesDeploymentHelper(sqlDialect);
+    this.viewChangesDeploymentHelper = viewChangesDeploymentHelperFactory.create(connectionResources);
   }
 
 
@@ -117,15 +111,16 @@ public class Deployment {
     // Iterate through all the tables and deploy them
     for (String tableName : tableNames) {
       Table table = targetSchema.getTable(tableName);
-      sqlStatementWriter.writeSql(sqlDialect.tableDeploymentStatements(table));
+      sqlStatementWriter.writeSql(connectionResources.sqlDialect().tableDeploymentStatements(table));
     }
 
-    // Iterate through all the views and deploy them - will deploy in dependency order.
-    final boolean updateDeloyedViews = targetSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME);
+    Schema sourceSchema = UpgradeHelper.copySourceSchema(connectionResources, connectionResources.getDataSource(), new HashSet<>());
+    UpgradeSchemas upgradeSchemas = new UpgradeSchemas(sourceSchema, targetSchema);
     ViewChanges viewChanges = new ViewChanges(targetSchema.views(), new HashSet<>(), targetSchema.views());
-    for (View view : viewChanges.getViewsToDeploy()) {
-      sqlStatementWriter.writeSql(viewChangesDeploymentHelper.createView(view, updateDeloyedViews));
-    }
+    sqlStatementWriter.writeSql(UpgradeHelper.postSchemaUpgrade(upgradeSchemas,
+            viewChanges,
+            viewChangesDeploymentHelper));
+
   }
 
 
@@ -167,7 +162,8 @@ public class Deployment {
       new SqlScriptExecutorProvider(connectionResources), connectionResources.sqlDialect());
     try {
       new Deployment(
-        new UpgradePathFactoryImpl(Collections.<UpgradeScriptAddition>emptySet(), upgradeStatusTableService),
+        new UpgradePathFactoryImpl(new UpgradeScriptAdditionsProvider.NoOpScriptAdditions(), UpgradeStatusTableServiceImpl::new),
+        new ViewChangesDeploymentHelper.Factory(new CreateViewListener.Factory.NoOpFactory(), new DropViewListener.Factory.NoOpFactory()),
         connectionResources
       ).deploy(targetSchema, upgradeSteps);
     } finally {
@@ -187,7 +183,7 @@ public class Deployment {
    * @return A path which can be executed to make {@code database} match {@code targetSchema}.
    */
   public UpgradePath getPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps) {
-    final UpgradePath path = upgradePathFactory.create(sqlDialect);
+    final UpgradePath path = upgradePathFactory.create(connectionResources);
     writeStatements(targetSchema, path);
     writeUpgradeSteps(upgradeSteps, path);
     return path;
@@ -208,7 +204,7 @@ public class Deployment {
     for(Class<? extends UpgradeStep> upgradeStep : upgradeSteps) {
       UUID uuid = UpgradePathFinder.readUUID(upgradeStep);
       InsertStatement insertStatement = AuditRecordHelper.createAuditInsertStatement(uuid, upgradeStep.getName());
-      upgradePath.writeSql(sqlDialect.convertStatementToSQL(insertStatement));
+      upgradePath.writeSql(connectionResources.sqlDialect().convertStatementToSQL(insertStatement));
     }
   }
 
@@ -219,7 +215,7 @@ public class Deployment {
    * @author Copyright (c) Alfa Financial Software 2015
    */
   @ImplementedBy(DeploymentFactoryImpl.class)
-  public static interface DeploymentFactory {
+  public interface DeploymentFactory {
 
     /**
      * Creates an instance of {@link Deployment}.
@@ -227,7 +223,7 @@ public class Deployment {
      * @param connectionResources The connection to use.
      * @return The resulting deployment.
      */
-    public Deployment create(ConnectionResources connectionResources);
+    Deployment create(ConnectionResources connectionResources);
   }
 
 
@@ -240,14 +236,17 @@ public class Deployment {
 
     private final UpgradePathFactory upgradePathFactory;
 
+    private final ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory;
+
     @Inject
-    public DeploymentFactoryImpl(UpgradePathFactory upgradePathFactory) {
+    public DeploymentFactoryImpl(UpgradePathFactory upgradePathFactory, ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory) {
       this.upgradePathFactory = upgradePathFactory;
+      this.viewChangesDeploymentHelperFactory = viewChangesDeploymentHelperFactory;
     }
 
     @Override
     public Deployment create(ConnectionResources connectionResources) {
-      return new Deployment(upgradePathFactory, connectionResources);
+      return new Deployment(upgradePathFactory, viewChangesDeploymentHelperFactory,  connectionResources);
     }
   }
 }

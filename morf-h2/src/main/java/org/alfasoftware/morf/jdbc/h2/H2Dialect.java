@@ -15,9 +15,6 @@
 
 package org.alfasoftware.morf.jdbc.h2;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
-import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -25,18 +22,21 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import com.google.common.collect.Lists;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.FunctionType;
+import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
-import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Joiner;
@@ -44,8 +44,11 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.Iterables;
 
+import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
+import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
+
 /**
- * Implements database specific statement generation for MySQL version 5.
+ * Implements database specific statement generation for H2.
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
@@ -55,9 +58,12 @@ class H2Dialect extends SqlDialect {
    * The prefix to add to all temporary tables.
    */
   public static final String TEMPORARY_TABLE_PREFIX = "TEMP_";
+  public static final String SYSTEM_SEQUENCE_PREFIX = "SYSTEM_SEQUENCE_";
+
+
 
   /**
-   * @param h2
+   * @param schemaName Name of the schema to connect to
    *
    */
   public H2Dialect(String schemaName) {
@@ -91,11 +97,12 @@ class H2Dialect extends SqlDialect {
       if (!first) {
         createTableStatement.append(", ");
       }
-      createTableStatement.append(column.getName() + " ");
+      createTableStatement.append(column.getName()).append(" ");
       createTableStatement.append(sqlRepresentationOfColumnType(column));
       if (column.isAutoNumbered()) {
         int autoNumberStart = column.getAutoNumberStart() == -1 ? 1 : column.getAutoNumberStart();
-        createTableStatement.append(" AUTO_INCREMENT(" + autoNumberStart + ") COMMENT 'AUTONUMSTART:[" + autoNumberStart + "]'");
+        createTableStatement.append(" AUTO_INCREMENT(").append(autoNumberStart)
+                .append(") COMMENT 'AUTONUMSTART:[").append(autoNumberStart).append("]'");
       }
 
       if (column.isPrimaryKey()) {
@@ -122,11 +129,37 @@ class H2Dialect extends SqlDialect {
 
 
   /**
+   * @see SqlDialect#internalSequenceDeploymentStatements(Sequence)
+   */
+  @Override
+  public Collection<String> internalSequenceDeploymentStatements(Sequence sequence) {
+    List<String> statements = new ArrayList<>();
+
+    // Create the sequence deployment statement
+    StringBuilder createSequenceStatement = new StringBuilder();
+    createSequenceStatement.append("CREATE ");
+
+    createSequenceStatement.append("SEQUENCE ");
+    createSequenceStatement.append(schemaNamePrefix());
+    createSequenceStatement.append(sequence.getName());
+
+    if (sequence.getStartsWith() != null) {
+      createSequenceStatement.append(" START WITH ");
+      createSequenceStatement.append(sequence.getStartsWith());
+    }
+
+    statements.add(createSequenceStatement.toString());
+
+    return statements;
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#dropStatements(org.alfasoftware.morf.metadata.Table)
    */
   @Override
   public Collection<String> dropStatements(Table table) {
-    return Arrays.asList("drop table " + schemaNamePrefix() + table.getName() + " cascade");
+    return dropTables(Lists.newArrayList(table), false, true);
   }
 
 
@@ -199,10 +232,10 @@ class H2Dialect extends SqlDialect {
    */
   @Override
   public Collection<String> alterTableAddColumnStatements(Table table, Column column) {
-    StringBuilder statement = new StringBuilder().append("ALTER TABLE ").append(schemaNamePrefix()).append(table.getName()).append(" ADD COLUMN ")
-        .append(column.getName()).append(' ').append(sqlRepresentationOfColumnType(column, true));
+    String statement = "ALTER TABLE " + schemaNamePrefix() + table.getName() + " ADD COLUMN " +
+            column.getName() + ' ' + sqlRepresentationOfColumnType(column, true);
 
-    return Collections.singletonList(statement.toString());
+    return Collections.singletonList(statement);
   }
 
 
@@ -258,11 +291,10 @@ class H2Dialect extends SqlDialect {
    */
   @Override
   public Collection<String> alterTableDropColumnStatements(Table table, Column column) {
-    StringBuilder statement = new StringBuilder()
-      .append("ALTER TABLE ").append(schemaNamePrefix()).append(table.getName())
-      .append(" DROP COLUMN ").append(column.getName());
+    String statement = "ALTER TABLE " + schemaNamePrefix() + table.getName() +
+            " DROP COLUMN " + column.getName();
 
-    return Collections.singletonList(statement.toString());
+    return Collections.singletonList(statement);
   }
 
 
@@ -287,7 +319,7 @@ class H2Dialect extends SqlDialect {
 
   /**
    * @param table The table to add the constraint for
-   * @param primaryKeyColumnNames
+   * @param primaryKeyColumnNames List of the column names of the primary key
    * @return The statement
    */
   private String addPrimaryKeyConstraintStatement(Table table, List<String> primaryKeyColumnNames) {
@@ -467,12 +499,12 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#renameTableStatements(java.lang.String, java.lang.String)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#renameTableStatements(org.alfasoftware.morf.metadata.Table, org.alfasoftware.morf.metadata.Table)
    */
   @Override
   public Collection<String> renameTableStatements(Table from, Table to) {
 
-    Builder<String> builder = ImmutableList.<String>builder();
+    Builder<String> builder = ImmutableList.builder();
 
     if (!primaryKeysForTable(from).isEmpty()) {
       builder.add(dropPrimaryKeyConstraintStatement(from));
@@ -491,7 +523,7 @@ class H2Dialect extends SqlDialect {
   /**
    *  TODO
    * The following is a workaround to a bug in H2 version 1.4.200 whereby the MERGE...USING statement does not release the source select statement
-   * Please remove this method once https://github.com/h2database/h2database/issues/2196 has been fixed and H2 upgraded to the fixed version
+   * Please remove this method once <a href="https://github.com/h2database/h2database/issues/2196">issue 2196</a> has been fixed and H2 upgraded to the fixed version
    * This workaround uses the following alternative syntax, which fortunately does not lead to the same bug:
    *
    * <pre>
@@ -503,7 +535,7 @@ class H2Dialect extends SqlDialect {
    *     WHEN NOT MATCHED THEN INSERT ...
    * </pre>
    *
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.MergeStatement)
+   * @see SqlDialect#getSqlFrom(MergeStatement)
    */
   @Override
   protected String getSqlFrom(MergeStatement statement) {
@@ -564,20 +596,32 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForRandomString(int)
+   * @see SqlDialect#getSqlFrom(SequenceReference)
+   */
+  @Override
+  protected String getSqlFrom(SequenceReference sequenceReference) {
+    StringBuilder result = new StringBuilder();
+
+    result.append(sequenceReference.getName());
+
+    switch (sequenceReference.getTypeOfOperation()) {
+      case NEXT_VALUE:
+        result.append(".NEXTVAL");
+        break;
+      case CURRENT_VALUE:
+        result.append(".CURRVAL");
+        break;
+    }
+
+    return result.toString();
+  }
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForRandomString(org.alfasoftware.morf.sql.element.Function)
    */
   @Override
   protected String getSqlForRandomString(Function function) {
     return String.format("SUBSTRING(REPLACE(RANDOM_UUID(),'-'), 1, %s)", getSqlFrom(function.getArguments().get(0)));
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(org.alfasoftware.morf.sql.element.WindowFunction)
-   */
-  @Override
-  protected String getSqlFrom(final WindowFunction windowFunctionField) {
-    throw new UnsupportedOperationException(this.getClass().getSimpleName()+" does not support window functions.");
   }
 
 
@@ -591,7 +635,32 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect.getDeleteLimitSuffixSql(int)
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForRowNumber() 
+   */
+  @Override
+  protected String getSqlForRowNumber() {
+    return "ROW_NUMBER() OVER()";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForWindowFunction(Function) 
+   */
+  @Override
+  protected String getSqlForWindowFunction(Function function) {
+    FunctionType functionType = function.getType();
+    switch (functionType) {
+      case ROW_NUMBER:
+        return "ROW_NUMBER()";
+
+      default:
+        return super.getSqlForWindowFunction(function);
+    }
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getDeleteLimitSuffix(int)
    */
   @Override
   protected Optional<String> getDeleteLimitSuffix(int limit) {

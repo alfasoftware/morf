@@ -3,7 +3,7 @@ package org.alfasoftware.morf.jdbc;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
@@ -13,6 +13,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
@@ -35,8 +36,10 @@ import com.google.common.collect.Lists;
 public class TestResultSetIterator {
 
   @Mock private Connection connection;
+  @Mock private ConnectionResources connectionResources;
   @Mock private SqlDialect sqlDialect;
   @Mock private Statement statement;
+  private final int sqlDialectFetchSize = 2000;
 
   @Before
   public void setup() throws SQLException {
@@ -82,6 +85,7 @@ public class TestResultSetIterator {
     String query = "select column from table";
     ResultSet resultSet = mock(ResultSet.class);
     given(statement.executeQuery(query)).willReturn(resultSet);
+    given(sqlDialect.fetchSizeForBulkSelects()).willReturn(2000);
     given(resultSet.findColumn("Column")).willReturn(1);
     given(resultSet.next()).willReturn(true).willReturn(true).willReturn(false);
 
@@ -101,6 +105,7 @@ public class TestResultSetIterator {
 
     verify(resultSet).close();
     verify(statement).close();
+    verify(statement).setFetchSize(sqlDialectFetchSize);
 
     boolean gotException = false;
     try {
@@ -179,6 +184,7 @@ public class TestResultSetIterator {
     ResultSet resultSet = mock(ResultSet.class);
     given(resultSet.findColumn("Column")).willReturn(1);
     given(sqlDialect.convertStatementToSQL(any(SelectStatement.class))).willReturn(query);
+    given(sqlDialect.fetchSizeForBulkSelects()).willReturn(2000);
     given(statement.executeQuery(query)).willReturn(resultSet);
     given(resultSet.next()).willReturn(true).willReturn(true).willReturn(false);
 
@@ -197,6 +203,7 @@ public class TestResultSetIterator {
 
     verify(resultSet).close();
     verify(statement).close();
+    verify(statement).setFetchSize(sqlDialectFetchSize);
 
     boolean gotException = false;
     try {
@@ -205,6 +212,58 @@ public class TestResultSetIterator {
       gotException = true;
     }
     assertTrue(gotException);
+  }
+
+
+  /**
+   * Tests building a ResultSetIterator with a query that produces a result set using the configured fetch size.
+   * @throws Exception
+   */
+  @Test
+  public void testQueryWithResultSetAndFetchSize() throws Exception {
+    // Given
+    Table table = buildTable();
+    String query = "select column from table";
+    ResultSet resultSet = mock(ResultSet.class);
+    given(statement.executeQuery(query)).willReturn(resultSet);
+    given(resultSet.findColumn("Column")).willReturn(1);
+    given(connectionResources.getFetchSizeForBulkSelects()).willReturn(1000);
+
+    // When
+    @SuppressWarnings("resource") /* Resources are closed in ResultSetIterator.close()
+                                     automatically when caller attempts to advance past
+                                     the last row in the result set. */
+    ResultSetIterator resultSetIterator = new ResultSetIterator(table, query, connection, Optional.of(connectionResources), sqlDialect);
+
+    // Then
+    verify(statement).setFetchSize(1000);
+  }
+
+
+  /**
+   * Tests building a ResultSetIterator with an empty column ordering that produces a result set with the configured fetch size.
+   * @throws Exception
+   */
+  @Test
+  public void testBuildWithEmptyColumnOrderingAndFetchSize() throws Exception {
+    // Given
+    Table table = buildTable();
+    String query = "select column from table";
+    ResultSet resultSet = mock(ResultSet.class);
+    given(resultSet.findColumn("Column")).willReturn(1);
+    given(sqlDialect.convertStatementToSQL(any(SelectStatement.class))).willReturn(query);
+    given(statement.executeQuery(query)).willReturn(resultSet);
+    given(connectionResources.getFetchSizeForBulkSelects()).willReturn(1000);
+
+
+    // When
+    @SuppressWarnings("resource") /* Resources are closed in ResultSetIterator.close()
+                                     automatically when caller attempts to advance past
+                                     the last row in the result set. */
+    ResultSetIterator resultSetIterator = new ResultSetIterator(table, Lists.newArrayList(), connection, Optional.of(connectionResources), sqlDialect);
+
+    // Then
+    verify(statement).setFetchSize(1000);
   }
 
 

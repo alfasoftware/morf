@@ -17,7 +17,7 @@ package org.alfasoftware.morf.upgrade;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
+import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
@@ -53,14 +54,23 @@ public class TestUpgradePath {
 
   UpgradeStatusTableService upgradeStatusTableService;
 
+  UpgradeStatusTableService.Factory upgradeStatusTableServiceFactory;
+
   UpgradePathFactory factory;
+
+  ConnectionResources connectionResources;
 
 
   @Before
   public void setUp() {
     sqlDialect = mock(SqlDialect.class);
+    connectionResources = mock(ConnectionResources.class);
+    when(connectionResources.sqlDialect()).thenReturn(sqlDialect);
+
     upgradeStatusTableService = mock(UpgradeStatusTableService.class);
-    factory = new UpgradePathFactoryImpl(Collections.emptySet(), upgradeStatusTableService);
+    upgradeStatusTableServiceFactory = mock(UpgradeStatusTableService.Factory.class);
+    when(upgradeStatusTableServiceFactory.create(connectionResources)).thenReturn(upgradeStatusTableService);
+    factory = new UpgradePathFactoryImpl(new UpgradeScriptAdditionsProvider.NoOpScriptAdditions(), upgradeStatusTableServiceFactory);
   }
 
   /**
@@ -73,7 +83,7 @@ public class TestUpgradePath {
     scriptAdditions.add(createScriptAddition("ABC", "DEF"));
     scriptAdditions.add(createScriptAddition("GHI"));
 
-    UpgradePath path = new UpgradePath(scriptAdditions, sqlDialect, Collections.emptyList(), Collections.emptyList());
+    UpgradePath path = new UpgradePath(scriptAdditions, connectionResources, Collections.emptyList(), Collections.emptyList());
 
     path.writeSql(ImmutableList.of("A", "B", "C"));
 
@@ -82,7 +92,7 @@ public class TestUpgradePath {
 
 
   /**
-   * Test that {@link UpgradePath#forInProgressUpgrade(UpgradeStatus)} creates a placeholder
+   * Test that {@link UpgradePath#(UpgradeStatus)} creates a placeholder
    * without steps.
    */
   @Test
@@ -101,7 +111,7 @@ public class TestUpgradePath {
   public void testSqlOrdering() {
     Set<UpgradeScriptAddition> upgradeScriptAdditions = ImmutableSet.of(createScriptAddition("ABC", "DEF"),
                                                                         createScriptAddition("GHI"));
-    UpgradePath path = new UpgradePath(upgradeScriptAdditions, sqlDialect, ImmutableList.of("INIT1", "INIT2"), ImmutableList.of("FIN1", "FIN2"));
+    UpgradePath path = new UpgradePath(upgradeScriptAdditions, connectionResources, ImmutableList.of("INIT1", "INIT2"), ImmutableList.of("FIN1", "FIN2"));
     path.writeSql(ImmutableList.of("XYZZY"));
 
     List<String> sql = path.getSql();
@@ -116,7 +126,7 @@ public class TestUpgradePath {
   @Test
   public void testSqlOrderingWhenEmpty() {
     Set<UpgradeScriptAddition> upgradeScriptAdditions = Collections.emptySet();
-    UpgradePath path = new UpgradePath(upgradeScriptAdditions, sqlDialect, ImmutableList.of("INIT1", "INIT2"), ImmutableList.of("FIN1", "FIN2"));
+    UpgradePath path = new UpgradePath(upgradeScriptAdditions, connectionResources, ImmutableList.of("INIT1", "INIT2"), ImmutableList.of("FIN1", "FIN2"));
 
     List<String> sql = path.getSql();
     assertEquals("Result", "[]", sql.toString());
@@ -124,7 +134,7 @@ public class TestUpgradePath {
 
 
   /**
-   * Test that {@link UpgradePathFactoryImpl#create(SqlDialect)} correctly
+   * Test that {@link UpgradePathFactoryImpl#create(ConnectionResources)} correctly
    * uses {@link UpgradeStatusTableService} for deployments.
    */
   @Test
@@ -132,7 +142,7 @@ public class TestUpgradePath {
     when(upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS)).thenReturn(ImmutableList.of("INIT1", "INIT2"));
     when(upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.DATA_TRANSFER_REQUIRED)).thenReturn(ImmutableList.of("FIN1", "FIN2"));
 
-    UpgradePath path = factory.create(sqlDialect);
+    UpgradePath path = factory.create(connectionResources);
     path.writeSql(ImmutableList.of("XYZZY"));
 
     List<String> sql = path.getSql();
@@ -145,7 +155,7 @@ public class TestUpgradePath {
 
 
   /**
-   * Test that {@link UpgradePathFactoryImpl#create(List, SqlDialect)} correctly
+   * Test that {@link UpgradePathFactoryImpl#create(List, ConnectionResources)} correctly
    * uses {@link UpgradeStatusTableService} for upgrades.
    */
   @Test
@@ -154,7 +164,7 @@ public class TestUpgradePath {
     when(upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS)).thenReturn(ImmutableList.of("INIT1", "INIT2"));
     when(upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED)).thenReturn(ImmutableList.of("FIN1", "FIN2"));
 
-    UpgradePath path = factory.create(ImmutableList.of(mock(UpgradeStep.class)), sqlDialect);
+    UpgradePath path = factory.create(ImmutableList.of(mock(UpgradeStep.class)), connectionResources);
     path.writeSql(ImmutableList.of("XYZZY"));
 
     List<String> sql = path.getSql();
@@ -167,12 +177,32 @@ public class TestUpgradePath {
 
 
   /**
+   * Test that {@link UpgradePathFactoryImpl#create(List, ConnectionResources, GraphBasedUpgradeBuilder, List)} correctly
+   * uses the optimisation SQL in combination with {@link UpgradeStatusTableService} for upgrades.
+   */
+  @Test
+  public void testFactoryCreateUpgradeWithInitialisationSql() {
+
+    when(upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED)).thenReturn(ImmutableList.of("FIN1", "FIN2"));
+
+    UpgradePath path = factory.create(ImmutableList.of(mock(UpgradeStep.class)), connectionResources, mock(GraphBasedUpgradeBuilder.class), ImmutableList.of("INIT1", "INIT2"));
+    path.writeSql(ImmutableList.of("XYZZY"));
+
+    List<String> sql = path.getSql();
+    assertEquals("Result", "[INIT1, INIT2, XYZZY, FIN1, FIN2]", sql.toString());
+
+    verify(upgradeStatusTableService, times(1)).updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED);
+    verifyNoMoreInteractions(upgradeStatusTableService);
+  }
+
+
+  /**
    * Test that the comments to drop {@value UpgradeStatusTableService#UPGRADE_STATUS} table
    * are added at the end of the list when using {@link UpgradePath#getUpgradeSqlScript()}.
    */
   @Test
   public void testAddCommentsToDropUpgradeStatusTable() {
-    UpgradePath path = factory.create(ImmutableList.of(mock(UpgradeStep.class)), sqlDialect);
+    UpgradePath path = factory.create(ImmutableList.of(mock(UpgradeStep.class)), connectionResources);
     path.writeSql(ImmutableList.of("ABC", "DEF"));
 
     when(sqlDialect.dropStatements(any(Table.class))).thenReturn(Arrays.asList("FLUSH UPGRADE TABLE","DROP UPGRADE TABLE"));
@@ -195,7 +225,7 @@ public class TestUpgradePath {
    */
   private UpgradeScriptAddition createScriptAddition(String... sql) {
     UpgradeScriptAddition scriptAddition = mock(UpgradeScriptAddition.class);
-    when(scriptAddition.sql()).thenReturn(Lists.newArrayList(sql));
+    when(scriptAddition.sql(connectionResources)).thenReturn(Lists.newArrayList(sql));
     return scriptAddition;
   }
 }

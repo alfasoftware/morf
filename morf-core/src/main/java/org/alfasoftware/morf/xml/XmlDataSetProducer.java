@@ -25,12 +25,14 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.NoSuchElementException;
-import java.util.Set;
+import java.util.function.Supplier;
 
 import javax.xml.stream.FactoryConfigurationError;
 import javax.xml.stream.XMLInputFactory;
@@ -41,12 +43,13 @@ import org.alfasoftware.morf.dataset.DataSetProducer;
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataSetUtils;
-import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.xml.XmlStreamProvider.XmlInputStreamProvider;
 import org.apache.commons.lang3.StringUtils;
@@ -54,6 +57,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.google.common.base.Charsets;
+import com.google.common.base.Suppliers;
 import com.google.common.io.Closeables;
 
 /**
@@ -162,7 +166,7 @@ public class XmlDataSetProducer implements DataSetProducer {
   @Override
   public Iterable<Record> records(final String tableName) {
 
-    return new Iterable<Record>() {
+    return new Iterable<>() {
       @Override
       public Iterator<Record> iterator() {
         final InputStream inputStream = xmlStreamProvider.openInputStreamForTable(tableName);
@@ -362,6 +366,43 @@ public class XmlDataSetProducer implements DataSetProducer {
     public Collection<View> views() {
       return Collections.emptySet();
     }
+
+
+    /**
+     * @see org.alfasoftware.morf.metadata.Schema#sequenceExists(String)
+     */
+    @Override
+    public boolean sequenceExists(String name) {
+      return false;
+    }
+
+
+    /**
+     * @see org.alfasoftware.morf.metadata.Schema#getSequence(String)
+     */
+    @Override
+    public Sequence getSequence(String name) {
+      throw new IllegalArgumentException("No sequence named [" + name + "]. Sequences not supported in XML datasets");
+    }
+
+
+    /**
+     * @see Schema#sequenceNames()
+     */
+    @Override
+    public Collection<String> sequenceNames() {
+      return Collections.emptySet();
+    }
+
+
+    /**
+     * @see Schema#sequences()
+     */
+    @Override
+    public Collection<Sequence> sequences() {
+      return Collections.emptySet();
+    }
+
   }
 
 
@@ -389,7 +430,7 @@ public class XmlDataSetProducer implements DataSetProducer {
 
 
     /**
-     * @param xmlPullParser pull parser that provides the xml data
+     * @param xmlStreamReader pull parser that provides the xml data
      * @param xmlFormatVersion The format version.
      */
     public PullProcessorTableMetaData(XMLStreamReader xmlStreamReader, int xmlFormatVersion) {
@@ -462,6 +503,7 @@ public class XmlDataSetProducer implements DataSetProducer {
        * Holds the column name.
        */
       private final String   columnName;
+      private final Supplier<String> upperCaseColumnName;
 
       /**
        * Holds the column data type.
@@ -500,7 +542,8 @@ public class XmlDataSetProducer implements DataSetProducer {
        */
       public PullProcessorColumn() {
         super();
-        columnName = xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.NAME_ATTRIBUTE);
+        columnName = xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.NAME_ATTRIBUTE).intern();
+        upperCaseColumnName = Suppliers.memoize(() -> columnName.toUpperCase().intern());
         dataType = DataType.valueOf(xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.TYPE_ATTRIBUTE));
         defaultValue = StringUtils.defaultString(xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.DEFAULT_ATTRIBUTE));
 
@@ -548,6 +591,15 @@ public class XmlDataSetProducer implements DataSetProducer {
       @Override
       public String getName() {
         return columnName;
+      }
+
+
+      /**
+       * @see org.alfasoftware.morf.metadata.Column#getUpperCaseName()
+       */
+      @Override
+      public String getUpperCaseName() {
+        return upperCaseColumnName.get();
       }
 
 
@@ -728,7 +780,7 @@ public class XmlDataSetProducer implements DataSetProducer {
     /**
      * Stores the column names we need to provide values for.
      */
-    private final Set<String> columnNames = new HashSet<>();
+    private final Map<String, String> columnNamesAndUpperCase = new HashMap<>();
 
     /**
      * Holds the current tag so we know if there is a record to read.
@@ -737,7 +789,7 @@ public class XmlDataSetProducer implements DataSetProducer {
 
 
     /**
-     * @param xmlPullParser Input stream containing the source XML data.
+     * @param xmlStreamReader Input stream containing the source XML data.
      */
     public PullProcessorRecordIterator(XMLStreamReader xmlStreamReader) {
       super(xmlStreamReader);
@@ -755,7 +807,7 @@ public class XmlDataSetProducer implements DataSetProducer {
       }
 
       for (Column column : table.columns()) {
-        columnNames.add(column.getName());
+        columnNamesAndUpperCase.put(column.getName(), column.getUpperCaseName());
       }
 
       readTag(XmlDataSetNode.DATA_NODE);
@@ -780,9 +832,9 @@ public class XmlDataSetProducer implements DataSetProducer {
       if (hasNext()) {
         // Buffer this record
         RecordBuilder result = DataSetUtils.record();
-        for (String columnName : columnNames) {
-          result.setString(columnName.toUpperCase(),
-            Escaping.unescapeCharacters(xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, columnName))
+        for (Entry<String, String> columnNameAndUpperCase : columnNamesAndUpperCase.entrySet()) {
+          result.setString(columnNameAndUpperCase.getValue(),
+            Escaping.unescapeCharacters(xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, columnNameAndUpperCase.getKey()))
           );
         }
 

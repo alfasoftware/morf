@@ -15,10 +15,10 @@
 
 package org.alfasoftware.morf.upgrade;
 
+import org.alfasoftware.morf.jdbc.SqlScriptExecutor.SqlScriptVisitor;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
-import org.alfasoftware.morf.jdbc.SqlScriptExecutor.SqlScriptVisitor;
 
 /**
  * Use to log notifications received about SQL execution.
@@ -28,13 +28,29 @@ import org.alfasoftware.morf.jdbc.SqlScriptExecutor.SqlScriptVisitor;
 public class LoggingSqlScriptVisitor implements SqlScriptVisitor {
   private final Log log = LogFactory.getLog(LoggingSqlScriptVisitor.class);
 
+  private final String schemaPosition;
+
+  public LoggingSqlScriptVisitor() {
+    super();
+    this.schemaPosition = "";
+  }
+
+  /**
+   * Facilitates logging with additional info about the currently upgraded schema position.
+   * @param schemaPosition String containing schema position name.
+   */
+  public LoggingSqlScriptVisitor(String schemaPosition) {
+    super();
+    this.schemaPosition = schemaPosition;
+  }
+
   /**
    * {@inheritDoc}
    * @see org.alfasoftware.morf.jdbc.SqlScriptExecutor.SqlScriptVisitor#executionStart()
    */
   @Override
   public void executionStart() {
-    log.info("Starting SQL Script");
+    log.info(logSchemaPositionPrefix() + "Starting SQL Script");
   }
 
   /**
@@ -43,7 +59,7 @@ public class LoggingSqlScriptVisitor implements SqlScriptVisitor {
    */
   @Override
   public void beforeExecute(String sql) {
-    log.info("Executing [" + sql + "]");
+    log.info(logSchemaPositionPrefix() + "Executing [" + sql + "]");
   }
 
   /**
@@ -52,7 +68,7 @@ public class LoggingSqlScriptVisitor implements SqlScriptVisitor {
    */
   @Override
   public void afterExecute(String sql, long numberOfRowsUpdated) {
-    log.info("Completed [" + sql + "] with [" + numberOfRowsUpdated + "] rows updated");
+    log.info(logSchemaPositionPrefix() + "Completed [" + sql + "] with [" + numberOfRowsUpdated + "] rows updated");
   }
 
   /**
@@ -61,7 +77,11 @@ public class LoggingSqlScriptVisitor implements SqlScriptVisitor {
    */
   @Override
   public void executionEnd() {
-    log.info("SQL Script Complete");
+    log.info(logSchemaPositionPrefix() + "SQL Script Complete");
   }
 
+
+  private String logSchemaPositionPrefix() {
+    return StringUtils.isBlank(schemaPosition) ? "" : "Schema position[" + schemaPosition + "] ";
+  }
 }
