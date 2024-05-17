@@ -190,10 +190,10 @@ public class Upgrade {
     List<String> schemaConsistencyStatements;
     try (SchemaResource databaseSchemaResource = connectionResources.openSchemaResource(dataSource)) {
       sourceSchema = SchemaUtils.copy(databaseSchemaResource, exceptionRegexes);
-      schemaConsistencyStatements = connectionResources.sqlDialect().getSchemaConsistencyStatements(databaseSchemaResource);
+      schemaConsistencyStatements = dialect.getSchemaConsistencyStatements(databaseSchemaResource);
       if (!schemaConsistencyStatements.isEmpty()) {
         log.warn("Auto-healing statements have been generated (" + schemaConsistencyStatements.size() + " statements in total); this usually implies auto-healing being carried out."
-            + " It this is shown on each subsequent start-up, it can be a symptom of auto-healing failing to achieve an acceptable stable healthful state."
+            + " If this is shown on each subsequent start-up, it can be a symptom of auto-healing failing to achieve an acceptable stable healthful state."
             + " Examine the upgrade statements (the upgrade script, or the upgrade logs below) to investigate further.");
       }
     }
