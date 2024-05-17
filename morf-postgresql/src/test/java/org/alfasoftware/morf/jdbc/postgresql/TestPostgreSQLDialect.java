@@ -1,7 +1,12 @@
 package org.alfasoftware.morf.jdbc.postgresql;
 
+import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
+import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.io.InputStream;
 import java.sql.SQLException;
@@ -9,9 +14,14 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
+import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.SchemaResource;
+import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.CustomHint;
 import org.alfasoftware.morf.sql.PostgreSQLCustomHint;
 import org.alfasoftware.morf.sql.SelectStatement;
@@ -23,6 +33,7 @@ import org.alfasoftware.morf.sql.element.TableReference;
 import org.mockito.Mockito;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 
 /**
  * Tests SQL statements generated for PostgreSQL.
@@ -1512,4 +1523,43 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedCurrValForSequence() { return "SELECT currval('TestSequence')"; }
+
+
+  @Override
+  protected SchemaResource createSchemaResourceForSchemaConsistencyStatements() {
+    final List<Table> tables = ImmutableList.of(
+      table("TableOne")
+        .columns(
+          column("id", DataType.BIG_INTEGER),
+          column("u", DataType.BIG_INTEGER).nullable(),
+          column("v", DataType.BIG_INTEGER).nullable(),
+          column("x", DataType.BIG_INTEGER).nullable())
+        .indexes(
+          index("TableOne_1").columns("u").unique(),
+          index("TableOne_2").columns("u", "v", "x").unique(),
+          index("TableOne_3").columns("x").unique()
+        ),
+      table("TableTwo")
+        .columns(
+          column("id", DataType.BIG_INTEGER),
+          column("x", DataType.BIG_INTEGER).nullable())
+        .indexes(
+          index("TableTwo_3").columns("x").unique()
+        )
+    );
+
+    PostgreSQLMetaDataProvider metaDataProvider = mock(PostgreSQLMetaDataProvider.class);
+    when(metaDataProvider.tables()).thenReturn(tables);
+    when(metaDataProvider.getDatabaseInformation()).thenReturn(
+      ImmutableMap.<String, String>builder()
+        .put(DatabaseMetaDataProvider.DATABASE_PRODUCT_VERSION, "15.0")
+        .put(DatabaseMetaDataProvider.DATABASE_MAJOR_VERSION, String.valueOf(15))
+        .put(DatabaseMetaDataProvider.DATABASE_MINOR_VERSION, String.valueOf(0))
+        .build());
+
+    final SchemaResource schemaResource = mock(SchemaResource.class);
+    when(schemaResource.getDatabaseMetaDataProvider()).thenReturn(Optional.of(metaDataProvider));
+
+    return schemaResource;
+  }
 }

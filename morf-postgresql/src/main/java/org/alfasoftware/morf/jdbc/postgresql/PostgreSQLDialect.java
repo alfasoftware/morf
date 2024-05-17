@@ -1,5 +1,6 @@
 package org.alfasoftware.morf.jdbc.postgresql;
 
+import static com.google.common.base.Predicates.instanceOf;
 import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
 import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
 import static org.alfasoftware.morf.sql.SelectStatement.select;
@@ -12,8 +13,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.StringJoiner;
 
+import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -21,6 +24,7 @@ import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.DataValueLookup;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
@@ -50,6 +54,7 @@ import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Joiner;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -933,5 +938,57 @@ class PostgreSQLDialect extends SqlDialect {
     } else {
       return tableRef.getDblink() + "." + tableRef.getName();
     }
+  }
+
+  //
+  // ====== Auto-healing below ======
+  //
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSchemaConsistencyStatements(org.alfasoftware.morf.metadata.SchemaResource)
+   */
+  @Override
+  public List<String> getSchemaConsistencyStatements(SchemaResource schemaResource) {
+    return getPostgreSQLMetaDataProvider(schemaResource)
+            .map(this::getSchemaConsistencyStatements)
+            .orElseGet(() -> super.getSchemaConsistencyStatements(schemaResource));
+  }
+
+
+  private List<String> getSchemaConsistencyStatements(PostgreSQLMetaDataProvider metaDataProvider) {
+    return FluentIterable.from(metaDataProvider.tables())
+            .transformAndConcat(table -> healTable(metaDataProvider, table))
+            .toList(); // turn all the concatenated fluent iterables into a firm immutable list
+  }
+
+
+  private Iterable<String> healTable(PostgreSQLMetaDataProvider metaDataProvider, Table table) {
+    Iterable<String> statements = healIndexes(metaDataProvider, table);
+
+    if (statements.iterator().hasNext()) {
+      List<String> intro = ImmutableList.of(convertCommentToSQL("Auto-Healing table: " + table.getName()));
+      return Iterables.concat(intro, statements);
+    }
+    return ImmutableList.of();
+  }
+
+
+  private Iterable<String> healIndexes(PostgreSQLMetaDataProvider metaDataProvider, Table table) {
+    // Postgres 15 can deal with duplicate NULLs in unique indexes on it's own
+    if (Integer.parseInt(metaDataProvider.getDatabaseInformation().get(DatabaseMetaDataProvider.DATABASE_MAJOR_VERSION)) >= 15) {
+      // TODO
+      // See https://www.postgresql.org/docs/current/sql-createindex.html
+      // Once we support Postgres 15, we should introduce CREATE INDEX ... NULLS NOT DISTINCT
+      return ImmutableList.of();
+    }
+
+    return ImmutableList.of();
+  }
+
+
+  private Optional<PostgreSQLMetaDataProvider> getPostgreSQLMetaDataProvider(SchemaResource schemaResource) {
+    return schemaResource.getDatabaseMetaDataProvider()
+            .filter(instanceOf(PostgreSQLMetaDataProvider.class))
+            .map(PostgreSQLMetaDataProvider.class::cast);
   }
 }

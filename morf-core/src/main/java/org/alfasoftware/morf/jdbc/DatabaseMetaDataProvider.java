@@ -94,6 +94,11 @@ public abstract class DatabaseMetaDataProvider implements Schema {
   protected static final int PRIMARY_COLUMN_NAME = 4;
   protected static final int PRIMARY_KEY_SEQ = 5;
 
+  // Keys for Database Information map
+  public static final String DATABASE_PRODUCT_VERSION = "DatabaseProductVersion";
+  public static final String DATABASE_MAJOR_VERSION = "DatabaseMajorVersion";
+  public static final String DATABASE_MINOR_VERSION = "DatabaseMinorVersion";
+
 
   protected final Connection connection;
   protected final String schemaName;
@@ -110,6 +115,8 @@ public abstract class DatabaseMetaDataProvider implements Schema {
   private final Supplier<Map<AName, RealName>> sequenceNames = Suppliers.memoize(this::loadAllSequenceNames);
   private final LoadingCache<AName, Sequence> sequenceCache = CacheBuilder.newBuilder().build(CacheLoader.from(this::loadSequence));
 
+  private final Supplier<Map<String, String>> databaseInformation = Suppliers.memoize(this::loadDatabaseInformation);
+
 
   /**
    * @param connection The database connection from which meta data should be provided.
@@ -119,6 +126,27 @@ public abstract class DatabaseMetaDataProvider implements Schema {
     super();
     this.connection = connection;
     this.schemaName = validateSchemaName(schemaName);
+  }
+
+
+  public Map<String, String> getDatabaseInformation() {
+    return databaseInformation.get();
+  }
+
+
+  private Map<String, String> loadDatabaseInformation() {
+    try {
+      final DatabaseMetaData databaseMetaData = connection.getMetaData();
+
+      return ImmutableMap.<String, String>builder()
+          .put(DATABASE_PRODUCT_VERSION, databaseMetaData.getDatabaseProductVersion())
+          .put(DATABASE_MAJOR_VERSION, String.valueOf(databaseMetaData.getDatabaseMajorVersion()))
+          .put(DATABASE_MINOR_VERSION, String.valueOf(databaseMetaData.getDatabaseMinorVersion()))
+          .build();
+    }
+    catch (SQLException e) {
+      throw new RuntimeSqlException(e);
+    }
   }
 
 
