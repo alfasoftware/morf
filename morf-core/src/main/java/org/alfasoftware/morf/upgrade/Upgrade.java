@@ -38,6 +38,8 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor.ResultSetProcessor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaResource;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.SchemaValidator;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.TableReference;
@@ -168,6 +170,7 @@ public class Upgrade {
    */
   public UpgradePath findPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, Collection<String> exceptionRegexes, DataSource dataSource) {
     final List<String> upgradeStatements = new ArrayList<>();
+    final SqlDialect dialect = connectionResources.sqlDialect();
 
     ResultSetProcessor<Long> upgradeAuditRowProcessor = resultSet -> {resultSet.next(); return resultSet.getLong(1);};
     long upgradeAuditCount = getUpgradeAuditRowCount(upgradeAuditRowProcessor); //fetch a number of upgrade steps applied previously to do optimistic locking check later
@@ -183,8 +186,17 @@ public class Upgrade {
 
     // Get access to the schema we are starting from
     log.info("Reading current schema");
-    Schema sourceSchema = UpgradeHelper.copySourceSchema(connectionResources, dataSource, exceptionRegexes);
-    SqlDialect dialect = connectionResources.sqlDialect();
+    Schema sourceSchema;
+    List<String> schemaConsistencyStatements;
+    try (SchemaResource databaseSchemaResource = connectionResources.openSchemaResource(dataSource)) {
+      sourceSchema = SchemaUtils.copy(databaseSchemaResource, exceptionRegexes);
+      schemaConsistencyStatements = dialect.getSchemaConsistencyStatements(databaseSchemaResource);
+      if (!schemaConsistencyStatements.isEmpty()) {
+        log.warn("Auto-healing statements have been generated (" + schemaConsistencyStatements.size() + " statements in total); this usually implies auto-healing being carried out."
+            + " If this is shown on each subsequent start-up, it can be a symptom of auto-healing failing to achieve an acceptable stable healthful state."
+            + " Examine the upgrade statements (the upgrade script, or the upgrade logs below) to investigate further.");
+      }
+    }
 
     // -- Get the current UUIDs and deployed views...
     log.info("Examining current views");    //

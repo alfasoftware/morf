@@ -43,14 +43,15 @@ import java.util.stream.Collectors;
 import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataSetUtils;
+import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.DataValueLookup;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.AbstractSelectStatement;
 import org.alfasoftware.morf.sql.DeleteStatement;
@@ -1765,7 +1766,7 @@ public abstract class SqlDialect {
     if (field instanceof MergeStatement.InputField) {
       return getSqlFrom((MergeStatement.InputField) field);
     }
-    
+
     if (field instanceof SequenceReference) {
       return getSqlFrom((SequenceReference) field);
     }
@@ -4422,6 +4423,16 @@ public abstract class SqlDialect {
   }
 
 
+  /**
+   * Returns any statements needed to automatically heal the given schema.
+   *
+   * @param schemaResource Schema resource that can be examined.
+   * @return List of statements to be run.
+   */
+  public List<String> getSchemaConsistencyStatements(SchemaResource schemaResource) {
+    schemaResource.getDatabaseMetaDataProvider();
+    return ImmutableList.of();
+  }
 
 
   /**

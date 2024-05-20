@@ -17,6 +17,7 @@ package org.alfasoftware.morf.jdbc;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Optional;
 
 import javax.sql.DataSource;
 
@@ -77,5 +78,16 @@ public final class SchemaResourceImpl extends SchemaAdapter implements SchemaRes
     } catch (SQLException e) {
       throw new RuntimeSqlException("Closing", e);
     }
+  }
+
+
+  @Override
+  public Optional<DatabaseMetaDataProvider> getDatabaseMetaDataProvider() {
+    if (delegate instanceof DatabaseMetaDataProvider) {
+      DatabaseMetaDataProvider metaDataProvider = (DatabaseMetaDataProvider)delegate;
+      return Optional.of(metaDataProvider);
+    }
+
+    return SchemaResource.super.getDatabaseMetaDataProvider();
   }
 }
