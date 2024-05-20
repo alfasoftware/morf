@@ -80,6 +80,7 @@ import static org.alfasoftware.morf.sql.element.Function.now;
 import static org.alfasoftware.morf.sql.element.Function.power;
 import static org.alfasoftware.morf.sql.element.Function.random;
 import static org.alfasoftware.morf.sql.element.Function.randomString;
+import static org.alfasoftware.morf.sql.element.Function.rightPad;
 import static org.alfasoftware.morf.sql.element.Function.rightTrim;
 import static org.alfasoftware.morf.sql.element.Function.round;
 import static org.alfasoftware.morf.sql.element.Function.rowNumber;
@@ -3688,6 +3689,22 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * Tests that the right pad works.
+   */
+  @Test
+  public void testGetSqlForRightPad() {
+    // Given
+    Function rightPad = rightPad(new FieldReference(STRING_FIELD), new FieldLiteral(10), new FieldLiteral("j"));
+    SelectStatement rightPadStatement = new SelectStatement(rightPad).from(new TableReference(TEST_TABLE));
+
+    // When
+    String result = testDialect.convertStatementToSQL(rightPadStatement);
+
+    // Then
+    assertEquals("Right pad script must match the expected", expectedRightPad(), result);
+  }
+
+  /**
    * Tests the random function
    */
   @Test
@@ -5779,6 +5796,13 @@ public abstract class AbstractSqlDialectTest {
     return "SELECT LPAD(stringField, 10, 'j') FROM " + tableName(TEST_TABLE);
   }
 
+
+  /**
+   * @return the expected SQL for Left pad
+   */
+  protected String expectedRightPad() {
+    return "SELECT RPAD(stringField, 10, 'j') FROM " + tableName(TEST_TABLE);
+  }
 
   /**
    * @return The expected SQL for the MOD operator.

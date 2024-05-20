@@ -924,6 +924,27 @@ class SqlServerDialect extends SqlDialect {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForRightPad(org.alfasoftware.morf.sql.element.AliasedField, org.alfasoftware.morf.sql.element.AliasedField, org.alfasoftware.morf.sql.element.AliasedField)
+   */
+  @Override
+  protected String getSqlForRightPad(AliasedField field, AliasedField length, AliasedField character) {
+    String strField = getSqlFrom(field);
+    String strLength = getSqlFrom(length);
+    String strCharacter = getSqlFrom(character);
+
+    return String.format("CASE " +
+                           "WHEN LEN(%s) > %s THEN " +
+                             "LEFT(%s, %s) " +
+                           "ELSE " +
+                             "RIGHT(%s + REPLICATE(%s, %s), %s) " +
+                         "END",
+                         strField, strLength,
+                         strField, strLength,
+                         strField, strCharacter, strLength, strLength);
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForOrderByField(org.alfasoftware.morf.sql.element.FieldReference)
    */
   @Override
