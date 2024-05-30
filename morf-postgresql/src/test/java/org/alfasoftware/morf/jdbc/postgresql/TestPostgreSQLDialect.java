@@ -188,18 +188,18 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
         .asList("CREATE TABLE testschema."
             + TABLE_WITH_VERY_LONG_NAME
             + " (id NUMERIC(19) NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3) COLLATE \"POSIX\", intField DECIMAL(8,0), floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField BOOLEAN, charField VARCHAR(1) COLLATE \"POSIX\", CONSTRAINT " + TABLE_WITH_VERY_LONG_NAME + "_PK PRIMARY KEY(id))",
-            "COMMENT ON TABLE testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation]'",
-            "COMMENT ON COLUMN testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation.id IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[id]/TYPE:[BIG_INTEGER]'",
-            "COMMENT ON COLUMN testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation.version IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[version]/TYPE:[INTEGER]'",
-            "COMMENT ON COLUMN testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation.stringField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[stringField]/TYPE:[STRING]'",
-            "COMMENT ON COLUMN testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation.intField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[DECIMAL]'",
-            "COMMENT ON COLUMN testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation.floatField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[floatField]/TYPE:[DECIMAL]'",
-            "COMMENT ON COLUMN testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation.dateField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[dateField]/TYPE:[DATE]'",
-            "COMMENT ON COLUMN testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation.booleanField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[booleanField]/TYPE:[BOOLEAN]'",
-            "COMMENT ON COLUMN testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation.charField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[charField]/TYPE:[STRING]'",
-            "CREATE UNIQUE INDEX Test_NK ON testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation (stringField)",
+            "COMMENT ON TABLE testschema." + TABLE_WITH_VERY_LONG_NAME + " IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[" + TABLE_WITH_VERY_LONG_NAME + "]'",
+            "COMMENT ON COLUMN testschema." + TABLE_WITH_VERY_LONG_NAME + ".id IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[id]/TYPE:[BIG_INTEGER]'",
+            "COMMENT ON COLUMN testschema." + TABLE_WITH_VERY_LONG_NAME + ".version IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[version]/TYPE:[INTEGER]'",
+            "COMMENT ON COLUMN testschema." + TABLE_WITH_VERY_LONG_NAME + ".stringField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[stringField]/TYPE:[STRING]'",
+            "COMMENT ON COLUMN testschema." + TABLE_WITH_VERY_LONG_NAME + ".intField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[DECIMAL]'",
+            "COMMENT ON COLUMN testschema." + TABLE_WITH_VERY_LONG_NAME + ".floatField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[floatField]/TYPE:[DECIMAL]'",
+            "COMMENT ON COLUMN testschema." + TABLE_WITH_VERY_LONG_NAME + ".dateField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[dateField]/TYPE:[DATE]'",
+            "COMMENT ON COLUMN testschema." + TABLE_WITH_VERY_LONG_NAME + ".booleanField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[booleanField]/TYPE:[BOOLEAN]'",
+            "COMMENT ON COLUMN testschema." + TABLE_WITH_VERY_LONG_NAME + ".charField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[charField]/TYPE:[STRING]'",
+            "CREATE UNIQUE INDEX Test_NK ON testschema." + TABLE_WITH_VERY_LONG_NAME + " (stringField)",
             "COMMENT ON INDEX Test_NK IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_NK]'",
-            "CREATE INDEX Test_1 ON testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation (intField, floatField)",
+            "CREATE INDEX Test_1 ON testschema." + TABLE_WITH_VERY_LONG_NAME + " (intField, floatField)",
             "COMMENT ON INDEX Test_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_1]'"
         );
   }
@@ -1206,8 +1206,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> getRenamingTableWithLongNameStatements() {
     return ImmutableList.of(
-      "ALTER TABLE testschema.123456789012345678901234567890XXX RENAME TO Blah",
-      "ALTER INDEX testschema.123456789012345678901234567890XXX_pk RENAME TO Blah_pk",
+      "ALTER TABLE testschema.123456789012345678901234567890XXX123456789012345678901234567890XXX123456789012345678901234567890XXX123456789012345678901234567890XXX RENAME TO Blah",
+      "ALTER INDEX testschema.123456789012345678901234567890XXX123456789012345678901234567890XXX123456789012345678901234567890XXX123456789012345678901234567890XXX_pk RENAME TO Blah_pk",
       "COMMENT ON INDEX Blah_pk IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Blah_pk]'",
       "COMMENT ON TABLE testschema.Blah IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Blah]'"
         );

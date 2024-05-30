@@ -32,8 +32,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import com.google.common.base.Splitter;
-import com.google.common.collect.FluentIterable;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -77,6 +75,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.Splitter;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.Iterables;
@@ -106,6 +106,7 @@ class OracleDialect extends SqlDialect {
    * Fortunately on Oracle it is possible to specify that nulls should be ordered first.
    */
   public static final String DEFAULT_NULL_ORDER = NULLS_FIRST;
+  public static final int MAX_NAME_LENGTH = 128;
 
 
   /**
@@ -591,26 +592,26 @@ class OracleDialect extends SqlDialect {
 
 
   /**
-   * Truncate table names to 30 characters since this is the maximum supported by Oracle.
+   * Truncate table names to the maximum supported by Oracle.
    */
   private String truncatedTableName(String tableName) {
-    return StringUtils.substring(tableName, 0, 30);
+    return StringUtils.substring(tableName, 0, MAX_NAME_LENGTH);
   }
 
 
   /**
-   * Truncate sequence names to 30 characters since this is the maximum supported by Oracle.
+   * Truncate sequence names to the maximum supported by Oracle.
    */
   private String truncatedSequenceName(String sequenceName) {
-    return StringUtils.substring(sequenceName, 0, 30);
+    return StringUtils.substring(sequenceName, 0, MAX_NAME_LENGTH);
   }
 
 
   /**
-   * Truncate table names to 27 characters, then add a 3 character suffix since 30 is the maximum supported by Oracle.
+   * Truncate table names 3 shorter than the maximum name length supported by Oracle, then add a 3 character suffix.
    */
   private String truncatedTableNameWithSuffix(String tableName, String suffix) {
-    return StringUtils.substring(tableName, 0, 27) + StringUtils.substring(suffix, 0, 3);
+    return StringUtils.substring(tableName, 0, MAX_NAME_LENGTH-3) + StringUtils.substring(suffix, 0, 3);
   }
 
 

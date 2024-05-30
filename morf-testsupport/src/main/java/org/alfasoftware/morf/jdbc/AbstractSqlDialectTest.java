@@ -304,7 +304,7 @@ public abstract class AbstractSqlDialectTest {
   /**
    * Very long table name to test name truncation.
    */
-  public static final String TABLE_WITH_VERY_LONG_NAME = "tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation";
+  public static final String TABLE_WITH_VERY_LONG_NAME = "tableWithANameThatExceeds125CharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncationtableWithANameThatExceeds125CharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation";
 
   /**
    * Dialect being tested.
@@ -4241,16 +4241,16 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testRenamingTableWithLongName() {
 
-    String tableNameOver30 = "123456789012345678901234567890XXX";
-    String indexName30     = "123456789012345678901234567_PK";
+    String tableNameOver128 = "123456789012345678901234567890XXX123456789012345678901234567890XXX123456789012345678901234567890XXX123456789012345678901234567890XXX";
+    String indexName128     = "12345678901234567890123451234567890123456789012345123456789012345678901234512345678901234567890123451234567890123456789012345_PK";
 
-    Table longNamedTable = table(tableNameOver30)
+    Table longNamedTable = table(tableNameOver128)
         .columns(
           idColumn(),
           versionColumn(),
           column("someField", DataType.STRING, 3).nullable()
        ).indexes(
-          index(indexName30).unique().columns("someField")
+          index(indexName128).unique().columns("someField")
        );
 
     Table renamedTable = table("Blah")

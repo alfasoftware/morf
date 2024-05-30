@@ -46,7 +46,6 @@ import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.sql.CustomHint;
 import org.alfasoftware.morf.sql.OracleCustomHint;
 import org.alfasoftware.morf.sql.element.Direction;
-import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.mockito.ArgumentCaptor;
 
@@ -63,12 +62,12 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   /**
    * Table name truncated to 30 characters.
    */
-  private static final String LONG_TABLE_NAME_TRUNCATED_30 = "tableWithANameThatExceedsTwent";
+  private static final String LONG_TABLE_NAME_TRUNCATED_128 = "tableWithANameThatExceeds125CharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncationtableWithANameThatExceeds125";
 
   /**
    * Table name truncated to 27 characters.
    */
-  private static final String LONG_TABLE_NAME_TRUNCATED_27 = "tableWithANameThatExceedsTw";
+  private static final String LONG_TABLE_NAME_TRUNCATED_125 = "tableWithANameThatExceeds125CharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncationtableWithANameThatExceeds";
 
   @SuppressWarnings({"unchecked","rawtypes"})
   private final ArgumentCaptor<List<String>> listCaptor = ArgumentCaptor.forClass((Class<List<String>>)(Class)List.class);
@@ -231,23 +230,23 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
     return Arrays
         .asList(
           "CREATE TABLE TESTSCHEMA."
-              + LONG_TABLE_NAME_TRUNCATED_30
+              + LONG_TABLE_NAME_TRUNCATED_128
               + " (id NUMBER(19) NOT NULL, version INTEGER DEFAULT 0, stringField NVARCHAR2(3), intField DECIMAL(8,0), floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField DECIMAL(1,0), charField NVARCHAR2(1), CONSTRAINT "
-              + LONG_TABLE_NAME_TRUNCATED_27 + "_PK PRIMARY KEY (id)"
-              + " USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_27 + "_PK ON TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + " (id) NOLOGGING PARALLEL))",
-          "ALTER INDEX TESTSCHEMA." +LONG_TABLE_NAME_TRUNCATED_27 + "_PK NOPARALLEL LOGGING",
-          "COMMENT ON TABLE TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + " IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[" + LONG_TABLE_NAME_TRUNCATED_30 + "]'",
-          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + ".id IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[id]/TYPE:[BIG_INTEGER]'",
-          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + ".version IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[version]/TYPE:[INTEGER]'",
-          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + ".stringField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[stringField]/TYPE:[STRING]'",
-          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + ".intField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[DECIMAL]'",
-          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + ".floatField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[floatField]/TYPE:[DECIMAL]'",
-          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + ".dateField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[dateField]/TYPE:[DATE]'",
-          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30
+              + LONG_TABLE_NAME_TRUNCATED_125 + "_PK PRIMARY KEY (id)"
+              + " USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_125 + "_PK ON TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_128 + " (id) NOLOGGING PARALLEL))",
+          "ALTER INDEX TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_125 + "_PK NOPARALLEL LOGGING",
+          "COMMENT ON TABLE TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_128 + " IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[" + LONG_TABLE_NAME_TRUNCATED_128 + "]'",
+          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_128 + ".id IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[id]/TYPE:[BIG_INTEGER]'",
+          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_128 + ".version IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[version]/TYPE:[INTEGER]'",
+          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_128 + ".stringField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[stringField]/TYPE:[STRING]'",
+          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_128 + ".intField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[DECIMAL]'",
+          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_128 + ".floatField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[floatField]/TYPE:[DECIMAL]'",
+          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_128 + ".dateField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[dateField]/TYPE:[DATE]'",
+          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_128
               + ".booleanField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[booleanField]/TYPE:[BOOLEAN]'", "COMMENT ON COLUMN TESTSCHEMA."
-              + LONG_TABLE_NAME_TRUNCATED_30 + ".charField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[charField]/TYPE:[STRING]'",
-          "CREATE UNIQUE INDEX TESTSCHEMA.Test_NK ON TESTSCHEMA."+LONG_TABLE_NAME_TRUNCATED_30+" (stringField)",
-          "CREATE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.tableWithANameThatExceedsTwent (intField, floatField)"
+              + LONG_TABLE_NAME_TRUNCATED_128 + ".charField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[charField]/TYPE:[STRING]'",
+          "CREATE UNIQUE INDEX TESTSCHEMA.Test_NK ON TESTSCHEMA."+ LONG_TABLE_NAME_TRUNCATED_128 +" (stringField)",
+          "CREATE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_128 + " (intField, floatField)"
     );
   }
 
@@ -1437,9 +1436,9 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> getRenamingTableWithLongNameStatements() {
     return ImmutableList.of(
-      "ALTER TABLE TESTSCHEMA.123456789012345678901234567890 RENAME CONSTRAINT 123456789012345678901234567_PK TO Blah_PK",
-      "ALTER INDEX TESTSCHEMA.123456789012345678901234567_PK RENAME TO Blah_PK",
-      "ALTER TABLE TESTSCHEMA.123456789012345678901234567890 RENAME TO Blah",
+      "ALTER TABLE TESTSCHEMA.123456789012345678901234567890XXX123456789012345678901234567890XXX123456789012345678901234567890XXX12345678901234567890123456789 RENAME CONSTRAINT 123456789012345678901234567890XXX123456789012345678901234567890XXX123456789012345678901234567890XXX12345678901234567890123456_PK TO Blah_PK",
+      "ALTER INDEX TESTSCHEMA.123456789012345678901234567890XXX123456789012345678901234567890XXX123456789012345678901234567890XXX12345678901234567890123456_PK RENAME TO Blah_PK",
+      "ALTER TABLE TESTSCHEMA.123456789012345678901234567890XXX123456789012345678901234567890XXX123456789012345678901234567890XXX12345678901234567890123456789 RENAME TO Blah",
       "COMMENT ON TABLE TESTSCHEMA.Blah IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[Blah]'");
   }
 

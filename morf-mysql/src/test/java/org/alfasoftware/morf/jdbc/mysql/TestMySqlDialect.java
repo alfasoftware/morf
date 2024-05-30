@@ -29,12 +29,12 @@ import static org.mockito.Mockito.when;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 
-import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
-import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
-import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
-import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
 import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -1154,7 +1154,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> getRenamingTableWithLongNameStatements() {
-    return ImmutableList.of("RENAME TABLE 123456789012345678901234567890XXX TO Blah");
+    return ImmutableList.of("RENAME TABLE 123456789012345678901234567890XXX123456789012345678901234567890XXX123456789012345678901234567890XXX123456789012345678901234567890XXX TO Blah");
   }
 
 
