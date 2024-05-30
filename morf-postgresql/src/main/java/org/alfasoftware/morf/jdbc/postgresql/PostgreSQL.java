@@ -75,7 +75,7 @@ public final class PostgreSQL extends AbstractDatabaseType {
 
   @Override
   public boolean matchesProduct(String product) {
-    return product.equalsIgnoreCase("PostgreSQL") || product.equalsIgnoreCase("PGSQL");
+    return product.equalsIgnoreCase("PostgreSQL") || product.equalsIgnoreCase(IDENTIFIER);
   }
 
 
