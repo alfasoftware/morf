@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.jdbc.oracle;
 
+import static com.google.common.base.Predicates.instanceOf;
 import static org.alfasoftware.morf.metadata.DataType.DECIMAL;
 import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
 import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
@@ -39,6 +40,7 @@ import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
@@ -108,6 +110,8 @@ class OracleDialect extends SqlDialect {
   public static final String DEFAULT_NULL_ORDER = NULLS_FIRST;
   public static final int MAX_NAME_LENGTH = 128;
 
+  public static final int MAX_LEGACY_NAME_LENGTH = 30;
+
 
   /**
    * Creates an instance of the Oracle dialect.
@@ -153,6 +157,94 @@ class OracleDialect extends SqlDialect {
   }
 
 
+  @Override
+  public List<String> getSchemaConsistencyStatements(SchemaResource schemaResource) {
+    return getOracleMetaDataProvider(schemaResource)
+        .map(this::getSchemaConsistencyStatements)
+        .orElseGet(() -> super.getSchemaConsistencyStatements(schemaResource));
+  }
+
+
+  private List<String> getSchemaConsistencyStatements(OracleMetaDataProvider metaDataProvider) {
+    return FluentIterable.from(metaDataProvider.tables())
+        .transformAndConcat(table -> healTable(metaDataProvider, table))
+        .toList(); // turn all the concatenated fluent iterables into a firm immutable list
+  }
+
+
+  private Iterable<String> healTable(OracleMetaDataProvider metaDataProvider, Table table) {
+    Iterable<String> statements = healTruncatedIndexesSequencesAndTriggers(metaDataProvider, table);
+
+    if (statements.iterator().hasNext()) {
+      List<String> intro = ImmutableList.of(convertCommentToSQL("Auto-Healing table: " + table.getName()));
+      return Iterables.concat(intro, statements);
+    }
+    return ImmutableList.of();
+  }
+
+  private Iterable<String> healTruncatedIndexesSequencesAndTriggers(OracleMetaDataProvider metaDataProvider, Table table) {
+    // Triggers always get rebuilt during upgrade so drop all triggers with legacy names.
+    String legacyTriggerName = schemaNamePrefix() + truncatedTableNameWithSuffixLegacy(table.getName(), "_TG").toUpperCase();
+    List<String> statements = Lists.newArrayList();
+    statements.add(dropTrigger(legacyTriggerName));
+
+    // Similarly, sequences get rebuilt so drop legacy versions of these too.
+    if (getAutoIncrementColumnForTable(table) != null) {
+      String legacySequenceName = schemaNamePrefix() + truncatedTableNameWithSuffixLegacy(table.getName(), "_SQ").toUpperCase();
+      statements.add(dropSequence(legacySequenceName));
+    }
+
+    // Finally, rename the legacy PK
+    if (!primaryKeysForTable(table).isEmpty()) {
+      String legacyConstraintName = truncatedTableNameWithSuffixLegacy(table.getName(), "_PK").toUpperCase();
+      String constraintName = primaryKeyConstraintName(table.getName());
+      statements.add(renameConstraintIfExists(table.getName(), legacyConstraintName, constraintName));
+      statements.add(renameIndexIfExists(legacyConstraintName, constraintName));
+    }
+
+    return statements;
+  }
+
+
+  private String renameIndexIfExists(String oldIndexName, String newIndexName) {
+    String qualifiedIndexName = schemaNamePrefix() + oldIndexName.toUpperCase();
+    return new StringBuilder()
+        .append("DECLARE \n")
+        .append("  e exception; \n")
+        .append("  pragma exception_init(e,-1418); \n")
+        .append("BEGIN \n")
+        .append("  EXECUTE IMMEDIATE 'ALTER INDEX ").append(qualifiedIndexName).append(" RENAME TO ").append(newIndexName).append("'; \n")
+        .append("EXCEPTION \n")
+        .append("  WHEN e THEN \n")
+        .append("    null; \n")
+        .append("END;")
+        .toString();
+  }
+
+
+  private String renameConstraintIfExists(String tableName, String oldConstraintName, String newConstraintName) {
+    String qualifiedTableName = schemaNamePrefix() + tableName.toUpperCase();
+    return new StringBuilder()
+        .append("DECLARE \n")
+        .append("  e exception; \n")
+        .append("  pragma exception_init(e,-2448); \n")
+        .append("BEGIN \n")
+        .append("  EXECUTE IMMEDIATE 'ALTER TABLE ").append(qualifiedTableName).append(" RENAME CONSTRAINT ").append(oldConstraintName).append(" TO ").append(newConstraintName).append("'; \n")
+        .append("EXCEPTION \n")
+        .append("  WHEN e THEN \n")
+        .append("    null; \n")
+        .append("END;")
+        .toString();
+  }
+
+
+  private Optional<OracleMetaDataProvider> getOracleMetaDataProvider(SchemaResource schemaResource) {
+    return schemaResource.getDatabaseMetaDataProvider()
+        .filter(instanceOf(OracleMetaDataProvider.class))
+        .map(OracleMetaDataProvider.class::cast);
+  }
+
+
   private Collection<String> tableDeploymentStatements(Table table, boolean asSelect) {
     ImmutableList.Builder<String> builder =   ImmutableList.<String>builder()
             .add(createTableStatement(table, asSelect));
@@ -177,10 +269,10 @@ class OracleDialect extends SqlDialect {
 
     createSequenceStatement.append("SEQUENCE ");
 
-    String truncatedSequenceName = truncatedSequenceName(sequence.getName());
+    String sequenceName = sequence.getName();
 
     createSequenceStatement.append(schemaNamePrefix());
-    createSequenceStatement.append(truncatedSequenceName);
+    createSequenceStatement.append(sequenceName);
 
     createSequenceStatement.append(" CACHE 100000");
 
@@ -208,10 +300,10 @@ class OracleDialect extends SqlDialect {
 
     createTableStatement.append("TABLE ");
 
-    String truncatedTableName = truncatedTableName(table.getName());
+    String tableName = table.getName();
 
     createTableStatement.append(schemaNamePrefix());
-    createTableStatement.append(truncatedTableName);
+    createTableStatement.append(tableName);
     createTableStatement.append(" (");
 
     boolean first = true;
@@ -260,7 +352,7 @@ class OracleDialect extends SqlDialect {
     List<String> columnComments = Lists.newArrayList();
 
     for (Column column : table.columns()) {
-      columnComments.add(columnComment(column, truncatedTableName(table.getName())));
+      columnComments.add(columnComment(column, table.getName()));
     }
 
     return columnComments;
@@ -300,7 +392,7 @@ class OracleDialect extends SqlDialect {
             + " PRIMARY KEY (" + Joiner.on(", ").join(newPrimaryKeyColumns) + ")"
             + " USING INDEX (CREATE UNIQUE INDEX " + schemaNamePrefix() + primaryKeyConstraintName(tableName)
             + " ON "
-            + schemaNamePrefix() + truncatedTableName(tableName)
+            + schemaNamePrefix() + tableName
             + " (" + Joiner.on(", ").join(newPrimaryKeyColumns) + ")";
     if (!isTempTable) {
       constraintClause += " NOLOGGING PARALLEL)";
@@ -369,19 +461,23 @@ class OracleDialect extends SqlDialect {
    */
   private String dropSequence(Table table) {
     String sequenceName = sequenceName(table.getName());
+    return dropSequence(sequenceName);
+  }
+
+  private String dropSequence(String sequenceName) {
     return new StringBuilder("DECLARE \n")
-      .append("  query CHAR(255); \n")
-      .append("BEGIN \n")
-      .append("  select queryField into query from SYS.DUAL D left outer join (\n")
-      .append("    select concat('drop sequence ").append(schemaNamePrefix()).append("', sequence_name) as queryField \n")
-      .append("    from ALL_SEQUENCES S \n")
-      .append("    where S.sequence_owner='").append(getSchemaName().toUpperCase()).append("' AND S.sequence_name = '").append(sequenceName.toUpperCase()).append("' \n")
-      .append("  ) on 1 = 1; \n")
-      .append("  IF query is not null THEN \n")
-      .append("    execute immediate query; \n")
-      .append("  END IF; \n")
-      .append("END;")
-      .toString();
+        .append("  query CHAR(255); \n")
+        .append("BEGIN \n")
+        .append("  select queryField into query from SYS.DUAL D left outer join (\n")
+        .append("    select concat('drop sequence ").append(schemaNamePrefix()).append("', sequence_name) as queryField \n")
+        .append("    from ALL_SEQUENCES S \n")
+        .append("    where S.sequence_owner='").append(getSchemaName().toUpperCase()).append("' AND S.sequence_name = '").append(sequenceName.toUpperCase()).append("' \n")
+        .append("  ) on 1 = 1; \n")
+        .append("  IF query is not null THEN \n")
+        .append("    execute immediate query; \n")
+        .append("  END IF; \n")
+        .append("END;")
+        .toString();
   }
 
 
@@ -414,7 +510,7 @@ class OracleDialect extends SqlDialect {
    * @return  SQL string.
    */
   private String createSequenceStartingFromExistingData(Table table, Column onColumn) {
-    String tableName = schemaNamePrefix() + truncatedTableName(table.getName());
+    String tableName = schemaNamePrefix() + table.getName();
     String sequenceName = schemaNamePrefix() + sequenceName(table.getName());
     return new StringBuilder("DECLARE query CHAR(255); \n")
       .append("BEGIN \n")
@@ -437,7 +533,7 @@ class OracleDialect extends SqlDialect {
   private List<String> createTrigger(Table table, Column onColumn) {
     List<String> createTriggerStatements = new ArrayList<>();
     createTriggerStatements.add(String.format("ALTER SESSION SET CURRENT_SCHEMA = %s", getSchemaName()));
-    String tableName = truncatedTableName(table.getName());
+    String tableName = table.getName();
     String sequenceName = sequenceName(table.getName());
     String triggerName = schemaNamePrefix() + triggerName(table.getName());
     createTriggerStatements.add(new StringBuilder("CREATE TRIGGER ").append(triggerName).append(" \n")
@@ -462,17 +558,21 @@ class OracleDialect extends SqlDialect {
    */
   private String dropTrigger(Table table) {
     String triggerName =  schemaNamePrefix() + triggerName(table.getName());
+    return dropTrigger(triggerName);
+  }
+
+  private static String dropTrigger(String triggerName) {
     return new StringBuilder()
-      .append("DECLARE \n")
-      .append("  e exception; \n")
-      .append("  pragma exception_init(e,-4080); \n")
-      .append("BEGIN \n")
-      .append("  EXECUTE IMMEDIATE 'DROP TRIGGER ").append(triggerName).append("'; \n")
-      .append("EXCEPTION \n")
-      .append("  WHEN e THEN \n")
-      .append("    null; \n")
-      .append("END;")
-      .toString();
+        .append("DECLARE \n")
+        .append("  e exception; \n")
+        .append("  pragma exception_init(e,-4080); \n")
+        .append("BEGIN \n")
+        .append("  EXECUTE IMMEDIATE 'DROP TRIGGER ").append(triggerName).append("'; \n")
+        .append("EXCEPTION \n")
+        .append("  WHEN e THEN \n")
+        .append("    null; \n")
+        .append("END;")
+        .toString();
   }
 
 
@@ -565,7 +665,7 @@ class OracleDialect extends SqlDialect {
    * @return Name of constraint.
    */
   private String primaryKeyConstraintName(String tableName) {
-    return truncatedTableNameWithSuffix(tableName, "_PK");
+    return tableName + "_PK";
   }
 
 
@@ -576,7 +676,7 @@ class OracleDialect extends SqlDialect {
    * @return Name of sequence.
    */
   private String sequenceName(String tableName) {
-    return truncatedTableNameWithSuffix(tableName, "_SQ").toUpperCase();
+    return tableName.toUpperCase() + "_SQ";
   }
 
 
@@ -587,7 +687,7 @@ class OracleDialect extends SqlDialect {
    * @return Name of trigger.
    */
   private String triggerName(String tableName) {
-    return truncatedTableNameWithSuffix(tableName, "_TG").toUpperCase();
+    return tableName.toUpperCase() + "_TG";
   }
 
 
@@ -595,7 +695,7 @@ class OracleDialect extends SqlDialect {
    * Truncate table names to the maximum supported by Oracle.
    */
   private String truncatedTableName(String tableName) {
-    return StringUtils.substring(tableName, 0, MAX_NAME_LENGTH);
+    return StringUtils.substring(tableName, 0, MAX_LEGACY_NAME_LENGTH);
   }
 
 
@@ -603,15 +703,15 @@ class OracleDialect extends SqlDialect {
    * Truncate sequence names to the maximum supported by Oracle.
    */
   private String truncatedSequenceName(String sequenceName) {
-    return StringUtils.substring(sequenceName, 0, MAX_NAME_LENGTH);
+    return StringUtils.substring(sequenceName, 0, MAX_LEGACY_NAME_LENGTH);
   }
 
 
   /**
    * Truncate table names 3 shorter than the maximum name length supported by Oracle, then add a 3 character suffix.
    */
-  private String truncatedTableNameWithSuffix(String tableName, String suffix) {
-    return StringUtils.substring(tableName, 0, MAX_NAME_LENGTH-3) + StringUtils.substring(suffix, 0, 3);
+  private String truncatedTableNameWithSuffixLegacy(String tableName, String suffix) {
+    return StringUtils.substring(tableName, 0, MAX_LEGACY_NAME_LENGTH-3) + StringUtils.substring(suffix, 0, 3);
   }
 
 
@@ -816,7 +916,7 @@ class OracleDialect extends SqlDialect {
       // Specify which table the index is over
       .append(" ON ")
       .append(schemaNamePrefix())
-      .append(truncatedTableName(table.getName()))
+      .append(table.getName())
 
       // Specify the fields that are used in the index
       .append(" (")
@@ -850,16 +950,16 @@ class OracleDialect extends SqlDialect {
   public Collection<String> alterTableAddColumnStatements(Table table, Column column) {
     List<String> result = new ArrayList<>();
 
-    String truncatedTableName = truncatedTableName(table.getName());
+    String tableName = table.getName();
 
     result.add(String.format("ALTER TABLE %s%s ADD (%s %s)",
       schemaNamePrefix(),
-      truncatedTableName,
+      tableName,
       column.getName(),
       sqlRepresentationOfColumnType(column, true)
     ));
 
-    result.add(columnComment(column, truncatedTableName));
+    result.add(columnComment(column, tableName));
 
     return result;
   }
@@ -933,12 +1033,12 @@ class OracleDialect extends SqlDialect {
 
     Table oldTable = oldTableForChangeColumn(table, oldColumn, newColumn);
 
-    String truncatedTableName = truncatedTableName(oldTable.getName());
+    String tableName = oldTable.getName();
 
     boolean recreatePrimaryKey = oldColumn.isPrimaryKey() || newColumn.isPrimaryKey();
 
     if (recreatePrimaryKey && !primaryKeysForTable(oldTable).isEmpty()) {
-      result.add(dropPrimaryKeyConstraint(truncatedTableName));
+      result.add(dropPrimaryKeyConstraint(tableName));
     }
 
     for (Index index : oldTable.indexes()) {
@@ -950,7 +1050,7 @@ class OracleDialect extends SqlDialect {
     }
 
     if (!newColumn.getName().equalsIgnoreCase(oldColumn.getName())) {
-      result.add("ALTER TABLE " + schemaNamePrefix() + truncatedTableName + " RENAME COLUMN " + oldColumn.getName() + " TO " + newColumn.getName());
+      result.add("ALTER TABLE " + schemaNamePrefix() + tableName + " RENAME COLUMN " + oldColumn.getName() + " TO " + newColumn.getName());
     }
 
     boolean includeNullability = newColumn.isNullable() != oldColumn.isNullable();
@@ -961,7 +1061,7 @@ class OracleDialect extends SqlDialect {
       StringBuilder statement = new StringBuilder()
         .append("ALTER TABLE ")
         .append(schemaNamePrefix())
-        .append(truncatedTableName)
+        .append(tableName)
         .append(" MODIFY (")
         .append(newColumn.getName())
         .append(' ')
@@ -975,7 +1075,7 @@ class OracleDialect extends SqlDialect {
       StringBuilder statement = new StringBuilder()
           .append("ALTER TABLE ")
           .append(schemaNamePrefix())
-          .append(truncatedTableName)
+          .append(tableName)
           .append(" MODIFY (")
           .append(newColumn.getName())
           .append(" DEFAULT NULL")
@@ -985,7 +1085,7 @@ class OracleDialect extends SqlDialect {
     }
 
     if (recreatePrimaryKey && !primaryKeysForTable(table).isEmpty()) {
-      result.add(generatePrimaryKeyStatement(namesOfColumns(SchemaUtils.primaryKeysForTable(table)), truncatedTableName, table.isTemporary()));
+      result.add(generatePrimaryKeyStatement(namesOfColumns(SchemaUtils.primaryKeysForTable(table)), tableName, table.isTemporary()));
       if (!table.isTemporary()) {
         result.add(disableParallelAndEnableLoggingForPrimaryKey(table));
       }
@@ -999,7 +1099,7 @@ class OracleDialect extends SqlDialect {
       }
     }
 
-    result.add(columnComment(newColumn, truncatedTableName));
+    result.add(columnComment(newColumn, tableName));
 
     return result;
   }
@@ -1049,12 +1149,12 @@ class OracleDialect extends SqlDialect {
   public Collection<String> alterTableDropColumnStatements(Table table, Column column) {
     List<String> result = new ArrayList<>();
 
-    String truncatedTableName = truncatedTableName(table.getName());
+    String tableName = table.getName();
 
     StringBuilder statement = new StringBuilder()
     .append("ALTER TABLE ")
     .append(schemaNamePrefix())
-    .append(truncatedTableName)
+    .append(tableName)
     .append(" SET UNUSED") // perform a logical (rather than physical) delete of the row for performance reasons.
     .append(" (").append(column.getName()).append(")");
 
@@ -1186,10 +1286,10 @@ class OracleDialect extends SqlDialect {
    */
   @Override
   public Collection<String> renameTableStatements(Table fromTable, Table toTable) {
-    String from = truncatedTableName(fromTable.getName());
+    String from = fromTable.getName();
     String fromConstraint = primaryKeyConstraintName(fromTable.getName());
 
-    String to = truncatedTableName(toTable.getName());
+    String to = toTable.getName();
     String toConstraint = primaryKeyConstraintName(toTable.getName());
 
     ArrayList<String> statements = new ArrayList<>();
@@ -1267,8 +1367,8 @@ class OracleDialect extends SqlDialect {
       statements.addAll(createTrigger(table, sequence));
     }
 
-    String truncatedTableName = truncatedTableName(table.getName());
-    statements.add(commentOnTable(truncatedTableName));
+    String tableName = table.getName();
+    statements.add(commentOnTable(tableName));
 
     statements.addAll(createColumnComments(table));
 
