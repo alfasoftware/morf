@@ -100,7 +100,7 @@ class PostgreSQLUniqueIndexAdditionalDeploymentStatements {
      * CREATE UNIQUE INDEX Test_1$null0 ON schema.Test (floatField) WHERE intField IS NULL;
      * </pre>
      *
-     * Sample result (floatField being the only non-nullable column):
+     * Sample result (stringField and intField being the two non-nullable columns):
      * <pre>
      * CREATE UNIQUE INDEX indexName ON testschema.Test (stringField, intField, floatField, dateField);
      * CREATE UNIQUE INDEX indexName$null0 ON testschema.Test (intField, floatField, dateField) WHERE stringField IS NULL;
