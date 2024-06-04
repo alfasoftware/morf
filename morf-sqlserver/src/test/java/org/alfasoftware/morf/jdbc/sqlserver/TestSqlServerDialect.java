@@ -1205,7 +1205,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> getRenamingTableWithLongNameStatements() {
-    String tableNameOver128 = "123456789012345678901234567890XXX123456789012345678901234567890XXX123456789012345678901234567890XXX123456789012345678901234567890XXX";
+    String tableNameOver128 = "123456789012345678901234567890X";
     return ImmutableList.of(
       "IF EXISTS (SELECT 1 FROM sys.objects WHERE OBJECT_ID = OBJECT_ID(N'" + tableNameOver128 + "_version_DF') AND type = (N'D')) exec sp_rename N'" + tableNameOver128 + "_version_DF', N'Blah_version_DF'",
       "sp_rename N'" + tableNameOver128 + "." + tableNameOver128 + "_PK', N'Blah_PK', N'INDEX'",

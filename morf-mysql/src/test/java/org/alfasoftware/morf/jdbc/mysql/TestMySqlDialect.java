@@ -1154,7 +1154,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> getRenamingTableWithLongNameStatements() {
-    return ImmutableList.of("RENAME TABLE 123456789012345678901234567890XXX123456789012345678901234567890XXX123456789012345678901234567890XXX123456789012345678901234567890XXX TO Blah");
+    return ImmutableList.of("RENAME TABLE 123456789012345678901234567890X TO Blah");
   }
 
 

@@ -19,7 +19,6 @@ import static org.alfasoftware.morf.jdbc.oracle.OracleDialect.NULLS_LAST;
 import static org.alfasoftware.morf.sql.SqlUtils.parameter;
 import static org.alfasoftware.morf.sql.element.Direction.ASCENDING;
 import static org.hamcrest.Matchers.contains;
-import static org.hamcrest.Matchers.emptyIterable;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
@@ -45,9 +44,13 @@ import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
+import org.alfasoftware.morf.jdbc.TableCollectionSupplier;
+import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.CustomHint;
 import org.alfasoftware.morf.sql.OracleCustomHint;
 import org.alfasoftware.morf.sql.element.Direction;
@@ -56,6 +59,7 @@ import org.mockito.ArgumentCaptor;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 
 /**
  * Test that {@link OracleDialect} works correctly.
@@ -79,16 +83,48 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
   @Override
   protected org.hamcrest.Matcher<java.lang.Iterable<? extends String>> expectedSchemaConsistencyStatements() { //NOSONAR // Remove usage of generic wildcard type // The generic wildcard type comes from hamcrest and is therefore unavoidable
-    //TODO populate
-    return emptyIterable();
+    return contains("-- Auto-Healing table: NameOver27WithSequenceWithTruncation",
+        "DECLARE \n  e exception; \n  pragma exception_init(e,-4080); \nBEGIN \n  EXECUTE IMMEDIATE 'DROP TRIGGER TESTSCHEMA.NAMEOVER27WITHSEQUENCEWITHT_TG'; \nEXCEPTION \n  WHEN e THEN \n    null; \nEND;",
+        "DECLARE \n  query CHAR(255); \nBEGIN \n  select queryField into query from SYS.DUAL D left outer join (\n    select concat('drop sequence TESTSCHEMA.', sequence_name) as queryField \n    from ALL_SEQUENCES S \n    where S.sequence_owner='TESTSCHEMA' AND S.sequence_name = 'TESTSCHEMA.NAMEOVER27WITHSEQUENCEWITHT_SQ' \n  ) on 1 = 1; \n  IF query is not null THEN \n    execute immediate query; \n  END IF; \nEND;",
+        "-- Auto-Healing table: NameOver27WithTruncationWithoutSequence",
+        "DECLARE \n  e exception; \n  pragma exception_init(e,-4080); \nBEGIN \n  EXECUTE IMMEDIATE 'DROP TRIGGER TESTSCHEMA.NAMEOVER27WITHTRUNCATIONWIT_TG'; \nEXCEPTION \n  WHEN e THEN \n    null; \nEND;",
+        "DECLARE \n  e exception; \n  pragma exception_init(e,-2448); \nBEGIN \n  EXECUTE IMMEDIATE 'ALTER TABLE TESTSCHEMA.NAMEOVER27WITHTRUNCATIONWITHOUTSEQUENCE RENAME CONSTRAINT NAMEOVER27WITHTRUNCATIONWIT_PK TO NameOver27WithTruncationWithoutSequence_PK'; \nEXCEPTION \n  WHEN e THEN \n    null; \nEND;",
+        "DECLARE \n  e exception; \n  pragma exception_init(e,-1418); \nBEGIN \n  EXECUTE IMMEDIATE 'ALTER INDEX TESTSCHEMA.NAMEOVER27WITHTRUNCATIONWIT_PK RENAME TO NameOver27WithTruncationWithoutSequence_PK'; \nEXCEPTION \n  WHEN e THEN \n    null; \nEND;");
   }
 
 
   protected SchemaResource createSchemaResourceForSchemaConsistencyStatements() {
-    //TODO populate
-    fail("Test not implemented yet.");
     final SchemaResource schemaResource = mock(SchemaResource.class);
-    when(schemaResource.getDatabaseMetaDataProvider()).thenReturn(Optional.empty());
+    final TableCollectionSupplier tableCollectionSupplier = mock(TableCollectionSupplier.class);
+    Table nameUnder28 = mock(Table.class);
+    when(nameUnder28.getName()).thenReturn("NameUnder28");
+
+    Table nameOver27WithoutTruncation = mock(Table.class);
+    when(nameOver27WithoutTruncation.getName()).thenReturn("NameOver27abcdefghijklmnopqr");
+    Index index = mock(Index.class);
+    when(index.getName()).thenReturn("NameOver27abcdefghijklmnopqr_PK");
+    when(nameOver27WithoutTruncation.indexes()).thenReturn(Lists.newArrayList(index));
+
+    Table nameOver27WithTruncationWithoutSequence = mock(Table.class);
+    when(nameOver27WithTruncationWithoutSequence.getName()).thenReturn("NameOver27WithTruncationWithoutSequence");
+    Index index2 = mock(Index.class);
+    when(index2.getName()).thenReturn("NameOver27WithTruncationWit_PK");
+    Column primaryKeyColumn = mock(Column.class);
+    when(primaryKeyColumn.isPrimaryKey()).thenReturn(true);
+    when(nameOver27WithTruncationWithoutSequence.columns()).thenReturn(Lists.newArrayList(primaryKeyColumn));
+    when(nameOver27WithTruncationWithoutSequence.indexes()).thenReturn(Lists.newArrayList(index2));
+
+    Table nameOver27WithTruncationWithSequence = mock(Table.class);
+    when(nameOver27WithTruncationWithSequence.getName()).thenReturn("NameOver27WithSequenceWithTruncation");
+    Index index3 = mock(Index.class);
+    when(index3.getName()).thenReturn("NameOver27WithSequenceWithT_PK");
+    Column autoNumberedColumn = mock(Column.class);
+    when(autoNumberedColumn.isAutoNumbered()).thenReturn(true);
+    when(nameOver27WithTruncationWithSequence.columns()).thenReturn(Lists.newArrayList(autoNumberedColumn));
+    when(nameOver27WithTruncationWithSequence.indexes()).thenReturn(Lists.newArrayList(index3));
+
+    when(tableCollectionSupplier.tables()).thenReturn(Lists.newArrayList(nameUnder28, nameOver27WithTruncationWithSequence, nameOver27WithoutTruncation, nameOver27WithTruncationWithoutSequence));
+    when(schemaResource.getTableCollectionSupplier()).thenReturn(Optional.of(tableCollectionSupplier));
     return schemaResource;
   }
 

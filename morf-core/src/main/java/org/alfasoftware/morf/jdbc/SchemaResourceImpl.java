@@ -90,4 +90,14 @@ public final class SchemaResourceImpl extends SchemaAdapter implements SchemaRes
 
     return SchemaResource.super.getDatabaseMetaDataProvider();
   }
+
+
+  /**
+   * Introduced to allow access to meta-data when using auto-healing with Oracle. See MORF-98.
+   * @return the table collection supplier.
+   */
+  @Override
+  public Optional<TableCollectionSupplier> getTableCollectionSupplier() {
+    return Optional.of(delegate);
+  }
 }

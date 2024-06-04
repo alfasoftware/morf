@@ -15,7 +15,6 @@
 
 package org.alfasoftware.morf.jdbc.oracle;
 
-import static com.google.common.base.Predicates.instanceOf;
 import static org.alfasoftware.morf.metadata.DataType.DECIMAL;
 import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
 import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
@@ -37,6 +36,7 @@ import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
+import org.alfasoftware.morf.jdbc.TableCollectionSupplier;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
@@ -159,21 +159,21 @@ class OracleDialect extends SqlDialect {
 
   @Override
   public List<String> getSchemaConsistencyStatements(SchemaResource schemaResource) {
-    return getOracleMetaDataProvider(schemaResource)
+    return getTableCollectionSupplier(schemaResource)
         .map(this::getSchemaConsistencyStatements)
         .orElseGet(() -> super.getSchemaConsistencyStatements(schemaResource));
   }
 
 
-  private List<String> getSchemaConsistencyStatements(OracleMetaDataProvider metaDataProvider) {
+  private List<String> getSchemaConsistencyStatements(TableCollectionSupplier metaDataProvider) {
     return FluentIterable.from(metaDataProvider.tables())
-        .transformAndConcat(table -> healTable(metaDataProvider, table))
+        .transformAndConcat(table -> healTable(table))
         .toList(); // turn all the concatenated fluent iterables into a firm immutable list
   }
 
 
-  private Iterable<String> healTable(OracleMetaDataProvider metaDataProvider, Table table) {
-    Iterable<String> statements = healTruncatedIndexesSequencesAndTriggers(metaDataProvider, table);
+  private Iterable<String> healTable(Table table) {
+    Iterable<String> statements = healTruncatedIndexesSequencesAndTriggers(table);
 
     if (statements.iterator().hasNext()) {
       List<String> intro = ImmutableList.of(convertCommentToSQL("Auto-Healing table: " + table.getName()));
@@ -182,10 +182,17 @@ class OracleDialect extends SqlDialect {
     return ImmutableList.of();
   }
 
-  private Iterable<String> healTruncatedIndexesSequencesAndTriggers(OracleMetaDataProvider metaDataProvider, Table table) {
+  private Iterable<String> healTruncatedIndexesSequencesAndTriggers(Table table) {
+    List<String> statements = Lists.newArrayList();
+    // Truncation of indexes will only have occurred for tables with names that are over 27 characters.
+    if (table.getName().length() < 28) return statements;
+
+    // Check if a truncated PK index exists.
+    if (!table.indexes().stream().anyMatch(index -> index.getName().toUpperCase().equals(truncatedTableNameWithSuffixLegacy(table.getName(), "_PK").toUpperCase()))) return statements;
+
     // Triggers always get rebuilt during upgrade so drop all triggers with legacy names.
     String legacyTriggerName = schemaNamePrefix() + truncatedTableNameWithSuffixLegacy(table.getName(), "_TG").toUpperCase();
-    List<String> statements = Lists.newArrayList();
+
     statements.add(dropTrigger(legacyTriggerName));
 
     // Similarly, sequences get rebuilt so drop legacy versions of these too.
@@ -238,10 +245,8 @@ class OracleDialect extends SqlDialect {
   }
 
 
-  private Optional<OracleMetaDataProvider> getOracleMetaDataProvider(SchemaResource schemaResource) {
-    return schemaResource.getDatabaseMetaDataProvider()
-        .filter(instanceOf(OracleMetaDataProvider.class))
-        .map(OracleMetaDataProvider.class::cast);
+  private Optional<TableCollectionSupplier> getTableCollectionSupplier(SchemaResource schemaResource) {
+      return schemaResource.getTableCollectionSupplier();
   }
 
 
