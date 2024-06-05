@@ -55,7 +55,7 @@ public interface SchemaResource extends Schema, AutoCloseable {
    * The schema should not normally be accessed directly.
    * @return The delegate schema.
    */
-  default Optional<AdditionalMetadata> getTableCollectionSupplier() {
+  default Optional<AdditionalMetadata> getAdditionalMetadata() {
     return Optional.empty();
   }
 }

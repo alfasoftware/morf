@@ -97,7 +97,7 @@ public final class SchemaResourceImpl extends SchemaAdapter implements SchemaRes
    * @return the table collection supplier.
    */
   @Override
-  public Optional<AdditionalMetadata> getTableCollectionSupplier() {
+  public Optional<AdditionalMetadata> getAdditionalMetadata() {
     return Optional.of(delegate);
   }
 }

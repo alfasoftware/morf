@@ -108,7 +108,6 @@ class OracleDialect extends SqlDialect {
    * Fortunately on Oracle it is possible to specify that nulls should be ordered first.
    */
   public static final String DEFAULT_NULL_ORDER = NULLS_FIRST;
-  public static final int MAX_NAME_LENGTH = 128;
 
   public static final int MAX_LEGACY_NAME_LENGTH = 30;
 
@@ -159,7 +158,7 @@ class OracleDialect extends SqlDialect {
 
   @Override
   public List<String> getSchemaConsistencyStatements(SchemaResource schemaResource) {
-    return getTableCollectionSupplier(schemaResource)
+    return schemaResource.getAdditionalMetadata()
         .map(this::getSchemaConsistencyStatements)
         .orElseGet(() -> super.getSchemaConsistencyStatements(schemaResource));
   }
@@ -244,11 +243,6 @@ class OracleDialect extends SqlDialect {
         .append("    null; \n")
         .append("END;")
         .toString();
-  }
-
-
-  private Optional<AdditionalMetadata> getTableCollectionSupplier(SchemaResource schemaResource) {
-      return schemaResource.getTableCollectionSupplier();
   }
 
 

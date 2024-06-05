@@ -117,7 +117,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
     when(nameOver27WithTruncationWithSequence.columns()).thenReturn(Lists.newArrayList(autoNumberedColumn));
 
     when(additionalMetadata.tables()).thenReturn(Lists.newArrayList(nameUnder28, nameOver27WithTruncationWithSequence, nameOver27WithoutTruncation, nameOver27WithTruncationWithoutSequence));
-    when(schemaResource.getTableCollectionSupplier()).thenReturn(Optional.of(additionalMetadata));
+    when(schemaResource.getAdditionalMetadata()).thenReturn(Optional.of(additionalMetadata));
     return schemaResource;
   }
 
