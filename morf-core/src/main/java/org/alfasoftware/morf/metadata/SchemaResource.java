@@ -17,8 +17,8 @@ package org.alfasoftware.morf.metadata;
 
 import java.util.Optional;
 
+import org.alfasoftware.morf.jdbc.AdditionalMetadata;
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
-import org.alfasoftware.morf.jdbc.TableCollectionSupplier;
 
 /**
  * Provides database meta data.
@@ -55,7 +55,7 @@ public interface SchemaResource extends Schema, AutoCloseable {
    * The schema should not normally be accessed directly.
    * @return The delegate schema.
    */
-  default Optional<TableCollectionSupplier> getTableCollectionSupplier() {
+  default Optional<AdditionalMetadata> getTableCollectionSupplier() {
     return Optional.empty();
   }
 }

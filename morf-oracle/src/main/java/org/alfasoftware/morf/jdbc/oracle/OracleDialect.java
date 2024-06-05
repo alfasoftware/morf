@@ -32,11 +32,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.alfasoftware.morf.jdbc.AdditionalMetadata;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
-import org.alfasoftware.morf.jdbc.TableCollectionSupplier;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
@@ -165,15 +165,16 @@ class OracleDialect extends SqlDialect {
   }
 
 
-  private List<String> getSchemaConsistencyStatements(TableCollectionSupplier metaDataProvider) {
+  private List<String> getSchemaConsistencyStatements(AdditionalMetadata metaDataProvider) {
     return FluentIterable.from(metaDataProvider.tables())
-        .transformAndConcat(table -> healTable(table))
+        .transformAndConcat(table -> healTable(table, metaDataProvider))
         .toList(); // turn all the concatenated fluent iterables into a firm immutable list
   }
 
 
-  private Iterable<String> healTable(Table table) {
-    Iterable<String> statements = healTruncatedIndexesSequencesAndTriggers(table);
+  private Iterable<String> healTable(Table table, AdditionalMetadata metaDataProvider) {
+    Collection<String> primaryKeyIndexNames = metaDataProvider.primaryKeyIndexNames();
+    Iterable<String> statements = healTruncatedIndexesSequencesAndTriggers(table, primaryKeyIndexNames);
 
     if (statements.iterator().hasNext()) {
       List<String> intro = ImmutableList.of(convertCommentToSQL("Auto-Healing table: " + table.getName()));
@@ -182,13 +183,14 @@ class OracleDialect extends SqlDialect {
     return ImmutableList.of();
   }
 
-  private Iterable<String> healTruncatedIndexesSequencesAndTriggers(Table table) {
+  private Iterable<String> healTruncatedIndexesSequencesAndTriggers(Table table, Collection<String> primaryKeyIndexNames) {
     List<String> statements = Lists.newArrayList();
     // Truncation of indexes will only have occurred for tables with names that are over 27 characters.
     if (table.getName().length() < 28) return statements;
 
     // Check if a truncated PK index exists.
-    if (!table.indexes().stream().anyMatch(index -> index.getName().toUpperCase().equals(truncatedTableNameWithSuffixLegacy(table.getName(), "_PK").toUpperCase()))) return statements;
+    String truncatedIndexName = truncatedTableNameWithSuffixLegacy(table.getName(), "_PK");
+    if (!primaryKeyIndexNames.stream().anyMatch(indexName -> indexName.equalsIgnoreCase(truncatedIndexName))) return statements;
 
     // Triggers always get rebuilt during upgrade so drop all triggers with legacy names.
     String legacyTriggerName = schemaNamePrefix() + truncatedTableNameWithSuffixLegacy(table.getName(), "_TG").toUpperCase();
@@ -245,7 +247,7 @@ class OracleDialect extends SqlDialect {
   }
 
 
-  private Optional<TableCollectionSupplier> getTableCollectionSupplier(SchemaResource schemaResource) {
+  private Optional<AdditionalMetadata> getTableCollectionSupplier(SchemaResource schemaResource) {
       return schemaResource.getTableCollectionSupplier();
   }
 

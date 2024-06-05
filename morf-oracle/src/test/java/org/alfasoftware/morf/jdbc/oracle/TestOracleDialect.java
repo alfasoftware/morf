@@ -41,13 +41,12 @@ import java.util.List;
 import java.util.Optional;
 
 import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
+import org.alfasoftware.morf.jdbc.AdditionalMetadata;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
-import org.alfasoftware.morf.jdbc.TableCollectionSupplier;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
@@ -95,36 +94,30 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
   protected SchemaResource createSchemaResourceForSchemaConsistencyStatements() {
     final SchemaResource schemaResource = mock(SchemaResource.class);
-    final TableCollectionSupplier tableCollectionSupplier = mock(TableCollectionSupplier.class);
+    final AdditionalMetadata additionalMetadata = mock(AdditionalMetadata.class);
+
+    when(additionalMetadata.primaryKeyIndexNames()).thenReturn(Lists.newArrayList("NameOver27abcdefghijklmnopqr_PK", "NameOver27WithTruncationWit_PK", "NameOver27WithSequenceWithT_PK"));
+
     Table nameUnder28 = mock(Table.class);
     when(nameUnder28.getName()).thenReturn("NameUnder28");
 
     Table nameOver27WithoutTruncation = mock(Table.class);
     when(nameOver27WithoutTruncation.getName()).thenReturn("NameOver27abcdefghijklmnopqr");
-    Index index = mock(Index.class);
-    when(index.getName()).thenReturn("NameOver27abcdefghijklmnopqr_PK");
-    when(nameOver27WithoutTruncation.indexes()).thenReturn(Lists.newArrayList(index));
 
     Table nameOver27WithTruncationWithoutSequence = mock(Table.class);
     when(nameOver27WithTruncationWithoutSequence.getName()).thenReturn("NameOver27WithTruncationWithoutSequence");
-    Index index2 = mock(Index.class);
-    when(index2.getName()).thenReturn("NameOver27WithTruncationWit_PK");
     Column primaryKeyColumn = mock(Column.class);
     when(primaryKeyColumn.isPrimaryKey()).thenReturn(true);
     when(nameOver27WithTruncationWithoutSequence.columns()).thenReturn(Lists.newArrayList(primaryKeyColumn));
-    when(nameOver27WithTruncationWithoutSequence.indexes()).thenReturn(Lists.newArrayList(index2));
 
     Table nameOver27WithTruncationWithSequence = mock(Table.class);
     when(nameOver27WithTruncationWithSequence.getName()).thenReturn("NameOver27WithSequenceWithTruncation");
-    Index index3 = mock(Index.class);
-    when(index3.getName()).thenReturn("NameOver27WithSequenceWithT_PK");
     Column autoNumberedColumn = mock(Column.class);
     when(autoNumberedColumn.isAutoNumbered()).thenReturn(true);
     when(nameOver27WithTruncationWithSequence.columns()).thenReturn(Lists.newArrayList(autoNumberedColumn));
-    when(nameOver27WithTruncationWithSequence.indexes()).thenReturn(Lists.newArrayList(index3));
 
-    when(tableCollectionSupplier.tables()).thenReturn(Lists.newArrayList(nameUnder28, nameOver27WithTruncationWithSequence, nameOver27WithoutTruncation, nameOver27WithTruncationWithoutSequence));
-    when(schemaResource.getTableCollectionSupplier()).thenReturn(Optional.of(tableCollectionSupplier));
+    when(additionalMetadata.tables()).thenReturn(Lists.newArrayList(nameUnder28, nameOver27WithTruncationWithSequence, nameOver27WithoutTruncation, nameOver27WithTruncationWithoutSequence));
+    when(schemaResource.getTableCollectionSupplier()).thenReturn(Optional.of(additionalMetadata));
     return schemaResource;
   }
 
