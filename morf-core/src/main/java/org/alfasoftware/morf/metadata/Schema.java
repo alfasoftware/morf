@@ -17,15 +17,13 @@ package org.alfasoftware.morf.metadata;
 
 import java.util.Collection;
 
-import org.alfasoftware.morf.jdbc.AdditionalMetadata;
-
 
 /**
  * Provides database schema meta data.
  *
  * @author Copyright (c) Alfa Financial Software 2009
  */
-public interface Schema extends AdditionalMetadata {
+public interface Schema {
 
   /**
    * Determines if a database exists in the meta data source.

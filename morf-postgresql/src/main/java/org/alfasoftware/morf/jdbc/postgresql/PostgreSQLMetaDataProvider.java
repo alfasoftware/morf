@@ -16,6 +16,7 @@ import java.util.regex.Pattern;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
+import org.alfasoftware.morf.metadata.AdditionalMetadata;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
 import org.apache.commons.lang3.StringUtils;
@@ -30,7 +31,7 @@ import com.google.common.collect.ImmutableMap;
  *
  * @author Copyright (c) Alfa Financial Software 2019
  */
-public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider {
+public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider implements AdditionalMetadata {
 
   private static final Log log = LogFactory.getLog(PostgreSQLMetaDataProvider.class);
 

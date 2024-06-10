@@ -1558,7 +1558,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
         .build());
 
     final SchemaResource schemaResource = mock(SchemaResource.class);
-    when(schemaResource.getDatabaseMetaDataProvider()).thenReturn(Optional.of(metaDataProvider));
+    when(schemaResource.getAdditionalMetadata()).thenReturn(Optional.of(metaDataProvider));
 
     return schemaResource;
   }

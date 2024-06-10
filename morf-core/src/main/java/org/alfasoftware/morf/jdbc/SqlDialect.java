@@ -4430,7 +4430,6 @@ public abstract class SqlDialect {
    * @return List of statements to be run.
    */
   public List<String> getSchemaConsistencyStatements(SchemaResource schemaResource) {
-    schemaResource.getDatabaseMetaDataProvider();
     return ImmutableList.of();
   }
 

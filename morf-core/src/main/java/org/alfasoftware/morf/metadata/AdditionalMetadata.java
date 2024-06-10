@@ -1,14 +1,13 @@
-package org.alfasoftware.morf.jdbc;
+package org.alfasoftware.morf.metadata;
 
 import java.util.Collection;
 
-import org.alfasoftware.morf.metadata.Table;
 import org.apache.commons.lang3.NotImplementedException;
 
 /**
  * Provides additional metadata.
  */
-public interface AdditionalMetadata {
+public interface AdditionalMetadata extends Schema {
 
   /**
    * Gets the collection of tables.

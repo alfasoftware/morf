@@ -41,10 +41,10 @@ import java.util.List;
 import java.util.Optional;
 
 import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
-import org.alfasoftware.morf.jdbc.AdditionalMetadata;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
+import org.alfasoftware.morf.metadata.AdditionalMetadata;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.SchemaResource;

@@ -40,6 +40,7 @@ import javax.sql.DataSource;
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
+import org.alfasoftware.morf.metadata.AdditionalMetadata;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
@@ -145,7 +146,7 @@ public class TestOracleMetaDataProvider {
     });
 
     // When
-    final Schema oracleMetaDataProvider = oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
+    final AdditionalMetadata oracleMetaDataProvider = (AdditionalMetadata) oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
     Collection<String> expectedPrimaryKeyIndexNames = Sets.newTreeSet();
     expectedPrimaryKeyIndexNames.add("AREALTABLE_PK");
     expectedPrimaryKeyIndexNames.add("AREALTABLE2_PK");

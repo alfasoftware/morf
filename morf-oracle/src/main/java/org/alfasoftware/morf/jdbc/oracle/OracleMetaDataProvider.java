@@ -41,6 +41,7 @@ import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider.UnexpectedDataTypeException;
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
+import org.alfasoftware.morf.metadata.AdditionalMetadata;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.ColumnType;
 import org.alfasoftware.morf.metadata.DataType;
@@ -64,7 +65,7 @@ import com.google.common.collect.Sets;
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-public class OracleMetaDataProvider implements Schema {
+public class OracleMetaDataProvider implements AdditionalMetadata {
 
   /**
    * Standard log line.
