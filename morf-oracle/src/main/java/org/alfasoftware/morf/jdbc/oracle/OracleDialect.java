@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.jdbc.oracle;
 
+import static com.google.common.base.Predicates.instanceOf;
 import static org.alfasoftware.morf.metadata.DataType.DECIMAL;
 import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
 import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
@@ -29,6 +30,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -158,13 +160,20 @@ class OracleDialect extends SqlDialect {
 
   @Override
   public List<String> getSchemaConsistencyStatements(SchemaResource schemaResource) {
-    return schemaResource.getAdditionalMetadata()
+    return getOracleMetaDataProvider(schemaResource)
         .map(this::getSchemaConsistencyStatements)
         .orElseGet(() -> super.getSchemaConsistencyStatements(schemaResource));
   }
 
 
-  private List<String> getSchemaConsistencyStatements(AdditionalMetadata metaDataProvider) {
+  private Optional<OracleMetaDataProvider> getOracleMetaDataProvider(SchemaResource schemaResource) {
+    return schemaResource.getAdditionalMetadata()
+        .filter(instanceOf(OracleMetaDataProvider.class))
+        .map(OracleMetaDataProvider.class::cast);
+  }
+
+
+  private List<String> getSchemaConsistencyStatements(OracleMetaDataProvider metaDataProvider) {
     return FluentIterable.from(metaDataProvider.tables())
         .transformAndConcat(table -> healTable(table, metaDataProvider))
         .toList(); // turn all the concatenated fluent iterables into a firm immutable list
@@ -172,7 +181,7 @@ class OracleDialect extends SqlDialect {
 
 
   private Iterable<String> healTable(Table table, AdditionalMetadata metaDataProvider) {
-    Collection<String> primaryKeyIndexNames = metaDataProvider.primaryKeyIndexNames();
+    Map<String, String> primaryKeyIndexNames = metaDataProvider.primaryKeyIndexNames();
     Iterable<String> statements = healTruncatedIndexesSequencesAndTriggers(table, primaryKeyIndexNames);
 
     if (statements.iterator().hasNext()) {
@@ -182,14 +191,14 @@ class OracleDialect extends SqlDialect {
     return ImmutableList.of();
   }
 
-  private Iterable<String> healTruncatedIndexesSequencesAndTriggers(Table table, Collection<String> primaryKeyIndexNames) {
+  private Iterable<String> healTruncatedIndexesSequencesAndTriggers(Table table, Map<String, String> primaryKeyIndexNames) {
     List<String> statements = Lists.newArrayList();
     // Truncation of indexes will only have occurred for tables with names that are over 27 characters.
     if (table.getName().length() < 28) return statements;
 
     // Check if a truncated PK index exists.
     String truncatedIndexName = truncatedTableNameWithSuffixLegacy(table.getName(), "_PK");
-    if (!primaryKeyIndexNames.stream().anyMatch(indexName -> indexName.equalsIgnoreCase(truncatedIndexName))) return statements;
+    if (!truncatedIndexName.equalsIgnoreCase(primaryKeyIndexNames.get(table.getName().toUpperCase()))) return statements;
 
     // Triggers always get rebuilt during upgrade so drop all triggers with legacy names.
     String legacyTriggerName = schemaNamePrefix() + truncatedTableNameWithSuffixLegacy(table.getName(), "_TG").toUpperCase();
@@ -689,22 +698,6 @@ class OracleDialect extends SqlDialect {
    */
   private String triggerName(String tableName) {
     return tableName.toUpperCase() + "_TG";
-  }
-
-
-  /**
-   * Truncate table names to the maximum supported by Oracle.
-   */
-  private String truncatedTableName(String tableName) {
-    return StringUtils.substring(tableName, 0, MAX_LEGACY_NAME_LENGTH);
-  }
-
-
-  /**
-   * Truncate sequence names to the maximum supported by Oracle.
-   */
-  private String truncatedSequenceName(String sequenceName) {
-    return StringUtils.substring(sequenceName, 0, MAX_LEGACY_NAME_LENGTH);
   }
 
 

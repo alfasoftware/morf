@@ -25,7 +25,6 @@ import java.util.Collections;
 import java.util.List;
 
 import org.alfasoftware.morf.metadata.Column;
-import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.ExceptSetOperator;
@@ -36,7 +35,6 @@ import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Joiner;
-import com.google.common.collect.Lists;
 
 /**
  * Mock {@link SqlDialect} to give tests something vaguely realistic to work with.
@@ -49,12 +47,6 @@ public class MockDialect extends SqlDialect {
 
   public MockDialect() {
     super(null);
-  }
-
-
-  @Override
-  public List<String> getSchemaConsistencyStatements(SchemaResource schemaResource) {
-    return Lists.newArrayList();
   }
 
 

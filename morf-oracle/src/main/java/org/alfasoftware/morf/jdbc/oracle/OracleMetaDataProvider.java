@@ -57,7 +57,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.google.common.base.Suppliers;
-import com.google.common.collect.Sets;
+import com.google.common.collect.Maps;
 
 
 /**
@@ -84,7 +84,7 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
 
   private final Connection connection;
   private final String schemaName;
-  private Collection<String> primaryKeyIndexNames;
+  private Map<String, String> primaryKeyIndexNames;
 
 
   /**
@@ -154,7 +154,7 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
 
 
   @Override
-  public Collection<String> primaryKeyIndexNames() {
+  public Map<String, String> primaryKeyIndexNames() {
     if (primaryKeyIndexNames != null) {
       return primaryKeyIndexNames;
     }
@@ -324,7 +324,7 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
 
     // -- Stage 3: find the index names...
     //
-    primaryKeyIndexNames = Sets.newTreeSet();
+    primaryKeyIndexNames = Maps.newHashMap();
     final String getIndexNamesSql = "select table_name, index_name, uniqueness, status from ALL_INDEXES where owner=? order by table_name, index_name";
     runSQL(getIndexNamesSql, new ResultSetHandler() {
       @Override
@@ -360,7 +360,7 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
             if (!unique) {
               log.warn("Primary Key on table [" + tableName + "] is backed by non-unique index [" + indexName + "]");
             }
-            primaryKeyIndexNames.add(indexName);
+            primaryKeyIndexNames.put(tableName.toUpperCase(), indexName);
             continue;
           }
 

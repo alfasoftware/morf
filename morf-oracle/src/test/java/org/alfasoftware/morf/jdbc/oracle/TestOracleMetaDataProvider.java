@@ -32,8 +32,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import javax.sql.DataSource;
 
@@ -55,7 +55,7 @@ import org.mockito.stubbing.Answer;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Sets;
+import com.google.common.collect.Maps;
 
 /**
  * Tests for {@link OracleMetaDataProvider}.
@@ -147,9 +147,9 @@ public class TestOracleMetaDataProvider {
 
     // When
     final AdditionalMetadata oracleMetaDataProvider = (AdditionalMetadata) oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
-    Collection<String> expectedPrimaryKeyIndexNames = Sets.newTreeSet();
-    expectedPrimaryKeyIndexNames.add("AREALTABLE_PK");
-    expectedPrimaryKeyIndexNames.add("AREALTABLE2_PK");
+    Map<String, String> expectedPrimaryKeyIndexNames = Maps.newHashMap();
+    expectedPrimaryKeyIndexNames.put("AREALTABLE", "AREALTABLE_PK");
+    expectedPrimaryKeyIndexNames.put("AREALTABLE2", "AREALTABLE2_PK");
     assertEquals("Primary key index names.", expectedPrimaryKeyIndexNames, oracleMetaDataProvider.primaryKeyIndexNames());
   }
 

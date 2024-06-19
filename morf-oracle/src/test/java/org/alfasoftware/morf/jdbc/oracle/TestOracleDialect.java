@@ -38,6 +38,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
@@ -59,6 +60,7 @@ import org.mockito.ArgumentCaptor;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 /**
  * Test that {@link OracleDialect} works correctly.
@@ -94,9 +96,17 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
   protected SchemaResource createSchemaResourceForSchemaConsistencyStatements() {
     final SchemaResource schemaResource = mock(SchemaResource.class);
-    final AdditionalMetadata additionalMetadata = mock(AdditionalMetadata.class);
+    final AdditionalMetadata additionalMetadata = mock(OracleMetaDataProvider.class);
 
-    when(additionalMetadata.primaryKeyIndexNames()).thenReturn(Lists.newArrayList("NameOver27abcdefghijklmnopqr_PK", "NameOver27WithTruncationWit_PK", "NameOver27WithSequenceWithT_PK"));
+    Map<String, String> primaryKeyIndexNames = Maps.newHashMap();
+    //primaryKeyIndexNames.put("NameOver27abcdefghijklmnopqr", "NameOver27abcdefghijklmnopqr_PK");
+    //primaryKeyIndexNames.put("NameOver27WithTruncationWithoutSequence", "NameOver27WithTruncationWit_PK");
+    //primaryKeyIndexNames.put("NameOver27WithSequenceWithTruncation", "NameOver27WithSequenceWithT_PK"); // Yes
+    primaryKeyIndexNames.put("NAMEOVER27ABCDEFGHIJKLMNOPQR", "NameOver27abcdefghijklmnopqr_PK");
+    primaryKeyIndexNames.put("NAMEOVER27WITHTRUNCATIONWITHOUTSEQUENCE", "NameOver27WithTruncationWit_PK");
+    primaryKeyIndexNames.put("NAMEOVER27WITHSEQUENCEWITHTRUNCATION", "NameOver27WithSequenceWithT_PK");
+
+    when(additionalMetadata.primaryKeyIndexNames()).thenReturn(primaryKeyIndexNames);
 
     Table nameUnder28 = mock(Table.class);
     when(nameUnder28.getName()).thenReturn("NameUnder28");
