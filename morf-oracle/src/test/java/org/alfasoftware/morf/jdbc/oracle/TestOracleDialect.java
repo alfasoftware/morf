@@ -25,9 +25,11 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -36,22 +38,29 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
+import org.alfasoftware.morf.metadata.AdditionalMetadata;
+import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.CustomHint;
 import org.alfasoftware.morf.sql.OracleCustomHint;
 import org.alfasoftware.morf.sql.element.Direction;
-import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.mockito.ArgumentCaptor;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 /**
  * Test that {@link OracleDialect} works correctly.
@@ -59,16 +68,6 @@ import com.google.common.collect.ImmutableList;
  * @author Copyright (c) Alfa Financial Software 2010
  */
 public class TestOracleDialect extends AbstractSqlDialectTest {
-
-  /**
-   * Table name truncated to 30 characters.
-   */
-  private static final String LONG_TABLE_NAME_TRUNCATED_30 = "tableWithANameThatExceedsTwent";
-
-  /**
-   * Table name truncated to 27 characters.
-   */
-  private static final String LONG_TABLE_NAME_TRUNCATED_27 = "tableWithANameThatExceedsTw";
 
   @SuppressWarnings({"unchecked","rawtypes"})
   private final ArgumentCaptor<List<String>> listCaptor = ArgumentCaptor.forClass((Class<List<String>>)(Class)List.class);
@@ -80,6 +79,56 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected SqlDialect createTestDialect() {
     return new OracleDialect("testschema");
+  }
+
+
+  @Override
+  protected org.hamcrest.Matcher<java.lang.Iterable<? extends String>> expectedSchemaConsistencyStatements() { //NOSONAR // Remove usage of generic wildcard type // The generic wildcard type comes from hamcrest and is therefore unavoidable
+    return contains("-- Auto-Healing table: NameOver27WithSequenceWithTruncation",
+        "DECLARE \n  e exception; \n  pragma exception_init(e,-4080); \nBEGIN \n  EXECUTE IMMEDIATE 'DROP TRIGGER TESTSCHEMA.NAMEOVER27WITHSEQUENCEWITHT_TG'; \nEXCEPTION \n  WHEN e THEN \n    null; \nEND;",
+        "DECLARE \n  query CHAR(255); \nBEGIN \n  select queryField into query from SYS.DUAL D left outer join (\n    select concat('drop sequence TESTSCHEMA.', sequence_name) as queryField \n    from ALL_SEQUENCES S \n    where S.sequence_owner='TESTSCHEMA' AND S.sequence_name = 'TESTSCHEMA.NAMEOVER27WITHSEQUENCEWITHT_SQ' \n  ) on 1 = 1; \n  IF query is not null THEN \n    execute immediate query; \n  END IF; \nEND;",
+        "-- Auto-Healing table: NameOver27WithTruncationWithoutSequence",
+        "DECLARE \n  e exception; \n  pragma exception_init(e,-4080); \nBEGIN \n  EXECUTE IMMEDIATE 'DROP TRIGGER TESTSCHEMA.NAMEOVER27WITHTRUNCATIONWIT_TG'; \nEXCEPTION \n  WHEN e THEN \n    null; \nEND;",
+        "DECLARE \n  e exception; \n  pragma exception_init(e,-2448); \nBEGIN \n  EXECUTE IMMEDIATE 'ALTER TABLE TESTSCHEMA.NAMEOVER27WITHTRUNCATIONWITHOUTSEQUENCE RENAME CONSTRAINT NAMEOVER27WITHTRUNCATIONWIT_PK TO NameOver27WithTruncationWithoutSequence_PK'; \nEXCEPTION \n  WHEN e THEN \n    null; \nEND;",
+        "DECLARE \n  e exception; \n  pragma exception_init(e,-1418); \nBEGIN \n  EXECUTE IMMEDIATE 'ALTER INDEX TESTSCHEMA.NAMEOVER27WITHTRUNCATIONWIT_PK RENAME TO NameOver27WithTruncationWithoutSequence_PK'; \nEXCEPTION \n  WHEN e THEN \n    null; \nEND;");
+  }
+
+
+  protected SchemaResource createSchemaResourceForSchemaConsistencyStatements() {
+    final SchemaResource schemaResource = mock(SchemaResource.class);
+    final AdditionalMetadata additionalMetadata = mock(OracleMetaDataProvider.class);
+
+    Map<String, String> primaryKeyIndexNames = Maps.newHashMap();
+    //primaryKeyIndexNames.put("NameOver27abcdefghijklmnopqr", "NameOver27abcdefghijklmnopqr_PK");
+    //primaryKeyIndexNames.put("NameOver27WithTruncationWithoutSequence", "NameOver27WithTruncationWit_PK");
+    //primaryKeyIndexNames.put("NameOver27WithSequenceWithTruncation", "NameOver27WithSequenceWithT_PK"); // Yes
+    primaryKeyIndexNames.put("NAMEOVER27ABCDEFGHIJKLMNOPQR", "NameOver27abcdefghijklmnopqr_PK");
+    primaryKeyIndexNames.put("NAMEOVER27WITHTRUNCATIONWITHOUTSEQUENCE", "NameOver27WithTruncationWit_PK");
+    primaryKeyIndexNames.put("NAMEOVER27WITHSEQUENCEWITHTRUNCATION", "NameOver27WithSequenceWithT_PK");
+
+    when(additionalMetadata.primaryKeyIndexNames()).thenReturn(primaryKeyIndexNames);
+
+    Table nameUnder28 = mock(Table.class);
+    when(nameUnder28.getName()).thenReturn("NameUnder28");
+
+    Table nameOver27WithoutTruncation = mock(Table.class);
+    when(nameOver27WithoutTruncation.getName()).thenReturn("NameOver27abcdefghijklmnopqr");
+
+    Table nameOver27WithTruncationWithoutSequence = mock(Table.class);
+    when(nameOver27WithTruncationWithoutSequence.getName()).thenReturn("NameOver27WithTruncationWithoutSequence");
+    Column primaryKeyColumn = mock(Column.class);
+    when(primaryKeyColumn.isPrimaryKey()).thenReturn(true);
+    when(nameOver27WithTruncationWithoutSequence.columns()).thenReturn(Lists.newArrayList(primaryKeyColumn));
+
+    Table nameOver27WithTruncationWithSequence = mock(Table.class);
+    when(nameOver27WithTruncationWithSequence.getName()).thenReturn("NameOver27WithSequenceWithTruncation");
+    Column autoNumberedColumn = mock(Column.class);
+    when(autoNumberedColumn.isAutoNumbered()).thenReturn(true);
+    when(nameOver27WithTruncationWithSequence.columns()).thenReturn(Lists.newArrayList(autoNumberedColumn));
+
+    when(additionalMetadata.tables()).thenReturn(Lists.newArrayList(nameUnder28, nameOver27WithTruncationWithSequence, nameOver27WithoutTruncation, nameOver27WithTruncationWithoutSequence));
+    when(schemaResource.getAdditionalMetadata()).thenReturn(Optional.of(additionalMetadata));
+    return schemaResource;
   }
 
 
@@ -231,23 +280,23 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
     return Arrays
         .asList(
           "CREATE TABLE TESTSCHEMA."
-              + LONG_TABLE_NAME_TRUNCATED_30
+              + TABLE_WITH_VERY_LONG_NAME
               + " (id NUMBER(19) NOT NULL, version INTEGER DEFAULT 0, stringField NVARCHAR2(3), intField DECIMAL(8,0), floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField DECIMAL(1,0), charField NVARCHAR2(1), CONSTRAINT "
-              + LONG_TABLE_NAME_TRUNCATED_27 + "_PK PRIMARY KEY (id)"
-              + " USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_27 + "_PK ON TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + " (id) NOLOGGING PARALLEL))",
-          "ALTER INDEX TESTSCHEMA." +LONG_TABLE_NAME_TRUNCATED_27 + "_PK NOPARALLEL LOGGING",
-          "COMMENT ON TABLE TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + " IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[" + LONG_TABLE_NAME_TRUNCATED_30 + "]'",
-          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + ".id IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[id]/TYPE:[BIG_INTEGER]'",
-          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + ".version IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[version]/TYPE:[INTEGER]'",
-          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + ".stringField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[stringField]/TYPE:[STRING]'",
-          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + ".intField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[DECIMAL]'",
-          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + ".floatField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[floatField]/TYPE:[DECIMAL]'",
-          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30 + ".dateField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[dateField]/TYPE:[DATE]'",
-          "COMMENT ON COLUMN TESTSCHEMA." + LONG_TABLE_NAME_TRUNCATED_30
+              + TABLE_WITH_VERY_LONG_NAME + "_PK PRIMARY KEY (id)"
+              + " USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA." + TABLE_WITH_VERY_LONG_NAME + "_PK ON TESTSCHEMA." + TABLE_WITH_VERY_LONG_NAME + " (id) NOLOGGING PARALLEL))",
+          "ALTER INDEX TESTSCHEMA." + TABLE_WITH_VERY_LONG_NAME + "_PK NOPARALLEL LOGGING",
+          "COMMENT ON TABLE TESTSCHEMA." + TABLE_WITH_VERY_LONG_NAME + " IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[" + TABLE_WITH_VERY_LONG_NAME + "]'",
+          "COMMENT ON COLUMN TESTSCHEMA." + TABLE_WITH_VERY_LONG_NAME + ".id IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[id]/TYPE:[BIG_INTEGER]'",
+          "COMMENT ON COLUMN TESTSCHEMA." + TABLE_WITH_VERY_LONG_NAME + ".version IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[version]/TYPE:[INTEGER]'",
+          "COMMENT ON COLUMN TESTSCHEMA." + TABLE_WITH_VERY_LONG_NAME + ".stringField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[stringField]/TYPE:[STRING]'",
+          "COMMENT ON COLUMN TESTSCHEMA." + TABLE_WITH_VERY_LONG_NAME + ".intField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[DECIMAL]'",
+          "COMMENT ON COLUMN TESTSCHEMA." + TABLE_WITH_VERY_LONG_NAME + ".floatField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[floatField]/TYPE:[DECIMAL]'",
+          "COMMENT ON COLUMN TESTSCHEMA." + TABLE_WITH_VERY_LONG_NAME + ".dateField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[dateField]/TYPE:[DATE]'",
+          "COMMENT ON COLUMN TESTSCHEMA." + TABLE_WITH_VERY_LONG_NAME
               + ".booleanField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[booleanField]/TYPE:[BOOLEAN]'", "COMMENT ON COLUMN TESTSCHEMA."
-              + LONG_TABLE_NAME_TRUNCATED_30 + ".charField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[charField]/TYPE:[STRING]'",
-          "CREATE UNIQUE INDEX TESTSCHEMA.Test_NK ON TESTSCHEMA."+LONG_TABLE_NAME_TRUNCATED_30+" (stringField)",
-          "CREATE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA.tableWithANameThatExceedsTwent (intField, floatField)"
+              + TABLE_WITH_VERY_LONG_NAME + ".charField IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[charField]/TYPE:[STRING]'",
+          "CREATE UNIQUE INDEX TESTSCHEMA.Test_NK ON TESTSCHEMA."+ TABLE_WITH_VERY_LONG_NAME +" (stringField)",
+          "CREATE INDEX TESTSCHEMA.Test_1 ON TESTSCHEMA." + TABLE_WITH_VERY_LONG_NAME + " (intField, floatField)"
     );
   }
 
@@ -1436,10 +1485,12 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> getRenamingTableWithLongNameStatements() {
+    String tableNameOver30 = "123456789012345678901234567890X";
+    String indexNameOver30     = "123456789012345678901234567890X_PK";
     return ImmutableList.of(
-      "ALTER TABLE TESTSCHEMA.123456789012345678901234567890 RENAME CONSTRAINT 123456789012345678901234567_PK TO Blah_PK",
-      "ALTER INDEX TESTSCHEMA.123456789012345678901234567_PK RENAME TO Blah_PK",
-      "ALTER TABLE TESTSCHEMA.123456789012345678901234567890 RENAME TO Blah",
+      "ALTER TABLE TESTSCHEMA." + tableNameOver30 + " RENAME CONSTRAINT " + indexNameOver30 + " TO Blah_PK",
+      "ALTER INDEX TESTSCHEMA." + indexNameOver30 + " RENAME TO Blah_PK",
+      "ALTER TABLE TESTSCHEMA." + tableNameOver30 + " RENAME TO Blah",
       "COMMENT ON TABLE TESTSCHEMA.Blah IS '"+OracleDialect.REAL_NAME_COMMENT_LABEL+":[Blah]'");
   }
 

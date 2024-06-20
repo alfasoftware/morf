@@ -124,6 +124,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.alfasoftware.morf.dataset.Record;
+import org.alfasoftware.morf.metadata.AdditionalMetadata;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
@@ -304,8 +305,7 @@ public abstract class AbstractSqlDialectTest {
   /**
    * Very long table name to test name truncation.
    */
-  public static final String TABLE_WITH_VERY_LONG_NAME = "tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation";
-
+  public static final String TABLE_WITH_VERY_LONG_NAME = "tableWithANameThatExceeds30Char";
   /**
    * Dialect being tested.
    */
@@ -4241,8 +4241,8 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testRenamingTableWithLongName() {
 
-    String tableNameOver30 = "123456789012345678901234567890XXX";
-    String indexName30     = "123456789012345678901234567_PK";
+    String tableNameOver30 = "123456789012345678901234567890X";
+    String indexNameOver30     = "123456789012345678901234567890X_PK";
 
     Table longNamedTable = table(tableNameOver30)
         .columns(
@@ -4250,7 +4250,7 @@ public abstract class AbstractSqlDialectTest {
           versionColumn(),
           column("someField", DataType.STRING, 3).nullable()
        ).indexes(
-          index(indexName30).unique().columns("someField")
+          index(indexNameOver30).unique().columns("someField")
        );
 
     Table renamedTable = table("Blah")
@@ -6217,7 +6217,7 @@ public abstract class AbstractSqlDialectTest {
 
   protected SchemaResource createSchemaResourceForSchemaConsistencyStatements() {
     final SchemaResource schemaResource = mock(SchemaResource.class);
-    when(schemaResource.getDatabaseMetaDataProvider()).thenReturn(Optional.empty());
+    when(schemaResource.getAdditionalMetadata()).thenReturn(Optional.empty());
     return schemaResource;
   }
 
@@ -6233,7 +6233,7 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testSchemaConsistencyStatementsOnNoDatabaseMetaDataProvider() {
     final SchemaResource schemaResource = mock(SchemaResource.class);
-    when(schemaResource.getDatabaseMetaDataProvider()).thenReturn(Optional.empty());
+    when(schemaResource.getAdditionalMetadata()).thenReturn(Optional.empty());
 
     assertThat(
       testDialect.getSchemaConsistencyStatements(schemaResource),
@@ -6248,7 +6248,7 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testSchemaConsistencyStatementsOnWrongDatabaseMetaDataProvider() {
     final SchemaResource schemaResource = mock(SchemaResource.class);
-    when(schemaResource.getDatabaseMetaDataProvider()).thenReturn(Optional.of(mock(DatabaseMetaDataProvider.class)));
+    when(schemaResource.getAdditionalMetadata()).thenReturn(Optional.of(mock(AdditionalMetadata.class)));
 
     assertThat(
       testDialect.getSchemaConsistencyStatements(schemaResource),

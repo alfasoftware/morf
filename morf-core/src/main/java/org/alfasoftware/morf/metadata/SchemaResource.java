@@ -17,8 +17,6 @@ package org.alfasoftware.morf.metadata;
 
 import java.util.Optional;
 
-import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
-
 /**
  * Provides database meta data.
  *
@@ -39,13 +37,12 @@ public interface SchemaResource extends Schema, AutoCloseable {
   @Override
   void close();
 
-
   /**
-   * Returns the underlying {@link DatabaseMetaDataProvider}, if there is one.
-   *
-   * @return the underlying {@link DatabaseMetaDataProvider}, if there is one.
+   * Introduced to allow access to meta-data when using auto-healing with Oracle. See MORF-98.
+   * The schema should not normally be accessed directly.
+   * @return The delegate schema.
    */
-  default Optional<DatabaseMetaDataProvider> getDatabaseMetaDataProvider() {
+  default Optional<AdditionalMetadata> getAdditionalMetadata() {
     return Optional.empty();
   }
 }

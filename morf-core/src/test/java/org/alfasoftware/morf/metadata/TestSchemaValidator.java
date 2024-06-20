@@ -15,7 +15,12 @@
 
 package org.alfasoftware.morf.metadata;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.*;
+import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
+import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
+import static org.alfasoftware.morf.metadata.SchemaUtils.sequence;
+import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.alfasoftware.morf.metadata.SchemaUtils.view;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.junit.Assert.assertFalse;
@@ -33,8 +38,8 @@ import org.junit.Test;
  */
 public class TestSchemaValidator {
 
-  private static final String EDGE_CASE_VALID_NAME_30_CHARACTERS = "EdgeCaseValidName30Charactersx";
-  private static final String INVALID_NAME_31_CHARACTERS   = "InvalidName31CharactersXxxZZZZZ";
+  private static final String EDGE_CASE_VALID_NAME_60_CHARACTERS = "EdgeCaseValidName60CharactersxSomeMoreThingsAndEvenMoreXYZ12";
+  private static final String INVALID_NAME_61_CHARACTERS = "InvalidName64CharactersXxxZZZZZabc123abc123abc123abc123aXYZ12";
 
   /**
    * A simple valid table
@@ -52,24 +57,24 @@ public class TestSchemaValidator {
 
   /**
    * A valid table on the edge
-   * i.e. with 30 character table name, index name and column names
+   * i.e. with 60 character table name, index name and column names
    */
   private final Table edgeCaseValidTable =
-      table(EDGE_CASE_VALID_NAME_30_CHARACTERS)
+      table(EDGE_CASE_VALID_NAME_60_CHARACTERS)
         .columns(
           column("myname", DataType.STRING, 10).nullable(),
           column("vintage", DataType.DECIMAL, 10).nullable(),
-          column("EdgeCaseValid30CharColumnNameX", DataType.STRING, 10).nullable()
+          column("EdgeCaseValid60CharColumnNameXab123ab123ab123ab123ab12345678", DataType.STRING, 10).nullable()
         ).indexes(
           index("EdgeCaseValid_NK").unique().columns("myname"),
-          index("EdgeCaseValid30CharIndNameX_NK").columns("vintage")
+          index("EdgeCaseValid60CharIndNameXab123ab123ab123ab123ab12356789_NK").columns("vintage")
         );
 
   /**
-   * An invalid table with a 31 character table name
+   * An invalid table with a 61 character table name
    */
   private final Table invalidTableNameTable =
-      table(INVALID_NAME_31_CHARACTERS)
+      table(INVALID_NAME_61_CHARACTERS)
         .columns(
           column("myname", DataType.STRING, 10).nullable(),
           column("altitude", DataType.DECIMAL, 10).nullable()
@@ -79,7 +84,7 @@ public class TestSchemaValidator {
 
 
   /**
-   * An invalid table with a 31 character index name
+   * An invalid table with a 61 character index name
    */
   private final Table invalidIndexNameTable =
       table("InvalidIndexNameTable")
@@ -88,19 +93,19 @@ public class TestSchemaValidator {
           column("maximumPressure", DataType.DECIMAL, 10).nullable()
         ).indexes(
           index("OkIndex_NK").unique().columns("myname"),
-          index("InvalidIndexName31CharactersXxx").columns("altitude")
+          index("InvalidIndexName61CharactersXxxab123ab123ab123ab123ab123XYZ12").columns("altitude")
         );
 
 
   /**
-   * An invalid table with a 31 character column name
+   * An invalid table with a 61 character column name
    */
   private final Table invalidColumnNameTable =
       table("InvalidColumnNameTable")
         .columns(
           column("myname", DataType.STRING, 10).nullable(),
           column("minimumPurity", DataType.DECIMAL, 10).nullable(),
-          column("Invalid31CharacterColumnNameXxx", DataType.STRING, 10).nullable()
+          column("Invalid61CharacterColumnNameXxxab123ab123ab123ab123ab123XYZ12", DataType.STRING, 10).nullable()
         ).indexes(
           index("OkIndex_NK").unique().columns("myname"),
           index("InvalidColumnNameOKIndex").columns("altitude")
@@ -129,7 +134,7 @@ public class TestSchemaValidator {
       validator.validate(invalidTableNameSchema);
       fail("Expected a RuntimeException for an invalid table name");
     } catch (RuntimeException e) {
-      assertTrue("Expected [" + INVALID_NAME_31_CHARACTERS + "] in error message", e.getMessage().contains(INVALID_NAME_31_CHARACTERS));
+      assertTrue("Expected [" + INVALID_NAME_61_CHARACTERS + "] in error message", e.getMessage().contains(INVALID_NAME_61_CHARACTERS));
     }
   }
 
@@ -155,7 +160,7 @@ public class TestSchemaValidator {
   public void testValidViewNames() {
     SchemaValidator validator = new SchemaValidator();
     validator.validate(view("View_with_underscores", null));
-    validator.validate(view(EDGE_CASE_VALID_NAME_30_CHARACTERS, null));
+    validator.validate(view(EDGE_CASE_VALID_NAME_60_CHARACTERS, null));
     validator.validate(view("ABCDEFGHIJKLMNOPQRSTUVWXYZ", null));
     validator.validate(view("abcdefghijklmnopqrstuvwxyz", null));
     validator.validate(view("a1234567890", null));
@@ -169,10 +174,10 @@ public class TestSchemaValidator {
   public void testInvalidViewNames() {
     try {
       SchemaValidator validator = new SchemaValidator();
-      validator.validate(view(INVALID_NAME_31_CHARACTERS, null));
+      validator.validate(view(INVALID_NAME_61_CHARACTERS, null));
       fail("should have thrown an exception");
     } catch (RuntimeException e) {
-      assertTrue("Expected [ " + INVALID_NAME_31_CHARACTERS + "] in error message", e.getMessage().contains(INVALID_NAME_31_CHARACTERS));
+      assertTrue("Expected [ " + INVALID_NAME_61_CHARACTERS + "] in error message", e.getMessage().contains(INVALID_NAME_61_CHARACTERS));
     }
 
     final String badViewName = "NameWithBadCharacter!";
@@ -193,7 +198,7 @@ public class TestSchemaValidator {
   public void testValidSequenceNames() {
     SchemaValidator validator = new SchemaValidator();
     validator.validate(sequence("Sequence_with_underscores"));
-    validator.validate(sequence(EDGE_CASE_VALID_NAME_30_CHARACTERS));
+    validator.validate(sequence(EDGE_CASE_VALID_NAME_60_CHARACTERS));
     validator.validate(sequence("ABCDEFGHIJKLMNOPQRSTUVWXYZ"));
     validator.validate(sequence("abcdefghijklmnopqrstuvwxyz"));
     validator.validate(sequence("a1234567890"));
@@ -207,10 +212,10 @@ public class TestSchemaValidator {
   public void testInvalidSequenceNames() {
     try {
       SchemaValidator validator = new SchemaValidator();
-      validator.validate(sequence(INVALID_NAME_31_CHARACTERS));
+      validator.validate(sequence(INVALID_NAME_61_CHARACTERS));
       fail("should have thrown an exception");
     } catch (RuntimeException e) {
-      assertTrue("Expected [ " + INVALID_NAME_31_CHARACTERS + "] in error message", e.getMessage().contains(INVALID_NAME_31_CHARACTERS));
+      assertTrue("Expected [ " + INVALID_NAME_61_CHARACTERS + "] in error message", e.getMessage().contains(INVALID_NAME_61_CHARACTERS));
     }
 
     final String badSequenceName = "NameWithBadCharacter!";
@@ -231,7 +236,7 @@ public class TestSchemaValidator {
   public void testValidViewColumnNames() {
     SchemaValidator validator = new SchemaValidator();
     TableReference table = tableRef("Foo");
-    SelectStatement selectStatement = select(table.field(EDGE_CASE_VALID_NAME_30_CHARACTERS),
+    SelectStatement selectStatement = select(table.field(EDGE_CASE_VALID_NAME_60_CHARACTERS),
       table.field("Column_with_underscores"),
       table.field("ABCDEFGHIJKLMNOPQRSTUVWXYZ"),
       table.field("abcdefghijklmnopqrstuvwxyz"),
@@ -250,7 +255,7 @@ public class TestSchemaValidator {
     final String columnWithReservedWords = "operator";
     try {
       TableReference table = tableRef("Foo");
-      SelectStatement selectStatement = select(table.field(INVALID_NAME_31_CHARACTERS),
+      SelectStatement selectStatement = select(table.field(INVALID_NAME_61_CHARACTERS),
         table.field(columnWithBadCharacters),
         table.field(columnWithReservedWords));
 
@@ -258,7 +263,7 @@ public class TestSchemaValidator {
       validator.validate(view("SimpleView", selectStatement));
       fail("should have thrown an exception");
     } catch (RuntimeException e) {
-      assertTrue("Expected [ " + INVALID_NAME_31_CHARACTERS + "] in error message", e.getMessage().contains(INVALID_NAME_31_CHARACTERS));
+      assertTrue("Expected [ " + INVALID_NAME_61_CHARACTERS + "] in error message", e.getMessage().contains(INVALID_NAME_61_CHARACTERS));
       assertTrue("Expected [ " + columnWithBadCharacters + "] in error message", e.getMessage().contains(columnWithBadCharacters));
       assertTrue("Expected [ " + columnWithReservedWords + "] in error message", e.getMessage().contains(columnWithReservedWords));
     }
@@ -276,8 +281,8 @@ public class TestSchemaValidator {
       validator.validate(invalidIndexNameSchema);
       fail("Expected a RuntimeException for an invalid index name");
     } catch (RuntimeException e) {
-      assertTrue("Expected [InvalidIndexName31CharactersXxx] in error message",
-        e.getMessage().contains("InvalidIndexName31CharactersXxx"));
+      assertTrue("Expected [InvalidIndexName61CharactersXxxab123ab123ab123ab123ab123XYZ12] in error message",
+        e.getMessage().contains("InvalidIndexName61CharactersXxxab123ab123ab123ab123ab123XYZ12"));
     }
   }
 
@@ -293,8 +298,8 @@ public class TestSchemaValidator {
       validator.validate(invalidColumnNameSchema);
       fail("Expected a RuntimeException for an invalid column name");
     } catch (RuntimeException e) {
-      assertTrue("Expected [Invalid31CharacterColumnNameXxx] in error message: "+e.getMessage(),
-        e.getMessage().contains("Invalid31CharacterColumnNameXxx"));
+      assertTrue("Expected [Invalid61CharacterColumnNameXxxab123ab123ab123ab123ab123XYZ1] in error message",
+          e.getMessage().contains("Invalid61CharacterColumnNameXxxab123ab123ab123ab123ab123XYZ1"));
     }
   }
 

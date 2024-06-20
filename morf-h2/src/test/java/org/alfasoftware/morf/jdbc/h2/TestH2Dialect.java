@@ -91,8 +91,8 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
             + TABLE_WITH_VERY_LONG_NAME
             + " (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), intField DECIMAL(8,0), floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField BIT, charField VARCHAR(1), CONSTRAINT "
             + TABLE_WITH_VERY_LONG_NAME + "_PK PRIMARY KEY (id))",
-            "CREATE UNIQUE INDEX Test_NK ON "+TEST_SCHEMA+".tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation (stringField)",
-            "CREATE INDEX Test_1 ON "+TEST_SCHEMA+".tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation (intField,floatField)"
+            "CREATE UNIQUE INDEX Test_NK ON "+TEST_SCHEMA+"."+ TABLE_WITH_VERY_LONG_NAME + " (stringField)",
+            "CREATE INDEX Test_1 ON "+TEST_SCHEMA+"."+ TABLE_WITH_VERY_LONG_NAME + " (intField,floatField)"
         );
   }
 
@@ -1135,8 +1135,8 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> getRenamingTableWithLongNameStatements() {
     return ImmutableList.of(
-      "ALTER TABLE "+TEST_SCHEMA+".123456789012345678901234567890XXX DROP PRIMARY KEY",
-      "ALTER TABLE "+TEST_SCHEMA+".123456789012345678901234567890XXX RENAME TO Blah",
+      "ALTER TABLE "+TEST_SCHEMA+".123456789012345678901234567890X DROP PRIMARY KEY",
+      "ALTER TABLE "+TEST_SCHEMA+".123456789012345678901234567890X RENAME TO Blah",
       "ALTER TABLE "+TEST_SCHEMA+".Blah ADD CONSTRAINT Blah_PK PRIMARY KEY (id)");
   }
 

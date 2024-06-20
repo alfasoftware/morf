@@ -22,6 +22,7 @@ import java.util.Optional;
 import javax.sql.DataSource;
 
 import org.alfasoftware.morf.dataset.SchemaAdapter;
+import org.alfasoftware.morf.metadata.AdditionalMetadata;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
 
@@ -81,13 +82,15 @@ public final class SchemaResourceImpl extends SchemaAdapter implements SchemaRes
   }
 
 
+  /**
+   * Introduced to allow access to meta-data when using auto-healing with Oracle. See MORF-98.
+   * @return the table collection supplier.
+   */
   @Override
-  public Optional<DatabaseMetaDataProvider> getDatabaseMetaDataProvider() {
-    if (delegate instanceof DatabaseMetaDataProvider) {
-      DatabaseMetaDataProvider metaDataProvider = (DatabaseMetaDataProvider)delegate;
-      return Optional.of(metaDataProvider);
+  public Optional<AdditionalMetadata> getAdditionalMetadata() {
+    if (delegate instanceof AdditionalMetadata) {
+      return Optional.of((AdditionalMetadata) delegate);
     }
-
-    return SchemaResource.super.getDatabaseMetaDataProvider();
+    return SchemaResource.super.getAdditionalMetadata();
   }
 }

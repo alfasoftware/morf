@@ -22,20 +22,31 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.RETURNS_SMART_NULLS;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 
 import javax.sql.DataSource;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
-import org.alfasoftware.morf.metadata.*;
+import org.alfasoftware.morf.metadata.AdditionalMetadata;
+import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.Sequence;
+import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.junit.Before;
 import org.junit.Test;
@@ -44,6 +55,7 @@ import org.mockito.stubbing.Answer;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Maps;
 
 /**
  * Tests for {@link OracleMetaDataProvider}.
@@ -91,6 +103,54 @@ public class TestOracleMetaDataProvider {
 
     verify(statement1).setString(1, "TESTSCHEMA");
     verify(statement2).setString(1, "TESTSCHEMA");
+  }
+
+
+  /**
+   * Checks the building of the collection of primary key index names.
+   * @throws SQLException
+   */
+  @Test
+  public void testPrimaryKeyIndexNames() throws SQLException {
+    // Given
+    final PreparedStatement statement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    when(connection.prepareStatement(anyString())).thenReturn(statement);
+
+    mockGetTableKeysQuery(0, false, false);
+    // This is the list of tables that's returned.
+    when(statement.executeQuery()).thenAnswer(invocation -> {
+      final ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
+      when(resultSet.next()).thenReturn(true, true, false);
+
+      //
+      when(resultSet.getString(1)).thenReturn("AREALTABLE").thenReturn("AREALTABLE2");
+      when(resultSet.getString(2)).thenReturn("TableComment");
+      when(resultSet.getString(3)).thenReturn("ID");
+      when(resultSet.getString(4)).thenReturn("IDComment");
+      when(resultSet.getString(5)).thenReturn("VARCHAR2");
+      when(resultSet.getString(6)).thenReturn("10");
+      return resultSet;
+    }).thenAnswer(new ReturnTablesMockResultSet(4));
+
+    PreparedStatement statement1 = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    when(connection.prepareStatement("select table_name, index_name, uniqueness, status from ALL_INDEXES where owner=? order by table_name, index_name")).thenReturn(statement1);
+
+    // four indexes, two of which are primary key indexes
+    when(statement1.executeQuery()).thenAnswer(answer -> {
+      ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
+      when(resultSet.next()).thenReturn(true, true, true, true, false);
+      when(resultSet.getString(1)).thenReturn("AREALTABLE", "AREALTABLE", "AREALTABLE2", "AREALTABLE2");
+      when(resultSet.getString(2)).thenReturn("AREALTABLE_1", "AREALTABLE_PK", "AREALTABLE2_1", "AREALTABLE2_PK");
+      when(resultSet.getString(4)).thenReturn("VALID");
+      return resultSet;
+    });
+
+    // When
+    final AdditionalMetadata oracleMetaDataProvider = (AdditionalMetadata) oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
+    Map<String, String> expectedPrimaryKeyIndexNames = Maps.newHashMap();
+    expectedPrimaryKeyIndexNames.put("AREALTABLE", "AREALTABLE_PK");
+    expectedPrimaryKeyIndexNames.put("AREALTABLE2", "AREALTABLE2_PK");
+    assertEquals("Primary key index names.", expectedPrimaryKeyIndexNames, oracleMetaDataProvider.primaryKeyIndexNames());
   }
 
   @Test

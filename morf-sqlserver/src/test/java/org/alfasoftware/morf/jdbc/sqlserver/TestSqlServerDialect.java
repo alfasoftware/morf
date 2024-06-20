@@ -100,9 +100,9 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedCreateTableStatementsWithLongTableName() {
     return Arrays.asList(
-      "CREATE TABLE TESTSCHEMA.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS, [intField] NUMERIC(8,0), [floatField] NUMERIC(13,2) NOT NULL, [dateField] DATE, [booleanField] BIT, [charField] NVARCHAR(1) COLLATE SQL_Latin1_General_CP1_CS_AS, CONSTRAINT [tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation_PK] PRIMARY KEY ([id]))",
-      "CREATE UNIQUE NONCLUSTERED INDEX Test_NK ON TESTSCHEMA.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation ([stringField])",
-      "CREATE INDEX Test_1 ON TESTSCHEMA.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation ([intField], [floatField])"
+      "CREATE TABLE TESTSCHEMA." + TABLE_WITH_VERY_LONG_NAME + " ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT " + TABLE_WITH_VERY_LONG_NAME + "_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS, [intField] NUMERIC(8,0), [floatField] NUMERIC(13,2) NOT NULL, [dateField] DATE, [booleanField] BIT, [charField] NVARCHAR(1) COLLATE SQL_Latin1_General_CP1_CS_AS, CONSTRAINT [" + TABLE_WITH_VERY_LONG_NAME + "_PK] PRIMARY KEY ([id]))",
+      "CREATE UNIQUE NONCLUSTERED INDEX Test_NK ON TESTSCHEMA." + TABLE_WITH_VERY_LONG_NAME + " ([stringField])",
+      "CREATE INDEX Test_1 ON TESTSCHEMA." + TABLE_WITH_VERY_LONG_NAME + " ([intField], [floatField])"
     );
   }
 
@@ -1205,10 +1205,11 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> getRenamingTableWithLongNameStatements() {
+    String tableNameOver128 = "123456789012345678901234567890X";
     return ImmutableList.of(
-      "IF EXISTS (SELECT 1 FROM sys.objects WHERE OBJECT_ID = OBJECT_ID(N'123456789012345678901234567890XXX_version_DF') AND type = (N'D')) exec sp_rename N'123456789012345678901234567890XXX_version_DF', N'Blah_version_DF'",
-      "sp_rename N'123456789012345678901234567890XXX.123456789012345678901234567890XXX_PK', N'Blah_PK', N'INDEX'",
-      "sp_rename N'123456789012345678901234567890XXX', N'Blah'");
+      "IF EXISTS (SELECT 1 FROM sys.objects WHERE OBJECT_ID = OBJECT_ID(N'" + tableNameOver128 + "_version_DF') AND type = (N'D')) exec sp_rename N'" + tableNameOver128 + "_version_DF', N'Blah_version_DF'",
+      "sp_rename N'" + tableNameOver128 + "." + tableNameOver128 + "_PK', N'Blah_PK', N'INDEX'",
+      "sp_rename N'" + tableNameOver128 + "', N'Blah'");
   }
 
 

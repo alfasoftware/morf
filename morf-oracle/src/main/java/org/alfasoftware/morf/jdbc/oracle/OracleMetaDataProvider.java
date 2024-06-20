@@ -41,6 +41,7 @@ import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider.UnexpectedDataTypeException;
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
+import org.alfasoftware.morf.metadata.AdditionalMetadata;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.ColumnType;
 import org.alfasoftware.morf.metadata.DataType;
@@ -56,7 +57,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.google.common.base.Suppliers;
-
+import com.google.common.collect.Maps;
 
 
 /**
@@ -64,7 +65,7 @@ import com.google.common.base.Suppliers;
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-public class OracleMetaDataProvider implements Schema {
+public class OracleMetaDataProvider implements AdditionalMetadata {
 
   /**
    * Standard log line.
@@ -83,6 +84,7 @@ public class OracleMetaDataProvider implements Schema {
 
   private final Connection connection;
   private final String schemaName;
+  private Map<String, String> primaryKeyIndexNames;
 
 
   /**
@@ -148,6 +150,16 @@ public class OracleMetaDataProvider implements Schema {
     sequenceMap = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     readSequenceMap();
     return sequenceMap;
+  }
+
+
+  @Override
+  public Map<String, String> primaryKeyIndexNames() {
+    if (primaryKeyIndexNames != null) {
+      return primaryKeyIndexNames;
+    }
+    tableMap();
+    return primaryKeyIndexNames;
   }
 
 
@@ -312,6 +324,7 @@ public class OracleMetaDataProvider implements Schema {
 
     // -- Stage 3: find the index names...
     //
+    primaryKeyIndexNames = Maps.newHashMap();
     final String getIndexNamesSql = "select table_name, index_name, uniqueness, status from ALL_INDEXES where owner=? order by table_name, index_name";
     runSQL(getIndexNamesSql, new ResultSetHandler() {
       @Override
@@ -347,7 +360,7 @@ public class OracleMetaDataProvider implements Schema {
             if (!unique) {
               log.warn("Primary Key on table [" + tableName + "] is backed by non-unique index [" + indexName + "]");
             }
-
+            primaryKeyIndexNames.put(tableName.toUpperCase(), indexName);
             continue;
           }
 

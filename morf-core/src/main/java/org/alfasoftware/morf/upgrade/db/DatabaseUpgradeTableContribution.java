@@ -61,7 +61,7 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
   public static TableBuilder deployedViewsTable() {
     return table(DEPLOYED_VIEWS_NAME)
         .columns(
-          column("name", DataType.STRING, 30).primaryKey(),
+          column("name", DataType.STRING, 100).primaryKey(),
           column("hash", DataType.STRING, 64),
           column("sqlDefinition", DataType.CLOB).nullable()
         );

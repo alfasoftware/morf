@@ -15,7 +15,8 @@
 
 package org.alfasoftware.morf.jdbc;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.*;
+import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
+import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
 import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;

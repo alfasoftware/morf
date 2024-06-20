@@ -17,12 +17,13 @@ package org.alfasoftware.morf.metadata;
 
 import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
-import junitparams.JUnitParamsRunner;
-import junitparams.Parameters;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
+import junitparams.JUnitParamsRunner;
+import junitparams.Parameters;
 
 
 /**
@@ -66,8 +67,8 @@ public class TestSQLEntityNameValidationService {
 
   Object[][] getNameLengthTestSubjects() {
     return new Object[][] {
-      { "1234567890123456789012345678901", false },
-      { "123456789012345678901234567890", true }
+      { "1234567890123456789012345678901234567890123456789012345678901", false },
+      { "123456789012345678901234567890123456789012345678901234567890", true }
       };
   }
 

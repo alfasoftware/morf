@@ -53,6 +53,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import com.google.inject.Inject;
 
 
@@ -280,7 +281,7 @@ public class Upgrade {
     }
 
     // Build the actual upgrade path
-    return buildUpgradePath(connectionResources, sourceSchema, targetSchema, upgradeStatements, viewChanges, upgradesToApply, graphBasedUpgradeBuilder, upgradeAuditCount);
+    return buildUpgradePath(connectionResources, sourceSchema, targetSchema, upgradeStatements, schemaConsistencyStatements, viewChanges, upgradesToApply, graphBasedUpgradeBuilder, upgradeAuditCount);
   }
 
 
@@ -299,14 +300,16 @@ public class Upgrade {
    */
   private UpgradePath buildUpgradePath(
       ConnectionResources connectionResources, Schema sourceSchema, Schema targetSchema,
-      List<String> upgradeStatements, ViewChanges viewChanges,
+      List<String> upgradeStatements, List<String> schemaConsistencyStatements, ViewChanges viewChanges,
       List<UpgradeStep> upgradesToApply,
       GraphBasedUpgradeBuilder graphBasedUpgradeBuilder,
       long upgradeAuditCount) {
 
-    List<String> pathValidationSql = databaseUpgradePathValidationService.getPathValidationSql(upgradeAuditCount);
+    List<String> initialisationSql = Lists.newArrayList();
+    initialisationSql.addAll(databaseUpgradePathValidationService.getPathValidationSql(upgradeAuditCount));
+    initialisationSql.addAll(schemaConsistencyStatements);
 
-    UpgradePath path = upgradePathFactory.create(upgradesToApply, connectionResources, graphBasedUpgradeBuilder, pathValidationSql);
+    UpgradePath path = upgradePathFactory.create(upgradesToApply, connectionResources, graphBasedUpgradeBuilder, initialisationSql);
 
     path.writeSql(UpgradeHelper.preSchemaUpgrade(new UpgradeSchemas(sourceSchema, targetSchema), viewChanges, viewChangesDeploymentHelper));
 

@@ -55,7 +55,7 @@ import com.google.common.io.CharStreams;
  *
  * <p>The current database rules are:</p>
  * <ul>
- * <li>An object (table, column, index) name must not be &gt; 30 characters long (an Oracle restriction)</li>
+ * <li>An object (table, column, index) name must not be &gt; 60 characters long (Postgres defaults to a limit of 63 and this gives space for suffixes without truncation)</li>
  * <li>An object name must not be an SQL reserved word</li>
  * <li>Table, column and index names must match [a-zA-Z][a-zA-Z0-9_]* (any letters or numbers or underscores, but must start with a letter)</li>
  * <li>Indexes may not be simply by 'id'. This would duplicate the primary key and is superfluous.</li>
@@ -70,7 +70,7 @@ public class SchemaValidator {
   /**
    * Maximum length allowed for entity names.
    */
-  private static final int MAX_LENGTH = 30;
+  private static final int MAX_LENGTH = 60;
 
   /**
    * All the words we can't use because they're special in some SQL dialect or other.

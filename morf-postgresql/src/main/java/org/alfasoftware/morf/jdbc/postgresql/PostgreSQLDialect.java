@@ -987,7 +987,7 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   private Optional<PostgreSQLMetaDataProvider> getPostgreSQLMetaDataProvider(SchemaResource schemaResource) {
-    return schemaResource.getDatabaseMetaDataProvider()
+    return schemaResource.getAdditionalMetadata()
             .filter(instanceOf(PostgreSQLMetaDataProvider.class))
             .map(PostgreSQLMetaDataProvider.class::cast);
   }
