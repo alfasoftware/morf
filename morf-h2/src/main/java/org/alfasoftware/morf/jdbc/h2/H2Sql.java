@@ -101,7 +101,7 @@ public interface H2Sql {
 /**
  * Implementation of {@link H2Sql}.
  *
- * @author Copyright (c) Alfa Financial Software Limited. 2022
+ * @author Copyright (c) Alfa Financial Software 2024
  */
 class H2DialectExt extends H2Dialect {
 
