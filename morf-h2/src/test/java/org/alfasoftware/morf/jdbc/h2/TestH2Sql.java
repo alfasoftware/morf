@@ -20,7 +20,6 @@ import org.alfasoftware.morf.sql.UpdateStatement;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
 import org.mockito.junit.MockitoJUnitRunner;
 
@@ -39,7 +38,6 @@ public class TestH2Sql {
 
   @Before
   public void setUp() {
-    MockitoAnnotations.openMocks(this);
     h2Sql = h2DialectExt.createH2Sql();
   }
 
