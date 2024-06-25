@@ -19,16 +19,14 @@ import org.alfasoftware.morf.sql.TruncateStatement;
 import org.alfasoftware.morf.sql.UpdateStatement;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
-import org.mockito.junit.MockitoJUnitRunner;
 
 /**
  * Tests class for H2Sql and H2DialectExt.
  *
  * @author Copyright (c) Alfa Financial Software 2024
  */
-@RunWith(MockitoJUnitRunner.class)
 public class TestH2Sql {
 
   @Spy
@@ -38,6 +36,7 @@ public class TestH2Sql {
 
   @Before
   public void setUp() {
+    MockitoAnnotations.openMocks(this);
     h2Sql = h2DialectExt.createH2Sql();
   }
 
