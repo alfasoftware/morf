@@ -245,8 +245,8 @@ public interface SchemaChangeAdaptor {
     }
 
     @Override
-    public ChangePrimaryKeyColumns adapt(ChangePrimaryKeyColumns renameTable) {
-      return second.adapt(first.adapt(renameTable));
+    public ChangePrimaryKeyColumns adapt(ChangePrimaryKeyColumns changePrimaryKeyColumns) {
+      return second.adapt(first.adapt(changePrimaryKeyColumns));
     }
 
     @Override

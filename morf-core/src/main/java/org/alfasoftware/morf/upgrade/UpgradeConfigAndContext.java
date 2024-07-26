@@ -21,7 +21,7 @@ public class UpgradeConfigAndContext {
   /**
    * A schema change adaptor to be used during upgrade.
    */
-  private SchemaChangeAdaptor upgradeChangeAdaptor = new SchemaChangeAdaptor.NoOp();
+  private SchemaChangeAdaptor schemaChangeAdaptor = new SchemaChangeAdaptor.NoOp();
 
 
   public Set<String> getExclusiveExecutionSteps() {
@@ -35,11 +35,11 @@ public class UpgradeConfigAndContext {
 
 
   public SchemaChangeAdaptor getSchemaChangeAdaptor() {
-    return upgradeChangeAdaptor;
+    return schemaChangeAdaptor;
   }
 
-  public void setSchemaChangeAdaptor(SchemaChangeAdaptor upgradeChangeAdaptor) {
-    Preconditions.checkNotNull(upgradeChangeAdaptor);
-    this.upgradeChangeAdaptor = upgradeChangeAdaptor;
+  public void setSchemaChangeAdaptor(SchemaChangeAdaptor schemaChangeAdaptor) {
+    Preconditions.checkNotNull(schemaChangeAdaptor);
+    this.schemaChangeAdaptor = schemaChangeAdaptor;
   }
 }
