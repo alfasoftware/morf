@@ -43,6 +43,8 @@ import com.google.common.collect.Lists;
  */
 public class SchemaChangeSequence {
 
+  private final UpgradeConfigAndContext upgradeConfigAndContext;
+
   private final List<UpgradeStep>            upgradeSteps;
 
   private final Set<String> tableAdditions = new HashSet<>();
@@ -52,16 +54,22 @@ public class SchemaChangeSequence {
   private final UpgradeTableResolution upgradeTableResolution = new UpgradeTableResolution();
 
 
+  public SchemaChangeSequence(List<UpgradeStep> steps) {
+    this(new UpgradeConfigAndContext(), steps);
+  }
+
   /**
    * Create an instance of {@link SchemaChangeSequence}.
    *
    * @param steps the upgrade steps
    */
-  public SchemaChangeSequence(List<UpgradeStep> steps) {
+  public SchemaChangeSequence(UpgradeConfigAndContext upgradeConfigAndContext, List<UpgradeStep> steps) {
+    this.upgradeConfigAndContext = upgradeConfigAndContext;
+
     upgradeSteps = steps;
 
     for (UpgradeStep step : steps) {
-      InternalVisitor internalVisitor = new InternalVisitor();
+      InternalVisitor internalVisitor = new InternalVisitor(upgradeConfigAndContext.getSchemaChangeAdaptor());
       UpgradeTableResolutionVisitor resolvedTablesVisitor = new UpgradeTableResolutionVisitor();
       Editor editor = new Editor(internalVisitor, resolvedTablesVisitor);
       // For historical reasons, we need to pass the editor in twice
@@ -453,7 +461,13 @@ public class SchemaChangeSequence {
    */
   private static class InternalVisitor implements SchemaChangeVisitor {
 
+    private final SchemaChangeAdaptor schemaChangeAdaptor;
+
     private final List<SchemaChange> changes = Lists.newArrayList();
+
+    public InternalVisitor(SchemaChangeAdaptor schemaChangeAdaptor) {
+      this.schemaChangeAdaptor = schemaChangeAdaptor;
+    }
 
 
     /**
@@ -466,55 +480,55 @@ public class SchemaChangeSequence {
 
     @Override
     public void visit(ExecuteStatement executeStatement) {
-      changes.add(executeStatement);
+      changes.add(schemaChangeAdaptor.adapt(executeStatement));
     }
 
 
     @Override
     public void visit(ChangeIndex changeIndex) {
-      changes.add(changeIndex);
+      changes.add(schemaChangeAdaptor.adapt(changeIndex));
     }
 
 
     @Override
     public void visit(RemoveIndex removeIndex) {
-      changes.add(removeIndex);
+      changes.add(schemaChangeAdaptor.adapt(removeIndex));
     }
 
 
     @Override
     public void visit(RemoveColumn removeColumn) {
-      changes.add(removeColumn);
+      changes.add(schemaChangeAdaptor.adapt(removeColumn));
     }
 
 
     @Override
     public void visit(ChangeColumn changeColumn) {
-      changes.add(changeColumn);
+      changes.add(schemaChangeAdaptor.adapt(changeColumn));
     }
 
 
     @Override
     public void visit(AddIndex addIndex) {
-      changes.add(addIndex);
+      changes.add(schemaChangeAdaptor.adapt(addIndex));
     }
 
 
     @Override
     public void visit(RemoveTable removeTable) {
-      changes.add(removeTable);
+      changes.add(schemaChangeAdaptor.adapt(removeTable));
     }
 
 
     @Override
     public void visit(AddTable addTable) {
-      changes.add(addTable);
+      changes.add(schemaChangeAdaptor.adapt(addTable));
     }
 
 
     @Override
     public void visit(AddColumn addColumn) {
-      changes.add(addColumn);
+      changes.add(schemaChangeAdaptor.adapt(addColumn));
     }
 
 
@@ -532,54 +546,43 @@ public class SchemaChangeSequence {
 
     @Override
     public void visit(RenameTable renameTable) {
-      changes.add(renameTable);
+      changes.add(schemaChangeAdaptor.adapt(renameTable));
     }
 
 
     @Override
     public void visit(ChangePrimaryKeyColumns changePrimaryKeyColumns) {
-      changes.add(changePrimaryKeyColumns);
+      changes.add(schemaChangeAdaptor.adapt(changePrimaryKeyColumns));
     }
 
-    /**
-     * @see org.alfasoftware.morf.upgrade.SchemaChangeVisitor#visit(org.alfasoftware.morf.upgrade.RenameIndex)
-     */
+
     @Override
     public void visit(RenameIndex renameIndex) {
-      changes.add(renameIndex);
+      changes.add(schemaChangeAdaptor.adapt(renameIndex));
     }
 
 
-    /**
-     * @see org.alfasoftware.morf.upgrade.SchemaChangeVisitor#visit(org.alfasoftware.morf.upgrade.AddTableFrom)
-     */
     @Override
     public void visit(AddTableFrom addTableFrom) {
-      changes.add(addTableFrom);
+      changes.add(schemaChangeAdaptor.adapt(addTableFrom));
     }
 
 
     @Override
     public void visit(AnalyseTable analyseTable) {
-      changes.add(analyseTable);
+      changes.add(schemaChangeAdaptor.adapt(analyseTable));
     }
 
 
-    /**
-     * @see SchemaChangeVisitor#visit(AddSequence)
-     */
     @Override
     public void visit(AddSequence addSequence) {
-      changes.add(addSequence);
+      changes.add(schemaChangeAdaptor.adapt(addSequence));
     }
 
 
-    /**
-     * @see SchemaChangeVisitor#visit(RemoveSequence)
-     */
     @Override
     public void visit(RemoveSequence removeSequence) {
-      changes.add(removeSequence);
+      changes.add(schemaChangeAdaptor.adapt(removeSequence));
     }
   }
 }

@@ -49,6 +49,8 @@ public class UpgradePathFinder {
 
   private static final Log log = LogFactory.getLog(UpgradePathFinder.class);
 
+  private final UpgradeConfigAndContext upgradeConfigAndContext;
+
   private final UpgradeGraph upgradeGraph;
 
   private final Set<java.util.UUID> stepsAlreadyApplied;
@@ -68,6 +70,16 @@ public class UpgradePathFinder {
    * @param stepsAlreadyApplied The UUIDs of steps which have already been applied.
    */
   public UpgradePathFinder(Collection<Class<? extends UpgradeStep>> availableUpgradeSteps, Set<java.util.UUID> stepsAlreadyApplied) {
+    this(new UpgradeConfigAndContext(), availableUpgradeSteps, stepsAlreadyApplied);
+  }
+
+
+  /**
+   * @param availableUpgradeSteps Steps that are available for building a path.
+   * @param stepsAlreadyApplied The UUIDs of steps which have already been applied.
+   */
+  public UpgradePathFinder(UpgradeConfigAndContext upgradeConfigAndContext, Collection<Class<? extends UpgradeStep>> availableUpgradeSteps, Set<java.util.UUID> stepsAlreadyApplied) {
+    this.upgradeConfigAndContext = upgradeConfigAndContext;
     this.upgradeGraph = new UpgradeGraph(availableUpgradeSteps);
     this.stepsAlreadyApplied = stepsAlreadyApplied;
 
@@ -92,7 +104,7 @@ public class UpgradePathFinder {
     for (CandidateStep upgradeStepClass : stepsToApply) {
       upgradeSteps.add(upgradeStepClass.createStep());
     }
-    return new SchemaChangeSequence(upgradeSteps);
+    return new SchemaChangeSequence(upgradeConfigAndContext, upgradeSteps);
   }
 
 

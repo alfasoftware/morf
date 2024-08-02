@@ -72,7 +72,7 @@ public class Upgrade {
   private final ViewDeploymentValidator viewDeploymentValidator;
   private final DatabaseUpgradePathValidationService databaseUpgradePathValidationService;
   private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
-  private final UpgradeConfiguration upgradeConfiguration;
+  private final UpgradeConfigAndContext upgradeConfigAndContext;
 
 
   public Upgrade(
@@ -83,7 +83,7 @@ public class Upgrade {
       ViewDeploymentValidator viewDeploymentValidator,
       DatabaseUpgradePathValidationService databaseUpgradePathValidationService,
       GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
-      UpgradeConfiguration upgradeConfiguration) {
+      UpgradeConfigAndContext upgradeConfigAndContext) {
     super();
     this.connectionResources = connectionResources;
     this.upgradePathFactory = upgradePathFactory;
@@ -92,7 +92,7 @@ public class Upgrade {
     this.viewDeploymentValidator = viewDeploymentValidator;
     this.databaseUpgradePathValidationService = databaseUpgradePathValidationService;
     this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
-    this.upgradeConfiguration = upgradeConfiguration;
+    this.upgradeConfigAndContext = upgradeConfigAndContext;
   }
 
 
@@ -147,12 +147,12 @@ public class Upgrade {
     UpgradePathFactory upgradePathFactory = new UpgradePathFactoryImpl(upgradeScriptAdditionsProvider, upgradeStatusTableServiceFactory);
     ViewChangesDeploymentHelper viewChangesDeploymentHelper = new ViewChangesDeploymentHelper(connectionResources.sqlDialect());
     GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory = null;
-    UpgradeConfiguration upgradeConfiguration = new UpgradeConfiguration();
+    UpgradeConfigAndContext upgradeConfigAndContext = new UpgradeConfigAndContext();
 
     Upgrade upgrade = new Upgrade(
       connectionResources,
       upgradePathFactory, upgradeStatusTableService, viewChangesDeploymentHelper, viewDeploymentValidator, databaseUpgradePathValidationService,
-      graphBasedUpgradeBuilderFactory, upgradeConfiguration);
+      graphBasedUpgradeBuilderFactory, upgradeConfigAndContext);
 
     Set<String> exceptionRegexes = Collections.emptySet();
 
@@ -209,7 +209,7 @@ public class Upgrade {
     //
     log.info("Searching for upgrade path from [" + sourceSchema + "] to [" + targetSchema + "]");
     ExistingTableStateLoader existingTableState = new ExistingTableStateLoader(dataSource, dialect);
-    UpgradePathFinder pathFinder = new UpgradePathFinder(upgradeSteps, existingTableState.loadAppliedStepUUIDs());
+    UpgradePathFinder pathFinder = new UpgradePathFinder(upgradeConfigAndContext, upgradeSteps, existingTableState.loadAppliedStepUUIDs());
     pathFinder.findDiscrepancies(getUpgradeAuditRecords());
 
     SchemaChangeSequence schemaChangeSequence;
@@ -275,7 +275,7 @@ public class Upgrade {
         sourceSchema,
         targetSchema,
         connectionResources,
-        upgradeConfiguration.getExclusiveExecutionSteps(),
+        upgradeConfigAndContext.getExclusiveExecutionSteps(),
         schemaChangeSequence,
         viewChanges);
     }
@@ -437,7 +437,7 @@ public class Upgrade {
     private final DatabaseUpgradePathValidationService.Factory databaseUpgradePathValidationServiceFactory;
     private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
 
-    private UpgradeConfiguration upgradeConfiguration = new UpgradeConfiguration();
+    private UpgradeConfigAndContext upgradeConfiguration = new UpgradeConfigAndContext();
 
     @Inject
     public Factory(UpgradePathFactory upgradePathFactory,
@@ -454,7 +454,7 @@ public class Upgrade {
       this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
     }
 
-    public Factory withUpgradeConfiguration(UpgradeConfiguration upgradeConfiguration) {
+    public Factory withUpgradeConfiguration(UpgradeConfigAndContext upgradeConfiguration) {
       this.upgradeConfiguration = upgradeConfiguration;
       return this;
     }
