@@ -65,7 +65,12 @@ public enum DataType {
   /**
    * Null type.
    */
-  NULL(false, false);
+  NULL(false, false),
+
+  /**
+   * Null type.
+   */
+  TS_VECTOR(false, false);
 
 
   /***/

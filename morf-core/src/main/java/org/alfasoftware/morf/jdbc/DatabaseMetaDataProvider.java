@@ -548,6 +548,8 @@ public abstract class DatabaseMetaDataProvider implements Schema {
       case Types.NCLOB:
       case Types.CLOB:
         return DataType.CLOB;
+      case Types.OTHER: // Temporary map to Postgres TS_VECTOR type
+        return DataType.STRING;
       default:
         throw new UnexpectedDataTypeException("Unsupported data type [" + typeName + "] (type " + typeCode + " width " + width + ")");
     }
