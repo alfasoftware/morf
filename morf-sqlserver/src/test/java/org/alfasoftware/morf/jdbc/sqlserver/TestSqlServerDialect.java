@@ -1476,4 +1476,10 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   protected String expectedCurrValForSequence() {
     return "SELECT (SELECT current_value FROM sys.sequences WHERE name = 'TestSequence')";
   }
+
+
+  @Override
+  protected String expectedPortableStatement() {
+    return "UPDATE TESTSCHEMA.Table SET field = TRANSLATE(field, '5', 'E')";
+  }
 }

@@ -89,6 +89,7 @@ import org.alfasoftware.morf.sql.element.MathsField;
 import org.alfasoftware.morf.sql.element.MathsOperator;
 import org.alfasoftware.morf.sql.element.NullFieldLiteral;
 import org.alfasoftware.morf.sql.element.Operator;
+import org.alfasoftware.morf.sql.element.PortableFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
@@ -1769,6 +1770,10 @@ public abstract class SqlDialect {
 
     if (field instanceof SequenceReference) {
       return getSqlFrom((SequenceReference) field);
+    }
+
+    if (field instanceof PortableFunction) {
+      return getSqlFrom(((PortableFunction) field));
     }
 
     throw new IllegalArgumentException("Aliased Field of type [" + field.getClass().getSimpleName() + "] is not supported");
@@ -4420,6 +4425,31 @@ public abstract class SqlDialect {
    */
   protected String getSqlForInsertInto(@SuppressWarnings("unused") InsertStatement insertStatement) {
     return "INSERT INTO ";
+  }
+
+
+  /**
+   * Converts the provided portable function into SQL. Each dialect will attempt to retrieve the applicable
+   * function and arguments, throwing an unsupported operation exception if one is not found.
+   *
+   * @param portableFunction the function to convert
+   * @return the resulting SQL
+   */
+  protected abstract String getSqlFrom(PortableFunction portableFunction);
+
+
+  /**
+   * Common method used to convert portable functions, for dialects that share the same syntax.
+   */
+  protected String getSqlForPortableFunction(Pair<String, List<AliasedField>> functionWithArguments) {
+    String functionName = functionWithArguments.getLeft();
+
+    List<String> arguments = functionWithArguments.getRight()
+        .stream()
+        .map(this::getSqlFrom)
+        .collect(toList());
+
+    return functionName + "(" + Joiner.on(", ").join(arguments) + ")";
   }
 
 

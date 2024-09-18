@@ -71,6 +71,7 @@ import org.alfasoftware.morf.sql.element.ClobFieldLiteral;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.PortableFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
@@ -1703,4 +1704,9 @@ class OracleDialect extends SqlDialect {
         getSqlFrom(operator.getSelectStatement()));
   }
 
+
+  @Override
+  protected String getSqlFrom(PortableFunction function) {
+    return super.getSqlForPortableFunction(function.getFunctionForDatabaseType(Oracle.IDENTIFIER));
+  }
 }

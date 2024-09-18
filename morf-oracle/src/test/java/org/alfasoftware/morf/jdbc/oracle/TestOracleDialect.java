@@ -1927,4 +1927,10 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   protected String expectedCurrValForSequence() {
     return "SELECT testschema.TESTSEQUENCE.CURRVAL FROM dual";
   }
+
+
+  @Override
+  protected String expectedPortableStatement() {
+    return "UPDATE TESTSCHEMA.Table SET field = TRANSLATE(field, N'3', N'C')";
+  }
 }

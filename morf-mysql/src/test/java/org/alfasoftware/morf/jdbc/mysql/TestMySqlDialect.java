@@ -1400,4 +1400,10 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   protected String expectedCurrValForSequence() {
     return "SELECT NULL FROM dual";
   }
+
+
+  @Override
+  protected String expectedPortableStatement() {
+    return "UPDATE Table SET field = TRANSLATE(field, '4', 'D')";
+  }
 }

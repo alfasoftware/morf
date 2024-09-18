@@ -43,8 +43,8 @@ import org.alfasoftware.morf.jdbc.SqlScriptExecutor.ResultSetProcessor;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
-import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.Sequence;
+import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.AbstractSelectStatement;
 import org.alfasoftware.morf.sql.ExceptSetOperator;
@@ -58,6 +58,7 @@ import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.PortableFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
@@ -978,5 +979,11 @@ class MySqlDialect extends SqlDialect {
   @Override
   protected String getSqlFrom(ExceptSetOperator operator) {
     throw new IllegalStateException("EXCEPT set operator is not supported in the MySQL dialect");
+  }
+
+
+  @Override
+  protected String getSqlFrom(PortableFunction function) {
+    return super.getSqlForPortableFunction(function.getFunctionForDatabaseType(MySql.IDENTIFIER));
   }
 }
