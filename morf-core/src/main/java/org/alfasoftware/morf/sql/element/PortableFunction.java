@@ -80,7 +80,7 @@ public final class PortableFunction extends AliasedField {
     Pair<String, List<AliasedField>> functionWithArguments = databaseFunctionMap.get(databaseTypeIdentifier);
 
     if (functionWithArguments == null) {
-      throw new UnsupportedOperationException("Portable statement not found for database type: " + databaseTypeIdentifier);
+      throw new UnsupportedOperationException("Portable function not found for database type: " + databaseTypeIdentifier);
     }
 
     return functionWithArguments;
