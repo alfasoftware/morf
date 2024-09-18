@@ -28,8 +28,8 @@ import org.apache.commons.lang3.tuple.Pair;
 /**
  * Portable databaseFunctionMap allows for SQL databaseFunctionMap to be freely defined using the following syntax:
  * <p>functionName(argument1, argument2...)</p>
- * <p>Function definitions are mapped to database type identifiers, and distinct definitions are required for each dialect</p>
- * <p>These databaseFunctionMap should only be used when it is absolutely necessary, for instance when a specific function
+ * <p>Function definitions are mapped to database type identifiers, and distinct statements are required for each supported database</p>
+ * <p>These portable functions should only be used when it is absolutely necessary, for instance when a specific function
  * is required where there is no support (nor planned support) within morf.</p>
  *
  * @author Copyright (c) Alfa Financial Software 2024

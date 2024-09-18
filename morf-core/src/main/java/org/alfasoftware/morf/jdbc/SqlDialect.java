@@ -1773,7 +1773,7 @@ public abstract class SqlDialect {
     }
 
     if (field instanceof PortableFunction) {
-      return getSqlFrom(((PortableFunction) field));
+      return getSqlFrom((PortableFunction) field);
     }
 
     throw new IllegalArgumentException("Aliased Field of type [" + field.getClass().getSimpleName() + "] is not supported");
