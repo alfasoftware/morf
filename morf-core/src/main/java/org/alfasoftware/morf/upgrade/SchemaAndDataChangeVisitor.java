@@ -22,7 +22,7 @@ import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.Join;
 import org.alfasoftware.morf.sql.element.MathsField;
-import org.alfasoftware.morf.sql.element.PortableFunction;
+import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.WhenCondition;
@@ -457,11 +457,11 @@ public interface SchemaAndDataChangeVisitor {
 
 
   /**
-   * Perform visit operation on a {@link PortableFunction} instance.
+   * Perform visit operation on a {@link PortableSqlFunction} instance.
    *
-   * @param portableFunction instance of {@link PortableFunction} to visit.
+   * @param portableSqlFunction instance of {@link PortableSqlFunction} to visit.
    */
-  default void visit(PortableFunction portableFunction) {
+  default void visit(PortableSqlFunction portableSqlFunction) {
     // Do nothing on default
   }
 }

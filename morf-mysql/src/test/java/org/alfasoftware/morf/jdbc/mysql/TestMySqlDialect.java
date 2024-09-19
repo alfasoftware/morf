@@ -1404,6 +1404,6 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
 
   @Override
   protected String expectedPortableStatement() {
-    return "UPDATE Table SET field = TRANSLATE(field, '4', 'D')";
+    return "UPDATE Table SET field = REVERSE(field, '4', 'D')";
   }
 }

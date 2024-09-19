@@ -1349,6 +1349,6 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
 
   @Override
   protected String expectedPortableStatement() {
-    return "UPDATE TESTSCHEMA.Table SET field = TRANSLATE(field, CAST('2' AS VARCHAR(1)), CAST('B' AS VARCHAR(1)))";
+    return "UPDATE TESTSCHEMA.Table SET field = BTRIM(field, CAST('2' AS VARCHAR(1)), CAST('B' AS VARCHAR(1)))";
   }
 }

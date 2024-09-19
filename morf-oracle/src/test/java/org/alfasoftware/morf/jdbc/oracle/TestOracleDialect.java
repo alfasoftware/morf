@@ -1931,6 +1931,6 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
   @Override
   protected String expectedPortableStatement() {
-    return "UPDATE TESTSCHEMA.Table SET field = TRANSLATE(field, N'3', N'C')";
+    return "UPDATE TESTSCHEMA.Table SET field = REGEX_REPLACE(field, N'3', N'C')";
   }
 }

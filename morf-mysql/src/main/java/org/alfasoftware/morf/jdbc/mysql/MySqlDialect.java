@@ -58,7 +58,7 @@ import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
-import org.alfasoftware.morf.sql.element.PortableFunction;
+import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
@@ -983,7 +983,7 @@ class MySqlDialect extends SqlDialect {
 
 
   @Override
-  protected String getSqlFrom(PortableFunction function) {
+  protected String getSqlFrom(PortableSqlFunction function) {
     return super.getSqlForPortableFunction(function.getFunctionForDatabaseType(MySql.IDENTIFIER));
   }
 }

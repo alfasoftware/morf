@@ -89,7 +89,7 @@ import org.alfasoftware.morf.sql.element.MathsField;
 import org.alfasoftware.morf.sql.element.MathsOperator;
 import org.alfasoftware.morf.sql.element.NullFieldLiteral;
 import org.alfasoftware.morf.sql.element.Operator;
-import org.alfasoftware.morf.sql.element.PortableFunction;
+import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
@@ -1772,8 +1772,8 @@ public abstract class SqlDialect {
       return getSqlFrom((SequenceReference) field);
     }
 
-    if (field instanceof PortableFunction) {
-      return getSqlFrom((PortableFunction) field);
+    if (field instanceof PortableSqlFunction) {
+      return getSqlFrom((PortableSqlFunction) field);
     }
 
     throw new IllegalArgumentException("Aliased Field of type [" + field.getClass().getSimpleName() + "] is not supported");
@@ -4432,10 +4432,10 @@ public abstract class SqlDialect {
    * Converts the provided portable function into SQL. Each dialect will attempt to retrieve the applicable
    * function and arguments, throwing an unsupported operation exception if one is not found.
    *
-   * @param portableFunction the function to convert
+   * @param portableSqlFunction the function to convert
    * @return the resulting SQL
    */
-  protected abstract String getSqlFrom(PortableFunction portableFunction);
+  protected abstract String getSqlFrom(PortableSqlFunction portableSqlFunction);
 
 
   /**

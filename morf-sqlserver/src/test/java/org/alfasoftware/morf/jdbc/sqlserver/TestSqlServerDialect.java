@@ -1480,6 +1480,6 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
 
   @Override
   protected String expectedPortableStatement() {
-    return "UPDATE TESTSCHEMA.Table SET field = TRANSLATE(field, '5', 'E')";
+    return "UPDATE TESTSCHEMA.Table SET field = SOUNDEX(field, '5', 'E')";
   }
 }
