@@ -47,7 +47,7 @@ public final class PortableSqlFunction extends AliasedField {
     }
 
 
-    public static final class Builder {
+    public static final class Builder implements AliasedFieldBuilder {
 
         private final Map<String, Pair<String, List<AliasedField>>> databaseFunctionMap = new HashMap<>();
         private String alias;
@@ -64,6 +64,12 @@ public final class PortableSqlFunction extends AliasedField {
             Pair<String, List<AliasedField>> functionWithArguments = Pair.of(functionName, Arrays.asList(arguments));
             databaseFunctionMap.put(databaseTypeIdentifier, functionWithArguments);
 
+            return this;
+        }
+
+        @Override
+        public Builder as(String alias) {
+            this.alias = alias;
             return this;
         }
 

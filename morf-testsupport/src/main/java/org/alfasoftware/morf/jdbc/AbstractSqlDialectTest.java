@@ -5099,8 +5099,9 @@ public abstract class AbstractSqlDialectTest {
                     new FieldReference("field"),
                     new FieldLiteral("5"),
                     new FieldLiteral("E"))
-            .build()
-            .as("field");
+            .as("field")
+            .build();
+
 
     UpdateStatement testStatement = UpdateStatement.update(new TableReference("Table")).set(function).build();
 

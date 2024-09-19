@@ -37,6 +37,7 @@ public class TestPortableSqlFunction {
                     new FieldReference(FIELD),
                     new FieldLiteral(INTEGER_VALUE),
                     new FieldLiteral(STRING_VALUE))
+            .as(FIELD)
             .build();
   }
 
