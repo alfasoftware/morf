@@ -22,7 +22,7 @@ public class TestPortableSqlFunction {
   private static final String PGSQL = "PGSQL";
   private static final String ORACLE = "ORACLE";
 
-  private AliasedField portableFunction;
+  private PortableSqlFunction portableFunction;
 
   @Before
   public void setUp() {
@@ -37,20 +37,19 @@ public class TestPortableSqlFunction {
                     new FieldReference(FIELD),
                     new FieldLiteral(INTEGER_VALUE),
                     new FieldLiteral(STRING_VALUE))
-            .as(FIELD)
             .build();
   }
 
 
   @Test(expected = UnsupportedOperationException.class)
   public void testUnsupportedDatabase() {
-    ((PortableSqlFunction) portableFunction).getFunctionForDatabaseType("H2");
+    portableFunction.getFunctionForDatabaseType("H2");
   }
 
 
   @Test
   public void testDeepCopy() {
-    PortableSqlFunction copy = ((PortableSqlFunction) portableFunction).deepCopyInternal(mock(DeepCopyTransformation.class));
+    PortableSqlFunction copy = portableFunction.deepCopyInternal(mock(DeepCopyTransformation.class));
     assertEquals(copy, portableFunction);
   }
 }

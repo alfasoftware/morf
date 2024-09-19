@@ -5065,6 +5065,7 @@ public abstract class AbstractSqlDialectTest {
 
   }
 
+
   @Test
   public void testPortableFunction() {
     AliasedField function = PortableSqlFunction.builder()
@@ -5098,8 +5099,8 @@ public abstract class AbstractSqlDialectTest {
                     new FieldReference("field"),
                     new FieldLiteral("5"),
                     new FieldLiteral("E"))
-            .as("field")
-            .build();
+            .build()
+            .as("field");
 
     UpdateStatement testStatement = UpdateStatement.update(new TableReference("Table")).set(function).build();
 

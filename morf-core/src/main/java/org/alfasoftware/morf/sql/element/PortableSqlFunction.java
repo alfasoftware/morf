@@ -67,12 +67,7 @@ public final class PortableSqlFunction extends AliasedField {
             return this;
         }
 
-        public Builder as(String alias) {
-            this.alias = alias;
-            return this;
-        }
-
-        public AliasedField build() {
+        public PortableSqlFunction build() {
             return new PortableSqlFunction(databaseFunctionMap, alias);
         }
     }
