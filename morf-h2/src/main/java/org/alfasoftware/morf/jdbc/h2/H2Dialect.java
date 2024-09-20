@@ -15,6 +15,9 @@
 
 package org.alfasoftware.morf.jdbc.h2;
 
+import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
+import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -22,7 +25,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import com.google.common.collect.Lists;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Column;
@@ -34,6 +36,7 @@ import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.FunctionType;
+import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
@@ -43,9 +46,7 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.Iterables;
-
-import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
-import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
+import com.google.common.collect.Lists;
 
 /**
  * Implements database specific statement generation for H2.
@@ -675,5 +676,11 @@ class H2Dialect extends SqlDialect {
   protected String tableNameWithSchemaName(TableReference tableRef) {
     if (!StringUtils.isEmpty(tableRef.getDblink())) throw new IllegalStateException("DB Links are not supported in the H2 dialect. Found dbLink=" + tableRef.getDblink() + " for tableNameWithSchemaName=" + super.tableNameWithSchemaName(tableRef));
     return super.tableNameWithSchemaName(tableRef);
+  }
+
+
+  @Override
+  protected String getSqlFrom(PortableSqlFunction function) {
+    return super.getSqlForPortableFunction(function.getFunctionForDatabaseType(H2.IDENTIFIER));
   }
 }

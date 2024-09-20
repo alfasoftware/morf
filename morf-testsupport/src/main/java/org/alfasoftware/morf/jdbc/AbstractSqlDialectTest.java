@@ -153,6 +153,7 @@ import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.MathsField;
 import org.alfasoftware.morf.sql.element.MathsOperator;
 import org.alfasoftware.morf.sql.element.NullFieldLiteral;
+import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
@@ -5065,6 +5066,49 @@ public abstract class AbstractSqlDialectTest {
   }
 
 
+  @Test
+  public void testPortableFunction() {
+    AliasedField function = PortableSqlFunction.builder()
+            .withFunctionForDatabaseType(
+                    "PGSQL",
+                    "TRANSLATE",
+                    new FieldReference("field"),
+                    new FieldLiteral("1"),
+                    new FieldLiteral("A"))
+            .withFunctionForDatabaseType(
+                    "H2",
+                    "BTRIM",
+                    new FieldReference("field"),
+                    new FieldLiteral("2"),
+                    new FieldLiteral("B"))
+            .withFunctionForDatabaseType(
+                    "ORACLE",
+                    "REGEX_REPLACE",
+                    new FieldReference("field"),
+                    new FieldLiteral("3"),
+                    new FieldLiteral("C"))
+            .withFunctionForDatabaseType(
+                    "MY_SQL",
+                    "REVERSE",
+                    new FieldReference("field"),
+                    new FieldLiteral("4"),
+                    new FieldLiteral("D"))
+            .withFunctionForDatabaseType(
+                    "SQL_SERVER",
+                    "SOUNDEX",
+                    new FieldReference("field"),
+                    new FieldLiteral("5"),
+                    new FieldLiteral("E"))
+            .as("field")
+            .build();
+
+
+    UpdateStatement testStatement = UpdateStatement.update(new TableReference("Table")).set(function).build();
+
+    assertEquals(expectedPortableStatement(), testDialect.convertStatementToSQL(testStatement));
+  }
+
+
   /**
    * Tests SQL date conversion to string via databaseSafeStringtoRecordValue
    *
@@ -6045,6 +6089,11 @@ public abstract class AbstractSqlDialectTest {
     return "SELECT * FROM SCHEMA2.Foo"; //NOSONAR
   }
 
+
+  /**
+   * @return The expected SQL for the {@link PortableSqlFunction} function, testing that the dialect-specific function is used.
+   */
+  protected abstract String expectedPortableStatement();
 
   /**
    * @return the testDialect

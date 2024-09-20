@@ -1345,4 +1345,10 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   protected String expectedCurrValForSequence() {
     return "SELECT TestSequence.CURRVAL FROM dual";
   }
+
+
+  @Override
+  protected String expectedPortableStatement() {
+    return "UPDATE TESTSCHEMA.Table SET field = BTRIM(field, CAST('2' AS VARCHAR(1)), CAST('B' AS VARCHAR(1)))";
+  }
 }

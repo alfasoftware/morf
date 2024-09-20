@@ -1,10 +1,10 @@
 package org.alfasoftware.morf.upgrade;
 
 import org.alfasoftware.morf.sql.DeleteStatement;
+import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.MergeStatement.InputField;
-import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.TruncateStatement;
@@ -22,6 +22,7 @@ import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.Join;
 import org.alfasoftware.morf.sql.element.MathsField;
+import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.WhenCondition;
@@ -451,6 +452,16 @@ public interface SchemaAndDataChangeVisitor {
    * @param windowFunction instance of {@link WindowFunction} to visit.
    */
   default void visit(WindowFunction windowFunction) {
+    // Do nothing on default
+  }
+
+
+  /**
+   * Perform visit operation on a {@link PortableSqlFunction} instance.
+   *
+   * @param portableSqlFunction instance of {@link PortableSqlFunction} to visit.
+   */
+  default void visit(PortableSqlFunction portableSqlFunction) {
     // Do nothing on default
   }
 }

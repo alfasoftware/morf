@@ -48,6 +48,7 @@ import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.FunctionType;
+import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
@@ -925,6 +926,12 @@ class PostgreSQLDialect extends SqlDialect {
       return sqlBuilder.toString();
     }
     return super.getSqlFrom(statement);
+  }
+
+
+  @Override
+  protected String getSqlFrom(PortableSqlFunction function) {
+    return super.getSqlForPortableFunction(function.getFunctionForDatabaseType(PostgreSQL.IDENTIFIER));
   }
 
 
