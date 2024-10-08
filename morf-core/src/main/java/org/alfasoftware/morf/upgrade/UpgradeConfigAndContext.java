@@ -23,23 +23,56 @@ public class UpgradeConfigAndContext {
    */
   private SchemaChangeAdaptor schemaChangeAdaptor = new SchemaChangeAdaptor.NoOp();
 
+  /**
+   * A schema auto-healer to be used before upgrade.
+   */
+  private SchemaAutoHealer schemaAutoHealer = new SchemaAutoHealer.NoOp();
 
+
+  /**
+   * @see #exclusiveExecutionSteps
+   */
   public Set<String> getExclusiveExecutionSteps() {
     return exclusiveExecutionSteps;
   }
 
+  /**
+   * @see #exclusiveExecutionSteps
+   */
   public UpgradeConfigAndContext setExclusiveExecutionSteps(Set<String> exclusiveExecutionSteps) {
     this.exclusiveExecutionSteps = exclusiveExecutionSteps;
     return this;
   }
 
 
+  /**
+   * @see #schemaChangeAdaptor
+   */
   public SchemaChangeAdaptor getSchemaChangeAdaptor() {
     return schemaChangeAdaptor;
   }
 
+  /**
+   * @see #schemaChangeAdaptor
+   */
   public void setSchemaChangeAdaptor(SchemaChangeAdaptor schemaChangeAdaptor) {
     Preconditions.checkNotNull(schemaChangeAdaptor);
     this.schemaChangeAdaptor = schemaChangeAdaptor;
+  }
+
+
+  /**
+   * @see #schemaAutoHealer
+   */
+  public SchemaAutoHealer getSchemaAutoHealer() {
+    return schemaAutoHealer;
+  }
+
+  /**
+   * @see #schemaAutoHealer
+   */
+  public void setSchemaAutoHealer(SchemaAutoHealer schemaAutoHealer) {
+    Preconditions.checkNotNull(schemaAutoHealer);
+    this.schemaAutoHealer = schemaAutoHealer;
   }
 }

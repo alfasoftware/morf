@@ -45,6 +45,7 @@ import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.upgrade.ExistingViewStateLoader.Result;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeBuilder.GraphBasedUpgradeBuilderFactory;
+import org.alfasoftware.morf.upgrade.SchemaAutoHealer.SchemaHealingResults;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
 import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsException;
@@ -189,11 +190,19 @@ public class Upgrade {
     log.info("Reading current schema");
     Schema sourceSchema;
     List<String> schemaConsistencyStatements;
+    List<String> schemaAutoHealingStatements;
     try (SchemaResource databaseSchemaResource = connectionResources.openSchemaResource(dataSource)) {
-      sourceSchema = SchemaUtils.copy(databaseSchemaResource, exceptionRegexes);
+      // first, we run dialect-specific auto-healing invisible to the Schema interface
       schemaConsistencyStatements = dialect.getSchemaConsistencyStatements(databaseSchemaResource);
-      if (!schemaConsistencyStatements.isEmpty()) {
-        log.warn("Auto-healing statements have been generated (" + schemaConsistencyStatements.size() + " statements in total); this usually implies auto-healing being carried out."
+
+      // second, we run dialect-agnostic auto-healing visible to the Schema interface
+      final Schema readSchema = SchemaUtils.copy(databaseSchemaResource, exceptionRegexes);
+      SchemaHealingResults schemaHealingResults = upgradeConfigAndContext.getSchemaAutoHealer().analyseSchema(readSchema);
+      schemaAutoHealingStatements = schemaHealingResults.getHealingStatements(dialect);
+      sourceSchema = schemaHealingResults.getHealedSchema();
+
+      if (!schemaConsistencyStatements.isEmpty() || !schemaAutoHealingStatements.isEmpty()) {
+        log.warn("Auto-healing statements have been generated (" + schemaConsistencyStatements.size() + "+" + schemaAutoHealingStatements.size() + " statements in total); this usually implies auto-healing being carried out."
             + " If this is shown on each subsequent start-up, it can be a symptom of auto-healing failing to achieve an acceptable stable healthful state."
             + " Examine the upgrade statements (the upgrade script, or the upgrade logs below) to investigate further.");
       }
@@ -281,7 +290,7 @@ public class Upgrade {
     }
 
     // Build the actual upgrade path
-    return buildUpgradePath(connectionResources, sourceSchema, targetSchema, upgradeStatements, schemaConsistencyStatements, viewChanges, upgradesToApply, graphBasedUpgradeBuilder, upgradeAuditCount);
+    return buildUpgradePath(connectionResources, sourceSchema, targetSchema, upgradeStatements, schemaConsistencyStatements, schemaAutoHealingStatements, viewChanges, upgradesToApply, graphBasedUpgradeBuilder, upgradeAuditCount);
   }
 
 
@@ -300,7 +309,7 @@ public class Upgrade {
    */
   private UpgradePath buildUpgradePath(
       ConnectionResources connectionResources, Schema sourceSchema, Schema targetSchema,
-      List<String> upgradeStatements, List<String> schemaConsistencyStatements, ViewChanges viewChanges,
+      List<String> upgradeStatements, List<String> schemaConsistencyStatements, List<String> schemaAutoHealingStatements, ViewChanges viewChanges,
       List<UpgradeStep> upgradesToApply,
       GraphBasedUpgradeBuilder graphBasedUpgradeBuilder,
       long upgradeAuditCount) {
@@ -308,6 +317,7 @@ public class Upgrade {
     List<String> initialisationSql = Lists.newArrayList();
     initialisationSql.addAll(databaseUpgradePathValidationService.getPathValidationSql(upgradeAuditCount));
     initialisationSql.addAll(schemaConsistencyStatements);
+    initialisationSql.addAll(schemaAutoHealingStatements);
 
     UpgradePath path = upgradePathFactory.create(upgradesToApply, connectionResources, graphBasedUpgradeBuilder, initialisationSql);
 
