@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaResource;
 
 import com.google.common.collect.ImmutableList;
 
@@ -18,7 +19,7 @@ import com.google.common.collect.ImmutableList;
  * {@link Schema}, and therefore cannot be healed via this interface, because this interface does
  * not have access to such invisible characteristics of the database.
  *
- * See {@link org.alfasoftware.morf.jdbc.SqlDialect.getSchemaConsistencyStatements(SchemaResource)},
+ * See {@link org.alfasoftware.morf.jdbc.SqlDialect#getSchemaConsistencyStatements(SchemaResource)},
  * another type of a database auto-healer, which is intended to heal characteristics of the database
  * not visible in the {@link Schema}.
  *
