@@ -30,7 +30,7 @@ public interface SchemaAutoHealer {
   /**
    * Analyses given database schema,
    * and produces a set of statements to be run on the database
-   * to arrive at a healed version of the that schema.
+   * to arrive at a healed version of that schema.
    *
    * @param sourceSchema Schema to be healed
    * @return Healing statements to be run, and the resulting healed schema.
