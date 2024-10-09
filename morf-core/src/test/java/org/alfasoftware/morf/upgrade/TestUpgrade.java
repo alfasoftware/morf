@@ -74,6 +74,7 @@ import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeBuilder.GraphBasedUpgradeBuilderFactory;
 import org.alfasoftware.morf.upgrade.MockConnectionResources.StubSchemaResource;
+import org.alfasoftware.morf.upgrade.SchemaAutoHealer.SchemaHealingResults;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.ChangeCar;
@@ -192,28 +193,18 @@ public class TestUpgrade {
 
 
   /**
-   * Test {@link Upgrade}.
+   * Test {@link Upgrade} schema consistency auto-healing.
    */
   @Test
-  public void testUpgradeWithHealing() throws SQLException {
+  public void testUpgradeWithSchemaConsistencyHealing() throws SQLException {
     Table upgradeAudit = upgradeAudit();
 
     Table car = originalCar();
-    Table driver = table("Driver")
-        .columns(
-            idColumn(),
-            versionColumn(),
-            column("name", DataType.STRING, 10).nullable(),
-            column("address", DataType.STRING, 10).nullable()
-        );
-
     Table carUpgraded = upgradedCar();
 
     Schema targetSchema = schema(upgradeAudit, carUpgraded);
     Collection<Class<? extends UpgradeStep>> upgradeSteps = new ArrayList<>();
     upgradeSteps.add(ChangeCar.class);
-
-    List<Table> tables = Arrays.asList(upgradeAudit, car);
 
     ResultSet viewResultSet = mock(ResultSet.class);
     when(viewResultSet.next()).thenReturn(false);
@@ -224,19 +215,19 @@ public class TestUpgrade {
     when(upgradeResultSet.next()).thenReturn(false);
 
     SqlDialect dialect = spy(new MockDialect());
-    when(dialect.getSchemaConsistencyStatements(any(SchemaResource.class))).thenReturn(Lists.newArrayList("HEALING1", "HEALING2"));
-
     ConnectionResources mockConnectionResources = new MockConnectionResources().
         withResultSet("SELECT upgradeUUID FROM UpgradeAudit", upgradeResultSet).
         withResultSet("SELECT name, hash FROM DeployedViews", viewResultSet).
         withDialect(dialect).
         create();
 
-    SchemaResource schemaResource = mock(SchemaResource.class);
-    when(mockConnectionResources.openSchemaResource(eq(mockConnectionResources.getDataSource()))).thenReturn(schemaResource);
-    when(schemaResource.tables()).thenReturn(tables);
+    SchemaResource schemaResource = new StubSchemaResource(schema(ImmutableList.of(upgradeAudit, car)));
+    when(mockConnectionResources.openSchemaResource(mockConnectionResources.getDataSource())).thenReturn(schemaResource);
+
+    when(dialect.getSchemaConsistencyStatements(any(SchemaResource.class))).thenReturn(ImmutableList.of("HEALING1", "HEALING2"));
 
     UpgradePath results = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(mockConnectionResources), viewChangesDeploymentHelperFactory(mockConnectionResources), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory)
+        .withUpgradeConfiguration(upgradeConfigAndContext)
         .create(mockConnectionResources)
         .findPath(targetSchema, upgradeSteps, Lists.newArrayList(), mockConnectionResources.getDataSource());
 
@@ -248,6 +239,61 @@ public class TestUpgrade {
     assertEquals("Path validation SQL present.", "INIT", sql.get(0));
     assertEquals("Healing SQL 1.", "HEALING1", sql.get(1));
     assertEquals("Healing SQL 2.", "HEALING2", sql.get(2));
+  }
+
+
+  /**
+   * Test {@link Upgrade} schema-modifying auto-healing.
+   */
+  @Test
+  public void testUpgradeWithSchemaHealing() throws SQLException {
+    Table upgradeAudit = upgradeAudit();
+
+    Table car = originalCar();
+    Table carUpgraded = upgradedCar();
+
+    Schema targetSchema = schema(upgradeAudit, carUpgraded);
+    Collection<Class<? extends UpgradeStep>> upgradeSteps = new ArrayList<>();
+    upgradeSteps.add(ChangeCar.class);
+
+    ResultSet viewResultSet = mock(ResultSet.class);
+    when(viewResultSet.next()).thenReturn(false);
+
+    ResultSet upgradeResultSet = mock(ResultSet.class);
+    when(upgradeResultSet.next()).thenReturn(true, true, false);
+    when(upgradeResultSet.getString(1)).thenReturn("0fde0d93-f57e-405c-81e9-245ef1ba0594", "0fde0d93-f57e-405c-81e9-245ef1ba0595");
+    when(upgradeResultSet.next()).thenReturn(false);
+
+    SqlDialect dialect = spy(new MockDialect());
+    ConnectionResources mockConnectionResources = new MockConnectionResources().
+        withResultSet("SELECT upgradeUUID FROM UpgradeAudit", upgradeResultSet).
+        withResultSet("SELECT name, hash FROM DeployedViews", viewResultSet).
+        withDialect(dialect).
+        create();
+
+    SchemaResource schemaResource = new StubSchemaResource(schema(ImmutableList.of(upgradeAudit, carUpgraded))); // note: car already upgraded in source schema
+    when(mockConnectionResources.openSchemaResource(mockConnectionResources.getDataSource())).thenReturn(schemaResource);
+
+    SchemaHealingResults schemaHealingResults = mock (SchemaHealingResults.class);
+    when(schemaHealingResults.getHealingStatements(dialect)).thenReturn(ImmutableList.of("MODIFYING1", "MODIFYING2"));
+    when(schemaHealingResults.getHealedSchema()).thenReturn(schema(ImmutableList.of(upgradeAudit, car))); // note: make car not-upgraded again, in the modified schema, allowing the upgrade step to run
+    SchemaAutoHealer schemaAutoHealer = mock(SchemaAutoHealer.class);
+    when(schemaAutoHealer.analyseSchema(any())).thenReturn(schemaHealingResults);
+    upgradeConfigAndContext.setSchemaAutoHealer(schemaAutoHealer);
+
+    UpgradePath results = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(mockConnectionResources), viewChangesDeploymentHelperFactory(mockConnectionResources), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory)
+        .withUpgradeConfiguration(upgradeConfigAndContext)
+        .create(mockConnectionResources)
+        .findPath(targetSchema, upgradeSteps, Lists.newArrayList(), mockConnectionResources.getDataSource());
+
+    assertEquals("Should be one step.", 1, results.getSteps().size());
+    List<String> sql = results.getSql();
+    assertEquals("Number of SQL statements", 13, sql.size());
+
+    // The path validation SQL should be first, then the healing statements.
+    assertEquals("Path validation SQL present.", "INIT", sql.get(0));
+    assertEquals("Healing SQL 1.", "MODIFYING1", sql.get(1));
+    assertEquals("Healing SQL 2.", "MODIFYING2", sql.get(2));
   }
 
 

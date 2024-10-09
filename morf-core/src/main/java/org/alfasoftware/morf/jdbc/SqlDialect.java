@@ -96,6 +96,7 @@ import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.sql.element.WhenCondition;
 import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.alfasoftware.morf.upgrade.ChangeColumn;
+import org.alfasoftware.morf.upgrade.SchemaAutoHealer;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -4455,6 +4456,19 @@ public abstract class SqlDialect {
 
   /**
    * Returns any statements needed to automatically heal the given schema.
+   *
+   * This healer is intended for automated database modifications not visible via the {@link Schema}.
+   * For example the names of primary key indexes are not generally available via the {@link Schema},
+   * and can therefore be healed via this method without disrupting the {@link Schema} contents.
+   *
+   * On the other hand, the names of indexes are available via the {@link Schema}, changing them
+   * via this method would leave a database inconsistent with the contents of the {@link Schema},
+   * and therefore those cannot be auto-healed via this method.
+   *
+   * See {@link SchemaAutoHealer}, another type of a database auto-healer, which is intended to heal
+   * characteristics of the database visible in the {@link Schema}.
+   *
+   * Also note that this type of healer is dialect-specific, each dialect implements it separately.
    *
    * @param schemaResource Schema resource that can be examined.
    * @return List of statements to be run.
