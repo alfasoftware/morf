@@ -4457,7 +4457,7 @@ public abstract class SqlDialect {
   /**
    * Returns any statements needed to automatically heal the given schema.
    *
-   * This healer is intended for automated database modifications transparent to the {@link Schema}.
+   * This healer is intended for automated database modifications not visible via the {@link Schema}.
    * For example the names of primary key indexes are not generally available via the {@link Schema},
    * and can therefore be healed via this method without disrupting the {@link Schema} contents.
    *
