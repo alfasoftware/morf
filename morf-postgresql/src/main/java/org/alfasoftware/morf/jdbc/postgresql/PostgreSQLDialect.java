@@ -9,26 +9,14 @@ import static org.alfasoftware.morf.sql.SqlUtils.field;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.StringJoiner;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
-import org.alfasoftware.morf.metadata.Column;
-import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.DataValueLookup;
-import org.alfasoftware.morf.metadata.Index;
-import org.alfasoftware.morf.metadata.SchemaResource;
-import org.alfasoftware.morf.metadata.SchemaUtils;
-import org.alfasoftware.morf.metadata.Sequence;
-import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.metadata.*;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.DeleteStatementBuilder;
 import org.alfasoftware.morf.sql.DialectSpecificHint;
@@ -59,6 +47,8 @@ import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import org.apache.commons.lang3.tuple.Pair;
+import org.joda.time.LocalDate;
 
 class PostgreSQLDialect extends SqlDialect {
 
@@ -261,6 +251,21 @@ class PostgreSQLDialect extends SqlDialect {
 
     createTableStatement.append(")");
 
+    // add "PARTITION BY" clause and extra partition tables if table is partitioned.
+    if (table.isPartitioned()) {
+      Optional<Column> partitionColumn = table.columns().stream().filter(Column::isPartitioned).findFirst();
+      if (partitionColumn.isEmpty() || !table.partitioningRule().getColumn().equals(partitionColumn.get().getName())) {
+        throw new IllegalArgumentException("Partitioning rule does not match partition column");
+      }
+
+      // add PARTITION BY clause
+      createTableStatement.append(" PARTITION BY RANGE (");
+      createTableStatement.append(partitionColumn.get().getName());
+      createTableStatement.append(')');
+      // explode PARTITION TABLES
+      postStatements.addAll(createTablePartitions(table));
+    }
+
     ImmutableList.Builder<String> statements = ImmutableList.<String>builder()
             .addAll(preStatements)
             .add(createTableStatement.toString());
@@ -270,6 +275,31 @@ class PostgreSQLDialect extends SqlDialect {
     return statements.build();
   }
 
+
+  private List<String> createTablePartitions(Table table) {
+    List<String> statements = new ArrayList<>();
+    List<Pair<String, String>> ranges = new ArrayList<>();
+
+    if (!(table.partitioningRule() instanceof DatePartitionedByPeriodRule)) {
+      throw new IllegalArgumentException("The only supported rule is DatePartitionedByPeriodRule");
+    }
+    DatePartitionedByPeriodRule datePartitionedByPeriodRule = (DatePartitionedByPeriodRule) table.partitioningRule();
+    String sourceTableName = schemaNamePrefix(table) + table.getName();
+    String partitionTableNamePrefix = sourceTableName + "_p";
+    AtomicInteger i = new AtomicInteger(1);
+    datePartitionedByPeriodRule.getRanges().forEach(pair -> {
+      String tablePartitionName = partitionTableNamePrefix + i.getAndIncrement();
+      statements.add(createTablePartitionStatement(table, sourceTableName, tablePartitionName,
+              Pair.of(pair.getLeft().toString("yyyy-MM-dd"), pair.getRight().toString("yyyy-MM-dd"))));
+      });
+    return statements;
+  }
+
+
+  private String createTablePartitionStatement(Table table, String sourceTableName, String tablePartitionName, Pair<String, String> range) {
+    return "CREATE TABLE " + tablePartitionName + " PARTITION OF " + sourceTableName
+            + " FOR VALUES FROM ('" + range.getLeft() + "') TO ('" + range.getRight() + "')";
+  }
 
   /**
    * Private method to form the SQL statement required to create a sequence in the schema.

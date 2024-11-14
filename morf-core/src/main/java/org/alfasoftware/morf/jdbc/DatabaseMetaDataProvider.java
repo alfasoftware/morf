@@ -35,16 +35,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import org.alfasoftware.morf.metadata.Column;
-import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.Index;
-import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.*;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
 import org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder;
-import org.alfasoftware.morf.metadata.Sequence;
-import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -699,6 +692,16 @@ public abstract class DatabaseMetaDataProvider implements Schema {
       public boolean isTemporary() {
         return false;
       }
+
+      @Override
+      public boolean isPartitioned() { return false; }
+
+      @Override
+      public PartitioningRule partitioningRule() {
+        return null;
+      }
+
+      ;
     };
   }
 
@@ -1371,6 +1374,11 @@ public abstract class DatabaseMetaDataProvider implements Schema {
     }
 
     @Override
+    public boolean isPartitioned() {
+      return false;
+    }
+
+    @Override
     public String getDefaultValue() {
       throw new UnexpectedDataTypeException(this.toString());
     }
@@ -1414,6 +1422,11 @@ public abstract class DatabaseMetaDataProvider implements Schema {
 
     @Override
     public ColumnBuilder dataType(DataType dataType) {
+      return this;
+    }
+
+    @Override
+    public ColumnBuilder partitioned() {
       return this;
     }
   }

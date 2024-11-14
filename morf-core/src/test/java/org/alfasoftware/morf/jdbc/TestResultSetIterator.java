@@ -15,11 +15,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
-import org.alfasoftware.morf.metadata.Column;
-import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.Index;
-import org.alfasoftware.morf.metadata.SchemaUtils;
-import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.metadata.*;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.junit.Before;
 import org.junit.Test;
@@ -292,6 +288,17 @@ public class TestResultSetIterator {
       public List<Column> columns() {
         return Lists.newArrayList(SchemaUtils.column("Column", DataType.STRING, 20).nullable());
       }
+
+      @Override
+      public boolean isPartitioned() { return false; }
+
+      @Override
+      public PartitioningRule partitioningRule() {
+        //TODO: implement table building with partitioning
+        return null;
+      }
+
+      ;
     };
   }
 }

@@ -20,6 +20,7 @@ import java.util.List;
 
 
 import com.google.common.collect.Iterables;
+import org.apache.commons.lang3.StringUtils;
 
 
 /**
@@ -48,6 +49,21 @@ class TableBean implements Table {
    * Indicates whether the table is temporary.
    */
   private final boolean      isTemporary;
+
+  /**
+   * The column used to partition by.
+   */
+  protected String partitionColumn;
+
+  /**
+   * The rule to use to partition by on the table.
+   */
+  protected PartitioningRule partitioningRule;
+
+  /**
+   * The table to use as an example scheme for partitioning this one.
+   */
+  protected String partitionedLikeTable;
 
   /**
    * Creates a table bean.
@@ -164,6 +180,15 @@ class TableBean implements Table {
   public boolean isTemporary() {
     return isTemporary;
   }
+
+  @Override
+  public boolean isPartitioned() {
+    return !StringUtils.isEmpty(partitionColumn);
+  }
+
+
+  @Override
+  public PartitioningRule partitioningRule() { return partitioningRule; }
 
 
   @Override

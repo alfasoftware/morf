@@ -18,6 +18,7 @@ package org.alfasoftware.morf.upgrade.adapt;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.alfasoftware.morf.metadata.PartitioningRule;
 import org.apache.commons.lang3.StringUtils;
 
 import org.alfasoftware.morf.metadata.Column;
@@ -92,4 +93,14 @@ public class TableNameDecorator implements Table {
   public boolean isTemporary() {
     return false;
   }
+
+  @Override
+  public boolean isPartitioned() { return false; }
+
+  @Override
+  public PartitioningRule partitioningRule() {
+    return null;
+  }
+
+  ;
 }

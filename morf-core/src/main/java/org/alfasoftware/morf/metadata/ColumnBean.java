@@ -34,7 +34,8 @@ class ColumnBean extends ColumnTypeBean implements Column {
   private final String defaultValue;
   private final boolean autoNumber;
   private final int autoNumberStart;
-
+  //TODO change to private with appropriate constructors.
+  protected boolean partitioned;
 
   /**
    * Creates a column with zero precision.
@@ -218,4 +219,11 @@ class ColumnBean extends ColumnTypeBean implements Column {
   public String toString() {
     return this.toStringHelper();
   }
+
+  @Override
+  public boolean isPartitioned() {
+    return partitioned;
+  }
+
+
 }
