@@ -70,7 +70,8 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
           "CREATE INDEX Alternate_1 ON TESTSCHEMA.Alternate ([stringField])",
           "CREATE TABLE TESTSCHEMA.NonNull ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT NonNull_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [intField] NUMERIC(8,0) NOT NULL, [booleanField] BIT NOT NULL, [dateField] DATE NOT NULL, [blobField] IMAGE NOT NULL, CONSTRAINT [NonNull_PK] PRIMARY KEY ([id]))",
           "CREATE TABLE TESTSCHEMA.CompositePrimaryKey ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT CompositePrimaryKey_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [secondPrimaryKey] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, CONSTRAINT [CompositePrimaryKey_PK] PRIMARY KEY ([id], [secondPrimaryKey]))",
-          "CREATE TABLE TESTSCHEMA.AutoNumber ([intField] BIGINT NOT NULL IDENTITY(5, 1), CONSTRAINT [AutoNumber_PK] PRIMARY KEY ([intField]))"
+          "CREATE TABLE TESTSCHEMA.AutoNumber ([intField] BIGINT NOT NULL IDENTITY(5, 1), CONSTRAINT [AutoNumber_PK] PRIMARY KEY ([intField]))",
+          "CREATE TABLE TESTSCHEMA.Measurement ([intField] NUMERIC(8,0) NOT NULL, [dateField] DATE NOT NULL, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL)"
             );
   }
 

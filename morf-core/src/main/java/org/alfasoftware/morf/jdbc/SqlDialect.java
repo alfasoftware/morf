@@ -41,18 +41,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.dataset.Record;
-import org.alfasoftware.morf.metadata.Column;
-import org.alfasoftware.morf.metadata.DataSetUtils;
+import org.alfasoftware.morf.metadata.*;
 import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
-import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.DataValueLookup;
-import org.alfasoftware.morf.metadata.Index;
-import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.SchemaResource;
-import org.alfasoftware.morf.metadata.SchemaUtils;
-import org.alfasoftware.morf.metadata.Sequence;
-import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.AbstractSelectStatement;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.ExceptSetOperator;
@@ -4593,5 +4583,15 @@ public abstract class SqlDialect {
     public boolean isTemporary() {
       return isTemporary;
     }
+
+    @Override
+    public boolean isPartitioned() { return false; }
+
+    @Override
+    public PartitioningRule partitioningRule() {
+      return null;
+    }
+
+    ;
   }
 }

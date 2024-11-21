@@ -160,6 +160,17 @@ public class TestWithMetaDataAdapter {
           public java.util.List<Index> indexes() {
             return null;
           }
+
+          @Override
+          public boolean isPartitioned() { return false; }
+
+          @Override
+          public PartitioningRule partitioningRule() {
+            //TODO: support metadata reading on whether the table is partitioned.
+            return null;
+          }
+
+          ;
         };
       }
 

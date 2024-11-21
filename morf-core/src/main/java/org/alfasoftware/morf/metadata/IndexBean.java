@@ -43,6 +43,17 @@ class IndexBean implements Index {
 
 
   /**
+   * Flags if index is partitioned and global.
+   */
+  //TODO: change this protected properties from protected to private and add the appropriate constructors to consider them
+  protected boolean isGlobalPartitioned;
+
+  /**
+   * Flags if index is partitioned and local.
+   */
+  protected boolean isLocalPartitioned;
+
+  /**
    * Creates an index bean.
    *
    * @param name The index name.
@@ -108,6 +119,13 @@ class IndexBean implements Index {
   public boolean isUnique() {
     return unique;
   }
+
+
+  @Override
+  public boolean isGlobalPartitioned() { return isGlobalPartitioned; }
+
+  @Override
+  public boolean isLocalPartitioned() { return isLocalPartitioned; }
 
 
   @Override

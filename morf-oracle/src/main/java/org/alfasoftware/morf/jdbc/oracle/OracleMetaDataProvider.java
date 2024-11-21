@@ -384,6 +384,16 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
               return unique;
             }
 
+            @Override
+            public boolean isGlobalPartitioned() {
+              return false;
+            }
+
+            @Override
+            public boolean isLocalPartitioned() {
+              return false;
+            }
+
 
             @Override
             public String getName() {
@@ -1070,6 +1080,11 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
     @Override
     public int getAutoNumberStart() {
       return autoIncrementFrom;
+    }
+
+    @Override
+    public boolean isPartitioned() {
+      return false;
     }
 
     @Override
