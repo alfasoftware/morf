@@ -508,7 +508,9 @@ class PostgreSQLDialect extends SqlDialect {
 
   @Override
   protected String getSqlFrom(BlobFieldLiteral field) {
-    return String.format("E'\\x%s'", field.getValue());
+    // this format doesn't work with blob fields: String.format("E'\\x%s'", field.getValue());
+    // see org.alfasoftware.morf.integration.TestSqlStatements#testBlobFields
+    return String.format("'%s'", field.getValue());
   }
 
   @Override

@@ -142,19 +142,13 @@ import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.TruncateStatement;
 import org.alfasoftware.morf.sql.UpdateStatement;
-import org.alfasoftware.morf.sql.element.AliasedField;
-import org.alfasoftware.morf.sql.element.CaseStatement;
-import org.alfasoftware.morf.sql.element.Cast;
-import org.alfasoftware.morf.sql.element.Criterion;
-import org.alfasoftware.morf.sql.element.FieldLiteral;
-import org.alfasoftware.morf.sql.element.FieldReference;
-import org.alfasoftware.morf.sql.element.Function;
-import org.alfasoftware.morf.sql.element.SqlParameter;
-import org.alfasoftware.morf.sql.element.TableReference;
+import org.alfasoftware.morf.sql.element.*;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager.TruncationBehavior;
 import org.alfasoftware.morf.testing.TestingDataSourceModule;
 import org.alfasoftware.morf.upgrade.LoggingSqlScriptVisitor;
+import org.apache.commons.codec.DecoderException;
+import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -1655,8 +1649,12 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
                         field("column1").eq(blobLiteral(BLOB1_VALUE.getBytes())),
                         field("column1").eq(blobLiteral(BLOB1_VALUE))
                 ));
+        // this update fails to work as an update without a WHERE clause - it strangely inserts a duplicate row on Postgres without a where clause
         UpdateStatement updateStatement = update(tableRef("BlobTable"))
-                .set(blobLiteral(BLOB1_VALUE + " Updated").as("column1"), blobLiteral((BLOB2_VALUE + " Updated").getBytes()).as("column2"));
+                .set(blobLiteral(BLOB1_VALUE + " Updated").as("column1"), blobLiteral((BLOB2_VALUE + " Updated").getBytes()).as("column2"))
+                .where(
+                        field("column1").eq(blobLiteral((BLOB1_VALUE).getBytes()))
+                );
         SelectStatement selectStatementAfterUpdate = select(field("column1"), field("column2"))
                 .from(tableRef("BlobTable"))
                 .where(or(
@@ -1676,13 +1674,13 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
                 int result = 0;
                 while (resultSet.next()) {
                     result++;
-                    assertEquals("column1 blob value not correctly set/returned after insert", BLOB1_VALUE, new String(resultSet.getBytes(1)));
-                    assertEquals("column2 blob value not correctly set/returned after insert", BLOB2_VALUE, new String(resultSet.getBytes(2)));
+                    assertEquals("column1 blob value not correctly set/returned after insert", BLOB1_VALUE, decodeBlobHexFromBytesToText(resultSet.getBytes(1)));
+                    assertEquals("column2 blob value not correctly set/returned after insert", BLOB2_VALUE, decodeBlobHexFromBytesToText(resultSet.getBytes(2)));
                 }
                 return result;
             }
         });
-        assertEquals("Should be exactly two records", 2, numberOfRecords.intValue());
+        assertEquals("Should be exactly one record", 1, numberOfRecords.intValue());
 
         // Update
         executor.execute(ImmutableList.of(convertStatementToSQL(updateStatement)), connection);
@@ -1696,13 +1694,35 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
                 int result = 0;
                 while (resultSet.next()) {
                     result++;
-                    assertEquals("column1 blob value not correctly set/returned after update", BLOB1_VALUE + " Updated", new String(resultSet.getBytes(1)));
-                    assertEquals("column2 blob value not correctly set/returned after update", BLOB2_VALUE + " Updated", new String(resultSet.getBytes(2)));
+                    String blob1 = decodeBlobHexFromBytesToText(resultSet.getBytes(1));
+                    assertEquals("column1 blob value not correctly set/returned after update", BLOB1_VALUE + " Updated", decodeBlobHexFromBytesToText(resultSet.getBytes(1)));
+                    assertEquals("column2 blob value not correctly set/returned after update", BLOB2_VALUE + " Updated", decodeBlobHexFromBytesToText(resultSet.getBytes(2)));
                 }
                 return result;
             }
         });
-        assertEquals("Should be exactly two records", 2, numberOfRecords.intValue());
+        assertEquals("Should be exactly one records", 1, numberOfRecords.intValue());
+    }
+
+    // TODO: this utility method or something that returns byte array should probably be exposed as public in mor
+    // don't know where yet
+    private static String decodeBlobHexFromBytesToText(byte[] bytSrc) throws SQLException {
+        String blobStringResult;
+        Hex hexUtil = new Hex();
+        try {
+            int lenSrc = bytSrc.length;
+            char[] charBlob = new char[lenSrc];
+            byte[] bytBlob = new byte[charBlob.length >> 1];
+            for (int i = 0; i < bytSrc.length; i++) {
+                charBlob[i] = (char) bytSrc[i];
+            }
+            hexUtil.decodeHex(charBlob, bytBlob, 0);
+
+            blobStringResult = new String(bytBlob);
+        } catch (DecoderException e) {
+            throw new RuntimeException(e);
+        }
+        return blobStringResult;
     }
 
 

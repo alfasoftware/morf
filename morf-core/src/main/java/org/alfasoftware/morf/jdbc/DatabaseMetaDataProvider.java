@@ -28,10 +28,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -116,7 +118,7 @@ public abstract class DatabaseMetaDataProvider implements Schema {
   private final LoadingCache<AName, Sequence> sequenceCache = CacheBuilder.newBuilder().build(CacheLoader.from(this::loadSequence));
 
   private final Supplier<Map<String, String>> databaseInformation = Suppliers.memoize(this::loadDatabaseInformation);
-
+  protected Supplier<Set<String>> ignoredTables = Suppliers.memoize(this::getIgnoredTables);
 
   /**
    * @param connection The database connection from which meta data should be provided.
@@ -149,6 +151,7 @@ public abstract class DatabaseMetaDataProvider implements Schema {
     }
   }
 
+  protected Set<String> getIgnoredTables() { return new HashSet<>(); }
 
   /**
    * @see org.alfasoftware.morf.metadata.Schema#isEmptyDatabase()

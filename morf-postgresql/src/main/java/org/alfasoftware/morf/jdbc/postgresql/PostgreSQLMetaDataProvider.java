@@ -3,13 +3,13 @@ package org.alfasoftware.morf.jdbc.postgresql;
 import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.getAutoIncrementStartValue;
 import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.getDataTypeFromColumnComment;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Types;
-import java.util.Map;
-import java.util.Optional;
+import java.io.InputStream;
+import java.io.Reader;
+import java.math.BigDecimal;
+import java.net.URL;
+import java.sql.*;
+import java.sql.Date;
+import java.util.*;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -43,6 +43,26 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
     super(connection, schemaName);
   }
 
+
+  @Override
+  protected Set<String> getIgnoredTables() {
+    Set<String> ignoredTables = new HashSet<>();
+    try(Statement ignoredTablesStmt = connection.createStatement()) {
+      try (ResultSet ignoredTablesRs = ignoredTablesStmt.executeQuery("select relname from pg_class where relispartition and relkind = 'r'")) {
+        while (ignoredTablesRs.next()) {
+          ignoredTables.add(ignoredTablesRs.getString(1).toLowerCase(Locale.ROOT));
+        }
+      }
+    } catch (SQLException e) {
+        // ignore exception, if it fails then incompatible Postgres version
+    }
+    return ignoredTables;
+  }
+
+  @Override
+  protected boolean isIgnoredTable(@SuppressWarnings("unused") RealName tableName) {
+    return ignoredTables.get().contains(tableName.getDbName().toLowerCase(Locale.ROOT));
+  }
 
   @Override
   protected boolean isPrimaryKeyIndex(RealName indexName) {
