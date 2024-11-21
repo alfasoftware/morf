@@ -144,6 +144,7 @@ public abstract class DatabaseMetaDataProvider implements Schema {
     }
   }
 
+  // new overridable method to add support for ignoring partition tables in Postgres
   protected Set<String> getIgnoredTables() { return new HashSet<>(); }
 
   /**
@@ -584,7 +585,6 @@ public abstract class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Sets column default value.
-   *
    * Note: Uses an empty string for any column other than version.
    * Database-schema level default values are not supported by ALFA's domain model
    * hence we don't want to include a default value in the definition of tables.
@@ -703,8 +703,6 @@ public abstract class DatabaseMetaDataProvider implements Schema {
       public PartitioningRule partitioningRule() {
         return null;
       }
-
-      ;
     };
   }
 
@@ -1035,16 +1033,13 @@ public abstract class DatabaseMetaDataProvider implements Schema {
       return sequenceNameMappings.build();
     }
 
-    runSQL(sequenceSql, schemaName, new ResultSetHandler() {
-      @Override
-      public void handle(ResultSet resultSet) throws SQLException {
-        while (resultSet.next()) {
-          RealName realName = readSequenceName(resultSet);
-          if (isSystemSequence(realName)) {
-            continue;
-          }
-          sequenceNameMappings.put(realName, realName);
+    runSQL(sequenceSql, schemaName, resultSet -> {
+      while (resultSet.next()) {
+        RealName realName = readSequenceName(resultSet);
+        if (isSystemSequence(realName)) {
+          continue;
         }
+        sequenceNameMappings.put(realName, realName);
       }
     });
 
@@ -1110,15 +1105,14 @@ public abstract class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Build the SQL to return sequence information from the metadata.
-   * @param schemaName
-   * @return
+   * @param schemaName the schema name
+   * @return the sql for the sequence
    */
   protected abstract String buildSequenceSql(String schemaName);
 
 
   /**
    * Run some SQL, and tidy up afterwards.
-   *
    * Note this assumes a predicate on the schema name will be present with a single parameter in position "1".
    *
    * @param sql The SQL to run.
@@ -1126,26 +1120,19 @@ public abstract class DatabaseMetaDataProvider implements Schema {
    */
   protected void runSQL(String sql, String schemaName, ResultSetHandler handler) {
     if (log.isTraceEnabled()) log.trace("runSQL: " + sql);
-    try {
-      PreparedStatement statement = connection.prepareStatement(sql);
-      try {
+    try (PreparedStatement statement = connection.prepareStatement(sql)) {
 
-        // pass through the schema name
-        if (schemaName != null && !schemaName.isBlank()) {
-          statement.setString(1, schemaName);
-        }
+      // pass through the schema name
+      if (schemaName != null && !schemaName.isBlank()) {
+        statement.setString(1, schemaName);
+      }
 
-        ResultSet resultSet = statement.executeQuery();
-        try {
-          handler.handle(resultSet);
-        } finally {
-          resultSet.close();
-        }
-      } finally {
-        statement.close();
+      try (ResultSet resultSet = statement.executeQuery()) {
+        handler.handle(resultSet);
       }
     } catch (SQLException sqle) {
       throw new RuntimeSqlException("Error running SQL: " + sql, sqle);
+
     }
   }
 
