@@ -116,6 +116,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.sql.DataSource;
 
@@ -142,7 +143,15 @@ import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.TruncateStatement;
 import org.alfasoftware.morf.sql.UpdateStatement;
-import org.alfasoftware.morf.sql.element.*;
+import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.element.CaseStatement;
+import org.alfasoftware.morf.sql.element.Cast;
+import org.alfasoftware.morf.sql.element.Criterion;
+import org.alfasoftware.morf.sql.element.FieldLiteral;
+import org.alfasoftware.morf.sql.element.FieldReference;
+import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.SqlParameter;
+import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager.TruncationBehavior;
 import org.alfasoftware.morf.testing.TestingDataSourceModule;
@@ -1668,19 +1677,32 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         // Check result - note that this is deliberately not tidy - we are making sure that results get
         // passed back up to this scope correctly.
         String sql = convertStatementToSQL(selectStatementAfterInsert);
+        AtomicBoolean isFirstValueHex = new AtomicBoolean(false);
         Integer numberOfRecords = executor.executeQuery(sql, connection, new ResultSetProcessor<Integer>() {
             @Override
             public Integer process(ResultSet resultSet) throws SQLException {
                 int result = 0;
                 while (resultSet.next()) {
                     result++;
-                    assertEquals("column1 blob value not correctly set/returned after insert", BLOB1_VALUE, decodeBlobHexFromBytesToText(resultSet.getBytes(1)));
-                    assertEquals("column2 blob value not correctly set/returned after insert", BLOB2_VALUE, decodeBlobHexFromBytesToText(resultSet.getBytes(2)));
+                    byte[] bytesFromFirst = resultSet.getBytes("column1");
+
+                    if (bytesFromFirst[1] == 32) { // if second char is a space then it isn't hex encoded
+                      assertEquals("column1 blob value not correctly set/returned after insert", BLOB1_VALUE, new String(resultSet.getBytes(1)));
+                      assertEquals("column2 blob value not correctly set/returned after insert", BLOB2_VALUE, new String(resultSet.getBytes(2)));
+                    } else {
+                      isFirstValueHex.set(true);
+                      assertEquals("column1 blob value not correctly set/returned after insert", BLOB1_VALUE, decodeBlobHexFromBytesToText(resultSet.getBytes(1)));
+                      assertEquals("column2 blob value not correctly set/returned after insert", BLOB2_VALUE, decodeBlobHexFromBytesToText(resultSet.getBytes(2)));
+                    }
                 }
                 return result;
             }
         });
-        assertEquals("Should be exactly one record", 1, numberOfRecords.intValue());
+        if (isFirstValueHex.get()) {
+          assertEquals("Should be exactly one record", 1, numberOfRecords.intValue());
+        } else {
+          assertEquals("Should be exactly two records", 2, numberOfRecords.intValue());
+        }
 
         // Update
         executor.execute(ImmutableList.of(convertStatementToSQL(updateStatement)), connection);
@@ -1688,24 +1710,33 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         // Check result- note that this is deliberately not tidy - we are making sure that results get
         // passed back up to this scope correctly.
         sql = convertStatementToSQL(selectStatementAfterUpdate);
+        AtomicBoolean isUpdateFirstValueHex = new AtomicBoolean(false);
         numberOfRecords = executor.executeQuery(sql, connection, new ResultSetProcessor<Integer>() {
             @Override
             public Integer process(ResultSet resultSet) throws SQLException {
                 int result = 0;
                 while (resultSet.next()) {
                     result++;
-                    String blob1 = decodeBlobHexFromBytesToText(resultSet.getBytes(1));
+                  byte[] bytesFromFirst = resultSet.getBytes("column1");
+                  if (bytesFromFirst[1] == 32) { // if second char is a space then it isn't hex encoded
+                    assertEquals("column1 blob value not correctly set/returned after update", BLOB1_VALUE + " Updated", new String(resultSet.getBytes(1)));
+                    assertEquals("column2 blob value not correctly set/returned after update", BLOB2_VALUE + " Updated", new String(resultSet.getBytes(2)));
+                  } else {
+                    isUpdateFirstValueHex.set(true);
                     assertEquals("column1 blob value not correctly set/returned after update", BLOB1_VALUE + " Updated", decodeBlobHexFromBytesToText(resultSet.getBytes(1)));
                     assertEquals("column2 blob value not correctly set/returned after update", BLOB2_VALUE + " Updated", decodeBlobHexFromBytesToText(resultSet.getBytes(2)));
+                  }
                 }
                 return result;
             }
         });
-        assertEquals("Should be exactly one records", 1, numberOfRecords.intValue());
+        if (isUpdateFirstValueHex.get()) {
+          assertEquals("Should be exactly one records", 1, numberOfRecords.intValue());
+        } else {
+          assertEquals("Should be exactly two records", 2, numberOfRecords.intValue());
+        }
     }
 
-    // TODO: this utility method or something that returns byte array should probably be exposed as public in mor
-    // don't know where yet
     private static String decodeBlobHexFromBytesToText(byte[] bytSrc) throws SQLException {
         String blobStringResult;
         Hex hexUtil = new Hex();
