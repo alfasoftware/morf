@@ -3,13 +3,16 @@ package org.alfasoftware.morf.jdbc.postgresql;
 import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.getAutoIncrementStartValue;
 import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.getDataTypeFromColumnComment;
 
-import java.io.InputStream;
-import java.io.Reader;
-import java.math.BigDecimal;
-import java.net.URL;
-import java.sql.*;
-import java.sql.Date;
-import java.util.*;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Types;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -48,6 +51,8 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
   protected Set<String> getIgnoredTables() {
     Set<String> ignoredTables = new HashSet<>();
     try(Statement ignoredTablesStmt = connection.createStatement()) {
+      // distinguish partitioned tables from regular ones: relkind = 'p' (partition) or 'r' (regular) also can use boolean col relispartition
+      // a partition table attached has (r, true)
       try (ResultSet ignoredTablesRs = ignoredTablesStmt.executeQuery("select relname from pg_class where relispartition and relkind = 'r'")) {
         while (ignoredTablesRs.next()) {
           ignoredTables.add(ignoredTablesRs.getString(1).toLowerCase(Locale.ROOT));
@@ -58,6 +63,25 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
     }
     return ignoredTables;
   }
+
+  @Override
+  protected Set<String> getPartitionedTables() {
+    Set<String> partitionedTables = new HashSet<>();
+    try(Statement partitionedTablesStmt = connection.createStatement()) {
+      // distinguish partitioned tables from regular ones: relkind = 'p' (partition) or 'r' (regular) also can use boolean col relispartition
+      // a partition table attached has (r, true)
+      // a partition table has (p, false)
+      try (ResultSet ignoredTablesRs = partitionedTablesStmt.executeQuery("select relname from pg_class where not relispartition and relkind = 'p'")) {
+        while (ignoredTablesRs.next()) {
+          partitionedTables.add(ignoredTablesRs.getString(1).toLowerCase(Locale.ROOT));
+        }
+      }
+    } catch (SQLException e) {
+      // ignore exception, if it fails then incompatible Postgres version
+    }
+    return partitionedTables;
+  }
+
 
   @Override
   protected boolean isIgnoredTable(@SuppressWarnings("unused") RealName tableName) {
