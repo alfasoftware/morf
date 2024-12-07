@@ -16,7 +16,12 @@
 package org.alfasoftware.morf.jdbc;
 
 import static java.util.stream.Collectors.toList;
-import static org.alfasoftware.morf.metadata.SchemaUtils.*;
+import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
+import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
+import static org.alfasoftware.morf.metadata.SchemaUtils.sequence;
+import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.alfasoftware.morf.metadata.SchemaUtils.view;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
@@ -29,6 +34,7 @@ import static org.hamcrest.Matchers.equalToIgnoringCase;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -37,10 +43,16 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.function.Function;
 
-import net.jcip.annotations.NotThreadSafe;
-
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
-import org.alfasoftware.morf.metadata.*;
+import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaResource;
+import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Sequence;
+import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager.TruncationBehavior;
@@ -56,7 +68,10 @@ import org.junit.Test;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
+import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.google.inject.Inject;
+
+import net.jcip.annotations.NotThreadSafe;
 
 /**
  * Tests for {@link DatabaseMetaDataProvider}.
@@ -117,7 +132,12 @@ public class TestDatabaseMetaDataProvider {
           column("bigIntegerCol", DataType.BIG_INTEGER).defaultValue("8"),
           column("booleanCol", DataType.BOOLEAN).defaultValue("1"),
           column("integerTenCol", DataType.INTEGER).defaultValue("17"),
-          column("dateCol", DataType.DATE).defaultValue("2020-01-01"))
+          column("dateCol", DataType.DATE).defaultValue("2020-01-01")),
+      table("WithPartition")
+        .columns(
+          SchemaUtils.idColumn(),
+          column("stringCol", DataType.STRING, 20)
+          )
     ),
     schema(
       view("ViewWithTypes", select(field("primaryStringCol"), field("id")).from("WithTypes").crossJoin(tableRef("WithDefaults"))),
@@ -296,6 +316,31 @@ public class TestDatabaseMetaDataProvider {
       ));
 
       assertThat(table.indexes(), empty());
+    }
+  }
+
+
+  @Test
+  public void testTableWithPartition() throws SQLException {
+    boolean isPostgres = databaseType.equals("PGSQL");
+    // RE-CREATE table with two partitions on table WithPartition
+    try (Connection connection = database.getDataSource().getConnection()) {
+      if (isPostgres) {
+        String schema = Strings.isNullOrEmpty(database.getSchemaName()) ? "" : database.getSchemaName() + ".";
+        connection.createStatement().executeUpdate("DROP TABLE " + schema + "WithPartition");
+        connection.createStatement().executeUpdate("CREATE TABLE " + schema + "WithPartition(id numeric(19) NOT NULL, stringCol VARCHAR(20)) PARTITION BY RANGE (id)");
+        connection.createStatement().executeUpdate("CREATE TABLE " + schema + "WithPartition_p0 PARTITION OF " + schema + "WithPartition FOR VALUES FROM (0) TO (10000)");
+        connection.createStatement().executeUpdate("CREATE TABLE " + schema + "WithPartition_p1 PARTITION OF " + schema + "WithPartition FOR VALUES FROM (10000) TO (99999)");
+      }
+    }
+
+    try(SchemaResource schemaResource = database.openSchemaResource()) {
+      assertTrue(schemaResource.tableExists("WithPartition"));
+
+      if (isPostgres) {
+        UncheckedExecutionException uncheckedExecutionException = assertThrows(UncheckedExecutionException.class, () -> schemaResource.getTable("WithPartition_p0"));
+        assertTrue("partition must not be found on getTable", uncheckedExecutionException.getMessage().contains("Table [WithPartition_p0/*] not found."));
+      }
     }
   }
 
