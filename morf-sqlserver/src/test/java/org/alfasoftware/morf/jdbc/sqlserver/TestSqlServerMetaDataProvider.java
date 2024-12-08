@@ -15,6 +15,20 @@
 
 package org.alfasoftware.morf.jdbc.sqlserver;
 
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.RETURNS_SMART_NULLS;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+import javax.sql.DataSource;
+
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Sequence;
@@ -23,15 +37,7 @@ import org.junit.Test;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-
-import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.when;
+import com.google.common.collect.Lists;
 
 
 /**
@@ -80,6 +86,8 @@ public class TestSqlServerMetaDataProvider {
     assertEquals("Sequence names", "[Sequence1]", sqlServerMetaDataProvider.sequenceNames().toString());
     Sequence sequence = sqlServerMetaDataProvider.sequences().iterator().next();
     assertEquals("Sequence name", "Sequence1", sequence.getName());
+    assertEquals("Partitioned table names", Lists.newArrayList(), sqlServerMetaDataProvider.partitionedTableNames());
+    assertEquals("Partition table names", Lists.newArrayList(), sqlServerMetaDataProvider.partitionTableNames());
 
     verify(statement).setString(1, "TestSchema");
   }

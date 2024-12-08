@@ -33,6 +33,7 @@ import org.alfasoftware.morf.sql.element.TableReference;
 import org.junit.Test;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 
 /**
  * Tests for {@link SchemaBean}.
@@ -70,6 +71,10 @@ public class TestSchemaBean {
     // Check this twice to ensure we are not reading the source schema again.
     assertNotNull("Columns first call", table.columns());
     assertNotNull("Columns second call", table.columns());
+
+    // check that partitioned tables and partition tables are empty
+    assertEquals("Partitioned table names", Lists.newArrayList(), schema.partitionedTableNames());
+    assertEquals("Partition table names", Lists.newArrayList(), schema.partitionTableNames());
   }
 
 

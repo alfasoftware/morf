@@ -53,6 +53,7 @@ import org.mockito.Mockito;
 
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 
 /**
  * Test cases to check XML can be parsed to a data set consumer.
@@ -213,6 +214,10 @@ public class TestXmlDataSetProducer {
 
     use(producer.records("eNTITYoNE"));
     assertFalse("Non existant table", producer.getSchema().tableNames().contains("NotExist"));
+
+    assertEquals("Partitioned table names", Lists.newArrayList(), producer.getSchema().partitionedTableNames());
+    assertEquals("Partition table names", Lists.newArrayList(), producer.getSchema().partitionTableNames());
+
     producer.close();
   }
 

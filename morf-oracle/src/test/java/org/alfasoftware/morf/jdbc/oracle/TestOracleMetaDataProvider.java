@@ -55,6 +55,7 @@ import org.mockito.stubbing.Answer;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 /**
@@ -289,6 +290,8 @@ public class TestOracleMetaDataProvider {
     final Schema oracleMetaDataProvider = oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
     assertEquals("Table names", "[AREALTABLE]", oracleMetaDataProvider.tableNames().toString());
     assertFalse("Table names", oracleMetaDataProvider.tableNames().toString().contains("DBMS"));
+    assertEquals("Partitioned table names", Lists.newArrayList(), oracleMetaDataProvider.partitionedTableNames());
+    assertEquals("Partition table names", Lists.newArrayList(), oracleMetaDataProvider.partitionTableNames());
   }
 
 
