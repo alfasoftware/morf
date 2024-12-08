@@ -150,6 +150,7 @@ import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager;
@@ -1834,6 +1835,54 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     // Insert
     executor.execute(convertStatementToSQL(insertStatement, schema, null), connection);
 
+    boolean isOracle = false;
+
+    try {
+      String databaseProductName = this.dataSource.getConnection().getMetaData().getDatabaseProductName();
+      isOracle = databaseProductName.contains("Oracle");
+    } catch (SQLException e) {
+      // ignore SQLException
+    }
+
+    if (isOracle) {
+      // for Oracle need to compare BLOB's with DBMS_LOB.INSTR
+      AliasedField compareFunctionBlob = PortableSqlFunction.builder()
+        .withFunctionForDatabaseType("ORACLE",
+          "DBMS_LOB.INSTR",
+          new FieldReference("column1"),
+          blobLiteral(BLOB3_VALUE),
+          new FieldLiteral("1"),
+          new FieldLiteral("1")
+        )
+        .build();
+
+      AliasedField compareFunctionUpdated = PortableSqlFunction.builder()
+        .withFunctionForDatabaseType("ORACLE",
+          "DBMS_LOB.INSTR",
+          new FieldReference("column1"),
+          blobLiteral(bytUpdated),
+          new FieldLiteral("1"),
+          new FieldLiteral("1")
+        )
+        .build();
+
+      selectStatementAfterInsert = select(field("column1"), field("column2"))
+        .from(tableRef("BlobTable"))
+        .where(
+          compareFunctionBlob.greaterThan(0)
+        );
+      updateStatement = update(tableRef("BlobTable"))
+        .set(blobLiteral(bytUpdated).as("column1"), blobLiteral(bytUpdated).as("column2"))
+        .where(
+          compareFunctionBlob.greaterThan(0)
+        );
+      selectStatementAfterUpdate = select(field("column1"), field("column2"))
+        .from(tableRef("BlobTable"))
+        .where(
+          compareFunctionUpdated.greaterThan(0)
+        );
+    }
+
     // Check result - note that this is deliberately not tidy - we are making sure that results get
     // passed back up to this scope correctly.
     String sql = convertStatementToSQL(selectStatementAfterInsert);
@@ -1847,12 +1896,12 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
           byte[] bytesFromFirst = resultSet.getBytes("column1");
 
           if (bytesFromFirst[3] == 0x03) { // if 4th char is 0x03 then it isn't hex encoded like in Postgres
-            assertTrue("column1 blob value not correctly set/returned after insert", Arrays.compare(BLOB3_VALUE, resultSet.getBytes(1)) == 0);
-            assertTrue("column2 blob value not correctly set/returned after insert", Arrays.compare(BLOB3_VALUE, resultSet.getBytes(2)) == 0);
+            assertEquals("column1 blob value not correctly set/returned after insert", 0, Arrays.compare(BLOB3_VALUE, resultSet.getBytes(1)));
+            assertEquals("column2 blob value not correctly set/returned after insert", 0, Arrays.compare(BLOB3_VALUE, resultSet.getBytes(2)));
           } else {
             isFirstValueHex.set(true);
-            assertTrue("column1 blob value not correctly set/returned after insert", Arrays.compare(BLOB3_VALUE, decodeBlobHexFromBytesToByteArray(resultSet.getBytes(1))) == 0);
-            assertTrue("column2 blob value not correctly set/returned after insert", Arrays.compare(BLOB3_VALUE, decodeBlobHexFromBytesToByteArray(resultSet.getBytes(2))) == 0);
+            assertEquals("column1 blob value not correctly set/returned after insert", 0, Arrays.compare(BLOB3_VALUE, decodeBlobHexFromBytesToByteArray(resultSet.getBytes(1))));
+            assertEquals("column2 blob value not correctly set/returned after insert", 0, Arrays.compare(BLOB3_VALUE, decodeBlobHexFromBytesToByteArray(resultSet.getBytes(2))));
           }
         }
         return result;
@@ -1860,7 +1909,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     });
 
     assertEquals("Should be exactly one record", 1, numberOfRecords.intValue());
-
 
     // Update
     executor.execute(ImmutableList.of(convertStatementToSQL(updateStatement)), connection);
@@ -1877,12 +1925,12 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
           result++;
           byte[] bytesFromFirst = resultSet.getBytes("column1");
           if (bytesFromFirst[3] == 0x03) { // if second char is a space then it isn't hex encoded
-            assertTrue("column1 blob value not correctly set/returned after update", Arrays.compare(bytUpdated, resultSet.getBytes(1)) == 0);
-            assertTrue("column2 blob value not correctly set/returned after update", Arrays.compare(bytUpdated, resultSet.getBytes(2)) == 0);
+            assertEquals("column1 blob value not correctly set/returned after update", 0, Arrays.compare(bytUpdated, resultSet.getBytes(1)));
+            assertEquals("column2 blob value not correctly set/returned after update", 0, Arrays.compare(bytUpdated, resultSet.getBytes(2)));
           } else {
             isUpdateFirstValueHex.set(true);
-            assertTrue("column1 blob value not correctly set/returned after update", Arrays.compare(bytUpdated, decodeBlobHexFromBytesToByteArray(resultSet.getBytes(1))) == 0);
-            assertTrue("column2 blob value not correctly set/returned after update", Arrays.compare(bytUpdated, decodeBlobHexFromBytesToByteArray(resultSet.getBytes(2))) == 0);
+            assertEquals("column1 blob value not correctly set/returned after update", 0, Arrays.compare(bytUpdated, decodeBlobHexFromBytesToByteArray(resultSet.getBytes(1))));
+            assertEquals("column2 blob value not correctly set/returned after update", 0, Arrays.compare(bytUpdated, decodeBlobHexFromBytesToByteArray(resultSet.getBytes(2))));
           }
         }
         return result;
