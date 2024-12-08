@@ -228,8 +228,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     (byte)0xFF
   };
 
-  //private static final byte[]
-
   @Rule public InjectMembersRule injectMembersRule = new InjectMembersRule(new TestingDataSourceModule());
 
   @Inject
