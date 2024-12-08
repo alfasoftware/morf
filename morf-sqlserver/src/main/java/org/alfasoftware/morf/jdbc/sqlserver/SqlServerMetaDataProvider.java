@@ -20,7 +20,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
@@ -151,5 +153,10 @@ class SqlServerMetaDataProvider extends DatabaseMetaDataProvider {
     }
 
     return sequenceSqlBuilder.toString();
+  }
+
+  @Override
+  public Collection<String> partitionTableNames() {
+    return List.of();
   }
 }

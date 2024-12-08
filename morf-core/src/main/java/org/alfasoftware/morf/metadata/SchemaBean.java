@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -192,6 +193,16 @@ class SchemaBean implements Schema {
       names.add(table.getName());
     }
     return names;
+  }
+
+  @Override
+  public Collection<String> partitionedTableNames() {
+    return List.of();
+  }
+
+  @Override
+  public Collection<String> partitionTableNames() {
+    return List.of();
   }
 
 

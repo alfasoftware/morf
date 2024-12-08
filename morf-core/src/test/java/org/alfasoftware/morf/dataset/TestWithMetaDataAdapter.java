@@ -23,9 +23,16 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
-import org.alfasoftware.morf.metadata.*;
+import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.DataSetUtils;
+import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.Sequence;
+import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.metadata.View;
 import org.junit.Test;
 
 /**
@@ -204,6 +211,16 @@ public class TestWithMetaDataAdapter {
       @Override
       public Collection<String> tableNames() {
         return Arrays.asList(MockProducer.this.getClass().getSimpleName());
+      }
+
+      @Override
+      public Collection<String> partitionedTableNames() {
+        return List.of();
+      }
+
+      @Override
+      public Collection<String> partitionTableNames() {
+        return List.of();
       }
 
       @Override

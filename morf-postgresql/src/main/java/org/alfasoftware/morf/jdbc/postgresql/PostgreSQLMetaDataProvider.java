@@ -8,6 +8,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
@@ -232,5 +233,10 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
     }
 
     return sequenceSqlBuilder.toString();
+  }
+
+  @Override
+  public Collection<String> partitionTableNames() {
+    return ignoredTables.get();
   }
 }

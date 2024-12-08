@@ -25,6 +25,7 @@ import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
+
 import com.google.common.collect.Maps;
 
 /**
@@ -153,6 +154,16 @@ public class MockDataSetProducer implements DataSetProducer, Schema {
   @Override
   public Collection<String> tableNames() {
     return tables.keySet();
+  }
+
+  @Override
+  public Collection<String> partitionedTableNames() {
+    return List.of();
+  }
+
+  @Override
+  public Collection<String> partitionTableNames() {
+    return List.of();
   }
 
   /**

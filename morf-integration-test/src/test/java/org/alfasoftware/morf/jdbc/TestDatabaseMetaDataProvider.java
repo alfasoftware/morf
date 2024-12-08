@@ -214,6 +214,7 @@ public class TestDatabaseMetaDataProvider {
         tableNameEqualTo("WithTypes"),
         tableNameEqualTo("WithDefaults"),
         tableNameEqualTo("WithLobs"),
+        tableNameEqualTo("WithPartition"),
         equalToIgnoringCase("WithTimestamp") // can read table names even if they contain unsupported columns
       )));
 
@@ -222,6 +223,7 @@ public class TestDatabaseMetaDataProvider {
         tableNameMatcher("WithTypes"),
         tableNameMatcher("WithDefaults"),
         tableNameMatcher("WithLobs"),
+        tableNameMatcher("WithPartition"),
         propertyMatcher(Table::getName, "name", equalToIgnoringCase("WithTimestamp")) // can read table names even if they contain unsupported columns
       )));
     }

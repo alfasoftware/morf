@@ -21,6 +21,8 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.Collection;
+import java.util.List;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.metadata.DataType;
@@ -83,5 +85,10 @@ class MySqlMetaDataProvider extends DatabaseMetaDataProvider {
   @Override
   protected String buildSequenceSql(String schemaName) {
     return null;
+  }
+
+  @Override
+  public Collection<String> partitionTableNames() {
+    return List.of();
   }
 }

@@ -28,10 +28,10 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
-import org.junit.Test;
-
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.junit.Test;
+
 import com.google.common.collect.ImmutableList;
 
 /**
@@ -91,6 +91,8 @@ public class TestSchemaBean {
     private boolean tableNamesCalled;
     private boolean viewNamesCalled;
     private boolean sequenceNamesCalled;
+    private boolean partitionedTableNamesCalled;
+    private boolean partitionTableNamesCalled;
 
     /**
      * Table for our mock schema.
@@ -244,6 +246,18 @@ public class TestSchemaBean {
 
       tableNamesCalled = true;
       return Arrays.asList(table.getName());
+    }
+
+    @Override
+    public Collection<String> partitionedTableNames() {
+      this.partitionedTableNamesCalled = true;
+      return List.of("PartitionedTable1");
+    }
+
+    @Override
+    public Collection<String> partitionTableNames() {
+      partitionTableNamesCalled = true;
+      return List.of("Partition_p0");
     }
 
 

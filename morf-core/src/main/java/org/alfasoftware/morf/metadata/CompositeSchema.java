@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.metadata;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 
 import com.google.common.collect.Sets;
@@ -97,6 +98,16 @@ class CompositeSchema implements Schema {
     }
 
     return result;
+  }
+
+  @Override
+  public Collection<String> partitionedTableNames() {
+    return List.of();
+  }
+
+  @Override
+  public Collection<String> partitionTableNames() {
+    return List.of();
   }
 
 
