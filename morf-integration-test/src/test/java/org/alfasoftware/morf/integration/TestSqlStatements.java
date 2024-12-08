@@ -1903,8 +1903,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     assertEquals("Should be exactly one records", 1, numberOfRecords.intValue());
   }
 
-  private static byte[] decodeBlobHexFromBytesToByteArray(byte[] bytSrc) throws SQLException {
-    String blobStringResult;
+  private static byte[] decodeBlobHexFromBytesToByteArray(byte[] bytSrc) {
     Hex hexUtil = new Hex();
     int lenSrc = bytSrc.length;
     char[] charBlob = new char[lenSrc];
@@ -1920,7 +1919,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     return bytBlob;
   }
 
-  private static String decodeBlobHexFromBytesToText(byte[] bytSrc) throws SQLException {
+  private static String decodeBlobHexFromBytesToText(byte[] bytSrc) {
       String blobStringResult;
       Hex hexUtil = new Hex();
       try {

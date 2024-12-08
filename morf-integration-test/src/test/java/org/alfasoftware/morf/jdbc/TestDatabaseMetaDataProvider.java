@@ -328,11 +328,11 @@ public class TestDatabaseMetaDataProvider {
     // RE-CREATE table with two partitions on table WithPartition
     try (Connection connection = database.getDataSource().getConnection()) {
       if (isPostgres) {
-        String schema = Strings.isNullOrEmpty(database.getSchemaName()) ? "" : database.getSchemaName() + ".";
-        connection.createStatement().executeUpdate("DROP TABLE " + schema + "WithPartition");
-        connection.createStatement().executeUpdate("CREATE TABLE " + schema + "WithPartition(id numeric(19) NOT NULL, stringCol VARCHAR(20)) PARTITION BY RANGE (id)");
-        connection.createStatement().executeUpdate("CREATE TABLE " + schema + "WithPartition_p0 PARTITION OF " + schema + "WithPartition FOR VALUES FROM (0) TO (10000)");
-        connection.createStatement().executeUpdate("CREATE TABLE " + schema + "WithPartition_p1 PARTITION OF " + schema + "WithPartition FOR VALUES FROM (10000) TO (99999)");
+        String tableSchema = Strings.isNullOrEmpty(database.getSchemaName()) ? "" : database.getSchemaName() + ".";
+        connection.createStatement().executeUpdate("DROP TABLE " + tableSchema + "WithPartition");
+        connection.createStatement().executeUpdate("CREATE TABLE " + tableSchema + "WithPartition(id numeric(19) NOT NULL, stringCol VARCHAR(20)) PARTITION BY RANGE (id)");
+        connection.createStatement().executeUpdate("CREATE TABLE " + tableSchema + "WithPartition_p0 PARTITION OF " + tableSchema + "WithPartition FOR VALUES FROM (0) TO (10000)");
+        connection.createStatement().executeUpdate("CREATE TABLE " + tableSchema + "WithPartition_p1 PARTITION OF " + tableSchema + "WithPartition FOR VALUES FROM (10000) TO (99999)");
       }
     }
 

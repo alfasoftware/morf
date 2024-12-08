@@ -96,8 +96,6 @@ public class TestSchemaBean {
     private boolean tableNamesCalled;
     private boolean viewNamesCalled;
     private boolean sequenceNamesCalled;
-    private boolean partitionedTableNamesCalled;
-    private boolean partitionTableNamesCalled;
 
     /**
      * Table for our mock schema.
@@ -255,13 +253,11 @@ public class TestSchemaBean {
 
     @Override
     public Collection<String> partitionedTableNames() {
-      this.partitionedTableNamesCalled = true;
       return List.of("PartitionedTable1");
     }
 
     @Override
     public Collection<String> partitionTableNames() {
-      partitionTableNamesCalled = true;
       return List.of("Partition_p0");
     }
 
