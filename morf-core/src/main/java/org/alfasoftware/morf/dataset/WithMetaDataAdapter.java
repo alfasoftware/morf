@@ -100,6 +100,16 @@ public class WithMetaDataAdapter extends DataSetProducerAdapter {
         }
 
         @Override
+        public Collection<String> partitionedTableNames() {
+          return sourceSchema.partitionedTableNames();
+        }
+
+        @Override
+        public Collection<String> partitionTableNames() {
+          return sourceSchema.partitionTableNames();
+        }
+
+        @Override
         public Collection<Table> tables() {
           Set<Table> tables = new HashSet<>();
           for (String tableName : tableNames()) {
