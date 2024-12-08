@@ -1757,40 +1757,6 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     }
 
 
-  @Test
-  public void testGenBlob3() { //  throws SQLException
-    byte[] byteArray = new byte[256];
-    boolean[] boolArray = new boolean[256];
-    int distinctToGenerate = 256;
-    int trials = 1000;
-    int p = 0;
-
-
-    int l = 16;
-    for (int j = 0; j < 256; ++j) {
-
-      //byteArray[p++] =;
-      byte byt = (byte) j;
-      /*int iValue = byt < 0 ? 0x100 + byt : byt;
-      if (!boolArray[iValue]) {
-        boolArray[iValue] = true;
-      } else {
-        // dup value
-        System.out.println(String.format("DUPLICATE 0x%02X, ", byt));
-        break;
-      } */
-      byteArray[p++] = byt;
-
-      if (l == 0) {
-        System.out.println(String.format("(byte)0x%02X, ", byteArray[j]));
-        l = 16;
-      } else {
-        System.out.print(String.format("(byte)0x%02X, ", byteArray[j]));
-        l--;
-      }
-    }
-  }
-
   /**
    * Test the behaviour of SELECTs, INSERTs and UPDATEs of blob fields.  In the process
    * we test a lot of {@link SqlScriptExecutor}'s statement handling capabilities
