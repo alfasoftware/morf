@@ -50,7 +50,7 @@ public class ConcurrentSchemaModificationAdapter extends DataSetAdapter {
 
   //shared between instances
   private static SchemaResourceState schemaState;
-  //lock to guard shared resource
+  //the lock to guard shared resources
   private static final Lock schemaLock = new ReentrantLock();
 
   private static class SchemaResourceState {
@@ -155,16 +155,19 @@ public class ConcurrentSchemaModificationAdapter extends DataSetAdapter {
         schemaLock.unlock();
       }
     }
-    try {
-      if (!connection.getAutoCommit()) {
-        connection.commit();
-      }
-    } catch (SQLException e) {
-      throw new RuntimeSqlException("Error committing", e);
-    } finally {
+    else if (closeState == CloseState.COMPLETE) {
       try {
-        connection.close();
-      } catch (Exception ignored) {}
+        if (!connection.getAutoCommit()) {
+          connection.commit();
+        }
+      } catch (SQLException e) {
+        throw new RuntimeSqlException("Error committing", e);
+      } finally {
+        try {
+          connection.close();
+        } catch (Exception ignored) {
+        }
+      }
     }
 
     super.close(closeState);
@@ -224,11 +227,15 @@ public class ConcurrentSchemaModificationAdapter extends DataSetAdapter {
   private void dropRemainingTables() {
     SqlScriptExecutor sqlExecutor = databaseDataSetConsumer.getSqlExecutor();
 
-    for (String tableName : schemaState.remainingTables) {
-      log.debug("Dropping table [" + tableName + "] which was not in the transmitted data set");
-      dropExistingViewsIfNecessary();
-      Table table = schemaState.schemaResource.getTable(tableName);
-      sqlExecutor.execute(sqlDialect.dropStatements(table), connection);
+    try (Connection conn = databaseDataSetConsumer.getDataSource().getConnection()) {
+      for (String tableName : schemaState.remainingTables) {
+        log.debug("Dropping table [" + tableName + "] which was not in the transmitted data set");
+        dropExistingViewsIfNecessary();
+        Table table = schemaState.schemaResource.getTable(tableName);
+        sqlExecutor.execute(sqlDialect.dropStatements(table), conn);
+      }
+    } catch (SQLException e) {
+      throw new RuntimeSqlException("Could not open database connection", e);
     }
   }
 

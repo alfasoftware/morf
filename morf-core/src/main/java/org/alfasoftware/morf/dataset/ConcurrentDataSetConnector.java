@@ -14,9 +14,12 @@
  */
 package org.alfasoftware.morf.dataset;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 
@@ -41,14 +44,13 @@ public class ConcurrentDataSetConnector {
   private final int threadCount;
 
   /**
-   * The supplier for producers from which all data will be retrieved and pushed to the {@link #consumerSupplier}.
+   * The pool of  producers from which all data will be retrieved and pushed to the consumers.
    */
-  protected final Supplier<DataSetProducer> producerSupplier;
-
+  protected Pool<DataSetProducer> producerPool;
   /**
-   * The supplier for  consumers for all data retrieved from the {@link #producerSupplier}.
+   * The pool of consumers for all data retrieved from producers.
    */
-  protected final Supplier<DataSetConsumer> consumerSupplier;
+  protected Pool<DataSetConsumer> consumerPool;
 
 
   /**
@@ -58,10 +60,7 @@ public class ConcurrentDataSetConnector {
    * @param consumerSupplier The supplier for the target to which the data should be sent.
    */
   public ConcurrentDataSetConnector(Supplier<DataSetProducer> producerSupplier, Supplier<DataSetConsumer> consumerSupplier) {
-    super();
-    this.producerSupplier = producerSupplier;
-    this.consumerSupplier = consumerSupplier;
-    this.threadCount = calculateDefaultThreadCount();
+    this(producerSupplier, consumerSupplier, calculateDefaultThreadCount());
   }
 
 
@@ -74,8 +73,14 @@ public class ConcurrentDataSetConnector {
    */
   public ConcurrentDataSetConnector(Supplier<DataSetProducer> producerSupplier, Supplier<DataSetConsumer> consumerSupplier, int threadCount) {
     super();
-    this.producerSupplier = producerSupplier;
-    this.consumerSupplier = consumerSupplier;
+    this.consumerPool = new Pool<>(() ->  {
+      DataSetConsumer consumer = consumerSupplier.get();
+      consumer.open();
+      return consumer;
+    },
+    c -> c.close(DataSetConsumer.CloseState.COMPLETE));
+
+    this.producerPool = new Pool<>(producerSupplier, DataSetProducer::close);
     this.threadCount = threadCount;
   }
 
@@ -83,7 +88,7 @@ public class ConcurrentDataSetConnector {
   /**
    * Calculates the number of threads to use
    */
-  private int calculateDefaultThreadCount() {
+  private static int calculateDefaultThreadCount() {
     int processorCount = Runtime.getRuntime().availableProcessors();
 
     switch(processorCount) {
@@ -105,23 +110,15 @@ public class ConcurrentDataSetConnector {
     DataSetConsumer.CloseState closeState = DataSetConsumer.CloseState.INCOMPLETE;
     ExecutorService executor = Executors.newFixedThreadPool(threadCount);
 
-    DataSetProducer producerMetadata =  producerSupplier.get();
-    DataSetConsumer consumerMetadata = consumerSupplier.get();
+    DataSetProducer producerMetadata =  producerPool.borrow();
+    DataSetConsumer consumerMetadata = consumerPool.borrow();
     try {
       for (String tableName : producerMetadata.getSchema().tableNames()) {
-        DataSetConsumer dataSetConsumer = consumerSupplier.get();
-        DataSetProducer dataSetProducer = producerSupplier.get();
-        try {
-          dataSetProducer.open();
-          dataSetConsumer.open();
-          executor.execute(new DataSetConnectorRunnable(dataSetProducer, dataSetConsumer, tableName));
+         try {
+          executor.execute(new DataSetConnectorRunnable(producerPool, consumerPool, tableName));
         } catch (Exception e) {
           executor.shutdownNow();
           throw new RuntimeException("Error connecting table [" + tableName + "]", e);
-        }
-        finally {
-          if(dataSetConsumer != null) dataSetConsumer.close(DataSetConsumer.CloseState.COMPLETE);
-          //TODO - do not close producer as it is reused ??
         }
       }
       executor.shutdown();
@@ -129,15 +126,17 @@ public class ConcurrentDataSetConnector {
 
       // once we've read all the tables without exception, we're complete and ready to release all resources
       closeState = DataSetConsumer.CloseState.FINALLY_COMPLETE;
-
     }
     catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     }
     finally {
       executor.shutdownNow();
+      consumerPool.shutdown();
+      producerPool.shutdown();
       if(consumerMetadata != null) consumerMetadata.close(closeState);
-      if(producerMetadata != null) producerMetadata.close();
+//      if(producerMetadata != null) producerMetadata.close();
+
     }
   }
 
@@ -150,12 +149,12 @@ public class ConcurrentDataSetConnector {
     /**
      * The source of the data to transmit.
      */
-    private final DataSetProducer producer;
+    private final Pool<DataSetProducer> producerPool;
 
     /**
      * The target to which the data should be sent.
      */
-    private final DataSetConsumer consumer;
+    private final Pool<DataSetConsumer> consumerPool;
 
     /**
      * Name of the table to transmit.
@@ -165,13 +164,13 @@ public class ConcurrentDataSetConnector {
     /**
      * Create new instance of this class.
      *
-     * @param producer The data to transmit.
-     * @param consumer The target to which the data should be sent.
+     * @param producerPool The pool of producers for data to transmit.
+     * @param consumerPool The pool of consumers to which the data should be sent.
      * @param tableName The name of the table to transmit.
      */
-    private DataSetConnectorRunnable(DataSetProducer producer, DataSetConsumer consumer, String tableName) {
-      this.producer = producer;
-      this.consumer = consumer;
+    private DataSetConnectorRunnable(Pool<DataSetProducer> producerPool, Pool<DataSetConsumer> consumerPool, String tableName) {
+      this.producerPool = producerPool;
+      this.consumerPool = consumerPool;
       this.tableName = tableName;
     }
 
@@ -181,7 +180,41 @@ public class ConcurrentDataSetConnector {
      */
     @Override
     public void run() {
+      DataSetProducer producer = producerPool.borrow();
+      DataSetConsumer consumer = consumerPool.borrow();
       consumer.table(producer.getSchema().getTable(tableName), producer.records(tableName));
+      consumerPool.release(consumer);
+      //dataSetProducer.close ????? we want to reuse producer
+    }
+  }
+
+  private static class Pool<T> {
+
+    private final Supplier<T> supplier;
+
+    private final Consumer<T> destroyer;
+
+    private final Deque<T> queue = new ArrayDeque<>();
+
+    Pool(Supplier<T> supplier, Consumer<T> destroyer) {
+      this.supplier = supplier;
+      this.destroyer = destroyer;
+    }
+
+    public T borrow() {
+      T next = queue.poll();
+      if (next == null) {
+        next = supplier.get();
+      }
+      return next;
+    }
+
+    public void release(T releasedItem) {
+      queue.add(releasedItem);
+    }
+
+    public void shutdown() {
+      queue.forEach(destroyer);
     }
   }
 }
