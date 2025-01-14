@@ -14,13 +14,18 @@
  */
 package org.alfasoftware.morf.dataset;
 
-import java.util.ArrayDeque;
+import java.util.Collection;
 import java.util.Deque;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 
 /**
@@ -38,6 +43,7 @@ import java.util.function.Supplier;
 
 public class ConcurrentDataSetConnector {
 
+  private static final Log log = LogFactory.getLog(ConcurrentDataSetConnector.class);
   /**
    * Number of threads in the executor pool.
    */
@@ -51,6 +57,10 @@ public class ConcurrentDataSetConnector {
    * The pool of consumers for all data retrieved from producers.
    */
   protected Pool<DataSetConsumer> consumerPool;
+
+  private int totalTableCount;
+
+  private AtomicInteger processedTableCount = new AtomicInteger();
 
 
   /**
@@ -112,10 +122,16 @@ public class ConcurrentDataSetConnector {
 
     DataSetProducer producerMetadata =  producerPool.borrow();
     DataSetConsumer consumerMetadata = consumerPool.borrow();
+    Collection<String> tableNames = producerMetadata.getSchema().tableNames();
+    long startTime = System.currentTimeMillis();
+    totalTableCount = tableNames.size();
+    Logger logger = new Logger(processedTableCount, totalTableCount);
+    new Thread(logger).start();
+
     try {
-      for (String tableName : producerMetadata.getSchema().tableNames()) {
+      for (String tableName : tableNames) {
          try {
-          executor.execute(new DataSetConnectorRunnable(producerPool, consumerPool, tableName));
+           executor.execute(new DataSetConnectorRunnable(producerPool, consumerPool, tableName, processedTableCount));
         } catch (Exception e) {
           executor.shutdownNow();
           throw new RuntimeException("Error connecting table [" + tableName + "]", e);
@@ -123,6 +139,7 @@ public class ConcurrentDataSetConnector {
       }
       executor.shutdown();
       executor.awaitTermination(60, TimeUnit.MINUTES);
+      logger.shouldContinue = false;
 
       // once we've read all the tables without exception, we're complete and ready to release all resources
       closeState = DataSetConsumer.CloseState.FINALLY_COMPLETE;
@@ -139,8 +156,11 @@ public class ConcurrentDataSetConnector {
       if(closeState == DataSetConsumer.CloseState.FINALLY_COMPLETE) {
         consumerMetadata.close(closeState);
       }
-
+      logger.shouldContinue = false;
     }
+    long finishTime = System.currentTimeMillis();
+    float totalSec = (finishTime - startTime) / 1000F;
+    log.info("Finished data set import. ThreadCount="+ threadCount + ", totalTimeSec=" + totalSec);
   }
 
 
@@ -164,6 +184,8 @@ public class ConcurrentDataSetConnector {
      */
     private final String tableName;
 
+    private final AtomicInteger processedTableCount;
+
     /**
      * Create new instance of this class.
      *
@@ -171,10 +193,12 @@ public class ConcurrentDataSetConnector {
      * @param consumerPool The pool of consumers to which the data should be sent.
      * @param tableName The name of the table to transmit.
      */
-    private DataSetConnectorRunnable(Pool<DataSetProducer> producerPool, Pool<DataSetConsumer> consumerPool, String tableName) {
+    private DataSetConnectorRunnable(Pool<DataSetProducer> producerPool, Pool<DataSetConsumer> consumerPool,
+                                     String tableName, AtomicInteger processedTableCount) {
       this.producerPool = producerPool;
       this.consumerPool = consumerPool;
       this.tableName = tableName;
+      this.processedTableCount = processedTableCount;
     }
 
     /**
@@ -186,21 +210,22 @@ public class ConcurrentDataSetConnector {
       DataSetProducer producer = producerPool.borrow();
       DataSetConsumer consumer = consumerPool.borrow();
       consumer.table(producer.getSchema().getTable(tableName), producer.records(tableName));
+      processedTableCount.incrementAndGet();
       consumerPool.release(consumer);
       producerPool.release(producer);
       //do not close the producer here, do it only at the end of entire processing via pool shutdown
     }
   }
 
-  private static class Pool<T> {
+  private static final class Pool<T> {
 
     private final Supplier<T> supplier;
 
     private final Consumer<T> destroyer;
 
-    private final Deque<T> queue = new ArrayDeque<>();
+    private final Deque<T> queue = new ConcurrentLinkedDeque<>();
 
-    Pool(Supplier<T> supplier, Consumer<T> destroyer) {
+    private Pool(Supplier<T> supplier, Consumer<T> destroyer) {
       this.supplier = supplier;
       this.destroyer = destroyer;
     }
@@ -219,6 +244,42 @@ public class ConcurrentDataSetConnector {
 
     public void shutdown() {
       queue.forEach(destroyer);
+    }
+  }
+
+  private static final class Logger implements Runnable {
+
+    private static final Log log = LogFactory.getLog(Logger.class);
+
+    private final AtomicInteger processedTableCount;
+
+    private final int totalTableCount;
+
+    private volatile boolean shouldContinue = true;
+
+    private Logger(AtomicInteger processedTableCount, int totalTableCount) {
+      this.processedTableCount = processedTableCount;
+      this.totalTableCount = totalTableCount;
+    }
+
+    @Override
+    public void run() {
+      while(shouldContinue) {
+        logInternal();
+
+        try {
+          Thread.sleep(2000);
+        } catch (InterruptedException e) {
+          log.warn("Interrupted ConcurrentDataSetConnector logger");
+          shouldContinue = false;
+          return;
+        }
+      }
+      logInternal(); //flush
+    }
+
+    private void logInternal() {
+      log.info("Processed [" + processedTableCount.get() + "/" + totalTableCount + "] tables");
     }
   }
 }
