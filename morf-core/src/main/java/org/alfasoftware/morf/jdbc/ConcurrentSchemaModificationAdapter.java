@@ -119,7 +119,7 @@ public class ConcurrentSchemaModificationAdapter extends DataSetAdapter {
   /**
    * Drops all views from the existing schema if it has not already done so. This should be called whenever tables are dropped or modified to guard against an invalid situation.
    */
-  private void dropExistingViewsIfNecessary() {
+  private void dropExistingViewsIfNecessary(Connection conn) {
     if (schemaState.viewsDropped) {
       return;
     }
@@ -127,7 +127,7 @@ public class ConcurrentSchemaModificationAdapter extends DataSetAdapter {
     try {
       SqlScriptExecutor sqlExecutor = databaseDataSetConsumer.getSqlExecutor();
       for (View view : schemaState.schemaResource.views()) {
-        sqlExecutor.execute(sqlDialect.dropStatements(view), connection);
+        sqlExecutor.execute(sqlDialect.dropStatements(view), conn);
       }
       schemaState.viewsDropped = true;
     }
@@ -143,10 +143,32 @@ public class ConcurrentSchemaModificationAdapter extends DataSetAdapter {
   @Override
   public void close(CloseState closeState) {
 
-    // only drop the remaining tables if the data copy completed cleanly
-    if (closeState == CloseState.FINALLY_COMPLETE) {
+  if (closeState == CloseState.COMPLETE) {
+      super.close(closeState);
+      try {
+          if (!connection.getAutoCommit()) {
+            connection.commit();
+          }
+        } catch (SQLException e) {
+          throw new RuntimeSqlException("Error committing", e);
+        } finally {
+          closeConnection(connection);
+        }
+    } else if (closeState == CloseState.INCOMPLETE){
+      super.close(closeState);
+      try {
+        log.debug("Rolling back");
+        connection.rollback();
+      } catch (SQLException e) {
+        throw new RuntimeSqlException("Error rolling back connection", e);
+      } finally {
+        closeConnection(connection);
+      }
+    }
+    else if (closeState == CloseState.FINALLY_COMPLETE) {
       schemaLock.lock();
       try {
+        // only drop the remaining tables if the data copy completed cleanly
         dropRemainingTables();
         schemaState.schemaResource.close();
         schemaState = null;
@@ -155,22 +177,6 @@ public class ConcurrentSchemaModificationAdapter extends DataSetAdapter {
         schemaLock.unlock();
       }
     }
-    else if (closeState == CloseState.COMPLETE) {
-      try {
-        if (!connection.getAutoCommit()) {
-          connection.commit();
-        }
-      } catch (SQLException e) {
-        throw new RuntimeSqlException("Error committing", e);
-      } finally {
-        try {
-          connection.close();
-        } catch (Exception ignored) {
-        }
-      }
-    }
-
-    super.close(closeState);
   }
 
 
@@ -202,7 +208,7 @@ public class ConcurrentSchemaModificationAdapter extends DataSetAdapter {
       if (!new SchemaHomology().tablesMatch(table, databaseTableMetaData)) {
         // there was a difference. Drop and re-deploy
         log.debug("Replacing table [" + table.getName() + "] with different version");
-        dropExistingViewsIfNecessary();
+        dropExistingViewsIfNecessary(connection);
         dropExistingIndexesIfNecessary(table);
         sqlExecutor.execute(sqlDialect.dropStatements(databaseTableMetaData), connection);
         sqlExecutor.execute(sqlDialect.tableDeploymentStatements(table), connection);
@@ -213,7 +219,7 @@ public class ConcurrentSchemaModificationAdapter extends DataSetAdapter {
       }
     } else {
         log.debug("Deploying missing table [" + table.getName() + "]");
-        dropExistingViewsIfNecessary();
+        dropExistingViewsIfNecessary(connection);
         dropExistingIndexesIfNecessary(table);
         sqlExecutor.execute(sqlDialect.tableDeploymentStatements(table), connection);
       }
@@ -230,7 +236,7 @@ public class ConcurrentSchemaModificationAdapter extends DataSetAdapter {
     try (Connection conn = databaseDataSetConsumer.getDataSource().getConnection()) {
       for (String tableName : schemaState.remainingTables) {
         log.debug("Dropping table [" + tableName + "] which was not in the transmitted data set");
-        dropExistingViewsIfNecessary();
+        dropExistingViewsIfNecessary(conn);
         Table table = schemaState.schemaResource.getTable(tableName);
         sqlExecutor.execute(sqlDialect.dropStatements(table), conn);
       }
@@ -253,5 +259,14 @@ public class ConcurrentSchemaModificationAdapter extends DataSetAdapter {
     });
   }
 
-}
 
+  private void closeConnection(Connection conn) {
+      try {
+        if(conn != null && !conn.isClosed()) {
+          conn.close();
+        }
+      } catch (Exception e) {
+        log.warn("Error closing connection", e);
+      }
+  }
+}

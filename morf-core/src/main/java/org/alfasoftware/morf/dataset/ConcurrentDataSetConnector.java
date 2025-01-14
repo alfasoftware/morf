@@ -132,10 +132,13 @@ public class ConcurrentDataSetConnector {
     }
     finally {
       executor.shutdownNow();
+      consumerPool.release(consumerMetadata);
+      producerPool.release(producerMetadata);
       consumerPool.shutdown();
       producerPool.shutdown();
-      if(consumerMetadata != null) consumerMetadata.close(closeState);
-//      if(producerMetadata != null) producerMetadata.close();
+      if(closeState == DataSetConsumer.CloseState.FINALLY_COMPLETE) {
+        consumerMetadata.close(closeState);
+      }
 
     }
   }
@@ -184,7 +187,8 @@ public class ConcurrentDataSetConnector {
       DataSetConsumer consumer = consumerPool.borrow();
       consumer.table(producer.getSchema().getTable(tableName), producer.records(tableName));
       consumerPool.release(consumer);
-      //dataSetProducer.close ????? we want to reuse producer
+      producerPool.release(producer);
+      //do not close the producer here, do it only at the end of entire processing via pool shutdown
     }
   }
 
@@ -209,8 +213,8 @@ public class ConcurrentDataSetConnector {
       return next;
     }
 
-    public void release(T releasedItem) {
-      queue.add(releasedItem);
+    public void release(T item) {
+      queue.add(item);
     }
 
     public void shutdown() {
