@@ -58,8 +58,6 @@ public class ConcurrentDataSetConnector {
    */
   protected Pool<DataSetConsumer> consumerPool;
 
-  private int totalTableCount;
-
   private AtomicInteger processedTableCount = new AtomicInteger();
 
 
@@ -123,20 +121,13 @@ public class ConcurrentDataSetConnector {
     DataSetProducer producerMetadata =  producerPool.borrow();
     DataSetConsumer consumerMetadata = consumerPool.borrow();
     Collection<String> tableNames = producerMetadata.getSchema().tableNames();
+
     long startTime = System.currentTimeMillis();
-    totalTableCount = tableNames.size();
-    Logger logger = new Logger(processedTableCount, totalTableCount);
+    Logger logger = new Logger(processedTableCount, tableNames.size());
     new Thread(logger).start();
 
     try {
-      for (String tableName : tableNames) {
-         try {
-           executor.execute(new DataSetConnectorRunnable(producerPool, consumerPool, tableName, processedTableCount));
-        } catch (Exception e) {
-          executor.shutdownNow();
-          throw new RuntimeException("Error connecting table [" + tableName + "]", e);
-        }
-      }
+      tableNames.forEach((String tableName) -> executeNewRunnable(executor, producerPool, consumerPool, tableName));
       executor.shutdown();
       executor.awaitTermination(60, TimeUnit.MINUTES);
       logger.shouldContinue = false;
@@ -161,6 +152,16 @@ public class ConcurrentDataSetConnector {
     long finishTime = System.currentTimeMillis();
     float totalSec = (finishTime - startTime) / 1000F;
     log.info("Finished data set import. ThreadCount="+ threadCount + ", totalTimeSec=" + totalSec);
+  }
+
+
+  private void executeNewRunnable(ExecutorService executor, Pool<DataSetProducer> producerPool, Pool<DataSetConsumer> consumerPool, String tableName) {
+    try {
+      executor.execute(new DataSetConnectorRunnable(producerPool, consumerPool, tableName, processedTableCount));
+    } catch (Exception e) {
+      executor.shutdownNow();
+      throw new RuntimeException("Error connecting table [" + tableName + "]", e);
+    }
   }
 
 
@@ -201,6 +202,7 @@ public class ConcurrentDataSetConnector {
       this.processedTableCount = processedTableCount;
     }
 
+
     /**
      * Transfers the table with the name given in the constructor from the producer to
      * the consumer.
@@ -216,6 +218,7 @@ public class ConcurrentDataSetConnector {
       //do not close the producer here, do it only at the end of entire processing via pool shutdown
     }
   }
+
 
   private static final class Pool<T> {
 
@@ -247,6 +250,7 @@ public class ConcurrentDataSetConnector {
     }
   }
 
+
   private static final class Logger implements Runnable {
 
     private static final Log log = LogFactory.getLog(Logger.class);
@@ -262,20 +266,20 @@ public class ConcurrentDataSetConnector {
       this.totalTableCount = totalTableCount;
     }
 
+
     @Override
     public void run() {
       while(shouldContinue) {
         logInternal();
-
         try {
           Thread.sleep(2000);
         } catch (InterruptedException e) {
-          log.warn("Interrupted ConcurrentDataSetConnector logger");
+          log.warn("Interrupted the logger thread");
           shouldContinue = false;
-          return;
+          Thread.currentThread().interrupt();
         }
       }
-      logInternal(); //flush
+      logInternal(); //flush the last log statement
     }
 
     private void logInternal() {
