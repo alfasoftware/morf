@@ -65,7 +65,7 @@ public class TestConcurrentConnectorAndSchemaAdapter {
     XmlDataSetProducer xmlDataSetProducer = new XmlDataSetProducer(sourceExtract);
     int threadCount = 4; //use a fixed number of threads
      new ConcurrentDataSetConnector(
-      () -> xmlDataSetProducer,
+      xmlDataSetProducer,
       () -> new ConcurrentSchemaModificationAdapter(new DatabaseDataSetConsumer(connectionResources, sqlScriptExecutorProvider)), threadCount).connect();
 
     // ... the resulting dataset matches the source one

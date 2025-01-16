@@ -35,10 +35,10 @@ import org.apache.commons.logging.LogFactory;
  *
  * <p>
  * This version of the connector works using an {@link ExecutorService} to provide
- * work management and concurrency.
+ * work management and concurrency. It is expecting a thread safe implementation of {@link DataSetProducer}
+ * and a supplier of consumer instances to be executed in parallel.
  * </p>
  *
- * @author Copyright (c) Alfa Financial Software 2025
  */
 
 public class ConcurrentDataSetConnector {
@@ -50,36 +50,37 @@ public class ConcurrentDataSetConnector {
   private final int threadCount;
 
   /**
-   * The pool of  producers from which all data will be retrieved and pushed to the consumers.
+   * Producer from which all data will be retrieved and pushed to the consumers.
    */
-  protected Pool<DataSetProducer> producerPool;
-  /**
-   * The pool of consumers for all data retrieved from producers.
-   */
-  protected Pool<DataSetConsumer> consumerPool;
+  private final DataSetProducer producer;
 
-  private AtomicInteger processedTableCount = new AtomicInteger();
+  /**
+   * The pool of consumers for all data retrieved from the producer.
+   */
+  private final Pool<DataSetConsumer> consumerPool;
+
+  private final AtomicInteger processedTableCount = new AtomicInteger();
 
 
   /**
    * Creates a new instance of this class.
    *
-   * @param producerSupplier The supplier for data to transmit.
+   * @param producer The producer of data to transmit.
    * @param consumerSupplier The supplier for the target to which the data should be sent.
    */
-  public ConcurrentDataSetConnector(Supplier<DataSetProducer> producerSupplier, Supplier<DataSetConsumer> consumerSupplier) {
-    this(producerSupplier, consumerSupplier, calculateDefaultThreadCount());
+  public ConcurrentDataSetConnector(DataSetProducer producer, Supplier<DataSetConsumer> consumerSupplier) {
+    this(producer, consumerSupplier, calculateDefaultThreadCount());
   }
 
 
   /**
    * Creates a new instance of this class.
    *
-   * @param producerSupplier The supplier for data to transmit.
+   * @param producer Producer of data to transmit.
    * @param consumerSupplier The supplier for the target to which the data should be sent.
    * @param threadCount Uses provided number of threads instead of default
    */
-  public ConcurrentDataSetConnector(Supplier<DataSetProducer> producerSupplier, Supplier<DataSetConsumer> consumerSupplier, int threadCount) {
+  public ConcurrentDataSetConnector(DataSetProducer producer, Supplier<DataSetConsumer> consumerSupplier, int threadCount) {
     super();
     this.consumerPool = new Pool<>(() ->  {
       DataSetConsumer consumer = consumerSupplier.get();
@@ -88,7 +89,7 @@ public class ConcurrentDataSetConnector {
     },
     c -> c.close(DataSetConsumer.CloseState.COMPLETE));
 
-    this.producerPool = new Pool<>(producerSupplier, DataSetProducer::close);
+    this.producer = producer;
     this.threadCount = threadCount;
   }
 
@@ -105,7 +106,6 @@ public class ConcurrentDataSetConnector {
       case 1:
         return 1;
       default:
-        //This is consistent with Cryo calculation
         return Math.max(1,  Math.min(8, processorCount/2));
     }
   }
@@ -117,17 +117,17 @@ public class ConcurrentDataSetConnector {
   public void connect() {
     DataSetConsumer.CloseState closeState = DataSetConsumer.CloseState.INCOMPLETE;
     ExecutorService executor = Executors.newFixedThreadPool(threadCount);
-
-    DataSetProducer producerMetadata =  producerPool.borrow();
     DataSetConsumer consumerMetadata = consumerPool.borrow();
-    Collection<String> tableNames = producerMetadata.getSchema().tableNames();
 
     long startTime = System.currentTimeMillis();
-    Logger logger = new Logger(processedTableCount, tableNames.size());
-    new Thread(logger).start();
-
+    Logger logger = null;
     try {
-      tableNames.forEach((String tableName) -> executeNewRunnable(executor, producerPool, consumerPool, tableName));
+      producer.open();
+      Collection<String> tableNames = producer.getSchema().tableNames();
+      logger = new Logger(processedTableCount, tableNames.size());
+      new Thread(logger).start();
+
+      tableNames.forEach((String tableName) -> executeNewRunnable(executor, producer, consumerPool, tableName));
       executor.shutdown();
       executor.awaitTermination(60, TimeUnit.MINUTES);
       logger.shouldContinue = false;
@@ -141,13 +141,14 @@ public class ConcurrentDataSetConnector {
     finally {
       executor.shutdownNow();
       consumerPool.release(consumerMetadata);
-      producerPool.release(producerMetadata);
       consumerPool.shutdown();
-      producerPool.shutdown();
+      producer.close();
       if(closeState == DataSetConsumer.CloseState.FINALLY_COMPLETE) {
         consumerMetadata.close(closeState);
       }
-      logger.shouldContinue = false;
+      if(logger != null) {
+        logger.shouldContinue = false;
+      }
     }
     long finishTime = System.currentTimeMillis();
     float totalSec = (finishTime - startTime) / 1000F;
@@ -155,9 +156,9 @@ public class ConcurrentDataSetConnector {
   }
 
 
-  private void executeNewRunnable(ExecutorService executor, Pool<DataSetProducer> producerPool, Pool<DataSetConsumer> consumerPool, String tableName) {
+  private void executeNewRunnable(ExecutorService executor, DataSetProducer producer, Pool<DataSetConsumer> consumerPool, String tableName) {
     try {
-      executor.execute(new DataSetConnectorRunnable(producerPool, consumerPool, tableName, processedTableCount));
+      executor.execute(new DataSetConnectorRunnable(producer, consumerPool, tableName, processedTableCount));
     } catch (Exception e) {
       executor.shutdownNow();
       throw new RuntimeException("Error connecting table [" + tableName + "]", e);
@@ -173,7 +174,7 @@ public class ConcurrentDataSetConnector {
     /**
      * The source of the data to transmit.
      */
-    private final Pool<DataSetProducer> producerPool;
+    private final DataSetProducer producer;
 
     /**
      * The target to which the data should be sent.
@@ -190,13 +191,13 @@ public class ConcurrentDataSetConnector {
     /**
      * Create new instance of this class.
      *
-     * @param producerPool The pool of producers for data to transmit.
+     * @param producer The producer for data to transmit.
      * @param consumerPool The pool of consumers to which the data should be sent.
      * @param tableName The name of the table to transmit.
      */
-    private DataSetConnectorRunnable(Pool<DataSetProducer> producerPool, Pool<DataSetConsumer> consumerPool,
+    private DataSetConnectorRunnable(DataSetProducer producer, Pool<DataSetConsumer> consumerPool,
                                      String tableName, AtomicInteger processedTableCount) {
-      this.producerPool = producerPool;
+      this.producer = producer;
       this.consumerPool = consumerPool;
       this.tableName = tableName;
       this.processedTableCount = processedTableCount;
@@ -209,13 +210,10 @@ public class ConcurrentDataSetConnector {
      */
     @Override
     public void run() {
-      DataSetProducer producer = producerPool.borrow();
       DataSetConsumer consumer = consumerPool.borrow();
       consumer.table(producer.getSchema().getTable(tableName), producer.records(tableName));
       processedTableCount.incrementAndGet();
       consumerPool.release(consumer);
-      producerPool.release(producer);
-      //do not close the producer here, do it only at the end of entire processing via pool shutdown
     }
   }
 
