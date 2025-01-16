@@ -83,6 +83,44 @@ public class TestConcurrentDataSetConnector {
 
     //we don't care about ordering, only checking that all is processed
     String allResults =  consumerTestSupplier.testConsumer1.toString() + consumerTestSupplier.testConsumer2.toString() + consumerTestSupplier.testConsumer3.toString();
+    verifyConcurrent(allResults);
+  }
+
+
+  @Test
+  public void testAutomaticThreadNumberAllocation() {
+    ConsumerTestSupplier consumerTestSupplier = new ConsumerTestSupplier();
+
+    MockDataSetProducer testProducer = new MockDataSetProducer();
+    testProducer.addTable(table("foo").columns(
+        idColumn(),
+        versionColumn(),
+        column("bar", DataType.STRING, 10),
+        column("baz", DataType.STRING, 10)
+      )
+    );
+
+    Table metaData = table("foo2").columns(
+      idColumn(),
+      versionColumn(),
+      column("bar2", DataType.STRING, 10),
+      column("baz2", DataType.STRING, 10)
+    );
+    testProducer.addTable(metaData, record()
+      .setInteger(idColumn().getName(), 1)
+      .setInteger(versionColumn().getName(), 1)
+      .setString("bar2", "val1")
+      .setString("baz2", "val2"));
+
+    //do not pass thread number
+    new ConcurrentDataSetConnector(testProducer, consumerTestSupplier).connect();
+
+    //we don't care about ordering, only checking that all is processed
+    String allResults =  consumerTestSupplier.testConsumer1.toString() + consumerTestSupplier.testConsumer2.toString() + consumerTestSupplier.testConsumer3.toString();
+    verifyConcurrent(allResults);
+  }
+
+  private void verifyConcurrent(String allResults) {
     assertTrue(allResults.contains("open"));
     assertTrue(allResults.contains("foo"));
     assertTrue(allResults.contains("foo2"));
