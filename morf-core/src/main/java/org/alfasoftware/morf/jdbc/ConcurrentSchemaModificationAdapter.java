@@ -36,7 +36,6 @@ import org.apache.commons.logging.LogFactory;
 /**
  * Adapts a data set by making sure a target database schema adheres to the schema in the data set being transmitted.
  * This implementation holds a state which is safely shared in a concurrent access scenario.
- * @author Copyright (c) Alfa Financial Software 2025
  */
 public class ConcurrentSchemaModificationAdapter extends DataSetAdapter {
 
