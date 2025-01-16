@@ -30,11 +30,11 @@ import org.alfasoftware.morf.dataset.DataSetConsumer.CloseState;
  * This version of the connector works using an {@link ExecutorService} to provide
  * work management and concurrency.
  * </p>
- * <p>
+ *
  * @deprecated
  * This class is deprecated due to incorrect reuse of the same connection between threads,
  * use {@link ConcurrentDataSetConnector} instead
- * </p>
+ *
  * @author Copyright (c) Alfa Financial Software 2011
  */
 @Deprecated
