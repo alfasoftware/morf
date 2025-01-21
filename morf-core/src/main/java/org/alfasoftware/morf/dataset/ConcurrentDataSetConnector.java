@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import org.alfasoftware.morf.jdbc.DatabaseDataSetConsumer;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -44,10 +45,11 @@ import org.apache.commons.logging.LogFactory;
 public class ConcurrentDataSetConnector {
 
   private static final Log log = LogFactory.getLog(ConcurrentDataSetConnector.class);
+
   /**
-   * Number of threads in the executor pool.
+   * Requested number of threads to use.
    */
-  private final int threadCount;
+  private final int requestedThreadCount;
 
   /**
    * Producer from which all data will be retrieved and pushed to the consumers.
@@ -78,9 +80,9 @@ public class ConcurrentDataSetConnector {
    *
    * @param producer Producer of data to transmit.
    * @param consumerSupplier The supplier for the target to which the data should be sent.
-   * @param threadCount Uses provided number of threads instead of default
+   * @param requestedThreadCount Uses provided number of threads instead of default
    */
-  public ConcurrentDataSetConnector(DataSetProducer producer, Supplier<DataSetConsumer> consumerSupplier, int threadCount) {
+  public ConcurrentDataSetConnector(DataSetProducer producer, Supplier<DataSetConsumer> consumerSupplier, int requestedThreadCount) {
     super();
     this.consumerPool = new Pool<>(() ->  {
       DataSetConsumer consumer = consumerSupplier.get();
@@ -90,7 +92,7 @@ public class ConcurrentDataSetConnector {
     c -> c.close(DataSetConsumer.CloseState.COMPLETE));
 
     this.producer = producer;
-    this.threadCount = threadCount;
+    this.requestedThreadCount = requestedThreadCount;
   }
 
 
@@ -116,8 +118,14 @@ public class ConcurrentDataSetConnector {
    */
   public void connect() {
     DataSetConsumer.CloseState closeState = DataSetConsumer.CloseState.INCOMPLETE;
-    ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+
+    int threadCount = requestedThreadCount;
     DataSetConsumer consumerMetadata = consumerPool.borrow();
+    if(consumerMetadata instanceof DatabaseDataSetConsumer) {
+      DatabaseDataSetConsumer dbConsumer = (DatabaseDataSetConsumer) consumerMetadata;
+      threadCount = dbConsumer.getSqlDialect().useForcedSerialImport() ? 1 : requestedThreadCount;
+    }
+    ExecutorService executor = Executors.newFixedThreadPool(threadCount);
 
     long startTime = System.currentTimeMillis();
     Logger logger = null;

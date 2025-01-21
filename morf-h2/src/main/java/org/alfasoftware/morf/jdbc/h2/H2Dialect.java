@@ -683,4 +683,10 @@ class H2Dialect extends SqlDialect {
   protected String getSqlFrom(PortableSqlFunction function) {
     return super.getSqlForPortableFunction(function.getFunctionForDatabaseType(H2.IDENTIFIER));
   }
+
+
+  @Override
+  public boolean useForcedSerialImport() {
+    return true;
+  }
 }

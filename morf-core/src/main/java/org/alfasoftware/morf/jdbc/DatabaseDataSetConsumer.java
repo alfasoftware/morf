@@ -155,6 +155,13 @@ public class DatabaseDataSetConsumer implements DataSetConsumer {
       .load(records);
   }
 
+  /**
+   * @return the sqlDialect
+   */
+  public SqlDialect getSqlDialect() {
+    return sqlDialect;
+  }
+
 
   /**
    * @return the dataSource
