@@ -5153,6 +5153,15 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * Tests that forced serial import option is used correctly.
+   */
+  @Test
+  public void testUseForcedInsert() {
+    assertEquals("Forced serial import should be set correctly", expectedForceSerialImport(), testDialect.useForcedSerialImport());
+  }
+
+
+  /**
    * Calls callPrepareStatementParameter with a mock {@link PreparedStatement} and returns
    * the mock for analysis.
    *
@@ -6094,6 +6103,13 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL for the {@link PortableSqlFunction} function, testing that the dialect-specific function is used.
    */
   protected abstract String expectedPortableStatement();
+
+  /**
+   * @return The expected value for the force serial import setting.
+   */
+  protected boolean expectedForceSerialImport() {
+    return false;
+  }
 
   /**
    * @return the testDialect
