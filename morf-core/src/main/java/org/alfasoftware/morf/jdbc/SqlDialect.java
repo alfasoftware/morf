@@ -908,6 +908,15 @@ public abstract class SqlDialect {
 
 
   /**
+   * Some databases might require forced serial table creation instead of a parallel one.
+   * @return true if forced serial import is enabled
+   */
+  public boolean useForcedSerialImport() {
+    return false;
+  }
+
+
+  /**
    * Convert a {@link SelectStatement} into standards compliant SQL.
    * <p>
    * For example, the following code:
