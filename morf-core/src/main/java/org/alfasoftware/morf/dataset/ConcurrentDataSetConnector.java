@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import org.alfasoftware.morf.jdbc.DatabaseDataSetConsumer;
+import org.alfasoftware.morf.jdbc.ConcurrentSchemaModificationAdapter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -130,9 +130,9 @@ public class ConcurrentDataSetConnector {
 
     int threadCount = requestedThreadCount;
     DataSetConsumer consumerMetadata = consumerPool.borrow();
-    if(consumerMetadata instanceof DatabaseDataSetConsumer) {
-      DatabaseDataSetConsumer dbConsumer = (DatabaseDataSetConsumer) consumerMetadata;
-      threadCount = dbConsumer.getSqlDialect().useForcedSerialImport() ? 1 : requestedThreadCount;
+    if(consumerMetadata instanceof ConcurrentSchemaModificationAdapter) {
+      ConcurrentSchemaModificationAdapter dbConsumer = (ConcurrentSchemaModificationAdapter) consumerMetadata;
+      threadCount = dbConsumer.useForcedSerialImport() ? 1 : requestedThreadCount;
     }
     ExecutorService executor = Executors.newFixedThreadPool(threadCount);
 

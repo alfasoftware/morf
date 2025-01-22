@@ -137,6 +137,14 @@ public class ConcurrentSchemaModificationAdapter extends DataSetAdapter {
 
 
   /**
+   * @return useForcedSerialImport for the sqlDialect in use
+   */
+  public boolean useForcedSerialImport() {
+    return sqlDialect.useForcedSerialImport();
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.dataset.DataSetAdapter#close(org.alfasoftware.morf.dataset.DataSetConsumer.CloseState)
    */
   @Override
