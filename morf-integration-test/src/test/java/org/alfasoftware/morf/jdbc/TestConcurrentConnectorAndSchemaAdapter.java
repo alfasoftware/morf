@@ -64,9 +64,10 @@ public class TestConcurrentConnectorAndSchemaAdapter {
     log.info("Creating concurrent connector");
     XmlDataSetProducer xmlDataSetProducer = new XmlDataSetProducer(sourceExtract);
     int threadCount = 4; //use a fixed number of threads
+    int loggerInterval = 2;
      new ConcurrentDataSetConnector(
       xmlDataSetProducer,
-      () -> new ConcurrentSchemaModificationAdapter(new DatabaseDataSetConsumer(connectionResources, sqlScriptExecutorProvider)), threadCount).connect();
+      () -> new ConcurrentSchemaModificationAdapter(new DatabaseDataSetConsumer(connectionResources, sqlScriptExecutorProvider)), threadCount, loggerInterval).connect();
 
     // ... the resulting dataset matches the source one
     assertTrue("Resulting dataSet does not match the source", new DataSetHomology().dataSetProducersMatch(new DatabaseDataSetProducer(connectionResources), new XmlDataSetProducer(sourceExtract)));

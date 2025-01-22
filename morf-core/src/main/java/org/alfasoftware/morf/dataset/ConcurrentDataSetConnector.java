@@ -46,10 +46,16 @@ public class ConcurrentDataSetConnector {
 
   private static final Log log = LogFactory.getLog(ConcurrentDataSetConnector.class);
 
+  private static final int PROGRESS_LOGGER_DEFAULT_INTERVAL_SEC =  10;
   /**
    * Requested number of threads to use.
    */
   private final int requestedThreadCount;
+
+  /**
+   * Progress logging interval
+   */
+  private final int progressLoggerIntervalSec;
 
   /**
    * Producer from which all data will be retrieved and pushed to the consumers.
@@ -64,6 +70,7 @@ public class ConcurrentDataSetConnector {
   private final AtomicInteger processedTableCount = new AtomicInteger();
 
 
+
   /**
    * Creates a new instance of this class.
    *
@@ -71,7 +78,7 @@ public class ConcurrentDataSetConnector {
    * @param consumerSupplier The supplier for the target to which the data should be sent.
    */
   public ConcurrentDataSetConnector(DataSetProducer producer, Supplier<DataSetConsumer> consumerSupplier) {
-    this(producer, consumerSupplier, calculateDefaultThreadCount());
+    this(producer, consumerSupplier, calculateDefaultThreadCount(), PROGRESS_LOGGER_DEFAULT_INTERVAL_SEC);
   }
 
 
@@ -82,7 +89,8 @@ public class ConcurrentDataSetConnector {
    * @param consumerSupplier The supplier for the target to which the data should be sent.
    * @param requestedThreadCount Uses provided number of threads instead of default
    */
-  public ConcurrentDataSetConnector(DataSetProducer producer, Supplier<DataSetConsumer> consumerSupplier, int requestedThreadCount) {
+  public ConcurrentDataSetConnector(DataSetProducer producer, Supplier<DataSetConsumer> consumerSupplier,
+                                    int requestedThreadCount, int progressLoggerIntervalSec) {
     super();
     this.consumerPool = new Pool<>(() ->  {
       DataSetConsumer consumer = consumerSupplier.get();
@@ -93,6 +101,7 @@ public class ConcurrentDataSetConnector {
 
     this.producer = producer;
     this.requestedThreadCount = requestedThreadCount;
+    this.progressLoggerIntervalSec = progressLoggerIntervalSec;
   }
 
 
@@ -132,7 +141,7 @@ public class ConcurrentDataSetConnector {
     try {
       producer.open();
       Collection<String> tableNames = producer.getSchema().tableNames();
-      logger = new Logger(processedTableCount, tableNames.size());
+      logger = new Logger(processedTableCount, tableNames.size(), progressLoggerIntervalSec);
       new Thread(logger).start();
 
       tableNames.forEach((String tableName) -> executeNewRunnable(executor, producer, consumerPool, tableName));
@@ -263,13 +272,17 @@ public class ConcurrentDataSetConnector {
 
     private final AtomicInteger processedTableCount;
 
+    private final int progressLoggerIntervalSec;
+
     private final int totalTableCount;
 
     private volatile boolean shouldContinue = true;
 
-    private Logger(AtomicInteger processedTableCount, int totalTableCount) {
+
+    private Logger(AtomicInteger processedTableCount, int totalTableCount, int progressLoggerIntervalSec) {
       this.processedTableCount = processedTableCount;
       this.totalTableCount = totalTableCount;
+      this.progressLoggerIntervalSec = progressLoggerIntervalSec;
     }
 
 
@@ -278,7 +291,7 @@ public class ConcurrentDataSetConnector {
       while(shouldContinue) {
         logInternal();
         try {
-          Thread.sleep(2000);
+          Thread.sleep(1000L * progressLoggerIntervalSec);
         } catch (InterruptedException e) {
           log.warn("Interrupted the logger thread");
           shouldContinue = false;

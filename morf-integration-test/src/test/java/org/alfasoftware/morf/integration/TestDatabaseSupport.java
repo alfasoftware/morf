@@ -384,7 +384,8 @@ public class TestDatabaseSupport {
     // transfer the dataset into the DB
     schemaManager.get().dropAllViews();
     int numThreads = 4; //fixed number of threads
-    new ConcurrentDataSetConnector(testDataSet, () -> new ConcurrentSchemaModificationAdapter(databaseConsumerSupplier.get()), numThreads).connect();
+    int loggerInterval = 2;
+    new ConcurrentDataSetConnector(testDataSet, () -> new ConcurrentSchemaModificationAdapter(databaseConsumerSupplier.get()), numThreads, loggerInterval).connect();
 
     final List<String> differences = Lists.newArrayList();
 

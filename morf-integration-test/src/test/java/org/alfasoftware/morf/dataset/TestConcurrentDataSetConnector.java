@@ -21,6 +21,7 @@ import org.junit.Test;
  */
 public class TestConcurrentDataSetConnector {
 
+  private static final int LOGGER_INTERVAL =  2;
 
   @Test
   public void testBasicDataSetTransmissionSingleThread() {
@@ -47,7 +48,7 @@ public class TestConcurrentDataSetConnector {
       .setString("bar", "val1")
       .setString("baz", "val2"));
 
-    new ConcurrentDataSetConnector(testProducer, consumerTestSupplier, 1).connect();
+    new ConcurrentDataSetConnector(testProducer, consumerTestSupplier, 1, LOGGER_INTERVAL).connect();
 
     assertEquals("Data set connector", "[open, close, close]", consumerTestSupplier.testConsumer1.toString());
     assertEquals("Data set connector", "[open, table foo [column id, column version, column bar, column baz], end table, table foo2 [column id, column version, column bar, column baz], [1, 1, val1, val2], end table, close]", consumerTestSupplier.testConsumer2.toString());
@@ -79,7 +80,7 @@ public class TestConcurrentDataSetConnector {
       .setString("bar2", "val1")
       .setString("baz2", "val2"));
 
-    new ConcurrentDataSetConnector(testProducer, consumerTestSupplier, 3).connect();
+    new ConcurrentDataSetConnector(testProducer, consumerTestSupplier, 3, LOGGER_INTERVAL).connect();
 
     //we don't care about ordering, only checking that all is processed
     String allResults =  consumerTestSupplier.testConsumer1.toString() + consumerTestSupplier.testConsumer2.toString() + consumerTestSupplier.testConsumer3.toString();
