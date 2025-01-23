@@ -1,4 +1,6 @@
 language: java
+before_install:
+  - sudo apt-get update
 install: true
 addons:
   sonarcloud:
@@ -11,8 +13,6 @@ jobs:
   include:
 # Push to main
     - if: repo = alfasoftware/morf AND branch = main AND NOT type = pull_request
-      before_install:
-        - sudo apt-get update
       name: "Test"
       script:
         - git fetch --unshallow --quiet
