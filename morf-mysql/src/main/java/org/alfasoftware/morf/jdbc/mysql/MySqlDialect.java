@@ -986,4 +986,9 @@ class MySqlDialect extends SqlDialect {
   protected String getSqlFrom(PortableSqlFunction function) {
     return super.getSqlForPortableFunction(function.getFunctionForDatabaseType(MySql.IDENTIFIER));
   }
+
+  @Override
+  public boolean useForcedSerialImport() {
+    return false;
+  }
 }

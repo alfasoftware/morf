@@ -1351,4 +1351,13 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   protected String expectedPortableStatement() {
     return "UPDATE TESTSCHEMA.Table SET field = BTRIM(field, CAST('2' AS VARCHAR(1)), CAST('B' AS VARCHAR(1)))";
   }
+
+
+  /**
+   * @return The expected value for the force serial import setting.
+   */
+  @Override
+  protected boolean expectedForceSerialImport() {
+    return true;
+  }
 }
