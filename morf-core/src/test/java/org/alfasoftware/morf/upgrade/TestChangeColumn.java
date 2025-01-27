@@ -595,7 +595,7 @@ public class TestChangeColumn {
    * Test that renames of columns present in indexes is also changing the column name within the index.
    */
   @Test
-  public void testCannotRenameColumnThatAppearsInIndexes() {
+  public void testRenameColumnThatAppearsInIndexes() {
     Schema testSchema = schema(pearTable);
 
     Schema changedSchema = new ChangeColumn("Pear",
