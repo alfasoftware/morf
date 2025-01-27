@@ -15,6 +15,15 @@
 
 package org.alfasoftware.morf.upgrade;
 
+import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaHomology;
+import org.alfasoftware.morf.metadata.SchemaHomology.ThrowingDifferenceWriter;
+import org.alfasoftware.morf.metadata.Table;
+import org.junit.Before;
+import org.junit.Test;
+
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.idColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
@@ -26,15 +35,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-
-import org.alfasoftware.morf.metadata.Column;
-import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.SchemaHomology;
-import org.alfasoftware.morf.metadata.SchemaHomology.ThrowingDifferenceWriter;
-import org.alfasoftware.morf.metadata.Table;
-import org.junit.Before;
-import org.junit.Test;
 
 /**
  * Tests that {@link ChangeColumn} works
@@ -62,7 +62,8 @@ public class TestChangeColumn {
         column("numberavailable", DataType.DECIMAL, 5, 0),
         column("totalvalue", DataType.DECIMAL, 9, 2),
         column("nullcheck", DataType.DECIMAL, 9, 0).nullable()
-      ).indexes(        index("Apple_1").columns("colour")
+      ).indexes(
+        index("Apple_1").columns("colour")
       );
 
     pearTable = table("Pear").columns(
@@ -70,7 +71,8 @@ public class TestChangeColumn {
         versionColumn(),
         column("colour", DataType.STRING, 10).nullable(),
         column("variety", DataType.STRING, 15).nullable()
-      ).indexes(        index("Pear_1").columns("colour")
+      ).indexes(
+        index("Pear_1").columns("colour")
       );
   }
 
@@ -590,34 +592,19 @@ public class TestChangeColumn {
 
 
   /**
-   * Test that renames of columns present in indexes is not permitted.
-   *
-   * <p>This is a test of current functionality, rather than of requirements. There's no reason why the upgrade system couldn't be enhanced to handle this at some point.<p>
+   * Test that renames of columns present in indexes is also changing the column name within the index.
    */
   @Test
   public void testCannotRenameColumnThatAppearsInIndexes() {
     Schema testSchema = schema(pearTable);
 
-    try {
-      new ChangeColumn("Pear",
-        column("colour", DataType.STRING, 10).nullable(),
-        column("hue", DataType.STRING, 10).nullable()
-      ).apply(testSchema);
+    Schema changedSchema = new ChangeColumn("Pear",
+      column("colour", DataType.STRING, 10).nullable(),
+      column("hue", DataType.STRING, 10).nullable()
+    ).apply(testSchema);
 
-      fail("Expect IllegalArgumentException");
-    } catch(IllegalArgumentException iae) {
-      assertTrue(iae.getMessage().contains("colour"));
-    }
-
-    try {
-      new ChangeColumn("Pear",
-        column("COLOUR", DataType.STRING, 10).nullable(),
-        column("HUE", DataType.STRING, 10).nullable()
-      ).apply(testSchema);
-
-      fail("Expect IllegalArgumentException");
-    } catch(IllegalArgumentException iae) {
-      assertTrue(iae.getMessage().contains("COLOUR"));
-    }
+    // Make sure the column name in the index has changed
+    assertTrue("Index with a field named 'hue'", changedSchema.getTable("Pear").indexes().stream().flatMap(index -> index.columnNames().stream()).anyMatch(colName -> colName.equalsIgnoreCase("hue")));
+    assertFalse("Index with a field named 'colour'", changedSchema.getTable("Pear").indexes().stream().flatMap(index -> index.columnNames().stream()).anyMatch(colName -> colName.equalsIgnoreCase("colour")));
   }
 }

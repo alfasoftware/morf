@@ -15,14 +15,8 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-
+import com.google.common.collect.ImmutableMultimap;
+import com.google.common.collect.Multimap;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
@@ -30,12 +24,18 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaHomology;
 import org.alfasoftware.morf.metadata.SchemaHomology.CollectingDifferenceWriter;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.adapt.AlteredTable;
 import org.alfasoftware.morf.upgrade.adapt.TableOverrideSchema;
 
-import com.google.common.collect.ImmutableMultimap;
-import com.google.common.collect.Multimap;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * {@link SchemaChange} which consists of changing an existing column
@@ -134,20 +134,27 @@ public class ChangeColumn implements SchemaChange {
       throw new IllegalArgumentException(String.format("Cannot change column [%s] as it does not exist on table [%s]", columnStartPoint.getName(), tableName));
     }
 
-    // If the column is being renamed, check it isn't contained in an index
-    if (!columnStartPoint.getUpperCaseName().equals(columnEndPoint.getUpperCaseName())) {
+    // If the column is being renamed, and it is contained in an index
+    if (!columnStartPoint.getUpperCaseName().equals(columnEndPoint.getUpperCaseName()) &&
+            original.indexes().stream().flatMap(index -> index.columnNames().stream()).anyMatch(colName -> colName.equalsIgnoreCase(columnStartPoint.getName()))) {
+      List<String> indexNames = new ArrayList<>();
+      List<Index> newIndexDefinitions = new ArrayList<>();
       for (Index index : original.indexes()) {
-        for (String indexedColumnName : index.columnNames()) {
-          if (indexedColumnName.equalsIgnoreCase(columnStartPoint.getName())) {
-            throw new IllegalArgumentException(
-                          String.format("Cannot rename column [%s] as it exists on index [%s] on table [%s]",
-                                        columnStartPoint.getName(), index.getName(), tableName));
-          }
+        indexNames.add(index.getName());
+        List<String> columnNames = index.columnNames().stream()
+                .map(col -> col.equalsIgnoreCase(columnStartPoint.getName())? columnEndPoint.getName(): col)
+                .collect(Collectors.toList());
+        if(index.isUnique()) {
+          newIndexDefinitions.add(SchemaUtils.index(index.getName()).unique().columns(columnNames));
+        }
+        else {
+          newIndexDefinitions.add(SchemaUtils.index(index.getName()).columns(columnNames));
         }
       }
+      return new TableOverrideSchema(schema, new AlteredTable(original, columns, List.of(columnEndPoint), indexNames, newIndexDefinitions));
     }
 
-    return new TableOverrideSchema(schema, new AlteredTable(original, columns, Arrays.asList(new Column[] {columnEndPoint})));
+    return new TableOverrideSchema(schema, new AlteredTable(original, columns, List.of(columnEndPoint)));
   }
 
 
