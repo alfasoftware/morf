@@ -606,6 +606,5 @@ public class TestChangeColumn {
     // Make sure the column name in the index has changed
     assertTrue("Index with a field named 'hue'", changedSchema.getTable("Pear").indexes().stream().flatMap(index -> index.columnNames().stream()).anyMatch(colName -> colName.equalsIgnoreCase("hue")));
     assertFalse("Index with a field named 'colour'", changedSchema.getTable("Pear").indexes().stream().flatMap(index -> index.columnNames().stream()).anyMatch(colName -> colName.equalsIgnoreCase("colour")));
-  }
-  
+  }  
 }
