@@ -28,11 +28,12 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
-import org.junit.Test;
-
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.TableReference;
+import org.junit.Test;
+
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 
 /**
  * Tests for {@link SchemaBean}.
@@ -70,6 +71,10 @@ public class TestSchemaBean {
     // Check this twice to ensure we are not reading the source schema again.
     assertNotNull("Columns first call", table.columns());
     assertNotNull("Columns second call", table.columns());
+
+    // check that partitioned tables and partition tables are empty
+    assertEquals("Partitioned table names", Lists.newArrayList(), schema.partitionedTableNames());
+    assertEquals("Partition table names", Lists.newArrayList(), schema.partitionTableNames());
   }
 
 
@@ -244,6 +249,16 @@ public class TestSchemaBean {
 
       tableNamesCalled = true;
       return Arrays.asList(table.getName());
+    }
+
+    @Override
+    public Collection<String> partitionedTableNames() {
+      return List.of("PartitionedTable1");
+    }
+
+    @Override
+    public Collection<String> partitionTableNames() {
+      return List.of("Partition_p0");
     }
 
 
