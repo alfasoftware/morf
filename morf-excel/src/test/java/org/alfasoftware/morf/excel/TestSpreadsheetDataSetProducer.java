@@ -51,8 +51,6 @@ public class TestSpreadsheetDataSetProducer {
     assertEquals("Number of tables found [" + tableNames + "]", 12, tableNames.size());
     assertTrue("Tables correctly populated [" + tableNames + "]", tableNames.contains("AssetType"));
     assertTrue("Tables correctly populated [" + tableNames + "]", tableNames.contains("Allowance"));
-    assertEquals("Partitioned table names", Lists.newArrayList(), producer.getSchema().partitionedTableNames());
-    assertEquals("Partition table names", Lists.newArrayList(), producer.getSchema().partitionTableNames());
   }
 
 

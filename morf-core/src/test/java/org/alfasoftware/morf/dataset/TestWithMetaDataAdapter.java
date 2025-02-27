@@ -23,7 +23,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import org.alfasoftware.morf.metadata.Column;
@@ -34,8 +33,6 @@ import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.junit.Test;
-
-import com.google.common.collect.Lists;
 
 /**
  * Ensure that {@link DataSetProducer}s can be augmented with meta data from
@@ -79,9 +76,6 @@ public class TestWithMetaDataAdapter {
     assertEquals("Version of record", 10L, record.getLong("version").longValue());
     assertEquals("ID of record", 1L, record.getLong("id").longValue());
     assertEquals("Random value from record", "Bob", record.getString("Alan"));
-
-    assertEquals("Partitioned table names", Lists.newArrayList(), schema.partitionedTableNames());
-    assertEquals("Partition table names", Lists.newArrayList(), schema.partitionTableNames());
   }
 
 
@@ -216,16 +210,6 @@ public class TestWithMetaDataAdapter {
       @Override
       public Collection<String> tableNames() {
         return Arrays.asList(MockProducer.this.getClass().getSimpleName());
-      }
-
-      @Override
-      public Collection<String> partitionedTableNames() {
-        return List.of();
-      }
-
-      @Override
-      public Collection<String> partitionTableNames() {
-        return List.of();
       }
 
       @Override

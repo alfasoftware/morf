@@ -32,6 +32,7 @@ import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.equalToIgnoringCase;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertThrows;
@@ -342,6 +343,11 @@ public class TestDatabaseMetaDataProvider {
       if (isPostgres) {
         UncheckedExecutionException uncheckedExecutionException = assertThrows(UncheckedExecutionException.class, () -> schemaResource.getTable("WithPartition_p0"));
         assertTrue("partition must not be found on getTable", uncheckedExecutionException.getMessage().contains("Table [WithPartition_p0/*] not found."));
+
+        Table table = schemaResource.getTable("WithPartition");
+        assertEquals("table must have 2 columns", 2, table.columns().size());
+        assertEquals("first column must match", "id", table.columns().get(0).getName());
+        assertEquals("second column column must match", "stringcol", table.columns().get(1).getName());
       }
     }
   }

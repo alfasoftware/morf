@@ -235,8 +235,14 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
     return sequenceSqlBuilder.toString();
   }
 
+
+  @Override
+  public Collection<String> partitionedTableNames() {
+    return super.partitionedTables.get();
+  }
+
   @Override
   public Collection<String> partitionTableNames() {
-    return ignoredTables.get();
+    return super.ignoredTables.get();
   }
 }

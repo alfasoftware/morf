@@ -239,8 +239,6 @@ public class TestUpgrade {
     assertEquals("Path validation SQL present.", "INIT", sql.get(0));
     assertEquals("Healing SQL 1.", "HEALING1", sql.get(1));
     assertEquals("Healing SQL 2.", "HEALING2", sql.get(2));
-    assertEquals("Partitioned table names", Lists.newArrayList(), schemaResource.partitionedTableNames());
-    assertEquals("Partition table names", Lists.newArrayList(), schemaResource.partitionTableNames());
   }
 
 

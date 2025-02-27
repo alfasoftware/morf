@@ -99,15 +99,6 @@ public class WithMetaDataAdapter extends DataSetProducerAdapter {
           return sourceSchema.tableNames();
         }
 
-        @Override
-        public Collection<String> partitionedTableNames() {
-          return sourceSchema.partitionedTableNames();
-        }
-
-        @Override
-        public Collection<String> partitionTableNames() {
-          return sourceSchema.partitionTableNames();
-        }
 
         @Override
         public Collection<Table> tables() {

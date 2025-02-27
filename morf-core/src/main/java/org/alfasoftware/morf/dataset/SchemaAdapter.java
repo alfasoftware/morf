@@ -78,16 +78,6 @@ public class SchemaAdapter implements Schema {
     return delegate.tableNames();
   }
 
-  @Override
-  public Collection<String> partitionedTableNames() {
-    return delegate.partitionedTableNames();
-  }
-
-  @Override
-  public Collection<String> partitionTableNames() {
-    return delegate.partitionTableNames();
-  }
-
 
   /**
    * @see org.alfasoftware.morf.metadata.Schema#tables()

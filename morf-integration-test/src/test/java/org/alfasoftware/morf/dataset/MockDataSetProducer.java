@@ -156,15 +156,6 @@ public class MockDataSetProducer implements DataSetProducer, Schema {
     return tables.keySet();
   }
 
-  @Override
-  public Collection<String> partitionedTableNames() {
-    return List.of();
-  }
-
-  @Override
-  public Collection<String> partitionTableNames() {
-    return List.of();
-  }
 
   /**
    * @see org.alfasoftware.morf.metadata.Schema#tables()

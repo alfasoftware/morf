@@ -37,8 +37,6 @@ import org.junit.Test;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
-import com.google.common.collect.Lists;
-
 
 /**
  * Test class for {@link SqlServerMetaDataProvider}
@@ -86,8 +84,6 @@ public class TestSqlServerMetaDataProvider {
     assertEquals("Sequence names", "[Sequence1]", sqlServerMetaDataProvider.sequenceNames().toString());
     Sequence sequence = sqlServerMetaDataProvider.sequences().iterator().next();
     assertEquals("Sequence name", "Sequence1", sequence.getName());
-    assertEquals("Partitioned table names", Lists.newArrayList(), sqlServerMetaDataProvider.partitionedTableNames());
-    assertEquals("Partition table names", Lists.newArrayList(), sqlServerMetaDataProvider.partitionTableNames());
 
     verify(statement).setString(1, "TestSchema");
   }

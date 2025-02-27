@@ -191,13 +191,6 @@ public abstract class DatabaseMetaDataProvider implements Schema {
     return tableNames.get().values().stream().map(RealName::getRealName).collect(Collectors.toList());
   }
 
-  /**
-   * @see org.alfasoftware.morf.metadata.Schema#tableNames()
-   */
-  @Override
-  public Collection<String> partitionedTableNames() {
-    return new ArrayList<>(partitionedTables.get());
-  }
 
   /**
    * @see org.alfasoftware.morf.metadata.Schema#tables()

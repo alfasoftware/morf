@@ -37,8 +37,6 @@ import org.junit.Test;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
-import com.google.common.collect.Lists;
-
 
 /**
  * Test class for {@link H2MetaDataProvider}
@@ -62,21 +60,6 @@ public class TestH2MetaDataProvider {
     when(dataSource.getConnection()).thenReturn(connection);
   }
 
-
-  /**
-   * Checks the SQL run for retrieving sequences information
-   *
-   * @throws SQLException exception
-   */
-  @Test
-  public void testPartitionedTables() throws SQLException {
-    // Given
-
-    // When
-    final Schema h2MetaDataProvider = h2.openSchema(connection, "TestDatabase", "TestSchema");
-    assertEquals("Partitioned table names", Lists.newArrayList(), h2MetaDataProvider.partitionedTableNames());
-    assertEquals("Partition table names", Lists.newArrayList(), h2MetaDataProvider.partitionTableNames());
-  }
 
   /**
    * Checks the SQL run for retrieving sequences information

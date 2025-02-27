@@ -20,8 +20,6 @@ import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.getAutoIn
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Collection;
-import java.util.List;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
@@ -102,10 +100,5 @@ class H2MetaDataProvider extends DatabaseMetaDataProvider {
     }
 
     return sequenceSqlBuilder.toString();
-  }
-
-  @Override
-  public Collection<String> partitionTableNames() {
-    return List.of();
   }
 }

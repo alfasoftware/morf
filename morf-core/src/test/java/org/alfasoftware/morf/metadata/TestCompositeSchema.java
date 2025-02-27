@@ -32,7 +32,6 @@ import org.junit.Test;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
 
 /**
  * Test {@link CompositeSchema} works correctly.
@@ -74,8 +73,6 @@ public class TestCompositeSchema {
     Schema schema = new CompositeSchema();
     assertTrue("Empty database", schema.isEmptyDatabase());
     assertFalse("Table exists", schema.tableExists("Foo"));
-    assertEquals("partitionedTableNames not empty", Lists.newArrayList(), schema.partitionedTableNames());
-    assertEquals("partitionTableNames not empty", Lists.newArrayList(), schema.partitionTableNames());
   }
 
 

@@ -32,8 +32,6 @@ import org.alfasoftware.morf.metadata.Table;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.google.common.collect.Lists;
-
 /**
  * Test the functionality provided by {@link TableSetSchema}
  *
@@ -98,8 +96,6 @@ public class TestTableSetSchema {
     // Then...
     assertNotNull(appleTable);
     assertEquals(tableName, appleTable.getName());
-    assertEquals("Partitioned table names", Lists.newArrayList(), schema.partitionedTableNames());
-    assertEquals("Partition table names", Lists.newArrayList(), schema.partitionTableNames());
   }
 
 

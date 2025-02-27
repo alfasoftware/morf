@@ -62,26 +62,6 @@ public interface Schema {
   public Collection<String> tableNames();
 
   /**
-   * Provides the names of all partition tables in the database. This applies for now for postgres. Note that the order of
-   * the tables in the result is not specified. The case of the
-   * table names may be preserved when logging progress, but should not be relied on for schema
-   * processing.
-   *
-   * @return A collection of all partitioned table names available in the database.
-   */
-  Collection<String> partitionedTableNames();
-
-  /**
-   * Provides the names of all partition tables in the database. This applies for now for postgres. Note that the order of
-   * the tables in the result is not specified. The case of the
-   * table names may be preserved when logging progress, but should not be relied on for schema
-   * processing.
-   *
-   * @return A collection of all partition table names available in the database.
-   */
-  Collection<String> partitionTableNames();
-
-  /**
    * @return the tables in in the schema represented by this metadata
    */
   public Collection<Table> tables();

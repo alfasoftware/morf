@@ -318,16 +318,6 @@ public class XmlDataSetProducer implements DataSetProducer {
       return xmlStreamProvider.availableStreamNames();
     }
 
-    @Override
-    public Collection<String> partitionedTableNames() {
-      return List.of();
-    }
-
-    @Override
-    public Collection<String> partitionTableNames() {
-      return List.of();
-    }
-
 
     /**
      * @see org.alfasoftware.morf.metadata.Schema#tables()

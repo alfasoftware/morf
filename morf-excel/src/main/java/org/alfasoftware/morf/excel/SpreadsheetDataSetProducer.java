@@ -419,16 +419,6 @@ public class SpreadsheetDataSetProducer implements DataSetProducer {
       }
 
       @Override
-      public Collection<String> partitionedTableNames() {
-        return List.of();
-      }
-
-      @Override
-      public Collection<String> partitionTableNames() {
-        return List.of();
-      }
-
-      @Override
       public Collection<Table> tables() {
         throw new UnsupportedOperationException("Cannot get the metadata of a table for a spreadsheet");
       }

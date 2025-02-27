@@ -34,6 +34,7 @@ import java.sql.Statement;
 import javax.sql.DataSource;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
+import org.alfasoftware.morf.metadata.AdditionalMetadata;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.junit.Before;
@@ -105,7 +106,7 @@ public class TestPostgreSqlMetaDataProvider {
       .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition_p0"));
 
     // When
-    final Schema postgresMetaDataProvider = postgres.openSchema(connection, "TestDatabase", "TestSchema");
+    final AdditionalMetadata postgresMetaDataProvider = (AdditionalMetadata)postgres.openSchema(connection, "TestDatabase", "TestSchema");
     assertEquals("Partition Table name", "[partition]", postgresMetaDataProvider.partitionedTableNames().toString());
     String partitionTable = postgresMetaDataProvider.partitionedTableNames().iterator().next();
     assertEquals("Partition Table name", "partition", partitionTable);
@@ -128,7 +129,8 @@ public class TestPostgreSqlMetaDataProvider {
       .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition_p0"));
 
     // When
-    final Schema postgresMetaDataProvider = postgres.openSchema(connection, "TestDatabase", "TestSchema");
+    final AdditionalMetadata postgresMetaDataProvider = (AdditionalMetadata)postgres.openSchema(connection, "TestDatabase", "TestSchema");
+
     assertEquals("Partition Table name", "[partition_p0]", postgresMetaDataProvider.partitionTableNames().toString());
     String partitionTable = postgresMetaDataProvider.partitionTableNames().iterator().next();
     assertEquals("Partition Table name", "partition_p0", partitionTable);
