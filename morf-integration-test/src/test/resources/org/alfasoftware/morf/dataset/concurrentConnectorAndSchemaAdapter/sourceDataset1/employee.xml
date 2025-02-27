@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?><table version="4">
+  <metadata name="employee">
+    <column name="id" type="INTEGER" primaryKey="true"/>
+    <column name="lastName" type="STRING" width="255" nullable="true"/>
+    <column name="firstName" type="STRING" width="255" nullable="true"/>
+    <column name="role" type="INTEGER" nullable="true"/>
+  </metadata>
+  <data>
+    <record id="1" lastName="Andrew" firstName="Rogers" role="1"/>
+    <record id="2" lastName="Robert" firstName="Ferguson" role="1"/>
+    <record id="3" lastName="Alex" firstName="Mansfield" role="2"/>
+  </data>
+</table>
