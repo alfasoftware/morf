@@ -28,10 +28,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -116,7 +118,8 @@ public abstract class DatabaseMetaDataProvider implements Schema {
   private final LoadingCache<AName, Sequence> sequenceCache = CacheBuilder.newBuilder().build(CacheLoader.from(this::loadSequence));
 
   private final Supplier<Map<String, String>> databaseInformation = Suppliers.memoize(this::loadDatabaseInformation);
-
+  protected Supplier<Set<String>> ignoredTables = Suppliers.memoize(this::getIgnoredTables);
+  protected Supplier<Set<String>> partitionedTables = Suppliers.memoize(this::getPartitionedTables);
 
   /**
    * @param connection The database connection from which meta data should be provided.
@@ -149,6 +152,9 @@ public abstract class DatabaseMetaDataProvider implements Schema {
     }
   }
 
+  protected Set<String> getIgnoredTables() { return new HashSet<>(); }
+
+  protected Set<String> getPartitionedTables() { return new HashSet<>(); }
 
   /**
    * @see org.alfasoftware.morf.metadata.Schema#isEmptyDatabase()
@@ -307,6 +313,11 @@ public abstract class DatabaseMetaDataProvider implements Schema {
             throw new RuntimeSqlException("Error reading metadata for table ["+tableName+"]", e);
           }
         }
+        // add partitioned tables to list
+        partitionedTables.get().forEach(table -> {
+          RealName partionedTableName = createRealName(table, table);
+          tableNameMappings.put(partionedTableName, partionedTableName);
+        });
 
         long end = System.currentTimeMillis();
         Map<AName, RealName> tableNameMap = tableNameMappings.build();
