@@ -209,6 +209,12 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
+  public Collection<String> addTableFromStatements(Table table, SelectStatement selectStatement) {
+    return internalAddTableFromStatements(table, selectStatement, true);
+  }
+
+
+  @Override
   public Collection<String> addTableFromStatementsWithCasting(Table table, SelectStatement selectStatement) {
     return internalAddTableFromStatements(table, selectStatement, true);
   }
