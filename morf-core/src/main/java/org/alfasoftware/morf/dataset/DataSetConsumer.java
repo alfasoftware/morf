@@ -37,13 +37,18 @@ public interface DataSetConsumer {
   // Consider API design of CloseState enum
   public enum CloseState {
     /**
-     * The dataset completed successfully
+     * The dataset or part of the dataset executed by a given thread completed successfully
      */
     COMPLETE,
     /**
      * The dataset did not completed successfully
      */
-    INCOMPLETE
+    INCOMPLETE,
+
+    /**
+     * The entire dataset is completed fully and any clean up task could be executed safely.
+     */
+    FINALLY_COMPLETE
   }
 
   /**

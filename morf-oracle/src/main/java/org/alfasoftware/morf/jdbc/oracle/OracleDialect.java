@@ -1709,4 +1709,10 @@ class OracleDialect extends SqlDialect {
   protected String getSqlFrom(PortableSqlFunction function) {
     return super.getSqlForPortableFunction(function.getFunctionForDatabaseType(Oracle.IDENTIFIER));
   }
+
+
+  @Override
+  public boolean useForcedSerialImport() {
+    return false;
+  }
 }

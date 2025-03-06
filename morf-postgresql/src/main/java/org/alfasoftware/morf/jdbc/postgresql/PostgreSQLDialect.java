@@ -968,6 +968,12 @@ class PostgreSQLDialect extends SqlDialect {
   }
 
 
+  @Override
+  public boolean useForcedSerialImport() {
+    return false;
+  }
+
+
   private List<String> getSchemaConsistencyStatements(PostgreSQLMetaDataProvider metaDataProvider) {
     return FluentIterable.from(metaDataProvider.tables())
             .transformAndConcat(table -> healTable(metaDataProvider, table))

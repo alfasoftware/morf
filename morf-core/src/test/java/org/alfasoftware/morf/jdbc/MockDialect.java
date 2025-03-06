@@ -398,4 +398,10 @@ public class MockDialect extends SqlDialect {
   protected String getSqlFrom(PortableSqlFunction function) {
     throw new IllegalStateException("Portable functions are not supported in the Mock dialect");
   }
+
+
+  @Override
+  public boolean useForcedSerialImport() {
+    return false;
+  }
 }

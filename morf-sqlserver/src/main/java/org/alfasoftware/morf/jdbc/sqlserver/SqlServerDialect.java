@@ -1193,4 +1193,10 @@ class SqlServerDialect extends SqlDialect {
     if (!StringUtils.isEmpty(tableRef.getDblink())) throw new IllegalStateException("DB Links are not supported in the Sql Server dialect. Found dbLink=" + tableRef.getDblink() + " for tableNameWithSchemaName=" + super.tableNameWithSchemaName(tableRef));
     return super.tableNameWithSchemaName(tableRef);
   }
+
+
+  @Override
+  public boolean useForcedSerialImport() {
+    return false;
+  }
 }

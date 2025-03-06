@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?><table version="4">
+  <metadata name="role">
+    <column name="id" type="INTEGER" primaryKey="true"/>
+    <column name="description" type="STRING" width="255" nullable="true"/>
+  </metadata>
+  <data>
+    <record id="1" description="Clerk"/>
+    <record id="2" description="Manager"/>
+  </data>
+</table>
