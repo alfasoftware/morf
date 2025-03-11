@@ -1258,13 +1258,13 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAddTableFromStatements() {
     return ImmutableList.of(
-      "CREATE TABLE testschema.SomeTable (someField VARCHAR(3) COLLATE \"POSIX\" NOT NULL, otherField DECIMAL(3,0) NOT NULL, CONSTRAINT SomeTable_PK PRIMARY KEY(someField))",
+      "CREATE TABLE testschema.SomeTable (someField, otherField) AS SELECT CAST(someField AS VARCHAR(3)) COLLATE \"POSIX\" AS someField, CAST(otherField AS DECIMAL(3,0)) AS otherField FROM testschema.OtherTable",
+      "ALTER TABLE SomeTable ALTER someField SET NOT NULL, ALTER otherField SET NOT NULL, ADD CONSTRAINT SomeTable_PK PRIMARY KEY(someField)",
       "COMMENT ON TABLE testschema.SomeTable IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable]'",
       "COMMENT ON COLUMN testschema.SomeTable.someField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[someField]/TYPE:[STRING]'",
       "COMMENT ON COLUMN testschema.SomeTable.otherField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[otherField]/TYPE:[DECIMAL]'",
       "CREATE INDEX SomeTable_1 ON testschema.SomeTable (otherField)",
-      "COMMENT ON INDEX SomeTable_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_1]'",
-      "INSERT INTO testschema.SomeTable SELECT someField, otherField FROM testschema.OtherTable"
+      "COMMENT ON INDEX SomeTable_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_1]'"
     );
   }
 
