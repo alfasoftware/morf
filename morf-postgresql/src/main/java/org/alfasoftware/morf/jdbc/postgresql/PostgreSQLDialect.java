@@ -135,6 +135,11 @@ class PostgreSQLDialect extends SqlDialect {
   }
 
 
+  /**
+   * https://www.postgresql.org/docs/current/datatype-numeric.html
+   *  - The types DECIMAL and NUMERIC are equivalent.
+   *  - BIG_INTEGER is therefore comparable to DECIMAL
+   */
   @Override
   protected String getDataTypeRepresentation(DataType dataType, int width, int scale) {
     switch (dataType) {
