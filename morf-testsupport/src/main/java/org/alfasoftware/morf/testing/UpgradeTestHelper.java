@@ -22,6 +22,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -199,7 +200,7 @@ public class UpgradeTestHelper {
    * Validate that the upgrade step meets the basic requirements.
    *
    * @param upgradeStep the upgrade step to validate
-   * @return A collection of error messages. An empty collection indicates that the upgrade step passed validation.
+   * @return An unmodifiable collection of error messages. An empty collection indicates that the upgrade step passed validation.
    */
   private Collection<String> validateUpgradeStep(UpgradeStep upgradeStep) {
     Class<? extends UpgradeStep> upgradeStepClass = upgradeStep.getClass();
@@ -253,7 +254,7 @@ public class UpgradeTestHelper {
       }
     }
 
-    return errors;
+    return Collections.unmodifiableList(errors);
   }
 
 
@@ -271,7 +272,7 @@ public class UpgradeTestHelper {
 
 
   /**
-   * Turn the list of classes into a list of objects.
+   * Turn the list of classes into an unmodifiable list of objects.
    */
   private List<UpgradeStep> instantiateAndValidateUpgradeSteps(Iterable<Class<? extends UpgradeStep>> stepClasses) {
 
@@ -298,6 +299,6 @@ public class UpgradeTestHelper {
       fail(String.format("Upgrade step errors were found:%n%s%n", String.join(System.lineSeparator(), errors)));
     }
 
-    return upgradeSteps;
+    return Collections.unmodifiableList(upgradeSteps);
   }
 }
