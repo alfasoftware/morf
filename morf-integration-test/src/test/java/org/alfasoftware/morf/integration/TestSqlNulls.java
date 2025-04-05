@@ -17,40 +17,11 @@ package org.alfasoftware.morf.integration;
 
 import static org.alfasoftware.morf.metadata.DataSetUtils.dataSetProducer;
 import static org.alfasoftware.morf.metadata.DataSetUtils.record;
-import static org.alfasoftware.morf.metadata.SchemaUtils.column;
-import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
-import static org.alfasoftware.morf.metadata.SchemaUtils.table;
-import static org.alfasoftware.morf.sql.SqlUtils.caseStatement;
-import static org.alfasoftware.morf.sql.SqlUtils.concat;
-import static org.alfasoftware.morf.sql.SqlUtils.field;
-import static org.alfasoftware.morf.sql.SqlUtils.literal;
-import static org.alfasoftware.morf.sql.SqlUtils.nullLiteral;
-import static org.alfasoftware.morf.sql.SqlUtils.select;
-import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.sql.SqlUtils.when;
-import static org.alfasoftware.morf.sql.element.Criterion.and;
-import static org.alfasoftware.morf.sql.element.Criterion.not;
-import static org.alfasoftware.morf.sql.element.Criterion.or;
-import static org.alfasoftware.morf.sql.element.Function.average;
-import static org.alfasoftware.morf.sql.element.Function.averageDistinct;
-import static org.alfasoftware.morf.sql.element.Function.count;
-import static org.alfasoftware.morf.sql.element.Function.countDistinct;
-import static org.alfasoftware.morf.sql.element.Function.floor;
-import static org.alfasoftware.morf.sql.element.Function.greatest;
-import static org.alfasoftware.morf.sql.element.Function.least;
-import static org.alfasoftware.morf.sql.element.Function.leftPad;
-import static org.alfasoftware.morf.sql.element.Function.length;
-import static org.alfasoftware.morf.sql.element.Function.lowerCase;
-import static org.alfasoftware.morf.sql.element.Function.max;
-import static org.alfasoftware.morf.sql.element.Function.min;
-import static org.alfasoftware.morf.sql.element.Function.mod;
-import static org.alfasoftware.morf.sql.element.Function.power;
-import static org.alfasoftware.morf.sql.element.Function.round;
+import static org.alfasoftware.morf.metadata.SchemaUtils.*;
+import static org.alfasoftware.morf.sql.SqlUtils.*;
+import static org.alfasoftware.morf.sql.element.Criterion.*;
 import static org.alfasoftware.morf.sql.element.Function.substring;
-import static org.alfasoftware.morf.sql.element.Function.sum;
-import static org.alfasoftware.morf.sql.element.Function.sumDistinct;
-import static org.alfasoftware.morf.sql.element.Function.trim;
-import static org.alfasoftware.morf.sql.element.Function.upperCase;
+import static org.alfasoftware.morf.sql.element.Function.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
@@ -350,6 +321,7 @@ public class TestSqlNulls {
     switch (databaseType) {
       case "ORACLE":
       case "MY_SQL":
+      case "H2":   // H2 v2 only. v1 behaves differently
         return null;
 
       default:
@@ -362,6 +334,7 @@ public class TestSqlNulls {
     switch (databaseType) {
       case "ORACLE":
       case "MY_SQL":
+      case "H2":     // H2 v2 only. v1 behaves differently
         return null;
 
       default:
