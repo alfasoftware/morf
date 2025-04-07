@@ -24,6 +24,8 @@
     <module>morf-postgresql</module>
     <module>morf-sqlserver</module>
     <module>morf-integration-test</module>
+    <module>morf-h2</module>
+    <module>morf-h2v2</module>
   </modules>
   
   <properties>
@@ -273,6 +275,11 @@
       </dependency>
       <dependency>
         <groupId>org.alfasoftware</groupId>
+        <artifactId>morf-h2v2</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.alfasoftware</groupId>
         <artifactId>morf-mysql</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -321,11 +328,6 @@
         <groupId>com.google.inject.extensions</groupId>
         <artifactId>guice-assistedinject</artifactId>
         <version>${guice.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.h2database</groupId>
-        <artifactId>h2</artifactId>
-        <version>${h2.version}</version>
       </dependency>
       <dependency>
         <groupId>org.hamcrest</groupId>
@@ -400,27 +402,6 @@
   </dependencyManagement>
 
   <profiles>
-      <profile>
-        <id>morf-h2-v1</id>
-        <activation>
-          <activeByDefault>true</activeByDefault>
-        </activation>
-        <properties>
-          <h2.version>1.4.200</h2.version>
-        </properties>
-        <modules>
-          <module>morf-h2</module>
-        </modules>
-      </profile>
-      <profile>
-        <id>morf-h2-v2</id>
-        <properties>
-          <h2.version>2.3.232</h2.version>
-        </properties>
-        <modules>
-          <module>morf-h2v2</module>
-        </modules>
-      </profile>
     <profile>
       <id>coverage</id>
       <build>

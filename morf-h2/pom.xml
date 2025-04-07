@@ -14,6 +14,7 @@
   <artifactId>morf-h2</artifactId>
 
   <properties>
+    <h2.version>1.4.200</h2.version>
     <sonar.coverage.jacoco.xmlReportPaths>${basedir}/../${aggregate.report.dir}</sonar.coverage.jacoco.xmlReportPaths>
   </properties>
 
@@ -52,6 +53,7 @@
     <dependency>
       <groupId>com.h2database</groupId>
       <artifactId>h2</artifactId>
+      <version>${h2.version}</version>
     </dependency>
   </dependencies>
 </project>

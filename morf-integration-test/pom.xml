@@ -21,26 +21,41 @@
   <profiles>
       <profile>
           <id>morf-h2-v1</id>
-          <activation>
-              <activeByDefault>true</activeByDefault>
-          </activation>
+          <properties>
+              <h2.version>1.4.200</h2.version>
+          </properties>
           <dependencies>
               <dependency>
                   <groupId>org.alfasoftware</groupId>
                   <artifactId>morf-h2</artifactId>
                   <scope>runtime</scope>
               </dependency>
+              <dependency>
+                  <groupId>com.h2database</groupId>
+                  <artifactId>h2</artifactId>
+                  <version>${h2.version}</version>
+              </dependency>
           </dependencies>
       </profile>
       <profile>
           <id>morf-h2-v2</id>
+          <activation>
+              <activeByDefault>true</activeByDefault>
+          </activation>
+          <properties>
+              <h2.version>2.3.232</h2.version>
+          </properties>
           <dependencies>
             <dependency>
               <groupId>org.alfasoftware</groupId>
               <artifactId>morf-h2v2</artifactId>
-              <version>3.0.0-SNAPSHOT</version>
               <scope>runtime</scope>
             </dependency>
+              <dependency>
+                  <groupId>com.h2database</groupId>
+                  <artifactId>h2</artifactId>
+                  <version>${h2.version}</version>
+              </dependency>
           </dependencies>
       </profile>
   </profiles>
