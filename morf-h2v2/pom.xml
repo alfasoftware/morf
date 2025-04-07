@@ -7,13 +7,14 @@
     <version>2.25.0-rc1</version>
   </parent>
   
-  <name>Morf - Oracle</name>
+  <name>Morf - H2v2</name>
   <description>Morf is a library for cross-platform evolutionary relational database mechanics, database access and database imaging/cloning.</description>
   <url>https://github.com/alfasoftware/morf</url>
 
-  <artifactId>morf-oracle</artifactId>
+  <artifactId>morf-h2v2</artifactId>
 
   <properties>
+    <h2.version>2.3.232</h2.version>
     <sonar.coverage.jacoco.xmlReportPaths>${basedir}/../${aggregate.report.dir}</sonar.coverage.jacoco.xmlReportPaths>
   </properties>
 
@@ -33,7 +34,6 @@
       </plugin>
     </plugins>
   </build>
-
   <dependencies>
     <dependency>
       <groupId>org.alfasoftware</groupId>
@@ -48,6 +48,11 @@
       <groupId>log4j</groupId>
       <artifactId>log4j</artifactId>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.h2database</groupId>
+      <artifactId>h2</artifactId>
+      <version>${h2.version}</version>
     </dependency>
   </dependencies>
 </project>
