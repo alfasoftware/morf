@@ -5939,7 +5939,7 @@ public abstract class AbstractSqlDialectTest {
    */
   protected String expectedSelectSome() {
     return "SELECT MAX(booleanField) FROM " + tableName(TEST_TABLE);
-  };
+  }
 
 
   /**
@@ -5947,7 +5947,7 @@ public abstract class AbstractSqlDialectTest {
    */
   protected String expectedSelectEvery() {
     return "SELECT MIN(booleanField) FROM " + tableName(TEST_TABLE);
-  };
+  }
 
 
   /**

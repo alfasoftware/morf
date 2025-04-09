@@ -1133,7 +1133,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
         + " ON (foo.id = xmergesource.id)"
         + " WHEN MATCHED THEN UPDATE SET bar = xmergesource.bar"
         + " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
-  };
+  }
 
 
   /**
@@ -1415,7 +1415,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedDeleteWithLimitAndWhere(String value) {
     return "DELETE TOP (1000) FROM " + tableName(TEST_TABLE) + " WHERE (Test.stringField = " + stringLiteralPrefix() + value + ")";
-  };
+  }
 
 
   /**
@@ -1424,7 +1424,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedDeleteWithLimitAndComplexWhere(String value1, String value2) {
     return "DELETE TOP (1000) FROM " + tableName(TEST_TABLE) + " WHERE ((Test.stringField = " + stringLiteralPrefix() + value1 + ") OR (Test.stringField = " + stringLiteralPrefix() + value2 + "))";
-  };
+  }
 
 
   /**
@@ -1442,7 +1442,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedSelectWithExcept() {
     return null;
-  };
+  }
 
 
   /**

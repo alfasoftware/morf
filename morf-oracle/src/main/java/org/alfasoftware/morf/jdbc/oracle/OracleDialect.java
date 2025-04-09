@@ -1565,7 +1565,7 @@ class OracleDialect extends SqlDialect {
     }
 
     return "/*+" + builder.append(" */ ").toString();
-  };
+  }
 
 
   /**
