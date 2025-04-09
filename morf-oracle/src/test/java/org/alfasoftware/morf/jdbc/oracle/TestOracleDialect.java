@@ -1116,6 +1116,14 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
     );
   }
 
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterColumnRenameNonPrimaryIndexedColumn()
+   */
+  @Override
+  protected List<String> expectedAlterColumnRenameNonPrimaryIndexedColumn() {
+    return Arrays.asList("ALTER TABLE TESTSCHEMA.Alternate RENAME COLUMN stringField TO blahField", "COMMENT ON COLUMN TESTSCHEMA.Alternate.blahField IS 'REALNAME:[blahField]/TYPE:[STRING]'");
+  }
+
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterColumnRenamingAndChangingNullability()

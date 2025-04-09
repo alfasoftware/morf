@@ -888,6 +888,15 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterColumnRenameNonPrimaryIndexedColumn()
+   */
+  @Override
+  protected List<String> expectedAlterColumnRenameNonPrimaryIndexedColumn() {
+    return Arrays.asList("ALTER TABLE testschema.Alternate RENAME stringField TO blahField","COMMENT ON COLUMN testschema.Alternate.blahField IS 'REALNAME:[blahField]/TYPE:[STRING]'");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterColumnRenamingAndChangingNullability()
    */
   @Override
@@ -1450,7 +1459,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return "DELETE FROM " + tableName(TEST_TABLE) + " WHERE ctid IN (" +
       "SELECT ctid FROM " + tableName(TEST_TABLE) + " WHERE (" + TEST_TABLE + ".stringField = " + stringLiteralPrefix() + value +
       ") LIMIT 1000)";
-  };
+  }
 
 
   /**
@@ -1461,7 +1470,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return "DELETE FROM " + tableName(TEST_TABLE) + " WHERE ctid IN (" +
       "SELECT ctid FROM " + tableName(TEST_TABLE) + " WHERE ((Test.stringField = " + stringLiteralPrefix() + value1 + ") OR (Test.stringField = " + stringLiteralPrefix() + value2 + "))" +
       " LIMIT 1000)";
-  };
+  }
 
 
   /**
@@ -1481,7 +1490,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedSelectWithExcept() {
     return "SELECT stringField FROM testschema.Test EXCEPT SELECT stringField FROM testschema.Other ORDER BY stringField";
-  };
+  }
 
 
   /**

@@ -31,6 +31,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -1031,15 +1032,20 @@ class OracleDialect extends SqlDialect {
     String tableName = oldTable.getName();
 
     boolean recreatePrimaryKey = oldColumn.isPrimaryKey() || newColumn.isPrimaryKey();
+    boolean alterNullable = oldColumn.isNullable() != newColumn.isNullable();
+    boolean alterType = oldColumn.getType() != newColumn.getType() || oldColumn.getScale() != newColumn.getScale() || oldColumn.getWidth() != newColumn.getWidth();
+    boolean alterDefaultValue = !Objects.equals(oldColumn.getDefaultValue(), newColumn.getDefaultValue());
 
     if (recreatePrimaryKey && !primaryKeysForTable(oldTable).isEmpty()) {
       result.add(dropPrimaryKeyConstraint(tableName));
     }
 
-    for (Index index : oldTable.indexes()) {
-      for (String column : index.columnNames()) {
-        if (column.equalsIgnoreCase(oldColumn.getName())) {
-          result.addAll(indexDropStatements(oldTable, index));
+    if (alterNullable || alterType || alterDefaultValue) {
+      for (Index index : oldTable.indexes()) {
+        for (String column : index.columnNames()) {
+          if (column.equalsIgnoreCase(oldColumn.getName())) {
+            result.addAll(indexDropStatements(oldTable, index));
+          }
         }
       }
     }
@@ -1054,29 +1060,29 @@ class OracleDialect extends SqlDialect {
 
     if (!StringUtils.isBlank(sqlRepresentationOfColumnType)) {
       StringBuilder statement = new StringBuilder()
-        .append("ALTER TABLE ")
-        .append(schemaNamePrefix())
-        .append(tableName)
-        .append(" MODIFY (")
-        .append(newColumn.getName())
-        .append(' ')
-        .append(sqlRepresentationOfColumnType)
-        .append(")");
+              .append("ALTER TABLE ")
+              .append(schemaNamePrefix())
+              .append(tableName)
+              .append(" MODIFY (")
+              .append(newColumn.getName())
+              .append(' ')
+              .append(sqlRepresentationOfColumnType)
+              .append(")");
 
       result.add(statement.toString());
     }
 
     if (!StringUtils.isBlank(oldColumn.getDefaultValue()) && StringUtils.isBlank(newColumn.getDefaultValue())) {
       StringBuilder statement = new StringBuilder()
-          .append("ALTER TABLE ")
-          .append(schemaNamePrefix())
-          .append(tableName)
-          .append(" MODIFY (")
-          .append(newColumn.getName())
-          .append(" DEFAULT NULL")
-          .append(")");
+              .append("ALTER TABLE ")
+              .append(schemaNamePrefix())
+              .append(tableName)
+              .append(" MODIFY (")
+              .append(newColumn.getName())
+              .append(" DEFAULT NULL")
+              .append(")");
 
-        result.add(statement.toString());
+      result.add(statement.toString());
     }
 
     if (recreatePrimaryKey && !primaryKeysForTable(table).isEmpty()) {
@@ -1086,14 +1092,15 @@ class OracleDialect extends SqlDialect {
       }
     }
 
-    for (Index index : table.indexes()) {
-      for (String column : index.columnNames()) {
-        if (column.equalsIgnoreCase(newColumn.getName())) {
-          result.addAll(addIndexStatements(table, index));
+    if (alterNullable || alterType || alterDefaultValue) {
+      for (Index index : table.indexes()) {
+        for (String column : index.columnNames()) {
+          if (column.equalsIgnoreCase(newColumn.getName())) {
+            result.addAll(addIndexStatements(table, index));
+          }
         }
       }
     }
-
     result.add(columnComment(newColumn, tableName));
 
     return result;
@@ -1558,7 +1565,7 @@ class OracleDialect extends SqlDialect {
     }
 
     return "/*+" + builder.append(" */ ").toString();
-  };
+  }
 
 
   /**

@@ -4089,6 +4089,15 @@ public abstract class AbstractSqlDialectTest {
     testAlterTableColumn(TEST_TABLE, AlterationType.ALTER, getColumn(TEST_TABLE, DATE_FIELD), column(DATE_FIELD, DataType.DATE).nullable().primaryKey(), expectedAlterColumnMakePrimaryStatements());
   }
 
+  /**
+   *  Test renaming an indexed non-primary key column
+   */
+  @Test
+  public void testAlterColumnRenameNonPrimaryIndexedColumn() {
+    testAlterTableColumn(ALTERNATE_TABLE, AlterationType.ALTER, getColumn(ALTERNATE_TABLE, STRING_FIELD), column("blahField", DataType.STRING, 3).nullable(), expectedAlterColumnRenameNonPrimaryIndexedColumn());
+  }
+
+
 
   /**
    * Test changing a column which is part of a composite primary key.
@@ -4760,6 +4769,11 @@ public abstract class AbstractSqlDialectTest {
    */
   protected abstract List<String> expectedAlterColumnMakePrimaryStatements();
 
+
+  /**
+   * @return Expected SQL for {@link #testAlterColumnRenameNonPrimaryIndexedColumn()}
+   */
+  protected abstract List<String> expectedAlterColumnRenameNonPrimaryIndexedColumn();
 
   /**
    * @return Expected SQL for {@link #testAlterPrimaryKeyColumnCompositeKey()}
@@ -5925,7 +5939,7 @@ public abstract class AbstractSqlDialectTest {
    */
   protected String expectedSelectSome() {
     return "SELECT MAX(booleanField) FROM " + tableName(TEST_TABLE);
-  };
+  }
 
 
   /**
@@ -5933,7 +5947,7 @@ public abstract class AbstractSqlDialectTest {
    */
   protected String expectedSelectEvery() {
     return "SELECT MIN(booleanField) FROM " + tableName(TEST_TABLE);
-  };
+  }
 
 
   /**
