@@ -41,16 +41,8 @@ import javax.xml.stream.XMLStreamReader;
 
 import org.alfasoftware.morf.dataset.DataSetProducer;
 import org.alfasoftware.morf.dataset.Record;
-import org.alfasoftware.morf.metadata.Column;
-import org.alfasoftware.morf.metadata.DataSetUtils;
-import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.Index;
-import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.SchemaUtils;
-import org.alfasoftware.morf.metadata.Sequence;
-import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.metadata.*;
 import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
-import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.xml.XmlStreamProvider.XmlInputStreamProvider;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
@@ -429,6 +421,18 @@ public class XmlDataSetProducer implements DataSetProducer {
     private final String       tableName;
 
 
+    @Override
+    public boolean isPartitioned() { return false; }
+
+    @Override
+    public PartitioningRule partitioningRule() {
+      //TODO: implement Xml partitioning rule exporting for cryo
+      return null;
+    }
+
+    ;
+
+
     /**
      * @param xmlStreamReader pull parser that provides the xml data
      * @param xmlFormatVersion The format version.
@@ -683,6 +687,12 @@ public class XmlDataSetProducer implements DataSetProducer {
         return autonumberStart == null ? 0 : autonumberStart;
       }
 
+      @Override
+      public boolean isPartitioned() {
+        //TODO: implement this method to read whether the table is partitioned from XML
+        return false;
+      }
+
 
       @Override
       public String toString() {
@@ -739,6 +749,18 @@ public class XmlDataSetProducer implements DataSetProducer {
       @Override
       public boolean isUnique() {
         return isUnique;
+      }
+
+      @Override
+      public boolean isGlobalPartitioned() {
+        //TODO: support global index part spec reading from XML
+        return false;
+      }
+
+      @Override
+      public boolean isLocalPartitioned() {
+        //TODO: support local index part spec reading from XML
+        return false;
       }
 
 

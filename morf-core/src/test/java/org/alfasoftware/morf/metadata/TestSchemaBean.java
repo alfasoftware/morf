@@ -136,6 +136,16 @@ public class TestSchemaBean {
       public boolean isTemporary() {
         return false;
       }
+
+      @Override
+      public boolean isPartitioned() { return false; }
+
+      @Override
+      public PartitioningRule partitioningRule() {
+        return null;
+      }
+
+      ;
     };
 
 
