@@ -213,6 +213,7 @@ public class TestXmlDataSetProducer {
 
     use(producer.records("eNTITYoNE"));
     assertFalse("Non existant table", producer.getSchema().tableNames().contains("NotExist"));
+
     producer.close();
   }
 
