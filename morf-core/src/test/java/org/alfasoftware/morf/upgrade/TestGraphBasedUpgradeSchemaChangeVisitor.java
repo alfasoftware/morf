@@ -21,6 +21,7 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.SelectStatement;
@@ -50,6 +51,9 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
   private SqlDialect sqlDialect;
 
   @Mock
+  private SchemaResource schemaResource;
+
+  @Mock
   private Table idTable;
 
   @Mock
@@ -70,7 +74,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     nodes.put(U1.class.getName(), n1);
     nodes.put(U2.class.getName(), n2);
 
-    visitor = new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, sqlDialect, idTable, nodes);
+    visitor = new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, schemaResource, sqlDialect, idTable, nodes);
   }
 
 
@@ -415,7 +419,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     GraphBasedUpgradeSchemaChangeVisitorFactory factory = new GraphBasedUpgradeSchemaChangeVisitorFactory();
 
     // when
-    GraphBasedUpgradeSchemaChangeVisitor created = factory.create(sourceSchema, sqlDialect, idTable, nodes);
+    GraphBasedUpgradeSchemaChangeVisitor created = factory.create(sourceSchema, schemaResource, sqlDialect, idTable, nodes);
 
     // then
     assertNotNull(created);

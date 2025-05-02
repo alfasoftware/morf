@@ -21,10 +21,10 @@ package org.alfasoftware.morf.upgrade;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.mockito.ArgumentMatchers.nullable;
-import static org.mockito.BDDMockito.given;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -36,6 +36,7 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.DeleteStatement;
@@ -68,7 +69,8 @@ public class TestInlineTableUpgrader {
     schema = mock(Schema.class);
     sqlDialect = mock(SqlDialect.class);
     sqlStatementWriter = mock(SqlStatementWriter.class);
-    upgrader = new InlineTableUpgrader(schema, sqlDialect, sqlStatementWriter, SqlDialect.IdTable.withDeterministicName(ID_TABLE_NAME));
+    SchemaResource schemaResource = mock(SchemaResource.class);
+    upgrader = new InlineTableUpgrader(schema, schemaResource, sqlDialect, sqlStatementWriter, SqlDialect.IdTable.withDeterministicName(ID_TABLE_NAME));
   }
 
 

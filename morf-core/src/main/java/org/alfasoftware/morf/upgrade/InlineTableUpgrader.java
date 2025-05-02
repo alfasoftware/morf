@@ -17,10 +17,15 @@ package org.alfasoftware.morf.upgrade;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.metadata.AdditionalMetadata;
+import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.Statement;
 
@@ -31,6 +36,7 @@ import org.alfasoftware.morf.sql.Statement;
  */
 public class InlineTableUpgrader implements SchemaChangeVisitor {
 
+  private final SchemaResource schemaResource;
   private Schema                   currentSchema;
   private final SqlDialect         sqlDialect;
   private final SqlStatementWriter sqlStatementWriter;
@@ -42,11 +48,13 @@ public class InlineTableUpgrader implements SchemaChangeVisitor {
    * Default constructor.
    *
    * @param startSchema schema prior to upgrade step.
+   * @param schemaResource schema resource
    * @param sqlDialect Dialect to generate statements for the target database.
    * @param sqlStatementWriter recipient for all upgrade SQL statements.
    * @param idTable table for id generation.
    */
-  public InlineTableUpgrader(Schema startSchema, SqlDialect sqlDialect, SqlStatementWriter sqlStatementWriter, Table idTable) {
+  public InlineTableUpgrader(Schema startSchema, SchemaResource schemaResource, SqlDialect sqlDialect, SqlStatementWriter sqlStatementWriter, Table idTable) {
+    this.schemaResource = schemaResource;
     this.currentSchema = startSchema;
     this.sqlDialect = sqlDialect;
     this.sqlStatementWriter = sqlStatementWriter;
@@ -99,7 +107,26 @@ public class InlineTableUpgrader implements SchemaChangeVisitor {
   @Override
   public void visit(AddIndex addIndex) {
     currentSchema = addIndex.apply(currentSchema);
-    writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(addIndex.getTableName()), addIndex.getNewIndex()));
+    Index foundIndex = null;
+    if (schemaResource != null && schemaResource.getAdditionalMetadata().isPresent()) {
+      AdditionalMetadata additionalMetadata = schemaResource.getAdditionalMetadata().get();
+      String tableName = addIndex.getTableName().toUpperCase(Locale.ROOT);
+      if (additionalMetadata.ignoredIndexes().containsKey(tableName)) {
+        List<Index> tableIgnoredIndexes = additionalMetadata.ignoredIndexes().get(tableName);
+        for (Index index : tableIgnoredIndexes) {
+          if (index.columnNames().equals(addIndex.getNewIndex().columnNames())) {
+            foundIndex = index;
+            break;
+          }
+        }
+      }
+    }
+
+    if (foundIndex != null) {
+      writeStatements(sqlDialect.renameIndexStatements(currentSchema.getTable(addIndex.getTableName()), foundIndex.getName(), addIndex.getNewIndex().getName()));
+    } else {
+      writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(addIndex.getTableName()), addIndex.getNewIndex()));
+    }
   }
 
 

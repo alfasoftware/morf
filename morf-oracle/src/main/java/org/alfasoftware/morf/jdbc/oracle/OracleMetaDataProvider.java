@@ -85,7 +85,7 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
   private final Connection connection;
   private final String schemaName;
   private Map<String, String> primaryKeyIndexNames;
-
+  private Map<String, List<Index>> ignoredIndexesMap;
 
   /**
    * Construct a new meta data provider.
@@ -160,6 +160,16 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
     }
     tableMap();
     return primaryKeyIndexNames;
+  }
+
+
+  @Override
+  public Map<String, List<Index>> ignoredIndexes() {
+    if (ignoredIndexesMap != null) {
+      return ignoredIndexesMap;
+    }
+    tableMap();
+    return ignoredIndexesMap;
   }
 
 
@@ -325,6 +335,7 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
     // -- Stage 3: find the index names...
     //
     primaryKeyIndexNames = Maps.newHashMap();
+    ignoredIndexesMap = Maps.newHashMap();
     final String getIndexNamesSql = "select table_name, index_name, uniqueness, status from ALL_INDEXES where owner=? order by table_name, index_name";
     runSQL(getIndexNamesSql, new ResultSetHandler() {
       @Override
@@ -340,11 +351,6 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
 
           if (currentTable == null) {
             log.warn(String.format("Table [%s] was not in the table map - ignoring index [%s]", tableName, indexName));
-            continue;
-          }
-
-          if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName)) {
-            log.info("Ignoring index: [" + indexName + "]");
             continue;
           }
 
@@ -375,6 +381,41 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
           }
 
           final String indexNameFinal = indexName;
+
+          if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName)) {
+            Index ignoredIndex = new Index() {
+              private final List<String> columnNames = new ArrayList<>();
+
+              @Override
+              public boolean isUnique() {
+                return unique;
+              }
+
+
+              @Override
+              public String getName() {
+                return indexNameFinal;
+              }
+
+
+              @Override
+              public List<String> columnNames() {
+                return columnNames;
+              }
+
+
+              @Override
+              public String toString() {
+                return this.toStringHelper();
+              }
+            };
+            if (ignoredIndexesMap.containsKey(tableName)) {
+              ignoredIndexesMap.get(tableName).add(ignoredIndex);
+            } else {
+              ignoredIndexesMap.put(tableName, List.of(ignoredIndex));
+            }
+            continue;
+          }
 
           currentTable.indexes().add(new Index() {
             private final List<String> columnNames = new ArrayList<>();
@@ -447,6 +488,29 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
           }
 
           if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName)) {
+            Index lastIndex = null;
+            for (Index currentIndex : ignoredIndexesMap.get(tableName)) {
+              if (currentIndex.getName().equalsIgnoreCase(indexName)) {
+                lastIndex = currentIndex;
+                break;
+              }
+            }
+
+            if (lastIndex == null) {
+              log.warn(String.format("Ignoring index details for index [%s] on table [%s] as no index definition exists", indexName, tableName));
+              continue;
+            }
+
+            // Correct the case on the column name
+            for (Column currentColumn : currentTable.columns()) {
+              if (currentColumn.getName().equalsIgnoreCase(columnName)) {
+                columnName = currentColumn.getName();
+                break;
+              }
+            }
+
+            lastIndex.columnNames().add(columnName);
+
             continue;
           }
 

@@ -1,11 +1,16 @@
 package org.alfasoftware.morf.upgrade;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
 import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.metadata.AdditionalMetadata;
+import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.Statement;
 
@@ -19,6 +24,7 @@ import org.alfasoftware.morf.sql.Statement;
 class GraphBasedUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
 
   private Schema sourceSchema;
+  private final SchemaResource schemaResource;
   private final SqlDialect sqlDialect;
   private final Table idTable;
   private final TableNameResolver tracker;
@@ -30,13 +36,15 @@ class GraphBasedUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
    * Default constructor.
    *
    * @param sourceSchema schema prior to upgrade step.
+   * @param schemaResource schema resource
    * @param sqlDialect   dialect to generate statements for the target database.
    * @param idTable      table for id generation.
    * @param upgradeNodes all the {@link GraphBasedUpgradeNode} instances in the
    *                       upgrade for which the visitor will generate statements
    */
-  GraphBasedUpgradeSchemaChangeVisitor(Schema sourceSchema, SqlDialect sqlDialect, Table idTable, Map<String, GraphBasedUpgradeNode> upgradeNodes) {
+  GraphBasedUpgradeSchemaChangeVisitor(Schema sourceSchema, SchemaResource schemaResource, SqlDialect sqlDialect, Table idTable, Map<String, GraphBasedUpgradeNode> upgradeNodes) {
     this.sourceSchema = sourceSchema;
+    this.schemaResource = schemaResource;
     this.sqlDialect = sqlDialect;
     this.idTable = idTable;
     this.upgradeNodes = upgradeNodes;
@@ -77,7 +85,26 @@ class GraphBasedUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
   @Override
   public void visit(AddIndex addIndex) {
     sourceSchema = addIndex.apply(sourceSchema);
-    writeStatements(sqlDialect.addIndexStatements(sourceSchema.getTable(addIndex.getTableName()), addIndex.getNewIndex()));
+    Index foundIndex = null;
+    if (schemaResource != null && schemaResource.getAdditionalMetadata().isPresent()) {
+      AdditionalMetadata additionalMetadata = schemaResource.getAdditionalMetadata().get();
+      String tableName = addIndex.getTableName().toUpperCase(Locale.ROOT);
+      if (additionalMetadata.ignoredIndexes().containsKey(tableName)) {
+        List<Index> tableIgnoredIndexes = additionalMetadata.ignoredIndexes().get(tableName);
+        for (Index index : tableIgnoredIndexes) {
+          if (index.columnNames().equals(addIndex.getNewIndex().columnNames())) {
+            foundIndex = index;
+            break;
+          }
+        }
+      }
+    }
+
+    if (foundIndex != null) {
+      writeStatements(sqlDialect.renameIndexStatements(sourceSchema.getTable(addIndex.getTableName()), foundIndex.getName(), addIndex.getNewIndex().getName()));
+    } else {
+      writeStatements(sqlDialect.addIndexStatements(sourceSchema.getTable(addIndex.getTableName()), addIndex.getNewIndex()));
+    }
   }
 
 
@@ -248,9 +275,9 @@ class GraphBasedUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
      *                       which the visitor will generate statements
      * @return new {@link GraphBasedUpgradeSchemaChangeVisitor} instance
      */
-    GraphBasedUpgradeSchemaChangeVisitor create(Schema sourceSchema, SqlDialect sqlDialect, Table idTable,
+    GraphBasedUpgradeSchemaChangeVisitor create(Schema sourceSchema, SchemaResource schemaResource, SqlDialect sqlDialect, Table idTable,
         Map<String, GraphBasedUpgradeNode> upgradeNodes) {
-      return new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, sqlDialect, idTable, upgradeNodes);
+      return new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, schemaResource, sqlDialect, idTable, upgradeNodes);
     }
   }
 }
