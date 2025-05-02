@@ -189,18 +189,41 @@ public class TestInlineTableUpgrader {
     Index indexPrf = mock(Index.class);
     when(indexPrf.getName()).thenReturn(ID_TABLE_NAME + "_PRF1");
     when(indexPrf.columnNames()).thenReturn(List.of("column_1"));
+    Index indexPrf1 = mock(Index.class);
+    when(indexPrf1.getName()).thenReturn(ID_TABLE_NAME + "_PRF2");
+    when(indexPrf1.columnNames()).thenReturn(List.of("column_2"));
 
     Map<String, List<Index>> ignoredIndexes = new HashMap<>();
-    ignoredIndexes.put(ID_TABLE_NAME.toUpperCase(Locale.ROOT), Collections.singletonList(indexPrf));
+    ignoredIndexes.put(ID_TABLE_NAME.toUpperCase(Locale.ROOT), List.of(indexPrf, indexPrf1));
     when(additionalMetadata.ignoredIndexes()).thenReturn(ignoredIndexes);
+
+    Index newIndex1 = mock(Index.class);
+    when(newIndex1.getName()).thenReturn(ID_TABLE_NAME + "_2");
+    when(newIndex1.columnNames()).thenReturn(Collections.singletonList("column_2"));
+    AddIndex addIndex1 = mock(AddIndex.class);
+    given(addIndex1.apply(schema)).willReturn(schema);
+    when(addIndex1.getTableName()).thenReturn(ID_TABLE_NAME);
+    when(addIndex1.getNewIndex()).thenReturn(newIndex1);
+
+    Index newIndex2 = mock(Index.class);
+    when(newIndex2.getName()).thenReturn(ID_TABLE_NAME + "_3");
+    when(newIndex2.columnNames()).thenReturn(Collections.singletonList("column_3"));
+    AddIndex addIndex2 = mock(AddIndex.class);
+    given(addIndex2.apply(schema)).willReturn(schema);
+    when(addIndex2.getTableName()).thenReturn(ID_TABLE_NAME);
+    when(addIndex2.getNewIndex()).thenReturn(newIndex2);
 
     // when
     upgrader.visit(addIndex);
+    upgrader.visit(addIndex1);
+    upgrader.visit(addIndex2);
 
     // then
     verify(addIndex).apply(schema);
     verify(sqlDialect).renameIndexStatements(nullable(Table.class), eq(ID_TABLE_NAME + "_PRF1"), eq(ID_TABLE_NAME + "_1"));
-    verify(sqlStatementWriter).writeSql(anyCollection());
+    verify(sqlDialect).renameIndexStatements(nullable(Table.class), eq(ID_TABLE_NAME + "_PRF2"), eq(ID_TABLE_NAME + "_2"));
+    verify(sqlDialect).addIndexStatements(nullable(Table.class), nullable(Index.class));
+    verify(sqlStatementWriter, times(3)).writeSql(anyCollection());
   }
 
 

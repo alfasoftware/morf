@@ -1,14 +1,10 @@
 package org.alfasoftware.morf.upgrade;
 
 import java.util.Collection;
-import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
 import org.alfasoftware.morf.jdbc.SqlDialect;
-import org.alfasoftware.morf.metadata.AdditionalMetadata;
-import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.Table;
@@ -21,7 +17,7 @@ import org.alfasoftware.morf.sql.Statement;
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2022
  */
-class GraphBasedUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
+class GraphBasedUpgradeSchemaChangeVisitor extends SchemaChangeVisitorBase implements SchemaChangeVisitor {
 
   private Schema sourceSchema;
   private final SchemaResource schemaResource;
@@ -43,6 +39,7 @@ class GraphBasedUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
    *                       upgrade for which the visitor will generate statements
    */
   GraphBasedUpgradeSchemaChangeVisitor(Schema sourceSchema, SchemaResource schemaResource, SqlDialect sqlDialect, Table idTable, Map<String, GraphBasedUpgradeNode> upgradeNodes) {
+    super(sourceSchema, schemaResource, sqlDialect);
     this.sourceSchema = sourceSchema;
     this.schemaResource = schemaResource;
     this.sqlDialect = sqlDialect;
@@ -55,7 +52,8 @@ class GraphBasedUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
   /**
    * Write statements to the current node
    */
-  private void writeStatements(Collection<String> statements) {
+  @Override
+  protected void writeStatements(Collection<String> statements) {
     currentNode.addAllUpgradeStatements(statements);
   }
 
@@ -81,7 +79,7 @@ class GraphBasedUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
     writeStatements(sqlDialect.dropStatements(removeTable.getTable()));
   }
 
-
+  /*
   @Override
   public void visit(AddIndex addIndex) {
     sourceSchema = addIndex.apply(sourceSchema);
@@ -105,7 +103,7 @@ class GraphBasedUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
     } else {
       writeStatements(sqlDialect.addIndexStatements(sourceSchema.getTable(addIndex.getTableName()), addIndex.getNewIndex()));
     }
-  }
+  }*/
 
 
   @Override

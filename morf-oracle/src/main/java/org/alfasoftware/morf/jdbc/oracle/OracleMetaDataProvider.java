@@ -383,72 +383,53 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
           final String indexNameFinal = indexName;
 
           if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName)) {
-            Index ignoredIndex = new Index() {
-              private final List<String> columnNames = new ArrayList<>();
-
-              @Override
-              public boolean isUnique() {
-                return unique;
-              }
-
-
-              @Override
-              public String getName() {
-                return indexNameFinal;
-              }
-
-
-              @Override
-              public List<String> columnNames() {
-                return columnNames;
-              }
-
-
-              @Override
-              public String toString() {
-                return this.toStringHelper();
-              }
-            };
+            Index ignoredIndex = getAssembledIndex(unique, indexNameFinal);
             if (ignoredIndexesMap.containsKey(tableName)) {
-              ignoredIndexesMap.get(tableName).add(ignoredIndex);
+              List<Index> indexList = new ArrayList<>(ignoredIndexesMap.get(tableName));
+              indexList.add(ignoredIndex);
+              ignoredIndexesMap.put(tableName, indexList);
             } else {
               ignoredIndexesMap.put(tableName, List.of(ignoredIndex));
             }
             continue;
           }
 
-          currentTable.indexes().add(new Index() {
-            private final List<String> columnNames = new ArrayList<>();
-
-            @Override
-            public boolean isUnique() {
-              return unique;
-            }
-
-
-            @Override
-            public String getName() {
-              return indexNameFinal;
-            }
-
-
-            @Override
-            public List<String> columnNames() {
-              return columnNames;
-            }
-
-
-            @Override
-            public String toString() {
-              return this.toStringHelper();
-            }
-          });
+          currentTable.indexes().add(getAssembledIndex(unique, indexNameFinal));
           indexCount++;
         }
 
         if (log.isDebugEnabled()) {
           log.debug(String.format("Loaded %d indexes", indexCount));
         }
+      }
+
+      private Index getAssembledIndex(boolean unique, String indexNameFinal) {
+        return new Index() {
+          private final List<String> columnNames = new ArrayList<>();
+
+          @Override
+          public boolean isUnique() {
+            return unique;
+          }
+
+
+          @Override
+          public String getName() {
+            return indexNameFinal;
+          }
+
+
+          @Override
+          public List<String> columnNames() {
+            return columnNames;
+          }
+
+
+          @Override
+          public String toString() {
+            return this.toStringHelper();
+          }
+        };
       }
 
 
@@ -502,12 +483,7 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
             }
 
             // Correct the case on the column name
-            for (Column currentColumn : currentTable.columns()) {
-              if (currentColumn.getName().equalsIgnoreCase(columnName)) {
-                columnName = currentColumn.getName();
-                break;
-              }
-            }
+            columnName = getColumnCorrectCase(currentTable, columnName);
 
             lastIndex.columnNames().add(columnName);
 
@@ -528,15 +504,20 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
           }
 
           // Correct the case on the column name
-          for (Column currentColumn : currentTable.columns()) {
-            if (currentColumn.getName().equalsIgnoreCase(columnName)) {
-              columnName = currentColumn.getName();
-              break;
-            }
-          }
+          columnName = getColumnCorrectCase(currentTable, columnName);
 
           lastIndex.columnNames().add(columnName);
         }
+      }
+
+      private String getColumnCorrectCase(Table currentTable, String columnName) {
+        for (Column currentColumn : currentTable.columns()) {
+          if (currentColumn.getName().equalsIgnoreCase(columnName)) {
+            columnName = currentColumn.getName();
+            break;
+          }
+        }
+        return columnName;
       }
     });
 

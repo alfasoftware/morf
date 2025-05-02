@@ -17,13 +17,9 @@ package org.alfasoftware.morf.upgrade;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 
 import org.alfasoftware.morf.jdbc.SqlDialect;
-import org.alfasoftware.morf.metadata.AdditionalMetadata;
-import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.Table;
@@ -34,7 +30,7 @@ import org.alfasoftware.morf.sql.Statement;
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-public class InlineTableUpgrader implements SchemaChangeVisitor {
+public class InlineTableUpgrader extends SchemaChangeVisitorBase implements SchemaChangeVisitor {
 
   private final SchemaResource schemaResource;
   private Schema                   currentSchema;
@@ -54,6 +50,7 @@ public class InlineTableUpgrader implements SchemaChangeVisitor {
    * @param idTable table for id generation.
    */
   public InlineTableUpgrader(Schema startSchema, SchemaResource schemaResource, SqlDialect sqlDialect, SqlStatementWriter sqlStatementWriter, Table idTable) {
+    super(startSchema, schemaResource, sqlDialect);
     this.schemaResource = schemaResource;
     this.currentSchema = startSchema;
     this.sqlDialect = sqlDialect;
@@ -104,6 +101,7 @@ public class InlineTableUpgrader implements SchemaChangeVisitor {
   /**
    * @see org.alfasoftware.morf.upgrade.SchemaChangeVisitor#visit(org.alfasoftware.morf.upgrade.AddIndex)
    */
+  /*
   @Override
   public void visit(AddIndex addIndex) {
     currentSchema = addIndex.apply(currentSchema);
@@ -127,7 +125,7 @@ public class InlineTableUpgrader implements SchemaChangeVisitor {
     } else {
       writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(addIndex.getTableName()), addIndex.getNewIndex()));
     }
-  }
+  } */
 
 
   /**
@@ -253,7 +251,8 @@ public class InlineTableUpgrader implements SchemaChangeVisitor {
   /**
    * Write out SQL
    */
-  private void writeStatements(Collection<String> statements) {
+  @Override
+  protected void writeStatements(Collection<String> statements) {
     sqlStatementWriter.writeSql(statements);
   }
 
