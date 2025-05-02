@@ -3,6 +3,7 @@ package org.alfasoftware.morf.upgrade;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.AdditionalMetadata;
@@ -33,8 +34,9 @@ public abstract class SchemaChangeVisitorBase implements SchemaChangeVisitor {
   public void visit(AddIndex addIndex) {
     sourceSchema = addIndex.apply(sourceSchema);
     Index foundIndex = null;
-    if (schemaResource != null && schemaResource.getAdditionalMetadata().isPresent()) {
-      AdditionalMetadata additionalMetadata = schemaResource.getAdditionalMetadata().get();
+    Optional<AdditionalMetadata> optionalMetadata = schemaResource.getAdditionalMetadata();
+    if (optionalMetadata.isPresent()) {
+      AdditionalMetadata additionalMetadata = optionalMetadata.get();
       String tableName = addIndex.getTableName().toUpperCase(Locale.ROOT);
       if (additionalMetadata.ignoredIndexes().containsKey(tableName)) {
         List<Index> tableIgnoredIndexes = additionalMetadata.ignoredIndexes().get(tableName);
