@@ -6,18 +6,23 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.metadata.AdditionalMetadata;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
@@ -125,6 +130,46 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
 
     // then
     verify(addIndex).apply(sourceSchema);
+    verify(n1).addAllUpgradeStatements(ArgumentMatchers.argThat(c-> c.containsAll(STATEMENTS)));
+  }
+
+
+  /**
+   * Test method for {@link org.alfasoftware.morf.upgrade.InlineTableUpgrader#visit(org.alfasoftware.morf.upgrade.AddIndex)}.
+   */
+  @Test
+  public void testVisitAddIndexWithPRFIndex() {
+    // given
+    visitor.startStep(U1.class);
+
+    String ID_TABLE_NAME = "IdTableName";
+    Index newIndex = mock(Index.class);
+    when(newIndex.getName()).thenReturn(ID_TABLE_NAME + "_1");
+    when(newIndex.columnNames()).thenReturn(Collections.singletonList("column_1"));
+
+    AddIndex addIndex = mock(AddIndex.class);
+    given(addIndex.apply(sourceSchema)).willReturn(sourceSchema);
+    when(addIndex.getTableName()).thenReturn(ID_TABLE_NAME);
+    when(addIndex.getNewIndex()).thenReturn(newIndex);
+
+    AdditionalMetadata additionalMetadata = mock(AdditionalMetadata.class);
+    when(schemaResource.getAdditionalMetadata()).thenReturn(Optional.of(additionalMetadata));
+    Index indexPrf = mock(Index.class);
+    when(indexPrf.getName()).thenReturn(ID_TABLE_NAME + "_PRF1");
+    when(indexPrf.columnNames()).thenReturn(List.of("column_1"));
+
+    Map<String, List<Index>> ignoredIndexes = new HashMap<>();
+    ignoredIndexes.put(ID_TABLE_NAME.toUpperCase(Locale.ROOT), Collections.singletonList(indexPrf));
+    when(additionalMetadata.ignoredIndexes()).thenReturn(ignoredIndexes);
+
+    when(sqlDialect.renameIndexStatements(nullable(Table.class), eq(ID_TABLE_NAME + "_PRF1"), eq(ID_TABLE_NAME + "_1"))).thenReturn(STATEMENTS);
+
+    // when
+    visitor.visit(addIndex);
+
+    // then
+    verify(addIndex).apply(sourceSchema);
+    verify(sqlDialect).renameIndexStatements(nullable(Table.class), eq(ID_TABLE_NAME + "_PRF1"), eq(ID_TABLE_NAME + "_1"));
     verify(n1).addAllUpgradeStatements(ArgumentMatchers.argThat(c-> c.containsAll(STATEMENTS)));
   }
 
