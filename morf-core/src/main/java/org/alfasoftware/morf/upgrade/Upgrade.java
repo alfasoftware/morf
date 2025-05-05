@@ -249,7 +249,7 @@ public class Upgrade {
     //
     if (!schemaChangeSequence.getUpgradeSteps().isEmpty()) {
       // Run the upgrader over all the ElementarySchemaChanges in the upgrade steps
-      InlineTableUpgrader upgrader = new InlineTableUpgrader(sourceSchema, connectionResources.openSchemaResource(), dialect, new SqlStatementWriter() {
+      InlineTableUpgrader upgrader = new InlineTableUpgrader(sourceSchema, dialect, new SqlStatementWriter() {
         @Override
         public void writeSql(Collection<String> sql) {
           upgradeStatements.addAll(sql);

@@ -117,7 +117,7 @@ public class UpgradeTestHelper {
     final LinkedList<String> sqlScript = Lists.newLinkedList();
 
     // Upgrader, which captures the SQL as a script
-    InlineTableUpgrader inlineTableUpgrader = new InlineTableUpgrader(fromSchema, connectionResources.openSchemaResource(),
+    InlineTableUpgrader inlineTableUpgrader = new InlineTableUpgrader(fromSchema,
       connectionResources.sqlDialect(), new SqlStatementWriter() {
       @Override
       public void writeSql(Collection<String> sql) {

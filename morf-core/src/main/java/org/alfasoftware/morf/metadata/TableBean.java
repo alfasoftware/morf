@@ -18,7 +18,6 @@ package org.alfasoftware.morf.metadata;
 import java.util.ArrayList;
 import java.util.List;
 
-
 import com.google.common.collect.Iterables;
 
 
@@ -43,6 +42,11 @@ class TableBean implements Table {
    * Stores the ordered list of indexes.
    */
   private final List<Index>  indexes = new ArrayList<>();
+
+  /**
+   * Stores the ordered list of ignored indexes.
+   */
+  private final List<Index>  ignoredIndexes = new ArrayList<>();
 
   /**
    * Indicates whether the table is temporary.
@@ -77,13 +81,16 @@ class TableBean implements Table {
    * @param tableName Name of the table to represent.
    * @param columns Columns for the table
    * @param indexes indexes for the table;
+   * @param ignoredIndexes ignored indexes for the table
    * @param isTemporary Whether the table is a temporary table.
    */
-  TableBean(String tableName, Iterable<? extends Column> columns, Iterable<? extends Index> indexes, boolean isTemporary) {
+  TableBean(String tableName, Iterable<? extends Column> columns, Iterable<? extends Index> indexes,
+            Iterable<? extends Index> ignoredIndexes, boolean isTemporary) {
     this(tableName, isTemporary);
 
     Iterables.addAll(this.columns, columns);
     Iterables.addAll(this.indexes, indexes);
+    Iterables.addAll(this.ignoredIndexes, ignoredIndexes);
   }
 
 
@@ -105,6 +112,10 @@ class TableBean implements Table {
 
     for (Index index : toCopy.indexes()) {
       indexes.add(new IndexBean(index));
+    }
+
+    for (Index index : toCopy.ignoredIndexes()) {
+      ignoredIndexes.add(new IndexBean(index));
     }
   }
 
@@ -133,6 +144,15 @@ class TableBean implements Table {
   @Override
   public List<Index> indexes() {
     return indexes;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Table#ignoredIndexes()
+   */
+  @Override
+  public List<Index> ignoredIndexes() {
+    return ignoredIndexes;
   }
 
 

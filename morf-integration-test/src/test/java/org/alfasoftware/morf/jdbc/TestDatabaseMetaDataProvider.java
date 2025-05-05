@@ -16,7 +16,12 @@
 package org.alfasoftware.morf.jdbc;
 
 import static java.util.stream.Collectors.toList;
-import static org.alfasoftware.morf.metadata.SchemaUtils.*;
+import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
+import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
+import static org.alfasoftware.morf.metadata.SchemaUtils.sequence;
+import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.alfasoftware.morf.metadata.SchemaUtils.view;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
@@ -37,10 +42,16 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.function.Function;
 
-import net.jcip.annotations.NotThreadSafe;
-
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
-import org.alfasoftware.morf.metadata.*;
+import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaResource;
+import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Sequence;
+import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager.TruncationBehavior;
@@ -57,6 +68,8 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.inject.Inject;
+
+import net.jcip.annotations.NotThreadSafe;
 
 /**
  * Tests for {@link DatabaseMetaDataProvider}.
@@ -102,7 +115,8 @@ public class TestDatabaseMetaDataProvider {
           column("nullableDateCol", DataType.DATE).nullable())
         .indexes(
           index("WithTypes_1").columns("booleanCol", "dateCol"),
-          index("NaturalKey").columns("decimalElevenCol").unique()),
+          index("NaturalKey").columns("decimalElevenCol").unique(),
+          index("WithTypes_PRF1").columns("decimalNineFiveCol", "bigIntegerCol")),
       table("WithLobs")
         .columns(
           SchemaUtils.autonumber("autonumfield", 17),
@@ -268,6 +282,11 @@ public class TestDatabaseMetaDataProvider {
         indexMatcher(
           index("NaturalKey").columns("decimalElevenCol").unique()))
       ));
+
+      assertThat(table.ignoredIndexes(),
+        containsInAnyOrder(ImmutableList.of(
+          indexMatcher(index("WithTypes_PRF1").columns("decimalNineFiveCol", "bigIntegerCol"))
+        )));
     }
   }
 

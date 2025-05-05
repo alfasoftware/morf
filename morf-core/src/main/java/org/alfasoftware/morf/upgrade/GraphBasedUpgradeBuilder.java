@@ -101,7 +101,6 @@ public class GraphBasedUpgradeBuilder {
 
     GraphBasedUpgradeSchemaChangeVisitor visitor = visitorFactory.create(
       sourceSchema,
-      connectionResources.openSchemaResource(),
       connectionResources.sqlDialect(),
       idTable,
       nodes.stream().collect(Collectors.toMap(GraphBasedUpgradeNode::getName, Function.identity())));

@@ -21,7 +21,6 @@ import java.util.UUID;
 
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.Statement;
 
@@ -30,9 +29,8 @@ import org.alfasoftware.morf.sql.Statement;
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-public class InlineTableUpgrader extends SchemaChangeVisitorBase implements SchemaChangeVisitor {
+public class InlineTableUpgrader extends AbstractSchemaChangeVisitor implements SchemaChangeVisitor {
 
-  private final SchemaResource schemaResource;
   private Schema                   currentSchema;
   private final SqlDialect         sqlDialect;
   private final SqlStatementWriter sqlStatementWriter;
@@ -44,14 +42,12 @@ public class InlineTableUpgrader extends SchemaChangeVisitorBase implements Sche
    * Default constructor.
    *
    * @param startSchema schema prior to upgrade step.
-   * @param schemaResource schema resource
    * @param sqlDialect Dialect to generate statements for the target database.
    * @param sqlStatementWriter recipient for all upgrade SQL statements.
    * @param idTable table for id generation.
    */
-  public InlineTableUpgrader(Schema startSchema, SchemaResource schemaResource, SqlDialect sqlDialect, SqlStatementWriter sqlStatementWriter, Table idTable) {
-    super(startSchema, schemaResource, sqlDialect);
-    this.schemaResource = schemaResource;
+  public InlineTableUpgrader(Schema startSchema, SqlDialect sqlDialect, SqlStatementWriter sqlStatementWriter, Table idTable) {
+    super(startSchema, sqlDialect);
     this.currentSchema = startSchema;
     this.sqlDialect = sqlDialect;
     this.sqlStatementWriter = sqlStatementWriter;

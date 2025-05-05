@@ -85,7 +85,6 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
   private final Connection connection;
   private final String schemaName;
   private Map<String, String> primaryKeyIndexNames;
-  private Map<String, List<Index>> ignoredIndexesMap;
 
   /**
    * Construct a new meta data provider.
@@ -160,16 +159,6 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
     }
     tableMap();
     return primaryKeyIndexNames;
-  }
-
-
-  @Override
-  public Map<String, List<Index>> ignoredIndexes() {
-    if (ignoredIndexesMap != null) {
-      return ignoredIndexesMap;
-    }
-    tableMap();
-    return ignoredIndexesMap;
   }
 
 
@@ -335,7 +324,6 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
     // -- Stage 3: find the index names...
     //
     primaryKeyIndexNames = Maps.newHashMap();
-    ignoredIndexesMap = Maps.newHashMap();
     final String getIndexNamesSql = "select table_name, index_name, uniqueness, status from ALL_INDEXES where owner=? order by table_name, index_name";
     runSQL(getIndexNamesSql, new ResultSetHandler() {
       @Override
@@ -384,13 +372,7 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
 
           if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName)) {
             Index ignoredIndex = getAssembledIndex(unique, indexNameFinal);
-            if (ignoredIndexesMap.containsKey(tableName)) {
-              List<Index> indexList = new ArrayList<>(ignoredIndexesMap.get(tableName));
-              indexList.add(ignoredIndex);
-              ignoredIndexesMap.put(tableName, indexList);
-            } else {
-              ignoredIndexesMap.put(tableName, List.of(ignoredIndex));
-            }
+            currentTable.ignoredIndexes().add(ignoredIndex);
             continue;
           }
 
@@ -470,7 +452,7 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
 
           if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName)) {
             Index lastIndex = null;
-            for (Index currentIndex : ignoredIndexesMap.get(tableName)) {
+            for (Index currentIndex : currentTable.ignoredIndexes()) {
               if (currentIndex.getName().equalsIgnoreCase(indexName)) {
                 lastIndex = currentIndex;
                 break;

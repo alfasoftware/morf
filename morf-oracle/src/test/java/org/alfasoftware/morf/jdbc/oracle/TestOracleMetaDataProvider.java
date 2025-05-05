@@ -211,16 +211,16 @@ public class TestOracleMetaDataProvider {
     // When
     final AdditionalMetadata oracleMetaDataProvider = (AdditionalMetadata) oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
 
-    Map<String, List<Index>> actualIgnoredIndexes = oracleMetaDataProvider.ignoredIndexes();
-    assertEquals("Ignored indexes map size.", 1, actualIgnoredIndexes.size());
-    assertEquals("Ignored AREALTABLE table indexes size.", 2, actualIgnoredIndexes.get("AREALTABLE").size());
-    Index index = actualIgnoredIndexes.get("AREALTABLE").get(0);
+    List<Index> actualIgnoredIndexes = oracleMetaDataProvider.getTable("AREALTABLE").ignoredIndexes();
+    assertEquals("Ignored indexes size.", 2, actualIgnoredIndexes.size());
+    assertEquals("Ignored AREALTABLE table indexes size.", 2, actualIgnoredIndexes.size());
+    Index index = actualIgnoredIndexes.get(0);
     assertEquals("Ignored index name.", "AREALTABLE_PRF1", index.getName());
     assertEquals("Ignored index column.", "column2", index.columnNames().get(0));
     assertFalse("Ignored index uniqueness.", index.isUnique());
     assertEquals("Index-AREALTABLE_PRF1--column2", index.toStringHelper());
 
-    Index index2 = actualIgnoredIndexes.get("AREALTABLE").get(1);
+    Index index2 = actualIgnoredIndexes.get(1);
     assertEquals("Ignored index name.", "AREALTABLE_PRF2", index2.getName());
     assertEquals("Ignored index column.", "column3", index2.columnNames().get(0));
     assertTrue("Ignored index uniqueness.", index2.isUnique());
