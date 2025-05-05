@@ -19,9 +19,6 @@ import org.alfasoftware.morf.sql.Statement;
  */
 class GraphBasedUpgradeSchemaChangeVisitor extends AbstractSchemaChangeVisitor implements SchemaChangeVisitor {
 
-  private Schema sourceSchema;
-  private SchemaResource schemaResource;
-  private final SqlDialect sqlDialect;
   private final Table idTable;
   private final TableNameResolver tracker;
   private final Map<String, GraphBasedUpgradeNode> upgradeNodes;

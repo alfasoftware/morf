@@ -118,14 +118,14 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
   public void testAddIndexVisit() {
     // given
     visitor.startStep(U1.class);
-    String ID_TABLE_NAME = "IdTableName";
+    String idTableName = "IdTableName";
     AddIndex addIndex = mock(AddIndex.class);
     when(addIndex.apply(sourceSchema)).thenReturn(sourceSchema);
-    when(addIndex.getTableName()).thenReturn(ID_TABLE_NAME);
+    when(addIndex.getTableName()).thenReturn(idTableName);
     when(sqlDialect.addIndexStatements(nullable(Table.class), nullable(Index.class))).thenReturn(STATEMENTS);
-    when(idTable.getName()).thenReturn(ID_TABLE_NAME);
+    when(idTable.getName()).thenReturn(idTableName);
     when(idTable.ignoredIndexes()).thenReturn(Collections.emptyList());
-    when(schemaResource.getTable(ID_TABLE_NAME)).thenReturn(idTable);
+    when(schemaResource.getTable(idTableName)).thenReturn(idTable);
 
     // when
     visitor.visit(addIndex);
@@ -144,47 +144,47 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     // given
     visitor.startStep(U1.class);
 
-    String ID_TABLE_NAME = "IdTableName";
+    String idTableName = "IdTableName";
     Index newIndex = mock(Index.class);
-    when(newIndex.getName()).thenReturn(ID_TABLE_NAME + "_1");
+    when(newIndex.getName()).thenReturn(idTableName + "_1");
     when(newIndex.columnNames()).thenReturn(Collections.singletonList("column_1"));
 
     AddIndex addIndex = mock(AddIndex.class);
     given(addIndex.apply(sourceSchema)).willReturn(sourceSchema);
-    when(addIndex.getTableName()).thenReturn(ID_TABLE_NAME);
+    when(addIndex.getTableName()).thenReturn(idTableName);
     when(addIndex.getNewIndex()).thenReturn(newIndex);
 
     Index indexPrf = mock(Index.class);
-    when(indexPrf.getName()).thenReturn(ID_TABLE_NAME + "_PRF1");
+    when(indexPrf.getName()).thenReturn(idTableName + "_PRF1");
     when(indexPrf.columnNames()).thenReturn(List.of("column_1"));
 
     Index indexPrf1 = mock(Index.class);
-    when(indexPrf1.getName()).thenReturn(ID_TABLE_NAME + "_PRF2");
+    when(indexPrf1.getName()).thenReturn(idTableName + "_PRF2");
     when(indexPrf1.columnNames()).thenReturn(List.of("column_2"));
 
     Table newTable = mock(Table.class);
-    when(newTable.getName()).thenReturn(ID_TABLE_NAME);
+    when(newTable.getName()).thenReturn(idTableName);
     when(newTable.ignoredIndexes()).thenReturn(Lists.newArrayList(indexPrf, indexPrf1));
-    when(schemaResource.getTable(ID_TABLE_NAME)).thenReturn(newTable);
+    when(schemaResource.getTable(idTableName)).thenReturn(newTable);
 
-    when(sqlDialect.renameIndexStatements(nullable(Table.class), eq(ID_TABLE_NAME + "_PRF1"), eq(ID_TABLE_NAME + "_1"))).thenReturn(STATEMENTS);
-    when(sqlDialect.renameIndexStatements(nullable(Table.class), eq(ID_TABLE_NAME + "_PRF2"), eq(ID_TABLE_NAME + "_2"))).thenReturn(STATEMENTS);
+    when(sqlDialect.renameIndexStatements(nullable(Table.class), eq(idTableName + "_PRF1"), eq(idTableName + "_1"))).thenReturn(STATEMENTS);
+    when(sqlDialect.renameIndexStatements(nullable(Table.class), eq(idTableName + "_PRF2"), eq(idTableName + "_2"))).thenReturn(STATEMENTS);
     when(sqlDialect.addIndexStatements(nullable(Table.class), nullable(Index.class))).thenReturn(STATEMENTS);
 
     Index newIndex1 = mock(Index.class);
-    when(newIndex1.getName()).thenReturn(ID_TABLE_NAME + "_2");
+    when(newIndex1.getName()).thenReturn(idTableName + "_2");
     when(newIndex1.columnNames()).thenReturn(Collections.singletonList("column_2"));
     AddIndex addIndex1 = mock(AddIndex.class);
     given(addIndex1.apply(sourceSchema)).willReturn(sourceSchema);
-    when(addIndex1.getTableName()).thenReturn(ID_TABLE_NAME);
+    when(addIndex1.getTableName()).thenReturn(idTableName);
     when(addIndex1.getNewIndex()).thenReturn(newIndex1);
 
     Index newIndex2 = mock(Index.class);
-    when(newIndex2.getName()).thenReturn(ID_TABLE_NAME + "_3");
+    when(newIndex2.getName()).thenReturn(idTableName + "_3");
     when(newIndex2.columnNames()).thenReturn(Collections.singletonList("column_3"));
     AddIndex addIndex2 = mock(AddIndex.class);
     given(addIndex2.apply(sourceSchema)).willReturn(sourceSchema);
-    when(addIndex2.getTableName()).thenReturn(ID_TABLE_NAME);
+    when(addIndex2.getTableName()).thenReturn(idTableName);
     when(addIndex2.getNewIndex()).thenReturn(newIndex2);
 
     // when
@@ -194,8 +194,8 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
 
     // then
     verify(addIndex).apply(sourceSchema);
-    verify(sqlDialect).renameIndexStatements(nullable(Table.class), eq(ID_TABLE_NAME + "_PRF1"), eq(ID_TABLE_NAME + "_1"));
-    verify(sqlDialect).renameIndexStatements(nullable(Table.class), eq(ID_TABLE_NAME + "_PRF2"), eq(ID_TABLE_NAME + "_2"));
+    verify(sqlDialect).renameIndexStatements(nullable(Table.class), eq(idTableName + "_PRF1"), eq(idTableName + "_1"));
+    verify(sqlDialect).renameIndexStatements(nullable(Table.class), eq(idTableName + "_PRF2"), eq(idTableName + "_2"));
     verify(sqlDialect).addIndexStatements(nullable(Table.class), nullable(Index.class));
     verify(n1, times(3)).addAllUpgradeStatements(ArgumentMatchers.argThat(c-> c.containsAll(STATEMENTS)));
   }

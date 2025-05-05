@@ -830,13 +830,7 @@ public abstract class DatabaseMetaDataProvider implements Schema {
 
             indexUniqueness.put(indexName, unique);
 
-            if  (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName.getDbName())) {
-              ignoredIndexColumns.computeIfAbsent(indexName, k -> ImmutableList.builder())
-                .add(columnName);
-            } else {
-              indexColumns.computeIfAbsent(indexName, k -> ImmutableList.builder())
-                .add(columnName);
-            }
+            appendIndexColumn(indexName, columnName, ignoredIndexColumns, indexColumns);
           }
           catch (SQLException e) {
             throw new RuntimeSqlException("Error reading metadata for index ["+indexName+"] on table ["+tableName+"]", e);
@@ -859,6 +853,19 @@ public abstract class DatabaseMetaDataProvider implements Schema {
     }
     catch (SQLException e) {
       throw new RuntimeSqlException("Error reading metadata for table [" + tableName + "]", e);
+    }
+  }
+
+
+  private static void appendIndexColumn(RealName indexName, RealName columnName, Map<RealName,
+    ImmutableList.Builder<RealName>> ignoredIndexColumns, Map<RealName, ImmutableList.Builder<RealName>> indexColumns)
+  {
+    if  (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName.getDbName())) {
+      ignoredIndexColumns.computeIfAbsent(indexName, k -> ImmutableList.builder())
+        .add(columnName);
+    } else {
+      indexColumns.computeIfAbsent(indexName, k -> ImmutableList.builder())
+        .add(columnName);
     }
   }
 
