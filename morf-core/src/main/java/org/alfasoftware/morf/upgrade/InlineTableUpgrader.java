@@ -99,36 +99,6 @@ public class InlineTableUpgrader extends SchemaChangeVisitorBase implements Sche
 
 
   /**
-   * @see org.alfasoftware.morf.upgrade.SchemaChangeVisitor#visit(org.alfasoftware.morf.upgrade.AddIndex)
-   */
-  /*
-  @Override
-  public void visit(AddIndex addIndex) {
-    currentSchema = addIndex.apply(currentSchema);
-    Index foundIndex = null;
-    if (schemaResource != null && schemaResource.getAdditionalMetadata().isPresent()) {
-      AdditionalMetadata additionalMetadata = schemaResource.getAdditionalMetadata().get();
-      String tableName = addIndex.getTableName().toUpperCase(Locale.ROOT);
-      if (additionalMetadata.ignoredIndexes().containsKey(tableName)) {
-        List<Index> tableIgnoredIndexes = additionalMetadata.ignoredIndexes().get(tableName);
-        for (Index index : tableIgnoredIndexes) {
-          if (index.columnNames().equals(addIndex.getNewIndex().columnNames())) {
-            foundIndex = index;
-            break;
-          }
-        }
-      }
-    }
-
-    if (foundIndex != null) {
-      writeStatements(sqlDialect.renameIndexStatements(currentSchema.getTable(addIndex.getTableName()), foundIndex.getName(), addIndex.getNewIndex().getName()));
-    } else {
-      writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(addIndex.getTableName()), addIndex.getNewIndex()));
-    }
-  } */
-
-
-  /**
    * @see org.alfasoftware.morf.upgrade.SchemaChangeVisitor#visit(org.alfasoftware.morf.upgrade.AddColumn)
    */
   @Override
