@@ -39,6 +39,7 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.DeleteStatement;
@@ -64,6 +65,7 @@ public class TestInlineTableUpgrader {
   private Schema              schema;
   private SqlDialect          sqlDialect;
   private SqlStatementWriter  sqlStatementWriter;
+  private SchemaResource      schemaResource;
 
   /**
    * Setup method run before each test.
@@ -73,7 +75,8 @@ public class TestInlineTableUpgrader {
     schema = mock(Schema.class);
     sqlDialect = mock(SqlDialect.class);
     sqlStatementWriter = mock(SqlStatementWriter.class);
-    upgrader = new InlineTableUpgrader(schema, sqlDialect, sqlStatementWriter, SqlDialect.IdTable.withDeterministicName(ID_TABLE_NAME));
+    schemaResource = mock(SchemaResource.class);
+    upgrader = new InlineTableUpgrader(schema, schemaResource, sqlDialect, sqlStatementWriter, SqlDialect.IdTable.withDeterministicName(ID_TABLE_NAME));
   }
 
 
@@ -157,7 +160,7 @@ public class TestInlineTableUpgrader {
     Table newTable = mock(Table.class);
     when(newTable.getName()).thenReturn(ID_TABLE_NAME);
     when(newTable.ignoredIndexes()).thenReturn(Lists.newArrayList());
-    when(schema.getTable(ID_TABLE_NAME)).thenReturn(newTable);
+    when(schemaResource.getTable(ID_TABLE_NAME)).thenReturn(newTable);
 
     // when
     upgrader.visit(addIndex);
@@ -194,7 +197,7 @@ public class TestInlineTableUpgrader {
     Table newTable = mock(Table.class);
     when(newTable.getName()).thenReturn(ID_TABLE_NAME);
     when(newTable.ignoredIndexes()).thenReturn(Lists.newArrayList(indexPrf, indexPrf1));
-    when(schema.getTable(ID_TABLE_NAME)).thenReturn(newTable);
+    when(schemaResource.getTable(ID_TABLE_NAME)).thenReturn(newTable);
 
     Index newIndex1 = mock(Index.class);
     when(newIndex1.getName()).thenReturn(ID_TABLE_NAME + "_2");

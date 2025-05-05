@@ -118,7 +118,7 @@ public class UpgradeTestHelper {
 
     // Upgrader, which captures the SQL as a script
     InlineTableUpgrader inlineTableUpgrader = new InlineTableUpgrader(fromSchema,
-      connectionResources.sqlDialect(), new SqlStatementWriter() {
+      connectionResources.openSchemaResource(), connectionResources.sqlDialect(), new SqlStatementWriter() {
       @Override
       public void writeSql(Collection<String> sql) {
         sqlScript.addAll(sql);

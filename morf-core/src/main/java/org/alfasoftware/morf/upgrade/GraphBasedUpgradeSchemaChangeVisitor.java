@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.Statement;
 
@@ -19,6 +20,7 @@ import org.alfasoftware.morf.sql.Statement;
 class GraphBasedUpgradeSchemaChangeVisitor extends AbstractSchemaChangeVisitor implements SchemaChangeVisitor {
 
   private Schema sourceSchema;
+  private SchemaResource schemaResource;
   private final SqlDialect sqlDialect;
   private final Table idTable;
   private final TableNameResolver tracker;
@@ -30,13 +32,14 @@ class GraphBasedUpgradeSchemaChangeVisitor extends AbstractSchemaChangeVisitor i
    * Default constructor.
    *
    * @param sourceSchema schema prior to upgrade step.
+   * @param schemaResource schema resource
    * @param sqlDialect   dialect to generate statements for the target database.
    * @param idTable      table for id generation.
    * @param upgradeNodes all the {@link GraphBasedUpgradeNode} instances in the
    *                       upgrade for which the visitor will generate statements
    */
-  GraphBasedUpgradeSchemaChangeVisitor(Schema sourceSchema, SqlDialect sqlDialect, Table idTable, Map<String, GraphBasedUpgradeNode> upgradeNodes) {
-    super(sourceSchema, sqlDialect);
+  GraphBasedUpgradeSchemaChangeVisitor(Schema sourceSchema, SchemaResource schemaResource, SqlDialect sqlDialect, Table idTable, Map<String, GraphBasedUpgradeNode> upgradeNodes) {
+    super(sourceSchema, schemaResource, sqlDialect);
     this.sourceSchema = sourceSchema;
     this.sqlDialect = sqlDialect;
     this.idTable = idTable;
@@ -237,15 +240,16 @@ class GraphBasedUpgradeSchemaChangeVisitor extends AbstractSchemaChangeVisitor i
      * Creates {@link GraphBasedUpgradeSchemaChangeVisitor} instance.
      *
      * @param sourceSchema schema prior to upgrade step
+     * @param schemaResource schema resource
      * @param sqlDialect   dialect to generate statements for the target database
      * @param idTable      table for id generation
      * @param upgradeNodes all the {@link GraphBasedUpgradeNode} instances in the upgrade for
      *                       which the visitor will generate statements
      * @return new {@link GraphBasedUpgradeSchemaChangeVisitor} instance
      */
-    GraphBasedUpgradeSchemaChangeVisitor create(Schema sourceSchema, SqlDialect sqlDialect, Table idTable,
+    GraphBasedUpgradeSchemaChangeVisitor create(Schema sourceSchema, SchemaResource schemaResource, SqlDialect sqlDialect, Table idTable,
                                                 Map<String, GraphBasedUpgradeNode> upgradeNodes) {
-      return new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, sqlDialect, idTable, upgradeNodes);
+      return new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, schemaResource, sqlDialect, idTable, upgradeNodes);
     }
   }
 }

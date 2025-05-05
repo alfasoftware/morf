@@ -23,6 +23,7 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.SelectStatement;
@@ -57,6 +58,9 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
   @Mock
   private GraphBasedUpgradeNode n1, n2;
 
+  @Mock
+  SchemaResource schemaResource;
+
   private final static List<String> STATEMENTS = Lists.newArrayList("a", "b");
 
   private Map<String, GraphBasedUpgradeNode> nodes;
@@ -72,7 +76,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     nodes.put(U1.class.getName(), n1);
     nodes.put(U2.class.getName(), n2);
 
-    visitor = new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, sqlDialect, idTable, nodes);
+    visitor = new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, schemaResource, sqlDialect, idTable, nodes);
   }
 
 
@@ -121,7 +125,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     when(sqlDialect.addIndexStatements(nullable(Table.class), nullable(Index.class))).thenReturn(STATEMENTS);
     when(idTable.getName()).thenReturn(ID_TABLE_NAME);
     when(idTable.ignoredIndexes()).thenReturn(Collections.emptyList());
-    when(sourceSchema.getTable(ID_TABLE_NAME)).thenReturn(idTable);
+    when(schemaResource.getTable(ID_TABLE_NAME)).thenReturn(idTable);
 
     // when
     visitor.visit(addIndex);
@@ -161,7 +165,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     Table newTable = mock(Table.class);
     when(newTable.getName()).thenReturn(ID_TABLE_NAME);
     when(newTable.ignoredIndexes()).thenReturn(Lists.newArrayList(indexPrf, indexPrf1));
-    when(sourceSchema.getTable(ID_TABLE_NAME)).thenReturn(newTable);
+    when(schemaResource.getTable(ID_TABLE_NAME)).thenReturn(newTable);
 
     when(sqlDialect.renameIndexStatements(nullable(Table.class), eq(ID_TABLE_NAME + "_PRF1"), eq(ID_TABLE_NAME + "_1"))).thenReturn(STATEMENTS);
     when(sqlDialect.renameIndexStatements(nullable(Table.class), eq(ID_TABLE_NAME + "_PRF2"), eq(ID_TABLE_NAME + "_2"))).thenReturn(STATEMENTS);
@@ -487,7 +491,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     GraphBasedUpgradeSchemaChangeVisitorFactory factory = new GraphBasedUpgradeSchemaChangeVisitorFactory();
 
     // when
-    GraphBasedUpgradeSchemaChangeVisitor created = factory.create(sourceSchema, sqlDialect, idTable, nodes);
+    GraphBasedUpgradeSchemaChangeVisitor created = factory.create(sourceSchema, schemaResource, sqlDialect, idTable, nodes);
 
     // then
     assertNotNull(created);

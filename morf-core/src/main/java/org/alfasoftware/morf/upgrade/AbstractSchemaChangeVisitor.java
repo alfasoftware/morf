@@ -6,6 +6,7 @@ import java.util.List;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.Table;
 
 /**
@@ -15,12 +16,14 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
   protected Schema sourceSchema;
   protected SqlDialect sqlDialect;
+  protected final SchemaResource schemaResource;
 
   protected abstract void writeStatements(Collection<String> statements);
 
 
-  public AbstractSchemaChangeVisitor(Schema sourceSchema, SqlDialect sqlDialect) {
+  public AbstractSchemaChangeVisitor(Schema sourceSchema, SchemaResource schemaResource, SqlDialect sqlDialect) {
     this.sourceSchema = sourceSchema;
+    this.schemaResource = schemaResource;
     this.sqlDialect = sqlDialect;
   }
 
@@ -29,7 +32,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   public void visit(AddIndex addIndex) {
     sourceSchema = addIndex.apply(sourceSchema);
     Index foundIndex = null;
-    Table table = sourceSchema.getTable(addIndex.getTableName());
+    Table table = schemaResource.getTable(addIndex.getTableName());
     if (!table.ignoredIndexes().isEmpty()) {
         List<Index> tableIgnoredIndexes = table.ignoredIndexes();
         for (Index index : tableIgnoredIndexes) {
