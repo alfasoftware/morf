@@ -98,13 +98,13 @@ public class GraphBasedUpgradeBuilder {
 
     GraphBasedUpgradeNode root = prepareGraph(nodes);
 
-    List<String> preUpgStatements = new ArrayList<>();
-    List<String> postUpgStatements = new ArrayList<>();
+    List<String> preUpgStatements;
+    List<String> postUpgStatements;
     Table idTable = SqlDialect.IdTable.withPrefix(connectionResources.sqlDialect(), "temp_id_", false);
     try (SchemaResource schemaResource = connectionResources.openSchemaResource()) {
       GraphBasedUpgradeSchemaChangeVisitor visitor = visitorFactory.create(
         sourceSchema,
-        connectionResources.openSchemaResource(),
+        schemaResource,
         connectionResources.sqlDialect(),
         idTable,
         nodes.stream().collect(Collectors.toMap(GraphBasedUpgradeNode::getName, Function.identity())));
