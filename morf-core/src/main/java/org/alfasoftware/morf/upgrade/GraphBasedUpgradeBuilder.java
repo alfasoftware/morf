@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeSchemaChangeVisitor.GraphBasedUpgradeSchemaChangeVisitorFactory;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeScriptGenerator.GraphBasedUpgradeScriptGeneratorFactory;
@@ -97,21 +98,24 @@ public class GraphBasedUpgradeBuilder {
 
     GraphBasedUpgradeNode root = prepareGraph(nodes);
 
+    List<String> preUpgStatements = new ArrayList<>();
+    List<String> postUpgStatements = new ArrayList<>();
     Table idTable = SqlDialect.IdTable.withPrefix(connectionResources.sqlDialect(), "temp_id_", false);
+    try (SchemaResource schemaResource = connectionResources.openSchemaResource()) {
+      GraphBasedUpgradeSchemaChangeVisitor visitor = visitorFactory.create(
+        sourceSchema,
+        connectionResources.openSchemaResource(),
+        connectionResources.sqlDialect(),
+        idTable,
+        nodes.stream().collect(Collectors.toMap(GraphBasedUpgradeNode::getName, Function.identity())));
 
-    GraphBasedUpgradeSchemaChangeVisitor visitor = visitorFactory.create(
-      sourceSchema,
-      connectionResources.openSchemaResource(),
-      connectionResources.sqlDialect(),
-      idTable,
-      nodes.stream().collect(Collectors.toMap(GraphBasedUpgradeNode::getName, Function.identity())));
+      GraphBasedUpgradeScriptGenerator scriptGenerator = scriptGeneratorFactory.create(sourceSchema, targetSchema, connectionResources, idTable, viewChanges, initialisationSql);
 
-    GraphBasedUpgradeScriptGenerator scriptGenerator = scriptGeneratorFactory.create(sourceSchema, targetSchema, connectionResources, idTable, viewChanges, initialisationSql);
+      preUpgStatements = scriptGenerator.generatePreUpgradeStatements();
+      schemaChangeSequence.applyTo(visitor);
+      postUpgStatements = scriptGenerator.generatePostUpgradeStatements();
 
-    List<String> preUpgStatements = scriptGenerator.generatePreUpgradeStatements();
-    schemaChangeSequence.applyTo(visitor);
-    List<String> postUpgStatements = scriptGenerator.generatePostUpgradeStatements();
-
+    }
     if (LOG.isDebugEnabled()) {
       logGraph(root);
     }

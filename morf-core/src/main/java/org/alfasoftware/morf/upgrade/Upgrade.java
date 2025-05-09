@@ -249,15 +249,17 @@ public class Upgrade {
     //
     if (!schemaChangeSequence.getUpgradeSteps().isEmpty()) {
       // Run the upgrader over all the ElementarySchemaChanges in the upgrade steps
-      InlineTableUpgrader upgrader = new InlineTableUpgrader(sourceSchema, connectionResources.openSchemaResource(),  dialect, new SqlStatementWriter() {
-        @Override
-        public void writeSql(Collection<String> sql) {
-          upgradeStatements.addAll(sql);
-        }
-      }, SqlDialect.IdTable.withPrefix(dialect, "temp_id_"));
-      upgrader.preUpgrade();
-      schemaChangeSequence.applyTo(upgrader);
-      upgrader.postUpgrade();
+      try (SchemaResource schemaResource = connectionResources.openSchemaResource()) {
+        InlineTableUpgrader upgrader = new InlineTableUpgrader(sourceSchema, schemaResource, dialect, new SqlStatementWriter() {
+          @Override
+          public void writeSql(Collection<String> sql) {
+            upgradeStatements.addAll(sql);
+          }
+        }, SqlDialect.IdTable.withPrefix(dialect, "temp_id_"));
+        upgrader.preUpgrade();
+        schemaChangeSequence.applyTo(upgrader);
+        upgrader.postUpgrade();
+      }
     }
 
     // -- Upgrade path...
