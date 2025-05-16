@@ -677,7 +677,6 @@ public abstract class DatabaseMetaDataProvider implements Schema {
     final Map<AName, Integer> primaryKey = loadTablePrimaryKey(realTableName);
     final Supplier<List<Column>> columns = Suppliers.memoize(() -> loadTableColumns(realTableName, primaryKey));
     final Supplier<List<Index>> indexes = Suppliers.memoize(() -> loadTableIndexes(realTableName, false));
-    final Supplier<List<Index>> ignoredIndexes = Suppliers.memoize(() -> loadTableIndexes(realTableName, true));
 
     return new Table() {
       @Override
@@ -693,11 +692,6 @@ public abstract class DatabaseMetaDataProvider implements Schema {
       @Override
       public List<Index> indexes() {
         return indexes.get();
-      }
-
-      @Override
-      public List<Index> ignoredIndexes() {
-        return ignoredIndexes.get();
       }
 
       @Override

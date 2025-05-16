@@ -42,6 +42,7 @@ import org.alfasoftware.morf.upgrade.SchemaChangeSequence;
 import org.alfasoftware.morf.upgrade.Sequence;
 import org.alfasoftware.morf.upgrade.SqlStatementWriter;
 import org.alfasoftware.morf.upgrade.UUID;
+import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 import org.alfasoftware.morf.upgrade.UpgradeGraph;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
 import org.apache.commons.lang3.StringUtils;
@@ -72,16 +73,19 @@ public class UpgradeTestHelper {
   private final ConnectionResources connectionResources;
   private final SqlScriptExecutorProvider sqlScriptExecutorProvider;
   private final Provider<DatabaseDataSetProducer> databaseDataSetProducer;
+  private final UpgradeConfigAndContext upgradeConfigAndContext;
 
 
   @Inject
   UpgradeTestHelper(Provider<DatabaseSchemaManager> schemaManager, ConnectionResources connectionResources,
-      SqlScriptExecutorProvider sqlScriptExecutorProvider, Provider<DatabaseDataSetProducer> databaseDataSetProducer) {
+      SqlScriptExecutorProvider sqlScriptExecutorProvider, Provider<DatabaseDataSetProducer> databaseDataSetProducer,
+                    UpgradeConfigAndContext upgradeConfigAndContext) {
     super();
     this.schemaManager = schemaManager;
     this.connectionResources = connectionResources;
     this.sqlScriptExecutorProvider = sqlScriptExecutorProvider;
     this.databaseDataSetProducer = databaseDataSetProducer;
+    this.upgradeConfigAndContext = upgradeConfigAndContext;
   }
 
 
@@ -118,7 +122,7 @@ public class UpgradeTestHelper {
 
     // Upgrader, which captures the SQL as a script
     InlineTableUpgrader inlineTableUpgrader = new InlineTableUpgrader(fromSchema,
-      connectionResources.openSchemaResource(), connectionResources.sqlDialect(), new SqlStatementWriter() {
+      upgradeConfigAndContext, connectionResources.sqlDialect(), new SqlStatementWriter() {
       @Override
       public void writeSql(Collection<String> sql) {
         sqlScript.addAll(sql);

@@ -62,14 +62,6 @@ public interface Table {
 
 
   /**
-   * @return The ignored indexes on this table.
-   */
-  public default List<Index> ignoredIndexes() {
-    return List.of();
-  }
-
-
-  /**
    * @return Indicates whether the table is temporary
    */
   public boolean isTemporary();

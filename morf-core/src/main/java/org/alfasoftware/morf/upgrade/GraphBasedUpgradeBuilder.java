@@ -12,7 +12,6 @@ import java.util.stream.Collectors;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeSchemaChangeVisitor.GraphBasedUpgradeSchemaChangeVisitorFactory;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeScriptGenerator.GraphBasedUpgradeScriptGeneratorFactory;
@@ -40,6 +39,7 @@ public class GraphBasedUpgradeBuilder {
   private final Schema targetSchema;
 
   private final ConnectionResources connectionResources;
+  private final UpgradeConfigAndContext upgradeConfigAndContext;
   private final Set<String> exclusiveExecutionSteps;
   private final SchemaChangeSequence schemaChangeSequence;
   private final ViewChanges viewChanges;
@@ -58,8 +58,7 @@ public class GraphBasedUpgradeBuilder {
    * @param sourceSchema            source schema
    * @param targetSchema            target schema
    * @param connectionResources     connection resources to be used
-   * @param exclusiveExecutionSteps names of the upgrade step classes which should
-   *                                  be executed in an exclusive way
+   * @param upgradeConfigAndContext the upgrade config
    * @param schemaChangeSequence    to be used to build a
    *                                  {@link GraphBasedUpgrade}
    * @param viewChanges             view changes which need to be made to match
@@ -72,7 +71,7 @@ public class GraphBasedUpgradeBuilder {
       Schema sourceSchema,
       Schema targetSchema,
       ConnectionResources connectionResources,
-      Set<String> exclusiveExecutionSteps,
+      UpgradeConfigAndContext upgradeConfigAndContext,
       SchemaChangeSequence schemaChangeSequence,
       ViewChanges viewChanges) {
     this.visitorFactory = visitorFactory;
@@ -81,7 +80,8 @@ public class GraphBasedUpgradeBuilder {
     this.sourceSchema = sourceSchema;
     this.targetSchema = targetSchema;
     this.connectionResources = connectionResources;
-    this.exclusiveExecutionSteps = exclusiveExecutionSteps;
+    this.upgradeConfigAndContext = upgradeConfigAndContext;
+    this.exclusiveExecutionSteps = upgradeConfigAndContext.getExclusiveExecutionSteps();
     this.schemaChangeSequence = schemaChangeSequence;
     this.viewChanges = viewChanges;
   }
@@ -101,21 +101,20 @@ public class GraphBasedUpgradeBuilder {
     List<String> preUpgStatements;
     List<String> postUpgStatements;
     Table idTable = SqlDialect.IdTable.withPrefix(connectionResources.sqlDialect(), "temp_id_", false);
-    try (SchemaResource schemaResource = connectionResources.openSchemaResource()) {
-      GraphBasedUpgradeSchemaChangeVisitor visitor = visitorFactory.create(
-        sourceSchema,
-        schemaResource,
-        connectionResources.sqlDialect(),
-        idTable,
-        nodes.stream().collect(Collectors.toMap(GraphBasedUpgradeNode::getName, Function.identity())));
 
-      GraphBasedUpgradeScriptGenerator scriptGenerator = scriptGeneratorFactory.create(sourceSchema, targetSchema, connectionResources, idTable, viewChanges, initialisationSql);
+    GraphBasedUpgradeSchemaChangeVisitor visitor = visitorFactory.create(
+      sourceSchema,
+      upgradeConfigAndContext,
+      connectionResources.sqlDialect(),
+      idTable,
+      nodes.stream().collect(Collectors.toMap(GraphBasedUpgradeNode::getName, Function.identity())));
 
-      preUpgStatements = scriptGenerator.generatePreUpgradeStatements();
-      schemaChangeSequence.applyTo(visitor);
-      postUpgStatements = scriptGenerator.generatePostUpgradeStatements();
+    GraphBasedUpgradeScriptGenerator scriptGenerator = scriptGeneratorFactory.create(sourceSchema, targetSchema, connectionResources, idTable, viewChanges, initialisationSql);
 
-    }
+    preUpgStatements = scriptGenerator.generatePreUpgradeStatements();
+    schemaChangeSequence.applyTo(visitor);
+    postUpgStatements = scriptGenerator.generatePostUpgradeStatements();
+
     if (LOG.isDebugEnabled()) {
       logGraph(root);
     }
@@ -453,7 +452,8 @@ public class GraphBasedUpgradeBuilder {
         Schema sourceSchema,
         Schema targetSchema,
         ConnectionResources connectionResources,
-        Set<String> exclusiveExecutionSteps,
+        //Set<String> exclusiveExecutionSteps,
+        UpgradeConfigAndContext upgradeConfigAndContext,
         SchemaChangeSequence schemaChangeSequence,
         ViewChanges viewChanges) {
       return new GraphBasedUpgradeBuilder(
@@ -463,7 +463,7 @@ public class GraphBasedUpgradeBuilder {
         sourceSchema,
         targetSchema,
         connectionResources,
-        exclusiveExecutionSteps,
+        upgradeConfigAndContext,
         schemaChangeSequence,
         viewChanges);
     }

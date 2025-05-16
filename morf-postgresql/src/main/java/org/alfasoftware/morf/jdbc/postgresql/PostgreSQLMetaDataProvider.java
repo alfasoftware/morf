@@ -2,12 +2,14 @@ package org.alfasoftware.morf.jdbc.postgresql;
 
 import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.getAutoIncrementStartValue;
 import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.getDataTypeFromColumnComment;
+import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.shouldIgnoreIndex;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -18,6 +20,7 @@ import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.metadata.AdditionalMetadata;
 import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
@@ -25,6 +28,7 @@ import org.apache.commons.logging.LogFactory;
 
 import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 
 /**
  * Provides meta data from a PostgreSQL database connection.
@@ -38,6 +42,7 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
   private static final Pattern REALNAME_COMMENT_MATCHER = Pattern.compile(".*"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":\\[([^\\]]*)\\](/TYPE:\\[([^\\]]*)\\])?.*");
 
   private final Supplier<Map<AName, RealName>> allIndexNames = Suppliers.memoize(this::loadAllIndexNames);
+  private final Supplier<Map<String, List<Index>>> ignoredIndexes = Suppliers.memoize(this::loadAllIgnoredIndexes);
 
   public PostgreSQLMetaDataProvider(Connection connection, String schemaName) {
     super(connection, schemaName);
@@ -116,6 +121,23 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
         : super.readViewName(viewResultSet);
   }
 
+  @Override
+  public Map<String, List<Index>> ignoredIndexes() {
+    return ignoredIndexes.get();
+  }
+
+
+  private Map<String, List<Index>> loadAllIgnoredIndexes() {
+    Map<AName, RealName> allIndexes = this.allIndexNames.get();
+    Map<String, List<Index>> allIgnoredIndexes = Maps.newHashMap();
+    allIndexes.keySet().stream()
+      .filter(name -> shouldIgnoreIndex(allIndexes.get(name).getRealName()))
+      .forEach(name -> {
+        String realTableName = allIndexes.get(name).getRealName().split("_")[0];
+        allIgnoredIndexes.put(realTableName.toUpperCase(), loadTableIndexes(createRealName(realTableName.toLowerCase(), realTableName), true));
+      });
+    return allIgnoredIndexes;
+  }
 
   protected Map<AName, RealName> loadAllIndexNames() {
     final ImmutableMap.Builder<AName, RealName> indexNames = ImmutableMap.builder();

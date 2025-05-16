@@ -23,7 +23,6 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.SelectStatement;
@@ -36,6 +35,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 /**
  * Tests of {@link GraphBasedUpgradeSchemaChangeVisitor}.
@@ -58,8 +58,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
   @Mock
   private GraphBasedUpgradeNode n1, n2;
 
-  @Mock
-  SchemaResource schemaResource;
+  UpgradeConfigAndContext upgradeConfigAndContext;
 
   private final static List<String> STATEMENTS = Lists.newArrayList("a", "b");
 
@@ -75,8 +74,8 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     nodes = new HashMap<>();
     nodes.put(U1.class.getName(), n1);
     nodes.put(U2.class.getName(), n2);
-
-    visitor = new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, schemaResource, sqlDialect, idTable, nodes);
+    upgradeConfigAndContext = new UpgradeConfigAndContext();
+    visitor = new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable, nodes);
   }
 
 
@@ -123,9 +122,6 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     when(addIndex.apply(sourceSchema)).thenReturn(sourceSchema);
     when(addIndex.getTableName()).thenReturn(idTableName);
     when(sqlDialect.addIndexStatements(nullable(Table.class), nullable(Index.class))).thenReturn(STATEMENTS);
-    when(idTable.getName()).thenReturn(idTableName);
-    when(idTable.ignoredIndexes()).thenReturn(Collections.emptyList());
-    when(schemaResource.getTable(idTableName)).thenReturn(idTable);
 
     // when
     visitor.visit(addIndex);
@@ -164,8 +160,10 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
 
     Table newTable = mock(Table.class);
     when(newTable.getName()).thenReturn(idTableName);
-    when(newTable.ignoredIndexes()).thenReturn(Lists.newArrayList(indexPrf, indexPrf1));
-    when(schemaResource.getTable(idTableName)).thenReturn(newTable);
+    when(sourceSchema.getTable(idTableName)).thenReturn(newTable);
+    Map<String, List<Index>> ignoredIndexes = Maps.newHashMap();
+    ignoredIndexes.put(idTableName.toUpperCase(), Lists.newArrayList(indexPrf, indexPrf1));
+    upgradeConfigAndContext.setIgnoredIndexes(ignoredIndexes);
 
     when(sqlDialect.renameIndexStatements(nullable(Table.class), eq(idTableName + "_PRF1"), eq(idTableName + "_1"))).thenReturn(STATEMENTS);
     when(sqlDialect.renameIndexStatements(nullable(Table.class), eq(idTableName + "_PRF2"), eq(idTableName + "_2"))).thenReturn(STATEMENTS);
@@ -491,7 +489,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     GraphBasedUpgradeSchemaChangeVisitorFactory factory = new GraphBasedUpgradeSchemaChangeVisitorFactory();
 
     // when
-    GraphBasedUpgradeSchemaChangeVisitor created = factory.create(sourceSchema, schemaResource, sqlDialect, idTable, nodes);
+    GraphBasedUpgradeSchemaChangeVisitor created = factory.create(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable, nodes);
 
     // then
     assertNotNull(created);

@@ -283,10 +283,10 @@ public class TestDatabaseMetaDataProvider {
           index("NaturalKey").columns("decimalElevenCol").unique()))
       ));
 
-      assertThat(table.ignoredIndexes(),
-        containsInAnyOrder(ImmutableList.of(
+      schemaResource.getAdditionalMetadata().ifPresent(additionalMetadata ->
+        assertThat(additionalMetadata.ignoredIndexes().get("WithTypes".toUpperCase()), containsInAnyOrder(ImmutableList.of(
           indexMatcher(index("WithTypes_PRF1").columns("decimalNineFiveCol", "bigIntegerCol"))
-        )));
+      ))));
     }
   }
 

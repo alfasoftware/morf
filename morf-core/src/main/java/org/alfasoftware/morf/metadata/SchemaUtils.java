@@ -518,26 +518,6 @@ public final class SchemaUtils {
 
 
     /**
-     * Sets the indexes for the table.
-     *
-     * @param ignoredIndexes The ignored indexes to set, probably provided by calls to
-     *          {@link SchemaUtils#index(String)}
-     * @return this table builder, for method chaining.
-     */
-    public TableBuilder ignoredIndexes(Index... ignoredIndexes);
-
-
-    /**
-     * Sets the indexes for the table.
-     *
-     * @param ignoredIndexes The ignored indexes to set, probably provided by calls to
-     *          {@link SchemaUtils#index(String)}
-     * @return this table builder, for method chaining.
-     */
-    public TableBuilder ignoredIndexes(Iterable<? extends Index> ignoredIndexes);
-
-
-    /**
      * Creates a temporary table.
      *
      * @return this table builder, for method chaining.
@@ -674,8 +654,8 @@ public final class SchemaUtils {
 
 
     private TableBuilderImpl(String name, Iterable<? extends Column> columns, Iterable<? extends Index> indexes,
-                             Iterable<? extends Index> ignoredIndexes, boolean isTemporary) {
-      super(name, columns, indexes, ignoredIndexes, isTemporary);
+                             boolean isTemporary) {
+      super(name, columns, indexes, isTemporary);
     }
 
 
@@ -693,7 +673,7 @@ public final class SchemaUtils {
      */
     @Override
     public TableBuilder columns(Iterable<? extends Column> columns) {
-      return new TableBuilderImpl(getName(), columns, indexes(), ignoredIndexes(), isTemporary());
+      return new TableBuilderImpl(getName(), columns, indexes(), isTemporary());
     }
 
 
@@ -707,29 +687,11 @@ public final class SchemaUtils {
 
 
     /**
-     * @see org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder#ignoredIndexes(java.lang.Iterable)
-     */
-    @Override
-    public TableBuilder ignoredIndexes(Iterable<? extends Index> ignoredIndexes) {
-      return new TableBuilderImpl(getName(), columns(), indexes(), ignoredIndexes, isTemporary());
-    }
-
-
-    /**
-     * @see org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder#ignoredIndexes(org.alfasoftware.morf.metadata.Index[])
-     */
-    @Override
-    public TableBuilder ignoredIndexes(Index... ignoredIndexes) {
-      return ignoredIndexes(Arrays.asList(ignoredIndexes));
-    }
-
-
-    /**
      * @see org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder#indexes(java.lang.Iterable)
      */
     @Override
     public TableBuilder indexes(Iterable<? extends Index> indexes) {
-      return new TableBuilderImpl(getName(), columns(), indexes, ignoredIndexes(), isTemporary());
+      return new TableBuilderImpl(getName(), columns(), indexes, isTemporary());
     }
 
 
@@ -738,7 +700,7 @@ public final class SchemaUtils {
      */
     @Override
     public TableBuilder temporary() {
-      return new TableBuilderImpl(getName(), columns(), indexes(), ignoredIndexes(), true);
+      return new TableBuilderImpl(getName(), columns(), indexes(), true);
     }
   }
 

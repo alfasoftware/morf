@@ -33,13 +33,14 @@ import static org.mockito.Mockito.when;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.DeleteStatement;
@@ -53,6 +54,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 /**
  *
@@ -65,7 +67,7 @@ public class TestInlineTableUpgrader {
   private Schema              schema;
   private SqlDialect          sqlDialect;
   private SqlStatementWriter  sqlStatementWriter;
-  private SchemaResource      schemaResource;
+  private UpgradeConfigAndContext upgradeConfigAndContext;
 
   /**
    * Setup method run before each test.
@@ -75,8 +77,10 @@ public class TestInlineTableUpgrader {
     schema = mock(Schema.class);
     sqlDialect = mock(SqlDialect.class);
     sqlStatementWriter = mock(SqlStatementWriter.class);
-    schemaResource = mock(SchemaResource.class);
-    upgrader = new InlineTableUpgrader(schema, schemaResource, sqlDialect, sqlStatementWriter, SqlDialect.IdTable.withDeterministicName(ID_TABLE_NAME));
+    upgradeConfigAndContext = new UpgradeConfigAndContext();
+    upgradeConfigAndContext.setExclusiveExecutionSteps(Set.of());
+
+    upgrader = new InlineTableUpgrader(schema, upgradeConfigAndContext, sqlDialect, sqlStatementWriter, SqlDialect.IdTable.withDeterministicName(ID_TABLE_NAME));
   }
 
 
@@ -159,8 +163,7 @@ public class TestInlineTableUpgrader {
 
     Table newTable = mock(Table.class);
     when(newTable.getName()).thenReturn(ID_TABLE_NAME);
-    when(newTable.ignoredIndexes()).thenReturn(Lists.newArrayList());
-    when(schemaResource.getTable(ID_TABLE_NAME)).thenReturn(newTable);
+    when(schema.getTable(ID_TABLE_NAME)).thenReturn(newTable);
 
     // when
     upgrader.visit(addIndex);
@@ -194,10 +197,9 @@ public class TestInlineTableUpgrader {
     when(indexPrf1.getName()).thenReturn(ID_TABLE_NAME + "_PRF2");
     when(indexPrf1.columnNames()).thenReturn(List.of("column_2"));
 
-    Table newTable = mock(Table.class);
-    when(newTable.getName()).thenReturn(ID_TABLE_NAME);
-    when(newTable.ignoredIndexes()).thenReturn(Lists.newArrayList(indexPrf, indexPrf1));
-    when(schemaResource.getTable(ID_TABLE_NAME)).thenReturn(newTable);
+    Map<String, List<Index>> ignoredIndexes = Maps.newHashMap();
+    ignoredIndexes.put(ID_TABLE_NAME.toUpperCase(), Lists.newArrayList(indexPrf, indexPrf1));
+    upgradeConfigAndContext.setIgnoredIndexes(ignoredIndexes);
 
     Index newIndex1 = mock(Index.class);
     when(newIndex1.getName()).thenReturn(ID_TABLE_NAME + "_2");
@@ -215,7 +217,9 @@ public class TestInlineTableUpgrader {
     when(addIndex2.getTableName()).thenReturn(ID_TABLE_NAME);
     when(addIndex2.getNewIndex()).thenReturn(newIndex2);
 
-    when(newTable.indexes()).thenReturn(Lists.newArrayList(newIndex1, newIndex2));
+    Table newTable = mock(Table.class);
+    when(newTable.getName()).thenReturn(ID_TABLE_NAME);
+    when(schema.getTable(ID_TABLE_NAME)).thenReturn(newTable);
 
     // when
     upgrader.visit(addIndex);

@@ -21,7 +21,6 @@ import java.util.UUID;
 
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.Statement;
 
@@ -42,13 +41,13 @@ public class InlineTableUpgrader extends AbstractSchemaChangeVisitor implements 
    * Default constructor.
    *
    * @param startSchema schema prior to upgrade step.
-   * @param schemaResource schema resource
+   * @param upgradeConfigAndContext upgrade config
    * @param sqlDialect Dialect to generate statements for the target database.
    * @param sqlStatementWriter recipient for all upgrade SQL statements.
    * @param idTable table for id generation.
    */
-  public InlineTableUpgrader(Schema startSchema, SchemaResource schemaResource, SqlDialect sqlDialect, SqlStatementWriter sqlStatementWriter, Table idTable) {
-    super(startSchema, schemaResource, sqlDialect);
+  public InlineTableUpgrader(Schema startSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect, SqlStatementWriter sqlStatementWriter, Table idTable) {
+    super(startSchema, upgradeConfigAndContext, sqlDialect);
     this.currentSchema = startSchema;
     this.sqlDialect = sqlDialect;
     this.sqlStatementWriter = sqlStatementWriter;

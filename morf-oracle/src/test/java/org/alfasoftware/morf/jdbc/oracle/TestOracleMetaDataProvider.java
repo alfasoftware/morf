@@ -211,7 +211,7 @@ public class TestOracleMetaDataProvider {
     // When
     final AdditionalMetadata oracleMetaDataProvider = (AdditionalMetadata) oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
 
-    List<Index> actualIgnoredIndexes = oracleMetaDataProvider.getTable("AREALTABLE").ignoredIndexes();
+    List<Index> actualIgnoredIndexes = oracleMetaDataProvider.ignoredIndexes().get("AREALTABLE");
     assertEquals("Ignored indexes size.", 2, actualIgnoredIndexes.size());
     assertEquals("Ignored AREALTABLE table indexes size.", 2, actualIgnoredIndexes.size());
     Index index = actualIgnoredIndexes.get(0);

@@ -85,6 +85,7 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
   private final Connection connection;
   private final String schemaName;
   private Map<String, String> primaryKeyIndexNames;
+  private Map<String, List<Index>> ignoredIndexes;
 
   /**
    * Construct a new meta data provider.
@@ -161,6 +162,14 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
     return primaryKeyIndexNames;
   }
 
+  @Override
+  public Map<String, List<Index>> ignoredIndexes() {
+    if (ignoredIndexes != null) {
+      return ignoredIndexes;
+    }
+    tableMap();
+    return ignoredIndexes;
+  }
 
   /**
    * A table name reading method which is more efficient than the Oracle driver meta-data version.
@@ -324,6 +333,7 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
     // -- Stage 3: find the index names...
     //
     primaryKeyIndexNames = Maps.newHashMap();
+    ignoredIndexes = Maps.newHashMap();
     final String getIndexNamesSql = "select table_name, index_name, uniqueness, status from ALL_INDEXES where owner=? order by table_name, index_name";
     runSQL(getIndexNamesSql, new ResultSetHandler() {
       @Override
@@ -372,7 +382,16 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
 
           if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName)) {
             Index ignoredIndex = getAssembledIndex(unique, indexNameFinal);
-            currentTable.ignoredIndexes().add(ignoredIndex);
+            String currentTableName = currentTable.getName().toUpperCase();
+            if (ignoredIndexes.containsKey(currentTableName)) {
+              ignoredIndexes.compute(currentTableName, (k, tableIgnoredIndexes) -> {
+                List<Index> newList = tableIgnoredIndexes == null ? new ArrayList<>() : new ArrayList<Index>(tableIgnoredIndexes);
+                newList.add(ignoredIndex);
+                return newList;
+              });
+            } else {
+              ignoredIndexes.put(currentTableName, List.of(ignoredIndex));
+            }
             continue;
           }
 
@@ -452,7 +471,7 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
 
           if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName)) {
             Index lastIndex = null;
-            for (Index currentIndex : currentTable.ignoredIndexes()) {
+            for (Index currentIndex : ignoredIndexes.get(currentTable.getName().toUpperCase())) {
               if (currentIndex.getName().equalsIgnoreCase(indexName)) {
                 lastIndex = currentIndex;
                 break;
