@@ -440,8 +440,7 @@ public class GraphBasedUpgradeBuilder {
      * @param sourceSchema            source schema
      * @param targetSchema            target schema
      * @param connectionResources     connection resources to be used
-     * @param exclusiveExecutionSteps names of the upgrade step classes which should
-     *                                  be executed in an exclusive way
+     * @param upgradeConfigAndContext upgrade config and context
      * @param schemaChangeSequence    to be used to build a
      *                                  {@link GraphBasedUpgrade}
      * @param viewChanges             view changes which need to be made to match
@@ -452,7 +451,6 @@ public class GraphBasedUpgradeBuilder {
         Schema sourceSchema,
         Schema targetSchema,
         ConnectionResources connectionResources,
-        //Set<String> exclusiveExecutionSteps,
         UpgradeConfigAndContext upgradeConfigAndContext,
         SchemaChangeSequence schemaChangeSequence,
         ViewChanges viewChanges) {

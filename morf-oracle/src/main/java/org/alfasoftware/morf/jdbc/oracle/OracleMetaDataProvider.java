@@ -385,7 +385,7 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
             String currentTableName = currentTable.getName().toUpperCase();
             if (ignoredIndexes.containsKey(currentTableName)) {
               ignoredIndexes.compute(currentTableName, (k, tableIgnoredIndexes) -> {
-                List<Index> newList = tableIgnoredIndexes == null ? new ArrayList<>() : new ArrayList<Index>(tableIgnoredIndexes);
+                List<Index> newList = tableIgnoredIndexes == null ? new ArrayList<>() : new ArrayList<>(tableIgnoredIndexes);
                 newList.add(ignoredIndex);
                 return newList;
               });
