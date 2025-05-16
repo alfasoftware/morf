@@ -186,6 +186,8 @@ public class TestUpgrade {
     AdditionalMetadata additionalMetadata = mock(AdditionalMetadata.class);
     when(schemaResource.getAdditionalMetadata()).thenReturn(Optional.of(additionalMetadata));
     Map<String, List<Index>> indexMap = Maps.newHashMap();
+    Index indexPrf1 = mock(Index.class);
+    indexMap.put("WithTypes", ImmutableList.of(indexPrf1));
 
     when(additionalMetadata.ignoredIndexes()).thenReturn(indexMap);
 
@@ -194,10 +196,12 @@ public class TestUpgrade {
 
     UpgradePath results = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(mockConnectionResources),
       viewChangesDeploymentHelperFactory(mockConnectionResources), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory)
+        .withUpgradeConfiguration(upgradeConfigAndContext)
         .create(mockConnectionResources)
         .findPath(targetSchema, upgradeSteps, Lists.newArrayList("^Drivers$", "^EXCLUDE_.*$"), mockConnectionResources.getDataSource());
 
     verify(additionalMetadata).ignoredIndexes();
+    assertEquals("ignored indexes must match", indexMap, upgradeConfigAndContext.getIgnoredIndexes());
     assertEquals("Should be two steps.", 2, results.getSteps().size());
     List<String> sql = results.getSql();
     assertEquals("Number of SQL statements", 19, sql.size()); // Includes statements to add optimistic locking; create, truncate and then drop temp table; also 2 comments
