@@ -53,6 +53,8 @@ import org.mockito.stubbing.Answer;
  * @author Copyright (c) Alfa Financial Software Ltd. 2024
  */
 public class TestPostgreSqlMetaDataProvider {
+  private static final String TABLE_NAME = "AREALTABLE";
+  private static final String TEST_SCHEMA = "TestSchema";
 
   private final DataSource dataSource = mock(DataSource.class, RETURNS_SMART_NULLS);
   private final Connection connection = mock(Connection.class, RETURNS_SMART_NULLS);
@@ -85,12 +87,12 @@ public class TestPostgreSqlMetaDataProvider {
     when(statement.executeQuery()).thenAnswer(new ReturnMockResultSetWithSequence(1));
 
     // When
-    final Schema postgresMetaDataProvider = postgres.openSchema(connection, "TestDatabase", "TestSchema");
+    final Schema postgresMetaDataProvider = postgres.openSchema(connection, "TestDatabase", TEST_SCHEMA);
     assertEquals("Sequence names", "[Sequence1]", postgresMetaDataProvider.sequenceNames().toString());
     Sequence sequence = postgresMetaDataProvider.sequences().iterator().next();
     assertEquals("Sequence name", "Sequence1", sequence.getName());
 
-    verify(statement).setString(1, "TestSchema");
+    verify(statement).setString(1, TEST_SCHEMA);
   }
 
   /**
@@ -115,12 +117,12 @@ public class TestPostgreSqlMetaDataProvider {
     when(connection.getMetaData()).thenReturn(databaseMetaData);
 
     // mock getTables
-    when(databaseMetaData.getTables(null, "TestSchema", null, new String[] { "TABLE" }))
+    when(databaseMetaData.getTables(null, TEST_SCHEMA, null, new String[] { "TABLE" }))
       .thenAnswer(answer -> {
         ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
         when(resultSet.next()).thenReturn(true, false);
-        when(resultSet.getString(3)).thenReturn("AREALTABLE"); // // 3 - TABLE_NAME
-        when(resultSet.getString(2)).thenReturn("TestSchema"); // 2 - TABLE_SCHEM
+        when(resultSet.getString(3)).thenReturn(TABLE_NAME); // // 3 - TABLE_NAME
+        when(resultSet.getString(2)).thenReturn(TEST_SCHEMA); // 2 - TABLE_SCHEM
         when(resultSet.getString(5)).thenReturn("REALNAME:[AREALTABLE]"); // 5 - TABLE_REMARKS
         when(resultSet.getString(4)).thenReturn("REGULAR"); // 4 - TABLE_TYPE
 
@@ -128,11 +130,11 @@ public class TestPostgreSqlMetaDataProvider {
       });
 
     // mock getColumns
-    when(databaseMetaData.getColumns(null, "TestSchema", null, null))
+    when(databaseMetaData.getColumns(null, TEST_SCHEMA, null, null))
       .thenAnswer(answer -> {
         ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
         when(resultSet.next()).thenReturn(true, false);
-        when(resultSet.getString(3)).thenReturn("AREALTABLE"); // 3 - COLUMN_TABLE_NAME
+        when(resultSet.getString(3)).thenReturn(TABLE_NAME); // 3 - COLUMN_TABLE_NAME
         when(resultSet.getString(4)).thenReturn("column1"); // 4 - COLUMN_NAME
         when(resultSet.getString(6)).thenReturn("VARCHAR"); // 6 - COLUMN_TYPE_NAME
         when(resultSet.getInt(5)).thenReturn(12);  // 5 - COLUMN_DATA_TYPE - VARCHAR 12
@@ -147,7 +149,7 @@ public class TestPostgreSqlMetaDataProvider {
       });
 
     // mock getIndexInfo
-    when(databaseMetaData.getIndexInfo(null, "TestSchema", "arealtable", false, false))
+    when(databaseMetaData.getIndexInfo(null, TEST_SCHEMA, TABLE_NAME, false, false))
       .thenAnswer(answer -> {
         ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
         when(resultSet.next()).thenReturn(true, true, true, false);
@@ -158,12 +160,12 @@ public class TestPostgreSqlMetaDataProvider {
       });
 
     // When
-    final Schema postgresMetaDataProvider = postgres.openSchema(connection, "TestDatabase", "TestSchema");
+    final Schema postgresMetaDataProvider = postgres.openSchema(connection, "TestDatabase", TEST_SCHEMA);
     Map<String, List<Index>> ignoredIndexesMap = ((AdditionalMetadata)postgresMetaDataProvider).ignoredIndexes();
 
     // Then
-    Index indexPrf1 = ignoredIndexesMap.get("AREALTABLE").get(0);
-    Index indexPrf2 = ignoredIndexesMap.get("AREALTABLE").get(1);
+    Index indexPrf1 = ignoredIndexesMap.get(TABLE_NAME).get(0);
+    Index indexPrf2 = ignoredIndexesMap.get(TABLE_NAME).get(1);
 
     assertThat(indexPrf1.columnNames(), contains("column1"));
     assertThat(indexPrf2.columnNames(), contains("column1"));

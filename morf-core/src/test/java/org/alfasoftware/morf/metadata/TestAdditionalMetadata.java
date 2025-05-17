@@ -80,7 +80,9 @@ public class TestAdditionalMetadata {
     }
   }
 
-  //AdditionalMetadata
+  /**
+   * test {@link AdditionalMetadata} default methods.
+   */
   @Test
   public void testAdditionalMetadata() {
     SimpleAdditionalMetadata simple = new SimpleAdditionalMetadata();
