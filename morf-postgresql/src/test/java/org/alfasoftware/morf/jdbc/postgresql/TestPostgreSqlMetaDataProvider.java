@@ -149,7 +149,7 @@ public class TestPostgreSqlMetaDataProvider {
       });
 
     // mock getIndexInfo
-    when(databaseMetaData.getIndexInfo(null, TEST_SCHEMA, TABLE_NAME, false, false))
+    when(databaseMetaData.getIndexInfo(null, TEST_SCHEMA, "arealtable", false, false))
       .thenAnswer(answer -> {
         ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
         when(resultSet.next()).thenReturn(true, true, true, false);
@@ -164,11 +164,14 @@ public class TestPostgreSqlMetaDataProvider {
     Map<String, List<Index>> ignoredIndexesMap = ((AdditionalMetadata)postgresMetaDataProvider).ignoredIndexes();
 
     // Then
+    assertEquals("map size must match", 1, ignoredIndexesMap.size());
+    assertEquals("table ignored indexes size must match", 2, ignoredIndexesMap.get(TABLE_NAME).size());
     Index indexPrf1 = ignoredIndexesMap.get(TABLE_NAME).get(0);
     Index indexPrf2 = ignoredIndexesMap.get(TABLE_NAME).get(1);
-
-    assertThat(indexPrf1.columnNames(), contains("column1"));
-    assertThat(indexPrf2.columnNames(), contains("column1"));
+    assertEquals("index prf1 name", "AREALTABLE_PRF1", indexPrf1.getName());
+    assertThat("index prf1 columns", indexPrf1.columnNames(), contains("column1"));
+    assertEquals("index prf2 name", "AREALTABLE_PRF2", indexPrf2.getName());
+    assertThat("index prf2 columns", indexPrf2.columnNames(), contains("column1"));
   }
 
 
