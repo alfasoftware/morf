@@ -162,9 +162,12 @@ public class TestPostgreSqlMetaDataProvider {
     // When
     final Schema postgresMetaDataProvider = postgres.openSchema(connection, "TestDatabase", TEST_SCHEMA);
     Map<String, List<Index>> ignoredIndexesMap = ((AdditionalMetadata)postgresMetaDataProvider).ignoredIndexes();
+    // test loading the cached version:
+    Map<String, List<Index>> ignoredIndexesMap1 = ((AdditionalMetadata)postgresMetaDataProvider).ignoredIndexes();
 
     // Then
     assertEquals("map size must match", 1, ignoredIndexesMap.size());
+    assertEquals("map size must match", 1, ignoredIndexesMap1.size());
     assertEquals("table ignored indexes size must match", 2, ignoredIndexesMap.get(TABLE_NAME).size());
     Index indexPrf1 = ignoredIndexesMap.get(TABLE_NAME).get(0);
     Index indexPrf2 = ignoredIndexesMap.get(TABLE_NAME).get(1);
