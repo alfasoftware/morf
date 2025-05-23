@@ -1316,7 +1316,7 @@ class OracleDialect extends SqlDialect {
    */
   @Override
   public Collection<String> addTableFromStatements(Table table, SelectStatement selectStatement) {
-    return internalAddTableFromStatements(table, selectStatement, false);
+    return internalAddTableFromStatements(table, selectStatement, true);
   }
 
 
