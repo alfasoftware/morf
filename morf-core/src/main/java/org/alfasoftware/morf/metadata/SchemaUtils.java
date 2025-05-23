@@ -653,7 +653,8 @@ public final class SchemaUtils {
     }
 
 
-    private TableBuilderImpl(String name, Iterable<? extends Column> columns, Iterable<? extends Index> indexes, boolean isTemporary) {
+    private TableBuilderImpl(String name, Iterable<? extends Column> columns, Iterable<? extends Index> indexes,
+                             boolean isTemporary) {
       super(name, columns, indexes, isTemporary);
     }
 
