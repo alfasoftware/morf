@@ -23,6 +23,7 @@
     <module>morf-mysql</module>
     <module>morf-oracle</module>
     <module>morf-postgresql</module>
+    <module>morf-redshift</module>
     <module>morf-sqlserver</module>
     <module>morf-integration-test</module>
   </modules>
