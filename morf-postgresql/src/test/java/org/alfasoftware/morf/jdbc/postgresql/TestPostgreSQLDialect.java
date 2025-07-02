@@ -567,7 +567,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedBlobLiteral(String value) {
-    return String.format("E'\\x%s'", value);
+    return String.format("'%s'", value);
   }
 
 
