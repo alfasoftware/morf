@@ -743,6 +743,15 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterColumnRenameNonPrimaryIndexedColumn()
+   */
+  @Override
+  protected List<String> expectedAlterColumnRenameNonPrimaryIndexedColumn() {
+    return Arrays.asList("ALTER TABLE "+TEST_SCHEMA+".Alternate ALTER COLUMN stringField RENAME TO blahField");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterColumnRenamingAndChangingNullability()
    */
   @Override
@@ -1351,5 +1360,14 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedPortableStatement() {
     return "UPDATE TESTSCHEMA.Table SET field = BTRIM(field, CAST('2' AS VARCHAR(1)), CAST('B' AS VARCHAR(1)))";
+  }
+
+
+  /**
+   * @return The expected value for the force serial import setting.
+   */
+  @Override
+  protected boolean expectedForceSerialImport() {
+    return true;
   }
 }

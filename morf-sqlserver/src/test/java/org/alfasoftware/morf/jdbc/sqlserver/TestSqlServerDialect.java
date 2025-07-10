@@ -839,6 +839,18 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterColumnRenameNonPrimaryIndexedColumn()
+   */
+  @Override
+  protected List<String> expectedAlterColumnRenameNonPrimaryIndexedColumn() {
+    return Arrays.asList("DROP INDEX Alternate_1 ON TESTSCHEMA.Alternate",
+                         "EXEC sp_rename 'TESTSCHEMA.Alternate.stringField', 'blahField', 'COLUMN'",
+                         "ALTER TABLE TESTSCHEMA.Alternate ALTER COLUMN blahField NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS",
+                         "CREATE INDEX Alternate_1 ON TESTSCHEMA.Alternate ([blahField])");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterRemoveColumnFromCompositeKeyStatements()
    */
   @Override
@@ -846,7 +858,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
     return Arrays.asList(
       "ALTER TABLE TESTSCHEMA.CompositePrimaryKey DROP CONSTRAINT [CompositePrimaryKey_PK]",
       "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ALTER COLUMN secondPrimaryKey NVARCHAR(5) COLLATE SQL_Latin1_General_CP1_CS_AS",
-        "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ADD CONSTRAINT [CompositePrimaryKey_PK] PRIMARY KEY ([id])");
+      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ADD CONSTRAINT [CompositePrimaryKey_PK] PRIMARY KEY ([id])");
   }
 
 
@@ -1122,7 +1134,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
         + " ON (foo.id = xmergesource.id)"
         + " WHEN MATCHED THEN UPDATE SET bar = xmergesource.bar"
         + " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
-  };
+  }
 
 
   /**
@@ -1404,7 +1416,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedDeleteWithLimitAndWhere(String value) {
     return "DELETE TOP (1000) FROM " + tableName(TEST_TABLE) + " WHERE (Test.stringField = " + stringLiteralPrefix() + value + ")";
-  };
+  }
 
 
   /**
@@ -1413,7 +1425,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedDeleteWithLimitAndComplexWhere(String value1, String value2) {
     return "DELETE TOP (1000) FROM " + tableName(TEST_TABLE) + " WHERE ((Test.stringField = " + stringLiteralPrefix() + value1 + ") OR (Test.stringField = " + stringLiteralPrefix() + value2 + "))";
-  };
+  }
 
 
   /**
@@ -1431,7 +1443,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedSelectWithExcept() {
     return null;
-  };
+  }
 
 
   /**

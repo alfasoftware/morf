@@ -125,6 +125,11 @@ class PostgreSQLDialect extends SqlDialect {
   }
 
 
+  /**
+   * https://www.postgresql.org/docs/current/datatype-numeric.html
+   *  - The types DECIMAL and NUMERIC are equivalent.
+   *  - BIG_INTEGER is therefore comparable to DECIMAL
+   */
   @Override
   protected String getDataTypeRepresentation(DataType dataType, int width, int scale) {
     switch (dataType) {
@@ -195,6 +200,12 @@ class PostgreSQLDialect extends SqlDialect {
     return ImmutableList.<String>builder()
         .add(createSequenceStatement(sequence))
         .build();
+  }
+
+
+  @Override
+  public Collection<String> addTableFromStatements(Table table, SelectStatement selectStatement) {
+    return internalAddTableFromStatements(table, selectStatement, true);
   }
 
 
@@ -991,6 +1002,12 @@ class PostgreSQLDialect extends SqlDialect {
     return getPostgreSQLMetaDataProvider(schemaResource)
             .map(this::getSchemaConsistencyStatements)
             .orElseGet(() -> super.getSchemaConsistencyStatements(schemaResource));
+  }
+
+
+  @Override
+  public boolean useForcedSerialImport() {
+    return false;
   }
 
 

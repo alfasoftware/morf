@@ -4094,6 +4094,15 @@ public abstract class AbstractSqlDialectTest {
     testAlterTableColumn(TEST_TABLE, AlterationType.ALTER, getColumn(TEST_TABLE, DATE_FIELD), column(DATE_FIELD, DataType.DATE).nullable().primaryKey(), expectedAlterColumnMakePrimaryStatements());
   }
 
+  /**
+   *  Test renaming an indexed non-primary key column
+   */
+  @Test
+  public void testAlterColumnRenameNonPrimaryIndexedColumn() {
+    testAlterTableColumn(ALTERNATE_TABLE, AlterationType.ALTER, getColumn(ALTERNATE_TABLE, STRING_FIELD), column("blahField", DataType.STRING, 3).nullable(), expectedAlterColumnRenameNonPrimaryIndexedColumn());
+  }
+
+
 
   /**
    * Test changing a column which is part of a composite primary key.
@@ -4767,6 +4776,11 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * @return Expected SQL for {@link #testAlterColumnRenameNonPrimaryIndexedColumn()}
+   */
+  protected abstract List<String> expectedAlterColumnRenameNonPrimaryIndexedColumn();
+
+  /**
    * @return Expected SQL for {@link #testAlterPrimaryKeyColumnCompositeKey()}
    */
   protected abstract List<String> expectedAlterPrimaryKeyColumnCompositeKeyStatements();
@@ -5154,6 +5168,15 @@ public abstract class AbstractSqlDialectTest {
     assertEquals(date2, record.getDate("Date2"));
     assertEquals(date3, record.getDate("Date3"));
     assertEquals(date4, record.getDate("Date4"));
+  }
+
+
+  /**
+   * Tests that forced serial import option is used correctly.
+   */
+  @Test
+  public void testUseForcedInsert() {
+    assertEquals("Forced serial import should be set correctly", expectedForceSerialImport(), testDialect.useForcedSerialImport());
   }
 
 
@@ -5921,7 +5944,7 @@ public abstract class AbstractSqlDialectTest {
    */
   protected String expectedSelectSome() {
     return "SELECT MAX(booleanField) FROM " + tableName(TEST_TABLE);
-  };
+  }
 
 
   /**
@@ -5929,7 +5952,7 @@ public abstract class AbstractSqlDialectTest {
    */
   protected String expectedSelectEvery() {
     return "SELECT MIN(booleanField) FROM " + tableName(TEST_TABLE);
-  };
+  }
 
 
   /**
@@ -6099,6 +6122,13 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL for the {@link PortableSqlFunction} function, testing that the dialect-specific function is used.
    */
   protected abstract String expectedPortableStatement();
+
+  /**
+   * @return The expected value for the force serial import setting.
+   */
+  protected boolean expectedForceSerialImport() {
+    return false;
+  }
 
   /**
    * @return the testDialect
