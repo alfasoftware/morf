@@ -5,4 +5,5 @@ package org.alfasoftware.morf.metadata;
  */
 public interface PartitioningRule {
     String getColumn();
+    PartitioningRuleType getPartitioningType();
 }

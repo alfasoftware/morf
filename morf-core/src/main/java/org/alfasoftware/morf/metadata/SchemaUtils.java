@@ -21,12 +21,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import org.apache.commons.lang3.StringUtils;
 
 /**
  * Utility functions for Schemas.
@@ -528,11 +528,10 @@ public final class SchemaUtils {
 
     /**
      * The partitioning rule for the table is defined here.
-     * @param column The column to partition by
      * @param rule The rule applied on the column to define partitions on the table
      * @return this table builder, for method chaining.
      */
-    public TableBuilder partitionBy(String column, PartitioningRule rule);
+    public TableBuilder partitionBy(PartitioningRule rule);
 
 
     /**
@@ -746,11 +745,11 @@ public final class SchemaUtils {
 
 
     /**
-     * @see org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder#partitionBy(String, PartitioningRule)
+     * @see org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder#partitionBy(PartitioningRule)
      */
     @Override
-    public TableBuilder partitionBy(String column, PartitioningRule rule) {
-      this.partitionColumn = column;
+    public TableBuilder partitionBy(PartitioningRule rule) {
+      this.partitionColumn = rule.getColumn();
       this.partitioningRule = rule;
       return this;
     }

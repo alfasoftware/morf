@@ -9,14 +9,30 @@ import static org.alfasoftware.morf.sql.SqlUtils.field;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.StringJoiner;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
-import org.alfasoftware.morf.metadata.*;
+import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.DataValueLookup;
+import org.alfasoftware.morf.metadata.DatePartitionedByPeriodRule;
+import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.PartitioningByHashRule;
+import org.alfasoftware.morf.metadata.PartitioningRuleType;
+import org.alfasoftware.morf.metadata.SchemaResource;
+import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Sequence;
+import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.DeleteStatementBuilder;
 import org.alfasoftware.morf.sql.DialectSpecificHint;
@@ -41,14 +57,13 @@ import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
-import org.apache.commons.lang3.tuple.Pair;
-import org.joda.time.LocalDate;
 
 class PostgreSQLDialect extends SqlDialect {
 
@@ -270,7 +285,11 @@ class PostgreSQLDialect extends SqlDialect {
       }
 
       // add PARTITION BY clause
-      createTableStatement.append(" PARTITION BY RANGE (");
+      if (table.partitioningRule().getPartitioningType().equals(PartitioningRuleType.rangePartitioning)) {
+        createTableStatement.append(" PARTITION BY RANGE (");
+      } else if (table.partitioningRule().getPartitioningType().equals(PartitioningRuleType.hashPartitioning)) {
+        createTableStatement.append(" PARTITION BY HASH (");
+      }
       createTableStatement.append(partitionColumn.get().getName());
       createTableStatement.append(')');
       // explode PARTITION TABLES
@@ -291,23 +310,49 @@ class PostgreSQLDialect extends SqlDialect {
     List<String> statements = new ArrayList<>();
     List<Pair<String, String>> ranges = new ArrayList<>();
 
-    if (!(table.partitioningRule() instanceof DatePartitionedByPeriodRule)) {
-      throw new IllegalArgumentException("The only supported rule is DatePartitionedByPeriodRule");
+    if ((table.partitioningRule() instanceof DatePartitionedByPeriodRule)) {
+      createPartitionByDateRangeStatements(table, statements);
+    } else if ((table.partitioningRule() instanceof PartitioningByHashRule)) {
+      createPartitionByHashStatements(table, statements, (PartitioningByHashRule) table.partitioningRule());
+    } else {
+      throw new IllegalArgumentException("Partition rule is not supported");
     }
+
+    return statements;
+  }
+
+  private void createPartitionByHashStatements(Table table, List<String> statements, PartitioningByHashRule rule) {
+    String sourceTableName = schemaNamePrefix(table) + table.getName();
+    String partitionTableNamePrefix = sourceTableName + "_p";
+    AtomicInteger i = new AtomicInteger(1);
+    rule.getHashRemainders().forEach(remainder -> {
+      String tablePartitionName = partitionTableNamePrefix + i.getAndIncrement();
+      statements.add(createTablePartitionHashStatement(table, sourceTableName, tablePartitionName,
+        rule.getHashDivider(), remainder));
+    });
+  }
+
+
+  private String createTablePartitionHashStatement(Table table, String sourceTableName, String tablePartitionName, int modulus, int remainder) {
+    return "CREATE TABLE " + tablePartitionName + " PARTITION OF " + sourceTableName
+      + " FOR VALUES WITH (MODULUS " + modulus + ", REMAINDER " + remainder + ")";
+  }
+
+
+  private void createPartitionByDateRangeStatements(Table table, List<String> statements) {
     DatePartitionedByPeriodRule datePartitionedByPeriodRule = (DatePartitionedByPeriodRule) table.partitioningRule();
     String sourceTableName = schemaNamePrefix(table) + table.getName();
     String partitionTableNamePrefix = sourceTableName + "_p";
     AtomicInteger i = new AtomicInteger(1);
     datePartitionedByPeriodRule.getRanges().forEach(pair -> {
       String tablePartitionName = partitionTableNamePrefix + i.getAndIncrement();
-      statements.add(createTablePartitionStatement(table, sourceTableName, tablePartitionName,
+      statements.add(createTablePartitionRangeStatement(table, sourceTableName, tablePartitionName,
               Pair.of(pair.getLeft().toString("yyyy-MM-dd"), pair.getRight().toString("yyyy-MM-dd"))));
       });
-    return statements;
   }
 
 
-  private String createTablePartitionStatement(Table table, String sourceTableName, String tablePartitionName, Pair<String, String> range) {
+  private String createTablePartitionRangeStatement(Table table, String sourceTableName, String tablePartitionName, Pair<String, String> range) {
     return "CREATE TABLE " + tablePartitionName + " PARTITION OF " + sourceTableName
             + " FOR VALUES FROM ('" + range.getLeft() + "') TO ('" + range.getRight() + "')";
   }

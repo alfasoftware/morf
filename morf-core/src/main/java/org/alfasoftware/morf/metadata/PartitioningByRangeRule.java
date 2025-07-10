@@ -1,8 +1,8 @@
 package org.alfasoftware.morf.metadata;
 
-import org.apache.commons.lang3.tuple.Pair;
-
 import java.util.List;
+
+import org.apache.commons.lang3.tuple.Pair;
 
 public abstract class PartitioningByRangeRule<T,R> implements PartitioningRule {
     protected final String column;
@@ -22,6 +22,9 @@ public abstract class PartitioningByRangeRule<T,R> implements PartitioningRule {
 
     @Override
     public String getColumn() { return column; }
+
+    @Override
+    public PartitioningRuleType getPartitioningType() { return PartitioningRuleType.rangePartitioning; }
 
     abstract protected List<Pair<T, T>> getRanges();
 }

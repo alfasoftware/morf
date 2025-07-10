@@ -124,7 +124,17 @@ import java.util.List;
 import java.util.Optional;
 
 import org.alfasoftware.morf.dataset.Record;
-import org.alfasoftware.morf.metadata.*;
+import org.alfasoftware.morf.metadata.AdditionalMetadata;
+import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.DatePartitionedByPeriodRule;
+import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.PartitioningByHashRule;
+import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaResource;
+import org.alfasoftware.morf.metadata.Sequence;
+import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.CustomHint;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
@@ -205,6 +215,7 @@ public abstract class AbstractSqlDialectTest {
   private static final String COMPOSITE_PRIMARY_KEY_TABLE = "CompositePrimaryKey";
   private static final String AUTO_NUMBER_TABLE = "AutoNumber";
   private static final String MEASUREMENT_TABLE = "Measurement";
+  private static final String MEASUREMENT_HASH_TABLE = "MeasurementHash";
 
 
   private static final String INNER_FIELD_B = "innerFieldB";
@@ -469,8 +480,16 @@ public abstract class AbstractSqlDialectTest {
                     column(INT_FIELD, DataType.DECIMAL, 8),
                     column(DATE_FIELD, DataType.DATE).partitioned(),
                     column(STRING_FIELD, DataType.STRING, 3)
-            ).partitionBy(DATE_FIELD,
+            ).partitionBy(
                     new DatePartitionedByPeriodRule(DATE_FIELD, LocalDate.parse("2012-03-01"), Period.months(1), 2));
+
+    Table partitionedTableByHash = table(MEASUREMENT_HASH_TABLE)
+      .columns(
+        column(INT_FIELD, DataType.DECIMAL, 8).partitioned(),
+        column(DATE_FIELD, DataType.DATE),
+        column(STRING_FIELD, DataType.STRING, 3)
+      ).partitionBy(
+        new PartitioningByHashRule(INT_FIELD, 8));
 
     // Test view
     TableReference tr = new TableReference(TEST_TABLE);
@@ -504,7 +523,7 @@ public abstract class AbstractSqlDialectTest {
     // Builds a test schema
     metadata = schema(testTable, testTempTable, testTableLongName, alternateTestTable, alternateTestTempTable, otherTable,
       testTableAllUpperCase, testTableMixedCase, nonNullTable, nonNullTempTable, compositePrimaryKey, autoNumber,
-      partitionedTable, inner, insertAB, insertA);
+      partitionedTable, partitionedTableByHash, inner, insertAB, insertA);
   }
 
   /**
@@ -539,6 +558,7 @@ public abstract class AbstractSqlDialectTest {
     Table compositePrimaryKey = metadata.getTable(COMPOSITE_PRIMARY_KEY_TABLE);
     Table autoNumber = metadata.getTable(AUTO_NUMBER_TABLE);
     Table partitionedTable = metadata.getTable(MEASUREMENT_TABLE);
+    Table partitionedTableByHash = metadata.getTable(MEASUREMENT_HASH_TABLE);
 
     compareStatements(
       expectedCreateTableStatements(),
@@ -547,7 +567,8 @@ public abstract class AbstractSqlDialectTest {
       testDialect.tableDeploymentStatements(nonNull),
       testDialect.tableDeploymentStatements(compositePrimaryKey),
       testDialect.tableDeploymentStatements(autoNumber),
-      testDialect.tableDeploymentStatements(partitionedTable)
+      testDialect.tableDeploymentStatements(partitionedTable),
+      testDialect.tableDeploymentStatements(partitionedTableByHash)
     );
   }
 
