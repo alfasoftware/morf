@@ -47,6 +47,7 @@ import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.DataValueLookup;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.PartitioningRule;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaUtils;
@@ -4600,5 +4601,15 @@ public abstract class SqlDialect {
     public boolean isTemporary() {
       return isTemporary;
     }
+
+    @Override
+    public boolean isPartitioned() { return false; }
+
+    @Override
+    public PartitioningRule partitioningRule() {
+      return null;
+    }
+
+    ;
   }
 }

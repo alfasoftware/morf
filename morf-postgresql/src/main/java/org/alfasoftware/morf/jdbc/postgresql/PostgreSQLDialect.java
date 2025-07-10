@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.StringJoiner;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.jdbc.DatabaseType;
@@ -23,7 +24,10 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.DataValueLookup;
+import org.alfasoftware.morf.metadata.DatePartitionedByPeriodRule;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.PartitioningByHashRule;
+import org.alfasoftware.morf.metadata.PartitioningRuleType;
 import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Sequence;
@@ -53,6 +57,7 @@ import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.FluentIterable;
@@ -272,6 +277,25 @@ class PostgreSQLDialect extends SqlDialect {
 
     createTableStatement.append(")");
 
+    // add "PARTITION BY" clause and extra partition tables if table is partitioned.
+    if (table.isPartitioned()) {
+      Optional<Column> partitionColumn = table.columns().stream().filter(Column::isPartitioned).findFirst();
+      if (partitionColumn.isEmpty() || !table.partitioningRule().getColumn().equals(partitionColumn.get().getName())) {
+        throw new IllegalArgumentException("Partitioning rule does not match partition column");
+      }
+
+      // add PARTITION BY clause
+      if (table.partitioningRule().getPartitioningType().equals(PartitioningRuleType.rangePartitioning)) {
+        createTableStatement.append(" PARTITION BY RANGE (");
+      } else if (table.partitioningRule().getPartitioningType().equals(PartitioningRuleType.hashPartitioning)) {
+        createTableStatement.append(" PARTITION BY HASH (");
+      }
+      createTableStatement.append(partitionColumn.get().getName());
+      createTableStatement.append(')');
+      // explode PARTITION TABLES
+      postStatements.addAll(createTablePartitions(table));
+    }
+
     ImmutableList.Builder<String> statements = ImmutableList.<String>builder()
             .addAll(preStatements)
             .add(createTableStatement.toString());
@@ -281,6 +305,57 @@ class PostgreSQLDialect extends SqlDialect {
     return statements.build();
   }
 
+
+  private List<String> createTablePartitions(Table table) {
+    List<String> statements = new ArrayList<>();
+    List<Pair<String, String>> ranges = new ArrayList<>();
+
+    if ((table.partitioningRule() instanceof DatePartitionedByPeriodRule)) {
+      createPartitionByDateRangeStatements(table, statements);
+    } else if ((table.partitioningRule() instanceof PartitioningByHashRule)) {
+      createPartitionByHashStatements(table, statements, (PartitioningByHashRule) table.partitioningRule());
+    } else {
+      throw new IllegalArgumentException("Partition rule is not supported");
+    }
+
+    return statements;
+  }
+
+  private void createPartitionByHashStatements(Table table, List<String> statements, PartitioningByHashRule rule) {
+    String sourceTableName = schemaNamePrefix(table) + table.getName();
+    String partitionTableNamePrefix = sourceTableName + "_p";
+    AtomicInteger i = new AtomicInteger(1);
+    rule.getHashRemainders().forEach(remainder -> {
+      String tablePartitionName = partitionTableNamePrefix + i.getAndIncrement();
+      statements.add(createTablePartitionHashStatement(table, sourceTableName, tablePartitionName,
+        rule.getHashDivider(), remainder));
+    });
+  }
+
+
+  private String createTablePartitionHashStatement(Table table, String sourceTableName, String tablePartitionName, int modulus, int remainder) {
+    return "CREATE TABLE " + tablePartitionName + " PARTITION OF " + sourceTableName
+      + " FOR VALUES WITH (MODULUS " + modulus + ", REMAINDER " + remainder + ")";
+  }
+
+
+  private void createPartitionByDateRangeStatements(Table table, List<String> statements) {
+    DatePartitionedByPeriodRule datePartitionedByPeriodRule = (DatePartitionedByPeriodRule) table.partitioningRule();
+    String sourceTableName = schemaNamePrefix(table) + table.getName();
+    String partitionTableNamePrefix = sourceTableName + "_p";
+    AtomicInteger i = new AtomicInteger(1);
+    datePartitionedByPeriodRule.getRanges().forEach(pair -> {
+      String tablePartitionName = partitionTableNamePrefix + i.getAndIncrement();
+      statements.add(createTablePartitionRangeStatement(table, sourceTableName, tablePartitionName,
+              Pair.of(pair.getLeft().toString("yyyy-MM-dd"), pair.getRight().toString("yyyy-MM-dd"))));
+      });
+  }
+
+
+  private String createTablePartitionRangeStatement(Table table, String sourceTableName, String tablePartitionName, Pair<String, String> range) {
+    return "CREATE TABLE " + tablePartitionName + " PARTITION OF " + sourceTableName
+            + " FOR VALUES FROM ('" + range.getLeft() + "') TO ('" + range.getRight() + "')";
+  }
 
   /**
    * Private method to form the SQL statement required to create a sequence in the schema.
@@ -519,7 +594,9 @@ class PostgreSQLDialect extends SqlDialect {
 
   @Override
   protected String getSqlFrom(BlobFieldLiteral field) {
-    return String.format("E'\\x%s'", field.getValue());
+    // this format doesn't work with blob fields: String.format("E'\\x%s'", field.getValue());
+    // see org.alfasoftware.morf.integration.TestSqlStatements#testBlobFields
+    return String.format("'%s'", field.getValue());
   }
 
   @Override

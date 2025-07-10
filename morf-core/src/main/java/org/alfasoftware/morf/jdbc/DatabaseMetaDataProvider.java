@@ -28,16 +28,19 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.PartitioningRule;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
@@ -116,7 +119,7 @@ public abstract class DatabaseMetaDataProvider implements Schema {
   private final LoadingCache<AName, Sequence> sequenceCache = CacheBuilder.newBuilder().build(CacheLoader.from(this::loadSequence));
 
   private final Supplier<Map<String, String>> databaseInformation = Suppliers.memoize(this::loadDatabaseInformation);
-
+  protected Supplier<Set<String>> ignoredTables = Suppliers.memoize(this::getIgnoredTables);
 
   /**
    * @param connection The database connection from which meta data should be provided.
@@ -149,6 +152,8 @@ public abstract class DatabaseMetaDataProvider implements Schema {
     }
   }
 
+  // new overridable method to add support for ignoring partition tables in Postgres
+  protected Set<String> getIgnoredTables() { return new HashSet<>(); }
 
   /**
    * @see org.alfasoftware.morf.metadata.Schema#isEmptyDatabase()
@@ -588,7 +593,6 @@ public abstract class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Sets column default value.
-   *
    * Note: Uses an empty string for any column other than version.
    * Database-schema level default values are not supported by ALFA's domain model
    * hence we don't want to include a default value in the definition of tables.
@@ -698,6 +702,14 @@ public abstract class DatabaseMetaDataProvider implements Schema {
       @Override
       public boolean isTemporary() {
         return false;
+      }
+
+      @Override
+      public boolean isPartitioned() { return false; }
+
+      @Override
+      public PartitioningRule partitioningRule() {
+        return null;
       }
     };
   }
@@ -1029,16 +1041,13 @@ public abstract class DatabaseMetaDataProvider implements Schema {
       return sequenceNameMappings.build();
     }
 
-    runSQL(sequenceSql, schemaName, new ResultSetHandler() {
-      @Override
-      public void handle(ResultSet resultSet) throws SQLException {
-        while (resultSet.next()) {
-          RealName realName = readSequenceName(resultSet);
-          if (isSystemSequence(realName)) {
-            continue;
-          }
-          sequenceNameMappings.put(realName, realName);
+    runSQL(sequenceSql, schemaName, resultSet -> {
+      while (resultSet.next()) {
+        RealName realName = readSequenceName(resultSet);
+        if (isSystemSequence(realName)) {
+          continue;
         }
+        sequenceNameMappings.put(realName, realName);
       }
     });
 
@@ -1104,15 +1113,14 @@ public abstract class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Build the SQL to return sequence information from the metadata.
-   * @param schemaName
-   * @return
+   * @param schemaName the schema name
+   * @return the sql for the sequence
    */
   protected abstract String buildSequenceSql(String schemaName);
 
 
   /**
    * Run some SQL, and tidy up afterwards.
-   *
    * Note this assumes a predicate on the schema name will be present with a single parameter in position "1".
    *
    * @param sql The SQL to run.
@@ -1120,26 +1128,19 @@ public abstract class DatabaseMetaDataProvider implements Schema {
    */
   protected void runSQL(String sql, String schemaName, ResultSetHandler handler) {
     if (log.isTraceEnabled()) log.trace("runSQL: " + sql);
-    try {
-      PreparedStatement statement = connection.prepareStatement(sql);
-      try {
+    try (PreparedStatement statement = connection.prepareStatement(sql)) {
 
-        // pass through the schema name
-        if (schemaName != null && !schemaName.isBlank()) {
-          statement.setString(1, schemaName);
-        }
+      // pass through the schema name
+      if (schemaName != null && !schemaName.isBlank()) {
+        statement.setString(1, schemaName);
+      }
 
-        ResultSet resultSet = statement.executeQuery();
-        try {
-          handler.handle(resultSet);
-        } finally {
-          resultSet.close();
-        }
-      } finally {
-        statement.close();
+      try (ResultSet resultSet = statement.executeQuery()) {
+        handler.handle(resultSet);
       }
     } catch (SQLException sqle) {
       throw new RuntimeSqlException("Error running SQL: " + sql, sqle);
+
     }
   }
 
@@ -1371,6 +1372,11 @@ public abstract class DatabaseMetaDataProvider implements Schema {
     }
 
     @Override
+    public boolean isPartitioned() {
+      return false;
+    }
+
+    @Override
     public String getDefaultValue() {
       throw new UnexpectedDataTypeException(this.toString());
     }
@@ -1414,6 +1420,11 @@ public abstract class DatabaseMetaDataProvider implements Schema {
 
     @Override
     public ColumnBuilder dataType(DataType dataType) {
+      return this;
+    }
+
+    @Override
+    public ColumnBuilder partitioned() {
       return this;
     }
   }
