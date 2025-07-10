@@ -10,6 +10,8 @@ public abstract class PartitioningByRangeRule<T,R> implements PartitioningRule {
     protected final R increment;
     protected final int count;
 
+    protected abstract List<Pair<T, T>> getRanges();
+
     public PartitioningByRangeRule(String column, T startValue, R increment, int count) {
         if (column == null || column.isEmpty()) {
             throw new IllegalArgumentException("Column name cannot be null or empty");
@@ -25,6 +27,4 @@ public abstract class PartitioningByRangeRule<T,R> implements PartitioningRule {
 
     @Override
     public PartitioningRuleType getPartitioningType() { return PartitioningRuleType.rangePartitioning; }
-
-    abstract protected List<Pair<T, T>> getRanges();
 }

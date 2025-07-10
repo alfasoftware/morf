@@ -37,9 +37,17 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import org.alfasoftware.morf.metadata.*;
+import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.PartitioningRule;
+import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
 import org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder;
+import org.alfasoftware.morf.metadata.Sequence;
+import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
