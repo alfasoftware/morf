@@ -46,7 +46,7 @@
     <checkstyle.version>8.12</checkstyle.version>
 
     <!-- dependency versions -->
-    <commons-lang3.version>3.8</commons-lang3.version>
+    <commons-lang3.version>3.18.0</commons-lang3.version>
     <commons-codec.version>1.15</commons-codec.version>
     <commons-logging.version>1.2</commons-logging.version>
     <guava.version>32.0.0-jre</guava.version>
