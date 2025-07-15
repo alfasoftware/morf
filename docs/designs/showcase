@@ -1,0 +1,130 @@
+== Morf DataSetConnector Showcase Application ==
+
+=== Overview ===
+A JavaFX application to demonstrate the capabilities of Morf's DataSetConnector, allowing users to configure data producers and consumers, and optionally manage database schemas.
+
+=== Application Structure ===
+
+==== Main Window Layout ====
+The application should use a BorderPane layout with the following sections:
+
+* '''Top''': Menu bar with File, Tools, and Help menus
+* '''Centre''': Main configuration panel with tabs
+* '''Bottom''': Status bar and progress indicator
+
+==== Configuration Tabs ====
+
+===== Producer Configuration Tab =====
+* '''Type Selection''': ComboBox with all available DataSetProducer implementations:
+** DatabaseDataSetProducer (for all supported databases)
+** XmlDataSetProducer
+** ExcelDataSetProducer
+** Any other discovered implementations
+
+* '''Connection Details Panel''': Dynamic form that changes based on selected producer type:
+** For database producers: connection URL, username, password, driver selection
+** For XML producers: file path selection
+** For Excel producers: file path selection, worksheet options
+
+* '''Schema Preview''': TreeView showing available tables and their structure
+
+===== Consumer Configuration Tab =====
+* '''Type Selection''': ComboBox with all available DataSetConsumer implementations:
+** DatabaseDataSetConsumer (for all supported databases)
+** XmlDataSetConsumer
+** ExcelDataSetConsumer
+** Any other discovered implementations
+
+* '''Connection Details Panel''': Similar dynamic form as producer
+* '''Options Panel''': Consumer-specific options (e.g., truncate tables, batch size)
+
+===== Schema Management Tab =====
+* '''Schema Adapter Options''':
+** Checkbox: "Create missing tables in target"
+** Checkbox: "Drop existing tables before creation"
+** Checkbox: "Validate schema compatibility"
+
+* '''Schema Comparison View''': Side-by-side comparison of source and target schemas
+* '''Action Buttons''': 
+** "Analyse Schema Differences"
+** "Apply Schema Changes"
+
+===== Execution Tab =====
+* '''Transfer Configuration Summary''': Read-only display of current settings
+* '''Progress Monitoring''':
+** Overall progress bar
+** Current table being processed
+** Records transferred counter
+** Elapsed time
+
+* '''Log Output''': TextArea with scrollable log of operations
+* '''Control Buttons''':
+** "Start Transfer" (large, prominent button)
+** "Cancel Transfer"
+** "Save Configuration"
+** "Load Configuration"
+
+=== Key Features ===
+
+==== Dynamic Producer/Consumer Discovery ====
+Use reflection or service loading to discover all available DataSetProducer and DataSetConsumer implementations:
+
+```java
+// Discover implementations at runtime
+List<Class<? extends DataSetProducer>> producerTypes = discoverProducerTypes();
+List<Class<? extends DataSetConsumer>> consumerTypes = discoverConsumerTypes();
+```
+==== Database Support ====
+Include configuration panels for all Morf-supported databases:
+H2
+MySQL
+PostgreSQL
+Oracle
+SQL Server
+Any others found in the codebase
+==== Configuration Persistence ====
+Save/load transfer configurations as JSON or XML files
+Recent configurations menu
+Default configuration templates
+==== Error Handling and Validation ====
+Real-time validation of connection parameters
+Clear error messages with suggested solutions
+Rollback capabilities for failed transfers
+=== Implementation Considerations ===
+==== Threading ====
+Execute DataSetConnector operations on background threads
+Use Platform.runLater() for UI updates
+Provide cancellation support
+==== Memory Management ====
+Stream large datasets rather than loading entirely into memory
+Progress reporting based on table count and estimated record counts
+Configurable batch sizes for large transfers
+==== User Experience ====
+Wizard-style workflow for first-time users
+Expert mode with all options visible
+Tooltips and help text for complex options
+Keyboard shortcuts for common operations
+=== Menu Structure ===
+==== File Menu ====
+New Configuration
+Open Configuration...
+Save Configuration
+Save Configuration As...
+Recent Configurations >
+Exit
+==== Tools Menu ====
+Test Producer Connection
+Test Consumer Connection
+Validate Schema Compatibility
+Export Schema Documentation
+Import Sample Data
+==== Help Menu ====
+User Guide
+Keyboard Shortcuts
+About Morf DataSetConnector
+=== Status Bar Elements ===
+Connection status indicators (green/red dots)
+Last operation result
+Current memory usage
+Application version
+This design provides a comprehensive showcase of the DataSetConnector whilst remaining user-friendly and extensible for future Morf features.
