@@ -10,8 +10,6 @@ import static org.alfasoftware.morf.sql.element.Function.count;
 
 import java.util.List;
 
-import javax.inject.Inject;
-
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.sql.InsertStatement;
@@ -20,6 +18,7 @@ import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 
 import com.google.common.collect.ImmutableList;
+import com.google.inject.Inject;
 
 /**
  * Implementation of {@link DatabaseUpgradePathValidationService}
