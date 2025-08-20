@@ -8,8 +8,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -43,6 +47,47 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
     super(connection, schemaName);
   }
 
+
+  @Override
+  protected Set<String> getIgnoredTables() {
+    Set<String> ignoredTables = new HashSet<>();
+    try(Statement ignoredTablesStmt = connection.createStatement()) {
+      // distinguish partitioned tables from regular ones: relkind = 'p' (partition) or 'r' (regular) also can use boolean col relispartition
+      // a partition table attached has (r, true)
+      try (ResultSet ignoredTablesRs = ignoredTablesStmt.executeQuery("select relname from pg_class where relispartition and relkind = 'r'")) {
+        while (ignoredTablesRs.next()) {
+          ignoredTables.add(ignoredTablesRs.getString(1).toLowerCase(Locale.ROOT));
+        }
+      }
+    } catch (SQLException e) {
+        // ignore exception, if it fails then incompatible Postgres version
+    }
+    return ignoredTables;
+  }
+
+  @Override
+  protected Set<String> getPartitionedTables() {
+    Set<String> partitionedTables = new HashSet<>();
+    try(Statement partitionedTablesStmt = connection.createStatement()) {
+      // distinguish partitioned tables from regular ones: relkind = 'p' (partition) or 'r' (regular) also can use boolean col relispartition
+      // a partition table attached has (r, true)
+      // a partition table has (p, false)
+      try (ResultSet ignoredTablesRs = partitionedTablesStmt.executeQuery("select relname from pg_class where not relispartition and relkind = 'p'")) {
+        while (ignoredTablesRs.next()) {
+          partitionedTables.add(ignoredTablesRs.getString(1).toLowerCase(Locale.ROOT));
+        }
+      }
+    } catch (SQLException e) {
+      // ignore exception, if it fails then incompatible Postgres version
+    }
+    return partitionedTables;
+  }
+
+
+  @Override
+  protected boolean isIgnoredTable(@SuppressWarnings("unused") RealName tableName) {
+    return ignoredTables.get().contains(tableName.getDbName().toLowerCase(Locale.ROOT));
+  }
 
   @Override
   protected boolean isPrimaryKeyIndex(RealName indexName) {
@@ -188,5 +233,16 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
     }
 
     return sequenceSqlBuilder.toString();
+  }
+
+
+  @Override
+  public Collection<String> partitionedTableNames() {
+    return super.partitionedTables.get();
+  }
+
+  @Override
+  public Collection<String> partitionTableNames() {
+    return super.ignoredTables.get();
   }
 }

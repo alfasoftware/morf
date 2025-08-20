@@ -25,7 +25,13 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.alfasoftware.morf.metadata.*;
+import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.DataSetUtils;
+import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.Sequence;
+import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.metadata.View;
 import org.junit.Test;
 
 /**
