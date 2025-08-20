@@ -306,14 +306,18 @@ public class ViewChanges {
       throw new IllegalStateException("Views requested have a circular dependency.");
     }
 
-    // If the node isn't marked at all. Mark it
+    // If the node has already been processed exit, otherwise mark and process it
     if (sortedList.contains(node)) {
       return;
     }
 
+    View view = viewIndex.get(node);
+    if (view == null) {
+      throw new IllegalStateException(String.format("View %s is not found in the schema views when visiting %s", node, temporarilyMarkedRecords));
+    }
     temporarilyMarkedRecords.add(node);
 
-    for (String dependentView: viewIndex.get(node).getDependencies()) {
+    for (String dependentView: view.getDependencies()) {
 
       visit(dependentView, temporarilyMarkedRecords, sortedList, viewIndex);
 
@@ -346,7 +350,7 @@ public class ViewChanges {
    * @return the name of a given view.
    */
   private Function<View, String> viewToName() {
-    return new Function<View, String>() {
+    return new Function<>() {
       @Override
       public String apply(View view) {
         return view.getName();
@@ -359,7 +363,7 @@ public class ViewChanges {
    * @return the view for a given name.
    */
   private Function<String, View> nameToView() {
-    return new Function<String, View>() {
+    return new Function<>() {
       @Override
       public View apply(String name) {
         return viewIndex.get(name);
