@@ -76,7 +76,7 @@ public enum DataType {
 
   /**
    * @param hasWidth Whether this DataType has a variable width
-   * @param hasScale Whether this DataType has a variable width
+   * @param hasScale Whether this DataType has a variable scale
    */
   private DataType(boolean hasWidth, boolean hasScale) {
     this.hasWidth = hasWidth;
@@ -93,7 +93,7 @@ public enum DataType {
 
 
   /**
-   * @return Whether this DataType has a variable width
+   * @return Whether this DataType has a variable scale
    */
   public boolean hasScale() {
     return hasScale;
