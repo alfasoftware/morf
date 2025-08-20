@@ -60,7 +60,8 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
           "CREATE INDEX Alternate_1 ON "+TEST_SCHEMA+".Alternate (stringField)",
           "CREATE TABLE "+TEST_SCHEMA+".NonNull (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3) NOT NULL, intField DECIMAL(8,0) NOT NULL, booleanField BIT NOT NULL, dateField DATE NOT NULL, blobField LONGVARBINARY NOT NULL, CONSTRAINT NonNull_PK PRIMARY KEY (id))",
           "CREATE TABLE "+TEST_SCHEMA+".CompositePrimaryKey (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3) NOT NULL, secondPrimaryKey VARCHAR(3) NOT NULL, CONSTRAINT CompositePrimaryKey_PK PRIMARY KEY (id, secondPrimaryKey))",
-          "CREATE TABLE "+TEST_SCHEMA+".AutoNumber (intField BIGINT AUTO_INCREMENT(5) COMMENT 'AUTONUMSTART:[5]', CONSTRAINT AutoNumber_PK PRIMARY KEY (intField))"
+          "CREATE TABLE "+TEST_SCHEMA+".AutoNumber (intField BIGINT AUTO_INCREMENT(5) COMMENT 'AUTONUMSTART:[5]', CONSTRAINT AutoNumber_PK PRIMARY KEY (intField))",
+          "CREATE TABLE TESTSCHEMA.Measurement (intField DECIMAL(8,0) NOT NULL, dateField DATE NOT NULL, stringField VARCHAR(3) NOT NULL)"
         );
   }
 

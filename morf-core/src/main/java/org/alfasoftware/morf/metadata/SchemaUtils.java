@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
@@ -523,7 +524,26 @@ public final class SchemaUtils {
      * @return this table builder, for method chaining.
      */
     public TableBuilder temporary();
+
+
+    /**
+     * The partitioning rule for the table is defined here.
+     * @param rule The rule applied on the column to define partitions on the table
+     * @return this table builder, for method chaining.
+     */
+    public TableBuilder partitionBy(PartitioningRule rule);
+
+
+    /**
+     * Copy partitioning rule from table. Designed for using CTAS, where the temp table will call this method,
+     * copying partitioning from the original table.
+     * @param table the table used as source partitioning rule specification
+     * @return  this table builder, for method chaining.
+     */
+    //TODO: implement database table partitioning specs - to allow copying from.
+    public TableBuilder withPartitioningLike(String table);
   }
+
 
   /**
    * Builds {@link Column} implementations.
@@ -584,6 +604,13 @@ public final class SchemaUtils {
      * @return this, for method chaining.
      */
     public ColumnBuilder dataType(DataType dataType);
+
+
+    /**
+     * Marks the column as the partition source value.
+     * @return this, for method chaining.
+     */
+    public ColumnBuilder partitioned();
   }
 
   /**
@@ -615,6 +642,20 @@ public final class SchemaUtils {
      * @return this, for method chaining.
      */
     public IndexBuilder unique();
+
+    /**
+     * Mark this index as isGlobalPartitioned.
+     *
+     * @return this, for method chaining.
+     */
+    IndexBuilder globalPartitioned();
+
+    /**
+     * Mark this index as isLocalPartitioned.
+     *
+     * @return this, for method chaining.
+     */
+    IndexBuilder localPartitioned();
   }
 
 
@@ -701,6 +742,30 @@ public final class SchemaUtils {
     public TableBuilder temporary() {
       return new TableBuilderImpl(getName(), columns(), indexes(), true);
     }
+
+
+    /**
+     * @see org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder#partitionBy(PartitioningRule)
+     */
+    @Override
+    public TableBuilder partitionBy(PartitioningRule rule) {
+      this.partitionColumn = rule.getColumn();
+      this.partitioningRule = rule;
+      return this;
+    }
+
+
+    /**
+     * @see org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder#withPartitioningLike(String)
+     */
+    @Override
+    public TableBuilder withPartitioningLike(String table) {
+      this.partitionedLikeTable = table;
+      return this;
+    }
+
+    @Override
+    public boolean isPartitioned() { return !StringUtils.isEmpty(this.partitionColumn); };
   }
 
   /**
@@ -768,6 +833,12 @@ public final class SchemaUtils {
       ColumnBuilderImpl column = new ColumnBuilderImpl(getName(), dataType, getWidth(), getScale());
       return new ColumnBuilderImpl(column, isNullable(), getDefaultValue(), isPrimaryKey(), isAutoNumbered(), getAutoNumberStart());
     }
+
+    @Override
+    public ColumnBuilder partitioned() {
+      this.partitioned = true;
+     return this;
+    }
   }
 
   /**
@@ -815,6 +886,24 @@ public final class SchemaUtils {
     @Override
     public String toString() {
       return this.toStringHelper();
+    }
+
+    /**
+     * @see org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder#isGlobalPartitioned()
+     */
+    @Override
+    public IndexBuilder globalPartitioned() {
+      this.isGlobalPartitioned = true;
+      return this;
+    }
+
+    /**
+     * @see org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder#isLocalPartitioned()
+     */
+    @Override
+    public IndexBuilder localPartitioned() {
+      this.isLocalPartitioned = true;
+      return this;
     }
   }
 
