@@ -1,5 +1,6 @@
 package org.alfasoftware.morf.metadata;
 
+import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.NotImplementedException;
@@ -16,4 +17,9 @@ public interface AdditionalMetadata extends Schema {
   default Map<String, String> primaryKeyIndexNames() {
     throw new NotImplementedException("Not implemented yet.");
   }
+
+  default Map<String, List<Index>> ignoredIndexes() {
+    return Map.of();
+  }
+
 }
