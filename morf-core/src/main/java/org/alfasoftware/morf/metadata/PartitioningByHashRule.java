@@ -15,8 +15,8 @@ public class PartitioningByHashRule implements PartitioningRule {
   public PartitioningByHashRule(String columnName, int hashDivider) {
     this.columnName = columnName;
     this.hashDivider = hashDivider;
-    this.hashRemainders = new ArrayList<>(count);
     this.count = hashDivider;
+    this.hashRemainders = new ArrayList<>(count);
 
     for (int i = 0; i < count; i++) {
       this.hashRemainders.add(i);
