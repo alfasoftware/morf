@@ -110,6 +110,8 @@ public class TestPostgreSqlMetaDataProvider {
       when(resultSet.next()).thenReturn(true, true, true, false);
       when(resultSet.getString(1)).thenReturn("AREALTABLE_1", "AREALTABLE_PRF1", "AREALTABLE_PRF2");
       when(resultSet.getString(2)).thenReturn("REALNAME:[AREALTABLE_1]", "REALNAME:[AREALTABLE_PRF1]", "REALNAME:[AREALTABLE_PRF2]");
+      when(resultSet.getString(3)).thenReturn("AREALTABLE", "AREALTABLE", "AREALTABLE");
+      when(resultSet.getString(4)).thenReturn("REALNAME:[ARealTable]", "REALNAME:[ARealTable]", "REALNAME:[ARealTable]");
       return resultSet;
     });
 
@@ -149,13 +151,13 @@ public class TestPostgreSqlMetaDataProvider {
       });
 
     // mock getIndexInfo
-    when(databaseMetaData.getIndexInfo(null, TEST_SCHEMA, "arealtable", false, false))
+    when(databaseMetaData.getIndexInfo(null, TEST_SCHEMA, "AREALTABLE", false, false))
       .thenAnswer(answer -> {
         ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
-        when(resultSet.next()).thenReturn(true, true, true, false);
-        when(resultSet.getString(6)).thenReturn("AREALTABLE_1", "AREALTABLE_PRF1", "AREALTABLE_PRF2"); // 6 - INDEX_NAME
-        when(resultSet.getString(9)).thenReturn("column1", "column1", "column1");
-        when(resultSet.getBoolean(4)).thenReturn(true, true, true); // 4 - INDEX_NON_UNIQUE
+        when(resultSet.next()).thenReturn(true, true, true, false, true, true, true, false);
+        when(resultSet.getString(6)).thenReturn("AREALTABLE_1", "AREALTABLE_PRF1", "AREALTABLE_PRF2", "AREALTABLE_1", "AREALTABLE_PRF1", "AREALTABLE_PRF2"); // 6 - INDEX_NAME
+        when(resultSet.getString(9)).thenReturn("column1", "column1", "column1", "column1", "column1", "column1");
+        when(resultSet.getBoolean(4)).thenReturn(true, true, true, true, true, true); // 4 - INDEX_NON_UNIQUE
         return resultSet;
       });
 
@@ -168,9 +170,10 @@ public class TestPostgreSqlMetaDataProvider {
     // Then
     assertEquals("map size must match", 1, ignoredIndexesMap.size());
     assertEquals("map size must match", 1, ignoredIndexesMap1.size());
-    assertEquals("table ignored indexes size must match", 2, ignoredIndexesMap.get(TABLE_NAME).size());
-    Index indexPrf1 = ignoredIndexesMap.get(TABLE_NAME).get(0);
-    Index indexPrf2 = ignoredIndexesMap.get(TABLE_NAME).get(1);
+    String tableNameLowerCase = TABLE_NAME.toLowerCase();
+    assertEquals("table ignored indexes size must match", 2, ignoredIndexesMap.get(tableNameLowerCase).size());
+    Index indexPrf1 = ignoredIndexesMap.get(tableNameLowerCase).get(0);
+    Index indexPrf2 = ignoredIndexesMap.get(tableNameLowerCase).get(1);
     assertEquals("index prf1 name", "AREALTABLE_PRF1", indexPrf1.getName());
     assertThat("index prf1 columns", indexPrf1.columnNames(), contains("column1"));
     assertEquals("index prf2 name", "AREALTABLE_PRF2", indexPrf2.getName());
