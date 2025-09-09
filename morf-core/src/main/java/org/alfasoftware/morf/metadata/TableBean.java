@@ -78,8 +78,7 @@ class TableBean implements Table {
    * @param indexes indexes for the table;
    * @param isTemporary Whether the table is a temporary table.
    */
-  TableBean(String tableName, Iterable<? extends Column> columns, Iterable<? extends Index> indexes,
-            boolean isTemporary) {
+  TableBean(String tableName, Iterable<? extends Column> columns, Iterable<? extends Index> indexes, boolean isTemporary) {
     this(tableName, isTemporary);
 
     Iterables.addAll(this.columns, columns);

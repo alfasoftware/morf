@@ -7,6 +7,7 @@ import java.util.Set;
 import org.alfasoftware.morf.metadata.Index;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableMap;
 
 /**
  * Configuration and context bean for the {@link Upgrade} process.
@@ -99,7 +100,8 @@ public class UpgradeConfigAndContext {
    * @see #ignoredIndexes
    */
   public void setIgnoredIndexes(Map<String, List<Index>> ignoredIndexes) {
-    this.ignoredIndexes = ignoredIndexes;
+    this.ignoredIndexes = ignoredIndexes.entrySet().stream()
+      .collect(ImmutableMap.toImmutableMap(e -> e.getKey().toLowerCase(), Map.Entry::getValue));
   }
 
   /**
@@ -108,9 +110,9 @@ public class UpgradeConfigAndContext {
    * @return the list of ignored indexes
    */
   public List<Index> getIgnoredIndexesForTable(String tableName) {
-    String toUpperCase = tableName.toUpperCase();
-    if (ignoredIndexes.containsKey(toUpperCase)) {
-      return ignoredIndexes.get(toUpperCase);
+    String toLowerCase = tableName.toLowerCase();
+    if (ignoredIndexes.containsKey(toLowerCase)) {
+      return ignoredIndexes.get(toLowerCase);
     } else {
       return List.of();
     }

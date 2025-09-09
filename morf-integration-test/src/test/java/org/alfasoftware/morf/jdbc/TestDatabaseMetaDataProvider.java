@@ -284,7 +284,7 @@ public class TestDatabaseMetaDataProvider {
       ));
 
       schemaResource.getAdditionalMetadata().ifPresent(additionalMetadata ->
-        assertThat(additionalMetadata.ignoredIndexes().get("WithTypes".toUpperCase()), containsInAnyOrder(ImmutableList.of(
+        assertThat(additionalMetadata.ignoredIndexes().get("WithTypes".toLowerCase()), containsInAnyOrder(ImmutableList.of(
           indexMatcher(index("WithTypes_PRF1").columns("decimalNineFiveCol", "bigIntegerCol"))
       ))));
     }

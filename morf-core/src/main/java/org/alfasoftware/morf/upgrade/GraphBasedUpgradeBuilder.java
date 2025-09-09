@@ -98,8 +98,6 @@ public class GraphBasedUpgradeBuilder {
 
     GraphBasedUpgradeNode root = prepareGraph(nodes);
 
-    List<String> preUpgStatements;
-    List<String> postUpgStatements;
     Table idTable = SqlDialect.IdTable.withPrefix(connectionResources.sqlDialect(), "temp_id_", false);
 
     GraphBasedUpgradeSchemaChangeVisitor visitor = visitorFactory.create(
@@ -111,9 +109,9 @@ public class GraphBasedUpgradeBuilder {
 
     GraphBasedUpgradeScriptGenerator scriptGenerator = scriptGeneratorFactory.create(sourceSchema, targetSchema, connectionResources, idTable, viewChanges, initialisationSql);
 
-    preUpgStatements = scriptGenerator.generatePreUpgradeStatements();
+    List<String> preUpgStatements = scriptGenerator.generatePreUpgradeStatements();
     schemaChangeSequence.applyTo(visitor);
-    postUpgStatements = scriptGenerator.generatePostUpgradeStatements();
+    List<String> postUpgStatements = scriptGenerator.generatePostUpgradeStatements();
 
     if (LOG.isDebugEnabled()) {
       logGraph(root);

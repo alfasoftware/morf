@@ -31,13 +31,11 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     sourceSchema = addIndex.apply(sourceSchema);
     Index foundIndex = null;
     List<Index> ignoredIndexes = upgradeConfigAndContext.getIgnoredIndexesForTable(addIndex.getTableName());
-    if (!ignoredIndexes.isEmpty()) {
-        for (Index index : ignoredIndexes) {
-          if (index.columnNames().equals(addIndex.getNewIndex().columnNames())) {
-            foundIndex = index;
-            break;
-          }
-        }
+    for (Index index : ignoredIndexes) {
+      if (index.columnNames().equals(addIndex.getNewIndex().columnNames())) {
+        foundIndex = index;
+        break;
+      }
     }
 
     if (foundIndex != null) {
