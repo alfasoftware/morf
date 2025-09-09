@@ -187,7 +187,7 @@ public class TestUpgrade {
     when(schemaResource.getAdditionalMetadata()).thenReturn(Optional.of(additionalMetadata));
     Map<String, List<Index>> indexMap = Maps.newHashMap();
     Index indexPrf1 = mock(Index.class);
-    indexMap.put("WithTypes", ImmutableList.of(indexPrf1));
+    indexMap.put("withtypes", ImmutableList.of(indexPrf1));
 
     when(additionalMetadata.ignoredIndexes()).thenReturn(indexMap);
 
