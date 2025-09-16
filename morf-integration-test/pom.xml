@@ -114,7 +114,7 @@
     <dependency>
       <groupId>org.alfasoftware</groupId>
       <artifactId>morf-h2v2</artifactId>
-      <scope>runtime</scope>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.alfasoftware</groupId>
