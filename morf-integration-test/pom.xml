@@ -113,6 +113,11 @@
     </dependency>
     <dependency>
       <groupId>org.alfasoftware</groupId>
+      <artifactId>morf-h2v2</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.alfasoftware</groupId>
       <artifactId>morf-testsupport</artifactId>
       <scope>test</scope>
     </dependency>
