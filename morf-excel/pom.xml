@@ -16,23 +16,6 @@
   <properties>
     <sonar.coverage.jacoco.xmlReportPaths>${basedir}/../${aggregate.report.dir}</sonar.coverage.jacoco.xmlReportPaths>
   </properties>
-  <profiles>
-    <profile>
-      <id>morf-h2-v1</id>
-      <properties>
-        <h2.version>1.4.200</h2.version>
-      </properties>
-    </profile>
-    <profile>
-      <id>morf-h2-v2</id>
-      <activation>
-        <activeByDefault>true</activeByDefault>
-      </activation>
-      <properties>
-        <h2.version>2.3.232</h2.version>
-      </properties>
-    </profile>
-  </profiles>
 
   <build>
     <plugins>
