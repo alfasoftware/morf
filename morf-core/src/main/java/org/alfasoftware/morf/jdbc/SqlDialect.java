@@ -48,6 +48,7 @@ import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.DataValueLookup;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.PartitioningRule;
+import org.alfasoftware.morf.metadata.Partitions;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaUtils;
@@ -4610,6 +4611,9 @@ public abstract class SqlDialect {
       return null;
     }
 
-    ;
+    @Override
+    public Partitions partitions() {
+      return null;
+    }
   }
 }

@@ -75,5 +75,7 @@ public interface Table {
   /**
    * @return the partitioning rule if it exists.
    */
+  Partitions partitions();
+
   PartitioningRule partitioningRule();
 }

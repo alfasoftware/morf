@@ -24,6 +24,7 @@ import java.util.Map;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.PartitioningRule;
+import org.alfasoftware.morf.metadata.Partitions;
 import org.alfasoftware.morf.metadata.Table;
 
 /**
@@ -170,5 +171,9 @@ public class AlteredTable implements Table {
     return null;
   }
 
+  @Override
+  public Partitions partitions() {
+    return null;
+  }
   ;
 }

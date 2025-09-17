@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.metadata;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -351,6 +352,29 @@ public final class SchemaUtils {
     return new IndexBuilderImpl(name);
   }
 
+  /**
+   * Build a partition list.
+   * @return A {@link PartitionsBuilder} for the partitions.
+   */
+  public static PartitionsBuilder partitions() {
+    return new PartitionsBuilderImpl();
+  }
+
+  /**
+   * Build a range partition
+   * @return A {@link PartitionByRangeBuilder} for the range partitions.
+   */
+  public static PartitionByRangeBuilder partitionByRange(String name) {
+    return new PartitionByRangeBuilderImpl(name);
+  }
+
+  /**
+   * Build a range partition
+   * @return A {@link PartitionByHashBuilder} for the hash partitions.
+   */
+  public static PartitionByHashBuilder partitionByHash(String name) {
+    return new PartitionByHashBuilderImpl(name);
+  }
 
   /**
    * Create a view.
@@ -533,15 +557,6 @@ public final class SchemaUtils {
      */
     public TableBuilder partitionBy(PartitioningRule rule);
 
-
-    /**
-     * Copy partitioning rule from table. Designed for using CTAS, where the temp table will call this method,
-     * copying partitioning from the original table.
-     * @param table the table used as source partitioning rule specification
-     * @return  this table builder, for method chaining.
-     */
-    //TODO: implement database table partitioning specs - to allow copying from.
-    public TableBuilder withPartitioningLike(String table);
   }
 
 
@@ -658,6 +673,39 @@ public final class SchemaUtils {
     IndexBuilder localPartitioned();
   }
 
+  /**
+   * Builds {@link Partitions} implementations.
+   */
+  public interface PartitionsBuilder extends Partitions {
+    PartitionsBuilder column(Column column);
+
+    PartitionsBuilder ruleType(PartitioningRuleType ruleType);
+
+    PartitionsBuilder partitions(Iterable<? extends Partition> partitions);
+  }
+
+  /**
+   * Builds {@link Partition} implementations.
+   */
+  /*public interface PartitionBuilder extends Partition {
+    PartitionsBuilder name(String name);
+  }*/
+
+  /**
+   * Builds {@link PartitionByRange} implementations.
+   */
+  public interface PartitionByRangeBuilder extends PartitionByRange {
+    PartitionByRangeBuilder start(String start);
+    PartitionByRangeBuilder end(String end);
+  }
+
+  /**
+   * Builds {@link PartitionByHash} implementations.
+   */
+  public interface PartitionByHashBuilder extends PartitionByHash {
+    PartitionByHashBuilder divider(String start);
+    PartitionByHashBuilder remainder(String end);
+  }
 
   /**
    * Private implementation of {@link SequenceBuilder}.
@@ -751,16 +799,6 @@ public final class SchemaUtils {
     public TableBuilder partitionBy(PartitioningRule rule) {
       this.partitionColumn = rule.getColumn();
       this.partitioningRule = rule;
-      return this;
-    }
-
-
-    /**
-     * @see org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder#withPartitioningLike(String)
-     */
-    @Override
-    public TableBuilder withPartitioningLike(String table) {
-      this.partitionedLikeTable = table;
       return this;
     }
 
@@ -907,6 +945,94 @@ public final class SchemaUtils {
     }
   }
 
+  /**
+   * private implementation of {@link PartitionsBuilder}
+   */
+  private static final class PartitionsBuilderImpl extends PartitionsBean implements PartitionsBuilder {
+
+    private PartitionsBuilderImpl() {
+      super();
+    }
+
+    private PartitionsBuilderImpl(Column column, PartitioningRuleType ruleType) {
+      super(column, ruleType);
+    }
+
+    private PartitionsBuilderImpl(Column column, PartitioningRuleType ruleType, PartitioningRule partitioningRule, Iterable<? extends Partition> partitions) {
+      this.column = column;
+      this.partitioningType = ruleType;
+      this.partitioningRule = partitioningRule;
+
+      this.partitions = new ArrayList<>();
+      for (Partition partition : partitions) {
+        this.partitions.add(partition);
+      }
+    }
+
+    @Override
+    public PartitionsBuilder column(Column column) {
+      return new PartitionsBuilderImpl(column, partitioningType, partitioningRule, partitions);
+    }
+
+    @Override
+    public PartitionsBuilder ruleType(PartitioningRuleType ruleType) {
+      return new PartitionsBuilderImpl(column, ruleType, partitioningRule, partitions);
+    }
+
+    @Override
+    public PartitionsBuilder partitions(Iterable<? extends Partition> partitions) {
+      return new PartitionsBuilderImpl(column, partitioningType, partitioningRule, partitions);
+    }
+  }
+
+
+  /**
+   * private implementation of {@link PartitionByRangeBuilder}
+   */
+  public static final class PartitionByRangeBuilderImpl extends PartitionByRangeBean implements PartitionByRangeBuilder {
+
+    private PartitionByRangeBuilderImpl(String name) {
+      super(name, null, null);
+    }
+
+    private PartitionByRangeBuilderImpl(String name, String start, String end) {
+      super(name, start, end);
+    }
+
+    @Override
+    public PartitionByRangeBuilder start(String start) {
+      return new PartitionByRangeBuilderImpl(name, start, end);
+    }
+
+    @Override
+    public PartitionByRangeBuilder end(String end) {
+      return new PartitionByRangeBuilderImpl(name, start, end);
+    }
+  }
+
+  /**
+   * private implementation of {@link PartitionByHashBuilder}
+   */
+  private static final class PartitionByHashBuilderImpl extends PartitionByHashBean implements PartitionByHashBuilder {
+
+    private PartitionByHashBuilderImpl(String name) {
+      super(name, null, null);
+    }
+
+    private PartitionByHashBuilderImpl(String name, String divider, String remainder) {
+      super(name, divider, remainder);
+    }
+
+    @Override
+    public PartitionByHashBuilder divider(String divider) {
+      return new PartitionByHashBuilderImpl(name, divider, remainder);
+    }
+
+    @Override
+    public PartitionByHashBuilder remainder(String end) {
+      return new PartitionByHashBuilderImpl(name, divider, remainder);
+    }
+  }
 
   /**
    * List the primary key columns for a given table.

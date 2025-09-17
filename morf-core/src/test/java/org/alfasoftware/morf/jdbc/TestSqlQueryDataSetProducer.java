@@ -13,7 +13,13 @@ import java.util.List;
 import javax.sql.DataSource;
 
 import org.alfasoftware.morf.dataset.Record;
-import org.alfasoftware.morf.metadata.*;
+import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.PartitioningRule;
+import org.alfasoftware.morf.metadata.Partitions;
+import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Table;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -150,6 +156,11 @@ public class TestSqlQueryDataSetProducer {
 
       @Override
       public PartitioningRule partitioningRule() {
+        return null;
+      }
+
+      @Override
+      public Partitions partitions() {
         return null;
       }
 

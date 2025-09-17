@@ -47,6 +47,7 @@ import org.alfasoftware.morf.metadata.DataSetUtils.RecordBuilder;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.PartitioningRule;
+import org.alfasoftware.morf.metadata.Partitions;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Sequence;
@@ -435,6 +436,12 @@ public class XmlDataSetProducer implements DataSetProducer {
 
     @Override
     public PartitioningRule partitioningRule() {
+      //TODO: implement Xml partitioning rule exporting for cryo
+      return null;
+    }
+
+    @Override
+    public Partitions partitions() {
       //TODO: implement Xml partitioning rule exporting for cryo
       return null;
     }

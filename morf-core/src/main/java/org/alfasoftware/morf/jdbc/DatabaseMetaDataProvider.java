@@ -41,6 +41,7 @@ import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.PartitioningRule;
+import org.alfasoftware.morf.metadata.Partitions;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
@@ -682,6 +683,7 @@ public abstract class DatabaseMetaDataProvider implements Schema {
     final Map<AName, Integer> primaryKey = loadTablePrimaryKey(realTableName);
     final Supplier<List<Column>> columns = Suppliers.memoize(() -> loadTableColumns(realTableName, primaryKey));
     final Supplier<List<Index>> indexes = Suppliers.memoize(() -> loadTableIndexes(realTableName));
+    final Supplier<Partitions> partitions = Suppliers.memoize(() -> loadTablePartitions(realTableName));
 
     return new Table() {
       @Override
@@ -705,11 +707,16 @@ public abstract class DatabaseMetaDataProvider implements Schema {
       }
 
       @Override
-      public boolean isPartitioned() { return false; }
+      public boolean isPartitioned() { return partitions.get() != null; }
 
       @Override
       public PartitioningRule partitioningRule() {
-        return null;
+        return partitions.get() == null ? null : partitions.get().partitioningRule();
+      }
+
+      @Override
+      public Partitions partitions() {
+        return partitions.get();
       }
     };
   }
@@ -858,6 +865,11 @@ public abstract class DatabaseMetaDataProvider implements Schema {
     catch (SQLException e) {
       throw new RuntimeSqlException("Error reading metadata for table [" + tableName + "]", e);
     }
+  }
+
+
+  protected Partitions loadTablePartitions(RealName tableName) {
+   return null;
   }
 
 

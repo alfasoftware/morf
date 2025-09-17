@@ -2,8 +2,8 @@ package org.alfasoftware.morf.jdbc;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.BDDMockito.given;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
@@ -15,7 +15,13 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
-import org.alfasoftware.morf.metadata.*;
+import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.PartitioningRule;
+import org.alfasoftware.morf.metadata.Partitions;
+import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.junit.Before;
 import org.junit.Test;
@@ -294,6 +300,12 @@ public class TestResultSetIterator {
 
       @Override
       public PartitioningRule partitioningRule() {
+        //TODO: implement table building with partitioning
+        return null;
+      }
+
+      @Override
+      public Partitions partitions() {
         //TODO: implement table building with partitioning
         return null;
       }

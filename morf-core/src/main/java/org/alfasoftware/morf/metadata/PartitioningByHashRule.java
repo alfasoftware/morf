@@ -29,6 +29,10 @@ public class PartitioningByHashRule implements PartitioningRule {
     return columnName;
   }
 
+  @Override
+  public DataType getColumnType() {
+    return DataType.STRING;
+  }
 
   @Override
   public PartitioningRuleType getPartitioningType() {

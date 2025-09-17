@@ -22,6 +22,7 @@ import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.PartitioningRule;
+import org.alfasoftware.morf.metadata.Partitions;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
@@ -193,6 +194,11 @@ public class RenameTable implements SchemaChange {
 
     @Override
     public PartitioningRule partitioningRule() {
+      return null;
+    }
+
+    @Override
+    public Partitions partitions() {
       return null;
     }
   }

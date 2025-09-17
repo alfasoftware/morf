@@ -18,9 +18,9 @@ package org.alfasoftware.morf.metadata;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.collect.Iterables;
-import org.apache.commons.lang3.StringUtils;
 
 
 /**
@@ -59,6 +59,11 @@ class TableBean implements Table {
    * The rule to use to partition by on the table.
    */
   protected PartitioningRule partitioningRule;
+
+  /**
+   * The table partitions collection on the table.
+   */
+  protected Partitions partitions;
 
   /**
    * The table to use as an example scheme for partitioning this one.
@@ -190,6 +195,8 @@ class TableBean implements Table {
   @Override
   public PartitioningRule partitioningRule() { return partitioningRule; }
 
+  @Override
+  public Partitions partitions() { return partitions; }
 
   @Override
   public String toString() {
