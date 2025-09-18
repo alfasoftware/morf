@@ -229,7 +229,12 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
           "COMMENT ON TABLE TESTSCHEMA.Measurement IS 'REALNAME:[Measurement]'",
           "COMMENT ON COLUMN TESTSCHEMA.Measurement.intField IS 'REALNAME:[intField]/TYPE:[DECIMAL]'",
           "COMMENT ON COLUMN TESTSCHEMA.Measurement.dateField IS 'REALNAME:[dateField]/TYPE:[DATE]'",
-          "COMMENT ON COLUMN TESTSCHEMA.Measurement.stringField IS 'REALNAME:[stringField]/TYPE:[STRING]'"
+          "COMMENT ON COLUMN TESTSCHEMA.Measurement.stringField IS 'REALNAME:[stringField]/TYPE:[STRING]'",
+          "CREATE TABLE TESTSCHEMA.MeasurementHash (intField DECIMAL(8,0) NOT NULL, dateField DATE NOT NULL, stringField NVARCHAR2(3) NOT NULL)",
+          "COMMENT ON TABLE TESTSCHEMA.MeasurementHash IS 'REALNAME:[MeasurementHash]'",
+          "COMMENT ON COLUMN TESTSCHEMA.MeasurementHash.intField IS 'REALNAME:[intField]/TYPE:[DECIMAL]'",
+          "COMMENT ON COLUMN TESTSCHEMA.MeasurementHash.dateField IS 'REALNAME:[dateField]/TYPE:[DATE]'",
+          "COMMENT ON COLUMN TESTSCHEMA.MeasurementHash.stringField IS 'REALNAME:[stringField]/TYPE:[STRING]'"
         );
   }
 
