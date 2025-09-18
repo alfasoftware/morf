@@ -1029,7 +1029,7 @@ public final class SchemaUtils {
     }
 
     @Override
-    public PartitionByHashBuilder remainder(String end) {
+    public PartitionByHashBuilder remainder(String remainder) {
       return new PartitionByHashBuilderImpl(name, divider, remainder);
     }
   }

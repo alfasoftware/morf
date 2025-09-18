@@ -345,10 +345,21 @@ public class XmlDataSetConsumer implements DataSetConsumer {
 
     partitionsAttributes.addAttribute(XmlDataSetNode.URI, XmlDataSetNode.COLUMN_NODE, XmlDataSetNode.COLUMN_NODE,
       XmlDataSetNode.STRING_TYPE, partitions.column().getName());
+
+    String partitioningType = "";
+    switch (partitions.partitioningType()) {
+      case rangePartitioning:
+        partitioningType = "range";
+        break;
+      case hashPartitioning:
+        partitioningType = "hash";
+        break;
+      default:
+        break;
+    }
+
     partitionsAttributes.addAttribute(XmlDataSetNode.URI, XmlDataSetNode.TYPE_ATTRIBUTE, XmlDataSetNode.TYPE_ATTRIBUTE,
-      XmlDataSetNode.STRING_TYPE, partitions.partitioningRule().getColumnType().toString());
-    //partitionsAttributes.addAttribute(XmlDataSetNode.URI, XmlDataSetNode.RULE_TYPE_ATTRIBUTE, XmlDataSetNode.RULE_TYPE_ATTRIBUTE,
-    //  XmlDataSetNode.STRING_TYPE, partitions.partitioningRule().getPartitioningType().toString());
+      XmlDataSetNode.STRING_TYPE, partitioningType);
     if (partitions.partitioningType().equals(PartitioningRuleType.hashPartitioning)) {
       partitionsAttributes.addAttribute(XmlDataSetNode.URI, XmlDataSetNode.HASH_FUNCTION_ATTRIBUTE, XmlDataSetNode.HASH_FUNCTION_ATTRIBUTE,
         XmlDataSetNode.STRING_TYPE, "MOD");

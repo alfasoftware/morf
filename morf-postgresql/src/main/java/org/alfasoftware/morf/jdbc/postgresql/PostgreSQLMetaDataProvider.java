@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -60,6 +61,8 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
   protected Set<String> getIgnoredTables() {
     Set<String> ignoredTables = new HashSet<>();
     try(Statement ignoredTablesStmt = connection.createStatement()) {
+      // distinguish partitioned tables from regular ones: relkind = 'p' (partition) or 'r' (regular) also can use boolean col relispartition
+      // a partition table attached has (r, true)
       try (ResultSet ignoredTablesRs = ignoredTablesStmt.executeQuery("select relname from pg_class where relispartition and relkind = 'r'")) {
         while (ignoredTablesRs.next()) {
           ignoredTables.add(ignoredTablesRs.getString(1).toLowerCase(Locale.ROOT));
@@ -70,6 +73,25 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
     }
     return ignoredTables;
   }
+
+  @Override
+  protected Set<String> getPartitionedTables() {
+    Set<String> partitionedTables = new HashSet<>();
+    try(Statement partitionedTablesStmt = connection.createStatement()) {
+      // distinguish partitioned tables from regular ones: relkind = 'p' (partition) or 'r' (regular) also can use boolean col relispartition
+      // a partition table attached has (r, true)
+      // a partition table has (p, false)
+      try (ResultSet ignoredTablesRs = partitionedTablesStmt.executeQuery("select relname from pg_class where not relispartition and relkind = 'p'")) {
+        while (ignoredTablesRs.next()) {
+          partitionedTables.add(ignoredTablesRs.getString(1).toLowerCase(Locale.ROOT));
+        }
+      }
+    } catch (SQLException e) {
+      // ignore exception, if it fails then incompatible Postgres version
+    }
+    return partitionedTables;
+  }
+
 
   @Override
   protected boolean isIgnoredTable(@SuppressWarnings("unused") RealName tableName) {
@@ -269,13 +291,11 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
         try (ResultSet partitionsResultSet = preparedStatement.executeQuery()) {
           while (partitionsResultSet.next()) {
             String tableName = partitionsResultSet.getString(1);
-            String partitionName = partitionsResultSet.getString(3);
-            String partitionClause = partitionsResultSet.getString(4);
-            String comment = partitionsResultSet.getString(2);
-            String realName = matchComment(comment);
+            String partitionName = partitionsResultSet.getString(2);
+            String partitionClause = partitionsResultSet.getString(3);
 
             if (StringUtils.isNotBlank(partitionName)) {
-              RealName partitionRealName = createRealName(partitionName, partitionName);
+              //RealName partitionRealName = createRealName(partitionName, partitionName);
               Partition partition = null;
 
               switch (partitions.partitioningType()) {
@@ -293,7 +313,7 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
                   } else {
                     String[] values = asValuesHash[1].replace("modulus ", "").split(",");
                     String divider = values[0];
-                    String remainder = values[1].replace(" ", "").replace(")", "");
+                    String remainder = values[1].replace(" remainder ", "").replace(")", "");
                     partition = SchemaUtils.partitionByHash(partitionName)
                       .divider(divider).remainder(remainder);
                   }
@@ -310,18 +330,12 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
             }
           }
 
-          /*
-          if (partitionColumn.getType().equals(Types.DATE) && partitions.partitioningType().equals(PartitioningRuleType.rangePartitioning)) {
-            List<Pair<LocalDate, LocalDate>> partitionRanges = new ArrayList<>();
-            for (Partition partition : partitionList) {
-              PartitionByRange rangePartition = (PartitionByRange)partition;
-              partitionRanges.add(Pair.of(LocalDate.parse(rangePartition.start()), LocalDate.parse(rangePartition.end())));
-            }
-
-            partitions = partitions.partitioningRule(new DatePartitionedByPeriodRule(partitionColumn.getName(), partitionRanges));
-          }*/
-
-          return partitions.partitions(partitionList);
+          if (partitions.partitioningType().equals(PartitioningRuleType.listPartitioning)) {
+            // list partition implementation is incomplete
+            return null;
+          } else {
+            return partitions.partitions(partitionList);
+          }
         }
       } catch (SQLException e) {
         throw new RuntimeSqlException(e);
@@ -364,5 +378,16 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
     }
 
     return sequenceSqlBuilder.toString();
+  }
+
+
+  @Override
+  public Collection<String> partitionedTableNames() {
+    return super.partitionedTables.get();
+  }
+
+  @Override
+  public Collection<String> partitionTableNames() {
+    return super.ignoredTables.get();
   }
 }

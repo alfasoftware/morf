@@ -121,6 +121,7 @@ public abstract class DatabaseMetaDataProvider implements Schema {
 
   private final Supplier<Map<String, String>> databaseInformation = Suppliers.memoize(this::loadDatabaseInformation);
   protected Supplier<Set<String>> ignoredTables = Suppliers.memoize(this::getIgnoredTables);
+  protected Supplier<Set<String>> partitionedTables = Suppliers.memoize(this::getPartitionedTables);
 
   /**
    * @param connection The database connection from which meta data should be provided.
@@ -153,8 +154,9 @@ public abstract class DatabaseMetaDataProvider implements Schema {
     }
   }
 
-  // new overridable method to add support for ignoring partition tables in Postgres
   protected Set<String> getIgnoredTables() { return new HashSet<>(); }
+
+  protected Set<String> getPartitionedTables() { return new HashSet<>(); }
 
   /**
    * @see org.alfasoftware.morf.metadata.Schema#isEmptyDatabase()
@@ -313,6 +315,11 @@ public abstract class DatabaseMetaDataProvider implements Schema {
             throw new RuntimeSqlException("Error reading metadata for table ["+tableName+"]", e);
           }
         }
+        // add partitioned tables to list
+        partitionedTables.get().forEach(table -> {
+          RealName partionedTableName = createRealName(table, table);
+          tableNameMappings.put(partionedTableName, partionedTableName);
+        });
 
         long end = System.currentTimeMillis();
         Map<AName, RealName> tableNameMap = tableNameMappings.build();
