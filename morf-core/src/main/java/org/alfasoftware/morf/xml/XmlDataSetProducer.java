@@ -427,7 +427,7 @@ public class XmlDataSetProducer implements DataSetProducer {
      */
     private final List<Index>  indexes = new LinkedList<>();
 
-    private Partitions partitions = null;
+    private Partitions partitions;
 
     /**
      * Holds the table name.

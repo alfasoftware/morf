@@ -333,6 +333,7 @@ public class XmlDataSetConsumer implements DataSetConsumer {
           XmlDataSetNode.STRING_TYPE, partitionByHash.divider());
         partitionAttributes.addAttribute(XmlDataSetNode.URI, XmlDataSetNode.REMAINDER_ATTRIBUTE, XmlDataSetNode.REMAINDER_ATTRIBUTE,
           XmlDataSetNode.STRING_TYPE, partitionByHash.remainder());
+        break;
       default:
         break;
     }
