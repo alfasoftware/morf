@@ -310,9 +310,9 @@ class PostgreSQLDialect extends SqlDialect {
     List<String> statements = new ArrayList<>();
     List<Pair<String, String>> ranges = new ArrayList<>();
 
-    if ((table.partitioningRule() instanceof DatePartitionedByPeriodRule)) {
+    if (table.partitioningRule() instanceof DatePartitionedByPeriodRule) {
       createPartitionByDateRangeStatements(table, statements);
-    } else if ((table.partitioningRule() instanceof PartitioningByHashRule)) {
+    } else if (table.partitioningRule() instanceof PartitioningByHashRule) {
       createPartitionByHashStatements(table, statements, (PartitioningByHashRule) table.partitioningRule());
     } else {
       throw new IllegalArgumentException("Partition rule is not supported");
