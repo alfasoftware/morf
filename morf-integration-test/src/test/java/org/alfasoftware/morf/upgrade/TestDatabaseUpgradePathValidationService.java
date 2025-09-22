@@ -81,6 +81,8 @@ public class TestDatabaseUpgradePathValidationService {
   @After
   public void tearDown() {
     schemaManager.invalidateCache();
+    // to make following test on test suite run clean - org.alfasoftware.morf.upgrade.TestFullDeployment
+    schemaManager.dropAllTables();
   }
 
 

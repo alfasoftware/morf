@@ -15,7 +15,10 @@
 
 package org.alfasoftware.morf.metadata;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.*;
+import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
+import static org.alfasoftware.morf.metadata.SchemaUtils.sequence;
+import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.alfasoftware.morf.metadata.SchemaUtils.view;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
