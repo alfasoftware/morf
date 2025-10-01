@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.alfasoftware</groupId>
     <artifactId>morf-parent</artifactId>
-    <version>2.26.2-SNAPSHOT</version>
+    <version>2.27.0-RC3</version>
   </parent>
   
   <name>Morf - Test Support</name>
@@ -16,7 +16,7 @@
   <properties>
     <sonar.coverage.jacoco.xmlReportPaths>${basedir}/../${aggregate.report.dir}</sonar.coverage.jacoco.xmlReportPaths>
   </properties>
-  
+
   <build>
     <plugins>
       <plugin>
@@ -64,6 +64,7 @@
     <dependency>
       <groupId>com.h2database</groupId>
       <artifactId>h2</artifactId>
+      <scope>provided</scope>
     </dependency>
   </dependencies>
 </project>

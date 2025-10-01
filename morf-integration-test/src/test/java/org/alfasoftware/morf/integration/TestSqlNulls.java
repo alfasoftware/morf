@@ -136,6 +136,7 @@ public class TestSqlNulls {
     );
 
   private String databaseType;
+  private int databaseVersion;
 
 
   @Before
@@ -146,6 +147,7 @@ public class TestSqlNulls {
     new DataSetConnector(dataSet, databaseDataSetConsumer.get()).connect();
 
     databaseType = connectionResources.getDatabaseType();
+    databaseVersion = connectionResources.getDataSource().getConnection().getMetaData().getDatabaseMajorVersion();
   }
 
 
@@ -350,8 +352,10 @@ public class TestSqlNulls {
     switch (databaseType) {
       case "ORACLE":
       case "MY_SQL":
-        return null;
-
+        return null;  // null is the SQL standard implementation
+      case "H2":
+        return databaseVersion == 1 ? new BigDecimal(5) : null;
+      case "PGSQL":
       default:
         return new BigDecimal(5);
     }
@@ -362,8 +366,10 @@ public class TestSqlNulls {
     switch (databaseType) {
       case "ORACLE":
       case "MY_SQL":
-        return null;
-
+        return null;   // null is the SQL standard implementation
+      case "H2":
+        return databaseVersion == 1 ? new BigDecimal(1) : null;
+      case "PGSQL":
       default:
         return new BigDecimal(1);
     }
