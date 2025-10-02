@@ -44,7 +44,7 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
   private static final Pattern REALNAME_COMMENT_MATCHER = Pattern.compile(".*"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":\\[([^\\]]*)\\](/TYPE:\\[([^\\]]*)\\])?.*");
 
   private final Supplier<Map<AName, RealName>> allIndexNames = Suppliers.memoize(this::loadAllIndexNames);
-  private final Map<String, List<Index>> allIgnoredIndexes = Maps.newHashMap();
+  private final Supplier<Map<String, List<Index>>> allIgnoredIndexes = Suppliers.memoize(this::loadIgnoredIndexes);
   private final Set<RealName> allIgnoredIndexesTables = new HashSet<>();
 
   public PostgreSQLMetaDataProvider(Connection connection, String schemaName) {
@@ -126,19 +126,27 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
 
   @Override
   public Map<String, List<Index>> ignoredIndexes() {
-    // make sure allIgnoredIndexesTables is loaded.
-    allIndexNames.get();
-    if (allIgnoredIndexes.isEmpty() && !allIgnoredIndexesTables.isEmpty()) {
-      loadAllIgnoredIndexes();
-    }
-    return allIgnoredIndexes;
+    return allIgnoredIndexes.get();
   }
 
 
-  private void loadAllIgnoredIndexes() {
-    for (RealName realTableName : allIgnoredIndexesTables) {
-      allIgnoredIndexes.put(realTableName.getDbName().toLowerCase(), loadTableIndexes(realTableName, true));
+  private Map<String, List<Index>> loadIgnoredIndexes() {
+    Map<String, List<Index>> ignoredIndexes = Maps.newHashMap();
+    // make sure allIgnoredIndexesTables is loaded.
+    allIndexNames.get();
+    if (!allIgnoredIndexesTables.isEmpty()) {
+      ignoredIndexes =  loadAllIgnoredIndexes();
     }
+    return ignoredIndexes;
+  }
+
+
+  private Map<String, List<Index>> loadAllIgnoredIndexes() {
+    Map<String, List<Index>> ignoredIndexes = Maps.newHashMap();
+    for (RealName realTableName : allIgnoredIndexesTables) {
+      ignoredIndexes.put(realTableName.getDbName().toLowerCase(), loadTableIndexes(realTableName, true));
+    }
+    return ignoredIndexes;
   }
 
 
