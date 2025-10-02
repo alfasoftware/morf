@@ -3,7 +3,7 @@
 
   <groupId>org.alfasoftware</groupId>
   <artifactId>morf-parent</artifactId>
-  <version>2.26.2-SNAPSHOT</version>
+  <version>2.27.0</version>
   <packaging>pom</packaging>
 
   <name>Morf</name>
@@ -516,7 +516,7 @@
     <connection>scm:git:https://github.com/alfasoftware/morf.git</connection>
     <developerConnection>scm:git:git@github.com:alfasoftware/morf.git</developerConnection>
     <url>https://github.com/alfasoftware/morf</url>
-    <tag>2.20.0</tag>
+    <tag>2.27.0</tag>
   </scm>
   
 </project>
