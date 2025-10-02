@@ -141,12 +141,12 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
   }
 
 
-  private Map<String, List<Index>> loadAllIgnoredIndexes() {
-    Map<String, List<Index>> ignoredIndexes = Maps.newHashMap();
+  private ImmutableMap<String, List<Index>> loadAllIgnoredIndexes() {
+    ImmutableMap.Builder<String, List<Index>> ignoredIndexes = ImmutableMap.builder();
     for (RealName realTableName : allIgnoredIndexesTables) {
       ignoredIndexes.put(realTableName.getDbName().toLowerCase(), loadTableIndexes(realTableName, true));
     }
-    return ignoredIndexes;
+    return ignoredIndexes.build();
   }
 
 
