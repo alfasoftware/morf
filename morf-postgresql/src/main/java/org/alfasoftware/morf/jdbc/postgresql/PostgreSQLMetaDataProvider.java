@@ -30,7 +30,6 @@ import org.apache.commons.logging.LogFactory;
 
 import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Maps;
 
 /**
  * Provides meta data from a PostgreSQL database connection.
@@ -131,7 +130,7 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
 
 
   private Map<String, List<Index>> loadIgnoredIndexes() {
-    Map<String, List<Index>> ignoredIndexes = Maps.newHashMap();
+    ImmutableMap<String, List<Index>> ignoredIndexes = ImmutableMap.of();
     // make sure allIgnoredIndexesTables is loaded.
     allIndexNames.get();
     if (!allIgnoredIndexesTables.isEmpty()) {
