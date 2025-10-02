@@ -16,10 +16,8 @@ import org.alfasoftware.morf.sql.Statement;
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2022
  */
-class GraphBasedUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
+class GraphBasedUpgradeSchemaChangeVisitor extends AbstractSchemaChangeVisitor implements SchemaChangeVisitor {
 
-  private Schema sourceSchema;
-  private final SqlDialect sqlDialect;
   private final Table idTable;
   private final TableNameResolver tracker;
   private final Map<String, GraphBasedUpgradeNode> upgradeNodes;
@@ -30,12 +28,14 @@ class GraphBasedUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
    * Default constructor.
    *
    * @param sourceSchema schema prior to upgrade step.
+   * @param upgradeConfigAndContext upgrade config
    * @param sqlDialect   dialect to generate statements for the target database.
    * @param idTable      table for id generation.
    * @param upgradeNodes all the {@link GraphBasedUpgradeNode} instances in the
    *                       upgrade for which the visitor will generate statements
    */
-  GraphBasedUpgradeSchemaChangeVisitor(Schema sourceSchema, SqlDialect sqlDialect, Table idTable, Map<String, GraphBasedUpgradeNode> upgradeNodes) {
+  GraphBasedUpgradeSchemaChangeVisitor(Schema sourceSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect, Table idTable, Map<String, GraphBasedUpgradeNode> upgradeNodes) {
+    super(sourceSchema, upgradeConfigAndContext, sqlDialect);
     this.sourceSchema = sourceSchema;
     this.sqlDialect = sqlDialect;
     this.idTable = idTable;
@@ -47,7 +47,8 @@ class GraphBasedUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
   /**
    * Write statements to the current node
    */
-  private void writeStatements(Collection<String> statements) {
+  @Override
+  protected void writeStatements(Collection<String> statements) {
     currentNode.addAllUpgradeStatements(statements);
   }
 
@@ -71,13 +72,6 @@ class GraphBasedUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
   public void visit(RemoveTable removeTable) {
     sourceSchema = removeTable.apply(sourceSchema);
     writeStatements(sqlDialect.dropStatements(removeTable.getTable()));
-  }
-
-
-  @Override
-  public void visit(AddIndex addIndex) {
-    sourceSchema = addIndex.apply(sourceSchema);
-    writeStatements(sqlDialect.addIndexStatements(sourceSchema.getTable(addIndex.getTableName()), addIndex.getNewIndex()));
   }
 
 
@@ -242,15 +236,16 @@ class GraphBasedUpgradeSchemaChangeVisitor implements SchemaChangeVisitor {
      * Creates {@link GraphBasedUpgradeSchemaChangeVisitor} instance.
      *
      * @param sourceSchema schema prior to upgrade step
+     * @param upgradeConfigAndContext upgrade config
      * @param sqlDialect   dialect to generate statements for the target database
      * @param idTable      table for id generation
      * @param upgradeNodes all the {@link GraphBasedUpgradeNode} instances in the upgrade for
      *                       which the visitor will generate statements
      * @return new {@link GraphBasedUpgradeSchemaChangeVisitor} instance
      */
-    GraphBasedUpgradeSchemaChangeVisitor create(Schema sourceSchema, SqlDialect sqlDialect, Table idTable,
-        Map<String, GraphBasedUpgradeNode> upgradeNodes) {
-      return new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, sqlDialect, idTable, upgradeNodes);
+    GraphBasedUpgradeSchemaChangeVisitor create(Schema sourceSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect, Table idTable,
+                                                Map<String, GraphBasedUpgradeNode> upgradeNodes) {
+      return new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable, upgradeNodes);
     }
   }
 }

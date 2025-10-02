@@ -29,10 +29,9 @@ import org.alfasoftware.morf.sql.Statement;
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-public class InlineTableUpgrader implements SchemaChangeVisitor {
+public class InlineTableUpgrader extends AbstractSchemaChangeVisitor implements SchemaChangeVisitor {
 
   private Schema                   currentSchema;
-  private final SqlDialect         sqlDialect;
   private final SqlStatementWriter sqlStatementWriter;
   private final Table              idTable;
   private final TableNameResolver  tracker;
@@ -42,11 +41,13 @@ public class InlineTableUpgrader implements SchemaChangeVisitor {
    * Default constructor.
    *
    * @param startSchema schema prior to upgrade step.
+   * @param upgradeConfigAndContext upgrade config
    * @param sqlDialect Dialect to generate statements for the target database.
    * @param sqlStatementWriter recipient for all upgrade SQL statements.
    * @param idTable table for id generation.
    */
-  public InlineTableUpgrader(Schema startSchema, SqlDialect sqlDialect, SqlStatementWriter sqlStatementWriter, Table idTable) {
+  public InlineTableUpgrader(Schema startSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect, SqlStatementWriter sqlStatementWriter, Table idTable) {
+    super(startSchema, upgradeConfigAndContext, sqlDialect);
     this.currentSchema = startSchema;
     this.sqlDialect = sqlDialect;
     this.sqlStatementWriter = sqlStatementWriter;
@@ -90,16 +91,6 @@ public class InlineTableUpgrader implements SchemaChangeVisitor {
   public void visit(RemoveTable removeTable) {
     currentSchema = removeTable.apply(currentSchema);
     writeStatements(sqlDialect.dropStatements(removeTable.getTable()));
-  }
-
-
-  /**
-   * @see org.alfasoftware.morf.upgrade.SchemaChangeVisitor#visit(org.alfasoftware.morf.upgrade.AddIndex)
-   */
-  @Override
-  public void visit(AddIndex addIndex) {
-    currentSchema = addIndex.apply(currentSchema);
-    writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(addIndex.getTableName()), addIndex.getNewIndex()));
   }
 
 
@@ -226,7 +217,8 @@ public class InlineTableUpgrader implements SchemaChangeVisitor {
   /**
    * Write out SQL
    */
-  private void writeStatements(Collection<String> statements) {
+  @Override
+  protected void writeStatements(Collection<String> statements) {
     sqlStatementWriter.writeSql(statements);
   }
 

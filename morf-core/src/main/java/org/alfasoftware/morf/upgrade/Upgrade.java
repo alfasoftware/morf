@@ -201,6 +201,12 @@ public class Upgrade {
       schemaAutoHealingStatements = schemaHealingResults.getHealingStatements(dialect);
       sourceSchema = schemaHealingResults.getHealedSchema();
 
+      // read ignored indexes if additional metadata is present
+      databaseSchemaResource.getAdditionalMetadata()
+        .ifPresent(additionalMetadata ->
+          upgradeConfigAndContext.setIgnoredIndexes(additionalMetadata.ignoredIndexes())
+        );
+
       if (!schemaConsistencyStatements.isEmpty() || !schemaAutoHealingStatements.isEmpty()) {
         log.warn("Auto-healing statements have been generated (" + schemaConsistencyStatements.size() + "+" + schemaAutoHealingStatements.size() + " statements in total); this usually implies auto-healing being carried out."
             + " If this is shown on each subsequent start-up, it can be a symptom of auto-healing failing to achieve an acceptable stable healthful state."
@@ -249,7 +255,7 @@ public class Upgrade {
     //
     if (!schemaChangeSequence.getUpgradeSteps().isEmpty()) {
       // Run the upgrader over all the ElementarySchemaChanges in the upgrade steps
-      InlineTableUpgrader upgrader = new InlineTableUpgrader(sourceSchema, dialect, new SqlStatementWriter() {
+      InlineTableUpgrader upgrader = new InlineTableUpgrader(sourceSchema, upgradeConfigAndContext, dialect, new SqlStatementWriter() {
         @Override
         public void writeSql(Collection<String> sql) {
           upgradeStatements.addAll(sql);
@@ -284,7 +290,7 @@ public class Upgrade {
         sourceSchema,
         targetSchema,
         connectionResources,
-        upgradeConfigAndContext.getExclusiveExecutionSteps(),
+        upgradeConfigAndContext,
         schemaChangeSequence,
         viewChanges);
     }

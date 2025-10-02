@@ -69,6 +69,7 @@ public class TestGraphBasedUpgradeBuilder {
   private GraphBasedUpgradeScriptGenerator scriptGen;
 
   private final Set<String> exclusiveExecutionSteps = new HashSet<>();
+  private final UpgradeConfigAndContext upgradeConfigAndContext = new UpgradeConfigAndContext();
 
   private GraphBasedUpgradeBuilder builder;
 
@@ -103,9 +104,10 @@ public class TestGraphBasedUpgradeBuilder {
     eu2 = new EU2();
     u1000 = new U1000();
     u1001 = new U1001();
+    upgradeConfigAndContext.setExclusiveExecutionSteps(exclusiveExecutionSteps);
 
     builder = new GraphBasedUpgradeBuilder(visitorFactory, scriptGeneratorFactory, drawIOGraphPrinter, sourceSchema, targetSchema,
-        connectionResources, exclusiveExecutionSteps, schemaChangeSequence, viewChanges);
+        connectionResources, upgradeConfigAndContext, schemaChangeSequence, viewChanges);
   }
 
 
@@ -390,9 +392,10 @@ public class TestGraphBasedUpgradeBuilder {
   public void testFactory() {
     // given
     GraphBasedUpgradeBuilderFactory factory = new GraphBasedUpgradeBuilderFactory(visitorFactory, scriptGeneratorFactory, drawIOGraphPrinter);
+    upgradeConfigAndContext.setExclusiveExecutionSteps(exclusiveExecutionSteps);
 
     // when
-    GraphBasedUpgradeBuilder created = factory.create(sourceSchema, targetSchema, connectionResources, exclusiveExecutionSteps, schemaChangeSequence, viewChanges);
+    GraphBasedUpgradeBuilder created = factory.create(sourceSchema, targetSchema, connectionResources, upgradeConfigAndContext, schemaChangeSequence, viewChanges);
 
     // then
     assertNotNull(created);

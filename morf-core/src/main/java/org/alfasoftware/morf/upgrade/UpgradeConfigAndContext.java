@@ -1,8 +1,13 @@
 package org.alfasoftware.morf.upgrade;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
+import org.alfasoftware.morf.metadata.Index;
+
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableMap;
 
 /**
  * Configuration and context bean for the {@link Upgrade} process.
@@ -30,11 +35,18 @@ public class UpgradeConfigAndContext {
 
 
   /**
+   * A map of ignored indexes.
+   */
+  private Map<String, List<Index>> ignoredIndexes = Map.of();
+
+
+  /**
    * @see #exclusiveExecutionSteps
    */
   public Set<String> getExclusiveExecutionSteps() {
     return exclusiveExecutionSteps;
   }
+
 
   /**
    * @see #exclusiveExecutionSteps
@@ -74,5 +86,35 @@ public class UpgradeConfigAndContext {
   public void setSchemaAutoHealer(SchemaAutoHealer schemaAutoHealer) {
     Preconditions.checkNotNull(schemaAutoHealer);
     this.schemaAutoHealer = schemaAutoHealer;
+  }
+
+  /**
+   * @see #ignoredIndexes
+   * @return ignoredIndexes map
+   */
+  public Map<String, List<Index>> getIgnoredIndexes() {
+    return ignoredIndexes;
+  }
+
+  /**
+   * @see #ignoredIndexes
+   */
+  public void setIgnoredIndexes(Map<String, List<Index>> ignoredIndexes) {
+    this.ignoredIndexes = ignoredIndexes.entrySet().stream()
+      .collect(ImmutableMap.toImmutableMap(e -> e.getKey().toLowerCase(), Map.Entry::getValue));
+  }
+
+  /**
+   * Get the ignored indexes for table. If none return empty list.
+   * @param tableName the table name
+   * @return the list of ignored indexes
+   */
+  public List<Index> getIgnoredIndexesForTable(String tableName) {
+    String toLowerCase = tableName.toLowerCase();
+    if (ignoredIndexes.containsKey(toLowerCase)) {
+      return ignoredIndexes.get(toLowerCase);
+    } else {
+      return List.of();
+    }
   }
 }
