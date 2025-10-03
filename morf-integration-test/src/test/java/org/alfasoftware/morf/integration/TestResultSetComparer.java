@@ -35,6 +35,8 @@ import static org.alfasoftware.morf.sql.element.Function.count;
 import static org.alfasoftware.morf.sql.element.Function.sum;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -54,6 +56,7 @@ import org.alfasoftware.morf.guicesupport.InjectMembersRule;
 import org.alfasoftware.morf.jdbc.DatabaseDataSetConsumer;
 import org.alfasoftware.morf.jdbc.ResultSetComparer;
 import org.alfasoftware.morf.jdbc.ResultSetComparer.CompareCallback;
+import org.alfasoftware.morf.jdbc.ResultSetComparer.ResultSetValidation;
 import org.alfasoftware.morf.jdbc.ResultSetMismatch;
 import org.alfasoftware.morf.jdbc.ResultSetMismatch.MismatchType;
 import org.alfasoftware.morf.metadata.DataSetUtils;
@@ -818,4 +821,97 @@ public class TestResultSetComparer {
     assertEquals("Row count should have 1 mismatch", 1, mismatchCount);
     checkMismatch(rsMismatchCaptor.getValue(), MISMATCH, "1", "3", 1);
   }
+
+
+  /**
+   * Tests the validation of a non empty result sets when both sides are empty.
+   */
+  @Test
+  public void testNonEmptyResultSetValidationWhenLeftAndRightResultSetsAreEmpty()  {
+    SelectStatement left = select(field("intKey")).from(tableRef("MultiKeyLeft")).where(field("intKey").eq(parameter("param1").type(INTEGER)));
+    SelectStatement right = select(field("intKey")).from(tableRef("MultiKeyMatchRight")).where(field("intKey").eq(parameter("param1").type(INTEGER)));
+
+    StatementParameters leftParams = DataSetUtils.statementParameters().setInteger("param1", 99); // <-- Does not exist
+    StatementParameters rightParams = DataSetUtils.statementParameters().setInteger("param1", 99); // <-- Does not exist
+
+    IllegalStateException exception = assertThrows(IllegalStateException.class, () -> resultSetComparer.compare(new int[]{}, left, right, connection, connection, mock(CompareCallback.class), leftParams, rightParams, ResultSetValidation.NON_EMPTY_RESULT));
+    assertTrue(exception.getMessage().contains("The following queries should return at least one record"));
+  }
+
+
+  /**
+   * Tests that the validation of a non empty result sets does not occur when the left side result set is non empty.
+   */
+  @Test
+  public void testNonEmptyResultSetValidationWhenLeftSideResultNonEmpty()  {
+    SelectStatement left = select(field("intKey")).from(tableRef("MultiKeyLeft")).where(field("intKey").eq(parameter("param1").type(INTEGER)));
+    SelectStatement right = select(field("intKey")).from(tableRef("MultiKeyMatchRight")).where(field("intKey").eq(parameter("param1").type(INTEGER)));
+
+    StatementParameters leftParams = DataSetUtils.statementParameters().setInteger("param1", 2); // <-- Exists
+    StatementParameters rightParams = DataSetUtils.statementParameters().setInteger("param1", 99); // <-- Does not exist
+
+    resultSetComparer.compare(new int[]{}, left, right, connection, connection, mock(CompareCallback.class), leftParams, rightParams, ResultSetValidation.NON_EMPTY_RESULT);
+  }
+
+
+  /**
+   * Tests that the validation of a non empty result sets does not occur when the right side result set is non empty.
+   */
+  @Test
+  public void testNonEmptyResultSetValidationWhenRightSideResultNonEmpty()  {
+    SelectStatement left = select(field("intKey")).from(tableRef("MultiKeyLeft")).where(field("intKey").eq(parameter("param1").type(INTEGER)));
+    SelectStatement right = select(field("intKey")).from(tableRef("MultiKeyMatchRight")).where(field("intKey").eq(parameter("param1").type(INTEGER)));
+
+    StatementParameters leftParams = DataSetUtils.statementParameters().setInteger("param1", 99); // <-- Does not exist
+    StatementParameters rightParams = DataSetUtils.statementParameters().setInteger("param1", 1); // <-- Exist
+
+    resultSetComparer.compare(new int[]{}, left, right, connection, connection, mock(CompareCallback.class), leftParams, rightParams, ResultSetValidation.NON_EMPTY_RESULT);
+  }
+
+
+  /**
+   * Tests the validation of a non zero result count when both side return a zero result.
+   */
+  @Test
+  public void testNonZeroCountResultSetValidationWhenLeftAndRightResultsAreZero()  {
+    SelectStatement left = select(count()).from(tableRef("MultiKeyLeft")).where(field("intKey").eq(parameter("param1").type(INTEGER)));
+    SelectStatement right = select(count()).from(tableRef("MultiKeyMatchRight")).where(field("intKey").eq(parameter("param1").type(INTEGER)));
+
+    StatementParameters leftParams = DataSetUtils.statementParameters().setInteger("param1", 99); // <-- Does not exist
+    StatementParameters rightParams = DataSetUtils.statementParameters().setInteger("param1", 99); // <-- Does not exist
+
+    IllegalStateException exception = assertThrows(IllegalStateException.class, () -> resultSetComparer.compare(new int[]{}, left, right, connection, connection, mock(CompareCallback.class), leftParams, rightParams, ResultSetValidation.NON_ZERO_RESULT));
+    assertTrue(exception.getMessage().contains("Left and right record queries returned zero"));
+  }
+
+
+  /**
+   * Tests the validation of a non zero result count does not occur when the left side result is non zero.
+   */
+  @Test
+  public void testNonZeroCountResultSetValidationWhenLeftSideResultIsNonZero()  {
+    SelectStatement left = select(count()).from(tableRef("MultiKeyLeft")).where(field("intKey").eq(parameter("param1").type(INTEGER)));
+    SelectStatement right = select(count()).from(tableRef("MultiKeyMatchRight")).where(field("intKey").eq(parameter("param1").type(INTEGER)));
+
+    StatementParameters leftParams = DataSetUtils.statementParameters().setInteger("param1", 1); // <-- Exist
+    StatementParameters rightParams = DataSetUtils.statementParameters().setInteger("param1", 99); // <-- Does not exist
+
+    resultSetComparer.compare(new int[]{}, left, right, connection, connection, mock(CompareCallback.class), leftParams, rightParams, ResultSetValidation.NON_ZERO_RESULT);
+  }
+
+
+  /**
+   * Tests the validation of a non zero result count does not occur when the right side result is non zero.
+   */
+  @Test
+  public void testNonZeroCountResultSetValidationWhenRightSideResultIsNonZero()  {
+    SelectStatement left = select(count()).from(tableRef("MultiKeyLeft")).where(field("intKey").eq(parameter("param1").type(INTEGER)));
+    SelectStatement right = select(count()).from(tableRef("MultiKeyMatchRight")).where(field("intKey").eq(parameter("param1").type(INTEGER)));
+
+    StatementParameters leftParams = DataSetUtils.statementParameters().setInteger("param1", 99); // <-- Does not exist
+    StatementParameters rightParams = DataSetUtils.statementParameters().setInteger("param1", 1); // <-- Exist
+
+    resultSetComparer.compare(new int[]{}, left, right, connection, connection, mock(CompareCallback.class), leftParams, rightParams, ResultSetValidation.NON_ZERO_RESULT);
+  }
+
 }

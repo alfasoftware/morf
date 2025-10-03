@@ -61,6 +61,16 @@ class H2MetaDataProvider extends DatabaseMetaDataProvider {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isIgnoredSequence(RealName)
+   */
+  @Override
+  protected boolean isSystemSequence(RealName sequenceName) {
+    // Ignore system sequences
+    return sequenceName.getDbName().startsWith(H2Dialect.SYSTEM_SEQUENCE_PREFIX);
+  }
+
+
+  /**
    * H2 can (and must) provide the auto-increment start value from the column remarks.
    *
    * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#setAdditionalColumnMetadata(RealName, ColumnBuilder, ResultSet)
@@ -74,5 +84,21 @@ class H2MetaDataProvider extends DatabaseMetaDataProvider {
     } else {
       return columnBuilder;
     }
+  }
+
+
+  /**
+   * @see DatabaseMetaDataProvider#buildSequenceSql(String)
+   */
+  @Override
+  protected String buildSequenceSql(String schemaName) {
+    StringBuilder sequenceSqlBuilder = new StringBuilder();
+    sequenceSqlBuilder.append("SELECT SEQUENCE_NAME FROM INFORMATION_SCHEMA.SEQUENCES");
+
+    if (schemaName != null && !schemaName.isBlank()) {
+      sequenceSqlBuilder.append(" WHERE SEQUENCE_SCHEMA =?");
+    }
+
+    return sequenceSqlBuilder.toString();
   }
 }

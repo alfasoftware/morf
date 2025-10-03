@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.jdbc;
 
 
+import java.lang.reflect.InvocationTargetException;
 import java.sql.Array;
 import java.sql.Blob;
 import java.sql.CallableStatement;
@@ -44,6 +45,7 @@ import org.alfasoftware.morf.metadata.SchemaResource;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 
 /**
@@ -293,7 +295,14 @@ public abstract class AbstractConnectionResources implements ConnectionResources
       log.info("Opening new database connection to [" + AbstractConnectionResources.this.getJdbcUrl() + "] with username [" + username + "] for schema [" + AbstractConnectionResources.this.getSchemaName() + "]");
       loadJdbcDriver();
       Connection connection = openConnection(username, password);
+      validateConnection(connection);
       return log.isDebugEnabled() ? new LoggingConnection(connection) : connection;
+    }
+
+
+    private void validateConnection(Connection connection) {
+      final String databaseType = getDatabaseType();
+      validatePgConnectionStandardConformingStrings(databaseType, connection);
     }
 
 
@@ -322,6 +331,35 @@ public abstract class AbstractConnectionResources implements ConnectionResources
       } catch (Exception e) {
         connection.close();
         throw e;
+      }
+    }
+  }
+
+
+  @VisibleForTesting
+  static void validatePgConnectionStandardConformingStrings(String databaseType, Connection connection) {
+    final String getStandardConformingStringsMethodName = "getStandardConformingStrings";
+
+    if ("PGSQL".equals(databaseType)) {
+      try {
+        // see org.postgresql.core.BaseConnection.getStandardConformingStrings()
+        // see org.postgresql.jdbc.PgConnection.getStandardConformingStrings()
+        boolean standardConformingStrings = connection.getClass()
+            .getMethod(getStandardConformingStringsMethodName)
+            .invoke(connection)
+            .equals(Boolean.TRUE);
+
+        if (log.isDebugEnabled()) log.debug(getStandardConformingStringsMethodName + "(): " + standardConformingStrings);
+
+        if (!standardConformingStrings) {
+          throw new IllegalStateException("Postgres: standard_conforming_strings=off config value has been detected, which is not supported");
+        }
+      }
+      catch (NoSuchMethodException e) {
+        throw new IllegalStateException(getStandardConformingStringsMethodName + "(): no such method on " + connection, e);
+      }
+      catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException | SecurityException e) {
+        throw new IllegalStateException(getStandardConformingStringsMethodName + "(): invoking such method on " + connection, e);
       }
     }
   }

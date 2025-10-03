@@ -15,11 +15,12 @@
 
 package org.alfasoftware.morf.upgrade.adapt;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.column;
-import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
-import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.alfasoftware.morf.metadata.SchemaUtils.*;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
+import com.google.common.collect.ImmutableList;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.junit.Test;
 
 import org.alfasoftware.morf.metadata.DataType;
@@ -41,12 +42,52 @@ public class TestFilteredSchema {
     Table lowerCaseTable = table("lower").columns(column("col", DataType.STRING, 10).nullable());
     Table mixedCaseTable = table("Mixed").columns(column("col", DataType.STRING, 10).nullable());
     Table upperCaseTable = table("UPPER").columns(column("col", DataType.STRING, 10).nullable());
-    Schema testSchema = schema(lowerCaseTable, mixedCaseTable, upperCaseTable);
+
+    Sequence lowerCaseSequence= sequence("lower");
+    Sequence mixedCaseSequence = sequence("Mixed").startsWith(5);
+    Sequence upperCaseSequence = sequence("UPPER").startsWith(10);
+
+    Schema testSchema = schema(schema(lowerCaseTable, mixedCaseTable, upperCaseTable),
+      schema(),
+      schema(lowerCaseSequence,mixedCaseSequence,upperCaseSequence));
 
     TableSetSchema schema = new FilteredSchema(testSchema, "LOWER", "MIXED", "upper");
     assertFalse("Lowercase table exists when removed by uppercase name", schema.tableExists("lower"));
     assertFalse("Mixed case table exists when removed by uppercase name", schema.tableExists("Mixed"));
     assertFalse("Uppercase table exists when removed by lowercase name", schema.tableExists("UPPER"));
+
+    assertTrue("Lowercase sequence should still exist", schema.sequenceExists("lower"));
+    assertTrue("Mixed case sequence should still exist", schema.sequenceExists("Mixed"));
+    assertTrue("Uppercase sequence should still exist", schema.sequenceExists("UPPER"));
+  }
+
+
+  /**
+   * Tests that the table and sequence lists are filtered using a case-insensitive comparator.
+   */
+  @Test
+  public void testCaseInsensitiveRemovalForSequences() {
+    Table lowerCaseTable = table("lower").columns(column("col", DataType.STRING, 10).nullable());
+    Table mixedCaseTable = table("Mixed").columns(column("col", DataType.STRING, 10).nullable());
+    Table upperCaseTable = table("UPPER").columns(column("col", DataType.STRING, 10).nullable());
+
+    Sequence lowerCaseSequence= sequence("lower").startsWith(1);
+    Sequence mixedCaseSequence = sequence("Mixed").startsWith(5);
+    Sequence upperCaseSequence = sequence("UPPER").startsWith(10);
+
+    Schema testSchema = schema(schema(lowerCaseTable, mixedCaseTable, upperCaseTable),
+      schema(),
+      schema(lowerCaseSequence,mixedCaseSequence,upperCaseSequence));
+
+    TableSetSchema schema = new FilteredSchema(testSchema, ImmutableList.of("LOWER", "MIXED", "upper"),
+      "LOWER", "MIXED", "upper");
+    assertFalse("Lowercase table exists when removed by uppercase name", schema.tableExists("lower"));
+    assertFalse("Mixed case table exists when removed by uppercase name", schema.tableExists("Mixed"));
+    assertFalse("Uppercase table exists when removed by lowercase name", schema.tableExists("UPPER"));
+
+    assertFalse("Lowercase sequence exists when removed by uppercase name", schema.sequenceExists("lower"));
+    assertFalse("Mixed case sequence exists when removed by uppercase name", schema.sequenceExists("Mixed"));
+    assertFalse("Uppercase sequence exists when removed by lowercase name", schema.sequenceExists("UPPER"));
   }
 
 }

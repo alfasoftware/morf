@@ -27,11 +27,14 @@ import static org.junit.Assert.assertTrue;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Random;
+import java.util.function.Supplier;
 
+import org.alfasoftware.morf.dataset.ConcurrentDataSetConnector;
 import org.alfasoftware.morf.dataset.DataSetConnector;
 import org.alfasoftware.morf.dataset.DataSetHomology;
 import org.alfasoftware.morf.dataset.DataSetProducer;
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
+import org.alfasoftware.morf.jdbc.ConcurrentSchemaModificationAdapter;
 import org.alfasoftware.morf.jdbc.DatabaseDataSetConsumer;
 import org.alfasoftware.morf.jdbc.DatabaseDataSetProducer;
 import org.alfasoftware.morf.jdbc.SchemaModificationAdapter;
@@ -52,6 +55,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
+
 import net.jcip.annotations.NotThreadSafe;
 
 /**
@@ -208,6 +212,15 @@ public class TestDatabaseSupport {
 
 
   /**
+   * Test that a normal import/export works with a concurrent connector
+   */
+  @Test
+  public void testBasicDatabaseTypesConcurrent() {
+    doConnectConcurrentAndCompare(schema, dataSet, () -> databaseDataSetConsumer.get());
+  }
+
+
+  /**
    * Tests that when an attempt is made to insert a value that is too large for a column into the database that an exception is thrown.
    */
   @Test
@@ -247,9 +260,14 @@ public class TestDatabaseSupport {
     Schema schemaTableB = schema(table("TableB")
         .columns(column("field", DataType.BIG_INTEGER))
         .indexes(index("CommonIndex").columns("field")));
+    Schema schemaTableC = schema(table("TableC")
+      .columns(column("field", DataType.BIG_INTEGER))
+      .indexes(index("CommonIndex").columns("field")));
 
     doConnectAndCompare(schemaTableA, dataSetProducer(schemaTableA).table("TableA"), databaseDataSetConsumer.get());
     doConnectAndCompare(schemaTableB, dataSetProducer(schemaTableB).table("TableB"), databaseDataSetConsumer.get());
+
+    doConnectConcurrentAndCompare(schemaTableC, dataSetProducer(schemaTableC).table("TableC"), () -> databaseDataSetConsumer.get());
   }
 
 
@@ -266,8 +284,14 @@ public class TestDatabaseSupport {
         .columns(column("field", DataType.BIG_INTEGER))
         .indexes(index("CommonIndex").columns("field")));
 
+    Schema schemaTableC = schema(table("TableC")
+      .columns(column("field", DataType.BIG_INTEGER))
+      .indexes(index("CommonIndex").columns("field")));
+
     doConnectAndCompare(schemaTableA, dataSetProducer(schemaTableA).table("TableA").table("TableB"), databaseDataSetConsumer.get());
     doConnectAndCompare(schemaTableB, dataSetProducer(schemaTableB).table("TableB"), databaseDataSetConsumer.get());
+
+    doConnectConcurrentAndCompare(schemaTableC, dataSetProducer(schemaTableC).table("TableC"), () -> databaseDataSetConsumer.get());
   }
 
 
@@ -282,9 +306,15 @@ public class TestDatabaseSupport {
     Schema schemaTableA2 = schema(table("TableA")
             .columns(column("field2", DataType.BIG_INTEGER))
             .indexes(index("IndexName").columns("field2")));
+    Schema schemaTableA3 = schema(table("TableA")
+      .columns(column("field3", DataType.BIG_INTEGER))
+      .indexes(index("IndexName").columns("field3")));
+
 
     doConnectAndCompare(schemaTableA1, dataSetProducer(schemaTableA1).table("TableA"), databaseDataSetConsumer.get());
     doConnectAndCompare(schemaTableA2, dataSetProducer(schemaTableA2).table("TableA"), databaseDataSetConsumer.get());
+
+    doConnectConcurrentAndCompare(schemaTableA3, dataSetProducer(schemaTableA3).table("TableA"), () -> databaseDataSetConsumer.get());
   }
 
 
@@ -313,6 +343,49 @@ public class TestDatabaseSupport {
     // transfer the dataset into the DB
     schemaManager.get().dropAllViews();
     new DataSetConnector(testDataSet, new SchemaModificationAdapter(databaseConsumer)).connect();
+
+    final List<String> differences = Lists.newArrayList();
+
+    DatabaseDataSetProducer databaseProducer = databaseDataSetProducer.get();
+    databaseProducer.open();
+    try {
+      DifferenceWriter differenceWriter = new DifferenceWriter() {
+        @Override
+        public void difference(String message) {
+          differences.add(message);
+        }
+      };
+
+      new SchemaHomology(
+        differenceWriter,
+        "Test schema",
+        "Database schema"
+      ).schemasMatch(testSchema, databaseProducer.getSchema(), Sets.<String>newHashSet());
+
+    } finally {
+      databaseProducer.close();
+    }
+
+    assertEquals("Expect no differences", "", StringUtils.join(differences, "\n"));
+
+    // create a comparator
+    DataSetHomology dataSetHomology = new DataSetHomology();
+
+    // check the database-produced content is the same as what we put in
+    boolean dataSetsMatch = dataSetHomology.dataSetProducersMatch(testDataSet, databaseDataSetProducer.get());
+    assertTrue(StringUtils.join(dataSetHomology.getDifferences(), "\n"), dataSetsMatch);
+  }
+
+
+  /**
+   * Import the data into the DB concurrently then read it back out again, checking it comes out exactly as it went in.
+   */
+  private void doConnectConcurrentAndCompare(Schema testSchema, DataSetProducer testDataSet, Supplier<DatabaseDataSetConsumer> databaseConsumerSupplier) {
+    // transfer the dataset into the DB
+    schemaManager.get().dropAllViews();
+    int numThreads = 4; //fixed number of threads
+    int loggerInterval = 2;
+    new ConcurrentDataSetConnector(testDataSet, () -> new ConcurrentSchemaModificationAdapter(databaseConsumerSupplier.get()), numThreads, loggerInterval).connect();
 
     final List<String> differences = Lists.newArrayList();
 

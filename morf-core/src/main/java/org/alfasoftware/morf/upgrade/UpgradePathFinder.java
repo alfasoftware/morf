@@ -49,6 +49,8 @@ public class UpgradePathFinder {
 
   private static final Log log = LogFactory.getLog(UpgradePathFinder.class);
 
+  private final UpgradeConfigAndContext upgradeConfigAndContext;
+
   private final UpgradeGraph upgradeGraph;
 
   private final Set<java.util.UUID> stepsAlreadyApplied;
@@ -68,6 +70,16 @@ public class UpgradePathFinder {
    * @param stepsAlreadyApplied The UUIDs of steps which have already been applied.
    */
   public UpgradePathFinder(Collection<Class<? extends UpgradeStep>> availableUpgradeSteps, Set<java.util.UUID> stepsAlreadyApplied) {
+    this(new UpgradeConfigAndContext(), availableUpgradeSteps, stepsAlreadyApplied);
+  }
+
+
+  /**
+   * @param availableUpgradeSteps Steps that are available for building a path.
+   * @param stepsAlreadyApplied The UUIDs of steps which have already been applied.
+   */
+  public UpgradePathFinder(UpgradeConfigAndContext upgradeConfigAndContext, Collection<Class<? extends UpgradeStep>> availableUpgradeSteps, Set<java.util.UUID> stepsAlreadyApplied) {
+    this.upgradeConfigAndContext = upgradeConfigAndContext;
     this.upgradeGraph = new UpgradeGraph(availableUpgradeSteps);
     this.stepsAlreadyApplied = stepsAlreadyApplied;
 
@@ -92,7 +104,7 @@ public class UpgradePathFinder {
     for (CandidateStep upgradeStepClass : stepsToApply) {
       upgradeSteps.add(upgradeStepClass.createStep());
     }
-    return new SchemaChangeSequence(upgradeSteps);
+    return new SchemaChangeSequence(upgradeConfigAndContext, upgradeSteps);
   }
 
 
@@ -227,17 +239,23 @@ public class UpgradePathFinder {
    */
   public void findDiscrepancies(Map<String, String> upgradeAudit) {
 
-    List<String> discrepancies = stepsToApply.stream()
+    List<String[]> discrepancies = stepsToApply.stream()
             .filter(step -> isStepDuplicated(step, upgradeAudit))
-            .map(step -> step.getUuid().toString())
+            .map(step -> extractDetails(step, upgradeAudit))
             .collect(Collectors.toList());
 
     if (!discrepancies.isEmpty()) {
       String message = String.format("Some upgrade steps could have run before with different UUID. The following have been detected:%n%s",
-              String.join("\n", discrepancies));
-      log.error(message);
+              discrepancies.stream()
+                      .map(d -> String.format("Name: %s, Old UUID: %s, Current UUID: %s", d[0], d[1], d[2]))
+                      .collect(Collectors.joining("\n")));
       throw new IllegalStateException(message);
     }
+  }
+
+  private String[] extractDetails(CandidateStep step, Map<String, String> upgradeAudit) {
+    String name = step.getName();
+    return new String[]{name, step.getUuid().toString(), upgradeAudit.get(name)};
   }
 
   /**

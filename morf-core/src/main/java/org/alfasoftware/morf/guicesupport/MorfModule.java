@@ -19,6 +19,7 @@ import org.alfasoftware.morf.upgrade.DatabaseUpgradePathValidationService;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeBuilder.GraphBasedUpgradeBuilderFactory;
 import org.alfasoftware.morf.upgrade.TableContribution;
 import org.alfasoftware.morf.upgrade.Upgrade;
+import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.UpgradeStatusTableService;
 import org.alfasoftware.morf.upgrade.ViewChangesDeploymentHelper;
@@ -67,10 +68,12 @@ public class MorfModule extends AbstractModule {
       UpgradeStatusTableService upgradeStatusTableService,
       ViewChangesDeploymentHelper viewChangesDeploymentHelper,
       ViewDeploymentValidator viewDeploymentValidator,
+      DatabaseUpgradePathValidationService databaseUpgradePathValidationService,
       GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
-      DatabaseUpgradePathValidationService databaseUpgradePathValidationService) {
+      UpgradeConfigAndContext upgradeConfigAndContext) {
     return new Upgrade(connectionResources, factory, upgradeStatusTableService, viewChangesDeploymentHelper,
-      viewDeploymentValidator, graphBasedUpgradeBuilderFactory, databaseUpgradePathValidationService);
+      viewDeploymentValidator, databaseUpgradePathValidationService, graphBasedUpgradeBuilderFactory,
+      upgradeConfigAndContext);
   }
 }
 

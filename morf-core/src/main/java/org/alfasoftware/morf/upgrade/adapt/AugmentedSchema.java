@@ -18,6 +18,7 @@ package org.alfasoftware.morf.upgrade.adapt;
 import java.util.Arrays;
 
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 
 import com.google.common.collect.Iterables;
@@ -39,6 +40,18 @@ public class AugmentedSchema extends TableSetSchema {
    * @param newTables to add over and above those in baseSchema.
    */
   public AugmentedSchema(Schema baseSchema, Table... newTables) {
-    super(Lists.newArrayList(Iterables.concat(baseSchema.tables(), Arrays.asList(newTables))));
+    super(Lists.newArrayList(Iterables.concat(baseSchema.tables(), Arrays.asList(newTables))), baseSchema.sequences());
+  }
+
+
+  /**
+   * Construct an {@link AugmentedSchema} which is identical to
+   * <var>baseSchema</var> save for the addition of several new sequences.
+   *
+   * @param baseSchema the schema to adapt through the addition of new sequences
+   * @param newSequences to add over and above those in baseSchema.
+   */
+  public AugmentedSchema(Schema baseSchema, Sequence... newSequences) {
+    super(baseSchema.tables(), Lists.newArrayList(Iterables.concat(baseSchema.sequences(), Arrays.asList(newSequences))));
   }
 }

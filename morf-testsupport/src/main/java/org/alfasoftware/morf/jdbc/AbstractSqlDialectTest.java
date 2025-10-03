@@ -23,6 +23,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.idColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
+import static org.alfasoftware.morf.metadata.SchemaUtils.sequence;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.metadata.SchemaUtils.versionColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.view;
@@ -79,6 +80,7 @@ import static org.alfasoftware.morf.sql.element.Function.now;
 import static org.alfasoftware.morf.sql.element.Function.power;
 import static org.alfasoftware.morf.sql.element.Function.random;
 import static org.alfasoftware.morf.sql.element.Function.randomString;
+import static org.alfasoftware.morf.sql.element.Function.rightPad;
 import static org.alfasoftware.morf.sql.element.Function.rightTrim;
 import static org.alfasoftware.morf.sql.element.Function.round;
 import static org.alfasoftware.morf.sql.element.Function.rowNumber;
@@ -89,6 +91,9 @@ import static org.alfasoftware.morf.sql.element.Function.sumDistinct;
 import static org.alfasoftware.morf.sql.element.Function.trim;
 import static org.alfasoftware.morf.sql.element.Function.upperCase;
 import static org.alfasoftware.morf.sql.element.Function.yyyymmddToDate;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.emptyIterable;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -116,12 +121,16 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import org.alfasoftware.morf.dataset.Record;
+import org.alfasoftware.morf.metadata.AdditionalMetadata;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaResource;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.CustomHint;
@@ -144,6 +153,8 @@ import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.MathsField;
 import org.alfasoftware.morf.sql.element.MathsOperator;
 import org.alfasoftware.morf.sql.element.NullFieldLiteral;
+import org.alfasoftware.morf.sql.element.PortableSqlFunction;
+import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.sql.element.WhenCondition;
@@ -215,6 +226,8 @@ public abstract class AbstractSqlDialectTest {
   private static final String INT_FIELD = "intField";
   private static final String STRING_FIELD = "stringField";
   private static final String DBLINK_NAME = "MYDBLINKREF";
+
+  private static final String SEQUENCE_NAME = "TestSequence";
 
   protected static final String ID_VALUES_TABLE = "idvalues";
   protected static final String ID_INCREMENTOR_TABLE_COLUMN_VALUE = "nextvalue";
@@ -288,11 +301,12 @@ public abstract class AbstractSqlDialectTest {
 
   private View testViewWithUnion;
 
+  private Sequence testSequence;
+
   /**
    * Very long table name to test name truncation.
    */
-  public static final String TABLE_WITH_VERY_LONG_NAME = "tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation";
-
+  public static final String TABLE_WITH_VERY_LONG_NAME = "tableWithANameThatExceeds30Char";
   /**
    * Dialect being tested.
    */
@@ -460,6 +474,9 @@ public abstract class AbstractSqlDialectTest {
     FieldReference f = new FieldReference(STRING_FIELD);
     testView = view("TestView", select(f).from(tr).where(eq(f, new FieldLiteral("blah"))));
 
+    //Test sequence
+    testSequence = sequence(SEQUENCE_NAME);
+
     TableReference tr1 = new TableReference(OTHER_TABLE);
     testViewWithUnion = view("TestView", select(f).from(tr).where(eq(f, new FieldLiteral("blah")))
       .unionAll(select(f).from(tr1).where(eq(f, new FieldLiteral("blah")))));
@@ -539,6 +556,92 @@ public abstract class AbstractSqlDialectTest {
     compareStatements(
       expectedCreateViewStatements(),
       testDialect.viewDeploymentStatements(testView));
+  }
+
+
+  /**
+   * Tests the SQL for creating sequences.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testCreateSequencesStatements() {
+    compareStatements(
+      expectedCreateSequenceStatements(),
+      testDialect.sequenceDeploymentStatements(testSequence));
+  }
+
+
+  /**
+   * Tests the SQL for creating temporary sequences.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testCreateTemporarySequencesStatements() {
+    testSequence = sequence(SEQUENCE_NAME).temporary();
+
+    compareStatements(
+      expectedCreateTemporarySequenceStatements(),
+      testDialect.sequenceDeploymentStatements(testSequence));
+  }
+
+
+  /**
+   * Tests the SQL for creating sequences when no explicit 'START WITH' value is specified.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testCreateSequencesStatementWhenNoStartWithSpecified() {
+    testSequence = sequence(SEQUENCE_NAME).startsWith(null);
+
+    compareStatements(
+      expectedCreateSequenceStatementsWithNoStartWith(),
+      testDialect.sequenceDeploymentStatements(testSequence));
+  }
+
+
+  /**
+   * Tests the SQL for creating temporary sequences when no explicit 'START WITH' value is specified.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testCreateTemporarySequencesStatementWhenNoStartWithSpecified() {
+    testSequence = sequence(SEQUENCE_NAME).startsWith(null).temporary();
+
+    compareStatements(
+      expectedCreateTemporarySequenceStatementsWithNoStartWith(),
+      testDialect.sequenceDeploymentStatements(testSequence));
+  }
+
+
+  /**
+   * Tests the SQL for returning the next value from a sequence.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testGetSqlFromSequenceReferenceWithNextValue() {
+    // Given
+    SequenceReference sequenceReference = new SequenceReference(testSequence.getName()).nextValue();
+    SelectStatement stmt = new SelectStatement(sequenceReference);
+
+    String result = testDialect.convertStatementToSQL(stmt);
+
+    assertEquals(expectedNextValForSequence(), result);
+  }
+
+
+  /**
+   * Tests the SQL for returning the current value of a sequence.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testGetSqlFromSequenceReferenceWithCurrentValue() {
+    // Given
+    SequenceReference sequenceReference = new SequenceReference(testSequence.getName()).currentValue();
+    SelectStatement stmt = new SelectStatement(sequenceReference);
+
+    String result = testDialect.convertStatementToSQL(stmt);
+
+    assertEquals(expectedCurrValForSequence(), result);
   }
 
 
@@ -656,6 +759,18 @@ public abstract class AbstractSqlDialectTest {
     compareStatements(
       expectedDropViewStatements(),
       testDialect.dropStatements(testView));
+  }
+
+
+  /**
+   * Tests SQL for dropping a view.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testDropSequenceStatements() {
+    compareStatements(
+      expectedDropSequenceStatements(),
+      testDialect.dropStatements(testSequence));
   }
 
 
@@ -3580,6 +3695,22 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * Tests that the right pad works.
+   */
+  @Test
+  public void testGetSqlForRightPad() {
+    // Given
+    Function rightPad = rightPad(new FieldReference(STRING_FIELD), new FieldLiteral(10), new FieldLiteral("j"));
+    SelectStatement rightPadStatement = new SelectStatement(rightPad).from(new TableReference(TEST_TABLE));
+
+    // When
+    String result = testDialect.convertStatementToSQL(rightPadStatement);
+
+    // Then
+    assertEquals("Right pad script must match the expected", expectedRightPad(), result);
+  }
+
+  /**
    * Tests the random function
    */
   @Test
@@ -3958,6 +4089,15 @@ public abstract class AbstractSqlDialectTest {
     testAlterTableColumn(TEST_TABLE, AlterationType.ALTER, getColumn(TEST_TABLE, DATE_FIELD), column(DATE_FIELD, DataType.DATE).nullable().primaryKey(), expectedAlterColumnMakePrimaryStatements());
   }
 
+  /**
+   *  Test renaming an indexed non-primary key column
+   */
+  @Test
+  public void testAlterColumnRenameNonPrimaryIndexedColumn() {
+    testAlterTableColumn(ALTERNATE_TABLE, AlterationType.ALTER, getColumn(ALTERNATE_TABLE, STRING_FIELD), column("blahField", DataType.STRING, 3).nullable(), expectedAlterColumnRenameNonPrimaryIndexedColumn());
+  }
+
+
 
   /**
    * Test changing a column which is part of a composite primary key.
@@ -4111,8 +4251,8 @@ public abstract class AbstractSqlDialectTest {
   @Test
   public void testRenamingTableWithLongName() {
 
-    String tableNameOver30 = "123456789012345678901234567890XXX";
-    String indexName30     = "123456789012345678901234567_PK";
+    String tableNameOver30 = "123456789012345678901234567890X";
+    String indexNameOver30     = "123456789012345678901234567890X_PK";
 
     Table longNamedTable = table(tableNameOver30)
         .columns(
@@ -4120,7 +4260,7 @@ public abstract class AbstractSqlDialectTest {
           versionColumn(),
           column("someField", DataType.STRING, 3).nullable()
        ).indexes(
-          index(indexName30).unique().columns("someField")
+          index(indexNameOver30).unique().columns("someField")
        );
 
     Table renamedTable = table("Blah")
@@ -4631,6 +4771,11 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * @return Expected SQL for {@link #testAlterColumnRenameNonPrimaryIndexedColumn()}
+   */
+  protected abstract List<String> expectedAlterColumnRenameNonPrimaryIndexedColumn();
+
+  /**
    * @return Expected SQL for {@link #testAlterPrimaryKeyColumnCompositeKey()}
    */
   protected abstract List<String> expectedAlterPrimaryKeyColumnCompositeKeyStatements();
@@ -4935,6 +5080,49 @@ public abstract class AbstractSqlDialectTest {
   }
 
 
+  @Test
+  public void testPortableFunction() {
+    AliasedField function = PortableSqlFunction.builder()
+            .withFunctionForDatabaseType(
+                    "PGSQL",
+                    "TRANSLATE",
+                    new FieldReference("field"),
+                    new FieldLiteral("1"),
+                    new FieldLiteral("A"))
+            .withFunctionForDatabaseType(
+                    "H2",
+                    "BTRIM",
+                    new FieldReference("field"),
+                    new FieldLiteral("2"),
+                    new FieldLiteral("B"))
+            .withFunctionForDatabaseType(
+                    "ORACLE",
+                    "REGEX_REPLACE",
+                    new FieldReference("field"),
+                    new FieldLiteral("3"),
+                    new FieldLiteral("C"))
+            .withFunctionForDatabaseType(
+                    "MY_SQL",
+                    "REVERSE",
+                    new FieldReference("field"),
+                    new FieldLiteral("4"),
+                    new FieldLiteral("D"))
+            .withFunctionForDatabaseType(
+                    "SQL_SERVER",
+                    "SOUNDEX",
+                    new FieldReference("field"),
+                    new FieldLiteral("5"),
+                    new FieldLiteral("E"))
+            .as("field")
+            .build();
+
+
+    UpdateStatement testStatement = UpdateStatement.update(new TableReference("Table")).set(function).build();
+
+    assertEquals(expectedPortableStatement(), testDialect.convertStatementToSQL(testStatement));
+  }
+
+
   /**
    * Tests SQL date conversion to string via databaseSafeStringtoRecordValue
    *
@@ -4975,6 +5163,15 @@ public abstract class AbstractSqlDialectTest {
     assertEquals(date2, record.getDate("Date2"));
     assertEquals(date3, record.getDate("Date3"));
     assertEquals(date4, record.getDate("Date4"));
+  }
+
+
+  /**
+   * Tests that forced serial import option is used correctly.
+   */
+  @Test
+  public void testUseForcedInsert() {
+    assertEquals("Forced serial import should be set correctly", expectedForceSerialImport(), testDialect.useForcedSerialImport());
   }
 
 
@@ -5096,6 +5293,30 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * @return The expected SQL statements for creating the test database sequence.
+   */
+  protected abstract List<String> expectedCreateSequenceStatements();
+
+
+  /**
+   * @return The expected SQL statements for creating the test database sequence.
+   */
+  protected abstract List<String> expectedCreateTemporarySequenceStatements();
+
+
+  /**
+   * @return The expected SQL statements for creating the test database sequence.
+   */
+  protected abstract List<String> expectedCreateSequenceStatementsWithNoStartWith();
+
+
+  /**
+   * @return The expected SQL statements for creating the test database sequence.
+   */
+  protected abstract List<String> expectedCreateTemporarySequenceStatementsWithNoStartWith();
+
+
+  /**
    * @return The expected SQL statements for creating the test database view over a union select.
    */
   protected List<String> expectedCreateViewOverUnionSelectStatements() {
@@ -5175,6 +5396,14 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL statements for dropping the test database view.
    */
   protected abstract List<String> expectedDropViewStatements();
+
+
+  /**
+   * @return The expected SQL statements for dropping the test database view.
+   */
+  protected List<String> expectedDropSequenceStatements() {
+    return Arrays.asList("DROP SEQUENCE IF EXISTS " + tableName(SEQUENCE_NAME));
+  }
 
 
   /**
@@ -5501,6 +5730,18 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * @return The expected SQL for requesting the next value of a sequence.
+   */
+  protected abstract String expectedNextValForSequence();
+
+
+  /**
+   * @return The expected SQL for requesting the current value of a sequence
+   */
+  protected abstract String expectedCurrValForSequence();
+
+
+  /**
    * @return The expected SQL for updating the autonumber table.
    */
   protected abstract List<String> expectedAutonumberUpdate();
@@ -5629,6 +5870,13 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * @return the expected SQL for Left pad
+   */
+  protected String expectedRightPad() {
+    return "SELECT RPAD(stringField, 10, 'j') FROM " + tableName(TEST_TABLE);
+  }
+
+  /**
    * @return The expected SQL for the MOD operator.
    */
   protected String expectedSelectModSQL() {
@@ -5691,7 +5939,7 @@ public abstract class AbstractSqlDialectTest {
    */
   protected String expectedSelectSome() {
     return "SELECT MAX(booleanField) FROM " + tableName(TEST_TABLE);
-  };
+  }
 
 
   /**
@@ -5699,7 +5947,7 @@ public abstract class AbstractSqlDialectTest {
    */
   protected String expectedSelectEvery() {
     return "SELECT MIN(booleanField) FROM " + tableName(TEST_TABLE);
-  };
+  }
 
 
   /**
@@ -5866,6 +6114,18 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * @return The expected SQL for the {@link PortableSqlFunction} function, testing that the dialect-specific function is used.
+   */
+  protected abstract String expectedPortableStatement();
+
+  /**
+   * @return The expected value for the force serial import setting.
+   */
+  protected boolean expectedForceSerialImport() {
+    return false;
+  }
+
+  /**
    * @return the testDialect
    */
   public SqlDialect getTestDialect() {
@@ -6019,6 +6279,59 @@ public abstract class AbstractSqlDialectTest {
    */
   protected boolean expectedUsesNVARCHARforStrings() {
     return false;
+  }
+
+
+  /**
+   * Checks the @link org.alfasoftware.morf.jdbc.SqlDialect.getSchemaConsistencyStatements(SchemaResource)} mechanism.
+   */
+  @Test
+  public void testSchemaConsistencyStatements() {
+    final SchemaResource schemaResource = createSchemaResourceForSchemaConsistencyStatements();
+
+    assertThat(
+      testDialect.getSchemaConsistencyStatements(schemaResource),
+      expectedSchemaConsistencyStatements());
+  }
+
+  protected SchemaResource createSchemaResourceForSchemaConsistencyStatements() {
+    final SchemaResource schemaResource = mock(SchemaResource.class);
+    when(schemaResource.getAdditionalMetadata()).thenReturn(Optional.empty());
+    return schemaResource;
+  }
+
+  protected org.hamcrest.Matcher<java.lang.Iterable<? extends String>> expectedSchemaConsistencyStatements() { //NOSONAR // Remove usage of generic wildcard type // The generic wildcard type comes from hamcrest and is therefore unavoidable
+    return emptyIterable();
+  }
+
+
+
+  /**
+   * Checks the @link org.alfasoftware.morf.jdbc.SqlDialect.getSchemaConsistencyStatements(SchemaResource)} mechanism fallback.
+   */
+  @Test
+  public void testSchemaConsistencyStatementsOnNoDatabaseMetaDataProvider() {
+    final SchemaResource schemaResource = mock(SchemaResource.class);
+    when(schemaResource.getAdditionalMetadata()).thenReturn(Optional.empty());
+
+    assertThat(
+      testDialect.getSchemaConsistencyStatements(schemaResource),
+      empty());
+  }
+
+
+
+  /**
+   * Checks the @link org.alfasoftware.morf.jdbc.SqlDialect.getSchemaConsistencyStatements(SchemaResource)} mechanism fallback.
+   */
+  @Test
+  public void testSchemaConsistencyStatementsOnWrongDatabaseMetaDataProvider() {
+    final SchemaResource schemaResource = mock(SchemaResource.class);
+    when(schemaResource.getAdditionalMetadata()).thenReturn(Optional.of(mock(AdditionalMetadata.class)));
+
+    assertThat(
+      testDialect.getSchemaConsistencyStatements(schemaResource),
+      empty());
   }
 
 

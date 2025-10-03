@@ -21,6 +21,7 @@ import java.util.Map;
 
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.AbstractSelectStatement;
 import org.alfasoftware.morf.sql.DeleteStatement;
@@ -116,6 +117,7 @@ class HumanReadableStatementHelper {
       .put(FunctionType.FLOOR, new FunctionTypeMetaData("floor(", ")", "", false, false))
       .put(FunctionType.IS_NULL, new FunctionTypeMetaData("", " if null", " or ", true, false))
       .put(FunctionType.LEFT_PAD, new FunctionTypeMetaData("leftPad(", ")", ", ", false, false))
+      .put(FunctionType.RIGHT_PAD, new FunctionTypeMetaData("rightPad(", ")", ", ", false, false))
       .put(FunctionType.LEFT_TRIM, new FunctionTypeMetaData("left trimmed ", "", "", false, false))
       .put(FunctionType.LENGTH, new FunctionTypeMetaData("length of ", "", "", false, false))
       .put(FunctionType.BLOB_LENGTH, new FunctionTypeMetaData("length of blob ", "", "", false, false))
@@ -1152,6 +1154,28 @@ class HumanReadableStatementHelper {
     } else {
       return String.format("%n    - Set %s to %s", generateFieldSymbolString(field), generateFieldValueString(field));
     }
+  }
+
+
+  /**
+   * Generates a human-readable "Add Sequence" string.
+   *
+   * @param sequence the new {@link Sequence}
+   * @return a string containing the human-readable version of the action
+   */
+  public static String generateAddSequenceString(final Sequence sequence) {
+    return String.format("Create sequence %s starting with %d", sequence.getName(), sequence.getStartsWith());
+  }
+
+
+  /**
+   * Generates a human-readable "Remove Sequence" string.
+   *
+   * @param sequence the name of the sequence which will be removed
+   * @return a string containing the human-readable version of the action
+   */
+  public static String generateRemoveSequenceString(final Sequence sequence) {
+    return String.format("Remove sequence %s", sequence.getName());
   }
 
 }

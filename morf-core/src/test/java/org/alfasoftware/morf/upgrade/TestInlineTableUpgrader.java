@@ -21,21 +21,27 @@ package org.alfasoftware.morf.upgrade;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.mockito.ArgumentMatchers.nullable;
-import static org.mockito.BDDMockito.given;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
@@ -46,6 +52,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 /**
  *
@@ -58,6 +67,7 @@ public class TestInlineTableUpgrader {
   private Schema              schema;
   private SqlDialect          sqlDialect;
   private SqlStatementWriter  sqlStatementWriter;
+  private UpgradeConfigAndContext upgradeConfigAndContext;
 
   /**
    * Setup method run before each test.
@@ -67,7 +77,10 @@ public class TestInlineTableUpgrader {
     schema = mock(Schema.class);
     sqlDialect = mock(SqlDialect.class);
     sqlStatementWriter = mock(SqlStatementWriter.class);
-    upgrader = new InlineTableUpgrader(schema, sqlDialect, sqlStatementWriter, SqlDialect.IdTable.withDeterministicName(ID_TABLE_NAME));
+    upgradeConfigAndContext = new UpgradeConfigAndContext();
+    upgradeConfigAndContext.setExclusiveExecutionSteps(Set.of());
+
+    upgrader = new InlineTableUpgrader(schema, upgradeConfigAndContext, sqlDialect, sqlStatementWriter, SqlDialect.IdTable.withDeterministicName(ID_TABLE_NAME));
   }
 
 
@@ -146,6 +159,11 @@ public class TestInlineTableUpgrader {
     // given
     AddIndex addIndex = mock(AddIndex.class);
     given(addIndex.apply(schema)).willReturn(schema);
+    when(addIndex.getTableName()).thenReturn(ID_TABLE_NAME);
+
+    Table newTable = mock(Table.class);
+    when(newTable.getName()).thenReturn(ID_TABLE_NAME);
+    when(schema.getTable(ID_TABLE_NAME)).thenReturn(newTable);
 
     // when
     upgrader.visit(addIndex);
@@ -154,6 +172,66 @@ public class TestInlineTableUpgrader {
     verify(addIndex).apply(schema);
     verify(sqlDialect).addIndexStatements(nullable(Table.class), nullable(Index.class));
     verify(sqlStatementWriter).writeSql(anyCollection());
+  }
+
+
+  /**
+   * Test method for {@link org.alfasoftware.morf.upgrade.InlineTableUpgrader#visit(org.alfasoftware.morf.upgrade.AddIndex)}.
+   */
+  @Test
+  public void testVisitAddIndexWithPRFIndex() {
+    // given
+    Index newIndex = mock(Index.class);
+    when(newIndex.getName()).thenReturn(ID_TABLE_NAME + "_1");
+    when(newIndex.columnNames()).thenReturn(Collections.singletonList("column_1"));
+
+    AddIndex addIndex = mock(AddIndex.class);
+    given(addIndex.apply(schema)).willReturn(schema);
+    when(addIndex.getTableName()).thenReturn(ID_TABLE_NAME);
+    when(addIndex.getNewIndex()).thenReturn(newIndex);
+
+    Index indexPrf = mock(Index.class);
+    when(indexPrf.getName()).thenReturn(ID_TABLE_NAME + "_PRF1");
+    when(indexPrf.columnNames()).thenReturn(List.of("column_1"));
+    Index indexPrf1 = mock(Index.class);
+    when(indexPrf1.getName()).thenReturn(ID_TABLE_NAME + "_PRF2");
+    when(indexPrf1.columnNames()).thenReturn(List.of("column_2"));
+
+    Map<String, List<Index>> ignoredIndexes = Maps.newHashMap();
+    ignoredIndexes.put(ID_TABLE_NAME.toUpperCase(), Lists.newArrayList(indexPrf, indexPrf1));
+    upgradeConfigAndContext.setIgnoredIndexes(ignoredIndexes);
+
+    Index newIndex1 = mock(Index.class);
+    when(newIndex1.getName()).thenReturn(ID_TABLE_NAME + "_2");
+    when(newIndex1.columnNames()).thenReturn(Collections.singletonList("column_2"));
+    AddIndex addIndex1 = mock(AddIndex.class);
+    given(addIndex1.apply(schema)).willReturn(schema);
+    when(addIndex1.getTableName()).thenReturn(ID_TABLE_NAME);
+    when(addIndex1.getNewIndex()).thenReturn(newIndex1);
+
+    Index newIndex2 = mock(Index.class);
+    when(newIndex2.getName()).thenReturn(ID_TABLE_NAME + "_3");
+    when(newIndex2.columnNames()).thenReturn(Collections.singletonList("column_3"));
+    AddIndex addIndex2 = mock(AddIndex.class);
+    given(addIndex2.apply(schema)).willReturn(schema);
+    when(addIndex2.getTableName()).thenReturn(ID_TABLE_NAME);
+    when(addIndex2.getNewIndex()).thenReturn(newIndex2);
+
+    Table newTable = mock(Table.class);
+    when(newTable.getName()).thenReturn(ID_TABLE_NAME);
+    when(schema.getTable(ID_TABLE_NAME)).thenReturn(newTable);
+
+    // when
+    upgrader.visit(addIndex);
+    upgrader.visit(addIndex1);
+    upgrader.visit(addIndex2);
+
+    // then
+    verify(addIndex).apply(schema);
+    verify(sqlDialect).renameIndexStatements(nullable(Table.class), eq(ID_TABLE_NAME + "_PRF1"), eq(ID_TABLE_NAME + "_1"));
+    verify(sqlDialect).renameIndexStatements(nullable(Table.class), eq(ID_TABLE_NAME + "_PRF2"), eq(ID_TABLE_NAME + "_2"));
+    verify(sqlDialect).addIndexStatements(nullable(Table.class), nullable(Index.class));
+    verify(sqlStatementWriter, times(3)).writeSql(anyCollection());
   }
 
 
@@ -395,4 +473,44 @@ public class TestInlineTableUpgrader {
     verify(sqlDialect).getSqlForAnalyseTable(nullable(Table.class));
     verify(sqlStatementWriter).writeSql(anyCollection());
   }
+
+
+  /**
+   * Test method for
+   * {@link org.alfasoftware.morf.upgrade.InlineTableUpgrader#visit(org.alfasoftware.morf.upgrade.AddSequence)}.
+   */
+  @Test
+  public void testVisitAddSequence() {
+    // given
+    AddSequence addSequence = mock(AddSequence.class);
+    given(addSequence.apply(schema)).willReturn(schema);
+
+    // when
+    upgrader.visit(addSequence);
+
+    // then
+    verify(addSequence).apply(schema);
+    verify(sqlDialect, atLeastOnce()).sequenceDeploymentStatements(nullable(Sequence.class));
+    verify(sqlStatementWriter).writeSql(anyCollection()); // deploying the specified table and indexes
+  }
+
+
+  /**
+   * Test method for {@link org.alfasoftware.morf.upgrade.InlineTableUpgrader#visit(org.alfasoftware.morf.upgrade.RemoveSequence)}.
+   */
+  @Test
+  public void testVisitRemoveSequence() {
+    // given
+    RemoveSequence removeSequence = mock(RemoveSequence.class);
+    given(removeSequence.apply(schema)).willReturn(schema);
+
+    // when
+    upgrader.visit(removeSequence);
+
+    // then
+    verify(removeSequence).apply(schema);
+    verify(sqlDialect).dropStatements(nullable(Sequence.class));
+    verify(sqlStatementWriter).writeSql(anyCollection());
+  }
+
 }

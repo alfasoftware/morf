@@ -45,7 +45,7 @@ public class TestNamedParameterPreparedStatement {
   @Test
   public void testParseWithParameterspParenthesesAndSingleQuotes() {
     // Given a SQL query with many parameters (one in parentheses and another in single quotes)
-    String sql = "SELECT :fee,:fi, :fo(:fum), ':eek' FROM :fum WHERE :fum AND :fo";
+    String sql = "SELECT :fee,:fi, :fo(:fum), ':eek' FROM :fum WHERE :fum AND :fo AND 1::TEXT = 1 :: NUMERIC AND : spaced AND :1";
 
     // When we parse the SQL query
     ParseResult parseResult = NamedParameterPreparedStatement.parseSql(sql, mock(SqlDialect.class));
@@ -53,25 +53,36 @@ public class TestNamedParameterPreparedStatement {
     // Then the parsed SQL should retain the parameter in the single quotes as is
     // but replace the parameter in the parentheses with a question mark
     assertEquals("Parsed SQL",
-        "SELECT ?,?, ?(?), ':eek' FROM ? WHERE ? AND ?",
+        "SELECT ?,?, ?(?), ':eek' FROM ? WHERE ? AND ? AND 1:? = 1 :: NUMERIC AND : spaced AND :1",
         parseResult.getParsedSql()
     );
 
     // And it should correctly identify the parameters
+    assertTrue(parseResult.getIndexesForParameter("fee").size() == 1);
     assertTrue(parseResult.getIndexesForParameter("fee").contains(1));
+    assertTrue(parseResult.getIndexesForParameter("fi").size() == 1);
     assertTrue(parseResult.getIndexesForParameter("fi").contains(2));
 
     List<Integer> foIndexes = parseResult.getIndexesForParameter("fo");
+    assertTrue(foIndexes.size() == 2);
     assertTrue(foIndexes.contains(3));
     assertTrue(foIndexes.contains(7));
 
     List<Integer> fumIndexes = parseResult.getIndexesForParameter("fum");
+    assertTrue(fumIndexes.size() == 3);
     assertTrue(fumIndexes.contains(4));
     assertTrue(fumIndexes.contains(5));
     assertTrue(fumIndexes.contains(6));
 
-    // And it should correctly identify that the 'eek' parameter is not found
+    List<Integer> textIndexes = parseResult.getIndexesForParameter("TEXT");
+    assertTrue(textIndexes.size() == 1);
+    assertTrue(textIndexes.contains(8));
+
+    // And it should correctly identify that the 'eek' or NUMERIC or spaced is not treated as parameters
     assertTrue(parseResult.getIndexesForParameter("eek").isEmpty());
+    assertTrue(parseResult.getIndexesForParameter("NUMERIC").isEmpty());
+    assertTrue(parseResult.getIndexesForParameter("spaced").isEmpty());
+    assertTrue(parseResult.getIndexesForParameter("1").isEmpty());
   }
 
 

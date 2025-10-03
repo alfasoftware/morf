@@ -18,6 +18,7 @@ package org.alfasoftware.morf.dataset;
 import java.util.Collection;
 
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 
@@ -120,5 +121,41 @@ public class SchemaAdapter implements Schema {
   @Override
   public Collection<View> views() {
     return delegate.views();
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#sequenceExists(String)
+   */
+  @Override
+  public boolean sequenceExists(String name) {
+    return delegate.sequenceExists(name);
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#getSequence(String)
+   */
+  @Override
+  public Sequence getSequence(String name) {
+    return delegate.getSequence(name);
+  }
+
+
+  /**
+   * @see Schema#sequences()
+   */
+  @Override
+  public Collection<String> sequenceNames() {
+    return delegate.sequenceNames();
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#views()
+   */
+  @Override
+  public Collection<Sequence> sequences() {
+    return delegate.sequences();
   }
 }

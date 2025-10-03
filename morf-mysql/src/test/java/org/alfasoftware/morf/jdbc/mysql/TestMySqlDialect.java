@@ -29,6 +29,7 @@ import static org.mockito.Mockito.when;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -122,6 +123,53 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
           "CREATE TEMPORARY TABLE `TempAlternate` (`id` BIGINT NOT NULL, `version` INTEGER DEFAULT 0, `stringField` VARCHAR(3), CONSTRAINT `TempAlternate_PK` PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin",
           "ALTER TABLE `TempAlternate` ADD INDEX `TempAlternate_1` (`stringField`)",
           "CREATE TEMPORARY TABLE `TempNonNull` (`id` BIGINT NOT NULL, `version` INTEGER DEFAULT 0, `stringField` VARCHAR(3) NOT NULL, `intField` DECIMAL(8,0) NOT NULL, `booleanField` TINYINT(1) NOT NULL, `dateField` DATE NOT NULL, `blobField` LONGBLOB NOT NULL, CONSTRAINT `TempNonNull_PK` PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedCreateSequenceStatements()
+   */
+  @Override
+  protected List<String> expectedCreateSequenceStatements() {
+    return new ArrayList<>();
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedCreateTemporarySequenceStatements()
+   */
+  @Override
+  protected List<String> expectedCreateTemporarySequenceStatements() {
+    return new ArrayList<>();
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateSequenceStatementsWithNoStartWith()
+   * @return
+   */
+  @Override
+  protected List<String> expectedCreateSequenceStatementsWithNoStartWith() {
+    return new ArrayList<>();
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateTemporarySequenceStatementsWithNoStartWith()
+   * @return
+   */
+  @Override
+  protected List<String> expectedCreateTemporarySequenceStatementsWithNoStartWith() {
+    return new ArrayList<>();
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedDropSequenceStatements()
+   */
+  @Override
+  protected List<String> expectedDropSequenceStatements() {
+    return new ArrayList<>();
   }
 
 
@@ -817,6 +865,14 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
       );
   }
 
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterColumnRenameNonPrimaryIndexedColumn()
+   */
+  @Override
+  protected List<String> expectedAlterColumnRenameNonPrimaryIndexedColumn() {
+    return Arrays.asList("ALTER TABLE `Alternate` CHANGE `stringField` `blahField` VARCHAR(3)");
+  }
+
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterColumnRenamingAndChangingNullability()
@@ -1106,7 +1162,7 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> getRenamingTableWithLongNameStatements() {
-    return ImmutableList.of("RENAME TABLE 123456789012345678901234567890XXX TO Blah");
+    return ImmutableList.of("RENAME TABLE 123456789012345678901234567890X TO Blah");
   }
 
 
@@ -1333,5 +1389,29 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedSelectWithExceptAndDbLinkLatter() {
     return null;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedNextValForSequence()
+   */
+  @Override
+  protected String expectedNextValForSequence() {
+    return "SELECT NULL FROM dual";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedCurrValForSequence()
+   */
+  @Override
+  protected String expectedCurrValForSequence() {
+    return "SELECT NULL FROM dual";
+  }
+
+
+  @Override
+  protected String expectedPortableStatement() {
+    return "UPDATE Table SET field = REVERSE(field, '4', 'D')";
   }
 }

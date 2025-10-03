@@ -31,8 +31,13 @@ import org.alfasoftware.morf.dataset.DataSetConsumer.CloseState;
  * work management and concurrency.
  * </p>
  *
+ * @deprecated
+ * This class is deprecated due to incorrect reuse of the same connection between threads,
+ * use {@link ConcurrentDataSetConnector} instead
+ *
  * @author Copyright (c) Alfa Financial Software 2011
  */
+@Deprecated
 public class DataSetConnectorMultiThreaded {
 
   /**

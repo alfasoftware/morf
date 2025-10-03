@@ -26,6 +26,8 @@ import static org.junit.Assert.assertTrue;
 import java.util.List;
 
 import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
@@ -739,6 +741,7 @@ public class TestHumanReadableStatementHelper {
     final Function lowerCase = Function.lowerCase(new FieldReference("foo"));
     final Function upperCase = Function.upperCase(new FieldReference("foo"));
     final Function leftPad = Function.leftPad(new FieldReference("foo"), new FieldLiteral(32), new FieldLiteral(' '));
+    final Function rightPad = Function.rightPad(new FieldReference("foo"), new FieldLiteral(32), new FieldLiteral(' '));
     final Function now = Function.now();
     final Function lastDayOfMonth = Function.lastDayOfMonth(new FieldReference("foo"));
 
@@ -772,6 +775,7 @@ public class TestHumanReadableStatementHelper {
     assertEquals("LOWER_CASE", String.format("%n    - Set bar to lower case foo"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(lowerCase.as("bar")));
     assertEquals("UPPER_CASE", String.format("%n    - Set bar to upper case foo"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(upperCase.as("bar")));
     assertEquals("LEFT_PAD", String.format("%n    - Set bar to leftPad(foo, 32, ' ')"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(leftPad.as("bar")));
+    assertEquals("RIGHT_PAD", String.format("%n    - Set bar to rightPad(foo, 32, ' ')"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(rightPad.as("bar")));
     assertEquals("NOW", String.format("%n    - Set bar to now"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(now.as("bar")));
     assertEquals("LAST_DAY_OF_MONTH", String.format("%n    - Set bar to last day of month foo"), HumanReadableStatementHelper.generateAliasedFieldAssignmentString(lastDayOfMonth.as("bar")));
   }
@@ -801,5 +805,29 @@ public class TestHumanReadableStatementHelper {
     assertEquals("Incorrect string generated",
       String.format("%n    - Set bar to (foo + 42)"),
       HumanReadableStatementHelper.generateAliasedFieldAssignmentString(bracketExpression));
+  }
+
+
+  /**
+   * Tests the generation of "Add Sequence" text.
+   */
+  @Test
+  public void testAddSequenceGeneration() {
+    final Sequence sequence = SchemaUtils.sequence("Test");
+
+    assertEquals("Incorrect string generated", "Create sequence " + sequence.getName() + " starting with " + sequence.getStartsWith(),
+      HumanReadableStatementHelper.generateAddSequenceString(sequence));
+  }
+
+
+  /**
+   * Tests the generation of "Remove Sequence" text.
+   */
+  @Test
+  public void testRemoveSequenceGeneration() {
+    final Sequence sequence = SchemaUtils.sequence("Test");
+
+    assertEquals("Incorrect string generated", "Remove sequence " + sequence.getName(),
+      HumanReadableStatementHelper.generateRemoveSequenceString(sequence));
   }
 }

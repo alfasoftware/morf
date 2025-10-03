@@ -1,5 +1,6 @@
 package org.alfasoftware.morf.jdbc.postgresql;
 
+import static com.google.common.base.Predicates.instanceOf;
 import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
 import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
 import static org.alfasoftware.morf.sql.SelectStatement.select;
@@ -12,8 +13,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.StringJoiner;
 
+import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -21,7 +24,9 @@ import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.DataValueLookup;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.DeleteStatement;
@@ -43,11 +48,14 @@ import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.FunctionType;
+import org.alfasoftware.morf.sql.element.PortableSqlFunction;
+import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Joiner;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -99,6 +107,16 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
+  protected String schemaNamePrefix(Sequence sequence) {
+    if (sequence.isTemporary()) {
+      return "";
+    }
+    return schemaNamePrefix();
+  }
+
+
+
+  @Override
   protected String getSqlForRowNumber(){
     return "ROW_NUMBER() OVER()";
   }
@@ -117,6 +135,11 @@ class PostgreSQLDialect extends SqlDialect {
   }
 
 
+  /**
+   * https://www.postgresql.org/docs/current/datatype-numeric.html
+   *  - The types DECIMAL and NUMERIC are equivalent.
+   *  - BIG_INTEGER is therefore comparable to DECIMAL
+   */
   @Override
   protected String getDataTypeRepresentation(DataType dataType, int width, int scale) {
     switch (dataType) {
@@ -176,6 +199,23 @@ class PostgreSQLDialect extends SqlDialect {
         .addAll(createTableStatement(table))
         .addAll(createCommentStatements(table))
         .build();
+  }
+
+
+  /**
+   * @see SqlDialect#internalSequenceDeploymentStatements(Sequence)
+   */
+  @Override
+  protected Collection<String> internalSequenceDeploymentStatements(Sequence sequence) {
+    return ImmutableList.<String>builder()
+        .add(createSequenceStatement(sequence))
+        .build();
+  }
+
+
+  @Override
+  public Collection<String> addTableFromStatements(Table table, SelectStatement selectStatement) {
+    return internalAddTableFromStatements(table, selectStatement, true);
   }
 
 
@@ -239,6 +279,35 @@ class PostgreSQLDialect extends SqlDialect {
     statements.addAll(postStatements);
 
     return statements.build();
+  }
+
+
+  /**
+   * Private method to form the SQL statement required to create a sequence in the schema.
+   *
+   * @param sequence The {@link Sequence} for which a create sequence SQL statement should be created.
+   * @return A create sequence SQL statement
+   */
+  private String createSequenceStatement(Sequence sequence) {
+
+    StringBuilder createSequenceStatement = new StringBuilder();
+    createSequenceStatement.append("CREATE ");
+
+    if (sequence.isTemporary()) {
+      createSequenceStatement.append("TEMPORARY ");
+    }
+
+    createSequenceStatement.append("SEQUENCE ")
+        .append(schemaNamePrefix(sequence))
+        .append(sequence.getName());
+
+    if (sequence.getStartsWith() != null) {
+      createSequenceStatement.append(" START WITH ");
+      createSequenceStatement.append(sequence.getStartsWith());
+    }
+
+    return createSequenceStatement.toString();
+
   }
 
 
@@ -595,6 +664,30 @@ class PostgreSQLDialect extends SqlDialect {
   }
 
 
+  /**
+   * @see SqlDialect#getSqlFrom(SequenceReference)
+   */
+  @Override
+  protected String getSqlFrom(SequenceReference sequenceReference) {
+    StringBuilder result = new StringBuilder();
+
+    switch (sequenceReference.getTypeOfOperation()) {
+      case NEXT_VALUE:
+        result.append("nextval('");
+        break;
+      case CURRENT_VALUE:
+        result.append("currval('");
+        break;
+    }
+
+    result.append(sequenceReference.getName());
+
+    result.append("')");
+
+    return result.toString();
+
+  }
+
   @Override
   protected String getSqlFrom(MergeStatement.InputField field) {
     return "EXCLUDED." + field.getName();
@@ -847,6 +940,12 @@ class PostgreSQLDialect extends SqlDialect {
   }
 
 
+  @Override
+  protected String getSqlFrom(PortableSqlFunction function) {
+    return super.getSqlForPortableFunction(function.getFunctionForDatabaseType(PostgreSQL.IDENTIFIER));
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#tableNameWithSchemaName(org.alfasoftware.morf.sql.element.TableReference)
    */
@@ -857,5 +956,63 @@ class PostgreSQLDialect extends SqlDialect {
     } else {
       return tableRef.getDblink() + "." + tableRef.getName();
     }
+  }
+
+  //
+  // ====== Auto-healing below ======
+  //
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSchemaConsistencyStatements(org.alfasoftware.morf.metadata.SchemaResource)
+   */
+  @Override
+  public List<String> getSchemaConsistencyStatements(SchemaResource schemaResource) {
+    return getPostgreSQLMetaDataProvider(schemaResource)
+            .map(this::getSchemaConsistencyStatements)
+            .orElseGet(() -> super.getSchemaConsistencyStatements(schemaResource));
+  }
+
+
+  @Override
+  public boolean useForcedSerialImport() {
+    return false;
+  }
+
+
+  private List<String> getSchemaConsistencyStatements(PostgreSQLMetaDataProvider metaDataProvider) {
+    return FluentIterable.from(metaDataProvider.tables())
+            .transformAndConcat(table -> healTable(metaDataProvider, table))
+            .toList(); // turn all the concatenated fluent iterables into a firm immutable list
+  }
+
+
+  private Iterable<String> healTable(PostgreSQLMetaDataProvider metaDataProvider, Table table) {
+    Iterable<String> statements = healIndexes(metaDataProvider, table);
+
+    if (statements.iterator().hasNext()) {
+      List<String> intro = ImmutableList.of(convertCommentToSQL("Auto-Healing table: " + table.getName()));
+      return Iterables.concat(intro, statements);
+    }
+    return ImmutableList.of();
+  }
+
+
+  private Iterable<String> healIndexes(PostgreSQLMetaDataProvider metaDataProvider, Table table) {
+    // Postgres 15 can deal with duplicate NULLs in unique indexes on it's own
+    if (Integer.parseInt(metaDataProvider.getDatabaseInformation().get(DatabaseMetaDataProvider.DATABASE_MAJOR_VERSION)) >= 15) {
+      // TODO
+      // See https://www.postgresql.org/docs/current/sql-createindex.html
+      // Once we support Postgres 15, we should introduce CREATE INDEX ... NULLS NOT DISTINCT
+      return ImmutableList.of();
+    }
+
+    return ImmutableList.of();
+  }
+
+
+  private Optional<PostgreSQLMetaDataProvider> getPostgreSQLMetaDataProvider(SchemaResource schemaResource) {
+    return schemaResource.getAdditionalMetadata()
+            .filter(instanceOf(PostgreSQLMetaDataProvider.class))
+            .map(PostgreSQLMetaDataProvider.class::cast);
   }
 }

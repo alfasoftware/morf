@@ -100,10 +100,48 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedCreateTableStatementsWithLongTableName() {
     return Arrays.asList(
-      "CREATE TABLE TESTSCHEMA.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS, [intField] NUMERIC(8,0), [floatField] NUMERIC(13,2) NOT NULL, [dateField] DATE, [booleanField] BIT, [charField] NVARCHAR(1) COLLATE SQL_Latin1_General_CP1_CS_AS, CONSTRAINT [tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation_PK] PRIMARY KEY ([id]))",
-      "CREATE UNIQUE NONCLUSTERED INDEX Test_NK ON TESTSCHEMA.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation ([stringField])",
-      "CREATE INDEX Test_1 ON TESTSCHEMA.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation ([intField], [floatField])"
+      "CREATE TABLE TESTSCHEMA." + TABLE_WITH_VERY_LONG_NAME + " ([id] BIGINT NOT NULL, [version] INTEGER CONSTRAINT " + TABLE_WITH_VERY_LONG_NAME + "_version_DF DEFAULT 0, [stringField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS, [intField] NUMERIC(8,0), [floatField] NUMERIC(13,2) NOT NULL, [dateField] DATE, [booleanField] BIT, [charField] NVARCHAR(1) COLLATE SQL_Latin1_General_CP1_CS_AS, CONSTRAINT [" + TABLE_WITH_VERY_LONG_NAME + "_PK] PRIMARY KEY ([id]))",
+      "CREATE UNIQUE NONCLUSTERED INDEX Test_NK ON TESTSCHEMA." + TABLE_WITH_VERY_LONG_NAME + " ([stringField])",
+      "CREATE INDEX Test_1 ON TESTSCHEMA." + TABLE_WITH_VERY_LONG_NAME + " ([intField], [floatField])"
     );
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateSequenceStatements()
+   */
+  @Override
+  protected List<String> expectedCreateSequenceStatements() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence") + " START WITH 1");
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateTemporarySequenceStatements()
+   */
+  @Override
+  protected List<String> expectedCreateTemporarySequenceStatements() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence") + " START WITH 1");
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateSequenceStatementsWithNoStartWith()
+   * @return
+   */
+  @Override
+  protected List<String> expectedCreateSequenceStatementsWithNoStartWith() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence"));
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateTemporarySequenceStatementsWithNoStartWith()
+   * @return
+   */
+  @Override
+  protected List<String> expectedCreateTemporarySequenceStatementsWithNoStartWith() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence"));
   }
 
 
@@ -800,6 +838,18 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterColumnRenameNonPrimaryIndexedColumn()
+   */
+  @Override
+  protected List<String> expectedAlterColumnRenameNonPrimaryIndexedColumn() {
+    return Arrays.asList("DROP INDEX Alternate_1 ON TESTSCHEMA.Alternate",
+                         "EXEC sp_rename 'TESTSCHEMA.Alternate.stringField', 'blahField', 'COLUMN'",
+                         "ALTER TABLE TESTSCHEMA.Alternate ALTER COLUMN blahField NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS",
+                         "CREATE INDEX Alternate_1 ON TESTSCHEMA.Alternate ([blahField])");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterRemoveColumnFromCompositeKeyStatements()
    */
   @Override
@@ -807,7 +857,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
     return Arrays.asList(
       "ALTER TABLE TESTSCHEMA.CompositePrimaryKey DROP CONSTRAINT [CompositePrimaryKey_PK]",
       "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ALTER COLUMN secondPrimaryKey NVARCHAR(5) COLLATE SQL_Latin1_General_CP1_CS_AS",
-        "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ADD CONSTRAINT [CompositePrimaryKey_PK] PRIMARY KEY ([id])");
+      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ADD CONSTRAINT [CompositePrimaryKey_PK] PRIMARY KEY ([id])");
   }
 
 
@@ -1083,7 +1133,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
         + " ON (foo.id = xmergesource.id)"
         + " WHEN MATCHED THEN UPDATE SET bar = xmergesource.bar"
         + " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
-  };
+  }
 
 
   /**
@@ -1167,10 +1217,11 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected List<String> getRenamingTableWithLongNameStatements() {
+    String tableNameOver128 = "123456789012345678901234567890X";
     return ImmutableList.of(
-      "IF EXISTS (SELECT 1 FROM sys.objects WHERE OBJECT_ID = OBJECT_ID(N'123456789012345678901234567890XXX_version_DF') AND type = (N'D')) exec sp_rename N'123456789012345678901234567890XXX_version_DF', N'Blah_version_DF'",
-      "sp_rename N'123456789012345678901234567890XXX.123456789012345678901234567890XXX_PK', N'Blah_PK', N'INDEX'",
-      "sp_rename N'123456789012345678901234567890XXX', N'Blah'");
+      "IF EXISTS (SELECT 1 FROM sys.objects WHERE OBJECT_ID = OBJECT_ID(N'" + tableNameOver128 + "_version_DF') AND type = (N'D')) exec sp_rename N'" + tableNameOver128 + "_version_DF', N'Blah_version_DF'",
+      "sp_rename N'" + tableNameOver128 + "." + tableNameOver128 + "_PK', N'Blah_PK', N'INDEX'",
+      "sp_rename N'" + tableNameOver128 + "', N'Blah'");
   }
 
 
@@ -1207,6 +1258,15 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedLeftPad() {
     return "SELECT CASE WHEN LEN(stringField) > 10 THEN LEFT(stringField, 10) ELSE RIGHT(REPLICATE('j', 10) + stringField, 10) END FROM TESTSCHEMA.Test";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRightPad()
+   */
+  @Override
+  protected String expectedRightPad() {
+    return "SELECT CASE WHEN LEN(stringField) > 10 THEN LEFT(stringField, 10) ELSE RIGHT(stringField + REPLICATE('j', 10), 10) END FROM TESTSCHEMA.Test";
   }
 
 
@@ -1268,6 +1328,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   }
 
 
+  @Override
   protected List<String> expectedReplaceTableFromStatements() {
     return ImmutableList.of(
         "CREATE TABLE TESTSCHEMA.tmp_SomeTable ([someField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [otherField] NUMERIC(3,0) NOT NULL, [thirdField] NUMERIC(5,0) NOT NULL, CONSTRAINT [tmp_SomeTable_PK] PRIMARY KEY ([someField]))",
@@ -1281,6 +1342,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   }
 
 
+  @Override
   protected List<String> expectedReplaceTableWithAutonumber() {
     return ImmutableList.of(
         "CREATE TABLE TESTSCHEMA.tmp_SomeTable ([someField] NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [otherField] NUMERIC(3,0) NOT NULL IDENTITY(1, 1), [thirdField] NUMERIC(5,0) NOT NULL, CONSTRAINT [tmp_SomeTable_PK] PRIMARY KEY ([someField]))",
@@ -1353,7 +1415,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedDeleteWithLimitAndWhere(String value) {
     return "DELETE TOP (1000) FROM " + tableName(TEST_TABLE) + " WHERE (Test.stringField = " + stringLiteralPrefix() + value + ")";
-  };
+  }
 
 
   /**
@@ -1362,7 +1424,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedDeleteWithLimitAndComplexWhere(String value1, String value2) {
     return "DELETE TOP (1000) FROM " + tableName(TEST_TABLE) + " WHERE ((Test.stringField = " + stringLiteralPrefix() + value1 + ") OR (Test.stringField = " + stringLiteralPrefix() + value2 + "))";
-  };
+  }
 
 
   /**
@@ -1380,7 +1442,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedSelectWithExcept() {
     return null;
-  };
+  }
 
 
   /**
@@ -1407,5 +1469,29 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedSelectWithExceptAndDbLinkLatter() {
     return null;
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedNextValForSequence()
+   */
+  @Override
+  protected String expectedNextValForSequence() {
+    return "SELECT NEXT VALUE FOR TestSequence";
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCurrValForSequence()
+   */
+  @Override
+  protected String expectedCurrValForSequence() {
+    return "SELECT (SELECT current_value FROM sys.sequences WHERE name = 'TestSequence')";
+  }
+
+
+  @Override
+  protected String expectedPortableStatement() {
+    return "UPDATE TESTSCHEMA.Table SET field = SOUNDEX(field, '5', 'E')";
   }
 }

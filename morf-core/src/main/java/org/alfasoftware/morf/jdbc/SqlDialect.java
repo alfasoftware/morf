@@ -17,6 +17,7 @@ package org.alfasoftware.morf.jdbc;
 
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
+import static org.alfasoftware.morf.util.SchemaValidatorUtil.validateSchemaName;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -47,7 +48,9 @@ import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.DataValueLookup;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.AbstractSelectStatement;
@@ -86,11 +89,14 @@ import org.alfasoftware.morf.sql.element.MathsField;
 import org.alfasoftware.morf.sql.element.MathsOperator;
 import org.alfasoftware.morf.sql.element.NullFieldLiteral;
 import org.alfasoftware.morf.sql.element.Operator;
+import org.alfasoftware.morf.sql.element.PortableSqlFunction;
+import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.sql.element.WhenCondition;
 import org.alfasoftware.morf.sql.element.WindowFunction;
 import org.alfasoftware.morf.upgrade.ChangeColumn;
+import org.alfasoftware.morf.upgrade.SchemaAutoHealer;
 import org.alfasoftware.morf.util.ObjectTreeTraverser;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -155,6 +161,8 @@ public abstract class SqlDialect {
    */
   protected static final String MERGE_SOURCE_ALIAS = "xmergesource";
 
+
+
   /**
    * Database schema name.
    */
@@ -174,7 +182,7 @@ public abstract class SqlDialect {
    */
   public SqlDialect(String schemaName) {
     super();
-    this.schemaName = schemaName;
+    this.schemaName = validateSchemaName(schemaName);
   }
 
 
@@ -204,6 +212,15 @@ public abstract class SqlDialect {
    * @return The statements required to deploy the table.
    */
   protected abstract Collection<String> internalTableDeploymentStatements(Table table);
+
+
+  /**
+   * Creates the SQL to deploy a database sequence.
+   *
+   * @param sequence The meta data for the sequence to deploy.
+   * @return The statements required to deploy the table.
+   */
+  protected abstract Collection<String> internalSequenceDeploymentStatements(Sequence sequence);
 
 
   /**
@@ -802,6 +819,15 @@ public abstract class SqlDialect {
 
 
   /**
+   * @param sequence The sequence for which the schema name will be retrieved
+   * @return Base implementation calls {@link #schemaNamePrefix()}.
+   */
+  protected String schemaNamePrefix(@SuppressWarnings("unused") Sequence sequence) {
+    return schemaNamePrefix();
+  }
+
+
+  /**
    * @param tableRef The table for which the schema name will be retrieved
    * @return full table name that includes a schema name and DB-link if present
    */
@@ -852,6 +878,40 @@ public abstract class SqlDialect {
   public Collection<String> dropStatements(View view) {
     return ImmutableList.of("DROP VIEW " + schemaNamePrefix() + view.getName() + " IF EXISTS CASCADE");
   }
+
+
+  /**
+   * Creates SQL to deploy a database sequence.
+   *
+   * @param sequence The meta data for the sequence to deploy.
+   * @return The statements required to deploy the sequence.
+   */
+  public Collection<String> sequenceDeploymentStatements(Sequence sequence) {
+    Builder<String> statements = ImmutableList.<String>builder();
+
+    // Create the table deployment statement
+    statements.addAll(internalSequenceDeploymentStatements(sequence));
+
+    return statements.build();
+  }
+
+
+  /**
+   * Creates SQL to drop the named sequence.
+   *
+   * @param sequence The sequence to drop
+   * @return The SQL statements as strings.
+   */
+  public Collection<String> dropStatements(Sequence sequence) {
+    return ImmutableList.of("DROP SEQUENCE IF EXISTS " + schemaNamePrefix() + sequence.getName());
+  }
+
+
+  /**
+   * Some databases might require forced serial table creation instead of a parallel one.
+   * @return true if forced serial import is enabled
+   */
+  public abstract boolean useForcedSerialImport();
 
 
   /**
@@ -1716,6 +1776,14 @@ public abstract class SqlDialect {
       return getSqlFrom((MergeStatement.InputField) field);
     }
 
+    if (field instanceof SequenceReference) {
+      return getSqlFrom((SequenceReference) field);
+    }
+
+    if (field instanceof PortableSqlFunction) {
+      return getSqlFrom((PortableSqlFunction) field);
+    }
+
     throw new IllegalArgumentException("Aliased Field of type [" + field.getClass().getSimpleName() + "] is not supported");
   }
 
@@ -1796,6 +1864,15 @@ public abstract class SqlDialect {
 
 
   /**
+   * Converts the operation on the sequence into SQL.
+   *
+   * @param sequenceReference the sequence on which the operation is being performed.
+   * @return a string representation of the SQL.
+   */
+  protected abstract String getSqlFrom(SequenceReference sequenceReference);
+
+
+  /**
    * Default implementation will just return the Base64 representation of the binary data, which may not necessarily work with all SQL dialects.
    * Hence appropriate conversions to the appropriate type based on facilities provided by the dialect's SQL vendor implementation should be used.
    *
@@ -1805,6 +1882,7 @@ public abstract class SqlDialect {
   protected String getSqlFrom(BlobFieldLiteral field) {
     return String.format("'%s'", field.getValue());
   }
+
 
   /**
    * Default implementation will just return the Field literal implementation of the getSqlFrom method.
@@ -2080,6 +2158,12 @@ public abstract class SqlDialect {
           throw new IllegalArgumentException("The LEFT_PAD function should have three arguments. This function has " + function.getArguments().size());
         }
         return getSqlForLeftPad(function.getArguments().get(0), function.getArguments().get(1), function.getArguments().get(2));
+
+      case RIGHT_PAD:
+        if (function.getArguments().size() != 3) {
+          throw new IllegalArgumentException("The RIGHT_PAD function should have three arguments. This function has " + function.getArguments().size());
+        }
+        return getSqlForRightPad(function.getArguments().get(0), function.getArguments().get(1), function.getArguments().get(2));
 
       case LAST_DAY_OF_MONTH:
         if (function.getArguments().size() != 1) {
@@ -2605,7 +2689,7 @@ public abstract class SqlDialect {
 
   /**
    * Converts the LEFT_PAD function into SQL. This is the same format used for
-   * H2, MySQL and Oracle. SqlServer implementation overrides this function.
+   * H2, MySQL, Oracle and PostgreSQL. SqlServer implementation overrides this function.
    *
    * @param field The field to pad
    * @param length The length of the padding
@@ -2614,6 +2698,20 @@ public abstract class SqlDialect {
    */
   protected String getSqlForLeftPad(AliasedField field, AliasedField length, AliasedField character) {
     return "LPAD(" + getSqlFrom(field) + ", " + getSqlFrom(length) + ", " + getSqlFrom(character) + ")";
+  }
+
+
+  /**
+   * Converts the RIGHT_PAD function into SQL. This is the same format used for
+   * H2, MySQL, Oracle and PostgreSQL. SqlServer implementation overrides this function.
+   *
+   * @param field The field to pad
+   * @param length The length of the padding
+   * @param character The character to use for the padding
+   * @return string representation of the SQL.
+   */
+  protected String getSqlForRightPad(AliasedField field, AliasedField length, AliasedField character) {
+    return "RPAD(" + getSqlFrom(field) + ", " + getSqlFrom(length) + ", " + getSqlFrom(character) + ")";
   }
 
 
@@ -4338,6 +4436,53 @@ public abstract class SqlDialect {
   }
 
 
+  /**
+   * Converts the provided portable function into SQL. Each dialect will attempt to retrieve the applicable
+   * function and arguments, throwing an unsupported operation exception if one is not found.
+   *
+   * @param portableSqlFunction the function to convert
+   * @return the resulting SQL
+   */
+  protected abstract String getSqlFrom(PortableSqlFunction portableSqlFunction);
+
+
+  /**
+   * Common method used to convert portable functions, for dialects that share the same syntax.
+   */
+  protected String getSqlForPortableFunction(Pair<String, List<AliasedField>> functionWithArguments) {
+    String functionName = functionWithArguments.getLeft();
+
+    List<String> arguments = functionWithArguments.getRight()
+        .stream()
+        .map(this::getSqlFrom)
+        .collect(toList());
+
+    return functionName + "(" + Joiner.on(", ").join(arguments) + ")";
+  }
+
+
+  /**
+   * Returns any statements needed to automatically heal the given schema.
+   *
+   * This healer is intended for automated database modifications not visible via the {@link Schema}.
+   * For example the names of primary key indexes are not generally available via the {@link Schema},
+   * and can therefore be healed via this method without disrupting the {@link Schema} contents.
+   *
+   * On the other hand, the names of indexes are available via the {@link Schema}, changing them
+   * via this method would leave a database inconsistent with the contents of the {@link Schema},
+   * and therefore those cannot be auto-healed via this method.
+   *
+   * See {@link SchemaAutoHealer}, another type of a database auto-healer, which is intended to heal
+   * characteristics of the database visible in the {@link Schema}.
+   *
+   * Also note that this type of healer is dialect-specific, each dialect implements it separately.
+   *
+   * @param schemaResource Schema resource that can be examined.
+   * @return List of statements to be run.
+   */
+  public List<String> getSchemaConsistencyStatements(SchemaResource schemaResource) {
+    return ImmutableList.of();
+  }
 
 
   /**

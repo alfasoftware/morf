@@ -96,7 +96,45 @@ public interface Schema {
   public Collection<String> viewNames();
 
   /**
-   * @return the views in in the schema represented by this metadata
+   * @return the views in the schema represented by this metadata
    */
   public Collection<View> views();
+
+
+  /**
+   * Determines if a sequence exists on the database.
+   *
+   * @param name The sequence name to be checked. The case of the name should be ignored.
+   * @return True if a sequence <var>name</var> exists in the database. False otherwise.
+   */
+  public boolean sequenceExists(String name);
+
+
+  /**
+   * Retrieves the meta data for the sequence <var>name</var>.
+   *
+   * <p>Implementations should never return null. A {@link RuntimeException} may
+   * be thrown if the sequence is unknown.</p>
+   *
+   * @param name The sequence name for which meta data is required. The case of the name should be ignored.
+   * @return The sequence meta data.
+   */
+  public Sequence getSequence(String name);
+
+
+  /**
+   * Provides the names of all sequences in the database. Note that the order of
+   * the sequences in the result is not specified. The case of the
+   * sequence names may be preserved when logging progress, but should not be relied on for schema
+   * processing.
+   *
+   * @return A collection of all view names available in the database.
+   */
+  public Collection<String> sequenceNames();
+
+
+  /**
+   * @return the sequences in the schema represented by this metadata
+   */
+  public Collection<Sequence> sequences();
 }

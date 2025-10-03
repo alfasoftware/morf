@@ -6,11 +6,13 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +23,7 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.Statement;
@@ -32,6 +35,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 /**
  * Tests of {@link GraphBasedUpgradeSchemaChangeVisitor}.
@@ -54,6 +58,8 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
   @Mock
   private GraphBasedUpgradeNode n1, n2;
 
+  UpgradeConfigAndContext upgradeConfigAndContext;
+
   private final static List<String> STATEMENTS = Lists.newArrayList("a", "b");
 
   private Map<String, GraphBasedUpgradeNode> nodes;
@@ -68,8 +74,8 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     nodes = new HashMap<>();
     nodes.put(U1.class.getName(), n1);
     nodes.put(U2.class.getName(), n2);
-
-    visitor = new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, sqlDialect, idTable, nodes);
+    upgradeConfigAndContext = new UpgradeConfigAndContext();
+    visitor = new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable, nodes);
   }
 
 
@@ -111,8 +117,10 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
   public void testAddIndexVisit() {
     // given
     visitor.startStep(U1.class);
+    String idTableName = "IdTableName";
     AddIndex addIndex = mock(AddIndex.class);
     when(addIndex.apply(sourceSchema)).thenReturn(sourceSchema);
+    when(addIndex.getTableName()).thenReturn(idTableName);
     when(sqlDialect.addIndexStatements(nullable(Table.class), nullable(Index.class))).thenReturn(STATEMENTS);
 
     // when
@@ -121,6 +129,73 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     // then
     verify(addIndex).apply(sourceSchema);
     verify(n1).addAllUpgradeStatements(ArgumentMatchers.argThat(c-> c.containsAll(STATEMENTS)));
+  }
+
+
+  /**
+   * Test method for {@link org.alfasoftware.morf.upgrade.InlineTableUpgrader#visit(org.alfasoftware.morf.upgrade.AddIndex)}.
+   */
+  @Test
+  public void testVisitAddIndexWithPRFIndex() {
+    // given
+    visitor.startStep(U1.class);
+
+    String idTableName = "IdTableName";
+    Index newIndex = mock(Index.class);
+    when(newIndex.getName()).thenReturn(idTableName + "_1");
+    when(newIndex.columnNames()).thenReturn(Collections.singletonList("column_1"));
+
+    AddIndex addIndex = mock(AddIndex.class);
+    given(addIndex.apply(sourceSchema)).willReturn(sourceSchema);
+    when(addIndex.getTableName()).thenReturn(idTableName);
+    when(addIndex.getNewIndex()).thenReturn(newIndex);
+
+    Index indexPrf = mock(Index.class);
+    when(indexPrf.getName()).thenReturn(idTableName + "_PRF1");
+    when(indexPrf.columnNames()).thenReturn(List.of("column_1"));
+
+    Index indexPrf1 = mock(Index.class);
+    when(indexPrf1.getName()).thenReturn(idTableName + "_PRF2");
+    when(indexPrf1.columnNames()).thenReturn(List.of("column_2"));
+
+    Table newTable = mock(Table.class);
+    when(newTable.getName()).thenReturn(idTableName);
+    when(sourceSchema.getTable(idTableName)).thenReturn(newTable);
+    Map<String, List<Index>> ignoredIndexes = Maps.newHashMap();
+    ignoredIndexes.put(idTableName.toUpperCase(), Lists.newArrayList(indexPrf, indexPrf1));
+    upgradeConfigAndContext.setIgnoredIndexes(ignoredIndexes);
+
+    when(sqlDialect.renameIndexStatements(nullable(Table.class), eq(idTableName + "_PRF1"), eq(idTableName + "_1"))).thenReturn(STATEMENTS);
+    when(sqlDialect.renameIndexStatements(nullable(Table.class), eq(idTableName + "_PRF2"), eq(idTableName + "_2"))).thenReturn(STATEMENTS);
+    when(sqlDialect.addIndexStatements(nullable(Table.class), nullable(Index.class))).thenReturn(STATEMENTS);
+
+    Index newIndex1 = mock(Index.class);
+    when(newIndex1.getName()).thenReturn(idTableName + "_2");
+    when(newIndex1.columnNames()).thenReturn(Collections.singletonList("column_2"));
+    AddIndex addIndex1 = mock(AddIndex.class);
+    given(addIndex1.apply(sourceSchema)).willReturn(sourceSchema);
+    when(addIndex1.getTableName()).thenReturn(idTableName);
+    when(addIndex1.getNewIndex()).thenReturn(newIndex1);
+
+    Index newIndex2 = mock(Index.class);
+    when(newIndex2.getName()).thenReturn(idTableName + "_3");
+    when(newIndex2.columnNames()).thenReturn(Collections.singletonList("column_3"));
+    AddIndex addIndex2 = mock(AddIndex.class);
+    given(addIndex2.apply(sourceSchema)).willReturn(sourceSchema);
+    when(addIndex2.getTableName()).thenReturn(idTableName);
+    when(addIndex2.getNewIndex()).thenReturn(newIndex2);
+
+    // when
+    visitor.visit(addIndex);
+    visitor.visit(addIndex1);
+    visitor.visit(addIndex2);
+
+    // then
+    verify(addIndex).apply(sourceSchema);
+    verify(sqlDialect).renameIndexStatements(nullable(Table.class), eq(idTableName + "_PRF1"), eq(idTableName + "_1"));
+    verify(sqlDialect).renameIndexStatements(nullable(Table.class), eq(idTableName + "_PRF2"), eq(idTableName + "_2"));
+    verify(sqlDialect).addIndexStatements(nullable(Table.class), nullable(Index.class));
+    verify(n1, times(3)).addAllUpgradeStatements(ArgumentMatchers.argThat(c-> c.containsAll(STATEMENTS)));
   }
 
 
@@ -373,12 +448,48 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
 
 
   @Test
+  public void testAddSequence() {
+    // given
+    visitor.startStep(U1.class);
+    AddSequence addSequence = mock(AddSequence.class);
+    when(addSequence.apply(sourceSchema)).thenReturn(sourceSchema);
+    when(addSequence.getSequence()).thenReturn(mock(Sequence.class));
+    when(sqlDialect.sequenceDeploymentStatements(any(Sequence.class))).thenReturn(STATEMENTS);
+
+    //When
+    visitor.visit(addSequence);
+
+    //then
+    verify(addSequence).apply(sourceSchema);
+    verify(n1).addAllUpgradeStatements(ArgumentMatchers.argThat(c -> c.containsAll(STATEMENTS)));
+  }
+
+
+  @Test
+  public void testRemoveSequence() {
+    // given
+    visitor.startStep(U1.class);
+    RemoveSequence removeSequence = mock(RemoveSequence.class);
+    when(removeSequence.apply(sourceSchema)).thenReturn(sourceSchema);
+    when(removeSequence.getSequence()).thenReturn(mock(Sequence.class));
+    when(sqlDialect.dropStatements(any(Sequence.class))).thenReturn(STATEMENTS);
+
+    //When
+    visitor.visit(removeSequence);
+
+    //then
+    verify(removeSequence).apply(sourceSchema);
+    verify(n1).addAllUpgradeStatements(ArgumentMatchers.argThat(c -> c.containsAll(STATEMENTS)));
+  }
+
+
+  @Test
   public void testFactory() {
     // given
     GraphBasedUpgradeSchemaChangeVisitorFactory factory = new GraphBasedUpgradeSchemaChangeVisitorFactory();
 
     // when
-    GraphBasedUpgradeSchemaChangeVisitor created = factory.create(sourceSchema, sqlDialect, idTable, nodes);
+    GraphBasedUpgradeSchemaChangeVisitor created = factory.create(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable, nodes);
 
     // then
     assertNotNull(created);

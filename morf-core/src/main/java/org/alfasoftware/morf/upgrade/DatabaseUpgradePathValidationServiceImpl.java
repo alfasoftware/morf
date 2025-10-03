@@ -2,21 +2,23 @@ package org.alfasoftware.morf.upgrade;
 
 import static org.alfasoftware.morf.sql.InsertStatement.insert;
 import static org.alfasoftware.morf.sql.SelectStatement.select;
+import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.alfasoftware.morf.sql.element.Criterion.and;
 import static org.alfasoftware.morf.sql.element.Criterion.neq;
 import static org.alfasoftware.morf.sql.element.Function.count;
 
 import java.util.List;
 
-import javax.inject.Inject;
-
 import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 
 import com.google.common.collect.ImmutableList;
+import com.google.inject.Inject;
 
 /**
  * Implementation of {@link DatabaseUpgradePathValidationService}
@@ -58,20 +60,32 @@ public class DatabaseUpgradePathValidationServiceImpl implements DatabaseUpgrade
 
 
   /**
-   * Generates SQL to be run at the start of the upgrade script which ensures the upgrade can't be run twice
+   * Generates SQL to be run at the start of the upgrade script which ensures the upgrade can't be run twice.
+   * If the upgradeAuditCount supplied is -1 then the optimistic locking will not be executed, as this means we
+   * were unable to connect to the UpgradeAudit table to read the count prior to generating the script
    */
   private List<String> getOptimisticLockingInitialisationSql(long upgradeAuditCount) {
+    final SqlDialect sqlDialect = connectionResources.sqlDialect();
+
     TableReference upgradeStatusTable = tableRef(UpgradeStatusTableService.UPGRADE_STATUS);
 
     SelectStatement selectStatement = select().from(upgradeStatusTable)
-        .where(neq(selectUpgradeAuditTableCount().asField(), upgradeAuditCount))
-        .build();
+      .where(and(neq(selectUpgradeAuditTableCount().asField(), upgradeAuditCount), neq(literal(upgradeAuditCount), -1)))
+      .build();
 
     InsertStatement insertStatement = insert().into(upgradeStatusTable)
         .from(selectStatement)
         .build();
 
-    return connectionResources.sqlDialect().convertStatementToSQL(insertStatement);
+    List<String> insertStatementSql = sqlDialect.convertStatementToSQL(insertStatement);
+
+    return ImmutableList.<String>builder()
+        .add(sqlDialect.convertCommentToSQL("If the following statement fails, it means the UpgradeAudit table does not contain the expected number of rows."))
+        .add(sqlDialect.convertCommentToSQL("That row number was correct in the database where this upgrade script was originally generated."))
+        .add(sqlDialect.convertCommentToSQL("It is therefore possible some upgrade steps have since been applied to this database, potentially rendering this script outdated."))
+        .add(sqlDialect.convertCommentToSQL("Further investigation is advised before continuing to determine why the UpgradeAudit now contains unexpected number of rows."))
+        .addAll(insertStatementSql)
+        .build();
   }
 
 

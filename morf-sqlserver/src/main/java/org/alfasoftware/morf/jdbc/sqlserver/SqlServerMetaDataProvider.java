@@ -136,4 +136,20 @@ class SqlServerMetaDataProvider extends DatabaseMetaDataProvider {
     }
     return columnBuilder;
   }
+
+
+  /**
+   * @see DatabaseMetaDataProvider#buildSequenceSql(String)
+   */
+  @Override
+  protected String buildSequenceSql(String schemaName) {
+    StringBuilder sequenceSqlBuilder = new StringBuilder();
+    sequenceSqlBuilder.append("SELECT name FROM sys.all_objects WHERE type='SO'");
+
+    if (schemaName!= null && !schemaName.isBlank()) {
+      sequenceSqlBuilder.append(" AND SCHEMA_NAME(schema_id)=?");
+    }
+
+    return sequenceSqlBuilder.toString();
+  }
 }

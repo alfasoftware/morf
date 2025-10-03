@@ -1,7 +1,12 @@
 package org.alfasoftware.morf.jdbc.postgresql;
 
+import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
+import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.io.InputStream;
 import java.sql.SQLException;
@@ -9,9 +14,14 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
+import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.SchemaResource;
+import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.CustomHint;
 import org.alfasoftware.morf.sql.PostgreSQLCustomHint;
 import org.alfasoftware.morf.sql.SelectStatement;
@@ -23,6 +33,7 @@ import org.alfasoftware.morf.sql.element.TableReference;
 import org.mockito.Mockito;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 
 /**
  * Tests SQL statements generated for PostgreSQL.
@@ -177,18 +188,18 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
         .asList("CREATE TABLE testschema."
             + TABLE_WITH_VERY_LONG_NAME
             + " (id NUMERIC(19) NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3) COLLATE \"POSIX\", intField DECIMAL(8,0), floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField BOOLEAN, charField VARCHAR(1) COLLATE \"POSIX\", CONSTRAINT " + TABLE_WITH_VERY_LONG_NAME + "_PK PRIMARY KEY(id))",
-            "COMMENT ON TABLE testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation]'",
-            "COMMENT ON COLUMN testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation.id IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[id]/TYPE:[BIG_INTEGER]'",
-            "COMMENT ON COLUMN testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation.version IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[version]/TYPE:[INTEGER]'",
-            "COMMENT ON COLUMN testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation.stringField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[stringField]/TYPE:[STRING]'",
-            "COMMENT ON COLUMN testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation.intField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[DECIMAL]'",
-            "COMMENT ON COLUMN testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation.floatField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[floatField]/TYPE:[DECIMAL]'",
-            "COMMENT ON COLUMN testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation.dateField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[dateField]/TYPE:[DATE]'",
-            "COMMENT ON COLUMN testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation.booleanField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[booleanField]/TYPE:[BOOLEAN]'",
-            "COMMENT ON COLUMN testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation.charField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[charField]/TYPE:[STRING]'",
-            "CREATE UNIQUE INDEX Test_NK ON testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation (stringField)",
+            "COMMENT ON TABLE testschema." + TABLE_WITH_VERY_LONG_NAME + " IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[" + TABLE_WITH_VERY_LONG_NAME + "]'",
+            "COMMENT ON COLUMN testschema." + TABLE_WITH_VERY_LONG_NAME + ".id IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[id]/TYPE:[BIG_INTEGER]'",
+            "COMMENT ON COLUMN testschema." + TABLE_WITH_VERY_LONG_NAME + ".version IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[version]/TYPE:[INTEGER]'",
+            "COMMENT ON COLUMN testschema." + TABLE_WITH_VERY_LONG_NAME + ".stringField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[stringField]/TYPE:[STRING]'",
+            "COMMENT ON COLUMN testschema." + TABLE_WITH_VERY_LONG_NAME + ".intField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[DECIMAL]'",
+            "COMMENT ON COLUMN testschema." + TABLE_WITH_VERY_LONG_NAME + ".floatField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[floatField]/TYPE:[DECIMAL]'",
+            "COMMENT ON COLUMN testschema." + TABLE_WITH_VERY_LONG_NAME + ".dateField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[dateField]/TYPE:[DATE]'",
+            "COMMENT ON COLUMN testschema." + TABLE_WITH_VERY_LONG_NAME + ".booleanField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[booleanField]/TYPE:[BOOLEAN]'",
+            "COMMENT ON COLUMN testschema." + TABLE_WITH_VERY_LONG_NAME + ".charField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[charField]/TYPE:[STRING]'",
+            "CREATE UNIQUE INDEX Test_NK ON testschema." + TABLE_WITH_VERY_LONG_NAME + " (stringField)",
             "COMMENT ON INDEX Test_NK IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_NK]'",
-            "CREATE INDEX Test_1 ON testschema.tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation (intField, floatField)",
+            "CREATE INDEX Test_1 ON testschema." + TABLE_WITH_VERY_LONG_NAME + " (intField, floatField)",
             "COMMENT ON INDEX Test_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Test_1]'"
         );
   }
@@ -877,6 +888,15 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterColumnRenameNonPrimaryIndexedColumn()
+   */
+  @Override
+  protected List<String> expectedAlterColumnRenameNonPrimaryIndexedColumn() {
+    return Arrays.asList("ALTER TABLE testschema.Alternate RENAME stringField TO blahField","COMMENT ON COLUMN testschema.Alternate.blahField IS 'REALNAME:[blahField]/TYPE:[STRING]'");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterColumnRenamingAndChangingNullability()
    */
   @Override
@@ -936,6 +956,44 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected List<String> expectedCreateViewStatements() {
     return Arrays.asList("CREATE VIEW " + tableName("TestView") + " AS (SELECT stringField FROM " + tableName("Test") + " WHERE (stringField = 'blah'))",
                          "COMMENT ON VIEW TestView IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[TestView]'");
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateSequenceStatements()
+   */
+  @Override
+  protected List<String> expectedCreateSequenceStatements() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence") + " START WITH 1");
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateTemporarySequenceStatements()
+   */
+  @Override
+  protected List<String> expectedCreateTemporarySequenceStatements() {
+    return Arrays.asList("CREATE TEMPORARY SEQUENCE TestSequence START WITH 1");
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateSequenceStatementsWithNoStartWith()
+   * @return
+   */
+  @Override
+  protected List<String> expectedCreateSequenceStatementsWithNoStartWith() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence"));
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateTemporarySequenceStatementsWithNoStartWith()
+   * @return
+   */
+  @Override
+  protected List<String> expectedCreateTemporarySequenceStatementsWithNoStartWith() {
+    return Arrays.asList("CREATE TEMPORARY SEQUENCE TestSequence");
   }
 
 
@@ -1157,8 +1215,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> getRenamingTableWithLongNameStatements() {
     return ImmutableList.of(
-      "ALTER TABLE testschema.123456789012345678901234567890XXX RENAME TO Blah",
-      "ALTER INDEX testschema.123456789012345678901234567890XXX_pk RENAME TO Blah_pk",
+      "ALTER TABLE testschema.123456789012345678901234567890X RENAME TO Blah",
+      "ALTER INDEX testschema.123456789012345678901234567890X_pk RENAME TO Blah_pk",
       "COMMENT ON INDEX Blah_pk IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Blah_pk]'",
       "COMMENT ON TABLE testschema.Blah IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Blah]'"
         );
@@ -1209,13 +1267,13 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAddTableFromStatements() {
     return ImmutableList.of(
-      "CREATE TABLE testschema.SomeTable (someField VARCHAR(3) COLLATE \"POSIX\" NOT NULL, otherField DECIMAL(3,0) NOT NULL, CONSTRAINT SomeTable_PK PRIMARY KEY(someField))",
+      "CREATE TABLE testschema.SomeTable (someField, otherField) AS SELECT CAST(someField AS VARCHAR(3)) COLLATE \"POSIX\" AS someField, CAST(otherField AS DECIMAL(3,0)) AS otherField FROM testschema.OtherTable",
+      "ALTER TABLE SomeTable ALTER someField SET NOT NULL, ALTER otherField SET NOT NULL, ADD CONSTRAINT SomeTable_PK PRIMARY KEY(someField)",
       "COMMENT ON TABLE testschema.SomeTable IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable]'",
       "COMMENT ON COLUMN testschema.SomeTable.someField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[someField]/TYPE:[STRING]'",
       "COMMENT ON COLUMN testschema.SomeTable.otherField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[otherField]/TYPE:[DECIMAL]'",
       "CREATE INDEX SomeTable_1 ON testschema.SomeTable (otherField)",
-      "COMMENT ON INDEX SomeTable_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_1]'",
-      "INSERT INTO testschema.SomeTable SELECT someField, otherField FROM testschema.OtherTable"
+      "COMMENT ON INDEX SomeTable_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_1]'"
     );
   }
 
@@ -1401,7 +1459,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return "DELETE FROM " + tableName(TEST_TABLE) + " WHERE ctid IN (" +
       "SELECT ctid FROM " + tableName(TEST_TABLE) + " WHERE (" + TEST_TABLE + ".stringField = " + stringLiteralPrefix() + value +
       ") LIMIT 1000)";
-  };
+  }
 
 
   /**
@@ -1412,7 +1470,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return "DELETE FROM " + tableName(TEST_TABLE) + " WHERE ctid IN (" +
       "SELECT ctid FROM " + tableName(TEST_TABLE) + " WHERE ((Test.stringField = " + stringLiteralPrefix() + value1 + ") OR (Test.stringField = " + stringLiteralPrefix() + value2 + "))" +
       " LIMIT 1000)";
-  };
+  }
 
 
   /**
@@ -1432,7 +1490,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedSelectWithExcept() {
     return "SELECT stringField FROM testschema.Test EXCEPT SELECT stringField FROM testschema.Other ORDER BY stringField";
-  };
+  }
 
 
   /**
@@ -1459,5 +1517,63 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedSelectWithExceptAndDbLinkLatter() {
     return "SELECT stringField FROM testschema.Test EXCEPT SELECT stringField FROM MYDBLINKREF.Other ORDER BY stringField";
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedNextValForSequence()
+   */
+  @Override
+  protected String expectedNextValForSequence() { return "SELECT nextval('TestSequence')"; }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCurrValForSequence()
+   */
+  @Override
+  protected String expectedCurrValForSequence() { return "SELECT currval('TestSequence')"; }
+
+
+  @Override
+  protected SchemaResource createSchemaResourceForSchemaConsistencyStatements() {
+    final List<Table> tables = ImmutableList.of(
+      table("TableOne")
+        .columns(
+          column("id", DataType.BIG_INTEGER),
+          column("u", DataType.BIG_INTEGER).nullable(),
+          column("v", DataType.BIG_INTEGER).nullable(),
+          column("x", DataType.BIG_INTEGER).nullable())
+        .indexes(
+          index("TableOne_1").columns("u").unique(),
+          index("TableOne_2").columns("u", "v", "x").unique(),
+          index("TableOne_3").columns("x").unique()
+        ),
+      table("TableTwo")
+        .columns(
+          column("id", DataType.BIG_INTEGER),
+          column("x", DataType.BIG_INTEGER).nullable())
+        .indexes(
+          index("TableTwo_3").columns("x").unique()
+        )
+    );
+
+    PostgreSQLMetaDataProvider metaDataProvider = mock(PostgreSQLMetaDataProvider.class);
+    when(metaDataProvider.tables()).thenReturn(tables);
+    when(metaDataProvider.getDatabaseInformation()).thenReturn(
+      ImmutableMap.<String, String>builder()
+        .put(DatabaseMetaDataProvider.DATABASE_PRODUCT_VERSION, "15.0")
+        .put(DatabaseMetaDataProvider.DATABASE_MAJOR_VERSION, String.valueOf(15))
+        .put(DatabaseMetaDataProvider.DATABASE_MINOR_VERSION, String.valueOf(0))
+        .build());
+
+    final SchemaResource schemaResource = mock(SchemaResource.class);
+    when(schemaResource.getAdditionalMetadata()).thenReturn(Optional.of(metaDataProvider));
+
+    return schemaResource;
+  }
+
+  @Override
+  protected String expectedPortableStatement() {
+    return "UPDATE testschema.Table SET field = TRANSLATE(field, '1', 'A')";
   }
 }

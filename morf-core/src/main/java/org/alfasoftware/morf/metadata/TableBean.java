@@ -18,7 +18,6 @@ package org.alfasoftware.morf.metadata;
 import java.util.ArrayList;
 import java.util.List;
 
-
 import com.google.common.collect.Iterables;
 
 

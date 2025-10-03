@@ -17,27 +17,35 @@ package org.alfasoftware.morf.jdbc.oracle;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.RETURNS_SMART_NULLS;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 
 import javax.sql.DataSource;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
+import org.alfasoftware.morf.metadata.AdditionalMetadata;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.junit.Before;
@@ -47,6 +55,7 @@ import org.mockito.stubbing.Answer;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Maps;
 
 /**
  * Tests for {@link OracleMetaDataProvider}.
@@ -58,7 +67,6 @@ public class TestOracleMetaDataProvider {
   private final DataSource dataSource = mock(DataSource.class, RETURNS_SMART_NULLS);
   private final Connection connection = mock(Connection.class, RETURNS_SMART_NULLS);
   private DatabaseType oracle;
-
 
   @Before
   public void setup() {
@@ -95,6 +103,128 @@ public class TestOracleMetaDataProvider {
 
     verify(statement1).setString(1, "TESTSCHEMA");
     verify(statement2).setString(1, "TESTSCHEMA");
+  }
+
+
+  /**
+   * Checks the building of the collection of primary key index names.
+   * @throws SQLException
+   */
+  @Test
+  public void testPrimaryKeyIndexNames() throws SQLException {
+    // Given
+    final PreparedStatement statement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    when(connection.prepareStatement(anyString())).thenReturn(statement);
+
+    mockGetTableKeysQuery(0, false, false);
+    // This is the list of tables that's returned.
+    when(statement.executeQuery()).thenAnswer(invocation -> {
+      final ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
+      when(resultSet.next()).thenReturn(true, true, false);
+
+      //
+      when(resultSet.getString(1)).thenReturn("AREALTABLE").thenReturn("AREALTABLE2");
+      when(resultSet.getString(2)).thenReturn("TableComment");
+      when(resultSet.getString(3)).thenReturn("ID");
+      when(resultSet.getString(4)).thenReturn("IDComment");
+      when(resultSet.getString(5)).thenReturn("VARCHAR2");
+      when(resultSet.getString(6)).thenReturn("10");
+      return resultSet;
+    }).thenAnswer(new ReturnTablesMockResultSet(4));
+
+    PreparedStatement statement1 = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    when(connection.prepareStatement("select table_name, index_name, uniqueness, status from ALL_INDEXES where owner=? order by table_name, index_name")).thenReturn(statement1);
+
+    // four indexes, two of which are primary key indexes
+    when(statement1.executeQuery()).thenAnswer(answer -> {
+      ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
+      when(resultSet.next()).thenReturn(true, true, true, true, false);
+      when(resultSet.getString(1)).thenReturn("AREALTABLE", "AREALTABLE", "AREALTABLE2", "AREALTABLE2");
+      when(resultSet.getString(2)).thenReturn("AREALTABLE_1", "AREALTABLE_PK", "AREALTABLE2_1", "AREALTABLE2_PK");
+      when(resultSet.getString(4)).thenReturn("VALID");
+      return resultSet;
+    });
+
+    // When
+    final AdditionalMetadata oracleMetaDataProvider = (AdditionalMetadata) oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
+    Map<String, String> expectedPrimaryKeyIndexNames = Maps.newHashMap();
+    expectedPrimaryKeyIndexNames.put("AREALTABLE", "AREALTABLE_PK");
+    expectedPrimaryKeyIndexNames.put("AREALTABLE2", "AREALTABLE2_PK");
+    assertEquals("Primary key index names.", expectedPrimaryKeyIndexNames, oracleMetaDataProvider.primaryKeyIndexNames());
+  }
+
+  /**
+   * Checks the building of the collection of primary key index names.
+   * @throws SQLException
+   */
+  @Test
+  public void testIgnoredIndexes() throws SQLException {
+    // Given
+    final PreparedStatement statement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    when(connection.prepareStatement(anyString())).thenReturn(statement);
+
+    mockGetTableKeysQuery(0, false, false);
+    // This is the table that's returned.
+    when(statement.executeQuery()).thenAnswer(invocation -> {
+      final ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
+      when(resultSet.next()).thenReturn(true, false);
+
+      //
+      when(resultSet.getString(1)).thenReturn("AREALTABLE");
+      when(resultSet.getString(2)).thenReturn("TableComment");
+      when(resultSet.getString(3)).thenReturn("ID");
+      when(resultSet.getString(4)).thenReturn("IDComment");
+      when(resultSet.getString(5)).thenReturn("VARCHAR2");
+      when(resultSet.getString(6)).thenReturn("10");
+      return resultSet;
+    }).thenAnswer(new ReturnTablesMockResultSet(4));
+
+    PreparedStatement statement1 = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    when(connection.prepareStatement("select table_name, index_name, uniqueness, status from ALL_INDEXES where owner=? order by table_name, index_name")).thenReturn(statement1);
+
+    // two indexes, one of which is an ignored index
+    when(statement1.executeQuery()).thenAnswer(answer -> {
+      ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
+      when(resultSet.next()).thenReturn(true, true, true, false);
+      when(resultSet.getString(1)).thenReturn("AREALTABLE", "AREALTABLE", "AREALTABLE");
+      when(resultSet.getString(2)).thenReturn("AREALTABLE_1", "AREALTABLE_PRF1", "AREALTABLE_PRF2");
+      when(resultSet.getString(3)).thenReturn("", "", "UNIQUE");
+      when(resultSet.getString(4)).thenReturn("VALID", "VALID");
+      return resultSet;
+    });
+
+    // "select table_name, INDEX_NAME, COLUMN_NAME from ALL_IND_COLUMNS where INDEX_OWNER=? order by table_name, index_name, column_position"
+    PreparedStatement statement2 = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    when(connection.prepareStatement("select table_name, INDEX_NAME, COLUMN_NAME from ALL_IND_COLUMNS where INDEX_OWNER=? order by table_name, index_name, column_position")).thenReturn(statement2);
+
+    // two indexes, one of which is an ignored index
+    when(statement2.executeQuery()).thenAnswer(answer -> {
+      ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
+      when(resultSet.next()).thenReturn(true, true, true, false);
+      when(resultSet.getString(1)).thenReturn("AREALTABLE", "AREALTABLE", "AREALTABLE");
+      when(resultSet.getString(2)).thenReturn("AREALTABLE_1", "AREALTABLE_PRF1", "AREALTABLE_PRF2");
+      when(resultSet.getString(3)).thenReturn("column1", "column2", "column3");
+      return resultSet;
+    });
+
+
+    // When
+    final AdditionalMetadata oracleMetaDataProvider = (AdditionalMetadata) oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
+
+    List<Index> actualIgnoredIndexes = oracleMetaDataProvider.ignoredIndexes().get("AREALTABLE");
+    assertEquals("Ignored indexes size.", 2, actualIgnoredIndexes.size());
+    assertEquals("Ignored AREALTABLE table indexes size.", 2, actualIgnoredIndexes.size());
+    Index index = actualIgnoredIndexes.get(0);
+    assertEquals("Ignored index name.", "AREALTABLE_PRF1", index.getName());
+    assertEquals("Ignored index column.", "column2", index.columnNames().get(0));
+    assertFalse("Ignored index uniqueness.", index.isUnique());
+    assertEquals("Index-AREALTABLE_PRF1--column2", index.toStringHelper());
+
+    Index index2 = actualIgnoredIndexes.get(1);
+    assertEquals("Ignored index name.", "AREALTABLE_PRF2", index2.getName());
+    assertEquals("Ignored index column.", "column3", index2.columnNames().get(0));
+    assertTrue("Ignored index uniqueness.", index2.isUnique());
+    assertEquals("Index-AREALTABLE_PRF2-unique-column3", index2.toStringHelper());
   }
 
   @Test
@@ -162,6 +292,31 @@ public class TestOracleMetaDataProvider {
 
     verify(statement).setString(1, "TESTSCHEMA");
   }
+
+
+  /**
+   * Checks the SQL run for retrieving sequences information
+   *
+   * @throws SQLException exception
+   */
+  @Test
+  public void testLoadSequences() throws SQLException {
+    // Given
+    final PreparedStatement statement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    when(connection.prepareStatement("SELECT sequence_name FROM ALL_SEQUENCES WHERE cache_size != 2000 AND sequence_owner=?")).thenReturn(statement);
+    when(statement.executeQuery()).thenAnswer(new ReturnMockResultSetWithSequence(1));
+
+    // When
+    final Schema oracleMetaDataProvider = oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
+    assertEquals("Sequence names", "[SEQUENCE1]", oracleMetaDataProvider.sequenceNames().toString());
+    Sequence sequence = oracleMetaDataProvider.sequences().iterator().next();
+    assertEquals("Sequence name", "SEQUENCE1", sequence.getName());
+    assertNull("Sequence starts with", sequence.getStartsWith());
+    assertFalse("Sequence temporary flag", sequence.isTemporary());
+
+    verify(statement).setString(1, "TESTSCHEMA");
+  }
+
 
   /**
    * Checks that if an exception is thrown by the {@link OracleMetaDataProvider} while the connection is open that the statement being used is correctly closed.
@@ -444,6 +599,41 @@ public class TestOracleMetaDataProvider {
         when(resultSet.getString(1)).thenReturn("VIEW1");
         when(resultSet.getString(3)).thenReturn("SOMEPRIMARYKEYCOLUMN");
       }
+      return resultSet;
+    }
+  }
+
+
+  /**
+   * Mockito {@link Answer} that returns a mock result set with a given number of resultRows.
+   */
+  private static final class ReturnMockResultSetWithSequence implements Answer<ResultSet> {
+
+    private final int numberOfResultRows;
+
+
+    /**
+     * @param numberOfResultRows
+     */
+    private ReturnMockResultSetWithSequence(int numberOfResultRows) {
+      super();
+      this.numberOfResultRows = numberOfResultRows;
+    }
+
+    @Override
+    public ResultSet answer(final InvocationOnMock invocation) throws Throwable {
+      final ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
+      when(resultSet.next()).thenAnswer(new Answer<Boolean>() {
+        private int counter;
+
+        @Override
+        public Boolean answer(InvocationOnMock invocation) throws Throwable {
+          return counter++ < numberOfResultRows;
+        }
+      });
+
+      when(resultSet.getString(1)).thenReturn("SEQUENCE1");
+
       return resultSet;
     }
   }

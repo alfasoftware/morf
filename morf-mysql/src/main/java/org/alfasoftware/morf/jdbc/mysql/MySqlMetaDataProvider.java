@@ -75,4 +75,13 @@ class MySqlMetaDataProvider extends DatabaseMetaDataProvider {
       return columnBuilder;
     }
   }
+
+
+  /**
+   * @see DatabaseMetaDataProvider#buildSequenceSql(String) 
+   */
+  @Override
+  protected String buildSequenceSql(String schemaName) {
+    return null;
+  }
 }

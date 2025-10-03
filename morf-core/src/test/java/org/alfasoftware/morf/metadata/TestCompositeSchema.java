@@ -15,9 +15,7 @@
 
 package org.alfasoftware.morf.metadata;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
-import static org.alfasoftware.morf.metadata.SchemaUtils.table;
-import static org.alfasoftware.morf.metadata.SchemaUtils.view;
+import static org.alfasoftware.morf.metadata.SchemaUtils.*;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -40,7 +38,8 @@ import com.google.common.collect.ImmutableSet;
 public class TestCompositeSchema {
 
   private final Schema schema1 = new SchemaBean(ImmutableList.<Table>of(table("Bobby"), table("Foo"), table("Bar")),
-                                                ImmutableList.of(view("View1", select())));
+                                                ImmutableList.of(view("View1", select())),
+                                                ImmutableList.of(sequence("Sequence1")));
   private final Schema schema2 = new SchemaBean(table("BAR"), table("Baz"));
 
 
@@ -102,12 +101,16 @@ public class TestCompositeSchema {
   private void assertComposite(Schema schema) {
     Set<String> tableNames = ImmutableSet.of("Bobby", "Foo", "Bar", "Baz");
     Set<String> viewNames  = ImmutableSet.of("View1");
+    Set<String> sequenceNames  = ImmutableSet.of("Sequence1");
 
     assertEquals("tableNames", tableNames, new HashSet<String>(schema.tableNames()));
     assertEquals("tables' size " + schema.tableNames(), tableNames.size(), schema.tables().size());
 
     assertEquals("viewNames", viewNames, new HashSet<String>(schema.viewNames()));
     assertEquals("views' size " + schema.viewNames(), viewNames.size(), schema.views().size());
+
+    assertEquals("sequenceName", sequenceNames, new HashSet<String>(schema.sequenceNames()));
+    assertEquals("sequences' size " + schema.sequences(), sequenceNames.size(), schema.sequences().size());
 
     assertFalse("Empty", schema.isEmptyDatabase());
     for (String name : tableNames) {
@@ -118,6 +121,11 @@ public class TestCompositeSchema {
     for (String name : viewNames) {
       assertEquals("getView - " + name, name, schema.getView(name).getName());
       assertTrue("viewExists - " + name, schema.viewExists(name));
+    }
+
+    for (String name : sequenceNames) {
+      assertEquals("getSequence - " + name, name, schema.getSequence(name).getName());
+      assertTrue("sequenceExists - " + name, schema.sequenceExists(name));
     }
   }
 }

@@ -23,6 +23,7 @@ import java.util.TreeMap;
 
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.Statement;
@@ -240,6 +241,18 @@ public class HumanReadableStatementProducer {
       @Override
       public void analyseTable(String tableName) {
         consumer.schemaChange(HumanReadableStatementHelper.generateAnalyseTableFromString(tableName));
+      }
+
+      /** @see org.alfasoftware.morf.upgrade.SchemaEditor#addSequence(Sequence) **/
+      @Override
+      public void addSequence(Sequence sequence) {
+        consumer.schemaChange(HumanReadableStatementHelper.generateAddSequenceString(sequence));
+      }
+
+      /** @see org.alfasoftware.morf.upgrade.SchemaEditor#removeSequence(Sequence) **/
+      @Override
+      public void removeSequence(Sequence sequence) {
+        consumer.schemaChange(HumanReadableStatementHelper.generateRemoveSequenceString(sequence));
       }
     };
 

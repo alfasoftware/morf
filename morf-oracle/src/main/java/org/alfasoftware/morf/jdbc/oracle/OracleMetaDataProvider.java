@@ -41,12 +41,14 @@ import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider.UnexpectedDataTypeException;
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
+import org.alfasoftware.morf.metadata.AdditionalMetadata;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.ColumnType;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
@@ -55,7 +57,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.google.common.base.Suppliers;
-
+import com.google.common.collect.Maps;
 
 
 /**
@@ -63,7 +65,7 @@ import com.google.common.base.Suppliers;
  *
  * @author Copyright (c) Alfa Financial Software 2010
  */
-public class OracleMetaDataProvider implements Schema {
+public class OracleMetaDataProvider implements AdditionalMetadata {
 
   /**
    * Standard log line.
@@ -78,10 +80,12 @@ public class OracleMetaDataProvider implements Schema {
   private Map<String, List<String>> keyMap;
   private Map<String, Table> tableMap;
   private Map<String, View> viewMap;
+  private Map<String, Sequence> sequenceMap;
 
   private final Connection connection;
   private final String schemaName;
-
+  private Map<String, String> primaryKeyIndexNames;
+  private Map<String, List<Index>> ignoredIndexes;
 
   /**
    * Construct a new meta data provider.
@@ -131,6 +135,41 @@ public class OracleMetaDataProvider implements Schema {
     return viewMap;
   }
 
+
+  /**
+   * Use to access the metadata for the views in the specified connection.
+   * Lazily initialises the metadata, and only loads it once.
+   *
+   * @return Sequence metadata.
+   */
+  private Map<String, Sequence> sequenceMap() {
+    if (sequenceMap != null) {
+      return sequenceMap;
+    }
+
+    sequenceMap = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    readSequenceMap();
+    return sequenceMap;
+  }
+
+
+  @Override
+  public Map<String, String> primaryKeyIndexNames() {
+    if (primaryKeyIndexNames != null) {
+      return primaryKeyIndexNames;
+    }
+    tableMap();
+    return primaryKeyIndexNames;
+  }
+
+  @Override
+  public Map<String, List<Index>> ignoredIndexes() {
+    if (ignoredIndexes != null) {
+      return ignoredIndexes;
+    }
+    tableMap();
+    return ignoredIndexes;
+  }
 
   /**
    * A table name reading method which is more efficient than the Oracle driver meta-data version.
@@ -293,6 +332,8 @@ public class OracleMetaDataProvider implements Schema {
 
     // -- Stage 3: find the index names...
     //
+    primaryKeyIndexNames = Maps.newHashMap();
+    ignoredIndexes = Maps.newHashMap();
     final String getIndexNamesSql = "select table_name, index_name, uniqueness, status from ALL_INDEXES where owner=? order by table_name, index_name";
     runSQL(getIndexNamesSql, new ResultSetHandler() {
       @Override
@@ -311,11 +352,6 @@ public class OracleMetaDataProvider implements Schema {
             continue;
           }
 
-          if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName)) {
-            log.info("Ignoring index: [" + indexName + "]");
-            continue;
-          }
-
           final boolean unique = "UNIQUE".equals(uniqueness);
           boolean isValid = isValid(status, indexName, indexPartitions);
 
@@ -328,7 +364,7 @@ public class OracleMetaDataProvider implements Schema {
             if (!unique) {
               log.warn("Primary Key on table [" + tableName + "] is backed by non-unique index [" + indexName + "]");
             }
-
+            primaryKeyIndexNames.put(tableName.toUpperCase(), indexName);
             continue;
           }
 
@@ -344,38 +380,57 @@ public class OracleMetaDataProvider implements Schema {
 
           final String indexNameFinal = indexName;
 
-          currentTable.indexes().add(new Index() {
-            private final List<String> columnNames = new ArrayList<>();
-
-            @Override
-            public boolean isUnique() {
-              return unique;
+          if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName)) {
+            Index ignoredIndex = getAssembledIndex(unique, indexNameFinal);
+            String currentTableName = currentTable.getName().toUpperCase();
+            if (ignoredIndexes.containsKey(currentTableName)) {
+              ignoredIndexes.compute(currentTableName, (k, tableIgnoredIndexes) -> {
+                List<Index> newList = tableIgnoredIndexes == null ? new ArrayList<>() : new ArrayList<>(tableIgnoredIndexes);
+                newList.add(ignoredIndex);
+                return newList;
+              });
+            } else {
+              ignoredIndexes.put(currentTableName, List.of(ignoredIndex));
             }
+            continue;
+          }
 
-
-            @Override
-            public String getName() {
-              return indexNameFinal;
-            }
-
-
-            @Override
-            public List<String> columnNames() {
-              return columnNames;
-            }
-
-
-            @Override
-            public String toString() {
-              return this.toStringHelper();
-            }
-          });
+          currentTable.indexes().add(getAssembledIndex(unique, indexNameFinal));
           indexCount++;
         }
 
         if (log.isDebugEnabled()) {
           log.debug(String.format("Loaded %d indexes", indexCount));
         }
+      }
+
+      private Index getAssembledIndex(boolean unique, String indexNameFinal) {
+        return new Index() {
+          private final List<String> columnNames = new ArrayList<>();
+
+          @Override
+          public boolean isUnique() {
+            return unique;
+          }
+
+
+          @Override
+          public String getName() {
+            return indexNameFinal;
+          }
+
+
+          @Override
+          public List<String> columnNames() {
+            return columnNames;
+          }
+
+
+          @Override
+          public String toString() {
+            return this.toStringHelper();
+          }
+        };
       }
 
 
@@ -415,6 +470,24 @@ public class OracleMetaDataProvider implements Schema {
           }
 
           if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName)) {
+            Index lastIndex = null;
+            for (Index currentIndex : ignoredIndexes.get(currentTable.getName().toUpperCase())) {
+              if (currentIndex.getName().equalsIgnoreCase(indexName)) {
+                lastIndex = currentIndex;
+                break;
+              }
+            }
+
+            if (lastIndex == null) {
+              log.warn(String.format("Ignoring index details for index [%s] on table [%s] as no index definition exists", indexName, tableName));
+              continue;
+            }
+
+            // Correct the case on the column name
+            columnName = getColumnCorrectCase(currentTable, columnName);
+
+            lastIndex.columnNames().add(columnName);
+
             continue;
           }
 
@@ -432,15 +505,20 @@ public class OracleMetaDataProvider implements Schema {
           }
 
           // Correct the case on the column name
-          for (Column currentColumn : currentTable.columns()) {
-            if (currentColumn.getName().equalsIgnoreCase(columnName)) {
-              columnName = currentColumn.getName();
-              break;
-            }
-          }
+          columnName = getColumnCorrectCase(currentTable, columnName);
 
           lastIndex.columnNames().add(columnName);
         }
+      }
+
+      private String getColumnCorrectCase(Table currentTable, String columnName) {
+        for (Column currentColumn : currentTable.columns()) {
+          if (currentColumn.getName().equalsIgnoreCase(columnName)) {
+            columnName = currentColumn.getName();
+            break;
+          }
+        }
+        return columnName;
       }
     });
 
@@ -558,6 +636,53 @@ public class OracleMetaDataProvider implements Schema {
 
     long end = System.currentTimeMillis();
     log.info(String.format("Read view metadata in %dms; %d views", end - start, viewMap.size()));
+  }
+
+
+  /**
+   * Populate {@link #sequenceMap} with information from the database. Since JDBC metadata reading
+   * is slow on Oracle, this uses an optimised query.
+   *
+   * @see <a href="http://docs.oracle.com/cd/B19306_01/server.102/b14237/statviews_2117.htm">ALL_VIEWS specification</a>
+   */
+  private void readSequenceMap() {
+    log.info("Starting read of sequence definitions");
+
+    long start = System.currentTimeMillis();
+
+    /**
+     * Here we filter out any sequences which have been created to as part of a table autonumber column as we only want to consider
+     * sequences that are effectively schema level as we do with other dialects.
+     * @see OracleDialect#createNewSequence(Table, Column) for more context on how table level sequences are created.
+     */
+    final String sequencesSql = "SELECT sequence_name FROM ALL_SEQUENCES WHERE cache_size != 2000 AND sequence_owner=?";
+    runSQL(sequencesSql, new ResultSetHandler() {
+      @Override
+      public void handle(ResultSet resultSet) throws SQLException {
+        while (resultSet.next()) {
+          final String sequenceName = resultSet.getString(1);
+          if (isSystemSequence(sequenceName))
+            continue;
+
+          sequenceMap.put(sequenceName.toUpperCase(), new Sequence() {
+            @Override public String getName() { return sequenceName; }
+
+            @Override
+            public Integer getStartsWith() {
+              return null;
+            }
+
+            @Override
+            public boolean isTemporary() {
+              return false;
+            }
+          });
+        }
+      }
+    });
+
+    long end = System.currentTimeMillis();
+    log.info(String.format("Read sequence metadata in %dms; %d sequences", end - start, sequenceMap.size()));
   }
 
 
@@ -697,6 +822,16 @@ public class OracleMetaDataProvider implements Schema {
 
 
   /**
+   * Oracle sometimes spits back some very odd sequence names, something to do with the system. We don't want those.
+   *
+   * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isSystemSequence(DatabaseMetaDataProvider.RealName)
+   */
+  private boolean isSystemSequence(String sequenceName) {
+    return !sequenceName.matches("\\w+") || sequenceName.matches("DBMS_\\w+") || sequenceName.matches("SYS_\\w+");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider#isPrimaryKeyIndex(DatabaseMetaDataProvider.RealName)
    */
   private boolean isPrimaryKeyIndex(String indexName) {
@@ -832,6 +967,42 @@ public class OracleMetaDataProvider implements Schema {
   @Override
   public Collection<View> views() {
     return viewMap().values();
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#sequenceExists(java.lang.String)
+   */
+  @Override
+  public boolean sequenceExists(String name) {
+    return sequenceMap().containsKey(name.toUpperCase());
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.metadata.Schema#getSequence(String)
+   */
+  @Override
+  public Sequence getSequence(String name) {
+    return sequenceMap().get(name.toUpperCase());
+  }
+
+
+  /**
+   * @see Schema#sequenceNames()
+   */
+  @Override
+  public Collection<String> sequenceNames() {
+    return sequenceMap().keySet();
+  }
+
+
+  /**
+   * @see Schema#sequences()
+   */
+  @Override
+  public Collection<Sequence> sequences() {
+    return sequenceMap().values();
   }
 
 

@@ -35,6 +35,7 @@ import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.Hint;
@@ -50,6 +51,8 @@ import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.PortableSqlFunction;
+import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
@@ -154,6 +157,30 @@ class SqlServerDialect extends SqlDialect {
     return statements;
   }
 
+
+  /**
+   * @see SqlDialect#internalSequenceDeploymentStatements(Sequence)
+   */
+  @Override
+  protected Collection<String> internalSequenceDeploymentStatements(Sequence sequence) {
+    List <String> statements = new ArrayList<>();
+
+    StringBuilder createSequenceStatement = new StringBuilder();
+    createSequenceStatement.append("CREATE ");
+
+    createSequenceStatement.append("SEQUENCE ");
+    createSequenceStatement.append(schemaNamePrefix());
+    createSequenceStatement.append(sequence.getName());
+
+    if (sequence.getStartsWith() != null) {
+      createSequenceStatement.append(" START WITH ");
+      createSequenceStatement.append(sequence.getStartsWith());
+    }
+
+    statements.add(createSequenceStatement.toString());
+
+    return statements;
+  }
 
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getFromDummyTable()
@@ -479,7 +506,28 @@ class SqlServerDialect extends SqlDialect {
     return sqlBuilder.toString();
   }
 
+
   /**
+   * @see SqlServerDialect#getSqlFrom(SequenceReference)
+   */
+  @Override
+  protected String getSqlFrom(SequenceReference sequenceReference) {
+    StringBuilder result = new StringBuilder();
+
+    switch (sequenceReference.getTypeOfOperation()) {
+      case NEXT_VALUE:
+        result.append("NEXT VALUE FOR ");
+        break;
+      case CURRENT_VALUE:
+        return "(SELECT current_value FROM sys.sequences WHERE name = '" + sequenceReference.getName() + "')";
+    }
+
+    result.append(sequenceReference.getName());
+
+    return result.toString();
+  }
+
+    /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#alterTableAddColumnStatements(org.alfasoftware.morf.metadata.Table, org.alfasoftware.morf.metadata.Column)
    */
   @Override
@@ -877,6 +925,27 @@ class SqlServerDialect extends SqlDialect {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForRightPad(org.alfasoftware.morf.sql.element.AliasedField, org.alfasoftware.morf.sql.element.AliasedField, org.alfasoftware.morf.sql.element.AliasedField)
+   */
+  @Override
+  protected String getSqlForRightPad(AliasedField field, AliasedField length, AliasedField character) {
+    String strField = getSqlFrom(field);
+    String strLength = getSqlFrom(length);
+    String strCharacter = getSqlFrom(character);
+
+    return String.format("CASE " +
+                           "WHEN LEN(%s) > %s THEN " +
+                             "LEFT(%s, %s) " +
+                           "ELSE " +
+                             "RIGHT(%s + REPLICATE(%s, %s), %s) " +
+                         "END",
+                         strField, strLength,
+                         strField, strLength,
+                         strField, strCharacter, strLength, strLength);
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForOrderByField(org.alfasoftware.morf.sql.element.FieldReference)
    */
   @Override
@@ -1101,6 +1170,12 @@ class SqlServerDialect extends SqlDialect {
   }
 
 
+  @Override
+  protected String getSqlFrom(PortableSqlFunction function) {
+    return super.getSqlForPortableFunction(function.getFunctionForDatabaseType(SqlServer.IDENTIFIER));
+  }
+
+
   /**
    * @see SqlDialect#getDeleteLimitPreFromClause(int)
    */
@@ -1117,5 +1192,11 @@ class SqlServerDialect extends SqlDialect {
   protected String tableNameWithSchemaName(TableReference tableRef) {
     if (!StringUtils.isEmpty(tableRef.getDblink())) throw new IllegalStateException("DB Links are not supported in the Sql Server dialect. Found dbLink=" + tableRef.getDblink() + " for tableNameWithSchemaName=" + super.tableNameWithSchemaName(tableRef));
     return super.tableNameWithSchemaName(tableRef);
+  }
+
+
+  @Override
+  public boolean useForcedSerialImport() {
+    return false;
   }
 }

@@ -32,10 +32,10 @@ import com.google.common.collect.ImmutableList;
  * @author Copyright (c) Alfa Financial Software 2010
  */
 public class TestH2Dialect extends AbstractSqlDialectTest {
-  
-  
+
+
   private final static String TEST_SCHEMA = "TESTSCHEMA";
-  
+
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#createTestDialect()
@@ -91,8 +91,8 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
             + TABLE_WITH_VERY_LONG_NAME
             + " (id BIGINT NOT NULL, version INTEGER DEFAULT 0, stringField VARCHAR(3), intField DECIMAL(8,0), floatField DECIMAL(13,2) NOT NULL, dateField DATE, booleanField BIT, charField VARCHAR(1), CONSTRAINT "
             + TABLE_WITH_VERY_LONG_NAME + "_PK PRIMARY KEY (id))",
-            "CREATE UNIQUE INDEX Test_NK ON "+TEST_SCHEMA+".tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation (stringField)",
-            "CREATE INDEX Test_1 ON "+TEST_SCHEMA+".tableWithANameThatExceedsTwentySevenCharactersToMakeSureSchemaNameDoesNotGetFactoredIntoOracleNameTruncation (intField,floatField)"
+            "CREATE UNIQUE INDEX Test_NK ON "+TEST_SCHEMA+"."+ TABLE_WITH_VERY_LONG_NAME + " (stringField)",
+            "CREATE INDEX Test_1 ON "+TEST_SCHEMA+"."+ TABLE_WITH_VERY_LONG_NAME + " (intField,floatField)"
         );
   }
 
@@ -440,6 +440,15 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedRightPad()
+   */
+  @Override
+  protected String expectedRightPad() {
+    return "SELECT RPAD(stringField, 10, CAST('j' AS VARCHAR(1))) FROM "+TEST_SCHEMA+".Test";
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterTableAddBlobColumnStatement()
    */
   @Override
@@ -733,6 +742,15 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterColumnRenameNonPrimaryIndexedColumn()
+   */
+  @Override
+  protected List<String> expectedAlterColumnRenameNonPrimaryIndexedColumn() {
+    return Arrays.asList("ALTER TABLE "+TEST_SCHEMA+".Alternate ALTER COLUMN stringField RENAME TO blahField");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterColumnRenamingAndChangingNullability()
    */
   @Override
@@ -808,6 +826,44 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedCreateViewStatements() {
     return Arrays.asList("CREATE VIEW " + tableName("TestView") + " AS (SELECT stringField FROM " + tableName("Test") + " WHERE (stringField = " + varCharCast("'blah'") + "))");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedCreateViewStatements()
+   */
+  @Override
+  protected List<String> expectedCreateSequenceStatements() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence") + " START WITH 1");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedCreateViewStatements()
+   */
+  @Override
+  protected List<String> expectedCreateTemporarySequenceStatements() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence") + " START WITH 1");
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateSequenceStatementsWithNoStartWith()
+   * @return
+   */
+  @Override
+  protected List<String> expectedCreateSequenceStatementsWithNoStartWith() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence"));
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCreateTemporarySequenceStatementsWithNoStartWith()
+   * @return
+   */
+  @Override
+  protected List<String> expectedCreateTemporarySequenceStatementsWithNoStartWith() {
+    return Arrays.asList("CREATE SEQUENCE " + tableName("TestSequence"));
   }
 
 
@@ -1088,8 +1144,8 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> getRenamingTableWithLongNameStatements() {
     return ImmutableList.of(
-      "ALTER TABLE "+TEST_SCHEMA+".123456789012345678901234567890XXX DROP PRIMARY KEY",
-      "ALTER TABLE "+TEST_SCHEMA+".123456789012345678901234567890XXX RENAME TO Blah",
+      "ALTER TABLE "+TEST_SCHEMA+".123456789012345678901234567890X DROP PRIMARY KEY",
+      "ALTER TABLE "+TEST_SCHEMA+".123456789012345678901234567890X RENAME TO Blah",
       "ALTER TABLE "+TEST_SCHEMA+".Blah ADD CONSTRAINT Blah_PK PRIMARY KEY (id)");
   }
 
@@ -1157,6 +1213,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   }
 
 
+  @Override
   protected List<String> expectedReplaceTableWithAutonumber() {
     return ImmutableList.of(
         "CREATE TABLE "+TEST_SCHEMA+".tmp_SomeTable (someField VARCHAR(3) NOT NULL, otherField DECIMAL(3,0) AUTO_INCREMENT(1) COMMENT 'AUTONUMSTART:[1]', thirdField DECIMAL(5,0) NOT NULL, CONSTRAINT tmp_SomeTable_PK PRIMARY KEY (someField))",
@@ -1277,5 +1334,39 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedSelectWithExceptAndDbLinkLatter() {
     return null;
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedNextValForSequence()
+   * @return
+   */
+  @Override
+  protected String expectedNextValForSequence() {
+    return "SELECT TestSequence.NEXTVAL FROM dual";
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCurrValForSequence()
+   */
+  @Override
+  protected String expectedCurrValForSequence() {
+    return "SELECT TestSequence.CURRVAL FROM dual";
+  }
+
+
+  @Override
+  protected String expectedPortableStatement() {
+    return "UPDATE TESTSCHEMA.Table SET field = BTRIM(field, CAST('2' AS VARCHAR(1)), CAST('B' AS VARCHAR(1)))";
+  }
+
+
+  /**
+   * @return The expected value for the force serial import setting.
+   */
+  @Override
+  protected boolean expectedForceSerialImport() {
+    return true;
   }
 }

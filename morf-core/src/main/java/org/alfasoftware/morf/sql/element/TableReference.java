@@ -139,10 +139,10 @@ public class TableReference implements DeepCopyableWithTransformation<TableRefer
    * Specifies the alias to use for the table.
    *
    * @param aliasName the name of the alias
-   * @return an updated {@link TableReference} (this will not be a new object)
+   * @return an updated {@link TableReference} (this will not be a new object unless using immutable DSL option and the alias is being changed)
    */
   public TableReference as(String aliasName) {
-    if (AliasedField.immutableDslEnabled()) {
+    if (AliasedField.immutableDslEnabled() && !aliasName.equals(alias)) {
       return new TableReference(this, aliasName);
     } else {
       this.alias = aliasName;

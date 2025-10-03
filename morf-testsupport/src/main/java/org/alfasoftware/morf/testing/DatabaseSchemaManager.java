@@ -33,8 +33,8 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaHomology;
-import org.alfasoftware.morf.metadata.SchemaHomology.DifferenceWriter;
 import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.upgrade.ViewChanges;
@@ -81,10 +81,13 @@ public class DatabaseSchemaManager {
   private static final ThreadLocal<SqlDialect> dialect = new ThreadLocal<>();
   private static final ThreadLocal<Map<String, Table>> tables = ThreadLocal.withInitial(HashMap::new);
   private static final ThreadLocal<Map<String, View>> views = ThreadLocal.withInitial(HashMap::new);
+  private static final ThreadLocal<Map<String, Sequence>> sequences = ThreadLocal.withInitial(HashMap::new);
   private static final ThreadLocal<Set<String>> tablesNotNeedingTruncate = ThreadLocal.withInitial(HashSet::new);
   private static final ThreadLocal<Set<String>> viewsDeployedByThis = ThreadLocal.withInitial(HashSet::new);
+  private static final ThreadLocal<Set<String>> sequencesDeployedByThis = ThreadLocal.withInitial(HashSet::new);
   private static final ThreadLocal<Boolean> tablesLoaded = ThreadLocal.withInitial(() -> false);
   private static final ThreadLocal<Boolean> viewsLoaded = ThreadLocal.withInitial(() -> false);
+  private static final ThreadLocal<Boolean> sequencesLoaded = ThreadLocal.withInitial(() -> false);
 
   private final DataSource dataSource;
   private final SqlScriptExecutorProvider executor;
@@ -129,10 +132,16 @@ public class DatabaseSchemaManager {
    */
   public void mutateToSupportSchema(Schema schema, TruncationBehavior truncationBehavior) {
     ProducerCache producerCache = new ProducerCache();
+    if (log.isDebugEnabled()) log.debug("Mutating schema to: " + schema.tables().size() + " tables, " + schema.views().size() + " views, " + schema.sequences().size() + " sequences");
+
     try {
+      log.debug("Cached tables: " + tables.get().keySet());
+      log.debug("Cached views: " + views.get().keySet());
+      log.debug("Cached sequences: " + sequences.get().keySet());
 
       Collection<String> tableStatements = ensureTablesExist(schema, truncationBehavior, producerCache);
       if (!tableStatements.isEmpty()) {
+        log.debug("tableStatements.size(): " + tableStatements.size());
         viewsDeployedByThis.get().clear(); // this will force a drop and redeploy, needed in case the views are affected.
       }
 
@@ -146,6 +155,17 @@ public class DatabaseSchemaManager {
         viewToDeploy
       );
 
+      log.debug("viewsToDrop.size(): " + viewsToDrop.size());
+      log.debug("viewToDeploy.size(): " + viewToDeploy.size());
+
+      // Drop all sequences in the schema and create the ones we need.
+      // note that if this class deployed the sequence already, then leave it alone as it means the sequence must be based on the current definition
+      Collection<Sequence> sequencesToDrop = sequenceCache(producerCache).values().stream().filter(s->!sequencesDeployedByThis.get().contains(s.getName().toUpperCase())).collect(toList());
+      Collection<Sequence> sequencesToDeploy = schema.sequences().stream().filter(s->!sequencesDeployedByThis.get().contains(s.getName().toUpperCase())).collect(toList());
+
+      log.debug("sequencesToDrop.size(): " + sequencesToDrop.size());
+      log.debug("sequencesToDeploy.size(): " + sequencesToDeploy.size());
+
       Collection<String> sql = Lists.newLinkedList();
 
       for (View view : changes.getViewsToDeploy()) {
@@ -156,14 +176,26 @@ public class DatabaseSchemaManager {
         sql.addAll(dropViewIfExists(view));
       }
 
-
       sql.addAll(tableStatements);
 
       for (View view: changes.getViewsToDeploy()) {
         sql.addAll(deployView(view));
       }
 
+      for (Sequence sequence : sequencesToDrop) {
+        sql.addAll(dropSequenceIfExists(sequence));
+      }
+
+      for (Sequence sequence : sequencesToDeploy) {
+        sql.addAll(deploySequence(sequence));
+      }
+
+      // this will log.trace(sql)
       executeScript(sql);
+
+      log.debug("Cached tables: " + tables.get().keySet());
+      log.debug("Cached views: " + views.get().keySet());
+      log.debug("Cached sequences: " + sequences.get().keySet());
 
     } catch (RuntimeException e) {
       if (log.isDebugEnabled()) {
@@ -191,12 +223,8 @@ public class DatabaseSchemaManager {
   private void cacheTables(Iterable<Table> newTables) {
     // Create disconnected copies of the tables in case we run across connections/data sources
     Iterable<Table> copies = Iterables.transform(newTables, new CopyTables());
-    tables.get().putAll(Maps.uniqueIndex(copies, new Function<Table, String>() {
-      @Override
-      public String apply(Table table) {
-        return table.getName().toUpperCase();
-      }
-    }));
+    tables.get().putAll(Maps.uniqueIndex(copies, table -> table.getName().toUpperCase()));
+    log.debug("Cached tables: " + tables.get().keySet());
     tablesLoaded.set(true);
   }
 
@@ -215,13 +243,29 @@ public class DatabaseSchemaManager {
   private void cacheViews(Iterable<View> newViews) {
     // Create disconnected copies of the views in case we run across connections/data sources
     Iterable<View> copies = Iterables.transform(newViews, new CopyViews());
-    views.get().putAll(Maps.uniqueIndex(copies, new Function<View, String>() {
-      @Override
-      public String apply(View view) {
-        return view.getName().toUpperCase();
-      }
-    }));
+    views.get().putAll(Maps.uniqueIndex(copies, view -> view.getName().toUpperCase()));
+    log.trace("Cached views: " + views.get().keySet());
     viewsLoaded.set(true);
+  }
+
+
+  /**
+   * Returns the cached set of sequences in the database.
+   */
+  private Map<String, Sequence> sequenceCache(ProducerCache producerCache) {
+    if (!sequencesLoaded.get()) {
+      cacheSequences(producerCache.get().getSchema().sequences());
+    }
+    return sequences.get();
+  }
+
+
+  private void cacheSequences(Iterable<Sequence> newSequences) {
+    // Create disconnected copies of the sequences in case we run across connections/data sources
+    Iterable<Sequence> copies = Iterables.transform(newSequences, new CopySequences());
+    sequences.get().putAll(Maps.uniqueIndex(copies, sequence -> sequence.getName().toUpperCase()));
+    log.debug("Cached sequences: " + sequences.get().keySet());
+    sequencesLoaded.set(true);
   }
 
 
@@ -238,17 +282,16 @@ public class DatabaseSchemaManager {
       StackTraceElement stack = new Throwable().getStackTrace()[1];
       log.debug("Cache invalidated at " + stack.getClassName() + "." + stack.getMethodName() + ":" + stack.getLineNumber());
     }
-    clearCache();
-  }
 
-
-  private void clearCache() {
     tables.get().clear();
     views.get().clear();
+    sequences.get().clear();
     tablesNotNeedingTruncate.get().clear();
     tablesLoaded.set(false);
     viewsLoaded.set(false);
+    sequencesLoaded.set(false);
     viewsDeployedByThis.get().clear();
+    sequencesDeployedByThis.get().clear();
   }
 
 
@@ -260,9 +303,9 @@ public class DatabaseSchemaManager {
    * @return sql statements
    */
    public Collection<String> dropTableIfPresent(ProducerCache producerCache, String tableName) {
-    Table table = getTable(producerCache, tableName);
-    return table == null ? Collections.emptySet() : dropTable(table);
-  }
+     Table table = getTable(producerCache, tableName);
+     return table == null ? Collections.emptySet() : dropTable(table);
+   }
 
 
   /**
@@ -272,12 +315,14 @@ public class DatabaseSchemaManager {
    */
   public void dropTablesIfPresent(Set<String> tablesToDrop) {
     ProducerCache producerCache = new ProducerCache();
+    if (log.isDebugEnabled()) log.debug("dropTablesIfPresent: tablesToDrop.size(): " + tablesToDrop.size());
     try {
       Collection<String> sql = Lists.newLinkedList();
       for (String tableName : tablesToDrop) {
         Table cachedTable = getTable(producerCache, tableName);
         if (cachedTable != null) {
           sql.addAll(dropTable(cachedTable));
+          log.debug("dropTablesIfPresent: " + tableName);
         }
       }
       executeScript(sql);
@@ -292,12 +337,14 @@ public class DatabaseSchemaManager {
    */
   public void dropAllTables() {
     ProducerCache producerCache = new ProducerCache();
+    if (log.isDebugEnabled()) log.debug("Dropping all tables");
     try {
       Schema databaseSchema = producerCache.get().getSchema();
       ImmutableList<Table> tablesToDrop = ImmutableList.copyOf(databaseSchema.tables());
       List<String> script = Lists.newArrayList();
       for (Table table : tablesToDrop) {
         script.addAll(dialect.get().dropStatements(table));
+        if (log.isDebugEnabled()) log.debug("dropAllTables: " + table.getName());
       }
       executeScript(script);
     } finally {
@@ -310,6 +357,7 @@ public class DatabaseSchemaManager {
 
   private void executeScript(Collection<String> script) {
     if (!script.isEmpty()) {
+      if (log.isTraceEnabled()) log.trace("Executing script:\n" + String.join("\n", script));
       executor.get().execute(script);
     }
   }
@@ -320,13 +368,14 @@ public class DatabaseSchemaManager {
    */
   public void dropAllViews() {
     ProducerCache producerCache = new ProducerCache();
-    log.debug("Dropping all views");
+    if (log.isDebugEnabled()) log.debug("Dropping all views");
     try {
       Schema databaseSchema = producerCache.get().getSchema();
       ImmutableList<View> viewsToDrop = ImmutableList.copyOf(databaseSchema.views());
       List<String> script = Lists.newArrayList();
       for (View view : viewsToDrop) {
         script.addAll(dialect.get().dropStatements(view));
+        if (log.isTraceEnabled()) log.trace("dropAllViews: " + view.getName());
       }
       executeScript(script);
     } finally {
@@ -338,9 +387,33 @@ public class DatabaseSchemaManager {
 
 
   /**
+   * Drop all sequences.
+   */
+  public void dropAllSequences() {
+    ProducerCache producerCache = new ProducerCache();
+    if (log.isDebugEnabled()) log.debug("Dropping all sequences");
+    try {
+      Schema databaseSchema = producerCache.get().getSchema();
+      ImmutableList<Sequence> sequencesToDrop = ImmutableList.copyOf(databaseSchema.sequences());
+      List<String> script = Lists.newArrayList();
+      for (Sequence sequence : sequencesToDrop) {
+        script.addAll(dialect.get().dropStatements(sequence));
+        if (log.isDebugEnabled()) log.debug("dropAllSequences: " + sequence.getName());
+      }
+      executeScript(script);
+    } finally {
+      producerCache.close();
+    }
+    sequences.get().clear();
+    sequencesDeployedByThis.get().clear();
+  }
+
+
+  /**
    * Ensure that every table in the schema is present in the DB.
    */
   private Collection<String> ensureTablesExist(Schema schema, TruncationBehavior truncationBehavior, ProducerCache producerCache) {
+    if (log.isDebugEnabled()) log.debug("ensureTablesExist: schema.tables().size(): " + schema.tables().size());
     Collection<String> sql = Lists.newLinkedList();
     for (Table requiredTable : schema.tables()) {
       sql.addAll(ensureTableExists(requiredTable, truncationBehavior, producerCache));
@@ -360,13 +433,6 @@ public class DatabaseSchemaManager {
     boolean deployRequired;
     boolean truncateRequired;
 
-    DifferenceWriter differenceWriter = new DifferenceWriter() {
-      @Override
-      public void difference(String message) {
-        log.debug(message);
-      }
-    };
-
     if (requiredTable.getName().length() > 27) {
       log.warn("Required table name [" + requiredTable.getName() + "] is [" + requiredTable.getName().length() + "] characters long!");
     }
@@ -374,7 +440,7 @@ public class DatabaseSchemaManager {
     // if we have an existing table, check it's identical
     Table existingTable = getTable(producerCache, requiredTable.getName());
     if (existingTable != null) {
-      if (new SchemaHomology(differenceWriter, "cache", "required").tablesMatch(existingTable, requiredTable)) {
+      if (new SchemaHomology(log::debug, "cache", "required").tablesMatch(existingTable, requiredTable)) {
         // they match - it's identical, so we can re-use it
         dropRequired = false;
         deployRequired = false;
@@ -400,15 +466,19 @@ public class DatabaseSchemaManager {
 
     Collection<String> sql = Lists.newLinkedList();
 
-    if (dropRequired)
+    if (dropRequired) {
       sql.addAll(dropTable(existingTable));
+      if (log.isTraceEnabled()) log.trace("ensureTableExists: dropRequired: " + existingTable.getName());
+    }
 
     if (deployRequired) {
       sql.addAll(deployTable(requiredTable));
+      if (log.isTraceEnabled()) log.trace("ensureTableExists: deployRequired: " + requiredTable.getName());
     }
 
     if (truncateRequired) {
       sql.addAll(truncateTable(requiredTable));
+      if (log.isTraceEnabled()) log.trace("ensureTableExists: truncateRequired: " + requiredTable.getName());
     }
 
     return sql;
@@ -440,6 +510,33 @@ public class DatabaseSchemaManager {
     if (log.isDebugEnabled()) log.debug("Dropping any existing view [" + view.getName() + "]");
     views.get().remove(view.getName().toUpperCase());
     return dialect.get().dropStatements(view);
+  }
+
+
+  /**
+   * Deploys the specified sequence to the database.
+   *
+   * @param sequence the sequence to deploy
+   */
+  private Collection<String> deploySequence(Sequence sequence) {
+    if (log.isDebugEnabled()) log.debug("Deploying sequence [" + sequence.getName() + "]");
+    sequences.get().put(sequence.getName().toUpperCase(), SchemaUtils.copy(sequence));
+    sequencesDeployedByThis.get().add(sequence.getName().toUpperCase());
+    return dialect.get().sequenceDeploymentStatements(sequence);
+  }
+
+
+  /**
+   * Removes the specified sequence from the database, if it exists.   Otherwise
+   * do nothing.  To allow for JDBC implementations that do not support
+   * conditional dropping of sequences, this will trap and ignore
+   *
+   * @param sequence the sequence to drop
+   */
+  private Collection<String> dropSequenceIfExists(Sequence sequence) {
+    if (log.isDebugEnabled()) log.debug("Dropping any existing sequence [" + sequence.getName() + "]");
+    sequences.get().remove(sequence.getName().toUpperCase());
+    return dialect.get().dropStatements(sequence);
   }
 
 
@@ -478,7 +575,6 @@ public class DatabaseSchemaManager {
    */
   private Collection<String> truncateTable(Table table) {
     if (log.isDebugEnabled()) log.debug("Truncating table [" + table.getName() + "]");
-
     // use delete-all rather than truncate, because at least on Oracle this is a lot faster when the table is small.
     return dialect.get().deleteAllFromTableStatements(table);
   }
@@ -503,6 +599,19 @@ public class DatabaseSchemaManager {
       if (producer != null) {
         producer.close();
       }
+    }
+  }
+
+
+  /**
+   * Function which creates copies of sequences.
+   *
+   * @author Copyright (c) Alfa Financial Software 2024
+   */
+  private static class CopySequences implements Function<Sequence, Sequence> {
+    @Override
+    public Sequence apply(Sequence sequence) {
+      return SchemaUtils.copy(sequence);
     }
   }
 

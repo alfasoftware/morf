@@ -19,11 +19,13 @@ import static java.util.stream.Collectors.toList;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
+import static org.alfasoftware.morf.metadata.SchemaUtils.sequence;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.metadata.SchemaUtils.view;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.either;
@@ -32,7 +34,6 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.equalToIgnoringCase;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -41,8 +42,6 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.function.Function;
 
-import net.jcip.annotations.NotThreadSafe;
-
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
@@ -50,6 +49,7 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.SelectStatement;
@@ -68,6 +68,8 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.inject.Inject;
+
+import net.jcip.annotations.NotThreadSafe;
 
 /**
  * Tests for {@link DatabaseMetaDataProvider}.
@@ -113,7 +115,8 @@ public class TestDatabaseMetaDataProvider {
           column("nullableDateCol", DataType.DATE).nullable())
         .indexes(
           index("WithTypes_1").columns("booleanCol", "dateCol"),
-          index("NaturalKey").columns("decimalElevenCol").unique()),
+          index("NaturalKey").columns("decimalElevenCol").unique(),
+          index("WithTypes_PRF1").columns("decimalNineFiveCol", "bigIntegerCol")),
       table("WithLobs")
         .columns(
           SchemaUtils.autonumber("autonumfield", 17),
@@ -133,12 +136,16 @@ public class TestDatabaseMetaDataProvider {
     schema(
       view("ViewWithTypes", select(field("primaryStringCol"), field("id")).from("WithTypes").crossJoin(tableRef("WithDefaults"))),
       view("View2", select(field("primaryStringCol"), field("id")).from("ViewWithTypes"), "ViewWithTypes")
+    ),
+    schema(
+      sequence("Sequence1")
     )
   );
 
   private static String databaseType;
   private static Boolean mysqlLowerCaseTableNames;
   private static Boolean mysqlLowerCaseViewNames;
+  private static Boolean mysqlLowerCaseSequenceNames;
 
 
   @Before
@@ -146,6 +153,7 @@ public class TestDatabaseMetaDataProvider {
 
     databaseType = database.getDatabaseType();
 
+    schemaManager.dropAllSequences();
     schemaManager.dropAllViews();
     schemaManager.dropAllTables();
     schemaManager.mutateToSupportSchema(schema, TruncationBehavior.ALWAYS);
@@ -175,6 +183,14 @@ public class TestDatabaseMetaDataProvider {
     try(SchemaResource schemaResource = database.openSchemaResource()) {
 
       assertFalse(schemaResource.isEmptyDatabase());
+
+      assertThat(schemaResource.sequenceNames(), containsInAnyOrder(ImmutableList.of(
+        sequenceNameEqualTo("Sequence1")
+      )));
+
+      assertThat(schemaResource.sequences(), containsInAnyOrder(ImmutableList.of(
+        sequenceNameMatcher("Sequence1")
+      )));
 
       assertThat(schemaResource.viewNames(), containsInAnyOrder(ImmutableList.of(
         viewNameEqualTo("ViewWithTypes"),
@@ -266,6 +282,11 @@ public class TestDatabaseMetaDataProvider {
         indexMatcher(
           index("NaturalKey").columns("decimalElevenCol").unique()))
       ));
+
+      schemaResource.getAdditionalMetadata().ifPresent(additionalMetadata ->
+        assertThat(additionalMetadata.ignoredIndexes().get("WithTypes".toLowerCase()), containsInAnyOrder(ImmutableList.of(
+          indexMatcher(index("WithTypes_PRF1").columns("decimalNineFiveCol", "bigIntegerCol"))
+      ))));
     }
   }
 
@@ -440,6 +461,15 @@ public class TestDatabaseMetaDataProvider {
   }
 
 
+  private static Matcher<? super Sequence> sequenceNameMatcher(String sequenceName) {
+    Matcher<Sequence> subMatchers = Matchers.allOf(ImmutableList.of(
+      propertyMatcher(Sequence::getName, "name", sequenceNameEqualTo(sequenceName))
+    ));
+
+    return Matchers.describedAs("%0", subMatchers, sequenceName);
+  }
+
+
   private static Matcher<? super Column> columnMatcher(Column column) {
     Matcher<Column> subMatchers = Matchers.allOf(ImmutableList.of(
       propertyMatcher(Column::getName, "name", columnNameEqualTo(column.getName())),
@@ -509,6 +539,23 @@ public class TestDatabaseMetaDataProvider {
   }
 
 
+  private static Matcher<String> sequenceNameEqualTo(String sequenceName) {
+    switch (databaseType) {
+      case "H2":
+      case "ORACLE":
+        return equalTo(sequenceName.toUpperCase());
+      case "MY_SQL":
+        return mysqlLowerCaseSequenceNames
+          ? equalTo(sequenceName.toLowerCase())
+          : equalTo(sequenceName);
+      case "PGSQL":
+        return equalTo(sequenceName.toLowerCase());
+      default:
+        return equalTo(sequenceName);
+    }
+  }
+
+
   private static Matcher<String> tableNameEqualTo(String tableName) {
     switch (databaseType) {
       case "H2":
@@ -570,6 +617,9 @@ public class TestDatabaseMetaDataProvider {
 
         View view = schemaResource.getView("ViewWithTypes");
         mysqlLowerCaseViewNames = view.getName().equals("viewwithtypes");
+
+        Sequence sequence = schemaResource.getSequence("Sequence2");
+        mysqlLowerCaseSequenceNames = sequence.getName().equals("sequence2");
       }
     }
   }

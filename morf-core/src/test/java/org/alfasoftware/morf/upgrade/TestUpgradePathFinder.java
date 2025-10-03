@@ -508,6 +508,31 @@ public class TestUpgradePathFinder {
   }
 
 
+  @Test
+  public void testSchemaChangeSequenceWithSchemaChangeAdaptor() {
+    UpgradeConfigAndContext upgradeConfigAndContext = new UpgradeConfigAndContext();
+    upgradeConfigAndContext.setSchemaChangeAdaptor(new SchemaChangeAdaptor() {
+      @Override
+      public AddTable adapt(AddTable addTable) {
+        Table table = addTable.getTable();
+        return new AddTable(
+            table("NewTableName")
+              .columns(table.columns())
+              .indexes(table.indexes()));
+      }
+    });
+
+    List<Class<? extends UpgradeStep>> upgradeSteps = new ArrayList<>();
+    upgradeSteps.add(AddCakeTable.class);
+
+    UpgradePathFinder upgradePathFinder = makeFinder(upgradeConfigAndContext, upgradeSteps, appliedSteps());
+    SchemaChangeSequence schemaChangeSequence = upgradePathFinder.getSchemaChangeSequence();
+    Schema resultingSchema = schemaChangeSequence.applyToSchema(schema(sconeTable));
+
+    assertTrue(resultingSchema.tableExists("NewTableName"));
+  }
+
+
   private UpgradePathFinder makeFinder(List<Class<? extends UpgradeStep>> availableSteps, List<Class<?>> appliedSteps) {
     Set<java.util.UUID> uuids = new HashSet<>();
     for(Class<?> appliedStep : appliedSteps) {
@@ -515,5 +540,14 @@ public class TestUpgradePathFinder {
     }
 
     return new UpgradePathFinder(availableSteps, uuids);
+  }
+
+  private UpgradePathFinder makeFinder(UpgradeConfigAndContext upgradeConfigAndContext, List<Class<? extends UpgradeStep>> availableSteps, List<Class<?>> appliedSteps) {
+    Set<java.util.UUID> uuids = new HashSet<>();
+    for(Class<?> appliedStep : appliedSteps) {
+      uuids.add(java.util.UUID.fromString(appliedStep.getAnnotation(UUID.class).value()));
+    }
+
+    return new UpgradePathFinder(upgradeConfigAndContext, availableSteps, uuids);
   }
 }
