@@ -27,16 +27,16 @@ class GraphBasedUpgradeSchemaChangeVisitor extends AbstractSchemaChangeVisitor i
   /**
    * Default constructor.
    *
-   * @param sourceSchema schema prior to upgrade step.
+   * @param currentSchema schema prior to upgrade step.
    * @param upgradeConfigAndContext upgrade config
    * @param sqlDialect   dialect to generate statements for the target database.
    * @param idTable      table for id generation.
    * @param upgradeNodes all the {@link GraphBasedUpgradeNode} instances in the
    *                       upgrade for which the visitor will generate statements
    */
-  GraphBasedUpgradeSchemaChangeVisitor(Schema sourceSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect, Table idTable, Map<String, GraphBasedUpgradeNode> upgradeNodes) {
-    super(sourceSchema, upgradeConfigAndContext, sqlDialect);
-    this.sourceSchema = sourceSchema;
+  GraphBasedUpgradeSchemaChangeVisitor(Schema currentSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect, Table idTable, Map<String, GraphBasedUpgradeNode> upgradeNodes) {
+    super(currentSchema, upgradeConfigAndContext, sqlDialect);
+    this.currentSchema = currentSchema;
     this.sqlDialect = sqlDialect;
     this.idTable = idTable;
     this.upgradeNodes = upgradeNodes;
@@ -63,58 +63,58 @@ class GraphBasedUpgradeSchemaChangeVisitor extends AbstractSchemaChangeVisitor i
 
   @Override
   public void visit(AddTable addTable) {
-    sourceSchema = addTable.apply(sourceSchema);
+    currentSchema = addTable.apply(currentSchema);
     writeStatements(sqlDialect.tableDeploymentStatements(addTable.getTable()));
   }
 
 
   @Override
   public void visit(RemoveTable removeTable) {
-    sourceSchema = removeTable.apply(sourceSchema);
+    currentSchema = removeTable.apply(currentSchema);
     writeStatements(sqlDialect.dropStatements(removeTable.getTable()));
   }
 
 
   @Override
   public void visit(AddColumn addColumn) {
-    sourceSchema = addColumn.apply(sourceSchema);
-    writeStatements(sqlDialect.alterTableAddColumnStatements(sourceSchema.getTable(addColumn.getTableName()), addColumn.getNewColumnDefinition()));
+    currentSchema = addColumn.apply(currentSchema);
+    writeStatements(sqlDialect.alterTableAddColumnStatements(currentSchema.getTable(addColumn.getTableName()), addColumn.getNewColumnDefinition()));
   }
 
 
   @Override
   public void visit(ChangeColumn changeColumn) {
-    sourceSchema = changeColumn.apply(sourceSchema);
-    writeStatements(sqlDialect.alterTableChangeColumnStatements(sourceSchema.getTable(changeColumn.getTableName()), changeColumn.getFromColumn(), changeColumn.getToColumn()));
+    currentSchema = changeColumn.apply(currentSchema);
+    writeStatements(sqlDialect.alterTableChangeColumnStatements(currentSchema.getTable(changeColumn.getTableName()), changeColumn.getFromColumn(), changeColumn.getToColumn()));
   }
 
 
   @Override
   public void visit(RemoveColumn removeColumn) {
-    sourceSchema = removeColumn.apply(sourceSchema);
-    writeStatements(sqlDialect.alterTableDropColumnStatements(sourceSchema.getTable(removeColumn.getTableName()), removeColumn.getColumnDefinition()));
+    currentSchema = removeColumn.apply(currentSchema);
+    writeStatements(sqlDialect.alterTableDropColumnStatements(currentSchema.getTable(removeColumn.getTableName()), removeColumn.getColumnDefinition()));
   }
 
 
   @Override
   public void visit(RemoveIndex removeIndex) {
-    sourceSchema = removeIndex.apply(sourceSchema);
-    writeStatements(sqlDialect.indexDropStatements(sourceSchema.getTable(removeIndex.getTableName()), removeIndex.getIndexToBeRemoved()));
+    currentSchema = removeIndex.apply(currentSchema);
+    writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(removeIndex.getTableName()), removeIndex.getIndexToBeRemoved()));
   }
 
 
   @Override
   public void visit(ChangeIndex changeIndex) {
-    sourceSchema = changeIndex.apply(sourceSchema);
-    writeStatements(sqlDialect.indexDropStatements(sourceSchema.getTable(changeIndex.getTableName()), changeIndex.getFromIndex()));
-    writeStatements(sqlDialect.addIndexStatements(sourceSchema.getTable(changeIndex.getTableName()), changeIndex.getToIndex()));
+    currentSchema = changeIndex.apply(currentSchema);
+    writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(changeIndex.getTableName()), changeIndex.getFromIndex()));
+    writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(changeIndex.getTableName()), changeIndex.getToIndex()));
   }
 
 
   @Override
   public void visit(final RenameIndex renameIndex) {
-    sourceSchema = renameIndex.apply(sourceSchema);
-    writeStatements(sqlDialect.renameIndexStatements(sourceSchema.getTable(renameIndex.getTableName()),
+    currentSchema = renameIndex.apply(currentSchema);
+    writeStatements(sqlDialect.renameIndexStatements(currentSchema.getTable(renameIndex.getTableName()),
       renameIndex.getFromIndexName(), renameIndex.getToIndexName()));
   }
 
@@ -132,9 +132,9 @@ class GraphBasedUpgradeSchemaChangeVisitor extends AbstractSchemaChangeVisitor i
 
   @Override
   public void visit(RenameTable renameTable) {
-    Table oldTable = sourceSchema.getTable(renameTable.getOldTableName());
-    sourceSchema = renameTable.apply(sourceSchema);
-    Table newTable = sourceSchema.getTable(renameTable.getNewTableName());
+    Table oldTable = currentSchema.getTable(renameTable.getOldTableName());
+    currentSchema = renameTable.apply(currentSchema);
+    Table newTable = currentSchema.getTable(renameTable.getNewTableName());
 
     writeStatements(sqlDialect.renameTableStatements(oldTable, newTable));
   }
@@ -142,8 +142,8 @@ class GraphBasedUpgradeSchemaChangeVisitor extends AbstractSchemaChangeVisitor i
 
   @Override
   public void visit(ChangePrimaryKeyColumns changePrimaryKeyColumns) {
-    sourceSchema = changePrimaryKeyColumns.apply(sourceSchema);
-    writeStatements(sqlDialect.changePrimaryKeyColumns(sourceSchema.getTable(changePrimaryKeyColumns.getTableName()), changePrimaryKeyColumns.getOldPrimaryKeyColumns(), changePrimaryKeyColumns.getNewPrimaryKeyColumns()));
+    currentSchema = changePrimaryKeyColumns.apply(currentSchema);
+    writeStatements(sqlDialect.changePrimaryKeyColumns(currentSchema.getTable(changePrimaryKeyColumns.getTableName()), changePrimaryKeyColumns.getOldPrimaryKeyColumns(), changePrimaryKeyColumns.getNewPrimaryKeyColumns()));
   }
 
 
@@ -164,13 +164,13 @@ class GraphBasedUpgradeSchemaChangeVisitor extends AbstractSchemaChangeVisitor i
    * @param statement The {@link Statement}.
    */
   private void visitStatement(Statement statement) {
-    writeStatements(sqlDialect.convertStatementToSQL(statement, sourceSchema, idTable));
+    writeStatements(sqlDialect.convertStatementToSQL(statement, currentSchema, idTable));
   }
 
 
   @Override
   public void addAuditRecord(UUID uuid, String description) {
-    AuditRecordHelper.addAuditRecord(this, sourceSchema, uuid, description);
+    AuditRecordHelper.addAuditRecord(this, currentSchema, uuid, description);
   }
 
 
@@ -190,15 +190,15 @@ class GraphBasedUpgradeSchemaChangeVisitor extends AbstractSchemaChangeVisitor i
 
   @Override
   public void visit(AddTableFrom addTableFrom) {
-    sourceSchema = addTableFrom.apply(sourceSchema);
+    currentSchema = addTableFrom.apply(currentSchema);
     writeStatements(sqlDialect.addTableFromStatements(addTableFrom.getTable(), addTableFrom.getSelectStatement()));
   }
 
 
   @Override
   public void visit(AnalyseTable analyseTable) {
-    sourceSchema = analyseTable.apply(sourceSchema);
-    writeStatements(sqlDialect.getSqlForAnalyseTable(sourceSchema.getTable(analyseTable.getTableName())));
+    currentSchema = analyseTable.apply(currentSchema);
+    writeStatements(sqlDialect.getSqlForAnalyseTable(currentSchema.getTable(analyseTable.getTableName())));
   }
 
 
@@ -208,7 +208,7 @@ class GraphBasedUpgradeSchemaChangeVisitor extends AbstractSchemaChangeVisitor i
    * @param addSequence The {@link AddSequence}
    */  @Override
   public void visit(AddSequence addSequence) {
-    sourceSchema = addSequence.apply(sourceSchema);
+    currentSchema = addSequence.apply(currentSchema);
     writeStatements(sqlDialect.sequenceDeploymentStatements(addSequence.getSequence()));
   }
 
@@ -220,7 +220,7 @@ class GraphBasedUpgradeSchemaChangeVisitor extends AbstractSchemaChangeVisitor i
    */
   @Override
   public void visit(RemoveSequence removeSequence) {
-    sourceSchema = removeSequence.apply(sourceSchema);
+    currentSchema = removeSequence.apply(currentSchema);
     writeStatements(sqlDialect.dropStatements(removeSequence.getSequence()));
   }
 
@@ -235,7 +235,7 @@ class GraphBasedUpgradeSchemaChangeVisitor extends AbstractSchemaChangeVisitor i
     /**
      * Creates {@link GraphBasedUpgradeSchemaChangeVisitor} instance.
      *
-     * @param sourceSchema schema prior to upgrade step
+     * @param currentSchema schema prior to upgrade step
      * @param upgradeConfigAndContext upgrade config
      * @param sqlDialect   dialect to generate statements for the target database
      * @param idTable      table for id generation
@@ -243,9 +243,9 @@ class GraphBasedUpgradeSchemaChangeVisitor extends AbstractSchemaChangeVisitor i
      *                       which the visitor will generate statements
      * @return new {@link GraphBasedUpgradeSchemaChangeVisitor} instance
      */
-    GraphBasedUpgradeSchemaChangeVisitor create(Schema sourceSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect, Table idTable,
+    GraphBasedUpgradeSchemaChangeVisitor create(Schema currentSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect, Table idTable,
                                                 Map<String, GraphBasedUpgradeNode> upgradeNodes) {
-      return new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable, upgradeNodes);
+      return new GraphBasedUpgradeSchemaChangeVisitor(currentSchema, upgradeConfigAndContext, sqlDialect, idTable, upgradeNodes);
     }
   }
 }

@@ -31,7 +31,6 @@ import org.alfasoftware.morf.sql.Statement;
  */
 public class InlineTableUpgrader extends AbstractSchemaChangeVisitor implements SchemaChangeVisitor {
 
-  private Schema                   currentSchema;
   private final SqlStatementWriter sqlStatementWriter;
   private final Table              idTable;
   private final TableNameResolver  tracker;
