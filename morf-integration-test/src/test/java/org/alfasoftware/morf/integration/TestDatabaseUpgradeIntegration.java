@@ -73,6 +73,7 @@ import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddDataToIdColumn;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddIndex;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddPrimaryKeyColumns;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddTableAndIndex;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ChangeColumnDataType;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ChangeColumnLengthAndCase;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ChangePrimaryKeyColumnOrder;
@@ -569,6 +570,29 @@ public class TestDatabaseUpgradeIntegration {
     Schema reAdded = replaceTablesInSchema(tableWithNewAddIndex);
 
     verifyUpgrade(reAdded, AddIndex.class);
+  }
+
+
+  /**
+   * Test that having an upgrade step that adds a new table followed by adding an index work
+   */
+  @Test
+  public void testAddIndexAfterAddTable() {
+    Table tableWithNewAddIndex = table("BasicTableWithIndex1")
+      .columns(
+        column("stringCol", DataType.STRING, 20).primaryKey(),
+        column("nullableStringCol", DataType.STRING, 10).nullable(),
+        column("decimalTenZeroCol", DataType.DECIMAL, 10),
+        column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
+        column("bigIntegerCol", DataType.BIG_INTEGER),
+        column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable())
+      .indexes(
+        index("WrongIndexName1_1").columns("bigIntegerCol"),
+        index("BasicTableWithIndex1_1").columns("decimalTenZeroCol"));
+
+    Schema reAdd = replaceTablesInSchema(tableWithNewAddIndex);
+
+    verifyUpgrade(reAdd, AddTableAndIndex.class);
   }
 
 
