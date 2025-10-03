@@ -21,9 +21,6 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   protected final TableNameResolver  tracker;
 
 
-  protected abstract void writeStatements(Collection<String> statements);
-
-
   public AbstractSchemaChangeVisitor(Schema currentSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect,
                                      Table idTable) {
     this.currentSchema = currentSchema;
@@ -33,8 +30,10 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     this.tracker = new IdTableTracker(idTable.getName());
   }
 
-  abstract protected void writeStatement(String statement);
 
+  protected abstract  void writeStatement(String statement);
+
+  protected abstract   void writeStatements(Collection<String> statements);
 
   /**
    * Produce and write the DSL statement.
@@ -207,5 +206,4 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
       writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(addIndex.getTableName()), addIndex.getNewIndex()));
     }
   }
-
 }
