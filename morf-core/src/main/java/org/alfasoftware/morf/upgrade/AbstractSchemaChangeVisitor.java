@@ -31,9 +31,20 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   }
 
 
-  protected abstract  void writeStatement(String statement);
+  /**
+   * Provides an entry point to write the generated sql statement to some defined place on the inheritors
+   * The visit methods would add a statement by calling this.
+   * @param statement the statement
+   */
+  protected abstract void writeStatement(String statement);
 
-  protected abstract   void writeStatements(Collection<String> statements);
+  /**
+   * Provides an entry point to write the generated sql statements to some defined place on the inheritors
+   * The visit methods would add a collection of statements by calling this.
+   * @param statements the statements
+   */
+  protected abstract void writeStatements(Collection<String> statements);
+
 
   /**
    * Produce and write the DSL statement.
