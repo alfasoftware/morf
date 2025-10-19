@@ -158,6 +158,9 @@ import org.alfasoftware.morf.upgrade.LoggingSqlScriptVisitor;
 import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.commons.logging.impl.Log4JLogger;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 import org.joda.time.LocalDate;
 import org.joda.time.Months;
 import org.junit.After;
@@ -1456,10 +1459,10 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
 
     SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor() {
       @Override
-      public void afterExecute(String sql, long numberOfRowsUpdated) {
+      public void afterExecute(String sql, long numberOfRowsUpdated, long durationInSeconds) {
         // we run some huge queries in this test, and loggers do not like that very much
         String substring = sql.length() > 2048 ? sql.substring(0, 2048) + "..." : sql;
-        super.afterExecute(substring, numberOfRowsUpdated);
+        super.afterExecute(substring, numberOfRowsUpdated, durationInSeconds);
       }
     });
 

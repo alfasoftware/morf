@@ -64,11 +64,11 @@ public class LoggingSqlScriptVisitor implements SqlScriptVisitor {
 
   /**
    * {@inheritDoc}
-   * @see org.alfasoftware.morf.jdbc.SqlScriptExecutor.SqlScriptVisitor#afterExecute(java.lang.String, long)
+   * @see org.alfasoftware.morf.jdbc.SqlScriptExecutor.SqlScriptVisitor#afterExecute(String, long, long)
    */
   @Override
-  public void afterExecute(String sql, long numberOfRowsUpdated) {
-    log.info(logSchemaPositionPrefix() + "Completed [" + sql + "] with [" + numberOfRowsUpdated + "] rows updated");
+  public void afterExecute(String sql, long numberOfRowsUpdated, long durationInSeconds) {
+    log.info(logSchemaPositionPrefix() + "Completed [" + sql + "] in [" + durationInSeconds + "] seconds with [" + numberOfRowsUpdated + "] rows updated");
   }
 
   /**
