@@ -127,15 +127,14 @@ public class SqlScriptExecutor {
     public void beforeExecute(String sql);
 
     /**
-     * Notify the visitor that the given SQL has been updated in the given number of seconds, and the
+     * Notify the visitor that the given SQL has been updated, and the
      * given number of rows were updated. This should always be preceded
      * by a call to {@link #beforeExecute(String)} with the same SQL.
      *
      * @param sql SQL which has just been executed.
      * @param numberOfRowsUpdated Number of rows updated by {@code sql}.
-     * @param durationInSeconds time taken to execute {@code sql} in seconds.
      */
-    public void afterExecute(String sql, long numberOfRowsUpdated, long durationInSeconds);
+    public void afterExecute(String sql, long numberOfRowsUpdated);
 
     /**
      * The batch of SQL statements has completed.
@@ -314,7 +313,6 @@ public class SqlScriptExecutor {
    * @return The number of rows updated/affected by this statement
    */
   public int execute(String sqlStatement, Connection connection, Iterable<SqlParameter> parameterMetadata, DataValueLookup parameterData) {
-    long startTimeInNanoSeconds = System.nanoTime();
     visitor.beforeExecute(sqlStatement);
     int numberOfRowsUpdated = 0;
     try {
@@ -328,9 +326,7 @@ public class SqlScriptExecutor {
       }
       return numberOfRowsUpdated;
     } finally {
-      long endTimeInNanoSeconds = System.nanoTime();
-      long durationInNanoSeconds = (endTimeInNanoSeconds - startTimeInNanoSeconds) / 1_000_000_000;
-      visitor.afterExecute(sqlStatement, numberOfRowsUpdated, durationInNanoSeconds);
+      visitor.afterExecute(sqlStatement, numberOfRowsUpdated);
     }
   }
 
@@ -363,7 +359,6 @@ public class SqlScriptExecutor {
    * @throws SQLException throws an exception for statement errors.
    */
   private int executeInternal(String sql, Connection connection) throws SQLException {
-    long startTimeInNanoSeconds = System.nanoTime();
     visitor.beforeExecute(sql);
     int numberOfRowsUpdated = 0;
     try {
@@ -390,9 +385,7 @@ public class SqlScriptExecutor {
 
       return numberOfRowsUpdated;
     } finally {
-      long endTimeInNanoSeconds = System.nanoTime();
-      long durationInNanoSeconds = (endTimeInNanoSeconds - startTimeInNanoSeconds) / 1_000_000_000;
-      visitor.afterExecute(sql, numberOfRowsUpdated, durationInNanoSeconds);
+      visitor.afterExecute(sql, numberOfRowsUpdated);
     }
   }
 
@@ -600,7 +593,6 @@ public class SqlScriptExecutor {
       throw new IllegalStateException("Must construct with dialect");
     }
     try {
-      long startTimeInNanoSeconds = System.nanoTime();
       sqlDialect.prepareStatementParameters(preparedStatement, parameterMetadata, parameterData);
       if (maxRows.isPresent()) {
         preparedStatement.setMaxRows(maxRows.get());
@@ -611,9 +603,7 @@ public class SqlScriptExecutor {
       ResultSet resultSet = preparedStatement.executeQuery();
       try {
         T result = processor.process(resultSet);
-        long endTimeInNanoSeconds = System.nanoTime();
-        long durationInNanoSeconds = (endTimeInNanoSeconds - startTimeInNanoSeconds) / 1_000_000_000;
-        visitor.afterExecute(preparedStatement.toString(), 0, durationInNanoSeconds);
+        visitor.afterExecute(preparedStatement.toString(), 0);
         return result;
       } finally {
         resultSet.close();
@@ -754,10 +744,11 @@ public class SqlScriptExecutor {
 
 
     /**
-     * @see org.alfasoftware.morf.jdbc.SqlScriptExecutor.SqlScriptVisitor#afterExecute(String, long, long)
+     * @see org.alfasoftware.morf.jdbc.SqlScriptExecutor.SqlScriptVisitor#afterExecute(java.lang.String,
+     *      long)
      */
     @Override
-    public void afterExecute(String sql, long numberOfRowsUpdated, long durationInSeconds) {
+    public void afterExecute(String sql, long numberOfRowsUpdated) {
       // Defaults to no-op
     }
 

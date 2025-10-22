@@ -150,10 +150,11 @@ public class SqlScriptExecutorProvider implements Provider<SqlScriptExecutor> {
 
 
     /**
-     * @see org.alfasoftware.morf.jdbc.SqlScriptExecutor.SqlScriptVisitor#afterExecute(String, long, long)
+     * @see org.alfasoftware.morf.jdbc.SqlScriptExecutor.SqlScriptVisitor#afterExecute(java.lang.String,
+     *      long)
      */
     @Override
-    public void afterExecute(String sql, long numberOfRowsUpdated, long durationInSeconds) {
+    public void afterExecute(String sql, long numberOfRowsUpdated) {
       // Defaults to no-op
     }
 

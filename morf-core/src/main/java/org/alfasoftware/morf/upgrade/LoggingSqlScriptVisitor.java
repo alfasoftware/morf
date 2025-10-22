@@ -29,6 +29,9 @@ public class LoggingSqlScriptVisitor implements SqlScriptVisitor {
   private final Log log = LogFactory.getLog(LoggingSqlScriptVisitor.class);
 
   private final String schemaPosition;
+  
+  private long startTimeInNanoseconds;
+  private long endTimeInNanoseconds;
 
   public LoggingSqlScriptVisitor() {
     super();
@@ -50,6 +53,7 @@ public class LoggingSqlScriptVisitor implements SqlScriptVisitor {
    */
   @Override
   public void executionStart() {
+    startTimeInNanoseconds = System.nanoTime();
     log.info(logSchemaPositionPrefix() + "Starting SQL Script");
   }
 
@@ -64,10 +68,13 @@ public class LoggingSqlScriptVisitor implements SqlScriptVisitor {
 
   /**
    * {@inheritDoc}
-   * @see org.alfasoftware.morf.jdbc.SqlScriptExecutor.SqlScriptVisitor#afterExecute(String, long, long)
+   * @see org.alfasoftware.morf.jdbc.SqlScriptExecutor.SqlScriptVisitor#afterExecute(java.lang.String, long)
    */
   @Override
-  public void afterExecute(String sql, long numberOfRowsUpdated, long durationInSeconds) {
+  public void afterExecute(String sql, long numberOfRowsUpdated) {
+    endTimeInNanoseconds = System.nanoTime();
+    long durationInSeconds = (endTimeInNanoseconds - startTimeInNanoseconds) / 1_000_000_000;
+
     log.info(logSchemaPositionPrefix() + "Completed [" + sql + "] in [" + durationInSeconds + "] seconds with [" + numberOfRowsUpdated + "] rows updated");
   }
 
