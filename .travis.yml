@@ -45,6 +45,7 @@ jobs:
       script:
         - echo $GPG_SECRET_KEYS | base64 --decode | $GPG_EXECUTABLE --batch --yes --import
         - echo $GPG_OWNERTRUST | base64 --decode | $GPG_EXECUTABLE --batch --yes --import-ownertrust
+        - export GPG_TTY=$(tty)
         - mvn clean deploy --settings .maven-settings.xml -B -U -Prelease
 # Builds from other forks - we can't run sonar on these
     - if: (repo = alfasoftware/morf AND NOT head_repo = alfasoftware/morf AND type = pull_request) OR NOT repo = alfasoftware/morf 
