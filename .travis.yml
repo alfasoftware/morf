@@ -25,6 +25,8 @@ jobs:
     - if: repo = alfasoftware/morf AND head_repo = alfasoftware/morf AND type = pull_request
       name: "Test"
       script:
+        - export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
+        - echo "JAVA_HOME is set to $JAVA_HOME"
         - git fetch --unshallow --quiet
         - mvn clean verify sonar:sonar -Pcoverage -B -U -Dsonar.pullrequest.key=$TRAVIS_PULL_REQUEST -Dsonar.pullrequest.branch=$TRAVIS_PULL_REQUEST_BRANCH -Dsonar.pullrequest.base=$TRAVIS_BRANCH
 #   Avoid a double build on pushes to main - we shouldn't need to deploy SNAPSHOTS as they are not used.
