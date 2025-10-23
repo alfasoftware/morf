@@ -38,6 +38,8 @@ jobs:
     - if: repo = alfasoftware/morf AND tag IS present AND NOT type = pull_request AND sender in (capgen628, gilleain, jsimlo, therealluigi, okeating, wnicholson)
       name: "Deploy From Tag"
       script:
+        - export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
+        - echo "JAVA_HOME is set to $JAVA_HOME"
         - echo $GPG_SECRET_KEYS | base64 --decode | $GPG_EXECUTABLE --import
         - echo $GPG_OWNERTRUST | base64 --decode | $GPG_EXECUTABLE --import-ownertrust
         - mvn clean deploy --settings .maven-settings.xml -B -U -Prelease
