@@ -73,6 +73,7 @@ import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ClobFieldLiteral;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
+import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.PortableSqlFunction;
@@ -1741,12 +1742,14 @@ class OracleDialect extends SqlDialect {
       sqlBuilder.append(" WHEN MATCHED");
       sqlBuilder.append(" THEN UPDATE SET ")
                 .append(updateExpressionsSql);
-      if (statement.getWhenMatchedAction().isPresent()) {
-        MergeMatchClause mergeMatchClause = statement.getWhenMatchedAction().get();
-        if (mergeMatchClause.getAction() == MatchAction.UPDATE && mergeMatchClause.getWhereClause().isPresent()) {
+      Optional<MergeMatchClause> whenMatchedAction = statement.getWhenMatchedAction();
+      if (whenMatchedAction.isPresent()) {
+        MergeMatchClause mergeMatchClause = whenMatchedAction.get();
+        Optional<Criterion> whereClause = mergeMatchClause.getWhereClause();
+        if (mergeMatchClause.getAction() == MatchAction.UPDATE && whereClause.isPresent()) {
           // WHERE goes at the end and not between WHEN MATCHED and THEN UPDATE SET
           sqlBuilder.append(" WHERE ")
-            .append(getSqlFrom(mergeMatchClause.getWhereClause().get()));
+            .append(getSqlFrom(whereClause.get()));
         }
       }
     }

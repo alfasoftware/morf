@@ -804,7 +804,8 @@ class MySqlDialect extends SqlDialect {
       throw new IllegalArgumentException("Cannot create SQL for a blank table");
     }
 
-    if (statement.getWhenMatchedAction().isPresent() && statement.getWhenMatchedAction().get().getWhereClause().isPresent()) {
+    Optional<MergeMatchClause> whenMatchedAction = statement.getWhenMatchedAction();
+    if (whenMatchedAction.isPresent() && whenMatchedAction.get().getWhereClause().isPresent()) {
       throw new IllegalStateException(MergeMatchClause.class.getName() + " is not supported in the MySQL dialect.");
     }
 

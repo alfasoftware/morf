@@ -3391,11 +3391,13 @@ public abstract class SqlDialect {
 
       sqlBuilder.append(" WHEN MATCHED");
 
-      if (statement.getWhenMatchedAction().isPresent()) {
-        MergeMatchClause mergeMatchClause = statement.getWhenMatchedAction().get();
-        if (mergeMatchClause.getAction() == MatchAction.UPDATE && mergeMatchClause.getWhereClause().isPresent()) {
+      Optional<MergeMatchClause> whenMatchedAction = statement.getWhenMatchedAction();
+      if (!whenMatchedAction.isEmpty()) {
+        MergeMatchClause mergeMatchClause = whenMatchedAction.get();
+        Optional<Criterion> whereClause = mergeMatchClause.getWhereClause();
+        if (mergeMatchClause.getAction() == MatchAction.UPDATE && whereClause.isPresent()) {
           sqlBuilder.append(" AND ")
-            .append(getSqlFrom(mergeMatchClause.getWhereClause().get()));
+            .append(getSqlFrom(whereClause.get()));
         }
       }
 
