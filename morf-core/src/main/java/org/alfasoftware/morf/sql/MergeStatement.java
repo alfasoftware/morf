@@ -55,7 +55,7 @@ import com.google.common.collect.Lists;
  * is inserted.</p>
  *
  * <p>By default, when records match, all non-key fields are updated with values from the source.
- * This behavior can be customized using {@link #whenMatched(MergeMatchClause)} to specify
+ * This behavior can be customized using {@link MergeStatementBuilder#whenMatched(MergeMatchClause)} to specify
  * conditions for when updates should occur (e.g., only update when specific fields differ).</p>
  *
  * <p>In order to ensure compatibility across database platforms, in particular MySQL,

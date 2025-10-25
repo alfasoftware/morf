@@ -18,7 +18,7 @@ import org.alfasoftware.morf.util.ShallowCopyable;
  * </p>
  * <p>
  * By default, all matched records will be updated with values from the source.
- * Use {@link #onlyWhere(Criterion)} to conditionally update only records that
+ * Use {@link Builder#onlyWhere(Criterion)} to conditionally update only records that
  * satisfy additional criteria. This is useful to avoid unnecessary updates when
  * values haven't changed.
  * </p>
