@@ -3,6 +3,7 @@ package org.alfasoftware.morf.upgrade;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.InsertStatement;
+import org.alfasoftware.morf.sql.MergeMatchClause;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.MergeStatement.InputField;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
@@ -464,4 +465,15 @@ public interface SchemaAndDataChangeVisitor {
   default void visit(PortableSqlFunction portableSqlFunction) {
     // Do nothing on default
   }
+
+
+  /**
+   * Perform visit operation on an {@link MergeMatchClause} instance.
+   *
+   * @param mergeMatchClause instance of {@link MergeMatchClause} to visit.
+   */
+  default void visit(MergeMatchClause mergeMatchClause) {
+    // Do nothing on default
+  }
+
 }

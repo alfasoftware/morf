@@ -55,8 +55,8 @@ public class SqlScriptExecutor {
 
   private final SqlDialect sqlDialect;
 
-  private int fetchSizeForBulkSelects;
-  private int fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming;
+  private final int fetchSizeForBulkSelects;
+  private final int fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming;
 
   /**
    * @deprecated This constructor creates a {@link SqlScriptExecutor} with legacy fetch size values and is primarily for backwards compatibility.
@@ -649,6 +649,7 @@ public class SqlScriptExecutor {
       throw new IllegalStateException("Must construct with dialect");
     }
 
+    long numberOfRowsAffected = 0;
     try {
       long count = 0;
       for (DataValueLookup data : parameterData) {
@@ -661,7 +662,10 @@ public class SqlScriptExecutor {
           count++;
           if (count % statementsPerFlush == 0) {
             try {
-              preparedStatement.executeBatch();
+              int[] batchResults = preparedStatement.executeBatch();
+              for (int affected : batchResults) {
+                numberOfRowsAffected += affected > 0 ? affected : 0;
+              }
               preparedStatement.clearBatch();
             } catch (SQLException e) {
               throw reclassifiedRuntimeException(e, "Error executing batch");
@@ -673,7 +677,7 @@ public class SqlScriptExecutor {
           }
         } else {
           try {
-            preparedStatement.executeUpdate();
+            numberOfRowsAffected += preparedStatement.executeUpdate();
           } catch (SQLException e) {
             List<String> inserts = new ArrayList<>();
             for (SqlParameter parameter : parameterMetadata) {
@@ -687,11 +691,17 @@ public class SqlScriptExecutor {
       // Clear up any remaining batch statements if in batch mode and
       // have un-executed statements
       if (sqlDialect.useInsertBatching() && count % statementsPerFlush > 0) {
-        preparedStatement.executeBatch();
+        int[] batchResults = preparedStatement.executeBatch();
+        for (int affected : batchResults) {
+          numberOfRowsAffected += affected > 0 ? affected : 0;
+        }
       }
     } catch (SQLException e) {
       throw reclassifiedRuntimeException(e, "SQLException executing batch. Prepared Statements: [" + preparedStatement + "]");
     }
+
+    if (log.isDebugEnabled())
+      log.debug("[" + numberOfRowsAffected + "] rows affected by SQL:" + preparedStatement);
   }
 
 

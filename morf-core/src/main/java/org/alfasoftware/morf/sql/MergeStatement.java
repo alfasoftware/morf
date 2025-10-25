@@ -19,6 +19,7 @@ import static org.alfasoftware.morf.util.DeepCopyTransformations.noTransformatio
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
@@ -45,12 +46,17 @@ import com.google.common.collect.Lists;
  *    .into([table])
  *    .tableUniqueKey([field]...)
  *    .ifUpdating([updateExpression]...)
+ *    .whenMatched([MergeMatchClause])
  *    .fromSelect([SelectStatement])
  *    .build()</pre></blockquote>
  *
  * <p>A Merge statement takes a target table and merges (INSERTS or UPDATES) data from a source table.
  * If a record exists with the same unique key in the target table, the record is updated, otherwise the record
- * is inserted</p>
+ * is inserted.</p>
+ *
+ * <p>By default, when records match, all non-key fields are updated with values from the source.
+ * This behavior can be customized using {@link #whenMatched(MergeMatchClause)} to specify
+ * conditions for when updates should occur (e.g., only update when specific fields differ).</p>
  *
  * <p>In order to ensure compatibility across database platforms, in particular MySQL,
  * the fields used as the keys within the Merge must be the table's primary keys or the keys in a unique index.
@@ -87,6 +93,10 @@ public class MergeStatement implements Statement,
    */
   private final List<AliasedField>  ifUpdating;
 
+  /**
+   * Optional action specification for when records match.
+   */
+  private final Optional<MergeMatchClause> whenMatchedAction;
 
   /**
    * Constructs a Merge Statement which either inserts or updates
@@ -107,6 +117,10 @@ public class MergeStatement implements Statement,
   public static class InputField extends AliasedField {
 
     private final String name;
+
+    public static InputField inputField(String name) {
+      return new InputField(name);
+    }
 
     public InputField(String name) {
       super("");
@@ -174,6 +188,7 @@ public class MergeStatement implements Statement,
     super();
     this.tableUniqueKey = AliasedField.immutableDslEnabled() ? ImmutableList.of() : Lists.newArrayList();
     this.ifUpdating = ImmutableList.of(); // use MergeStatementBuilder to specify ifUpdating() expressions
+    this.whenMatchedAction = Optional.empty();
   }
 
 
@@ -190,6 +205,7 @@ public class MergeStatement implements Statement,
         : Lists.newArrayList(builder.getTableUniqueKey());
     this.selectStatement = builder.getSelectStatement();
     this.ifUpdating = ImmutableList.copyOf(builder.getIfUpdating());
+    this.whenMatchedAction = builder.getWhenMatchedAction();
   }
 
 
@@ -326,11 +342,22 @@ public class MergeStatement implements Statement,
 
 
   /**
+   * Gets the action to take when records match.
+   *
+   * @return the match clause, or Optional.empty() if default behavior should be used
+   */
+  public Optional<MergeMatchClause> getWhenMatchedAction() {
+    return whenMatchedAction;
+  }
+
+
+  /**
    * @see java.lang.Object#toString()
    */
   @Override
   public String toString() {
-    return "SQL MERGE INTO [" + table + "] USING [" + selectStatement + "] KEY [" + tableUniqueKey + "] IF UPDATING [" + ifUpdating + "]";
+    return "SQL MERGE INTO [" + table + "] USING [" + selectStatement + "] KEY [" + tableUniqueKey + "] IF UPDATING [" + ifUpdating + "]" +
+           (whenMatchedAction.isPresent() ? whenMatchedAction.get() : "");
   }
 
 
@@ -342,6 +369,7 @@ public class MergeStatement implements Statement,
     result = prime * result + (table == null ? 0 : table.hashCode());
     result = prime * result + (tableUniqueKey == null ? 0 : tableUniqueKey.hashCode());
     result = prime * result + (ifUpdating == null ? 0 : ifUpdating.hashCode());
+    result = prime * result + (whenMatchedAction.isEmpty() ? 0 : whenMatchedAction.get().hashCode());
     return result;
   }
 
@@ -375,6 +403,8 @@ public class MergeStatement implements Statement,
         return false;
     } else if (!ifUpdating.equals(other.ifUpdating))
       return false;
+    if (!whenMatchedAction.equals(other.whenMatchedAction))
+        return false;
     return true;
   }
 
@@ -389,6 +419,7 @@ public class MergeStatement implements Statement,
       .dispatch(getIfUpdating())
       .dispatch(getTable())
       .dispatch(getSelectStatement());
+    getWhenMatchedAction().ifPresent(traverser::dispatch);
   }
 
 
@@ -425,6 +456,9 @@ public class MergeStatement implements Statement,
     }
     if(ifUpdating != null) {
       ifUpdating.stream().forEach(iu -> iu.accept(visitor));
+    }
+    if (whenMatchedAction.isPresent()) {
+      whenMatchedAction.get().accept(visitor);
     }
   }
 }

@@ -33,6 +33,8 @@ import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.DeleteStatementBuilder;
 import org.alfasoftware.morf.sql.DialectSpecificHint;
 import org.alfasoftware.morf.sql.Hint;
+import org.alfasoftware.morf.sql.MergeMatchClause;
+import org.alfasoftware.morf.sql.MergeMatchClause.MatchAction;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.OptimiseForRowCount;
 import org.alfasoftware.morf.sql.ParallelQueryHint;
@@ -656,6 +658,14 @@ class PostgreSQLDialect extends SqlDialect {
     if (getNonKeyFieldsFromMergeStatement(statement).iterator().hasNext()) {
       sqlBuilder.append(" DO UPDATE SET ")
                 .append(updateExpressionsSql);
+
+      if (statement.getWhenMatchedAction().isPresent()) {
+        MergeMatchClause mergeMatchClause = statement.getWhenMatchedAction().get();
+        if (mergeMatchClause.getAction() == MatchAction.UPDATE && mergeMatchClause.getWhereClause().isPresent()) {
+          sqlBuilder.append(" WHERE ")
+          .append(getSqlFrom(mergeMatchClause.getWhereClause().get()));
+        }
+      }
     } else {
       sqlBuilder.append(" DO NOTHING");
     }
