@@ -136,6 +136,23 @@ public class SqlScriptExecutor {
      */
     public void afterExecute(String sql, long numberOfRowsUpdated);
 
+
+    /**
+     * <p>Notify the visitor that the given SQL has been updated in the given number of seconds, and the
+     * given number of rows were updated. This should always be preceded
+     * by a call to {@link #beforeExecute(String)} with the same SQL.</p>
+     *
+     * <p>Maintaining this for backwards compatibility.</p>
+     *
+     * @param sql SQL which has just been executed.
+     * @param numberOfRowsUpdated Number of rows updated by {@code sql}.
+     * @param durationInSeconds time taken to execute {@code sql} in seconds.
+     */
+    default void afterExecute(String sql, long numberOfRowsUpdated, long durationInSeconds) {
+      afterExecute(sql, numberOfRowsUpdated);
+    }
+
+
     /**
      * The batch of SQL statements has completed.
      */
@@ -313,6 +330,7 @@ public class SqlScriptExecutor {
    * @return The number of rows updated/affected by this statement
    */
   public int execute(String sqlStatement, Connection connection, Iterable<SqlParameter> parameterMetadata, DataValueLookup parameterData) {
+    long startTimeInNanoSeconds = System.nanoTime();
     visitor.beforeExecute(sqlStatement);
     int numberOfRowsUpdated = 0;
     try {
@@ -326,7 +344,9 @@ public class SqlScriptExecutor {
       }
       return numberOfRowsUpdated;
     } finally {
-      visitor.afterExecute(sqlStatement, numberOfRowsUpdated);
+      long endTimeInNanoSeconds = System.nanoTime();
+      long durationInNanoSeconds = (endTimeInNanoSeconds - startTimeInNanoSeconds) / 1_000_000_000;
+      visitor.afterExecute(sqlStatement, numberOfRowsUpdated, durationInNanoSeconds);
     }
   }
 
@@ -359,6 +379,7 @@ public class SqlScriptExecutor {
    * @throws SQLException throws an exception for statement errors.
    */
   private int executeInternal(String sql, Connection connection) throws SQLException {
+    long startTimeInNanoSeconds = System.nanoTime();
     visitor.beforeExecute(sql);
     int numberOfRowsUpdated = 0;
     try {
@@ -385,7 +406,9 @@ public class SqlScriptExecutor {
 
       return numberOfRowsUpdated;
     } finally {
-      visitor.afterExecute(sql, numberOfRowsUpdated);
+      long endTimeInNanoSeconds = System.nanoTime();
+      long durationInNanoSeconds = (endTimeInNanoSeconds - startTimeInNanoSeconds) / 1_000_000_000;
+      visitor.afterExecute(sql, numberOfRowsUpdated, durationInNanoSeconds);
     }
   }
 
@@ -593,6 +616,7 @@ public class SqlScriptExecutor {
       throw new IllegalStateException("Must construct with dialect");
     }
     try {
+      long startTimeInNanoSeconds = System.nanoTime();
       sqlDialect.prepareStatementParameters(preparedStatement, parameterMetadata, parameterData);
       if (maxRows.isPresent()) {
         preparedStatement.setMaxRows(maxRows.get());
@@ -603,7 +627,9 @@ public class SqlScriptExecutor {
       ResultSet resultSet = preparedStatement.executeQuery();
       try {
         T result = processor.process(resultSet);
-        visitor.afterExecute(preparedStatement.toString(), 0);
+        long endTimeInNanoSeconds = System.nanoTime();
+        long durationInNanoSeconds = (endTimeInNanoSeconds - startTimeInNanoSeconds) / 1_000_000_000;
+        visitor.afterExecute(preparedStatement.toString(), 0, durationInNanoSeconds);
         return result;
       } finally {
         resultSet.close();
