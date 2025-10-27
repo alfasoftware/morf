@@ -15,19 +15,19 @@
 
 package org.alfasoftware.morf.testing;
 
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.TreeSet;
 
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.DatabaseDataSetProducer;
@@ -46,11 +46,12 @@ import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 import org.alfasoftware.morf.upgrade.UpgradeGraph;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import com.google.common.collect.Streams;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 
@@ -58,6 +59,7 @@ import com.google.inject.Provider;
  * Helper which does basic testing of upgrade steps:
  *
  * <ol>
+ *   <li>Perform basic validation of the upgrade step classes</li>
  *   <li>Apply the steps in reverse to establish a start schema</li>
  *   <li>Get the DB to that state</li>
  *   <li>Build the SQL upgrade script</li>
@@ -68,6 +70,8 @@ import com.google.inject.Provider;
  * @author Copyright (c) Alfa Financial Software 2015
  */
 public class UpgradeTestHelper {
+
+  private static final Log LOG = LogFactory.getLog(UpgradeTestHelper.class);
 
   private final Provider<DatabaseSchemaManager> schemaManager;
   private final ConnectionResources connectionResources;
@@ -173,11 +177,17 @@ public class UpgradeTestHelper {
    * @param upgradeSteps The sequence of upgrade steps
    */
   public void validateStepsArePackageVisible(Iterable<Class<? extends UpgradeStep>> upgradeSteps) {
+    Set<String> publicUpgradeStepNames = new TreeSet<>();
+
     for (Class<? extends UpgradeStep> upgradeStepClass : upgradeSteps) {
       // Upgrade steps classes should be package-visible (default) - not public
       if (Modifier.isPublic(upgradeStepClass.getModifiers())) {
-        fail(String.format("Upgrade class [%s] is public and should be package visible", upgradeStepClass.getSimpleName()));
+        publicUpgradeStepNames.add(upgradeStepClass.getSimpleName());
       }
+    }
+
+    if (!publicUpgradeStepNames.isEmpty()) {
+      fail(String.format("The following upgrade classes are public but must be package visible:%n%s%n", String.join(System.lineSeparator(), publicUpgradeStepNames)));
     }
   }
 
@@ -193,42 +203,63 @@ public class UpgradeTestHelper {
 
   /**
    * Validate that the upgrade step meets the basic requirements.
+   *
+   * @param upgradeStep the upgrade step to validate
+   * @return An unmodifiable collection of error messages. An empty collection indicates that the upgrade step passed validation.
    */
-  private void validateUpgradeStep(UpgradeStep upgradeStep) {
+  private Collection<String> validateUpgradeStep(UpgradeStep upgradeStep) {
     Class<? extends UpgradeStep> upgradeStepClass = upgradeStep.getClass();
+    List<String> errors = new ArrayList<>();
 
     // Check the upgrade step has a Sequence
     if (upgradeStepClass.getAnnotation(Sequence.class) == null) {
-      fail(String.format("Upgrade step [%s] should have a Sequence set. How about [%d]",
+      errors.add(String.format("Upgrade step [%s] must have a Sequence set. How about [%d]?",
         upgradeStepClass.getSimpleName(), System.currentTimeMillis() / 1000));
     }
+
     // Check the upgrade step has a UUID
     UUID uuidAnnotation = upgradeStepClass.getAnnotation(UUID.class);
     String currentUuid = uuidAnnotation == null ? null : uuidAnnotation.value();
 
     if (StringUtils.isBlank(currentUuid) || !uuids.add(currentUuid)) {
-      fail(String.format("Upgrade step [%s] should have a non blank, unique UUID set. How about [%s]",
-        upgradeStepClass.getSimpleName(), java.util.UUID.randomUUID().toString()));
-    }
-
-    // verify we can parse the UUID
-    try {
-      assertNotNull(java.util.UUID.fromString(currentUuid));
-    } catch (Exception e) {
-      throw new RuntimeException(String.format("Could not parse UUID [%s] from [%s]", currentUuid, upgradeStepClass.getSimpleName()), e);
+      errors.add(String.format("Upgrade step [%s] must have a non blank, unique UUID set. How about [%s]?",
+        upgradeStepClass.getSimpleName(), java.util.UUID.randomUUID()));
+    } else {
+      // verify we can parse the UUID
+      try {
+        assertNotNull(java.util.UUID.fromString(currentUuid));
+      } catch (Exception e) {
+        String errorMessage = String.format("Could not parse UUID [%s] from [%s]", currentUuid, upgradeStepClass.getSimpleName());
+        LOG.error(errorMessage, e);
+        errors.add(errorMessage);
+      }
     }
 
     // Check the upgrade step has a description
     final String description = upgradeStep.getDescription();
-    assertTrue(String.format("[%s] should have a description", upgradeStepClass.getSimpleName()), StringUtils.isNotEmpty(description));
-    assertTrue(String.format("Description for [%s] must not be more than 200 characters", upgradeStepClass.getSimpleName()), description.length() <= 200);
-    assertFalse(String.format("Description for [%s] should not end with full stop", upgradeStepClass.getSimpleName()), description.endsWith("."));
 
-    assertTrue(String.format("[%s] should have a JIRA ID", upgradeStepClass.getSimpleName()), StringUtils.isNotEmpty(upgradeStep.getJiraId()));
-
-    for (String jiraId : StringUtils.split(upgradeStep.getJiraId(), ',')) {
-      assertTrue(String.format("[%s] should have a valid JIRA ID [%s]", upgradeStepClass.getSimpleName(), upgradeStep.getJiraId()), jiraIdIsValid(jiraId));
+    if (StringUtils.isEmpty(description)) {
+      errors.add(String.format("Upgrade step [%s] must have a description", upgradeStepClass.getSimpleName()));
+    } else {
+      if (description.length() > 200) {
+        errors.add(String.format("Description for [%s] must not be more than 200 characters", upgradeStepClass.getSimpleName()));
+      }
+      if (description.endsWith(".")) {
+        errors.add(String.format("Description for [%s] must not end with full stop", upgradeStepClass.getSimpleName()));
+      }
     }
+
+    if (StringUtils.isEmpty(upgradeStep.getJiraId())) {
+      errors.add(String.format("Upgrade step [%s] must have a JIRA ID", upgradeStepClass.getSimpleName()));
+    } else {
+      for (String jiraId : StringUtils.split(upgradeStep.getJiraId(), ',')) {
+        if (!jiraIdIsValid(jiraId)) {
+          errors.add(String.format("Upgrade step [%s] must have a valid JIRA ID [%s]", upgradeStepClass.getSimpleName(), upgradeStep.getJiraId()));
+        }
+      }
+    }
+
+    return Collections.unmodifiableList(errors);
   }
 
 
@@ -246,25 +277,33 @@ public class UpgradeTestHelper {
 
 
   /**
-   * Turn the list of classes into a list of objects.
+   * Turn the list of classes into an unmodifiable list of objects.
    */
   private List<UpgradeStep> instantiateAndValidateUpgradeSteps(Iterable<Class<? extends UpgradeStep>> stepClasses) {
-    return Streams.stream(stepClasses)
-        .map(stepClass -> {
-          UpgradeStep upgradeStep;
-          try {
-            Constructor<? extends UpgradeStep> constructor = stepClass.getDeclaredConstructor();
-            // Permit package-protected classes
-            constructor.setAccessible(true);
-            upgradeStep = constructor.newInstance();
-          } catch (Exception e) {
-            throw new RuntimeException(e);
-          }
 
-          validateUpgradeStep(upgradeStep);
+    List<String> errors = new ArrayList<>();
+    List<UpgradeStep> upgradeSteps = new ArrayList<>();
 
-          return upgradeStep;
-        })
-      .collect(Collectors.toList());
+    for (Class<? extends UpgradeStep> stepClass : stepClasses) {
+      UpgradeStep upgradeStep;
+      try {
+        Constructor<? extends UpgradeStep> constructor = stepClass.getDeclaredConstructor();
+        // Permit package-protected classes
+        constructor.setAccessible(true);
+        upgradeStep = constructor.newInstance();
+      }
+      catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+
+      errors.addAll(validateUpgradeStep(upgradeStep));
+      upgradeSteps.add(upgradeStep);
+    }
+
+    if (!errors.isEmpty()) {
+      fail(String.format("Upgrade step errors were found:%n%s%n", String.join(System.lineSeparator(), errors)));
+    }
+
+    return Collections.unmodifiableList(upgradeSteps);
   }
 }

@@ -735,8 +735,9 @@ class OracleDialect extends SqlDialect {
   }
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getColumnRepresentation(org.alfasoftware.morf.metadata.DataType,
-   *      int, int)
+   * https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/Data-Types.html
+   *  - ANSI data type DECIMAL(p,s) is equivalent to NUMBER(p,s)
+   *  - BIG_INTEGER is therefore comparable to DECIMAL
    */
   @Override
   protected String getColumnRepresentation(DataType dataType, int width, int scale) {
@@ -1316,7 +1317,7 @@ class OracleDialect extends SqlDialect {
    */
   @Override
   public Collection<String> addTableFromStatements(Table table, SelectStatement selectStatement) {
-    return internalAddTableFromStatements(table, selectStatement, false);
+    return internalAddTableFromStatements(table, selectStatement, true);
   }
 
 
