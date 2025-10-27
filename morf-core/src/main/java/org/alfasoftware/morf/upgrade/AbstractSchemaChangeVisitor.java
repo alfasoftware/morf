@@ -205,7 +205,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     Index foundIndex = null;
     List<Index> ignoredIndexes = upgradeConfigAndContext.getIgnoredIndexesForTable(addIndex.getTableName());
     for (Index index : ignoredIndexes) {
-      if (index.columnNames().equals(addIndex.getNewIndex().columnNames())) {
+      if (index.columnNames().equals(addIndex.getNewIndex().columnNames()) && index.isUnique() == addIndex.getNewIndex().isUnique()) {
         foundIndex = index;
         break;
       }
