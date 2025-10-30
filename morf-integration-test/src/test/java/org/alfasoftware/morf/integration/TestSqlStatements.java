@@ -22,6 +22,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.alfasoftware.morf.sql.MergeStatement.InputField.inputField;
 import static org.alfasoftware.morf.sql.SqlUtils.blobLiteral;
 import static org.alfasoftware.morf.sql.SqlUtils.caseStatement;
 import static org.alfasoftware.morf.sql.SqlUtils.cast;
@@ -116,6 +117,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.UnaryOperator;
 
 import javax.sql.DataSource;
 
@@ -137,7 +140,9 @@ import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.InsertStatement;
+import org.alfasoftware.morf.sql.MergeMatchClause;
 import org.alfasoftware.morf.sql.MergeStatement;
+import org.alfasoftware.morf.sql.MergeStatementBuilder;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.TruncateStatement;
@@ -145,6 +150,7 @@ import org.alfasoftware.morf.sql.UpdateStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.CaseStatement;
 import org.alfasoftware.morf.sql.element.Cast;
+import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.FieldReference;
@@ -902,17 +908,257 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    */
   @Test
   public void BtestMergeStatementWithMultipleKeys() throws SQLException {
+    testMergeStatementWithMultipleKeysInternal(
+      builder -> builder,
+      true,   // expectUpdate
+      null // perform basic asserts
+    );
+  }
+
+
+  /**
+   * Verifies that the {@link MergeStatement} can be used for multiple keys - with
+   * whenMatched clause and TRUE=TRUE as a condition.
+   *
+   * @throws SQLException
+   */
+  @Test
+  public void testMergeStatementWithMultipleKeysWhenTrueEqTrue() throws SQLException {
+    Assume.assumeFalse("MergeMatchClause not yet supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
+    testMergeStatementWithMultipleKeysInternal(
+      builder -> {
+        return builder.whenMatched(
+          MergeMatchClause.update()
+            .onlyWhere(
+              literal(true).eq(literal(true))
+            )
+            .build()
+        );
+      },
+      true,   // expectUpdate
+      null // perform basic asserts
+    );
+  }
+
+
+  /**
+   * Verifies that the {@link MergeStatement} can be used for multiple keys - with
+   * whenMatched clause and TRUE=FALSE as a condition.
+   *
+   * @throws SQLException
+   */
+  @Test
+  public void testMergeStatementWithMultipleKeysWhenTrueEqFalse() throws SQLException {
+    Assume.assumeFalse("MergeMatchClause not yet supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
+    testMergeStatementWithMultipleKeysInternal(
+      builder -> {
+        return builder.whenMatched(
+          MergeMatchClause.update()
+          .onlyWhere(
+            literal(true).eq(literal(false))
+          )
+          .build()
+        );
+      },
+      false,   // expectUpdate - record should NOT be updated
+      null // perform basic asserts
+    );
+  }
+
+
+  /**
+   * Verifies that the {@link MergeStatement} can be used for multiple keys - with
+   * whenMatched clause on all non-PK fields - behaves in the same way as if there
+   * was no whenMatched specified.
+   *
+   * @throws SQLException
+   */
+  @Test
+  public void testMergeStatementWithMultipleKeysWhenMatchedAllFields() throws SQLException {
+    Assume.assumeFalse("MergeMatchClause not yet supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
+    testMergeStatementWithMultipleKeysInternal(
+      builder -> {
+        TableReference mergeTableMultipleKeys = new TableReference("MergeTableMultipleKeys");
+        return builder.whenMatched(
+          MergeMatchClause.update()
+            .onlyWhere(
+              or(
+                mergeTableMultipleKeys.field("column1").neq(inputField("column1")),
+                mergeTableMultipleKeys.field("column2").neq(inputField("column2")),
+                mergeTableMultipleKeys.field("column3").neq(inputField("column3"))
+              )
+            )
+            .build()
+        );
+      },
+      true,   // expectUpdate
+      null // perform basic asserts
+    );
+  }
+
+
+  /**
+   * Verifies that the {@link MergeStatement} with whenMatched clause that never matches
+   * will insert but not update any records.
+   *
+   * @throws SQLException
+   */
+  @Test
+  public void testMergeStatementWithMultipleKeysNoUpdate() throws SQLException {
+    Assume.assumeFalse("MergeMatchClause not yet supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
+    testMergeStatementWithMultipleKeysInternal(
+      builder -> {
+        TableReference mergeTableMultipleKeys = new TableReference("MergeTableMultipleKeys");
+        // Condition that will never be true - both fields are already equal
+        return builder.whenMatched(
+          MergeMatchClause.update()
+            .onlyWhere(
+              and(
+                mergeTableMultipleKeys.field("column1").neq(inputField("column1")),
+                mergeTableMultipleKeys.field("column2").neq(inputField("column2"))
+              )
+            )
+            .build()
+        );
+      },
+      false,   // expectUpdate - record should NOT be updated
+      null // perform basic asserts
+    );
+  }
+
+
+  /**
+   * Verifies that the {@link MergeStatement} with whenMatched clause that only checks
+   * one field will only update when that specific field differs.
+   *
+   * @throws SQLException
+   */
+  @Test
+  public void testMergeStatementWithMultipleKeysPartialUpdate() throws SQLException {
+    Assume.assumeFalse("MergeMatchClause not yet supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
+    testMergeStatementWithMultipleKeysInternal(
+      builder -> {
+        TableReference mergeTableMultipleKeys = new TableReference("MergeTableMultipleKeys");
+        // Only update when column3 differs - in our test data, column3 DOES differ ("Incorrect" vs "Updated")
+        return builder.whenMatched(
+          MergeMatchClause.update()
+            .onlyWhere(
+              mergeTableMultipleKeys.field("column3").neq(inputField("column3"))
+            )
+            .build()
+        );
+      },
+      true,   // expectUpdate - record SHOULD be updated because column3 differs
+      null // perform basic asserts
+    );
+  }
+
+
+  /**
+   * Verifies that the {@link MergeStatement} with whenMatched clause checking a field
+   * that doesn't differ will not update the record.
+   *
+   * @throws SQLException
+   */
+  @Test
+  public void testMergeWhenMatchedNoUpdateWhenUnchanged() throws SQLException {
+    Assume.assumeFalse("MergeMatchClause not yet supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
+    testMergeStatementWithMultipleKeysInternal(
+      builder -> {
+        TableReference mergeTableMultipleKeys = new TableReference("MergeTableMultipleKeys");
+        // Only update when column1 differs - but in our test data, column1 is the same (500)
+        return builder.whenMatched(
+          MergeMatchClause.update()
+            .onlyWhere(
+              mergeTableMultipleKeys.field("column1").neq(inputField("column1"))
+            )
+            .build()
+        );
+      },
+      false,   // expectUpdate - record should NOT be updated because column1 is the same
+      null // perform basic asserts
+    );
+  }
+
+
+  /**
+   * Verifies that ifUpdating expressions are applied correctly when whenMatched
+   * condition is true.
+   *
+   * @throws SQLException
+   */
+  @Test
+  public void testMergeStatementWithIfUpdatingAndWhenMatched() throws SQLException {
+    Assume.assumeFalse("MergeMatchClause not yet supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
+    testMergeStatementWithMultipleKeysInternal(
+      builder -> {
+        TableReference mergeTableMultipleKeys = new TableReference("MergeTableMultipleKeys");
+        return builder
+          .ifUpdating((overrider, values) -> overrider
+            .set(new ConcatenatedField(values.input("column3"), literal("987")).as("column3")) // set column3=input.column3+"987"
+          )
+          .whenMatched(
+            MergeMatchClause.update()
+              .onlyWhere(mergeTableMultipleKeys.field("column3").neq(inputField("column3")))
+              .build()
+          );
+      },
+      true,
+      (resultSet, rowNum) -> {
+        try {
+          assertEquals("column3 value should be updated", "Updated987", resultSet.getString(4));
+        } catch (SQLException e) {
+          throw new RuntimeException(e);
+        }
+      }
+    );
+  }
+
+
+  /**
+   * Verifies that the {@link MergeStatement} with whenMatched clause is correctly
+   * handling NULL check as part of the condition.
+   *
+   * @throws SQLException
+   */
+  @Test
+  public void testMergeWhenMatchedWithNullCheck() throws SQLException {
+    Assume.assumeFalse("MergeMatchClause not yet supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
+    testMergeStatementWithMultipleKeysInternal(
+      builder -> {
+        TableReference mergeTableMultipleKeys = new TableReference("MergeTableMultipleKeys");
+        return builder.whenMatched(
+          MergeMatchClause.update()
+            .onlyWhere(
+              or(
+                mergeTableMultipleKeys.field("column3").neq(inputField("column3")),
+                mergeTableMultipleKeys.field("column3").isNull()
+              )
+            )
+            .build()
+        );
+      },
+      true,
+      null // perform basic asserts
+    );
+  }
+
+
+  private void testMergeStatementWithMultipleKeysInternal(
+      UnaryOperator<MergeStatementBuilder> builderModifier,
+      boolean expectUpdate,
+      BiConsumer<ResultSet, Integer> customUpdateValidator) throws SQLException {
 
     SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
 
-    SelectStatement testSelectForUpdate = select(field("autoNum"), field("column1"), field("column2"), field("column3"))
+    SelectStatement testSelectForInsert = select(field("autoNum"), field("column1"), field("column2"), field("column3"))
                                             .from(tableRef("MergeTableMultipleKeys"))
                                             .where(
                                               and(
                                                 eq(field("column1"), literal(100)),
                                                 eq(field("column2"), literal(200))));
 
-    SelectStatement testSelectForInsert = select(field("autoNum"), field("column1"), field("column2"), field("column3"))
+    SelectStatement testSelectForUpdate = select(field("autoNum"), field("column1"), field("column2"), field("column3"))
                                             .from(tableRef("MergeTableMultipleKeys"))
                                             .where(
                                               and(
@@ -930,16 +1176,19 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
 
     TableReference mergeTableMultipleKeys = tableRef("MergeTableMultipleKeys");
 
-    MergeStatement mergeStmt = merge()
+    MergeStatementBuilder builder = MergeStatement.merge()
                                 .into(mergeTableMultipleKeys)
                                 .tableUniqueKey(mergeTableMultipleKeys.field("column1"),
                                                 mergeTableMultipleKeys.field("column2"))
                                 .from(sourceStmt);
 
-    executor.execute(ImmutableList.of(convertStatementToSQL(mergeStmt)), connection);
+    // Apply the optional modification
+    builder = builderModifier.apply(builder);
+
+    executor.execute(ImmutableList.of(convertStatementToSQL(builder.build())), connection);
 
     // Check result for inserted
-    String sqlForInsertedRecord = convertStatementToSQL(testSelectForUpdate);
+    String sqlForInsertedRecord = convertStatementToSQL(testSelectForInsert);
 
     Integer numberOfInsertedRecords = executor.executeQuery(sqlForInsertedRecord, connection, new ResultSetProcessor<Integer>() {
       @Override
@@ -949,16 +1198,16 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
           result++;
           assertEquals("autoNum value should be inserted as 101", 101, resultSet.getInt(1));
           assertEquals("column1 value not correctly set/returned after merge", 100, resultSet.getInt(2));
-          assertEquals("column2 value value not correctly set/returned after merge", 200, resultSet.getInt(3));
-          assertEquals("column3 value value not correctly set/returned after merge", "Inserted", resultSet.getString(4));
+          assertEquals("column2 value not correctly set/returned after merge", 200, resultSet.getInt(3));
+          assertEquals("column3 value not correctly set/returned after merge", "Inserted", resultSet.getString(4));
         }
         return result;
       }
     });
-    assertEquals("Should be exactly one records", 1, numberOfInsertedRecords.intValue());
+    assertEquals("Should be exactly one record", 1, numberOfInsertedRecords.intValue());
 
     // Check result for updated
-    String sqlForUpdatedRecord = convertStatementToSQL(testSelectForInsert);
+    String sqlForUpdatedRecord = convertStatementToSQL(testSelectForUpdate);
 
     Integer numberOfUpdatedRecords = executor.executeQuery(sqlForUpdatedRecord, connection, new ResultSetProcessor<Integer>() {
       @Override
@@ -966,15 +1215,24 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
         int result = 0;
         while (resultSet.next()) {
           result++;
+          // autoNum should NOT be updated (it's auto-numbered)
           assertEquals("autoNum value should not be updated and remain as 33", 33, resultSet.getInt(1));
           assertEquals("column1 value not correctly set/returned after merge", 500, resultSet.getInt(2));
-          assertEquals("column2 value value not correctly set/returned after merge", 800, resultSet.getInt(3));
-          assertEquals("column3 value value not correctly set/returned after merge", "Updated", resultSet.getString(4));
+          assertEquals("column2 value not correctly set/returned after merge", 800, resultSet.getInt(3));
+
+          if (customUpdateValidator != null) {
+            customUpdateValidator.accept(resultSet, result);
+          } else if (expectUpdate) {
+            assertEquals("column3 value should be updated", "Updated", resultSet.getString(4));
+          } else {
+            // Record exists but was NOT updated - should have original values
+            assertEquals("column3 value should NOT be updated", "Incorrect", resultSet.getString(4));
+          }
         }
         return result;
       }
     });
-    assertEquals("Should be exactly one records", 1, numberOfUpdatedRecords.intValue());
+    assertEquals("Should be exactly one record", 1, numberOfUpdatedRecords.intValue());
   }
 
 
