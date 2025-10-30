@@ -148,7 +148,7 @@ public class SqlScriptExecutor {
      * @param numberOfRowsUpdated Number of rows updated by {@code sql}.
      * @param durationInSeconds time taken to execute {@code sql} in seconds.
      */
-    default void afterExecute(String sql, long numberOfRowsUpdated, long durationInSeconds) {
+    default void afterExecute(String sql, long numberOfRowsUpdated, double durationInSeconds) {
       afterExecute(sql, numberOfRowsUpdated);
     }
 
@@ -345,8 +345,8 @@ public class SqlScriptExecutor {
       return numberOfRowsUpdated;
     } finally {
       long endTimeInNanoSeconds = System.nanoTime();
-      long durationInNanoSeconds = (endTimeInNanoSeconds - startTimeInNanoSeconds) / 1_000_000_000;
-      visitor.afterExecute(sqlStatement, numberOfRowsUpdated, durationInNanoSeconds);
+      double durationInSeconds = (double)(endTimeInNanoSeconds - startTimeInNanoSeconds) / 1_000_000_000;
+      visitor.afterExecute(sqlStatement, numberOfRowsUpdated, durationInSeconds);
     }
   }
 
@@ -407,8 +407,8 @@ public class SqlScriptExecutor {
       return numberOfRowsUpdated;
     } finally {
       long endTimeInNanoSeconds = System.nanoTime();
-      long durationInNanoSeconds = (endTimeInNanoSeconds - startTimeInNanoSeconds) / 1_000_000_000;
-      visitor.afterExecute(sql, numberOfRowsUpdated, durationInNanoSeconds);
+      double durationInSeconds = (double)(endTimeInNanoSeconds - startTimeInNanoSeconds) / 1_000_000_000;
+      visitor.afterExecute(sql, numberOfRowsUpdated, durationInSeconds);
     }
   }
 
@@ -628,8 +628,8 @@ public class SqlScriptExecutor {
       try {
         T result = processor.process(resultSet);
         long endTimeInNanoSeconds = System.nanoTime();
-        long durationInNanoSeconds = (endTimeInNanoSeconds - startTimeInNanoSeconds) / 1_000_000_000;
-        visitor.afterExecute(preparedStatement.toString(), 0, durationInNanoSeconds);
+        double durationInSeconds = (double)(endTimeInNanoSeconds - startTimeInNanoSeconds) / 1_000_000_000;
+        visitor.afterExecute(preparedStatement.toString(), 0, durationInSeconds);
         return result;
       } finally {
         resultSet.close();
