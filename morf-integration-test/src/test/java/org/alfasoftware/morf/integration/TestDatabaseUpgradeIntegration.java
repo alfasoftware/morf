@@ -372,7 +372,8 @@ public class TestDatabaseUpgradeIntegration {
         column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable())
       .indexes(
         index("WrongIndexName_1").columns("bigIntegerCol"),
-        index("BasicTableWithIndex_PRF1").columns("decimalTenZeroCol"));
+        index("BasicTableWithIndex_PRF1").columns("decimalTenZeroCol"),
+        index("BasicTableWithIndex_PRF2").columns("decimalNineFiveCol").unique());
     Schema schema1 = replaceTablesInSchema(tableWithNewAddIndex);
 
     schemaManager.get().mutateToSupportSchema(schema1, TruncationBehavior.ALWAYS);
@@ -565,7 +566,8 @@ public class TestDatabaseUpgradeIntegration {
         column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable())
       .indexes(
         index("WrongIndexName_1").columns("bigIntegerCol"),
-        index("BasicTableWithIndex_1").columns("decimalTenZeroCol"));
+        index("BasicTableWithIndex_1").columns("decimalTenZeroCol"),
+        index("BasicTableWithIndex_2").columns("decimalNineFiveCol"));
 
     Schema reAdded = replaceTablesInSchema(tableWithNewAddIndex);
 

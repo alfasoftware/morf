@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -184,6 +185,7 @@ public class TestInlineTableUpgrader {
     Index newIndex = mock(Index.class);
     when(newIndex.getName()).thenReturn(ID_TABLE_NAME + "_1");
     when(newIndex.columnNames()).thenReturn(Collections.singletonList("column_1"));
+    when(newIndex.isUnique()).thenReturn(false);
 
     AddIndex addIndex = mock(AddIndex.class);
     given(addIndex.apply(schema)).willReturn(schema);
@@ -192,18 +194,26 @@ public class TestInlineTableUpgrader {
 
     Index indexPrf = mock(Index.class);
     when(indexPrf.getName()).thenReturn(ID_TABLE_NAME + "_PRF1");
-    when(indexPrf.columnNames()).thenReturn(List.of("column_1"));
+    when(indexPrf.columnNames()).thenReturn(Collections.singletonList("column_1"));
+    when(indexPrf.isUnique()).thenReturn(false);
     Index indexPrf1 = mock(Index.class);
     when(indexPrf1.getName()).thenReturn(ID_TABLE_NAME + "_PRF2");
     when(indexPrf1.columnNames()).thenReturn(List.of("column_2"));
+    when(indexPrf1.isUnique()).thenReturn(true);
+    Index indexPrf2 = mock(Index.class);
+    when(indexPrf2.getName()).thenReturn(ID_TABLE_NAME + "_PRF3");
+    when(indexPrf2.columnNames()).thenReturn(List.of("column_3"));
+    // idTable_PRF3 isn't unique
+    when(indexPrf2.isUnique()).thenReturn(false);
 
     Map<String, List<Index>> ignoredIndexes = Maps.newHashMap();
-    ignoredIndexes.put(ID_TABLE_NAME.toUpperCase(), Lists.newArrayList(indexPrf, indexPrf1));
+    ignoredIndexes.put(ID_TABLE_NAME.toUpperCase(), Lists.newArrayList(indexPrf, indexPrf1, indexPrf2));
     upgradeConfigAndContext.setIgnoredIndexes(ignoredIndexes);
 
     Index newIndex1 = mock(Index.class);
     when(newIndex1.getName()).thenReturn(ID_TABLE_NAME + "_2");
     when(newIndex1.columnNames()).thenReturn(Collections.singletonList("column_2"));
+    when(newIndex1.isUnique()).thenReturn(true);
     AddIndex addIndex1 = mock(AddIndex.class);
     given(addIndex1.apply(schema)).willReturn(schema);
     when(addIndex1.getTableName()).thenReturn(ID_TABLE_NAME);
@@ -211,11 +221,22 @@ public class TestInlineTableUpgrader {
 
     Index newIndex2 = mock(Index.class);
     when(newIndex2.getName()).thenReturn(ID_TABLE_NAME + "_3");
-    when(newIndex2.columnNames()).thenReturn(Collections.singletonList("column_3"));
+    when(newIndex2.columnNames()).thenReturn(Collections.singletonList("column_4"));
+    when(newIndex2.isUnique()).thenReturn(true);
     AddIndex addIndex2 = mock(AddIndex.class);
     given(addIndex2.apply(schema)).willReturn(schema);
     when(addIndex2.getTableName()).thenReturn(ID_TABLE_NAME);
     when(addIndex2.getNewIndex()).thenReturn(newIndex2);
+
+    Index newIndex3 = mock(Index.class);
+    when(newIndex3.getName()).thenReturn(ID_TABLE_NAME + "_4");
+    when(newIndex3.columnNames()).thenReturn(Collections.singletonList("column_3"));
+    // index 3 is unique idTable_PRF3 has same columns but isn't unique
+    when(newIndex3.isUnique()).thenReturn(true);
+    AddIndex addIndex3 = mock(AddIndex.class);
+    given(addIndex3.apply(schema)).willReturn(schema);
+    when(addIndex3.getTableName()).thenReturn(ID_TABLE_NAME);
+    when(addIndex3.getNewIndex()).thenReturn(newIndex3);
 
     Table newTable = mock(Table.class);
     when(newTable.getName()).thenReturn(ID_TABLE_NAME);
@@ -225,13 +246,15 @@ public class TestInlineTableUpgrader {
     upgrader.visit(addIndex);
     upgrader.visit(addIndex1);
     upgrader.visit(addIndex2);
+    upgrader.visit(addIndex3);
 
     // then
     verify(addIndex).apply(schema);
     verify(sqlDialect).renameIndexStatements(nullable(Table.class), eq(ID_TABLE_NAME + "_PRF1"), eq(ID_TABLE_NAME + "_1"));
     verify(sqlDialect).renameIndexStatements(nullable(Table.class), eq(ID_TABLE_NAME + "_PRF2"), eq(ID_TABLE_NAME + "_2"));
-    verify(sqlDialect).addIndexStatements(nullable(Table.class), nullable(Index.class));
-    verify(sqlStatementWriter, times(3)).writeSql(anyCollection());
+    verify(sqlDialect, never()).renameIndexStatements(nullable(Table.class), eq(ID_TABLE_NAME + "_PRF3"), eq(ID_TABLE_NAME + "_4"));
+    verify(sqlDialect, times(2)).addIndexStatements(nullable(Table.class), nullable(Index.class));
+    verify(sqlStatementWriter, times(4)).writeSql(anyCollection());
   }
 
 
