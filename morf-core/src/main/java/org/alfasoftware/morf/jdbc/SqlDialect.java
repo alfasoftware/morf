@@ -57,6 +57,8 @@ import org.alfasoftware.morf.sql.AbstractSelectStatement;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.InsertStatement;
+import org.alfasoftware.morf.sql.MergeMatchClause;
+import org.alfasoftware.morf.sql.MergeMatchClause.MatchAction;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
@@ -3365,13 +3367,7 @@ public abstract class SqlDialect {
               .append(")");
 
     // WHEN MATCHED THEN UPDATE ...
-    if (getNonKeyFieldsFromMergeStatement(statement).iterator().hasNext()) {
-      Iterable<AliasedField> updateExpressions = getMergeStatementUpdateExpressions(statement);
-      String updateExpressionsSql = getMergeStatementAssignmentsSql(updateExpressions);
-
-      sqlBuilder.append(" WHEN MATCHED THEN UPDATE SET ")
-                .append(updateExpressionsSql);
-    }
+    sqlBuilder.append(mergeStatementWhenMatchedUpdateClause(statement));
 
     // WHEN NOT MATCHED THEN INSERT ...
     String insertFieldsSql = Joiner.on(", ").join(FluentIterable.from(statement.getSelectStatement().getFields()).transform(AliasedField::getImpliedName));
@@ -3383,6 +3379,31 @@ public abstract class SqlDialect {
               .append(insertValuesSql)
               .append(")");
 
+    return sqlBuilder.toString();
+  }
+
+
+  protected String mergeStatementWhenMatchedUpdateClause(MergeStatement statement) {
+    final StringBuilder sqlBuilder = new StringBuilder();
+    if (getNonKeyFieldsFromMergeStatement(statement).iterator().hasNext()) {
+      Iterable<AliasedField> updateExpressions = getMergeStatementUpdateExpressions(statement);
+      String updateExpressionsSql = getMergeStatementAssignmentsSql(updateExpressions);
+
+      sqlBuilder.append(" WHEN MATCHED");
+
+      Optional<MergeMatchClause> whenMatchedAction = statement.getWhenMatchedAction();
+      if (!whenMatchedAction.isEmpty()) {
+        MergeMatchClause mergeMatchClause = whenMatchedAction.get();
+        Optional<Criterion> whereClause = mergeMatchClause.getWhereClause();
+        if (mergeMatchClause.getAction() == MatchAction.UPDATE && whereClause.isPresent()) {
+          sqlBuilder.append(" AND ")
+            .append(getSqlFrom(whereClause.get()));
+        }
+      }
+
+      sqlBuilder.append(" THEN UPDATE SET ")
+                .append(updateExpressionsSql);
+    }
     return sqlBuilder.toString();
   }
 
