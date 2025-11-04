@@ -143,7 +143,7 @@ public class SqlScriptExecutor {
 
 
     /**
-     * <p>Notify the visitor that the given SQL has been updated in the given number of seconds, and the
+     * <p>Notify the visitor that the given SQL has been updated in the given number of milliseconds, and the
      * given number of rows were updated. This should always be preceded
      * by a call to {@link #beforeExecute(String)} with the same SQL.</p>
      *
