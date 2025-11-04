@@ -19,6 +19,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -55,12 +56,14 @@ public class SqlScriptExecutor {
 
   private final SqlDialect sqlDialect;
 
+  private final Clock clock;
+
   private int fetchSizeForBulkSelects;
   private int fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming;
 
   /**
    * @deprecated This constructor creates a {@link SqlScriptExecutor} with legacy fetch size values and is primarily for backwards compatibility.
-   * Please use {@link SqlScriptExecutor#SqlScriptExecutor(SqlScriptVisitor, DataSource, SqlDialect, ConnectionResources)} to create a
+   * Please use {@link SqlScriptExecutor#SqlScriptExecutor(SqlScriptVisitor, DataSource, SqlDialect, ConnectionResources, Clock)}} to create a
    * {@link SqlScriptExecutor} with the new fetch size defaults or optional configured values.
    *
    * Create an SQL executor with the given visitor, who will
@@ -70,13 +73,14 @@ public class SqlScriptExecutor {
    * @param dataSource DataSource to use.
    */
   @Deprecated
-  SqlScriptExecutor(SqlScriptVisitor visitor, DataSource dataSource, SqlDialect sqlDialect) {
+  SqlScriptExecutor(SqlScriptVisitor visitor, DataSource dataSource, SqlDialect sqlDialect, Clock clock) {
     super();
     this.dataSource = dataSource;
     this.sqlDialect = sqlDialect;
     this.fetchSizeForBulkSelects = sqlDialect.legacyFetchSizeForBulkSelects();
     this.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming = sqlDialect.legacyFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
     this.visitor = checkVisitor(visitor);
+    this.clock = clock;
   }
 
   /**
@@ -87,7 +91,7 @@ public class SqlScriptExecutor {
    * @param dataSource DataSource to use.
    * @param connectionResources The connection resources to use.
    */
-  SqlScriptExecutor(SqlScriptVisitor visitor, DataSource dataSource, SqlDialect sqlDialect, ConnectionResources connectionResources) {
+  SqlScriptExecutor(SqlScriptVisitor visitor, DataSource dataSource, SqlDialect sqlDialect, ConnectionResources connectionResources, Clock clock) {
     super();
     this.dataSource = dataSource;
     this.sqlDialect = sqlDialect;
@@ -96,6 +100,7 @@ public class SqlScriptExecutor {
     this.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming = connectionResources.getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming() != null
         ? connectionResources.getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming() : sqlDialect.fetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming();
     this.visitor = checkVisitor(visitor);
+    this.clock = clock;
   }
 
   private static SqlScriptVisitor checkVisitor(SqlScriptVisitor visitor){
@@ -146,9 +151,9 @@ public class SqlScriptExecutor {
      *
      * @param sql SQL which has just been executed.
      * @param numberOfRowsUpdated Number of rows updated by {@code sql}.
-     * @param durationInSeconds time taken to execute {@code sql} in seconds.
+     * @param durationInMs time taken to execute {@code sql} in milliseconds.
      */
-    default void afterExecute(String sql, long numberOfRowsUpdated, double durationInSeconds) {
+    default void afterExecute(String sql, long numberOfRowsUpdated, long durationInMs) {
       afterExecute(sql, numberOfRowsUpdated);
     }
 
@@ -330,7 +335,7 @@ public class SqlScriptExecutor {
    * @return The number of rows updated/affected by this statement
    */
   public int execute(String sqlStatement, Connection connection, Iterable<SqlParameter> parameterMetadata, DataValueLookup parameterData) {
-    long startTimeInNanoSeconds = System.nanoTime();
+    long startTimeInMs = clock.millis();
     visitor.beforeExecute(sqlStatement);
     int numberOfRowsUpdated = 0;
     try {
@@ -344,9 +349,9 @@ public class SqlScriptExecutor {
       }
       return numberOfRowsUpdated;
     } finally {
-      long endTimeInNanoSeconds = System.nanoTime();
-      double durationInSeconds = (double)(endTimeInNanoSeconds - startTimeInNanoSeconds) / 1_000_000_000;
-      visitor.afterExecute(sqlStatement, numberOfRowsUpdated, durationInSeconds);
+      long endTimeInMs = clock.millis();
+      long durationInMs = endTimeInMs - startTimeInMs;
+      visitor.afterExecute(sqlStatement, numberOfRowsUpdated, durationInMs);
     }
   }
 
@@ -379,7 +384,7 @@ public class SqlScriptExecutor {
    * @throws SQLException throws an exception for statement errors.
    */
   private int executeInternal(String sql, Connection connection) throws SQLException {
-    long startTimeInNanoSeconds = System.nanoTime();
+    long startTimeInMs = clock.millis();
     visitor.beforeExecute(sql);
     int numberOfRowsUpdated = 0;
     try {
@@ -406,9 +411,9 @@ public class SqlScriptExecutor {
 
       return numberOfRowsUpdated;
     } finally {
-      long endTimeInNanoSeconds = System.nanoTime();
-      double durationInSeconds = (double)(endTimeInNanoSeconds - startTimeInNanoSeconds) / 1_000_000_000;
-      visitor.afterExecute(sql, numberOfRowsUpdated, durationInSeconds);
+      long endTimeInMs = clock.millis();
+      long durationInMs = endTimeInMs - startTimeInMs;
+      visitor.afterExecute(sql, numberOfRowsUpdated, durationInMs);
     }
   }
 
@@ -616,7 +621,7 @@ public class SqlScriptExecutor {
       throw new IllegalStateException("Must construct with dialect");
     }
     try {
-      long startTimeInNanoSeconds = System.nanoTime();
+      long startTimeInMs = clock.millis();
       sqlDialect.prepareStatementParameters(preparedStatement, parameterMetadata, parameterData);
       if (maxRows.isPresent()) {
         preparedStatement.setMaxRows(maxRows.get());
@@ -627,9 +632,9 @@ public class SqlScriptExecutor {
       ResultSet resultSet = preparedStatement.executeQuery();
       try {
         T result = processor.process(resultSet);
-        long endTimeInNanoSeconds = System.nanoTime();
-        double durationInSeconds = (double)(endTimeInNanoSeconds - startTimeInNanoSeconds) / 1_000_000_000;
-        visitor.afterExecute(preparedStatement.toString(), 0, durationInSeconds);
+        long endTimeInMs = clock.millis();
+        long durationInMs = endTimeInMs - startTimeInMs;
+        visitor.afterExecute(preparedStatement.toString(), 0, durationInMs);
         return result;
       } finally {
         resultSet.close();
