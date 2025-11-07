@@ -13,5 +13,6 @@ public class AddIndex extends AbstractTestUpgradeStep {
   @Override
   public void execute(SchemaEditor schema, DataEditor data) {
     schema.addIndex("BasicTableWithIndex", index("BasicTableWithIndex_1").columns("decimalTenZeroCol"));
+    schema.addIndex("BasicTableWithIndex", index("BasicTableWithIndex_2").columns("decimalNineFiveCol"));
   }
 }
