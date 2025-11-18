@@ -155,40 +155,31 @@ Unit tests will verify specific scenarios:
    - Test MERGE with whenMatchedAction and WHERE clause
    - Test MERGE with InputField references
 
-### Property-Based Testing
+### Parameterized Testing
 
-Property-based tests will verify universal properties across many randomly generated inputs. We will use **JUnit-Quickcheck** as the property-based testing library for Java, which integrates well with JUnit 4 (already used in Morf).
-
-Each property-based test will:
-- Run a minimum of 100 iterations
-- Generate random MergeStatements with varying configurations
-- Verify the correctness property holds for all generated inputs
-- Be tagged with a comment explicitly referencing the design document property
-
-**Property test tagging format:** `// Feature: postgres-merge-command, Property N: [property text]`
-
-Property-based tests will cover:
+We will use JUnit's parameterized tests to verify properties across multiple scenarios:
 
 1. **Property 1: Version-based syntax selection**
-   - Generate random MergeStatements
-   - Test with both version 15+ and version <15
+   - Test with PostgreSQL versions 13, 14, 15, 16
    - Verify correct syntax is used based on version
+   - Test with missing version information
 
 2. **Property 2: Native MERGE structure completeness**
-   - Generate random MergeStatements with various table and field configurations
+   - Test with various MergeStatement configurations
    - Verify all required clauses are present in PostgreSQL 15+ output
+   - Test with different table and field combinations
 
 3. **Property 3: Conditional WHEN MATCHED clause**
-   - Generate random MergeStatements with and without non-key fields
-   - Generate random whenMatchedAction configurations
+   - Test MergeStatements with and without non-key fields
+   - Test with different whenMatchedAction configurations
    - Verify WHEN MATCHED clause appears correctly
 
 4. **Property 4: WHEN NOT MATCHED clause presence**
-   - Generate random MergeStatements
+   - Test various MergeStatements
    - Verify WHEN NOT MATCHED clause is always present
 
 5. **Property 5: Field reference correctness**
-   - Generate random MergeStatements with various field configurations
+   - Test with various field configurations
    - Verify all field references are properly qualified
    - Verify InputField references use correct syntax for each version
 
@@ -227,10 +218,11 @@ Potential future improvements:
 
 ## Dependencies
 
-- JUnit 4: Existing test framework
-- JUnit-Quickcheck: Property-based testing library (new dependency)
-- Mockito: For mocking PostgreSQLMetaDataProvider in tests
+- JUnit 4: Existing test framework (no changes)
+- Mockito: For mocking PostgreSQLMetaDataProvider in tests (existing)
 - Existing Morf core dependencies (no changes)
+
+No new dependencies are required for this feature.
 
 ## Migration Path
 
