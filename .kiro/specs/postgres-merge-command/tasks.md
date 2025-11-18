@@ -1,11 +1,19 @@
 # Implementation Plan
 
-- [ ] 1. Extract existing INSERT...ON CONFLICT logic into separate method
-  - [ ] 1.1 Refactor current getSqlFrom(MergeStatement) implementation
+- [x] 1. Extract existing INSERT...ON CONFLICT logic into separate method
+
+
+
+
+  - [x] 1.1 Refactor current getSqlFrom(MergeStatement) implementation
+
+
     - Extract existing logic into `generateInsertOnConflictSql(MergeStatement)` method
     - Ensure no behavioral changes to existing functionality
     - _Requirements: 2.1, 2.2_
-  - [ ] 1.2 Write unit tests for extracted method
+  - [x] 1.2 Write unit tests for extracted method
+
+
     - Test various MergeStatement configurations
     - Verify output matches current behavior
     - _Requirements: 2.1, 2.2_

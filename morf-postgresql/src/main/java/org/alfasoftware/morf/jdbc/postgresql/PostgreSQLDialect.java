@@ -627,6 +627,18 @@ class PostgreSQLDialect extends SqlDialect {
 
   @Override
   protected String getSqlFrom(MergeStatement statement) {
+    return generateInsertOnConflictSql(statement);
+  }
+
+
+  /**
+   * Generates SQL for MERGE using INSERT...ON CONFLICT syntax (PostgreSQL < 15).
+   * This is the traditional approach for implementing MERGE-like behavior in PostgreSQL.
+   *
+   * @param statement The MERGE statement to convert to SQL
+   * @return SQL string using INSERT...ON CONFLICT syntax
+   */
+  private String generateInsertOnConflictSql(MergeStatement statement) {
     if (StringUtils.isBlank(statement.getTable().getName())) {
       throw new IllegalArgumentException("Cannot create SQL for a blank table");
     }
