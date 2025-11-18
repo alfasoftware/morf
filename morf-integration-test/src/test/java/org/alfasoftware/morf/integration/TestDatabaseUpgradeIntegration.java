@@ -40,10 +40,7 @@ import static org.alfasoftware.morf.sql.SqlUtils.when;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deployedViewsTable;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.upgradeAuditTable;
 import static org.hamcrest.Matchers.equalToIgnoringCase;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -556,6 +553,7 @@ public class TestDatabaseUpgradeIntegration {
    */
   @Test
   public void testAddIndexWithExistingPRFIndex() {
+    boolean isOracle = connectionResources.getDatabaseType().equals("ORACLE");
     Table tableWithNewAddIndex = table("BasicTableWithIndex")
       .columns(
         column("stringCol", DataType.STRING, 20).primaryKey(),
@@ -571,7 +569,12 @@ public class TestDatabaseUpgradeIntegration {
 
     Schema reAdded = replaceTablesInSchema(tableWithNewAddIndex);
 
-    verifyUpgrade(reAdded, AddIndex.class);
+    if (isOracle) {
+      RuntimeSqlException sqlException = assertThrows(RuntimeSqlException.class, () -> verifyUpgrade(reAdded, AddIndex.class));
+      assertTrue("Oracle exception ORA-01408: such column list already indexed", sqlException.getMessage().contains("[1408]"));
+    } else {
+      verifyUpgrade(reAdded, AddIndex.class);
+    }
   }
 
 

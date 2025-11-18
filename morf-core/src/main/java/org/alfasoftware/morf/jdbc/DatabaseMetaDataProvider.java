@@ -689,7 +689,7 @@ public abstract class DatabaseMetaDataProvider implements Schema {
 
     final Map<AName, Integer> primaryKey = loadTablePrimaryKey(realTableName);
     final Supplier<List<Column>> columns = Suppliers.memoize(() -> loadTableColumns(realTableName, primaryKey));
-    final Supplier<List<Index>> indexes = Suppliers.memoize(() -> loadTableIndexes(realTableName));
+    final Supplier<List<Index>> indexes = Suppliers.memoize(() -> loadTableIndexes(realTableName, false));
     final Supplier<Partitions> partitions = Suppliers.memoize(() -> loadTablePartitions(realTableName));
 
     return new Table() {

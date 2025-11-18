@@ -15,6 +15,8 @@
 
 package org.alfasoftware.morf.jdbc.postgresql;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
@@ -160,6 +162,14 @@ public class TestPostgreSqlMetaDataProvider {
         when(resultSet.getBoolean(4)).thenReturn(true, true, true, true, true, true); // 4 - INDEX_NON_UNIQUE
         return resultSet;
       });
+
+    Statement statement1 = mock(Statement.class, RETURNS_SMART_NULLS);
+    when(connection.createStatement()).thenReturn(statement1);
+    when(statement1.executeQuery(anyString())).thenAnswer(answer -> {
+      ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
+      when(resultSet.next()).thenReturn(false);
+      return resultSet;
+    });
 
     // When
     final Schema postgresMetaDataProvider = postgres.openSchema(connection, "TestDatabase", TEST_SCHEMA);

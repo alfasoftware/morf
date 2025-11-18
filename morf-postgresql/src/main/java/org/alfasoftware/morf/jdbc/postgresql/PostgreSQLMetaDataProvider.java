@@ -194,7 +194,7 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
   private ImmutableMap<String, List<Index>> loadAllIgnoredIndexes() {
     ImmutableMap.Builder<String, List<Index>> ignoredIndexes = ImmutableMap.builder();
     for (RealName realTableName : allIgnoredIndexesTables) {
-      ignoredIndexes.put(realTableName.getDbName().toLowerCase(), loadTableIndexes(realTableName, true));
+      ignoredIndexes.put(realTableName.getRealName(), loadTableIndexes(realTableName, true));
     }
     return ignoredIndexes.build();
   }
