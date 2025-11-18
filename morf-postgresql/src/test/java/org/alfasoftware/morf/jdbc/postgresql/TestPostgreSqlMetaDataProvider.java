@@ -180,10 +180,10 @@ public class TestPostgreSqlMetaDataProvider {
     // Then
     assertEquals("map size must match", 1, ignoredIndexesMap.size());
     assertEquals("map size must match", 1, ignoredIndexesMap1.size());
-    String tableNameLowerCase = TABLE_NAME.toLowerCase();
-    assertEquals("table ignored indexes size must match", 2, ignoredIndexesMap.get(tableNameLowerCase).size());
-    Index indexPrf1 = ignoredIndexesMap.get(tableNameLowerCase).get(0);
-    Index indexPrf2 = ignoredIndexesMap.get(tableNameLowerCase).get(1);
+    String realTableName = "ARealTable";
+    assertEquals("table ignored indexes size must match", 2, ignoredIndexesMap.get(realTableName).size());
+    Index indexPrf1 = ignoredIndexesMap.get(realTableName).get(0);
+    Index indexPrf2 = ignoredIndexesMap.get(realTableName).get(1);
     assertEquals("index prf1 name", "AREALTABLE_PRF1", indexPrf1.getName());
     assertThat("index prf1 columns", indexPrf1.columnNames(), contains("column1"));
     assertEquals("index prf2 name", "AREALTABLE_PRF2", indexPrf2.getName());
