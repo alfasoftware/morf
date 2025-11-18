@@ -21,9 +21,12 @@ import java.util.Map;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.PartitioningRule;
+import org.alfasoftware.morf.metadata.Partitions;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
+
 import com.google.common.collect.Maps;
 
 /**
@@ -184,6 +187,19 @@ public class RenameTable implements SchemaChange {
     @Override
     public boolean isTemporary() {
       return baseTable.isTemporary();
+    }
+
+    @Override
+    public boolean isPartitioned() { return false; }
+
+    @Override
+    public PartitioningRule partitioningRule() {
+      return null;
+    }
+
+    @Override
+    public Partitions partitions() {
+      return null;
     }
   }
 }

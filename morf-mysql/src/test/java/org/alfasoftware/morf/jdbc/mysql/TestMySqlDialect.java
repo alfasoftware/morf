@@ -105,7 +105,9 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
           "ALTER TABLE `Alternate` ADD INDEX `Alternate_1` (`stringField`)",
           "CREATE TABLE `NonNull` (`id` BIGINT NOT NULL, `version` INTEGER DEFAULT 0, `stringField` VARCHAR(3) NOT NULL, `intField` DECIMAL(8,0) NOT NULL, `booleanField` TINYINT(1) NOT NULL, `dateField` DATE NOT NULL, `blobField` LONGBLOB NOT NULL, CONSTRAINT `NonNull_PK` PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin",
           "CREATE TABLE `CompositePrimaryKey` (`id` BIGINT NOT NULL, `version` INTEGER DEFAULT 0, `stringField` VARCHAR(3) NOT NULL, `secondPrimaryKey` VARCHAR(3) NOT NULL, CONSTRAINT `CompositePrimaryKey_PK` PRIMARY KEY (`id`, `secondPrimaryKey`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin",
-          "CREATE TABLE `AutoNumber` (`intField` BIGINT AUTO_INCREMENT COMMENT 'AUTONUMSTART:[5]', CONSTRAINT `AutoNumber_PK` PRIMARY KEY (`intField`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin AUTO_INCREMENT=5"
+          "CREATE TABLE `AutoNumber` (`intField` BIGINT AUTO_INCREMENT COMMENT 'AUTONUMSTART:[5]', CONSTRAINT `AutoNumber_PK` PRIMARY KEY (`intField`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin AUTO_INCREMENT=5",
+          "CREATE TABLE `Measurement` (`intField` DECIMAL(8,0) NOT NULL, `dateField` DATE NOT NULL, `stringField` VARCHAR(3) NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin",
+          "CREATE TABLE `MeasurementHash` (`intField` DECIMAL(8,0) NOT NULL, `dateField` DATE NOT NULL, `stringField` VARCHAR(3) NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin"
         );
   }
 

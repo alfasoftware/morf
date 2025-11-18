@@ -118,4 +118,44 @@ public class XmlDataSetNode {
    */
   public static final String AUTONUMBER_ATTRIBUTE = "autoNum";
 
+
+  /**
+   * Node name for partitions
+   */
+  public static final String PARTITIONS_NODE = "partitions";
+
+  /**
+   * Node name for partition
+   */
+  public static final String PARTITION_NODE = "partition";
+
+  /**
+   * Node name for hashFunction
+   */
+  public static final String HASH_FUNCTION_ATTRIBUTE = "hashFunction";
+
+  /**
+   * Node name for start
+   */
+  public static final String START_ATTRIBUTE = "start";
+
+  /**
+   * Node name for end
+   */
+  public static final String END_ATTRIBUTE = "end";
+
+  /**
+   * Attribute name for the rule type property.
+   */
+  public static final String RULE_TYPE_ATTRIBUTE = "ruleType";
+
+  /**
+   * Attribute name for the divider property.
+   */
+  public static final String DIVIDER_ATTRIBUTE = "divider";
+
+  /**
+   * Attribute name for the remainder property.
+   */
+  public static final String REMAINDER_ATTRIBUTE = "remainder";
 }

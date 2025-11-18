@@ -41,6 +41,15 @@ public interface Index {
    */
   public boolean isUnique();
 
+  /**
+   * @return True if the index is globally partitioned
+   */
+  boolean isGlobalPartitioned();
+
+  /**
+   * @return True if the index is locally partitioned
+   */
+  boolean isLocalPartitioned();
 
   /**
    * Helper for {@link Object#toString()} implementations.

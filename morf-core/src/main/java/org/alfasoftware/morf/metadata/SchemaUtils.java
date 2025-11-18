@@ -15,12 +15,14 @@
 
 package org.alfasoftware.morf.metadata;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
@@ -350,6 +352,29 @@ public final class SchemaUtils {
     return new IndexBuilderImpl(name);
   }
 
+  /**
+   * Build a partition list.
+   * @return A {@link PartitionsBuilder} for the partitions.
+   */
+  public static PartitionsBuilder partitions() {
+    return new PartitionsBuilderImpl();
+  }
+
+  /**
+   * Build a range partition
+   * @return A {@link PartitionByRangeBuilder} for the range partitions.
+   */
+  public static PartitionByRangeBuilder partitionByRange(String name) {
+    return new PartitionByRangeBuilderImpl(name);
+  }
+
+  /**
+   * Build a range partition
+   * @return A {@link PartitionByHashBuilder} for the hash partitions.
+   */
+  public static PartitionByHashBuilder partitionByHash(String name) {
+    return new PartitionByHashBuilderImpl(name);
+  }
 
   /**
    * Create a view.
@@ -523,7 +548,17 @@ public final class SchemaUtils {
      * @return this table builder, for method chaining.
      */
     public TableBuilder temporary();
+
+
+    /**
+     * The partitioning rule for the table is defined here.
+     * @param rule The rule applied on the column to define partitions on the table
+     * @return this table builder, for method chaining.
+     */
+    public TableBuilder partitionBy(PartitioningRule rule);
+
   }
+
 
   /**
    * Builds {@link Column} implementations.
@@ -584,6 +619,13 @@ public final class SchemaUtils {
      * @return this, for method chaining.
      */
     public ColumnBuilder dataType(DataType dataType);
+
+
+    /**
+     * Marks the column as the partition source value.
+     * @return this, for method chaining.
+     */
+    public ColumnBuilder partitioned();
   }
 
   /**
@@ -615,8 +657,55 @@ public final class SchemaUtils {
      * @return this, for method chaining.
      */
     public IndexBuilder unique();
+
+    /**
+     * Mark this index as isGlobalPartitioned.
+     *
+     * @return this, for method chaining.
+     */
+    IndexBuilder globalPartitioned();
+
+    /**
+     * Mark this index as isLocalPartitioned.
+     *
+     * @return this, for method chaining.
+     */
+    IndexBuilder localPartitioned();
   }
 
+  /**
+   * Builds {@link Partitions} implementations.
+   */
+  public interface PartitionsBuilder extends Partitions {
+    PartitionsBuilder column(Column column);
+
+    PartitionsBuilder ruleType(PartitioningRuleType ruleType);
+
+    PartitionsBuilder partitions(Iterable<? extends Partition> partitions);
+  }
+
+  /**
+   * Builds {@link Partition} implementations.
+   */
+  /*public interface PartitionBuilder extends Partition {
+    PartitionsBuilder name(String name);
+  }*/
+
+  /**
+   * Builds {@link PartitionByRange} implementations.
+   */
+  public interface PartitionByRangeBuilder extends PartitionByRange {
+    PartitionByRangeBuilder start(String start);
+    PartitionByRangeBuilder end(String end);
+  }
+
+  /**
+   * Builds {@link PartitionByHash} implementations.
+   */
+  public interface PartitionByHashBuilder extends PartitionByHash {
+    PartitionByHashBuilder divider(String start);
+    PartitionByHashBuilder remainder(String end);
+  }
 
   /**
    * Private implementation of {@link SequenceBuilder}.
@@ -701,6 +790,20 @@ public final class SchemaUtils {
     public TableBuilder temporary() {
       return new TableBuilderImpl(getName(), columns(), indexes(), true);
     }
+
+
+    /**
+     * @see org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder#partitionBy(PartitioningRule)
+     */
+    @Override
+    public TableBuilder partitionBy(PartitioningRule rule) {
+      this.partitionColumn = rule.getColumn();
+      this.partitioningRule = rule;
+      return this;
+    }
+
+    @Override
+    public boolean isPartitioned() { return !StringUtils.isEmpty(this.partitionColumn); };
   }
 
   /**
@@ -768,6 +871,12 @@ public final class SchemaUtils {
       ColumnBuilderImpl column = new ColumnBuilderImpl(getName(), dataType, getWidth(), getScale());
       return new ColumnBuilderImpl(column, isNullable(), getDefaultValue(), isPrimaryKey(), isAutoNumbered(), getAutoNumberStart());
     }
+
+    @Override
+    public ColumnBuilder partitioned() {
+      this.partitioned = true;
+     return this;
+    }
   }
 
   /**
@@ -816,8 +925,114 @@ public final class SchemaUtils {
     public String toString() {
       return this.toStringHelper();
     }
+
+    /**
+     * @see org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder#isGlobalPartitioned()
+     */
+    @Override
+    public IndexBuilder globalPartitioned() {
+      this.isGlobalPartitioned = true;
+      return this;
+    }
+
+    /**
+     * @see org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder#isLocalPartitioned()
+     */
+    @Override
+    public IndexBuilder localPartitioned() {
+      this.isLocalPartitioned = true;
+      return this;
+    }
   }
 
+  /**
+   * private implementation of {@link PartitionsBuilder}
+   */
+  private static final class PartitionsBuilderImpl extends PartitionsBean implements PartitionsBuilder {
+
+    private PartitionsBuilderImpl() {
+      super();
+    }
+
+    private PartitionsBuilderImpl(Column column, PartitioningRuleType ruleType) {
+      super(column, ruleType);
+    }
+
+    private PartitionsBuilderImpl(Column column, PartitioningRuleType ruleType, PartitioningRule partitioningRule, Iterable<? extends Partition> partitions) {
+      this.column = column;
+      this.partitioningType = ruleType;
+      this.partitioningRule = partitioningRule;
+
+      this.partitions = new ArrayList<>();
+      for (Partition partition : partitions) {
+        this.partitions.add(partition);
+      }
+    }
+
+    @Override
+    public PartitionsBuilder column(Column column) {
+      return new PartitionsBuilderImpl(column, partitioningType, partitioningRule, partitions);
+    }
+
+    @Override
+    public PartitionsBuilder ruleType(PartitioningRuleType ruleType) {
+      return new PartitionsBuilderImpl(column, ruleType, partitioningRule, partitions);
+    }
+
+    @Override
+    public PartitionsBuilder partitions(Iterable<? extends Partition> partitions) {
+      return new PartitionsBuilderImpl(column, partitioningType, partitioningRule, partitions);
+    }
+  }
+
+
+  /**
+   * private implementation of {@link PartitionByRangeBuilder}
+   */
+  public static final class PartitionByRangeBuilderImpl extends PartitionByRangeBean implements PartitionByRangeBuilder {
+
+    private PartitionByRangeBuilderImpl(String name) {
+      super(name, null, null);
+    }
+
+    private PartitionByRangeBuilderImpl(String name, String start, String end) {
+      super(name, start, end);
+    }
+
+    @Override
+    public PartitionByRangeBuilder start(String start) {
+      return new PartitionByRangeBuilderImpl(name, start, end);
+    }
+
+    @Override
+    public PartitionByRangeBuilder end(String end) {
+      return new PartitionByRangeBuilderImpl(name, start, end);
+    }
+  }
+
+  /**
+   * private implementation of {@link PartitionByHashBuilder}
+   */
+  private static final class PartitionByHashBuilderImpl extends PartitionByHashBean implements PartitionByHashBuilder {
+
+    private PartitionByHashBuilderImpl(String name) {
+      super(name, null, null);
+    }
+
+    private PartitionByHashBuilderImpl(String name, String divider, String remainder) {
+      super(name, divider, remainder);
+    }
+
+    @Override
+    public PartitionByHashBuilder divider(String divider) {
+      return new PartitionByHashBuilderImpl(name, divider, remainder);
+    }
+
+    @Override
+    public PartitionByHashBuilder remainder(String remainder) {
+      return new PartitionByHashBuilderImpl(name, divider, remainder);
+    }
+  }
 
   /**
    * List the primary key columns for a given table.

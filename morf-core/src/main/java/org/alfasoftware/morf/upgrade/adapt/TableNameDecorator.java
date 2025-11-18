@@ -18,11 +18,12 @@ package org.alfasoftware.morf.upgrade.adapt;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.lang3.StringUtils;
-
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.PartitioningRule;
+import org.alfasoftware.morf.metadata.Partitions;
 import org.alfasoftware.morf.metadata.Table;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * Decorator that changes a table name for deploying transitional tables.
@@ -92,4 +93,19 @@ public class TableNameDecorator implements Table {
   public boolean isTemporary() {
     return false;
   }
+
+  @Override
+  public boolean isPartitioned() { return false; }
+
+  @Override
+  public PartitioningRule partitioningRule() {
+    return null;
+  }
+
+  @Override
+  public Partitions partitions() {
+    return null;
+  }
+
+  ;
 }

@@ -99,6 +99,7 @@ public class WithMetaDataAdapter extends DataSetProducerAdapter {
           return sourceSchema.tableNames();
         }
 
+
         @Override
         public Collection<Table> tables() {
           Set<Table> tables = new HashSet<>();

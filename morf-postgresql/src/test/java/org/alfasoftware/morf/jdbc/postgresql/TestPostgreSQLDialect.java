@@ -132,7 +132,27 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
           "CREATE TABLE testschema.AutoNumber (intField NUMERIC(19) DEFAULT nextval('testschema.AutoNumber_intField_seq'), CONSTRAINT AutoNumber_PK PRIMARY KEY(intField))",
           "ALTER SEQUENCE testschema.AutoNumber_intField_seq OWNED BY testschema.AutoNumber.intField",
           "COMMENT ON TABLE testschema.AutoNumber IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[AutoNumber]'",
-          "COMMENT ON COLUMN testschema.AutoNumber.intField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[BIG_INTEGER]/AUTONUMSTART:[5]'");
+          "COMMENT ON COLUMN testschema.AutoNumber.intField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[BIG_INTEGER]/AUTONUMSTART:[5]'",
+          "CREATE TABLE testschema.Measurement (intField DECIMAL(8,0) NOT NULL, dateField DATE NOT NULL, stringField VARCHAR(3) COLLATE \"POSIX\" NOT NULL) PARTITION BY RANGE (dateField)",
+          "CREATE TABLE testschema.Measurement_p1 PARTITION OF testschema.Measurement FOR VALUES FROM ('2012-03-01') TO ('2012-04-01')",
+          "CREATE TABLE testschema.Measurement_p2 PARTITION OF testschema.Measurement FOR VALUES FROM ('2012-04-01') TO ('2012-05-01')",
+          "COMMENT ON TABLE testschema.Measurement IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Measurement]'",
+          "COMMENT ON COLUMN testschema.Measurement.intField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[DECIMAL]'",
+          "COMMENT ON COLUMN testschema.Measurement.dateField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[dateField]/TYPE:[DATE]'",
+          "COMMENT ON COLUMN testschema.Measurement.stringField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[stringField]/TYPE:[STRING]'",
+          "CREATE TABLE testschema.MeasurementHash (intField DECIMAL(8,0) NOT NULL, dateField DATE NOT NULL, stringField VARCHAR(3) COLLATE \"POSIX\" NOT NULL) PARTITION BY HASH (intField)",
+          "CREATE TABLE testschema.MeasurementHash_p1 PARTITION OF testschema.MeasurementHash FOR VALUES WITH (MODULUS 8, REMAINDER 0)",
+          "CREATE TABLE testschema.MeasurementHash_p2 PARTITION OF testschema.MeasurementHash FOR VALUES WITH (MODULUS 8, REMAINDER 1)",
+          "CREATE TABLE testschema.MeasurementHash_p3 PARTITION OF testschema.MeasurementHash FOR VALUES WITH (MODULUS 8, REMAINDER 2)",
+          "CREATE TABLE testschema.MeasurementHash_p4 PARTITION OF testschema.MeasurementHash FOR VALUES WITH (MODULUS 8, REMAINDER 3)",
+          "CREATE TABLE testschema.MeasurementHash_p5 PARTITION OF testschema.MeasurementHash FOR VALUES WITH (MODULUS 8, REMAINDER 4)",
+          "CREATE TABLE testschema.MeasurementHash_p6 PARTITION OF testschema.MeasurementHash FOR VALUES WITH (MODULUS 8, REMAINDER 5)",
+          "CREATE TABLE testschema.MeasurementHash_p7 PARTITION OF testschema.MeasurementHash FOR VALUES WITH (MODULUS 8, REMAINDER 6)",
+          "CREATE TABLE testschema.MeasurementHash_p8 PARTITION OF testschema.MeasurementHash FOR VALUES WITH (MODULUS 8, REMAINDER 7)",
+          "COMMENT ON TABLE testschema.MeasurementHash IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[MeasurementHash]'",
+          "COMMENT ON COLUMN testschema.MeasurementHash.intField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[DECIMAL]'",
+          "COMMENT ON COLUMN testschema.MeasurementHash.dateField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[dateField]/TYPE:[DATE]'",
+          "COMMENT ON COLUMN testschema.MeasurementHash.stringField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[stringField]/TYPE:[STRING]'");
   }
 
 
@@ -567,7 +587,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedBlobLiteral(String value) {
-    return String.format("E'\\x%s'", value);
+    return String.format("'%s'", value);
   }
 
 
