@@ -118,7 +118,8 @@ public class TestDatabaseMetaDataProvider {
           column("nullableDateCol", DataType.DATE).nullable())
         .indexes(
           index("WithTypes_1").columns("booleanCol", "dateCol"),
-          index("NaturalKey").columns("decimalElevenCol").unique()),
+          index("NaturalKey").columns("decimalElevenCol").unique(),
+          index("WithTypes_PRF1").columns("decimalNineFiveCol", "bigIntegerCol")),
       table("WithLobs")
         .columns(
           SchemaUtils.autonumber("autonumfield", 17),
@@ -291,6 +292,11 @@ public class TestDatabaseMetaDataProvider {
         indexMatcher(
           index("NaturalKey").columns("decimalElevenCol").unique()))
       ));
+
+      schemaResource.getAdditionalMetadata().ifPresent(additionalMetadata ->
+        assertThat(additionalMetadata.ignoredIndexes().get("WithTypes".toLowerCase()), containsInAnyOrder(ImmutableList.of(
+          indexMatcher(index("WithTypes_PRF1").columns("decimalNineFiveCol", "bigIntegerCol"))
+      ))));
     }
   }
 

@@ -1177,6 +1177,21 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedMergeWithUpdateWhereClause()
+   */
+  @Override
+  protected String expectedMergeWithUpdateWhereClause() {
+    return "MERGE INTO TESTSCHEMA.foo"
+        + " USING (SELECT 12345 AS id, 1004 AS typeId, '2025-04-20' AS eventDate, 5.00001 AS rate, 'important rate' AS description, 43037 AS sequenceId) xmergesource"
+        + " ON (foo.typeId = xmergesource.typeId AND foo.eventDate = xmergesource.eventDate)"
+        + " WHEN MATCHED"
+        + " AND ((foo.rate <> xmergesource.rate) OR (foo.description <> xmergesource.description))" // smart update check
+        + " THEN UPDATE SET id = xmergesource.id, rate = xmergesource.rate, description = xmergesource.description, sequenceId = xmergesource.sequenceId"
+        + " WHEN NOT MATCHED THEN INSERT (id, typeId, eventDate, rate, description, sequenceId) VALUES (xmergesource.id, xmergesource.typeId, xmergesource.eventDate, xmergesource.rate, xmergesource.description, xmergesource.sequenceId)";
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddDays()
    */
   @Override

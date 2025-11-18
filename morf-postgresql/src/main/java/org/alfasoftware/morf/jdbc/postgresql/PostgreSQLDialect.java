@@ -37,6 +37,8 @@ import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.DeleteStatementBuilder;
 import org.alfasoftware.morf.sql.DialectSpecificHint;
 import org.alfasoftware.morf.sql.Hint;
+import org.alfasoftware.morf.sql.MergeMatchClause;
+import org.alfasoftware.morf.sql.MergeMatchClause.MatchAction;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.OptimiseForRowCount;
 import org.alfasoftware.morf.sql.ParallelQueryHint;
@@ -50,6 +52,7 @@ import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
+import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.FunctionType;
 import org.alfasoftware.morf.sql.element.PortableSqlFunction;
@@ -733,6 +736,16 @@ class PostgreSQLDialect extends SqlDialect {
     if (getNonKeyFieldsFromMergeStatement(statement).iterator().hasNext()) {
       sqlBuilder.append(" DO UPDATE SET ")
                 .append(updateExpressionsSql);
+
+      Optional<MergeMatchClause> whenMatchedAction = statement.getWhenMatchedAction();
+      if (whenMatchedAction.isPresent()) {
+        MergeMatchClause mergeMatchClause = whenMatchedAction.get();
+        Optional<Criterion> whereClause = mergeMatchClause.getWhereClause();
+        if (mergeMatchClause.getAction() == MatchAction.UPDATE && whereClause.isPresent()) {
+          sqlBuilder.append(" WHERE ")
+          .append(getSqlFrom(whereClause.get()));
+        }
+      }
     } else {
       sqlBuilder.append(" DO NOTHING");
     }

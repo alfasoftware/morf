@@ -815,10 +815,12 @@ public abstract class DatabaseMetaDataProvider implements Schema {
    * Loads the indexes for the given table name, except for the primary key index.
    *
    * @param tableName Name of the table.
+   * @param returnIgnored if true return ignored indexes, when false return all the non ignored.
    * @return List of table indexes.
    */
-  protected List<Index> loadTableIndexes(RealName tableName) {
+  protected List<Index> loadTableIndexes(RealName tableName, boolean returnIgnored) {
     final Map<RealName, ImmutableList.Builder<RealName>> indexColumns = new HashMap<>();
+    final Map<RealName, ImmutableList.Builder<RealName>> ignoredIndexColumns = new HashMap<>();
     final Map<RealName, Boolean> indexUniqueness = new HashMap<>();
 
     if (log.isTraceEnabled()) log.trace("Reading table indexes for " + tableName);
@@ -837,10 +839,6 @@ public abstract class DatabaseMetaDataProvider implements Schema {
             if (isPrimaryKeyIndex(indexName)) {
               continue;
             }
-            if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName.getDbName())) {
-              log.info("Ignoring index: ["+indexName.getDbName()+"]");
-              continue;
-            }
 
             String dbColumnName = indexResultSet.getString(INDEX_COLUMN_NAME);
             String realColumnName = allColumns.get().get(tableName).get(named(dbColumnName)).getName();
@@ -853,8 +851,13 @@ public abstract class DatabaseMetaDataProvider implements Schema {
 
             indexUniqueness.put(indexName, unique);
 
-            indexColumns.computeIfAbsent(indexName, k -> ImmutableList.builder())
+            if  (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName.getDbName())) {
+              ignoredIndexColumns.computeIfAbsent(indexName, k -> ImmutableList.builder())
                 .add(columnName);
+            } else {
+              indexColumns.computeIfAbsent(indexName, k -> ImmutableList.builder())
+                .add(columnName);
+            }
           }
           catch (SQLException e) {
             throw new RuntimeSqlException("Error reading metadata for index ["+indexName+"] on table ["+tableName+"]", e);
@@ -864,9 +867,15 @@ public abstract class DatabaseMetaDataProvider implements Schema {
         long end = System.currentTimeMillis();
         if (log.isTraceEnabled()) log.trace(String.format("Read table indexes for %s in %dms; %d indexes; %d unique", tableName, end-start, indexColumns.size(), indexUniqueness.size()));
 
-        return indexColumns.entrySet().stream()
+        if (returnIgnored) {
+          return ignoredIndexColumns.entrySet().stream()
             .map(e -> createIndexFrom(e.getKey(), indexUniqueness.get(e.getKey()), e.getValue().build()))
             .collect(Collectors.toList());
+        } else {
+          return indexColumns.entrySet().stream()
+            .map(e -> createIndexFrom(e.getKey(), indexUniqueness.get(e.getKey()), e.getValue().build()))
+            .collect(Collectors.toList());
+        }
       }
     }
     catch (SQLException e) {
@@ -1060,13 +1069,16 @@ public abstract class DatabaseMetaDataProvider implements Schema {
       return sequenceNameMappings.build();
     }
 
-    runSQL(sequenceSql, schemaName, resultSet -> {
-      while (resultSet.next()) {
-        RealName realName = readSequenceName(resultSet);
-        if (isSystemSequence(realName)) {
-          continue;
+    runSQL(sequenceSql, schemaName, new ResultSetHandler() {
+      @Override
+      public void handle(ResultSet resultSet) throws SQLException {
+        while (resultSet.next()) {
+          RealName realName = readSequenceName(resultSet);
+          if (isSystemSequence(realName)) {
+            continue;
+          }
+          sequenceNameMappings.put(realName, realName);
         }
-        sequenceNameMappings.put(realName, realName);
       }
     });
 
@@ -1140,6 +1152,7 @@ public abstract class DatabaseMetaDataProvider implements Schema {
 
   /**
    * Run some SQL, and tidy up afterwards.
+   *
    * Note this assumes a predicate on the schema name will be present with a single parameter in position "1".
    *
    * @param sql The SQL to run.
@@ -1147,19 +1160,26 @@ public abstract class DatabaseMetaDataProvider implements Schema {
    */
   protected void runSQL(String sql, String schemaName, ResultSetHandler handler) {
     if (log.isTraceEnabled()) log.trace("runSQL: " + sql);
-    try (PreparedStatement statement = connection.prepareStatement(sql)) {
+    try {
+      PreparedStatement statement = connection.prepareStatement(sql);
+      try {
 
-      // pass through the schema name
-      if (schemaName != null && !schemaName.isBlank()) {
-        statement.setString(1, schemaName);
-      }
+        // pass through the schema name
+        if (schemaName != null && !schemaName.isBlank()) {
+          statement.setString(1, schemaName);
+        }
 
-      try (ResultSet resultSet = statement.executeQuery()) {
-        handler.handle(resultSet);
+        ResultSet resultSet = statement.executeQuery();
+        try {
+          handler.handle(resultSet);
+        } finally {
+          resultSet.close();
+        }
+      } finally {
+        statement.close();
       }
     } catch (SQLException sqle) {
       throw new RuntimeSqlException("Error running SQL: " + sql, sqle);
-
     }
   }
 

@@ -39,6 +39,7 @@ public class GraphBasedUpgradeBuilder {
   private final Schema targetSchema;
 
   private final ConnectionResources connectionResources;
+  private final UpgradeConfigAndContext upgradeConfigAndContext;
   private final Set<String> exclusiveExecutionSteps;
   private final SchemaChangeSequence schemaChangeSequence;
   private final ViewChanges viewChanges;
@@ -57,8 +58,7 @@ public class GraphBasedUpgradeBuilder {
    * @param sourceSchema            source schema
    * @param targetSchema            target schema
    * @param connectionResources     connection resources to be used
-   * @param exclusiveExecutionSteps names of the upgrade step classes which should
-   *                                  be executed in an exclusive way
+   * @param upgradeConfigAndContext the upgrade config
    * @param schemaChangeSequence    to be used to build a
    *                                  {@link GraphBasedUpgrade}
    * @param viewChanges             view changes which need to be made to match
@@ -71,7 +71,7 @@ public class GraphBasedUpgradeBuilder {
       Schema sourceSchema,
       Schema targetSchema,
       ConnectionResources connectionResources,
-      Set<String> exclusiveExecutionSteps,
+      UpgradeConfigAndContext upgradeConfigAndContext,
       SchemaChangeSequence schemaChangeSequence,
       ViewChanges viewChanges) {
     this.visitorFactory = visitorFactory;
@@ -80,7 +80,8 @@ public class GraphBasedUpgradeBuilder {
     this.sourceSchema = sourceSchema;
     this.targetSchema = targetSchema;
     this.connectionResources = connectionResources;
-    this.exclusiveExecutionSteps = exclusiveExecutionSteps;
+    this.upgradeConfigAndContext = upgradeConfigAndContext;
+    this.exclusiveExecutionSteps = upgradeConfigAndContext.getExclusiveExecutionSteps();
     this.schemaChangeSequence = schemaChangeSequence;
     this.viewChanges = viewChanges;
   }
@@ -101,6 +102,7 @@ public class GraphBasedUpgradeBuilder {
 
     GraphBasedUpgradeSchemaChangeVisitor visitor = visitorFactory.create(
       sourceSchema,
+      upgradeConfigAndContext,
       connectionResources.sqlDialect(),
       idTable,
       nodes.stream().collect(Collectors.toMap(GraphBasedUpgradeNode::getName, Function.identity())));
@@ -436,8 +438,7 @@ public class GraphBasedUpgradeBuilder {
      * @param sourceSchema            source schema
      * @param targetSchema            target schema
      * @param connectionResources     connection resources to be used
-     * @param exclusiveExecutionSteps names of the upgrade step classes which should
-     *                                  be executed in an exclusive way
+     * @param upgradeConfigAndContext upgrade config and context
      * @param schemaChangeSequence    to be used to build a
      *                                  {@link GraphBasedUpgrade}
      * @param viewChanges             view changes which need to be made to match
@@ -448,7 +449,7 @@ public class GraphBasedUpgradeBuilder {
         Schema sourceSchema,
         Schema targetSchema,
         ConnectionResources connectionResources,
-        Set<String> exclusiveExecutionSteps,
+        UpgradeConfigAndContext upgradeConfigAndContext,
         SchemaChangeSequence schemaChangeSequence,
         ViewChanges viewChanges) {
       return new GraphBasedUpgradeBuilder(
@@ -458,7 +459,7 @@ public class GraphBasedUpgradeBuilder {
         sourceSchema,
         targetSchema,
         connectionResources,
-        exclusiveExecutionSteps,
+        upgradeConfigAndContext,
         schemaChangeSequence,
         viewChanges);
     }

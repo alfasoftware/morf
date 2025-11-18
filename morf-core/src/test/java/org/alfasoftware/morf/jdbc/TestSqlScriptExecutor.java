@@ -3,19 +3,21 @@ package org.alfasoftware.morf.jdbc;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
+import java.time.Clock;
 import java.util.List;
 
 import javax.sql.DataSource;
 
+import org.alfasoftware.morf.jdbc.SqlScriptExecutor.SqlScriptVisitor;
+import org.alfasoftware.morf.metadata.DataValueLookup;
+import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -28,15 +30,17 @@ import com.google.common.collect.ImmutableList;
  */
 public class TestSqlScriptExecutor {
 
-  private final String            sqlScriptOne      = "update table set column = 1;";
-  private final String            sqlScriptTwo      = "update table2 set column = 2;";
-  private final List<String>      sqlScripts        = ImmutableList.of(sqlScriptOne, sqlScriptTwo);
+  private final String              sqlScriptOne         = "update table set column = 1;";
+  private final String              sqlScriptTwo         = "update table2 set column = 2;";
+  private final List<String>        sqlScripts           = ImmutableList.of(sqlScriptOne, sqlScriptTwo);
 
-  private final Connection        connection        = mock(Connection.class);
-  private final Statement         statement         = mock(Statement.class);
-  private final DataSource        dataSource        = mock(DataSource.class);
-  private final SqlDialect        sqlDialect        = mock(SqlDialect.class);
-  private final DatabaseType      databaseType      = mock(DatabaseType.class);
+  private final Connection          connection           = mock(Connection.class);
+  private final Statement           statement            = mock(Statement.class);
+  private final DataSource          dataSource           = mock(DataSource.class);
+  private final SqlDialect          sqlDialect           = mock(SqlDialect.class);
+  private final DatabaseType        databaseType         = mock(DatabaseType.class);
+  private final SqlScriptVisitor    SqlScriptVisitor     = mock(SqlScriptVisitor.class);
+  private final ConnectionResources connectionResources  = mock(ConnectionResources.class);
 
   private final SqlScriptExecutor sqlScriptExecutor = new SqlScriptExecutorProvider(dataSource, sqlDialect).get();
 
@@ -220,5 +224,89 @@ public class TestSqlScriptExecutor {
       assertTrue("Message", e.getMessage().startsWith("Error executing SQL [" + sqlScriptOne + "]"));
       assertEquals("Cause", transformedException, e.getCause());
     }
+  }
+
+
+  /**
+   * Tests the execution timing for {@link SqlScriptExecutor#execute(String)}.
+   */
+  @Test
+  public void testSqlExecutionTiming1() {
+    // GIVEN:
+    Clock clock = mock(Clock.class);
+    Long startTimeInMs = 1000L;
+    Long endTimeInMs = 2000L;
+    Long expectedDurationInMs = endTimeInMs - startTimeInMs;
+    when(clock.millis()).thenReturn(startTimeInMs, endTimeInMs);
+
+    var sqlScriptExecutor = new SqlScriptExecutor(SqlScriptVisitor, dataSource, sqlDialect, connectionResources, clock);
+
+    // WHEN:
+    sqlScriptExecutor.execute(ImmutableList.of(sqlScriptOne));
+
+    // THEN:
+    verify(SqlScriptVisitor).afterExecute(eq(sqlScriptOne), anyLong(), eq(expectedDurationInMs));
+  }
+
+
+  /**
+   * Tests the execution timing for {@link SqlScriptExecutor#executeQuery(String, SqlScriptExecutor.ResultSetProcessor)}.
+   */
+  @Test
+  public void testSqlExecutionTiming2() throws SQLException {
+    // GIVEN:
+    Clock clock = mock(Clock.class);
+    Long startTimeInMs = 1000L;
+    Long endTimeInMs = 2000L;
+    Long expectedDurationInMs = endTimeInMs - startTimeInMs;
+    when(clock.millis()).thenReturn(startTimeInMs, endTimeInMs);
+
+    when(connectionResources.getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming()).thenReturn(1000);
+    var resultSetProcessor = mock(SqlScriptExecutor.ResultSetProcessor.class);
+
+    PreparedStatement preparedStatement = mock(PreparedStatement.class);
+    when(connection.prepareStatement(eq(sqlScriptOne))).thenReturn(preparedStatement);
+    ResultSet resultSet = mock(ResultSet.class);
+    when(preparedStatement.executeQuery()).thenReturn(resultSet);
+
+    var sqlScriptExecutor = new SqlScriptExecutor(SqlScriptVisitor, dataSource, sqlDialect, connectionResources, clock);
+
+    // WHEN:
+    sqlScriptExecutor.executeQuery(sqlScriptOne, resultSetProcessor);
+
+    // THEN:
+    verify(SqlScriptVisitor).afterExecute(anyString(), anyLong(), eq(expectedDurationInMs));
+  }
+
+
+  /**
+   * Tests the execution timing for {@link SqlScriptExecutor#execute(String, Connection, Iterable, DataValueLookup)}.
+   */
+  @Test
+  public void testSqlExecutionTiming3() throws SQLException {
+    // GIVEN:
+    Clock clock = mock(Clock.class);
+    Long startTimeInMs = 1000L;
+    Long endTimeInMs = 2000L;
+    Long expectedDurationInMs = endTimeInMs - startTimeInMs;
+    when(clock.millis()).thenReturn(startTimeInMs, endTimeInMs);
+
+    when(connectionResources.getFetchSizeForBulkSelectsAllowingConnectionUseDuringStreaming()).thenReturn(1000);
+
+    SqlParameter sqlParameter = mock(SqlParameter.class);
+
+    DataValueLookup dataValueLookup = mock(DataValueLookup.class);
+    PreparedStatement preparedStatement = mock(PreparedStatement.class);
+    when(connection.prepareStatement(eq(sqlScriptOne))).thenReturn(preparedStatement);
+    ResultSet resultSet = mock(ResultSet.class);
+    when(preparedStatement.executeQuery()).thenReturn(resultSet);
+
+    var sqlScriptExecutor = new SqlScriptExecutor(SqlScriptVisitor, dataSource, sqlDialect, connectionResources, clock);
+
+    // WHEN:
+    sqlScriptExecutor.execute(sqlScriptOne, connection, List.of(sqlParameter), dataValueLookup);
+
+    // THEN:
+    verify(SqlScriptVisitor).afterExecute(anyString(), anyLong(), eq(expectedDurationInMs));
   }
 }

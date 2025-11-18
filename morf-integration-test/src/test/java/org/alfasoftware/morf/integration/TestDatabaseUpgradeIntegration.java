@@ -49,7 +49,12 @@ import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
@@ -66,7 +71,9 @@ import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddColumnWithoutDropDefaultValue;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddDataToAutonumberedColumn;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddDataToIdColumn;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddIndex;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddPrimaryKeyColumns;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.AddTableAndIndex;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ChangeColumnDataType;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ChangeColumnLengthAndCase;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ChangePrimaryKeyColumnOrder;
@@ -103,9 +110,9 @@ import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaHomology;
-import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.SchemaHomology.CollectingDifferenceWriter;
 import org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder;
+import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.InsertStatement;
@@ -114,11 +121,11 @@ import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager.TruncationBehavior;
 import org.alfasoftware.morf.testing.TestingDataSourceModule;
-import org.alfasoftware.morf.upgrade.ViewDeploymentValidator;
 import org.alfasoftware.morf.upgrade.LoggingSqlScriptVisitor;
 import org.alfasoftware.morf.upgrade.Upgrade;
 import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsException;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
+import org.alfasoftware.morf.upgrade.ViewDeploymentValidator;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -351,7 +358,25 @@ public class TestDatabaseUpgradeIntegration {
     schemaManager.get().dropAllSequences();
     schemaManager.get().dropAllViews();
     schemaManager.get().dropAllTables();
-    schemaManager.get().mutateToSupportSchema(schema, TruncationBehavior.ALWAYS);
+
+    // add the PRF index - it isn't added in shared variable because then it wouldn't be possible to compare that
+    // schema with the one upgraded as the PRF index is ignored when reading the database definition.
+    // if left there, the comparison would expect to see a PRF index and it doesn't.
+    Table tableWithNewAddIndex = table("BasicTableWithIndex")
+      .columns(
+        column("stringCol", DataType.STRING, 20).primaryKey(),
+        column("nullableStringCol", DataType.STRING, 10).nullable(),
+        column("decimalTenZeroCol", DataType.DECIMAL, 10),
+        column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
+        column("bigIntegerCol", DataType.BIG_INTEGER),
+        column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable())
+      .indexes(
+        index("WrongIndexName_1").columns("bigIntegerCol"),
+        index("BasicTableWithIndex_PRF1").columns("decimalTenZeroCol"),
+        index("BasicTableWithIndex_PRF2").columns("decimalNineFiveCol").unique());
+    Schema schema1 = replaceTablesInSchema(tableWithNewAddIndex);
+
+    schemaManager.get().mutateToSupportSchema(schema1, TruncationBehavior.ALWAYS);
     new DataSetConnector(dataSet, databaseDataSetConsumer.get()).connect();
   }
 
@@ -523,6 +548,53 @@ public class TestDatabaseUpgradeIntegration {
     Schema reAdded = replaceTablesInSchema(tableWithNewPrimaryKey);
 
     verifyUpgrade(reAdded, AddPrimaryKeyColumns.class);
+  }
+
+
+  /**
+   * Test that adding primary key columns to a table with no primary key columns work
+   */
+  @Test
+  public void testAddIndexWithExistingPRFIndex() {
+    Table tableWithNewAddIndex = table("BasicTableWithIndex")
+      .columns(
+        column("stringCol", DataType.STRING, 20).primaryKey(),
+        column("nullableStringCol", DataType.STRING, 10).nullable(),
+        column("decimalTenZeroCol", DataType.DECIMAL, 10),
+        column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
+        column("bigIntegerCol", DataType.BIG_INTEGER),
+        column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable())
+      .indexes(
+        index("WrongIndexName_1").columns("bigIntegerCol"),
+        index("BasicTableWithIndex_1").columns("decimalTenZeroCol"),
+        index("BasicTableWithIndex_2").columns("decimalNineFiveCol"));
+
+    Schema reAdded = replaceTablesInSchema(tableWithNewAddIndex);
+
+    verifyUpgrade(reAdded, AddIndex.class);
+  }
+
+
+  /**
+   * Test that having an upgrade step that adds a new table followed by adding an index work
+   */
+  @Test
+  public void testAddIndexAfterAddTable() {
+    Table tableWithNewAddIndex = table("BasicTableWithIndex1")
+      .columns(
+        column("stringCol", DataType.STRING, 20).primaryKey(),
+        column("nullableStringCol", DataType.STRING, 10).nullable(),
+        column("decimalTenZeroCol", DataType.DECIMAL, 10),
+        column("decimalNineFiveCol", DataType.DECIMAL, 9, 5),
+        column("bigIntegerCol", DataType.BIG_INTEGER),
+        column("nullableBigIntegerCol", DataType.BIG_INTEGER).nullable())
+      .indexes(
+        index("WrongIndexName1_1").columns("bigIntegerCol"),
+        index("BasicTableWithIndex1_1").columns("decimalTenZeroCol"));
+
+    Schema reAdd = replaceTablesInSchema(tableWithNewAddIndex);
+
+    verifyUpgrade(reAdd, AddTableAndIndex.class);
   }
 
 

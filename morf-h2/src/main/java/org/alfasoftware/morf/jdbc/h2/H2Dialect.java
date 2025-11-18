@@ -569,12 +569,7 @@ class H2Dialect extends SqlDialect {
               .append(")");
 
     // WHEN MATCHED THEN UPDATE ...
-    if (getNonKeyFieldsFromMergeStatement(statement).iterator().hasNext()) {
-      Iterable<AliasedField> updateExpressions = getMergeStatementUpdateExpressions(statement);
-      String updateExpressionsSql = getMergeStatementAssignmentsSql(updateExpressions);
-      sqlBuilder.append(" WHEN MATCHED THEN UPDATE SET ")
-                .append(updateExpressionsSql);
-    }
+    sqlBuilder.append(mergeStatementWhenMatchedUpdateClause(statement));
 
     // WHEN NOT MATCHED THEN INSERT ...
     Iterable<String> insertField = Iterables.transform(statement.getSelectStatement().getFields(), AliasedField::getImpliedName);
@@ -636,7 +631,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForRowNumber() 
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForRowNumber()
    */
   @Override
   protected String getSqlForRowNumber() {
@@ -645,7 +640,7 @@ class H2Dialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForWindowFunction(Function) 
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForWindowFunction(Function)
    */
   @Override
   protected String getSqlForWindowFunction(Function function) {

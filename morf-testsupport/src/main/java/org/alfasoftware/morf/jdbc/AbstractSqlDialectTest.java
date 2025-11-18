@@ -27,6 +27,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.sequence;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.metadata.SchemaUtils.versionColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.view;
+import static org.alfasoftware.morf.sql.MergeStatement.InputField.inputField;
 import static org.alfasoftware.morf.sql.SqlUtils.blobLiteral;
 import static org.alfasoftware.morf.sql.SqlUtils.bracket;
 import static org.alfasoftware.morf.sql.SqlUtils.cast;
@@ -138,6 +139,7 @@ import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.CustomHint;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
+import org.alfasoftware.morf.sql.MergeMatchClause;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
@@ -4440,6 +4442,48 @@ public abstract class AbstractSqlDialectTest {
   }
 
 
+  /**
+   * Tests merge with WHERE clause on update
+   */
+  @Test
+  public void testMergeWithUpdateWhereClause() {
+    TableReference foo = new TableReference("foo").as("foo");
+    MergeStatement statement = MergeStatement.merge()
+      .into(tableRef("foo"))
+      .tableUniqueKey(field("typeId"), field("eventDate"))
+      .from(
+        select(
+          literal(12345).as("id"),
+          literal(1004).as("typeId"),
+          literal("2025-04-20").as("eventDate"),
+          literal(5.00001).as("rate"),
+          literal("important rate").as("description"),
+          literal(43037).as("sequenceId")
+        )
+      )
+      .whenMatched(
+        MergeMatchClause.update()
+          .onlyWhere(
+            or(
+              foo.field("rate").neq(inputField("rate")),
+              foo.field("description").neq(inputField("description"))
+            )
+          )
+          .build()
+      )
+      .build();
+
+    if (expectedMergeWithUpdateWhereClause() == null) {
+      exception.expect(IllegalStateException.class);
+      exception.expectMessage("org.alfasoftware.morf.sql.MergeMatchClause is not supported");
+      testDialect.convertStatementToSQL(statement);
+    } else {
+      String result = testDialect.convertStatementToSQL(statement);
+      assertEquals("Merge with MergeMatchClause.update() clause", expectedMergeWithUpdateWhereClause(), result);
+    }
+  }
+
+
   @Test
   @SuppressWarnings("unchecked")
   public void testAddTableFromStatements() {
@@ -5841,6 +5885,14 @@ public abstract class AbstractSqlDialectTest {
    * @return the expected SQL for performing a merge with explicit update expressions
    */
   protected abstract String expectedMergeWithUpdateExpressions();
+
+
+  /**
+   * Expected SQL for merge with WHERE clause - to be overridden by
+   * dialect-specific tests or {@code null} if {@link MergeMatchClause} is
+   * unsupported.
+   */
+  protected abstract String expectedMergeWithUpdateWhereClause();
 
 
   /**
