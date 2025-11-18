@@ -5,7 +5,7 @@
     - Extract existing logic into `generateInsertOnConflictSql(MergeStatement)` method
     - Ensure no behavioral changes to existing functionality
     - _Requirements: 2.1, 2.2_
-  - [ ]* 1.2 Write unit tests for extracted method
+  - [ ] 1.2 Write unit tests for extracted method
     - Test various MergeStatement configurations
     - Verify output matches current behavior
     - _Requirements: 2.1, 2.2_
@@ -16,7 +16,7 @@
     - Handle case when version information is unavailable (default to false)
     - Access version via PostgreSQLMetaDataProvider from SchemaResource
     - _Requirements: 5.1, 5.2, 5.3_
-  - [ ]* 2.2 Write unit tests for version detection
+  - [ ] 2.2 Write unit tests for version detection
     - Test with version 15+ returns true
     - Test with version <15 returns false
     - Test with missing version returns false
@@ -31,7 +31,7 @@
     - Generate WHEN NOT MATCHED clause with INSERT
     - Handle whenMatchedAction with WHERE clause
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 3.1, 3.2, 3.3_
-  - [ ]* 3.2 Write unit tests for native MERGE SQL generation
+  - [ ] 3.2 Write unit tests for native MERGE SQL generation
     - Test basic MERGE structure with all clauses
     - Test MERGE with whenMatchedAction and WHERE clause
     - Test MERGE with only key fields (no WHEN MATCHED)
@@ -44,7 +44,7 @@
     - Route to generateNativeMergeSql() or generateInsertOnConflictSql()
     - Ensure proper error handling
     - _Requirements: 1.1, 2.1, 2.3, 5.1, 5.2, 5.3_
-  - [ ]* 4.2 Write unit tests for routing logic
+  - [ ] 4.2 Write unit tests for routing logic
     - Test with version 15+ routes to native MERGE
     - Test with version <15 routes to INSERT...ON CONFLICT
     - Test with missing version defaults to INSERT...ON CONFLICT
@@ -60,7 +60,7 @@
     - Return "s.fieldName" for native MERGE
     - Return "EXCLUDED.fieldName" for INSERT...ON CONFLICT
     - _Requirements: 4.1, 4.2, 4.3_
-  - [ ]* 5.3 Write unit tests for InputField handling
+  - [ ] 5.3 Write unit tests for InputField handling
     - Test InputField generates "s.field" in native MERGE mode
     - Test InputField generates "EXCLUDED.field" in INSERT...ON CONFLICT mode
     - _Requirements: 4.1, 4.2, 4.3_
@@ -69,21 +69,21 @@
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 7. Update existing PostgreSQLDialect tests
-  - [ ]* 7.1 Update TestPostgreSQLDialect
+  - [ ] 7.1 Update TestPostgreSQLDialect
     - Add test cases for PostgreSQL 15+ scenarios
     - Ensure existing MERGE tests still pass
     - Add tests for version-specific behavior
     - _Requirements: 1.1, 2.1, 2.2, 2.3_
 
 - [ ] 8. Add integration tests
-  - [ ]* 8.1 Create integration tests for native MERGE
+  - [ ] 8.1 Create integration tests for native MERGE
     - Test actual MERGE execution against PostgreSQL 15+ (if available in CI)
     - Verify data correctness after MERGE operations
     - Test backward compatibility with PostgreSQL 14
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
 
 - [ ] 9. Update documentation
-  - [ ]* 9.1 Add JavaDoc comments
+  - [ ] 9.1 Add JavaDoc comments
     - Document new methods in PostgreSQLDialect
     - Document version detection behavior
     - Document fallback behavior
