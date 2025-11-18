@@ -308,6 +308,7 @@ public class XmlDataSetConsumer implements DataSetConsumer {
       for (Partition partition : table.partitions().getPartitions()) {
         emptyElement(contentHandler, XmlDataSetNode.PARTITION_NODE, buildPartitionAttribute(table.partitions(), partition));
       }
+      contentHandler.endElement(XmlDataSetNode.URI, XmlDataSetNode.PARTITIONS_NODE, XmlDataSetNode.PARTITIONS_NODE);
     }
 
     contentHandler.endElement(XmlDataSetNode.URI, XmlDataSetNode.METADATA_NODE, XmlDataSetNode.METADATA_NODE);

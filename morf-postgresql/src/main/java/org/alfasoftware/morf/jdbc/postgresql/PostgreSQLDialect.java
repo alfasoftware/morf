@@ -26,6 +26,8 @@ import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.DataValueLookup;
 import org.alfasoftware.morf.metadata.DatePartitionedByPeriodRule;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.PartitionByHash;
+import org.alfasoftware.morf.metadata.PartitionByRange;
 import org.alfasoftware.morf.metadata.PartitioningByHashRule;
 import org.alfasoftware.morf.metadata.PartitioningRuleType;
 import org.alfasoftware.morf.metadata.SchemaResource;
@@ -283,20 +285,23 @@ class PostgreSQLDialect extends SqlDialect {
     // add "PARTITION BY" clause and extra partition tables if table is partitioned.
     if (table.isPartitioned()) {
       Optional<Column> partitionColumn = table.columns().stream().filter(Column::isPartitioned).findFirst();
-      if (partitionColumn.isEmpty() || !table.partitioningRule().getColumn().equals(partitionColumn.get().getName())) {
-        throw new IllegalArgumentException("Partitioning rule does not match partition column");
+      if (partitionColumn.isEmpty() || table.partitioningRule() == null && !table.partitions().column().getName().equals(partitionColumn.get().getName())
+          || (table.partitioningRule() != null && !table.partitioningRule().getColumn().equals(partitionColumn.get().getName()))) {
+        throw new IllegalArgumentException("Partitioning rule does not match partition column. Table: " + table.getName());
       }
 
       // add PARTITION BY clause
-      if (table.partitioningRule().getPartitioningType().equals(PartitioningRuleType.rangePartitioning)) {
+      PartitioningRuleType partitioningRuleType = table.partitioningRule() == null ? table.partitions().partitioningType()
+          : table.partitioningRule().getPartitioningType();
+      if (partitioningRuleType.equals(PartitioningRuleType.rangePartitioning)) {
         createTableStatement.append(" PARTITION BY RANGE (");
-      } else if (table.partitioningRule().getPartitioningType().equals(PartitioningRuleType.hashPartitioning)) {
+      } else if (partitioningRuleType.equals(PartitioningRuleType.hashPartitioning)) {
         createTableStatement.append(" PARTITION BY HASH (");
       }
       createTableStatement.append(partitionColumn.get().getName());
       createTableStatement.append(')');
       // explode PARTITION TABLES
-      postStatements.addAll(createTablePartitions(table));
+      postStatements.addAll(createTablePartitions(table, partitioningRuleType));
     }
 
     ImmutableList.Builder<String> statements = ImmutableList.<String>builder()
@@ -309,14 +314,24 @@ class PostgreSQLDialect extends SqlDialect {
   }
 
 
-  private List<String> createTablePartitions(Table table) {
+  private List<String> createTablePartitions(Table table, PartitioningRuleType partitioningRuleType) {
     List<String> statements = new ArrayList<>();
-    List<Pair<String, String>> ranges = new ArrayList<>();
 
     if (table.partitioningRule() instanceof DatePartitionedByPeriodRule) {
       createPartitionByDateRangeStatements(table, statements);
     } else if (table.partitioningRule() instanceof PartitioningByHashRule) {
       createPartitionByHashStatements(table, statements, (PartitioningByHashRule) table.partitioningRule());
+    } else if (partitioningRuleType.equals(PartitioningRuleType.rangePartitioning)) {
+      table.partitions().getPartitions().forEach(partition -> {
+        PartitionByRange range = (PartitionByRange) partition;
+        statements.add(createTablePartitionRangeStatement(table, table.getName(), partition.name(), Pair.of(range.start(), range.end())));
+      });
+    } else if (partitioningRuleType.equals(PartitioningRuleType.hashPartitioning)) {
+      table.partitions().getPartitions().forEach(partition -> {
+        PartitionByHash hashRange = (PartitionByHash) partition;
+        statements.add(createTablePartitionHashStatement(table, table.getName(), partition.name(), Integer.parseInt(hashRange.divider()),
+            Integer.parseInt(hashRange.remainder())));
+      });
     } else {
       throw new IllegalArgumentException("Partition rule is not supported");
     }

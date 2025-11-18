@@ -833,7 +833,7 @@ public class XmlDataSetProducer implements DataSetProducer {
             break;
         }
 
-        for (String nextTag = readNextTagInsideParent(XmlDataSetNode.PARTITIONS_NODE); nextTag != null; nextTag = readNextTagInsideParent(XmlDataSetNode.PARTITION_NODE)) {
+        for (String nextTag = readNextTagInsideParent(XmlDataSetNode.PARTITIONS_NODE); nextTag != null; nextTag = readNextTagInsideParent(XmlDataSetNode.PARTITIONS_NODE)) {
           if (nextTag.equals(XmlDataSetNode.PARTITION_NODE)) {
             String partitionName = xmlStreamReader.getAttributeValue(XmlDataSetNode.URI, XmlDataSetNode.NAME_ATTRIBUTE);
             Partition partition = null;
@@ -851,6 +851,7 @@ public class XmlDataSetProducer implements DataSetProducer {
             if (partition != null) {
               partitions.add(partition);
             }
+            readNextTagInsideParent(XmlDataSetNode.PARTITION_NODE);
           }
         }
       }
