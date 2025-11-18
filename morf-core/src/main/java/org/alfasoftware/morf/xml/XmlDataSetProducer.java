@@ -436,20 +436,17 @@ public class XmlDataSetProducer implements DataSetProducer {
 
 
     @Override
-    public boolean isPartitioned() { return false; }
+    public boolean isPartitioned() { return partitions != null; }
 
     @Override
     public PartitioningRule partitioningRule() {
-      //TODO: implement Xml partitioning rule exporting for cryo
-      return null;
+      return partitions.partitioningRule();
     }
 
     @Override
     public Partitions partitions() {
       return partitions;
     }
-
-    ;
 
 
     /**

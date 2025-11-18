@@ -262,7 +262,7 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
           } else {
             table = getTable(tableName);
             partitionColumn = table.columns().stream().filter(column1 ->
-              column1.getName().equals(column)).findFirst().orElse(null);
+              column1.getName().toLowerCase().equals(column)).findFirst().orElse(null);
 
             if (partitionColumn != null) {
               partitions = SchemaUtils.partitions().column(partitionColumn);
