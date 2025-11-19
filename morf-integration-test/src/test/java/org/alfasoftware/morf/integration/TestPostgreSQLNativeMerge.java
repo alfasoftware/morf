@@ -206,7 +206,8 @@ public class TestPostgreSQLNativeMerge {
         .set(values.input("status").as("status")))
       .whenMatched(
         MergeMatchClause.update()
-          .onlyWhere(field("status").eq("active")))
+          .onlyWhere(field("status").eq("active"))
+          .build())
       .build();
 
     executeMerge(mergeStatement);
