@@ -9,6 +9,7 @@ import static org.alfasoftware.morf.sql.SelectStatement.select;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.alfasoftware.morf.sql.element.Function.count;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
@@ -22,6 +23,7 @@ import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.sql.InsertStatement;
+import org.alfasoftware.morf.sql.MergeMatchClause;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.TableReference;
@@ -198,11 +200,13 @@ public class TestPostgreSQLNativeMerge {
           .fields(literal("inactive").as("status"))
           .build())
         .build())
-      .whenMatched((overrides, values) -> overrides
+      .ifUpdating((overrides, values) -> overrides
         .set(values.input("name").as("name"))
         .set(values.input("value").as("value"))
-        .set(values.input("status").as("status")),
-        field("status").eq("active"))
+        .set(values.input("status").as("status")))
+      .whenMatched(
+        MergeMatchClause.update()
+          .onlyWhere(field("status").eq("active")))
       .build();
 
     executeMerge(mergeStatement);
@@ -413,7 +417,7 @@ public class TestPostgreSQLNativeMerge {
 
   private Long countRecords() {
     SelectStatement countStatement = select()
-      .fields(field("id").count())
+      .fields(count(field("id")))
       .from(testTable)
       .build();
 
