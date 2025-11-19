@@ -120,8 +120,14 @@
 
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 7. Update existing PostgreSQLDialect tests
-  - [ ] 7.1 Update TestPostgreSQLDialect
+- [x] 7. Update existing PostgreSQLDialect tests
+
+
+
+
+  - [x] 7.1 Update TestPostgreSQLDialect
+
+
     - Add test cases for PostgreSQL 15+ scenarios
     - Ensure existing MERGE tests still pass
     - Add tests for version-specific behavior
