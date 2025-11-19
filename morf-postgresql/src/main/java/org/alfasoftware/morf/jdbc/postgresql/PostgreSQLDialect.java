@@ -56,6 +56,8 @@ import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.FluentIterable;
@@ -65,8 +67,27 @@ import com.google.common.collect.Lists;
 
 class PostgreSQLDialect extends SqlDialect {
 
+  private static final Log log = LogFactory.getLog(PostgreSQLDialect.class);
+
+  /**
+   * Optional schema resource for version-aware SQL generation.
+   * When present, enables PostgreSQL 15+ native MERGE syntax.
+   */
+  private Optional<SchemaResource> schemaResource = Optional.empty();
+
   public PostgreSQLDialect(String schemaName) {
    super(schemaName);
+  }
+
+  /**
+   * Sets the schema resource for version-aware SQL generation.
+   * This should be called before generating MERGE statements to enable
+   * PostgreSQL 15+ native MERGE syntax when available.
+   *
+   * @param schemaResource The schema resource containing database metadata
+   */
+  public void setSchemaResource(SchemaResource schemaResource) {
+    this.schemaResource = Optional.ofNullable(schemaResource);
   }
 
 
@@ -625,8 +646,54 @@ class PostgreSQLDialect extends SqlDialect {
   }
 
 
+  /**
+   * Generates SQL for a MERGE statement with version-aware syntax selection.
+   * 
+   * <p>This method automatically detects the PostgreSQL version and generates the appropriate SQL:
+   * <ul>
+   *   <li>PostgreSQL 15+: Uses native MERGE command for better performance and SQL standard compliance</li>
+   *   <li>PostgreSQL &lt;15: Uses INSERT...ON CONFLICT syntax for backward compatibility</li>
+   * </ul>
+   * </p>
+   * 
+   * <p><b>Fallback Behavior:</b> If the database version cannot be determined (e.g., no schema resource
+   * is set, connection issues, or missing metadata), the method defaults to INSERT...ON CONFLICT syntax
+   * to ensure backward compatibility and prevent failures.</p>
+   * 
+   * <p>The schema resource must be set via {@link #setSchemaResource(SchemaResource)} before calling
+   * this method for version detection to work. If not set, INSERT...ON CONFLICT syntax will be used.</p>
+   *
+   * @param statement The MERGE statement to convert to SQL
+   * @return SQL string using either native MERGE or INSERT...ON CONFLICT syntax
+   * @throws IllegalArgumentException if the table name is blank
+   * @see #generateNativeMergeSql(MergeStatement)
+   * @see #generateInsertOnConflictSql(MergeStatement)
+   * @see #shouldUseNativeMerge(SchemaResource)
+   * @see #setSchemaResource(SchemaResource)
+   */
   @Override
   protected String getSqlFrom(MergeStatement statement) {
+    // Determine which MERGE syntax to use based on PostgreSQL version
+    boolean useNativeMerge = schemaResource
+        .map(this::shouldUseNativeMerge)
+        .orElse(false);
+
+    if (useNativeMerge) {
+      return generateNativeMergeSql(statement);
+    } else {
+      return generateInsertOnConflictSql(statement);
+    }
+  }
+
+
+  /**
+   * Generates SQL for MERGE using INSERT...ON CONFLICT syntax (PostgreSQL < 15).
+   * This is the traditional approach for implementing MERGE-like behavior in PostgreSQL.
+   *
+   * @param statement The MERGE statement to convert to SQL
+   * @return SQL string using INSERT...ON CONFLICT syntax
+   */
+  String generateInsertOnConflictSql(MergeStatement statement) {
     if (StringUtils.isBlank(statement.getTable().getName())) {
       throw new IllegalArgumentException("Cannot create SQL for a blank table");
     }
@@ -678,6 +745,92 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   /**
+   * Generates SQL for MERGE using native MERGE syntax (PostgreSQL 15+).
+   * This uses the standard SQL MERGE command introduced in PostgreSQL 15.
+   *
+   * @param statement The MERGE statement to convert to SQL
+   * @return SQL string using native MERGE syntax
+   */
+  String generateNativeMergeSql(MergeStatement statement) {
+    if (StringUtils.isBlank(statement.getTable().getName())) {
+      throw new IllegalArgumentException("Cannot create SQL for a blank table");
+    }
+
+    checkSelectStatementHasNoHints(statement.getSelectStatement(), "MERGE may not be used with SELECT statement hints");
+
+    StringBuilder sqlBuilder = new StringBuilder();
+
+    // MERGE INTO clause with target table
+    sqlBuilder.append("MERGE INTO ")
+              .append(tableNameWithSchemaName(statement.getTable()))
+              .append(" AS t");
+
+    // USING clause with source query and alias "s"
+    sqlBuilder.append(" USING (")
+              .append(getSqlFrom(statement.getSelectStatement()))
+              .append(") AS s");
+
+    // ON clause with join conditions from tableUniqueKey
+    List<String> joinConditions = new ArrayList<>();
+    for (AliasedField keyField : statement.getTableUniqueKey()) {
+      String fieldName = keyField.getImpliedName();
+      joinConditions.add("t." + fieldName + " = s." + fieldName);
+    }
+    sqlBuilder.append(" ON (")
+              .append(Joiner.on(" AND ").join(joinConditions))
+              .append(")");
+
+    // WHEN MATCHED clause with UPDATE SET assignments (if non-key fields exist)
+    if (getNonKeyFieldsFromMergeStatement(statement).iterator().hasNext()) {
+      sqlBuilder.append(" WHEN MATCHED");
+
+      // Handle whenMatchedAction with WHERE clause
+      Optional<MergeMatchClause> whenMatchedAction = statement.getWhenMatchedAction();
+      if (whenMatchedAction.isPresent()) {
+        MergeMatchClause mergeMatchClause = whenMatchedAction.get();
+        Optional<Criterion> whereClause = mergeMatchClause.getWhereClause();
+        if (mergeMatchClause.getAction() == MatchAction.UPDATE && whereClause.isPresent()) {
+          sqlBuilder.append(" AND ")
+                    .append(getSqlFrom(whereClause.get()));
+        }
+      }
+
+      sqlBuilder.append(" THEN UPDATE SET ");
+
+      // Generate UPDATE SET assignments
+      Iterable<AliasedField> updateExpressions = getMergeStatementUpdateExpressions(statement);
+      List<String> assignments = new ArrayList<>();
+      for (AliasedField updateExpression : updateExpressions) {
+        String fieldName = updateExpression.getImpliedName();
+        String valueExpression = getSqlFrom(updateExpression);
+        assignments.add(fieldName + " = " + valueExpression);
+      }
+      sqlBuilder.append(Joiner.on(", ").join(assignments));
+    }
+
+    // WHEN NOT MATCHED clause with INSERT
+    sqlBuilder.append(" WHEN NOT MATCHED THEN INSERT (");
+
+    Iterable<String> destinationFields = Iterables.transform(
+        statement.getSelectStatement().getFields(),
+        AliasedField::getImpliedName);
+    sqlBuilder.append(Joiner.on(", ").join(destinationFields));
+
+    sqlBuilder.append(") VALUES (");
+
+    List<String> sourceValues = new ArrayList<>();
+    for (AliasedField field : statement.getSelectStatement().getFields()) {
+      sourceValues.add("s." + field.getImpliedName());
+    }
+    sqlBuilder.append(Joiner.on(", ").join(sourceValues));
+
+    sqlBuilder.append(")");
+
+    return sqlBuilder.toString();
+  }
+
+
+  /**
    * @see SqlDialect#getSqlFrom(SequenceReference)
    */
   @Override
@@ -701,9 +854,39 @@ class PostgreSQLDialect extends SqlDialect {
 
   }
 
+  /**
+   * Generates SQL for an InputField reference in a MERGE statement.
+   * The SQL generated depends on the PostgreSQL version and MERGE syntax being used:
+   * <ul>
+   *   <li>For PostgreSQL 15+ (native MERGE): Returns "s.fieldName" where "s" is the source table alias</li>
+   *   <li>For PostgreSQL &lt;15 (INSERT...ON CONFLICT): Returns "EXCLUDED.fieldName" where EXCLUDED is the special reference</li>
+   * </ul>
+   * 
+   * <p>This version-aware behavior ensures that field references in MERGE UPDATE clauses
+   * correctly reference the source data regardless of which MERGE syntax is being used.</p>
+   * 
+   * <p>If the database version cannot be determined, defaults to INSERT...ON CONFLICT syntax (EXCLUDED reference).</p>
+   *
+   * @param field The InputField to convert to SQL
+   * @return SQL string with properly qualified field reference
+   * @see #shouldUseNativeMerge(SchemaResource)
+   * @see #generateNativeMergeSql(MergeStatement)
+   * @see #generateInsertOnConflictSql(MergeStatement)
+   */
   @Override
   protected String getSqlFrom(MergeStatement.InputField field) {
-    return "EXCLUDED." + field.getName();
+    // Check PostgreSQL version to determine the correct reference
+    boolean useNativeMerge = schemaResource
+        .map(this::shouldUseNativeMerge)
+        .orElse(false);
+
+    if (useNativeMerge) {
+      // Native MERGE syntax uses "s" as the source alias
+      return "s." + field.getName();
+    } else {
+      // INSERT...ON CONFLICT syntax uses "EXCLUDED" as the source reference
+      return "EXCLUDED." + field.getName();
+    }
   }
 
 
@@ -1027,5 +1210,47 @@ class PostgreSQLDialect extends SqlDialect {
     return schemaResource.getAdditionalMetadata()
             .filter(instanceOf(PostgreSQLMetaDataProvider.class))
             .map(PostgreSQLMetaDataProvider.class::cast);
+  }
+
+
+  /**
+   * Determines whether native MERGE syntax should be used based on PostgreSQL version.
+   * Native MERGE is available in PostgreSQL 15 and later.
+   *
+   * @param schemaResource The schema resource containing database metadata
+   * @return true if PostgreSQL version is 15 or higher, false otherwise (including when version cannot be determined)
+   */
+  boolean shouldUseNativeMerge(SchemaResource schemaResource) {
+    return getPostgreSQLMetaDataProvider(schemaResource)
+            .map(metaDataProvider -> {
+              try {
+                String majorVersionStr = metaDataProvider.getDatabaseInformation().get(DatabaseMetaDataProvider.DATABASE_MAJOR_VERSION);
+                if (majorVersionStr == null) {
+                  if (log.isDebugEnabled()) {
+                    log.debug("PostgreSQL version not available, using INSERT...ON CONFLICT syntax for MERGE");
+                  }
+                  return false;
+                }
+                int majorVersion = Integer.parseInt(majorVersionStr);
+                boolean useNativeMerge = majorVersion >= 15;
+                if (log.isDebugEnabled()) {
+                  log.debug("PostgreSQL version " + majorVersion + " detected, using " + 
+                           (useNativeMerge ? "native MERGE" : "INSERT...ON CONFLICT") + " syntax");
+                }
+                return useNativeMerge;
+              } catch (NumberFormatException e) {
+                // If version cannot be parsed, default to false (use INSERT...ON CONFLICT)
+                if (log.isDebugEnabled()) {
+                  log.debug("Failed to parse PostgreSQL version, using INSERT...ON CONFLICT syntax for MERGE", e);
+                }
+                return false;
+              }
+            })
+            .orElseGet(() -> {
+              if (log.isDebugEnabled()) {
+                log.debug("PostgreSQL metadata provider not available, using INSERT...ON CONFLICT syntax for MERGE");
+              }
+              return false;
+            });
   }
 }
