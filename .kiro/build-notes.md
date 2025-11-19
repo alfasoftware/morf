@@ -38,17 +38,26 @@ Error assembling JAR: Failed to determine inclusion status for: Z:\...\pom.xml: 
 
 For testing changes in morf-postgresql module:
 
-1. **If dependencies are already in local Maven repo** (D:\.m2\repository\org\alfasoftware\):
+1. **ALWAYS run the full test suite before completing a task**:
    ```powershell
    cd morf-postgresql
+   mvn test
+   ```
+   - Don't just run specific tests with `-Dtest=TestClassName#testMethodName*`
+   - The full suite includes framework validation tests that enforce project conventions
+   - Example: `testDialectHasNoBespokeTests` validates that test classes follow inheritance rules
+
+2. **During development, you can run specific tests for faster feedback**:
+   ```powershell
    mvn test -Dtest=TestClassName#testMethodName*
    ```
+   - But ALWAYS follow up with full `mvn test` before marking task complete
 
-2. **If dependencies need to be rebuilt**:
+3. **If dependencies need to be rebuilt**:
    - Use the workaround above to manually install morf-core and morf-testsupport
    - Then run tests from morf-postgresql
 
-3. **Verify compilation only** (fastest):
+4. **Verify compilation only** (fastest):
    ```powershell
    mvn compiler:compile compiler:testCompile -DskipTests
    ```
