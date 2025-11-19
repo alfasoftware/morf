@@ -75,6 +75,12 @@ class PostgreSQLDialect extends SqlDialect {
    */
   private Optional<SchemaResource> schemaResource = Optional.empty();
 
+  /**
+   * Thread-local to track the current MERGE syntax mode.
+   * True indicates native MERGE syntax (PostgreSQL 15+), false indicates INSERT...ON CONFLICT.
+   */
+  private final ThreadLocal<Boolean> useNativeMergeSyntax = ThreadLocal.withInitial(() -> false);
+
   public PostgreSQLDialect(String schemaName) {
    super(schemaName);
   }
@@ -653,10 +659,18 @@ class PostgreSQLDialect extends SqlDialect {
         .map(this::shouldUseNativeMerge)
         .orElse(false);
 
-    if (useNativeMerge) {
-      return generateNativeMergeSql(statement);
-    } else {
-      return generateInsertOnConflictSql(statement);
+    try {
+      // Set the mode for InputField handling
+      useNativeMergeSyntax.set(useNativeMerge);
+
+      if (useNativeMerge) {
+        return generateNativeMergeSql(statement);
+      } else {
+        return generateInsertOnConflictSql(statement);
+      }
+    } finally {
+      // Clean up thread-local to prevent memory leaks
+      useNativeMergeSyntax.remove();
     }
   }
 
@@ -831,7 +845,14 @@ class PostgreSQLDialect extends SqlDialect {
 
   @Override
   protected String getSqlFrom(MergeStatement.InputField field) {
-    return "EXCLUDED." + field.getName();
+    // Check current MERGE mode to determine the correct reference
+    if (useNativeMergeSyntax.get()) {
+      // Native MERGE syntax uses "s" as the source alias
+      return "s." + field.getName();
+    } else {
+      // INSERT...ON CONFLICT syntax uses "EXCLUDED" as the source reference
+      return "EXCLUDED." + field.getName();
+    }
   }
 
 

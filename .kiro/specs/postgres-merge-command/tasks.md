@@ -86,19 +86,29 @@
     - Test with missing version defaults to INSERT...ON CONFLICT
     - _Requirements: 1.1, 2.1, 2.3, 5.3_
 
-- [ ] 5. Handle InputField references for native MERGE
+- [x] 5. Handle InputField references for native MERGE
 
 
-  - [ ] 5.1 Add context tracking for MERGE syntax mode
+
+
+
+
+  - [x] 5.1 Add context tracking for MERGE syntax mode
+
+
     - Add instance variable or thread-local to track current MERGE mode
     - Set mode before generating MERGE SQL
     - _Requirements: 4.1, 4.2, 4.3_
-  - [ ] 5.2 Update getSqlFrom(MergeStatement.InputField) for native MERGE
+  - [x] 5.2 Update getSqlFrom(MergeStatement.InputField) for native MERGE
+
+
     - Check current MERGE mode
     - Return "s.fieldName" for native MERGE
     - Return "EXCLUDED.fieldName" for INSERT...ON CONFLICT
     - _Requirements: 4.1, 4.2, 4.3_
-  - [ ] 5.3 Write unit tests for InputField handling
+  - [x] 5.3 Write unit tests for InputField handling
+
+
     - Test InputField generates "s.field" in native MERGE mode
     - Test InputField generates "EXCLUDED.field" in INSERT...ON CONFLICT mode
     - _Requirements: 4.1, 4.2, 4.3_
