@@ -145,8 +145,13 @@
     - Test backward compatibility with PostgreSQL 14
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
 
-- [ ] 9. Update documentation
-  - [ ] 9.1 Add JavaDoc comments
+- [x] 9. Update documentation
+
+
+
+
+  - [x] 9.1 Add JavaDoc comments
+
     - Document new methods in PostgreSQLDialect
     - Document version detection behavior
     - Document fallback behavior

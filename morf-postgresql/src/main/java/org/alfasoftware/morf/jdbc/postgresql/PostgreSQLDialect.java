@@ -646,6 +646,31 @@ class PostgreSQLDialect extends SqlDialect {
   }
 
 
+  /**
+   * Generates SQL for a MERGE statement with version-aware syntax selection.
+   * 
+   * <p>This method automatically detects the PostgreSQL version and generates the appropriate SQL:
+   * <ul>
+   *   <li>PostgreSQL 15+: Uses native MERGE command for better performance and SQL standard compliance</li>
+   *   <li>PostgreSQL &lt;15: Uses INSERT...ON CONFLICT syntax for backward compatibility</li>
+   * </ul>
+   * </p>
+   * 
+   * <p><b>Fallback Behavior:</b> If the database version cannot be determined (e.g., no schema resource
+   * is set, connection issues, or missing metadata), the method defaults to INSERT...ON CONFLICT syntax
+   * to ensure backward compatibility and prevent failures.</p>
+   * 
+   * <p>The schema resource must be set via {@link #setSchemaResource(SchemaResource)} before calling
+   * this method for version detection to work. If not set, INSERT...ON CONFLICT syntax will be used.</p>
+   *
+   * @param statement The MERGE statement to convert to SQL
+   * @return SQL string using either native MERGE or INSERT...ON CONFLICT syntax
+   * @throws IllegalArgumentException if the table name is blank
+   * @see #generateNativeMergeSql(MergeStatement)
+   * @see #generateInsertOnConflictSql(MergeStatement)
+   * @see #shouldUseNativeMerge(SchemaResource)
+   * @see #setSchemaResource(SchemaResource)
+   */
   @Override
   protected String getSqlFrom(MergeStatement statement) {
     // Determine which MERGE syntax to use based on PostgreSQL version
@@ -829,6 +854,25 @@ class PostgreSQLDialect extends SqlDialect {
 
   }
 
+  /**
+   * Generates SQL for an InputField reference in a MERGE statement.
+   * The SQL generated depends on the PostgreSQL version and MERGE syntax being used:
+   * <ul>
+   *   <li>For PostgreSQL 15+ (native MERGE): Returns "s.fieldName" where "s" is the source table alias</li>
+   *   <li>For PostgreSQL &lt;15 (INSERT...ON CONFLICT): Returns "EXCLUDED.fieldName" where EXCLUDED is the special reference</li>
+   * </ul>
+   * 
+   * <p>This version-aware behavior ensures that field references in MERGE UPDATE clauses
+   * correctly reference the source data regardless of which MERGE syntax is being used.</p>
+   * 
+   * <p>If the database version cannot be determined, defaults to INSERT...ON CONFLICT syntax (EXCLUDED reference).</p>
+   *
+   * @param field The InputField to convert to SQL
+   * @return SQL string with properly qualified field reference
+   * @see #shouldUseNativeMerge(SchemaResource)
+   * @see #generateNativeMergeSql(MergeStatement)
+   * @see #generateInsertOnConflictSql(MergeStatement)
+   */
   @Override
   protected String getSqlFrom(MergeStatement.InputField field) {
     // Check PostgreSQL version to determine the correct reference
