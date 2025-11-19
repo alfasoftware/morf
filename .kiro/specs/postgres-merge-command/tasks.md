@@ -150,7 +150,12 @@
 
 
 
+
+
+
+
   - [x] 9.1 Add JavaDoc comments
+
 
     - Document new methods in PostgreSQLDialect
     - Document version detection behavior
