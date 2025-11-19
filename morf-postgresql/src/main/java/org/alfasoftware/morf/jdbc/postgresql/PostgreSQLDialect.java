@@ -1040,4 +1040,30 @@ class PostgreSQLDialect extends SqlDialect {
             .filter(instanceOf(PostgreSQLMetaDataProvider.class))
             .map(PostgreSQLMetaDataProvider.class::cast);
   }
+
+
+  /**
+   * Determines whether native MERGE syntax should be used based on PostgreSQL version.
+   * Native MERGE is available in PostgreSQL 15 and later.
+   *
+   * @param schemaResource The schema resource containing database metadata
+   * @return true if PostgreSQL version is 15 or higher, false otherwise (including when version cannot be determined)
+   */
+  boolean shouldUseNativeMerge(SchemaResource schemaResource) {
+    return getPostgreSQLMetaDataProvider(schemaResource)
+            .map(metaDataProvider -> {
+              try {
+                String majorVersionStr = metaDataProvider.getDatabaseInformation().get(DatabaseMetaDataProvider.DATABASE_MAJOR_VERSION);
+                if (majorVersionStr == null) {
+                  return false;
+                }
+                int majorVersion = Integer.parseInt(majorVersionStr);
+                return majorVersion >= 15;
+              } catch (NumberFormatException e) {
+                // If version cannot be parsed, default to false (use INSERT...ON CONFLICT)
+                return false;
+              }
+            })
+            .orElse(false); // If metadata provider is not available, default to false
+  }
 }

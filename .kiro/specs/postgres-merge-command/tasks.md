@@ -18,13 +18,21 @@
     - Verify output matches current behavior
     - _Requirements: 2.1, 2.2_
 
-- [ ] 2. Implement version detection helper method in PostgreSQLDialect
-  - [ ] 2.1 Add method to check if native MERGE should be used based on PostgreSQL version
+- [x] 2. Implement version detection helper method in PostgreSQLDialect
+
+
+
+
+  - [x] 2.1 Add method to check if native MERGE should be used based on PostgreSQL version
+
+
     - Create `shouldUseNativeMerge()` method that checks version >= 15
     - Handle case when version information is unavailable (default to false)
     - Access version via PostgreSQLMetaDataProvider from SchemaResource
     - _Requirements: 5.1, 5.2, 5.3_
-  - [ ] 2.2 Write unit tests for version detection
+  - [x] 2.2 Write unit tests for version detection
+
+
     - Test with version 15+ returns true
     - Test with version <15 returns false
     - Test with missing version returns false
