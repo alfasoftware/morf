@@ -39,7 +39,13 @@
     - _Requirements: 5.1, 5.2, 5.3_
 
 - [ ] 3. Implement native MERGE SQL generation method
-  - [ ] 3.1 Create generateNativeMergeSql(MergeStatement) method
+
+
+
+
+  - [x] 3.1 Create generateNativeMergeSql(MergeStatement) method
+
+
     - Generate MERGE INTO clause with target table
     - Generate USING clause with source query and alias "s"
     - Generate ON clause with join conditions from tableUniqueKey
@@ -47,7 +53,9 @@
     - Generate WHEN NOT MATCHED clause with INSERT
     - Handle whenMatchedAction with WHERE clause
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 3.1, 3.2, 3.3_
-  - [ ] 3.2 Write unit tests for native MERGE SQL generation
+  - [x] 3.2 Write unit tests for native MERGE SQL generation
+
+
     - Test basic MERGE structure with all clauses
     - Test MERGE with whenMatchedAction and WHERE clause
     - Test MERGE with only key fields (no WHEN MATCHED)
