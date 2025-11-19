@@ -48,9 +48,8 @@ public class TestPostgreSQLNativeMerge {
         .from(sourceStmt)
         .build();
 
-    // When - we'll need to use reflection to call the private method
-    // For now, let's test the structure through a helper method
-    String sql = generateNativeMergeSqlViaReflection(stmt);
+    // When
+    String sql = dialect.generateNativeMergeSql(stmt);
 
     // Then
     assertTrue("Should contain MERGE INTO clause", sql.contains("MERGE INTO"));
@@ -87,7 +86,7 @@ public class TestPostgreSQLNativeMerge {
         .build();
 
     // When
-    String sql = generateNativeMergeSqlViaReflection(stmt);
+    String sql = dialect.generateNativeMergeSql(stmt);
 
     // Then
     assertTrue("Should contain WHEN MATCHED AND condition", 
@@ -115,7 +114,7 @@ public class TestPostgreSQLNativeMerge {
         .build();
 
     // When
-    String sql = generateNativeMergeSqlViaReflection(stmt);
+    String sql = dialect.generateNativeMergeSql(stmt);
 
     // Then
     assertTrue("Should contain MERGE INTO", sql.contains("MERGE INTO"));
@@ -146,7 +145,7 @@ public class TestPostgreSQLNativeMerge {
         .build();
 
     // When
-    String sql = generateNativeMergeSqlViaReflection(stmt);
+    String sql = dialect.generateNativeMergeSql(stmt);
 
     // Then
     assertTrue("ON clause should qualify key fields with t and s", 
@@ -177,25 +176,11 @@ public class TestPostgreSQLNativeMerge {
         .build();
 
     // When
-    String sql = generateNativeMergeSqlViaReflection(stmt);
+    String sql = dialect.generateNativeMergeSql(stmt);
 
     // Then
     assertTrue("ON clause should contain both key fields", 
         sql.contains("t.id = s.id") && sql.contains("t.type = s.type"));
     assertTrue("Should join conditions with AND", sql.contains("AND"));
-  }
-
-  /**
-   * Helper method to call the private generateNativeMergeSql method via reflection
-   */
-  private String generateNativeMergeSqlViaReflection(MergeStatement statement) {
-    try {
-      java.lang.reflect.Method method = PostgreSQLDialect.class.getDeclaredMethod(
-          "generateNativeMergeSql", MergeStatement.class);
-      method.setAccessible(true);
-      return (String) method.invoke(dialect, statement);
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to invoke generateNativeMergeSql via reflection", e);
-    }
   }
 }

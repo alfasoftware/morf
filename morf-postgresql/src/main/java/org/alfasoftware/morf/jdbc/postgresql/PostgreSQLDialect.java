@@ -642,7 +642,7 @@ class PostgreSQLDialect extends SqlDialect {
    * @param statement The MERGE statement to convert to SQL
    * @return SQL string using INSERT...ON CONFLICT syntax
    */
-  private String generateInsertOnConflictSql(MergeStatement statement) {
+  String generateInsertOnConflictSql(MergeStatement statement) {
     if (StringUtils.isBlank(statement.getTable().getName())) {
       throw new IllegalArgumentException("Cannot create SQL for a blank table");
     }
@@ -700,7 +700,7 @@ class PostgreSQLDialect extends SqlDialect {
    * @param statement The MERGE statement to convert to SQL
    * @return SQL string using native MERGE syntax
    */
-  private String generateNativeMergeSql(MergeStatement statement) {
+  String generateNativeMergeSql(MergeStatement statement) {
     if (StringUtils.isBlank(statement.getTable().getName())) {
       throw new IllegalArgumentException("Cannot create SQL for a blank table");
     }
