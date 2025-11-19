@@ -69,8 +69,25 @@ class PostgreSQLDialect extends SqlDialect {
 
   private static final Log log = LogFactory.getLog(PostgreSQLDialect.class);
 
+  /**
+   * Optional schema resource for version-aware SQL generation.
+   * When present, enables PostgreSQL 15+ native MERGE syntax.
+   */
+  private Optional<SchemaResource> schemaResource = Optional.empty();
+
   public PostgreSQLDialect(String schemaName) {
    super(schemaName);
+  }
+
+  /**
+   * Sets the schema resource for version-aware SQL generation.
+   * This should be called before generating MERGE statements to enable
+   * PostgreSQL 15+ native MERGE syntax when available.
+   *
+   * @param schemaResource The schema resource containing database metadata
+   */
+  public void setSchemaResource(SchemaResource schemaResource) {
+    this.schemaResource = Optional.ofNullable(schemaResource);
   }
 
 
@@ -631,7 +648,16 @@ class PostgreSQLDialect extends SqlDialect {
 
   @Override
   protected String getSqlFrom(MergeStatement statement) {
-    return generateInsertOnConflictSql(statement);
+    // Determine which MERGE syntax to use based on PostgreSQL version
+    boolean useNativeMerge = schemaResource
+        .map(this::shouldUseNativeMerge)
+        .orElse(false);
+
+    if (useNativeMerge) {
+      return generateNativeMergeSql(statement);
+    } else {
+      return generateInsertOnConflictSql(statement);
+    }
   }
 
 

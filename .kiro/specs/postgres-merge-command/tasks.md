@@ -66,19 +66,29 @@
     - Test field name qualification
     - _Requirements: 1.2, 1.3, 1.4, 1.5, 3.1, 3.2_
 
-- [ ] 4. Update getSqlFrom(MergeStatement) to use version-aware generation
-  - [ ] 4.1 Modify main getSqlFrom(MergeStatement) method
+- [x] 4. Update getSqlFrom(MergeStatement) to use version-aware generation
+
+
+
+
+  - [x] 4.1 Modify main getSqlFrom(MergeStatement) method
+
+
     - Call shouldUseNativeMerge() to determine which method to use
     - Route to generateNativeMergeSql() or generateInsertOnConflictSql()
     - Ensure proper error handling
     - _Requirements: 1.1, 2.1, 2.3, 5.1, 5.2, 5.3_
-  - [ ] 4.2 Write unit tests for routing logic
+  - [x] 4.2 Write unit tests for routing logic
+
+
     - Test with version 15+ routes to native MERGE
     - Test with version <15 routes to INSERT...ON CONFLICT
     - Test with missing version defaults to INSERT...ON CONFLICT
     - _Requirements: 1.1, 2.1, 2.3, 5.3_
 
 - [ ] 5. Handle InputField references for native MERGE
+
+
   - [ ] 5.1 Add context tracking for MERGE syntax mode
     - Add instance variable or thread-local to track current MERGE mode
     - Set mode before generating MERGE SQL
