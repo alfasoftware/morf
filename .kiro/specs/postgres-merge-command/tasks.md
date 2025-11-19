@@ -133,8 +133,13 @@
     - Add tests for version-specific behavior
     - _Requirements: 1.1, 2.1, 2.2, 2.3_
 
-- [ ] 8. Add integration tests
-  - [ ] 8.1 Create integration tests for native MERGE
+- [x] 8. Add integration tests
+
+
+
+
+  - [x] 8.1 Create integration tests for native MERGE
+
     - Test actual MERGE execution against PostgreSQL 15+ (if available in CI)
     - Verify data correctness after MERGE operations
     - Test backward compatibility with PostgreSQL 14
