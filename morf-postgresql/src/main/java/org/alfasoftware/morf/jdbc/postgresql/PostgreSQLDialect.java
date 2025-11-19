@@ -694,6 +694,92 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   /**
+   * Generates SQL for MERGE using native MERGE syntax (PostgreSQL 15+).
+   * This uses the standard SQL MERGE command introduced in PostgreSQL 15.
+   *
+   * @param statement The MERGE statement to convert to SQL
+   * @return SQL string using native MERGE syntax
+   */
+  private String generateNativeMergeSql(MergeStatement statement) {
+    if (StringUtils.isBlank(statement.getTable().getName())) {
+      throw new IllegalArgumentException("Cannot create SQL for a blank table");
+    }
+
+    checkSelectStatementHasNoHints(statement.getSelectStatement(), "MERGE may not be used with SELECT statement hints");
+
+    StringBuilder sqlBuilder = new StringBuilder();
+
+    // MERGE INTO clause with target table
+    sqlBuilder.append("MERGE INTO ")
+              .append(tableNameWithSchemaName(statement.getTable()))
+              .append(" AS t");
+
+    // USING clause with source query and alias "s"
+    sqlBuilder.append(" USING (")
+              .append(getSqlFrom(statement.getSelectStatement()))
+              .append(") AS s");
+
+    // ON clause with join conditions from tableUniqueKey
+    List<String> joinConditions = new ArrayList<>();
+    for (AliasedField keyField : statement.getTableUniqueKey()) {
+      String fieldName = keyField.getImpliedName();
+      joinConditions.add("t." + fieldName + " = s." + fieldName);
+    }
+    sqlBuilder.append(" ON (")
+              .append(Joiner.on(" AND ").join(joinConditions))
+              .append(")");
+
+    // WHEN MATCHED clause with UPDATE SET assignments (if non-key fields exist)
+    if (getNonKeyFieldsFromMergeStatement(statement).iterator().hasNext()) {
+      sqlBuilder.append(" WHEN MATCHED");
+
+      // Handle whenMatchedAction with WHERE clause
+      Optional<MergeMatchClause> whenMatchedAction = statement.getWhenMatchedAction();
+      if (whenMatchedAction.isPresent()) {
+        MergeMatchClause mergeMatchClause = whenMatchedAction.get();
+        Optional<Criterion> whereClause = mergeMatchClause.getWhereClause();
+        if (mergeMatchClause.getAction() == MatchAction.UPDATE && whereClause.isPresent()) {
+          sqlBuilder.append(" AND ")
+                    .append(getSqlFrom(whereClause.get()));
+        }
+      }
+
+      sqlBuilder.append(" THEN UPDATE SET ");
+
+      // Generate UPDATE SET assignments
+      Iterable<AliasedField> updateExpressions = getMergeStatementUpdateExpressions(statement);
+      List<String> assignments = new ArrayList<>();
+      for (AliasedField updateExpression : updateExpressions) {
+        String fieldName = updateExpression.getImpliedName();
+        String valueExpression = getSqlFrom(updateExpression);
+        assignments.add(fieldName + " = " + valueExpression);
+      }
+      sqlBuilder.append(Joiner.on(", ").join(assignments));
+    }
+
+    // WHEN NOT MATCHED clause with INSERT
+    sqlBuilder.append(" WHEN NOT MATCHED THEN INSERT (");
+
+    Iterable<String> destinationFields = Iterables.transform(
+        statement.getSelectStatement().getFields(),
+        AliasedField::getImpliedName);
+    sqlBuilder.append(Joiner.on(", ").join(destinationFields));
+
+    sqlBuilder.append(") VALUES (");
+
+    List<String> sourceValues = new ArrayList<>();
+    for (AliasedField field : statement.getSelectStatement().getFields()) {
+      sourceValues.add("s." + field.getImpliedName());
+    }
+    sqlBuilder.append(Joiner.on(", ").join(sourceValues));
+
+    sqlBuilder.append(")");
+
+    return sqlBuilder.toString();
+  }
+
+
+  /**
    * @see SqlDialect#getSqlFrom(SequenceReference)
    */
   @Override
