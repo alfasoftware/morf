@@ -38,7 +38,11 @@
     - Test with missing version returns false
     - _Requirements: 5.1, 5.2, 5.3_
 
-- [ ] 3. Implement native MERGE SQL generation method
+- [x] 3. Implement native MERGE SQL generation method
+
+
+
+
 
 
 
