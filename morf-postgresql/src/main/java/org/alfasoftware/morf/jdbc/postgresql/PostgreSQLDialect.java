@@ -56,6 +56,8 @@ import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.FluentIterable;
@@ -64,6 +66,8 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 
 class PostgreSQLDialect extends SqlDialect {
+
+  private static final Log log = LogFactory.getLog(PostgreSQLDialect.class);
 
   public PostgreSQLDialect(String schemaName) {
    super(schemaName);
@@ -1055,15 +1059,31 @@ class PostgreSQLDialect extends SqlDialect {
               try {
                 String majorVersionStr = metaDataProvider.getDatabaseInformation().get(DatabaseMetaDataProvider.DATABASE_MAJOR_VERSION);
                 if (majorVersionStr == null) {
+                  if (log.isDebugEnabled()) {
+                    log.debug("PostgreSQL version not available, using INSERT...ON CONFLICT syntax for MERGE");
+                  }
                   return false;
                 }
                 int majorVersion = Integer.parseInt(majorVersionStr);
-                return majorVersion >= 15;
+                boolean useNativeMerge = majorVersion >= 15;
+                if (log.isDebugEnabled()) {
+                  log.debug("PostgreSQL version " + majorVersion + " detected, using " + 
+                           (useNativeMerge ? "native MERGE" : "INSERT...ON CONFLICT") + " syntax");
+                }
+                return useNativeMerge;
               } catch (NumberFormatException e) {
                 // If version cannot be parsed, default to false (use INSERT...ON CONFLICT)
+                if (log.isDebugEnabled()) {
+                  log.debug("Failed to parse PostgreSQL version, using INSERT...ON CONFLICT syntax for MERGE", e);
+                }
                 return false;
               }
             })
-            .orElse(false); // If metadata provider is not available, default to false
+            .orElseGet(() -> {
+              if (log.isDebugEnabled()) {
+                log.debug("PostgreSQL metadata provider not available, using INSERT...ON CONFLICT syntax for MERGE");
+              }
+              return false;
+            });
   }
 }
