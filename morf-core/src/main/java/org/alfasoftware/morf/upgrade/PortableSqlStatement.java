@@ -77,16 +77,13 @@ public class PortableSqlStatement implements Statement {
    * @return This {@link PortableSqlStatement}.
    */
   public PortableSqlStatement add(String databaseTypeIdentifier, InputStream stream) {
-    InputStreamReader streamReader = null;
-    try {
-      streamReader = new InputStreamReader(stream, StandardCharsets.UTF_8);
+    try (InputStreamReader streamReader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
       statements.put(databaseTypeIdentifier, CharStreams.toString(streamReader));
     } catch (IOException e) {
       throw new RuntimeException(
         "Error loading SQL upgrade script from server.", e);
     } finally {
       Closeables.closeQuietly(stream);
-      Closeables.closeQuietly(streamReader);
     }
     return this;
   }
