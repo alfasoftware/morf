@@ -1494,7 +1494,7 @@ class OracleDialect extends SqlDialect {
   protected String getSqlFrom(SequenceReference sequenceReference) {
     StringBuilder result = new StringBuilder();
 
-    if (getSchemaName() != null || !getSchemaName().isBlank()) {
+    if (getSchemaName() != null && !getSchemaName().isBlank()) {
       result.append(getSchemaName());
       result.append(".");
     }

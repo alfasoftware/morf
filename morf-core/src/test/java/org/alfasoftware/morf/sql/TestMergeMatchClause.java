@@ -44,7 +44,7 @@ public class TestMergeMatchClause {
   private SchemaAndDataChangeVisitor visitor;
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     MockitoAnnotations.openMocks(this);
   }
 
