@@ -150,4 +150,10 @@ public class RemoveColumn implements SchemaChange {
     return tableName;
   }
 
+
+  @Override
+  public String toString() {
+    return "RemoveColumn [tableName=" + tableName + ", columnDefinition=" + columnDefinition + "]";
+  }
+
 }

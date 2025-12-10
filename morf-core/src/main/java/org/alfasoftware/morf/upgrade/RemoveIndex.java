@@ -153,4 +153,10 @@ public class RemoveIndex implements SchemaChange {
   public Index getIndexToBeRemoved() {
     return indexToBeRemoved;
   }
+
+
+  @Override
+  public String toString() {
+    return "RemoveIndex [tableName=" + tableName + ", indexToBeRemoved=" + indexToBeRemoved + "]";
+  }
 }

@@ -24,6 +24,7 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
+
 import com.google.common.collect.Maps;
 
 /**
@@ -185,5 +186,11 @@ public class RenameTable implements SchemaChange {
     public boolean isTemporary() {
       return baseTable.isTemporary();
     }
+  }
+
+
+  @Override
+  public String toString() {
+    return "RenameTable [oldTableName=" + oldTableName + ", newTableName=" + newTableName + "]";
   }
 }

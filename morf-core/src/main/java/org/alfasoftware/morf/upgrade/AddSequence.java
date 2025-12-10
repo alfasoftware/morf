@@ -15,13 +15,14 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import com.google.common.collect.ImmutableList;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaValidator;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.upgrade.adapt.AugmentedSchema;
 import org.alfasoftware.morf.upgrade.adapt.FilteredSchema;
+
+import com.google.common.collect.ImmutableList;
 
 /**
  * A {@link SchemaChange} which consists of the addition of a new sequence to
@@ -110,5 +111,11 @@ public class AddSequence implements SchemaChange {
      */
     public Sequence getSequence() {
         return newSequence;
+    }
+
+
+    @Override
+    public String toString() {
+      return "AddSequence [newSequence=" + newSequence + "]";
     }
 }

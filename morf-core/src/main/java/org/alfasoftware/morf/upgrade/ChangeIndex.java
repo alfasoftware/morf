@@ -193,4 +193,10 @@ public class ChangeIndex implements SchemaChange {
   public Index getToIndex() {
     return toIndex;
   }
+
+
+  @Override
+  public String toString() {
+    return "ChangeIndex [tableName=" + tableName + ", fromIndex=" + fromIndex + ", toIndex=" + toIndex + "]";
+  }
 }

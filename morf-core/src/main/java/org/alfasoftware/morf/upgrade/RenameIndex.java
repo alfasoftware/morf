@@ -21,14 +21,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.apache.commons.lang3.StringUtils;
-
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.adapt.AlteredTable;
 import org.alfasoftware.morf.upgrade.adapt.TableOverrideSchema;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * {@link SchemaChange} which consists of renaming an existing index within a
@@ -202,5 +201,11 @@ public class RenameIndex implements SchemaChange {
    */
   public String getToIndexName() {
     return toIndexName;
+  }
+
+
+  @Override
+  public String toString() {
+    return "RenameIndex [tableName=" + tableName + ", fromIndexName=" + fromIndexName + ", toIndexName=" + toIndexName + "]";
   }
 }
