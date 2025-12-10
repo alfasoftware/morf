@@ -95,4 +95,9 @@ public class AddTable implements SchemaChange {
   public void accept(SchemaChangeVisitor visitor) {
     visitor.visit(this);
   }
+
+  @Override
+  public String toString() {
+    return "AddTable [newTable=" + newTable + "]";
+  }
 }

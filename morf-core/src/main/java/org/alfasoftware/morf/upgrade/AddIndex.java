@@ -162,4 +162,10 @@ public class AddIndex implements SchemaChange {
     return newIndex;
   }
 
+
+  @Override
+  public String toString() {
+    return "AddIndex [tableName=" + tableName + ", newIndex=" + newIndex + "]";
+  }
+
 }

@@ -85,4 +85,11 @@ public class CorrectPrimaryKeyColumns extends ChangePrimaryKeyColumns {
   public List<String> getOldPrimaryKeyColumns() {
     return oldPrimaryKeyColumns == null ? super.getOldPrimaryKeyColumns() : oldPrimaryKeyColumns;
   }
+
+
+  @Override
+  public String toString() {
+    return "CorrectPrimaryKeyColumns [tableName=" + tableName + ", newPrimaryKeyColumns=" + newPrimaryKeyColumns
+        + ", oldPrimaryKeyColumns=" + oldPrimaryKeyColumns + "]";
+  }
 }
