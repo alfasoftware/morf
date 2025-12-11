@@ -1121,7 +1121,7 @@ public class TestDatabaseUpgradeIntegration {
           "(?is)(" + "NULL not allowed for column \"ANOTHERVALUE\"" + ".*)" // H2
             + "|(" + "Field 'anotherValue' doesn't have a default value" + ".*)" // MySQL
             + "|(" + "ORA-01400: cannot insert NULL into \\(.*ANOTHERVALUE.*\\)" + ".*)" // Oracle
-            + "|(" + "ERROR: null value in column "anothervalue" of relation "withdefaultvalue" violates not-null constraint" + ".*)" // PgSQL
+            + "|(" + "ERROR: null value in column \"anothervalue\" of relation \"withdefaultvalue\" violates not-null constraint" + ".*)" // PgSQL
         ));
     }
   }
@@ -1356,4 +1356,5 @@ public class TestDatabaseUpgradeIntegration {
     }
   }
 }
+
 
