@@ -43,6 +43,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalToIgnoringCase;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -99,6 +100,8 @@ import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RepeatedAdditionOfTable;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ReplacePrimaryKey;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ReplaceTableWithView;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.UpdateField;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.UpdateId;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.UpdateMissingField;
 import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
@@ -131,6 +134,7 @@ import org.alfasoftware.morf.upgrade.ExecuteStatement;
 import org.alfasoftware.morf.upgrade.LoggingSqlScriptVisitor;
 import org.alfasoftware.morf.upgrade.SchemaChange;
 import org.alfasoftware.morf.upgrade.SchemaChangeToSchemaAdaptor;
+import org.alfasoftware.morf.upgrade.UpdateToCtasAdaptor;
 import org.alfasoftware.morf.upgrade.Upgrade;
 import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsException;
@@ -1239,6 +1243,58 @@ public class TestDatabaseUpgradeIntegration {
 
 
   @Test
+  public void testNoCtasFromUpdate() {
+    assertFalse(UpdateId.testingUseCtasDuringUpgrade);
+    assertFalse(UpdateField.testingUseCtasDuringUpgrade);
+
+    try {
+      UpdateId.testingUseCtasDuringUpgrade = false;
+      UpdateField.testingUseCtasDuringUpgrade = false;
+
+      runCtasFromUpdateTest();
+    }
+    finally {
+      // make sure we revert these to defaults
+      UpdateId.testingUseCtasDuringUpgrade = false;
+      UpdateField.testingUseCtasDuringUpgrade = false;
+    }
+  }
+
+
+  @Test
+  public void testDoCtasFromUpdate() {
+    assertFalse(UpdateId.testingUseCtasDuringUpgrade);
+    assertFalse(UpdateField.testingUseCtasDuringUpgrade);
+
+    try {
+      UpdateId.testingUseCtasDuringUpgrade = true;
+      UpdateField.testingUseCtasDuringUpgrade = true;
+
+      runCtasFromUpdateTest();
+    }
+    finally {
+      // make sure we revert these to defaults
+      UpdateId.testingUseCtasDuringUpgrade = false;
+      UpdateField.testingUseCtasDuringUpgrade = false;
+    }
+  }
+
+
+  private void runCtasFromUpdateTest() {
+    upgradeConfigAndContext.setSchemaChangeToSchemaAdaptor(new UpdateToCtasAdaptor());
+
+    Table expectedTable = table("WithDefaultValue")
+        .columns(
+            column("anotherValue", DataType.STRING, 10),
+            column("version", DataType.INTEGER).defaultValue("0"));
+
+    Schema expected = replaceTablesInSchema(expectedTable);
+
+    verifyUpgrade(expected, List.of(UpdateId.class, DropPrimaryKey.class, AddColumn.class, UpdateField.class));
+  }
+
+
+  @Test
   public void testUpdateOfMissingField() {
     upgradeConfigAndContext.setSchemaChangeToSchemaAdaptor(new SchemaChangeToSchemaAdaptor() {
       @Override
@@ -1266,7 +1322,7 @@ public class TestDatabaseUpgradeIntegration {
     Schema expected = replaceTablesInSchema(expectedTable);
 
     // this will fail, if UPDATE from UpdateMissingField is run; but will succeed, if translation to a DELETE is made
-    verifyUpgrade(expected, List.of(DropPrimaryKey.class, UpdateMissingField.class, AddColumn.class));
+    verifyUpgrade(expected, List.of(UpdateId.class, DropPrimaryKey.class, UpdateMissingField.class, AddColumn.class, UpdateField.class));
   }
 
 
@@ -1281,7 +1337,7 @@ public class TestDatabaseUpgradeIntegration {
 
     // this will fail, because UPDATE from UpdateMissingField is run
     RuntimeSqlException exception = assertThrows(org.alfasoftware.morf.jdbc.RuntimeSqlException.class,
-        () -> verifyUpgrade(expected, List.of(DropPrimaryKey.class, UpdateMissingField.class, AddColumn.class)));
+        () -> verifyUpgrade(expected, List.of(UpdateId.class, DropPrimaryKey.class, UpdateMissingField.class, AddColumn.class, UpdateField.class)));
 
     assertThat(exception.getMessage(), containsString("Error executing SQL"));
     assertThat(exception.getMessage(), containsString("UPDATE WithDefaultValue SET missingColumn"));
