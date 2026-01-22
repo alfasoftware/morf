@@ -29,6 +29,11 @@ public class UpgradeConfigAndContext {
   private SchemaChangeAdaptor schemaChangeAdaptor = new SchemaChangeAdaptor.NoOp();
 
   /**
+   * A schema change adaptor to be used during upgrade.
+   */
+  private SchemaChangeToSchemaAdaptor schemaChangeToSchemaAdaptor = new SchemaChangeToSchemaAdaptor.NoOp();
+
+  /**
    * A schema auto-healer to be used before upgrade.
    */
   private SchemaAutoHealer schemaAutoHealer = new SchemaAutoHealer.NoOp();
@@ -64,12 +69,30 @@ public class UpgradeConfigAndContext {
     return schemaChangeAdaptor;
   }
 
+
   /**
    * @see #schemaChangeAdaptor
    */
   public void setSchemaChangeAdaptor(SchemaChangeAdaptor schemaChangeAdaptor) {
     Preconditions.checkNotNull(schemaChangeAdaptor);
     this.schemaChangeAdaptor = schemaChangeAdaptor;
+  }
+
+
+  /**
+   * @see #schemaChangeToSchemaAdaptor
+   */
+  public SchemaChangeToSchemaAdaptor getSchemaChangeToSchemaAdaptor() {
+    return schemaChangeToSchemaAdaptor;
+  }
+
+
+  /**
+   * @see #schemaChangeToSchemaAdaptor
+   */
+  public void setSchemaChangeToSchemaAdaptor(SchemaChangeToSchemaAdaptor schemaChangeToSchemaAdaptor) {
+    Preconditions.checkNotNull(schemaChangeToSchemaAdaptor);
+    this.schemaChangeToSchemaAdaptor = schemaChangeToSchemaAdaptor;
   }
 
 
