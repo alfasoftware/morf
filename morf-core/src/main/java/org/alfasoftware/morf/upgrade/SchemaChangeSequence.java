@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.upgrade;
 
+import static java.util.stream.Collectors.toList;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 
 import java.util.Collections;
@@ -32,6 +33,7 @@ import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 
@@ -207,6 +209,14 @@ public class SchemaChangeSequence {
    */
   public Set<String> tableAdditions() {
     return Collections.unmodifiableSet(tableAdditions);
+  }
+
+
+  @VisibleForTesting
+  List<SchemaChange> getAllChanges() {
+    return allChanges.stream()
+        .flatMap(u -> u.getChanges().stream())
+        .collect(toList());
   }
 
 
