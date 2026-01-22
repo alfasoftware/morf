@@ -123,6 +123,12 @@ public class Upgrade {
   }
 
 
+  @Deprecated
+  public static void performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, ViewDeploymentValidator viewDeploymentValidator) {
+    performUpgrade(targetSchema, upgradeSteps, connectionResources, new UpgradeConfigAndContext(), viewDeploymentValidator);
+  }
+
+
   /**
    * Static convenience method which creates the required {@link UpgradePath} to take the specified
    * database and upgrade it to the target schema, using the upgrade steps supplied which have not
@@ -160,6 +166,12 @@ public class Upgrade {
     Set<String> exceptionRegexes = Collections.emptySet();
 
     return upgrade.findPath(targetSchema, upgradeSteps, exceptionRegexes, connectionResources.getDataSource());
+  }
+
+
+  @Deprecated
+  public static UpgradePath createPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeStatusTableService upgradeStatusTableService, ViewDeploymentValidator viewDeploymentValidator, DatabaseUpgradePathValidationService databaseUpgradePathValidationService) {
+    return createPath(targetSchema, upgradeSteps, connectionResources, new UpgradeConfigAndContext(), upgradeStatusTableService, viewDeploymentValidator, databaseUpgradePathValidationService);
   }
 
 
