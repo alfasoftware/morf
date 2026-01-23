@@ -37,6 +37,7 @@ import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.SqlUtils.when;
+import static org.alfasoftware.morf.sql.element.Function.count;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deployedViewsTable;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.upgradeAuditTable;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -1271,6 +1272,63 @@ public class TestDatabaseUpgradeIntegration {
       UpdateField.testingUseCtasDuringUpgrade = true;
 
       runCtasFromUpdateTest();
+    }
+    finally {
+      // make sure we revert these to defaults
+      UpdateId.testingUseCtasDuringUpgrade = false;
+      UpdateField.testingUseCtasDuringUpgrade = false;
+    }
+  }
+
+
+  @Test
+  public void testDoCtasFromUpdateVerifyAllRecordsAreKept() throws Exception {
+    assertFalse(UpdateId.testingUseCtasDuringUpgrade);
+    assertFalse(UpdateField.testingUseCtasDuringUpgrade);
+
+    try {
+      UpdateId.testingUseCtasDuringUpgrade = true;
+      UpdateField.testingUseCtasDuringUpgrade = true;
+
+      SelectStatement counter = select(count()).from(tableRef("WithDefaultValue"));
+
+      try (Connection connection = dataSource.getConnection()) {
+        SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+
+        int count1 = executor.executeQuery(connectionResources.sqlDialect().convertStatementToSQL(counter), connection,
+            resultSet -> resultSet.next() ? resultSet.getInt(1) : -1);
+
+        assertEquals(2, count1);
+
+        InsertStatement insert1 = insert().into(tableRef("WithDefaultValue")).fields(field("id"))
+            .from(select(field("id").cast().asDecimal(20).multiplyBy(literal(2)).plus(literal(4)).as("id")).from(tableRef("WithDefaultValue")));
+
+        InsertStatement insert2 = insert().into(tableRef("WithDefaultValue")).fields(field("id"))
+            .from(select(field("id").cast().asDecimal(20).multiplyBy(literal(2)).plus(literal(8)).as("id")).from(tableRef("WithDefaultValue")));
+
+        InsertStatement insert3 = insert().into(tableRef("WithDefaultValue")).fields(field("id"))
+            .from(select(field("id").cast().asDecimal(20).multiplyBy(literal(2)).plus(literal(32)).as("id")).from(tableRef("WithDefaultValue")));
+
+        executor.execute(connectionResources.sqlDialect().convertStatementToSQL(insert1), connection);
+        executor.execute(connectionResources.sqlDialect().convertStatementToSQL(insert2), connection);
+        executor.execute(connectionResources.sqlDialect().convertStatementToSQL(insert3), connection);
+
+        int count2 = executor.executeQuery(connectionResources.sqlDialect().convertStatementToSQL(counter), connection,
+            resultSet -> resultSet.next() ? resultSet.getInt(1) : -1);
+
+        assertEquals(16, count2);
+      }
+
+      runCtasFromUpdateTest();
+
+      try (Connection connection = dataSource.getConnection()) {
+        SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+
+        int count = executor.executeQuery(connectionResources.sqlDialect().convertStatementToSQL(counter), connection,
+            resultSet -> resultSet.next() ? resultSet.getInt(1) : -1);
+
+        assertEquals(16, count);
+      }
     }
     finally {
       // make sure we revert these to defaults
