@@ -1595,4 +1595,11 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected String expectedPortableStatement() {
     return "UPDATE testschema.Table SET field = TRANSLATE(field, '1', 'A')";
   }
+
+
+  @Override
+  protected String expectedPortableSqlExpression() {
+    // TODO
+    return "SOME SQL HERE";
+  }
 }

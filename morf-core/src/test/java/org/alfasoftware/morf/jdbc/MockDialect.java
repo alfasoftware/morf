@@ -30,6 +30,7 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.PortableSqlExpression;
 import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.TableReference;
@@ -397,6 +398,11 @@ public class MockDialect extends SqlDialect {
   @Override
   protected String getSqlFrom(PortableSqlFunction function) {
     throw new IllegalStateException("Portable functions are not supported in the Mock dialect");
+  }
+
+  @Override
+  protected String getSqlFrom(PortableSqlExpression expression) {
+    throw new IllegalStateException("Portable expressions are not supported in the Mock dialect");
   }
 
 

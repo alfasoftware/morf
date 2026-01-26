@@ -37,6 +37,7 @@ import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.MathsField;
 import org.alfasoftware.morf.sql.element.MathsOperator;
+import org.alfasoftware.morf.sql.element.NativeExpression;
 import org.alfasoftware.morf.sql.element.NullFieldLiteral;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
@@ -719,6 +720,16 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
      */
     public CaseStatement otherwise(boolean defaultValue) {
       return otherwise(literal(defaultValue));
+    }
+
+
+    /**
+     * TODO
+     * @param expression
+     * @return
+     */
+    public static NativeExpression nativeSql(String expression) {
+      return new NativeExpression(expression);
     }
   }
 

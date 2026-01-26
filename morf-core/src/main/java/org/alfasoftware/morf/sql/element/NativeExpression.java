@@ -1,0 +1,102 @@
+package org.alfasoftware.morf.sql.element;
+
+import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
+import org.alfasoftware.morf.util.DeepCopyTransformation;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
+
+public class NativeExpression extends AliasedField{
+
+  /**
+   * Native SQL for the expression.
+   */
+  private final String expression;
+
+
+  public NativeExpression(String expression) {
+    super();
+    this.expression = expression;
+  }
+
+
+  protected NativeExpression(final String alias, String expression) {
+    super(alias);
+    this.expression = expression;
+  }
+
+
+  @Override
+  protected AliasedField shallowCopy(String aliasName) {
+    return new NativeExpression(aliasName, this.expression);
+  }
+
+
+  @Override
+  protected AliasedFieldBuilder deepCopyInternal(DeepCopyTransformation transformer) {
+    return new NativeExpression(this.getAlias(), this.getExpression());
+  }
+
+
+  @Override
+  public void accept(SchemaAndDataChangeVisitor visitor) {
+    visitor.visit(this);
+  }
+
+
+  /**
+   * @return the value
+   */
+  public String getExpression() {
+    return expression;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.sql.element.AliasedField#as(java.lang.String)
+   */
+  @Override
+  public NativeExpression as(String aliasName) {
+    return (NativeExpression) super.as(aliasName);
+  }
+
+
+  /**
+   * @see java.lang.Object#toString()
+   */
+  @Override
+  public String toString() {
+    return "\"" + expression + "\"" + super.toString();
+  }
+
+
+  /**
+   * @see java.lang.Object#equals(java.lang.Object)
+   */
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    NativeExpression other = (NativeExpression) obj;
+    return new EqualsBuilder()
+        .appendSuper(super.equals(obj))
+        .append(this.expression, other.expression)
+        .isEquals();
+  }
+
+
+  /**
+   * @see java.lang.Object#hashCode()
+   */
+  @Override
+  public int hashCode() {
+    return new HashCodeBuilder()
+        .appendSuper(super.hashCode())
+        .append(this.expression)
+        .toHashCode();
+  }
+
+}

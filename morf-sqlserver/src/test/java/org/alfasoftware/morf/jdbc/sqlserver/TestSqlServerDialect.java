@@ -1509,4 +1509,11 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   protected String expectedPortableStatement() {
     return "UPDATE TESTSCHEMA.Table SET field = SOUNDEX(field, '5', 'E')";
   }
+
+
+  @Override
+  protected String expectedPortableSqlExpression() {
+    // TODO
+    return "SOME SQL HERE";
+  }
 }

@@ -89,8 +89,10 @@ import org.alfasoftware.morf.sql.element.Join;
 import org.alfasoftware.morf.sql.element.JoinType;
 import org.alfasoftware.morf.sql.element.MathsField;
 import org.alfasoftware.morf.sql.element.MathsOperator;
+import org.alfasoftware.morf.sql.element.NativeExpression;
 import org.alfasoftware.morf.sql.element.NullFieldLiteral;
 import org.alfasoftware.morf.sql.element.Operator;
+import org.alfasoftware.morf.sql.element.PortableSqlExpression;
 import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
@@ -1784,6 +1786,14 @@ public abstract class SqlDialect {
 
     if (field instanceof PortableSqlFunction) {
       return getSqlFrom((PortableSqlFunction) field);
+    }
+
+    if (field instanceof PortableSqlExpression) {
+      return getSqlFrom((PortableSqlExpression) field);
+    }
+
+    if (field instanceof NativeExpression) {
+      return getSqlFrom((NativeExpression) field);
     }
 
     throw new IllegalArgumentException("Aliased Field of type [" + field.getClass().getSimpleName() + "] is not supported");
@@ -4468,6 +4478,22 @@ public abstract class SqlDialect {
 
 
   /**
+   * TODO
+   */
+  protected abstract String getSqlFrom(PortableSqlExpression portableSqlExpression);
+
+
+  /**
+   * TODO
+   * @param nativeExpression
+   * @return
+   */
+  protected String getSqlFrom(NativeExpression nativeExpression) {
+    return nativeExpression.getExpression();
+  }
+
+
+  /**
    * Common method used to convert portable functions, for dialects that share the same syntax.
    */
   protected String getSqlForPortableFunction(Pair<String, List<AliasedField>> functionWithArguments) {
@@ -4479,6 +4505,20 @@ public abstract class SqlDialect {
         .collect(toList());
 
     return functionName + "(" + Joiner.on(", ").join(arguments) + ")";
+  }
+
+
+  /**
+   * Common method used to convert portable expressions, for dialects that share the same syntax.
+   */
+  protected String getSqlForPortableExpression(List<AliasedField> expression) {
+
+    List<String> arguments = expression
+        .stream()
+        .map(this::getSqlFrom)
+        .collect(toList());
+
+    return Joiner.on(" ").join(arguments);
   }
 
 

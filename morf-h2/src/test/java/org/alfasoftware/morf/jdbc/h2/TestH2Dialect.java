@@ -1378,6 +1378,13 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   }
 
 
+  @Override
+  protected String expectedPortableSqlExpression() {
+    // TODO
+    return "SOME SQL HERE";
+  }
+
+
   /**
    * @return The expected value for the force serial import setting.
    */

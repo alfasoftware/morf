@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.jdbc.sqlserver;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
+import static java.util.stream.Collectors.toList;
 import static org.alfasoftware.morf.metadata.SchemaUtils.namesOfColumns;
 import static org.alfasoftware.morf.metadata.SchemaUtils.primaryKeysForTable;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
@@ -51,6 +52,7 @@ import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.PortableSqlExpression;
 import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.TableReference;
@@ -1173,6 +1175,19 @@ class SqlServerDialect extends SqlDialect {
   @Override
   protected String getSqlFrom(PortableSqlFunction function) {
     return super.getSqlForPortableFunction(function.getFunctionForDatabaseType(SqlServer.IDENTIFIER));
+  }
+
+
+  @Override
+  protected String getSqlFrom(PortableSqlExpression portableSqlExpression) {
+    List<AliasedField> expression = portableSqlExpression.getExpressionForDatabaseType(SqlServer.IDENTIFIER);
+
+    List<String> arguments = expression
+        .stream()
+        .map(this::getSqlFrom)
+        .collect(toList());
+
+    return Joiner.on(", ").join(arguments);
   }
 
 

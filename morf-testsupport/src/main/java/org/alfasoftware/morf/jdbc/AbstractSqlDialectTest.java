@@ -28,9 +28,11 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.metadata.SchemaUtils.versionColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.view;
 import static org.alfasoftware.morf.sql.MergeStatement.InputField.inputField;
+import static org.alfasoftware.morf.sql.SqlUtils.CaseStatementBuilder.nativeSql;
 import static org.alfasoftware.morf.sql.SqlUtils.blobLiteral;
 import static org.alfasoftware.morf.sql.SqlUtils.bracket;
 import static org.alfasoftware.morf.sql.SqlUtils.cast;
+import static org.alfasoftware.morf.sql.SqlUtils.concat;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.insert;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
@@ -155,6 +157,7 @@ import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.MathsField;
 import org.alfasoftware.morf.sql.element.MathsOperator;
 import org.alfasoftware.morf.sql.element.NullFieldLiteral;
+import org.alfasoftware.morf.sql.element.PortableSqlExpression;
 import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
@@ -5167,6 +5170,34 @@ public abstract class AbstractSqlDialectTest {
   }
 
 
+  @Test
+  public void testPortableExpression() {
+    PortableSqlExpression.Builder expressionBuild = PortableSqlExpression.builder()
+            .withExpressionForDatabaseType(
+                    "PGSQL",
+                    concat(nativeSql("params->>'name'"), new FieldLiteral("B")))
+            .withExpressionForDatabaseType(
+                    "H2",
+                    nativeSql("JSON_VALUE(payload, '$.type') AS event_type"))
+            .withExpressionForDatabaseType(
+                    "ORACLE",
+                    nativeSql("ROWNUM").as("row_number"),
+                    new FieldReference("field"))
+            .withExpressionForDatabaseType(
+                    "MY_SQL",
+                    nativeSql("IF(active = 1, 'yes', 'no')").as("active"),
+                    new FieldReference("field"))
+            .withExpressionForDatabaseType(
+                    "SQL_SERVER",
+                    nativeSql("TOP 5 field"),
+                    new FieldReference("field2"));
+
+    SelectStatement testStatement = SelectStatement.select(expressionBuild).from(TEST_TABLE).build();
+
+    assertEquals(expectedPortableSqlExpression(), testDialect.convertStatementToSQL(testStatement));
+  }
+
+
   /**
    * Tests SQL date conversion to string via databaseSafeStringtoRecordValue
    *
@@ -6169,6 +6200,12 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL for the {@link PortableSqlFunction} function, testing that the dialect-specific function is used.
    */
   protected abstract String expectedPortableStatement();
+
+
+  /**
+   * @return The expected SQL for the {@link PortableSqlExpression} test, testing that the dialect-specific function is used.
+   */
+  protected abstract String expectedPortableSqlExpression();
 
   /**
    * @return The expected value for the force serial import setting.

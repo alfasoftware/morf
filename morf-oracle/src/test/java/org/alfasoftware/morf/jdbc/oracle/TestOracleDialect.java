@@ -1969,4 +1969,11 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   protected String expectedPortableStatement() {
     return "UPDATE TESTSCHEMA.Table SET field = REGEX_REPLACE(field, N'3', N'C')";
   }
+
+
+  @Override
+  protected String expectedPortableSqlExpression() {
+    // TODO
+    return "SOME SQL HERE";
+  }
 }
