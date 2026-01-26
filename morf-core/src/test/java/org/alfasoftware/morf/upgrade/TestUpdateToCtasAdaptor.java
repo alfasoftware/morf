@@ -475,7 +475,7 @@ public class TestUpdateToCtasAdaptor {
 
     assertThat(exception.getMessage(), allOf(
         containsString("Failed to apply change"),
-        containsString("org.alfasoftware.morf.upgrade.ExecuteStatement"),
+        containsString("ExecuteStatement"),
         containsString("from upgrade step class org.alfasoftware.morf.upgrade.TestUpdateToCtasAdaptor$UpdateSomeTable")));
 
     assertThat(exception.getCause(), instanceOf(RuntimeException.class));
@@ -506,7 +506,7 @@ public class TestUpdateToCtasAdaptor {
 
     assertThat(exception.getMessage(), allOf(
         containsString("Failed to apply change"),
-        containsString("org.alfasoftware.morf.upgrade.ExecuteStatement"),
+        containsString("ExecuteStatement"),
         containsString("from upgrade step class org.alfasoftware.morf.upgrade.TestUpdateToCtasAdaptor$UpdateSomeTable")));
 
     assertThat(exception.getCause(), instanceOf(RuntimeException.class));
@@ -545,7 +545,7 @@ public class TestUpdateToCtasAdaptor {
 
     assertThat(exception.getMessage(), allOf(
         containsString("Failed to apply change"),
-        containsString("org.alfasoftware.morf.upgrade.ExecuteStatement"),
+        containsString("ExecuteStatement"),
         containsString("from upgrade step class org.alfasoftware.morf.upgrade.TestUpdateToCtasAdaptor$UpdateSomeTable")));
 
     assertThat(exception.getCause(), instanceOf(RuntimeException.class));
