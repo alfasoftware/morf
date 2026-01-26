@@ -1301,6 +1301,7 @@ class OracleDialect extends SqlDialect {
 
     ArrayList<String> statements = new ArrayList<>();
 
+    // Important: PK does not get dropped upon rename!
     if (!primaryKeysForTable(fromTable).isEmpty()) {
       // Rename the PK constraint
       statements.add("ALTER TABLE " + schemaNamePrefix() + from + " RENAME CONSTRAINT " + fromConstraint + " TO " + toConstraint);

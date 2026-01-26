@@ -507,6 +507,7 @@ class H2Dialect extends SqlDialect {
 
     Builder<String> builder = ImmutableList.builder();
 
+    // H2 special: PK gets dropped upon rename!
     if (!primaryKeysForTable(from).isEmpty()) {
       builder.add(dropPrimaryKeyConstraintStatement(from));
     }

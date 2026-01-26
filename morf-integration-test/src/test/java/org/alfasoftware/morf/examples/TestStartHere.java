@@ -45,13 +45,14 @@ import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.DataEditor;
 import org.alfasoftware.morf.upgrade.Deployment;
-import org.alfasoftware.morf.upgrade.ViewDeploymentValidator;
 import org.alfasoftware.morf.upgrade.SchemaEditor;
 import org.alfasoftware.morf.upgrade.Sequence;
 import org.alfasoftware.morf.upgrade.UUID;
 import org.alfasoftware.morf.upgrade.Upgrade;
+import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
 import org.alfasoftware.morf.upgrade.Version;
+import org.alfasoftware.morf.upgrade.ViewDeploymentValidator;
 import org.junit.Test;
 
 import com.google.common.collect.FluentIterable;
@@ -127,8 +128,11 @@ public class TestStartHere {
     // Add the upgrade to create it
     upgradeSteps.add(CreateTest3.class);
 
+    // Specify upgrading config object
+    UpgradeConfigAndContext upgradeConfigAndContext = new UpgradeConfigAndContext();
+
     // Run the upgrade
-    Upgrade.performUpgrade(targetSchema, upgradeSteps, connectionResources, new ViewDeploymentValidator.AlwaysValidate());
+    Upgrade.performUpgrade(targetSchema, upgradeSteps, connectionResources, upgradeConfigAndContext, new ViewDeploymentValidator.AlwaysValidate());
 
     // Confirm that the database has been correctly upgraded
     withCurrentDatabase(connectionResources, dataSetProducer -> {

@@ -37,11 +37,15 @@ import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.SqlUtils.when;
+import static org.alfasoftware.morf.sql.element.Function.count;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deployedViewsTable;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.upgradeAuditTable;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalToIgnoringCase;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -97,6 +101,9 @@ import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.RepeatedAdditionOfTable;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ReplacePrimaryKey;
 import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.ReplaceTableWithView;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.UpdateField;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.UpdateId;
+import org.alfasoftware.morf.integration.testdatabaseupgradeintegration.upgrade.v1_0_0.UpdateMissingField;
 import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.DatabaseDataSetConsumer;
@@ -115,14 +122,22 @@ import org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.sql.Statement;
+import org.alfasoftware.morf.sql.UpdateStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager.TruncationBehavior;
 import org.alfasoftware.morf.testing.TestingDataSourceModule;
+import org.alfasoftware.morf.upgrade.ExecuteStatement;
 import org.alfasoftware.morf.upgrade.LoggingSqlScriptVisitor;
+import org.alfasoftware.morf.upgrade.SchemaChange;
+import org.alfasoftware.morf.upgrade.SchemaChangeToSchemaAdaptor;
+import org.alfasoftware.morf.upgrade.UpdateToCtasAdaptor;
 import org.alfasoftware.morf.upgrade.Upgrade;
+import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsException;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
 import org.alfasoftware.morf.upgrade.ViewDeploymentValidator;
@@ -186,6 +201,10 @@ public class TestDatabaseUpgradeIntegration {
   @Inject
   private DataSource dataSource;
 
+  /**
+   * Upgrading config.
+   */
+  private final UpgradeConfigAndContext upgradeConfigAndContext = new UpgradeConfigAndContext();
 
   /**
    * The test schema.
@@ -1121,7 +1140,7 @@ public class TestDatabaseUpgradeIntegration {
           "(?is)(" + "NULL not allowed for column \"ANOTHERVALUE\"" + ".*)" // H2
             + "|(" + "Field 'anotherValue' doesn't have a default value" + ".*)" // MySQL
             + "|(" + "ORA-01400: cannot insert NULL into \\(.*ANOTHERVALUE.*\\)" + ".*)" // Oracle
-            + "|(" + "ERROR: null value in column \"anothervalue\" of relation \"withdefaultvalue\" violates not-null constraint" + ".*)" // PgSQL
+            + "|(" + "ERROR: null value in column \"anothervalue\"( of relation \"withdefaultvalue\")? violates not-null constraint" + ".*)" // PgSQL
         ));
     }
   }
@@ -1224,6 +1243,165 @@ public class TestDatabaseUpgradeIntegration {
   }
 
 
+  @Test
+  public void testNoCtasFromUpdate() {
+    assertFalse(UpdateId.testingUseCtasDuringUpgrade);
+    assertFalse(UpdateField.testingUseCtasDuringUpgrade);
+
+    try {
+      UpdateId.testingUseCtasDuringUpgrade = false;
+      UpdateField.testingUseCtasDuringUpgrade = false;
+
+      runCtasFromUpdateTest();
+    }
+    finally {
+      // make sure we revert these to defaults
+      UpdateId.testingUseCtasDuringUpgrade = false;
+      UpdateField.testingUseCtasDuringUpgrade = false;
+    }
+  }
+
+
+  @Test
+  public void testDoCtasFromUpdate() {
+    assertFalse(UpdateId.testingUseCtasDuringUpgrade);
+    assertFalse(UpdateField.testingUseCtasDuringUpgrade);
+
+    try {
+      UpdateId.testingUseCtasDuringUpgrade = true;
+      UpdateField.testingUseCtasDuringUpgrade = true;
+
+      runCtasFromUpdateTest();
+    }
+    finally {
+      // make sure we revert these to defaults
+      UpdateId.testingUseCtasDuringUpgrade = false;
+      UpdateField.testingUseCtasDuringUpgrade = false;
+    }
+  }
+
+
+  @Test
+  public void testDoCtasFromUpdateVerifyAllRecordsAreKept() throws Exception {
+    assertFalse(UpdateId.testingUseCtasDuringUpgrade);
+    assertFalse(UpdateField.testingUseCtasDuringUpgrade);
+
+    try {
+      UpdateId.testingUseCtasDuringUpgrade = true;
+      UpdateField.testingUseCtasDuringUpgrade = true;
+
+      SelectStatement counter = select(count()).from(tableRef("WithDefaultValue"));
+
+      try (Connection connection = dataSource.getConnection()) {
+        SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+
+        int count1 = executor.executeQuery(connectionResources.sqlDialect().convertStatementToSQL(counter), connection,
+            resultSet -> resultSet.next() ? resultSet.getInt(1) : -1);
+
+        assertEquals(2, count1);
+
+        InsertStatement insert1 = insert().into(tableRef("WithDefaultValue")).fields(field("id"))
+            .from(select(field("id").cast().asDecimal(20).multiplyBy(literal(2)).plus(literal(4)).as("id")).from(tableRef("WithDefaultValue")));
+
+        InsertStatement insert2 = insert().into(tableRef("WithDefaultValue")).fields(field("id"))
+            .from(select(field("id").cast().asDecimal(20).multiplyBy(literal(2)).plus(literal(8)).as("id")).from(tableRef("WithDefaultValue")));
+
+        InsertStatement insert3 = insert().into(tableRef("WithDefaultValue")).fields(field("id"))
+            .from(select(field("id").cast().asDecimal(20).multiplyBy(literal(2)).plus(literal(32)).as("id")).from(tableRef("WithDefaultValue")));
+
+        executor.execute(connectionResources.sqlDialect().convertStatementToSQL(insert1), connection);
+        executor.execute(connectionResources.sqlDialect().convertStatementToSQL(insert2), connection);
+        executor.execute(connectionResources.sqlDialect().convertStatementToSQL(insert3), connection);
+
+        int count2 = executor.executeQuery(connectionResources.sqlDialect().convertStatementToSQL(counter), connection,
+            resultSet -> resultSet.next() ? resultSet.getInt(1) : -1);
+
+        assertEquals(16, count2);
+      }
+
+      runCtasFromUpdateTest();
+
+      try (Connection connection = dataSource.getConnection()) {
+        SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+
+        int count = executor.executeQuery(connectionResources.sqlDialect().convertStatementToSQL(counter), connection,
+            resultSet -> resultSet.next() ? resultSet.getInt(1) : -1);
+
+        assertEquals(16, count);
+      }
+    }
+    finally {
+      // make sure we revert these to defaults
+      UpdateId.testingUseCtasDuringUpgrade = false;
+      UpdateField.testingUseCtasDuringUpgrade = false;
+    }
+  }
+
+
+  private void runCtasFromUpdateTest() {
+    upgradeConfigAndContext.setSchemaChangeToSchemaAdaptor(new UpdateToCtasAdaptor());
+
+    Table expectedTable = table("WithDefaultValue")
+        .columns(
+            column("anotherValue", DataType.STRING, 10),
+            column("version", DataType.INTEGER).defaultValue("0"));
+
+    Schema expected = replaceTablesInSchema(expectedTable);
+
+    verifyUpgrade(expected, List.of(UpdateId.class, DropPrimaryKey.class, AddColumn.class, UpdateField.class));
+  }
+
+
+  @Test
+  public void testUpdateOfMissingField() {
+    upgradeConfigAndContext.setSchemaChangeToSchemaAdaptor(new SchemaChangeToSchemaAdaptor() {
+      @Override
+      public List<SchemaChange> adapt(SchemaChange change, Schema schema) {
+        if (change instanceof ExecuteStatement) {
+          ExecuteStatement executeStatement = (ExecuteStatement) change;
+          Statement statement = executeStatement.getStatement();
+          if (statement instanceof UpdateStatement) {
+            UpdateStatement updateStatement = (UpdateStatement) statement;
+            if (updateStatement.getFields().equals(List.of(literal("NEW").as("missingColumn")))) {
+              // translate the UPDATE from UpdateMissingField into a DELETE, avoiding the missing field
+              return List.of(new ExecuteStatement(DeleteStatement.delete(tableRef("WithDefaultValue")).build()));
+            }
+          }
+        }
+        return SchemaChangeToSchemaAdaptor.super.adapt(change, schema);
+      }
+    });
+
+    Table expectedTable = table("WithDefaultValue")
+        .columns(
+            column("anotherValue", DataType.STRING, 10),
+            column("version", DataType.INTEGER).defaultValue("0"));
+
+    Schema expected = replaceTablesInSchema(expectedTable);
+
+    // this will fail, if UPDATE from UpdateMissingField is run; but will succeed, if translation to a DELETE is made
+    verifyUpgrade(expected, List.of(UpdateId.class, DropPrimaryKey.class, UpdateMissingField.class, AddColumn.class, UpdateField.class));
+  }
+
+
+  @Test
+  public void testUpdateOfMissingFieldThrowingException() {
+    Table expectedTable = table("WithDefaultValue")
+        .columns(
+            column("anotherValue", DataType.STRING, 10),
+            column("version", DataType.INTEGER).defaultValue("0"));
+
+    Schema expected = replaceTablesInSchema(expectedTable);
+
+    // this will fail, because UPDATE from UpdateMissingField is run
+    RuntimeSqlException exception = assertThrows(org.alfasoftware.morf.jdbc.RuntimeSqlException.class,
+        () -> verifyUpgrade(expected, List.of(UpdateId.class, DropPrimaryKey.class, UpdateMissingField.class, AddColumn.class, UpdateField.class)));
+
+    assertThat(exception.getMessage(), containsString("Error executing SQL"));
+    assertThat(exception.getMessage(), containsString("UPDATE WithDefaultValue SET missingColumn"));
+  }
+
+
   /**
    * Helper to manipulate the test schema - replaces the tables in it with the ones provided. (By name)
    *
@@ -1303,7 +1481,7 @@ public class TestDatabaseUpgradeIntegration {
    * @param upgradeSteps The upgrade steps to test
    */
   private void verifyUpgrade(Schema expectedSchema, List<Class<? extends UpgradeStep>> upgradeSteps) {
-    Upgrade.performUpgrade(expectedSchema, upgradeSteps, connectionResources, viewDeploymentValidator);
+    Upgrade.performUpgrade(expectedSchema, upgradeSteps, connectionResources, upgradeConfigAndContext, viewDeploymentValidator);
     compareSchema(expectedSchema);
   }
 

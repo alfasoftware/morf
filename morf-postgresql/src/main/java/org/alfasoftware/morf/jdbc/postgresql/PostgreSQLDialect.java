@@ -432,6 +432,7 @@ class PostgreSQLDialect extends SqlDialect {
   public Collection<String> renameTableStatements(Table from, Table to) {
     Iterable<String> renameTable = ImmutableList.of("ALTER TABLE " + schemaNamePrefix(from) + from.getName() + " RENAME TO " + to.getName());
 
+    // Important: PK does not get dropped upon rename!
     Iterable<String> renamePk = SchemaUtils.primaryKeysForTable(from).isEmpty()
         ? ImmutableList.of()
         : renameIndexStatements(from, from.getName() + "_pk", to.getName() + "_pk");
