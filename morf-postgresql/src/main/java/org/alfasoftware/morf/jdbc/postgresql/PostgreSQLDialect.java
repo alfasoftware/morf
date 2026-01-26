@@ -522,7 +522,7 @@ class PostgreSQLDialect extends SqlDialect {
 
   @Override
   protected String getSqlFrom(BlobFieldLiteral field) {
-    return String.format("E'\\x%s'", field.getValue());
+    return String.format("decode('%s','hex')", field.getValue());
   }
 
   @Override
@@ -1028,4 +1028,5 @@ class PostgreSQLDialect extends SqlDialect {
             .filter(instanceOf(PostgreSQLMetaDataProvider.class))
             .map(PostgreSQLMetaDataProvider.class::cast);
   }
+
 }

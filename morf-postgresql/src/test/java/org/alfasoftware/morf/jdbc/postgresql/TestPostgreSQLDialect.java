@@ -567,7 +567,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedBlobLiteral(String value) {
-    return String.format("E'\\x%s'", value);
+    return String.format("decode('%s','hex')", value);
   }
 
 
@@ -1596,3 +1596,4 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return "UPDATE testschema.Table SET field = TRANSLATE(field, '1', 'A')";
   }
 }
+
