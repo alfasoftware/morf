@@ -4,7 +4,7 @@
 
   <groupId>org.alfasoftware</groupId>
   <artifactId>morf-parent</artifactId>
-  <version>2.28.0</version>
+  <version>2.28.1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Morf</name>
@@ -47,7 +47,7 @@
     <checkstyle.version>8.12</checkstyle.version>
 
     <!-- dependency versions -->
-    <commons-lang3.version>3.8</commons-lang3.version>
+    <commons-lang3.version>3.18.0</commons-lang3.version>
     <commons-codec.version>1.15</commons-codec.version>
     <commons-logging.version>1.2</commons-logging.version>
     <guava.version>32.0.0-jre</guava.version>
@@ -513,7 +513,7 @@
     <connection>scm:git:https://github.com/alfasoftware/morf.git</connection>
     <developerConnection>scm:git:git@github.com:alfasoftware/morf.git</developerConnection>
     <url>https://github.com/alfasoftware/morf</url>
-    <tag>2.28.0</tag>
+    <tag>2.20.0</tag>
   </scm>
   
 </project>

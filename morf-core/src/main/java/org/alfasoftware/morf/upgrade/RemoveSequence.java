@@ -15,12 +15,13 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import com.google.common.collect.ImmutableList;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.upgrade.adapt.AugmentedSchema;
 import org.alfasoftware.morf.upgrade.adapt.FilteredSchema;
+
+import com.google.common.collect.ImmutableList;
 
 
 /**
@@ -103,5 +104,11 @@ public class RemoveSequence implements SchemaChange {
      */
     public Sequence getSequence() {
         return sequenceToBeRemoved;
+    }
+
+
+    @Override
+    public String toString() {
+      return "RemoveSequence [sequenceToBeRemoved=" + sequenceToBeRemoved + "]";
     }
 }

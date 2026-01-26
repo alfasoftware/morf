@@ -80,6 +80,7 @@ public class TestDatabaseUpgradePathValidationService {
 
   @After
   public void tearDown() {
+    dropUpgradeStatusTable();
     schemaManager.invalidateCache();
   }
 
@@ -144,3 +145,4 @@ public class TestDatabaseUpgradePathValidationService {
     sqlScriptExecutorProvider.get().execute(connectionResources.sqlDialect().convertStatementToSQL(insertIntoUpgradeAudit));
   }
 }
+

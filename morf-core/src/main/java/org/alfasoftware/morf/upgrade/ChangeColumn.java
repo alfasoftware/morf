@@ -15,8 +15,14 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import com.google.common.collect.ImmutableMultimap;
-import com.google.common.collect.Multimap;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
@@ -29,13 +35,8 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.adapt.AlteredTable;
 import org.alfasoftware.morf.upgrade.adapt.TableOverrideSchema;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
+import com.google.common.collect.ImmutableMultimap;
+import com.google.common.collect.Multimap;
 
 /**
  * {@link SchemaChange} which consists of changing an existing column
@@ -45,6 +46,17 @@ import java.util.stream.Collectors;
  */
 public class ChangeColumn implements SchemaChange {
 
+  /**
+   * A map of the supported data type transitions.
+   *
+   * <p>Each of the transitions here MUST be supported by a test in TestDatabaseUpgradeIntegration.</p>
+   *
+   * Transitions do not have to be reversible.
+   */
+  private static final Multimap<DataType,DataType> ALLOWED_DATA_TYPE_CHANGES = ImmutableMultimap.<DataType,DataType>builder()
+    .put(DataType.DECIMAL, DataType.BIG_INTEGER) // Tested by testChangeColumnDataTypeAndChangeToPrimaryKey
+    .build();
+
   /** The table to change **/
   private final String tableName;
 
@@ -53,17 +65,6 @@ public class ChangeColumn implements SchemaChange {
 
   /** The end definition for the column **/
   private final Column toColumn;
-
-  /**
-   * A map of the supported data type transitions.
-   *
-   * <p>Each of the transitions here MUST be supported by a test in TestDatabaseUpgradeIntegration.</p>
-   *
-   * Transitions do not have to be reversible.
-   */
-  private final Multimap<DataType,DataType> allowedDataTypeChanges = ImmutableMultimap.<DataType,DataType>builder()
-    .put(DataType.DECIMAL, DataType.BIG_INTEGER) // Tested by testChangeColumnDataTypeAndChangeToPrimaryKey
-    .build();
 
   /**
    * @param tableName the name of the table to change
@@ -168,7 +169,7 @@ public class ChangeColumn implements SchemaChange {
     }
 
     // look up what target types we are allowed to change to
-    Collection<DataType> allowableTargetTypes = allowedDataTypeChanges.get(fromColumn.getType());
+    Collection<DataType> allowableTargetTypes = ALLOWED_DATA_TYPE_CHANGES.get(fromColumn.getType());
 
     if (!allowableTargetTypes.contains(toColumn.getType())) {
       throw new IllegalArgumentException(String.format("Attempting to change the data type of [%s]. Changes from %s to %s are not supported.", fromColumn.getName(), fromColumn.getType(), toColumn.getType()));
@@ -296,5 +297,11 @@ public class ChangeColumn implements SchemaChange {
    */
   public Column getToColumn() {
     return toColumn;
+  }
+
+
+  @Override
+  public String toString() {
+    return "ChangeColumn [tableName=" + tableName + ", fromColumn=" + fromColumn + ", toColumn=" + toColumn + "]";
   }
 }

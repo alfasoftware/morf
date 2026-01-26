@@ -225,4 +225,11 @@ public class ChangePrimaryKeyColumns implements SchemaChange {
   public List<String> getNewPrimaryKeyColumns() {
     return newPrimaryKeyColumns;
   }
+
+
+  @Override
+  public String toString() {
+    return "ChangePrimaryKeyColumns [tableName=" + tableName + ", oldPrimaryKeyColumns=" + oldPrimaryKeyColumns
+        + ", newPrimaryKeyColumns=" + newPrimaryKeyColumns + "]";
+  }
 }
