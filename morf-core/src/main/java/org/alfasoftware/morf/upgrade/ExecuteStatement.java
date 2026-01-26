@@ -50,7 +50,7 @@ public class ExecuteStatement implements SchemaChange {
 
   /**
    * {@inheritDoc}
-   * 
+   *
    * @see org.alfasoftware.morf.upgrade.SchemaChange#accept(org.alfasoftware.morf.upgrade.SchemaChangeVisitor)
    */
   @Override
@@ -100,5 +100,11 @@ public class ExecuteStatement implements SchemaChange {
    */
   public Statement getStatement() {
     return statement;
+  }
+
+
+  @Override
+  public String toString() {
+    return "ExecuteStatement [statement=" + statement + "]";
   }
 }
