@@ -73,6 +73,12 @@ class H2Dialect extends SqlDialect {
   }
 
 
+  @Override
+  protected String databaseTypeIdentifier() {
+    return H2.IDENTIFIER;
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#tableDeploymentStatements(org.alfasoftware.morf.metadata.Table)
    */
@@ -672,18 +678,6 @@ class H2Dialect extends SqlDialect {
   protected String tableNameWithSchemaName(TableReference tableRef) {
     if (!StringUtils.isEmpty(tableRef.getDblink())) throw new IllegalStateException("DB Links are not supported in the H2 dialect. Found dbLink=" + tableRef.getDblink() + " for tableNameWithSchemaName=" + super.tableNameWithSchemaName(tableRef));
     return super.tableNameWithSchemaName(tableRef);
-  }
-
-
-  @Override
-  protected String getSqlFrom(PortableSqlFunction function) {
-    return super.getSqlForPortableFunction(function.getFunctionForDatabaseType(H2.IDENTIFIER));
-  }
-
-
-  @Override
-  protected String getSqlFrom(PortableSqlExpression portableSqlExpression) {
-    return super.getSqlForPortableExpression(portableSqlExpression.getExpressionForDatabaseType(H2.IDENTIFIER));
   }
 
 

@@ -131,6 +131,12 @@ class OracleDialect extends SqlDialect {
   }
 
 
+  @Override
+  protected String databaseTypeIdentifier() {
+    return Oracle.IDENTIFIER;
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#truncateTableStatements(org.alfasoftware.morf.metadata.Table)
    */
@@ -1715,17 +1721,6 @@ class OracleDialect extends SqlDialect {
   protected String getSqlFrom(ExceptSetOperator operator) {
     return String.format(" MINUS %s", // MINUS has been supported by Oracle for a long time and the EXCEPT support was added in 21c
         getSqlFrom(operator.getSelectStatement()));
-  }
-
-
-  @Override
-  protected String getSqlFrom(PortableSqlFunction function) {
-    return super.getSqlForPortableFunction(function.getFunctionForDatabaseType(Oracle.IDENTIFIER));
-  }
-
-  @Override
-  protected String getSqlFrom(PortableSqlExpression portableSqlExpression) {
-    return super.getSqlForPortableExpression(portableSqlExpression.getExpressionForDatabaseType(Oracle.IDENTIFIER));
   }
 
 

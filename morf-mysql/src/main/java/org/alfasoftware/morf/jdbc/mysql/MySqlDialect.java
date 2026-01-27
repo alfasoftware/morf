@@ -89,6 +89,12 @@ class MySqlDialect extends SqlDialect {
   }
 
 
+  @Override
+  protected String databaseTypeIdentifier() {
+    return MySql.IDENTIFIER;
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#tableDeploymentStatements(org.alfasoftware.morf.metadata.Table)
    */
@@ -986,18 +992,6 @@ class MySqlDialect extends SqlDialect {
   @Override
   protected String getSqlFrom(ExceptSetOperator operator) {
     throw new IllegalStateException("EXCEPT set operator is not supported in the MySQL dialect");
-  }
-
-
-  @Override
-  protected String getSqlFrom(PortableSqlFunction function) {
-    return super.getSqlForPortableFunction(function.getFunctionForDatabaseType(MySql.IDENTIFIER));
-  }
-
-
-  @Override
-  protected String getSqlFrom(PortableSqlExpression portableSqlExpression) {
-    return super.getSqlForPortableExpression(portableSqlExpression.getExpressionForDatabaseType(MySql.IDENTIFIER));
   }
 
 

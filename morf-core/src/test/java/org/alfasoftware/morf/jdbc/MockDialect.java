@@ -93,7 +93,13 @@ public class MockDialect extends SqlDialect {
 
   }
 
-  
+
+  @Override
+  protected String databaseTypeIdentifier() {
+    return databaseType.identifier();
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#internalTableDeploymentStatements(org.alfasoftware.morf.metadata.Table)
    */
@@ -394,11 +400,11 @@ public class MockDialect extends SqlDialect {
   }
 
 
-
   @Override
   protected String getSqlFrom(PortableSqlFunction function) {
     throw new IllegalStateException("Portable functions are not supported in the Mock dialect");
   }
+
 
   @Override
   protected String getSqlFrom(PortableSqlExpression expression) {

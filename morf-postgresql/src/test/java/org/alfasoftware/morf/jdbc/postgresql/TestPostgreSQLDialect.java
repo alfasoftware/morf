@@ -1600,6 +1600,6 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedPortableSqlExpression() {
     // TODO
-    return "SOME SQL HERE";
+    return "SELECT CONCAT(params->>'name', 'B') FROM testschema.Test";
   }
 }

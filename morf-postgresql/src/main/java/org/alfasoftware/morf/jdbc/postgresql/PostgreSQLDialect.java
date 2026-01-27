@@ -72,6 +72,12 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
+  protected String databaseTypeIdentifier() {
+    return PostgreSQL.IDENTIFIER;
+  }
+
+
+  @Override
   public DatabaseType getDatabaseType() {
     return DatabaseType.Registry.findByIdentifier(PostgreSQL.IDENTIFIER);
   }
@@ -951,18 +957,6 @@ class PostgreSQLDialect extends SqlDialect {
       return sqlBuilder.toString();
     }
     return super.getSqlFrom(statement);
-  }
-
-
-  @Override
-  protected String getSqlFrom(PortableSqlFunction function) {
-    return super.getSqlForPortableFunction(function.getFunctionForDatabaseType(PostgreSQL.IDENTIFIER));
-  }
-
-
-  @Override
-  protected String getSqlFrom(PortableSqlExpression portableSqlExpression) {
-    return super.getSqlForPortableExpression(portableSqlExpression.getExpressionForDatabaseType(PostgreSQL.IDENTIFIER));
   }
 
 

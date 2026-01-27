@@ -1381,7 +1381,7 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedPortableSqlExpression() {
     // TODO
-    return "SOME SQL HERE";
+    return "SELECT JSON_VALUE(payload, '$.type') AS event_type FROM TESTSCHEMA.Test";
   }
 
 

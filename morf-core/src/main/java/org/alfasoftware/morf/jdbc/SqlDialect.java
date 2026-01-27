@@ -191,6 +191,13 @@ public abstract class SqlDialect {
 
 
   /**
+   * The database type for the dialect implementation.
+   * @return The database type identifier
+   */
+  protected abstract String databaseTypeIdentifier();
+
+
+  /**
    * Creates SQL to deploy a database table and its associated indexes.
    *
    * @param table The meta data for the table to deploy.
@@ -4471,16 +4478,23 @@ public abstract class SqlDialect {
    * Converts the provided portable function into SQL. Each dialect will attempt to retrieve the applicable
    * function and arguments, throwing an unsupported operation exception if one is not found.
    *
-   * @param portableSqlFunction the function to convert
+   * @param function the function to convert
    * @return the resulting SQL
    */
-  protected abstract String getSqlFrom(PortableSqlFunction portableSqlFunction);
+  protected String getSqlFrom(PortableSqlFunction function) {
+    return getSqlForPortableFunction(function.getFunctionForDatabaseType(databaseTypeIdentifier()));
+  }
 
 
   /**
-   * TODO
+   * Converts the provided portable expression into SQL. Each dialect will attempt to retrieve the applicable
+   * expression, throwing an unsupported operation exception if one is not found.
+   * @param portableSqlExpression
+   * @return the resulting SQL
    */
-  protected abstract String getSqlFrom(PortableSqlExpression portableSqlExpression);
+  protected String getSqlFrom(PortableSqlExpression portableSqlExpression) {
+    return getSqlForPortableExpression(portableSqlExpression.getExpressionForDatabaseType(databaseTypeIdentifier()));
+  }
 
 
   /**
@@ -4518,7 +4532,7 @@ public abstract class SqlDialect {
         .map(this::getSqlFrom)
         .collect(toList());
 
-    return Joiner.on(" ").join(arguments);
+    return Joiner.on("").join(arguments);
   }
 
 

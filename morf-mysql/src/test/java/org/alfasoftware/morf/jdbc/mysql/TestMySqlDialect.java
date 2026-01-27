@@ -1428,6 +1428,6 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedPortableSqlExpression() {
     // TODO
-    return "SOME SQL HERE";
+    return "SELECT IF(active = 1, 'yes', 'no') field FROM Test";
   }
 }

@@ -1974,6 +1974,6 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedPortableSqlExpression() {
     // TODO
-    return "SOME SQL HERE";
+    return "SELECT ROWNUM field FROM TESTSCHEMA.Test";
   }
 }

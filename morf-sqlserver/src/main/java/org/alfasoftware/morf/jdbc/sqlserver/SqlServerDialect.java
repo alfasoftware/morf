@@ -115,6 +115,12 @@ class SqlServerDialect extends SqlDialect {
   }
 
 
+  @Override
+  protected String databaseTypeIdentifier() {
+    return SqlServer.IDENTIFIER;
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#tableDeploymentStatements(org.alfasoftware.morf.metadata.Table)
    */
@@ -1169,25 +1175,6 @@ class SqlServerDialect extends SqlDialect {
   @Override
   protected String getSqlForLastDayOfMonth(AliasedField date) {
     return "DATEADD(s,-1,DATEADD(mm, DATEDIFF(m,0," + getSqlFrom(date) + ")+1,0))";
-  }
-
-
-  @Override
-  protected String getSqlFrom(PortableSqlFunction function) {
-    return super.getSqlForPortableFunction(function.getFunctionForDatabaseType(SqlServer.IDENTIFIER));
-  }
-
-
-  @Override
-  protected String getSqlFrom(PortableSqlExpression portableSqlExpression) {
-    List<AliasedField> expression = portableSqlExpression.getExpressionForDatabaseType(SqlServer.IDENTIFIER);
-
-    List<String> arguments = expression
-        .stream()
-        .map(this::getSqlFrom)
-        .collect(toList());
-
-    return Joiner.on(", ").join(arguments);
   }
 
 

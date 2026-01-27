@@ -1514,6 +1514,6 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedPortableSqlExpression() {
     // TODO
-    return "SOME SQL HERE";
+    return "SELECT TOP 5 field, field2 FROM TESTSCHEMA.Test";
   }
 }
