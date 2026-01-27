@@ -1,10 +1,17 @@
 package org.alfasoftware.morf.sql.element;
 
+import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.upgrade.SchemaAndDataChangeVisitor;
 import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
+
+/**
+ * Provides a representation of native SQL to be used in a {@link Statement}
+ *
+ * @author Copyright (c) Alfa Financial Software Ltd. 2026
+ */
 public class NativeExpression extends AliasedField{
 
   /**
@@ -13,30 +20,46 @@ public class NativeExpression extends AliasedField{
   private final String expression;
 
 
+  /**
+   * Constructs a new {@linkplain NativeExpression} with a string as the SQL.
+   * @param expression
+   */
   public NativeExpression(String expression) {
     super();
     this.expression = expression;
   }
 
-
+  /**
+   * Constructs a new {@linkplain NativeExpression} with an alias and a string as the SQL.
+   * @param alias
+   * @param expression
+   */
   protected NativeExpression(final String alias, String expression) {
     super(alias);
     this.expression = expression;
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.sql.element.AliasedField#shallowCopy(String)
+   */
   @Override
   protected AliasedField shallowCopy(String aliasName) {
     return new NativeExpression(aliasName, this.expression);
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.sql.element.AliasedField#deepCopyInternal(DeepCopyTransformation)
+   */
   @Override
   protected AliasedFieldBuilder deepCopyInternal(DeepCopyTransformation transformer) {
     return new NativeExpression(this.getAlias(), this.getExpression());
   }
 
-
+  /**
+   * @see org.alfasoftware.morf.sql.element.AliasedField#accept(SchemaAndDataChangeVisitor)
+   */
   @Override
   public void accept(SchemaAndDataChangeVisitor visitor) {
     visitor.visit(this);
@@ -44,7 +67,7 @@ public class NativeExpression extends AliasedField{
 
 
   /**
-   * @return the value
+   * @return the expression value
    */
   public String getExpression() {
     return expression;

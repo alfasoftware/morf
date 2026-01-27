@@ -31,6 +31,7 @@ import static org.alfasoftware.morf.sql.MergeStatement.InputField.inputField;
 import static org.alfasoftware.morf.sql.SqlUtils.CaseStatementBuilder.nativeSql;
 import static org.alfasoftware.morf.sql.SqlUtils.blobLiteral;
 import static org.alfasoftware.morf.sql.SqlUtils.bracket;
+import static org.alfasoftware.morf.sql.SqlUtils.caseStatement;
 import static org.alfasoftware.morf.sql.SqlUtils.cast;
 import static org.alfasoftware.morf.sql.SqlUtils.concat;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
@@ -5170,27 +5171,51 @@ public abstract class AbstractSqlDialectTest {
   }
 
 
+  /**
+   * Tests {@link PortableSqlExpression} with various complex queries, making use
+   * of the {@link org.alfasoftware.morf.sql.element.NativeExpression} element.
+   *
+   * @throws SQLException when a database access error occurs
+   */
   @Test
   public void testPortableExpression() {
     PortableSqlExpression.Builder expressionBuild = PortableSqlExpression.builder()
             .withExpressionForDatabaseType(
                     "PGSQL",
-                    concat(nativeSql("params->>'name'"), new FieldLiteral("B")))
+                    concat(
+                        new FieldReference("first_name"),
+                        new FieldLiteral(" "),
+                        new FieldReference("last_name"),
+                        new FieldLiteral(" ("),
+                        nativeSql("params->>'role'"),
+                        new FieldLiteral(")")
+                    ).as("display_name"))
             .withExpressionForDatabaseType(
                     "H2",
                     nativeSql("JSON_VALUE(payload, '$.type') AS event_type"))
             .withExpressionForDatabaseType(
                     "ORACLE",
-                    nativeSql("ROWNUM").as("row_number"),
+                    new CaseStatement(new FieldReference(FLOAT_FIELD), new WhenCondition(
+                        eq(new FieldReference(CHAR_FIELD),  new FieldLiteral('Y')),
+                        new FieldReference(INT_FIELD))).build(),
+                    nativeSql(" ROWNUM ").as("row_number"),
                     new FieldReference("field"))
             .withExpressionForDatabaseType(
                     "MY_SQL",
-                    nativeSql("IF(active = 1, 'yes', 'no')").as("active"),
+                    nativeSql("IF(active = 1, 'yes', 'no') ").as("active"),
                     new FieldReference("field"))
             .withExpressionForDatabaseType(
-                    "SQL_SERVER",
-                    nativeSql("TOP 5 field"),
-                    new FieldReference("field2"));
+                "SQL_SERVER",
+                nativeSql(
+                    "CASE " +
+                        "WHEN status = 'A' THEN 'ACTIVE'"),
+                        nativeSql(" WHEN "),
+                        new FieldReference("status"),
+                        nativeSql(" = "),
+                        new FieldLiteral("I"),
+                        nativeSql("THEN 'INACTIVE' " +
+                        "ELSE 'UNKNOWN' END").as("status_label")
+            );
 
     SelectStatement testStatement = SelectStatement.select(expressionBuild).from(TEST_TABLE).build();
 

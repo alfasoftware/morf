@@ -400,12 +400,18 @@ public class MockDialect extends SqlDialect {
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(PortableSqlFunction)
+   */
   @Override
   protected String getSqlFrom(PortableSqlFunction function) {
     throw new IllegalStateException("Portable functions are not supported in the Mock dialect");
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(PortableSqlExpression)
+   */
   @Override
   protected String getSqlFrom(PortableSqlExpression expression) {
     throw new IllegalStateException("Portable expressions are not supported in the Mock dialect");

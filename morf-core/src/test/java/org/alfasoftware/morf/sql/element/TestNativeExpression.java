@@ -15,6 +15,11 @@ import com.google.common.collect.ImmutableList;
 import static org.alfasoftware.morf.sql.SqlUtils.CaseStatementBuilder.nativeSql;
 import static org.junit.Assert.assertEquals;
 
+/**
+ * Tests for {@link NativeExpression}s
+ *
+ * @author Copyright (c) Alfa Financial Software Ltd. 2026
+ */
 @RunWith(Parameterized.class)
 public class TestNativeExpression extends AbstractAliasedFieldTest<NativeExpression> {
 

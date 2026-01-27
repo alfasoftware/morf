@@ -1505,15 +1505,20 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   }
 
 
+  /**
+   * @see AbstractSqlDialectTest#expectedCurrValForSequence()
+   */
   @Override
   protected String expectedPortableStatement() {
     return "UPDATE TESTSCHEMA.Table SET field = SOUNDEX(field, '5', 'E')";
   }
 
 
+  /**
+   * @see AbstractSqlDialectTest#expectedPortableSqlExpression()
+   */
   @Override
   protected String expectedPortableSqlExpression() {
-    // TODO
-    return "SELECT TOP 5 field, field2 FROM TESTSCHEMA.Test";
+    return "SELECT CASE WHEN status = 'A' THEN 'ACTIVE' WHEN status = 'I'THEN 'INACTIVE' ELSE 'UNKNOWN' END FROM TESTSCHEMA.Test";
   }
 }

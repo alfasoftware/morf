@@ -1419,15 +1419,20 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   }
 
 
+  /**
+   * @see AbstractSqlDialectTest#expectedPortableStatement()
+   */
   @Override
   protected String expectedPortableStatement() {
     return "UPDATE Table SET field = REVERSE(field, '4', 'D')";
   }
 
 
+  /**
+   * @see AbstractSqlDialectTest#expectedPortableSqlExpression()
+   */
   @Override
   protected String expectedPortableSqlExpression() {
-    // TODO
     return "SELECT IF(active = 1, 'yes', 'no') field FROM Test";
   }
 }

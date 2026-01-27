@@ -1965,15 +1965,20 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   }
 
 
+  /**
+   * @see AbstractSqlDialectTest#expectedCurrValForSequence()
+   */
   @Override
   protected String expectedPortableStatement() {
     return "UPDATE TESTSCHEMA.Table SET field = REGEX_REPLACE(field, N'3', N'C')";
   }
 
 
+  /**
+   * @see AbstractSqlDialectTest#expectedPortableSqlExpression()
+   */
   @Override
   protected String expectedPortableSqlExpression() {
-    // TODO
-    return "SELECT ROWNUM field FROM TESTSCHEMA.Test";
+    return "SELECT CASE WHEN (charField = N'Y') THEN intField ELSE floatField END ROWNUM field FROM TESTSCHEMA.Test";
   }
 }

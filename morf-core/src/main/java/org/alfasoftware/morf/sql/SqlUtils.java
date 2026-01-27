@@ -724,9 +724,8 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
 
 
     /**
-     * TODO
-     * @param expression
-     * @return
+     * @param expression native SQL
+     * @return {@link NativeExpression}
      */
     public static NativeExpression nativeSql(String expression) {
       return new NativeExpression(expression);
