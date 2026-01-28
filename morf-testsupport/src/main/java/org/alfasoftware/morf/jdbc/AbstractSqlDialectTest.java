@@ -5174,8 +5174,6 @@ public abstract class AbstractSqlDialectTest {
   /**
    * Tests {@link PortableSqlExpression} with various complex queries, making use
    * of the {@link org.alfasoftware.morf.sql.element.NativeExpression} element.
-   *
-   * @throws SQLException when a database access error occurs
    */
   @Test
   public void testPortableExpression() {
