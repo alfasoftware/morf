@@ -104,7 +104,10 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
   /**
    * The optional row limit for this SELECT statement.
    *
-   * TODO make final
+   * <p>This field cannot be made final while mutable DSL is supported,
+   * as the {@link #limit(int)} method requires reassignment via
+   * {@link AbstractSelectStatement#copyOnWriteOrMutate}.
+   * See also {@link #having} and {@link #forUpdate} which have the same constraint.</p>
    */
   private Optional<Integer> limit;
 

@@ -979,18 +979,7 @@ public abstract class SqlDialect {
     appendUnionSet(result, stmt);
     appendExceptSet(result, stmt);
     appendOrderBy(result, stmt);
-
-    // Add LIMIT clause if present
-    if (stmt.getLimit().isPresent()) {
-      Optional<String> limitSql = getSelectLimitSuffix(stmt.getLimit().get());
-      if (limitSql.isPresent()) {
-        result.append(" ").append(limitSql.get());
-      } else {
-        throw new UnsupportedOperationException(
-          "LIMIT is not supported for SELECT statements in " + getDatabaseType().identifier()
-        );
-      }
-    }
+    appendLimit(result, stmt);
 
     if (stmt.isForUpdate()) {
       if (stmt.isDistinct() || !stmt.getGroupBys().isEmpty() || !stmt.getJoins().isEmpty()) {
@@ -1139,6 +1128,26 @@ public abstract class SqlDialect {
         result.append(getSqlForOrderByField(currentOrderByField));
 
         firstOrderByField = false;
+      }
+    }
+  }
+
+
+  /**
+   * appends limit clause to the result
+   *
+   * @param result limit clause will be appended here
+   * @param stmt statement with limit clause
+   */
+  protected void appendLimit(StringBuilder result, SelectStatement stmt) {
+    if (stmt.getLimit().isPresent()) {
+      Optional<String> limitSql = getSelectLimitSuffix(stmt.getLimit().get());
+      if (limitSql.isPresent()) {
+        result.append(" ").append(limitSql.get());
+      } else {
+        throw new UnsupportedOperationException(
+          "LIMIT is not supported for SELECT statements in " + getDatabaseType().identifier()
+        );
       }
     }
   }

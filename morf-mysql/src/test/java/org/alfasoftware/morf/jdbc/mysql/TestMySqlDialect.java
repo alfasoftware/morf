@@ -1435,42 +1435,63 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   }
 
 
+  /**
+   * MySQL does not support LIMIT - returning null causes tests to be skipped via assumeTrue
+   */
   @Override
   protected String expectedSelectWithOrderByAndLimit() {
     return null;
   }
 
 
+  /**
+   * MySQL does not support LIMIT - returning null causes tests to be skipped via assumeTrue
+   */
   @Override
   protected String expectedSelectWithLimitInSubquery() {
     return null;
   }
 
 
+  /**
+   * MySQL does not support LIMIT - returning null causes tests to be skipped via assumeTrue
+   */
   @Override
   protected String expectedSelectWithWhereAndLimit() {
     return null;
   }
 
 
+  /**
+   * MySQL does not support LIMIT - returning null causes tests to be skipped via assumeTrue
+   */
   @Override
   protected String expectedSelectWithDistinctAndLimit() {
     return null;
   }
 
 
+  /**
+   * MySQL does not support LIMIT - returning null causes tests to be skipped via assumeTrue
+   */
   @Override
   protected String expectedSelectWithGroupByAndLimit() {
     return null;
   }
 
 
+  /**
+   * MySQL does not support LIMIT - returning null causes tests to be skipped via assumeTrue
+   */
   @Override
   protected String expectedSelectWithJoinAndLimit() {
     return null;
   }
 
 
+  /**
+   * MySQL does not support LIMIT - returning null causes tests to be skipped via assumeTrue
+   */
   @Override
   protected String expectedSelectWithOrderByWhereAndLimit() {
     return null;

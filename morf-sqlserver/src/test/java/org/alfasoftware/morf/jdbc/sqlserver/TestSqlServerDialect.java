@@ -1521,42 +1521,63 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   }
 
 
+  /**
+   * SQL Server does not support LIMIT - returning null causes tests to be skipped via assumeTrue
+   */
   @Override
   protected String expectedSelectWithOrderByAndLimit() {
     return null;
   }
 
 
+  /**
+   * SQL Server does not support LIMIT - returning null causes tests to be skipped via assumeTrue
+   */
   @Override
   protected String expectedSelectWithLimitInSubquery() {
     return null;
   }
 
 
+  /**
+   * SQL Server does not support LIMIT - returning null causes tests to be skipped via assumeTrue
+   */
   @Override
   protected String expectedSelectWithWhereAndLimit() {
     return null;
   }
 
 
+  /**
+   * SQL Server does not support LIMIT - returning null causes tests to be skipped via assumeTrue
+   */
   @Override
   protected String expectedSelectWithDistinctAndLimit() {
     return null;
   }
 
 
+  /**
+   * SQL Server does not support LIMIT - returning null causes tests to be skipped via assumeTrue
+   */
   @Override
   protected String expectedSelectWithGroupByAndLimit() {
     return null;
   }
 
 
+  /**
+   * SQL Server does not support LIMIT - returning null causes tests to be skipped via assumeTrue
+   */
   @Override
   protected String expectedSelectWithJoinAndLimit() {
     return null;
   }
 
 
+  /**
+   * SQL Server does not support LIMIT - returning null causes tests to be skipped via assumeTrue
+   */
   @Override
   protected String expectedSelectWithOrderByWhereAndLimit() {
     return null;
