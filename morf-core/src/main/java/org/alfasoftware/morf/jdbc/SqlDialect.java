@@ -980,6 +980,18 @@ public abstract class SqlDialect {
     appendExceptSet(result, stmt);
     appendOrderBy(result, stmt);
 
+    // Add LIMIT clause if present
+    if (stmt.getLimit().isPresent()) {
+      Optional<String> limitSql = getSelectLimitSuffix(stmt.getLimit().get());
+      if (limitSql.isPresent()) {
+        result.append(" ").append(limitSql.get());
+      } else {
+        throw new UnsupportedOperationException(
+          "LIMIT is not supported for SELECT statements in " + getDatabaseType().identifier()
+        );
+      }
+    }
+
     if (stmt.isForUpdate()) {
       if (stmt.isDistinct() || !stmt.getGroupBys().isEmpty() || !stmt.getJoins().isEmpty()) {
         throw new IllegalArgumentException("GROUP BY, JOIN or DISTINCT cannot be combined with FOR UPDATE (H2 limitations)");
@@ -1035,6 +1047,23 @@ public abstract class SqlDialect {
    */
   protected String getForUpdateSql() {
     return " FOR UPDATE";
+  }
+
+
+  /**
+   * Returns the SQL that specifies the row limit for SELECT statements, if any, for the dialect.
+   * Different databases have different syntax:
+   * <ul>
+   *   <li>PostgreSQL/H2: "LIMIT x"</li>
+   *   <li>Oracle: "FETCH FIRST x ROWS ONLY"</li>
+   *   <li>MySQL/SQL Server: not supported (returns Optional.empty())</li>
+   * </ul>
+   *
+   * @param limit The row limit.
+   * @return The SQL fragment, or Optional.empty() if not supported.
+   */
+  protected Optional<String> getSelectLimitSuffix(@SuppressWarnings("unused") int limit) {
+    return Optional.empty();
   }
 
 

@@ -20,6 +20,7 @@ import static org.alfasoftware.morf.util.DeepCopyTransformations.noTransformatio
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import org.alfasoftware.morf.sql.UnionSetOperator.UnionStrategy;
 import org.alfasoftware.morf.sql.element.AliasedField;
@@ -100,6 +101,13 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
    */
   private final List<Hint> hints;
 
+  /**
+   * The optional row limit for this SELECT statement.
+   *
+   * TODO make final
+   */
+  private Optional<Integer> limit;
+
   private int hashCode;
 
 
@@ -139,6 +147,7 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
     this.distinct = builder.distinct;
     this.having = builder.having;
     this.forUpdate = builder.forUpdate;
+    this.limit = builder.limit;
     if (AliasedField.immutableDslEnabled()) {
       this.groupBys = ImmutableList.copyOf(builder.groupBys);
       this.setOperators = ImmutableList.copyOf(builder.setOperators);
@@ -225,6 +234,7 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
       this.hints = Lists.newArrayList();
     }
     this.distinct = isDistinct;
+    this.limit = Optional.empty();
   }
 
 
@@ -350,6 +360,29 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
     return copyOnWriteOrMutate(
         (SelectStatementBuilder b) -> b.forUpdate(),
         () -> this.forUpdate = true
+    );
+  }
+
+
+  /**
+   * Limits the number of rows returned by this SELECT statement.
+   *
+   * <p>Note: This is not supported by all database platforms. MySQL and SQL Server will throw
+   * {@link UnsupportedOperationException} when attempting to generate SQL for a SELECT with LIMIT.</p>
+   *
+   * @param rowLimit the maximum number of rows to return (must be positive)
+   * @return a new select statement with the change applied.
+   * @throws IllegalArgumentException if rowLimit is less than 1
+   */
+  public SelectStatement limit(int rowLimit) {
+    return copyOnWriteOrMutate(
+        (SelectStatementBuilder b) -> b.limit(rowLimit),
+        () -> {
+          if (rowLimit < 1) {
+            throw new IllegalArgumentException("Limit must be positive, got: " + rowLimit);
+          }
+          this.limit = Optional.of(rowLimit);
+        }
     );
   }
 
@@ -639,6 +672,14 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
 
 
   /**
+   * @return the optional row limit for this SELECT statement.
+   */
+  public Optional<Integer> getLimit() {
+    return limit;
+  }
+
+
+  /**
    * {@inheritDoc}
    * @see org.alfasoftware.morf.sql.AbstractSelectStatement#deepCopy()
    */
@@ -678,6 +719,7 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
       result.append(" ").append(setOperator);
     }
     if (StringUtils.isNotEmpty(getAlias())) result.append(" AS ").append(getAlias());
+    if (limit != null && limit.isPresent()) result.append(" LIMIT ").append(limit.get());
     if (forUpdate) result.append(" (FOR UPDATE)");
     return result.toString();
   }
@@ -700,6 +742,7 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
     result = prime * result + (groupBys == null ? 0 : groupBys.hashCode());
     result = prime * result + (having == null ? 0 : having.hashCode());
     result = prime * result + (hints == null ? 0 : hints.hashCode());
+    result = prime * result + (limit == null ? 0 : limit.hashCode());
     result = prime * result + (setOperators == null ? 0 : setOperators.hashCode());
     return result;
   }
@@ -736,6 +779,11 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
       if (other.hints != null)
         return false;
     } else if (!hints.equals(other.hints))
+      return false;
+    if (limit == null) {
+      if (other.limit != null)
+        return false;
+    } else if (!limit.equals(other.limit))
       return false;
     if (setOperators == null) {
       if (other.setOperators != null)

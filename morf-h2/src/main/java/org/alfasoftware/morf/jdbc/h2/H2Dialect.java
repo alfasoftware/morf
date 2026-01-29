@@ -228,6 +228,12 @@ class H2Dialect extends SqlDialect {
   }
 
 
+  @Override
+  protected Optional<String> getSelectLimitSuffix(int limit) {
+    return Optional.of("LIMIT " + limit);
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#alterTableAddColumnStatements(org.alfasoftware.morf.metadata.Table, org.alfasoftware.morf.metadata.Column)
    */

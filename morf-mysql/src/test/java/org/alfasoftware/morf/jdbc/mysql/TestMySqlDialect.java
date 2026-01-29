@@ -46,6 +46,7 @@ import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.junit.Before;
+import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 
 import com.google.common.collect.ImmutableList;
@@ -1422,5 +1423,56 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedPortableStatement() {
     return "UPDATE Table SET field = REVERSE(field, '4', 'D')";
+  }
+
+
+  /**
+   * MySQL does not support LIMIT - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithLimit() {
+    return null;
+  }
+
+
+  @Override
+  protected String expectedSelectWithOrderByAndLimit() {
+    return null;
+  }
+
+
+  @Override
+  protected String expectedSelectWithLimitInSubquery() {
+    return null;
+  }
+
+
+  @Override
+  protected String expectedSelectWithWhereAndLimit() {
+    return null;
+  }
+
+
+  @Override
+  protected String expectedSelectWithDistinctAndLimit() {
+    return null;
+  }
+
+
+  @Override
+  protected String expectedSelectWithGroupByAndLimit() {
+    return null;
+  }
+
+
+  @Override
+  protected String expectedSelectWithJoinAndLimit() {
+    return null;
+  }
+
+
+  @Override
+  protected String expectedSelectWithOrderByWhereAndLimit() {
+    return null;
   }
 }

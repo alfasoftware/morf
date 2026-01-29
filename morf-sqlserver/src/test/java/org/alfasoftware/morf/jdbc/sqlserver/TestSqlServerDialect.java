@@ -30,6 +30,7 @@ import org.alfasoftware.morf.jdbc.AbstractSqlDialectTest;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.apache.commons.lang3.StringUtils;
+import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 
 import com.google.common.collect.ImmutableList;
@@ -1508,5 +1509,56 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedPortableStatement() {
     return "UPDATE TESTSCHEMA.Table SET field = SOUNDEX(field, '5', 'E')";
+  }
+
+
+  /**
+   * SQL Server does not support LIMIT - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithLimit() {
+    return null;
+  }
+
+
+  @Override
+  protected String expectedSelectWithOrderByAndLimit() {
+    return null;
+  }
+
+
+  @Override
+  protected String expectedSelectWithLimitInSubquery() {
+    return null;
+  }
+
+
+  @Override
+  protected String expectedSelectWithWhereAndLimit() {
+    return null;
+  }
+
+
+  @Override
+  protected String expectedSelectWithDistinctAndLimit() {
+    return null;
+  }
+
+
+  @Override
+  protected String expectedSelectWithGroupByAndLimit() {
+    return null;
+  }
+
+
+  @Override
+  protected String expectedSelectWithJoinAndLimit() {
+    return null;
+  }
+
+
+  @Override
+  protected String expectedSelectWithOrderByWhereAndLimit() {
+    return null;
   }
 }

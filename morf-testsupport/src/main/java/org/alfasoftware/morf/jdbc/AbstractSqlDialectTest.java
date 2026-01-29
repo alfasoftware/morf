@@ -102,6 +102,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -2328,6 +2329,140 @@ public abstract class AbstractSqlDialectTest {
     DeleteStatement stmt = new DeleteStatement(new TableReference("MYSCHEMA", TEST_TABLE));
     String expectedSql = "DELETE FROM " + differentSchemaTableName(TEST_TABLE);
     assertEquals("Simple delete", expectedSql, testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
+   * Tests that a select statement with LIMIT generates correct SQL.
+   */
+  @Test
+  public void testSelectWithLimit() {
+    assumeFalse("LIMIT is not supported on MySQL", "MY_SQL".equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse("LIMIT is not supported on SQL Server", "SQL_SERVER".equals(testDialect.getDatabaseType().identifier()));
+    SelectStatement stmt = new SelectStatement()
+      .from(new TableReference(TEST_TABLE))
+      .limit(10);
+
+    assertEquals("SELECT with LIMIT", expectedSelectWithLimit(), testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
+   * Tests that a select statement with ORDER BY and LIMIT generates correct SQL.
+   */
+  @Test
+  public void testSelectWithOrderByAndLimit() {
+    assumeFalse("LIMIT is not supported on MySQL", "MY_SQL".equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse("LIMIT is not supported on SQL Server", "SQL_SERVER".equals(testDialect.getDatabaseType().identifier()));
+    SelectStatement stmt = new SelectStatement(new FieldReference("id"))
+      .from(new TableReference(TEST_TABLE))
+      .orderBy(new FieldReference("id"))
+      .limit(10);
+
+    assertEquals("SELECT with ORDER BY and LIMIT", expectedSelectWithOrderByAndLimit(), testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
+   * Tests that a nested select statement with LIMIT generates correct SQL (subquery usage).
+   */
+  @Test
+  public void testSelectWithLimitInSubquery() {
+    assumeFalse("LIMIT is not supported on MySQL", "MY_SQL".equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse("LIMIT is not supported on SQL Server", "SQL_SERVER".equals(testDialect.getDatabaseType().identifier()));
+    SelectStatement inner = new SelectStatement()
+      .from(new TableReference(TEST_TABLE))
+      .limit(1000)
+      .alias("t");
+
+    SelectStatement outer = new SelectStatement(count().as("cnt"))
+      .from(inner);
+
+    assertEquals("SELECT with LIMIT in subquery", expectedSelectWithLimitInSubquery(), testDialect.convertStatementToSQL(outer));
+  }
+
+
+  /**
+   * Tests that a select statement with WHERE and LIMIT generates correct SQL.
+   */
+  @Test
+  public void testSelectWithWhereAndLimit() {
+    assumeFalse("LIMIT is not supported on MySQL", "MY_SQL".equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse("LIMIT is not supported on SQL Server", "SQL_SERVER".equals(testDialect.getDatabaseType().identifier()));
+    SelectStatement stmt = new SelectStatement(new FieldReference("id"), new FieldReference(STRING_FIELD))
+      .from(new TableReference(TEST_TABLE))
+      .where(eq(new FieldReference(INT_FIELD), literal(100)))
+      .limit(5);
+
+    assertEquals("SELECT with WHERE and LIMIT", expectedSelectWithWhereAndLimit(), testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
+   * Tests that a select statement with DISTINCT and LIMIT generates correct SQL.
+   */
+  @Test
+  public void testSelectWithDistinctAndLimit() {
+    assumeFalse("LIMIT is not supported on MySQL", "MY_SQL".equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse("LIMIT is not supported on SQL Server", "SQL_SERVER".equals(testDialect.getDatabaseType().identifier()));
+    SelectStatement stmt = selectDistinct(new FieldReference(STRING_FIELD))
+      .from(new TableReference(TEST_TABLE))
+      .limit(20);
+
+    assertEquals("SELECT with DISTINCT and LIMIT", expectedSelectWithDistinctAndLimit(), testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
+   * Tests that a select statement with GROUP BY and LIMIT generates correct SQL.
+   */
+  @Test
+  public void testSelectWithGroupByAndLimit() {
+    assumeFalse("LIMIT is not supported on MySQL", "MY_SQL".equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse("LIMIT is not supported on SQL Server", "SQL_SERVER".equals(testDialect.getDatabaseType().identifier()));
+    SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD), count().as("cnt"))
+      .from(new TableReference(TEST_TABLE))
+      .groupBy(new FieldReference(STRING_FIELD))
+      .limit(15);
+
+    assertEquals("SELECT with GROUP BY and LIMIT", expectedSelectWithGroupByAndLimit(), testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
+   * Tests that a select statement with JOIN and LIMIT generates correct SQL.
+   */
+  @Test
+  public void testSelectWithJoinAndLimit() {
+    assumeFalse("LIMIT is not supported on MySQL", "MY_SQL".equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse("LIMIT is not supported on SQL Server", "SQL_SERVER".equals(testDialect.getDatabaseType().identifier()));
+    SelectStatement stmt = new SelectStatement(
+        new FieldReference(new TableReference(TEST_TABLE), "id"),
+        new FieldReference(new TableReference(ALTERNATE_TABLE), STRING_FIELD))
+      .from(new TableReference(TEST_TABLE))
+      .innerJoin(new TableReference(ALTERNATE_TABLE), eq(
+        new FieldReference(new TableReference(TEST_TABLE), "id"),
+        new FieldReference(new TableReference(ALTERNATE_TABLE), "id")))
+      .limit(25);
+
+    assertEquals("SELECT with JOIN and LIMIT", expectedSelectWithJoinAndLimit(), testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
+   * Tests that a select statement with WHERE, ORDER BY and LIMIT generates correct SQL.
+   */
+  @Test
+  public void testSelectWithOrderByWhereAndLimit() {
+    assumeFalse("LIMIT is not supported on MySQL", "MY_SQL".equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse("LIMIT is not supported on SQL Server", "SQL_SERVER".equals(testDialect.getDatabaseType().identifier()));
+    SelectStatement stmt = new SelectStatement(new FieldReference("id"), new FieldReference(STRING_FIELD))
+      .from(new TableReference(TEST_TABLE))
+      .where(isNotNull(new FieldReference(STRING_FIELD)))
+      .orderBy(new FieldReference("id").desc())
+      .limit(10);
+
+    assertEquals("SELECT with WHERE, ORDER BY and LIMIT", expectedSelectWithOrderByWhereAndLimit(), testDialect.convertStatementToSQL(stmt));
   }
 
 
@@ -4602,6 +4737,54 @@ public abstract class AbstractSqlDialectTest {
   protected String expectedSelectFirstOrderByNullsLastDesc() {
     return "SELECT stringField FROM " + tableName(ALTERNATE_TABLE) + " ORDER BY stringField DESC NULLS LAST LIMIT 0,1";
   }
+
+
+  /**
+   * @return Expected SQL for {@link #testSelectWithLimit()}
+   */
+  protected abstract String expectedSelectWithLimit();
+
+
+  /**
+   * @return Expected SQL for {@link #testSelectWithOrderByAndLimit()}
+   */
+  protected abstract String expectedSelectWithOrderByAndLimit();
+
+
+  /**
+   * @return Expected SQL for {@link #testSelectWithLimitInSubquery()}
+   */
+  protected abstract String expectedSelectWithLimitInSubquery();
+
+
+  /**
+   * @return Expected SQL for {@link #testSelectWithWhereAndLimit()}
+   */
+  protected abstract String expectedSelectWithWhereAndLimit();
+
+
+  /**
+   * @return Expected SQL for {@link #testSelectWithDistinctAndLimit()}
+   */
+  protected abstract String expectedSelectWithDistinctAndLimit();
+
+
+  /**
+   * @return Expected SQL for {@link #testSelectWithGroupByAndLimit()}
+   */
+  protected abstract String expectedSelectWithGroupByAndLimit();
+
+
+  /**
+   * @return Expected SQL for {@link #testSelectWithJoinAndLimit()}
+   */
+  protected abstract String expectedSelectWithJoinAndLimit();
+
+
+  /**
+   * @return Expected SQL for {@link #testSelectWithOrderByWhereAndLimit()}
+   */
+  protected abstract String expectedSelectWithOrderByWhereAndLimit();
 
 
   /**

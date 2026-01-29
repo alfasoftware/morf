@@ -726,6 +726,12 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
+  protected Optional<String> getSelectLimitSuffix(int limit) {
+    return Optional.of("LIMIT " + limit);
+  }
+
+
+  @Override
   protected String selectStatementPreFieldDirectives(SelectStatement selectStatement) {
     StringBuilder builder = new StringBuilder();
 

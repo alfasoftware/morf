@@ -809,6 +809,12 @@ class OracleDialect extends SqlDialect {
   }
 
 
+  @Override
+  protected Optional<String> getSelectLimitSuffix(int limit) {
+    return Optional.of("FETCH FIRST " + limit + " ROWS ONLY");
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(ConcatenatedField)
    */
