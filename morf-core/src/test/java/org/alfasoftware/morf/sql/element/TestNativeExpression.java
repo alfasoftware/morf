@@ -12,7 +12,7 @@ import org.mockito.MockitoAnnotations;
 
 import com.google.common.collect.ImmutableList;
 
-import static org.alfasoftware.morf.sql.SqlUtils.CaseStatementBuilder.nativeSql;
+import static org.alfasoftware.morf.sql.SqlUtils.nativeSql;
 import static org.junit.Assert.assertEquals;
 
 /**

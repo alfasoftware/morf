@@ -8,12 +8,22 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 
 /**
- * Provides a representation of native SQL to be used in a {@link Statement}
- *
+ * Provides a representation of native SQL to be used in a {@link Statement}.
+ * <p>Native Expressions take in a single string of SQL, for example:
+ * {@code new NativeExpression("SELECT * FROM x")}</p>
+ * <p>A utility {@link org.alfasoftware.morf.sql.SqlUtils#nativeSql(String)} exists to construct
+ * these expressions. The intention is for this to be used within a {@link PortableSqlExpression}
+ * to build SQL on the rare occasion that an expression cannot be constructed with existing
+ * morf utils. For example:</p>
+ * <p>{@code PortableSqlExpression.builder().withExpressionForDatabaseType("PGSQL",
+ *    nativeSql("SELECT "),
+ *    fieldReference("type"),
+ *    nativeSql(" FROM "),
+ *    tableRef(TABLE_REF),
+ *    nativeSql(" WHERE type = 'T1'"))}</p>
  * @author Copyright (c) Alfa Financial Software Ltd. 2026
  */
 public class NativeExpression extends AliasedField{
-
   /**
    * Native SQL for the expression.
    */

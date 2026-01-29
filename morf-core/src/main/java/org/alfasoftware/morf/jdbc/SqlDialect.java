@@ -4498,9 +4498,10 @@ public abstract class SqlDialect {
 
 
   /**
-   * TODO
+   * Converts the provided native expression into SQL. Since native expressions are already in native SQL,
+   * this method simply retrieves the expression.
    * @param nativeExpression
-   * @return
+   * @return the resulting SQL
    */
   protected String getSqlFrom(NativeExpression nativeExpression) {
     return nativeExpression.getExpression();

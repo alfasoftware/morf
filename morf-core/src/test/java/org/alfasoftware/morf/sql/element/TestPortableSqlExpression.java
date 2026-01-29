@@ -4,7 +4,7 @@ import org.alfasoftware.morf.util.DeepCopyTransformation;
 import org.junit.Before;
 import org.junit.Test;
 
-import static org.alfasoftware.morf.sql.SqlUtils.CaseStatementBuilder.nativeSql;
+import static org.alfasoftware.morf.sql.SqlUtils.nativeSql;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;

@@ -13,9 +13,12 @@ import org.alfasoftware.morf.util.DeepCopyTransformation;
 
 /**
  * Portable expressions allow for SQL code to be freely defined by combining {@link AliasedField}s.
- * <p>These portable expressions should only be used when it is absolutely necessary, for instance when a specific expression</p>
- * <p>Expressions are mapped to database type identifiers, and distinct statements are required for each supported database
- * is required where there is no support (nor planned support) within morf.</p>
+ * <p>These portable expressions should only be used when it is absolutely necessary, for instance when a
+ * specific expression is required where there is no support (nor planned support) within morf.</p>
+ * <p>Expressions are mapped to database type identifiers, and distinct statements are required for each
+ * supported database.</p>
+ * <p>The intention is to build such expressions using existing {@link AliasedField}s as far as possible,
+ * and use {@link org.alfasoftware.morf.sql.SqlUtils#nativeSql(String)} where support for the query is lacking.</p>
  *
  * @author Copyright (c) Alfa Financial Software Ltd. 2026
  */

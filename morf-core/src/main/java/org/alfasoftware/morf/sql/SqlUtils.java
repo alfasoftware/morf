@@ -722,14 +722,6 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
       return otherwise(literal(defaultValue));
     }
 
-
-    /**
-     * @param expression native SQL
-     * @return {@link NativeExpression}
-     */
-    public static NativeExpression nativeSql(String expression) {
-      return new NativeExpression(expression);
-    }
   }
 
 
@@ -964,5 +956,14 @@ parameter("name").type(DataType.DECIMAL).width(13,2)</pre>
     public SqlParameter width(int width, int scale) {
       return new SqlParameter(column(getMetadata().getName(), getMetadata().getType(), width, scale));
     }
+  }
+
+
+  /**
+   * @param expression native SQL
+   * @return {@link NativeExpression}
+   */
+  public static NativeExpression nativeSql(String expression) {
+    return new NativeExpression(expression);
   }
 }
