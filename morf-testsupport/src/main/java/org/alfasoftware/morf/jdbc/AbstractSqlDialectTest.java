@@ -202,6 +202,11 @@ public abstract class AbstractSqlDialectTest {
   private static final String TEST_1 = "Test_1";
   private static final String TEST_2 = "Test_2";
 
+  private static final String DATABASE_TYPE_MYSQL = "MY_SQL";
+  private static final String DATABASE_TYPE_SQL_SERVER = "SQL_SERVER";
+  private static final String MYSQL_LIMIT_NOT_SUPPORTED = "LIMIT is not supported on MySQL";
+  private static final String SQL_SERVER_LIMIT_NOT_SUPPORTED = "LIMIT is not supported on SQL Server";
+
   private static final String TEMP_TEST_TABLE = "TempTest";
   private static final String TEMP_TEST_NK = "TempTest_NK";
   private static final String TEMP_TEST_1 = "TempTest_1";
@@ -2337,8 +2342,8 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testSelectWithLimit() {
-    assumeFalse("LIMIT is not supported on MySQL", "MY_SQL".equals(testDialect.getDatabaseType().identifier()));
-    assumeFalse("LIMIT is not supported on SQL Server", "SQL_SERVER".equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(testDialect.getDatabaseType().identifier()));
     SelectStatement stmt = new SelectStatement()
       .from(new TableReference(TEST_TABLE))
       .limit(10);
@@ -2352,8 +2357,8 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testSelectWithOrderByAndLimit() {
-    assumeFalse("LIMIT is not supported on MySQL", "MY_SQL".equals(testDialect.getDatabaseType().identifier()));
-    assumeFalse("LIMIT is not supported on SQL Server", "SQL_SERVER".equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(testDialect.getDatabaseType().identifier()));
     SelectStatement stmt = new SelectStatement(new FieldReference("id"))
       .from(new TableReference(TEST_TABLE))
       .orderBy(new FieldReference("id"))
@@ -2368,8 +2373,8 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testSelectWithLimitInSubquery() {
-    assumeFalse("LIMIT is not supported on MySQL", "MY_SQL".equals(testDialect.getDatabaseType().identifier()));
-    assumeFalse("LIMIT is not supported on SQL Server", "SQL_SERVER".equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(testDialect.getDatabaseType().identifier()));
     SelectStatement inner = new SelectStatement()
       .from(new TableReference(TEST_TABLE))
       .limit(1000)
@@ -2387,8 +2392,8 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testSelectWithWhereAndLimit() {
-    assumeFalse("LIMIT is not supported on MySQL", "MY_SQL".equals(testDialect.getDatabaseType().identifier()));
-    assumeFalse("LIMIT is not supported on SQL Server", "SQL_SERVER".equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(testDialect.getDatabaseType().identifier()));
     SelectStatement stmt = new SelectStatement(new FieldReference("id"), new FieldReference(STRING_FIELD))
       .from(new TableReference(TEST_TABLE))
       .where(eq(new FieldReference(INT_FIELD), literal(100)))
@@ -2403,8 +2408,8 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testSelectWithDistinctAndLimit() {
-    assumeFalse("LIMIT is not supported on MySQL", "MY_SQL".equals(testDialect.getDatabaseType().identifier()));
-    assumeFalse("LIMIT is not supported on SQL Server", "SQL_SERVER".equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(testDialect.getDatabaseType().identifier()));
     SelectStatement stmt = selectDistinct(new FieldReference(STRING_FIELD))
       .from(new TableReference(TEST_TABLE))
       .limit(20);
@@ -2418,8 +2423,8 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testSelectWithGroupByAndLimit() {
-    assumeFalse("LIMIT is not supported on MySQL", "MY_SQL".equals(testDialect.getDatabaseType().identifier()));
-    assumeFalse("LIMIT is not supported on SQL Server", "SQL_SERVER".equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(testDialect.getDatabaseType().identifier()));
     SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD), count().as("cnt"))
       .from(new TableReference(TEST_TABLE))
       .groupBy(new FieldReference(STRING_FIELD))
@@ -2434,8 +2439,8 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testSelectWithJoinAndLimit() {
-    assumeFalse("LIMIT is not supported on MySQL", "MY_SQL".equals(testDialect.getDatabaseType().identifier()));
-    assumeFalse("LIMIT is not supported on SQL Server", "SQL_SERVER".equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(testDialect.getDatabaseType().identifier()));
     SelectStatement stmt = new SelectStatement(
         new FieldReference(new TableReference(TEST_TABLE), "id"),
         new FieldReference(new TableReference(ALTERNATE_TABLE), STRING_FIELD))
@@ -2454,8 +2459,8 @@ public abstract class AbstractSqlDialectTest {
    */
   @Test
   public void testSelectWithOrderByWhereAndLimit() {
-    assumeFalse("LIMIT is not supported on MySQL", "MY_SQL".equals(testDialect.getDatabaseType().identifier()));
-    assumeFalse("LIMIT is not supported on SQL Server", "SQL_SERVER".equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(testDialect.getDatabaseType().identifier()));
     SelectStatement stmt = new SelectStatement(new FieldReference("id"), new FieldReference(STRING_FIELD))
       .from(new TableReference(TEST_TABLE))
       .where(isNotNull(new FieldReference(STRING_FIELD)))
@@ -5329,7 +5334,7 @@ public abstract class AbstractSqlDialectTest {
                     new FieldLiteral("3"),
                     new FieldLiteral("C"))
             .withFunctionForDatabaseType(
-                    "MY_SQL",
+                    DATABASE_TYPE_MYSQL,
                     "REVERSE",
                     new FieldReference("field"),
                     new FieldLiteral("4"),

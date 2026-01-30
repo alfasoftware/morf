@@ -46,7 +46,6 @@ import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.junit.Before;
-import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 
 import com.google.common.collect.ImmutableList;

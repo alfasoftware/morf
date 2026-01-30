@@ -722,7 +722,7 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
       result.append(" ").append(setOperator);
     }
     if (StringUtils.isNotEmpty(getAlias())) result.append(" AS ").append(getAlias());
-    if (limit != null && limit.isPresent()) result.append(" LIMIT ").append(limit.get());
+    if (limit.isPresent()) result.append(" LIMIT ").append(limit.get());
     if (forUpdate) result.append(" (FOR UPDATE)");
     return result.toString();
   }
@@ -745,7 +745,7 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
     result = prime * result + (groupBys == null ? 0 : groupBys.hashCode());
     result = prime * result + (having == null ? 0 : having.hashCode());
     result = prime * result + (hints == null ? 0 : hints.hashCode());
-    result = prime * result + (limit == null ? 0 : limit.hashCode());
+    result = prime * result + limit.hashCode();
     result = prime * result + (setOperators == null ? 0 : setOperators.hashCode());
     return result;
   }
@@ -783,10 +783,7 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
         return false;
     } else if (!hints.equals(other.hints))
       return false;
-    if (limit == null) {
-      if (other.limit != null)
-        return false;
-    } else if (!limit.equals(other.limit))
+    if (!limit.equals(other.limit))
       return false;
     if (setOperators == null) {
       if (other.setOperators != null)

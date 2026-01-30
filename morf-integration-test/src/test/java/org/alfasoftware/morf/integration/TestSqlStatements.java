@@ -3341,7 +3341,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    * Test basic LIMIT functionality on a simple SELECT.
    */
   @Test
-  public void testLimitBasicSelectWithLimit() throws SQLException {
+  public void testLimitBasicSelectWithLimit() {
     Assume.assumeFalse("LIMIT not supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
     Assume.assumeFalse("LIMIT not supported on SQL Server", "SQL_SERVER".equals(connectionResources.getDatabaseType()));
 
@@ -3358,7 +3358,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    * Test LIMIT returns correct rows when combined with ORDER BY.
    */
   @Test
-  public void testLimitWithOrderBy() throws SQLException {
+  public void testLimitWithOrderBy() {
     Assume.assumeFalse("LIMIT not supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
     Assume.assumeFalse("LIMIT not supported on SQL Server", "SQL_SERVER".equals(connectionResources.getDatabaseType()));
 
@@ -3393,7 +3393,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    * Test LIMIT works correctly with WHERE filtering.
    */
   @Test
-  public void testLimitWithWhereClause() throws SQLException {
+  public void testLimitWithWhereClause() {
     Assume.assumeFalse("LIMIT not supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
     Assume.assumeFalse("LIMIT not supported on SQL Server", "SQL_SERVER".equals(connectionResources.getDatabaseType()));
 
@@ -3411,7 +3411,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    * Test LIMIT works with JOIN operations.
    */
   @Test
-  public void testLimitWithJoin() throws SQLException {
+  public void testLimitWithJoin() {
     Assume.assumeFalse("LIMIT not supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
     Assume.assumeFalse("LIMIT not supported on SQL Server", "SQL_SERVER".equals(connectionResources.getDatabaseType()));
 
@@ -3433,7 +3433,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    * Test LIMIT larger than result set returns all rows.
    */
   @Test
-  public void testLimitLargerThanResultSet() throws SQLException {
+  public void testLimitLargerThanResultSet() {
     Assume.assumeFalse("LIMIT not supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
     Assume.assumeFalse("LIMIT not supported on SQL Server", "SQL_SERVER".equals(connectionResources.getDatabaseType()));
 
@@ -3450,7 +3450,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    * Test LIMIT with combined WHERE and ORDER BY clauses.
    */
   @Test
-  public void testLimitWithOrderByAndWhere() throws SQLException {
+  public void testLimitWithOrderByAndWhere() {
     Assume.assumeFalse("LIMIT not supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
     Assume.assumeFalse("LIMIT not supported on SQL Server", "SQL_SERVER".equals(connectionResources.getDatabaseType()));
 
@@ -3483,7 +3483,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    * Test LIMIT in subqueries.
    */
   @Test
-  public void testLimitInSubquery() throws SQLException {
+  public void testLimitInSubquery() {
     Assume.assumeFalse("LIMIT not supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
     Assume.assumeFalse("LIMIT not supported on SQL Server", "SQL_SERVER".equals(connectionResources.getDatabaseType()));
 
@@ -3514,7 +3514,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    * Test LIMIT works with SELECT DISTINCT.
    */
   @Test
-  public void testLimitWithDistinct() throws SQLException {
+  public void testLimitWithDistinct() {
     Assume.assumeFalse("LIMIT not supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
     Assume.assumeFalse("LIMIT not supported on SQL Server", "SQL_SERVER".equals(connectionResources.getDatabaseType()));
 
@@ -3536,7 +3536,7 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
    * Test LIMIT works with aggregation and GROUP BY.
    */
   @Test
-  public void testLimitWithAggregation() throws SQLException {
+  public void testLimitWithAggregation() {
     Assume.assumeFalse("LIMIT not supported on MySQL", "MY_SQL".equals(connectionResources.getDatabaseType()));
     Assume.assumeFalse("LIMIT not supported on SQL Server", "SQL_SERVER".equals(connectionResources.getDatabaseType()));
 
