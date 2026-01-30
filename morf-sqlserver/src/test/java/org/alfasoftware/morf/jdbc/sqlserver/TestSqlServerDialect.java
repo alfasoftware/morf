@@ -1512,7 +1512,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
 
 
   /**
-   * SQL Server does not support LIMIT - returning null causes tests to be skipped via assumeTrue
+   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
    */
   @Override
   protected String expectedSelectWithLimit() {
@@ -1521,7 +1521,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
 
 
   /**
-   * SQL Server does not support LIMIT - returning null causes tests to be skipped via assumeTrue
+   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
    */
   @Override
   protected String expectedSelectWithOrderByAndLimit() {
@@ -1530,7 +1530,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
 
 
   /**
-   * SQL Server does not support LIMIT - returning null causes tests to be skipped via assumeTrue
+   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
    */
   @Override
   protected String expectedSelectWithLimitInSubquery() {
@@ -1539,7 +1539,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
 
 
   /**
-   * SQL Server does not support LIMIT - returning null causes tests to be skipped via assumeTrue
+   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
    */
   @Override
   protected String expectedSelectWithWhereAndLimit() {
@@ -1548,7 +1548,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
 
 
   /**
-   * SQL Server does not support LIMIT - returning null causes tests to be skipped via assumeTrue
+   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
    */
   @Override
   protected String expectedSelectWithDistinctAndLimit() {
@@ -1557,7 +1557,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
 
 
   /**
-   * SQL Server does not support LIMIT - returning null causes tests to be skipped via assumeTrue
+   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
    */
   @Override
   protected String expectedSelectWithGroupByAndLimit() {
@@ -1566,7 +1566,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
 
 
   /**
-   * SQL Server does not support LIMIT - returning null causes tests to be skipped via assumeTrue
+   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
    */
   @Override
   protected String expectedSelectWithJoinAndLimit() {
@@ -1575,7 +1575,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
 
 
   /**
-   * SQL Server does not support LIMIT - returning null causes tests to be skipped via assumeTrue
+   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
    */
   @Override
   protected String expectedSelectWithOrderByWhereAndLimit() {

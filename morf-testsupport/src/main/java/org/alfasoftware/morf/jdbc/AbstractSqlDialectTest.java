@@ -204,8 +204,8 @@ public abstract class AbstractSqlDialectTest {
 
   private static final String DATABASE_TYPE_MYSQL = "MY_SQL";
   private static final String DATABASE_TYPE_SQL_SERVER = "SQL_SERVER";
-  private static final String MYSQL_LIMIT_NOT_SUPPORTED = "LIMIT is not supported on MySQL";
-  private static final String SQL_SERVER_LIMIT_NOT_SUPPORTED = "LIMIT is not supported on SQL Server";
+  private static final String MYSQL_LIMIT_NOT_SUPPORTED = "LIMIT is not supported by Morf for MySQL";
+  private static final String SQL_SERVER_LIMIT_NOT_SUPPORTED = "LIMIT is not supported by Morf for SQL Server";
 
   private static final String TEMP_TEST_TABLE = "TempTest";
   private static final String TEMP_TEST_NK = "TempTest_NK";

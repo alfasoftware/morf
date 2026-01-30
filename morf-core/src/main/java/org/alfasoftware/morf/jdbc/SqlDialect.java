@@ -1140,8 +1140,9 @@ public abstract class SqlDialect {
    * @param stmt statement with limit clause
    */
   protected void appendLimit(StringBuilder result, SelectStatement stmt) {
-    if (stmt.getLimit().isPresent()) {
-      Optional<String> limitSql = getSelectLimitSuffix(stmt.getLimit().get());
+    Optional<Integer> limit = stmt.getLimit();
+    if (limit.isPresent()) {
+      Optional<String> limitSql = getSelectLimitSuffix(limit.get());
       if (limitSql.isPresent()) {
         result.append(" ").append(limitSql.get());
       } else {
