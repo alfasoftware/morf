@@ -1,6 +1,7 @@
 package org.alfasoftware.morf.sql;
 
 import static org.alfasoftware.morf.sql.SqlUtils.select;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -68,6 +69,47 @@ public class TestSelectStatement {
     verify(criterion1).accept(res);
     verify(unionStatement).accept(res);
     verify(exceptStatement).accept(res);
+  }
+
+
+  @Test
+  public void testLimitWithNegativeValueThrowsException() {
+    assertThrows(IllegalArgumentException.class, () -> select().limit(-1));
+  }
+
+
+  @Test
+  public void testLimitWithZeroValueThrowsException() {
+    assertThrows(IllegalArgumentException.class, () -> select().limit(0));
+  }
+
+
+  @Test
+  public void testLimitWithPositiveValueSucceeds() {
+    select().limit(1);
+    select().limit(100);
+  }
+
+
+  @Test
+  public void testLimitOnExistingStatementWithNegativeValueThrowsException() {
+    SelectStatement stmt = select();
+    assertThrows(IllegalArgumentException.class, () -> stmt.limit(-1));
+  }
+
+
+  @Test
+  public void testLimitOnExistingStatementWithZeroValueThrowsException() {
+    SelectStatement stmt = select();
+    assertThrows(IllegalArgumentException.class, () -> stmt.limit(0));
+  }
+
+
+  @Test
+  public void testLimitOnExistingStatementWithPositiveValueSucceeds() {
+    SelectStatement stmt = select();
+    stmt.limit(1);
+    stmt.limit(100);
   }
 }
 

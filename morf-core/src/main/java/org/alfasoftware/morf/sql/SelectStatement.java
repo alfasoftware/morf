@@ -807,7 +807,8 @@ public class SelectStatement extends AbstractSelectStatement<SelectStatement>
       .dispatch(groupBys)
       .dispatch(having)
       .dispatch(setOperators)
-      .dispatch(hints);
+      .dispatch(hints)
+      .dispatch(limit);
   }
 
 

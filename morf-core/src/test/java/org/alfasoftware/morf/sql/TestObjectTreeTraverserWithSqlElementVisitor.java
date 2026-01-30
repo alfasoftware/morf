@@ -37,6 +37,7 @@ import static org.alfasoftware.morf.sql.element.Function.sum;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
@@ -103,6 +104,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
     verify(callback).visit(select2);
     verify(callback).visit(selectsAsField);
     verify(callback).visit(select2.getFields().get(0));
+    verify(callback, times(2)).visit(Optional.empty()); // select1, select2 limits
     verifyNoMoreInteractions(callback);
   }
 
@@ -160,6 +162,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
     verify(callback).visit(three);
     verify(callback).visit(select1);
     verify(callback).visit(select2);
+    verify(callback, times(2)).visit(Optional.empty()); // select1, select2 limits
     verifyNoMoreInteractions(callback);
   }
 
@@ -200,6 +203,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
     verify(callback).visit(thirteen);
     verify(callback).visit(twelve);
     verify(callback).visit(four);
+    verify(callback, times(5)).visit(Optional.empty()); // select1, select2, select3, select4, select5 limits
     verifyNoMoreInteractions(callback);
   }
 
@@ -229,6 +233,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
     verify(callback).visit(six);
     verify(callback).visit(nine);
     verify(callback).visit(ten);
+    verify(callback, times(3)).visit(Optional.empty()); // select1, select2, select3 limits
     verifyNoMoreInteractions(callback);
   }
 
@@ -273,6 +278,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
     verify(callback).visit(four);
     verify(callback).visit(five);
     verify(callback).visit(six);
+    verify(callback, times(5)).visit(Optional.empty()); // select1-5 limits
     verifyNoMoreInteractions(callback);
   }
 
@@ -296,6 +302,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
     verify(callback).visit(driver);
     verify(callback).visit(select2);
     verify(callback).visit(two);
+    verify(callback).visit(Optional.empty()); // select2 limit
     verifyNoMoreInteractions(callback);
   }
 
@@ -316,6 +323,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
     verify(callback).visit(select.getFields().get(1));
     verify(callback).visit(two);
     verify(callback).visit(three);
+    verify(callback).visit(Optional.empty()); // select limit
     verifyNoMoreInteractions(callback);
   }
 
@@ -340,6 +348,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
     verify(callback).visit(two);
     verify(callback).visit(three);
     verify(callback).visit(Optional.of(limit));
+    verify(callback).visit(Optional.empty()); // select limit
     verifyNoMoreInteractions(callback);
   }
 
@@ -366,6 +375,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
     verify(callback).visit(two);
     verify(callback).visit(three);
     verify(callback).visit(four);
+    verify(callback, times(2)).visit(Optional.empty()); // select1, select2 limits
     verifyNoMoreInteractions(callback);
   }
 
@@ -390,6 +400,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
     verify(callback).visit(two);
     verify(callback).visit(three);
     verify(callback).visit(four);
+    verify(callback, times(2)).visit(Optional.empty()); // select1, select2 limits
     verifyNoMoreInteractions(callback);
   }
 
@@ -425,6 +436,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
     verify(callback).visit(four);
     verify(callback).visit(insert.getFields().get(0));
     verify(callback).visit(insert.getFields().get(1));
+    verify(callback, times(2)).visit(Optional.empty()); // select1, select2 limits
     verifyNoMoreInteractions(callback);
   }
 
@@ -456,6 +468,7 @@ public class TestObjectTreeTraverserWithSqlElementVisitor {
     verify(callback).visit(two);
     verify(callback).visit(three);
     verify(callback).visit(four);
+    verify(callback, times(2)).visit(Optional.empty()); // select1, select2 limits
     verifyNoMoreInteractions(callback);
   }
 
