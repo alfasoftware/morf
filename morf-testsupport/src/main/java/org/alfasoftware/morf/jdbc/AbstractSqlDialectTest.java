@@ -5340,7 +5340,7 @@ public abstract class AbstractSqlDialectTest {
                     new FieldLiteral("4"),
                     new FieldLiteral("D"))
             .withFunctionForDatabaseType(
-                    "SQL_SERVER",
+                    DATABASE_TYPE_SQL_SERVER,
                     "SOUNDEX",
                     new FieldReference("field"),
                     new FieldLiteral("5"),
