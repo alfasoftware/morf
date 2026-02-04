@@ -1429,10 +1429,81 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * Morf does not support LIMIT for MySQL - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithLimit() {
+    return null;
+  }
+
+
+  /**
+   * Morf does not support LIMIT for MySQL - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithOrderByAndLimit() {
+    return null;
+  }
+
+
+  /**
+   * Morf does not support LIMIT for MySQL - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithLimitInSubquery() {
+    return null;
+  }
+
+
+  /**
+   * Morf does not support LIMIT for MySQL - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithWhereAndLimit() {
+    return null;
+  }
+
+
+  /**
+   * Morf does not support LIMIT for MySQL - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithDistinctAndLimit() {
+    return null;
+  }
+
+
+  /**
+   * Morf does not support LIMIT for MySQL - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithGroupByAndLimit() {
+    return null;
+  }
+
+
+  /**
+   * Morf does not support LIMIT for MySQL - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithJoinAndLimit() {
+    return null;
+  }
+
+
+  /**
    * @see AbstractSqlDialectTest#expectedPortableSqlExpression()
    */
   @Override
   protected String expectedPortableSqlExpression() {
     return "SELECT IF(active = 1, 'yes', 'no') field FROM Test";
+  }
+  
+  /**
+   * Morf does not support LIMIT for MySQL - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithOrderByWhereAndLimit() {
+    return null;
   }
 }

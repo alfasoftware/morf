@@ -83,7 +83,9 @@ public class TestSelectStatementDeepCopyContractUsingBuilder extends AbstractSha
       testCaseWithBuilder("select().union(SELECT_1)", select().union(SELECT_1)),
       testCaseWithBuilder("select().union(SELECT_2)", select().union(SELECT_2)),
       testCaseWithBuilder("select().unionAll(SELECT_1)", select().unionAll(SELECT_1)),
-      testCaseWithBuilder("select().unionAll(SELECT_2)", select().unionAll(SELECT_2))
+      testCaseWithBuilder("select().unionAll(SELECT_2)", select().unionAll(SELECT_2)),
+      testCaseWithBuilder("select().limit(10)", select().limit(10)),
+      testCaseWithBuilder("select().limit(20)", select().limit(20))
     );
   }
 

@@ -1515,10 +1515,82 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithLimit() {
+    return null;
+  }
+
+
+  /**
+   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithOrderByAndLimit() {
+    return null;
+  }
+
+
+  /**
+   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithLimitInSubquery() {
+    return null;
+  }
+
+
+  /**
+   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithWhereAndLimit() {
+    return null;
+  }
+
+
+  /**
+   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithDistinctAndLimit() {
+    return null;
+  }
+
+
+  /**
+   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithGroupByAndLimit() {
+    return null;
+  }
+
+
+  /**
+   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithJoinAndLimit() {
+    return null;
+  }
+
+
+ /**
    * @see AbstractSqlDialectTest#expectedPortableSqlExpression()
    */
   @Override
   protected String expectedPortableSqlExpression() {
     return "SELECT CASE WHEN status = 'A' THEN 'ACTIVE' WHEN status = 'I'THEN 'INACTIVE' ELSE 'UNKNOWN' END FROM TESTSCHEMA.Test";
+  }
+  
+  
+   /**
+   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithOrderByWhereAndLimit() {
+    return null;
   }
 }

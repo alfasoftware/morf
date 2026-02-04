@@ -1974,11 +1974,59 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   }
 
 
+  @Override
+  protected String expectedSelectWithLimit() {
+    return "SELECT * FROM " + tableName(TEST_TABLE) + " FETCH FIRST 10 ROWS ONLY";
+  }
+
+
+  @Override
+  protected String expectedSelectWithOrderByAndLimit() {
+    return "SELECT id FROM " + tableName(TEST_TABLE) + " ORDER BY id NULLS FIRST FETCH FIRST 10 ROWS ONLY";
+  }
+
+
+  @Override
+  protected String expectedSelectWithLimitInSubquery() {
+    return "SELECT COUNT(*) AS cnt FROM (SELECT * FROM " + tableName(TEST_TABLE) + " FETCH FIRST 1000 ROWS ONLY) t";
+  }
+
+
+  @Override
+  protected String expectedSelectWithWhereAndLimit() {
+    return "SELECT id, stringField FROM " + tableName(TEST_TABLE) + " WHERE (intField = 100) FETCH FIRST 5 ROWS ONLY";
+  }
+
+
+  @Override
+  protected String expectedSelectWithDistinctAndLimit() {
+    return "SELECT DISTINCT stringField FROM " + tableName(TEST_TABLE) + " FETCH FIRST 20 ROWS ONLY";
+  }
+
+
+  @Override
+  protected String expectedSelectWithGroupByAndLimit() {
+    return "SELECT stringField, COUNT(*) AS cnt FROM " + tableName(TEST_TABLE) + " GROUP BY stringField FETCH FIRST 15 ROWS ONLY";
+  }
+
+
+  @Override
+  protected String expectedSelectWithJoinAndLimit() {
+    return "SELECT Test.id, Alternate.stringField FROM " + tableName(TEST_TABLE) + " INNER JOIN " + tableName("Alternate") + " ON (Test.id = Alternate.id) FETCH FIRST 25 ROWS ONLY";
+  }
+
+  
   /**
    * @see AbstractSqlDialectTest#expectedPortableSqlExpression()
    */
   @Override
   protected String expectedPortableSqlExpression() {
     return "SELECT CASE WHEN (charField = N'Y') THEN intField ELSE floatField END ROWNUM field FROM TESTSCHEMA.Test";
+  }
+ 
+  
+  @Override
+  protected String expectedSelectWithOrderByWhereAndLimit() {
+    return "SELECT id, stringField FROM " + tableName(TEST_TABLE) + " WHERE (stringField IS NOT NULL) ORDER BY id DESC NULLS LAST FETCH FIRST 10 ROWS ONLY";
   }
 }
