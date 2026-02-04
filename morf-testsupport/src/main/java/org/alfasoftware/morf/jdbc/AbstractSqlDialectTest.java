@@ -28,9 +28,11 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.metadata.SchemaUtils.versionColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.view;
 import static org.alfasoftware.morf.sql.MergeStatement.InputField.inputField;
+import static org.alfasoftware.morf.sql.SqlUtils.nativeSql;
 import static org.alfasoftware.morf.sql.SqlUtils.blobLiteral;
 import static org.alfasoftware.morf.sql.SqlUtils.bracket;
 import static org.alfasoftware.morf.sql.SqlUtils.cast;
+import static org.alfasoftware.morf.sql.SqlUtils.concat;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.insert;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
@@ -155,6 +157,7 @@ import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.MathsField;
 import org.alfasoftware.morf.sql.element.MathsOperator;
 import org.alfasoftware.morf.sql.element.NullFieldLiteral;
+import org.alfasoftware.morf.sql.element.PortableSqlExpression;
 import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
@@ -5168,6 +5171,56 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * Tests {@link PortableSqlExpression} with various complex queries, making use
+   * of the {@link org.alfasoftware.morf.sql.element.NativeExpression} element.
+   */
+  @Test
+  public void testPortableExpression() {
+    PortableSqlExpression.Builder expressionBuild = PortableSqlExpression.builder()
+            .withExpressionForDatabaseType(
+                    "PGSQL",
+                    concat(
+                        new FieldReference("first_name"),
+                        new FieldLiteral(" "),
+                        new FieldReference("last_name"),
+                        new FieldLiteral(" ("),
+                        nativeSql("params->>'role'"),
+                        new FieldLiteral(")")
+                    ).as("display_name"))
+            .withExpressionForDatabaseType(
+                    "H2",
+                    nativeSql("JSON_VALUE(payload, '$.type') AS event_type"))
+            .withExpressionForDatabaseType(
+                    "ORACLE",
+                    new CaseStatement(new FieldReference(FLOAT_FIELD), new WhenCondition(
+                        eq(new FieldReference(CHAR_FIELD),  new FieldLiteral('Y')),
+                        new FieldReference(INT_FIELD))).build(),
+                    nativeSql(" ROWNUM ").as("row_number"),
+                    new FieldReference("field"))
+            .withExpressionForDatabaseType(
+                    "MY_SQL",
+                    nativeSql("IF(active = 1, 'yes', 'no') ").as("active"),
+                    new FieldReference("field"))
+            .withExpressionForDatabaseType(
+                "SQL_SERVER",
+                nativeSql(
+                    "CASE " +
+                        "WHEN status = 'A' THEN 'ACTIVE'"),
+                        nativeSql(" WHEN "),
+                        new FieldReference("status"),
+                        nativeSql(" = "),
+                        new FieldLiteral("I"),
+                        nativeSql("THEN 'INACTIVE' " +
+                        "ELSE 'UNKNOWN' END").as("status_label")
+            );
+
+    SelectStatement testStatement = SelectStatement.select(expressionBuild).from(TEST_TABLE).build();
+
+    assertEquals(expectedPortableSqlExpression(), testDialect.convertStatementToSQL(testStatement));
+  }
+
+
+  /**
    * Tests SQL date conversion to string via databaseSafeStringtoRecordValue
    *
    * @throws SQLException If a SQL exception is thrown.
@@ -6169,6 +6222,12 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL for the {@link PortableSqlFunction} function, testing that the dialect-specific function is used.
    */
   protected abstract String expectedPortableStatement();
+
+
+  /**
+   * @return The expected SQL for the {@link PortableSqlExpression} test, testing that the dialect-specific function is used.
+   */
+  protected abstract String expectedPortableSqlExpression();
 
   /**
    * @return The expected value for the force serial import setting.

@@ -1591,9 +1591,22 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return schemaResource;
   }
 
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCurrValForSequence()
+   */
   @Override
   protected String expectedPortableStatement() {
     return "UPDATE testschema.Table SET field = TRANSLATE(field, '1', 'A')";
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedPortableSqlExpression()
+   */
+  @Override
+  protected String expectedPortableSqlExpression() {
+    return "SELECT CONCAT(first_name, ' ', last_name, ' (', params->>'role', ')') FROM testschema.Test";
   }
 }
 

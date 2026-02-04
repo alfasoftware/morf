@@ -1372,9 +1372,21 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   }
 
 
+  /**
+   * @see AbstractSqlDialectTest#expectedPortableStatement()
+   */
   @Override
   protected String expectedPortableStatement() {
     return "UPDATE TESTSCHEMA.Table SET field = BTRIM(field, CAST('2' AS VARCHAR(1)), CAST('B' AS VARCHAR(1)))";
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedPortableSqlExpression()
+   */
+  @Override
+  protected String expectedPortableSqlExpression() {
+    return "SELECT JSON_VALUE(payload, '$.type') AS event_type FROM TESTSCHEMA.Test";
   }
 
 
