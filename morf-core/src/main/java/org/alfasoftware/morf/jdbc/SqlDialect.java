@@ -89,8 +89,10 @@ import org.alfasoftware.morf.sql.element.Join;
 import org.alfasoftware.morf.sql.element.JoinType;
 import org.alfasoftware.morf.sql.element.MathsField;
 import org.alfasoftware.morf.sql.element.MathsOperator;
+import org.alfasoftware.morf.sql.element.NativeExpression;
 import org.alfasoftware.morf.sql.element.NullFieldLiteral;
 import org.alfasoftware.morf.sql.element.Operator;
+import org.alfasoftware.morf.sql.element.PortableSqlExpression;
 import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
@@ -186,6 +188,13 @@ public abstract class SqlDialect {
     super();
     this.schemaName = validateSchemaName(schemaName);
   }
+
+
+  /**
+   * The database type for the dialect implementation.
+   * @return The database type identifier
+   */
+  protected abstract String databaseTypeIdentifier();
 
 
   /**
@@ -1823,6 +1832,14 @@ public abstract class SqlDialect {
 
     if (field instanceof PortableSqlFunction) {
       return getSqlFrom((PortableSqlFunction) field);
+    }
+
+    if (field instanceof PortableSqlExpression) {
+      return getSqlFrom((PortableSqlExpression) field);
+    }
+
+    if (field instanceof NativeExpression) {
+      return getSqlFrom((NativeExpression) field);
     }
 
     throw new IllegalArgumentException("Aliased Field of type [" + field.getClass().getSimpleName() + "] is not supported");
@@ -4500,10 +4517,34 @@ public abstract class SqlDialect {
    * Converts the provided portable function into SQL. Each dialect will attempt to retrieve the applicable
    * function and arguments, throwing an unsupported operation exception if one is not found.
    *
-   * @param portableSqlFunction the function to convert
+   * @param function the function to convert
    * @return the resulting SQL
    */
-  protected abstract String getSqlFrom(PortableSqlFunction portableSqlFunction);
+  protected String getSqlFrom(PortableSqlFunction function) {
+    return getSqlForPortableFunction(function.getFunctionForDatabaseType(databaseTypeIdentifier()));
+  }
+
+
+  /**
+   * Converts the provided portable expression into SQL. Each dialect will attempt to retrieve the applicable
+   * expression, throwing an unsupported operation exception if one is not found.
+   * @param portableSqlExpression
+   * @return the resulting SQL
+   */
+  protected String getSqlFrom(PortableSqlExpression portableSqlExpression) {
+    return getSqlForPortableExpression(portableSqlExpression.getExpressionForDatabaseType(databaseTypeIdentifier()));
+  }
+
+
+  /**
+   * Converts the provided native expression into SQL. Since native expressions are already in native SQL,
+   * this method simply retrieves the expression.
+   * @param nativeExpression
+   * @return the resulting SQL
+   */
+  protected String getSqlFrom(NativeExpression nativeExpression) {
+    return nativeExpression.getExpression();
+  }
 
 
   /**
@@ -4518,6 +4559,20 @@ public abstract class SqlDialect {
         .collect(toList());
 
     return functionName + "(" + Joiner.on(", ").join(arguments) + ")";
+  }
+
+
+  /**
+   * Common method used to convert portable expressions, for dialects that share the same syntax.
+   */
+  protected String getSqlForPortableExpression(List<AliasedField> expression) {
+
+    List<String> arguments = expression
+        .stream()
+        .map(this::getSqlFrom)
+        .collect(toList());
+
+    return Joiner.on("").join(arguments);
   }
 
 

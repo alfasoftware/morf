@@ -59,6 +59,7 @@ import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.PortableSqlExpression;
 import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
@@ -85,6 +86,12 @@ class MySqlDialect extends SqlDialect {
    */
   public MySqlDialect() {
     super(""); // no schema name needed for MySQL.
+  }
+
+
+  @Override
+  protected String databaseTypeIdentifier() {
+    return MySql.IDENTIFIER;
   }
 
 
@@ -987,11 +994,6 @@ class MySqlDialect extends SqlDialect {
     throw new IllegalStateException("EXCEPT set operator is not supported in the MySQL dialect");
   }
 
-
-  @Override
-  protected String getSqlFrom(PortableSqlFunction function) {
-    return super.getSqlForPortableFunction(function.getFunctionForDatabaseType(MySql.IDENTIFIER));
-  }
 
   @Override
   public boolean useForcedSerialImport() {

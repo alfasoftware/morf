@@ -1591,6 +1591,10 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return schemaResource;
   }
 
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCurrValForSequence()
+   */
   @Override
   protected String expectedPortableStatement() {
     return "UPDATE testschema.Table SET field = TRANSLATE(field, '1', 'A')";
@@ -1638,8 +1642,17 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return "SELECT Test.id, Alternate.stringField FROM " + tableName(TEST_TABLE) + " INNER JOIN " + tableName("Alternate") + " ON (Test.id = Alternate.id) LIMIT 25";
   }
 
-
+  
+  /**
+   * @see AbstractSqlDialectTest#expectedPortableSqlExpression()
+   */
   @Override
+  protected String expectedPortableSqlExpression() {
+    return "SELECT CONCAT(first_name, ' ', last_name, ' (', params->>'role', ')') FROM testschema.Test";
+  }
+  
+  
+   @Override
   protected String expectedSelectWithOrderByWhereAndLimit() {
     return "SELECT id, stringField FROM " + tableName(TEST_TABLE) + " WHERE (stringField IS NOT NULL) ORDER BY id DESC LIMIT 10";
   }

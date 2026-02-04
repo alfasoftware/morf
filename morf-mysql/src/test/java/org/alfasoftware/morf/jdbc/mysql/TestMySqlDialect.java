@@ -1419,6 +1419,9 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   }
 
 
+  /**
+   * @see AbstractSqlDialectTest#expectedPortableStatement()
+   */
   @Override
   protected String expectedPortableStatement() {
     return "UPDATE Table SET field = REVERSE(field, '4', 'D')";
@@ -1488,6 +1491,14 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   }
 
 
+  /**
+   * @see AbstractSqlDialectTest#expectedPortableSqlExpression()
+   */
+  @Override
+  protected String expectedPortableSqlExpression() {
+    return "SELECT IF(active = 1, 'yes', 'no') field FROM Test";
+  }
+  
   /**
    * Morf does not support LIMIT for MySQL - returning null causes tests to be skipped via assumeTrue
    */

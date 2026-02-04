@@ -1965,6 +1965,9 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   }
 
 
+  /**
+   * @see AbstractSqlDialectTest#expectedCurrValForSequence()
+   */
   @Override
   protected String expectedPortableStatement() {
     return "UPDATE TESTSCHEMA.Table SET field = REGEX_REPLACE(field, N'3', N'C')";
@@ -2012,7 +2015,16 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
     return "SELECT Test.id, Alternate.stringField FROM " + tableName(TEST_TABLE) + " INNER JOIN " + tableName("Alternate") + " ON (Test.id = Alternate.id) FETCH FIRST 25 ROWS ONLY";
   }
 
-
+  
+  /**
+   * @see AbstractSqlDialectTest#expectedPortableSqlExpression()
+   */
+  @Override
+  protected String expectedPortableSqlExpression() {
+    return "SELECT CASE WHEN (charField = N'Y') THEN intField ELSE floatField END ROWNUM field FROM TESTSCHEMA.Test";
+  }
+ 
+  
   @Override
   protected String expectedSelectWithOrderByWhereAndLimit() {
     return "SELECT id, stringField FROM " + tableName(TEST_TABLE) + " WHERE (stringField IS NOT NULL) ORDER BY id DESC NULLS LAST FETCH FIRST 10 ROWS ONLY";

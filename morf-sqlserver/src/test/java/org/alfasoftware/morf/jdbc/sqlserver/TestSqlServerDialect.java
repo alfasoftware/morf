@@ -1505,6 +1505,9 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   }
 
 
+  /**
+   * @see AbstractSqlDialectTest#expectedCurrValForSequence()
+   */
   @Override
   protected String expectedPortableStatement() {
     return "UPDATE TESTSCHEMA.Table SET field = SOUNDEX(field, '5', 'E')";
@@ -1574,7 +1577,16 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   }
 
 
-  /**
+ /**
+   * @see AbstractSqlDialectTest#expectedPortableSqlExpression()
+   */
+  @Override
+  protected String expectedPortableSqlExpression() {
+    return "SELECT CASE WHEN status = 'A' THEN 'ACTIVE' WHEN status = 'I'THEN 'INACTIVE' ELSE 'UNKNOWN' END FROM TESTSCHEMA.Test";
+  }
+  
+  
+   /**
    * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
    */
   @Override
