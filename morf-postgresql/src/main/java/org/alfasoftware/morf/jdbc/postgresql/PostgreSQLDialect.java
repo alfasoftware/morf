@@ -51,6 +51,7 @@ import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.FunctionType;
+import org.alfasoftware.morf.sql.element.PortableSqlExpression;
 import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
@@ -67,6 +68,12 @@ class PostgreSQLDialect extends SqlDialect {
 
   public PostgreSQLDialect(String schemaName) {
    super(schemaName);
+  }
+
+
+  @Override
+  protected String databaseTypeIdentifier() {
+    return PostgreSQL.IDENTIFIER;
   }
 
 
@@ -726,6 +733,12 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
+  protected Optional<String> getSelectLimitSuffix(int limit) {
+    return Optional.of("LIMIT " + limit);
+  }
+
+
+  @Override
   protected String selectStatementPreFieldDirectives(SelectStatement selectStatement) {
     StringBuilder builder = new StringBuilder();
 
@@ -951,12 +964,6 @@ class PostgreSQLDialect extends SqlDialect {
       return sqlBuilder.toString();
     }
     return super.getSqlFrom(statement);
-  }
-
-
-  @Override
-  protected String getSqlFrom(PortableSqlFunction function) {
-    return super.getSqlForPortableFunction(function.getFunctionForDatabaseType(PostgreSQL.IDENTIFIER));
   }
 
 
