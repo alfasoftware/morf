@@ -7,11 +7,11 @@
     <version>2.30.0-RC1</version>
   </parent>
   
-  <name>Morf - Test Support</name>
+  <name>Morf - H2 version 2</name>
   <description>Morf is a library for cross-platform evolutionary relational database mechanics, database access and database imaging/cloning.</description>
   <url>https://github.com/alfasoftware/morf</url>
 
-  <artifactId>morf-testsupport</artifactId>
+  <artifactId>morf-h2v2</artifactId>
 
   <properties>
     <sonar.coverage.jacoco.xmlReportPaths>${basedir}/../${aggregate.report.dir}</sonar.coverage.jacoco.xmlReportPaths>
@@ -33,42 +33,26 @@
       </plugin>
     </plugins>
   </build>
-  
+
   <dependencies>
-    <dependency>
-      <groupId>org.postgresql</groupId>
-      <artifactId>postgresql</artifactId>
-      <version>42.5.5</version>
-    </dependency>
-    <dependency>
-      <groupId>com.oracle.database.jdbc</groupId>
-      <artifactId>ojdbc11</artifactId>
-      <version>23.2.0.0</version>
-    </dependency>
     <dependency>
       <groupId>org.alfasoftware</groupId>
       <artifactId>morf-core</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.hamcrest</groupId>
-      <artifactId>hamcrest-all</artifactId>
+      <groupId>org.alfasoftware</groupId>
+      <artifactId>morf-testsupport</artifactId>
+      <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.mockito</groupId>
-      <artifactId>mockito-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
+      <groupId>log4j</groupId>
+      <artifactId>log4j</artifactId>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.h2database</groupId>
       <artifactId>h2</artifactId>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>net.jcip</groupId>
-      <artifactId>jcip-annotations</artifactId>
+      <version>2.3.232</version>
     </dependency>
   </dependencies>
 </project>
