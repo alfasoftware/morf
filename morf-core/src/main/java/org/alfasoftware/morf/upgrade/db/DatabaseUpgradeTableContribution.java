@@ -15,6 +15,7 @@
 package org.alfasoftware.morf.upgrade.db;
 
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 
 import java.util.Collection;
@@ -40,6 +41,12 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
 
   /** Name of the table containing information on the views deployed within the app's database. */
   public static final String DEPLOYED_VIEWS_NAME = "DeployedViews";
+
+  /** Name of the table tracking deferred index operations. */
+  public static final String DEFERRED_INDEX_OPERATION_NAME = "DeferredIndexOperation";
+
+  /** Name of the table storing column details for deferred index operations. */
+  public static final String DEFERRED_INDEX_OPERATION_COLUMN_NAME = "DeferredIndexOperationColumn";
 
 
   /**
@@ -69,13 +76,59 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
 
 
   /**
+   * @return The Table descriptor of DeferredIndexOperation
+   */
+  public static Table deferredIndexOperationTable() {
+    return table(DEFERRED_INDEX_OPERATION_NAME)
+        .columns(
+          column("operationId", DataType.STRING, 100).primaryKey(),
+          column("upgradeUUID", DataType.STRING, 100),
+          column("tableName", DataType.STRING, 30),
+          column("indexName", DataType.STRING, 30),
+          column("operationType", DataType.STRING, 20),
+          column("indexUnique", DataType.BOOLEAN),
+          column("status", DataType.STRING, 20),
+          column("retryCount", DataType.INTEGER),
+          column("createdTime", DataType.DECIMAL, 14),
+          column("startedTime", DataType.DECIMAL, 14).nullable(),
+          column("completedTime", DataType.DECIMAL, 14).nullable(),
+          column("errorMessage", DataType.CLOB).nullable()
+        )
+        .indexes(
+          index("DeferredIndexOp_1").columns("status"),
+          index("DeferredIndexOp_2").columns("upgradeUUID"),
+          index("DeferredIndexOp_3").columns("tableName")
+        );
+  }
+
+
+  /**
+   * @return The Table descriptor of DeferredIndexOperationColumn
+   */
+  public static Table deferredIndexOperationColumnTable() {
+    return table(DEFERRED_INDEX_OPERATION_COLUMN_NAME)
+        .columns(
+          column("operationId", DataType.STRING, 100),
+          column("columnName", DataType.STRING, 30),
+          column("columnSequence", DataType.INTEGER)
+        )
+        .indexes(
+          index("DeferredIdxOpCol_PK").unique().columns("operationId", "columnSequence"),
+          index("DeferredIdxOpCol_1").columns("columnName")
+        );
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.upgrade.TableContribution#tables()
    */
   @Override
   public Collection<Table> tables() {
     return ImmutableList.of(
       deployedViewsTable(),
-      upgradeAuditTable()
+      upgradeAuditTable(),
+      deferredIndexOperationTable(),
+      deferredIndexOperationColumnTable()
     );
   }
 

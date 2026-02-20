@@ -12,6 +12,7 @@ public class UpgradeSteps {
           CreateDeployedViews.class,
           RecreateOracleSequences.class,
           AddDeployedViewsSqlDefinition.class,
-          ExtendNameColumnOnDeployedViews.class
+          ExtendNameColumnOnDeployedViews.class,
+          CreateDeferredIndexOperationTables.class
   );
 }
