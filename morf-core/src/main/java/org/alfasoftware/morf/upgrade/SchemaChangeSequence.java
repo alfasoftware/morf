@@ -36,6 +36,7 @@ import org.alfasoftware.morf.sql.element.FieldLiteral;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex;
 
 /**
  * Tracks a sequence of {@link SchemaChange}s as various {@link SchemaEditor}
@@ -641,6 +642,12 @@ public class SchemaChangeSequence {
     @Override
     public void visit(RemoveSequence removeSequence) {
       changes.add(schemaChangeAdaptor.adapt(removeSequence));
+    }
+
+
+    @Override
+    public void visit(DeferredAddIndex deferredAddIndex) {
+      changes.add(schemaChangeAdaptor.adapt(deferredAddIndex));
     }
   }
 }

@@ -49,11 +49,11 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 /**
- * Tests for {@link DeferredIndexOperationDAO}.
+ * Tests for {@link DeferredIndexOperationDAOImpl}.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-public class TestDeferredIndexOperationDAO {
+public class TestDeferredIndexOperationDAOImpl {
 
   @Mock private SqlScriptExecutorProvider sqlScriptExecutorProvider;
   @Mock private SqlScriptExecutor sqlScriptExecutor;
@@ -72,7 +72,7 @@ public class TestDeferredIndexOperationDAO {
     when(sqlDialect.convertStatementToSQL(any(InsertStatement.class))).thenReturn(List.of("SQL"));
     when(sqlDialect.convertStatementToSQL(any(UpdateStatement.class))).thenReturn("UPDATE_SQL");
     when(sqlDialect.convertStatementToSQL(any(SelectStatement.class))).thenReturn("SELECT_SQL");
-    dao = new DeferredIndexOperationDAO(sqlScriptExecutorProvider, sqlDialect);
+    dao = new DeferredIndexOperationDAOImpl(sqlScriptExecutorProvider, sqlDialect);
   }
 
 

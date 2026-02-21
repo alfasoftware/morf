@@ -8,6 +8,7 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.Statement;
+import org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex;
 
 /**
  * Common code between SchemaChangeVisitor implementors
@@ -193,6 +194,16 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   private void visitPortableSqlStatement(PortableSqlStatement sql) {
     sql.inplaceUpdateTransitionalTableNames(tracker);
     writeStatement(sql.getStatement(sqlDialect.getDatabaseType().identifier(), sqlDialect.schemaNamePrefix()));
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.upgrade.SchemaChangeVisitor#visit(org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex)
+   */
+  @Override
+  public void visit(DeferredAddIndex deferredAddIndex) {
+    currentSchema = deferredAddIndex.apply(currentSchema);
+    // No DDL: the actual CREATE INDEX is executed by DeferredIndexExecutor in the background.
   }
 
 
