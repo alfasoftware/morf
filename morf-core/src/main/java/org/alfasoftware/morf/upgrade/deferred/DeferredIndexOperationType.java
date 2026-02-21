@@ -15,26 +15,16 @@
 
 package org.alfasoftware.morf.upgrade.deferred;
 
-import static org.junit.Assert.assertEquals;
-
-import org.junit.Test;
-
 /**
- * Tests for {@link DeferredIndexConfig}.
+ * Type of a {@link DeferredIndexOperation}, stored in the
+ * {@code DeferredIndexOperation} table.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-public class TestDeferredIndexConfig {
+public enum DeferredIndexOperationType {
 
   /**
-   * Verify all default values are set as specified in the design.
+   * Create a new index on a table in the background.
    */
-  @Test
-  public void testDefaults() {
-    DeferredIndexConfig config = new DeferredIndexConfig();
-    assertEquals("Default maxRetries", 3, config.getMaxRetries());
-    assertEquals("Default threadPoolSize", 1, config.getThreadPoolSize());
-    assertEquals("Default staleThresholdSeconds (4h)", 14_400L, config.getStaleThresholdSeconds());
-    assertEquals("Default operationTimeoutSeconds (4h)", 14_400L, config.getOperationTimeoutSeconds());
-  }
+  ADD;
 }

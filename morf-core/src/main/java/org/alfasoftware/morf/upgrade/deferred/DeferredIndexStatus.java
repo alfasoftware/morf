@@ -15,26 +15,32 @@
 
 package org.alfasoftware.morf.upgrade.deferred;
 
-import static org.junit.Assert.assertEquals;
-
-import org.junit.Test;
-
 /**
- * Tests for {@link DeferredIndexConfig}.
+ * Status of a {@link DeferredIndexOperation}, stored in the
+ * {@code DeferredIndexOperation} table.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-public class TestDeferredIndexConfig {
+public enum DeferredIndexStatus {
 
   /**
-   * Verify all default values are set as specified in the design.
+   * The operation has been queued and is waiting to be picked up by the executor.
    */
-  @Test
-  public void testDefaults() {
-    DeferredIndexConfig config = new DeferredIndexConfig();
-    assertEquals("Default maxRetries", 3, config.getMaxRetries());
-    assertEquals("Default threadPoolSize", 1, config.getThreadPoolSize());
-    assertEquals("Default staleThresholdSeconds (4h)", 14_400L, config.getStaleThresholdSeconds());
-    assertEquals("Default operationTimeoutSeconds (4h)", 14_400L, config.getOperationTimeoutSeconds());
-  }
+  PENDING,
+
+  /**
+   * The operation is currently being executed by the executor.
+   */
+  IN_PROGRESS,
+
+  /**
+   * The operation completed successfully.
+   */
+  COMPLETED,
+
+  /**
+   * The operation failed; {@link DeferredIndexOperation#getRetryCount()} indicates
+   * how many attempts have been made.
+   */
+  FAILED;
 }
