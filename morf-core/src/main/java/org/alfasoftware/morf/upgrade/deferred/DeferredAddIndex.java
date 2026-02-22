@@ -53,6 +53,11 @@ public class DeferredAddIndex implements SchemaChange {
   private final Index newIndex;
 
   /**
+   * UUID string of the upgrade step that queued this operation.
+   */
+  private final String upgradeUUID;
+
+  /**
    * DAO for queued-operation checks; may be {@code null} when constructed
    * normally (created lazily from {@link ConnectionResources} in
    * {@link #isApplied}).
@@ -63,12 +68,14 @@ public class DeferredAddIndex implements SchemaChange {
   /**
    * Construct a {@link DeferredAddIndex} schema change.
    *
-   * @param tableName name of table to add the index to.
-   * @param index     the index to be created in the background.
+   * @param tableName   name of table to add the index to.
+   * @param index       the index to be created in the background.
+   * @param upgradeUUID UUID string of the upgrade step that queued this operation.
    */
-  public DeferredAddIndex(String tableName, Index index) {
+  public DeferredAddIndex(String tableName, Index index, String upgradeUUID) {
     this.tableName = tableName;
     this.newIndex = index;
+    this.upgradeUUID = upgradeUUID;
     this.dao = null;
   }
 
@@ -76,14 +83,16 @@ public class DeferredAddIndex implements SchemaChange {
   /**
    * Constructor for testing — allows injection of a pre-built DAO.
    *
-   * @param tableName name of table to add the index to.
-   * @param index     the index to be created in the background.
-   * @param dao       DAO to use instead of creating one from {@link ConnectionResources}.
+   * @param tableName   name of table to add the index to.
+   * @param index       the index to be created in the background.
+   * @param upgradeUUID UUID string of the upgrade step that queued this operation.
+   * @param dao         DAO to use instead of creating one from {@link ConnectionResources}.
    */
   @VisibleForTesting
-  DeferredAddIndex(String tableName, Index index, DeferredIndexOperationDAO dao) {
+  DeferredAddIndex(String tableName, Index index, String upgradeUUID, DeferredIndexOperationDAO dao) {
     this.tableName = tableName;
     this.newIndex = index;
+    this.upgradeUUID = upgradeUUID;
     this.dao = dao;
   }
 
@@ -183,6 +192,14 @@ public class DeferredAddIndex implements SchemaChange {
 
 
   /**
+   * @return the UUID string of the upgrade step that queued this deferred index operation.
+   */
+  public String getUpgradeUUID() {
+    return upgradeUUID;
+  }
+
+
+  /**
    * @return the name of the table the index will be added to.
    */
   public String getTableName() {
@@ -200,6 +217,6 @@ public class DeferredAddIndex implements SchemaChange {
 
   @Override
   public String toString() {
-    return "DeferredAddIndex [tableName=" + tableName + ", newIndex=" + newIndex + "]";
+    return "DeferredAddIndex [tableName=" + tableName + ", newIndex=" + newIndex + ", upgradeUUID=" + upgradeUUID + "]";
   }
 }

@@ -1,5 +1,9 @@
 package org.alfasoftware.morf.upgrade;
 
+import static org.alfasoftware.morf.sql.SqlUtils.insert;
+import static org.alfasoftware.morf.sql.SqlUtils.literal;
+import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+
 import java.util.Collection;
 import java.util.List;
 
@@ -8,6 +12,7 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.Statement;
+import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex;
 
 /**
@@ -20,7 +25,6 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   protected final UpgradeConfigAndContext upgradeConfigAndContext;
   protected final Table idTable;
   protected final TableNameResolver  tracker;
-
 
   public AbstractSchemaChangeVisitor(Schema currentSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect,
                                      Table idTable) {
@@ -203,7 +207,40 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   @Override
   public void visit(DeferredAddIndex deferredAddIndex) {
     currentSchema = deferredAddIndex.apply(currentSchema);
-    // No DDL: the actual CREATE INDEX is executed by DeferredIndexExecutor in the background.
+    // No CREATE INDEX DDL — the actual build is run by DeferredIndexExecutor.
+    // Record the pending operation so the executor can pick it up.
+    String operationId = java.util.UUID.randomUUID().toString();
+    // createdTime is captured here (script-generation time), which coincides with upgrade
+    // execution time for both inline and graph-based upgrades and correctly reflects when
+    // the operation was enqueued.
+    long createdTime = System.currentTimeMillis();
+
+    visitStatement(
+      insert().into(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
+        .values(
+          literal(operationId).as("operationId"),
+          literal(deferredAddIndex.getUpgradeUUID()).as("upgradeUUID"),
+          literal(deferredAddIndex.getTableName()).as("tableName"),
+          literal(deferredAddIndex.getNewIndex().getName()).as("indexName"),
+          literal("ADD").as("operationType"),
+          literal(deferredAddIndex.getNewIndex().isUnique()).as("indexUnique"),
+          literal("PENDING").as("status"),
+          literal(0).as("retryCount"),
+          literal(createdTime).as("createdTime")
+        )
+    );
+
+    int seq = 0;
+    for (String columnName : deferredAddIndex.getNewIndex().columnNames()) {
+      visitStatement(
+        insert().into(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_COLUMN_NAME))
+          .values(
+            literal(operationId).as("operationId"),
+            literal(columnName).as("columnName"),
+            literal(seq++).as("columnSequence")
+          )
+      );
+    }
   }
 
 

@@ -160,6 +160,12 @@ public class HumanReadableStatementProducer {
         consumer.schemaChange(HumanReadableStatementHelper.generateAddIndexString(tableName, index));
       }
 
+      /** @see org.alfasoftware.morf.upgrade.SchemaEditor#addIndexDeferred(java.lang.String, org.alfasoftware.morf.metadata.Index) **/
+      @Override
+      public void addIndexDeferred(String tableName, Index index) {
+        consumer.schemaChange(HumanReadableStatementHelper.generateAddIndexString(tableName, index));
+      }
+
       /** @see org.alfasoftware.morf.upgrade.SchemaEditor#addTable(org.alfasoftware.morf.metadata.Table) **/
       @Override
       public void addTable(Table definition) {

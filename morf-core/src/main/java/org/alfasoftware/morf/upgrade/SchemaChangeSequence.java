@@ -75,7 +75,9 @@ public class SchemaChangeSequence {
     for (UpgradeStep step : steps) {
       InternalVisitor internalVisitor = new InternalVisitor(upgradeConfigAndContext.getSchemaChangeAdaptor());
       UpgradeTableResolutionVisitor resolvedTablesVisitor = new UpgradeTableResolutionVisitor();
-      Editor editor = new Editor(internalVisitor, resolvedTablesVisitor);
+      UUID uuidAnnotation = step.getClass().getAnnotation(UUID.class);
+      String upgradeUUID = uuidAnnotation != null ? uuidAnnotation.value() : "";
+      Editor editor = new Editor(internalVisitor, resolvedTablesVisitor, upgradeUUID);
       // For historical reasons, we need to pass the editor in twice
       step.execute(editor, editor);
 
@@ -228,14 +230,17 @@ public class SchemaChangeSequence {
 
     private final SchemaChangeVisitor visitor;
     private final SchemaAndDataChangeVisitor schemaAndDataChangeVisitor;
+    private final String upgradeUUID;
 
     /**
      * @param visitor The visitor to pass the changes to.
+     * @param upgradeUUID UUID string of the upgrade step being executed.
      */
-    Editor(SchemaChangeVisitor visitor, SchemaAndDataChangeVisitor schemaAndDataChangeVisitor) {
+    Editor(SchemaChangeVisitor visitor, SchemaAndDataChangeVisitor schemaAndDataChangeVisitor, String upgradeUUID) {
       super();
       this.visitor = visitor;
       this.schemaAndDataChangeVisitor = schemaAndDataChangeVisitor;
+      this.upgradeUUID = upgradeUUID;
     }
 
 
@@ -365,6 +370,19 @@ public class SchemaChangeSequence {
       AddIndex addIndex = new AddIndex(tableName, index);
       visitor.visit(addIndex);
       schemaAndDataChangeVisitor.visit(addIndex);
+    }
+
+
+    /**
+     * @see org.alfasoftware.morf.upgrade.SchemaEditor#addIndexDeferred(java.lang.String, org.alfasoftware.morf.metadata.Index)
+     */
+    @Override
+    public void addIndexDeferred(String tableName, Index index) {
+      DeferredAddIndex deferredAddIndex = new DeferredAddIndex(tableName, index, upgradeUUID);
+      visitor.visit(deferredAddIndex);
+      // schemaAndDataChangeVisitor is intentionally not notified: no DDL runs on tableName
+      // during this upgrade step, so no table-resolution dependency is created. Stage 6 will
+      // add auto-cancel logic when the target table or a referenced column is removed.
     }
 
 

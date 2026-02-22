@@ -61,7 +61,7 @@ public class TestDeferredAddIndex {
       column("colour", DataType.STRING, 10).nullable()
     );
 
-    deferredAddIndex = new DeferredAddIndex("Apple", index("Apple_1").unique().columns("pips"));
+    deferredAddIndex = new DeferredAddIndex("Apple", index("Apple_1").unique().columns("pips"), "test-uuid-1234");
   }
 
 
@@ -86,7 +86,7 @@ public class TestDeferredAddIndex {
    */
   @Test
   public void testApplyThrowsWhenTableMissing() {
-    DeferredAddIndex missingTable = new DeferredAddIndex("NoSuchTable", index("NoSuchTable_1").columns("pips"));
+    DeferredAddIndex missingTable = new DeferredAddIndex("NoSuchTable", index("NoSuchTable_1").columns("pips"), "");
     try {
       missingTable.apply(schema(appleTable));
       fail("Expected IllegalArgumentException");
@@ -162,7 +162,7 @@ public class TestDeferredAddIndex {
     );
 
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
-    DeferredAddIndex subject = new DeferredAddIndex("Apple", index("Apple_1").unique().columns("pips"), mockDao);
+    DeferredAddIndex subject = new DeferredAddIndex("Apple", index("Apple_1").unique().columns("pips"), "", mockDao);
 
     assertTrue("Should be applied when index exists in schema",
       subject.isApplied(schema(tableWithIndex), null));
@@ -179,7 +179,7 @@ public class TestDeferredAddIndex {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
     when(mockDao.existsByTableNameAndIndexName("Apple", "Apple_1")).thenReturn(true);
 
-    DeferredAddIndex subject = new DeferredAddIndex("Apple", index("Apple_1").unique().columns("pips"), mockDao);
+    DeferredAddIndex subject = new DeferredAddIndex("Apple", index("Apple_1").unique().columns("pips"), "", mockDao);
 
     assertTrue("Should be applied when operation is queued",
       subject.isApplied(schema(appleTable), null));
@@ -196,7 +196,7 @@ public class TestDeferredAddIndex {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
     when(mockDao.existsByTableNameAndIndexName("Apple", "Apple_1")).thenReturn(false);
 
-    DeferredAddIndex subject = new DeferredAddIndex("Apple", index("Apple_1").unique().columns("pips"), mockDao);
+    DeferredAddIndex subject = new DeferredAddIndex("Apple", index("Apple_1").unique().columns("pips"), "", mockDao);
 
     assertFalse("Should not be applied when neither in schema nor queued",
       subject.isApplied(schema(appleTable), null));
@@ -211,7 +211,7 @@ public class TestDeferredAddIndex {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
     when(mockDao.existsByTableNameAndIndexName("Apple", "Apple_1")).thenReturn(false);
 
-    DeferredAddIndex subject = new DeferredAddIndex("Apple", index("Apple_1").unique().columns("pips"), mockDao);
+    DeferredAddIndex subject = new DeferredAddIndex("Apple", index("Apple_1").unique().columns("pips"), "", mockDao);
 
     assertFalse("Should not be applied when table is absent from schema",
       subject.isApplied(schema(), null));
@@ -232,11 +232,12 @@ public class TestDeferredAddIndex {
 
 
   /**
-   * Verify that getTableName() and getNewIndex() return the values supplied at construction.
+   * Verify that getTableName(), getNewIndex() and getUpgradeUUID() return the values supplied at construction.
    */
   @Test
   public void testGetters() {
     assertEquals("getTableName", "Apple", deferredAddIndex.getTableName());
     assertEquals("getNewIndex name", "Apple_1", deferredAddIndex.getNewIndex().getName());
+    assertEquals("getUpgradeUUID", "test-uuid-1234", deferredAddIndex.getUpgradeUUID());
   }
 }

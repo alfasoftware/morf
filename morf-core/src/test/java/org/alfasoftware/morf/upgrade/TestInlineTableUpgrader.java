@@ -18,6 +18,8 @@
 
 package org.alfasoftware.morf.upgrade;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -49,6 +51,7 @@ import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.sql.UpdateStatement;
+import org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -534,6 +537,44 @@ public class TestInlineTableUpgrader {
     verify(removeSequence).apply(schema);
     verify(sqlDialect).dropStatements(nullable(Sequence.class));
     verify(sqlStatementWriter).writeSql(anyCollection());
+  }
+
+
+  /**
+   * Tests that visit(DeferredAddIndex) applies the schema change and writes INSERT SQL for
+   * DeferredIndexOperation (one row) and DeferredIndexOperationColumn (one row per index column).
+   */
+  @Test
+  public void testVisitDeferredAddIndex() {
+    // given
+    Index mockIndex = mock(Index.class);
+    when(mockIndex.getName()).thenReturn("TestIdx");
+    when(mockIndex.isUnique()).thenReturn(false);
+    when(mockIndex.columnNames()).thenReturn(List.of("col1", "col2"));
+
+    DeferredAddIndex deferredAddIndex = mock(DeferredAddIndex.class);
+    given(deferredAddIndex.apply(schema)).willReturn(schema);
+    when(deferredAddIndex.getTableName()).thenReturn("TestTable");
+    when(deferredAddIndex.getNewIndex()).thenReturn(mockIndex);
+    when(deferredAddIndex.getUpgradeUUID()).thenReturn("");
+
+    // when
+    upgrader.visit(deferredAddIndex);
+
+    // then
+    verify(deferredAddIndex).apply(schema);
+    // 1 INSERT for DeferredIndexOperation + 2 INSERTs for DeferredIndexOperationColumn (one per column)
+    ArgumentCaptor<Statement> stmtCaptor = ArgumentCaptor.forClass(Statement.class);
+    verify(sqlDialect, times(3)).convertStatementToSQL(stmtCaptor.capture(), nullable(Schema.class), nullable(Table.class));
+    verify(sqlStatementWriter, times(3)).writeSql(anyCollection());
+
+    List<Statement> captured = stmtCaptor.getAllValues();
+    assertThat(captured.get(0).toString(), containsString("DeferredIndexOperation"));
+    assertThat(captured.get(0).toString(), containsString("PENDING"));
+    assertThat(captured.get(1).toString(), containsString("DeferredIndexOperationColumn"));
+    assertThat(captured.get(1).toString(), containsString("col1"));
+    assertThat(captured.get(2).toString(), containsString("DeferredIndexOperationColumn"));
+    assertThat(captured.get(2).toString(), containsString("col2"));
   }
 
 }
