@@ -23,6 +23,8 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.util.Providers;
 
+import java.time.Clock;
+
 /**
  * Provides SQLScriptExecutors.
  *
@@ -104,9 +106,9 @@ public class SqlScriptExecutorProvider implements Provider<SqlScriptExecutor> {
    */
   public SqlScriptExecutor get(SqlScriptVisitor visitor) {
     if (connectionResources != null) {
-      return new SqlScriptExecutor(defaultVisitor(visitor), dataSource, sqlDialect.get(), connectionResources);
+      return new SqlScriptExecutor(defaultVisitor(visitor), dataSource, sqlDialect.get(), connectionResources, Clock.systemUTC());
     } else {
-      return new SqlScriptExecutor(defaultVisitor(visitor), dataSource, sqlDialect.get());
+      return new SqlScriptExecutor(defaultVisitor(visitor), dataSource, sqlDialect.get(), Clock.systemUTC());
     }
   }
 

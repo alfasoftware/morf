@@ -94,6 +94,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   }
 
 
+  @Override
   protected SchemaResource createSchemaResourceForSchemaConsistencyStatements() {
     final SchemaResource schemaResource = mock(SchemaResource.class);
     final AdditionalMetadata additionalMetadata = mock(OracleMetaDataProvider.class);
@@ -1116,6 +1117,14 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
     );
   }
 
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterColumnRenameNonPrimaryIndexedColumn()
+   */
+  @Override
+  protected List<String> expectedAlterColumnRenameNonPrimaryIndexedColumn() {
+    return Arrays.asList("ALTER TABLE TESTSCHEMA.Alternate RENAME COLUMN stringField TO blahField", "COMMENT ON COLUMN TESTSCHEMA.Alternate.blahField IS 'REALNAME:[blahField]/TYPE:[STRING]'");
+  }
+
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterColumnRenamingAndChangingNullability()
@@ -1371,8 +1380,10 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
     return "MERGE INTO TESTSCHEMA.foo"
         + " USING (SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM TESTSCHEMA.somewhere) xmergesource"
         + " ON (foo.id = xmergesource.id)"
-        + " WHEN MATCHED THEN UPDATE SET bar = xmergesource.bar"
-        + " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
+        + " WHEN MATCHED"
+        + " THEN UPDATE SET bar = xmergesource.bar"
+        + " WHEN NOT MATCHED"
+        + " THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
   }
 
 
@@ -1384,8 +1395,10 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
     return "MERGE INTO TESTSCHEMA.foo"
         + " USING (SELECT somewhere.newId AS id, join.joinBar AS bar FROM TESTSCHEMA.somewhere INNER JOIN TESTSCHEMA.join ON (somewhere.newId = join.joinId)) xmergesource"
         + " ON (foo.id = xmergesource.id)"
-        + " WHEN MATCHED THEN UPDATE SET bar = xmergesource.bar"
-        + " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
+        + " WHEN MATCHED"
+        + " THEN UPDATE SET bar = xmergesource.bar"
+        + " WHEN NOT MATCHED"
+        + " THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
   }
 
 
@@ -1397,8 +1410,10 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
     return "MERGE INTO TESTSCHEMA.foo"
         + " USING (SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM MYSCHEMA.somewhere) xmergesource"
         + " ON (foo.id = xmergesource.id)"
-        + " WHEN MATCHED THEN UPDATE SET bar = xmergesource.bar"
-        + " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
+        + " WHEN MATCHED"
+        + " THEN UPDATE SET bar = xmergesource.bar"
+        + " WHEN NOT MATCHED"
+        + " THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
   }
 
 
@@ -1410,8 +1425,10 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
     return "MERGE INTO MYSCHEMA.foo"
         + " USING (SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM TESTSCHEMA.somewhere) xmergesource"
         + " ON (foo.id = xmergesource.id)"
-        + " WHEN MATCHED THEN UPDATE SET bar = xmergesource.bar"
-        + " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
+        + " WHEN MATCHED"
+        + " THEN UPDATE SET bar = xmergesource.bar"
+        + " WHEN NOT MATCHED"
+        + " THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
   }
 
 
@@ -1423,7 +1440,8 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
     return "MERGE INTO TESTSCHEMA.foo"
         + " USING (SELECT somewhere.newId AS id FROM TESTSCHEMA.somewhere) xmergesource"
         + " ON (foo.id = xmergesource.id)"
-        + " WHEN NOT MATCHED THEN INSERT (id) VALUES (xmergesource.id)";
+        + " WHEN NOT MATCHED"
+        + " THEN INSERT (id) VALUES (xmergesource.id)";
   }
 
 
@@ -1435,8 +1453,26 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
     return "MERGE INTO TESTSCHEMA.foo"
         + " USING (SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM TESTSCHEMA.somewhere) xmergesource"
         + " ON (foo.id = xmergesource.id)"
-        + " WHEN MATCHED THEN UPDATE SET bar = xmergesource.bar + foo.bar"
-        + " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
+        + " WHEN MATCHED"
+        + " THEN UPDATE SET bar = xmergesource.bar + foo.bar"
+        + " WHEN NOT MATCHED"
+        + " THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedMergeWithUpdateWhereClause()
+   */
+  @Override
+  protected String expectedMergeWithUpdateWhereClause() {
+    return "MERGE INTO TESTSCHEMA.foo"
+        + " USING (SELECT 12345 AS id, 1004 AS typeId, N'2025-04-20' AS eventDate, 5.00001 AS rate, N'important rate' AS description, 43037 AS sequenceId FROM dual) xmergesource"
+        + " ON (foo.typeId = xmergesource.typeId AND foo.eventDate = xmergesource.eventDate)"
+        + " WHEN MATCHED"
+        + " THEN UPDATE SET id = xmergesource.id, rate = xmergesource.rate, description = xmergesource.description, sequenceId = xmergesource.sequenceId"
+        + " WHERE ((foo.rate <> xmergesource.rate) OR (foo.description <> xmergesource.description))"
+        + " WHEN NOT MATCHED"
+        + " THEN INSERT (id, typeId, eventDate, rate, description, sequenceId) VALUES (xmergesource.id, xmergesource.typeId, xmergesource.eventDate, xmergesource.rate, xmergesource.description, xmergesource.sequenceId)";
   }
 
 
@@ -1621,7 +1657,7 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   @Override
   public List<String> expectedAddTableFromStatements() {
     return ImmutableList.of(
-      "CREATE TABLE TESTSCHEMA.SomeTable (someField  NOT NULL, otherField  NOT NULL) PARALLEL NOLOGGING AS SELECT someField, otherField FROM TESTSCHEMA.OtherTable",
+      "CREATE TABLE TESTSCHEMA.SomeTable (someField  NOT NULL, otherField  NOT NULL) PARALLEL NOLOGGING AS SELECT CAST(someField AS NVARCHAR2(3)) AS someField, CAST(otherField AS DECIMAL(3,0)) AS otherField FROM TESTSCHEMA.OtherTable",
       "ALTER TABLE TESTSCHEMA.SomeTable ADD CONSTRAINT SomeTable_PK PRIMARY KEY (someField) USING INDEX (CREATE UNIQUE INDEX TESTSCHEMA.SomeTable_PK ON TESTSCHEMA.SomeTable (someField) NOLOGGING PARALLEL)",
       "ALTER TABLE TESTSCHEMA.SomeTable NOPARALLEL LOGGING",
       "ALTER INDEX TESTSCHEMA.SomeTable_PK NOPARALLEL LOGGING",
@@ -1929,8 +1965,68 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
   }
 
 
+  /**
+   * @see AbstractSqlDialectTest#expectedCurrValForSequence()
+   */
   @Override
   protected String expectedPortableStatement() {
     return "UPDATE TESTSCHEMA.Table SET field = REGEX_REPLACE(field, N'3', N'C')";
+  }
+
+
+  @Override
+  protected String expectedSelectWithLimit() {
+    return "SELECT * FROM " + tableName(TEST_TABLE) + " FETCH FIRST 10 ROWS ONLY";
+  }
+
+
+  @Override
+  protected String expectedSelectWithOrderByAndLimit() {
+    return "SELECT id FROM " + tableName(TEST_TABLE) + " ORDER BY id NULLS FIRST FETCH FIRST 10 ROWS ONLY";
+  }
+
+
+  @Override
+  protected String expectedSelectWithLimitInSubquery() {
+    return "SELECT COUNT(*) AS cnt FROM (SELECT * FROM " + tableName(TEST_TABLE) + " FETCH FIRST 1000 ROWS ONLY) t";
+  }
+
+
+  @Override
+  protected String expectedSelectWithWhereAndLimit() {
+    return "SELECT id, stringField FROM " + tableName(TEST_TABLE) + " WHERE (intField = 100) FETCH FIRST 5 ROWS ONLY";
+  }
+
+
+  @Override
+  protected String expectedSelectWithDistinctAndLimit() {
+    return "SELECT DISTINCT stringField FROM " + tableName(TEST_TABLE) + " FETCH FIRST 20 ROWS ONLY";
+  }
+
+
+  @Override
+  protected String expectedSelectWithGroupByAndLimit() {
+    return "SELECT stringField, COUNT(*) AS cnt FROM " + tableName(TEST_TABLE) + " GROUP BY stringField FETCH FIRST 15 ROWS ONLY";
+  }
+
+
+  @Override
+  protected String expectedSelectWithJoinAndLimit() {
+    return "SELECT Test.id, Alternate.stringField FROM " + tableName(TEST_TABLE) + " INNER JOIN " + tableName("Alternate") + " ON (Test.id = Alternate.id) FETCH FIRST 25 ROWS ONLY";
+  }
+
+  
+  /**
+   * @see AbstractSqlDialectTest#expectedPortableSqlExpression()
+   */
+  @Override
+  protected String expectedPortableSqlExpression() {
+    return "SELECT CASE WHEN (charField = N'Y') THEN intField ELSE floatField END ROWNUM field FROM TESTSCHEMA.Test";
+  }
+ 
+  
+  @Override
+  protected String expectedSelectWithOrderByWhereAndLimit() {
+    return "SELECT id, stringField FROM " + tableName(TEST_TABLE) + " WHERE (stringField IS NOT NULL) ORDER BY id DESC NULLS LAST FETCH FIRST 10 ROWS ONLY";
   }
 }

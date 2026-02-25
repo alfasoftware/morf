@@ -55,6 +55,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import javax.sql.DataSource;
@@ -63,7 +64,9 @@ import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.MockDialect;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
+import org.alfasoftware.morf.metadata.AdditionalMetadata;
 import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder;
@@ -93,6 +96,7 @@ import com.google.common.base.Function;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 /**
@@ -179,13 +183,25 @@ public class TestUpgrade {
         create();
 
     SchemaResource schemaResource = mock(SchemaResource.class);
+    AdditionalMetadata additionalMetadata = mock(AdditionalMetadata.class);
+    when(schemaResource.getAdditionalMetadata()).thenReturn(Optional.of(additionalMetadata));
+    Map<String, List<Index>> indexMap = Maps.newHashMap();
+    Index indexPrf1 = mock(Index.class);
+    indexMap.put("withtypes", ImmutableList.of(indexPrf1));
+
+    when(additionalMetadata.ignoredIndexes()).thenReturn(indexMap);
+
     when(mockConnectionResources.openSchemaResource(eq(mockConnectionResources.getDataSource()))).thenReturn(schemaResource);
     when(schemaResource.tables()).thenReturn(tables);
 
-    UpgradePath results = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(mockConnectionResources), viewChangesDeploymentHelperFactory(mockConnectionResources), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory)
+    UpgradePath results = new Upgrade.Factory(upgradePathFactory(), upgradeStatusTableServiceFactory(mockConnectionResources),
+      viewChangesDeploymentHelperFactory(mockConnectionResources), viewDeploymentValidatorFactory(), databaseUpgradeLockServiceFactory(), graphBasedUpgradeScriptGeneratorFactory)
+        .withUpgradeConfiguration(upgradeConfigAndContext)
         .create(mockConnectionResources)
         .findPath(targetSchema, upgradeSteps, Lists.newArrayList("^Drivers$", "^EXCLUDE_.*$"), mockConnectionResources.getDataSource());
 
+    verify(additionalMetadata).ignoredIndexes();
+    assertEquals("ignored indexes must match", indexMap, upgradeConfigAndContext.getIgnoredIndexes());
     assertEquals("Should be two steps.", 2, results.getSteps().size());
     List<String> sql = results.getSql();
     assertEquals("Number of SQL statements", 19, sql.size()); // Includes statements to add optimistic locking; create, truncate and then drop temp table; also 2 comments

@@ -567,7 +567,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
    */
   @Override
   protected String expectedBlobLiteral(String value) {
-    return String.format("'%s'", value);
+    return String.format("decode('%s','hex')", value);
   }
 
 
@@ -888,6 +888,15 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterColumnRenameNonPrimaryIndexedColumn()
+   */
+  @Override
+  protected List<String> expectedAlterColumnRenameNonPrimaryIndexedColumn() {
+    return Arrays.asList("ALTER TABLE testschema.Alternate RENAME stringField TO blahField","COMMENT ON COLUMN testschema.Alternate.blahField IS 'REALNAME:[blahField]/TYPE:[STRING]'");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterColumnRenamingAndChangingNullability()
    */
   @Override
@@ -1101,7 +1110,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected String expectedMergeSimple() {
     return "INSERT INTO testschema.foo (id, bar)"
         + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM testschema.somewhere"
-        + " ON CONFLICT (id) DO UPDATE SET bar = EXCLUDED.bar";
+        + " ON CONFLICT (id)"
+        + " DO UPDATE SET bar = EXCLUDED.bar";
   }
 
 
@@ -1112,7 +1122,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected String expectedMergeComplex() {
     return "INSERT INTO testschema.foo (id, bar)"
         + " SELECT somewhere.newId AS id, join.joinBar AS bar FROM testschema.somewhere INNER JOIN testschema.join ON (somewhere.newId = join.joinId)"
-        + " ON CONFLICT (id) DO UPDATE SET bar = EXCLUDED.bar";
+        + " ON CONFLICT (id)"
+        + " DO UPDATE SET bar = EXCLUDED.bar";
   }
 
 
@@ -1123,7 +1134,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected String expectedMergeSourceInDifferentSchema() {
     return "INSERT INTO testschema.foo (id, bar)"
         + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM MYSCHEMA.somewhere"
-        + " ON CONFLICT (id) DO UPDATE SET bar = EXCLUDED.bar";
+        + " ON CONFLICT (id)"
+        + " DO UPDATE SET bar = EXCLUDED.bar";
   }
 
 
@@ -1134,7 +1146,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected String expectedMergeTargetInDifferentSchema() {
     return "INSERT INTO MYSCHEMA.foo (id, bar)"
         + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM testschema.somewhere"
-        + " ON CONFLICT (id) DO UPDATE SET bar = EXCLUDED.bar";
+        + " ON CONFLICT (id)"
+        + " DO UPDATE SET bar = EXCLUDED.bar";
   }
 
 
@@ -1145,7 +1158,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected String expectedMergeForAllPrimaryKeys() {
     return "INSERT INTO testschema.foo (id)"
         + " SELECT somewhere.newId AS id FROM testschema.somewhere"
-        + " ON CONFLICT (id) DO NOTHING";
+        + " ON CONFLICT (id)"
+        + " DO NOTHING";
   }
 
 
@@ -1156,7 +1170,21 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected String expectedMergeWithUpdateExpressions() {
     return "INSERT INTO testschema.foo (id, bar)"
         + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM testschema.somewhere"
-        + " ON CONFLICT (id) DO UPDATE SET bar = EXCLUDED.bar + foo.bar";
+        + " ON CONFLICT (id)"
+        + " DO UPDATE SET bar = EXCLUDED.bar + foo.bar";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedMergeWithUpdateWhereClause()
+   */
+  @Override
+  protected String expectedMergeWithUpdateWhereClause() {
+    return "INSERT INTO testschema.foo (id, typeId, eventDate, rate, description, sequenceId)"
+        + " SELECT 12345 AS id, 1004 AS typeId, '2025-04-20' AS eventDate, 5.00001 AS rate, 'important rate' AS description, 43037 AS sequenceId"
+        + " ON CONFLICT (typeId,eventDate)"
+        + " DO UPDATE SET id = EXCLUDED.id, rate = EXCLUDED.rate, description = EXCLUDED.description, sequenceId = EXCLUDED.sequenceId"
+        + " WHERE ((foo.rate <> EXCLUDED.rate) OR (foo.description <> EXCLUDED.description))";
   }
 
 
@@ -1258,13 +1286,13 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected List<String> expectedAddTableFromStatements() {
     return ImmutableList.of(
-      "CREATE TABLE testschema.SomeTable (someField VARCHAR(3) COLLATE \"POSIX\" NOT NULL, otherField DECIMAL(3,0) NOT NULL, CONSTRAINT SomeTable_PK PRIMARY KEY(someField))",
+      "CREATE TABLE testschema.SomeTable (someField, otherField) AS SELECT CAST(someField AS VARCHAR(3)) COLLATE \"POSIX\" AS someField, CAST(otherField AS DECIMAL(3,0)) AS otherField FROM testschema.OtherTable",
+      "ALTER TABLE SomeTable ALTER someField SET NOT NULL, ALTER otherField SET NOT NULL, ADD CONSTRAINT SomeTable_PK PRIMARY KEY(someField)",
       "COMMENT ON TABLE testschema.SomeTable IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable]'",
       "COMMENT ON COLUMN testschema.SomeTable.someField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[someField]/TYPE:[STRING]'",
       "COMMENT ON COLUMN testschema.SomeTable.otherField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[otherField]/TYPE:[DECIMAL]'",
       "CREATE INDEX SomeTable_1 ON testschema.SomeTable (otherField)",
-      "COMMENT ON INDEX SomeTable_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_1]'",
-      "INSERT INTO testschema.SomeTable SELECT someField, otherField FROM testschema.OtherTable"
+      "COMMENT ON INDEX SomeTable_1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[SomeTable_1]'"
     );
   }
 
@@ -1450,7 +1478,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return "DELETE FROM " + tableName(TEST_TABLE) + " WHERE ctid IN (" +
       "SELECT ctid FROM " + tableName(TEST_TABLE) + " WHERE (" + TEST_TABLE + ".stringField = " + stringLiteralPrefix() + value +
       ") LIMIT 1000)";
-  };
+  }
 
 
   /**
@@ -1461,7 +1489,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return "DELETE FROM " + tableName(TEST_TABLE) + " WHERE ctid IN (" +
       "SELECT ctid FROM " + tableName(TEST_TABLE) + " WHERE ((Test.stringField = " + stringLiteralPrefix() + value1 + ") OR (Test.stringField = " + stringLiteralPrefix() + value2 + "))" +
       " LIMIT 1000)";
-  };
+  }
 
 
   /**
@@ -1481,7 +1509,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedSelectWithExcept() {
     return "SELECT stringField FROM testschema.Test EXCEPT SELECT stringField FROM testschema.Other ORDER BY stringField";
-  };
+  }
 
 
   /**
@@ -1563,8 +1591,70 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return schemaResource;
   }
 
+
+  /**
+   * @see AbstractSqlDialectTest#expectedCurrValForSequence()
+   */
   @Override
   protected String expectedPortableStatement() {
     return "UPDATE testschema.Table SET field = TRANSLATE(field, '1', 'A')";
   }
+
+
+  @Override
+  protected String expectedSelectWithLimit() {
+    return "SELECT * FROM " + tableName(TEST_TABLE) + " LIMIT 10";
+  }
+
+
+  @Override
+  protected String expectedSelectWithOrderByAndLimit() {
+    return "SELECT id FROM " + tableName(TEST_TABLE) + " ORDER BY id LIMIT 10";
+  }
+
+
+  @Override
+  protected String expectedSelectWithLimitInSubquery() {
+    return "SELECT COUNT(*) AS cnt FROM (SELECT * FROM " + tableName(TEST_TABLE) + " LIMIT 1000) t";
+  }
+
+
+  @Override
+  protected String expectedSelectWithWhereAndLimit() {
+    return "SELECT id, stringField FROM " + tableName(TEST_TABLE) + " WHERE (intField = 100) LIMIT 5";
+  }
+
+
+  @Override
+  protected String expectedSelectWithDistinctAndLimit() {
+    return "SELECT DISTINCT stringField FROM " + tableName(TEST_TABLE) + " LIMIT 20";
+  }
+
+
+  @Override
+  protected String expectedSelectWithGroupByAndLimit() {
+    return "SELECT stringField, COUNT(*) AS cnt FROM " + tableName(TEST_TABLE) + " GROUP BY stringField LIMIT 15";
+  }
+
+
+  @Override
+  protected String expectedSelectWithJoinAndLimit() {
+    return "SELECT Test.id, Alternate.stringField FROM " + tableName(TEST_TABLE) + " INNER JOIN " + tableName("Alternate") + " ON (Test.id = Alternate.id) LIMIT 25";
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedPortableSqlExpression()
+   */
+  @Override
+  protected String expectedPortableSqlExpression() {
+    return "SELECT CONCAT(first_name, ' ', last_name, ' (', params->>'role', ')') FROM testschema.Test";
+  }
+
+
+   @Override
+  protected String expectedSelectWithOrderByWhereAndLimit() {
+    return "SELECT id, stringField FROM " + tableName(TEST_TABLE) + " WHERE (stringField IS NOT NULL) ORDER BY id DESC LIMIT 10";
+  }
 }
+

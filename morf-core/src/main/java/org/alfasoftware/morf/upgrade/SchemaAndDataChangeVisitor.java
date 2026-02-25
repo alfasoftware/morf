@@ -3,6 +3,7 @@ package org.alfasoftware.morf.upgrade;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.InsertStatement;
+import org.alfasoftware.morf.sql.MergeMatchClause;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.MergeStatement.InputField;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
@@ -22,6 +23,8 @@ import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.Join;
 import org.alfasoftware.morf.sql.element.MathsField;
+import org.alfasoftware.morf.sql.element.NativeExpression;
+import org.alfasoftware.morf.sql.element.PortableSqlExpression;
 import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
@@ -464,4 +467,35 @@ public interface SchemaAndDataChangeVisitor {
   default void visit(PortableSqlFunction portableSqlFunction) {
     // Do nothing on default
   }
+
+
+  /**
+   * Perform visit operation on an {@link MergeMatchClause} instance.
+   *
+   * @param mergeMatchClause instance of {@link MergeMatchClause} to visit.
+   */
+  default void visit(MergeMatchClause mergeMatchClause) {
+    // Do nothing on default
+  }
+
+
+  /**
+   * Perform visit operation on a {@link PortableSqlExpression} instance.
+   *
+   * @param portableSqlExpression instance of {@link PortableSqlExpression} to visit.
+   */
+  default void visit(PortableSqlExpression portableSqlExpression) {
+    // Do nothing on default
+  }
+
+
+  /**
+   * Perform visit operation on a {@link NativeExpression} instance.
+   *
+   * @param expression instance of {@link NativeExpression} to visit.
+   */
+  default void visit(NativeExpression expression) {
+    // Do nothing on default
+  }
+
 }

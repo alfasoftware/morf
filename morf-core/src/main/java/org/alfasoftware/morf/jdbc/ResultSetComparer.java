@@ -423,7 +423,10 @@ public class ResultSetComparer {
       return resultSet.getString(columnIndex);
     } else if (columnTypeIsNumeric(columnType)) {
       BigDecimal bigDecimal = resultSet.getBigDecimal(columnIndex);
-      return bigDecimal == null ? null : bigDecimal.stripTrailingZeros();
+      if (bigDecimal == null || bigDecimal.scale() == 0) {
+        return bigDecimal;
+      }
+      return bigDecimal.stripTrailingZeros();
     } else if (columnTypeIsBoolean(columnType)) {
       return resultSet.getBoolean(columnIndex);
     } else if (columnTypeIsDate(columnType)) {

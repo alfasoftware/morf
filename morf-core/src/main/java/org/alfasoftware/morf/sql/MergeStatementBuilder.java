@@ -18,6 +18,7 @@ package org.alfasoftware.morf.sql;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.AliasedFieldBuilder;
@@ -35,10 +36,11 @@ import com.google.common.collect.ImmutableList;
  */
 public class MergeStatementBuilder implements Builder<MergeStatement> {
 
-  private final List<AliasedField>  tableUniqueKey = new ArrayList<>();
-  private TableReference            table;
-  private SelectStatement           selectStatement;
-  private final List<AliasedField>  ifUpdating = new ArrayList<>();
+  private final List<AliasedField>   tableUniqueKey = new ArrayList<>();
+  private TableReference             table;
+  private SelectStatement            selectStatement;
+  private final List<AliasedField>   ifUpdating = new ArrayList<>();
+  private Optional<MergeMatchClause> whenMatchedAction = Optional.empty();
 
 
   /**
@@ -59,6 +61,7 @@ public class MergeStatementBuilder implements Builder<MergeStatement> {
     this.table = sourceStatement.getTable();
     this.tableUniqueKey.addAll(sourceStatement.getTableUniqueKey());
     this.selectStatement = sourceStatement.getSelectStatement();
+    this.whenMatchedAction = sourceStatement.getWhenMatchedAction();
   }
 
 
@@ -72,6 +75,7 @@ public class MergeStatementBuilder implements Builder<MergeStatement> {
     this.table = transformer.deepCopy(sourceStatement.getTable());
     this.tableUniqueKey.addAll(DeepCopyTransformations.transformIterable(sourceStatement.getTableUniqueKey(), transformer));
     this.selectStatement = transformer.deepCopy(sourceStatement.getSelectStatement());
+    this.whenMatchedAction = sourceStatement.getWhenMatchedAction().map(transformer::deepCopy);
   }
 
 
@@ -171,6 +175,21 @@ public class MergeStatementBuilder implements Builder<MergeStatement> {
     UpdateValues values = new UpdateValues(table);
     mutator.mutate(overrider, values);
     this.ifUpdating.addAll(Builder.Helper.buildAll(overrider.getUpdateExpressions()));
+    return this;
+  }
+
+
+  /**
+   * Specifies the action to take when records match.
+   *
+   * <p>If not specified, the default behavior is to update all matched records
+   * with values from the source (when non-key fields differ).</p>
+   *
+   * @param matchClause the match action (typically MergeMatchClause.update())
+   * @return this builder for method chaining
+   */
+  public MergeStatementBuilder whenMatched(MergeMatchClause matchClause) {
+    this.whenMatchedAction = Optional.ofNullable(matchClause);
     return this;
   }
 
@@ -294,6 +313,24 @@ public class MergeStatementBuilder implements Builder<MergeStatement> {
    */
   Iterable<AliasedField> getIfUpdating() {
     return ifUpdating;
+  }
+
+
+  /**
+   * Gets the action to take when records match.
+   *
+   * <p>When {@link Optional#empty()}, the default behavior applies: all matched records
+   * are updated with source values when non-key fields differ.</p>
+   *
+   * <p>When present, the {@link MergeMatchClause} defines custom behavior such as
+   * conditional updates with a WHERE clause.</p>
+   *
+   * @return the match clause, or {@link Optional#empty()} if default behavior should be used
+   * @see MergeMatchClause
+   * @see MergeStatementBuilder#whenMatched(MergeMatchClause)
+   */
+  public Optional<MergeMatchClause> getWhenMatchedAction() {
+    return whenMatchedAction;
   }
 
 

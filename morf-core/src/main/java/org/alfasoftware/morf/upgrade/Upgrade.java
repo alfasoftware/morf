@@ -105,20 +105,27 @@ public class Upgrade {
    * @param targetSchema The target database schema.
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
    * @param connectionResources Connection details for the database.
+   * @param upgradeConfigAndContext Config and context object.
    * @param viewDeploymentValidator External view deployment validator.
    */
-  public static void performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, ViewDeploymentValidator viewDeploymentValidator) {
+  public static void performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeConfigAndContext upgradeConfigAndContext, ViewDeploymentValidator viewDeploymentValidator) {
     SqlScriptExecutorProvider sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
     UpgradeStatusTableService upgradeStatusTableService = new UpgradeStatusTableServiceImpl(sqlScriptExecutorProvider, connectionResources.sqlDialect());
     DatabaseUpgradePathValidationService databaseUpgradePathValidationService = new DatabaseUpgradePathValidationServiceImpl(connectionResources, upgradeStatusTableService);
     try {
-      UpgradePath path = Upgrade.createPath(targetSchema, upgradeSteps, connectionResources, upgradeStatusTableService, viewDeploymentValidator, databaseUpgradePathValidationService);
+      UpgradePath path = Upgrade.createPath(targetSchema, upgradeSteps, connectionResources, upgradeConfigAndContext, upgradeStatusTableService, viewDeploymentValidator, databaseUpgradePathValidationService);
       if (path.hasStepsToApply()) {
         sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor()).execute(path.getSql());
       }
     } finally {
       upgradeStatusTableService.tidyUp(connectionResources.getDataSource());
     }
+  }
+
+
+  @Deprecated
+  public static void performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, ViewDeploymentValidator viewDeploymentValidator) {
+    performUpgrade(targetSchema, upgradeSteps, connectionResources, new UpgradeConfigAndContext(), viewDeploymentValidator);
   }
 
 
@@ -131,6 +138,7 @@ public class Upgrade {
    * @param targetSchema The target database schema.
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
    * @param connectionResources Connection details for the database.
+   * @param upgradeConfigAndContext Config and context object.
    * @param upgradeStatusTableService Service used to manage the upgrade status coordination table.
    * @param viewDeploymentValidator External view deployment validator.
    * @return The required upgrade path.
@@ -139,6 +147,7 @@ public class Upgrade {
       Schema targetSchema,
       Collection<Class<? extends UpgradeStep>> upgradeSteps,
       ConnectionResources connectionResources,
+      UpgradeConfigAndContext upgradeConfigAndContext,
       UpgradeStatusTableService upgradeStatusTableService,
       ViewDeploymentValidator viewDeploymentValidator,
       DatabaseUpgradePathValidationService databaseUpgradePathValidationService) {
@@ -148,7 +157,6 @@ public class Upgrade {
     UpgradePathFactory upgradePathFactory = new UpgradePathFactoryImpl(upgradeScriptAdditionsProvider, upgradeStatusTableServiceFactory);
     ViewChangesDeploymentHelper viewChangesDeploymentHelper = new ViewChangesDeploymentHelper(connectionResources.sqlDialect());
     GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory = null;
-    UpgradeConfigAndContext upgradeConfigAndContext = new UpgradeConfigAndContext();
 
     Upgrade upgrade = new Upgrade(
       connectionResources,
@@ -158,6 +166,12 @@ public class Upgrade {
     Set<String> exceptionRegexes = Collections.emptySet();
 
     return upgrade.findPath(targetSchema, upgradeSteps, exceptionRegexes, connectionResources.getDataSource());
+  }
+
+
+  @Deprecated
+  public static UpgradePath createPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeStatusTableService upgradeStatusTableService, ViewDeploymentValidator viewDeploymentValidator, DatabaseUpgradePathValidationService databaseUpgradePathValidationService) {
+    return createPath(targetSchema, upgradeSteps, connectionResources, new UpgradeConfigAndContext(), upgradeStatusTableService, viewDeploymentValidator, databaseUpgradePathValidationService);
   }
 
 
@@ -200,6 +214,12 @@ public class Upgrade {
       SchemaHealingResults schemaHealingResults = upgradeConfigAndContext.getSchemaAutoHealer().analyseSchema(readSchema);
       schemaAutoHealingStatements = schemaHealingResults.getHealingStatements(dialect);
       sourceSchema = schemaHealingResults.getHealedSchema();
+
+      // read ignored indexes if additional metadata is present
+      databaseSchemaResource.getAdditionalMetadata()
+        .ifPresent(additionalMetadata ->
+          upgradeConfigAndContext.setIgnoredIndexes(additionalMetadata.ignoredIndexes())
+        );
 
       if (!schemaConsistencyStatements.isEmpty() || !schemaAutoHealingStatements.isEmpty()) {
         log.warn("Auto-healing statements have been generated (" + schemaConsistencyStatements.size() + "+" + schemaAutoHealingStatements.size() + " statements in total); this usually implies auto-healing being carried out."
@@ -249,7 +269,7 @@ public class Upgrade {
     //
     if (!schemaChangeSequence.getUpgradeSteps().isEmpty()) {
       // Run the upgrader over all the ElementarySchemaChanges in the upgrade steps
-      InlineTableUpgrader upgrader = new InlineTableUpgrader(sourceSchema, dialect, new SqlStatementWriter() {
+      InlineTableUpgrader upgrader = new InlineTableUpgrader(sourceSchema, upgradeConfigAndContext, dialect, new SqlStatementWriter() {
         @Override
         public void writeSql(Collection<String> sql) {
           upgradeStatements.addAll(sql);
@@ -284,7 +304,7 @@ public class Upgrade {
         sourceSchema,
         targetSchema,
         connectionResources,
-        upgradeConfigAndContext.getExclusiveExecutionSteps(),
+        upgradeConfigAndContext,
         schemaChangeSequence,
         viewChanges);
     }

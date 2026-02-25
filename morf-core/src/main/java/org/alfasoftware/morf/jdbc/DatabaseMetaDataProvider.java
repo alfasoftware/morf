@@ -688,7 +688,7 @@ public abstract class DatabaseMetaDataProvider implements Schema {
 
     final Map<AName, Integer> primaryKey = loadTablePrimaryKey(realTableName);
     final Supplier<List<Column>> columns = Suppliers.memoize(() -> loadTableColumns(realTableName, primaryKey));
-    final Supplier<List<Index>> indexes = Suppliers.memoize(() -> loadTableIndexes(realTableName));
+    final Supplier<List<Index>> indexes = Suppliers.memoize(() -> loadTableIndexes(realTableName, false));
 
     return new Table() {
       @Override
@@ -800,10 +800,12 @@ public abstract class DatabaseMetaDataProvider implements Schema {
    * Loads the indexes for the given table name, except for the primary key index.
    *
    * @param tableName Name of the table.
+   * @param returnIgnored if true return ignored indexes, when false return all the non ignored.
    * @return List of table indexes.
    */
-  protected List<Index> loadTableIndexes(RealName tableName) {
+  protected List<Index> loadTableIndexes(RealName tableName, boolean returnIgnored) {
     final Map<RealName, ImmutableList.Builder<RealName>> indexColumns = new HashMap<>();
+    final Map<RealName, ImmutableList.Builder<RealName>> ignoredIndexColumns = new HashMap<>();
     final Map<RealName, Boolean> indexUniqueness = new HashMap<>();
 
     if (log.isTraceEnabled()) log.trace("Reading table indexes for " + tableName);
@@ -822,10 +824,6 @@ public abstract class DatabaseMetaDataProvider implements Schema {
             if (isPrimaryKeyIndex(indexName)) {
               continue;
             }
-            if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName.getDbName())) {
-              log.info("Ignoring index: ["+indexName.getDbName()+"]");
-              continue;
-            }
 
             String dbColumnName = indexResultSet.getString(INDEX_COLUMN_NAME);
             String realColumnName = allColumns.get().get(tableName).get(named(dbColumnName)).getName();
@@ -838,8 +836,13 @@ public abstract class DatabaseMetaDataProvider implements Schema {
 
             indexUniqueness.put(indexName, unique);
 
-            indexColumns.computeIfAbsent(indexName, k -> ImmutableList.builder())
+            if  (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName.getDbName())) {
+              ignoredIndexColumns.computeIfAbsent(indexName, k -> ImmutableList.builder())
                 .add(columnName);
+            } else {
+              indexColumns.computeIfAbsent(indexName, k -> ImmutableList.builder())
+                .add(columnName);
+            }
           }
           catch (SQLException e) {
             throw new RuntimeSqlException("Error reading metadata for index ["+indexName+"] on table ["+tableName+"]", e);
@@ -849,9 +852,15 @@ public abstract class DatabaseMetaDataProvider implements Schema {
         long end = System.currentTimeMillis();
         if (log.isTraceEnabled()) log.trace(String.format("Read table indexes for %s in %dms; %d indexes; %d unique", tableName, end-start, indexColumns.size(), indexUniqueness.size()));
 
-        return indexColumns.entrySet().stream()
+        if (returnIgnored) {
+          return ignoredIndexColumns.entrySet().stream()
             .map(e -> createIndexFrom(e.getKey(), indexUniqueness.get(e.getKey()), e.getValue().build()))
             .collect(Collectors.toList());
+        } else {
+          return indexColumns.entrySet().stream()
+            .map(e -> createIndexFrom(e.getKey(), indexUniqueness.get(e.getKey()), e.getValue().build()))
+            .collect(Collectors.toList());
+        }
       }
     }
     catch (SQLException e) {

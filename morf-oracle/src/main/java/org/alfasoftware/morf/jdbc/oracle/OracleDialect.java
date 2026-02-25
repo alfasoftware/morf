@@ -31,6 +31,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -52,6 +53,9 @@ import org.alfasoftware.morf.sql.DirectPathQueryHint;
 import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.Hint;
 import org.alfasoftware.morf.sql.InsertStatement;
+import org.alfasoftware.morf.sql.MergeMatchClause;
+import org.alfasoftware.morf.sql.MergeMatchClause.MatchAction;
+import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.NoDirectPathQueryHint;
 import org.alfasoftware.morf.sql.OptimiseForRowCount;
 import org.alfasoftware.morf.sql.OracleCustomHint;
@@ -69,8 +73,10 @@ import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ClobFieldLiteral;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
+import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.PortableSqlExpression;
 import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
@@ -122,6 +128,12 @@ class OracleDialect extends SqlDialect {
    */
   public OracleDialect(String schemaName) {
     super(schemaName);
+  }
+
+
+  @Override
+  protected String databaseTypeIdentifier() {
+    return Oracle.IDENTIFIER;
   }
 
 
@@ -734,8 +746,9 @@ class OracleDialect extends SqlDialect {
   }
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#getColumnRepresentation(org.alfasoftware.morf.metadata.DataType,
-   *      int, int)
+   * https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/Data-Types.html
+   *  - ANSI data type DECIMAL(p,s) is equivalent to NUMBER(p,s)
+   *  - BIG_INTEGER is therefore comparable to DECIMAL
    */
   @Override
   protected String getColumnRepresentation(DataType dataType, int width, int scale) {
@@ -800,6 +813,15 @@ class OracleDialect extends SqlDialect {
   @Override
   public DatabaseType getDatabaseType() {
     return DatabaseType.Registry.findByIdentifier(Oracle.IDENTIFIER);
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSelectLimitSuffix(int)
+   */
+  @Override
+  protected Optional<String> getSelectLimitSuffix(int limit) {
+    return Optional.of("FETCH FIRST " + limit + " ROWS ONLY");
   }
 
 
@@ -1031,15 +1053,20 @@ class OracleDialect extends SqlDialect {
     String tableName = oldTable.getName();
 
     boolean recreatePrimaryKey = oldColumn.isPrimaryKey() || newColumn.isPrimaryKey();
+    boolean alterNullable = oldColumn.isNullable() != newColumn.isNullable();
+    boolean alterType = oldColumn.getType() != newColumn.getType() || oldColumn.getScale() != newColumn.getScale() || oldColumn.getWidth() != newColumn.getWidth();
+    boolean alterDefaultValue = !Objects.equals(oldColumn.getDefaultValue(), newColumn.getDefaultValue());
 
     if (recreatePrimaryKey && !primaryKeysForTable(oldTable).isEmpty()) {
       result.add(dropPrimaryKeyConstraint(tableName));
     }
 
-    for (Index index : oldTable.indexes()) {
-      for (String column : index.columnNames()) {
-        if (column.equalsIgnoreCase(oldColumn.getName())) {
-          result.addAll(indexDropStatements(oldTable, index));
+    if (alterNullable || alterType || alterDefaultValue) {
+      for (Index index : oldTable.indexes()) {
+        for (String column : index.columnNames()) {
+          if (column.equalsIgnoreCase(oldColumn.getName())) {
+            result.addAll(indexDropStatements(oldTable, index));
+          }
         }
       }
     }
@@ -1054,29 +1081,29 @@ class OracleDialect extends SqlDialect {
 
     if (!StringUtils.isBlank(sqlRepresentationOfColumnType)) {
       StringBuilder statement = new StringBuilder()
-        .append("ALTER TABLE ")
-        .append(schemaNamePrefix())
-        .append(tableName)
-        .append(" MODIFY (")
-        .append(newColumn.getName())
-        .append(' ')
-        .append(sqlRepresentationOfColumnType)
-        .append(")");
+              .append("ALTER TABLE ")
+              .append(schemaNamePrefix())
+              .append(tableName)
+              .append(" MODIFY (")
+              .append(newColumn.getName())
+              .append(' ')
+              .append(sqlRepresentationOfColumnType)
+              .append(")");
 
       result.add(statement.toString());
     }
 
     if (!StringUtils.isBlank(oldColumn.getDefaultValue()) && StringUtils.isBlank(newColumn.getDefaultValue())) {
       StringBuilder statement = new StringBuilder()
-          .append("ALTER TABLE ")
-          .append(schemaNamePrefix())
-          .append(tableName)
-          .append(" MODIFY (")
-          .append(newColumn.getName())
-          .append(" DEFAULT NULL")
-          .append(")");
+              .append("ALTER TABLE ")
+              .append(schemaNamePrefix())
+              .append(tableName)
+              .append(" MODIFY (")
+              .append(newColumn.getName())
+              .append(" DEFAULT NULL")
+              .append(")");
 
-        result.add(statement.toString());
+      result.add(statement.toString());
     }
 
     if (recreatePrimaryKey && !primaryKeysForTable(table).isEmpty()) {
@@ -1086,14 +1113,15 @@ class OracleDialect extends SqlDialect {
       }
     }
 
-    for (Index index : table.indexes()) {
-      for (String column : index.columnNames()) {
-        if (column.equalsIgnoreCase(newColumn.getName())) {
-          result.addAll(addIndexStatements(table, index));
+    if (alterNullable || alterType || alterDefaultValue) {
+      for (Index index : table.indexes()) {
+        for (String column : index.columnNames()) {
+          if (column.equalsIgnoreCase(newColumn.getName())) {
+            result.addAll(addIndexStatements(table, index));
+          }
         }
       }
     }
-
     result.add(columnComment(newColumn, tableName));
 
     return result;
@@ -1289,6 +1317,7 @@ class OracleDialect extends SqlDialect {
 
     ArrayList<String> statements = new ArrayList<>();
 
+    // Important: PK does not get dropped upon rename!
     if (!primaryKeysForTable(fromTable).isEmpty()) {
       // Rename the PK constraint
       statements.add("ALTER TABLE " + schemaNamePrefix() + from + " RENAME CONSTRAINT " + fromConstraint + " TO " + toConstraint);
@@ -1309,7 +1338,7 @@ class OracleDialect extends SqlDialect {
    */
   @Override
   public Collection<String> addTableFromStatements(Table table, SelectStatement selectStatement) {
-    return internalAddTableFromStatements(table, selectStatement, false);
+    return internalAddTableFromStatements(table, selectStatement, true);
   }
 
 
@@ -1558,7 +1587,7 @@ class OracleDialect extends SqlDialect {
     }
 
     return "/*+" + builder.append(" */ ").toString();
-  };
+  }
 
 
   /**
@@ -1706,13 +1735,35 @@ class OracleDialect extends SqlDialect {
 
 
   @Override
-  protected String getSqlFrom(PortableSqlFunction function) {
-    return super.getSqlForPortableFunction(function.getFunctionForDatabaseType(Oracle.IDENTIFIER));
+  public boolean useForcedSerialImport() {
+    return false;
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#mergeStatementWhenMatchedUpdateClause(org.alfasoftware.morf.sql.MergeStatement)
+   */
   @Override
-  public boolean useForcedSerialImport() {
-    return false;
+  protected String mergeStatementWhenMatchedUpdateClause(MergeStatement statement) {
+    final StringBuilder sqlBuilder = new StringBuilder();
+    if (getNonKeyFieldsFromMergeStatement(statement).iterator().hasNext()) {
+      Iterable<AliasedField> updateExpressions = getMergeStatementUpdateExpressions(statement);
+      String updateExpressionsSql = getMergeStatementAssignmentsSql(updateExpressions);
+
+      sqlBuilder.append(" WHEN MATCHED");
+      sqlBuilder.append(" THEN UPDATE SET ")
+                .append(updateExpressionsSql);
+      Optional<MergeMatchClause> whenMatchedAction = statement.getWhenMatchedAction();
+      if (whenMatchedAction.isPresent()) {
+        MergeMatchClause mergeMatchClause = whenMatchedAction.get();
+        Optional<Criterion> whereClause = mergeMatchClause.getWhereClause();
+        if (mergeMatchClause.getAction() == MatchAction.UPDATE && whereClause.isPresent()) {
+          // WHERE goes at the end and not between WHEN MATCHED and THEN UPDATE SET
+          sqlBuilder.append(" WHERE ")
+            .append(getSqlFrom(whereClause.get()));
+        }
+      }
+    }
+    return sqlBuilder.toString();
   }
 }

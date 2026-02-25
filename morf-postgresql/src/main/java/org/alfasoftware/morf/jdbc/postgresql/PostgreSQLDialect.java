@@ -33,6 +33,8 @@ import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.DeleteStatementBuilder;
 import org.alfasoftware.morf.sql.DialectSpecificHint;
 import org.alfasoftware.morf.sql.Hint;
+import org.alfasoftware.morf.sql.MergeMatchClause;
+import org.alfasoftware.morf.sql.MergeMatchClause.MatchAction;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.OptimiseForRowCount;
 import org.alfasoftware.morf.sql.ParallelQueryHint;
@@ -46,8 +48,10 @@ import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
+import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.FunctionType;
+import org.alfasoftware.morf.sql.element.PortableSqlExpression;
 import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
@@ -64,6 +68,12 @@ class PostgreSQLDialect extends SqlDialect {
 
   public PostgreSQLDialect(String schemaName) {
    super(schemaName);
+  }
+
+
+  @Override
+  protected String databaseTypeIdentifier() {
+    return PostgreSQL.IDENTIFIER;
   }
 
 
@@ -135,6 +145,11 @@ class PostgreSQLDialect extends SqlDialect {
   }
 
 
+  /**
+   * https://www.postgresql.org/docs/current/datatype-numeric.html
+   *  - The types DECIMAL and NUMERIC are equivalent.
+   *  - BIG_INTEGER is therefore comparable to DECIMAL
+   */
   @Override
   protected String getDataTypeRepresentation(DataType dataType, int width, int scale) {
     switch (dataType) {
@@ -205,6 +220,12 @@ class PostgreSQLDialect extends SqlDialect {
     return ImmutableList.<String>builder()
         .add(createSequenceStatement(sequence))
         .build();
+  }
+
+
+  @Override
+  public Collection<String> addTableFromStatements(Table table, SelectStatement selectStatement) {
+    return internalAddTableFromStatements(table, selectStatement, true);
   }
 
 
@@ -418,6 +439,7 @@ class PostgreSQLDialect extends SqlDialect {
   public Collection<String> renameTableStatements(Table from, Table to) {
     Iterable<String> renameTable = ImmutableList.of("ALTER TABLE " + schemaNamePrefix(from) + from.getName() + " RENAME TO " + to.getName());
 
+    // Important: PK does not get dropped upon rename!
     Iterable<String> renamePk = SchemaUtils.primaryKeysForTable(from).isEmpty()
         ? ImmutableList.of()
         : renameIndexStatements(from, from.getName() + "_pk", to.getName() + "_pk");
@@ -508,8 +530,7 @@ class PostgreSQLDialect extends SqlDialect {
 
   @Override
   protected String getSqlFrom(BlobFieldLiteral field) {
-    // this format doesn't work with blob fields: E'\\x' because it will eat the first value of the string on retrieval
-    return String.format("'%s'", field.getValue());
+    return String.format("decode('%s','hex')", field.getValue());
   }
 
   @Override
@@ -646,6 +667,16 @@ class PostgreSQLDialect extends SqlDialect {
     if (getNonKeyFieldsFromMergeStatement(statement).iterator().hasNext()) {
       sqlBuilder.append(" DO UPDATE SET ")
                 .append(updateExpressionsSql);
+
+      Optional<MergeMatchClause> whenMatchedAction = statement.getWhenMatchedAction();
+      if (whenMatchedAction.isPresent()) {
+        MergeMatchClause mergeMatchClause = whenMatchedAction.get();
+        Optional<Criterion> whereClause = mergeMatchClause.getWhereClause();
+        if (mergeMatchClause.getAction() == MatchAction.UPDATE && whereClause.isPresent()) {
+          sqlBuilder.append(" WHERE ")
+          .append(getSqlFrom(whereClause.get()));
+        }
+      }
     } else {
       sqlBuilder.append(" DO NOTHING");
     }
@@ -698,6 +729,12 @@ class PostgreSQLDialect extends SqlDialect {
     result.append(" LIMIT 1 OFFSET 0");
 
     return result.toString().trim();
+  }
+
+
+  @Override
+  protected Optional<String> getSelectLimitSuffix(int limit) {
+    return Optional.of("LIMIT " + limit);
   }
 
 
@@ -930,12 +967,6 @@ class PostgreSQLDialect extends SqlDialect {
   }
 
 
-  @Override
-  protected String getSqlFrom(PortableSqlFunction function) {
-    return super.getSqlForPortableFunction(function.getFunctionForDatabaseType(PostgreSQL.IDENTIFIER));
-  }
-
-
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#tableNameWithSchemaName(org.alfasoftware.morf.sql.element.TableReference)
    */
@@ -1005,4 +1036,5 @@ class PostgreSQLDialect extends SqlDialect {
             .filter(instanceOf(PostgreSQLMetaDataProvider.class))
             .map(PostgreSQLMetaDataProvider.class::cast);
   }
+
 }

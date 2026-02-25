@@ -1,22 +1,23 @@
 package org.alfasoftware.morf.upgrade;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableList.Builder;
-import org.alfasoftware.morf.jdbc.ConnectionResources;
-import org.alfasoftware.morf.jdbc.SqlDialect;
-import org.alfasoftware.morf.metadata.View;
-import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
-
-import javax.inject.Inject;
-import java.util.List;
-
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.sql.SqlUtils.delete;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.insert;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+
+import java.util.List;
+
+import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.metadata.View;
+import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableList.Builder;
+import com.google.inject.Inject;
 
 /**
  * View deployment helper.

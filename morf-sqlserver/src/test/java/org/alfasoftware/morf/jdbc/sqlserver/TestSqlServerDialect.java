@@ -838,6 +838,18 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterColumnRenameNonPrimaryIndexedColumn()
+   */
+  @Override
+  protected List<String> expectedAlterColumnRenameNonPrimaryIndexedColumn() {
+    return Arrays.asList("DROP INDEX Alternate_1 ON TESTSCHEMA.Alternate",
+                         "EXEC sp_rename 'TESTSCHEMA.Alternate.stringField', 'blahField', 'COLUMN'",
+                         "ALTER TABLE TESTSCHEMA.Alternate ALTER COLUMN blahField NVARCHAR(3) COLLATE SQL_Latin1_General_CP1_CS_AS",
+                         "CREATE INDEX Alternate_1 ON TESTSCHEMA.Alternate ([blahField])");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterRemoveColumnFromCompositeKeyStatements()
    */
   @Override
@@ -845,7 +857,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
     return Arrays.asList(
       "ALTER TABLE TESTSCHEMA.CompositePrimaryKey DROP CONSTRAINT [CompositePrimaryKey_PK]",
       "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ALTER COLUMN secondPrimaryKey NVARCHAR(5) COLLATE SQL_Latin1_General_CP1_CS_AS",
-        "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ADD CONSTRAINT [CompositePrimaryKey_PK] PRIMARY KEY ([id])");
+      "ALTER TABLE TESTSCHEMA.CompositePrimaryKey ADD CONSTRAINT [CompositePrimaryKey_PK] PRIMARY KEY ([id])");
   }
 
 
@@ -1121,7 +1133,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
         + " ON (foo.id = xmergesource.id)"
         + " WHEN MATCHED THEN UPDATE SET bar = xmergesource.bar"
         + " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
-  };
+  }
 
 
   /**
@@ -1159,6 +1171,21 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
         + " ON (foo.id = xmergesource.id)"
         + " WHEN MATCHED THEN UPDATE SET bar = xmergesource.bar + foo.bar"
         + " WHEN NOT MATCHED THEN INSERT (id, bar) VALUES (xmergesource.id, xmergesource.bar)";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedMergeWithUpdateWhereClause()
+   */
+  @Override
+  protected String expectedMergeWithUpdateWhereClause() {
+    return "MERGE INTO TESTSCHEMA.foo"
+        + " USING (SELECT 12345 AS id, 1004 AS typeId, '2025-04-20' AS eventDate, 5.00001 AS rate, 'important rate' AS description, 43037 AS sequenceId) xmergesource"
+        + " ON (foo.typeId = xmergesource.typeId AND foo.eventDate = xmergesource.eventDate)"
+        + " WHEN MATCHED"
+        + " AND ((foo.rate <> xmergesource.rate) OR (foo.description <> xmergesource.description))" // smart update check
+        + " THEN UPDATE SET id = xmergesource.id, rate = xmergesource.rate, description = xmergesource.description, sequenceId = xmergesource.sequenceId"
+        + " WHEN NOT MATCHED THEN INSERT (id, typeId, eventDate, rate, description, sequenceId) VALUES (xmergesource.id, xmergesource.typeId, xmergesource.eventDate, xmergesource.rate, xmergesource.description, xmergesource.sequenceId)";
   }
 
 
@@ -1403,7 +1430,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedDeleteWithLimitAndWhere(String value) {
     return "DELETE TOP (1000) FROM " + tableName(TEST_TABLE) + " WHERE (Test.stringField = " + stringLiteralPrefix() + value + ")";
-  };
+  }
 
 
   /**
@@ -1412,7 +1439,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedDeleteWithLimitAndComplexWhere(String value1, String value2) {
     return "DELETE TOP (1000) FROM " + tableName(TEST_TABLE) + " WHERE ((Test.stringField = " + stringLiteralPrefix() + value1 + ") OR (Test.stringField = " + stringLiteralPrefix() + value2 + "))";
-  };
+  }
 
 
   /**
@@ -1430,7 +1457,7 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   @Override
   protected String expectedSelectWithExcept() {
     return null;
-  };
+  }
 
 
   /**
@@ -1478,8 +1505,92 @@ public class TestSqlServerDialect extends AbstractSqlDialectTest {
   }
 
 
+  /**
+   * @see AbstractSqlDialectTest#expectedCurrValForSequence()
+   */
   @Override
   protected String expectedPortableStatement() {
     return "UPDATE TESTSCHEMA.Table SET field = SOUNDEX(field, '5', 'E')";
+  }
+
+
+  /**
+   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithLimit() {
+    return null;
+  }
+
+
+  /**
+   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithOrderByAndLimit() {
+    return null;
+  }
+
+
+  /**
+   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithLimitInSubquery() {
+    return null;
+  }
+
+
+  /**
+   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithWhereAndLimit() {
+    return null;
+  }
+
+
+  /**
+   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithDistinctAndLimit() {
+    return null;
+  }
+
+
+  /**
+   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithGroupByAndLimit() {
+    return null;
+  }
+
+
+  /**
+   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithJoinAndLimit() {
+    return null;
+  }
+
+
+ /**
+   * @see AbstractSqlDialectTest#expectedPortableSqlExpression()
+   */
+  @Override
+  protected String expectedPortableSqlExpression() {
+    return "SELECT CASE WHEN status = 'A' THEN 'ACTIVE' WHEN status = 'I'THEN 'INACTIVE' ELSE 'UNKNOWN' END FROM TESTSCHEMA.Test";
+  }
+  
+  
+   /**
+   * Morf does not support LIMIT for SQL Server - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithOrderByWhereAndLimit() {
+    return null;
   }
 }

@@ -13,8 +13,6 @@ import static org.junit.Assert.assertTrue;
 import java.util.List;
 import java.util.Set;
 
-import javax.inject.Inject;
-
 import org.alfasoftware.morf.dataset.DataSetConnector;
 import org.alfasoftware.morf.dataset.DataSetProducer;
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
@@ -32,6 +30,8 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.MethodRule;
+
+import com.google.inject.Inject;
 
 /**
  * Test for {@link DatabaseUpgradePathValidationService}
@@ -80,6 +80,7 @@ public class TestDatabaseUpgradePathValidationService {
 
   @After
   public void tearDown() {
+    dropUpgradeStatusTable();
     schemaManager.invalidateCache();
     // to make following test on test suite run clean - org.alfasoftware.morf.upgrade.TestFullDeployment
     schemaManager.dropAllTables();
@@ -146,3 +147,4 @@ public class TestDatabaseUpgradePathValidationService {
     sqlScriptExecutorProvider.get().execute(connectionResources.sqlDialect().convertStatementToSQL(insertIntoUpgradeAudit));
   }
 }
+

@@ -2,8 +2,9 @@ package org.alfasoftware.morf.upgrade;
 
 /**
  * Interface for adapting schema changes, i.e. {@link SchemaChange} implementations.
+ *
  * This interface can be used to intercept schema changes from the upgrade steps,
- * and modified before they are used for upgrade path in {@link SchemaChangeSequence}.
+ * and modify them before they are used for upgrade path in {@link SchemaChangeSequence}.
  *
  * @author Copyright (c) Alfa Financial Software 2024
  */

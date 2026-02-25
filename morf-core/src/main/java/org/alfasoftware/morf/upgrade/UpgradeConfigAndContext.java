@@ -1,8 +1,13 @@
 package org.alfasoftware.morf.upgrade;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
+import org.alfasoftware.morf.metadata.Index;
+
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableMap;
 
 /**
  * Configuration and context bean for the {@link Upgrade} process.
@@ -24,9 +29,20 @@ public class UpgradeConfigAndContext {
   private SchemaChangeAdaptor schemaChangeAdaptor = new SchemaChangeAdaptor.NoOp();
 
   /**
+   * A schema change adaptor to be used during upgrade.
+   */
+  private SchemaChangeToSchemaAdaptor schemaChangeToSchemaAdaptor = new SchemaChangeToSchemaAdaptor.NoOp();
+
+  /**
    * A schema auto-healer to be used before upgrade.
    */
   private SchemaAutoHealer schemaAutoHealer = new SchemaAutoHealer.NoOp();
+
+
+  /**
+   * A map of ignored indexes.
+   */
+  private Map<String, List<Index>> ignoredIndexes = Map.of();
 
 
   /**
@@ -35,6 +51,7 @@ public class UpgradeConfigAndContext {
   public Set<String> getExclusiveExecutionSteps() {
     return exclusiveExecutionSteps;
   }
+
 
   /**
    * @see #exclusiveExecutionSteps
@@ -52,12 +69,30 @@ public class UpgradeConfigAndContext {
     return schemaChangeAdaptor;
   }
 
+
   /**
    * @see #schemaChangeAdaptor
    */
   public void setSchemaChangeAdaptor(SchemaChangeAdaptor schemaChangeAdaptor) {
     Preconditions.checkNotNull(schemaChangeAdaptor);
     this.schemaChangeAdaptor = schemaChangeAdaptor;
+  }
+
+
+  /**
+   * @see #schemaChangeToSchemaAdaptor
+   */
+  public SchemaChangeToSchemaAdaptor getSchemaChangeToSchemaAdaptor() {
+    return schemaChangeToSchemaAdaptor;
+  }
+
+
+  /**
+   * @see #schemaChangeToSchemaAdaptor
+   */
+  public void setSchemaChangeToSchemaAdaptor(SchemaChangeToSchemaAdaptor schemaChangeToSchemaAdaptor) {
+    Preconditions.checkNotNull(schemaChangeToSchemaAdaptor);
+    this.schemaChangeToSchemaAdaptor = schemaChangeToSchemaAdaptor;
   }
 
 
@@ -74,5 +109,35 @@ public class UpgradeConfigAndContext {
   public void setSchemaAutoHealer(SchemaAutoHealer schemaAutoHealer) {
     Preconditions.checkNotNull(schemaAutoHealer);
     this.schemaAutoHealer = schemaAutoHealer;
+  }
+
+  /**
+   * @see #ignoredIndexes
+   * @return ignoredIndexes map
+   */
+  public Map<String, List<Index>> getIgnoredIndexes() {
+    return ignoredIndexes;
+  }
+
+  /**
+   * @see #ignoredIndexes
+   */
+  public void setIgnoredIndexes(Map<String, List<Index>> ignoredIndexes) {
+    this.ignoredIndexes = ignoredIndexes.entrySet().stream()
+      .collect(ImmutableMap.toImmutableMap(e -> e.getKey().toLowerCase(), Map.Entry::getValue));
+  }
+
+  /**
+   * Get the ignored indexes for table. If none return empty list.
+   * @param tableName the table name
+   * @return the list of ignored indexes
+   */
+  public List<Index> getIgnoredIndexesForTable(String tableName) {
+    String toLowerCase = tableName.toLowerCase();
+    if (ignoredIndexes.containsKey(toLowerCase)) {
+      return ignoredIndexes.get(toLowerCase);
+    } else {
+      return List.of();
+    }
   }
 }

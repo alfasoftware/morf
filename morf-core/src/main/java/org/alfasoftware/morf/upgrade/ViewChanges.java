@@ -16,13 +16,13 @@
 package org.alfasoftware.morf.upgrade;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Lists.newLinkedList;
 import static com.google.common.collect.Maps.uniqueIndex;
 import static com.google.common.collect.Sets.newHashSet;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -275,15 +275,15 @@ public class ViewChanges {
     // The set of views we want to perform the sort on.
     Set<String> unmarkedViews = newHashSet(Collections2.transform(allViews, viewToName()));
     Set<String> temporarilyMarkedRecords = newHashSet();
-    List<String> sortedList = newLinkedList();
+    LinkedHashSet<String> sortedSet = Sets.newLinkedHashSet();
 
     while (!unmarkedViews.isEmpty()) {
       String node = Iterables.getFirst(unmarkedViews, null);
-      visit(node, temporarilyMarkedRecords, sortedList, index);
+      visit(node, temporarilyMarkedRecords, sortedSet, index);
       unmarkedViews.remove(node);
     }
 
-    return sortedList;
+    return sortedSet.stream().collect(Collectors.toList());
   }
 
 
@@ -292,10 +292,10 @@ public class ViewChanges {
    * back up the list. Otherwise, mark it and then try visiting all of its dependent nodes.
    *
    * @param node the node being visited.
-   * @param sortedList the list of sorted results. Items in this list are 'permanently' marked e.g. node is sorted.
+   * @param sortedSet the set of sorted results. Items in this collection are 'permanently' marked e.g. node is sorted.
    * @param temporarilyMarkedRecords a set of nodes we've already visited. Items in this list are 'temporarily' marked e.g. node is visited.
    */
-  private void visit(String node, Set<String> temporarilyMarkedRecords, List<String> sortedList, Map<String, View> viewIndex) {
+  private void visit(String node, Set<String> temporarilyMarkedRecords, LinkedHashSet<String> sortedSet, Map<String, View> viewIndex) {
     if (log.isDebugEnabled()) {
       log.debug("Visiting node: " + node);
     }
@@ -307,15 +307,19 @@ public class ViewChanges {
     }
 
     // If the node isn't marked at all. Mark it
-    if (sortedList.contains(node)) {
+    if (sortedSet.contains(node)) {
       return;
     }
 
+    View view = viewIndex.get(node);
+    if (view == null) {
+      throw new IllegalStateException(String.format("View %s is not found in the schema views when visiting %s", node, temporarilyMarkedRecords));
+    }
     temporarilyMarkedRecords.add(node);
 
-    for (String dependentView: viewIndex.get(node).getDependencies()) {
+    for (String dependentView: view.getDependencies()) {
 
-      visit(dependentView, temporarilyMarkedRecords, sortedList, viewIndex);
+      visit(dependentView, temporarilyMarkedRecords, sortedSet, viewIndex);
 
       if (dropSet.contains(dependentView)) {
         if (log.isDebugEnabled()) log.debug("Expanding views to drop to include " + node + " because it depends on " + dependentView);
@@ -323,7 +327,7 @@ public class ViewChanges {
       }
     }
 
-    sortedList.add(node); // Permanently mark the node as sorted
+    sortedSet.add(node); // Permanently mark the node as sorted
     temporarilyMarkedRecords.remove(node); // remove temporary mark
   }
 
@@ -346,7 +350,7 @@ public class ViewChanges {
    * @return the name of a given view.
    */
   private Function<View, String> viewToName() {
-    return new Function<View, String>() {
+    return new Function<>() {
       @Override
       public String apply(View view) {
         return view.getName();
@@ -359,7 +363,7 @@ public class ViewChanges {
    * @return the view for a given name.
    */
   private Function<String, View> nameToView() {
-    return new Function<String, View>() {
+    return new Function<>() {
       @Override
       public View apply(String name) {
         return viewIndex.get(name);

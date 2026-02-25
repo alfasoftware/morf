@@ -25,6 +25,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.view;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.either;
@@ -34,7 +35,6 @@ import static org.hamcrest.Matchers.equalToIgnoringCase;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -118,7 +118,8 @@ public class TestDatabaseMetaDataProvider {
           column("nullableDateCol", DataType.DATE).nullable())
         .indexes(
           index("WithTypes_1").columns("booleanCol", "dateCol"),
-          index("NaturalKey").columns("decimalElevenCol").unique()),
+          index("NaturalKey").columns("decimalElevenCol").unique(),
+          index("WithTypes_PRF1").columns("decimalNineFiveCol", "bigIntegerCol")),
       table("WithLobs")
         .columns(
           SchemaUtils.autonumber("autonumfield", 17),
@@ -291,6 +292,11 @@ public class TestDatabaseMetaDataProvider {
         indexMatcher(
           index("NaturalKey").columns("decimalElevenCol").unique()))
       ));
+
+      schemaResource.getAdditionalMetadata().ifPresent(additionalMetadata ->
+        assertThat(additionalMetadata.ignoredIndexes().get("WITHTYPES"), containsInAnyOrder(ImmutableList.of(
+          indexMatcher(index("WithTypes_PRF1").columns("decimalNineFiveCol", "bigIntegerCol"))
+      ))));
     }
   }
 

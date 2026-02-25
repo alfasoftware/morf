@@ -49,6 +49,7 @@ import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.AbstractSelectStatement;
 import org.alfasoftware.morf.sql.ExceptSetOperator;
 import org.alfasoftware.morf.sql.Hint;
+import org.alfasoftware.morf.sql.MergeMatchClause;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.UseImplicitJoinOrder;
@@ -58,6 +59,7 @@ import org.alfasoftware.morf.sql.element.Cast;
 import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.PortableSqlExpression;
 import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
@@ -84,6 +86,12 @@ class MySqlDialect extends SqlDialect {
    */
   public MySqlDialect() {
     super(""); // no schema name needed for MySQL.
+  }
+
+
+  @Override
+  protected String databaseTypeIdentifier() {
+    return MySql.IDENTIFIER;
   }
 
 
@@ -322,7 +330,7 @@ class MySqlDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#postInsertWithPresetAutonumStatements(Table, SqlScriptExecutor, Connection, boolean) 
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#postInsertWithPresetAutonumStatements(Table, SqlScriptExecutor, Connection, boolean)
    */
   @Override
   public void postInsertWithPresetAutonumStatements(Table table, SqlScriptExecutor executor,Connection connection, boolean insertingUnderAutonumLimit) {
@@ -331,7 +339,7 @@ class MySqlDialect extends SqlDialect {
 
 
  /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#repairAutoNumberStartPosition(Table, SqlScriptExecutor, Connection) 
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#repairAutoNumberStartPosition(Table, SqlScriptExecutor, Connection)
    */
   @Override
   public void repairAutoNumberStartPosition(Table table, SqlScriptExecutor executor,Connection connection) {
@@ -598,7 +606,7 @@ class MySqlDialect extends SqlDialect {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.SqlDialect#changePrimaryKeyColumns(Table, List, List) 
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#changePrimaryKeyColumns(Table, List, List)
    */
   @Override
   public Collection<String> changePrimaryKeyColumns(Table table, List<String> oldPrimaryKeyColumns, List<String> newPrimaryKeyColumns) {
@@ -803,6 +811,11 @@ class MySqlDialect extends SqlDialect {
       throw new IllegalArgumentException("Cannot create SQL for a blank table");
     }
 
+    Optional<MergeMatchClause> whenMatchedAction = statement.getWhenMatchedAction();
+    if (whenMatchedAction.isPresent() && whenMatchedAction.get().getWhereClause().isPresent()) {
+      throw new IllegalStateException(MergeMatchClause.class.getName() + " is not supported in the MySQL dialect.");
+    }
+
     checkSelectStatementHasNoHints(statement.getSelectStatement(), "MERGE may not be used with SELECT statement hints");
 
     final boolean hasNonKeyFields = getNonKeyFieldsFromMergeStatement(statement).iterator().hasNext();
@@ -981,11 +994,6 @@ class MySqlDialect extends SqlDialect {
     throw new IllegalStateException("EXCEPT set operator is not supported in the MySQL dialect");
   }
 
-
-  @Override
-  protected String getSqlFrom(PortableSqlFunction function) {
-    return super.getSqlForPortableFunction(function.getFunctionForDatabaseType(MySql.IDENTIFIER));
-  }
 
   @Override
   public boolean useForcedSerialImport() {

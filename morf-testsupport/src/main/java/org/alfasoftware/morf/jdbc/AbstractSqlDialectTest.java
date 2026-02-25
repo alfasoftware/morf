@@ -27,9 +27,12 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.sequence;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.metadata.SchemaUtils.versionColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.view;
+import static org.alfasoftware.morf.sql.MergeStatement.InputField.inputField;
+import static org.alfasoftware.morf.sql.SqlUtils.nativeSql;
 import static org.alfasoftware.morf.sql.SqlUtils.blobLiteral;
 import static org.alfasoftware.morf.sql.SqlUtils.bracket;
 import static org.alfasoftware.morf.sql.SqlUtils.cast;
+import static org.alfasoftware.morf.sql.SqlUtils.concat;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.insert;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
@@ -101,6 +104,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -136,6 +140,7 @@ import org.alfasoftware.morf.metadata.View;
 import org.alfasoftware.morf.sql.CustomHint;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
+import org.alfasoftware.morf.sql.MergeMatchClause;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.SelectFirstStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
@@ -153,6 +158,7 @@ import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.MathsField;
 import org.alfasoftware.morf.sql.element.MathsOperator;
 import org.alfasoftware.morf.sql.element.NullFieldLiteral;
+import org.alfasoftware.morf.sql.element.PortableSqlExpression;
 import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
@@ -198,6 +204,11 @@ public abstract class AbstractSqlDialectTest {
   private static final String TEST_NK = "Test_NK";
   private static final String TEST_1 = "Test_1";
   private static final String TEST_2 = "Test_2";
+
+  private static final String DATABASE_TYPE_MYSQL = "MY_SQL";
+  private static final String DATABASE_TYPE_SQL_SERVER = "SQL_SERVER";
+  private static final String MYSQL_LIMIT_NOT_SUPPORTED = "LIMIT is not supported by Morf for MySQL";
+  private static final String SQL_SERVER_LIMIT_NOT_SUPPORTED = "LIMIT is not supported by Morf for SQL Server";
 
   private static final String TEMP_TEST_TABLE = "TempTest";
   private static final String TEMP_TEST_NK = "TempTest_NK";
@@ -2330,6 +2341,140 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * Tests that a select statement with LIMIT generates correct SQL.
+   */
+  @Test
+  public void testSelectWithLimit() {
+    assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(testDialect.getDatabaseType().identifier()));
+    SelectStatement stmt = new SelectStatement()
+      .from(new TableReference(TEST_TABLE))
+      .limit(10);
+
+    assertEquals("SELECT with LIMIT", expectedSelectWithLimit(), testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
+   * Tests that a select statement with ORDER BY and LIMIT generates correct SQL.
+   */
+  @Test
+  public void testSelectWithOrderByAndLimit() {
+    assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(testDialect.getDatabaseType().identifier()));
+    SelectStatement stmt = new SelectStatement(new FieldReference("id"))
+      .from(new TableReference(TEST_TABLE))
+      .orderBy(new FieldReference("id"))
+      .limit(10);
+
+    assertEquals("SELECT with ORDER BY and LIMIT", expectedSelectWithOrderByAndLimit(), testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
+   * Tests that a nested select statement with LIMIT generates correct SQL (subquery usage).
+   */
+  @Test
+  public void testSelectWithLimitInSubquery() {
+    assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(testDialect.getDatabaseType().identifier()));
+    SelectStatement inner = new SelectStatement()
+      .from(new TableReference(TEST_TABLE))
+      .limit(1000)
+      .alias("t");
+
+    SelectStatement outer = new SelectStatement(count().as("cnt"))
+      .from(inner);
+
+    assertEquals("SELECT with LIMIT in subquery", expectedSelectWithLimitInSubquery(), testDialect.convertStatementToSQL(outer));
+  }
+
+
+  /**
+   * Tests that a select statement with WHERE and LIMIT generates correct SQL.
+   */
+  @Test
+  public void testSelectWithWhereAndLimit() {
+    assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(testDialect.getDatabaseType().identifier()));
+    SelectStatement stmt = new SelectStatement(new FieldReference("id"), new FieldReference(STRING_FIELD))
+      .from(new TableReference(TEST_TABLE))
+      .where(eq(new FieldReference(INT_FIELD), literal(100)))
+      .limit(5);
+
+    assertEquals("SELECT with WHERE and LIMIT", expectedSelectWithWhereAndLimit(), testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
+   * Tests that a select statement with DISTINCT and LIMIT generates correct SQL.
+   */
+  @Test
+  public void testSelectWithDistinctAndLimit() {
+    assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(testDialect.getDatabaseType().identifier()));
+    SelectStatement stmt = selectDistinct(new FieldReference(STRING_FIELD))
+      .from(new TableReference(TEST_TABLE))
+      .limit(20);
+
+    assertEquals("SELECT with DISTINCT and LIMIT", expectedSelectWithDistinctAndLimit(), testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
+   * Tests that a select statement with GROUP BY and LIMIT generates correct SQL.
+   */
+  @Test
+  public void testSelectWithGroupByAndLimit() {
+    assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(testDialect.getDatabaseType().identifier()));
+    SelectStatement stmt = new SelectStatement(new FieldReference(STRING_FIELD), count().as("cnt"))
+      .from(new TableReference(TEST_TABLE))
+      .groupBy(new FieldReference(STRING_FIELD))
+      .limit(15);
+
+    assertEquals("SELECT with GROUP BY and LIMIT", expectedSelectWithGroupByAndLimit(), testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
+   * Tests that a select statement with JOIN and LIMIT generates correct SQL.
+   */
+  @Test
+  public void testSelectWithJoinAndLimit() {
+    assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(testDialect.getDatabaseType().identifier()));
+    SelectStatement stmt = new SelectStatement(
+        new FieldReference(new TableReference(TEST_TABLE), "id"),
+        new FieldReference(new TableReference(ALTERNATE_TABLE), STRING_FIELD))
+      .from(new TableReference(TEST_TABLE))
+      .innerJoin(new TableReference(ALTERNATE_TABLE), eq(
+        new FieldReference(new TableReference(TEST_TABLE), "id"),
+        new FieldReference(new TableReference(ALTERNATE_TABLE), "id")))
+      .limit(25);
+
+    assertEquals("SELECT with JOIN and LIMIT", expectedSelectWithJoinAndLimit(), testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
+   * Tests that a select statement with WHERE, ORDER BY and LIMIT generates correct SQL.
+   */
+  @Test
+  public void testSelectWithOrderByWhereAndLimit() {
+    assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(testDialect.getDatabaseType().identifier()));
+    assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(testDialect.getDatabaseType().identifier()));
+    SelectStatement stmt = new SelectStatement(new FieldReference("id"), new FieldReference(STRING_FIELD))
+      .from(new TableReference(TEST_TABLE))
+      .where(isNotNull(new FieldReference(STRING_FIELD)))
+      .orderBy(new FieldReference("id").desc())
+      .limit(10);
+
+    assertEquals("SELECT with WHERE, ORDER BY and LIMIT", expectedSelectWithOrderByWhereAndLimit(), testDialect.convertStatementToSQL(stmt));
+  }
+
+
+  /**
    * Tests that an update from a select works when defaults are supplied.
    */
   @Test
@@ -4089,6 +4234,15 @@ public abstract class AbstractSqlDialectTest {
     testAlterTableColumn(TEST_TABLE, AlterationType.ALTER, getColumn(TEST_TABLE, DATE_FIELD), column(DATE_FIELD, DataType.DATE).nullable().primaryKey(), expectedAlterColumnMakePrimaryStatements());
   }
 
+  /**
+   *  Test renaming an indexed non-primary key column
+   */
+  @Test
+  public void testAlterColumnRenameNonPrimaryIndexedColumn() {
+    testAlterTableColumn(ALTERNATE_TABLE, AlterationType.ALTER, getColumn(ALTERNATE_TABLE, STRING_FIELD), column("blahField", DataType.STRING, 3).nullable(), expectedAlterColumnRenameNonPrimaryIndexedColumn());
+  }
+
+
 
   /**
    * Test changing a column which is part of a composite primary key.
@@ -4405,6 +4559,48 @@ public abstract class AbstractSqlDialectTest {
   }
 
 
+  /**
+   * Tests merge with WHERE clause on update
+   */
+  @Test
+  public void testMergeWithUpdateWhereClause() {
+    TableReference foo = new TableReference("foo").as("foo");
+    MergeStatement statement = MergeStatement.merge()
+      .into(tableRef("foo"))
+      .tableUniqueKey(field("typeId"), field("eventDate"))
+      .from(
+        select(
+          literal(12345).as("id"),
+          literal(1004).as("typeId"),
+          literal("2025-04-20").as("eventDate"),
+          literal(5.00001).as("rate"),
+          literal("important rate").as("description"),
+          literal(43037).as("sequenceId")
+        )
+      )
+      .whenMatched(
+        MergeMatchClause.update()
+          .onlyWhere(
+            or(
+              foo.field("rate").neq(inputField("rate")),
+              foo.field("description").neq(inputField("description"))
+            )
+          )
+          .build()
+      )
+      .build();
+
+    if (expectedMergeWithUpdateWhereClause() == null) {
+      exception.expect(IllegalStateException.class);
+      exception.expectMessage("org.alfasoftware.morf.sql.MergeMatchClause is not supported");
+      testDialect.convertStatementToSQL(statement);
+    } else {
+      String result = testDialect.convertStatementToSQL(statement);
+      assertEquals("Merge with MergeMatchClause.update() clause", expectedMergeWithUpdateWhereClause(), result);
+    }
+  }
+
+
   @Test
   @SuppressWarnings("unchecked")
   public void testAddTableFromStatements() {
@@ -4549,6 +4745,54 @@ public abstract class AbstractSqlDialectTest {
   protected String expectedSelectFirstOrderByNullsLastDesc() {
     return "SELECT stringField FROM " + tableName(ALTERNATE_TABLE) + " ORDER BY stringField DESC NULLS LAST LIMIT 0,1";
   }
+
+
+  /**
+   * @return Expected SQL for {@link #testSelectWithLimit()}
+   */
+  protected abstract String expectedSelectWithLimit();
+
+
+  /**
+   * @return Expected SQL for {@link #testSelectWithOrderByAndLimit()}
+   */
+  protected abstract String expectedSelectWithOrderByAndLimit();
+
+
+  /**
+   * @return Expected SQL for {@link #testSelectWithLimitInSubquery()}
+   */
+  protected abstract String expectedSelectWithLimitInSubquery();
+
+
+  /**
+   * @return Expected SQL for {@link #testSelectWithWhereAndLimit()}
+   */
+  protected abstract String expectedSelectWithWhereAndLimit();
+
+
+  /**
+   * @return Expected SQL for {@link #testSelectWithDistinctAndLimit()}
+   */
+  protected abstract String expectedSelectWithDistinctAndLimit();
+
+
+  /**
+   * @return Expected SQL for {@link #testSelectWithGroupByAndLimit()}
+   */
+  protected abstract String expectedSelectWithGroupByAndLimit();
+
+
+  /**
+   * @return Expected SQL for {@link #testSelectWithJoinAndLimit()}
+   */
+  protected abstract String expectedSelectWithJoinAndLimit();
+
+
+  /**
+   * @return Expected SQL for {@link #testSelectWithOrderByWhereAndLimit()}
+   */
+  protected abstract String expectedSelectWithOrderByWhereAndLimit();
 
 
   /**
@@ -4760,6 +5004,11 @@ public abstract class AbstractSqlDialectTest {
    */
   protected abstract List<String> expectedAlterColumnMakePrimaryStatements();
 
+
+  /**
+   * @return Expected SQL for {@link #testAlterColumnRenameNonPrimaryIndexedColumn()}
+   */
+  protected abstract List<String> expectedAlterColumnRenameNonPrimaryIndexedColumn();
 
   /**
    * @return Expected SQL for {@link #testAlterPrimaryKeyColumnCompositeKey()}
@@ -5088,13 +5337,13 @@ public abstract class AbstractSqlDialectTest {
                     new FieldLiteral("3"),
                     new FieldLiteral("C"))
             .withFunctionForDatabaseType(
-                    "MY_SQL",
+                    DATABASE_TYPE_MYSQL,
                     "REVERSE",
                     new FieldReference("field"),
                     new FieldLiteral("4"),
                     new FieldLiteral("D"))
             .withFunctionForDatabaseType(
-                    "SQL_SERVER",
+                    DATABASE_TYPE_SQL_SERVER,
                     "SOUNDEX",
                     new FieldReference("field"),
                     new FieldLiteral("5"),
@@ -5106,6 +5355,56 @@ public abstract class AbstractSqlDialectTest {
     UpdateStatement testStatement = UpdateStatement.update(new TableReference("Table")).set(function).build();
 
     assertEquals(expectedPortableStatement(), testDialect.convertStatementToSQL(testStatement));
+  }
+
+
+  /**
+   * Tests {@link PortableSqlExpression} with various complex queries, making use
+   * of the {@link org.alfasoftware.morf.sql.element.NativeExpression} element.
+   */
+  @Test
+  public void testPortableExpression() {
+    PortableSqlExpression.Builder expressionBuild = PortableSqlExpression.builder()
+            .withExpressionForDatabaseType(
+                    "PGSQL",
+                    concat(
+                        new FieldReference("first_name"),
+                        new FieldLiteral(" "),
+                        new FieldReference("last_name"),
+                        new FieldLiteral(" ("),
+                        nativeSql("params->>'role'"),
+                        new FieldLiteral(")")
+                    ).as("display_name"))
+            .withExpressionForDatabaseType(
+                    "H2",
+                    nativeSql("JSON_VALUE(payload, '$.type') AS event_type"))
+            .withExpressionForDatabaseType(
+                    "ORACLE",
+                    new CaseStatement(new FieldReference(FLOAT_FIELD), new WhenCondition(
+                        eq(new FieldReference(CHAR_FIELD),  new FieldLiteral('Y')),
+                        new FieldReference(INT_FIELD))).build(),
+                    nativeSql(" ROWNUM ").as("row_number"),
+                    new FieldReference("field"))
+            .withExpressionForDatabaseType(
+                    "MY_SQL",
+                    nativeSql("IF(active = 1, 'yes', 'no') ").as("active"),
+                    new FieldReference("field"))
+            .withExpressionForDatabaseType(
+                "SQL_SERVER",
+                nativeSql(
+                    "CASE " +
+                        "WHEN status = 'A' THEN 'ACTIVE'"),
+                        nativeSql(" WHEN "),
+                        new FieldReference("status"),
+                        nativeSql(" = "),
+                        new FieldLiteral("I"),
+                        nativeSql("THEN 'INACTIVE' " +
+                        "ELSE 'UNKNOWN' END").as("status_label")
+            );
+
+    SelectStatement testStatement = SelectStatement.select(expressionBuild).from(TEST_TABLE).build();
+
+    assertEquals(expectedPortableSqlExpression(), testDialect.convertStatementToSQL(testStatement));
   }
 
 
@@ -5804,6 +6103,14 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * Expected SQL for merge with WHERE clause - to be overridden by
+   * dialect-specific tests or {@code null} if {@link MergeMatchClause} is
+   * unsupported.
+   */
+  protected abstract String expectedMergeWithUpdateWhereClause();
+
+
+  /**
    * @return the expected SQL for generating a pseudo-random string
    */
   protected abstract String expectedRandomString();
@@ -5925,7 +6232,7 @@ public abstract class AbstractSqlDialectTest {
    */
   protected String expectedSelectSome() {
     return "SELECT MAX(booleanField) FROM " + tableName(TEST_TABLE);
-  };
+  }
 
 
   /**
@@ -5933,7 +6240,7 @@ public abstract class AbstractSqlDialectTest {
    */
   protected String expectedSelectEvery() {
     return "SELECT MIN(booleanField) FROM " + tableName(TEST_TABLE);
-  };
+  }
 
 
   /**
@@ -6103,6 +6410,12 @@ public abstract class AbstractSqlDialectTest {
    * @return The expected SQL for the {@link PortableSqlFunction} function, testing that the dialect-specific function is used.
    */
   protected abstract String expectedPortableStatement();
+
+
+  /**
+   * @return The expected SQL for the {@link PortableSqlExpression} test, testing that the dialect-specific function is used.
+   */
+  protected abstract String expectedPortableSqlExpression();
 
   /**
    * @return The expected value for the force serial import setting.

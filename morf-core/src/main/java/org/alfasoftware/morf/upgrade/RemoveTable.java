@@ -108,4 +108,10 @@ public class RemoveTable implements SchemaChange {
     return tableToBeRemoved;
   }
 
+
+  @Override
+  public String toString() {
+    return "RemoveTable [tableToBeRemoved=" + tableToBeRemoved + "]";
+  }
+
 }

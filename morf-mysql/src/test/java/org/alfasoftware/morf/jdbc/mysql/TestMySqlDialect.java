@@ -865,6 +865,14 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
       );
   }
 
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterColumnRenameNonPrimaryIndexedColumn()
+   */
+  @Override
+  protected List<String> expectedAlterColumnRenameNonPrimaryIndexedColumn() {
+    return Arrays.asList("ALTER TABLE `Alternate` CHANGE `stringField` `blahField` VARCHAR(3)");
+  }
+
 
   /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAlterColumnRenamingAndChangingNullability()
@@ -1110,6 +1118,15 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
     return "INSERT INTO foo(id, bar)"
         + " SELECT somewhere.newId AS id, somewhere.newBar AS bar FROM somewhere"
         + " ON DUPLICATE KEY UPDATE bar = values(bar) + foo.bar";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedMergeWithUpdateWhereClause()
+   */
+  @Override
+  protected String expectedMergeWithUpdateWhereClause() {
+    return null;
   }
 
 
@@ -1402,8 +1419,91 @@ public class TestMySqlDialect extends AbstractSqlDialectTest {
   }
 
 
+  /**
+   * @see AbstractSqlDialectTest#expectedPortableStatement()
+   */
   @Override
   protected String expectedPortableStatement() {
     return "UPDATE Table SET field = REVERSE(field, '4', 'D')";
+  }
+
+
+  /**
+   * Morf does not support LIMIT for MySQL - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithLimit() {
+    return null;
+  }
+
+
+  /**
+   * Morf does not support LIMIT for MySQL - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithOrderByAndLimit() {
+    return null;
+  }
+
+
+  /**
+   * Morf does not support LIMIT for MySQL - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithLimitInSubquery() {
+    return null;
+  }
+
+
+  /**
+   * Morf does not support LIMIT for MySQL - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithWhereAndLimit() {
+    return null;
+  }
+
+
+  /**
+   * Morf does not support LIMIT for MySQL - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithDistinctAndLimit() {
+    return null;
+  }
+
+
+  /**
+   * Morf does not support LIMIT for MySQL - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithGroupByAndLimit() {
+    return null;
+  }
+
+
+  /**
+   * Morf does not support LIMIT for MySQL - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithJoinAndLimit() {
+    return null;
+  }
+
+
+  /**
+   * @see AbstractSqlDialectTest#expectedPortableSqlExpression()
+   */
+  @Override
+  protected String expectedPortableSqlExpression() {
+    return "SELECT IF(active = 1, 'yes', 'no') field FROM Test";
+  }
+  
+  /**
+   * Morf does not support LIMIT for MySQL - returning null causes tests to be skipped via assumeTrue
+   */
+  @Override
+  protected String expectedSelectWithOrderByWhereAndLimit() {
+    return null;
   }
 }

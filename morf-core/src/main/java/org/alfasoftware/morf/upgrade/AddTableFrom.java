@@ -63,4 +63,10 @@ public class AddTableFrom extends AddTable implements SchemaChange {
   public void accept(SchemaChangeVisitor visitor) {
     visitor.visit(this);
   }
+
+
+  @Override
+  public String toString() {
+    return "AddTableFrom [table=" + getTable() + ", selectStatement=" + selectStatement + "]";
+  }
 }

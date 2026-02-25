@@ -1,6 +1,7 @@
 package org.alfasoftware.morf.metadata;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.NotImplementedException;
@@ -37,4 +38,9 @@ public interface AdditionalMetadata extends Schema {
    * @return A collection of all partition table names available in the database.
    */
   default Collection<String> partitionTableNames() { throw new NotImplementedException("Not implemented yet."); }
+
+  default Map<String, List<Index>> ignoredIndexes() {
+    return Map.of();
+  }
+
 }
