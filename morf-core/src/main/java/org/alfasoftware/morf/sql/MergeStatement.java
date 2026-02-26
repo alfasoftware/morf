@@ -403,9 +403,8 @@ public class MergeStatement implements Statement,
         return false;
     } else if (!ifUpdating.equals(other.ifUpdating))
       return false;
-    if (!whenMatchedAction.equals(other.whenMatchedAction))
-        return false;
-    return true;
+
+    return whenMatchedAction.equals(other.whenMatchedAction);
   }
 
 
