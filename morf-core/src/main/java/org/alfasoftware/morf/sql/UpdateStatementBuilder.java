@@ -180,6 +180,32 @@ public class UpdateStatementBuilder implements Builder<UpdateStatement> {
   }
 
 
+  /**
+   * Request that this statement is translated into a CTAS.
+   *
+   * @param useCtasDuringUpgrade If true, this statement is translated into a CTAS.
+   *                             False can be used to explicitly forbid use of CTAS.
+   * @return this, for method chaining.
+   */
+  public UpdateStatementBuilder useCtasDuringUpgrade(boolean useCtasDuringUpgrade) {
+    hints.add(new CtasDuringUpgrade(useCtasDuringUpgrade));
+    return this;
+  }
+
+
+  /**
+   * Request that this statement is translated into a CTAS for a given database type.
+   *
+   * @param databaseType Database type where this statement is to be translated into a CTAS.
+   *                     Add multiple hints to add multiple database types.
+   * @return this, for method chaining.
+   */
+  public UpdateStatementBuilder useCtasDuringUpgrade(String databaseType) {
+    hints.add(new CtasDuringUpgrade(databaseType));
+    return this;
+  }
+
+
   @Override
   public UpdateStatement build() {
     return new UpdateStatement(this);

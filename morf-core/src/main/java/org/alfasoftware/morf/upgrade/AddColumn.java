@@ -19,8 +19,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.apache.commons.lang3.StringUtils;
-
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Schema;
@@ -28,6 +26,7 @@ import org.alfasoftware.morf.metadata.SchemaHomology;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.adapt.AlteredTable;
 import org.alfasoftware.morf.upgrade.adapt.TableOverrideSchema;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * {@link SchemaChange} which consists of adding a new column to an existing
@@ -160,6 +159,12 @@ public class AddColumn implements SchemaChange {
   @Override
   public void accept(SchemaChangeVisitor visitor) {
     visitor.visit(this);
+  }
+
+
+  @Override
+  public String toString() {
+    return "AddColumn [tableName=" + tableName + ", newColumnDefinition=" + newColumnDefinition + "]";
   }
 
 }
