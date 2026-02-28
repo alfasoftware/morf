@@ -101,7 +101,9 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     // given
     visitor.startStep(U1.class);
     RemoveTable removeTable = mock(RemoveTable.class);
-    when(removeTable.getTable()).thenReturn(mock(Table.class));
+    Table mockTable = mock(Table.class);
+    when(mockTable.getName()).thenReturn("SomeTable");
+    when(removeTable.getTable()).thenReturn(mockTable);
     when(sqlDialect.dropStatements(any(Table.class))).thenReturn(STATEMENTS);
 
     // when
@@ -220,8 +222,15 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
   public void testChangeColumnVisit() {
     // given
     visitor.startStep(U1.class);
+    Column fromCol = mock(Column.class);
+    when(fromCol.getName()).thenReturn("col");
+    Column toCol = mock(Column.class);
+    when(toCol.getName()).thenReturn("col");
     ChangeColumn changeColumn = mock(ChangeColumn.class);
     when(changeColumn.apply(sourceSchema)).thenReturn(sourceSchema);
+    when(changeColumn.getTableName()).thenReturn("SomeTable");
+    when(changeColumn.getFromColumn()).thenReturn(fromCol);
+    when(changeColumn.getToColumn()).thenReturn(toCol);
     when(sqlDialect.alterTableChangeColumnStatements(nullable(Table.class), nullable(Column.class), nullable(Column.class))).thenReturn(STATEMENTS);
 
     // when
@@ -237,8 +246,12 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
   public void testRemoveColumnVisit() {
     // given
     visitor.startStep(U1.class);
+    Column col = mock(Column.class);
+    when(col.getName()).thenReturn("col");
     RemoveColumn removeColumn = mock(RemoveColumn.class);
     when(removeColumn.apply(sourceSchema)).thenReturn(sourceSchema);
+    when(removeColumn.getTableName()).thenReturn("SomeTable");
+    when(removeColumn.getColumnDefinition()).thenReturn(col);
     when(sqlDialect.alterTableDropColumnStatements(nullable(Table.class), nullable(Column.class))).thenReturn(STATEMENTS);
 
     // when
@@ -254,8 +267,12 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
   public void testRemoveIndexVisit() {
     // given
     visitor.startStep(U1.class);
+    Index mockIdx = mock(Index.class);
+    when(mockIdx.getName()).thenReturn("SomeIdx");
     RemoveIndex removeIndex = mock(RemoveIndex.class);
     when(removeIndex.apply(sourceSchema)).thenReturn(sourceSchema);
+    when(removeIndex.getTableName()).thenReturn("SomeTable");
+    when(removeIndex.getIndexToBeRemoved()).thenReturn(mockIdx);
     when(sqlDialect.indexDropStatements(nullable(Table.class), nullable(Index.class))).thenReturn(STATEMENTS);
 
     // when
@@ -345,6 +362,8 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     visitor.startStep(U1.class);
     RenameTable renameTable = mock(RenameTable.class);
     when(renameTable.apply(sourceSchema)).thenReturn(sourceSchema);
+    when(renameTable.getOldTableName()).thenReturn("OldTable");
+    when(renameTable.getNewTableName()).thenReturn("NewTable");
     when(sqlDialect.renameTableStatements(nullable(Table.class), nullable(Table.class))).thenReturn(STATEMENTS);
 
     // when
