@@ -3988,6 +3988,21 @@ public abstract class SqlDialect {
 
 
   /**
+   * Generates the SQL to build a deferred index on an existing table. By default this
+   * delegates to {@link #addIndexStatements(Table, Index)}, which issues a standard
+   * {@code CREATE INDEX} statement. Platform-specific dialects may override this method
+   * to emit non-blocking variants (e.g. {@code CREATE INDEX CONCURRENTLY} on PostgreSQL).
+   *
+   * @param table The existing table.
+   * @param index The new index to build in the background.
+   * @return A collection of SQL statements.
+   */
+  public Collection<String> deferredIndexDeploymentStatements(Table table, Index index) {
+    return addIndexStatements(table, index);
+  }
+
+
+  /**
    * Helper method to create all index statements defined for a table
    *
    * @param table the table to create indexes for

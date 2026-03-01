@@ -128,4 +128,16 @@ interface DeferredIndexOperationDAO {
    * @param newStatus   the new status value.
    */
   void updateStatus(String operationId, DeferredIndexStatus newStatus);
+
+
+  /**
+   * Returns {@code true} if there is at least one operation in a non-terminal
+   * state ({@link DeferredIndexStatus#PENDING} or
+   * {@link DeferredIndexStatus#IN_PROGRESS}). Used by
+   * {@link DeferredIndexExecutor#awaitCompletion(long)} to poll until the queue
+   * is drained.
+   *
+   * @return {@code true} if any PENDING or IN_PROGRESS operations exist.
+   */
+  boolean hasNonTerminalOperations();
 }

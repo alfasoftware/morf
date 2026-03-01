@@ -22,6 +22,7 @@ import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.SqlUtils.update;
 import static org.alfasoftware.morf.sql.element.Criterion.and;
+import static org.alfasoftware.morf.sql.element.Criterion.or;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -301,6 +302,25 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
           .where(field("operationId").eq(operationId))
       )
     );
+  }
+
+
+  /**
+   * Returns {@code true} if there is at least one PENDING or IN_PROGRESS operation.
+   *
+   * @return {@code true} if any non-terminal operations exist.
+   */
+  @Override
+  public boolean hasNonTerminalOperations() {
+    SelectStatement select = select(field("operationId"))
+      .from(tableRef(OPERATION_TABLE))
+      .where(or(
+        field("status").eq(DeferredIndexStatus.PENDING.name()),
+        field("status").eq(DeferredIndexStatus.IN_PROGRESS.name())
+      ));
+
+    String sql = sqlDialect.convertStatementToSQL(select);
+    return sqlScriptExecutorProvider.get().executeQuery(sql, ResultSet::next);
   }
 
 
