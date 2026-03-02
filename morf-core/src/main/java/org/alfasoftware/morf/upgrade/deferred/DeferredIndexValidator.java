@@ -86,5 +86,11 @@ public class DeferredIndexValidator {
 
     log.info("Pre-upgrade deferred index execution complete: completed=" + result.getCompletedCount()
         + ", failed=" + result.getFailedCount());
+
+    if (result.getFailedCount() > 0) {
+      throw new IllegalStateException("Pre-upgrade deferred index validation failed: "
+          + result.getFailedCount() + " index operation(s) could not be built. "
+          + "Resolve the underlying issue before retrying the upgrade.");
+    }
   }
 }

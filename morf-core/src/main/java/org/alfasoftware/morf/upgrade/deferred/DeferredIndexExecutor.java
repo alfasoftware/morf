@@ -313,7 +313,8 @@ public class DeferredIndexExecutor {
 
   private void sleepForBackoff(int attempt) {
     try {
-      Thread.sleep(config.getRetryBaseDelayMs() * (1L << attempt));
+      long delay = Math.min(config.getRetryBaseDelayMs() * (1L << attempt), config.getRetryMaxDelayMs());
+      Thread.sleep(delay);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     }

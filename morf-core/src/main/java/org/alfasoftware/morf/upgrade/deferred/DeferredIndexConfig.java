@@ -58,6 +58,12 @@ public class DeferredIndexConfig {
    */
   private long retryBaseDelayMs = 5_000L;
 
+  /**
+   * Maximum delay in milliseconds between retry attempts. The exponential backoff
+   * will never exceed this value. Default: 300000 ms (5 minutes).
+   */
+  private long retryMaxDelayMs = 300_000L;
+
 
   /**
    * @see #maxRetries
@@ -136,5 +142,21 @@ public class DeferredIndexConfig {
    */
   public void setRetryBaseDelayMs(long retryBaseDelayMs) {
     this.retryBaseDelayMs = retryBaseDelayMs;
+  }
+
+
+  /**
+   * @see #retryMaxDelayMs
+   */
+  public long getRetryMaxDelayMs() {
+    return retryMaxDelayMs;
+  }
+
+
+  /**
+   * @see #retryMaxDelayMs
+   */
+  public void setRetryMaxDelayMs(long retryMaxDelayMs) {
+    this.retryMaxDelayMs = retryMaxDelayMs;
   }
 }

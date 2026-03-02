@@ -30,6 +30,7 @@ import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -151,14 +152,20 @@ public class TestDeferredIndexValidator {
 
   /**
    * When a PENDING operation targets a non-existent table, the validator should
-   * still return without throwing. The operation will be marked FAILED internally.
+   * throw because the forced execution fails.
    */
   @Test
-  public void testFailedForcedExecutionDoesNotThrow() {
+  public void testFailedForcedExecutionThrows() {
     insertPendingRow("op-v4", "NoSuchTable", "NoSuchTable_V4", false, "col");
 
     DeferredIndexValidator validator = new DeferredIndexValidator(connectionResources, config);
-    validator.validateNoPendingOperations(); // must not throw
+    try {
+      validator.validateNoPendingOperations();
+      fail("Expected IllegalStateException for failed forced execution");
+    } catch (IllegalStateException e) {
+      assertTrue("exception message should mention failed count",
+          e.getMessage().contains("1 index operation(s) could not be built"));
+    }
 
     // The operation should be FAILED, not PENDING
     assertEquals("status should be FAILED after forced execution",
