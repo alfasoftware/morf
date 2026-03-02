@@ -56,9 +56,7 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
   @Override
   public List<Statement> trackPending(DeferredAddIndex deferredAddIndex) {
     String operationId = UUID.randomUUID().toString();
-    // createdTime is captured at script-generation time, which coincides with
-    // upgrade execution time and correctly reflects when the operation was enqueued.
-    long createdTime = System.currentTimeMillis();
+    long createdTime = DeferredIndexTimestamps.currentTimestamp();
 
     List<Statement> statements = new ArrayList<>();
 
@@ -237,6 +235,28 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
                 field("status").eq(literal("PENDING"))
               ))
           )
+        ))
+    );
+  }
+
+
+  @Override
+  public List<Statement> updatePendingIndexName(String tableName, String oldIndexName, String newIndexName) {
+    Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.get(tableName.toUpperCase());
+    if (tableMap == null || !tableMap.containsKey(oldIndexName.toUpperCase())) {
+      return List.of();
+    }
+
+    DeferredAddIndex existing = tableMap.remove(oldIndexName.toUpperCase());
+    tableMap.put(newIndexName.toUpperCase(), existing);
+
+    return List.of(
+      update(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
+        .set(literal(newIndexName).as("indexName"))
+        .where(and(
+          field("tableName").eq(literal(tableName)),
+          field("indexName").eq(literal(oldIndexName)),
+          field("status").eq(literal("PENDING"))
         ))
     );
   }

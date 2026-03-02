@@ -297,6 +297,38 @@ public class TestDeferredIndexChangeServiceImpl {
   }
 
 
+  /**
+   * updatePendingIndexName updates tracking and returns an UPDATE statement.
+   */
+  @Test
+  public void testUpdatePendingIndexNameUpdatesTrackingAndReturnsStatement() {
+    service.trackPending(makeDeferred("TestTable", "OldIdx", "col1"));
+    List<Statement> stmts = service.updatePendingIndexName("TestTable", "OldIdx", "NewIdx");
+    assertThat(stmts, hasSize(1));
+    assertTrue("Should track new name", service.hasPendingDeferred("TestTable", "NewIdx"));
+    assertFalse("Should not track old name", service.hasPendingDeferred("TestTable", "OldIdx"));
+  }
+
+
+  /**
+   * updatePendingIndexName returns an empty list when no pending index matches.
+   */
+  @Test
+  public void testUpdatePendingIndexNameReturnsEmptyWhenNotTracked() {
+    service.trackPending(makeDeferred("TestTable", "SomeIdx", "col1"));
+    assertThat(service.updatePendingIndexName("TestTable", "OtherIdx", "NewIdx"), is(empty()));
+  }
+
+
+  /**
+   * updatePendingIndexName returns an empty list when the table is not tracked.
+   */
+  @Test
+  public void testUpdatePendingIndexNameReturnsEmptyWhenTableNotTracked() {
+    assertThat(service.updatePendingIndexName("NoTable", "OldIdx", "NewIdx"), is(empty()));
+  }
+
+
   // -------------------------------------------------------------------------
   // Helper
   // -------------------------------------------------------------------------

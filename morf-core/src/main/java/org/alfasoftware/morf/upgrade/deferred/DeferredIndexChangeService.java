@@ -113,4 +113,18 @@ public interface DeferredIndexChangeService {
    * @return UPDATE statement to execute, or an empty list.
    */
   List<Statement> updatePendingColumnName(String tableName, String oldColumnName, String newColumnName);
+
+
+  /**
+   * Produces an UPDATE {@link Statement} to rename a pending deferred index
+   * from {@code oldIndexName} to {@code newIndexName} on the given table,
+   * and updates internal tracking. Returns an empty list if no matching
+   * operation is tracked.
+   *
+   * @param tableName    the table name.
+   * @param oldIndexName the current index name.
+   * @param newIndexName the new index name.
+   * @return UPDATE statement to execute, or an empty list.
+   */
+  List<Statement> updatePendingIndexName(String tableName, String oldIndexName, String newIndexName);
 }

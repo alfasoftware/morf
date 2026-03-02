@@ -93,7 +93,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
           literal(op.getTableName()).as("tableName"),
           literal(op.getIndexName()).as("indexName"),
           literal(op.getOperationType().name()).as("operationType"),
-          literal(op.isIndexUnique() ? 1 : 0).as("indexUnique"),
+          literal(op.isIndexUnique()).as("indexUnique"),
           literal(op.getStatus().name()).as("status"),
           literal(op.getRetryCount()).as("retryCount"),
           literal(op.getCreatedTime()).as("createdTime")
@@ -373,7 +373,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
       op.setTableName(rs.getString("tableName"));
       op.setIndexName(rs.getString("indexName"));
       op.setOperationType(DeferredIndexOperationType.valueOf(rs.getString("operationType")));
-      op.setIndexUnique(rs.getInt("indexUnique") == 1);
+      op.setIndexUnique(rs.getBoolean("indexUnique"));
       op.setStatus(DeferredIndexStatus.valueOf(rs.getString("status")));
       op.setRetryCount(rs.getInt("retryCount"));
       op.setCreatedTime(rs.getLong("createdTime"));

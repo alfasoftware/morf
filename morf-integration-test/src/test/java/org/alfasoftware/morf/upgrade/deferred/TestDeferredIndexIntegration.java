@@ -50,7 +50,9 @@ import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
 import org.alfasoftware.morf.upgrade.ViewDeploymentValidator;
 import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredIndex;
+import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredIndexThenChange;
 import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredIndexThenRemove;
+import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredIndexThenRename;
 import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredMultiColumnIndex;
 import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredUniqueIndex;
 import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddTableWithDeferredIndex;
@@ -154,6 +156,56 @@ public class TestDeferredIndexIntegration {
 
     assertEquals("No deferred operations should remain", 0, countOperations());
     assertIndexDoesNotExist("Product", "Product_Name_1");
+  }
+
+
+  /**
+   * Verify that addIndexDeferred() followed by changeIndex() in the same
+   * step cancels the deferred operation and creates the new index immediately.
+   */
+  @Test
+  public void testDeferredAddFollowedByChangeIndex() {
+    Schema targetSchema = schema(
+        deployedViewsTable(), upgradeAuditTable(),
+        deferredIndexOperationTable(), deferredIndexOperationColumnTable(),
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_2").columns("name"))
+    );
+    performUpgrade(targetSchema, AddDeferredIndexThenChange.class);
+
+    assertEquals("No deferred operations should remain", 0, countOperations());
+    assertIndexDoesNotExist("Product", "Product_Name_1");
+    assertIndexExists("Product", "Product_Name_2");
+  }
+
+
+  /**
+   * Verify that addIndexDeferred() followed by renameIndex() in the same
+   * step updates the deferred operation's index name in the queue.
+   */
+  @Test
+  public void testDeferredAddFollowedByRenameIndex() {
+    Schema targetSchema = schema(
+        deployedViewsTable(), upgradeAuditTable(),
+        deferredIndexOperationTable(), deferredIndexOperationColumnTable(),
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_Renamed").columns("name"))
+    );
+    performUpgrade(targetSchema, AddDeferredIndexThenRename.class);
+
+    assertEquals("PENDING", queryOperationStatus("Product_Name_Renamed"));
+    assertEquals("Row count", 1, countOperations());
+
+    DeferredIndexConfig config = new DeferredIndexConfig();
+    config.setRetryBaseDelayMs(10L);
+    new DeferredIndexExecutor(connectionResources, config).executeAndWait(60_000L);
+
+    assertEquals("COMPLETED", queryOperationStatus("Product_Name_Renamed"));
+    assertIndexExists("Product", "Product_Name_Renamed");
   }
 
 
