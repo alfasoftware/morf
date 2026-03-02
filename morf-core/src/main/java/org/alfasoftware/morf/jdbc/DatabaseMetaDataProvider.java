@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.jdbc;
 
+import static com.google.common.collect.ImmutableSet.of;
 import static org.alfasoftware.morf.util.SchemaValidatorUtil.validateSchemaName;
 
 import java.sql.Connection;
@@ -28,12 +29,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -58,6 +57,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 
 /**
@@ -118,8 +118,8 @@ public abstract class DatabaseMetaDataProvider implements Schema {
   private final LoadingCache<AName, Sequence> sequenceCache = CacheBuilder.newBuilder().build(CacheLoader.from(this::loadSequence));
 
   private final Supplier<Map<String, String>> databaseInformation = Suppliers.memoize(this::loadDatabaseInformation);
-  protected Supplier<Set<String>> ignoredTables = Suppliers.memoize(this::getIgnoredTables);
-  protected Supplier<Set<String>> partitionedTables = Suppliers.memoize(this::getPartitionedTables);
+  protected Supplier<ImmutableSet<String>> ignoredTables = Suppliers.memoize(this::loadIgnoredTables);
+  protected Supplier<ImmutableSet<String>> partitionedTables = Suppliers.memoize(this::loadPartitionedTables);
 
   /**
    * @param connection The database connection from which meta data should be provided.
@@ -152,9 +152,9 @@ public abstract class DatabaseMetaDataProvider implements Schema {
     }
   }
 
-  protected Set<String> getIgnoredTables() { return new HashSet<>(); }
+  protected ImmutableSet<String> loadIgnoredTables() { return ImmutableSet.of(); }
 
-  protected Set<String> getPartitionedTables() { return new HashSet<>(); }
+  protected ImmutableSet<String> loadPartitionedTables() { return ImmutableSet.of(); }
 
   /**
    * @see org.alfasoftware.morf.metadata.Schema#isEmptyDatabase()

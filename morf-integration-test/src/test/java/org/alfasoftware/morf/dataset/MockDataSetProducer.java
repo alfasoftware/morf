@@ -25,7 +25,6 @@ import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
-
 import com.google.common.collect.Maps;
 
 /**
@@ -155,7 +154,6 @@ public class MockDataSetProducer implements DataSetProducer, Schema {
   public Collection<String> tableNames() {
     return tables.keySet();
   }
-
 
   /**
    * @see org.alfasoftware.morf.metadata.Schema#tables()

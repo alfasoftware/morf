@@ -84,5 +84,4 @@ class MySqlMetaDataProvider extends DatabaseMetaDataProvider {
   protected String buildSequenceSql(String schemaName) {
     return null;
   }
-
 }

@@ -15,20 +15,6 @@
 
 package org.alfasoftware.morf.jdbc.h2;
 
-import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.RETURNS_SMART_NULLS;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-
-import javax.sql.DataSource;
-
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Sequence;
@@ -37,6 +23,15 @@ import org.junit.Test;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
 
 /**
  * Test class for {@link H2MetaDataProvider}

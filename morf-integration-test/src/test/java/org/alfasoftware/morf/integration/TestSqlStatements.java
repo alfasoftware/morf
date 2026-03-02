@@ -121,7 +121,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.UnaryOperator;
 
-
 import javax.sql.DataSource;
 
 import org.alfasoftware.morf.dataset.DataSetConnector;

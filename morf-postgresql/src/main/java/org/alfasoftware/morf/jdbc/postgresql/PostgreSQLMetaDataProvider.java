@@ -32,6 +32,7 @@ import org.apache.commons.logging.LogFactory;
 
 import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 
 /**
  * Provides meta data from a PostgreSQL database connection.
@@ -54,8 +55,8 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
 
 
   @Override
-  protected Set<String> getIgnoredTables() {
-    Set<String> ignoredTables = new HashSet<>();
+  protected ImmutableSet<String> loadIgnoredTables() {
+    ImmutableSet.Builder<String> ignoredTables = new ImmutableSet.Builder<>();
     try(Statement ignoredTablesStmt = connection.createStatement()) {
       // distinguish partitioned tables from regular ones: relkind = 'p' (partition) or 'r' (regular) also can use boolean col relispartition
       // a partition table attached has (r, true)
@@ -67,12 +68,12 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
     } catch (SQLException e) {
         // ignore exception, if it fails then incompatible Postgres version
     }
-    return ignoredTables;
+    return ignoredTables.build();
   }
 
   @Override
-  protected Set<String> getPartitionedTables() {
-    Set<String> partitionedTables = new HashSet<>();
+  protected ImmutableSet<String> loadPartitionedTables() {
+    ImmutableSet.Builder<String> partitionedTables = new ImmutableSet.Builder<>();
     try(Statement partitionedTablesStmt = connection.createStatement()) {
       // distinguish partitioned tables from regular ones: relkind = 'p' (partition) or 'r' (regular) also can use boolean col relispartition
       // a partition table attached has (r, true)
@@ -85,13 +86,13 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
     } catch (SQLException e) {
       // ignore exception, if it fails then incompatible Postgres version
     }
-    return partitionedTables;
+    return partitionedTables.build();
   }
 
 
   @Override
-  protected boolean isIgnoredTable(@SuppressWarnings("unused") RealName tableName) {
-    return ignoredTables.get().contains(tableName.getDbName().toLowerCase(Locale.ROOT));
+  protected boolean isIgnoredTable(RealName tableName) {
+    return ignoredTables.get().contains(tableName.getDbName().toLowerCase(Locale.ROOT)) || super.isIgnoredTable(tableName);
   }
 
   @Override

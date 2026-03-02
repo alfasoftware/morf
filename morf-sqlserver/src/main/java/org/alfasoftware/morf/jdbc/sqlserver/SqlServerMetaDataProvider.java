@@ -152,5 +152,4 @@ class SqlServerMetaDataProvider extends DatabaseMetaDataProvider {
 
     return sequenceSqlBuilder.toString();
   }
-
 }
