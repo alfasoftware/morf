@@ -25,7 +25,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.alfasoftware.morf.metadata.Sequence;
-
 import org.junit.Before;
 import org.junit.Test;
 
