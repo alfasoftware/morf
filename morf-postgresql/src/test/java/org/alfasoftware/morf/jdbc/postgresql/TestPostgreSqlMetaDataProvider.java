@@ -18,6 +18,8 @@ package org.alfasoftware.morf.jdbc.postgresql;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.RETURNS_SMART_NULLS;
@@ -103,6 +105,14 @@ public class TestPostgreSqlMetaDataProvider {
   @Test
   public void testLoadAllIgnoredIndexes() throws SQLException {
     // Given
+    final Statement statement0 = mock(Statement.class, RETURNS_SMART_NULLS);
+    final Statement statement1 = mock(Statement.class, RETURNS_SMART_NULLS);
+    when(connection.createStatement()).thenReturn(statement0, statement1);
+    when(statement0.executeQuery("select relname from pg_class where relispartition and relkind = 'r'"))
+        .thenAnswer(new ReturnMockResultSetWithPartitionTables(0, ""));
+    when(statement1.executeQuery("select relname from pg_class where not relispartition and relkind = 'p'"))
+        .thenAnswer(new ReturnMockResultSetWithPartitionTables(0, ""));
+
     Statement statement = mock(Statement.class, RETURNS_SMART_NULLS);
     when(connection.createStatement(eq(ResultSet.TYPE_FORWARD_ONLY), eq(ResultSet.CONCUR_READ_ONLY))).thenReturn(statement);
     when(statement.executeQuery(anyString())).thenAnswer(answer -> {
@@ -182,6 +192,84 @@ public class TestPostgreSqlMetaDataProvider {
 
 
   /**
+   * Checks the SQL run for retrieving partitioned tables information
+   *
+   * @throws SQLException exception
+   */
+  @Test
+  public void testLoadPartitionedTables() throws SQLException {
+    // Given
+    final Statement statement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    when(connection.createStatement()).thenReturn(statement);
+    when(statement.executeQuery("select relname from pg_class where not relispartition and relkind = 'p'"))
+      .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition"));
+    when(statement.executeQuery("select relname from pg_class where relispartition and relkind = 'r'"))
+      .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition_p0"));
+
+    // When
+    final AdditionalMetadata postgresMetaDataProvider = (AdditionalMetadata)postgres.openSchema(connection, "TestDatabase", "TestSchema");
+    assertEquals("Partition Table name", "[partition]", postgresMetaDataProvider.partitionedTableNames().toString());
+    String partitionTable = postgresMetaDataProvider.partitionedTableNames().iterator().next();
+    assertEquals("Partition Table name", "partition", partitionTable);
+  }
+
+
+  /**
+   * Checks the SQL run for retrieving partition table information
+   *
+   * @throws SQLException exception
+   */
+  @Test
+  public void testLoadPartitionTables() throws SQLException {
+    // Given
+    final Statement statement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    when(connection.createStatement()).thenReturn(statement);
+    when(statement.executeQuery("select relname from pg_class where not relispartition and relkind = 'p'"))
+      .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition"));
+    when(statement.executeQuery("select relname from pg_class where relispartition and relkind = 'r'"))
+      .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition_p0"));
+
+    // When
+    final AdditionalMetadata postgresMetaDataProvider = (AdditionalMetadata)postgres.openSchema(connection, "TestDatabase", "TestSchema");
+
+    assertEquals("Partition Table name", "[partition_p0]", postgresMetaDataProvider.partitionTableNames().toString());
+    String partitionTable = postgresMetaDataProvider.partitionTableNames().iterator().next();
+    assertEquals("Partition Table name", "partition_p0", partitionTable);
+  }
+
+
+  /**
+   * Checks the SQL run for retrieving partition table information
+   *
+   * @throws SQLException exception
+   */
+  @Test
+  public void testIgnoredTables() throws SQLException {
+    // Given
+    final Statement statement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+
+    final PreparedStatement statement1 = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
+    when(connection.prepareStatement(anyString())).thenReturn(statement1);
+
+    when(connection.createStatement()).thenReturn(statement);
+    when(statement.executeQuery("select relname from pg_class where not relispartition and relkind = 'p'"))
+      .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition"));
+    when(statement.executeQuery("select relname from pg_class where relispartition and relkind = 'r'"))
+      .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition_p0"));
+    DatabaseMetaData postgreSQLMetaDataMock = mock(DatabaseMetaData.class);
+    when(connection.getMetaData()).thenReturn(postgreSQLMetaDataMock);
+    when(postgreSQLMetaDataMock.getTables(any(), any(), any(), any()))
+      .thenAnswer(new ReturnMockResultSetWithSequence(0));
+
+    // When
+    final Schema postgresMetaDataProvider = postgres.openSchema(connection, "TestDatabase", "TestSchema");
+    // Then
+    assertEquals("Partition Table name", "[partition]", postgresMetaDataProvider.tableNames().toString());
+    assertFalse("Table names", postgresMetaDataProvider.tableNames().toString().contains("partition_p0"));
+  }
+
+
+  /**
    * Mockito {@link Answer} that returns a mock result set with a given number of resultRows.
    */
   private static final class ReturnMockResultSetWithSequence implements Answer<ResultSet> {
@@ -215,4 +303,40 @@ public class TestPostgreSqlMetaDataProvider {
     }
   }
 
+  /**
+   * Mockito {@link Answer} that returns a mock result set with a given number of resultRows for partition tables.
+   */
+  private static final class ReturnMockResultSetWithPartitionTables implements Answer<ResultSet> {
+
+    private final int numberOfResultRows;
+    private final String partitionResult;
+
+
+    /**
+     * @param numberOfResultRows
+     */
+    private ReturnMockResultSetWithPartitionTables(int numberOfResultRows, String partitionResult) {
+      super();
+      this.numberOfResultRows = numberOfResultRows;
+      // class is rigged for just one value
+      this.partitionResult = partitionResult;
+    }
+
+    @Override
+    public ResultSet answer(final InvocationOnMock invocation) throws Throwable {
+      final ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
+      when(resultSet.next()).thenAnswer(new Answer<Boolean>() {
+        private int counter;
+
+        @Override
+        public Boolean answer(InvocationOnMock invocation) throws Throwable {
+          return counter++ < numberOfResultRows;
+        }
+      });
+
+      when(resultSet.getString(1)).thenReturn(partitionResult);
+
+      return resultSet;
+    }
+  }
 }

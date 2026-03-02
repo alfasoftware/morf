@@ -56,6 +56,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 
 /**
@@ -116,6 +117,8 @@ public abstract class DatabaseMetaDataProvider implements Schema {
   private final LoadingCache<AName, Sequence> sequenceCache = CacheBuilder.newBuilder().build(CacheLoader.from(this::loadSequence));
 
   private final Supplier<Map<String, String>> databaseInformation = Suppliers.memoize(this::loadDatabaseInformation);
+  protected Supplier<ImmutableSet<String>> ignoredTables = Suppliers.memoize(this::loadIgnoredTables);
+  protected Supplier<ImmutableSet<String>> partitionedTables = Suppliers.memoize(this::loadPartitionedTables);
 
   /**
    * @param connection The database connection from which meta data should be provided.
@@ -148,6 +151,9 @@ public abstract class DatabaseMetaDataProvider implements Schema {
     }
   }
 
+  protected ImmutableSet<String> loadIgnoredTables() { return ImmutableSet.of(); }
+
+  protected ImmutableSet<String> loadPartitionedTables() { return ImmutableSet.of(); }
 
   /**
    * @see org.alfasoftware.morf.metadata.Schema#isEmptyDatabase()
@@ -306,6 +312,11 @@ public abstract class DatabaseMetaDataProvider implements Schema {
             throw new RuntimeSqlException("Error reading metadata for table ["+tableName+"]", e);
           }
         }
+        // add partitioned tables to list
+        partitionedTables.get().forEach(table -> {
+          RealName partionedTableName = createRealName(table, table);
+          tableNameMappings.put(partionedTableName, partionedTableName);
+        });
 
         long end = System.currentTimeMillis();
         Map<AName, RealName> tableNameMap = tableNameMappings.build();

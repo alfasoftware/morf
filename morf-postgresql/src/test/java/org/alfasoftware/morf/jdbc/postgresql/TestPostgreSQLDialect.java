@@ -1642,7 +1642,7 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
     return "SELECT Test.id, Alternate.stringField FROM " + tableName(TEST_TABLE) + " INNER JOIN " + tableName("Alternate") + " ON (Test.id = Alternate.id) LIMIT 25";
   }
 
-  
+
   /**
    * @see AbstractSqlDialectTest#expectedPortableSqlExpression()
    */
@@ -1650,8 +1650,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
   protected String expectedPortableSqlExpression() {
     return "SELECT CONCAT(first_name, ' ', last_name, ' (', params->>'role', ')') FROM testschema.Test";
   }
-  
-  
+
+
    @Override
   protected String expectedSelectWithOrderByWhereAndLimit() {
     return "SELECT id, stringField FROM " + tableName(TEST_TABLE) + " WHERE (stringField IS NOT NULL) ORDER BY id DESC LIMIT 10";
