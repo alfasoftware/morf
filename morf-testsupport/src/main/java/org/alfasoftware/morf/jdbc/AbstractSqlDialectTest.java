@@ -4189,6 +4189,48 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * Test deferred index creation over a single column.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testDeferredAddIndexStatementsOnSingleColumn() {
+    Table table = metadata.getTable(TEST_TABLE);
+    Index index = index("indexName").columns(table.columns().get(0).getName());
+    compareStatements(
+      expectedDeferredAddIndexStatementsOnSingleColumn(),
+      testDialect.deferredIndexDeploymentStatements(table, index));
+  }
+
+
+  /**
+   * Test deferred index creation over multiple columns.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testDeferredAddIndexStatementsOnMultipleColumns() {
+    Table table = metadata.getTable(TEST_TABLE);
+    Index index = index("indexName").columns(table.columns().get(0).getName(), table.columns().get(1).getName());
+    compareStatements(
+      expectedDeferredAddIndexStatementsOnMultipleColumns(),
+      testDialect.deferredIndexDeploymentStatements(table, index));
+  }
+
+
+  /**
+   * Test deferred unique index creation.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testDeferredAddIndexStatementsUnique() {
+    Table table = metadata.getTable(TEST_TABLE);
+    Index index = index("indexName").unique().columns(table.columns().get(0).getName());
+    compareStatements(
+      expectedDeferredAddIndexStatementsUnique(),
+      testDialect.deferredIndexDeploymentStatements(table, index));
+  }
+
+
+  /**
    * Test adding a unique index.
    */
   @SuppressWarnings("unchecked")
@@ -4770,6 +4812,30 @@ public abstract class AbstractSqlDialectTest {
    * @return Expected SQL for {@link #testAddIndexStatementsUnique()}
    */
   protected abstract List<String> expectedAddIndexStatementsUnique();
+
+
+  /**
+   * @return Expected SQL for {@link #testDeferredAddIndexStatementsOnSingleColumn()}
+   */
+  protected List<String> expectedDeferredAddIndexStatementsOnSingleColumn() {
+    return expectedAddIndexStatementsOnSingleColumn();
+  }
+
+
+  /**
+   * @return Expected SQL for {@link #testDeferredAddIndexStatementsOnMultipleColumns()}
+   */
+  protected List<String> expectedDeferredAddIndexStatementsOnMultipleColumns() {
+    return expectedAddIndexStatementsOnMultipleColumns();
+  }
+
+
+  /**
+   * @return Expected SQL for {@link #testDeferredAddIndexStatementsUnique()}
+   */
+  protected List<String> expectedDeferredAddIndexStatementsUnique() {
+    return expectedAddIndexStatementsUnique();
+  }
 
 
   /**

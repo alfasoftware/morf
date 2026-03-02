@@ -21,8 +21,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import javax.sql.DataSource;
 
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
@@ -46,23 +50,26 @@ public class TestDeferredIndexExecutorUnit {
   @Mock private DeferredIndexOperationDAO dao;
   @Mock private SqlDialect sqlDialect;
   @Mock private SqlScriptExecutorProvider sqlScriptExecutorProvider;
+  @Mock private DataSource dataSource;
+  @Mock private Connection connection;
 
   private DeferredIndexConfig config;
 
 
   /** Set up mocks and a fast-retry config before each test. */
   @Before
-  public void setUp() {
+  public void setUp() throws SQLException {
     MockitoAnnotations.openMocks(this);
     config = new DeferredIndexConfig();
     config.setRetryBaseDelayMs(10L);
+    when(dataSource.getConnection()).thenReturn(connection);
   }
 
 
   /** Calling shutdown before any execution should be a safe no-op. */
   @Test
   public void testShutdownBeforeExecutionIsNoOp() {
-    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
     executor.shutdown();
   }
 
@@ -77,7 +84,7 @@ public class TestDeferredIndexExecutorUnit {
     when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
         .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
 
-    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
     executor.executeAndWait(60_000L);
     executor.shutdown();
   }
@@ -86,7 +93,7 @@ public class TestDeferredIndexExecutorUnit {
   /** logProgress should run without error when no operations have been submitted. */
   @Test
   public void testLogProgressOnFreshExecutor() {
-    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
     executor.logProgress();
   }
 
@@ -101,7 +108,7 @@ public class TestDeferredIndexExecutorUnit {
     when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
         .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
 
-    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
     executor.executeAndWait(60_000L);
     executor.logProgress();
 
@@ -137,7 +144,7 @@ public class TestDeferredIndexExecutorUnit {
   public void testAwaitCompletionReturnsFalseWhenInterrupted() throws Exception {
     when(dao.hasNonTerminalOperations()).thenReturn(true);
 
-    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
     AtomicBoolean result = new AtomicBoolean(true);
     Thread testThread = new Thread(() -> result.set(executor.awaitCompletion(60L)));
     testThread.start();

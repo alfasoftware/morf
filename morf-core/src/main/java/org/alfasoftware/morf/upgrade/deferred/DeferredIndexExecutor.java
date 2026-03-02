@@ -18,6 +18,8 @@ package org.alfasoftware.morf.upgrade.deferred;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -31,7 +33,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.sql.DataSource;
+
 import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Index;
@@ -76,6 +81,7 @@ public class DeferredIndexExecutor {
   private final DeferredIndexOperationDAO dao;
   private final SqlDialect sqlDialect;
   private final SqlScriptExecutorProvider sqlScriptExecutorProvider;
+  private final DataSource dataSource;
   private final DeferredIndexConfig config;
 
   /** Count of operations completed in the current {@link #executeAndWait} call. */
@@ -106,6 +112,7 @@ public class DeferredIndexExecutor {
   public DeferredIndexExecutor(ConnectionResources connectionResources, DeferredIndexConfig config) {
     this.sqlDialect = connectionResources.sqlDialect();
     this.sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
+    this.dataSource = connectionResources.getDataSource();
     this.dao = new DeferredIndexOperationDAOImpl(connectionResources);
     this.config = config;
   }
@@ -115,10 +122,12 @@ public class DeferredIndexExecutor {
    * Package-private constructor for unit testing with mock dependencies.
    */
   DeferredIndexExecutor(DeferredIndexOperationDAO dao, SqlDialect sqlDialect,
-                         SqlScriptExecutorProvider sqlScriptExecutorProvider, DeferredIndexConfig config) {
+                         SqlScriptExecutorProvider sqlScriptExecutorProvider, DataSource dataSource,
+                         DeferredIndexConfig config) {
     this.dao = dao;
     this.sqlDialect = sqlDialect;
     this.sqlScriptExecutorProvider = sqlScriptExecutorProvider;
+    this.dataSource = dataSource;
     this.config = config;
   }
 
@@ -278,7 +287,18 @@ public class DeferredIndexExecutor {
     Index index = reconstructIndex(op);
     Table table = table(op.getTableName());
     Collection<String> statements = sqlDialect.deferredIndexDeploymentStatements(table, index);
-    sqlScriptExecutorProvider.get().execute(statements);
+
+    // Execute with autocommit enabled rather than inside a transaction.
+    // Some platforms require this — notably PostgreSQL's CREATE INDEX
+    // CONCURRENTLY, which cannot run inside a transaction block. Using a
+    // dedicated autocommit connection is harmless for platforms that do
+    // not have this restriction (Oracle, MySQL, H2, SQL Server).
+    try (Connection connection = dataSource.getConnection()) {
+      connection.setAutoCommit(true);
+      sqlScriptExecutorProvider.get().execute(statements, connection);
+    } catch (SQLException e) {
+      throw new RuntimeSqlException("Error building deferred index " + op.getIndexName(), e);
+    }
   }
 
 

@@ -860,6 +860,36 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDeferredAddIndexStatementsOnSingleColumn()
+   */
+  @Override
+  protected List<String> expectedDeferredAddIndexStatementsOnSingleColumn() {
+    return Arrays.asList("CREATE INDEX TESTSCHEMA.indexName ON TESTSCHEMA.Test (id) ONLINE PARALLEL NOLOGGING",
+      "ALTER INDEX TESTSCHEMA.indexName NOPARALLEL LOGGING");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDeferredAddIndexStatementsOnMultipleColumns()
+   */
+  @Override
+  protected List<String> expectedDeferredAddIndexStatementsOnMultipleColumns() {
+    return Arrays.asList("CREATE INDEX TESTSCHEMA.indexName ON TESTSCHEMA.Test (id, version) ONLINE PARALLEL NOLOGGING",
+      "ALTER INDEX TESTSCHEMA.indexName NOPARALLEL LOGGING");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDeferredAddIndexStatementsUnique()
+   */
+  @Override
+  protected List<String> expectedDeferredAddIndexStatementsUnique() {
+    return Arrays.asList("CREATE UNIQUE INDEX TESTSCHEMA.indexName ON TESTSCHEMA.Test (id) ONLINE PARALLEL NOLOGGING",
+      "ALTER INDEX TESTSCHEMA.indexName NOPARALLEL LOGGING");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddIndexStatementsUniqueNullable()
    */
   @Override
