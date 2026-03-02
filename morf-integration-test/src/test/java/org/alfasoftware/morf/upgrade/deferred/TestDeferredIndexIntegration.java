@@ -53,6 +53,7 @@ import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredIndex;
 import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredIndexThenChange;
 import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredIndexThenRemove;
 import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredIndexThenRename;
+import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredIndexThenRenameColumnThenRemove;
 import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredMultiColumnIndex;
 import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredUniqueIndex;
 import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddTableWithDeferredIndex;
@@ -206,6 +207,40 @@ public class TestDeferredIndexIntegration {
 
     assertEquals("COMPLETED", queryOperationStatus("Product_Name_Renamed"));
     assertIndexExists("Product", "Product_Name_Renamed");
+  }
+
+
+  /**
+   * Verify that addIndexDeferred() followed by changeColumn() (rename) and
+   * then removeColumn() by the new name cancels the deferred operation, even
+   * though the column name changed between deferral and removal.
+   */
+  @Test
+  public void testDeferredAddFollowedByRenameColumnThenRemove() {
+    // Initial schema has an extra "description" column for this test
+    Schema initialWithDesc = schema(
+        deployedViewsTable(), upgradeAuditTable(),
+        deferredIndexOperationTable(), deferredIndexOperationColumnTable(),
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100),
+            column("description", DataType.STRING, 200)
+        )
+    );
+    schemaManager.mutateToSupportSchema(initialWithDesc, TruncationBehavior.ALWAYS);
+
+    // After the step: description renamed to summary then removed; index cancelled
+    Schema targetSchema = schema(
+        deployedViewsTable(), upgradeAuditTable(),
+        deferredIndexOperationTable(), deferredIndexOperationColumnTable(),
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        )
+    );
+    performUpgrade(targetSchema, AddDeferredIndexThenRenameColumnThenRemove.class);
+
+    assertEquals("Deferred operation should be cancelled", 0, countOperations());
   }
 
 

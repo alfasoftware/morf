@@ -329,6 +329,36 @@ public class TestDeferredIndexChangeServiceImpl {
   }
 
 
+  /**
+   * After updatePendingColumnName, cancelPendingReferencingColumn finds the
+   * index by the new column name.
+   */
+  @Test
+  public void testCancelPendingReferencingColumnFindsRenamedColumn() {
+    service.trackPending(makeDeferred("TestTable", "TestIdx", "oldCol"));
+    service.updatePendingColumnName("TestTable", "oldCol", "newCol");
+
+    List<Statement> stmts = new ArrayList<>(service.cancelPendingReferencingColumn("TestTable", "newCol"));
+    assertThat("should cancel by the new column name", stmts, hasSize(2));
+    assertFalse(service.hasPendingDeferred("TestTable", "TestIdx"));
+  }
+
+
+  /**
+   * After updatePendingTableName, cancelPendingReferencingColumn finds the
+   * index under the new table name.
+   */
+  @Test
+  public void testCancelPendingReferencingColumnAfterTableRename() {
+    service.trackPending(makeDeferred("OldTable", "TestIdx", "col1"));
+    service.updatePendingTableName("OldTable", "NewTable");
+
+    List<Statement> stmts = new ArrayList<>(service.cancelPendingReferencingColumn("NewTable", "col1"));
+    assertThat("should cancel under the new table name", stmts, hasSize(2));
+    assertFalse(service.hasPendingDeferred("NewTable", "TestIdx"));
+  }
+
+
   // -------------------------------------------------------------------------
   // Helper
   // -------------------------------------------------------------------------

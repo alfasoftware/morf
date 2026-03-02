@@ -24,12 +24,16 @@ import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.SqlUtils.update;
 import static org.alfasoftware.morf.sql.element.Criterion.and;
 
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
+import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
@@ -196,7 +200,13 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
       return List.of();
     }
 
-    pendingDeferredIndexes.put(newTableName.toUpperCase(), tableMap);
+    // Rebuild in-memory entries with the new table name
+    Map<String, DeferredAddIndex> updatedMap = new LinkedHashMap<>();
+    for (Map.Entry<String, DeferredAddIndex> entry : tableMap.entrySet()) {
+      DeferredAddIndex dai = entry.getValue();
+      updatedMap.put(entry.getKey(), new DeferredAddIndex(newTableName, dai.getNewIndex(), dai.getUpgradeUUID()));
+    }
+    pendingDeferredIndexes.put(newTableName.toUpperCase(), updatedMap);
 
     return List.of(
       update(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
@@ -220,6 +230,20 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
       .anyMatch(dai -> dai.getNewIndex().columnNames().stream().anyMatch(c -> c.equalsIgnoreCase(oldColumnName)));
     if (!anyAffected) {
       return List.of();
+    }
+
+    // Rebuild in-memory entries with updated column names
+    for (Map.Entry<String, DeferredAddIndex> entry : tableMap.entrySet()) {
+      DeferredAddIndex dai = entry.getValue();
+      if (dai.getNewIndex().columnNames().stream().anyMatch(c -> c.equalsIgnoreCase(oldColumnName))) {
+        List<String> updatedColumns = dai.getNewIndex().columnNames().stream()
+            .map(c -> c.equalsIgnoreCase(oldColumnName) ? newColumnName : c)
+            .collect(Collectors.toList());
+        Index updatedIndex = dai.getNewIndex().isUnique()
+            ? index(dai.getNewIndex().getName()).columns(updatedColumns).unique()
+            : index(dai.getNewIndex().getName()).columns(updatedColumns);
+        entry.setValue(new DeferredAddIndex(dai.getTableName(), updatedIndex, dai.getUpgradeUUID()));
+      }
     }
 
     return List.of(
