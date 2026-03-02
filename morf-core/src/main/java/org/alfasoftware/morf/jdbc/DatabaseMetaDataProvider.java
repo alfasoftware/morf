@@ -15,7 +15,6 @@
 
 package org.alfasoftware.morf.jdbc;
 
-import static com.google.common.collect.ImmutableSet.of;
 import static org.alfasoftware.morf.util.SchemaValidatorUtil.validateSchemaName;
 
 import java.sql.Connection;
