@@ -126,13 +126,17 @@ import com.google.common.io.CharSource;
  */
 public abstract class SqlDialect {
 
+  private static final String AND = " AND ";
+
+  private static final String WHERE = " WHERE ";
+
   /**
-   *
+   * On a table allowing for table-id column handling, the name of the column holding the next id value
    */
   protected static final String          ID_INCREMENTOR_TABLE_COLUMN_VALUE = "nextvalue";
 
   /**
-   *
+   * On a table allowing for table-id column handling, the name of the column holding the name of the table that the id value is for.
    */
   protected static final String          ID_INCREMENTOR_TABLE_COLUMN_NAME  = "name";
 
@@ -1243,7 +1247,7 @@ public abstract class SqlDialect {
    */
   protected <T extends AbstractSelectStatement<T>> void appendWhere(StringBuilder result, AbstractSelectStatement<T> stmt) {
     if (stmt.getWhereCriterion() != null) {
-      result.append(" WHERE ");
+      result.append(WHERE);
       result.append(getSqlFrom(stmt.getWhereCriterion()));
     }
   }
@@ -3289,7 +3293,7 @@ public abstract class SqlDialect {
 
     // Prepare to append the where clause or, for appropriate dialects, the delete limit
     if (statement.getWhereCriterion() != null || statement.getLimit().isPresent() && getDeleteLimitWhereClause(statement.getLimit().get()).isPresent()) {
-      sqlBuilder.append(" WHERE ");
+      sqlBuilder.append(WHERE);
     }
 
     // Now put the where clause in
@@ -3300,7 +3304,7 @@ public abstract class SqlDialect {
     // Append the delete limit, for appropriate dialects
     if (statement.getLimit().isPresent() && getDeleteLimitWhereClause(statement.getLimit().get()).isPresent()) {
       if (statement.getWhereCriterion() != null) {
-        sqlBuilder.append(" AND ");
+        sqlBuilder.append(AND);
       }
 
       sqlBuilder.append(getDeleteLimitWhereClause(statement.getLimit().get()).get());
@@ -3382,7 +3386,7 @@ public abstract class SqlDialect {
 
     // Now put the where clause in
     if (statement.getWhereCriterion() != null) {
-      sqlBuilder.append(" WHERE ");
+      sqlBuilder.append(WHERE);
       sqlBuilder.append(getSqlFrom(statement.getWhereCriterion()));
     }
 
@@ -3452,7 +3456,7 @@ public abstract class SqlDialect {
         MergeMatchClause mergeMatchClause = whenMatchedAction.get();
         Optional<Criterion> whereClause = mergeMatchClause.getWhereClause();
         if (mergeMatchClause.getAction() == MatchAction.UPDATE && whereClause.isPresent()) {
-          sqlBuilder.append(" AND ")
+          sqlBuilder.append(AND)
             .append(getSqlFrom(whereClause.get()));
         }
       }
@@ -4361,7 +4365,7 @@ public abstract class SqlDialect {
     Iterable<String> expressions = Iterables.transform(statement.getTableUniqueKey(),
       field -> String.format("%s.%s = %s.%s", targetTableName, field.getImpliedName(), selectAlias, field.getImpliedName()));
 
-    return Joiner.on(" AND ").join(expressions);
+    return Joiner.on(AND).join(expressions);
   }
 
 

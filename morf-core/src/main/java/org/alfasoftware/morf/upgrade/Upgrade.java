@@ -64,7 +64,10 @@ import com.google.inject.Inject;
  * @author Copyright (c) Alfa Financial Software 2010 - 2013
  */
 public class Upgrade {
+
   private static final Log log = LogFactory.getLog(Upgrade.class);
+
+  private static final String COLUMN_NAME_UPGRADE_UUID = "upgradeUUID";
 
   private final ConnectionResources connectionResources;
   private final UpgradePathFactory upgradePathFactory;
@@ -404,7 +407,7 @@ public class Upgrade {
       TableReference upgradeAuditTable = tableRef(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME);
 
       SelectStatement selectStatement = select(
-              upgradeAuditTable.field("upgradeUUID"),
+              upgradeAuditTable.field(COLUMN_NAME_UPGRADE_UUID),
               upgradeAuditTable.field("description")
       )
               .from(upgradeAuditTable)
@@ -432,7 +435,7 @@ public class Upgrade {
       try {
         while(resultSet.next()) {
           String description = resultSet.getString("description");
-          String upgradeUUID = resultSet.getString("upgradeUUID");
+          String upgradeUUID = resultSet.getString(COLUMN_NAME_UPGRADE_UUID);
           upgradeAudit.put(description, upgradeUUID);
         }
       } catch (SQLException e) {
@@ -448,7 +451,7 @@ public class Upgrade {
    */
   private SelectStatement selectUpgradeAuditTableCount() {
     TableReference upgradeAuditTable = tableRef(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME);
-    return select(count(upgradeAuditTable.field("upgradeUUID")))
+    return select(count(upgradeAuditTable.field(COLUMN_NAME_UPGRADE_UUID)))
         .from(upgradeAuditTable)
         .build();
   }
