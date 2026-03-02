@@ -36,7 +36,10 @@
 
   <profiles>
     <profile>
-      <id>h2version1</id>
+      <id>h2version2</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
       <dependencies>
         <dependency>
           <groupId>com.h2database</groupId>
@@ -46,10 +49,7 @@
       </dependencies>
     </profile>
     <profile>
-      <id>h2version2</id>
-      <activation>
-        <activeByDefault>true</activeByDefault>
-      </activation>
+      <id>h2version1</id>
       <dependencies>
         <dependency>
           <groupId>com.h2database</groupId>
@@ -58,7 +58,6 @@
         </dependency>
       </dependencies>
     </profile>
-
   </profiles>
   
   <dependencies>
