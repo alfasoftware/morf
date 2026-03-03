@@ -17,6 +17,8 @@ package org.alfasoftware.morf.upgrade.deferred;
 
 import java.util.List;
 
+import com.google.inject.ImplementedBy;
+
 /**
  * DAO for reading and writing {@link DeferredIndexOperation} records,
  * including their associated column-name rows from
@@ -24,6 +26,7 @@ import java.util.List;
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
+@ImplementedBy(DeferredIndexOperationDAOImpl.class)
 interface DeferredIndexOperationDAO {
 
   /**

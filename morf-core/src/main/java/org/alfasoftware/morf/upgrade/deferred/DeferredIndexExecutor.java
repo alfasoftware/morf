@@ -43,6 +43,9 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder;
 import org.alfasoftware.morf.metadata.Table;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -61,13 +64,14 @@ import org.apache.commons.logging.LogFactory;
  *
  * <p>Example usage:</p>
  * <pre>
- * DeferredIndexExecutor executor = new DeferredIndexExecutor(connectionResources, config);
+ * DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, connectionResources, config);
  * ExecutionResult result = executor.executeAndWait(600_000L);
  * log.info("Completed: " + result.getCompletedCount() + ", failed: " + result.getFailedCount());
  * </pre>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
+@Singleton
 class DeferredIndexExecutor {
 
   private static final Log log = LogFactory.getLog(DeferredIndexExecutor.class);
@@ -106,14 +110,17 @@ class DeferredIndexExecutor {
   /**
    * Constructs an executor using the supplied connection and configuration.
    *
+   * @param dao                 DAO for deferred index operations.
    * @param connectionResources database connection resources.
    * @param config              configuration controlling retry, thread-pool, and timeout behaviour.
    */
-  DeferredIndexExecutor(ConnectionResources connectionResources, DeferredIndexConfig config) {
+  @Inject
+  DeferredIndexExecutor(DeferredIndexOperationDAO dao, ConnectionResources connectionResources,
+                         DeferredIndexConfig config) {
+    this.dao = dao;
     this.sqlDialect = connectionResources.sqlDialect();
     this.sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
     this.dataSource = connectionResources.getDataSource();
-    this.dao = new DeferredIndexOperationDAOImpl(connectionResources);
     this.config = config;
   }
 

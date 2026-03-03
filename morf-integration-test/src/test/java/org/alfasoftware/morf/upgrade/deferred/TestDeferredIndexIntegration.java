@@ -138,7 +138,7 @@ public class TestDeferredIndexIntegration {
 
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setRetryBaseDelayMs(10L);
-    DeferredIndexExecutor executor = new DeferredIndexExecutor(connectionResources, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutor(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
     executor.executeAndWait(60_000L);
 
     assertEquals("COMPLETED", queryOperationStatus("Product_Name_1"));
@@ -203,7 +203,7 @@ public class TestDeferredIndexIntegration {
 
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setRetryBaseDelayMs(10L);
-    new DeferredIndexExecutor(connectionResources, config).executeAndWait(60_000L);
+    new DeferredIndexExecutor(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config).executeAndWait(60_000L);
 
     assertEquals("COMPLETED", queryOperationStatus("Product_Name_Renamed"));
     assertIndexExists("Product", "Product_Name_Renamed");
@@ -262,7 +262,7 @@ public class TestDeferredIndexIntegration {
 
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setRetryBaseDelayMs(10L);
-    new DeferredIndexExecutor(connectionResources, config).executeAndWait(60_000L);
+    new DeferredIndexExecutor(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config).executeAndWait(60_000L);
 
     assertIndexExists("Product", "Product_Name_UQ");
     try (SchemaResource sr = connectionResources.openSchemaResource()) {
@@ -292,7 +292,7 @@ public class TestDeferredIndexIntegration {
 
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setRetryBaseDelayMs(10L);
-    new DeferredIndexExecutor(connectionResources, config).executeAndWait(60_000L);
+    new DeferredIndexExecutor(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config).executeAndWait(60_000L);
 
     try (SchemaResource sr = connectionResources.openSchemaResource()) {
       org.alfasoftware.morf.metadata.Index idx = sr.getTable("Product").indexes().stream()
@@ -329,7 +329,7 @@ public class TestDeferredIndexIntegration {
 
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setRetryBaseDelayMs(10L);
-    new DeferredIndexExecutor(connectionResources, config).executeAndWait(60_000L);
+    new DeferredIndexExecutor(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config).executeAndWait(60_000L);
 
     assertEquals("COMPLETED", queryOperationStatus("Category_Label_1"));
     assertIndexExists("Category", "Category_Label_1");
@@ -350,7 +350,7 @@ public class TestDeferredIndexIntegration {
 
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setRetryBaseDelayMs(10L);
-    new DeferredIndexExecutor(connectionResources, config).executeAndWait(60_000L);
+    new DeferredIndexExecutor(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config).executeAndWait(60_000L);
 
     assertEquals("COMPLETED", queryOperationStatus("Product_Name_1"));
     assertIndexExists("Product", "Product_Name_1");
@@ -382,7 +382,7 @@ public class TestDeferredIndexIntegration {
 
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setRetryBaseDelayMs(10L);
-    new DeferredIndexExecutor(connectionResources, config).executeAndWait(60_000L);
+    new DeferredIndexExecutor(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config).executeAndWait(60_000L);
 
     assertEquals("COMPLETED", queryOperationStatus("Product_Name_1"));
     assertEquals("COMPLETED", queryOperationStatus("Product_IdName_1"));
@@ -401,7 +401,7 @@ public class TestDeferredIndexIntegration {
 
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setRetryBaseDelayMs(10L);
-    DeferredIndexExecutor executor = new DeferredIndexExecutor(connectionResources, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutor(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
 
     DeferredIndexExecutor.ExecutionResult firstRun = executor.executeAndWait(60_000L);
     assertEquals("First run completed", 1, firstRun.getCompletedCount());
@@ -434,14 +434,14 @@ public class TestDeferredIndexIntegration {
     // Recovery with a 1-second stale threshold should reset it to PENDING
     DeferredIndexConfig recoveryConfig = new DeferredIndexConfig();
     recoveryConfig.setStaleThresholdSeconds(1L);
-    new DeferredIndexRecoveryService(connectionResources, recoveryConfig).recoverStaleOperations();
+    new DeferredIndexRecoveryService(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, recoveryConfig).recoverStaleOperations();
 
     assertEquals("PENDING", queryOperationStatus("Product_Name_1"));
 
     // Now the executor should pick it up and complete the build
     DeferredIndexConfig execConfig = new DeferredIndexConfig();
     execConfig.setRetryBaseDelayMs(10L);
-    new DeferredIndexExecutor(connectionResources, execConfig).executeAndWait(60_000L);
+    new DeferredIndexExecutor(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, execConfig).executeAndWait(60_000L);
 
     assertEquals("COMPLETED", queryOperationStatus("Product_Name_1"));
     assertIndexExists("Product", "Product_Name_1");

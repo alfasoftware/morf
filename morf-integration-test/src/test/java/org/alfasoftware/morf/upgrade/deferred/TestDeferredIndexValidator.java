@@ -106,7 +106,7 @@ public class TestDeferredIndexValidator {
    */
   @Test
   public void testValidateWithEmptyQueueIsNoOp() {
-    DeferredIndexValidator validator = new DeferredIndexValidator(connectionResources, config);
+    DeferredIndexValidator validator = createValidator(config);
     validator.validateNoPendingOperations(); // must not throw
   }
 
@@ -120,7 +120,7 @@ public class TestDeferredIndexValidator {
   public void testPendingOperationsAreExecutedBeforeReturning() {
     insertPendingRow("Apple", "Apple_V1", false, "pips");
 
-    DeferredIndexValidator validator = new DeferredIndexValidator(connectionResources, config);
+    DeferredIndexValidator validator = createValidator(config);
     validator.validateNoPendingOperations();
 
     // Verify no PENDING rows remain
@@ -144,7 +144,7 @@ public class TestDeferredIndexValidator {
     insertPendingRow("Apple", "Apple_V2", false, "pips");
     insertPendingRow("Apple", "Apple_V3", true, "pips");
 
-    DeferredIndexValidator validator = new DeferredIndexValidator(connectionResources, config);
+    DeferredIndexValidator validator = createValidator(config);
     validator.validateNoPendingOperations();
 
     assertFalse("no non-terminal operations should remain", hasPendingOperations());
@@ -159,7 +159,7 @@ public class TestDeferredIndexValidator {
   public void testFailedForcedExecutionThrows() {
     insertPendingRow("NoSuchTable", "NoSuchTable_V4", false, "col");
 
-    DeferredIndexValidator validator = new DeferredIndexValidator(connectionResources, config);
+    DeferredIndexValidator validator = createValidator(config);
     try {
       validator.validateNoPendingOperations();
       fail("Expected IllegalStateException for failed forced execution");
@@ -216,6 +216,13 @@ public class TestDeferredIndexValidator {
             .where(field("indexName").eq(indexName))
     );
     return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> rs.next() ? rs.getString(1) : null);
+  }
+
+
+  private DeferredIndexValidator createValidator(DeferredIndexConfig validatorConfig) {
+    DeferredIndexOperationDAO dao = new DeferredIndexOperationDAOImpl(connectionResources);
+    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, connectionResources, validatorConfig);
+    return new DeferredIndexValidator(dao, executor, validatorConfig);
   }
 
 

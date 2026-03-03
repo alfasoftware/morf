@@ -46,7 +46,7 @@ public class TestDeferredIndexServiceImpl {
   /** Construction with valid default config should succeed. */
   @Test
   public void testConstructionWithDefaultConfig() {
-    new DeferredIndexServiceImpl(null, new DeferredIndexConfig());
+    new DeferredIndexServiceImpl(null, null, null, new DeferredIndexConfig());
   }
 
 
@@ -55,7 +55,7 @@ public class TestDeferredIndexServiceImpl {
   public void testInvalidThreadPoolSize() {
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setThreadPoolSize(0);
-    new DeferredIndexServiceImpl(null, config);
+    new DeferredIndexServiceImpl(null, null, null, config);
   }
 
 
@@ -64,7 +64,7 @@ public class TestDeferredIndexServiceImpl {
   public void testInvalidMaxRetries() {
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setMaxRetries(-1);
-    new DeferredIndexServiceImpl(null, config);
+    new DeferredIndexServiceImpl(null, null, null, config);
   }
 
 
@@ -73,7 +73,7 @@ public class TestDeferredIndexServiceImpl {
   public void testInvalidRetryBaseDelayMs() {
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setRetryBaseDelayMs(-1L);
-    new DeferredIndexServiceImpl(null, config);
+    new DeferredIndexServiceImpl(null, null, null, config);
   }
 
 
@@ -83,7 +83,7 @@ public class TestDeferredIndexServiceImpl {
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setRetryBaseDelayMs(10_000L);
     config.setRetryMaxDelayMs(5_000L);
-    new DeferredIndexServiceImpl(null, config);
+    new DeferredIndexServiceImpl(null, null, null, config);
   }
 
 
@@ -92,7 +92,7 @@ public class TestDeferredIndexServiceImpl {
   public void testInvalidStaleThresholdSeconds() {
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setStaleThresholdSeconds(0L);
-    new DeferredIndexServiceImpl(null, config);
+    new DeferredIndexServiceImpl(null, null, null, config);
   }
 
 
@@ -101,7 +101,7 @@ public class TestDeferredIndexServiceImpl {
   public void testInvalidOperationTimeoutSeconds() {
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setOperationTimeoutSeconds(0L);
-    new DeferredIndexServiceImpl(null, config);
+    new DeferredIndexServiceImpl(null, null, null, config);
   }
 
 
@@ -111,7 +111,7 @@ public class TestDeferredIndexServiceImpl {
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setThreadPoolSize(0);
     try {
-      new DeferredIndexServiceImpl(null, config);
+      new DeferredIndexServiceImpl(null, null, null, config);
       fail("Expected IllegalArgumentException");
     } catch (IllegalArgumentException e) {
       assertTrue("Message should mention threadPoolSize", e.getMessage().contains("threadPoolSize"));
@@ -129,7 +129,7 @@ public class TestDeferredIndexServiceImpl {
     config.setRetryMaxDelayMs(0L);
     config.setStaleThresholdSeconds(1L);
     config.setOperationTimeoutSeconds(1L);
-    new DeferredIndexServiceImpl(null, config);
+    new DeferredIndexServiceImpl(null, null, null, config);
   }
 
 
@@ -138,7 +138,7 @@ public class TestDeferredIndexServiceImpl {
   public void testNegativeStaleThresholdSeconds() {
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setStaleThresholdSeconds(-5L);
-    new DeferredIndexServiceImpl(null, config);
+    new DeferredIndexServiceImpl(null, null, null, config);
   }
 
 
@@ -147,7 +147,7 @@ public class TestDeferredIndexServiceImpl {
   public void testNegativeOperationTimeoutSeconds() {
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setOperationTimeoutSeconds(-1L);
-    new DeferredIndexServiceImpl(null, config);
+    new DeferredIndexServiceImpl(null, null, null, config);
   }
 
 
@@ -344,21 +344,6 @@ public class TestDeferredIndexServiceImpl {
                                                      DeferredIndexExecutor executor,
                                                      DeferredIndexOperationDAO dao) {
     DeferredIndexConfig config = new DeferredIndexConfig();
-    return new DeferredIndexServiceImpl(null, config) {
-      @Override
-      DeferredIndexRecoveryService createRecoveryService() {
-        return recovery;
-      }
-
-      @Override
-      DeferredIndexExecutor createExecutor() {
-        return executor;
-      }
-
-      @Override
-      DeferredIndexOperationDAO createDAO() {
-        return dao;
-      }
-    };
+    return new DeferredIndexServiceImpl(recovery, executor, dao, config);
   }
 }

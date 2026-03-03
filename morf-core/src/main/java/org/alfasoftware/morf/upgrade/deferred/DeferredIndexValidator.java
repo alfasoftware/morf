@@ -17,7 +17,8 @@ package org.alfasoftware.morf.upgrade.deferred;
 
 import java.util.List;
 
-import org.alfasoftware.morf.jdbc.ConnectionResources;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -31,44 +32,30 @@ import org.apache.commons.logging.LogFactory;
  * returning. This guarantees that subsequent upgrade steps never encounter a
  * missing index that a previous deferred operation was supposed to build.</p>
  *
- * <p>Typical integration point:</p>
- * <pre>
- * DeferredIndexValidator validator = new DeferredIndexValidator(connectionResources, config);
- * validator.validateNoPendingOperations();   // blocks if needed
- * Upgrade.performUpgrade(targetSchema, upgradeSteps, connectionResources, upgradeConfig);
- * </pre>
- *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
+@Singleton
 class DeferredIndexValidator {
 
   private static final Log log = LogFactory.getLog(DeferredIndexValidator.class);
 
   private final DeferredIndexOperationDAO dao;
-  private final ConnectionResources connectionResources;
+  private final DeferredIndexExecutor executor;
   private final DeferredIndexConfig config;
 
 
   /**
-   * Constructs a validator for the supplied database connection.
+   * Constructs a validator with injected dependencies.
    *
-   * @param connectionResources database connection resources.
-   * @param config              configuration used when executing pending operations.
+   * @param dao      DAO for deferred index operations.
+   * @param executor executor used to force-build pending operations.
+   * @param config   configuration used when executing pending operations.
    */
-  DeferredIndexValidator(ConnectionResources connectionResources, DeferredIndexConfig config) {
-    this.connectionResources = connectionResources;
-    this.config = config;
-    this.dao = new DeferredIndexOperationDAOImpl(connectionResources);
-  }
-
-
-  /**
-   * Package-private constructor for unit testing with a pre-built DAO.
-   */
-  DeferredIndexValidator(DeferredIndexOperationDAO dao, ConnectionResources connectionResources,
+  @Inject
+  DeferredIndexValidator(DeferredIndexOperationDAO dao, DeferredIndexExecutor executor,
                          DeferredIndexConfig config) {
     this.dao = dao;
-    this.connectionResources = connectionResources;
+    this.executor = executor;
     this.config = config;
   }
 
@@ -91,7 +78,6 @@ class DeferredIndexValidator {
     log.warn("Found " + pending.size() + " pending deferred index operation(s) before upgrade. "
         + "Executing immediately before proceeding...");
 
-    DeferredIndexExecutor executor = createExecutor();
     long timeoutMs = config.getOperationTimeoutSeconds() * 1_000L;
     DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(timeoutMs);
 
@@ -103,13 +89,5 @@ class DeferredIndexValidator {
           + result.getFailedCount() + " index operation(s) could not be built. "
           + "Resolve the underlying issue before retrying the upgrade.");
     }
-  }
-
-
-  /**
-   * Creates the executor. Overridable for testing.
-   */
-  DeferredIndexExecutor createExecutor() {
-    return new DeferredIndexExecutor(connectionResources, config);
   }
 }

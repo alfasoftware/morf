@@ -119,7 +119,7 @@ public class TestDeferredIndexService {
 
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setRetryBaseDelayMs(10L);
-    DeferredIndexService service = new DeferredIndexServiceImpl(connectionResources, config);
+    DeferredIndexService service = createService(config);
     DeferredIndexService.ExecutionResult result = service.execute();
 
     assertEquals("completedCount", 1, result.getCompletedCount());
@@ -149,7 +149,7 @@ public class TestDeferredIndexService {
 
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setRetryBaseDelayMs(10L);
-    DeferredIndexService service = new DeferredIndexServiceImpl(connectionResources, config);
+    DeferredIndexService service = createService(config);
     DeferredIndexService.ExecutionResult result = service.execute();
 
     assertEquals("completedCount", 2, result.getCompletedCount());
@@ -166,7 +166,7 @@ public class TestDeferredIndexService {
   public void testExecuteWithEmptyQueue() {
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setRetryBaseDelayMs(10L);
-    DeferredIndexService service = new DeferredIndexServiceImpl(connectionResources, config);
+    DeferredIndexService service = createService(config);
     DeferredIndexService.ExecutionResult result = service.execute();
 
     assertEquals("completedCount", 0, result.getCompletedCount());
@@ -189,7 +189,7 @@ public class TestDeferredIndexService {
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setRetryBaseDelayMs(10L);
     config.setStaleThresholdSeconds(1L);
-    DeferredIndexService service = new DeferredIndexServiceImpl(connectionResources, config);
+    DeferredIndexService service = createService(config);
     DeferredIndexService.ExecutionResult result = service.execute();
 
     assertEquals("completedCount", 1, result.getCompletedCount());
@@ -206,7 +206,7 @@ public class TestDeferredIndexService {
   @Test
   public void testAwaitCompletionReturnsTrueWhenEmpty() {
     DeferredIndexConfig config = new DeferredIndexConfig();
-    DeferredIndexService service = new DeferredIndexServiceImpl(connectionResources, config);
+    DeferredIndexService service = createService(config);
     assertTrue("Should return true on empty queue", service.awaitCompletion(5L));
   }
 
@@ -222,10 +222,10 @@ public class TestDeferredIndexService {
     // Build the index first
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setRetryBaseDelayMs(10L);
-    new DeferredIndexServiceImpl(connectionResources, config).execute();
+    createService(config).execute();
 
     // Now await should return immediately
-    DeferredIndexService service = new DeferredIndexServiceImpl(connectionResources, config);
+    DeferredIndexService service = createService(config);
     assertTrue("Should return true when all completed", service.awaitCompletion(5L));
   }
 
@@ -240,7 +240,7 @@ public class TestDeferredIndexService {
 
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setRetryBaseDelayMs(10L);
-    DeferredIndexService service = new DeferredIndexServiceImpl(connectionResources, config);
+    DeferredIndexService service = createService(config);
 
     DeferredIndexService.ExecutionResult first = service.execute();
     assertEquals("First run completed", 1, first.getCompletedCount());
@@ -293,6 +293,14 @@ public class TestDeferredIndexService {
           sr.getTable(tableName).indexes().stream()
               .anyMatch(idx -> indexName.equalsIgnoreCase(idx.getName())));
     }
+  }
+
+
+  private DeferredIndexService createService(DeferredIndexConfig config) {
+    DeferredIndexOperationDAO dao = new DeferredIndexOperationDAOImpl(connectionResources);
+    DeferredIndexRecoveryService recovery = new DeferredIndexRecoveryService(dao, connectionResources, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, connectionResources, config);
+    return new DeferredIndexServiceImpl(recovery, executor, dao, config);
   }
 
 

@@ -22,6 +22,9 @@ import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.Table;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -45,6 +48,7 @@ import org.apache.commons.logging.LogFactory;
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
+@Singleton
 class DeferredIndexRecoveryService {
 
   private static final Log log = LogFactory.getLog(DeferredIndexRecoveryService.class);
@@ -57,19 +61,11 @@ class DeferredIndexRecoveryService {
   /**
    * Constructs a recovery service for the supplied database connection.
    *
+   * @param dao                 DAO for deferred index operations.
    * @param connectionResources database connection resources.
    * @param config              configuration governing the stale-threshold.
    */
-  DeferredIndexRecoveryService(ConnectionResources connectionResources, DeferredIndexConfig config) {
-    this.connectionResources = connectionResources;
-    this.config = config;
-    this.dao = new DeferredIndexOperationDAOImpl(connectionResources);
-  }
-
-
-  /**
-   * Package-private constructor for unit testing with a pre-built DAO.
-   */
+  @Inject
   DeferredIndexRecoveryService(DeferredIndexOperationDAO dao, ConnectionResources connectionResources,
                                DeferredIndexConfig config) {
     this.dao = dao;

@@ -16,8 +16,7 @@
 package org.alfasoftware.morf.upgrade.deferred;
 
 import com.google.inject.Inject;
-
-import org.alfasoftware.morf.jdbc.ConnectionResources;
+import com.google.inject.Singleton;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -30,6 +29,7 @@ import org.apache.commons.logging.LogFactory;
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
+@Singleton
 class DeferredIndexServiceImpl implements DeferredIndexService {
 
   private static final Log log = LogFactory.getLog(DeferredIndexServiceImpl.class);
@@ -37,20 +37,29 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
   /** Polling interval used by {@link #awaitCompletion(long)}. */
   static final long AWAIT_POLL_INTERVAL_MS = 5_000L;
 
-  private final ConnectionResources connectionResources;
+  private final DeferredIndexRecoveryService recoveryService;
+  private final DeferredIndexExecutor executor;
+  private final DeferredIndexOperationDAO dao;
   private final DeferredIndexConfig config;
 
 
   /**
    * Constructs the service, validating all configuration parameters.
    *
-   * @param connectionResources database connection resources.
-   * @param config              configuration for deferred index execution.
+   * @param recoveryService service for recovering stale operations.
+   * @param executor        executor for building deferred indexes.
+   * @param dao             DAO for deferred index operations.
+   * @param config          configuration for deferred index execution.
    */
   @Inject
-  DeferredIndexServiceImpl(ConnectionResources connectionResources, DeferredIndexConfig config) {
+  DeferredIndexServiceImpl(DeferredIndexRecoveryService recoveryService,
+                            DeferredIndexExecutor executor,
+                            DeferredIndexOperationDAO dao,
+                            DeferredIndexConfig config) {
     validateConfig(config);
-    this.connectionResources = connectionResources;
+    this.recoveryService = recoveryService;
+    this.executor = executor;
+    this.dao = dao;
     this.config = config;
   }
 
@@ -58,11 +67,11 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
   @Override
   public ExecutionResult execute() {
     log.info("Deferred index service: starting recovery of stale operations...");
-    createRecoveryService().recoverStaleOperations();
+    recoveryService.recoverStaleOperations();
 
     log.info("Deferred index service: executing pending operations...");
     long timeoutMs = config.getOperationTimeoutSeconds() * 1_000L;
-    DeferredIndexExecutor.ExecutionResult executorResult = createExecutor().executeAndWait(timeoutMs);
+    DeferredIndexExecutor.ExecutionResult executorResult = executor.executeAndWait(timeoutMs);
 
     int completed = executorResult.getCompletedCount();
     int failed = executorResult.getFailedCount();
@@ -82,7 +91,6 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
   @Override
   public boolean awaitCompletion(long timeoutSeconds) {
     log.info("Deferred index service: awaiting completion (timeout=" + timeoutSeconds + "s)...");
-    DeferredIndexOperationDAO dao = createDAO();
     long deadline = timeoutSeconds > 0L ? System.currentTimeMillis() + timeoutSeconds * 1_000L : Long.MAX_VALUE;
 
     while (true) {
@@ -104,30 +112,6 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
         return false;
       }
     }
-  }
-
-
-  /**
-   * Creates the recovery service. Overridable for testing.
-   */
-  DeferredIndexRecoveryService createRecoveryService() {
-    return new DeferredIndexRecoveryService(connectionResources, config);
-  }
-
-
-  /**
-   * Creates the executor. Overridable for testing.
-   */
-  DeferredIndexExecutor createExecutor() {
-    return new DeferredIndexExecutor(connectionResources, config);
-  }
-
-
-  /**
-   * Creates the DAO. Overridable for testing.
-   */
-  DeferredIndexOperationDAO createDAO() {
-    return new DeferredIndexOperationDAOImpl(connectionResources);
   }
 
 

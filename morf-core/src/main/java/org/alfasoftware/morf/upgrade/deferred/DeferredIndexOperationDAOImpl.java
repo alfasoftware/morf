@@ -40,11 +40,15 @@ import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
+
 /**
  * Default implementation of {@link DeferredIndexOperationDAO}.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
+@Singleton
 class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
 
   private static final String OPERATION_TABLE        = DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME;
@@ -71,6 +75,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
    *
    * @param connectionResources the connection resources to use.
    */
+  @Inject
   DeferredIndexOperationDAOImpl(ConnectionResources connectionResources) {
     this(new SqlScriptExecutorProvider(connectionResources.getDataSource(), connectionResources.sqlDialect()),
          connectionResources.sqlDialect());
