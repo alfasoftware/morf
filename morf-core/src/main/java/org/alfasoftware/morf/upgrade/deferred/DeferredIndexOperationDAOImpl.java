@@ -27,7 +27,9 @@ import static org.alfasoftware.morf.sql.element.Criterion.or;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.alfasoftware.morf.jdbc.ConnectionResources;
@@ -35,6 +37,7 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor.ResultSetProcessor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 
 import com.google.inject.Inject;
@@ -140,20 +143,25 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
    */
   @Override
   public List<DeferredIndexOperation> findStaleInProgressOperations(long startedBefore) {
+    TableReference op = tableRef(OPERATION_TABLE);
+    TableReference col = tableRef(OPERATION_COLUMN_TABLE);
+
     SelectStatement select = select(
-        field("id"), field("upgradeUUID"), field("tableName"),
-        field("indexName"), field("operationType"), field("indexUnique"),
-        field("status"), field("retryCount"), field("createdTime"),
-        field("startedTime"), field("completedTime"), field("errorMessage")
-      ).from(tableRef(OPERATION_TABLE))
+        op.field("id"), op.field("upgradeUUID"), op.field("tableName"),
+        op.field("indexName"), op.field("operationType"), op.field("indexUnique"),
+        op.field("status"), op.field("retryCount"), op.field("createdTime"),
+        op.field("startedTime"), op.field("completedTime"), op.field("errorMessage"),
+        col.field("columnName"), col.field("columnSequence")
+      ).from(op)
+       .leftOuterJoin(col, op.field("id").eq(col.field("operationId")))
        .where(and(
-         field("status").eq(DeferredIndexStatus.IN_PROGRESS.name()),
-         field("startedTime").lessThan(literal(startedBefore))
-       ));
+         op.field("status").eq(DeferredIndexStatus.IN_PROGRESS.name()),
+         op.field("startedTime").lessThan(literal(startedBefore))
+       ))
+       .orderBy(op.field("id"), col.field("columnSequence"));
 
     String sql = sqlDialect.convertStatementToSQL(select);
-    List<DeferredIndexOperation> ops = sqlScriptExecutorProvider.get().executeQuery(sql, this::mapOperations);
-    return loadColumnNamesForAll(ops);
+    return sqlScriptExecutorProvider.get().executeQuery(sql, this::mapOperationsWithColumns);
   }
 
 
@@ -327,65 +335,64 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
 
 
   private List<DeferredIndexOperation> findOperationsByStatus(DeferredIndexStatus status) {
+    TableReference op = tableRef(OPERATION_TABLE);
+    TableReference col = tableRef(OPERATION_COLUMN_TABLE);
+
     SelectStatement select = select(
-        field("id"), field("upgradeUUID"), field("tableName"),
-        field("indexName"), field("operationType"), field("indexUnique"),
-        field("status"), field("retryCount"), field("createdTime"),
-        field("startedTime"), field("completedTime"), field("errorMessage")
-      ).from(tableRef(OPERATION_TABLE))
-       .where(field("status").eq(status.name()));
+        op.field("id"), op.field("upgradeUUID"), op.field("tableName"),
+        op.field("indexName"), op.field("operationType"), op.field("indexUnique"),
+        op.field("status"), op.field("retryCount"), op.field("createdTime"),
+        op.field("startedTime"), op.field("completedTime"), op.field("errorMessage"),
+        col.field("columnName"), col.field("columnSequence")
+      ).from(op)
+       .leftOuterJoin(col, op.field("id").eq(col.field("operationId")))
+       .where(op.field("status").eq(status.name()))
+       .orderBy(op.field("id"), col.field("columnSequence"));
 
     String sql = sqlDialect.convertStatementToSQL(select);
-    List<DeferredIndexOperation> ops = sqlScriptExecutorProvider.get().executeQuery(sql, this::mapOperations);
-    return loadColumnNamesForAll(ops);
+    return sqlScriptExecutorProvider.get().executeQuery(sql, this::mapOperationsWithColumns);
   }
 
 
-  private List<DeferredIndexOperation> loadColumnNamesForAll(List<DeferredIndexOperation> ops) {
-    for (DeferredIndexOperation op : ops) {
-      op.setColumnNames(loadColumnNames(op.getId()));
-    }
-    return ops;
-  }
+  /**
+   * Maps a joined result set (operation + column rows) into a list of
+   * {@link DeferredIndexOperation} instances with column names populated.
+   * Consecutive rows with the same {@code id} are collapsed into a single
+   * operation object.
+   */
+  private List<DeferredIndexOperation> mapOperationsWithColumns(ResultSet rs) throws SQLException {
+    Map<Long, DeferredIndexOperation> byId = new LinkedHashMap<>();
 
-
-  private List<String> loadColumnNames(long operationId) {
-    SelectStatement select = select(field("columnName"))
-      .from(tableRef(OPERATION_COLUMN_TABLE))
-      .where(field("operationId").eq(operationId))
-      .orderBy(field("columnSequence"));
-
-    String sql = sqlDialect.convertStatementToSQL(select);
-    return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> {
-      List<String> names = new ArrayList<>();
-      while (rs.next()) {
-        names.add(rs.getString(1));
-      }
-      return names;
-    });
-  }
-
-
-  private List<DeferredIndexOperation> mapOperations(ResultSet rs) throws SQLException {
-    List<DeferredIndexOperation> result = new ArrayList<>();
     while (rs.next()) {
-      DeferredIndexOperation op = new DeferredIndexOperation();
-      op.setId(rs.getLong("id"));
-      op.setUpgradeUUID(rs.getString("upgradeUUID"));
-      op.setTableName(rs.getString("tableName"));
-      op.setIndexName(rs.getString("indexName"));
-      op.setOperationType(DeferredIndexOperationType.valueOf(rs.getString("operationType")));
-      op.setIndexUnique(rs.getBoolean("indexUnique"));
-      op.setStatus(DeferredIndexStatus.valueOf(rs.getString("status")));
-      op.setRetryCount(rs.getInt("retryCount"));
-      op.setCreatedTime(rs.getLong("createdTime"));
-      long startedTime = rs.getLong("startedTime");
-      op.setStartedTime(rs.wasNull() ? null : startedTime);
-      long completedTime = rs.getLong("completedTime");
-      op.setCompletedTime(rs.wasNull() ? null : completedTime);
-      op.setErrorMessage(rs.getString("errorMessage"));
-      result.add(op);
+      long id = rs.getLong("id");
+      DeferredIndexOperation op = byId.get(id);
+
+      if (op == null) {
+        op = new DeferredIndexOperation();
+        op.setId(id);
+        op.setUpgradeUUID(rs.getString("upgradeUUID"));
+        op.setTableName(rs.getString("tableName"));
+        op.setIndexName(rs.getString("indexName"));
+        op.setOperationType(DeferredIndexOperationType.valueOf(rs.getString("operationType")));
+        op.setIndexUnique(rs.getBoolean("indexUnique"));
+        op.setStatus(DeferredIndexStatus.valueOf(rs.getString("status")));
+        op.setRetryCount(rs.getInt("retryCount"));
+        op.setCreatedTime(rs.getLong("createdTime"));
+        long startedTime = rs.getLong("startedTime");
+        op.setStartedTime(rs.wasNull() ? null : startedTime);
+        long completedTime = rs.getLong("completedTime");
+        op.setCompletedTime(rs.wasNull() ? null : completedTime);
+        op.setErrorMessage(rs.getString("errorMessage"));
+        op.setColumnNames(new ArrayList<>());
+        byId.put(id, op);
+      }
+
+      String columnName = rs.getString("columnName");
+      if (columnName != null) {
+        op.getColumnNames().add(columnName);
+      }
     }
-    return result;
+
+    return new ArrayList<>(byId.values());
   }
 }
