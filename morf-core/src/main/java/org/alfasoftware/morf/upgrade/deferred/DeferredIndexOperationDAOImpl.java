@@ -40,8 +40,6 @@ import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 
-import com.google.inject.Inject;
-
 /**
  * Default implementation of {@link DeferredIndexOperationDAO}.
  *
@@ -57,12 +55,11 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
 
 
   /**
-   * DI constructor.
+   * Construct with explicit dependencies.
    *
    * @param sqlScriptExecutorProvider provider for SQL executors.
    * @param sqlDialect the SQL dialect to use for statement conversion.
    */
-  @Inject
   DeferredIndexOperationDAOImpl(SqlScriptExecutorProvider sqlScriptExecutorProvider, SqlDialect sqlDialect) {
     this.sqlScriptExecutorProvider = sqlScriptExecutorProvider;
     this.sqlDialect = sqlDialect;
@@ -70,7 +67,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
 
 
   /**
-   * Constructor for use without Guice.
+   * Construct from {@link ConnectionResources}.
    *
    * @param connectionResources the connection resources to use.
    */
