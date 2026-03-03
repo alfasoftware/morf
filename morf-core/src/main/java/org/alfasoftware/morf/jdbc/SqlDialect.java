@@ -89,8 +89,10 @@ import org.alfasoftware.morf.sql.element.Join;
 import org.alfasoftware.morf.sql.element.JoinType;
 import org.alfasoftware.morf.sql.element.MathsField;
 import org.alfasoftware.morf.sql.element.MathsOperator;
+import org.alfasoftware.morf.sql.element.NativeExpression;
 import org.alfasoftware.morf.sql.element.NullFieldLiteral;
 import org.alfasoftware.morf.sql.element.Operator;
+import org.alfasoftware.morf.sql.element.PortableSqlExpression;
 import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
@@ -124,13 +126,17 @@ import com.google.common.io.CharSource;
  */
 public abstract class SqlDialect {
 
+  private static final String AND = " AND ";
+
+  private static final String WHERE = " WHERE ";
+
   /**
-   *
+   * On a table allowing for table-id column handling, the name of the column holding the next id value
    */
   protected static final String          ID_INCREMENTOR_TABLE_COLUMN_VALUE = "nextvalue";
 
   /**
-   *
+   * On a table allowing for table-id column handling, the name of the column holding the name of the table that the id value is for.
    */
   protected static final String          ID_INCREMENTOR_TABLE_COLUMN_NAME  = "name";
 
@@ -186,6 +192,13 @@ public abstract class SqlDialect {
     super();
     this.schemaName = validateSchemaName(schemaName);
   }
+
+
+  /**
+   * The database type for the dialect implementation.
+   * @return The database type identifier
+   */
+  protected abstract String databaseTypeIdentifier();
 
 
   /**
@@ -979,6 +992,7 @@ public abstract class SqlDialect {
     appendUnionSet(result, stmt);
     appendExceptSet(result, stmt);
     appendOrderBy(result, stmt);
+    appendLimit(result, stmt);
 
     if (stmt.isForUpdate()) {
       if (stmt.isDistinct() || !stmt.getGroupBys().isEmpty() || !stmt.getJoins().isEmpty()) {
@@ -1035,6 +1049,23 @@ public abstract class SqlDialect {
    */
   protected String getForUpdateSql() {
     return " FOR UPDATE";
+  }
+
+
+  /**
+   * Returns the SQL that specifies the row limit for SELECT statements, if any, for the dialect.
+   * Different databases have different syntax:
+   * <ul>
+   *   <li>PostgreSQL/H2: "LIMIT x"</li>
+   *   <li>Oracle: "FETCH FIRST x ROWS ONLY"</li>
+   *   <li>MySQL/SQL Server: not supported (returns Optional.empty())</li>
+   * </ul>
+   *
+   * @param limit The row limit.
+   * @return The SQL fragment, or Optional.empty() if not supported.
+   */
+  protected Optional<String> getSelectLimitSuffix(@SuppressWarnings("unused") int limit) {
+    return Optional.empty();
   }
 
 
@@ -1110,6 +1141,27 @@ public abstract class SqlDialect {
         result.append(getSqlForOrderByField(currentOrderByField));
 
         firstOrderByField = false;
+      }
+    }
+  }
+
+
+  /**
+   * appends limit clause to the result
+   *
+   * @param result limit clause will be appended here
+   * @param stmt statement with limit clause
+   */
+  protected void appendLimit(StringBuilder result, SelectStatement stmt) {
+    Optional<Integer> limit = stmt.getLimit();
+    if (limit.isPresent()) {
+      Optional<String> limitSql = getSelectLimitSuffix(limit.get());
+      if (limitSql.isPresent()) {
+        result.append(" ").append(limitSql.get());
+      } else {
+        throw new UnsupportedOperationException(
+          "LIMIT is not supported for SELECT statements in " + getDatabaseType().identifier()
+        );
       }
     }
   }
@@ -1195,7 +1247,7 @@ public abstract class SqlDialect {
    */
   protected <T extends AbstractSelectStatement<T>> void appendWhere(StringBuilder result, AbstractSelectStatement<T> stmt) {
     if (stmt.getWhereCriterion() != null) {
-      result.append(" WHERE ");
+      result.append(WHERE);
       result.append(getSqlFrom(stmt.getWhereCriterion()));
     }
   }
@@ -1784,6 +1836,14 @@ public abstract class SqlDialect {
 
     if (field instanceof PortableSqlFunction) {
       return getSqlFrom((PortableSqlFunction) field);
+    }
+
+    if (field instanceof PortableSqlExpression) {
+      return getSqlFrom((PortableSqlExpression) field);
+    }
+
+    if (field instanceof NativeExpression) {
+      return getSqlFrom((NativeExpression) field);
     }
 
     throw new IllegalArgumentException("Aliased Field of type [" + field.getClass().getSimpleName() + "] is not supported");
@@ -3233,7 +3293,7 @@ public abstract class SqlDialect {
 
     // Prepare to append the where clause or, for appropriate dialects, the delete limit
     if (statement.getWhereCriterion() != null || statement.getLimit().isPresent() && getDeleteLimitWhereClause(statement.getLimit().get()).isPresent()) {
-      sqlBuilder.append(" WHERE ");
+      sqlBuilder.append(WHERE);
     }
 
     // Now put the where clause in
@@ -3244,7 +3304,7 @@ public abstract class SqlDialect {
     // Append the delete limit, for appropriate dialects
     if (statement.getLimit().isPresent() && getDeleteLimitWhereClause(statement.getLimit().get()).isPresent()) {
       if (statement.getWhereCriterion() != null) {
-        sqlBuilder.append(" AND ");
+        sqlBuilder.append(AND);
       }
 
       sqlBuilder.append(getDeleteLimitWhereClause(statement.getLimit().get()).get());
@@ -3326,7 +3386,7 @@ public abstract class SqlDialect {
 
     // Now put the where clause in
     if (statement.getWhereCriterion() != null) {
-      sqlBuilder.append(" WHERE ");
+      sqlBuilder.append(WHERE);
       sqlBuilder.append(getSqlFrom(statement.getWhereCriterion()));
     }
 
@@ -3396,7 +3456,7 @@ public abstract class SqlDialect {
         MergeMatchClause mergeMatchClause = whenMatchedAction.get();
         Optional<Criterion> whereClause = mergeMatchClause.getWhereClause();
         if (mergeMatchClause.getAction() == MatchAction.UPDATE && whereClause.isPresent()) {
-          sqlBuilder.append(" AND ")
+          sqlBuilder.append(AND)
             .append(getSqlFrom(whereClause.get()));
         }
       }
@@ -4320,7 +4380,7 @@ public abstract class SqlDialect {
     Iterable<String> expressions = Iterables.transform(statement.getTableUniqueKey(),
       field -> String.format("%s.%s = %s.%s", targetTableName, field.getImpliedName(), selectAlias, field.getImpliedName()));
 
-    return Joiner.on(" AND ").join(expressions);
+    return Joiner.on(AND).join(expressions);
   }
 
 
@@ -4476,10 +4536,34 @@ public abstract class SqlDialect {
    * Converts the provided portable function into SQL. Each dialect will attempt to retrieve the applicable
    * function and arguments, throwing an unsupported operation exception if one is not found.
    *
-   * @param portableSqlFunction the function to convert
+   * @param function the function to convert
    * @return the resulting SQL
    */
-  protected abstract String getSqlFrom(PortableSqlFunction portableSqlFunction);
+  protected String getSqlFrom(PortableSqlFunction function) {
+    return getSqlForPortableFunction(function.getFunctionForDatabaseType(databaseTypeIdentifier()));
+  }
+
+
+  /**
+   * Converts the provided portable expression into SQL. Each dialect will attempt to retrieve the applicable
+   * expression, throwing an unsupported operation exception if one is not found.
+   * @param portableSqlExpression
+   * @return the resulting SQL
+   */
+  protected String getSqlFrom(PortableSqlExpression portableSqlExpression) {
+    return getSqlForPortableExpression(portableSqlExpression.getExpressionForDatabaseType(databaseTypeIdentifier()));
+  }
+
+
+  /**
+   * Converts the provided native expression into SQL. Since native expressions are already in native SQL,
+   * this method simply retrieves the expression.
+   * @param nativeExpression
+   * @return the resulting SQL
+   */
+  protected String getSqlFrom(NativeExpression nativeExpression) {
+    return nativeExpression.getExpression();
+  }
 
 
   /**
@@ -4494,6 +4578,20 @@ public abstract class SqlDialect {
         .collect(toList());
 
     return functionName + "(" + Joiner.on(", ").join(arguments) + ")";
+  }
+
+
+  /**
+   * Common method used to convert portable expressions, for dialects that share the same syntax.
+   */
+  protected String getSqlForPortableExpression(List<AliasedField> expression) {
+
+    List<String> arguments = expression
+        .stream()
+        .map(this::getSqlFrom)
+        .collect(toList());
+
+    return Joiner.on("").join(arguments);
   }
 
 

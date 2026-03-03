@@ -39,7 +39,7 @@ public class TestSqlScriptExecutor {
   private final DataSource          dataSource           = mock(DataSource.class);
   private final SqlDialect          sqlDialect           = mock(SqlDialect.class);
   private final DatabaseType        databaseType         = mock(DatabaseType.class);
-  private final SqlScriptVisitor    SqlScriptVisitor     = mock(SqlScriptVisitor.class);
+  private final SqlScriptVisitor    sqlScriptVisitor     = mock(SqlScriptVisitor.class);
   private final ConnectionResources connectionResources  = mock(ConnectionResources.class);
 
   private final SqlScriptExecutor sqlScriptExecutor = new SqlScriptExecutorProvider(dataSource, sqlDialect).get();
@@ -239,13 +239,13 @@ public class TestSqlScriptExecutor {
     Long expectedDurationInMs = endTimeInMs - startTimeInMs;
     when(clock.millis()).thenReturn(startTimeInMs, endTimeInMs);
 
-    var sqlScriptExecutor = new SqlScriptExecutor(SqlScriptVisitor, dataSource, sqlDialect, connectionResources, clock);
+    var localSqlScriptExecutor = new SqlScriptExecutor(sqlScriptVisitor, dataSource, sqlDialect, connectionResources, clock);
 
     // WHEN:
-    sqlScriptExecutor.execute(ImmutableList.of(sqlScriptOne));
+    localSqlScriptExecutor.execute(ImmutableList.of(sqlScriptOne));
 
     // THEN:
-    verify(SqlScriptVisitor).afterExecute(eq(sqlScriptOne), anyLong(), eq(expectedDurationInMs));
+    verify(sqlScriptVisitor).afterExecute(eq(sqlScriptOne), anyLong(), eq(expectedDurationInMs));
   }
 
 
@@ -269,13 +269,13 @@ public class TestSqlScriptExecutor {
     ResultSet resultSet = mock(ResultSet.class);
     when(preparedStatement.executeQuery()).thenReturn(resultSet);
 
-    var sqlScriptExecutor = new SqlScriptExecutor(SqlScriptVisitor, dataSource, sqlDialect, connectionResources, clock);
+    var localSqlScriptExecutor = new SqlScriptExecutor(sqlScriptVisitor, dataSource, sqlDialect, connectionResources, clock);
 
     // WHEN:
-    sqlScriptExecutor.executeQuery(sqlScriptOne, resultSetProcessor);
+    localSqlScriptExecutor.executeQuery(sqlScriptOne, resultSetProcessor);
 
     // THEN:
-    verify(SqlScriptVisitor).afterExecute(anyString(), anyLong(), eq(expectedDurationInMs));
+    verify(sqlScriptVisitor).afterExecute(anyString(), anyLong(), eq(expectedDurationInMs));
   }
 
 
@@ -301,12 +301,12 @@ public class TestSqlScriptExecutor {
     ResultSet resultSet = mock(ResultSet.class);
     when(preparedStatement.executeQuery()).thenReturn(resultSet);
 
-    var sqlScriptExecutor = new SqlScriptExecutor(SqlScriptVisitor, dataSource, sqlDialect, connectionResources, clock);
+    var localSqlScriptExecutor = new SqlScriptExecutor(sqlScriptVisitor, dataSource, sqlDialect, connectionResources, clock);
 
     // WHEN:
-    sqlScriptExecutor.execute(sqlScriptOne, connection, List.of(sqlParameter), dataValueLookup);
+    localSqlScriptExecutor.execute(sqlScriptOne, connection, List.of(sqlParameter), dataValueLookup);
 
     // THEN:
-    verify(SqlScriptVisitor).afterExecute(anyString(), anyLong(), eq(expectedDurationInMs));
+    verify(sqlScriptVisitor).afterExecute(anyString(), anyLong(), eq(expectedDurationInMs));
   }
 }
