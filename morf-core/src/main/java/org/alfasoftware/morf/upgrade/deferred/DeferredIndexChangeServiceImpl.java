@@ -27,6 +27,7 @@ import static org.alfasoftware.morf.sql.element.Criterion.and;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +37,7 @@ import java.util.stream.Collectors;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.Statement;
+import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 
 import org.apache.commons.logging.Log;
@@ -48,6 +50,19 @@ import org.apache.commons.logging.LogFactory;
  * by upper-cased table name then upper-cased index name, and constructs the
  * DSL {@link Statement}s (INSERT/DELETE/UPDATE) needed to manage the deferred
  * operation queue when subsequent schema changes interact with them.
+ *
+ * <p>A single instance is created per upgrade run by
+ * {@link org.alfasoftware.morf.upgrade.AbstractSchemaChangeVisitor} and lives
+ * for the duration of that run. It is not Guice-managed because the visitor
+ * itself is not Guice-managed.
+ *
+ * <p>The in-memory map mirrors what the generated SQL statements will do once
+ * executed, allowing fast lookups (e.g. {@link #hasPendingDeferred}) and
+ * column-level tracking (e.g. {@link #cancelPendingReferencingColumn}) without
+ * requiring database access. The SQL statements are persisted per-step rather
+ * than batched to the end so that crash recovery works correctly: if the
+ * upgrade fails mid-way, deferred operations from already-committed steps are
+ * safely in the database and will not be lost on restart.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -69,6 +84,187 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
           + ", index=" + deferredAddIndex.getNewIndex().getName()
           + ", columns=" + deferredAddIndex.getNewIndex().columnNames());
     }
+
+    pendingDeferredIndexes
+      .computeIfAbsent(deferredAddIndex.getTableName().toUpperCase(), k -> new LinkedHashMap<>())
+      .put(deferredAddIndex.getNewIndex().getName().toUpperCase(), deferredAddIndex);
+
+    return buildInsertStatements(deferredAddIndex);
+  }
+
+
+  @Override
+  public boolean hasPendingDeferred(String tableName, String indexName) {
+    Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.get(tableName.toUpperCase());
+    return tableMap != null && tableMap.containsKey(indexName.toUpperCase());
+  }
+
+
+  @Override
+  public List<Statement> cancelPending(String tableName, String indexName) {
+    Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.get(tableName.toUpperCase());
+    if (tableMap == null || !tableMap.containsKey(indexName.toUpperCase())) {
+      return List.of();
+    }
+    if (log.isDebugEnabled()) {
+      log.debug("Cancelling deferred index: table=" + tableName + ", index=" + indexName);
+    }
+
+    DeferredAddIndex dai = tableMap.remove(indexName.toUpperCase());
+    if (tableMap.isEmpty()) {
+      pendingDeferredIndexes.remove(tableName.toUpperCase());
+    }
+
+    return buildDeleteStatements(
+      field("tableName").eq(literal(dai.getTableName())),
+      field("indexName").eq(literal(dai.getNewIndex().getName()))
+    );
+  }
+
+
+  @Override
+  public List<Statement> cancelAllPendingForTable(String tableName) {
+    Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.remove(tableName.toUpperCase());
+    if (tableMap == null || tableMap.isEmpty()) {
+      return List.of();
+    }
+    if (log.isDebugEnabled()) {
+      log.debug("Cancelling all deferred indexes for table [" + tableName + "]: " + tableMap.keySet());
+    }
+
+    String storedTableName = tableMap.values().iterator().next().getTableName();
+    return buildDeleteStatements(
+      field("tableName").eq(literal(storedTableName))
+    );
+  }
+
+
+  @Override
+  public List<Statement> cancelPendingReferencingColumn(String tableName, String columnName) {
+    Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.get(tableName.toUpperCase());
+    if (tableMap == null) {
+      return List.of();
+    }
+
+    String storedTableName = tableMap.values().iterator().next().getTableName();
+
+    List<String> toCancel = new ArrayList<>();
+    for (DeferredAddIndex dai : tableMap.values()) {
+      if (dai.getNewIndex().columnNames().stream().anyMatch(c -> c.equalsIgnoreCase(columnName))) {
+        toCancel.add(dai.getNewIndex().getName());
+      }
+    }
+
+    if (toCancel.isEmpty()) {
+      return List.of();
+    }
+
+    List<Statement> statements = new ArrayList<>();
+    for (String indexName : toCancel) {
+      statements.addAll(cancelPending(storedTableName, indexName));
+    }
+    return statements;
+  }
+
+
+  @Override
+  public List<Statement> updatePendingTableName(String oldTableName, String newTableName) {
+    Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.remove(oldTableName.toUpperCase());
+    if (tableMap == null || tableMap.isEmpty()) {
+      return List.of();
+    }
+    if (log.isDebugEnabled()) {
+      log.debug("Renaming table in deferred indexes: [" + oldTableName + "] -> [" + newTableName + "]");
+    }
+
+    String storedOldTableName = tableMap.values().iterator().next().getTableName();
+
+    Map<String, DeferredAddIndex> updatedMap = new LinkedHashMap<>();
+    for (Map.Entry<String, DeferredAddIndex> entry : tableMap.entrySet()) {
+      DeferredAddIndex dai = entry.getValue();
+      updatedMap.put(entry.getKey(), new DeferredAddIndex(newTableName, dai.getNewIndex(), dai.getUpgradeUUID()));
+    }
+    pendingDeferredIndexes.put(newTableName.toUpperCase(), updatedMap);
+
+    return buildUpdateOperationStatements(
+      literal(newTableName).as("tableName"),
+      field("tableName").eq(literal(storedOldTableName))
+    );
+  }
+
+
+  @Override
+  public List<Statement> updatePendingColumnName(String tableName, String oldColumnName, String newColumnName) {
+    Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.get(tableName.toUpperCase());
+    if (tableMap == null) {
+      return List.of();
+    }
+
+    boolean anyAffected = tableMap.values().stream()
+      .anyMatch(dai -> dai.getNewIndex().columnNames().stream().anyMatch(c -> c.equalsIgnoreCase(oldColumnName)));
+    if (!anyAffected) {
+      return List.of();
+    }
+    if (log.isDebugEnabled()) {
+      log.debug("Renaming column in deferred indexes: table=" + tableName
+          + ", [" + oldColumnName + "] -> [" + newColumnName + "]");
+    }
+
+    String storedTableName = tableMap.values().iterator().next().getTableName();
+
+    for (Map.Entry<String, DeferredAddIndex> entry : tableMap.entrySet()) {
+      DeferredAddIndex dai = entry.getValue();
+      if (dai.getNewIndex().columnNames().stream().anyMatch(c -> c.equalsIgnoreCase(oldColumnName))) {
+        List<String> updatedColumns = dai.getNewIndex().columnNames().stream()
+            .map(c -> c.equalsIgnoreCase(oldColumnName) ? newColumnName : c)
+            .collect(Collectors.toList());
+        Index updatedIndex = dai.getNewIndex().isUnique()
+            ? index(dai.getNewIndex().getName()).columns(updatedColumns).unique()
+            : index(dai.getNewIndex().getName()).columns(updatedColumns);
+        entry.setValue(new DeferredAddIndex(dai.getTableName(), updatedIndex, dai.getUpgradeUUID()));
+      }
+    }
+
+    return buildUpdateColumnStatements(storedTableName, oldColumnName, newColumnName);
+  }
+
+
+  @Override
+  public List<Statement> updatePendingIndexName(String tableName, String oldIndexName, String newIndexName) {
+    Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.get(tableName.toUpperCase());
+    if (tableMap == null || !tableMap.containsKey(oldIndexName.toUpperCase())) {
+      return List.of();
+    }
+    if (log.isDebugEnabled()) {
+      log.debug("Renaming index in deferred indexes: table=" + tableName
+          + ", [" + oldIndexName + "] -> [" + newIndexName + "]");
+    }
+
+    DeferredAddIndex existing = tableMap.remove(oldIndexName.toUpperCase());
+    String storedTableName = existing.getTableName();
+    String storedIndexName = existing.getNewIndex().getName();
+
+    Index renamedIndex = existing.getNewIndex().isUnique()
+        ? index(newIndexName).columns(existing.getNewIndex().columnNames()).unique()
+        : index(newIndexName).columns(existing.getNewIndex().columnNames());
+    tableMap.put(newIndexName.toUpperCase(), new DeferredAddIndex(storedTableName, renamedIndex, existing.getUpgradeUUID()));
+
+    return buildUpdateOperationStatements(
+      literal(newIndexName).as("indexName"),
+      field("tableName").eq(literal(storedTableName)),
+      field("indexName").eq(literal(storedIndexName))
+    );
+  }
+
+
+  // -------------------------------------------------------------------------
+  // SQL statement builders
+  // -------------------------------------------------------------------------
+
+  /**
+   * Builds INSERT statements for a deferred operation and its column rows.
+   */
+  private List<Statement> buildInsertStatements(DeferredAddIndex deferredAddIndex) {
     long operationId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
     long createdTime = System.currentTimeMillis();
 
@@ -102,189 +298,49 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
       );
     }
 
-    pendingDeferredIndexes
-      .computeIfAbsent(deferredAddIndex.getTableName().toUpperCase(), k -> new LinkedHashMap<>())
-      .put(deferredAddIndex.getNewIndex().getName().toUpperCase(), deferredAddIndex);
-
     return statements;
   }
 
 
-  @Override
-  public boolean hasPendingDeferred(String tableName, String indexName) {
-    Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.get(tableName.toUpperCase());
-    return tableMap != null && tableMap.containsKey(indexName.toUpperCase());
-  }
-
-
-  @Override
-  public List<Statement> cancelPending(String tableName, String indexName) {
-    Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.get(tableName.toUpperCase());
-    if (tableMap == null || !tableMap.containsKey(indexName.toUpperCase())) {
-      return List.of();
-    }
-    if (log.isDebugEnabled()) {
-      log.debug("Cancelling deferred index: table=" + tableName + ", index=" + indexName);
-    }
-
-    // Use the original casing from the stored entry for SQL comparisons
-    DeferredAddIndex dai = tableMap.get(indexName.toUpperCase());
-    String storedTableName = dai.getTableName();
-    String storedIndexName = dai.getNewIndex().getName();
+  /**
+   * Builds DELETE statements to remove pending operations and their column rows.
+   * The criteria identify which operations to delete (e.g. by table name, index name).
+   */
+  private List<Statement> buildDeleteStatements(Criterion... operationCriteria) {
+    Criterion where = pendingWhere(operationCriteria);
 
     SelectStatement idSubquery = select(field("id"))
       .from(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
-      .where(and(
-        field("tableName").eq(literal(storedTableName)),
-        field("indexName").eq(literal(storedIndexName)),
-        field("status").eq(literal("PENDING"))
-      ));
-
-    tableMap.remove(indexName.toUpperCase());
-    if (tableMap.isEmpty()) {
-      pendingDeferredIndexes.remove(tableName.toUpperCase());
-    }
+      .where(where);
 
     return List.of(
       delete(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_COLUMN_NAME))
         .where(field("operationId").in(idSubquery)),
       delete(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
-        .where(and(
-          field("tableName").eq(literal(storedTableName)),
-          field("indexName").eq(literal(storedIndexName)),
-          field("status").eq(literal("PENDING"))
-        ))
+        .where(where)
     );
   }
 
 
-  @Override
-  public List<Statement> cancelAllPendingForTable(String tableName) {
-    Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.remove(tableName.toUpperCase());
-    if (tableMap == null || tableMap.isEmpty()) {
-      return List.of();
-    }
-    if (log.isDebugEnabled()) {
-      log.debug("Cancelling all deferred indexes for table [" + tableName + "]: " + tableMap.keySet());
-    }
-
-    // Use the original casing from a stored entry for SQL comparisons
-    String storedTableName = tableMap.values().iterator().next().getTableName();
-
-    SelectStatement idSubquery = select(field("id"))
-      .from(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
-      .where(and(
-        field("tableName").eq(literal(storedTableName)),
-        field("status").eq(literal("PENDING"))
-      ));
-
-    return List.of(
-      delete(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_COLUMN_NAME))
-        .where(field("operationId").in(idSubquery)),
-      delete(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
-        .where(and(
-          field("tableName").eq(literal(storedTableName)),
-          field("status").eq(literal("PENDING"))
-        ))
-    );
-  }
-
-
-  @Override
-  public List<Statement> cancelPendingReferencingColumn(String tableName, String columnName) {
-    Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.get(tableName.toUpperCase());
-    if (tableMap == null) {
-      return List.of();
-    }
-
-    // Use the original casing from stored entries for SQL comparisons
-    String storedTableName = tableMap.values().iterator().next().getTableName();
-
-    List<String> toCancel = new ArrayList<>();
-    for (DeferredAddIndex dai : tableMap.values()) {
-      if (dai.getNewIndex().columnNames().stream().anyMatch(c -> c.equalsIgnoreCase(columnName))) {
-        toCancel.add(dai.getNewIndex().getName());
-      }
-    }
-
-    if (toCancel.isEmpty()) {
-      return List.of();
-    }
-
-    List<Statement> statements = new ArrayList<>();
-    for (String indexName : toCancel) {
-      statements.addAll(cancelPending(storedTableName, indexName));
-    }
-    return statements;
-  }
-
-
-  @Override
-  public List<Statement> updatePendingTableName(String oldTableName, String newTableName) {
-    Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.remove(oldTableName.toUpperCase());
-    if (tableMap == null || tableMap.isEmpty()) {
-      return List.of();
-    }
-    if (log.isDebugEnabled()) {
-      log.debug("Renaming table in deferred indexes: [" + oldTableName + "] -> [" + newTableName + "]");
-    }
-
-    // Use the original casing from a stored entry for the SQL WHERE clause
-    String storedOldTableName = tableMap.values().iterator().next().getTableName();
-
-    // Rebuild in-memory entries with the new table name
-    Map<String, DeferredAddIndex> updatedMap = new LinkedHashMap<>();
-    for (Map.Entry<String, DeferredAddIndex> entry : tableMap.entrySet()) {
-      DeferredAddIndex dai = entry.getValue();
-      updatedMap.put(entry.getKey(), new DeferredAddIndex(newTableName, dai.getNewIndex(), dai.getUpgradeUUID()));
-    }
-    pendingDeferredIndexes.put(newTableName.toUpperCase(), updatedMap);
-
+  /**
+   * Builds an UPDATE statement against the operation table. The SET clause
+   * is the first argument; the remaining arguments form the WHERE clause
+   * (combined with a {@code status = 'PENDING'} filter).
+   */
+  private List<Statement> buildUpdateOperationStatements(org.alfasoftware.morf.sql.element.AliasedField setClause, Criterion... whereCriteria) {
     return List.of(
       update(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
-        .set(literal(newTableName).as("tableName"))
-        .where(and(
-          field("tableName").eq(literal(storedOldTableName)),
-          field("status").eq(literal("PENDING"))
-        ))
+        .set(setClause)
+        .where(pendingWhere(whereCriteria))
     );
   }
 
 
-  @Override
-  public List<Statement> updatePendingColumnName(String tableName, String oldColumnName, String newColumnName) {
-    Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.get(tableName.toUpperCase());
-    if (tableMap == null) {
-      return List.of();
-    }
-
-    boolean anyAffected = tableMap.values().stream()
-      .anyMatch(dai -> dai.getNewIndex().columnNames().stream().anyMatch(c -> c.equalsIgnoreCase(oldColumnName)));
-    if (!anyAffected) {
-      return List.of();
-    }
-    if (log.isDebugEnabled()) {
-      log.debug("Renaming column in deferred indexes: table=" + tableName
-          + ", [" + oldColumnName + "] -> [" + newColumnName + "]");
-    }
-
-    // Use the original casing from a stored entry for the SQL WHERE clause
-    String storedTableName = tableMap.values().iterator().next().getTableName();
-
-    // Rebuild in-memory entries with updated column names
-    for (Map.Entry<String, DeferredAddIndex> entry : tableMap.entrySet()) {
-      DeferredAddIndex dai = entry.getValue();
-      if (dai.getNewIndex().columnNames().stream().anyMatch(c -> c.equalsIgnoreCase(oldColumnName))) {
-        List<String> updatedColumns = dai.getNewIndex().columnNames().stream()
-            .map(c -> c.equalsIgnoreCase(oldColumnName) ? newColumnName : c)
-            .collect(Collectors.toList());
-        Index updatedIndex = dai.getNewIndex().isUnique()
-            ? index(dai.getNewIndex().getName()).columns(updatedColumns).unique()
-            : index(dai.getNewIndex().getName()).columns(updatedColumns);
-        entry.setValue(new DeferredAddIndex(dai.getTableName(), updatedIndex, dai.getUpgradeUUID()));
-      }
-    }
-
+  /**
+   * Builds an UPDATE statement to rename a column in the column table, scoped
+   * to pending operations for the given table.
+   */
+  private List<Statement> buildUpdateColumnStatements(String tableName, String oldColumnName, String newColumnName) {
     return List.of(
       update(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_COLUMN_NAME))
         .set(literal(newColumnName).as("columnName"))
@@ -294,7 +350,7 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
             select(field("id"))
               .from(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
               .where(and(
-                field("tableName").eq(literal(storedTableName)),
+                field("tableName").eq(literal(tableName)),
                 field("status").eq(literal("PENDING"))
               ))
           )
@@ -303,36 +359,12 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
   }
 
 
-  @Override
-  public List<Statement> updatePendingIndexName(String tableName, String oldIndexName, String newIndexName) {
-    Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.get(tableName.toUpperCase());
-    if (tableMap == null || !tableMap.containsKey(oldIndexName.toUpperCase())) {
-      return List.of();
-    }
-    if (log.isDebugEnabled()) {
-      log.debug("Renaming index in deferred indexes: table=" + tableName
-          + ", [" + oldIndexName + "] -> [" + newIndexName + "]");
-    }
-
-    // Use the original casing from the stored entry for SQL comparisons
-    DeferredAddIndex existing = tableMap.remove(oldIndexName.toUpperCase());
-    String storedTableName = existing.getTableName();
-    String storedIndexName = existing.getNewIndex().getName();
-
-    // Rebuild with the new index name (matching updatePendingTableName pattern)
-    Index renamedIndex = existing.getNewIndex().isUnique()
-        ? index(newIndexName).columns(existing.getNewIndex().columnNames()).unique()
-        : index(newIndexName).columns(existing.getNewIndex().columnNames());
-    tableMap.put(newIndexName.toUpperCase(), new DeferredAddIndex(storedTableName, renamedIndex, existing.getUpgradeUUID()));
-
-    return List.of(
-      update(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
-        .set(literal(newIndexName).as("indexName"))
-        .where(and(
-          field("tableName").eq(literal(storedTableName)),
-          field("indexName").eq(literal(storedIndexName)),
-          field("status").eq(literal("PENDING"))
-        ))
-    );
+  /**
+   * Combines the given criteria with a {@code status = 'PENDING'} filter.
+   */
+  private Criterion pendingWhere(Criterion... criteria) {
+    List<Criterion> all = new ArrayList<>(Arrays.asList(criteria));
+    all.add(field("status").eq(literal("PENDING")));
+    return and(all);
   }
 }
