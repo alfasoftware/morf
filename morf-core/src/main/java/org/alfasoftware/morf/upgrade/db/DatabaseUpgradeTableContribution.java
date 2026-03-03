@@ -23,6 +23,7 @@ import java.util.List;
 
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder;
+import org.alfasoftware.morf.metadata.SchemaValidator;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.TableContribution;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
@@ -83,8 +84,8 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
         .columns(
           column("id", DataType.BIG_INTEGER).primaryKey(),
           column("upgradeUUID", DataType.STRING, 100),
-          column("tableName", DataType.STRING, 30),
-          column("indexName", DataType.STRING, 30),
+          column("tableName", DataType.STRING, SchemaValidator.MAX_LENGTH),
+          column("indexName", DataType.STRING, SchemaValidator.MAX_LENGTH),
           column("operationType", DataType.STRING, 20),
           column("indexUnique", DataType.BOOLEAN),
           column("status", DataType.STRING, 20),
@@ -110,7 +111,7 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
         .columns(
           column("id", DataType.BIG_INTEGER).primaryKey(),
           column("operationId", DataType.BIG_INTEGER),
-          column("columnName", DataType.STRING, 30),
+          column("columnName", DataType.STRING, SchemaValidator.MAX_LENGTH),
           column("columnSequence", DataType.INTEGER)
         )
         .indexes(

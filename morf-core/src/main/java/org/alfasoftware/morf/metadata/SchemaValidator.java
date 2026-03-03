@@ -68,9 +68,12 @@ import com.google.common.io.CharStreams;
 public class SchemaValidator {
 
   /**
-   * Maximum length allowed for entity names.
+   * Maximum length allowed for entity names (table, column, index).
+   *
+   * <p>PostgreSQL defaults to a limit of 63 characters; 60 gives space
+   * for suffixes without truncation.</p>
    */
-  private static final int MAX_LENGTH = 60;
+  public static final int MAX_LENGTH = 60;
 
   /**
    * All the words we can't use because they're special in some SQL dialect or other.
