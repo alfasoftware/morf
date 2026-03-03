@@ -301,6 +301,56 @@ public class TestDeferredIndexExecutorUnit {
   }
 
 
+  /** executeAndWait should correctly reconstruct and build a unique index. */
+  @Test
+  public void testExecuteAndWaitWithUniqueIndex() {
+    DeferredIndexOperation op = buildOp(1001L);
+    op.setIndexUnique(true);
+    when(dao.findPendingOperations()).thenReturn(List.of(op));
+    SqlScriptExecutor scriptExecutor = mock(SqlScriptExecutor.class);
+    when(sqlScriptExecutorProvider.get()).thenReturn(scriptExecutor);
+    when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
+        .thenReturn(List.of("CREATE UNIQUE INDEX idx ON t(c)"));
+
+    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
+
+    assertEquals("completedCount", 1, result.getCompletedCount());
+    assertEquals("failedCount", 0, result.getFailedCount());
+  }
+
+
+  /** executeAndWait should handle a SQLException from getConnection as a failure. */
+  @Test
+  public void testExecuteAndWaitSqlExceptionFromConnection() throws SQLException {
+    config.setMaxRetries(0);
+    DeferredIndexOperation op = buildOp(1001L);
+    when(dao.findPendingOperations()).thenReturn(List.of(op));
+    when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
+        .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
+    when(dataSource.getConnection()).thenThrow(new SQLException("connection refused"));
+
+    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
+
+    assertEquals("completedCount", 0, result.getCompletedCount());
+    assertEquals("failedCount", 1, result.getFailedCount());
+  }
+
+
+  /** awaitCompletion with zero timeout should wait indefinitely until done. */
+  @Test
+  public void testAwaitCompletionZeroTimeoutWaitsUntilDone() {
+    java.util.concurrent.atomic.AtomicInteger callCount = new java.util.concurrent.atomic.AtomicInteger();
+    when(dao.hasNonTerminalOperations()).thenAnswer(inv -> callCount.incrementAndGet() < 2);
+
+    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    boolean result = executor.awaitCompletion(0L);
+
+    assertEquals("awaitCompletion should return true", true, result);
+  }
+
+
   private DeferredIndexOperation buildOp(long id) {
     DeferredIndexOperation op = new DeferredIndexOperation();
     op.setId(id);

@@ -240,4 +240,77 @@ public class TestDeferredAddIndex {
     assertEquals("getNewIndex name", "Apple_1", deferredAddIndex.getNewIndex().getName());
     assertEquals("getUpgradeUUID", "test-uuid-1234", deferredAddIndex.getUpgradeUUID());
   }
+
+
+  /**
+   * Verify that toString() includes the table name, index name and UUID.
+   */
+  @Test
+  public void testToString() {
+    String result = deferredAddIndex.toString();
+    assertTrue("Should contain table name", result.contains("Apple"));
+    assertTrue("Should contain UUID", result.contains("test-uuid-1234"));
+  }
+
+
+  /**
+   * Verify that apply() preserves existing indexes and adds the new one alongside them.
+   */
+  @Test
+  public void testApplyPreservesExistingIndexes() {
+    Table tableWithOtherIndex = table("Apple").columns(
+      column("pips", DataType.STRING, 10).nullable(),
+      column("colour", DataType.STRING, 10).nullable()
+    ).indexes(
+      index("Apple_Colour").columns("colour")
+    );
+
+    Schema result = deferredAddIndex.apply(schema(tableWithOtherIndex));
+
+    Table resultTable = result.getTable("Apple");
+    assertEquals("Post-apply index count", 2, resultTable.indexes().size());
+  }
+
+
+  /**
+   * Verify that reverse() preserves other indexes while removing only the target.
+   */
+  @Test
+  public void testReversePreservesOtherIndexes() {
+    Table tableWithMultipleIndexes = table("Apple").columns(
+      column("pips", DataType.STRING, 10).nullable(),
+      column("colour", DataType.STRING, 10).nullable()
+    ).indexes(
+      index("Apple_Colour").columns("colour"),
+      index("Apple_1").unique().columns("pips")
+    );
+
+    Schema result = deferredAddIndex.reverse(schema(tableWithMultipleIndexes));
+
+    Table resultTable = result.getTable("Apple");
+    assertEquals("Post-reverse index count", 1, resultTable.indexes().size());
+    assertEquals("Remaining index", "Apple_Colour", resultTable.indexes().get(0).getName());
+  }
+
+
+  /**
+   * Verify that isApplied() returns false when the table has a different index that does not match.
+   */
+  @Test
+  public void testIsAppliedFalseWhenDifferentIndexExists() {
+    Table tableWithOtherIndex = table("Apple").columns(
+      column("pips", DataType.STRING, 10).nullable(),
+      column("colour", DataType.STRING, 10).nullable()
+    ).indexes(
+      index("Apple_Colour").columns("colour")
+    );
+
+    DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
+    when(mockDao.existsByTableNameAndIndexName("Apple", "Apple_1")).thenReturn(false);
+
+    DeferredAddIndex subject = new DeferredAddIndex("Apple", index("Apple_1").unique().columns("pips"), "", mockDao);
+
+    assertFalse("Should not be applied when only a different index exists",
+      subject.isApplied(schema(tableWithOtherIndex), null));
+  }
 }
