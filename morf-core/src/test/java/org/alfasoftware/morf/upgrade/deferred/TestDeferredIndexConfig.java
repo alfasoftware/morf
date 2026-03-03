@@ -35,6 +35,6 @@ public class TestDeferredIndexConfig {
     assertEquals("Default maxRetries", 3, config.getMaxRetries());
     assertEquals("Default threadPoolSize", 1, config.getThreadPoolSize());
     assertEquals("Default staleThresholdSeconds (4h)", 14_400L, config.getStaleThresholdSeconds());
-    assertEquals("Default operationTimeoutSeconds (4h)", 14_400L, config.getOperationTimeoutSeconds());
+    assertEquals("Default executionTimeoutSeconds (8h)", 28_800L, config.getExecutionTimeoutSeconds());
   }
 }

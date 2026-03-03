@@ -96,15 +96,6 @@ public class TestDeferredIndexServiceImpl {
   }
 
 
-  /** operationTimeoutSeconds of 0 should be rejected. */
-  @Test(expected = IllegalArgumentException.class)
-  public void testInvalidOperationTimeoutSeconds() {
-    DeferredIndexConfig config = new DeferredIndexConfig();
-    config.setOperationTimeoutSeconds(0L);
-    new DeferredIndexServiceImpl(null, null, null, config);
-  }
-
-
   /** Validate the error message when threadPoolSize is invalid. */
   @Test
   public void testInvalidThreadPoolSizeMessage() {
@@ -128,7 +119,7 @@ public class TestDeferredIndexServiceImpl {
     config.setRetryBaseDelayMs(0L);
     config.setRetryMaxDelayMs(0L);
     config.setStaleThresholdSeconds(1L);
-    config.setOperationTimeoutSeconds(1L);
+    config.setExecutionTimeoutSeconds(1L);
     new DeferredIndexServiceImpl(null, null, null, config);
   }
 
@@ -142,15 +133,6 @@ public class TestDeferredIndexServiceImpl {
   }
 
 
-  /** Negative operationTimeoutSeconds should be rejected. */
-  @Test(expected = IllegalArgumentException.class)
-  public void testNegativeOperationTimeoutSeconds() {
-    DeferredIndexConfig config = new DeferredIndexConfig();
-    config.setOperationTimeoutSeconds(-1L);
-    new DeferredIndexServiceImpl(null, null, null, config);
-  }
-
-
   /** Default config should pass all validation checks. */
   @Test
   public void testDefaultConfigPassesAllValidation() {
@@ -158,7 +140,6 @@ public class TestDeferredIndexServiceImpl {
     assertFalse("Default maxRetries should be >= 0", config.getMaxRetries() < 0);
     assertTrue("Default threadPoolSize should be >= 1", config.getThreadPoolSize() >= 1);
     assertTrue("Default staleThresholdSeconds should be > 0", config.getStaleThresholdSeconds() > 0);
-    assertTrue("Default operationTimeoutSeconds should be > 0", config.getOperationTimeoutSeconds() > 0);
     assertTrue("Default retryBaseDelayMs should be >= 0", config.getRetryBaseDelayMs() >= 0);
     assertTrue("Default retryMaxDelayMs >= retryBaseDelayMs",
         config.getRetryMaxDelayMs() >= config.getRetryBaseDelayMs());
@@ -196,14 +177,14 @@ public class TestDeferredIndexServiceImpl {
   public void testExecuteSuccessfulRun() {
     DeferredIndexRecoveryService mockRecovery = mock(DeferredIndexRecoveryService.class);
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
-    when(mockExecutor.executeAndWait(14_400_000L))
+    when(mockExecutor.executeAndWait(28_800_000L))
         .thenReturn(new DeferredIndexExecutor.ExecutionResult(3, 0));
 
     DeferredIndexServiceImpl service = serviceWithMocks(mockRecovery, mockExecutor, null);
     DeferredIndexService.ExecutionResult result = service.execute();
 
     verify(mockRecovery).recoverStaleOperations();
-    verify(mockExecutor).executeAndWait(14_400_000L);
+    verify(mockExecutor).executeAndWait(28_800_000L);
     assertEquals("completedCount", 3, result.getCompletedCount());
     assertEquals("failedCount", 0, result.getFailedCount());
   }
@@ -214,7 +195,7 @@ public class TestDeferredIndexServiceImpl {
   public void testExecuteThrowsOnFailure() {
     DeferredIndexRecoveryService mockRecovery = mock(DeferredIndexRecoveryService.class);
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
-    when(mockExecutor.executeAndWait(14_400_000L))
+    when(mockExecutor.executeAndWait(28_800_000L))
         .thenReturn(new DeferredIndexExecutor.ExecutionResult(2, 1));
 
     DeferredIndexServiceImpl service = serviceWithMocks(mockRecovery, mockExecutor, null);
@@ -227,7 +208,7 @@ public class TestDeferredIndexServiceImpl {
   public void testExecuteWithNoPendingOperations() {
     DeferredIndexRecoveryService mockRecovery = mock(DeferredIndexRecoveryService.class);
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
-    when(mockExecutor.executeAndWait(14_400_000L))
+    when(mockExecutor.executeAndWait(28_800_000L))
         .thenReturn(new DeferredIndexExecutor.ExecutionResult(0, 0));
 
     DeferredIndexServiceImpl service = serviceWithMocks(mockRecovery, mockExecutor, null);
@@ -254,7 +235,7 @@ public class TestDeferredIndexServiceImpl {
   public void testExecuteFailureMessageIncludesCount() {
     DeferredIndexRecoveryService mockRecovery = mock(DeferredIndexRecoveryService.class);
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
-    when(mockExecutor.executeAndWait(14_400_000L))
+    when(mockExecutor.executeAndWait(28_800_000L))
         .thenReturn(new DeferredIndexExecutor.ExecutionResult(5, 3));
 
     DeferredIndexServiceImpl service = serviceWithMocks(mockRecovery, mockExecutor, null);

@@ -60,7 +60,7 @@ public class TestDeferredIndexValidatorUnit {
 
     DeferredIndexConfig config = new DeferredIndexConfig();
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
-    long expectedTimeoutMs = config.getOperationTimeoutSeconds() * 1_000L;
+    long expectedTimeoutMs = config.getExecutionTimeoutSeconds() * 1_000L;
     when(mockExecutor.executeAndWait(expectedTimeoutMs))
         .thenReturn(new DeferredIndexExecutor.ExecutionResult(1, 0));
 
@@ -79,7 +79,7 @@ public class TestDeferredIndexValidatorUnit {
 
     DeferredIndexConfig config = new DeferredIndexConfig();
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
-    long expectedTimeoutMs = config.getOperationTimeoutSeconds() * 1_000L;
+    long expectedTimeoutMs = config.getExecutionTimeoutSeconds() * 1_000L;
     when(mockExecutor.executeAndWait(expectedTimeoutMs))
         .thenReturn(new DeferredIndexExecutor.ExecutionResult(0, 1));
 
@@ -96,7 +96,7 @@ public class TestDeferredIndexValidatorUnit {
 
     DeferredIndexConfig config = new DeferredIndexConfig();
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
-    long expectedTimeoutMs = config.getOperationTimeoutSeconds() * 1_000L;
+    long expectedTimeoutMs = config.getExecutionTimeoutSeconds() * 1_000L;
     when(mockExecutor.executeAndWait(expectedTimeoutMs))
         .thenReturn(new DeferredIndexExecutor.ExecutionResult(0, 2));
 

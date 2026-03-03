@@ -78,7 +78,7 @@ class DeferredIndexValidator {
     log.warn("Found " + pending.size() + " pending deferred index operation(s) before upgrade. "
         + "Executing immediately before proceeding...");
 
-    long timeoutMs = config.getOperationTimeoutSeconds() * 1_000L;
+    long timeoutMs = config.getExecutionTimeoutSeconds() * 1_000L;
     DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(timeoutMs);
 
     log.info("Pre-upgrade deferred index execution complete: completed=" + result.getCompletedCount()

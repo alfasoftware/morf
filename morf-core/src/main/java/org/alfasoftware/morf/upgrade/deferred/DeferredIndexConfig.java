@@ -47,10 +47,11 @@ public class DeferredIndexConfig {
   private long staleThresholdSeconds = 14_400L;
 
   /**
-   * Maximum time in seconds to wait for a single index build operation to complete
-   * before treating it as failed. Default: 4 hours (14400 seconds).
+   * Maximum time in seconds to wait for all deferred index operations to complete
+   * via {@code DeferredIndexExecutor.executeAndWait()}.
+   * Default: 8 hours (28800 seconds).
    */
-  private long operationTimeoutSeconds = 14_400L;
+  private long executionTimeoutSeconds = 28_800L;
 
   /**
    * Base delay in milliseconds between retry attempts. Each successive retry doubles
@@ -114,18 +115,18 @@ public class DeferredIndexConfig {
 
 
   /**
-   * @see #operationTimeoutSeconds
+   * @see #executionTimeoutSeconds
    */
-  public long getOperationTimeoutSeconds() {
-    return operationTimeoutSeconds;
+  public long getExecutionTimeoutSeconds() {
+    return executionTimeoutSeconds;
   }
 
 
   /**
-   * @see #operationTimeoutSeconds
+   * @see #executionTimeoutSeconds
    */
-  public void setOperationTimeoutSeconds(long operationTimeoutSeconds) {
-    this.operationTimeoutSeconds = operationTimeoutSeconds;
+  public void setExecutionTimeoutSeconds(long executionTimeoutSeconds) {
+    this.executionTimeoutSeconds = executionTimeoutSeconds;
   }
 
 

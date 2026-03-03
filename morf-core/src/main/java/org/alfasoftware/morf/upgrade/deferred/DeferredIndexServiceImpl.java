@@ -70,7 +70,7 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
     recoveryService.recoverStaleOperations();
 
     log.info("Deferred index service: executing pending operations...");
-    long timeoutMs = config.getOperationTimeoutSeconds() * 1_000L;
+    long timeoutMs = config.getExecutionTimeoutSeconds() * 1_000L;
     DeferredIndexExecutor.ExecutionResult executorResult = executor.executeAndWait(timeoutMs);
 
     int completed = executorResult.getCompletedCount();
@@ -133,9 +133,9 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
       throw new IllegalArgumentException(
           "staleThresholdSeconds must be > 0 s, was " + config.getStaleThresholdSeconds() + " s");
     }
-    if (config.getOperationTimeoutSeconds() <= 0) {
+    if (config.getExecutionTimeoutSeconds() <= 0) {
       throw new IllegalArgumentException(
-          "operationTimeoutSeconds must be > 0 s, was " + config.getOperationTimeoutSeconds() + " s");
+          "executionTimeoutSeconds must be > 0 s, was " + config.getExecutionTimeoutSeconds() + " s");
     }
   }
 }
