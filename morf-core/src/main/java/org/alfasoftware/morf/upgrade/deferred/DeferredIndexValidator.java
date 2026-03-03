@@ -40,7 +40,7 @@ import org.apache.commons.logging.LogFactory;
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-public class DeferredIndexValidator {
+class DeferredIndexValidator {
 
   private static final Log log = LogFactory.getLog(DeferredIndexValidator.class);
 
@@ -55,11 +55,7 @@ public class DeferredIndexValidator {
    * @param connectionResources database connection resources.
    * @param config              configuration used when executing pending operations.
    */
-  public DeferredIndexValidator(ConnectionResources connectionResources, DeferredIndexConfig config) {
-    if (config.getOperationTimeoutSeconds() <= 0) {
-      throw new IllegalArgumentException(
-          "operationTimeoutSeconds must be > 0 s, was " + config.getOperationTimeoutSeconds() + " s");
-    }
+  DeferredIndexValidator(ConnectionResources connectionResources, DeferredIndexConfig config) {
     this.connectionResources = connectionResources;
     this.config = config;
     this.dao = new DeferredIndexOperationDAOImpl(connectionResources);

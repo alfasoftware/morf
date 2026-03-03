@@ -21,7 +21,7 @@ package org.alfasoftware.morf.upgrade.deferred;
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-public enum DeferredIndexOperationType {
+enum DeferredIndexOperationType {
 
   /**
    * Create a new index on a table in the background.

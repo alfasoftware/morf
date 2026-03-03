@@ -23,7 +23,7 @@ import java.util.List;
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-public class DeferredIndexOperation {
+class DeferredIndexOperation {
 
 
   /**

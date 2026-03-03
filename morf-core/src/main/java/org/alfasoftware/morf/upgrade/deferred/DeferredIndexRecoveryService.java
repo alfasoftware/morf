@@ -45,7 +45,7 @@ import org.apache.commons.logging.LogFactory;
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-public class DeferredIndexRecoveryService {
+class DeferredIndexRecoveryService {
 
   private static final Log log = LogFactory.getLog(DeferredIndexRecoveryService.class);
 
@@ -60,11 +60,7 @@ public class DeferredIndexRecoveryService {
    * @param connectionResources database connection resources.
    * @param config              configuration governing the stale-threshold.
    */
-  public DeferredIndexRecoveryService(ConnectionResources connectionResources, DeferredIndexConfig config) {
-    if (config.getStaleThresholdSeconds() <= 0) {
-      throw new IllegalArgumentException(
-          "staleThresholdSeconds must be > 0 s, was " + config.getStaleThresholdSeconds() + " s");
-    }
+  DeferredIndexRecoveryService(ConnectionResources connectionResources, DeferredIndexConfig config) {
     this.connectionResources = connectionResources;
     this.config = config;
     this.dao = new DeferredIndexOperationDAOImpl(connectionResources);

@@ -21,7 +21,7 @@ package org.alfasoftware.morf.upgrade.deferred;
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-public enum DeferredIndexStatus {
+enum DeferredIndexStatus {
 
   /**
    * The operation has been queued and is waiting to be picked up by the executor.
