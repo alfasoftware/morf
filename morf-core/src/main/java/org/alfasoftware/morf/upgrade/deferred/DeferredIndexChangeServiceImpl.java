@@ -38,6 +38,9 @@ import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 /**
  * Default implementation of {@link DeferredIndexChangeService}.
  *
@@ -50,6 +53,8 @@ import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
  */
 public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeService {
 
+  private static final Log log = LogFactory.getLog(DeferredIndexChangeServiceImpl.class);
+
   /**
    * Pending deferred ADD INDEX operations registered during this upgrade session,
    * keyed by table name (upper-cased) then index name (upper-cased).
@@ -59,6 +64,11 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
 
   @Override
   public List<Statement> trackPending(DeferredAddIndex deferredAddIndex) {
+    if (log.isDebugEnabled()) {
+      log.debug("Tracking deferred index: table=" + deferredAddIndex.getTableName()
+          + ", index=" + deferredAddIndex.getNewIndex().getName()
+          + ", columns=" + deferredAddIndex.getNewIndex().columnNames());
+    }
     long operationId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
     long createdTime = DeferredIndexTimestamps.currentTimestamp();
 
@@ -113,6 +123,9 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
     if (tableMap == null || !tableMap.containsKey(indexName.toUpperCase())) {
       return List.of();
     }
+    if (log.isDebugEnabled()) {
+      log.debug("Cancelling deferred index: table=" + tableName + ", index=" + indexName);
+    }
 
     // Use the original casing from the stored entry for SQL comparisons
     DeferredAddIndex dai = tableMap.get(indexName.toUpperCase());
@@ -150,6 +163,9 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
     Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.remove(tableName.toUpperCase());
     if (tableMap == null || tableMap.isEmpty()) {
       return List.of();
+    }
+    if (log.isDebugEnabled()) {
+      log.debug("Cancelling all deferred indexes for table [" + tableName + "]: " + tableMap.keySet());
     }
 
     // Use the original casing from a stored entry for SQL comparisons
@@ -209,6 +225,9 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
     if (tableMap == null || tableMap.isEmpty()) {
       return List.of();
     }
+    if (log.isDebugEnabled()) {
+      log.debug("Renaming table in deferred indexes: [" + oldTableName + "] -> [" + newTableName + "]");
+    }
 
     // Use the original casing from a stored entry for the SQL WHERE clause
     String storedOldTableName = tableMap.values().iterator().next().getTableName();
@@ -243,6 +262,10 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
       .anyMatch(dai -> dai.getNewIndex().columnNames().stream().anyMatch(c -> c.equalsIgnoreCase(oldColumnName)));
     if (!anyAffected) {
       return List.of();
+    }
+    if (log.isDebugEnabled()) {
+      log.debug("Renaming column in deferred indexes: table=" + tableName
+          + ", [" + oldColumnName + "] -> [" + newColumnName + "]");
     }
 
     // Use the original casing from a stored entry for the SQL WHERE clause
@@ -285,6 +308,10 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
     Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.get(tableName.toUpperCase());
     if (tableMap == null || !tableMap.containsKey(oldIndexName.toUpperCase())) {
       return List.of();
+    }
+    if (log.isDebugEnabled()) {
+      log.debug("Renaming index in deferred indexes: table=" + tableName
+          + ", [" + oldIndexName + "] -> [" + newIndexName + "]");
     }
 
     // Use the original casing from the stored entry for SQL comparisons

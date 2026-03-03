@@ -43,6 +43,9 @@ import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 /**
  * Default implementation of {@link DeferredIndexOperationDAO}.
  *
@@ -50,6 +53,8 @@ import com.google.inject.Singleton;
  */
 @Singleton
 class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
+
+  private static final Log log = LogFactory.getLog(DeferredIndexOperationDAOImpl.class);
 
   private static final String OPERATION_TABLE        = DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME;
   private static final String OPERATION_COLUMN_TABLE = DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_COLUMN_NAME;
@@ -89,6 +94,10 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
    */
   @Override
   public void insertOperation(DeferredIndexOperation op) {
+    if (log.isDebugEnabled()) {
+      log.debug("Inserting deferred index operation [" + op.getId() + "]: table=" + op.getTableName()
+          + ", index=" + op.getIndexName() + ", columns=" + op.getColumnNames());
+    }
     List<String> statements = new ArrayList<>();
 
     statements.addAll(sqlDialect.convertStatementToSQL(
@@ -200,6 +209,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
    */
   @Override
   public void markStarted(long id, long startedTime) {
+    if (log.isDebugEnabled()) log.debug("Marking operation [" + id + "] as IN_PROGRESS");
     sqlScriptExecutorProvider.get().execute(
       sqlDialect.convertStatementToSQL(
         update(tableRef(OPERATION_TABLE))
@@ -222,6 +232,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
    */
   @Override
   public void markCompleted(long id, long completedTime) {
+    if (log.isDebugEnabled()) log.debug("Marking operation [" + id + "] as COMPLETED");
     sqlScriptExecutorProvider.get().execute(
       sqlDialect.convertStatementToSQL(
         update(tableRef(OPERATION_TABLE))
@@ -245,6 +256,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
    */
   @Override
   public void markFailed(long id, String errorMessage, int newRetryCount) {
+    if (log.isDebugEnabled()) log.debug("Marking operation [" + id + "] as FAILED (retryCount=" + newRetryCount + ")");
     sqlScriptExecutorProvider.get().execute(
       sqlDialect.convertStatementToSQL(
         update(tableRef(OPERATION_TABLE))
@@ -267,6 +279,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
    */
   @Override
   public void resetToPending(long id) {
+    if (log.isDebugEnabled()) log.debug("Resetting operation [" + id + "] to PENDING");
     sqlScriptExecutorProvider.get().execute(
       sqlDialect.convertStatementToSQL(
         update(tableRef(OPERATION_TABLE))
@@ -285,6 +298,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
    */
   @Override
   public void updateStatus(long id, DeferredIndexStatus newStatus) {
+    if (log.isDebugEnabled()) log.debug("Updating operation [" + id + "] status to " + newStatus);
     sqlScriptExecutorProvider.get().execute(
       sqlDialect.convertStatementToSQL(
         update(tableRef(OPERATION_TABLE))

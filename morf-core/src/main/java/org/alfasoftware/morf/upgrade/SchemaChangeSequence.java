@@ -37,6 +37,8 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * Tracks a sequence of {@link SchemaChange}s as various {@link SchemaEditor}
@@ -46,6 +48,8 @@ import org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex;
  * @author Copyright (c) Alfa Financial Software 2010
  */
 public class SchemaChangeSequence {
+
+  private static final Log log = LogFactory.getLog(SchemaChangeSequence.class);
 
   private final UpgradeConfigAndContext upgradeConfigAndContext;
 
@@ -368,6 +372,9 @@ public class SchemaChangeSequence {
     @Override
     public void addIndex(String tableName, Index index) {
       if (upgradeConfigAndContext.isForceDeferredIndex(index.getName())) {
+        if (log.isDebugEnabled()) {
+          log.debug("Force-deferring index [" + index.getName() + "] on table [" + tableName + "]");
+        }
         addIndexDeferred(tableName, index);
         return;
       }
@@ -383,6 +390,9 @@ public class SchemaChangeSequence {
     @Override
     public void addIndexDeferred(String tableName, Index index) {
       if (upgradeConfigAndContext.isForceImmediateIndex(index.getName())) {
+        if (log.isDebugEnabled()) {
+          log.debug("Force-immediate index [" + index.getName() + "] on table [" + tableName + "]");
+        }
         addIndex(tableName, index);
         return;
       }

@@ -260,6 +260,10 @@ class DeferredIndexExecutor {
     int maxAttempts = config.getMaxRetries() + 1;
 
     for (int attempt = op.getRetryCount(); attempt < maxAttempts; attempt++) {
+      if (log.isDebugEnabled()) {
+        log.debug("Starting deferred index operation [" + op.getId() + "]: table=" + op.getTableName()
+            + ", index=" + op.getIndexName() + ", attempt=" + (attempt + 1) + "/" + maxAttempts);
+      }
       long startedTime = DeferredIndexTimestamps.currentTimestamp();
       dao.markStarted(op.getId(), startedTime);
       runningOperations.put(op.getId(), new RunningOperation(op, System.currentTimeMillis()));
@@ -269,6 +273,10 @@ class DeferredIndexExecutor {
         runningOperations.remove(op.getId());
         dao.markCompleted(op.getId(), DeferredIndexTimestamps.currentTimestamp());
         completedCount.incrementAndGet();
+        if (log.isDebugEnabled()) {
+          log.debug("Deferred index operation [" + op.getId() + "] completed: table=" + op.getTableName()
+              + ", index=" + op.getIndexName());
+        }
         return;
 
       } catch (Exception e) {
@@ -278,6 +286,11 @@ class DeferredIndexExecutor {
         dao.markFailed(op.getId(), errorMessage, newRetryCount);
 
         if (newRetryCount < maxAttempts) {
+          if (log.isDebugEnabled()) {
+            log.debug("Deferred index operation [" + op.getId() + "] failed (attempt " + newRetryCount
+                + "/" + maxAttempts + "), will retry: table=" + op.getTableName()
+                + ", index=" + op.getIndexName() + ", error=" + errorMessage);
+          }
           dao.resetToPending(op.getId());
           sleepForBackoff(attempt);
         } else {
