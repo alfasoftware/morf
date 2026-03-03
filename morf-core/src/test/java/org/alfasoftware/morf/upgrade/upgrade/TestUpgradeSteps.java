@@ -74,7 +74,7 @@ public class TestUpgradeSteps {
         java.util.List<String> columnNames = table.columns().stream()
             .map(c -> c.getName())
             .collect(Collectors.toList());
-        assertTrue(columnNames.contains("operationId"));
+        assertTrue(columnNames.contains("id"));
         assertTrue(columnNames.contains("upgradeUUID"));
         assertTrue(columnNames.contains("tableName"));
         assertTrue(columnNames.contains("indexName"));
@@ -107,6 +107,7 @@ public class TestUpgradeSteps {
         java.util.List<String> columnNames = table.columns().stream()
             .map(c -> c.getName())
             .collect(Collectors.toList());
+        assertTrue(columnNames.contains("id"));
         assertTrue(columnNames.contains("operationId"));
         assertTrue(columnNames.contains("columnName"));
         assertTrue(columnNames.contains("columnSequence"));
@@ -114,14 +115,8 @@ public class TestUpgradeSteps {
         java.util.List<String> indexNames = table.indexes().stream()
             .map(i -> i.getName())
             .collect(Collectors.toList());
-        assertTrue(indexNames.contains("DeferredIdxOpCol_PK"));
         assertTrue(indexNames.contains("DeferredIdxOpCol_1"));
-
-        // PK index must be unique
-        table.indexes().stream()
-            .filter(i -> i.getName().equals("DeferredIdxOpCol_PK"))
-            .findFirst()
-            .ifPresent(i -> assertTrue("DeferredIdxOpCol_PK must be unique", i.isUnique()));
+        assertTrue(indexNames.contains("DeferredIdxOpCol_2"));
     }
 
 }
