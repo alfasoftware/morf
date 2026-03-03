@@ -35,6 +35,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Collections;
+import java.util.Set;
 
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
@@ -445,6 +446,27 @@ public class TestDeferredIndexIntegration {
 
     assertEquals("COMPLETED", queryOperationStatus("Product_Name_1"));
     assertIndexExists("Product", "Product_Name_1");
+  }
+
+
+  /**
+   * Verify that when forceImmediateIndexes is configured for an index name,
+   * addIndexDeferred() builds the index immediately during the upgrade step
+   * and does not queue a deferred operation.
+   */
+  @Test
+  public void testForceImmediateIndexBypassesDeferral() {
+    upgradeConfigAndContext.setForceImmediateIndexes(Set.of("Product_Name_1"));
+
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+
+    // Index should exist immediately — no executor needed
+    assertIndexExists("Product", "Product_Name_1");
+    // No deferred operation should have been queued
+    assertEquals("No deferred operations expected", 0, countOperations());
+
+    // Clean up config for other tests
+    upgradeConfigAndContext.setForceImmediateIndexes(Set.of());
   }
 
 

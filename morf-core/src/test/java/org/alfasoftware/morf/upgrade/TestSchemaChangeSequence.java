@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
@@ -103,6 +104,63 @@ public class TestSchemaChangeSequence {
     assertEquals("TestTable", change.getTableName());
     assertEquals("TestIdx", change.getNewIndex().getName());
     assertEquals("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", change.getUpgradeUUID());
+  }
+
+
+  /** Tests that addIndexDeferred with force-immediate config produces an AddIndex instead of DeferredAddIndex. */
+  @Test
+  public void testAddIndexDeferredWithForceImmediateProducesAddIndex() {
+    // given
+    when(index.getName()).thenReturn("TestIdx");
+    when(index.columnNames()).thenReturn(List.of("col1"));
+
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setForceImmediateIndexes(Set.of("TestIdx"));
+
+    // when
+    SchemaChangeSequence seq = new SchemaChangeSequence(config, List.of(new StepWithDeferredAddIndex()));
+    List<SchemaChange> changes = seq.getAllChanges();
+
+    // then
+    assertThat(changes, hasSize(1));
+    assertThat(changes.get(0), instanceOf(AddIndex.class));
+    AddIndex change = (AddIndex) changes.get(0);
+    assertEquals("TestTable", change.getTableName());
+    assertEquals("TestIdx", change.getNewIndex().getName());
+  }
+
+
+  /** Tests that force-immediate matching is case-insensitive (H2 folds to uppercase). */
+  @Test
+  public void testAddIndexDeferredWithForceImmediateCaseInsensitive() {
+    // given
+    when(index.getName()).thenReturn("TestIdx");
+    when(index.columnNames()).thenReturn(List.of("col1"));
+
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setForceImmediateIndexes(Set.of("TESTIDX"));
+
+    // when
+    SchemaChangeSequence seq = new SchemaChangeSequence(config, List.of(new StepWithDeferredAddIndex()));
+    List<SchemaChange> changes = seq.getAllChanges();
+
+    // then
+    assertThat(changes, hasSize(1));
+    assertThat(changes.get(0), instanceOf(AddIndex.class));
+  }
+
+
+  /** Tests that isForceImmediateIndex returns correct results with case-insensitive matching. */
+  @Test
+  public void testIsForceImmediateIndex() {
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setForceImmediateIndexes(Set.of("Idx_One", "IDX_TWO"));
+
+    assertEquals(true, config.isForceImmediateIndex("Idx_One"));
+    assertEquals(true, config.isForceImmediateIndex("idx_one"));
+    assertEquals(true, config.isForceImmediateIndex("IDX_ONE"));
+    assertEquals(true, config.isForceImmediateIndex("idx_two"));
+    assertEquals(false, config.isForceImmediateIndex("Idx_Three"));
   }
 
 

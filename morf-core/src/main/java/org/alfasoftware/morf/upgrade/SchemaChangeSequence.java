@@ -378,6 +378,10 @@ public class SchemaChangeSequence {
      */
     @Override
     public void addIndexDeferred(String tableName, Index index) {
+      if (upgradeConfigAndContext.isForceImmediateIndex(index.getName())) {
+        addIndex(tableName, index);
+        return;
+      }
       DeferredAddIndex deferredAddIndex = new DeferredAddIndex(tableName, index, upgradeUUID);
       visitor.visit(deferredAddIndex);
       // schemaAndDataChangeVisitor is intentionally not notified: no DDL runs on tableName

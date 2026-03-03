@@ -8,6 +8,7 @@ import org.alfasoftware.morf.metadata.Index;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 
 /**
  * Configuration and context bean for the {@link Upgrade} process.
@@ -43,6 +44,12 @@ public class UpgradeConfigAndContext {
    * A map of ignored indexes.
    */
   private Map<String, List<Index>> ignoredIndexes = Map.of();
+
+
+  /**
+   * Set of index names that should bypass deferred creation and be built immediately during upgrade.
+   */
+  private Set<String> forceImmediateIndexes = Set.of();
 
 
   /**
@@ -139,5 +146,36 @@ public class UpgradeConfigAndContext {
     } else {
       return List.of();
     }
+  }
+
+
+  /**
+   * @see #forceImmediateIndexes
+   * @return forceImmediateIndexes set
+   */
+  public Set<String> getForceImmediateIndexes() {
+    return forceImmediateIndexes;
+  }
+
+
+  /**
+   * @see #forceImmediateIndexes
+   */
+  public void setForceImmediateIndexes(Set<String> forceImmediateIndexes) {
+    this.forceImmediateIndexes = forceImmediateIndexes.stream()
+      .map(String::toLowerCase)
+      .collect(ImmutableSet.toImmutableSet());
+  }
+
+
+  /**
+   * Check whether the given index name should be forced to build immediately
+   * during upgrade, bypassing deferred creation.
+   *
+   * @param indexName the index name to check
+   * @return true if the index should be built immediately
+   */
+  public boolean isForceImmediateIndex(String indexName) {
+    return forceImmediateIndexes.contains(indexName.toLowerCase());
   }
 }
