@@ -61,6 +61,10 @@ public class DeferredIndexRecoveryService {
    * @param config              configuration governing the stale-threshold.
    */
   public DeferredIndexRecoveryService(ConnectionResources connectionResources, DeferredIndexConfig config) {
+    if (config.getStaleThresholdSeconds() <= 0) {
+      throw new IllegalArgumentException(
+          "staleThresholdSeconds must be > 0 s, was " + config.getStaleThresholdSeconds() + " s");
+    }
     this.connectionResources = connectionResources;
     this.config = config;
     this.dao = new DeferredIndexOperationDAOImpl(connectionResources);

@@ -110,11 +110,29 @@ public class DeferredIndexExecutor {
    * @param config              configuration controlling retry, thread-pool, and timeout behaviour.
    */
   public DeferredIndexExecutor(ConnectionResources connectionResources, DeferredIndexConfig config) {
+    validateExecutorConfig(config);
     this.sqlDialect = connectionResources.sqlDialect();
     this.sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
     this.dataSource = connectionResources.getDataSource();
     this.dao = new DeferredIndexOperationDAOImpl(connectionResources);
     this.config = config;
+  }
+
+
+  private static void validateExecutorConfig(DeferredIndexConfig config) {
+    if (config.getThreadPoolSize() < 1) {
+      throw new IllegalArgumentException("threadPoolSize must be >= 1, was " + config.getThreadPoolSize());
+    }
+    if (config.getMaxRetries() < 0) {
+      throw new IllegalArgumentException("maxRetries must be >= 0, was " + config.getMaxRetries());
+    }
+    if (config.getRetryBaseDelayMs() < 0) {
+      throw new IllegalArgumentException("retryBaseDelayMs must be >= 0 ms, was " + config.getRetryBaseDelayMs() + " ms");
+    }
+    if (config.getRetryMaxDelayMs() < config.getRetryBaseDelayMs()) {
+      throw new IllegalArgumentException("retryMaxDelayMs (" + config.getRetryMaxDelayMs()
+          + " ms) must be >= retryBaseDelayMs (" + config.getRetryBaseDelayMs() + " ms)");
+    }
   }
 
 

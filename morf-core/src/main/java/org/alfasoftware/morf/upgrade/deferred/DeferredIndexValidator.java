@@ -56,6 +56,10 @@ public class DeferredIndexValidator {
    * @param config              configuration used when executing pending operations.
    */
   public DeferredIndexValidator(ConnectionResources connectionResources, DeferredIndexConfig config) {
+    if (config.getOperationTimeoutSeconds() <= 0) {
+      throw new IllegalArgumentException(
+          "operationTimeoutSeconds must be > 0 s, was " + config.getOperationTimeoutSeconds() + " s");
+    }
     this.connectionResources = connectionResources;
     this.config = config;
     this.dao = new DeferredIndexOperationDAOImpl(connectionResources);
