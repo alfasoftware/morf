@@ -63,6 +63,17 @@ class DeferredIndexValidator {
 
 
   /**
+   * Package-private constructor for unit testing with a pre-built DAO.
+   */
+  DeferredIndexValidator(DeferredIndexOperationDAO dao, ConnectionResources connectionResources,
+                         DeferredIndexConfig config) {
+    this.dao = dao;
+    this.connectionResources = connectionResources;
+    this.config = config;
+  }
+
+
+  /**
    * Verifies that no {@link DeferredIndexStatus#PENDING} operations exist. If
    * any are found, executes them immediately (blocking the caller) before
    * returning.
@@ -80,7 +91,7 @@ class DeferredIndexValidator {
     log.warn("Found " + pending.size() + " pending deferred index operation(s) before upgrade. "
         + "Executing immediately before proceeding...");
 
-    DeferredIndexExecutor executor = new DeferredIndexExecutor(connectionResources, config);
+    DeferredIndexExecutor executor = createExecutor();
     long timeoutMs = config.getOperationTimeoutSeconds() * 1_000L;
     DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(timeoutMs);
 
@@ -92,5 +103,13 @@ class DeferredIndexValidator {
           + result.getFailedCount() + " index operation(s) could not be built. "
           + "Resolve the underlying issue before retrying the upgrade.");
     }
+  }
+
+
+  /**
+   * Creates the executor. Overridable for testing.
+   */
+  DeferredIndexExecutor createExecutor() {
+    return new DeferredIndexExecutor(connectionResources, config);
   }
 }

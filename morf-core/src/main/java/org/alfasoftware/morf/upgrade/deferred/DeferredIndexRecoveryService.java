@@ -68,6 +68,17 @@ class DeferredIndexRecoveryService {
 
 
   /**
+   * Package-private constructor for unit testing with a pre-built DAO.
+   */
+  DeferredIndexRecoveryService(DeferredIndexOperationDAO dao, ConnectionResources connectionResources,
+                               DeferredIndexConfig config) {
+    this.dao = dao;
+    this.connectionResources = connectionResources;
+    this.config = config;
+  }
+
+
+  /**
    * Finds all stale {@link DeferredIndexStatus#IN_PROGRESS} operations and
    * recovers each one by comparing the actual database schema against the
    * recorded operation.

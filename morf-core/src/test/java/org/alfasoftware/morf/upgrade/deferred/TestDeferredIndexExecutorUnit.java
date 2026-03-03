@@ -18,16 +18,23 @@ package org.alfasoftware.morf.upgrade.deferred;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.List;
+import java.util.Collection;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.sql.DataSource;
 
+import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
@@ -153,6 +160,144 @@ public class TestDeferredIndexExecutorUnit {
     testThread.join(5_000L);
 
     assertFalse("Should return false when interrupted", result.get());
+  }
+
+
+  /** executeAndWait with an empty pending queue should return (0, 0). */
+  @Test
+  public void testExecuteAndWaitEmptyQueue() {
+    when(dao.findPendingOperations()).thenReturn(Collections.emptyList());
+
+    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
+
+    assertEquals("completedCount", 0, result.getCompletedCount());
+    assertEquals("failedCount", 0, result.getFailedCount());
+  }
+
+
+  /** executeAndWait with a single successful operation should return (1, 0). */
+  @Test
+  public void testExecuteAndWaitSingleSuccess() {
+    DeferredIndexOperation op = buildOp(1001L);
+    when(dao.findPendingOperations()).thenReturn(List.of(op));
+    SqlScriptExecutor scriptExecutor = mock(SqlScriptExecutor.class);
+    when(sqlScriptExecutorProvider.get()).thenReturn(scriptExecutor);
+    when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
+        .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
+
+    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
+
+    assertEquals("completedCount", 1, result.getCompletedCount());
+    assertEquals("failedCount", 0, result.getFailedCount());
+    verify(dao).markCompleted(eq(1001L), any(Long.class));
+  }
+
+
+  /** executeAndWait should retry on failure and succeed on a subsequent attempt. */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testExecuteAndWaitRetryThenSuccess() {
+    config.setMaxRetries(2);
+    config.setRetryBaseDelayMs(1L);
+    config.setRetryMaxDelayMs(1L);
+
+    DeferredIndexOperation op = buildOp(1001L);
+    when(dao.findPendingOperations()).thenReturn(List.of(op));
+    SqlScriptExecutor scriptExecutor = mock(SqlScriptExecutor.class);
+    when(sqlScriptExecutorProvider.get()).thenReturn(scriptExecutor);
+
+    // First call throws, second call succeeds
+    when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
+        .thenThrow(new RuntimeException("temporary failure"))
+        .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
+
+    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
+
+    assertEquals("completedCount", 1, result.getCompletedCount());
+    assertEquals("failedCount", 0, result.getFailedCount());
+  }
+
+
+  /** executeAndWait should mark an operation as permanently failed after exhausting retries. */
+  @Test
+  public void testExecuteAndWaitPermanentFailure() {
+    config.setMaxRetries(1);
+    config.setRetryBaseDelayMs(1L);
+    config.setRetryMaxDelayMs(1L);
+
+    DeferredIndexOperation op = buildOp(1001L);
+    when(dao.findPendingOperations()).thenReturn(List.of(op));
+    SqlScriptExecutor scriptExecutor = mock(SqlScriptExecutor.class);
+    when(sqlScriptExecutorProvider.get()).thenReturn(scriptExecutor);
+
+    when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
+        .thenThrow(new RuntimeException("persistent failure"));
+
+    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
+
+    assertEquals("completedCount", 0, result.getCompletedCount());
+    assertEquals("failedCount", 1, result.getFailedCount());
+  }
+
+
+  /** getStatus should reflect counts from a completed execution. */
+  @Test
+  public void testGetStatusAfterExecution() {
+    DeferredIndexOperation op = buildOp(1001L);
+    when(dao.findPendingOperations()).thenReturn(List.of(op));
+    SqlScriptExecutor scriptExecutor = mock(SqlScriptExecutor.class);
+    when(sqlScriptExecutorProvider.get()).thenReturn(scriptExecutor);
+    when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
+        .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
+
+    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    executor.executeAndWait(60_000L);
+
+    DeferredIndexExecutor.ExecutionStatus status = executor.getStatus();
+    assertEquals("totalCount", 1, status.getTotalCount());
+    assertEquals("completedCount", 1, status.getCompletedCount());
+    assertEquals("inProgressCount", 0, status.getInProgressCount());
+    assertEquals("failedCount", 0, status.getFailedCount());
+  }
+
+
+  /** getStatus on a fresh executor should report zero for all fields. */
+  @Test
+  public void testGetStatusBeforeExecution() {
+    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    DeferredIndexExecutor.ExecutionStatus status = executor.getStatus();
+    assertEquals("totalCount", 0, status.getTotalCount());
+    assertEquals("completedCount", 0, status.getCompletedCount());
+    assertEquals("inProgressCount", 0, status.getInProgressCount());
+    assertEquals("failedCount", 0, status.getFailedCount());
+  }
+
+
+  /** awaitCompletion should return true immediately when no non-terminal operations exist. */
+  @Test
+  public void testAwaitCompletionReturnsTrueWhenEmpty() {
+    when(dao.hasNonTerminalOperations()).thenReturn(false);
+
+    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    boolean result = executor.awaitCompletion(60L);
+
+    assertEquals("awaitCompletion should return true", true, result);
+  }
+
+
+  /** awaitCompletion should return false when the timeout elapses. */
+  @Test
+  public void testAwaitCompletionReturnsFalseOnTimeout() {
+    when(dao.hasNonTerminalOperations()).thenReturn(true);
+
+    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    boolean result = executor.awaitCompletion(1L);
+
+    assertFalse("awaitCompletion should return false on timeout", result);
   }
 
 
