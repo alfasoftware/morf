@@ -124,7 +124,7 @@ public class DeferredAddIndex implements SchemaChange {
 
     List<String> indexes = new ArrayList<>();
     for (Index index : original.indexes()) {
-      if (index.getName().equals(newIndex.getName())) {
+      if (index.getName().equalsIgnoreCase(newIndex.getName())) {
         throw new IllegalArgumentException(
           String.format("Cannot defer add index [%s] to table [%s] as the index already exists", newIndex.getName(), tableName));
       }
