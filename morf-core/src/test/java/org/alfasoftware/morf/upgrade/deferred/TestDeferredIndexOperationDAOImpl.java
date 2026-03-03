@@ -23,8 +23,6 @@ import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.SqlUtils.update;
 import static org.alfasoftware.morf.sql.element.Criterion.and;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -179,47 +177,6 @@ public class TestDeferredIndexOperationDAOImpl {
        .toString();
 
     assertEquals("SELECT statement", expected, captor.getValue().toString());
-  }
-
-
-  /**
-   * Verify existsByUpgradeUUIDAndIndexName selects with WHERE on both fields
-   * and returns the result of ResultSet::next.
-   */
-  @SuppressWarnings("unchecked")
-  @Test
-  public void testExistsByUpgradeUUIDAndIndexNameTrue() {
-    when(sqlScriptExecutor.executeQuery(anyString(), any(ResultSetProcessor.class))).thenReturn(true);
-
-    boolean result = dao.existsByUpgradeUUIDAndIndexName("uuid-1", "MyIndex");
-
-    assertTrue("Should return true when record exists", result);
-
-    ArgumentCaptor<SelectStatement> captor = ArgumentCaptor.forClass(SelectStatement.class);
-    verify(sqlDialect).convertStatementToSQL(captor.capture());
-
-    String expected = select(field("id"))
-      .from(tableRef(TABLE))
-      .where(and(
-        field("upgradeUUID").eq("uuid-1"),
-        field("indexName").eq("MyIndex")
-      ))
-      .toString();
-
-    assertEquals("SELECT statement", expected, captor.getValue().toString());
-  }
-
-
-  /**
-   * Verify existsByUpgradeUUIDAndIndexName returns false when no record exists.
-   */
-  @SuppressWarnings("unchecked")
-  @Test
-  public void testExistsByUpgradeUUIDAndIndexNameFalse() {
-    when(sqlScriptExecutor.executeQuery(anyString(), any(ResultSetProcessor.class))).thenReturn(false);
-
-    assertFalse("Should return false when no record exists",
-      dao.existsByUpgradeUUIDAndIndexName("uuid-x", "NoIndex"));
   }
 
 

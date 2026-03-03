@@ -381,8 +381,8 @@ public class SchemaChangeSequence {
       DeferredAddIndex deferredAddIndex = new DeferredAddIndex(tableName, index, upgradeUUID);
       visitor.visit(deferredAddIndex);
       // schemaAndDataChangeVisitor is intentionally not notified: no DDL runs on tableName
-      // during this upgrade step, so no table-resolution dependency is created. Stage 6 will
-      // add auto-cancel logic when the target table or a referenced column is removed.
+      // during this upgrade step, so no table-resolution dependency is created. Auto-cancel
+      // logic in AbstractSchemaChangeVisitor handles table/column removal.
     }
 
 

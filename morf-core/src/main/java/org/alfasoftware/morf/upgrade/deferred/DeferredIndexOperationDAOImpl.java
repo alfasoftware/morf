@@ -166,28 +166,6 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
 
 
   /**
-   * Returns {@code true} if a record for the given upgrade UUID and index name
-   * already exists in the queue (regardless of status).
-   *
-   * @param upgradeUUID the UUID of the upgrade step.
-   * @param indexName   the name of the index.
-   * @return {@code true} if a matching record exists.
-   */
-  @Override
-  public boolean existsByUpgradeUUIDAndIndexName(String upgradeUUID, String indexName) {
-    SelectStatement select = select(field("id"))
-      .from(tableRef(OPERATION_TABLE))
-      .where(and(
-        field("upgradeUUID").eq(upgradeUUID),
-        field("indexName").eq(indexName)
-      ));
-
-    String sql = sqlDialect.convertStatementToSQL(select);
-    return sqlScriptExecutorProvider.get().executeQuery(sql, ResultSet::next);
-  }
-
-
-  /**
    * Returns {@code true} if any record for the given table name and index name
    * exists in the queue (regardless of status). Used by
    * {@link org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex#isApplied} to
