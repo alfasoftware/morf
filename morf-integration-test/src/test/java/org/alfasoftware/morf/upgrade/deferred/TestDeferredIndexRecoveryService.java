@@ -32,6 +32,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
@@ -105,12 +106,12 @@ public class TestDeferredIndexRecoveryService {
    */
   @Test
   public void testStaleOperationWithNoIndexIsResetToPending() {
-    insertInProgressRow("op-r1", "Apple", "Apple_Missing", false, STALE_STARTED_TIME, "pips");
+    insertInProgressRow("Apple", "Apple_Missing", false, STALE_STARTED_TIME, "pips");
 
     DeferredIndexRecoveryService service = new DeferredIndexRecoveryService(connectionResources, config);
     service.recoverStaleOperations();
 
-    assertEquals("status should be PENDING", DeferredIndexStatus.PENDING.name(), queryStatus("op-r1"));
+    assertEquals("status should be PENDING", DeferredIndexStatus.PENDING.name(), queryStatus("Apple_Missing"));
   }
 
 
@@ -131,12 +132,12 @@ public class TestDeferredIndexRecoveryService {
     schemaManager.dropAllTables();
     schemaManager.mutateToSupportSchema(schemaWithIndex, TruncationBehavior.ALWAYS);
 
-    insertInProgressRow("op-r2", "Apple", "Apple_Existing", false, STALE_STARTED_TIME, "pips");
+    insertInProgressRow("Apple", "Apple_Existing", false, STALE_STARTED_TIME, "pips");
 
     DeferredIndexRecoveryService service = new DeferredIndexRecoveryService(connectionResources, config);
     service.recoverStaleOperations();
 
-    assertEquals("status should be COMPLETED", DeferredIndexStatus.COMPLETED.name(), queryStatus("op-r2"));
+    assertEquals("status should be COMPLETED", DeferredIndexStatus.COMPLETED.name(), queryStatus("Apple_Existing"));
   }
 
 
@@ -148,13 +149,13 @@ public class TestDeferredIndexRecoveryService {
   public void testNonStaleOperationIsLeftUntouched() {
     // Use current timestamp as startedTime; with staleThreshold=1s and timestamp=now it is NOT stale
     long recentStarted = DeferredIndexRecoveryService.currentTimestamp();
-    insertInProgressRow("op-r3", "Apple", "Apple_Active", false, recentStarted, "pips");
+    insertInProgressRow("Apple", "Apple_Active", false, recentStarted, "pips");
 
     DeferredIndexRecoveryService service = new DeferredIndexRecoveryService(connectionResources, config);
     service.recoverStaleOperations();
 
     assertEquals("status should still be IN_PROGRESS",
-        DeferredIndexStatus.IN_PROGRESS.name(), queryStatus("op-r3"));
+        DeferredIndexStatus.IN_PROGRESS.name(), queryStatus("Apple_Active"));
   }
 
 
@@ -175,12 +176,12 @@ public class TestDeferredIndexRecoveryService {
    */
   @Test
   public void testStaleOperationWithDroppedTableIsResetToPending() {
-    insertInProgressRow("op-r4", "DroppedTable", "DroppedTable_1", false, STALE_STARTED_TIME, "col");
+    insertInProgressRow("DroppedTable", "DroppedTable_1", false, STALE_STARTED_TIME, "col");
 
     DeferredIndexRecoveryService service = new DeferredIndexRecoveryService(connectionResources, config);
     service.recoverStaleOperations();
 
-    assertEquals("status should be PENDING", DeferredIndexStatus.PENDING.name(), queryStatus("op-r4"));
+    assertEquals("status should be PENDING", DeferredIndexStatus.PENDING.name(), queryStatus("DroppedTable_1"));
   }
 
 
@@ -202,14 +203,14 @@ public class TestDeferredIndexRecoveryService {
     schemaManager.dropAllTables();
     schemaManager.mutateToSupportSchema(schemaWithIndex, TruncationBehavior.ALWAYS);
 
-    insertInProgressRow("op-r5", "Apple", "Apple_Present", false, STALE_STARTED_TIME, "pips");
-    insertInProgressRow("op-r6", "Apple", "Apple_Absent", false, STALE_STARTED_TIME, "pips");
+    insertInProgressRow("Apple", "Apple_Present", false, STALE_STARTED_TIME, "pips");
+    insertInProgressRow("Apple", "Apple_Absent", false, STALE_STARTED_TIME, "pips");
 
     DeferredIndexRecoveryService service = new DeferredIndexRecoveryService(connectionResources, config);
     service.recoverStaleOperations();
 
-    assertEquals("existing index should be COMPLETED", DeferredIndexStatus.COMPLETED.name(), queryStatus("op-r5"));
-    assertEquals("missing index should be PENDING", DeferredIndexStatus.PENDING.name(), queryStatus("op-r6"));
+    assertEquals("existing index should be COMPLETED", DeferredIndexStatus.COMPLETED.name(), queryStatus("Apple_Present"));
+    assertEquals("missing index should be PENDING", DeferredIndexStatus.PENDING.name(), queryStatus("Apple_Absent"));
   }
 
 
@@ -217,12 +218,13 @@ public class TestDeferredIndexRecoveryService {
   // Helpers
   // -------------------------------------------------------------------------
 
-  private void insertInProgressRow(String operationId, String tableName, String indexName,
+  private void insertInProgressRow(String tableName, String indexName,
                                     boolean unique, long startedTime, String... columns) {
+    long operationId = Math.abs(UUID.randomUUID().getMostSignificantBits());
     List<String> sql = new ArrayList<>();
     sql.addAll(connectionResources.sqlDialect().convertStatementToSQL(
         insert().into(tableRef(DEFERRED_INDEX_OPERATION_NAME)).values(
-            literal(operationId).as("operationId"),
+            literal(operationId).as("id"),
             literal("test-upgrade-uuid").as("upgradeUUID"),
             literal(tableName).as("tableName"),
             literal(indexName).as("indexName"),
@@ -237,6 +239,7 @@ public class TestDeferredIndexRecoveryService {
     for (int i = 0; i < columns.length; i++) {
       sql.addAll(connectionResources.sqlDialect().convertStatementToSQL(
           insert().into(tableRef(DEFERRED_INDEX_OPERATION_COLUMN_NAME)).values(
+              literal(Math.abs(UUID.randomUUID().getMostSignificantBits())).as("id"),
               literal(operationId).as("operationId"),
               literal(columns[i]).as("columnName"),
               literal(i).as("columnSequence")
@@ -247,11 +250,11 @@ public class TestDeferredIndexRecoveryService {
   }
 
 
-  private String queryStatus(String operationId) {
+  private String queryStatus(String indexName) {
     String sql = connectionResources.sqlDialect().convertStatementToSQL(
         select(field("status"))
             .from(tableRef(DEFERRED_INDEX_OPERATION_NAME))
-            .where(field("operationId").eq(operationId))
+            .where(field("indexName").eq(indexName))
     );
     return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> rs.next() ? rs.getString(1) : null);
   }

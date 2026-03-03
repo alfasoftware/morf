@@ -29,7 +29,7 @@ public class DeferredIndexOperation {
   /**
    * Unique identifier for this operation.
    */
-  private String operationId;
+  private long id;
 
   /**
    * UUID of the {@code UpgradeStep} that created this operation.
@@ -93,18 +93,18 @@ public class DeferredIndexOperation {
 
 
   /**
-   * @see #operationId
+   * @see #id
    */
-  public String getOperationId() {
-    return operationId;
+  public long getId() {
+    return id;
   }
 
 
   /**
-   * @see #operationId
+   * @see #id
    */
-  public void setOperationId(String operationId) {
-    this.operationId = operationId;
+  public void setId(long id) {
+    this.id = id;
   }
 
 

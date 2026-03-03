@@ -85,49 +85,49 @@ interface DeferredIndexOperationDAO {
    * Transitions the operation to {@link DeferredIndexStatus#IN_PROGRESS}
    * and records its start time.
    *
-   * @param operationId the operation to update.
+   * @param id          the operation to update.
    * @param startedTime start timestamp (yyyyMMddHHmmss).
    */
-  void markStarted(String operationId, long startedTime);
+  void markStarted(long id, long startedTime);
 
 
   /**
    * Transitions the operation to {@link DeferredIndexStatus#COMPLETED}
    * and records its completion time.
    *
-   * @param operationId   the operation to update.
+   * @param id            the operation to update.
    * @param completedTime completion timestamp (yyyyMMddHHmmss).
    */
-  void markCompleted(String operationId, long completedTime);
+  void markCompleted(long id, long completedTime);
 
 
   /**
    * Transitions the operation to {@link DeferredIndexStatus#FAILED},
    * records the error message, and stores the updated retry count.
    *
-   * @param operationId   the operation to update.
+   * @param id            the operation to update.
    * @param errorMessage  the error message.
    * @param newRetryCount the new retry count value.
    */
-  void markFailed(String operationId, String errorMessage, int newRetryCount);
+  void markFailed(long id, String errorMessage, int newRetryCount);
 
 
   /**
    * Resets a {@link DeferredIndexStatus#FAILED} operation back to
    * {@link DeferredIndexStatus#PENDING} so it will be retried.
    *
-   * @param operationId the operation to reset.
+   * @param id the operation to reset.
    */
-  void resetToPending(String operationId);
+  void resetToPending(long id);
 
 
   /**
    * Updates the status of an operation to the supplied value.
    *
-   * @param operationId the operation to update.
-   * @param newStatus   the new status value.
+   * @param id        the operation to update.
+   * @param newStatus the new status value.
    */
-  void updateStatus(String operationId, DeferredIndexStatus newStatus);
+  void updateStatus(long id, DeferredIndexStatus newStatus);
 
 
   /**

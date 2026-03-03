@@ -34,6 +34,7 @@ import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
@@ -117,7 +118,7 @@ public class TestDeferredIndexValidator {
    */
   @Test
   public void testPendingOperationsAreExecutedBeforeReturning() {
-    insertPendingRow("op-v1", "Apple", "Apple_V1", false, "pips");
+    insertPendingRow("Apple", "Apple_V1", false, "pips");
 
     DeferredIndexValidator validator = new DeferredIndexValidator(connectionResources, config);
     validator.validateNoPendingOperations();
@@ -140,8 +141,8 @@ public class TestDeferredIndexValidator {
    */
   @Test
   public void testMultiplePendingOperationsAllExecuted() {
-    insertPendingRow("op-v2", "Apple", "Apple_V2", false, "pips");
-    insertPendingRow("op-v3", "Apple", "Apple_V3", true, "pips");
+    insertPendingRow("Apple", "Apple_V2", false, "pips");
+    insertPendingRow("Apple", "Apple_V3", true, "pips");
 
     DeferredIndexValidator validator = new DeferredIndexValidator(connectionResources, config);
     validator.validateNoPendingOperations();
@@ -156,7 +157,7 @@ public class TestDeferredIndexValidator {
    */
   @Test
   public void testFailedForcedExecutionThrows() {
-    insertPendingRow("op-v4", "NoSuchTable", "NoSuchTable_V4", false, "col");
+    insertPendingRow("NoSuchTable", "NoSuchTable_V4", false, "col");
 
     DeferredIndexValidator validator = new DeferredIndexValidator(connectionResources, config);
     try {
@@ -169,7 +170,7 @@ public class TestDeferredIndexValidator {
 
     // The operation should be FAILED, not PENDING
     assertEquals("status should be FAILED after forced execution",
-        DeferredIndexStatus.FAILED.name(), queryStatus("op-v4"));
+        DeferredIndexStatus.FAILED.name(), queryStatus("NoSuchTable_V4"));
   }
 
 
@@ -177,12 +178,13 @@ public class TestDeferredIndexValidator {
   // Helpers
   // -------------------------------------------------------------------------
 
-  private void insertPendingRow(String operationId, String tableName, String indexName,
+  private void insertPendingRow(String tableName, String indexName,
                                  boolean unique, String... columns) {
+    long operationId = Math.abs(UUID.randomUUID().getMostSignificantBits());
     List<String> sql = new ArrayList<>();
     sql.addAll(connectionResources.sqlDialect().convertStatementToSQL(
         insert().into(tableRef(DEFERRED_INDEX_OPERATION_NAME)).values(
-            literal(operationId).as("operationId"),
+            literal(operationId).as("id"),
             literal("test-upgrade-uuid").as("upgradeUUID"),
             literal(tableName).as("tableName"),
             literal(indexName).as("indexName"),
@@ -196,6 +198,7 @@ public class TestDeferredIndexValidator {
     for (int i = 0; i < columns.length; i++) {
       sql.addAll(connectionResources.sqlDialect().convertStatementToSQL(
           insert().into(tableRef(DEFERRED_INDEX_OPERATION_COLUMN_NAME)).values(
+              literal(Math.abs(UUID.randomUUID().getMostSignificantBits())).as("id"),
               literal(operationId).as("operationId"),
               literal(columns[i]).as("columnName"),
               literal(i).as("columnSequence")
@@ -206,11 +209,11 @@ public class TestDeferredIndexValidator {
   }
 
 
-  private String queryStatus(String operationId) {
+  private String queryStatus(String indexName) {
     String sql = connectionResources.sqlDialect().convertStatementToSQL(
         select(field("status"))
             .from(tableRef(DEFERRED_INDEX_OPERATION_NAME))
-            .where(field("operationId").eq(operationId))
+            .where(field("indexName").eq(indexName))
     );
     return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> rs.next() ? rs.getString(1) : null);
   }
@@ -218,7 +221,7 @@ public class TestDeferredIndexValidator {
 
   private boolean hasPendingOperations() {
     String sql = connectionResources.sqlDialect().convertStatementToSQL(
-        select(field("operationId"))
+        select(field("id"))
             .from(tableRef(DEFERRED_INDEX_OPERATION_NAME))
             .where(field("status").eq(DeferredIndexStatus.PENDING.name()))
     );

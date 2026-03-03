@@ -82,7 +82,7 @@ public class TestDeferredIndexOperationDAOImpl {
    */
   @Test
   public void testInsertOperation() {
-    DeferredIndexOperation op = buildOperation("op1", List.of("colA", "colB"));
+    DeferredIndexOperation op = buildOperation(1001L, List.of("colA", "colB"));
 
     dao.insertOperation(op);
 
@@ -94,12 +94,12 @@ public class TestDeferredIndexOperationDAOImpl {
 
     String expectedMain = insert().into(tableRef(TABLE))
       .values(
-        literal("op1").as("operationId"),
+        literal(1001L).as("id"),
         literal("uuid-1").as("upgradeUUID"),
         literal("MyTable").as("tableName"),
         literal("MyIndex").as("indexName"),
         literal(DeferredIndexOperationType.ADD.name()).as("operationType"),
-        literal(0).as("indexUnique"),
+        literal(false).as("indexUnique"),
         literal(DeferredIndexStatus.PENDING.name()).as("status"),
         literal(0).as("retryCount"),
         literal(20260101120000L).as("createdTime")
@@ -128,7 +128,7 @@ public class TestDeferredIndexOperationDAOImpl {
     verify(sqlDialect, times(1)).convertStatementToSQL(captor.capture());
 
     String expected = select(
-        field("operationId"), field("upgradeUUID"), field("tableName"),
+        field("id"), field("upgradeUUID"), field("tableName"),
         field("indexName"), field("operationType"), field("indexUnique"),
         field("status"), field("retryCount"), field("createdTime"),
         field("startedTime"), field("completedTime"), field("errorMessage")
@@ -155,7 +155,7 @@ public class TestDeferredIndexOperationDAOImpl {
     verify(sqlDialect, times(1)).convertStatementToSQL(captor.capture());
 
     String expected = select(
-        field("operationId"), field("upgradeUUID"), field("tableName"),
+        field("id"), field("upgradeUUID"), field("tableName"),
         field("indexName"), field("operationType"), field("indexUnique"),
         field("status"), field("retryCount"), field("createdTime"),
         field("startedTime"), field("completedTime"), field("errorMessage")
@@ -186,7 +186,7 @@ public class TestDeferredIndexOperationDAOImpl {
     ArgumentCaptor<SelectStatement> captor = ArgumentCaptor.forClass(SelectStatement.class);
     verify(sqlDialect).convertStatementToSQL(captor.capture());
 
-    String expected = select(field("operationId"))
+    String expected = select(field("id"))
       .from(tableRef(TABLE))
       .where(and(
         field("upgradeUUID").eq("uuid-1"),
@@ -216,7 +216,7 @@ public class TestDeferredIndexOperationDAOImpl {
    */
   @Test
   public void testMarkStarted() {
-    dao.markStarted("op1", 20260101120000L);
+    dao.markStarted(1001L, 20260101120000L);
 
     ArgumentCaptor<UpdateStatement> captor = ArgumentCaptor.forClass(UpdateStatement.class);
     verify(sqlDialect).convertStatementToSQL(captor.capture());
@@ -226,7 +226,7 @@ public class TestDeferredIndexOperationDAOImpl {
         literal(DeferredIndexStatus.IN_PROGRESS.name()).as("status"),
         literal(20260101120000L).as("startedTime")
       )
-      .where(field("operationId").eq("op1"))
+      .where(field("id").eq(1001L))
       .toString();
 
     assertEquals("UPDATE statement", expected, captor.getValue().toString());
@@ -239,7 +239,7 @@ public class TestDeferredIndexOperationDAOImpl {
    */
   @Test
   public void testMarkCompleted() {
-    dao.markCompleted("op1", 20260101130000L);
+    dao.markCompleted(1001L, 20260101130000L);
 
     ArgumentCaptor<UpdateStatement> captor = ArgumentCaptor.forClass(UpdateStatement.class);
     verify(sqlDialect).convertStatementToSQL(captor.capture());
@@ -249,7 +249,7 @@ public class TestDeferredIndexOperationDAOImpl {
         literal(DeferredIndexStatus.COMPLETED.name()).as("status"),
         literal(20260101130000L).as("completedTime")
       )
-      .where(field("operationId").eq("op1"))
+      .where(field("id").eq(1001L))
       .toString();
 
     assertEquals("UPDATE statement", expected, captor.getValue().toString());
@@ -262,7 +262,7 @@ public class TestDeferredIndexOperationDAOImpl {
    */
   @Test
   public void testMarkFailed() {
-    dao.markFailed("op1", "Something went wrong", 2);
+    dao.markFailed(1001L, "Something went wrong", 2);
 
     ArgumentCaptor<UpdateStatement> captor = ArgumentCaptor.forClass(UpdateStatement.class);
     verify(sqlDialect).convertStatementToSQL(captor.capture());
@@ -273,7 +273,7 @@ public class TestDeferredIndexOperationDAOImpl {
         literal("Something went wrong").as("errorMessage"),
         literal(2).as("retryCount")
       )
-      .where(field("operationId").eq("op1"))
+      .where(field("id").eq(1001L))
       .toString();
 
     assertEquals("UPDATE statement", expected, captor.getValue().toString());
@@ -285,14 +285,14 @@ public class TestDeferredIndexOperationDAOImpl {
    */
   @Test
   public void testResetToPending() {
-    dao.resetToPending("op1");
+    dao.resetToPending(1001L);
 
     ArgumentCaptor<UpdateStatement> captor = ArgumentCaptor.forClass(UpdateStatement.class);
     verify(sqlDialect).convertStatementToSQL(captor.capture());
 
     String expected = update(tableRef(TABLE))
       .set(literal(DeferredIndexStatus.PENDING.name()).as("status"))
-      .where(field("operationId").eq("op1"))
+      .where(field("id").eq(1001L))
       .toString();
 
     assertEquals("UPDATE statement", expected, captor.getValue().toString());
@@ -304,23 +304,23 @@ public class TestDeferredIndexOperationDAOImpl {
    */
   @Test
   public void testUpdateStatus() {
-    dao.updateStatus("op1", DeferredIndexStatus.COMPLETED);
+    dao.updateStatus(1001L, DeferredIndexStatus.COMPLETED);
 
     ArgumentCaptor<UpdateStatement> captor = ArgumentCaptor.forClass(UpdateStatement.class);
     verify(sqlDialect).convertStatementToSQL(captor.capture());
 
     String expected = update(tableRef(TABLE))
       .set(literal(DeferredIndexStatus.COMPLETED.name()).as("status"))
-      .where(field("operationId").eq("op1"))
+      .where(field("id").eq(1001L))
       .toString();
 
     assertEquals("UPDATE statement", expected, captor.getValue().toString());
   }
 
 
-  private DeferredIndexOperation buildOperation(String operationId, List<String> columns) {
+  private DeferredIndexOperation buildOperation(long id, List<String> columns) {
     DeferredIndexOperation op = new DeferredIndexOperation();
-    op.setOperationId(operationId);
+    op.setId(id);
     op.setUpgradeUUID("uuid-1");
     op.setTableName("MyTable");
     op.setIndexName("MyIndex");

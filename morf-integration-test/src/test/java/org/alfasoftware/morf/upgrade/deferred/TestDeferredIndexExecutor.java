@@ -33,6 +33,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
@@ -112,7 +113,7 @@ public class TestDeferredIndexExecutor {
   @Test
   public void testPendingTransitionsToCompleted() {
     config.setMaxRetries(0);
-    insertPendingRow("op-1", "Apple", "Apple_1", false, "pips");
+    insertPendingRow("Apple", "Apple_1", false, "pips");
 
     DeferredIndexExecutor executor = new DeferredIndexExecutor(connectionResources, config);
     DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
@@ -134,15 +135,15 @@ public class TestDeferredIndexExecutor {
   @Test
   public void testFailedAfterMaxRetriesWithNoRetries() {
     config.setMaxRetries(0);
-    insertPendingRow("op-2", "NoSuchTable", "NoSuchTable_1", false, "col");
+    insertPendingRow("NoSuchTable", "NoSuchTable_1", false, "col");
 
     DeferredIndexExecutor executor = new DeferredIndexExecutor(connectionResources, config);
     DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
 
     assertEquals("failedCount", 1, result.getFailedCount());
     assertEquals("completedCount", 0, result.getCompletedCount());
-    assertEquals("status should be FAILED", DeferredIndexStatus.FAILED.name(), queryStatus("op-2"));
-    assertEquals("retryCount should be 1", 1, queryRetryCount("op-2"));
+    assertEquals("status should be FAILED", DeferredIndexStatus.FAILED.name(), queryStatus("NoSuchTable_1"));
+    assertEquals("retryCount should be 1", 1, queryRetryCount("NoSuchTable_1"));
   }
 
 
@@ -153,14 +154,14 @@ public class TestDeferredIndexExecutor {
   @Test
   public void testRetryOnFailure() {
     config.setMaxRetries(1);
-    insertPendingRow("op-3", "NoSuchTable", "NoSuchTable_1", false, "col");
+    insertPendingRow("NoSuchTable", "NoSuchTable_1", false, "col");
 
     DeferredIndexExecutor executor = new DeferredIndexExecutor(connectionResources, config);
     DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
 
     assertEquals("failedCount", 1, result.getFailedCount());
-    assertEquals("status should be FAILED", DeferredIndexStatus.FAILED.name(), queryStatus("op-3"));
-    assertEquals("retryCount should be 2 (initial + 1 retry)", 2, queryRetryCount("op-3"));
+    assertEquals("status should be FAILED", DeferredIndexStatus.FAILED.name(), queryStatus("NoSuchTable_1"));
+    assertEquals("retryCount should be 2 (initial + 1 retry)", 2, queryRetryCount("NoSuchTable_1"));
   }
 
 
@@ -184,7 +185,7 @@ public class TestDeferredIndexExecutor {
   @Test
   public void testUniqueIndexCreated() {
     config.setMaxRetries(0);
-    insertPendingRow("op-4", "Apple", "Apple_Unique_1", true, "pips");
+    insertPendingRow("Apple", "Apple_Unique_1", true, "pips");
 
     DeferredIndexExecutor executor = new DeferredIndexExecutor(connectionResources, config);
     executor.executeAndWait(60_000L);
@@ -206,7 +207,7 @@ public class TestDeferredIndexExecutor {
   @Test
   public void testMultiColumnIndexCreated() {
     config.setMaxRetries(0);
-    insertPendingRow("op-mc", "Apple", "Apple_Multi_1", false, "pips", "color");
+    insertPendingRow("Apple", "Apple_Multi_1", false, "pips", "color");
 
     DeferredIndexExecutor executor = new DeferredIndexExecutor(connectionResources, config);
     DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
@@ -232,8 +233,8 @@ public class TestDeferredIndexExecutor {
   @Test
   public void testGetStatusReflectsCompletedExecution() {
     config.setMaxRetries(0);
-    insertPendingRow("op-s1", "Apple", "Apple_S1", false, "pips");
-    insertPendingRow("op-s2", "NoSuchTable", "NoSuchTable_S2", false, "col");
+    insertPendingRow("Apple", "Apple_S1", false, "pips");
+    insertPendingRow("NoSuchTable", "NoSuchTable_S2", false, "col");
 
     DeferredIndexExecutor executor = new DeferredIndexExecutor(connectionResources, config);
     executor.executeAndWait(60_000L);
@@ -266,7 +267,7 @@ public class TestDeferredIndexExecutor {
    */
   @Test
   public void testAwaitCompletionReturnsFalseOnTimeout() {
-    insertPendingRow("op-5", "Apple", "Apple_2", false, "pips");
+    insertPendingRow("Apple", "Apple_2", false, "pips");
 
     DeferredIndexExecutor executor = new DeferredIndexExecutor(connectionResources, config);
     // Timeout of 1 second; no executor is running so PENDING row never becomes COMPLETED
@@ -281,7 +282,7 @@ public class TestDeferredIndexExecutor {
   @Test
   public void testAwaitCompletionReturnsTrueAfterExecution() {
     config.setMaxRetries(0);
-    insertPendingRow("op-6", "Apple", "Apple_3", false, "pips");
+    insertPendingRow("Apple", "Apple_3", false, "pips");
 
     DeferredIndexExecutor executor = new DeferredIndexExecutor(connectionResources, config);
     executor.executeAndWait(60_000L); // completes the operation
@@ -295,12 +296,13 @@ public class TestDeferredIndexExecutor {
   // Helpers
   // -------------------------------------------------------------------------
 
-  private void insertPendingRow(String operationId, String tableName, String indexName,
+  private void insertPendingRow(String tableName, String indexName,
                                  boolean unique, String... columns) {
+    long operationId = Math.abs(UUID.randomUUID().getMostSignificantBits());
     List<String> sql = new ArrayList<>();
     sql.addAll(connectionResources.sqlDialect().convertStatementToSQL(
         insert().into(tableRef(DEFERRED_INDEX_OPERATION_NAME)).values(
-            literal(operationId).as("operationId"),
+            literal(operationId).as("id"),
             literal("test-upgrade-uuid").as("upgradeUUID"),
             literal(tableName).as("tableName"),
             literal(indexName).as("indexName"),
@@ -314,6 +316,7 @@ public class TestDeferredIndexExecutor {
     for (int i = 0; i < columns.length; i++) {
       sql.addAll(connectionResources.sqlDialect().convertStatementToSQL(
           insert().into(tableRef(DEFERRED_INDEX_OPERATION_COLUMN_NAME)).values(
+              literal(Math.abs(UUID.randomUUID().getMostSignificantBits())).as("id"),
               literal(operationId).as("operationId"),
               literal(columns[i]).as("columnName"),
               literal(i).as("columnSequence")
@@ -324,21 +327,21 @@ public class TestDeferredIndexExecutor {
   }
 
 
-  private String queryStatus(String operationId) {
+  private String queryStatus(String indexName) {
     String sql = connectionResources.sqlDialect().convertStatementToSQL(
         select(field("status"))
             .from(tableRef(DEFERRED_INDEX_OPERATION_NAME))
-            .where(field("operationId").eq(operationId))
+            .where(field("indexName").eq(indexName))
     );
     return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> rs.next() ? rs.getString(1) : null);
   }
 
 
-  private int queryRetryCount(String operationId) {
+  private int queryRetryCount(String indexName) {
     String sql = connectionResources.sqlDialect().convertStatementToSQL(
         select(field("retryCount"))
             .from(tableRef(DEFERRED_INDEX_OPERATION_NAME))
-            .where(field("operationId").eq(operationId))
+            .where(field("indexName").eq(indexName))
     );
     return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> rs.next() ? rs.getInt(1) : 0);
   }

@@ -482,7 +482,7 @@ public class TestDeferredIndexIntegration {
 
   private int countOperations() {
     String sql = connectionResources.sqlDialect().convertStatementToSQL(
-        select(field("operationId"))
+        select(field("id"))
             .from(tableRef(DEFERRED_INDEX_OPERATION_NAME))
     );
     return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> {

@@ -77,7 +77,7 @@ public class TestDeferredIndexExecutorUnit {
   /** Calling shutdown after executeAndWait should be idempotent. */
   @Test
   public void testShutdownAfterNonEmptyExecution() {
-    DeferredIndexOperation op = buildOp("op1");
+    DeferredIndexOperation op = buildOp(1001L);
     when(dao.findPendingOperations()).thenReturn(List.of(op));
     SqlScriptExecutor scriptExecutor = mock(SqlScriptExecutor.class);
     when(sqlScriptExecutorProvider.get()).thenReturn(scriptExecutor);
@@ -101,7 +101,7 @@ public class TestDeferredIndexExecutorUnit {
   /** logProgress should report accurate counters after a completed execution run. */
   @Test
   public void testLogProgressAfterExecution() {
-    DeferredIndexOperation op = buildOp("op1");
+    DeferredIndexOperation op = buildOp(1001L);
     when(dao.findPendingOperations()).thenReturn(List.of(op));
     SqlScriptExecutor scriptExecutor = mock(SqlScriptExecutor.class);
     when(sqlScriptExecutorProvider.get()).thenReturn(scriptExecutor);
@@ -156,9 +156,9 @@ public class TestDeferredIndexExecutorUnit {
   }
 
 
-  private DeferredIndexOperation buildOp(String operationId) {
+  private DeferredIndexOperation buildOp(long id) {
     DeferredIndexOperation op = new DeferredIndexOperation();
-    op.setOperationId(operationId);
+    op.setId(id);
     op.setUpgradeUUID("test-uuid");
     op.setTableName("TestTable");
     op.setIndexName("TestIndex");

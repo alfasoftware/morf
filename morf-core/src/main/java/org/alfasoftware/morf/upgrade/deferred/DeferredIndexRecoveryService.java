@@ -96,13 +96,13 @@ public class DeferredIndexRecoveryService {
 
   private void recoverOperation(DeferredIndexOperation op, Schema schema) {
     if (indexExistsInSchema(op, schema)) {
-      log.info("Stale operation [" + op.getOperationId() + "] — index exists in database, marking COMPLETED: "
+      log.info("Stale operation [" + op.getId() + "] — index exists in database, marking COMPLETED: "
           + op.getTableName() + "." + op.getIndexName());
-      dao.markCompleted(op.getOperationId(), currentTimestamp());
+      dao.markCompleted(op.getId(), currentTimestamp());
     } else {
-      log.info("Stale operation [" + op.getOperationId() + "] — index absent from database, resetting to PENDING: "
+      log.info("Stale operation [" + op.getId() + "] — index absent from database, resetting to PENDING: "
           + op.getTableName() + "." + op.getIndexName());
-      dao.resetToPending(op.getOperationId());
+      dao.resetToPending(op.getId());
     }
   }
 

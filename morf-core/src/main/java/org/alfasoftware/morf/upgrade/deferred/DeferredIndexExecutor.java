@@ -94,10 +94,10 @@ public class DeferredIndexExecutor {
   private final AtomicInteger totalCount = new AtomicInteger(0);
 
   /**
-   * Operations currently executing, keyed by operationId.
+   * Operations currently executing, keyed by id.
    * Used for progress-log detail at DEBUG level.
    */
-  private final ConcurrentHashMap<String, RunningOperation> runningOperations = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<Long, RunningOperation> runningOperations = new ConcurrentHashMap<>();
 
   /** The scheduled progress logger; may be null if execution has not started. */
   private volatile ScheduledExecutorService progressLoggerService;
@@ -254,24 +254,24 @@ public class DeferredIndexExecutor {
 
     for (int attempt = op.getRetryCount(); attempt < maxAttempts; attempt++) {
       long startedTime = DeferredIndexTimestamps.currentTimestamp();
-      dao.markStarted(op.getOperationId(), startedTime);
-      runningOperations.put(op.getOperationId(), new RunningOperation(op, System.currentTimeMillis()));
+      dao.markStarted(op.getId(), startedTime);
+      runningOperations.put(op.getId(), new RunningOperation(op, System.currentTimeMillis()));
 
       try {
         buildIndex(op);
-        runningOperations.remove(op.getOperationId());
-        dao.markCompleted(op.getOperationId(), DeferredIndexTimestamps.currentTimestamp());
+        runningOperations.remove(op.getId());
+        dao.markCompleted(op.getId(), DeferredIndexTimestamps.currentTimestamp());
         completedCount.incrementAndGet();
         return;
 
       } catch (Exception e) {
-        runningOperations.remove(op.getOperationId());
+        runningOperations.remove(op.getId());
         int newRetryCount = attempt + 1;
         String errorMessage = truncate(e.getMessage(), 2_000);
-        dao.markFailed(op.getOperationId(), errorMessage, newRetryCount);
+        dao.markFailed(op.getId(), errorMessage, newRetryCount);
 
         if (newRetryCount < maxAttempts) {
-          dao.resetToPending(op.getOperationId());
+          dao.resetToPending(op.getId());
           sleepForBackoff(attempt);
         } else {
           failedCount.incrementAndGet();

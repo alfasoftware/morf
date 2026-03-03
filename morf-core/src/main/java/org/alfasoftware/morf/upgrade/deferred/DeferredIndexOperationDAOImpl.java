@@ -28,6 +28,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -88,7 +89,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
     statements.addAll(sqlDialect.convertStatementToSQL(
       insert().into(tableRef(OPERATION_TABLE))
         .values(
-          literal(op.getOperationId()).as("operationId"),
+          literal(op.getId()).as("id"),
           literal(op.getUpgradeUUID()).as("upgradeUUID"),
           literal(op.getTableName()).as("tableName"),
           literal(op.getIndexName()).as("indexName"),
@@ -105,7 +106,8 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
       statements.addAll(sqlDialect.convertStatementToSQL(
         insert().into(tableRef(OPERATION_COLUMN_TABLE))
           .values(
-            literal(op.getOperationId()).as("operationId"),
+            literal(Math.abs(UUID.randomUUID().getMostSignificantBits())).as("id"),
+            literal(op.getId()).as("operationId"),
             literal(columnNames.get(seq)).as("columnName"),
             literal(seq).as("columnSequence")
           )
@@ -139,7 +141,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
   @Override
   public List<DeferredIndexOperation> findStaleInProgressOperations(long startedBefore) {
     SelectStatement select = select(
-        field("operationId"), field("upgradeUUID"), field("tableName"),
+        field("id"), field("upgradeUUID"), field("tableName"),
         field("indexName"), field("operationType"), field("indexUnique"),
         field("status"), field("retryCount"), field("createdTime"),
         field("startedTime"), field("completedTime"), field("errorMessage")
@@ -165,7 +167,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
    */
   @Override
   public boolean existsByUpgradeUUIDAndIndexName(String upgradeUUID, String indexName) {
-    SelectStatement select = select(field("operationId"))
+    SelectStatement select = select(field("id"))
       .from(tableRef(OPERATION_TABLE))
       .where(and(
         field("upgradeUUID").eq(upgradeUUID),
@@ -189,7 +191,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
    */
   @Override
   public boolean existsByTableNameAndIndexName(String tableName, String indexName) {
-    SelectStatement select = select(field("operationId"))
+    SelectStatement select = select(field("id"))
       .from(tableRef(OPERATION_TABLE))
       .where(and(
         field("tableName").eq(tableName),
@@ -209,7 +211,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
    * @param startedTime start timestamp (yyyyMMddHHmmss).
    */
   @Override
-  public void markStarted(String operationId, long startedTime) {
+  public void markStarted(long id, long startedTime) {
     sqlScriptExecutorProvider.get().execute(
       sqlDialect.convertStatementToSQL(
         update(tableRef(OPERATION_TABLE))
@@ -217,7 +219,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
             literal(DeferredIndexStatus.IN_PROGRESS.name()).as("status"),
             literal(startedTime).as("startedTime")
           )
-          .where(field("operationId").eq(operationId))
+          .where(field("id").eq(id))
       )
     );
   }
@@ -231,7 +233,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
    * @param completedTime completion timestamp (yyyyMMddHHmmss).
    */
   @Override
-  public void markCompleted(String operationId, long completedTime) {
+  public void markCompleted(long id, long completedTime) {
     sqlScriptExecutorProvider.get().execute(
       sqlDialect.convertStatementToSQL(
         update(tableRef(OPERATION_TABLE))
@@ -239,7 +241,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
             literal(DeferredIndexStatus.COMPLETED.name()).as("status"),
             literal(completedTime).as("completedTime")
           )
-          .where(field("operationId").eq(operationId))
+          .where(field("id").eq(id))
       )
     );
   }
@@ -254,7 +256,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
    * @param newRetryCount the new retry count value.
    */
   @Override
-  public void markFailed(String operationId, String errorMessage, int newRetryCount) {
+  public void markFailed(long id, String errorMessage, int newRetryCount) {
     sqlScriptExecutorProvider.get().execute(
       sqlDialect.convertStatementToSQL(
         update(tableRef(OPERATION_TABLE))
@@ -263,7 +265,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
             literal(errorMessage).as("errorMessage"),
             literal(newRetryCount).as("retryCount")
           )
-          .where(field("operationId").eq(operationId))
+          .where(field("id").eq(id))
       )
     );
   }
@@ -276,12 +278,12 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
    * @param operationId the operation to reset.
    */
   @Override
-  public void resetToPending(String operationId) {
+  public void resetToPending(long id) {
     sqlScriptExecutorProvider.get().execute(
       sqlDialect.convertStatementToSQL(
         update(tableRef(OPERATION_TABLE))
           .set(literal(DeferredIndexStatus.PENDING.name()).as("status"))
-          .where(field("operationId").eq(operationId))
+          .where(field("id").eq(id))
       )
     );
   }
@@ -294,12 +296,12 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
    * @param newStatus   the new status value.
    */
   @Override
-  public void updateStatus(String operationId, DeferredIndexStatus newStatus) {
+  public void updateStatus(long id, DeferredIndexStatus newStatus) {
     sqlScriptExecutorProvider.get().execute(
       sqlDialect.convertStatementToSQL(
         update(tableRef(OPERATION_TABLE))
           .set(literal(newStatus.name()).as("status"))
-          .where(field("operationId").eq(operationId))
+          .where(field("id").eq(id))
       )
     );
   }
@@ -312,7 +314,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
    */
   @Override
   public boolean hasNonTerminalOperations() {
-    SelectStatement select = select(field("operationId"))
+    SelectStatement select = select(field("id"))
       .from(tableRef(OPERATION_TABLE))
       .where(or(
         field("status").eq(DeferredIndexStatus.PENDING.name()),
@@ -326,7 +328,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
 
   private List<DeferredIndexOperation> findOperationsByStatus(DeferredIndexStatus status) {
     SelectStatement select = select(
-        field("operationId"), field("upgradeUUID"), field("tableName"),
+        field("id"), field("upgradeUUID"), field("tableName"),
         field("indexName"), field("operationType"), field("indexUnique"),
         field("status"), field("retryCount"), field("createdTime"),
         field("startedTime"), field("completedTime"), field("errorMessage")
@@ -341,13 +343,13 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
 
   private List<DeferredIndexOperation> loadColumnNamesForAll(List<DeferredIndexOperation> ops) {
     for (DeferredIndexOperation op : ops) {
-      op.setColumnNames(loadColumnNames(op.getOperationId()));
+      op.setColumnNames(loadColumnNames(op.getId()));
     }
     return ops;
   }
 
 
-  private List<String> loadColumnNames(String operationId) {
+  private List<String> loadColumnNames(long operationId) {
     SelectStatement select = select(field("columnName"))
       .from(tableRef(OPERATION_COLUMN_TABLE))
       .where(field("operationId").eq(operationId))
@@ -368,7 +370,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
     List<DeferredIndexOperation> result = new ArrayList<>();
     while (rs.next()) {
       DeferredIndexOperation op = new DeferredIndexOperation();
-      op.setOperationId(rs.getString("operationId"));
+      op.setId(rs.getLong("id"));
       op.setUpgradeUUID(rs.getString("upgradeUUID"));
       op.setTableName(rs.getString("tableName"));
       op.setIndexName(rs.getString("indexName"));

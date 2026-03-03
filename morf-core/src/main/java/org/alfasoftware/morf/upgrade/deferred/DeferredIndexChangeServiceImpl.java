@@ -59,7 +59,7 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
 
   @Override
   public List<Statement> trackPending(DeferredAddIndex deferredAddIndex) {
-    String operationId = UUID.randomUUID().toString();
+    long operationId = Math.abs(UUID.randomUUID().getMostSignificantBits());
     long createdTime = DeferredIndexTimestamps.currentTimestamp();
 
     List<Statement> statements = new ArrayList<>();
@@ -67,7 +67,7 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
     statements.add(
       insert().into(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
         .values(
-          literal(operationId).as("operationId"),
+          literal(operationId).as("id"),
           literal(deferredAddIndex.getUpgradeUUID()).as("upgradeUUID"),
           literal(deferredAddIndex.getTableName()).as("tableName"),
           literal(deferredAddIndex.getNewIndex().getName()).as("indexName"),
@@ -84,6 +84,7 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
       statements.add(
         insert().into(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_COLUMN_NAME))
           .values(
+            literal(Math.abs(UUID.randomUUID().getMostSignificantBits())).as("id"),
             literal(operationId).as("operationId"),
             literal(columnName).as("columnName"),
             literal(seq++).as("columnSequence")
@@ -112,7 +113,7 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
       return List.of();
     }
 
-    SelectStatement operationIdSubquery = select(field("operationId"))
+    SelectStatement idSubquery = select(field("id"))
       .from(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
       .where(and(
         field("tableName").eq(literal(tableName)),
@@ -130,7 +131,7 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
 
     return List.of(
       delete(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_COLUMN_NAME))
-        .where(field("operationId").in(operationIdSubquery)),
+        .where(field("operationId").in(idSubquery)),
       delete(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
         .where(and(
           field("tableName").eq(literal(tableName)),
@@ -148,7 +149,7 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
       return List.of();
     }
 
-    SelectStatement operationIdSubquery = select(field("operationId"))
+    SelectStatement idSubquery = select(field("id"))
       .from(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
       .where(and(
         field("tableName").eq(literal(tableName)),
@@ -157,7 +158,7 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
 
     return List.of(
       delete(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_COLUMN_NAME))
-        .where(field("operationId").in(operationIdSubquery)),
+        .where(field("operationId").in(idSubquery)),
       delete(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
         .where(and(
           field("tableName").eq(literal(tableName)),
@@ -252,7 +253,7 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
         .where(and(
           field("columnName").eq(literal(oldColumnName)),
           field("operationId").in(
-            select(field("operationId"))
+            select(field("id"))
               .from(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
               .where(and(
                 field("tableName").eq(literal(tableName)),

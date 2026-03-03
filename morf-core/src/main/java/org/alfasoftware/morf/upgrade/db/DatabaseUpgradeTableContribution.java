@@ -81,7 +81,7 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
   public static Table deferredIndexOperationTable() {
     return table(DEFERRED_INDEX_OPERATION_NAME)
         .columns(
-          column("operationId", DataType.STRING, 100).primaryKey(),
+          column("id", DataType.BIG_INTEGER).primaryKey(),
           column("upgradeUUID", DataType.STRING, 100),
           column("tableName", DataType.STRING, 30),
           column("indexName", DataType.STRING, 30),
@@ -108,13 +108,14 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
   public static Table deferredIndexOperationColumnTable() {
     return table(DEFERRED_INDEX_OPERATION_COLUMN_NAME)
         .columns(
-          column("operationId", DataType.STRING, 100),
+          column("id", DataType.BIG_INTEGER).primaryKey(),
+          column("operationId", DataType.BIG_INTEGER),
           column("columnName", DataType.STRING, 30),
           column("columnSequence", DataType.INTEGER)
         )
         .indexes(
-          index("DeferredIdxOpCol_PK").unique().columns("operationId", "columnSequence"),
-          index("DeferredIdxOpCol_1").columns("columnName")
+          index("DeferredIdxOpCol_1").columns("operationId", "columnSequence"),
+          index("DeferredIdxOpCol_2").columns("columnName")
         );
   }
 
