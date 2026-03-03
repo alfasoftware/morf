@@ -162,6 +162,7 @@ public class TestSchemaChangeSequence {
     assertEquals(true, config.isForceImmediateIndex("IDX_ONE"));
     assertEquals(true, config.isForceImmediateIndex("idx_two"));
     assertEquals(false, config.isForceImmediateIndex("Idx_Three"));
+    assertEquals(2, config.getForceImmediateIndexes().size());
   }
 
 
@@ -220,6 +221,7 @@ public class TestSchemaChangeSequence {
     assertEquals(true, config.isForceDeferredIndex("IDX_ONE"));
     assertEquals(true, config.isForceDeferredIndex("idx_two"));
     assertEquals(false, config.isForceDeferredIndex("Idx_Three"));
+    assertEquals(2, config.getForceDeferredIndexes().size());
   }
 
 
