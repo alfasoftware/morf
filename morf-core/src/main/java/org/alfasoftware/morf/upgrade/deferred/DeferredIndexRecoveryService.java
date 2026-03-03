@@ -102,7 +102,11 @@ class DeferredIndexRecoveryService {
   // -------------------------------------------------------------------------
 
   private void recoverOperation(DeferredIndexOperation op, Schema schema) {
-    if (indexExistsInSchema(op, schema)) {
+    if (!schema.tableExists(op.getTableName())) {
+      log.warn("Stale operation [" + op.getId() + "] — table no longer exists, marking SKIPPED: "
+          + op.getTableName() + "." + op.getIndexName());
+      dao.updateStatus(op.getId(), DeferredIndexStatus.SKIPPED);
+    } else if (indexExistsInSchema(op, schema)) {
       log.info("Stale operation [" + op.getId() + "] — index exists in database, marking COMPLETED: "
           + op.getTableName() + "." + op.getIndexName());
       dao.markCompleted(op.getId(), currentTimestamp());
@@ -115,9 +119,7 @@ class DeferredIndexRecoveryService {
 
 
   private static boolean indexExistsInSchema(DeferredIndexOperation op, Schema schema) {
-    if (!schema.tableExists(op.getTableName())) {
-      return false;
-    }
+    // Caller has already verified that the table exists
     Table table = schema.getTable(op.getTableName());
     return table.indexes().stream()
         .anyMatch(idx -> idx.getName().equalsIgnoreCase(op.getIndexName()));

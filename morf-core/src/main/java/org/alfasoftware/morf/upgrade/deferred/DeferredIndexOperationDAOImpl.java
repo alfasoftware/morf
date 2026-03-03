@@ -111,7 +111,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
       statements.addAll(sqlDialect.convertStatementToSQL(
         insert().into(tableRef(OPERATION_COLUMN_TABLE))
           .values(
-            literal(Math.abs(UUID.randomUUID().getMostSignificantBits())).as("id"),
+            literal(UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE).as("id"),
             literal(op.getId()).as("operationId"),
             literal(columnNames.get(seq)).as("columnName"),
             literal(seq).as("columnSequence")

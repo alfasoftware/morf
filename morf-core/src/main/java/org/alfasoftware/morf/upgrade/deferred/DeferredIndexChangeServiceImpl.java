@@ -59,7 +59,7 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
 
   @Override
   public List<Statement> trackPending(DeferredAddIndex deferredAddIndex) {
-    long operationId = Math.abs(UUID.randomUUID().getMostSignificantBits());
+    long operationId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
     long createdTime = DeferredIndexTimestamps.currentTimestamp();
 
     List<Statement> statements = new ArrayList<>();
@@ -84,7 +84,7 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
       statements.add(
         insert().into(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_COLUMN_NAME))
           .values(
-            literal(Math.abs(UUID.randomUUID().getMostSignificantBits())).as("id"),
+            literal(UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE).as("id"),
             literal(operationId).as("operationId"),
             literal(columnName).as("columnName"),
             literal(seq++).as("columnSequence")
@@ -291,7 +291,12 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
     DeferredAddIndex existing = tableMap.remove(oldIndexName.toUpperCase());
     String storedTableName = existing.getTableName();
     String storedIndexName = existing.getNewIndex().getName();
-    tableMap.put(newIndexName.toUpperCase(), existing);
+
+    // Rebuild with the new index name (matching updatePendingTableName pattern)
+    Index renamedIndex = existing.getNewIndex().isUnique()
+        ? index(newIndexName).columns(existing.getNewIndex().columnNames()).unique()
+        : index(newIndexName).columns(existing.getNewIndex().columnNames());
+    tableMap.put(newIndexName.toUpperCase(), new DeferredAddIndex(storedTableName, renamedIndex, existing.getUpgradeUUID()));
 
     return List.of(
       update(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))

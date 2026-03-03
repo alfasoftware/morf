@@ -114,7 +114,7 @@ public class TestDeferredIndexRecoveryServiceUnit {
   }
 
 
-  /** A stale operation where the table does not exist should be reset to PENDING. */
+  /** A stale operation where the table does not exist should be marked SKIPPED. */
   @Test
   public void testRecoverStaleOperationTableNotFound() {
     DeferredIndexOperation op = buildOp(1L, "NonExistentTable", "NonExistentTable_1");
@@ -134,7 +134,8 @@ public class TestDeferredIndexRecoveryServiceUnit {
     DeferredIndexRecoveryService service = new DeferredIndexRecoveryService(mockDao, mockConn, config);
     service.recoverStaleOperations();
 
-    verify(mockDao).resetToPending(1L);
+    verify(mockDao).updateStatus(1L, DeferredIndexStatus.SKIPPED);
+    verify(mockDao, never()).resetToPending(1L);
     verify(mockDao, never()).markCompleted(eq(1L), anyLong());
   }
 
