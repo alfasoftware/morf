@@ -109,7 +109,7 @@ class DeferredIndexRecoveryService {
     } else if (indexExistsInSchema(op, schema)) {
       log.info("Stale operation [" + op.getId() + "] — index exists in database, marking COMPLETED: "
           + op.getTableName() + "." + op.getIndexName());
-      dao.markCompleted(op.getId(), currentTimestamp());
+      dao.markCompleted(op.getId(), System.currentTimeMillis());
     } else {
       log.info("Stale operation [" + op.getId() + "] — index absent from database, resetting to PENDING: "
           + op.getTableName() + "." + op.getIndexName());
@@ -127,11 +127,6 @@ class DeferredIndexRecoveryService {
 
 
   private long timestampBefore(long seconds) {
-    return DeferredIndexTimestamps.toTimestamp(java.time.LocalDateTime.now().minusSeconds(seconds));
-  }
-
-
-  static long currentTimestamp() {
-    return DeferredIndexTimestamps.currentTimestamp();
+    return System.currentTimeMillis() - java.util.concurrent.TimeUnit.SECONDS.toMillis(seconds);
   }
 }

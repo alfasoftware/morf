@@ -26,7 +26,6 @@ import org.alfasoftware.morf.upgrade.ViewChangesDeploymentHelper;
 import org.alfasoftware.morf.upgrade.ViewDeploymentValidator;
 import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
-import org.alfasoftware.morf.upgrade.deferred.DeferredIndexConfig;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
@@ -48,8 +47,6 @@ public class MorfModule extends AbstractModule {
 
     Multibinder<TableContribution> tableMultibinder = Multibinder.newSetBinder(binder(), TableContribution.class);
     tableMultibinder.addBinding().to(DatabaseUpgradeTableContribution.class);
-
-    bind(DeferredIndexConfig.class).toInstance(new DeferredIndexConfig());
   }
 
 

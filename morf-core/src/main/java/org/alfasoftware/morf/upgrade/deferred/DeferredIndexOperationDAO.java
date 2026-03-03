@@ -51,23 +51,10 @@ interface DeferredIndexOperationDAO {
    * whose {@code startedTime} is strictly less than the supplied threshold,
    * indicating a stale or abandoned build.
    *
-   * @param startedBefore upper bound on {@code startedTime} (yyyyMMddHHmmss).
+   * @param startedBefore upper bound on {@code startedTime} (epoch milliseconds).
    * @return list of stale in-progress operations.
    */
   List<DeferredIndexOperation> findStaleInProgressOperations(long startedBefore);
-
-
-  /**
-   * Returns {@code true} if any record for the given table name and index name
-   * exists in the queue (regardless of status). Used by
-   * {@link DeferredAddIndex#isApplied} to detect whether the upgrade step has
-   * already been processed.
-   *
-   * @param tableName the name of the table.
-   * @param indexName the name of the index.
-   * @return {@code true} if a matching record exists.
-   */
-  boolean existsByTableNameAndIndexName(String tableName, String indexName);
 
 
   /**
@@ -75,7 +62,7 @@ interface DeferredIndexOperationDAO {
    * and records its start time.
    *
    * @param id          the operation to update.
-   * @param startedTime start timestamp (yyyyMMddHHmmss).
+   * @param startedTime start timestamp (epoch milliseconds).
    */
   void markStarted(long id, long startedTime);
 
@@ -85,7 +72,7 @@ interface DeferredIndexOperationDAO {
    * and records its completion time.
    *
    * @param id            the operation to update.
-   * @param completedTime completion timestamp (yyyyMMddHHmmss).
+   * @param completedTime completion timestamp (epoch milliseconds).
    */
   void markCompleted(long id, long completedTime);
 

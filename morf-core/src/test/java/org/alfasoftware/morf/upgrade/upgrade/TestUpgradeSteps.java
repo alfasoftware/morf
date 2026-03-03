@@ -91,7 +91,6 @@ public class TestUpgradeSteps {
             .map(i -> i.getName())
             .collect(Collectors.toList());
         assertTrue(indexNames.contains("DeferredIndexOp_1"));
-        assertTrue(indexNames.contains("DeferredIndexOp_2"));
         assertTrue(indexNames.contains("DeferredIndexOp_3"));
     }
 
@@ -116,7 +115,6 @@ public class TestUpgradeSteps {
             .map(i -> i.getName())
             .collect(Collectors.toList());
         assertTrue(indexNames.contains("DeferredIdxOpCol_1"));
-        assertTrue(indexNames.contains("DeferredIdxOpCol_2"));
     }
 
 }

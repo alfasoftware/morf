@@ -264,14 +264,14 @@ class DeferredIndexExecutor {
         log.debug("Starting deferred index operation [" + op.getId() + "]: table=" + op.getTableName()
             + ", index=" + op.getIndexName() + ", attempt=" + (attempt + 1) + "/" + maxAttempts);
       }
-      long startedTime = DeferredIndexTimestamps.currentTimestamp();
+      long startedTime = System.currentTimeMillis();
       dao.markStarted(op.getId(), startedTime);
       runningOperations.put(op.getId(), new RunningOperation(op, System.currentTimeMillis()));
 
       try {
         buildIndex(op);
         runningOperations.remove(op.getId());
-        dao.markCompleted(op.getId(), DeferredIndexTimestamps.currentTimestamp());
+        dao.markCompleted(op.getId(), System.currentTimeMillis());
         completedCount.incrementAndGet();
         if (log.isDebugEnabled()) {
           log.debug("Deferred index operation [" + op.getId() + "] completed: table=" + op.getTableName()

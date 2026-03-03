@@ -15,21 +15,29 @@
 
 package org.alfasoftware.morf.upgrade.deferred;
 
+import static org.alfasoftware.morf.sql.SqlUtils.field;
+import static org.alfasoftware.morf.sql.SqlUtils.select;
+import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
+import static org.alfasoftware.morf.sql.element.Criterion.and;
+
+import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaHomology;
 import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.upgrade.SchemaChange;
 import org.alfasoftware.morf.upgrade.SchemaChangeVisitor;
 import org.alfasoftware.morf.upgrade.adapt.AlteredTable;
 import org.alfasoftware.morf.upgrade.adapt.TableOverrideSchema;
-
-import com.google.common.annotations.VisibleForTesting;
+import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 
 /**
  * {@link SchemaChange} which queues a new index for background creation via
@@ -58,14 +66,6 @@ public class DeferredAddIndex implements SchemaChange {
   private final String upgradeUUID;
 
   /**
-   * DAO for queued-operation checks; may be {@code null} when constructed
-   * normally (created lazily from {@link ConnectionResources} in
-   * {@link #isApplied}).
-   */
-  private final DeferredIndexOperationDAO dao;
-
-
-  /**
    * Construct a {@link DeferredAddIndex} schema change.
    *
    * @param tableName   name of table to add the index to.
@@ -76,24 +76,6 @@ public class DeferredAddIndex implements SchemaChange {
     this.tableName = tableName;
     this.newIndex = index;
     this.upgradeUUID = upgradeUUID;
-    this.dao = null;
-  }
-
-
-  /**
-   * Constructor for testing — allows injection of a pre-built DAO.
-   *
-   * @param tableName   name of table to add the index to.
-   * @param index       the index to be created in the background.
-   * @param upgradeUUID UUID string of the upgrade step that queued this operation.
-   * @param dao         DAO to use instead of creating one from {@link ConnectionResources}.
-   */
-  @VisibleForTesting
-  DeferredAddIndex(String tableName, Index index, String upgradeUUID, DeferredIndexOperationDAO dao) {
-    this.tableName = tableName;
-    this.newIndex = index;
-    this.upgradeUUID = upgradeUUID;
-    this.dao = dao;
   }
 
 
@@ -159,13 +141,33 @@ public class DeferredAddIndex implements SchemaChange {
       }
     }
 
-    DeferredIndexOperationDAO effectiveDao = dao != null ? dao : new DeferredIndexOperationDAOImpl(database);
-    return effectiveDao.existsByTableNameAndIndexName(tableName, newIndex.getName());
+    return existsInDeferredQueue(database);
   }
 
 
   /**
-   * Removes the index from the in-memory schema (inverse of {@link #apply}).
+   * Checks whether a deferred operation record exists for this table and index
+   * name in the {@code DeferredIndexOperation} table.
+   */
+  private boolean existsInDeferredQueue(ConnectionResources database) {
+    SqlDialect sqlDialect = database.sqlDialect();
+    SqlScriptExecutorProvider executorProvider = new SqlScriptExecutorProvider(database);
+    SelectStatement selectStatement = select(field("id"))
+      .from(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
+      .where(and(
+        field("tableName").eq(tableName),
+        field("indexName").eq(newIndex.getName())
+      ));
+    String sql = sqlDialect.convertStatementToSQL(selectStatement);
+    return executorProvider.get().executeQuery(sql, ResultSet::next);
+  }
+
+
+  /**
+   * Removes the index from the in-memory schema representation (inverse of
+   * {@link #apply}). This does not issue any DDL or modify the deferred
+   * operation queue; it is used by the upgrade framework to compute the
+   * schema state before this step was applied.
    *
    * @see org.alfasoftware.morf.upgrade.SchemaChange#reverse(org.alfasoftware.morf.metadata.Schema)
    */

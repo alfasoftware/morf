@@ -23,7 +23,6 @@ import java.util.List;
 
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder;
-import org.alfasoftware.morf.metadata.SchemaValidator;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.TableContribution;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
@@ -84,8 +83,8 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
         .columns(
           column("id", DataType.BIG_INTEGER).primaryKey(),
           column("upgradeUUID", DataType.STRING, 100),
-          column("tableName", DataType.STRING, SchemaValidator.MAX_LENGTH),
-          column("indexName", DataType.STRING, SchemaValidator.MAX_LENGTH),
+          column("tableName", DataType.STRING, 60),
+          column("indexName", DataType.STRING, 60),
           column("operationType", DataType.STRING, 20),
           column("indexUnique", DataType.BOOLEAN),
           column("status", DataType.STRING, 20),
@@ -97,7 +96,6 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
         )
         .indexes(
           index("DeferredIndexOp_1").columns("status"),
-          index("DeferredIndexOp_2").columns("upgradeUUID"),
           index("DeferredIndexOp_3").columns("tableName")
         );
   }
@@ -111,12 +109,11 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
         .columns(
           column("id", DataType.BIG_INTEGER).primaryKey(),
           column("operationId", DataType.BIG_INTEGER),
-          column("columnName", DataType.STRING, SchemaValidator.MAX_LENGTH),
+          column("columnName", DataType.STRING, 60),
           column("columnSequence", DataType.INTEGER)
         )
         .indexes(
-          index("DeferredIdxOpCol_1").columns("operationId", "columnSequence"),
-          index("DeferredIdxOpCol_2").columns("columnName")
+          index("DeferredIdxOpCol_1").columns("operationId", "columnSequence")
         );
   }
 

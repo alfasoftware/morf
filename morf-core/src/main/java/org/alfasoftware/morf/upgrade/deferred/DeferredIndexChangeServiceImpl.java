@@ -70,7 +70,7 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
           + ", columns=" + deferredAddIndex.getNewIndex().columnNames());
     }
     long operationId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
-    long createdTime = DeferredIndexTimestamps.currentTimestamp();
+    long createdTime = System.currentTimeMillis();
 
     List<Statement> statements = new ArrayList<>();
 

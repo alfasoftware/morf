@@ -24,18 +24,28 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+import javax.sql.DataSource;
+
+import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.upgrade.SchemaChangeVisitor;
-import org.mockito.ArgumentMatchers;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentMatchers;
 
 /**
  * Tests for {@link DeferredAddIndex}.
@@ -161,12 +171,8 @@ public class TestDeferredAddIndex {
       index("Apple_1").unique().columns("pips")
     );
 
-    DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
-    DeferredAddIndex subject = new DeferredAddIndex("Apple", index("Apple_1").unique().columns("pips"), "", mockDao);
-
     assertTrue("Should be applied when index exists in schema",
-      subject.isApplied(schema(tableWithIndex), null));
-    verify(mockDao, never()).existsByTableNameAndIndexName(ArgumentMatchers.any(), ArgumentMatchers.any());
+      deferredAddIndex.isApplied(schema(tableWithIndex), null));
   }
 
 
@@ -175,15 +181,11 @@ public class TestDeferredAddIndex {
    * even if the index is not yet in the database schema.
    */
   @Test
-  public void testIsAppliedTrueWhenOperationInQueue() {
-    DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
-    when(mockDao.existsByTableNameAndIndexName("Apple", "Apple_1")).thenReturn(true);
-
-    DeferredAddIndex subject = new DeferredAddIndex("Apple", index("Apple_1").unique().columns("pips"), "", mockDao);
+  public void testIsAppliedTrueWhenOperationInQueue() throws SQLException {
+    ConnectionResources mockDatabase = mockConnectionResources(true);
 
     assertTrue("Should be applied when operation is queued",
-      subject.isApplied(schema(appleTable), null));
-    verify(mockDao).existsByTableNameAndIndexName("Apple", "Apple_1");
+      deferredAddIndex.isApplied(schema(appleTable), mockDatabase));
   }
 
 
@@ -192,14 +194,11 @@ public class TestDeferredAddIndex {
    * the database schema and the deferred queue.
    */
   @Test
-  public void testIsAppliedFalseWhenNeitherSchemaNorQueue() {
-    DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
-    when(mockDao.existsByTableNameAndIndexName("Apple", "Apple_1")).thenReturn(false);
-
-    DeferredAddIndex subject = new DeferredAddIndex("Apple", index("Apple_1").unique().columns("pips"), "", mockDao);
+  public void testIsAppliedFalseWhenNeitherSchemaNorQueue() throws SQLException {
+    ConnectionResources mockDatabase = mockConnectionResources(false);
 
     assertFalse("Should not be applied when neither in schema nor queued",
-      subject.isApplied(schema(appleTable), null));
+      deferredAddIndex.isApplied(schema(appleTable), mockDatabase));
   }
 
 
@@ -207,14 +206,11 @@ public class TestDeferredAddIndex {
    * Verify that isApplied() returns false when the table is not present in the schema.
    */
   @Test
-  public void testIsAppliedFalseWhenTableMissingFromSchema() {
-    DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
-    when(mockDao.existsByTableNameAndIndexName("Apple", "Apple_1")).thenReturn(false);
-
-    DeferredAddIndex subject = new DeferredAddIndex("Apple", index("Apple_1").unique().columns("pips"), "", mockDao);
+  public void testIsAppliedFalseWhenTableMissingFromSchema() throws SQLException {
+    ConnectionResources mockDatabase = mockConnectionResources(false);
 
     assertFalse("Should not be applied when table is absent from schema",
-      subject.isApplied(schema(), null));
+      deferredAddIndex.isApplied(schema(), mockDatabase));
   }
 
 
@@ -297,7 +293,7 @@ public class TestDeferredAddIndex {
    * Verify that isApplied() returns false when the table has a different index that does not match.
    */
   @Test
-  public void testIsAppliedFalseWhenDifferentIndexExists() {
+  public void testIsAppliedFalseWhenDifferentIndexExists() throws SQLException {
     Table tableWithOtherIndex = table("Apple").columns(
       column("pips", DataType.STRING, 10).nullable(),
       column("colour", DataType.STRING, 10).nullable()
@@ -305,12 +301,37 @@ public class TestDeferredAddIndex {
       index("Apple_Colour").columns("colour")
     );
 
-    DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
-    when(mockDao.existsByTableNameAndIndexName("Apple", "Apple_1")).thenReturn(false);
-
-    DeferredAddIndex subject = new DeferredAddIndex("Apple", index("Apple_1").unique().columns("pips"), "", mockDao);
+    ConnectionResources mockDatabase = mockConnectionResources(false);
 
     assertFalse("Should not be applied when only a different index exists",
-      subject.isApplied(schema(tableWithOtherIndex), null));
+      deferredAddIndex.isApplied(schema(tableWithOtherIndex), mockDatabase));
+  }
+
+
+  /**
+   * Creates a mock {@link ConnectionResources} with the JDBC chain configured so
+   * that the deferred queue lookup returns the given result.
+   */
+  private ConnectionResources mockConnectionResources(boolean queueContainsRecord) throws SQLException {
+    ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockResultSet.next()).thenReturn(queueContainsRecord);
+
+    PreparedStatement mockPreparedStatement = mock(PreparedStatement.class);
+    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+
+    Connection mockConnection = mock(Connection.class);
+    when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+
+    DataSource mockDataSource = mock(DataSource.class);
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+
+    SqlDialect mockDialect = mock(SqlDialect.class);
+    when(mockDialect.convertStatementToSQL(ArgumentMatchers.any(SelectStatement.class))).thenReturn("SELECT 1");
+
+    ConnectionResources mockDatabase = mock(ConnectionResources.class);
+    when(mockDatabase.getDataSource()).thenReturn(mockDataSource);
+    when(mockDatabase.sqlDialect()).thenReturn(mockDialect);
+
+    return mockDatabase;
   }
 }

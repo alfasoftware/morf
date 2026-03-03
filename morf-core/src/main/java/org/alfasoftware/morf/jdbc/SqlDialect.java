@@ -4053,12 +4053,7 @@ public abstract class SqlDialect {
    * {@code CREATE INDEX} statement. Platform-specific dialects may override this method
    * to emit non-blocking variants (e.g. {@code CREATE INDEX CONCURRENTLY} on PostgreSQL).
    *
-   * <p><strong>Note:</strong> The {@code table} parameter may contain only the table name
-   * with no column metadata, as the deferred executor reconstructs a minimal table stub
-   * from the operation record. Implementations must not rely on column information from
-   * the table.</p>
-   *
-   * @param table The existing table (may lack column metadata).
+   * @param table The existing table.
    * @param index The new index to build in the background.
    * @return A collection of SQL statements.
    */

@@ -67,17 +67,17 @@ class DeferredIndexOperation {
   private int retryCount;
 
   /**
-   * Time at which this operation was created, stored as {@code yyyyMMddHHmmss}.
+   * Time at which this operation was created, stored as epoch milliseconds.
    */
   private long createdTime;
 
   /**
-   * Time at which execution started, stored as {@code yyyyMMddHHmmss}. Null if not yet started.
+   * Time at which execution started, stored as epoch milliseconds. Null if not yet started.
    */
   private Long startedTime;
 
   /**
-   * Time at which execution completed, stored as {@code yyyyMMddHHmmss}. Null if not yet completed.
+   * Time at which execution completed, stored as epoch milliseconds. Null if not yet completed.
    */
   private Long completedTime;
 
