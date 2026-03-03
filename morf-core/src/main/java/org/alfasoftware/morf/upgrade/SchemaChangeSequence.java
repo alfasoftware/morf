@@ -367,6 +367,10 @@ public class SchemaChangeSequence {
      */
     @Override
     public void addIndex(String tableName, Index index) {
+      if (upgradeConfigAndContext.isForceDeferredIndex(index.getName())) {
+        addIndexDeferred(tableName, index);
+        return;
+      }
       AddIndex addIndex = new AddIndex(tableName, index);
       visitor.visit(addIndex);
       schemaAndDataChangeVisitor.visit(addIndex);

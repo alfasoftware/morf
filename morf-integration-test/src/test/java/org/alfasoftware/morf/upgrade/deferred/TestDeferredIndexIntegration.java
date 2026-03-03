@@ -51,6 +51,7 @@ import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
 import org.alfasoftware.morf.upgrade.ViewDeploymentValidator;
 import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredIndex;
+import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddImmediateIndex;
 import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredIndexThenChange;
 import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredIndexThenRemove;
 import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredIndexThenRename;
@@ -467,6 +468,35 @@ public class TestDeferredIndexIntegration {
 
     // Clean up config for other tests
     upgradeConfigAndContext.setForceImmediateIndexes(Set.of());
+  }
+
+
+  /**
+   * Verify that when forceDeferredIndexes is configured for an index name,
+   * addIndex() queues a deferred operation instead of building the index
+   * immediately, and the executor can then complete it.
+   */
+  @Test
+  public void testForceDeferredIndexOverridesImmediateCreation() {
+    upgradeConfigAndContext.setForceDeferredIndexes(Set.of("Product_Name_1"));
+
+    performUpgrade(schemaWithIndex(), AddImmediateIndex.class);
+
+    // Index should NOT exist yet — it was deferred
+    assertIndexDoesNotExist("Product", "Product_Name_1");
+    // A PENDING deferred operation should have been queued
+    assertEquals("PENDING", queryOperationStatus("Product_Name_1"));
+
+    // Executor should complete the build
+    DeferredIndexConfig config = new DeferredIndexConfig();
+    config.setRetryBaseDelayMs(10L);
+    new DeferredIndexExecutor(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config).executeAndWait(60_000L);
+
+    assertEquals("COMPLETED", queryOperationStatus("Product_Name_1"));
+    assertIndexExists("Product", "Product_Name_1");
+
+    // Clean up config for other tests
+    upgradeConfigAndContext.setForceDeferredIndexes(Set.of());
   }
 
 

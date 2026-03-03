@@ -54,6 +54,7 @@ public class TestSchemaChangeSequence {
   @Before
   public void setUp() throws Exception {
     MockitoAnnotations.openMocks(this);
+    when(index.getName()).thenReturn("mockIndex");
   }
 
 
@@ -161,6 +162,92 @@ public class TestSchemaChangeSequence {
     assertEquals(true, config.isForceImmediateIndex("IDX_ONE"));
     assertEquals(true, config.isForceImmediateIndex("idx_two"));
     assertEquals(false, config.isForceImmediateIndex("Idx_Three"));
+  }
+
+
+  /** Tests that addIndex with force-deferred config produces a DeferredAddIndex instead of AddIndex. */
+  @Test
+  public void testAddIndexWithForceDeferredProducesDeferredAddIndex() {
+    // given
+    when(index.getName()).thenReturn("TestIdx");
+    when(index.columnNames()).thenReturn(List.of("col1"));
+
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setForceDeferredIndexes(Set.of("TestIdx"));
+
+    // when
+    SchemaChangeSequence seq = new SchemaChangeSequence(config, List.of(new StepWithAddIndex()));
+    List<SchemaChange> changes = seq.getAllChanges();
+
+    // then
+    assertThat(changes, hasSize(1));
+    assertThat(changes.get(0), instanceOf(DeferredAddIndex.class));
+    DeferredAddIndex change = (DeferredAddIndex) changes.get(0);
+    assertEquals("TestTable", change.getTableName());
+    assertEquals("TestIdx", change.getNewIndex().getName());
+    assertEquals("bbbbbbbb-cccc-dddd-eeee-ffffffffffff", change.getUpgradeUUID());
+  }
+
+
+  /** Tests that force-deferred matching is case-insensitive. */
+  @Test
+  public void testAddIndexWithForceDeferredCaseInsensitive() {
+    // given
+    when(index.getName()).thenReturn("TestIdx");
+    when(index.columnNames()).thenReturn(List.of("col1"));
+
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setForceDeferredIndexes(Set.of("TESTIDX"));
+
+    // when
+    SchemaChangeSequence seq = new SchemaChangeSequence(config, List.of(new StepWithAddIndex()));
+    List<SchemaChange> changes = seq.getAllChanges();
+
+    // then
+    assertThat(changes, hasSize(1));
+    assertThat(changes.get(0), instanceOf(DeferredAddIndex.class));
+  }
+
+
+  /** Tests that isForceDeferredIndex returns correct results with case-insensitive matching. */
+  @Test
+  public void testIsForceDeferredIndex() {
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setForceDeferredIndexes(Set.of("Idx_One", "IDX_TWO"));
+
+    assertEquals(true, config.isForceDeferredIndex("Idx_One"));
+    assertEquals(true, config.isForceDeferredIndex("idx_one"));
+    assertEquals(true, config.isForceDeferredIndex("IDX_ONE"));
+    assertEquals(true, config.isForceDeferredIndex("idx_two"));
+    assertEquals(false, config.isForceDeferredIndex("Idx_Three"));
+  }
+
+
+  /** Tests that configuring the same index as both force-immediate and force-deferred throws. */
+  @Test(expected = IllegalStateException.class)
+  public void testConflictingForceImmediateAndForceDeferredThrows() {
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setForceImmediateIndexes(Set.of("ConflictIdx"));
+    config.setForceDeferredIndexes(Set.of("ConflictIdx"));
+  }
+
+
+  /** Tests that the conflict check is case-insensitive. */
+  @Test(expected = IllegalStateException.class)
+  public void testConflictingForceImmediateAndForceDeferredCaseInsensitive() {
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setForceImmediateIndexes(Set.of("MyIndex"));
+    config.setForceDeferredIndexes(Set.of("MYINDEX"));
+  }
+
+
+  @UUID("bbbbbbbb-cccc-dddd-eeee-ffffffffffff")
+  private class StepWithAddIndex implements UpgradeStep {
+    @Override public String getJiraId() { return "TEST-2"; }
+    @Override public String getDescription() { return "test"; }
+    @Override public void execute(SchemaEditor schema, DataEditor data) {
+      schema.addIndex("TestTable", index);
+    }
   }
 
 

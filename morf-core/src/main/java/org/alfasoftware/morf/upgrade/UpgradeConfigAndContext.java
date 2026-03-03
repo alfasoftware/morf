@@ -9,6 +9,7 @@ import org.alfasoftware.morf.metadata.Index;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 
 /**
  * Configuration and context bean for the {@link Upgrade} process.
@@ -50,6 +51,12 @@ public class UpgradeConfigAndContext {
    * Set of index names that should bypass deferred creation and be built immediately during upgrade.
    */
   private Set<String> forceImmediateIndexes = Set.of();
+
+
+  /**
+   * Set of index names that should be deferred even when the upgrade step uses {@code addIndex()}.
+   */
+  private Set<String> forceDeferredIndexes = Set.of();
 
 
   /**
@@ -165,6 +172,7 @@ public class UpgradeConfigAndContext {
     this.forceImmediateIndexes = forceImmediateIndexes.stream()
       .map(String::toLowerCase)
       .collect(ImmutableSet.toImmutableSet());
+    validateNoIndexConflict();
   }
 
 
@@ -177,5 +185,46 @@ public class UpgradeConfigAndContext {
    */
   public boolean isForceImmediateIndex(String indexName) {
     return forceImmediateIndexes.contains(indexName.toLowerCase());
+  }
+
+
+  /**
+   * @see #forceDeferredIndexes
+   * @return forceDeferredIndexes set
+   */
+  public Set<String> getForceDeferredIndexes() {
+    return forceDeferredIndexes;
+  }
+
+
+  /**
+   * @see #forceDeferredIndexes
+   */
+  public void setForceDeferredIndexes(Set<String> forceDeferredIndexes) {
+    this.forceDeferredIndexes = forceDeferredIndexes.stream()
+      .map(String::toLowerCase)
+      .collect(ImmutableSet.toImmutableSet());
+    validateNoIndexConflict();
+  }
+
+
+  /**
+   * Check whether the given index name should be forced to defer during upgrade,
+   * even when the upgrade step uses {@code addIndex()}.
+   *
+   * @param indexName the index name to check
+   * @return true if the index should be deferred
+   */
+  public boolean isForceDeferredIndex(String indexName) {
+    return forceDeferredIndexes.contains(indexName.toLowerCase());
+  }
+
+
+  private void validateNoIndexConflict() {
+    Set<String> overlap = Sets.intersection(forceImmediateIndexes, forceDeferredIndexes);
+    if (!overlap.isEmpty()) {
+      throw new IllegalStateException(
+        "Index names cannot be both force-immediate and force-deferred: " + overlap);
+    }
   }
 }
