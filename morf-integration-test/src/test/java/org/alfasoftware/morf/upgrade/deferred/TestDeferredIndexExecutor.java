@@ -114,7 +114,7 @@ public class TestDeferredIndexExecutor {
     config.setMaxRetries(0);
     insertPendingRow("Apple", "Apple_1", false, "pips");
 
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config, new DeferredIndexExecutorServiceFactory.Default());
     executor.execute().join();
 
     assertEquals("status should be COMPLETED", DeferredIndexStatus.COMPLETED.name(), queryStatus("Apple_1"));
@@ -135,7 +135,7 @@ public class TestDeferredIndexExecutor {
     config.setMaxRetries(0);
     insertPendingRow("NoSuchTable", "NoSuchTable_1", false, "col");
 
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config, new DeferredIndexExecutorServiceFactory.Default());
     executor.execute().join();
 
     assertEquals("status should be FAILED", DeferredIndexStatus.FAILED.name(), queryStatus("NoSuchTable_1"));
@@ -152,7 +152,7 @@ public class TestDeferredIndexExecutor {
     config.setMaxRetries(1);
     insertPendingRow("NoSuchTable", "NoSuchTable_1", false, "col");
 
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config, new DeferredIndexExecutorServiceFactory.Default());
     executor.execute().join();
 
     assertEquals("status should be FAILED", DeferredIndexStatus.FAILED.name(), queryStatus("NoSuchTable_1"));
@@ -165,7 +165,7 @@ public class TestDeferredIndexExecutor {
    */
   @Test
   public void testEmptyQueueReturnsImmediately() {
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config, new DeferredIndexExecutorServiceFactory.Default());
     executor.execute().join();
 
     // No operations in the table at all
@@ -181,7 +181,7 @@ public class TestDeferredIndexExecutor {
     config.setMaxRetries(0);
     insertPendingRow("Apple", "Apple_Unique_1", true, "pips");
 
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config, new DeferredIndexExecutorServiceFactory.Default());
     executor.execute().join();
 
     try (SchemaResource schema = connectionResources.openSchemaResource()) {
@@ -203,7 +203,7 @@ public class TestDeferredIndexExecutor {
     config.setMaxRetries(0);
     insertPendingRow("Apple", "Apple_Multi_1", false, "pips", "color");
 
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config, new DeferredIndexExecutorServiceFactory.Default());
     executor.execute().join();
 
     assertEquals("status should be COMPLETED", DeferredIndexStatus.COMPLETED.name(), queryStatus("Apple_Multi_1"));

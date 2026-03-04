@@ -69,7 +69,8 @@ public interface DeferredIndexReadinessCheck {
   static DeferredIndexReadinessCheck create(ConnectionResources connectionResources) {
     DeferredIndexConfig config = new DeferredIndexConfig();
     DeferredIndexOperationDAO dao = new DeferredIndexOperationDAOImpl(connectionResources);
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources, config,
+        new DeferredIndexExecutorServiceFactory.Default());
     return new DeferredIndexReadinessCheckImpl(dao, executor, config);
   }
 }

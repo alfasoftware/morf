@@ -73,6 +73,7 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
   private final SqlScriptExecutorProvider sqlScriptExecutorProvider;
   private final DataSource dataSource;
   private final DeferredIndexConfig config;
+  private final DeferredIndexExecutorServiceFactory executorServiceFactory;
 
   /** Count of operations completed in the current {@link #execute()} call. */
   private final AtomicInteger completedCount = new AtomicInteger(0);
@@ -93,18 +94,21 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
   /**
    * Constructs an executor using the supplied connection and configuration.
    *
-   * @param dao                 DAO for deferred index operations.
-   * @param connectionResources database connection resources.
-   * @param config              configuration controlling retry, thread-pool, and timeout behaviour.
+   * @param dao                    DAO for deferred index operations.
+   * @param connectionResources    database connection resources.
+   * @param config                 configuration controlling retry, thread-pool, and timeout behaviour.
+   * @param executorServiceFactory factory for creating the worker thread pool.
    */
   @Inject
   DeferredIndexExecutorImpl(DeferredIndexOperationDAO dao, ConnectionResources connectionResources,
-                            DeferredIndexConfig config) {
+                            DeferredIndexConfig config,
+                            DeferredIndexExecutorServiceFactory executorServiceFactory) {
     this.dao = dao;
     this.sqlDialect = connectionResources.sqlDialect();
     this.sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
     this.dataSource = connectionResources.getDataSource();
     this.config = config;
+    this.executorServiceFactory = executorServiceFactory;
   }
 
 
@@ -113,12 +117,14 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
    */
   DeferredIndexExecutorImpl(DeferredIndexOperationDAO dao, SqlDialect sqlDialect,
                             SqlScriptExecutorProvider sqlScriptExecutorProvider, DataSource dataSource,
-                            DeferredIndexConfig config) {
+                            DeferredIndexConfig config,
+                            DeferredIndexExecutorServiceFactory executorServiceFactory) {
     this.dao = dao;
     this.sqlDialect = sqlDialect;
     this.sqlScriptExecutorProvider = sqlScriptExecutorProvider;
     this.dataSource = dataSource;
     this.config = config;
+    this.executorServiceFactory = executorServiceFactory;
   }
 
 
@@ -136,11 +142,7 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
 
     progressLoggerService = startProgressLogger();
 
-    threadPool = Executors.newFixedThreadPool(config.getThreadPoolSize(), r -> {
-      Thread t = new Thread(r, "DeferredIndexExecutor");
-      t.setDaemon(true);
-      return t;
-    });
+    threadPool = executorServiceFactory.create(config.getThreadPoolSize());
 
     CompletableFuture<?>[] futures = pending.stream()
         .map(op -> CompletableFuture.runAsync(() -> executeWithRetry(op), threadPool))

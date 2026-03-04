@@ -302,7 +302,7 @@ public class TestDeferredIndexService {
   private DeferredIndexService createService(DeferredIndexConfig config) {
     DeferredIndexOperationDAO dao = new DeferredIndexOperationDAOImpl(connectionResources);
     DeferredIndexRecoveryService recovery = new DeferredIndexRecoveryServiceImpl(dao, connectionResources, config);
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources, config, new DeferredIndexExecutorServiceFactory.Default());
     return new DeferredIndexServiceImpl(recovery, executor, config);
   }
 
