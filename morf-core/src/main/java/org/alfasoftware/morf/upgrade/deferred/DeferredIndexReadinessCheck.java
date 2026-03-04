@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.upgrade.deferred;
 
 import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Schema;
 
 import com.google.inject.ImplementedBy;
@@ -69,7 +70,8 @@ public interface DeferredIndexReadinessCheck {
   static DeferredIndexReadinessCheck create(ConnectionResources connectionResources) {
     DeferredIndexConfig config = new DeferredIndexConfig();
     DeferredIndexOperationDAO dao = new DeferredIndexOperationDAOImpl(connectionResources);
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources, config,
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources,
+        new SqlScriptExecutorProvider(connectionResources), config,
         new DeferredIndexExecutorServiceFactory.Default());
     return new DeferredIndexReadinessCheckImpl(dao, executor, config);
   }

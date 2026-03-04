@@ -221,7 +221,7 @@ public class TestDeferredIndexReadinessCheck {
 
   private DeferredIndexReadinessCheck createValidator(DeferredIndexConfig validatorConfig) {
     DeferredIndexOperationDAO dao = new DeferredIndexOperationDAOImpl(connectionResources);
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources, validatorConfig, new DeferredIndexExecutorServiceFactory.Default());
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources, new SqlScriptExecutorProvider(connectionResources), validatorConfig, new DeferredIndexExecutorServiceFactory.Default());
     return new DeferredIndexReadinessCheckImpl(dao, executor, validatorConfig);
   }
 

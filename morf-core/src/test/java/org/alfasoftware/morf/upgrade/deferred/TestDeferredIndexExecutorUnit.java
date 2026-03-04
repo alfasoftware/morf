@@ -32,6 +32,7 @@ import java.util.concurrent.CompletableFuture;
 
 import javax.sql.DataSource;
 
+import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
@@ -52,6 +53,7 @@ import org.mockito.MockitoAnnotations;
 public class TestDeferredIndexExecutorUnit {
 
   @Mock private DeferredIndexOperationDAO dao;
+  @Mock private ConnectionResources connectionResources;
   @Mock private SqlDialect sqlDialect;
   @Mock private SqlScriptExecutorProvider sqlScriptExecutorProvider;
   @Mock private DataSource dataSource;
@@ -66,6 +68,8 @@ public class TestDeferredIndexExecutorUnit {
     MockitoAnnotations.openMocks(this);
     config = new DeferredIndexConfig();
     config.setRetryBaseDelayMs(10L);
+    when(connectionResources.sqlDialect()).thenReturn(sqlDialect);
+    when(connectionResources.getDataSource()).thenReturn(dataSource);
     when(dataSource.getConnection()).thenReturn(connection);
   }
 
@@ -73,7 +77,7 @@ public class TestDeferredIndexExecutorUnit {
   /** Calling shutdown before any execution should be a safe no-op. */
   @Test
   public void testShutdownBeforeExecutionIsNoOp() {
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config, new DeferredIndexExecutorServiceFactory.Default());
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
     executor.shutdown();
   }
 
@@ -88,7 +92,7 @@ public class TestDeferredIndexExecutorUnit {
     when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
         .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
 
-    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config, new DeferredIndexExecutorServiceFactory.Default());
+    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
     executor.execute().join();
     executor.shutdown();
   }
@@ -97,7 +101,7 @@ public class TestDeferredIndexExecutorUnit {
   /** logProgress should run without error when no operations have been submitted. */
   @Test
   public void testLogProgressOnFreshExecutor() {
-    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config, new DeferredIndexExecutorServiceFactory.Default());
+    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
     executor.logProgress();
   }
 
@@ -128,7 +132,7 @@ public class TestDeferredIndexExecutorUnit {
   public void testExecuteEmptyQueue() {
     when(dao.findPendingOperations()).thenReturn(Collections.emptyList());
 
-    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config, new DeferredIndexExecutorServiceFactory.Default());
+    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
     CompletableFuture<Void> future = executor.execute();
 
     assertTrue("Future should be completed immediately", future.isDone());
@@ -146,7 +150,7 @@ public class TestDeferredIndexExecutorUnit {
     when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
         .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
 
-    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config, new DeferredIndexExecutorServiceFactory.Default());
+    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
     executor.execute().join();
 
     verify(dao).markCompleted(eq(1001L), any(Long.class));
@@ -171,7 +175,7 @@ public class TestDeferredIndexExecutorUnit {
         .thenThrow(new RuntimeException("temporary failure"))
         .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
 
-    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config, new DeferredIndexExecutorServiceFactory.Default());
+    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
     executor.execute().join();
 
     verify(dao).markCompleted(eq(1001L), any(Long.class));
@@ -193,7 +197,7 @@ public class TestDeferredIndexExecutorUnit {
     when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
         .thenThrow(new RuntimeException("persistent failure"));
 
-    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config, new DeferredIndexExecutorServiceFactory.Default());
+    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
     executor.execute().join();
 
     // Should be called twice (initial + 1 retry), each time with markFailed
@@ -212,7 +216,7 @@ public class TestDeferredIndexExecutorUnit {
     when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
         .thenReturn(List.of("CREATE UNIQUE INDEX idx ON t(c)"));
 
-    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config, new DeferredIndexExecutorServiceFactory.Default());
+    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
     executor.execute().join();
 
     verify(dao).markCompleted(eq(1001L), any(Long.class));
@@ -229,7 +233,7 @@ public class TestDeferredIndexExecutorUnit {
         .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
     when(dataSource.getConnection()).thenThrow(new SQLException("connection refused"));
 
-    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config, new DeferredIndexExecutorServiceFactory.Default());
+    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
     executor.execute().join();
 
     verify(dao).markFailed(eq(1001L), any(String.class), eq(1));

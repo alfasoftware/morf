@@ -92,37 +92,23 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
 
 
   /**
-   * Constructs an executor using the supplied connection and configuration.
+   * Constructs an executor using the supplied dependencies.
    *
-   * @param dao                    DAO for deferred index operations.
-   * @param connectionResources    database connection resources.
-   * @param config                 configuration controlling retry, thread-pool, and timeout behaviour.
-   * @param executorServiceFactory factory for creating the worker thread pool.
+   * @param dao                      DAO for deferred index operations.
+   * @param connectionResources      database connection resources.
+   * @param sqlScriptExecutorProvider provider for SQL script executors.
+   * @param config                   configuration controlling retry, thread-pool, and timeout behaviour.
+   * @param executorServiceFactory   factory for creating the worker thread pool.
    */
   @Inject
   DeferredIndexExecutorImpl(DeferredIndexOperationDAO dao, ConnectionResources connectionResources,
+                            SqlScriptExecutorProvider sqlScriptExecutorProvider,
                             DeferredIndexConfig config,
                             DeferredIndexExecutorServiceFactory executorServiceFactory) {
     this.dao = dao;
     this.sqlDialect = connectionResources.sqlDialect();
-    this.sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
-    this.dataSource = connectionResources.getDataSource();
-    this.config = config;
-    this.executorServiceFactory = executorServiceFactory;
-  }
-
-
-  /**
-   * Package-private constructor for unit testing with mock dependencies.
-   */
-  DeferredIndexExecutorImpl(DeferredIndexOperationDAO dao, SqlDialect sqlDialect,
-                            SqlScriptExecutorProvider sqlScriptExecutorProvider, DataSource dataSource,
-                            DeferredIndexConfig config,
-                            DeferredIndexExecutorServiceFactory executorServiceFactory) {
-    this.dao = dao;
-    this.sqlDialect = sqlDialect;
     this.sqlScriptExecutorProvider = sqlScriptExecutorProvider;
-    this.dataSource = dataSource;
+    this.dataSource = connectionResources.getDataSource();
     this.config = config;
     this.executorServiceFactory = executorServiceFactory;
   }
