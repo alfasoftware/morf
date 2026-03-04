@@ -286,6 +286,26 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
 
 
   /**
+   * Returns the number of operations in {@link DeferredIndexStatus#FAILED} state.
+   *
+   * @return count of failed operations.
+   */
+  @Override
+  public int countFailedOperations() {
+    SelectStatement select = select(field("id"))
+      .from(tableRef(OPERATION_TABLE))
+      .where(field("status").eq(DeferredIndexStatus.FAILED.name()));
+
+    String sql = sqlDialect.convertStatementToSQL(select);
+    return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> {
+      int count = 0;
+      while (rs.next()) count++;
+      return count;
+    });
+  }
+
+
+  /**
    * Returns {@code true} if there is at least one PENDING or IN_PROGRESS operation.
    *
    * @return {@code true} if any non-terminal operations exist.

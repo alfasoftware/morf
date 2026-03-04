@@ -20,11 +20,11 @@ import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import org.junit.Test;
 
@@ -48,7 +48,7 @@ public class TestDeferredIndexValidatorUnit {
     validator.validateNoPendingOperations();
 
     verify(mockDao).findPendingOperations();
-    verifyNoMoreInteractions(mockDao);
+    verify(mockDao, never()).countFailedOperations();
   }
 
 
@@ -57,17 +57,17 @@ public class TestDeferredIndexValidatorUnit {
   public void testValidateExecutesPendingOperationsSuccessfully() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
     when(mockDao.findPendingOperations()).thenReturn(List.of(buildOp(1L)));
+    when(mockDao.countFailedOperations()).thenReturn(0);
 
     DeferredIndexConfig config = new DeferredIndexConfig();
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
-    long expectedTimeoutMs = config.getExecutionTimeoutSeconds() * 1_000L;
-    when(mockExecutor.executeAndWait(expectedTimeoutMs))
-        .thenReturn(new DeferredIndexExecutionResult(1, 0));
+    when(mockExecutor.execute()).thenReturn(CompletableFuture.completedFuture(null));
 
     DeferredIndexValidator validator = new DeferredIndexValidatorImpl(mockDao, mockExecutor, config);
     validator.validateNoPendingOperations();
 
-    verify(mockExecutor).executeAndWait(expectedTimeoutMs);
+    verify(mockExecutor).execute();
+    verify(mockDao).countFailedOperations();
   }
 
 
@@ -76,12 +76,11 @@ public class TestDeferredIndexValidatorUnit {
   public void testValidateThrowsWhenOperationsFail() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
     when(mockDao.findPendingOperations()).thenReturn(List.of(buildOp(1L)));
+    when(mockDao.countFailedOperations()).thenReturn(1);
 
     DeferredIndexConfig config = new DeferredIndexConfig();
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
-    long expectedTimeoutMs = config.getExecutionTimeoutSeconds() * 1_000L;
-    when(mockExecutor.executeAndWait(expectedTimeoutMs))
-        .thenReturn(new DeferredIndexExecutionResult(0, 1));
+    when(mockExecutor.execute()).thenReturn(CompletableFuture.completedFuture(null));
 
     DeferredIndexValidator validator = new DeferredIndexValidatorImpl(mockDao, mockExecutor, config);
     validator.validateNoPendingOperations();
@@ -93,12 +92,11 @@ public class TestDeferredIndexValidatorUnit {
   public void testValidateFailureMessageIncludesCount() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
     when(mockDao.findPendingOperations()).thenReturn(List.of(buildOp(1L), buildOp(2L)));
+    when(mockDao.countFailedOperations()).thenReturn(2);
 
     DeferredIndexConfig config = new DeferredIndexConfig();
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
-    long expectedTimeoutMs = config.getExecutionTimeoutSeconds() * 1_000L;
-    when(mockExecutor.executeAndWait(expectedTimeoutMs))
-        .thenReturn(new DeferredIndexExecutionResult(0, 2));
+    when(mockExecutor.execute()).thenReturn(CompletableFuture.completedFuture(null));
 
     DeferredIndexValidator validator = new DeferredIndexValidatorImpl(mockDao, mockExecutor, config);
     try {
@@ -121,7 +119,7 @@ public class TestDeferredIndexValidatorUnit {
     DeferredIndexValidator validator = new DeferredIndexValidatorImpl(mockDao, mockExecutor, config);
     validator.validateNoPendingOperations();
 
-    verify(mockExecutor, never()).executeAndWait(org.mockito.ArgumentMatchers.anyLong());
+    verify(mockExecutor, never()).execute();
   }
 
 

@@ -28,7 +28,6 @@ import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deferredIndexOperationColumnTable;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deferredIndexOperationTable;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
@@ -108,7 +107,7 @@ public class TestDeferredIndexExecutor {
 
   /**
    * A PENDING operation should transition to COMPLETED and the index should
-   * exist in the database schema after executeAndWait returns.
+   * exist in the database schema after execution completes.
    */
   @Test
   public void testPendingTransitionsToCompleted() {
@@ -116,10 +115,9 @@ public class TestDeferredIndexExecutor {
     insertPendingRow("Apple", "Apple_1", false, "pips");
 
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
-    DeferredIndexExecutionResult result = executor.executeAndWait(60_000L);
+    executor.execute().join();
 
-    assertEquals("completedCount", 1, result.getCompletedCount());
-    assertEquals("failedCount", 0, result.getFailedCount());
+    assertEquals("status should be COMPLETED", DeferredIndexStatus.COMPLETED.name(), queryStatus("Apple_1"));
 
     try (SchemaResource schema = connectionResources.openSchemaResource()) {
       assertTrue("Apple_1 should exist in schema",
@@ -138,10 +136,8 @@ public class TestDeferredIndexExecutor {
     insertPendingRow("NoSuchTable", "NoSuchTable_1", false, "col");
 
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
-    DeferredIndexExecutionResult result = executor.executeAndWait(60_000L);
+    executor.execute().join();
 
-    assertEquals("failedCount", 1, result.getFailedCount());
-    assertEquals("completedCount", 0, result.getCompletedCount());
     assertEquals("status should be FAILED", DeferredIndexStatus.FAILED.name(), queryStatus("NoSuchTable_1"));
     assertEquals("retryCount should be 1", 1, queryRetryCount("NoSuchTable_1"));
   }
@@ -157,25 +153,23 @@ public class TestDeferredIndexExecutor {
     insertPendingRow("NoSuchTable", "NoSuchTable_1", false, "col");
 
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
-    DeferredIndexExecutionResult result = executor.executeAndWait(60_000L);
+    executor.execute().join();
 
-    assertEquals("failedCount", 1, result.getFailedCount());
     assertEquals("status should be FAILED", DeferredIndexStatus.FAILED.name(), queryStatus("NoSuchTable_1"));
     assertEquals("retryCount should be 2 (initial + 1 retry)", 2, queryRetryCount("NoSuchTable_1"));
   }
 
 
   /**
-   * executeAndWait on an empty queue should return an ExecutionResult with
-   * zeroed counts and complete immediately.
+   * Executing on an empty queue should complete immediately with no errors.
    */
   @Test
   public void testEmptyQueueReturnsImmediately() {
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
-    DeferredIndexExecutionResult result = executor.executeAndWait(60_000L);
+    executor.execute().join();
 
-    assertEquals("completedCount", 0, result.getCompletedCount());
-    assertEquals("failedCount", 0, result.getFailedCount());
+    // No operations in the table at all
+    assertEquals("No operations should exist", 0, countOperations());
   }
 
 
@@ -188,7 +182,7 @@ public class TestDeferredIndexExecutor {
     insertPendingRow("Apple", "Apple_Unique_1", true, "pips");
 
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
-    executor.executeAndWait(60_000L);
+    executor.execute().join();
 
     try (SchemaResource schema = connectionResources.openSchemaResource()) {
       assertTrue("Apple_Unique_1 should be unique",
@@ -210,10 +204,9 @@ public class TestDeferredIndexExecutor {
     insertPendingRow("Apple", "Apple_Multi_1", false, "pips", "color");
 
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
-    DeferredIndexExecutionResult result = executor.executeAndWait(60_000L);
+    executor.execute().join();
 
-    assertEquals("completedCount", 1, result.getCompletedCount());
-    assertEquals("failedCount", 0, result.getFailedCount());
+    assertEquals("status should be COMPLETED", DeferredIndexStatus.COMPLETED.name(), queryStatus("Apple_Multi_1"));
 
     try (SchemaResource schema = connectionResources.openSchemaResource()) {
       org.alfasoftware.morf.metadata.Index idx = schema.getTable("Apple").indexes().stream()
@@ -223,51 +216,6 @@ public class TestDeferredIndexExecutor {
       assertEquals("column count", 2, idx.columnNames().size());
       assertEquals("first column", "pips", idx.columnNames().get(0).toUpperCase().equals("PIPS") ? "pips" : idx.columnNames().get(0));
     }
-  }
-
-
-  // -------------------------------------------------------------------------
-  // Stage 8: awaitCompletion tests
-  // -------------------------------------------------------------------------
-
-  /**
-   * awaitCompletion should return true immediately when no operations are queued.
-   */
-  @Test
-  public void testAwaitCompletionReturnsTrueWhenQueueEmpty() {
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
-    assertTrue("should return true for empty queue", executor.awaitCompletion(10L));
-  }
-
-
-  /**
-   * awaitCompletion should return false when a PENDING operation exists and the
-   * timeout expires before execution starts.
-   */
-  @Test
-  public void testAwaitCompletionReturnsFalseOnTimeout() {
-    insertPendingRow("Apple", "Apple_2", false, "pips");
-
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
-    // Timeout of 1 second; no executor is running so PENDING row never becomes COMPLETED
-    assertFalse("should return false on timeout", executor.awaitCompletion(1L));
-  }
-
-
-  /**
-   * awaitCompletion should return true immediately when all operations are
-   * already in a terminal state (COMPLETED).
-   */
-  @Test
-  public void testAwaitCompletionReturnsTrueAfterExecution() {
-    config.setMaxRetries(0);
-    insertPendingRow("Apple", "Apple_3", false, "pips");
-
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
-    executor.executeAndWait(60_000L); // completes the operation
-
-    // All operations are now COMPLETED; awaitCompletion should return true at once
-    assertTrue("should return true when all operations are terminal", executor.awaitCompletion(5L));
   }
 
 
@@ -323,5 +271,18 @@ public class TestDeferredIndexExecutor {
             .where(field("indexName").eq(indexName))
     );
     return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> rs.next() ? rs.getInt(1) : 0);
+  }
+
+
+  private int countOperations() {
+    String sql = connectionResources.sqlDialect().convertStatementToSQL(
+        select(field("id"))
+            .from(tableRef(DEFERRED_INDEX_OPERATION_NAME))
+    );
+    return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> {
+      int count = 0;
+      while (rs.next()) count++;
+      return count;
+    });
   }
 }

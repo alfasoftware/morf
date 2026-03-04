@@ -67,8 +67,8 @@ public class TestDeferredIndexRecoveryService {
   @Inject private DatabaseSchemaManager schemaManager;
   @Inject private SqlScriptExecutorProvider sqlScriptExecutorProvider;
 
-  /** Very old timestamp guaranteed to be stale under any positive stale threshold. */
-  private static final long STALE_STARTED_TIME = 20_200_101_000_000L;
+  /** Very old epoch-millis timestamp guaranteed to be stale under any positive stale threshold. */
+  private static final long STALE_STARTED_TIME = 1_000_000_000L;
 
   private static final Schema BASE_SCHEMA = schema(
       deferredIndexOperationTable(),
@@ -172,16 +172,16 @@ public class TestDeferredIndexRecoveryService {
 
   /**
    * A stale IN_PROGRESS operation referencing a table that no longer exists
-   * should be reset to PENDING (table absence implies index absence).
+   * should be marked SKIPPED (table absence means the index cannot be built).
    */
   @Test
-  public void testStaleOperationWithDroppedTableIsResetToPending() {
+  public void testStaleOperationWithDroppedTableIsMarkedSkipped() {
     insertInProgressRow("DroppedTable", "DroppedTable_1", false, STALE_STARTED_TIME, "col");
 
     DeferredIndexRecoveryService service = new DeferredIndexRecoveryServiceImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
     service.recoverStaleOperations();
 
-    assertEquals("status should be PENDING", DeferredIndexStatus.PENDING.name(), queryStatus("DroppedTable_1"));
+    assertEquals("status should be SKIPPED", DeferredIndexStatus.SKIPPED.name(), queryStatus("DroppedTable_1"));
   }
 
 

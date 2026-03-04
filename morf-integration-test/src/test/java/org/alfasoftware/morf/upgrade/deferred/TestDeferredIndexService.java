@@ -31,7 +31,6 @@ import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.upgradeAuditTable;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.util.Collections;
 
@@ -120,10 +119,9 @@ public class TestDeferredIndexService {
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setRetryBaseDelayMs(10L);
     DeferredIndexService service = createService(config);
-    DeferredIndexService.ExecutionResult result = service.execute();
+    service.execute();
+    service.awaitCompletion(60L);
 
-    assertEquals("completedCount", 1, result.getCompletedCount());
-    assertEquals("failedCount", 0, result.getFailedCount());
     assertEquals("COMPLETED", queryOperationStatus("Product_Name_1"));
     assertIndexExists("Product", "Product_Name_1");
   }
@@ -150,27 +148,28 @@ public class TestDeferredIndexService {
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setRetryBaseDelayMs(10L);
     DeferredIndexService service = createService(config);
-    DeferredIndexService.ExecutionResult result = service.execute();
+    service.execute();
+    service.awaitCompletion(60L);
 
-    assertEquals("completedCount", 2, result.getCompletedCount());
-    assertEquals("failedCount", 0, result.getFailedCount());
+    assertEquals("COMPLETED", queryOperationStatus("Product_Name_1"));
+    assertEquals("COMPLETED", queryOperationStatus("Product_IdName_1"));
     assertIndexExists("Product", "Product_Name_1");
     assertIndexExists("Product", "Product_IdName_1");
   }
 
 
   /**
-   * Verify that execute() with an empty queue returns zero counts and no error.
+   * Verify that execute() with an empty queue completes immediately with no error.
    */
   @Test
   public void testExecuteWithEmptyQueue() {
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setRetryBaseDelayMs(10L);
     DeferredIndexService service = createService(config);
-    DeferredIndexService.ExecutionResult result = service.execute();
+    service.execute();
 
-    assertEquals("completedCount", 0, result.getCompletedCount());
-    assertEquals("failedCount", 0, result.getFailedCount());
+    // awaitCompletion should return true immediately on an empty queue
+    assertTrue("Should complete immediately on empty queue", service.awaitCompletion(5L));
   }
 
 
@@ -190,10 +189,9 @@ public class TestDeferredIndexService {
     config.setRetryBaseDelayMs(10L);
     config.setStaleThresholdSeconds(1L);
     DeferredIndexService service = createService(config);
-    DeferredIndexService.ExecutionResult result = service.execute();
+    service.execute();
+    service.awaitCompletion(60L);
 
-    assertEquals("completedCount", 1, result.getCompletedCount());
-    assertEquals("failedCount", 0, result.getFailedCount());
     assertEquals("COMPLETED", queryOperationStatus("Product_Name_1"));
     assertIndexExists("Product", "Product_Name_1");
   }
@@ -222,9 +220,11 @@ public class TestDeferredIndexService {
     // Build the index first
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setRetryBaseDelayMs(10L);
-    createService(config).execute();
+    DeferredIndexService firstService = createService(config);
+    firstService.execute();
+    firstService.awaitCompletion(60L);
 
-    // Now await should return immediately
+    // Now await on a new service should return immediately
     DeferredIndexService service = createService(config);
     assertTrue("Should return true when all completed", service.awaitCompletion(5L));
   }
@@ -242,12 +242,15 @@ public class TestDeferredIndexService {
     config.setRetryBaseDelayMs(10L);
     DeferredIndexService service = createService(config);
 
-    DeferredIndexService.ExecutionResult first = service.execute();
-    assertEquals("First run completed", 1, first.getCompletedCount());
+    service.execute();
+    service.awaitCompletion(60L);
+    assertEquals("First run should complete", "COMPLETED", queryOperationStatus("Product_Name_1"));
 
-    DeferredIndexService.ExecutionResult second = service.execute();
-    assertEquals("Second run completed", 0, second.getCompletedCount());
-    assertEquals("Second run failed", 0, second.getFailedCount());
+    // Second execute on a fresh service — should be a no-op
+    DeferredIndexService service2 = createService(config);
+    service2.execute();
+    service2.awaitCompletion(60L);
+    assertEquals("Should still be COMPLETED after second run", "COMPLETED", queryOperationStatus("Product_Name_1"));
   }
 
 
@@ -300,7 +303,7 @@ public class TestDeferredIndexService {
     DeferredIndexOperationDAO dao = new DeferredIndexOperationDAOImpl(connectionResources);
     DeferredIndexRecoveryService recovery = new DeferredIndexRecoveryServiceImpl(dao, connectionResources, config);
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources, config);
-    return new DeferredIndexServiceImpl(recovery, executor, dao, config);
+    return new DeferredIndexServiceImpl(recovery, executor, config);
   }
 
 
@@ -310,7 +313,7 @@ public class TestDeferredIndexService {
             update(tableRef(DEFERRED_INDEX_OPERATION_NAME))
                 .set(
                     literal("IN_PROGRESS").as("status"),
-                    literal(20250101120000L).as("startedTime")
+                    literal(1_000_000_000L).as("startedTime")
                 )
                 .where(field("indexName").eq(indexName))
         )

@@ -16,6 +16,10 @@
 package org.alfasoftware.morf.upgrade.deferred;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -69,16 +73,35 @@ class DeferredIndexValidatorImpl implements DeferredIndexValidator {
     log.warn("Found " + pending.size() + " pending deferred index operation(s) before upgrade. "
         + "Executing immediately before proceeding...");
 
-    long timeoutMs = config.getExecutionTimeoutSeconds() * 1_000L;
-    DeferredIndexExecutionResult result = executor.executeAndWait(timeoutMs);
+    CompletableFuture<Void> future = executor.execute();
 
-    log.info("Pre-upgrade deferred index execution complete: completed=" + result.getCompletedCount()
-        + ", failed=" + result.getFailedCount());
+    long timeoutSeconds = config.getExecutionTimeoutSeconds();
+    try {
+      if (timeoutSeconds > 0L) {
+        future.get(timeoutSeconds, TimeUnit.SECONDS);
+      } else {
+        future.get();
+      }
+    } catch (TimeoutException e) {
+      executor.shutdown();
+      throw new IllegalStateException("Pre-upgrade deferred index validation timed out after "
+          + timeoutSeconds + " seconds.");
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      executor.shutdown();
+      throw new IllegalStateException("Pre-upgrade deferred index validation interrupted.");
+    } catch (ExecutionException e) {
+      executor.shutdown();
+      throw new IllegalStateException("Pre-upgrade deferred index validation failed unexpectedly.", e.getCause());
+    }
 
-    if (result.getFailedCount() > 0) {
+    int failedCount = dao.countFailedOperations();
+    if (failedCount > 0) {
       throw new IllegalStateException("Pre-upgrade deferred index validation failed: "
-          + result.getFailedCount() + " index operation(s) could not be built. "
+          + failedCount + " index operation(s) could not be built. "
           + "Resolve the underlying issue before retrying the upgrade.");
     }
+
+    log.info("Pre-upgrade deferred index execution complete.");
   }
 }

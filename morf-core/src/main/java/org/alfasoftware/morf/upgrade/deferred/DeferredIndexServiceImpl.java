@@ -15,6 +15,11 @@
 
 package org.alfasoftware.morf.upgrade.deferred;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 
@@ -25,7 +30,7 @@ import org.apache.commons.logging.LogFactory;
  * Default implementation of {@link DeferredIndexService}.
  *
  * <p>Orchestrates recovery, execution, and validation of deferred index
- * operations. All configuration is validated up front in the constructor.</p>
+ * operations. Configuration is validated when {@link #execute()} is called.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -34,88 +39,77 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
 
   private static final Log log = LogFactory.getLog(DeferredIndexServiceImpl.class);
 
-  /** Polling interval used by {@link #awaitCompletion(long)}. */
-  static final long AWAIT_POLL_INTERVAL_MS = 5_000L;
-
   private final DeferredIndexRecoveryService recoveryService;
   private final DeferredIndexExecutor executor;
-  private final DeferredIndexOperationDAO dao;
   private final DeferredIndexConfig config;
+
+  /** Future representing the current execution; {@code null} if not started. */
+  private volatile CompletableFuture<Void> executionFuture;
 
 
   /**
-   * Constructs the service, validating all configuration parameters.
+   * Constructs the service.
    *
    * @param recoveryService service for recovering stale operations.
    * @param executor        executor for building deferred indexes.
-   * @param dao             DAO for deferred index operations.
    * @param config          configuration for deferred index execution.
    */
   @Inject
   DeferredIndexServiceImpl(DeferredIndexRecoveryService recoveryService,
                             DeferredIndexExecutor executor,
-                            DeferredIndexOperationDAO dao,
                             DeferredIndexConfig config) {
-    validateConfig(config);
     this.recoveryService = recoveryService;
     this.executor = executor;
-    this.dao = dao;
     this.config = config;
   }
 
 
   @Override
-  public ExecutionResult execute() {
+  public void execute() {
+    validateConfig(config);
+
     log.info("Deferred index service: starting recovery of stale operations...");
     recoveryService.recoverStaleOperations();
 
     log.info("Deferred index service: executing pending operations...");
-    long timeoutMs = config.getExecutionTimeoutSeconds() * 1_000L;
-    DeferredIndexExecutionResult executorResult = executor.executeAndWait(timeoutMs);
-
-    int completed = executorResult.getCompletedCount();
-    int failed = executorResult.getFailedCount();
-
-    log.info("Deferred index service: execution complete — completed=" + completed + ", failed=" + failed);
-
-    if (failed > 0) {
-      throw new IllegalStateException("Deferred index execution failed: "
-          + failed + " index operation(s) could not be built. "
-          + "Resolve the underlying issue before retrying.");
-    }
-
-    return new ExecutionResult(completed, failed);
+    executionFuture = executor.execute();
   }
 
 
   @Override
   public boolean awaitCompletion(long timeoutSeconds) {
+    CompletableFuture<Void> future = executionFuture;
+    if (future == null) {
+      throw new IllegalStateException("awaitCompletion() called before execute()");
+    }
+
     log.info("Deferred index service: awaiting completion (timeout=" + timeoutSeconds + "s)...");
-    long deadline = timeoutSeconds > 0L ? System.currentTimeMillis() + timeoutSeconds * 1_000L : Long.MAX_VALUE;
 
-    while (true) {
-      if (!dao.hasNonTerminalOperations()) {
-        log.info("Deferred index service: all operations complete.");
-        return true;
+    try {
+      if (timeoutSeconds > 0L) {
+        future.get(timeoutSeconds, TimeUnit.SECONDS);
+      } else {
+        future.get();
       }
+      log.info("Deferred index service: all operations complete.");
+      return true;
 
-      long remaining = deadline - System.currentTimeMillis();
-      if (remaining <= 0L) {
-        log.warn("Deferred index service: timed out waiting for operations to complete.");
-        return false;
-      }
+    } catch (TimeoutException e) {
+      log.warn("Deferred index service: timed out waiting for operations to complete.");
+      return false;
 
-      try {
-        Thread.sleep(Math.min(AWAIT_POLL_INTERVAL_MS, remaining));
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        return false;
-      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return false;
+
+    } catch (ExecutionException e) {
+      log.error("Deferred index service: unexpected error during execution.", e.getCause());
+      return true;
     }
   }
 
 
-  private static void validateConfig(DeferredIndexConfig config) {
+  private void validateConfig(DeferredIndexConfig config) {
     if (config.getThreadPoolSize() < 1) {
       throw new IllegalArgumentException("threadPoolSize must be >= 1, was " + config.getThreadPoolSize());
     }

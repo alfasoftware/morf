@@ -48,7 +48,7 @@ public class DeferredIndexConfig {
 
   /**
    * Maximum time in seconds to wait for all deferred index operations to complete
-   * via {@code DeferredIndexExecutor.executeAndWait()}.
+   * via {@link DeferredIndexService#awaitCompletion(long)}.
    * Default: 8 hours (28800 seconds).
    */
   private long executionTimeoutSeconds = 28_800L;

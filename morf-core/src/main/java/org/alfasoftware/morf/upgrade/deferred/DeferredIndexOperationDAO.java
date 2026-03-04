@@ -109,11 +109,17 @@ interface DeferredIndexOperationDAO {
   /**
    * Returns {@code true} if there is at least one operation in a non-terminal
    * state ({@link DeferredIndexStatus#PENDING} or
-   * {@link DeferredIndexStatus#IN_PROGRESS}). Used by
-   * {@link DeferredIndexExecutor#awaitCompletion(long)} to poll until the queue
-   * is drained.
+   * {@link DeferredIndexStatus#IN_PROGRESS}).
    *
    * @return {@code true} if any PENDING or IN_PROGRESS operations exist.
    */
   boolean hasNonTerminalOperations();
+
+
+  /**
+   * Returns the number of operations in {@link DeferredIndexStatus#FAILED} state.
+   *
+   * @return count of failed operations.
+   */
+  int countFailedOperations();
 }

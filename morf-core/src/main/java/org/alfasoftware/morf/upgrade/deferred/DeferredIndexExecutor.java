@@ -15,13 +15,19 @@
 
 package org.alfasoftware.morf.upgrade.deferred;
 
+import java.util.concurrent.CompletableFuture;
+
 import com.google.inject.ImplementedBy;
 
 /**
- * Executes pending deferred index operations queued in the
- * {@code DeferredIndexOperation} table by issuing the appropriate
- * {@code CREATE INDEX} DDL and marking each operation as
- * {@link DeferredIndexStatus#COMPLETED} or {@link DeferredIndexStatus#FAILED}.
+ * Picks up {@link DeferredIndexStatus#PENDING} operations and builds them
+ * asynchronously using a thread pool. Results are written to the database
+ * (each operation is marked {@link DeferredIndexStatus#COMPLETED} or
+ * {@link DeferredIndexStatus#FAILED}).
+ *
+ * <p>This is an internal service — callers should use
+ * {@link DeferredIndexService} which provides blocking orchestration
+ * on top of this executor.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -29,33 +35,21 @@ import com.google.inject.ImplementedBy;
 interface DeferredIndexExecutor {
 
   /**
-   * Picks up all {@link DeferredIndexStatus#PENDING} operations, builds the
-   * corresponding indexes, and blocks until all operations reach a terminal
-   * state or the timeout elapses.
+   * Picks up all {@link DeferredIndexStatus#PENDING} operations and submits
+   * them to a thread pool for asynchronous index building. Returns immediately
+   * with a future that completes when all submitted operations reach a terminal
+   * state.
    *
-   * @param timeoutMs maximum time in milliseconds to wait for all operations to
-   *                  complete; zero means wait indefinitely.
-   * @return summary of how many operations completed and how many failed.
+   * @return a future that completes when all operations are done; completes
+   *         immediately if there are no pending operations.
    */
-  DeferredIndexExecutionResult executeAndWait(long timeoutMs);
+  CompletableFuture<Void> execute();
 
 
   /**
-   * Blocks until all operations in the {@code DeferredIndexOperation} table are
-   * in a terminal state ({@link DeferredIndexStatus#COMPLETED} or
-   * {@link DeferredIndexStatus#FAILED}), or until the timeout elapses. This
-   * method does <em>not</em> start or trigger execution.
-   *
-   * @param timeoutSeconds maximum time to wait; zero means wait indefinitely.
-   * @return {@code true} if all operations reached a terminal state within the
-   *         timeout; {@code false} if the timeout elapsed first.
-   */
-  boolean awaitCompletion(long timeoutSeconds);
-
-
-  /**
-   * Shuts down any background threads started by the most recent
-   * {@link #executeAndWait} call.
+   * Forces immediate shutdown of the thread pool and progress logger.
+   * Use for cancellation on timeout; normal completion is handled
+   * automatically when the returned future completes.
    */
   void shutdown();
 }

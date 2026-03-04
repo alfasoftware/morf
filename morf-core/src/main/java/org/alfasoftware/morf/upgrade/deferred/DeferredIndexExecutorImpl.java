@@ -20,16 +20,13 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.sql.DataSource;
@@ -71,23 +68,23 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
   /** Progress is logged on this fixed interval. */
   private static final int PROGRESS_LOG_INTERVAL_SECONDS = 30;
 
-  /** Polling interval used by {@link #awaitCompletion(long)}. */
-  private static final long AWAIT_POLL_INTERVAL_MS = 5_000L;
-
   private final DeferredIndexOperationDAO dao;
   private final SqlDialect sqlDialect;
   private final SqlScriptExecutorProvider sqlScriptExecutorProvider;
   private final DataSource dataSource;
   private final DeferredIndexConfig config;
 
-  /** Count of operations completed in the current {@link #executeAndWait} call. */
+  /** Count of operations completed in the current {@link #execute()} call. */
   private final AtomicInteger completedCount = new AtomicInteger(0);
 
-  /** Count of operations permanently failed in the current {@link #executeAndWait} call. */
+  /** Count of operations permanently failed in the current {@link #execute()} call. */
   private final AtomicInteger failedCount = new AtomicInteger(0);
 
-  /** Total operations submitted in the current {@link #executeAndWait} call. */
+  /** Total operations submitted in the current {@link #execute()} call. */
   private final AtomicInteger totalCount = new AtomicInteger(0);
+
+  /** The worker thread pool; may be null if execution has not started. */
+  private volatile ExecutorService threadPool;
 
   /** The scheduled progress logger; may be null if execution has not started. */
   private volatile ScheduledExecutorService progressLoggerService;
@@ -126,7 +123,7 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
 
 
   @Override
-  public DeferredIndexExecutionResult executeAndWait(long timeoutMs) {
+  public CompletableFuture<Void> execute() {
     completedCount.set(0);
     failedCount.set(0);
 
@@ -134,57 +131,35 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
     totalCount.set(pending.size());
 
     if (pending.isEmpty()) {
-      return new DeferredIndexExecutionResult(0, 0);
+      return CompletableFuture.completedFuture(null);
     }
 
     progressLoggerService = startProgressLogger();
 
-    ExecutorService threadPool = Executors.newFixedThreadPool(config.getThreadPoolSize(), r -> {
+    threadPool = Executors.newFixedThreadPool(config.getThreadPoolSize(), r -> {
       Thread t = new Thread(r, "DeferredIndexExecutor");
       t.setDaemon(true);
       return t;
     });
 
-    List<Future<?>> futures = new ArrayList<>(pending.size());
-    for (DeferredIndexOperation op : pending) {
-      futures.add(threadPool.submit(() -> executeWithRetry(op)));
-    }
+    CompletableFuture<?>[] futures = pending.stream()
+        .map(op -> CompletableFuture.runAsync(() -> executeWithRetry(op), threadPool))
+        .toArray(CompletableFuture[]::new);
 
-    awaitFutures(futures, timeoutMs);
-
-    threadPool.shutdownNow();
-    progressLoggerService.shutdownNow();
-
-    return new DeferredIndexExecutionResult(completedCount.get(), failedCount.get());
-  }
-
-
-  @Override
-  public boolean awaitCompletion(long timeoutSeconds) {
-    long deadline = timeoutSeconds > 0L ? System.currentTimeMillis() + timeoutSeconds * 1_000L : Long.MAX_VALUE;
-
-    while (true) {
-      if (!dao.hasNonTerminalOperations()) {
-        return true;
-      }
-
-      long remaining = deadline - System.currentTimeMillis();
-      if (remaining <= 0L) {
-        return false;
-      }
-
-      try {
-        Thread.sleep(Math.min(AWAIT_POLL_INTERVAL_MS, remaining));
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        return false;
-      }
-    }
+    return CompletableFuture.allOf(futures)
+        .whenComplete((v, t) -> {
+          threadPool.shutdown();
+          progressLoggerService.shutdownNow();
+        });
   }
 
 
   @Override
   public void shutdown() {
+    ExecutorService pool = threadPool;
+    if (pool != null) {
+      pool.shutdownNow();
+    }
     ScheduledExecutorService svc = progressLoggerService;
     if (svc != null) {
       svc.shutdownNow();
@@ -274,28 +249,6 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
       Thread.sleep(delay);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-    }
-  }
-
-
-  private void awaitFutures(List<Future<?>> futures, long timeoutMs) {
-    long deadline = timeoutMs > 0L ? System.currentTimeMillis() + timeoutMs : Long.MAX_VALUE;
-
-    for (Future<?> future : futures) {
-      long remaining = deadline - System.currentTimeMillis();
-      if (remaining <= 0L) {
-        break;
-      }
-      try {
-        future.get(remaining, TimeUnit.MILLISECONDS);
-      } catch (TimeoutException e) {
-        break;
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        break;
-      } catch (ExecutionException e) {
-        log.warn("Unexpected error in deferred index executor worker", e.getCause());
-      }
     }
   }
 
