@@ -53,7 +53,7 @@ import com.google.inject.Inject;
 import net.jcip.annotations.NotThreadSafe;
 
 /**
- * Integration tests for {@link DeferredIndexRecoveryService} (Stage 9).
+ * Integration tests for {@link DeferredIndexRecoveryServiceImpl} (Stage 9).
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -108,7 +108,7 @@ public class TestDeferredIndexRecoveryService {
   public void testStaleOperationWithNoIndexIsResetToPending() {
     insertInProgressRow("Apple", "Apple_Missing", false, STALE_STARTED_TIME, "pips");
 
-    DeferredIndexRecoveryService service = new DeferredIndexRecoveryService(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
+    DeferredIndexRecoveryService service = new DeferredIndexRecoveryServiceImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
     service.recoverStaleOperations();
 
     assertEquals("status should be PENDING", DeferredIndexStatus.PENDING.name(), queryStatus("Apple_Missing"));
@@ -134,7 +134,7 @@ public class TestDeferredIndexRecoveryService {
 
     insertInProgressRow("Apple", "Apple_Existing", false, STALE_STARTED_TIME, "pips");
 
-    DeferredIndexRecoveryService service = new DeferredIndexRecoveryService(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
+    DeferredIndexRecoveryService service = new DeferredIndexRecoveryServiceImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
     service.recoverStaleOperations();
 
     assertEquals("status should be COMPLETED", DeferredIndexStatus.COMPLETED.name(), queryStatus("Apple_Existing"));
@@ -148,10 +148,10 @@ public class TestDeferredIndexRecoveryService {
   @Test
   public void testNonStaleOperationIsLeftUntouched() {
     // Use current timestamp as startedTime; with staleThreshold=1s and timestamp=now it is NOT stale
-    long recentStarted = DeferredIndexRecoveryService.currentTimestamp();
+    long recentStarted = System.currentTimeMillis();
     insertInProgressRow("Apple", "Apple_Active", false, recentStarted, "pips");
 
-    DeferredIndexRecoveryService service = new DeferredIndexRecoveryService(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
+    DeferredIndexRecoveryService service = new DeferredIndexRecoveryServiceImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
     service.recoverStaleOperations();
 
     assertEquals("status should still be IN_PROGRESS",
@@ -165,7 +165,7 @@ public class TestDeferredIndexRecoveryService {
    */
   @Test
   public void testNoStaleOperationsIsANoOp() {
-    DeferredIndexRecoveryService service = new DeferredIndexRecoveryService(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
+    DeferredIndexRecoveryService service = new DeferredIndexRecoveryServiceImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
     service.recoverStaleOperations(); // should not throw
   }
 
@@ -178,7 +178,7 @@ public class TestDeferredIndexRecoveryService {
   public void testStaleOperationWithDroppedTableIsResetToPending() {
     insertInProgressRow("DroppedTable", "DroppedTable_1", false, STALE_STARTED_TIME, "col");
 
-    DeferredIndexRecoveryService service = new DeferredIndexRecoveryService(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
+    DeferredIndexRecoveryService service = new DeferredIndexRecoveryServiceImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
     service.recoverStaleOperations();
 
     assertEquals("status should be PENDING", DeferredIndexStatus.PENDING.name(), queryStatus("DroppedTable_1"));
@@ -206,7 +206,7 @@ public class TestDeferredIndexRecoveryService {
     insertInProgressRow("Apple", "Apple_Present", false, STALE_STARTED_TIME, "pips");
     insertInProgressRow("Apple", "Apple_Absent", false, STALE_STARTED_TIME, "pips");
 
-    DeferredIndexRecoveryService service = new DeferredIndexRecoveryService(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
+    DeferredIndexRecoveryService service = new DeferredIndexRecoveryServiceImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
     service.recoverStaleOperations();
 
     assertEquals("existing index should be COMPLETED", DeferredIndexStatus.COMPLETED.name(), queryStatus("Apple_Present"));

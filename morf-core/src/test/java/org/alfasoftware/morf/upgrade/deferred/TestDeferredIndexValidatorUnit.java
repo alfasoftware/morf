@@ -29,7 +29,7 @@ import java.util.List;
 import org.junit.Test;
 
 /**
- * Unit tests for {@link DeferredIndexValidator} covering the
+ * Unit tests for {@link DeferredIndexValidatorImpl} covering the
  * {@link DeferredIndexValidator#validateNoPendingOperations()} method
  * with mocked DAO and executor dependencies.
  *
@@ -44,7 +44,7 @@ public class TestDeferredIndexValidatorUnit {
     when(mockDao.findPendingOperations()).thenReturn(Collections.emptyList());
 
     DeferredIndexConfig config = new DeferredIndexConfig();
-    DeferredIndexValidator validator = new DeferredIndexValidator(mockDao, null, config);
+    DeferredIndexValidator validator = new DeferredIndexValidatorImpl(mockDao, null, config);
     validator.validateNoPendingOperations();
 
     verify(mockDao).findPendingOperations();
@@ -64,7 +64,7 @@ public class TestDeferredIndexValidatorUnit {
     when(mockExecutor.executeAndWait(expectedTimeoutMs))
         .thenReturn(new DeferredIndexExecutor.ExecutionResult(1, 0));
 
-    DeferredIndexValidator validator = new DeferredIndexValidator(mockDao, mockExecutor, config);
+    DeferredIndexValidator validator = new DeferredIndexValidatorImpl(mockDao, mockExecutor, config);
     validator.validateNoPendingOperations();
 
     verify(mockExecutor).executeAndWait(expectedTimeoutMs);
@@ -83,7 +83,7 @@ public class TestDeferredIndexValidatorUnit {
     when(mockExecutor.executeAndWait(expectedTimeoutMs))
         .thenReturn(new DeferredIndexExecutor.ExecutionResult(0, 1));
 
-    DeferredIndexValidator validator = new DeferredIndexValidator(mockDao, mockExecutor, config);
+    DeferredIndexValidator validator = new DeferredIndexValidatorImpl(mockDao, mockExecutor, config);
     validator.validateNoPendingOperations();
   }
 
@@ -100,7 +100,7 @@ public class TestDeferredIndexValidatorUnit {
     when(mockExecutor.executeAndWait(expectedTimeoutMs))
         .thenReturn(new DeferredIndexExecutor.ExecutionResult(0, 2));
 
-    DeferredIndexValidator validator = new DeferredIndexValidator(mockDao, mockExecutor, config);
+    DeferredIndexValidator validator = new DeferredIndexValidatorImpl(mockDao, mockExecutor, config);
     try {
       validator.validateNoPendingOperations();
       fail("Expected IllegalStateException");
@@ -118,7 +118,7 @@ public class TestDeferredIndexValidatorUnit {
 
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     DeferredIndexConfig config = new DeferredIndexConfig();
-    DeferredIndexValidator validator = new DeferredIndexValidator(mockDao, mockExecutor, config);
+    DeferredIndexValidator validator = new DeferredIndexValidatorImpl(mockDao, mockExecutor, config);
     validator.validateNoPendingOperations();
 
     verify(mockExecutor, never()).executeAndWait(org.mockito.ArgumentMatchers.anyLong());

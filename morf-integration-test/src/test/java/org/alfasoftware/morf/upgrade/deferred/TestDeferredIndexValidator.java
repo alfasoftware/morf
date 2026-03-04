@@ -55,7 +55,7 @@ import com.google.inject.Inject;
 import net.jcip.annotations.NotThreadSafe;
 
 /**
- * Integration tests for {@link DeferredIndexValidator} (Stage 10).
+ * Integration tests for {@link DeferredIndexValidatorImpl} (Stage 10).
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -221,8 +221,8 @@ public class TestDeferredIndexValidator {
 
   private DeferredIndexValidator createValidator(DeferredIndexConfig validatorConfig) {
     DeferredIndexOperationDAO dao = new DeferredIndexOperationDAOImpl(connectionResources);
-    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, connectionResources, validatorConfig);
-    return new DeferredIndexValidator(dao, executor, validatorConfig);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources, validatorConfig);
+    return new DeferredIndexValidatorImpl(dao, executor, validatorConfig);
   }
 
 

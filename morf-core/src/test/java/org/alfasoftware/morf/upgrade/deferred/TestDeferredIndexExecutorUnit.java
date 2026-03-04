@@ -46,7 +46,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 /**
- * Unit tests for {@link DeferredIndexExecutor} covering edge cases
+ * Unit tests for {@link DeferredIndexExecutorImpl} covering edge cases
  * that are difficult to exercise in integration tests: shutdown lifecycle,
  * progress logging, string truncation, and thread interruption.
  *
@@ -76,7 +76,7 @@ public class TestDeferredIndexExecutorUnit {
   /** Calling shutdown before any execution should be a safe no-op. */
   @Test
   public void testShutdownBeforeExecutionIsNoOp() {
-    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
     executor.shutdown();
   }
 
@@ -91,7 +91,7 @@ public class TestDeferredIndexExecutorUnit {
     when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
         .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
 
-    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
     executor.executeAndWait(60_000L);
     executor.shutdown();
   }
@@ -100,7 +100,7 @@ public class TestDeferredIndexExecutorUnit {
   /** logProgress should run without error when no operations have been submitted. */
   @Test
   public void testLogProgressOnFreshExecutor() {
-    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
     executor.logProgress();
   }
 
@@ -115,7 +115,7 @@ public class TestDeferredIndexExecutorUnit {
     when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
         .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
 
-    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
     executor.executeAndWait(60_000L);
     executor.logProgress();
 
@@ -128,21 +128,21 @@ public class TestDeferredIndexExecutorUnit {
   /** truncate should return an empty string when the input is null. */
   @Test
   public void testTruncateReturnsEmptyForNull() {
-    assertEquals("", DeferredIndexExecutor.truncate(null, 100));
+    assertEquals("", DeferredIndexExecutorImpl.truncate(null, 100));
   }
 
 
   /** truncate should return the original string when it is within the limit. */
   @Test
   public void testTruncateReturnsOriginalWhenWithinLimit() {
-    assertEquals("short", DeferredIndexExecutor.truncate("short", 100));
+    assertEquals("short", DeferredIndexExecutorImpl.truncate("short", 100));
   }
 
 
   /** truncate should cut the string at maxLength when it exceeds the limit. */
   @Test
   public void testTruncateCutsAtMaxLength() {
-    assertEquals("abcdefghij", DeferredIndexExecutor.truncate("abcdefghij-extra", 10));
+    assertEquals("abcdefghij", DeferredIndexExecutorImpl.truncate("abcdefghij-extra", 10));
   }
 
 
@@ -151,7 +151,7 @@ public class TestDeferredIndexExecutorUnit {
   public void testAwaitCompletionReturnsFalseWhenInterrupted() throws Exception {
     when(dao.hasNonTerminalOperations()).thenReturn(true);
 
-    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
     AtomicBoolean result = new AtomicBoolean(true);
     Thread testThread = new Thread(() -> result.set(executor.awaitCompletion(60L)));
     testThread.start();
@@ -168,7 +168,7 @@ public class TestDeferredIndexExecutorUnit {
   public void testExecuteAndWaitEmptyQueue() {
     when(dao.findPendingOperations()).thenReturn(Collections.emptyList());
 
-    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
     DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
 
     assertEquals("completedCount", 0, result.getCompletedCount());
@@ -186,7 +186,7 @@ public class TestDeferredIndexExecutorUnit {
     when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
         .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
 
-    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
     DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
 
     assertEquals("completedCount", 1, result.getCompletedCount());
@@ -213,7 +213,7 @@ public class TestDeferredIndexExecutorUnit {
         .thenThrow(new RuntimeException("temporary failure"))
         .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
 
-    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
     DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
 
     assertEquals("completedCount", 1, result.getCompletedCount());
@@ -236,7 +236,7 @@ public class TestDeferredIndexExecutorUnit {
     when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
         .thenThrow(new RuntimeException("persistent failure"));
 
-    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
     DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
 
     assertEquals("completedCount", 0, result.getCompletedCount());
@@ -254,7 +254,7 @@ public class TestDeferredIndexExecutorUnit {
     when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
         .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
 
-    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
     executor.executeAndWait(60_000L);
 
     DeferredIndexExecutor.ExecutionStatus status = executor.getStatus();
@@ -268,7 +268,7 @@ public class TestDeferredIndexExecutorUnit {
   /** getStatus on a fresh executor should report zero for all fields. */
   @Test
   public void testGetStatusBeforeExecution() {
-    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
     DeferredIndexExecutor.ExecutionStatus status = executor.getStatus();
     assertEquals("totalCount", 0, status.getTotalCount());
     assertEquals("completedCount", 0, status.getCompletedCount());
@@ -282,7 +282,7 @@ public class TestDeferredIndexExecutorUnit {
   public void testAwaitCompletionReturnsTrueWhenEmpty() {
     when(dao.hasNonTerminalOperations()).thenReturn(false);
 
-    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
     boolean result = executor.awaitCompletion(60L);
 
     assertEquals("awaitCompletion should return true", true, result);
@@ -294,7 +294,7 @@ public class TestDeferredIndexExecutorUnit {
   public void testAwaitCompletionReturnsFalseOnTimeout() {
     when(dao.hasNonTerminalOperations()).thenReturn(true);
 
-    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
     boolean result = executor.awaitCompletion(1L);
 
     assertFalse("awaitCompletion should return false on timeout", result);
@@ -312,7 +312,7 @@ public class TestDeferredIndexExecutorUnit {
     when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
         .thenReturn(List.of("CREATE UNIQUE INDEX idx ON t(c)"));
 
-    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
     DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
 
     assertEquals("completedCount", 1, result.getCompletedCount());
@@ -330,7 +330,7 @@ public class TestDeferredIndexExecutorUnit {
         .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
     when(dataSource.getConnection()).thenThrow(new SQLException("connection refused"));
 
-    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
     DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
 
     assertEquals("completedCount", 0, result.getCompletedCount());
@@ -344,7 +344,7 @@ public class TestDeferredIndexExecutorUnit {
     java.util.concurrent.atomic.AtomicInteger callCount = new java.util.concurrent.atomic.AtomicInteger();
     when(dao.hasNonTerminalOperations()).thenAnswer(inv -> callCount.incrementAndGet() < 2);
 
-    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
     boolean result = executor.awaitCompletion(0L);
 
     assertEquals("awaitCompletion should return true", true, result);

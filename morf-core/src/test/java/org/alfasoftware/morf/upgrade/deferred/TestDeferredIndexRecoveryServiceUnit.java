@@ -37,7 +37,7 @@ import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.junit.Test;
 
 /**
- * Unit tests for {@link DeferredIndexRecoveryService} verifying stale
+ * Unit tests for {@link DeferredIndexRecoveryServiceImpl} verifying stale
  * operation recovery with mocked DAO and schema dependencies.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
@@ -52,7 +52,7 @@ public class TestDeferredIndexRecoveryServiceUnit {
 
     DeferredIndexConfig config = new DeferredIndexConfig();
     ConnectionResources mockConn = mock(ConnectionResources.class);
-    DeferredIndexRecoveryService service = new DeferredIndexRecoveryService(mockDao, mockConn, config);
+    DeferredIndexRecoveryService service = new DeferredIndexRecoveryServiceImpl(mockDao, mockConn, config);
     service.recoverStaleOperations();
 
     verify(mockDao).findStaleInProgressOperations(anyLong());
@@ -80,7 +80,7 @@ public class TestDeferredIndexRecoveryServiceUnit {
     when(mockConn.openSchemaResource()).thenReturn(mockSchemaResource);
 
     DeferredIndexConfig config = new DeferredIndexConfig();
-    DeferredIndexRecoveryService service = new DeferredIndexRecoveryService(mockDao, mockConn, config);
+    DeferredIndexRecoveryService service = new DeferredIndexRecoveryServiceImpl(mockDao, mockConn, config);
     service.recoverStaleOperations();
 
     verify(mockDao).markCompleted(eq(1L), anyLong());
@@ -106,7 +106,7 @@ public class TestDeferredIndexRecoveryServiceUnit {
     when(mockConn.openSchemaResource()).thenReturn(mockSchemaResource);
 
     DeferredIndexConfig config = new DeferredIndexConfig();
-    DeferredIndexRecoveryService service = new DeferredIndexRecoveryService(mockDao, mockConn, config);
+    DeferredIndexRecoveryService service = new DeferredIndexRecoveryServiceImpl(mockDao, mockConn, config);
     service.recoverStaleOperations();
 
     verify(mockDao).resetToPending(1L);
@@ -131,7 +131,7 @@ public class TestDeferredIndexRecoveryServiceUnit {
     when(mockConn.openSchemaResource()).thenReturn(mockSchemaResource);
 
     DeferredIndexConfig config = new DeferredIndexConfig();
-    DeferredIndexRecoveryService service = new DeferredIndexRecoveryService(mockDao, mockConn, config);
+    DeferredIndexRecoveryService service = new DeferredIndexRecoveryServiceImpl(mockDao, mockConn, config);
     service.recoverStaleOperations();
 
     verify(mockDao).updateStatus(1L, DeferredIndexStatus.SKIPPED);
@@ -162,7 +162,7 @@ public class TestDeferredIndexRecoveryServiceUnit {
     when(mockConn.openSchemaResource()).thenReturn(mockSchemaResource);
 
     DeferredIndexConfig config = new DeferredIndexConfig();
-    DeferredIndexRecoveryService service = new DeferredIndexRecoveryService(mockDao, mockConn, config);
+    DeferredIndexRecoveryService service = new DeferredIndexRecoveryServiceImpl(mockDao, mockConn, config);
     service.recoverStaleOperations();
 
     verify(mockDao).markCompleted(eq(1L), anyLong());
@@ -190,7 +190,7 @@ public class TestDeferredIndexRecoveryServiceUnit {
     when(mockConn.openSchemaResource()).thenReturn(mockSchemaResource);
 
     DeferredIndexConfig config = new DeferredIndexConfig();
-    DeferredIndexRecoveryService service = new DeferredIndexRecoveryService(mockDao, mockConn, config);
+    DeferredIndexRecoveryService service = new DeferredIndexRecoveryServiceImpl(mockDao, mockConn, config);
     service.recoverStaleOperations();
 
     verify(mockDao).markCompleted(eq(1L), anyLong());

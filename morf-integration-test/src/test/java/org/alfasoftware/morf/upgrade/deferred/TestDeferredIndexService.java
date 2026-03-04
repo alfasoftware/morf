@@ -298,8 +298,8 @@ public class TestDeferredIndexService {
 
   private DeferredIndexService createService(DeferredIndexConfig config) {
     DeferredIndexOperationDAO dao = new DeferredIndexOperationDAOImpl(connectionResources);
-    DeferredIndexRecoveryService recovery = new DeferredIndexRecoveryService(dao, connectionResources, config);
-    DeferredIndexExecutor executor = new DeferredIndexExecutor(dao, connectionResources, config);
+    DeferredIndexRecoveryService recovery = new DeferredIndexRecoveryServiceImpl(dao, connectionResources, config);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources, config);
     return new DeferredIndexServiceImpl(recovery, executor, dao, config);
   }
 
