@@ -37,7 +37,7 @@ interface DeferredIndexExecutor {
    *                  complete; zero means wait indefinitely.
    * @return summary of how many operations completed and how many failed.
    */
-  ExecutionResult executeAndWait(long timeoutMs);
+  DeferredIndexExecutionResult executeAndWait(long timeoutMs);
 
 
   /**
@@ -54,107 +54,8 @@ interface DeferredIndexExecutor {
 
 
   /**
-   * Returns a snapshot of the execution progress for the current or most recent
-   * {@link #executeAndWait} call.
-   *
-   * @return current {@link ExecutionStatus}.
-   */
-  ExecutionStatus getStatus();
-
-
-  /**
    * Shuts down any background threads started by the most recent
    * {@link #executeAndWait} call.
    */
   void shutdown();
-
-
-  /**
-   * Summary of the outcome of an {@link #executeAndWait} call.
-   */
-  public static final class ExecutionResult {
-
-    private final int completedCount;
-    private final int failedCount;
-
-    /**
-     * Constructs an execution result.
-     *
-     * @param completedCount the number of operations that completed successfully.
-     * @param failedCount    the number of operations that failed permanently.
-     */
-    public ExecutionResult(int completedCount, int failedCount) {
-      this.completedCount = completedCount;
-      this.failedCount = failedCount;
-    }
-
-    /**
-     * @return the number of operations that completed successfully.
-     */
-    public int getCompletedCount() {
-      return completedCount;
-    }
-
-    /**
-     * @return the number of operations that failed permanently.
-     */
-    public int getFailedCount() {
-      return failedCount;
-    }
-  }
-
-
-  /**
-   * Snapshot of execution progress at a point in time.
-   */
-  public static final class ExecutionStatus {
-
-    private final int totalCount;
-    private final int completedCount;
-    private final int inProgressCount;
-    private final int failedCount;
-
-    /**
-     * Constructs an execution status snapshot.
-     *
-     * @param totalCount      total operations submitted.
-     * @param completedCount  operations completed successfully.
-     * @param inProgressCount operations currently executing.
-     * @param failedCount     operations permanently failed.
-     */
-    public ExecutionStatus(int totalCount, int completedCount, int inProgressCount, int failedCount) {
-      this.totalCount = totalCount;
-      this.completedCount = completedCount;
-      this.inProgressCount = inProgressCount;
-      this.failedCount = failedCount;
-    }
-
-    /**
-     * @return total operations submitted in this execution run.
-     */
-    public int getTotalCount() {
-      return totalCount;
-    }
-
-    /**
-     * @return operations completed successfully so far.
-     */
-    public int getCompletedCount() {
-      return completedCount;
-    }
-
-    /**
-     * @return operations currently executing.
-     */
-    public int getInProgressCount() {
-      return inProgressCount;
-    }
-
-    /**
-     * @return operations permanently failed so far.
-     */
-    public int getFailedCount() {
-      return failedCount;
-    }
-  }
 }

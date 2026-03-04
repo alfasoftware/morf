@@ -62,7 +62,7 @@ public class TestDeferredIndexValidatorUnit {
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     long expectedTimeoutMs = config.getExecutionTimeoutSeconds() * 1_000L;
     when(mockExecutor.executeAndWait(expectedTimeoutMs))
-        .thenReturn(new DeferredIndexExecutor.ExecutionResult(1, 0));
+        .thenReturn(new DeferredIndexExecutionResult(1, 0));
 
     DeferredIndexValidator validator = new DeferredIndexValidatorImpl(mockDao, mockExecutor, config);
     validator.validateNoPendingOperations();
@@ -81,7 +81,7 @@ public class TestDeferredIndexValidatorUnit {
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     long expectedTimeoutMs = config.getExecutionTimeoutSeconds() * 1_000L;
     when(mockExecutor.executeAndWait(expectedTimeoutMs))
-        .thenReturn(new DeferredIndexExecutor.ExecutionResult(0, 1));
+        .thenReturn(new DeferredIndexExecutionResult(0, 1));
 
     DeferredIndexValidator validator = new DeferredIndexValidatorImpl(mockDao, mockExecutor, config);
     validator.validateNoPendingOperations();
@@ -98,7 +98,7 @@ public class TestDeferredIndexValidatorUnit {
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     long expectedTimeoutMs = config.getExecutionTimeoutSeconds() * 1_000L;
     when(mockExecutor.executeAndWait(expectedTimeoutMs))
-        .thenReturn(new DeferredIndexExecutor.ExecutionResult(0, 2));
+        .thenReturn(new DeferredIndexExecutionResult(0, 2));
 
     DeferredIndexValidator validator = new DeferredIndexValidatorImpl(mockDao, mockExecutor, config);
     try {

@@ -116,7 +116,7 @@ public class TestDeferredIndexExecutor {
     insertPendingRow("Apple", "Apple_1", false, "pips");
 
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
-    DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
+    DeferredIndexExecutionResult result = executor.executeAndWait(60_000L);
 
     assertEquals("completedCount", 1, result.getCompletedCount());
     assertEquals("failedCount", 0, result.getFailedCount());
@@ -138,7 +138,7 @@ public class TestDeferredIndexExecutor {
     insertPendingRow("NoSuchTable", "NoSuchTable_1", false, "col");
 
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
-    DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
+    DeferredIndexExecutionResult result = executor.executeAndWait(60_000L);
 
     assertEquals("failedCount", 1, result.getFailedCount());
     assertEquals("completedCount", 0, result.getCompletedCount());
@@ -157,7 +157,7 @@ public class TestDeferredIndexExecutor {
     insertPendingRow("NoSuchTable", "NoSuchTable_1", false, "col");
 
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
-    DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
+    DeferredIndexExecutionResult result = executor.executeAndWait(60_000L);
 
     assertEquals("failedCount", 1, result.getFailedCount());
     assertEquals("status should be FAILED", DeferredIndexStatus.FAILED.name(), queryStatus("NoSuchTable_1"));
@@ -172,7 +172,7 @@ public class TestDeferredIndexExecutor {
   @Test
   public void testEmptyQueueReturnsImmediately() {
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
-    DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
+    DeferredIndexExecutionResult result = executor.executeAndWait(60_000L);
 
     assertEquals("completedCount", 0, result.getCompletedCount());
     assertEquals("failedCount", 0, result.getFailedCount());
@@ -210,7 +210,7 @@ public class TestDeferredIndexExecutor {
     insertPendingRow("Apple", "Apple_Multi_1", false, "pips", "color");
 
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
-    DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
+    DeferredIndexExecutionResult result = executor.executeAndWait(60_000L);
 
     assertEquals("completedCount", 1, result.getCompletedCount());
     assertEquals("failedCount", 0, result.getFailedCount());
@@ -223,27 +223,6 @@ public class TestDeferredIndexExecutor {
       assertEquals("column count", 2, idx.columnNames().size());
       assertEquals("first column", "pips", idx.columnNames().get(0).toUpperCase().equals("PIPS") ? "pips" : idx.columnNames().get(0));
     }
-  }
-
-
-  /**
-   * getStatus should reflect accurate counts after executeAndWait completes.
-   * This exercises the same AtomicInteger counters that the progress logger reads.
-   */
-  @Test
-  public void testGetStatusReflectsCompletedExecution() {
-    config.setMaxRetries(0);
-    insertPendingRow("Apple", "Apple_S1", false, "pips");
-    insertPendingRow("NoSuchTable", "NoSuchTable_S2", false, "col");
-
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
-    executor.executeAndWait(60_000L);
-
-    DeferredIndexExecutor.ExecutionStatus status = executor.getStatus();
-    assertEquals("totalCount", 2, status.getTotalCount());
-    assertEquals("completedCount", 1, status.getCompletedCount());
-    assertEquals("failedCount", 1, status.getFailedCount());
-    assertEquals("inProgressCount", 0, status.getInProgressCount());
   }
 
 

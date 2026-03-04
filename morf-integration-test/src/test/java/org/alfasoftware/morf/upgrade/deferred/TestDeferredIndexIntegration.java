@@ -405,11 +405,11 @@ public class TestDeferredIndexIntegration {
     config.setRetryBaseDelayMs(10L);
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(connectionResources), connectionResources, config);
 
-    DeferredIndexExecutor.ExecutionResult firstRun = executor.executeAndWait(60_000L);
+    DeferredIndexExecutionResult firstRun = executor.executeAndWait(60_000L);
     assertEquals("First run completed", 1, firstRun.getCompletedCount());
     assertEquals("First run failed", 0, firstRun.getFailedCount());
 
-    DeferredIndexExecutor.ExecutionResult secondRun = executor.executeAndWait(60_000L);
+    DeferredIndexExecutionResult secondRun = executor.executeAndWait(60_000L);
     assertEquals("Second run completed", 0, secondRun.getCompletedCount());
     assertEquals("Second run failed", 0, secondRun.getFailedCount());
 

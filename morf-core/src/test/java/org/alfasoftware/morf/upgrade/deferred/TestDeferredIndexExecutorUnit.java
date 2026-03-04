@@ -105,26 +105,6 @@ public class TestDeferredIndexExecutorUnit {
   }
 
 
-  /** logProgress should report accurate counters after a completed execution run. */
-  @Test
-  public void testLogProgressAfterExecution() {
-    DeferredIndexOperation op = buildOp(1001L);
-    when(dao.findPendingOperations()).thenReturn(List.of(op));
-    SqlScriptExecutor scriptExecutor = mock(SqlScriptExecutor.class);
-    when(sqlScriptExecutorProvider.get()).thenReturn(scriptExecutor);
-    when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
-        .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
-
-    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
-    executor.executeAndWait(60_000L);
-    executor.logProgress();
-
-    DeferredIndexExecutor.ExecutionStatus status = executor.getStatus();
-    assertEquals("totalCount", 1, status.getTotalCount());
-    assertEquals("completedCount", 1, status.getCompletedCount());
-  }
-
-
   /** truncate should return an empty string when the input is null. */
   @Test
   public void testTruncateReturnsEmptyForNull() {
@@ -169,7 +149,7 @@ public class TestDeferredIndexExecutorUnit {
     when(dao.findPendingOperations()).thenReturn(Collections.emptyList());
 
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
-    DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
+    DeferredIndexExecutionResult result = executor.executeAndWait(60_000L);
 
     assertEquals("completedCount", 0, result.getCompletedCount());
     assertEquals("failedCount", 0, result.getFailedCount());
@@ -187,7 +167,7 @@ public class TestDeferredIndexExecutorUnit {
         .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
 
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
-    DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
+    DeferredIndexExecutionResult result = executor.executeAndWait(60_000L);
 
     assertEquals("completedCount", 1, result.getCompletedCount());
     assertEquals("failedCount", 0, result.getFailedCount());
@@ -214,7 +194,7 @@ public class TestDeferredIndexExecutorUnit {
         .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
 
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
-    DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
+    DeferredIndexExecutionResult result = executor.executeAndWait(60_000L);
 
     assertEquals("completedCount", 1, result.getCompletedCount());
     assertEquals("failedCount", 0, result.getFailedCount());
@@ -237,43 +217,10 @@ public class TestDeferredIndexExecutorUnit {
         .thenThrow(new RuntimeException("persistent failure"));
 
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
-    DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
+    DeferredIndexExecutionResult result = executor.executeAndWait(60_000L);
 
     assertEquals("completedCount", 0, result.getCompletedCount());
     assertEquals("failedCount", 1, result.getFailedCount());
-  }
-
-
-  /** getStatus should reflect counts from a completed execution. */
-  @Test
-  public void testGetStatusAfterExecution() {
-    DeferredIndexOperation op = buildOp(1001L);
-    when(dao.findPendingOperations()).thenReturn(List.of(op));
-    SqlScriptExecutor scriptExecutor = mock(SqlScriptExecutor.class);
-    when(sqlScriptExecutorProvider.get()).thenReturn(scriptExecutor);
-    when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
-        .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
-
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
-    executor.executeAndWait(60_000L);
-
-    DeferredIndexExecutor.ExecutionStatus status = executor.getStatus();
-    assertEquals("totalCount", 1, status.getTotalCount());
-    assertEquals("completedCount", 1, status.getCompletedCount());
-    assertEquals("inProgressCount", 0, status.getInProgressCount());
-    assertEquals("failedCount", 0, status.getFailedCount());
-  }
-
-
-  /** getStatus on a fresh executor should report zero for all fields. */
-  @Test
-  public void testGetStatusBeforeExecution() {
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
-    DeferredIndexExecutor.ExecutionStatus status = executor.getStatus();
-    assertEquals("totalCount", 0, status.getTotalCount());
-    assertEquals("completedCount", 0, status.getCompletedCount());
-    assertEquals("inProgressCount", 0, status.getInProgressCount());
-    assertEquals("failedCount", 0, status.getFailedCount());
   }
 
 
@@ -313,7 +260,7 @@ public class TestDeferredIndexExecutorUnit {
         .thenReturn(List.of("CREATE UNIQUE INDEX idx ON t(c)"));
 
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
-    DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
+    DeferredIndexExecutionResult result = executor.executeAndWait(60_000L);
 
     assertEquals("completedCount", 1, result.getCompletedCount());
     assertEquals("failedCount", 0, result.getFailedCount());
@@ -331,7 +278,7 @@ public class TestDeferredIndexExecutorUnit {
     when(dataSource.getConnection()).thenThrow(new SQLException("connection refused"));
 
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, sqlDialect, sqlScriptExecutorProvider, dataSource, config);
-    DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(60_000L);
+    DeferredIndexExecutionResult result = executor.executeAndWait(60_000L);
 
     assertEquals("completedCount", 0, result.getCompletedCount());
     assertEquals("failedCount", 1, result.getFailedCount());

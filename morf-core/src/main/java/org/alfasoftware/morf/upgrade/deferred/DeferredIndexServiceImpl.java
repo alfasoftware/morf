@@ -71,7 +71,7 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
 
     log.info("Deferred index service: executing pending operations...");
     long timeoutMs = config.getExecutionTimeoutSeconds() * 1_000L;
-    DeferredIndexExecutor.ExecutionResult executorResult = executor.executeAndWait(timeoutMs);
+    DeferredIndexExecutionResult executorResult = executor.executeAndWait(timeoutMs);
 
     int completed = executorResult.getCompletedCount();
     int failed = executorResult.getFailedCount();

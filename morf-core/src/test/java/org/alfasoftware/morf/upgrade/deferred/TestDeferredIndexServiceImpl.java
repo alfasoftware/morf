@@ -178,7 +178,7 @@ public class TestDeferredIndexServiceImpl {
     DeferredIndexRecoveryService mockRecovery = mock(DeferredIndexRecoveryService.class);
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     when(mockExecutor.executeAndWait(28_800_000L))
-        .thenReturn(new DeferredIndexExecutor.ExecutionResult(3, 0));
+        .thenReturn(new DeferredIndexExecutionResult(3, 0));
 
     DeferredIndexServiceImpl service = serviceWithMocks(mockRecovery, mockExecutor, null);
     DeferredIndexService.ExecutionResult result = service.execute();
@@ -196,7 +196,7 @@ public class TestDeferredIndexServiceImpl {
     DeferredIndexRecoveryService mockRecovery = mock(DeferredIndexRecoveryService.class);
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     when(mockExecutor.executeAndWait(28_800_000L))
-        .thenReturn(new DeferredIndexExecutor.ExecutionResult(2, 1));
+        .thenReturn(new DeferredIndexExecutionResult(2, 1));
 
     DeferredIndexServiceImpl service = serviceWithMocks(mockRecovery, mockExecutor, null);
     service.execute();
@@ -209,7 +209,7 @@ public class TestDeferredIndexServiceImpl {
     DeferredIndexRecoveryService mockRecovery = mock(DeferredIndexRecoveryService.class);
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     when(mockExecutor.executeAndWait(28_800_000L))
-        .thenReturn(new DeferredIndexExecutor.ExecutionResult(0, 0));
+        .thenReturn(new DeferredIndexExecutionResult(0, 0));
 
     DeferredIndexServiceImpl service = serviceWithMocks(mockRecovery, mockExecutor, null);
     DeferredIndexService.ExecutionResult result = service.execute();
@@ -236,7 +236,7 @@ public class TestDeferredIndexServiceImpl {
     DeferredIndexRecoveryService mockRecovery = mock(DeferredIndexRecoveryService.class);
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     when(mockExecutor.executeAndWait(28_800_000L))
-        .thenReturn(new DeferredIndexExecutor.ExecutionResult(5, 3));
+        .thenReturn(new DeferredIndexExecutionResult(5, 3));
 
     DeferredIndexServiceImpl service = serviceWithMocks(mockRecovery, mockExecutor, null);
     try {

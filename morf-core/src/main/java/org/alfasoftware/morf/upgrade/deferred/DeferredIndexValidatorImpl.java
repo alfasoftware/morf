@@ -70,7 +70,7 @@ class DeferredIndexValidatorImpl implements DeferredIndexValidator {
         + "Executing immediately before proceeding...");
 
     long timeoutMs = config.getExecutionTimeoutSeconds() * 1_000L;
-    DeferredIndexExecutor.ExecutionResult result = executor.executeAndWait(timeoutMs);
+    DeferredIndexExecutionResult result = executor.executeAndWait(timeoutMs);
 
     log.info("Pre-upgrade deferred index execution complete: completed=" + result.getCompletedCount()
         + ", failed=" + result.getFailedCount());

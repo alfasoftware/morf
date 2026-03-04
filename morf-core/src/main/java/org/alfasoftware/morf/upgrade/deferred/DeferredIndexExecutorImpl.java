@@ -23,7 +23,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -60,8 +59,7 @@ import org.apache.commons.logging.LogFactory;
  *
  * <p>Retry logic uses exponential back-off up to
  * {@link DeferredIndexConfig#getMaxRetries()} additional attempts after the
- * first failure. Progress is logged at INFO level every 30 seconds (DEBUG
- * additionally logs per-operation details).</p>
+ * first failure. Progress is logged at INFO level every 30 seconds.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -90,12 +88,6 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
 
   /** Total operations submitted in the current {@link #executeAndWait} call. */
   private final AtomicInteger totalCount = new AtomicInteger(0);
-
-  /**
-   * Operations currently executing, keyed by id.
-   * Used for progress-log detail at DEBUG level.
-   */
-  private final ConcurrentHashMap<Long, RunningOperation> runningOperations = new ConcurrentHashMap<>();
 
   /** The scheduled progress logger; may be null if execution has not started. */
   private volatile ScheduledExecutorService progressLoggerService;
@@ -134,16 +126,15 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
 
 
   @Override
-  public ExecutionResult executeAndWait(long timeoutMs) {
+  public DeferredIndexExecutionResult executeAndWait(long timeoutMs) {
     completedCount.set(0);
     failedCount.set(0);
-    runningOperations.clear();
 
     List<DeferredIndexOperation> pending = dao.findPendingOperations();
     totalCount.set(pending.size());
 
     if (pending.isEmpty()) {
-      return new ExecutionResult(0, 0);
+      return new DeferredIndexExecutionResult(0, 0);
     }
 
     progressLoggerService = startProgressLogger();
@@ -164,7 +155,7 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
     threadPool.shutdownNow();
     progressLoggerService.shutdownNow();
 
-    return new ExecutionResult(completedCount.get(), failedCount.get());
+    return new DeferredIndexExecutionResult(completedCount.get(), failedCount.get());
   }
 
 
@@ -193,16 +184,6 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
 
 
   @Override
-  public ExecutionStatus getStatus() {
-    int total = totalCount.get();
-    int completed = completedCount.get();
-    int failed = failedCount.get();
-    int inProgress = runningOperations.size();
-    return new ExecutionStatus(total, completed, inProgress, failed);
-  }
-
-
-  @Override
   public void shutdown() {
     ScheduledExecutorService svc = progressLoggerService;
     if (svc != null) {
@@ -225,11 +206,9 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
       }
       long startedTime = System.currentTimeMillis();
       dao.markStarted(op.getId(), startedTime);
-      runningOperations.put(op.getId(), new RunningOperation(op, System.currentTimeMillis()));
 
       try {
         buildIndex(op);
-        runningOperations.remove(op.getId());
         dao.markCompleted(op.getId(), System.currentTimeMillis());
         completedCount.incrementAndGet();
         if (log.isDebugEnabled()) {
@@ -239,7 +218,6 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
         return;
 
       } catch (Exception e) {
-        runningOperations.remove(op.getId());
         int newRetryCount = attempt + 1;
         String errorMessage = truncate(e.getMessage(), 2_000);
         dao.markFailed(op.getId(), errorMessage, newRetryCount);
@@ -338,22 +316,10 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
     int total = totalCount.get();
     int completed = completedCount.get();
     int failed = failedCount.get();
-    int inProgress = runningOperations.size();
-    int pending = total - completed - failed - inProgress;
+    int inProgress = total - completed - failed;
 
     log.info("Deferred index progress: total=" + total + ", completed=" + completed
-        + ", in-progress=" + inProgress + ", failed=" + failed + ", pending=" + pending);
-
-    if (log.isDebugEnabled()) {
-      long now = System.currentTimeMillis();
-      for (RunningOperation running : runningOperations.values()) {
-        long elapsedMs = now - running.startedAtMs;
-        log.debug("  In-progress: table=" + running.op.getTableName()
-            + ", index=" + running.op.getIndexName()
-            + ", columns=" + running.op.getColumnNames()
-            + ", elapsed=" + elapsedMs + "ms");
-      }
-    }
+        + ", in-progress=" + inProgress + ", failed=" + failed);
   }
 
 
@@ -362,21 +328,5 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
       return "";
     }
     return message.length() > maxLength ? message.substring(0, maxLength) : message;
-  }
-
-
-  // -------------------------------------------------------------------------
-  // Inner types
-  // -------------------------------------------------------------------------
-
-  /** Tracks an operation currently being executed, for progress logging. */
-  private static final class RunningOperation {
-    final DeferredIndexOperation op;
-    final long startedAtMs;
-
-    RunningOperation(DeferredIndexOperation op, long startedAtMs) {
-      this.op = op;
-      this.startedAtMs = startedAtMs;
-    }
   }
 }
