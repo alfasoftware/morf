@@ -198,14 +198,13 @@ public class TestDeferredIndexService {
 
 
   /**
-   * Verify that awaitCompletion() returns true immediately when the
-   * queue is empty.
+   * Verify that awaitCompletion() throws when called before execute().
    */
-  @Test
-  public void testAwaitCompletionReturnsTrueWhenEmpty() {
+  @Test(expected = IllegalStateException.class)
+  public void testAwaitCompletionThrowsWhenNoExecution() {
     DeferredIndexConfig config = new DeferredIndexConfig();
     DeferredIndexService service = createService(config);
-    assertTrue("Should return true on empty queue", service.awaitCompletion(5L));
+    service.awaitCompletion(5L);
   }
 
 
@@ -224,8 +223,9 @@ public class TestDeferredIndexService {
     firstService.execute();
     firstService.awaitCompletion(60L);
 
-    // Now await on a new service should return immediately
+    // Execute on a new service (empty queue) then await — should return immediately
     DeferredIndexService service = createService(config);
+    service.execute();
     assertTrue("Should return true when all completed", service.awaitCompletion(5L));
   }
 

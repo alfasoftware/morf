@@ -35,6 +35,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
@@ -50,6 +51,7 @@ import org.alfasoftware.morf.upgrade.Upgrade;
 import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
 import org.alfasoftware.morf.upgrade.ViewDeploymentValidator;
+import org.alfasoftware.morf.upgrade.upgrade.CreateDeferredIndexOperationTables;
 import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredIndex;
 import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddImmediateIndex;
 import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredIndexThenChange;
@@ -507,6 +509,37 @@ public class TestDeferredIndexIntegration {
 
     // Clean up config for other tests
     upgradeConfigAndContext.setForceDeferredIndexes(Set.of());
+  }
+
+
+  /**
+   * Verify that on a fresh database without deferred index tables,
+   * running both {@code CreateDeferredIndexOperationTables} and a step
+   * using {@code addIndexDeferred()} in the same upgrade batch succeeds.
+   * This exercises the {@code @ExclusiveExecution @Sequence(1)} guarantee
+   * that the infrastructure tables are created before any INSERT into them.
+   */
+  @Test
+  public void testFreshDatabaseWithDeferredIndexInSameBatch() {
+    // Start from a schema WITHOUT the deferred index tables
+    Schema schemaWithoutDeferredTables = schema(
+        deployedViewsTable(),
+        upgradeAuditTable(),
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        )
+    );
+    schemaManager.dropAllTables();
+    schemaManager.mutateToSupportSchema(schemaWithoutDeferredTables, TruncationBehavior.ALWAYS);
+
+    // Run upgrade with both the table-creation step and a deferred index step
+    Upgrade.performUpgrade(schemaWithIndex(),
+        List.of(CreateDeferredIndexOperationTables.class, AddDeferredIndex.class),
+        connectionResources, upgradeConfigAndContext, viewDeploymentValidator);
+
+    // The INSERT from AddDeferredIndex must have succeeded — the table existed
+    assertEquals("PENDING", queryOperationStatus("Product_Name_1"));
   }
 
 

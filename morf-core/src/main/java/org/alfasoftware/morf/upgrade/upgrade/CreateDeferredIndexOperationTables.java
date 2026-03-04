@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.upgrade.upgrade;
 
 import org.alfasoftware.morf.upgrade.DataEditor;
+import org.alfasoftware.morf.upgrade.ExclusiveExecution;
 import org.alfasoftware.morf.upgrade.SchemaEditor;
 import org.alfasoftware.morf.upgrade.Sequence;
 import org.alfasoftware.morf.upgrade.UUID;
@@ -27,9 +28,16 @@ import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
  * Create the {@code DeferredIndexOperation} and {@code DeferredIndexOperationColumn} tables,
  * which are used to track index operations deferred for background execution.
  *
+ * <p>{@link ExclusiveExecution} and {@code @Sequence(1)} ensure this step
+ * runs before any step that uses {@code addIndexDeferred()}, which generates
+ * INSERT statements targeting these tables. Without this guarantee,
+ * {@link org.alfasoftware.morf.upgrade.GraphBasedUpgrade} could schedule
+ * such steps in parallel, causing INSERTs to fail on a non-existent table.</p>
+ *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-@Sequence(1771628621)
+@ExclusiveExecution
+@Sequence(1)
 @UUID("4aa4bb56-74c4-4fb6-b896-84064f6d6fe3")
 @Version("2.29.1")
 public class CreateDeferredIndexOperationTables implements UpgradeStep {
