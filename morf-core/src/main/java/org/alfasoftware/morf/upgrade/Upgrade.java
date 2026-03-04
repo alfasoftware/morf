@@ -77,6 +77,7 @@ public class Upgrade {
   private final DatabaseUpgradePathValidationService databaseUpgradePathValidationService;
   private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
   private final UpgradeConfigAndContext upgradeConfigAndContext;
+  private final org.alfasoftware.morf.upgrade.deferred.DeferredIndexReadinessCheck deferredIndexReadinessCheck;
 
 
   public Upgrade(
@@ -87,7 +88,8 @@ public class Upgrade {
       ViewDeploymentValidator viewDeploymentValidator,
       DatabaseUpgradePathValidationService databaseUpgradePathValidationService,
       GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
-      UpgradeConfigAndContext upgradeConfigAndContext) {
+      UpgradeConfigAndContext upgradeConfigAndContext,
+      org.alfasoftware.morf.upgrade.deferred.DeferredIndexReadinessCheck deferredIndexReadinessCheck) {
     super();
     this.connectionResources = connectionResources;
     this.upgradePathFactory = upgradePathFactory;
@@ -97,6 +99,7 @@ public class Upgrade {
     this.databaseUpgradePathValidationService = databaseUpgradePathValidationService;
     this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
     this.upgradeConfigAndContext = upgradeConfigAndContext;
+    this.deferredIndexReadinessCheck = deferredIndexReadinessCheck;
   }
 
 
@@ -160,11 +163,13 @@ public class Upgrade {
     UpgradePathFactory upgradePathFactory = new UpgradePathFactoryImpl(upgradeScriptAdditionsProvider, upgradeStatusTableServiceFactory);
     ViewChangesDeploymentHelper viewChangesDeploymentHelper = new ViewChangesDeploymentHelper(connectionResources.sqlDialect());
     GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory = null;
+    org.alfasoftware.morf.upgrade.deferred.DeferredIndexReadinessCheck deferredIndexReadinessCheck =
+        org.alfasoftware.morf.upgrade.deferred.DeferredIndexReadinessCheck.create(connectionResources);
 
     Upgrade upgrade = new Upgrade(
       connectionResources,
       upgradePathFactory, upgradeStatusTableService, viewChangesDeploymentHelper, viewDeploymentValidator, databaseUpgradePathValidationService,
-      graphBasedUpgradeBuilderFactory, upgradeConfigAndContext);
+      graphBasedUpgradeBuilderFactory, upgradeConfigAndContext, deferredIndexReadinessCheck);
 
     Set<String> exceptionRegexes = Collections.emptySet();
 
@@ -230,6 +235,12 @@ public class Upgrade {
             + " Examine the upgrade statements (the upgrade script, or the upgrade logs below) to investigate further.");
       }
     }
+
+    // -- Ensure deferred indexes from the previous upgrade are complete before proceeding.
+    // If any PENDING operations remain (e.g. the app did not call DeferredIndexService.execute()
+    // after the last upgrade, or the service crashed mid-build), force-build them now.
+    // On the first upgrade that introduces the feature, the table won't exist yet — safe no-op.
+    deferredIndexReadinessCheck.run(sourceSchema);
 
     // -- Get the current UUIDs and deployed views...
     log.info("Examining current views");    //
@@ -469,6 +480,7 @@ public class Upgrade {
     private final ViewDeploymentValidator.Factory viewDeploymentValidatorFactory;
     private final DatabaseUpgradePathValidationService.Factory databaseUpgradePathValidationServiceFactory;
     private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
+    private final org.alfasoftware.morf.upgrade.deferred.DeferredIndexReadinessCheck deferredIndexReadinessCheck;
 
     private UpgradeConfigAndContext upgradeConfiguration = new UpgradeConfigAndContext();
 
@@ -478,13 +490,15 @@ public class Upgrade {
                    ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory,
                    ViewDeploymentValidator.Factory viewDeploymentValidatorFactory,
                    DatabaseUpgradePathValidationService.Factory databaseUpgradePathValidationServiceFactory,
-                   GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory) {
+                   GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
+                   org.alfasoftware.morf.upgrade.deferred.DeferredIndexReadinessCheck deferredIndexReadinessCheck) {
       this.upgradePathFactory = upgradePathFactory;
       this.upgradeStatusTableServiceFactory =  upgradeStatusTableServiceFactory;
       this.viewChangesDeploymentHelperFactory = viewChangesDeploymentHelperFactory;
       this.viewDeploymentValidatorFactory = viewDeploymentValidatorFactory;
       this.databaseUpgradePathValidationServiceFactory = databaseUpgradePathValidationServiceFactory;
       this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
+      this.deferredIndexReadinessCheck = deferredIndexReadinessCheck;
     }
 
     public Factory withUpgradeConfiguration(UpgradeConfigAndContext upgradeConfiguration) {
@@ -500,7 +514,8 @@ public class Upgrade {
                          viewDeploymentValidatorFactory.createViewDeploymentValidator(connectionResources),
                          databaseUpgradePathValidationServiceFactory.create(connectionResources),
                          graphBasedUpgradeBuilderFactory,
-                         upgradeConfiguration);
+                         upgradeConfiguration,
+                         deferredIndexReadinessCheck);
     }
   }
 }

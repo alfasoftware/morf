@@ -26,35 +26,53 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
+import org.junit.Before;
 import org.junit.Test;
 
 /**
- * Unit tests for {@link DeferredIndexValidatorImpl} covering the
- * {@link DeferredIndexValidator#validateNoPendingOperations()} method
- * with mocked DAO and executor dependencies.
+ * Unit tests for {@link DeferredIndexReadinessCheckImpl} covering the
+ * {@link DeferredIndexReadinessCheck#run(Schema)} method with mocked DAO
+ * and executor dependencies.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-public class TestDeferredIndexValidatorUnit {
+public class TestDeferredIndexReadinessCheckUnit {
 
-  /** validateNoPendingOperations should return immediately when no pending operations exist. */
+  private Schema schemaWithTable;
+  private Schema schemaWithoutTable;
+
+
+  /** Set up mock schemas. */
+  @Before
+  public void setUp() {
+    schemaWithTable = mock(Schema.class);
+    when(schemaWithTable.tableExists(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME)).thenReturn(true);
+
+    schemaWithoutTable = mock(Schema.class);
+    when(schemaWithoutTable.tableExists(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME)).thenReturn(false);
+  }
+
+
+  /** run() should return immediately when no pending operations exist. */
   @Test
-  public void testValidateNoPendingOperationsWithEmptyQueue() {
+  public void testRunWithEmptyQueue() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
     when(mockDao.findPendingOperations()).thenReturn(Collections.emptyList());
 
     DeferredIndexConfig config = new DeferredIndexConfig();
-    DeferredIndexValidator validator = new DeferredIndexValidatorImpl(mockDao, null, config);
-    validator.validateNoPendingOperations();
+    DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, null, config);
+    check.run(schemaWithTable);
 
     verify(mockDao).findPendingOperations();
     verify(mockDao, never()).countFailedOperations();
   }
 
 
-  /** validateNoPendingOperations should execute pending operations and succeed when all complete. */
+  /** run() should execute pending operations and succeed when all complete. */
   @Test
-  public void testValidateExecutesPendingOperationsSuccessfully() {
+  public void testRunExecutesPendingOperationsSuccessfully() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
     when(mockDao.findPendingOperations()).thenReturn(List.of(buildOp(1L)));
     when(mockDao.countFailedOperations()).thenReturn(0);
@@ -63,17 +81,17 @@ public class TestDeferredIndexValidatorUnit {
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     when(mockExecutor.execute()).thenReturn(CompletableFuture.completedFuture(null));
 
-    DeferredIndexValidator validator = new DeferredIndexValidatorImpl(mockDao, mockExecutor, config);
-    validator.validateNoPendingOperations();
+    DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mockExecutor, config);
+    check.run(schemaWithTable);
 
     verify(mockExecutor).execute();
     verify(mockDao).countFailedOperations();
   }
 
 
-  /** validateNoPendingOperations should throw IllegalStateException when any operations fail. */
+  /** run() should throw IllegalStateException when any operations fail. */
   @Test(expected = IllegalStateException.class)
-  public void testValidateThrowsWhenOperationsFail() {
+  public void testRunThrowsWhenOperationsFail() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
     when(mockDao.findPendingOperations()).thenReturn(List.of(buildOp(1L)));
     when(mockDao.countFailedOperations()).thenReturn(1);
@@ -82,14 +100,14 @@ public class TestDeferredIndexValidatorUnit {
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     when(mockExecutor.execute()).thenReturn(CompletableFuture.completedFuture(null));
 
-    DeferredIndexValidator validator = new DeferredIndexValidatorImpl(mockDao, mockExecutor, config);
-    validator.validateNoPendingOperations();
+    DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mockExecutor, config);
+    check.run(schemaWithTable);
   }
 
 
   /** The failure exception message should include the failed count. */
   @Test
-  public void testValidateFailureMessageIncludesCount() {
+  public void testRunFailureMessageIncludesCount() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
     when(mockDao.findPendingOperations()).thenReturn(List.of(buildOp(1L), buildOp(2L)));
     when(mockDao.countFailedOperations()).thenReturn(2);
@@ -98,9 +116,9 @@ public class TestDeferredIndexValidatorUnit {
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     when(mockExecutor.execute()).thenReturn(CompletableFuture.completedFuture(null));
 
-    DeferredIndexValidator validator = new DeferredIndexValidatorImpl(mockDao, mockExecutor, config);
+    DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mockExecutor, config);
     try {
-      validator.validateNoPendingOperations();
+      check.run(schemaWithTable);
       fail("Expected IllegalStateException");
     } catch (IllegalStateException e) {
       assertTrue("Message should include count", e.getMessage().contains("2"));
@@ -116,9 +134,24 @@ public class TestDeferredIndexValidatorUnit {
 
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     DeferredIndexConfig config = new DeferredIndexConfig();
-    DeferredIndexValidator validator = new DeferredIndexValidatorImpl(mockDao, mockExecutor, config);
-    validator.validateNoPendingOperations();
+    DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mockExecutor, config);
+    check.run(schemaWithTable);
 
+    verify(mockExecutor, never()).execute();
+  }
+
+
+  /** run() should skip entirely when the DeferredIndexOperation table does not exist. */
+  @Test
+  public void testRunSkipsWhenTableDoesNotExist() {
+    DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
+    DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
+    DeferredIndexConfig config = new DeferredIndexConfig();
+
+    DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mockExecutor, config);
+    check.run(schemaWithoutTable);
+
+    verify(mockDao, never()).findPendingOperations();
     verify(mockExecutor, never()).execute();
   }
 

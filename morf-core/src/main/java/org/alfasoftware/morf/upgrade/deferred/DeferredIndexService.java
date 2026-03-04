@@ -18,24 +18,35 @@ package org.alfasoftware.morf.upgrade.deferred;
 import com.google.inject.ImplementedBy;
 
 /**
- * Public facade for the deferred index creation mechanism. Adopters inject this
- * interface to manage the lifecycle of background index builds that were queued
- * during upgrade.
+ * Public facade for the deferred index creation mechanism. Adopters inject
+ * this interface and invoke it <em>after</em> the upgrade completes to start
+ * background index builds.
  *
- * <p>Typical usage:</p>
+ * <p><strong>Post-upgrade execution is the adopter's responsibility.</strong>
+ * The upgrade framework does <em>not</em> automatically run this service.
+ * A pre-upgrade {@link DeferredIndexReadinessCheck} is wired into the
+ * upgrade pipeline as a safety net: if the adopter forgets to call this
+ * service, the next upgrade will force-build any outstanding indexes
+ * before proceeding.</p>
+ *
+ * <p>Typical usage (Guice path):</p>
  * <pre>
  * &#064;Inject DeferredIndexService deferredIndexService;
  *
- * // After upgrade completes, start building deferred indexes:
+ * // Run upgrade...
+ * upgrade.findPath(targetSchema, steps, exceptionRegexes, dataSource);
+ *
+ * // Then start building deferred indexes in the background:
  * deferredIndexService.execute();
  *
- * // Block until all indexes are built (or time out):
+ * // Optionally block until all indexes are built (or time out):
  * boolean done = deferredIndexService.awaitCompletion(600);
  * if (!done) {
- *   throw new IllegalStateException("Timed out waiting for deferred indexes");
+ *   log.warn("Deferred index builds still in progress");
  * }
  * </pre>
  *
+ * @see DeferredIndexReadinessCheck
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
 @ImplementedBy(DeferredIndexServiceImpl.class)
@@ -52,12 +63,13 @@ public interface DeferredIndexService {
 
 
   /**
-   * Polls the database until no {@code PENDING} or {@code IN_PROGRESS}
-   * operations remain, or until the timeout elapses.
+   * Blocks until all deferred index operations reach a terminal state
+   * ({@code COMPLETED} or {@code FAILED}), or until the timeout elapses.
    *
    * @param timeoutSeconds maximum time to wait; zero means wait indefinitely.
    * @return {@code true} if all operations reached a terminal state within the
    *         timeout; {@code false} if the timeout elapsed first.
+   * @throws IllegalStateException if called before {@link #execute()}.
    */
   boolean awaitCompletion(long timeoutSeconds);
 }

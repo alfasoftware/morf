@@ -21,26 +21,29 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
-
+import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
+
 /**
- * Default implementation of {@link DeferredIndexValidator}.
+ * Default implementation of {@link DeferredIndexReadinessCheck}.
  *
- * <p>If pending operations are found, {@link #validateNoPendingOperations()}
- * force-executes them synchronously via a {@link DeferredIndexExecutor} before
- * returning. This guarantees that subsequent upgrade steps never encounter a
- * missing index that a previous deferred operation was supposed to build.</p>
+ * <p>If the {@code DeferredIndexOperation} table exists and contains pending
+ * operations, they are force-built synchronously via a
+ * {@link DeferredIndexExecutor} before returning. This guarantees that
+ * subsequent upgrade steps never encounter a missing index that a previous
+ * deferred operation was supposed to build.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
 @Singleton
-class DeferredIndexValidatorImpl implements DeferredIndexValidator {
+class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
 
-  private static final Log log = LogFactory.getLog(DeferredIndexValidatorImpl.class);
+  private static final Log log = LogFactory.getLog(DeferredIndexReadinessCheckImpl.class);
 
   private final DeferredIndexOperationDAO dao;
   private final DeferredIndexExecutor executor;
@@ -48,15 +51,15 @@ class DeferredIndexValidatorImpl implements DeferredIndexValidator {
 
 
   /**
-   * Constructs a validator with injected dependencies.
+   * Constructs a readiness check with injected dependencies.
    *
    * @param dao      DAO for deferred index operations.
    * @param executor executor used to force-build pending operations.
    * @param config   configuration used when executing pending operations.
    */
   @Inject
-  DeferredIndexValidatorImpl(DeferredIndexOperationDAO dao, DeferredIndexExecutor executor,
-                             DeferredIndexConfig config) {
+  DeferredIndexReadinessCheckImpl(DeferredIndexOperationDAO dao, DeferredIndexExecutor executor,
+                                  DeferredIndexConfig config) {
     this.dao = dao;
     this.executor = executor;
     this.config = config;
@@ -64,7 +67,12 @@ class DeferredIndexValidatorImpl implements DeferredIndexValidator {
 
 
   @Override
-  public void validateNoPendingOperations() {
+  public void run(Schema sourceSchema) {
+    if (!sourceSchema.tableExists(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME)) {
+      log.debug("DeferredIndexOperation table does not exist — skipping readiness check");
+      return;
+    }
+
     List<DeferredIndexOperation> pending = dao.findPendingOperations();
     if (pending.isEmpty()) {
       return;
@@ -84,20 +92,20 @@ class DeferredIndexValidatorImpl implements DeferredIndexValidator {
       }
     } catch (TimeoutException e) {
       executor.shutdown();
-      throw new IllegalStateException("Pre-upgrade deferred index validation timed out after "
+      throw new IllegalStateException("Pre-upgrade deferred index readiness check timed out after "
           + timeoutSeconds + " seconds.");
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       executor.shutdown();
-      throw new IllegalStateException("Pre-upgrade deferred index validation interrupted.");
+      throw new IllegalStateException("Pre-upgrade deferred index readiness check interrupted.");
     } catch (ExecutionException e) {
       executor.shutdown();
-      throw new IllegalStateException("Pre-upgrade deferred index validation failed unexpectedly.", e.getCause());
+      throw new IllegalStateException("Pre-upgrade deferred index readiness check failed unexpectedly.", e.getCause());
     }
 
     int failedCount = dao.countFailedOperations();
     if (failedCount > 0) {
-      throw new IllegalStateException("Pre-upgrade deferred index validation failed: "
+      throw new IllegalStateException("Pre-upgrade deferred index readiness check failed: "
           + failedCount + " index operation(s) could not be built. "
           + "Resolve the underlying issue before retrying the upgrade.");
     }

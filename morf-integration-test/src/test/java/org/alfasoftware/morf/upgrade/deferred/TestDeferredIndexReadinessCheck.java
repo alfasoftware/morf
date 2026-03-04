@@ -55,12 +55,12 @@ import com.google.inject.Inject;
 import net.jcip.annotations.NotThreadSafe;
 
 /**
- * Integration tests for {@link DeferredIndexValidatorImpl} (Stage 10).
+ * Integration tests for {@link DeferredIndexReadinessCheckImpl}.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
 @NotThreadSafe
-public class TestDeferredIndexValidator {
+public class TestDeferredIndexReadinessCheck {
 
   @Rule
   public MethodRule injectMembersRule = new InjectMembersRule(new TestingDataSourceModule());
@@ -101,27 +101,27 @@ public class TestDeferredIndexValidator {
 
 
   /**
-   * validateNoPendingOperations should be a no-op when the queue is empty —
-   * no exception thrown and no operations executed.
+   * run() should be a no-op when the queue is empty — no exception thrown
+   * and no operations executed.
    */
   @Test
   public void testValidateWithEmptyQueueIsNoOp() {
-    DeferredIndexValidator validator = createValidator(config);
-    validator.validateNoPendingOperations(); // must not throw
+    DeferredIndexReadinessCheck validator = createValidator(config);
+    validator.run(TEST_SCHEMA); // must not throw
   }
 
 
   /**
-   * When PENDING operations exist, validateNoPendingOperations must execute them
-   * before returning: the index should exist in the schema and the row should be
-   * COMPLETED (not PENDING) when the call returns.
+   * When PENDING operations exist, run() must execute them before returning:
+   * the index should exist in the schema and the row should be COMPLETED
+   * (not PENDING) when the call returns.
    */
   @Test
   public void testPendingOperationsAreExecutedBeforeReturning() {
     insertPendingRow("Apple", "Apple_V1", false, "pips");
 
-    DeferredIndexValidator validator = createValidator(config);
-    validator.validateNoPendingOperations();
+    DeferredIndexReadinessCheck validator = createValidator(config);
+    validator.run(TEST_SCHEMA);
 
     // Verify no PENDING rows remain
     assertFalse("no non-terminal operations should remain after validate",
@@ -137,31 +137,31 @@ public class TestDeferredIndexValidator {
 
   /**
    * When multiple PENDING operations exist they should all be executed before
-   * validateNoPendingOperations returns.
+   * run() returns.
    */
   @Test
   public void testMultiplePendingOperationsAllExecuted() {
     insertPendingRow("Apple", "Apple_V2", false, "pips");
     insertPendingRow("Apple", "Apple_V3", true, "pips");
 
-    DeferredIndexValidator validator = createValidator(config);
-    validator.validateNoPendingOperations();
+    DeferredIndexReadinessCheck validator = createValidator(config);
+    validator.run(TEST_SCHEMA);
 
     assertFalse("no non-terminal operations should remain", hasPendingOperations());
   }
 
 
   /**
-   * When a PENDING operation targets a non-existent table, the validator should
+   * When a PENDING operation targets a non-existent table, run() should
    * throw because the forced execution fails.
    */
   @Test
   public void testFailedForcedExecutionThrows() {
     insertPendingRow("NoSuchTable", "NoSuchTable_V4", false, "col");
 
-    DeferredIndexValidator validator = createValidator(config);
+    DeferredIndexReadinessCheck validator = createValidator(config);
     try {
-      validator.validateNoPendingOperations();
+      validator.run(TEST_SCHEMA);
       fail("Expected IllegalStateException for failed forced execution");
     } catch (IllegalStateException e) {
       assertTrue("exception message should mention failed count",
@@ -219,10 +219,10 @@ public class TestDeferredIndexValidator {
   }
 
 
-  private DeferredIndexValidator createValidator(DeferredIndexConfig validatorConfig) {
+  private DeferredIndexReadinessCheck createValidator(DeferredIndexConfig validatorConfig) {
     DeferredIndexOperationDAO dao = new DeferredIndexOperationDAOImpl(connectionResources);
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources, validatorConfig);
-    return new DeferredIndexValidatorImpl(dao, executor, validatorConfig);
+    return new DeferredIndexReadinessCheckImpl(dao, executor, validatorConfig);
   }
 
 

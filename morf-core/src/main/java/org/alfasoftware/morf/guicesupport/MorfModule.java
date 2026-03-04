@@ -70,10 +70,11 @@ public class MorfModule extends AbstractModule {
       ViewDeploymentValidator viewDeploymentValidator,
       DatabaseUpgradePathValidationService databaseUpgradePathValidationService,
       GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
-      UpgradeConfigAndContext upgradeConfigAndContext) {
+      UpgradeConfigAndContext upgradeConfigAndContext,
+      org.alfasoftware.morf.upgrade.deferred.DeferredIndexReadinessCheck deferredIndexReadinessCheck) {
     return new Upgrade(connectionResources, factory, upgradeStatusTableService, viewChangesDeploymentHelper,
       viewDeploymentValidator, databaseUpgradePathValidationService, graphBasedUpgradeBuilderFactory,
-      upgradeConfigAndContext);
+      upgradeConfigAndContext, deferredIndexReadinessCheck);
   }
 }
 
