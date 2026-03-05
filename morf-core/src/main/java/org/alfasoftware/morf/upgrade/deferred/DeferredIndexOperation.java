@@ -47,11 +47,6 @@ class DeferredIndexOperation {
   private String indexName;
 
   /**
-   * Type of operation: always {@link DeferredIndexOperationType#ADD} for the initial implementation.
-   */
-  private DeferredIndexOperationType operationType;
-
-  /**
    * Whether the index should be unique.
    */
   private boolean indexUnique;
@@ -153,22 +148,6 @@ class DeferredIndexOperation {
    */
   public void setIndexName(String indexName) {
     this.indexName = indexName;
-  }
-
-
-  /**
-   * @see #operationType
-   */
-  public DeferredIndexOperationType getOperationType() {
-    return operationType;
-  }
-
-
-  /**
-   * @see #operationType
-   */
-  public void setOperationType(DeferredIndexOperationType operationType) {
-    this.operationType = operationType;
   }
 
 

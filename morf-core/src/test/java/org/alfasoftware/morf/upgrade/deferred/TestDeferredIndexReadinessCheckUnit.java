@@ -23,7 +23,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.alfasoftware.morf.metadata.Schema;
@@ -66,7 +68,7 @@ public class TestDeferredIndexReadinessCheckUnit {
     check.run(schemaWithTable);
 
     verify(mockDao).findPendingOperations();
-    verify(mockDao, never()).countFailedOperations();
+    verify(mockDao, never()).countAllByStatus();
   }
 
 
@@ -75,7 +77,7 @@ public class TestDeferredIndexReadinessCheckUnit {
   public void testRunExecutesPendingOperationsSuccessfully() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
     when(mockDao.findPendingOperations()).thenReturn(List.of(buildOp(1L)));
-    when(mockDao.countFailedOperations()).thenReturn(0);
+    when(mockDao.countAllByStatus()).thenReturn(statusCounts(0));
 
     DeferredIndexConfig config = new DeferredIndexConfig();
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
@@ -85,7 +87,7 @@ public class TestDeferredIndexReadinessCheckUnit {
     check.run(schemaWithTable);
 
     verify(mockExecutor).execute();
-    verify(mockDao).countFailedOperations();
+    verify(mockDao).countAllByStatus();
   }
 
 
@@ -94,7 +96,7 @@ public class TestDeferredIndexReadinessCheckUnit {
   public void testRunThrowsWhenOperationsFail() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
     when(mockDao.findPendingOperations()).thenReturn(List.of(buildOp(1L)));
-    when(mockDao.countFailedOperations()).thenReturn(1);
+    when(mockDao.countAllByStatus()).thenReturn(statusCounts(1));
 
     DeferredIndexConfig config = new DeferredIndexConfig();
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
@@ -110,7 +112,7 @@ public class TestDeferredIndexReadinessCheckUnit {
   public void testRunFailureMessageIncludesCount() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
     when(mockDao.findPendingOperations()).thenReturn(List.of(buildOp(1L), buildOp(2L)));
-    when(mockDao.countFailedOperations()).thenReturn(2);
+    when(mockDao.countAllByStatus()).thenReturn(statusCounts(2));
 
     DeferredIndexConfig config = new DeferredIndexConfig();
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
@@ -162,12 +164,21 @@ public class TestDeferredIndexReadinessCheckUnit {
     op.setUpgradeUUID("test-uuid");
     op.setTableName("TestTable");
     op.setIndexName("TestIndex");
-    op.setOperationType(DeferredIndexOperationType.ADD);
     op.setIndexUnique(false);
     op.setStatus(DeferredIndexStatus.PENDING);
     op.setRetryCount(0);
     op.setCreatedTime(20260101120000L);
     op.setColumnNames(List.of("col1"));
     return op;
+  }
+
+
+  private Map<DeferredIndexStatus, Integer> statusCounts(int failedCount) {
+    Map<DeferredIndexStatus, Integer> counts = new EnumMap<>(DeferredIndexStatus.class);
+    for (DeferredIndexStatus s : DeferredIndexStatus.values()) {
+      counts.put(s, 0);
+    }
+    counts.put(DeferredIndexStatus.FAILED, failedCount);
+    return counts;
   }
 }

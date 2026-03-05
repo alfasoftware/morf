@@ -78,7 +78,6 @@ public class TestUpgradeSteps {
         assertTrue(columnNames.contains("upgradeUUID"));
         assertTrue(columnNames.contains("tableName"));
         assertTrue(columnNames.contains("indexName"));
-        assertTrue(columnNames.contains("operationType"));
         assertTrue(columnNames.contains("indexUnique"));
         assertTrue(columnNames.contains("status"));
         assertTrue(columnNames.contains("retryCount"));

@@ -277,7 +277,6 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
           literal(deferredAddIndex.getUpgradeUUID()).as("upgradeUUID"),
           literal(deferredAddIndex.getTableName()).as("tableName"),
           literal(deferredAddIndex.getNewIndex().getName()).as("indexName"),
-          literal("ADD").as("operationType"),
           literal(deferredAddIndex.getNewIndex().isUnique()).as("indexUnique"),
           literal("PENDING").as("status"),
           literal(0).as("retryCount"),

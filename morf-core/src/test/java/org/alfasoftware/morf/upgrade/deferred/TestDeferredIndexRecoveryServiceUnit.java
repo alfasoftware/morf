@@ -208,7 +208,6 @@ public class TestDeferredIndexRecoveryServiceUnit {
     op.setUpgradeUUID("test-uuid");
     op.setTableName(tableName);
     op.setIndexName(indexName);
-    op.setOperationType(DeferredIndexOperationType.ADD);
     op.setIndexUnique(false);
     op.setStatus(DeferredIndexStatus.IN_PROGRESS);
     op.setRetryCount(0);

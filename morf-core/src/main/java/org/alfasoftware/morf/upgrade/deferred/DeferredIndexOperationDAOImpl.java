@@ -65,26 +65,15 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
 
 
   /**
-   * Construct with explicit dependencies.
+   * Constructs the DAO with injected dependencies.
    *
    * @param sqlScriptExecutorProvider provider for SQL executors.
-   * @param sqlDialect the SQL dialect to use for statement conversion.
-   */
-  DeferredIndexOperationDAOImpl(SqlScriptExecutorProvider sqlScriptExecutorProvider, SqlDialect sqlDialect) {
-    this.sqlScriptExecutorProvider = sqlScriptExecutorProvider;
-    this.sqlDialect = sqlDialect;
-  }
-
-
-  /**
-   * Construct from {@link ConnectionResources}.
-   *
-   * @param connectionResources the connection resources to use.
+   * @param connectionResources      database connection resources.
    */
   @Inject
-  DeferredIndexOperationDAOImpl(ConnectionResources connectionResources) {
-    this(new SqlScriptExecutorProvider(connectionResources.getDataSource(), connectionResources.sqlDialect()),
-         connectionResources.sqlDialect());
+  DeferredIndexOperationDAOImpl(SqlScriptExecutorProvider sqlScriptExecutorProvider, ConnectionResources connectionResources) {
+    this.sqlScriptExecutorProvider = sqlScriptExecutorProvider;
+    this.sqlDialect = connectionResources.sqlDialect();
   }
 
 
@@ -108,7 +97,6 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
           literal(op.getUpgradeUUID()).as("upgradeUUID"),
           literal(op.getTableName()).as("tableName"),
           literal(op.getIndexName()).as("indexName"),
-          literal(op.getOperationType().name()).as("operationType"),
           literal(op.isIndexUnique()).as("indexUnique"),
           literal(op.getStatus().name()).as("status"),
           literal(op.getRetryCount()).as("retryCount"),
@@ -160,7 +148,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
 
     SelectStatement select = select(
         op.field("id"), op.field("upgradeUUID"), op.field("tableName"),
-        op.field("indexName"), op.field("operationType"), op.field("indexUnique"),
+        op.field("indexName"), op.field("indexUnique"),
         op.field("status"), op.field("retryCount"), op.field("createdTime"),
         op.field("startedTime"), op.field("completedTime"), op.field("errorMessage"),
         col.field("columnName"), col.field("columnSequence")
@@ -286,42 +274,6 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
   }
 
 
-  /**
-   * Returns the number of operations in {@link DeferredIndexStatus#FAILED} state.
-   *
-   * @return count of failed operations.
-   */
-  @Override
-  public int countFailedOperations() {
-    SelectStatement select = select(field("id"))
-      .from(tableRef(OPERATION_TABLE))
-      .where(field("status").eq(DeferredIndexStatus.FAILED.name()));
-
-    String sql = sqlDialect.convertStatementToSQL(select);
-    return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> {
-      int count = 0;
-      while (rs.next()) count++;
-      return count;
-    });
-  }
-
-
-  /** {@inheritDoc} */
-  @Override
-  public int countByStatus(DeferredIndexStatus status) {
-    SelectStatement select = select(field("id"))
-      .from(tableRef(OPERATION_TABLE))
-      .where(field("status").eq(status.name()));
-
-    String sql = sqlDialect.convertStatementToSQL(select);
-    return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> {
-      int count = 0;
-      while (rs.next()) count++;
-      return count;
-    });
-  }
-
-
   /** {@inheritDoc} */
   @Override
   public Map<DeferredIndexStatus, Integer> countAllByStatus() {
@@ -374,7 +326,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
 
     SelectStatement select = select(
         op.field("id"), op.field("upgradeUUID"), op.field("tableName"),
-        op.field("indexName"), op.field("operationType"), op.field("indexUnique"),
+        op.field("indexName"), op.field("indexUnique"),
         op.field("status"), op.field("retryCount"), op.field("createdTime"),
         op.field("startedTime"), op.field("completedTime"), op.field("errorMessage"),
         col.field("columnName"), col.field("columnSequence")
@@ -407,7 +359,6 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
         op.setUpgradeUUID(rs.getString("upgradeUUID"));
         op.setTableName(rs.getString("tableName"));
         op.setIndexName(rs.getString("indexName"));
-        op.setOperationType(DeferredIndexOperationType.valueOf(rs.getString("operationType")));
         op.setIndexUnique(rs.getBoolean("indexUnique"));
         op.setStatus(DeferredIndexStatus.valueOf(rs.getString("status")));
         op.setRetryCount(rs.getInt("retryCount"));

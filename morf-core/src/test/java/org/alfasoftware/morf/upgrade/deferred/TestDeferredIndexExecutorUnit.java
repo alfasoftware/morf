@@ -255,7 +255,6 @@ public class TestDeferredIndexExecutorUnit {
     op.setUpgradeUUID("test-uuid");
     op.setTableName("TestTable");
     op.setIndexName("TestIndex");
-    op.setOperationType(DeferredIndexOperationType.ADD);
     op.setIndexUnique(false);
     op.setStatus(DeferredIndexStatus.PENDING);
     op.setRetryCount(0);

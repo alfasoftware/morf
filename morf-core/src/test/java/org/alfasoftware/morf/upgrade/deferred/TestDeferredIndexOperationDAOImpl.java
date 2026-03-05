@@ -32,6 +32,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 
+import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor.ResultSetProcessor;
@@ -56,6 +57,7 @@ public class TestDeferredIndexOperationDAOImpl {
   @Mock private SqlScriptExecutorProvider sqlScriptExecutorProvider;
   @Mock private SqlScriptExecutor sqlScriptExecutor;
   @Mock private SqlDialect sqlDialect;
+  @Mock private ConnectionResources connectionResources;
 
   private DeferredIndexOperationDAO dao;
 
@@ -70,7 +72,8 @@ public class TestDeferredIndexOperationDAOImpl {
     when(sqlDialect.convertStatementToSQL(any(InsertStatement.class))).thenReturn(List.of("SQL"));
     when(sqlDialect.convertStatementToSQL(any(UpdateStatement.class))).thenReturn("UPDATE_SQL");
     when(sqlDialect.convertStatementToSQL(any(SelectStatement.class))).thenReturn("SELECT_SQL");
-    dao = new DeferredIndexOperationDAOImpl(sqlScriptExecutorProvider, sqlDialect);
+    when(connectionResources.sqlDialect()).thenReturn(sqlDialect);
+    dao = new DeferredIndexOperationDAOImpl(sqlScriptExecutorProvider, connectionResources);
   }
 
 
@@ -96,7 +99,6 @@ public class TestDeferredIndexOperationDAOImpl {
         literal("uuid-1").as("upgradeUUID"),
         literal("MyTable").as("tableName"),
         literal("MyIndex").as("indexName"),
-        literal(DeferredIndexOperationType.ADD.name()).as("operationType"),
         literal(false).as("indexUnique"),
         literal(DeferredIndexStatus.PENDING.name()).as("status"),
         literal(0).as("retryCount"),
@@ -130,7 +132,7 @@ public class TestDeferredIndexOperationDAOImpl {
 
     String expected = select(
         op.field("id"), op.field("upgradeUUID"), op.field("tableName"),
-        op.field("indexName"), op.field("operationType"), op.field("indexUnique"),
+        op.field("indexName"), op.field("indexUnique"),
         op.field("status"), op.field("retryCount"), op.field("createdTime"),
         op.field("startedTime"), op.field("completedTime"), op.field("errorMessage"),
         col.field("columnName"), col.field("columnSequence")
@@ -163,7 +165,7 @@ public class TestDeferredIndexOperationDAOImpl {
 
     String expected = select(
         op.field("id"), op.field("upgradeUUID"), op.field("tableName"),
-        op.field("indexName"), op.field("operationType"), op.field("indexUnique"),
+        op.field("indexName"), op.field("indexUnique"),
         op.field("status"), op.field("retryCount"), op.field("createdTime"),
         op.field("startedTime"), op.field("completedTime"), op.field("errorMessage"),
         col.field("columnName"), col.field("columnSequence")
@@ -293,7 +295,6 @@ public class TestDeferredIndexOperationDAOImpl {
     op.setUpgradeUUID("uuid-1");
     op.setTableName("MyTable");
     op.setIndexName("MyIndex");
-    op.setOperationType(DeferredIndexOperationType.ADD);
     op.setIndexUnique(false);
     op.setStatus(DeferredIndexStatus.PENDING);
     op.setRetryCount(0);

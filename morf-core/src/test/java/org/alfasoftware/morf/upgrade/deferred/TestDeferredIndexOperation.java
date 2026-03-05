@@ -48,9 +48,6 @@ public class TestDeferredIndexOperation {
     op.setIndexName("MyTable_1");
     assertEquals("MyTable_1", op.getIndexName());
 
-    op.setOperationType(DeferredIndexOperationType.ADD);
-    assertEquals(DeferredIndexOperationType.ADD, op.getOperationType());
-
     op.setIndexUnique(true);
     assertTrue(op.isIndexUnique());
 

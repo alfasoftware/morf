@@ -85,11 +85,7 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
 
     long timeoutSeconds = config.getExecutionTimeoutSeconds();
     try {
-      if (timeoutSeconds > 0L) {
-        future.get(timeoutSeconds, TimeUnit.SECONDS);
-      } else {
-        future.get();
-      }
+      future.get(timeoutSeconds, TimeUnit.SECONDS);
     } catch (TimeoutException e) {
       executor.shutdown();
       throw new IllegalStateException("Pre-upgrade deferred index readiness check timed out after "
@@ -103,7 +99,7 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
       throw new IllegalStateException("Pre-upgrade deferred index readiness check failed unexpectedly.", e.getCause());
     }
 
-    int failedCount = dao.countFailedOperations();
+    int failedCount = dao.countAllByStatus().get(DeferredIndexStatus.FAILED);
     if (failedCount > 0) {
       throw new IllegalStateException("Pre-upgrade deferred index readiness check failed: "
           + failedCount + " index operation(s) could not be built. "

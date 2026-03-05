@@ -108,8 +108,7 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
       return false;
 
     } catch (ExecutionException e) {
-      log.error("Deferred index service: unexpected error during execution.", e.getCause());
-      return true;
+      throw new IllegalStateException("Deferred index execution failed unexpectedly.", e.getCause());
     }
   }
 

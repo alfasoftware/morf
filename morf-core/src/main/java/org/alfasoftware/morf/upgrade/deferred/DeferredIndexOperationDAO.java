@@ -118,23 +118,6 @@ interface DeferredIndexOperationDAO {
 
 
   /**
-   * Returns the number of operations in {@link DeferredIndexStatus#FAILED} state.
-   *
-   * @return count of failed operations.
-   */
-  int countFailedOperations();
-
-
-  /**
-   * Returns the number of operations in the given status.
-   *
-   * @param status the status to count.
-   * @return count of operations with the given status.
-   */
-  int countByStatus(DeferredIndexStatus status);
-
-
-  /**
    * Returns the count of operations grouped by status.
    *
    * @return a map from each {@link DeferredIndexStatus} to its count;

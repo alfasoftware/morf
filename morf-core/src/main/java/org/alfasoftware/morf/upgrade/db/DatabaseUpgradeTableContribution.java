@@ -85,7 +85,6 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
           column("upgradeUUID", DataType.STRING, 100),
           column("tableName", DataType.STRING, 60),
           column("indexName", DataType.STRING, 60),
-          column("operationType", DataType.STRING, 20),
           column("indexUnique", DataType.BOOLEAN),
           column("status", DataType.STRING, 20),
           column("retryCount", DataType.INTEGER),

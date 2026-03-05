@@ -188,7 +188,6 @@ public class TestDeferredIndexReadinessCheck {
             literal("test-upgrade-uuid").as("upgradeUUID"),
             literal(tableName).as("tableName"),
             literal(indexName).as("indexName"),
-            literal(DeferredIndexOperationType.ADD.name()).as("operationType"),
             literal(unique ? 1 : 0).as("indexUnique"),
             literal(DeferredIndexStatus.PENDING.name()).as("status"),
             literal(0).as("retryCount"),
@@ -220,7 +219,7 @@ public class TestDeferredIndexReadinessCheck {
 
 
   private DeferredIndexReadinessCheck createValidator(DeferredIndexConfig validatorConfig) {
-    DeferredIndexOperationDAO dao = new DeferredIndexOperationDAOImpl(connectionResources);
+    DeferredIndexOperationDAO dao = new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources);
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources, new SqlScriptExecutorProvider(connectionResources), validatorConfig, new DeferredIndexExecutorServiceFactory.Default());
     return new DeferredIndexReadinessCheckImpl(dao, executor, validatorConfig);
   }
