@@ -32,6 +32,7 @@ import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder;
 import org.alfasoftware.morf.metadata.Table;
 
@@ -63,6 +64,7 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
   private static final Log log = LogFactory.getLog(DeferredIndexExecutorImpl.class);
 
   private final DeferredIndexOperationDAO dao;
+  private final ConnectionResources connectionResources;
   private final SqlDialect sqlDialect;
   private final SqlScriptExecutorProvider sqlScriptExecutorProvider;
   private final DataSource dataSource;
@@ -88,6 +90,7 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
                             DeferredIndexExecutionConfig config,
                             DeferredIndexExecutorServiceFactory executorServiceFactory) {
     this.dao = dao;
+    this.connectionResources = connectionResources;
     this.sqlDialect = connectionResources.sqlDialect();
     this.sqlScriptExecutorProvider = sqlScriptExecutorProvider;
     this.dataSource = connectionResources.getDataSource();
@@ -98,6 +101,9 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
 
   @Override
   public CompletableFuture<Void> execute() {
+    // Reset any crashed IN_PROGRESS operations from a previous run
+    dao.resetAllInProgressToPending();
+
     List<DeferredIndexOperation> pending = dao.findPendingOperations();
 
     if (pending.isEmpty()) {
@@ -152,6 +158,16 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
 
       } catch (Exception e) {
         long elapsedSeconds = (System.currentTimeMillis() - startedTime) / 1000;
+
+        // Post-failure check: if the index actually exists in the database
+        // (e.g. a previous crashed attempt completed the build), mark COMPLETED.
+        if (indexExistsInDatabase(op)) {
+          dao.markCompleted(op.getId(), System.currentTimeMillis());
+          log.info("Deferred index operation [" + op.getId() + "] failed but index exists in database"
+              + " — marking COMPLETED: table=" + op.getTableName() + ", index=" + op.getIndexName());
+          return;
+        }
+
         int newRetryCount = attempt + 1;
         dao.markFailed(op.getId(), e.getMessage(), newRetryCount);
 
@@ -214,6 +230,26 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
       builder = builder.unique();
     }
     return builder.columns(op.getColumnNames().toArray(new String[0]));
+  }
+
+
+  /**
+   * Checks whether the index described by the operation exists in the live
+   * database schema. Used for post-failure recovery: if CREATE INDEX fails
+   * but the index was actually built (e.g. from a previous crashed attempt),
+   * the operation can be marked COMPLETED.
+   *
+   * @param op the operation to check.
+   * @return {@code true} if the index exists.
+   */
+  private boolean indexExistsInDatabase(DeferredIndexOperation op) {
+    try (SchemaResource sr = connectionResources.openSchemaResource()) {
+      if (!sr.tableExists(op.getTableName())) {
+        return false;
+      }
+      return sr.getTable(op.getTableName()).indexes().stream()
+          .anyMatch(idx -> idx.getName().equalsIgnoreCase(op.getIndexName()));
+    }
   }
 
 

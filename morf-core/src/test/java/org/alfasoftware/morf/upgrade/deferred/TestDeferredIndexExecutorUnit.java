@@ -76,6 +76,12 @@ public class TestDeferredIndexExecutorUnit {
     when(connectionResources.getDataSource()).thenReturn(dataSource);
     when(dataSource.getConnection()).thenReturn(connection);
 
+    // Default: openSchemaResource returns a mock that says table does not exist
+    // (post-failure index-exists check will return false)
+    org.alfasoftware.morf.metadata.SchemaResource mockSr = mock(org.alfasoftware.morf.metadata.SchemaResource.class);
+    when(mockSr.tableExists(org.mockito.ArgumentMatchers.anyString())).thenReturn(false);
+    when(connectionResources.openSchemaResource()).thenReturn(mockSr);
+
     Map<DeferredIndexStatus, Integer> zeroCounts = new EnumMap<>(DeferredIndexStatus.class);
     for (DeferredIndexStatus s : DeferredIndexStatus.values()) {
       zeroCounts.put(s, 0);

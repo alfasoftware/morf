@@ -300,9 +300,8 @@ public class TestDeferredIndexService {
 
   private DeferredIndexService createService(DeferredIndexExecutionConfig config) {
     DeferredIndexOperationDAO dao = new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources);
-    DeferredIndexRecoveryService recovery = new DeferredIndexRecoveryServiceImpl(dao, connectionResources);
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
-    return new DeferredIndexServiceImpl(recovery, executor, dao, config);
+    return new DeferredIndexServiceImpl(executor, dao, config);
   }
 
 

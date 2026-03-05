@@ -30,8 +30,9 @@ import org.apache.commons.logging.LogFactory;
 /**
  * Default implementation of {@link DeferredIndexService}.
  *
- * <p>Orchestrates recovery, execution, and validation of deferred index
- * operations. Configuration is validated when {@link #execute()} is called.</p>
+ * <p>Orchestrates execution and validation of deferred index operations.
+ * Crash recovery (IN_PROGRESS → PENDING reset) is handled by the executor.
+ * Configuration is validated when {@link #execute()} is called.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -40,7 +41,6 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
 
   private static final Log log = LogFactory.getLog(DeferredIndexServiceImpl.class);
 
-  private final DeferredIndexRecoveryService recoveryService;
   private final DeferredIndexExecutor executor;
   private final DeferredIndexOperationDAO dao;
   private final DeferredIndexExecutionConfig config;
@@ -52,17 +52,14 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
   /**
    * Constructs the service.
    *
-   * @param recoveryService service for recovering stale operations.
-   * @param executor        executor for building deferred indexes.
-   * @param dao             DAO for querying deferred index operation state.
-   * @param config          configuration for deferred index execution.
+   * @param executor executor for building deferred indexes.
+   * @param dao      DAO for querying deferred index operation state.
+   * @param config   configuration for deferred index execution.
    */
   @Inject
-  DeferredIndexServiceImpl(DeferredIndexRecoveryService recoveryService,
-                            DeferredIndexExecutor executor,
+  DeferredIndexServiceImpl(DeferredIndexExecutor executor,
                             DeferredIndexOperationDAO dao,
                             DeferredIndexExecutionConfig config) {
-    this.recoveryService = recoveryService;
     this.executor = executor;
     this.dao = dao;
     this.config = config;
@@ -72,9 +69,6 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
   @Override
   public void execute() {
     validateConfig(config);
-
-    log.info("Deferred index service: starting recovery of stale operations...");
-    recoveryService.recoverStaleOperations();
 
     log.info("Deferred index service: executing pending operations...");
     executionFuture = executor.execute();
