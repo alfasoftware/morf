@@ -24,7 +24,7 @@ import org.alfasoftware.morf.upgrade.UUID;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
 
 /**
- * Adds a second deferred index on Product.id for lifecycle tests.
+ * Adds a second deferred index on Product(id, name) for lifecycle tests.
  */
 @Sequence(90002)
 @UUID("d1f00002-0002-0002-0002-000000000002")
@@ -32,7 +32,7 @@ public class AddSecondDeferredIndex implements UpgradeStep {
 
   @Override
   public void execute(SchemaEditor schema, DataEditor data) {
-    schema.addIndexDeferred("Product", index("Product_Id_1").columns("id"));
+    schema.addIndexDeferred("Product", index("Product_IdName_1").columns("id", "name"));
   }
 
 

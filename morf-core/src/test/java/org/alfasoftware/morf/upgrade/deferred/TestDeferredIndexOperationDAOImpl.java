@@ -21,7 +21,6 @@ import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.SqlUtils.update;
-import static org.alfasoftware.morf.sql.element.Criterion.and;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -139,42 +138,6 @@ public class TestDeferredIndexOperationDAOImpl {
       ).from(op)
        .leftOuterJoin(col, op.field("id").eq(col.field("operationId")))
        .where(op.field("status").eq(DeferredIndexStatus.PENDING.name()))
-       .orderBy(op.field("id"), col.field("columnSequence"))
-       .toString();
-
-    assertEquals("SELECT statement", expected, captor.getValue().toString());
-  }
-
-
-  /**
-   * Verify findStaleInProgressOperations selects with LEFT JOIN to the column
-   * table and WHERE status=IN_PROGRESS AND startedTime < threshold.
-   */
-  @SuppressWarnings("unchecked")
-  @Test
-  public void testFindStaleInProgressOperations() {
-    when(sqlScriptExecutor.executeQuery(anyString(), any(ResultSetProcessor.class))).thenReturn(List.of());
-
-    dao.findStaleInProgressOperations(20260101080000L);
-
-    ArgumentCaptor<SelectStatement> captor = ArgumentCaptor.forClass(SelectStatement.class);
-    verify(sqlDialect, times(1)).convertStatementToSQL(captor.capture());
-
-    org.alfasoftware.morf.sql.element.TableReference op = tableRef(TABLE);
-    org.alfasoftware.morf.sql.element.TableReference col = tableRef(COL_TABLE);
-
-    String expected = select(
-        op.field("id"), op.field("upgradeUUID"), op.field("tableName"),
-        op.field("indexName"), op.field("indexUnique"),
-        op.field("status"), op.field("retryCount"), op.field("createdTime"),
-        op.field("startedTime"), op.field("completedTime"), op.field("errorMessage"),
-        col.field("columnName"), col.field("columnSequence")
-      ).from(op)
-       .leftOuterJoin(col, op.field("id").eq(col.field("operationId")))
-       .where(and(
-         op.field("status").eq(DeferredIndexStatus.IN_PROGRESS.name()),
-         op.field("startedTime").lessThan(literal(20260101080000L))
-       ))
        .orderBy(op.field("id"), col.field("columnSequence"))
        .toString();
 

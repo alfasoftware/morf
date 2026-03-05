@@ -429,26 +429,18 @@ public class TestDeferredIndexIntegration {
 
 
   /**
-   * Verify the full recovery-to-execution pipeline: a stale IN_PROGRESS
-   * operation is reset to PENDING by the recovery service, then the executor
-   * picks it up and completes the index build.
+   * Verify crash recovery: a stale IN_PROGRESS operation is reset to PENDING
+   * by the executor, then picked up and completed.
    */
   @Test
-  public void testRecoveryResetsStaleOperationThenExecutorCompletes() {
+  public void testExecutorResetsInProgressAndCompletes() {
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
 
     // Simulate a crashed executor by marking the operation IN_PROGRESS
-    // with a timestamp far in the past
     setOperationToStaleInProgress("Product_Name_1");
-
     assertEquals("IN_PROGRESS", queryOperationStatus("Product_Name_1"));
 
-    // Recovery should reset it to PENDING
-    new DeferredIndexRecoveryServiceImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources).recoverStaleOperations();
-
-    assertEquals("PENDING", queryOperationStatus("Product_Name_1"));
-
-    // Now the executor should pick it up and complete the build
+    // Executor should reset IN_PROGRESS → PENDING and build
     DeferredIndexExecutionConfig execConfig = new DeferredIndexExecutionConfig();
     execConfig.setRetryBaseDelayMs(10L);
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), execConfig, new DeferredIndexExecutorServiceFactory.Default());

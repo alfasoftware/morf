@@ -48,17 +48,6 @@ interface DeferredIndexOperationDAO {
 
 
   /**
-   * Returns all {@link DeferredIndexStatus#IN_PROGRESS} operations
-   * whose {@code startedTime} is strictly less than the supplied threshold,
-   * indicating a stale or abandoned build.
-   *
-   * @param startedBefore upper bound on {@code startedTime} (epoch milliseconds).
-   * @return list of stale in-progress operations.
-   */
-  List<DeferredIndexOperation> findStaleInProgressOperations(long startedBefore);
-
-
-  /**
    * Transitions the operation to {@link DeferredIndexStatus#IN_PROGRESS}
    * and records its start time.
    *

@@ -267,7 +267,7 @@ public class TestDeferredIndexLifecycle {
     performUpgradeWithSteps(schemaWithBothIndexes(),
         List.of(AddDeferredIndex.class, AddSecondDeferredIndex.class));
     executeDeferred();
-    assertEquals("COMPLETED", queryOperationStatus("Product_Id_1"));
+    assertEquals("COMPLETED", queryOperationStatus("Product_IdName_1"));
 
     // Third restart — everything clean
     performUpgradeWithSteps(schemaWithBothIndexes(),
@@ -289,7 +289,7 @@ public class TestDeferredIndexLifecycle {
 
     // Execute builds second index
     executeDeferred();
-    assertIndexExists("Product", "Product_Id_1");
+    assertIndexExists("Product", "Product_IdName_1");
   }
 
 
@@ -308,7 +308,7 @@ public class TestDeferredIndexLifecycle {
     // Execute builds both
     executeDeferred();
     assertIndexExists("Product", "Product_Name_1");
-    assertIndexExists("Product", "Product_Id_1");
+    assertIndexExists("Product", "Product_IdName_1");
   }
 
 
@@ -364,7 +364,7 @@ public class TestDeferredIndexLifecycle {
             column("name", DataType.STRING, 100)
         ).indexes(
             index("Product_Name_1").columns("name"),
-            index("Product_Id_1").columns("id")
+            index("Product_IdName_1").columns("id", "name")
         )
     );
   }

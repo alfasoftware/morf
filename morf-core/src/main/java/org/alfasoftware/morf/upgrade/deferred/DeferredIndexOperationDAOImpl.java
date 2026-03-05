@@ -21,7 +21,6 @@ import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.SqlUtils.update;
-import static org.alfasoftware.morf.sql.element.Criterion.and;
 import static org.alfasoftware.morf.sql.element.Criterion.or;
 
 import java.sql.ResultSet;
@@ -130,38 +129,6 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
   @Override
   public List<DeferredIndexOperation> findPendingOperations() {
     return findOperationsByStatus(DeferredIndexStatus.PENDING);
-  }
-
-
-  /**
-   * Returns all {@link DeferredIndexOperation#STATUS_IN_PROGRESS} operations
-   * whose {@code startedTime} is strictly less than the supplied threshold,
-   * indicating a stale or abandoned build.
-   *
-   * @param startedBefore upper bound on {@code startedTime} (epoch milliseconds).
-   * @return list of stale in-progress operations.
-   */
-  @Override
-  public List<DeferredIndexOperation> findStaleInProgressOperations(long startedBefore) {
-    TableReference op = tableRef(OPERATION_TABLE);
-    TableReference col = tableRef(OPERATION_COLUMN_TABLE);
-
-    SelectStatement select = select(
-        op.field("id"), op.field("upgradeUUID"), op.field("tableName"),
-        op.field("indexName"), op.field("indexUnique"),
-        op.field("status"), op.field("retryCount"), op.field("createdTime"),
-        op.field("startedTime"), op.field("completedTime"), op.field("errorMessage"),
-        col.field("columnName"), col.field("columnSequence")
-      ).from(op)
-       .leftOuterJoin(col, op.field("id").eq(col.field("operationId")))
-       .where(and(
-         op.field("status").eq(DeferredIndexStatus.IN_PROGRESS.name()),
-         op.field("startedTime").lessThan(literal(startedBefore))
-       ))
-       .orderBy(op.field("id"), col.field("columnSequence"));
-
-    String sql = sqlDialect.convertStatementToSQL(select);
-    return sqlScriptExecutorProvider.get().executeQuery(sql, this::mapOperationsWithColumns);
   }
 
 
