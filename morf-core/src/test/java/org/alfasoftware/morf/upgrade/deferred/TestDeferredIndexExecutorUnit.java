@@ -20,6 +20,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -42,6 +43,7 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Table;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -111,27 +113,6 @@ public class TestDeferredIndexExecutorUnit {
   public void testLogProgressOnFreshExecutor() {
     DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
     executor.logProgress();
-  }
-
-
-  /** truncate should return an empty string when the input is null. */
-  @Test
-  public void testTruncateReturnsEmptyForNull() {
-    assertEquals("", DeferredIndexExecutorImpl.truncate(null, 100));
-  }
-
-
-  /** truncate should return the original string when it is within the limit. */
-  @Test
-  public void testTruncateReturnsOriginalWhenWithinLimit() {
-    assertEquals("short", DeferredIndexExecutorImpl.truncate("short", 100));
-  }
-
-
-  /** truncate should cut the string at maxLength when it exceeds the limit. */
-  @Test
-  public void testTruncateCutsAtMaxLength() {
-    assertEquals("abcdefghij", DeferredIndexExecutorImpl.truncate("abcdefghij-extra", 10));
   }
 
 
@@ -245,6 +226,26 @@ public class TestDeferredIndexExecutorUnit {
     executor.execute().join();
 
     verify(dao).markFailed(eq(1001L), any(String.class), eq(1));
+  }
+
+
+  /** buildIndex should restore autocommit to its original value after execution. */
+  @Test
+  public void testAutoCommitRestoredAfterBuildIndex() throws SQLException {
+    when(connection.getAutoCommit()).thenReturn(false);
+    DeferredIndexOperation op = buildOp(1001L);
+    when(dao.findPendingOperations()).thenReturn(List.of(op));
+    SqlScriptExecutor scriptExecutor = mock(SqlScriptExecutor.class);
+    when(sqlScriptExecutorProvider.get()).thenReturn(scriptExecutor);
+    when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
+        .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
+
+    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
+    executor.execute().join();
+
+    InOrder order = inOrder(connection);
+    order.verify(connection).setAutoCommit(true);
+    order.verify(connection).setAutoCommit(false);
   }
 
 

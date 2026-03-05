@@ -114,7 +114,11 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
         .toArray(CompletableFuture[]::new);
 
     return CompletableFuture.allOf(futures)
-        .whenComplete((v, t) -> threadPool.shutdown());
+        .whenComplete((v, t) -> {
+          threadPool.shutdown();
+          logProgress();
+          log.info("Deferred index execution complete.");
+        });
   }
 
 
@@ -135,38 +139,34 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
     int maxAttempts = config.getMaxRetries() + 1;
 
     for (int attempt = op.getRetryCount(); attempt < maxAttempts; attempt++) {
-      if (log.isDebugEnabled()) {
-        log.debug("Starting deferred index operation [" + op.getId() + "]: table=" + op.getTableName()
-            + ", index=" + op.getIndexName() + ", attempt=" + (attempt + 1) + "/" + maxAttempts);
-      }
+      log.info("Starting deferred index operation [" + op.getId() + "]: table=" + op.getTableName()
+          + ", index=" + op.getIndexName() + ", attempt=" + (attempt + 1) + "/" + maxAttempts);
       long startedTime = System.currentTimeMillis();
       dao.markStarted(op.getId(), startedTime);
 
       try {
         buildIndex(op);
+        long elapsedSeconds = (System.currentTimeMillis() - startedTime) / 1000;
         dao.markCompleted(op.getId(), System.currentTimeMillis());
-        if (log.isDebugEnabled()) {
-          log.debug("Deferred index operation [" + op.getId() + "] completed: table=" + op.getTableName()
-              + ", index=" + op.getIndexName());
-        }
+        log.info("Deferred index operation [" + op.getId() + "] completed in " + elapsedSeconds
+            + " s: table=" + op.getTableName() + ", index=" + op.getIndexName());
         return;
 
       } catch (Exception e) {
+        long elapsedSeconds = (System.currentTimeMillis() - startedTime) / 1000;
         int newRetryCount = attempt + 1;
-        String errorMessage = truncate(e.getMessage(), 2_000);
-        dao.markFailed(op.getId(), errorMessage, newRetryCount);
+        dao.markFailed(op.getId(), e.getMessage(), newRetryCount);
 
         if (newRetryCount < maxAttempts) {
-          if (log.isDebugEnabled()) {
-            log.debug("Deferred index operation [" + op.getId() + "] failed (attempt " + newRetryCount
-                + "/" + maxAttempts + "), will retry: table=" + op.getTableName()
-                + ", index=" + op.getIndexName() + ", error=" + errorMessage);
-          }
+          log.error("Deferred index operation [" + op.getId() + "] failed after " + elapsedSeconds
+              + " s (attempt " + newRetryCount + "/" + maxAttempts + "), will retry: table="
+              + op.getTableName() + ", index=" + op.getIndexName() + ", error=" + e.getMessage());
           dao.resetToPending(op.getId());
           sleepForBackoff(attempt);
         } else {
-          log.error("Deferred index operation permanently failed after " + newRetryCount
-              + " attempt(s): table=" + op.getTableName() + ", index=" + op.getIndexName(), e);
+          log.error("Deferred index operation permanently failed after " + elapsedSeconds + " s ("
+              + newRetryCount + " attempt(s)): table=" + op.getTableName()
+              + ", index=" + op.getIndexName(), e);
         }
       }
     }
@@ -184,8 +184,13 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
     // dedicated autocommit connection is harmless for platforms that do
     // not have this restriction (Oracle, MySQL, H2, SQL Server).
     try (Connection connection = dataSource.getConnection()) {
-      connection.setAutoCommit(true);
-      sqlScriptExecutorProvider.get().execute(statements, connection);
+      boolean wasAutoCommit = connection.getAutoCommit();
+      try {
+        connection.setAutoCommit(true);
+        sqlScriptExecutorProvider.get().execute(statements, connection);
+      } finally {
+        connection.setAutoCommit(wasAutoCommit);
+      }
     } catch (SQLException e) {
       throw new RuntimeSqlException("Error building deferred index " + op.getIndexName(), e);
     }
@@ -220,11 +225,4 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
         + ", failed=" + counts.get(DeferredIndexStatus.FAILED));
   }
 
-
-  static String truncate(String message, int maxLength) {
-    if (message == null) {
-      return "";
-    }
-    return message.length() > maxLength ? message.substring(0, maxLength) : message;
-  }
 }
