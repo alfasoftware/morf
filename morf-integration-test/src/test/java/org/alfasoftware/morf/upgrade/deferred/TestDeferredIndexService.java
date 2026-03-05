@@ -116,7 +116,7 @@ public class TestDeferredIndexService {
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
     assertEquals("PENDING", queryOperationStatus("Product_Name_1"));
 
-    DeferredIndexConfig config = new DeferredIndexConfig();
+    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
     config.setRetryBaseDelayMs(10L);
     DeferredIndexService service = createService(config);
     service.execute();
@@ -145,7 +145,7 @@ public class TestDeferredIndexService {
     );
     performUpgrade(targetSchema, AddTwoDeferredIndexes.class);
 
-    DeferredIndexConfig config = new DeferredIndexConfig();
+    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
     config.setRetryBaseDelayMs(10L);
     DeferredIndexService service = createService(config);
     service.execute();
@@ -163,7 +163,7 @@ public class TestDeferredIndexService {
    */
   @Test
   public void testExecuteWithEmptyQueue() {
-    DeferredIndexConfig config = new DeferredIndexConfig();
+    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
     config.setRetryBaseDelayMs(10L);
     DeferredIndexService service = createService(config);
     service.execute();
@@ -185,9 +185,8 @@ public class TestDeferredIndexService {
     setOperationToStaleInProgress("Product_Name_1");
     assertEquals("IN_PROGRESS", queryOperationStatus("Product_Name_1"));
 
-    DeferredIndexConfig config = new DeferredIndexConfig();
+    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
     config.setRetryBaseDelayMs(10L);
-    config.setStaleThresholdSeconds(1L);
     DeferredIndexService service = createService(config);
     service.execute();
     service.awaitCompletion(60L);
@@ -202,7 +201,7 @@ public class TestDeferredIndexService {
    */
   @Test(expected = IllegalStateException.class)
   public void testAwaitCompletionThrowsWhenNoExecution() {
-    DeferredIndexConfig config = new DeferredIndexConfig();
+    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
     DeferredIndexService service = createService(config);
     service.awaitCompletion(5L);
   }
@@ -217,7 +216,7 @@ public class TestDeferredIndexService {
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
 
     // Build the index first
-    DeferredIndexConfig config = new DeferredIndexConfig();
+    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
     config.setRetryBaseDelayMs(10L);
     DeferredIndexService firstService = createService(config);
     firstService.execute();
@@ -238,7 +237,7 @@ public class TestDeferredIndexService {
   public void testExecuteIdempotent() {
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
 
-    DeferredIndexConfig config = new DeferredIndexConfig();
+    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
     config.setRetryBaseDelayMs(10L);
     DeferredIndexService service = createService(config);
 
@@ -299,9 +298,9 @@ public class TestDeferredIndexService {
   }
 
 
-  private DeferredIndexService createService(DeferredIndexConfig config) {
+  private DeferredIndexService createService(DeferredIndexExecutionConfig config) {
     DeferredIndexOperationDAO dao = new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources);
-    DeferredIndexRecoveryService recovery = new DeferredIndexRecoveryServiceImpl(dao, connectionResources, config);
+    DeferredIndexRecoveryService recovery = new DeferredIndexRecoveryServiceImpl(dao, connectionResources);
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
     return new DeferredIndexServiceImpl(recovery, executor, dao, config);
   }

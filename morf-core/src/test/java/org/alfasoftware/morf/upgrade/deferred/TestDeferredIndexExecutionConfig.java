@@ -20,21 +20,20 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 /**
- * Tests for {@link DeferredIndexConfig}.
+ * Tests for {@link DeferredIndexExecutionConfig}.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-public class TestDeferredIndexConfig {
+public class TestDeferredIndexExecutionConfig {
 
   /**
    * Verify all default values are set as specified in the design.
    */
   @Test
   public void testDefaults() {
-    DeferredIndexConfig config = new DeferredIndexConfig();
+    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
     assertEquals("Default maxRetries", 3, config.getMaxRetries());
     assertEquals("Default threadPoolSize", 1, config.getThreadPoolSize());
-    assertEquals("Default staleThresholdSeconds (4h)", 14_400L, config.getStaleThresholdSeconds());
     assertEquals("Default executionTimeoutSeconds (8h)", 28_800L, config.getExecutionTimeoutSeconds());
   }
 }

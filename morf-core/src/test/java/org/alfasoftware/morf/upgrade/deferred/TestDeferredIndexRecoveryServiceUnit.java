@@ -50,9 +50,8 @@ public class TestDeferredIndexRecoveryServiceUnit {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
     when(mockDao.findStaleInProgressOperations(anyLong())).thenReturn(Collections.emptyList());
 
-    DeferredIndexConfig config = new DeferredIndexConfig();
     ConnectionResources mockConn = mock(ConnectionResources.class);
-    DeferredIndexRecoveryService service = new DeferredIndexRecoveryServiceImpl(mockDao, mockConn, config);
+    DeferredIndexRecoveryService service = new DeferredIndexRecoveryServiceImpl(mockDao, mockConn);
     service.recoverStaleOperations();
 
     verify(mockDao).findStaleInProgressOperations(anyLong());
@@ -79,8 +78,7 @@ public class TestDeferredIndexRecoveryServiceUnit {
     ConnectionResources mockConn = mock(ConnectionResources.class);
     when(mockConn.openSchemaResource()).thenReturn(mockSchemaResource);
 
-    DeferredIndexConfig config = new DeferredIndexConfig();
-    DeferredIndexRecoveryService service = new DeferredIndexRecoveryServiceImpl(mockDao, mockConn, config);
+    DeferredIndexRecoveryService service = new DeferredIndexRecoveryServiceImpl(mockDao, mockConn);
     service.recoverStaleOperations();
 
     verify(mockDao).markCompleted(eq(1L), anyLong());
@@ -105,8 +103,7 @@ public class TestDeferredIndexRecoveryServiceUnit {
     ConnectionResources mockConn = mock(ConnectionResources.class);
     when(mockConn.openSchemaResource()).thenReturn(mockSchemaResource);
 
-    DeferredIndexConfig config = new DeferredIndexConfig();
-    DeferredIndexRecoveryService service = new DeferredIndexRecoveryServiceImpl(mockDao, mockConn, config);
+    DeferredIndexRecoveryService service = new DeferredIndexRecoveryServiceImpl(mockDao, mockConn);
     service.recoverStaleOperations();
 
     verify(mockDao).resetToPending(1L);
@@ -130,8 +127,7 @@ public class TestDeferredIndexRecoveryServiceUnit {
     ConnectionResources mockConn = mock(ConnectionResources.class);
     when(mockConn.openSchemaResource()).thenReturn(mockSchemaResource);
 
-    DeferredIndexConfig config = new DeferredIndexConfig();
-    DeferredIndexRecoveryService service = new DeferredIndexRecoveryServiceImpl(mockDao, mockConn, config);
+    DeferredIndexRecoveryService service = new DeferredIndexRecoveryServiceImpl(mockDao, mockConn);
     service.recoverStaleOperations();
 
     verify(mockDao).updateStatus(1L, DeferredIndexStatus.SKIPPED);
@@ -161,8 +157,7 @@ public class TestDeferredIndexRecoveryServiceUnit {
     ConnectionResources mockConn = mock(ConnectionResources.class);
     when(mockConn.openSchemaResource()).thenReturn(mockSchemaResource);
 
-    DeferredIndexConfig config = new DeferredIndexConfig();
-    DeferredIndexRecoveryService service = new DeferredIndexRecoveryServiceImpl(mockDao, mockConn, config);
+    DeferredIndexRecoveryService service = new DeferredIndexRecoveryServiceImpl(mockDao, mockConn);
     service.recoverStaleOperations();
 
     verify(mockDao).markCompleted(eq(1L), anyLong());
@@ -189,8 +184,7 @@ public class TestDeferredIndexRecoveryServiceUnit {
     ConnectionResources mockConn = mock(ConnectionResources.class);
     when(mockConn.openSchemaResource()).thenReturn(mockSchemaResource);
 
-    DeferredIndexConfig config = new DeferredIndexConfig();
-    DeferredIndexRecoveryService service = new DeferredIndexRecoveryServiceImpl(mockDao, mockConn, config);
+    DeferredIndexRecoveryService service = new DeferredIndexRecoveryServiceImpl(mockDao, mockConn);
     service.recoverStaleOperations();
 
     verify(mockDao).markCompleted(eq(1L), anyLong());

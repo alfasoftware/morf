@@ -51,7 +51,7 @@ import org.apache.commons.logging.LogFactory;
  * {@link DeferredIndexStatus#FAILED}.</p>
  *
  * <p>Retry logic uses exponential back-off up to
- * {@link DeferredIndexConfig#getMaxRetries()} additional attempts after the
+ * {@link DeferredIndexExecutionConfig#getMaxRetries()} additional attempts after the
  * first failure. Progress is logged at INFO level after each operation
  * completes.</p>
  *
@@ -66,7 +66,7 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
   private final SqlDialect sqlDialect;
   private final SqlScriptExecutorProvider sqlScriptExecutorProvider;
   private final DataSource dataSource;
-  private final DeferredIndexConfig config;
+  private final DeferredIndexExecutionConfig config;
   private final DeferredIndexExecutorServiceFactory executorServiceFactory;
 
   /** The worker thread pool; may be null if execution has not started. */
@@ -85,7 +85,7 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
   @Inject
   DeferredIndexExecutorImpl(DeferredIndexOperationDAO dao, ConnectionResources connectionResources,
                             SqlScriptExecutorProvider sqlScriptExecutorProvider,
-                            DeferredIndexConfig config,
+                            DeferredIndexExecutionConfig config,
                             DeferredIndexExecutorServiceFactory executorServiceFactory) {
     this.dao = dao;
     this.sqlDialect = connectionResources.sqlDialect();
@@ -128,7 +128,7 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
 
   /**
    * Attempts to build the index for a single operation, retrying with
-   * exponential back-off on failure up to {@link DeferredIndexConfig#getMaxRetries()}
+   * exponential back-off on failure up to {@link DeferredIndexExecutionConfig#getMaxRetries()}
    * times. Updates the operation status in the database after each attempt.
    *
    * @param op the deferred index operation to execute.
@@ -219,7 +219,7 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
 
   /**
    * Sleeps for an exponentially increasing delay, capped at
-   * {@link DeferredIndexConfig#getRetryMaxDelayMs()}.
+   * {@link DeferredIndexExecutionConfig#getRetryMaxDelayMs()}.
    *
    * @param attempt the zero-based attempt number (used to compute the delay).
    */

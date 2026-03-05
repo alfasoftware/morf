@@ -63,14 +63,14 @@ public class TestDeferredIndexExecutorUnit {
   @Mock private DataSource dataSource;
   @Mock private Connection connection;
 
-  private DeferredIndexConfig config;
+  private DeferredIndexExecutionConfig config;
 
 
   /** Set up mocks and a fast-retry config before each test. */
   @Before
   public void setUp() throws SQLException {
     MockitoAnnotations.openMocks(this);
-    config = new DeferredIndexConfig();
+    config = new DeferredIndexExecutionConfig();
     config.setRetryBaseDelayMs(10L);
     when(connectionResources.sqlDialect()).thenReturn(sqlDialect);
     when(connectionResources.getDataSource()).thenReturn(dataSource);

@@ -75,7 +75,7 @@ public class TestDeferredIndexReadinessCheck {
       table("Apple").columns(column("pips", DataType.STRING, 10).nullable())
   );
 
-  private DeferredIndexConfig config;
+  private DeferredIndexExecutionConfig config;
 
 
   /**
@@ -85,7 +85,7 @@ public class TestDeferredIndexReadinessCheck {
   public void setUp() {
     schemaManager.dropAllTables();
     schemaManager.mutateToSupportSchema(TEST_SCHEMA, TruncationBehavior.ALWAYS);
-    config = new DeferredIndexConfig();
+    config = new DeferredIndexExecutionConfig();
     config.setMaxRetries(0);
     config.setRetryBaseDelayMs(10L);
   }
@@ -218,7 +218,7 @@ public class TestDeferredIndexReadinessCheck {
   }
 
 
-  private DeferredIndexReadinessCheck createValidator(DeferredIndexConfig validatorConfig) {
+  private DeferredIndexReadinessCheck createValidator(DeferredIndexExecutionConfig validatorConfig) {
     DeferredIndexOperationDAO dao = new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources);
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources, new SqlScriptExecutorProvider(connectionResources), validatorConfig, new DeferredIndexExecutorServiceFactory.Default());
     return new DeferredIndexReadinessCheckImpl(dao, executor, validatorConfig);

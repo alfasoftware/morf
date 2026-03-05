@@ -47,7 +47,7 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
 
   private final DeferredIndexOperationDAO dao;
   private final DeferredIndexExecutor executor;
-  private final DeferredIndexConfig config;
+  private final DeferredIndexExecutionConfig config;
 
 
   /**
@@ -59,7 +59,7 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
    */
   @Inject
   DeferredIndexReadinessCheckImpl(DeferredIndexOperationDAO dao, DeferredIndexExecutor executor,
-                                  DeferredIndexConfig config) {
+                                  DeferredIndexExecutionConfig config) {
     this.dao = dao;
     this.executor = executor;
     this.config = config;

@@ -68,7 +68,7 @@ public interface DeferredIndexReadinessCheck {
    * @return a new readiness check instance.
    */
   static DeferredIndexReadinessCheck create(ConnectionResources connectionResources) {
-    DeferredIndexConfig config = new DeferredIndexConfig();
+    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
     SqlScriptExecutorProvider executorProvider = new SqlScriptExecutorProvider(connectionResources);
     DeferredIndexOperationDAO dao = new DeferredIndexOperationDAOImpl(executorProvider, connectionResources);
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources,

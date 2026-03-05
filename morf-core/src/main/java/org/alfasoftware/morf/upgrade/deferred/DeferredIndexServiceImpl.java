@@ -43,7 +43,7 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
   private final DeferredIndexRecoveryService recoveryService;
   private final DeferredIndexExecutor executor;
   private final DeferredIndexOperationDAO dao;
-  private final DeferredIndexConfig config;
+  private final DeferredIndexExecutionConfig config;
 
   /** Future representing the current execution; {@code null} if not started. */
   private volatile CompletableFuture<Void> executionFuture;
@@ -61,7 +61,7 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
   DeferredIndexServiceImpl(DeferredIndexRecoveryService recoveryService,
                             DeferredIndexExecutor executor,
                             DeferredIndexOperationDAO dao,
-                            DeferredIndexConfig config) {
+                            DeferredIndexExecutionConfig config) {
     this.recoveryService = recoveryService;
     this.executor = executor;
     this.dao = dao;
@@ -125,7 +125,7 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
    * @param config the configuration to validate.
    * @throws IllegalArgumentException if any value is out of range.
    */
-  private void validateConfig(DeferredIndexConfig config) {
+  private void validateConfig(DeferredIndexExecutionConfig config) {
     if (config.getThreadPoolSize() < 1) {
       throw new IllegalArgumentException("threadPoolSize must be >= 1, was " + config.getThreadPoolSize());
     }
@@ -138,10 +138,6 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
     if (config.getRetryMaxDelayMs() < config.getRetryBaseDelayMs()) {
       throw new IllegalArgumentException("retryMaxDelayMs (" + config.getRetryMaxDelayMs()
           + " ms) must be >= retryBaseDelayMs (" + config.getRetryBaseDelayMs() + " ms)");
-    }
-    if (config.getStaleThresholdSeconds() <= 0) {
-      throw new IllegalArgumentException(
-          "staleThresholdSeconds must be > 0 s, was " + config.getStaleThresholdSeconds() + " s");
     }
     if (config.getExecutionTimeoutSeconds() <= 0) {
       throw new IllegalArgumentException(

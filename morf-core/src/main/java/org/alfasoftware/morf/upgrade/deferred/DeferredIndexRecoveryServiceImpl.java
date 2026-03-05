@@ -50,9 +50,11 @@ class DeferredIndexRecoveryServiceImpl implements DeferredIndexRecoveryService {
 
   private static final Log log = LogFactory.getLog(DeferredIndexRecoveryServiceImpl.class);
 
+  /** Hardcoded stale threshold (4 hours). Will be removed with Stage G. */
+  private static final long STALE_THRESHOLD_SECONDS = 14_400L;
+
   private final DeferredIndexOperationDAO dao;
   private final ConnectionResources connectionResources;
-  private final DeferredIndexConfig config;
 
 
   /**
@@ -60,20 +62,17 @@ class DeferredIndexRecoveryServiceImpl implements DeferredIndexRecoveryService {
    *
    * @param dao                 DAO for deferred index operations.
    * @param connectionResources database connection resources.
-   * @param config              configuration governing the stale-threshold.
    */
   @Inject
-  DeferredIndexRecoveryServiceImpl(DeferredIndexOperationDAO dao, ConnectionResources connectionResources,
-                                   DeferredIndexConfig config) {
+  DeferredIndexRecoveryServiceImpl(DeferredIndexOperationDAO dao, ConnectionResources connectionResources) {
     this.dao = dao;
     this.connectionResources = connectionResources;
-    this.config = config;
   }
 
 
   @Override
   public void recoverStaleOperations() {
-    long threshold = timestampBefore(config.getStaleThresholdSeconds());
+    long threshold = timestampBefore(STALE_THRESHOLD_SECONDS);
     List<DeferredIndexOperation> staleOps = dao.findStaleInProgressOperations(threshold);
 
     if (staleOps.isEmpty()) {

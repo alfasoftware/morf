@@ -63,7 +63,7 @@ public class TestDeferredIndexReadinessCheckUnit {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
     when(mockDao.findPendingOperations()).thenReturn(Collections.emptyList());
 
-    DeferredIndexConfig config = new DeferredIndexConfig();
+    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
     DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, null, config);
     check.run(schemaWithTable);
 
@@ -79,7 +79,7 @@ public class TestDeferredIndexReadinessCheckUnit {
     when(mockDao.findPendingOperations()).thenReturn(List.of(buildOp(1L)));
     when(mockDao.countAllByStatus()).thenReturn(statusCounts(0));
 
-    DeferredIndexConfig config = new DeferredIndexConfig();
+    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     when(mockExecutor.execute()).thenReturn(CompletableFuture.completedFuture(null));
 
@@ -98,7 +98,7 @@ public class TestDeferredIndexReadinessCheckUnit {
     when(mockDao.findPendingOperations()).thenReturn(List.of(buildOp(1L)));
     when(mockDao.countAllByStatus()).thenReturn(statusCounts(1));
 
-    DeferredIndexConfig config = new DeferredIndexConfig();
+    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     when(mockExecutor.execute()).thenReturn(CompletableFuture.completedFuture(null));
 
@@ -114,7 +114,7 @@ public class TestDeferredIndexReadinessCheckUnit {
     when(mockDao.findPendingOperations()).thenReturn(List.of(buildOp(1L), buildOp(2L)));
     when(mockDao.countAllByStatus()).thenReturn(statusCounts(2));
 
-    DeferredIndexConfig config = new DeferredIndexConfig();
+    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     when(mockExecutor.execute()).thenReturn(CompletableFuture.completedFuture(null));
 
@@ -135,7 +135,7 @@ public class TestDeferredIndexReadinessCheckUnit {
     when(mockDao.findPendingOperations()).thenReturn(Collections.emptyList());
 
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
-    DeferredIndexConfig config = new DeferredIndexConfig();
+    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
     DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mockExecutor, config);
     check.run(schemaWithTable);
 
@@ -148,7 +148,7 @@ public class TestDeferredIndexReadinessCheckUnit {
   public void testRunSkipsWhenTableDoesNotExist() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
-    DeferredIndexConfig config = new DeferredIndexConfig();
+    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
 
     DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mockExecutor, config);
     check.run(schemaWithoutTable);

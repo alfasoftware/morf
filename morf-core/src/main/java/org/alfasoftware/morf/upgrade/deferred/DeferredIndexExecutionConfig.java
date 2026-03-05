@@ -18,11 +18,12 @@ package org.alfasoftware.morf.upgrade.deferred;
 /**
  * Configuration for the deferred index execution mechanism.
  *
- * <p>All time values are in seconds.</p>
+ * <p>Controls runtime behaviour of the {@link DeferredIndexExecutor}:
+ * thread pool sizing, retry policy, and timeout limits.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-public class DeferredIndexConfig {
+public class DeferredIndexExecutionConfig {
 
   /**
    * Maximum number of retry attempts before marking an operation as permanently FAILED.
@@ -33,18 +34,6 @@ public class DeferredIndexConfig {
    * Number of threads in the executor thread pool.
    */
   private int threadPoolSize = 1;
-
-  /**
-   * Operations that have been IN_PROGRESS for longer than this threshold (in seconds)
-   * are considered stale — i.e. the executor that claimed them has crashed — and will
-   * be recovered by {@code DeferredIndexRecoveryService}.
-   *
-   * <p>This threshold must be set high enough to avoid interfering with legitimately
-   * running index builds on other nodes (e.g. a live PostgreSQL
-   * {@code CREATE INDEX CONCURRENTLY} also produces an {@code indisvalid=false} index
-   * mid-build). Default: 4 hours (14400 seconds).</p>
-   */
-  private long staleThresholdSeconds = 14_400L;
 
   /**
    * Maximum time in seconds to wait for all deferred index operations to complete
@@ -95,22 +84,6 @@ public class DeferredIndexConfig {
    */
   public void setThreadPoolSize(int threadPoolSize) {
     this.threadPoolSize = threadPoolSize;
-  }
-
-
-  /**
-   * @see #staleThresholdSeconds
-   */
-  public long getStaleThresholdSeconds() {
-    return staleThresholdSeconds;
-  }
-
-
-  /**
-   * @see #staleThresholdSeconds
-   */
-  public void setStaleThresholdSeconds(long staleThresholdSeconds) {
-    this.staleThresholdSeconds = staleThresholdSeconds;
   }
 
 
