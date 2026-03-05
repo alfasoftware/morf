@@ -44,12 +44,4 @@ interface DeferredIndexExecutor {
    *         immediately if there are no pending operations.
    */
   CompletableFuture<Void> execute();
-
-
-  /**
-   * Forces immediate shutdown of the thread pool and progress logger.
-   * Use for cancellation on timeout; normal completion is handled
-   * automatically when the returned future completes.
-   */
-  void shutdown();
 }

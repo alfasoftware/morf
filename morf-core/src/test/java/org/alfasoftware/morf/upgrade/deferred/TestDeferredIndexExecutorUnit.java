@@ -49,8 +49,8 @@ import org.mockito.MockitoAnnotations;
 
 /**
  * Unit tests for {@link DeferredIndexExecutorImpl} covering edge cases
- * that are difficult to exercise in integration tests: shutdown lifecycle,
- * progress logging, string truncation, and async execution behaviour.
+ * that are difficult to exercise in integration tests: progress logging,
+ * string truncation, and async execution behaviour.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -81,30 +81,6 @@ public class TestDeferredIndexExecutorUnit {
       zeroCounts.put(s, 0);
     }
     when(dao.countAllByStatus()).thenReturn(zeroCounts);
-  }
-
-
-  /** Calling shutdown before any execution should be a safe no-op. */
-  @Test
-  public void testShutdownBeforeExecutionIsNoOp() {
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
-    executor.shutdown();
-  }
-
-
-  /** Calling shutdown after execute should be idempotent. */
-  @Test
-  public void testShutdownAfterNonEmptyExecution() {
-    DeferredIndexOperation op = buildOp(1001L);
-    when(dao.findPendingOperations()).thenReturn(List.of(op));
-    SqlScriptExecutor scriptExecutor = mock(SqlScriptExecutor.class);
-    when(sqlScriptExecutorProvider.get()).thenReturn(scriptExecutor);
-    when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
-        .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
-
-    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
-    executor.execute().join();
-    executor.shutdown();
   }
 
 

@@ -122,15 +122,6 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
   }
 
 
-  @Override
-  public void shutdown() {
-    ExecutorService pool = threadPool;
-    if (pool != null) {
-      pool.shutdownNow();
-    }
-  }
-
-
   // -------------------------------------------------------------------------
   // Internal execution logic
   // -------------------------------------------------------------------------

@@ -87,15 +87,12 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
     try {
       future.get(timeoutSeconds, TimeUnit.SECONDS);
     } catch (TimeoutException e) {
-      executor.shutdown();
       throw new IllegalStateException("Pre-upgrade deferred index readiness check timed out after "
           + timeoutSeconds + " seconds.");
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      executor.shutdown();
       throw new IllegalStateException("Pre-upgrade deferred index readiness check interrupted.");
     } catch (ExecutionException e) {
-      executor.shutdown();
       throw new IllegalStateException("Pre-upgrade deferred index readiness check failed unexpectedly.", e.getCause());
     }
 
