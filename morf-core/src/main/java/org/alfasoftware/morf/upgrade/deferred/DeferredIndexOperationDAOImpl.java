@@ -222,25 +222,6 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
   }
 
 
-  /**
-   * Updates the status of an operation to the supplied value.
-   *
-   * @param operationId the operation to update.
-   * @param newStatus   the new status value.
-   */
-  @Override
-  public void updateStatus(long id, DeferredIndexStatus newStatus) {
-    if (log.isDebugEnabled()) log.debug("Updating operation [" + id + "] status to " + newStatus);
-    sqlScriptExecutorProvider.get().execute(
-      sqlDialect.convertStatementToSQL(
-        update(tableRef(OPERATION_TABLE))
-          .set(literal(newStatus.name()).as("status"))
-          .where(field("id").eq(id))
-      )
-    );
-  }
-
-
   @Override
   public int resetAllInProgressToPending() {
     String sql = sqlDialect.convertStatementToSQL(
@@ -307,25 +288,6 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
       }
       return counts;
     });
-  }
-
-
-  /**
-   * Returns {@code true} if there is at least one PENDING or IN_PROGRESS operation.
-   *
-   * @return {@code true} if any non-terminal operations exist.
-   */
-  @Override
-  public boolean hasNonTerminalOperations() {
-    SelectStatement select = select(field("id"))
-      .from(tableRef(OPERATION_TABLE))
-      .where(or(
-        field("status").eq(DeferredIndexStatus.PENDING.name()),
-        field("status").eq(DeferredIndexStatus.IN_PROGRESS.name())
-      ));
-
-    String sql = sqlDialect.convertStatementToSQL(select);
-    return sqlScriptExecutorProvider.get().executeQuery(sql, ResultSet::next);
   }
 
 

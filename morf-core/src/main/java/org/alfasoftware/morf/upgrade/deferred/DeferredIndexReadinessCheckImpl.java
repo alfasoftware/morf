@@ -15,8 +15,6 @@
 
 package org.alfasoftware.morf.upgrade.deferred;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.index;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -29,7 +27,6 @@ import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
-import org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.adapt.AlteredTable;
 import org.alfasoftware.morf.upgrade.adapt.TableOverrideSchema;
@@ -157,7 +154,7 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
         continue;
       }
 
-      Index newIndex = reconstructIndex(op);
+      Index newIndex = op.toIndex();
       List<String> indexNames = new ArrayList<>();
       for (Index existing : table.indexes()) {
         indexNames.add(existing.getName());
@@ -185,17 +182,4 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
   }
 
 
-  /**
-   * Rebuilds an {@link Index} metadata object from the persisted operation state.
-   *
-   * @param op the operation containing index name, uniqueness, and column names.
-   * @return the reconstructed index.
-   */
-  private static Index reconstructIndex(DeferredIndexOperation op) {
-    IndexBuilder builder = index(op.getIndexName());
-    if (op.isIndexUnique()) {
-      builder = builder.unique();
-    }
-    return builder.columns(op.getColumnNames().toArray(new String[0]));
-  }
 }

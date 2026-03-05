@@ -15,7 +15,6 @@
 
 package org.alfasoftware.morf.upgrade.deferred;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 
 import java.sql.Connection;
@@ -33,7 +32,6 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaResource;
-import org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder;
 import org.alfasoftware.morf.metadata.Table;
 
 import com.google.inject.Inject;
@@ -195,7 +193,7 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
    * @param op the deferred index operation containing table and index metadata.
    */
   private void buildIndex(DeferredIndexOperation op) {
-    Index index = reconstructIndex(op);
+    Index index = op.toIndex();
     Table table = table(op.getTableName());
     Collection<String> statements = sqlDialect.deferredIndexDeploymentStatements(table, index);
 
@@ -215,21 +213,6 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
     } catch (SQLException e) {
       throw new RuntimeSqlException("Error building deferred index " + op.getIndexName(), e);
     }
-  }
-
-
-  /**
-   * Rebuilds an {@link Index} metadata object from the persisted operation state.
-   *
-   * @param op the operation containing index name, uniqueness, and column names.
-   * @return the reconstructed index.
-   */
-  private static Index reconstructIndex(DeferredIndexOperation op) {
-    IndexBuilder builder = index(op.getIndexName());
-    if (op.isIndexUnique()) {
-      builder = builder.unique();
-    }
-    return builder.columns(op.getColumnNames().toArray(new String[0]));
   }
 
 

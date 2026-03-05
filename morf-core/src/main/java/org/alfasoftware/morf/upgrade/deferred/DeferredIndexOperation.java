@@ -15,7 +15,12 @@
 
 package org.alfasoftware.morf.upgrade.deferred;
 
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
+
 import java.util.List;
+
+import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder;
 
 /**
  * Represents a row in the {@code DeferredIndexOperation} table, together with
@@ -276,5 +281,20 @@ class DeferredIndexOperation {
    */
   public void setColumnNames(List<String> columnNames) {
     this.columnNames = columnNames;
+  }
+
+
+  /**
+   * Reconstructs an {@link Index} metadata object from this operation's
+   * index name, uniqueness flag, and column names.
+   *
+   * @return the reconstructed index.
+   */
+  Index toIndex() {
+    IndexBuilder builder = index(indexName);
+    if (indexUnique) {
+      builder = builder.unique();
+    }
+    return builder.columns(columnNames.toArray(new String[0]));
   }
 }

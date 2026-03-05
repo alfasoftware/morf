@@ -88,25 +88,6 @@ interface DeferredIndexOperationDAO {
 
 
   /**
-   * Updates the status of an operation to the supplied value.
-   *
-   * @param id        the operation to update.
-   * @param newStatus the new status value.
-   */
-  void updateStatus(long id, DeferredIndexStatus newStatus);
-
-
-  /**
-   * Returns {@code true} if there is at least one operation in a non-terminal
-   * state ({@link DeferredIndexStatus#PENDING} or
-   * {@link DeferredIndexStatus#IN_PROGRESS}).
-   *
-   * @return {@code true} if any PENDING or IN_PROGRESS operations exist.
-   */
-  boolean hasNonTerminalOperations();
-
-
-  /**
    * Resets all {@link DeferredIndexStatus#IN_PROGRESS} operations to
    * {@link DeferredIndexStatus#PENDING}. Used for crash recovery: any
    * operation that was mid-build when the process died should be retried.

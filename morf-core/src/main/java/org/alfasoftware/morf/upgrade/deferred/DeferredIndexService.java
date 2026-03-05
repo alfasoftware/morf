@@ -68,6 +68,12 @@ public interface DeferredIndexService {
    * Blocks until all deferred index operations reach a terminal state
    * ({@code COMPLETED} or {@code FAILED}), or until the timeout elapses.
    *
+   * <p>A value of zero means "wait indefinitely". This is acceptable here
+   * because the caller explicitly opts in to blocking after startup. This
+   * differs from {@link DeferredIndexExecutionConfig#getExecutionTimeoutSeconds()},
+   * which must be strictly positive to prevent infinite blocking during the
+   * pre-upgrade readiness check.</p>
+   *
    * @param timeoutSeconds maximum time to wait; zero means wait indefinitely.
    * @return {@code true} if all operations reached a terminal state within the
    *         timeout; {@code false} if the timeout elapsed first.

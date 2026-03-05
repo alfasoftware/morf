@@ -199,6 +199,7 @@ public class TestDeferredIndexLifecycle {
     // Execute picks up the pending op
     executeDeferred();
     assertIndexExists("Product", "Product_Name_1");
+    assertEquals("COMPLETED", queryOperationStatus("Product_Name_1"));
   }
 
 

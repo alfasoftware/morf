@@ -233,25 +233,6 @@ public class TestDeferredIndexOperationDAOImpl {
   }
 
 
-  /**
-   * Verify updateStatus produces an UPDATE setting status to the supplied value.
-   */
-  @Test
-  public void testUpdateStatus() {
-    dao.updateStatus(1001L, DeferredIndexStatus.COMPLETED);
-
-    ArgumentCaptor<UpdateStatement> captor = ArgumentCaptor.forClass(UpdateStatement.class);
-    verify(sqlDialect).convertStatementToSQL(captor.capture());
-
-    String expected = update(tableRef(TABLE))
-      .set(literal(DeferredIndexStatus.COMPLETED.name()).as("status"))
-      .where(field("id").eq(1001L))
-      .toString();
-
-    assertEquals("UPDATE statement", expected, captor.getValue().toString());
-  }
-
-
   private DeferredIndexOperation buildOperation(long id, List<String> columns) {
     DeferredIndexOperation op = new DeferredIndexOperation();
     op.setId(id);

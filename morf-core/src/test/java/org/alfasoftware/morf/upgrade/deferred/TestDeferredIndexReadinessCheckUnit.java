@@ -15,6 +15,12 @@
 
 package org.alfasoftware.morf.upgrade.deferred;
 
+import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
+import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
+import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
@@ -29,6 +35,8 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.junit.Before;
@@ -178,6 +186,152 @@ public class TestDeferredIndexReadinessCheckUnit {
   }
 
 
+  // -------------------------------------------------------------------------
+  // augmentSchemaWithDeferredIndexes
+  // -------------------------------------------------------------------------
+
+  /** augment should return the same schema when the table does not exist. */
+  @Test
+  public void testAugmentSkipsWhenTableDoesNotExist() {
+    DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
+    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
+
+    DeferredIndexReadinessCheckImpl check = new DeferredIndexReadinessCheckImpl(mockDao, null, config, connWithoutTable);
+    Schema input = schema(table("Foo").columns(column("id", DataType.BIG_INTEGER).primaryKey()));
+
+    assertSame("Should return input schema unchanged", input, check.augmentSchemaWithDeferredIndexes(input));
+    verify(mockDao, never()).findNonTerminalOperations();
+  }
+
+
+  /** augment should return the same schema when no non-terminal ops exist. */
+  @Test
+  public void testAugmentReturnsUnchangedWhenNoOps() {
+    DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
+    when(mockDao.findNonTerminalOperations()).thenReturn(Collections.emptyList());
+    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
+
+    DeferredIndexReadinessCheckImpl check = new DeferredIndexReadinessCheckImpl(mockDao, null, config, connWithTable);
+    Schema input = schema(table("Foo").columns(column("id", DataType.BIG_INTEGER).primaryKey()));
+
+    assertSame("Should return input schema unchanged", input, check.augmentSchemaWithDeferredIndexes(input));
+  }
+
+
+  /** augment should add a non-unique index to the schema. */
+  @Test
+  public void testAugmentAddsIndex() {
+    DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
+    when(mockDao.findNonTerminalOperations()).thenReturn(List.of(buildOp(1L, "Foo", "Foo_Col1_1", false, "col1")));
+    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
+
+    DeferredIndexReadinessCheckImpl check = new DeferredIndexReadinessCheckImpl(mockDao, null, config, connWithTable);
+    Schema input = schema(table("Foo").columns(
+        column("id", DataType.BIG_INTEGER).primaryKey(),
+        column("col1", DataType.STRING, 50)
+    ));
+
+    Schema result = check.augmentSchemaWithDeferredIndexes(input);
+    assertTrue("Index should be added",
+        result.getTable("Foo").indexes().stream()
+            .anyMatch(idx -> "Foo_Col1_1".equals(idx.getName())));
+  }
+
+
+  /** augment should add a unique index when the operation specifies unique. */
+  @Test
+  public void testAugmentAddsUniqueIndex() {
+    DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
+    when(mockDao.findNonTerminalOperations()).thenReturn(List.of(buildOp(1L, "Foo", "Foo_Col1_U", true, "col1")));
+    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
+
+    DeferredIndexReadinessCheckImpl check = new DeferredIndexReadinessCheckImpl(mockDao, null, config, connWithTable);
+    Schema input = schema(table("Foo").columns(
+        column("id", DataType.BIG_INTEGER).primaryKey(),
+        column("col1", DataType.STRING, 50)
+    ));
+
+    Schema result = check.augmentSchemaWithDeferredIndexes(input);
+    assertTrue("Unique index should be added",
+        result.getTable("Foo").indexes().stream()
+            .anyMatch(idx -> "Foo_Col1_U".equals(idx.getName()) && idx.isUnique()));
+  }
+
+
+  /** augment should skip an op whose table does not exist in the schema. */
+  @Test
+  public void testAugmentSkipsOpForMissingTable() {
+    DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
+    when(mockDao.findNonTerminalOperations()).thenReturn(List.of(buildOp(1L, "NoSuchTable", "Idx_1", false, "col1")));
+    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
+
+    DeferredIndexReadinessCheckImpl check = new DeferredIndexReadinessCheckImpl(mockDao, null, config, connWithTable);
+    Schema input = schema(table("Foo").columns(column("id", DataType.BIG_INTEGER).primaryKey()));
+
+    Schema result = check.augmentSchemaWithDeferredIndexes(input);
+    // Should still have only the Foo table, no crash
+    assertTrue("Foo table should still exist", result.tableExists("Foo"));
+    assertEquals("No indexes should be added to Foo", 0, result.getTable("Foo").indexes().size());
+  }
+
+
+  /** augment should skip an op whose index already exists on the table. */
+  @Test
+  public void testAugmentSkipsExistingIndex() {
+    DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
+    when(mockDao.findNonTerminalOperations()).thenReturn(List.of(buildOp(1L, "Foo", "Foo_Col1_1", false, "col1")));
+    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
+
+    DeferredIndexReadinessCheckImpl check = new DeferredIndexReadinessCheckImpl(mockDao, null, config, connWithTable);
+    Schema input = schema(table("Foo").columns(
+        column("id", DataType.BIG_INTEGER).primaryKey(),
+        column("col1", DataType.STRING, 50)
+    ).indexes(
+        index("Foo_Col1_1").columns("col1")
+    ));
+
+    Schema result = check.augmentSchemaWithDeferredIndexes(input);
+    long indexCount = result.getTable("Foo").indexes().stream()
+        .filter(idx -> "Foo_Col1_1".equals(idx.getName()))
+        .count();
+    assertEquals("Should not duplicate existing index", 1, indexCount);
+  }
+
+
+  /** augment should handle multiple ops on different tables. */
+  @Test
+  public void testAugmentMultipleOpsOnDifferentTables() {
+    DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
+    when(mockDao.findNonTerminalOperations()).thenReturn(List.of(
+        buildOp(1L, "Foo", "Foo_Col1_1", false, "col1"),
+        buildOp(2L, "Bar", "Bar_Val_1", false, "val")
+    ));
+    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
+
+    DeferredIndexReadinessCheckImpl check = new DeferredIndexReadinessCheckImpl(mockDao, null, config, connWithTable);
+    Schema input = schema(
+        table("Foo").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("col1", DataType.STRING, 50)
+        ),
+        table("Bar").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("val", DataType.STRING, 50)
+        )
+    );
+
+    Schema result = check.augmentSchemaWithDeferredIndexes(input);
+    assertTrue("Foo index should be added",
+        result.getTable("Foo").indexes().stream().anyMatch(idx -> "Foo_Col1_1".equals(idx.getName())));
+    assertTrue("Bar index should be added",
+        result.getTable("Bar").indexes().stream().anyMatch(idx -> "Bar_Val_1".equals(idx.getName())));
+  }
+
+
+  // -------------------------------------------------------------------------
+  // Helpers
+  // -------------------------------------------------------------------------
+
   private DeferredIndexOperation buildOp(long id) {
     DeferredIndexOperation op = new DeferredIndexOperation();
     op.setId(id);
@@ -189,6 +343,22 @@ public class TestDeferredIndexReadinessCheckUnit {
     op.setRetryCount(0);
     op.setCreatedTime(20260101120000L);
     op.setColumnNames(List.of("col1"));
+    return op;
+  }
+
+
+  private DeferredIndexOperation buildOp(long id, String tableName, String indexName,
+                                          boolean unique, String... columns) {
+    DeferredIndexOperation op = new DeferredIndexOperation();
+    op.setId(id);
+    op.setUpgradeUUID("test-uuid");
+    op.setTableName(tableName);
+    op.setIndexName(indexName);
+    op.setIndexUnique(unique);
+    op.setStatus(DeferredIndexStatus.PENDING);
+    op.setRetryCount(0);
+    op.setCreatedTime(20260101120000L);
+    op.setColumnNames(List.of(columns));
     return op;
   }
 

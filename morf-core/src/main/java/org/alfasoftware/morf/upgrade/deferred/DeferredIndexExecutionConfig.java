@@ -36,9 +36,17 @@ public class DeferredIndexExecutionConfig {
   private int threadPoolSize = 1;
 
   /**
-   * Maximum time in seconds to wait for all deferred index operations to complete
-   * via {@link DeferredIndexService#awaitCompletion(long)}.
-   * Default: 8 hours (28800 seconds).
+   * Maximum time in seconds to wait for deferred index operations to complete
+   * during the pre-upgrade readiness check ({@link DeferredIndexReadinessCheck#run()}).
+   * Must be strictly greater than zero — infinite blocking during a pre-upgrade
+   * check would be dangerous.
+   *
+   * <p>This is distinct from the {@code timeoutSeconds} parameter on
+   * {@link DeferredIndexService#awaitCompletion(long)}, where zero means
+   * "wait indefinitely" (acceptable for post-startup background builds
+   * where the caller explicitly opts in).</p>
+   *
+   * <p>Default: 8 hours (28800 seconds).</p>
    */
   private long executionTimeoutSeconds = 28_800L;
 
