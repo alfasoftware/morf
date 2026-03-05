@@ -306,6 +306,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
   }
 
 
+  /** {@inheritDoc} */
   @Override
   public int countByStatus(DeferredIndexStatus status) {
     SelectStatement select = select(field("id"))
@@ -321,6 +322,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
   }
 
 
+  /** {@inheritDoc} */
   @Override
   public Map<DeferredIndexStatus, Integer> countAllByStatus() {
     SelectStatement select = select(field("status"))
@@ -360,6 +362,12 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
   }
 
 
+  /**
+   * Returns all operations with the given status, with column names populated.
+   *
+   * @param status the status to filter by.
+   * @return list of matching operations.
+   */
   private List<DeferredIndexOperation> findOperationsByStatus(DeferredIndexStatus status) {
     TableReference op = tableRef(OPERATION_TABLE);
     TableReference col = tableRef(OPERATION_COLUMN_TABLE);

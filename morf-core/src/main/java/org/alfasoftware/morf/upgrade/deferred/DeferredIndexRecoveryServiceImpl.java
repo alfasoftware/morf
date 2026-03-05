@@ -94,6 +94,13 @@ class DeferredIndexRecoveryServiceImpl implements DeferredIndexRecoveryService {
   // Internal helpers
   // -------------------------------------------------------------------------
 
+  /**
+   * Recovers a single stale operation by inspecting the live schema to
+   * determine whether the index was actually created before the process died.
+   *
+   * @param op     the stale operation.
+   * @param schema the current database schema.
+   */
   private void recoverOperation(DeferredIndexOperation op, Schema schema) {
     if (!schema.tableExists(op.getTableName())) {
       log.warn("Stale operation [" + op.getId() + "] — table no longer exists, marking SKIPPED: "
@@ -111,6 +118,13 @@ class DeferredIndexRecoveryServiceImpl implements DeferredIndexRecoveryService {
   }
 
 
+  /**
+   * Checks whether the index described by the operation exists in the live schema.
+   *
+   * @param op     the operation to check.
+   * @param schema the current database schema (table existence already verified).
+   * @return {@code true} if the index exists.
+   */
   private static boolean indexExistsInSchema(DeferredIndexOperation op, Schema schema) {
     // Caller has already verified that the table exists
     Table table = schema.getTable(op.getTableName());
@@ -119,6 +133,13 @@ class DeferredIndexRecoveryServiceImpl implements DeferredIndexRecoveryService {
   }
 
 
+  /**
+   * Returns the epoch-millisecond timestamp that is the given number of
+   * seconds before now.
+   *
+   * @param seconds the number of seconds to subtract.
+   * @return the computed timestamp.
+   */
   private long timestampBefore(long seconds) {
     return System.currentTimeMillis() - java.util.concurrent.TimeUnit.SECONDS.toMillis(seconds);
   }

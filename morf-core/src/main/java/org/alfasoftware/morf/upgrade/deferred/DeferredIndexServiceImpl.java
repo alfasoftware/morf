@@ -120,6 +120,12 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
   }
 
 
+  /**
+   * Validates that all configuration values are within acceptable ranges.
+   *
+   * @param config the configuration to validate.
+   * @throws IllegalArgumentException if any value is out of range.
+   */
   private void validateConfig(DeferredIndexConfig config) {
     if (config.getThreadPoolSize() < 1) {
       throw new IllegalArgumentException("threadPoolSize must be >= 1, was " + config.getThreadPoolSize());

@@ -135,6 +135,13 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
   // Internal execution logic
   // -------------------------------------------------------------------------
 
+  /**
+   * Attempts to build the index for a single operation, retrying with
+   * exponential back-off on failure up to {@link DeferredIndexConfig#getMaxRetries()}
+   * times. Updates the operation status in the database after each attempt.
+   *
+   * @param op the deferred index operation to execute.
+   */
   private void executeWithRetry(DeferredIndexOperation op) {
     int maxAttempts = config.getMaxRetries() + 1;
 
@@ -173,6 +180,13 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
   }
 
 
+  /**
+   * Executes the {@code CREATE INDEX} DDL for the given operation using an
+   * autocommit connection. Autocommit is required for PostgreSQL's
+   * {@code CREATE INDEX CONCURRENTLY}.
+   *
+   * @param op the deferred index operation containing table and index metadata.
+   */
   private void buildIndex(DeferredIndexOperation op) {
     Index index = reconstructIndex(op);
     Table table = table(op.getTableName());
@@ -197,6 +211,12 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
   }
 
 
+  /**
+   * Rebuilds an {@link Index} metadata object from the persisted operation state.
+   *
+   * @param op the operation containing index name, uniqueness, and column names.
+   * @return the reconstructed index.
+   */
   private static Index reconstructIndex(DeferredIndexOperation op) {
     IndexBuilder builder = index(op.getIndexName());
     if (op.isIndexUnique()) {
@@ -206,6 +226,12 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
   }
 
 
+  /**
+   * Sleeps for an exponentially increasing delay, capped at
+   * {@link DeferredIndexConfig#getRetryMaxDelayMs()}.
+   *
+   * @param attempt the zero-based attempt number (used to compute the delay).
+   */
   private void sleepForBackoff(int attempt) {
     try {
       long delay = Math.min(config.getRetryBaseDelayMs() * (1L << attempt), config.getRetryMaxDelayMs());
@@ -216,6 +242,10 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
   }
 
 
+  /**
+   * Queries the database for current operation counts by status and logs
+   * them at INFO level.
+   */
   void logProgress() {
     Map<DeferredIndexStatus, Integer> counts = dao.countAllByStatus();
 
