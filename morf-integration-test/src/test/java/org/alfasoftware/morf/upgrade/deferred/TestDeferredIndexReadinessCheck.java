@@ -107,7 +107,7 @@ public class TestDeferredIndexReadinessCheck {
   @Test
   public void testValidateWithEmptyQueueIsNoOp() {
     DeferredIndexReadinessCheck validator = createValidator(config);
-    validator.run(TEST_SCHEMA); // must not throw
+    validator.run(); // must not throw
   }
 
 
@@ -121,7 +121,7 @@ public class TestDeferredIndexReadinessCheck {
     insertPendingRow("Apple", "Apple_V1", false, "pips");
 
     DeferredIndexReadinessCheck validator = createValidator(config);
-    validator.run(TEST_SCHEMA);
+    validator.run();
 
     // Verify no PENDING rows remain
     assertFalse("no non-terminal operations should remain after validate",
@@ -145,7 +145,7 @@ public class TestDeferredIndexReadinessCheck {
     insertPendingRow("Apple", "Apple_V3", true, "pips");
 
     DeferredIndexReadinessCheck validator = createValidator(config);
-    validator.run(TEST_SCHEMA);
+    validator.run();
 
     assertFalse("no non-terminal operations should remain", hasPendingOperations());
   }
@@ -161,7 +161,7 @@ public class TestDeferredIndexReadinessCheck {
 
     DeferredIndexReadinessCheck validator = createValidator(config);
     try {
-      validator.run(TEST_SCHEMA);
+      validator.run();
       fail("Expected IllegalStateException for failed forced execution");
     } catch (IllegalStateException e) {
       assertTrue("exception message should mention failed count",
@@ -221,7 +221,7 @@ public class TestDeferredIndexReadinessCheck {
   private DeferredIndexReadinessCheck createValidator(DeferredIndexExecutionConfig validatorConfig) {
     DeferredIndexOperationDAO dao = new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources);
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources, new SqlScriptExecutorProvider(connectionResources), validatorConfig, new DeferredIndexExecutorServiceFactory.Default());
-    return new DeferredIndexReadinessCheckImpl(dao, executor, validatorConfig);
+    return new DeferredIndexReadinessCheckImpl(dao, executor, validatorConfig, connectionResources);
   }
 
 

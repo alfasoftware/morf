@@ -15,13 +15,24 @@
 
 package org.alfasoftware.morf.upgrade.deferred;
 
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
+
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaResource;
+import org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder;
+import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.upgrade.adapt.AlteredTable;
+import org.alfasoftware.morf.upgrade.adapt.TableOverrideSchema;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -32,11 +43,15 @@ import com.google.inject.Singleton;
 /**
  * Default implementation of {@link DeferredIndexReadinessCheck}.
  *
- * <p>If the {@code DeferredIndexOperation} table exists and contains pending
- * operations, they are force-built synchronously via a
- * {@link DeferredIndexExecutor} before returning. This guarantees that
- * subsequent upgrade steps never encounter a missing index that a previous
- * deferred operation was supposed to build.</p>
+ * <p>Supports two modes:</p>
+ * <ul>
+ *   <li><strong>Mode 1 (force-build):</strong> {@link #run()} checks for pending
+ *       or crashed operations and force-builds them synchronously before the
+ *       upgrade reads the source schema.</li>
+ *   <li><strong>Mode 2 (background):</strong> {@link #augmentSchemaWithDeferredIndexes(Schema)}
+ *       adds virtual indexes from non-terminal operations into the source schema
+ *       so that the schema comparison treats them as present.</li>
+ * </ul>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -48,30 +63,37 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
   private final DeferredIndexOperationDAO dao;
   private final DeferredIndexExecutor executor;
   private final DeferredIndexExecutionConfig config;
+  private final ConnectionResources connectionResources;
 
 
   /**
    * Constructs a readiness check with injected dependencies.
    *
-   * @param dao      DAO for deferred index operations.
-   * @param executor executor used to force-build pending operations.
-   * @param config   configuration used when executing pending operations.
+   * @param dao                 DAO for deferred index operations.
+   * @param executor            executor used to force-build pending operations.
+   * @param config              configuration used when executing pending operations.
+   * @param connectionResources database connection resources.
    */
   @Inject
   DeferredIndexReadinessCheckImpl(DeferredIndexOperationDAO dao, DeferredIndexExecutor executor,
-                                  DeferredIndexExecutionConfig config) {
+                                  DeferredIndexExecutionConfig config,
+                                  ConnectionResources connectionResources) {
     this.dao = dao;
     this.executor = executor;
     this.config = config;
+    this.connectionResources = connectionResources;
   }
 
 
   @Override
-  public void run(Schema sourceSchema) {
-    if (!sourceSchema.tableExists(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME)) {
+  public void run() {
+    if (!deferredIndexTableExists()) {
       log.debug("DeferredIndexOperation table does not exist — skipping readiness check");
       return;
     }
+
+    // Reset any crashed IN_PROGRESS operations so they are picked up
+    dao.resetAllInProgressToPending();
 
     List<DeferredIndexOperation> pending = dao.findPendingOperations();
     if (pending.isEmpty()) {
@@ -104,5 +126,76 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
     }
 
     log.info("Pre-upgrade deferred index execution complete.");
+  }
+
+
+  @Override
+  public Schema augmentSchemaWithDeferredIndexes(Schema sourceSchema) {
+    if (!deferredIndexTableExists()) {
+      return sourceSchema;
+    }
+
+    List<DeferredIndexOperation> ops = dao.findNonTerminalOperations();
+    if (ops.isEmpty()) {
+      return sourceSchema;
+    }
+
+    log.info("Augmenting schema with " + ops.size() + " deferred index operation(s) for Mode 2 (background build)");
+
+    Schema result = sourceSchema;
+    for (DeferredIndexOperation op : ops) {
+      if (!result.tableExists(op.getTableName())) {
+        log.warn("Skipping deferred index [" + op.getIndexName() + "] — table ["
+            + op.getTableName() + "] does not exist in schema");
+        continue;
+      }
+
+      Table table = result.getTable(op.getTableName());
+      boolean indexAlreadyExists = table.indexes().stream()
+          .anyMatch(idx -> idx.getName().equalsIgnoreCase(op.getIndexName()));
+      if (indexAlreadyExists) {
+        continue;
+      }
+
+      Index newIndex = reconstructIndex(op);
+      List<String> indexNames = new ArrayList<>();
+      for (Index existing : table.indexes()) {
+        indexNames.add(existing.getName());
+      }
+      indexNames.add(newIndex.getName());
+
+      result = new TableOverrideSchema(result,
+          new AlteredTable(table, null, null, indexNames, Arrays.asList(newIndex)));
+    }
+
+    return result;
+  }
+
+
+  /**
+   * Checks whether the DeferredIndexOperation table exists in the database
+   * by opening a fresh schema resource.
+   *
+   * @return {@code true} if the table exists.
+   */
+  private boolean deferredIndexTableExists() {
+    try (SchemaResource sr = connectionResources.openSchemaResource()) {
+      return sr.tableExists(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME);
+    }
+  }
+
+
+  /**
+   * Rebuilds an {@link Index} metadata object from the persisted operation state.
+   *
+   * @param op the operation containing index name, uniqueness, and column names.
+   * @return the reconstructed index.
+   */
+  private static Index reconstructIndex(DeferredIndexOperation op) {
+    IndexBuilder builder = index(op.getIndexName());
+    if (op.isIndexUnique()) {
+      builder = builder.unique();
+    }
+    return builder.columns(op.getColumnNames().toArray(new String[0]));
   }
 }

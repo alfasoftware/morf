@@ -47,17 +47,53 @@ public interface DeferredIndexReadinessCheck {
 
   /**
    * Ensures all deferred index operations from a previous upgrade are
-   * complete before proceeding with a new upgrade.
+   * complete before proceeding with a new upgrade (Mode 1).
    *
    * <p>If the deferred index infrastructure table does not exist in the
-   * given source schema (e.g. on the first upgrade that introduces the
-   * feature), this is a safe no-op. If pending operations are found, they
-   * are force-built synchronously (blocking the caller) before returning.</p>
+   * database (e.g. on the first upgrade that introduces the feature),
+   * this is a safe no-op. If pending operations are found, they are
+   * force-built synchronously (blocking the caller) before returning.
+   * Any stale IN_PROGRESS operations from a crashed process are also
+   * reset to PENDING and built.</p>
    *
-   * @param sourceSchema the current database schema before upgrade.
    * @throws IllegalStateException if any operations failed permanently.
    */
-  void run(Schema sourceSchema);
+  void run();
+
+
+  /**
+   * Augments the given source schema with virtual indexes from non-terminal
+   * deferred index operations (Mode 2).
+   *
+   * <p>For each PENDING, IN_PROGRESS, or FAILED operation, the corresponding
+   * index is added to the schema so that the schema comparison treats it as
+   * present. The actual index will be built in the background after startup.</p>
+   *
+   * @param sourceSchema the current database schema before upgrade.
+   * @return the augmented schema with deferred indexes included.
+   */
+  Schema augmentSchemaWithDeferredIndexes(Schema sourceSchema);
+
+
+  /**
+   * Returns a no-op readiness check that does nothing. Useful in test
+   * contexts where the deferred index mechanism is not under test.
+   *
+   * @return a no-op readiness check.
+   */
+  static DeferredIndexReadinessCheck noOp() {
+    return new DeferredIndexReadinessCheck() {
+      @Override
+      public void run() {
+        // no-op
+      }
+
+      @Override
+      public Schema augmentSchemaWithDeferredIndexes(Schema sourceSchema) {
+        return sourceSchema;
+      }
+    };
+  }
 
 
   /**
@@ -74,6 +110,6 @@ public interface DeferredIndexReadinessCheck {
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources,
         executorProvider, config,
         new DeferredIndexExecutorServiceFactory.Default());
-    return new DeferredIndexReadinessCheckImpl(dao, executor, config);
+    return new DeferredIndexReadinessCheckImpl(dao, executor, config, connectionResources);
   }
 }

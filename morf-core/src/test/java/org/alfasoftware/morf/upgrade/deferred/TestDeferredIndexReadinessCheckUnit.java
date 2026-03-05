@@ -28,32 +28,31 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
-import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.junit.Before;
 import org.junit.Test;
 
 /**
  * Unit tests for {@link DeferredIndexReadinessCheckImpl} covering the
- * {@link DeferredIndexReadinessCheck#run(Schema)} method with mocked DAO
- * and executor dependencies.
+ * {@link DeferredIndexReadinessCheck#run()} and
+ * {@link DeferredIndexReadinessCheck#augmentSchemaWithDeferredIndexes} methods
+ * with mocked DAO, executor, and connection dependencies.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
 public class TestDeferredIndexReadinessCheckUnit {
 
-  private Schema schemaWithTable;
-  private Schema schemaWithoutTable;
+  private ConnectionResources connWithTable;
+  private ConnectionResources connWithoutTable;
 
 
-  /** Set up mock schemas. */
+  /** Set up mock connections with and without the deferred index table. */
   @Before
   public void setUp() {
-    schemaWithTable = mock(Schema.class);
-    when(schemaWithTable.tableExists(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME)).thenReturn(true);
-
-    schemaWithoutTable = mock(Schema.class);
-    when(schemaWithoutTable.tableExists(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME)).thenReturn(false);
+    connWithTable = mockConnectionResources(true);
+    connWithoutTable = mockConnectionResources(false);
   }
 
 
@@ -61,11 +60,12 @@ public class TestDeferredIndexReadinessCheckUnit {
   @Test
   public void testRunWithEmptyQueue() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
+    when(mockDao.resetAllInProgressToPending()).thenReturn(0);
     when(mockDao.findPendingOperations()).thenReturn(Collections.emptyList());
 
     DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
-    DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, null, config);
-    check.run(schemaWithTable);
+    DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, null, config, connWithTable);
+    check.run();
 
     verify(mockDao).findPendingOperations();
     verify(mockDao, never()).countAllByStatus();
@@ -76,6 +76,7 @@ public class TestDeferredIndexReadinessCheckUnit {
   @Test
   public void testRunExecutesPendingOperationsSuccessfully() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
+    when(mockDao.resetAllInProgressToPending()).thenReturn(0);
     when(mockDao.findPendingOperations()).thenReturn(List.of(buildOp(1L)));
     when(mockDao.countAllByStatus()).thenReturn(statusCounts(0));
 
@@ -83,8 +84,8 @@ public class TestDeferredIndexReadinessCheckUnit {
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     when(mockExecutor.execute()).thenReturn(CompletableFuture.completedFuture(null));
 
-    DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mockExecutor, config);
-    check.run(schemaWithTable);
+    DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mockExecutor, config, connWithTable);
+    check.run();
 
     verify(mockExecutor).execute();
     verify(mockDao).countAllByStatus();
@@ -95,6 +96,7 @@ public class TestDeferredIndexReadinessCheckUnit {
   @Test(expected = IllegalStateException.class)
   public void testRunThrowsWhenOperationsFail() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
+    when(mockDao.resetAllInProgressToPending()).thenReturn(0);
     when(mockDao.findPendingOperations()).thenReturn(List.of(buildOp(1L)));
     when(mockDao.countAllByStatus()).thenReturn(statusCounts(1));
 
@@ -102,8 +104,8 @@ public class TestDeferredIndexReadinessCheckUnit {
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     when(mockExecutor.execute()).thenReturn(CompletableFuture.completedFuture(null));
 
-    DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mockExecutor, config);
-    check.run(schemaWithTable);
+    DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mockExecutor, config, connWithTable);
+    check.run();
   }
 
 
@@ -111,6 +113,7 @@ public class TestDeferredIndexReadinessCheckUnit {
   @Test
   public void testRunFailureMessageIncludesCount() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
+    when(mockDao.resetAllInProgressToPending()).thenReturn(0);
     when(mockDao.findPendingOperations()).thenReturn(List.of(buildOp(1L), buildOp(2L)));
     when(mockDao.countAllByStatus()).thenReturn(statusCounts(2));
 
@@ -118,9 +121,9 @@ public class TestDeferredIndexReadinessCheckUnit {
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     when(mockExecutor.execute()).thenReturn(CompletableFuture.completedFuture(null));
 
-    DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mockExecutor, config);
+    DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mockExecutor, config, connWithTable);
     try {
-      check.run(schemaWithTable);
+      check.run();
       fail("Expected IllegalStateException");
     } catch (IllegalStateException e) {
       assertTrue("Message should include count", e.getMessage().contains("2"));
@@ -132,12 +135,13 @@ public class TestDeferredIndexReadinessCheckUnit {
   @Test
   public void testExecutorNotCalledWhenQueueEmpty() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
+    when(mockDao.resetAllInProgressToPending()).thenReturn(0);
     when(mockDao.findPendingOperations()).thenReturn(Collections.emptyList());
 
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
-    DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mockExecutor, config);
-    check.run(schemaWithTable);
+    DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mockExecutor, config, connWithTable);
+    check.run();
 
     verify(mockExecutor, never()).execute();
   }
@@ -150,11 +154,27 @@ public class TestDeferredIndexReadinessCheckUnit {
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
 
-    DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mockExecutor, config);
-    check.run(schemaWithoutTable);
+    DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mockExecutor, config, connWithoutTable);
+    check.run();
 
     verify(mockDao, never()).findPendingOperations();
     verify(mockExecutor, never()).execute();
+  }
+
+
+  /** run() should reset IN_PROGRESS operations to PENDING before querying. */
+  @Test
+  public void testRunResetsInProgressToPending() {
+    DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
+    when(mockDao.resetAllInProgressToPending()).thenReturn(2);
+    when(mockDao.findPendingOperations()).thenReturn(Collections.emptyList());
+
+    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
+    DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, null, config, connWithTable);
+    check.run();
+
+    verify(mockDao).resetAllInProgressToPending();
+    verify(mockDao).findPendingOperations();
   }
 
 
@@ -180,5 +200,14 @@ public class TestDeferredIndexReadinessCheckUnit {
     }
     counts.put(DeferredIndexStatus.FAILED, failedCount);
     return counts;
+  }
+
+
+  private static ConnectionResources mockConnectionResources(boolean tableExists) {
+    SchemaResource mockSr = mock(SchemaResource.class);
+    when(mockSr.tableExists(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME)).thenReturn(tableExists);
+    ConnectionResources mockConn = mock(ConnectionResources.class);
+    when(mockConn.openSchemaResource()).thenReturn(mockSr);
+    return mockConn;
   }
 }

@@ -274,6 +274,54 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
   }
 
 
+  @Override
+  public int resetAllInProgressToPending() {
+    String sql = sqlDialect.convertStatementToSQL(
+      update(tableRef(OPERATION_TABLE))
+        .set(literal(DeferredIndexStatus.PENDING.name()).as("status"))
+        .where(field("status").eq(DeferredIndexStatus.IN_PROGRESS.name()))
+    );
+    // convertStatementToSQL returns a single statement for UPDATE
+    int count = sqlScriptExecutorProvider.get().executeQuery(
+      sqlDialect.convertStatementToSQL(
+        select(field("id")).from(tableRef(OPERATION_TABLE))
+          .where(field("status").eq(DeferredIndexStatus.IN_PROGRESS.name()))
+      ),
+      rs -> { int c = 0; while (rs.next()) c++; return c; }
+    );
+    if (count > 0) {
+      log.info("Resetting " + count + " IN_PROGRESS deferred index operation(s) to PENDING");
+      sqlScriptExecutorProvider.get().execute(sql);
+    }
+    return count;
+  }
+
+
+  @Override
+  public List<DeferredIndexOperation> findNonTerminalOperations() {
+    TableReference op = tableRef(OPERATION_TABLE);
+    TableReference col = tableRef(OPERATION_COLUMN_TABLE);
+
+    SelectStatement select = select(
+        op.field("id"), op.field("upgradeUUID"), op.field("tableName"),
+        op.field("indexName"), op.field("indexUnique"),
+        op.field("status"), op.field("retryCount"), op.field("createdTime"),
+        op.field("startedTime"), op.field("completedTime"), op.field("errorMessage"),
+        col.field("columnName"), col.field("columnSequence")
+      ).from(op)
+       .leftOuterJoin(col, op.field("id").eq(col.field("operationId")))
+       .where(or(
+         op.field("status").eq(DeferredIndexStatus.PENDING.name()),
+         op.field("status").eq(DeferredIndexStatus.IN_PROGRESS.name()),
+         op.field("status").eq(DeferredIndexStatus.FAILED.name())
+       ))
+       .orderBy(op.field("id"), col.field("columnSequence"));
+
+    String sql = sqlDialect.convertStatementToSQL(select);
+    return sqlScriptExecutorProvider.get().executeQuery(sql, this::mapOperationsWithColumns);
+  }
+
+
   /** {@inheritDoc} */
   @Override
   public Map<DeferredIndexStatus, Integer> countAllByStatus() {

@@ -118,6 +118,26 @@ interface DeferredIndexOperationDAO {
 
 
   /**
+   * Resets all {@link DeferredIndexStatus#IN_PROGRESS} operations to
+   * {@link DeferredIndexStatus#PENDING}. Used for crash recovery: any
+   * operation that was mid-build when the process died should be retried.
+   *
+   * @return the number of operations that were reset.
+   */
+  int resetAllInProgressToPending();
+
+
+  /**
+   * Returns all operations in a non-terminal state
+   * ({@link DeferredIndexStatus#PENDING}, {@link DeferredIndexStatus#IN_PROGRESS},
+   * or {@link DeferredIndexStatus#FAILED}) with their ordered column names populated.
+   *
+   * @return list of non-terminal operations.
+   */
+  List<DeferredIndexOperation> findNonTerminalOperations();
+
+
+  /**
    * Returns the count of operations grouped by status.
    *
    * @return a map from each {@link DeferredIndexStatus} to its count;
