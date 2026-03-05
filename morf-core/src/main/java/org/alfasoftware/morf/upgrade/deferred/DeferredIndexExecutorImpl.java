@@ -22,13 +22,9 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import javax.sql.DataSource;
 
 import org.alfasoftware.morf.jdbc.ConnectionResources;
@@ -56,7 +52,8 @@ import org.apache.commons.logging.LogFactory;
  *
  * <p>Retry logic uses exponential back-off up to
  * {@link DeferredIndexConfig#getMaxRetries()} additional attempts after the
- * first failure. Progress is logged at INFO level every 30 seconds.</p>
+ * first failure. Progress is logged at INFO level after each operation
+ * completes.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -65,9 +62,6 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
 
   private static final Log log = LogFactory.getLog(DeferredIndexExecutorImpl.class);
 
-  /** Progress is logged on this fixed interval. */
-  private static final int PROGRESS_LOG_INTERVAL_SECONDS = 30;
-
   private final DeferredIndexOperationDAO dao;
   private final SqlDialect sqlDialect;
   private final SqlScriptExecutorProvider sqlScriptExecutorProvider;
@@ -75,20 +69,8 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
   private final DeferredIndexConfig config;
   private final DeferredIndexExecutorServiceFactory executorServiceFactory;
 
-  /** Count of operations completed in the current {@link #execute()} call. */
-  private final AtomicInteger completedCount = new AtomicInteger(0);
-
-  /** Count of operations permanently failed in the current {@link #execute()} call. */
-  private final AtomicInteger failedCount = new AtomicInteger(0);
-
-  /** Total operations submitted in the current {@link #execute()} call. */
-  private final AtomicInteger totalCount = new AtomicInteger(0);
-
   /** The worker thread pool; may be null if execution has not started. */
   private volatile ExecutorService threadPool;
-
-  /** The scheduled progress logger; may be null if execution has not started. */
-  private volatile ScheduledExecutorService progressLoggerService;
 
 
   /**
@@ -116,29 +98,23 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
 
   @Override
   public CompletableFuture<Void> execute() {
-    completedCount.set(0);
-    failedCount.set(0);
-
     List<DeferredIndexOperation> pending = dao.findPendingOperations();
-    totalCount.set(pending.size());
 
     if (pending.isEmpty()) {
       return CompletableFuture.completedFuture(null);
     }
 
-    progressLoggerService = startProgressLogger();
-
     threadPool = executorServiceFactory.create(config.getThreadPoolSize());
 
     CompletableFuture<?>[] futures = pending.stream()
-        .map(op -> CompletableFuture.runAsync(() -> executeWithRetry(op), threadPool))
+        .map(op -> CompletableFuture.runAsync(() -> {
+          executeWithRetry(op);
+          logProgress();
+        }, threadPool))
         .toArray(CompletableFuture[]::new);
 
     return CompletableFuture.allOf(futures)
-        .whenComplete((v, t) -> {
-          threadPool.shutdown();
-          progressLoggerService.shutdownNow();
-        });
+        .whenComplete((v, t) -> threadPool.shutdown());
   }
 
 
@@ -147,10 +123,6 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
     ExecutorService pool = threadPool;
     if (pool != null) {
       pool.shutdownNow();
-    }
-    ScheduledExecutorService svc = progressLoggerService;
-    if (svc != null) {
-      svc.shutdownNow();
     }
   }
 
@@ -173,7 +145,6 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
       try {
         buildIndex(op);
         dao.markCompleted(op.getId(), System.currentTimeMillis());
-        completedCount.incrementAndGet();
         if (log.isDebugEnabled()) {
           log.debug("Deferred index operation [" + op.getId() + "] completed: table=" + op.getTableName()
               + ", index=" + op.getIndexName());
@@ -194,7 +165,6 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
           dao.resetToPending(op.getId());
           sleepForBackoff(attempt);
         } else {
-          failedCount.incrementAndGet();
           log.error("Deferred index operation permanently failed after " + newRetryCount
               + " attempt(s): table=" + op.getTableName() + ", index=" + op.getIndexName(), e);
         }
@@ -241,26 +211,13 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
   }
 
 
-  private ScheduledExecutorService startProgressLogger() {
-    ScheduledExecutorService svc = Executors.newSingleThreadScheduledExecutor(r -> {
-      Thread t = new Thread(r, "DeferredIndexProgressLogger");
-      t.setDaemon(true);
-      return t;
-    });
-    svc.scheduleAtFixedRate(this::logProgress,
-        PROGRESS_LOG_INTERVAL_SECONDS, PROGRESS_LOG_INTERVAL_SECONDS, TimeUnit.SECONDS);
-    return svc;
-  }
-
-
   void logProgress() {
-    int total = totalCount.get();
-    int completed = completedCount.get();
-    int failed = failedCount.get();
-    int inProgress = total - completed - failed;
+    Map<DeferredIndexStatus, Integer> counts = dao.countAllByStatus();
 
-    log.info("Deferred index progress: total=" + total + ", completed=" + completed
-        + ", in-progress=" + inProgress + ", failed=" + failed);
+    log.info("Deferred index progress: completed=" + counts.get(DeferredIndexStatus.COMPLETED)
+        + ", in-progress=" + counts.get(DeferredIndexStatus.IN_PROGRESS)
+        + ", pending=" + counts.get(DeferredIndexStatus.PENDING)
+        + ", failed=" + counts.get(DeferredIndexStatus.FAILED));
   }
 
 

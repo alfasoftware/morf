@@ -27,7 +27,9 @@ import static org.mockito.Mockito.when;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import javax.sql.DataSource;
@@ -71,6 +73,12 @@ public class TestDeferredIndexExecutorUnit {
     when(connectionResources.sqlDialect()).thenReturn(sqlDialect);
     when(connectionResources.getDataSource()).thenReturn(dataSource);
     when(dataSource.getConnection()).thenReturn(connection);
+
+    Map<DeferredIndexStatus, Integer> zeroCounts = new EnumMap<>(DeferredIndexStatus.class);
+    for (DeferredIndexStatus s : DeferredIndexStatus.values()) {
+      zeroCounts.put(s, 0);
+    }
+    when(dao.countAllByStatus()).thenReturn(zeroCounts);
   }
 
 

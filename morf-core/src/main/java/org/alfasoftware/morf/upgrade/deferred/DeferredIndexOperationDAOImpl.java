@@ -27,6 +27,7 @@ import static org.alfasoftware.morf.sql.element.Criterion.or;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -301,6 +302,41 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
       int count = 0;
       while (rs.next()) count++;
       return count;
+    });
+  }
+
+
+  @Override
+  public int countByStatus(DeferredIndexStatus status) {
+    SelectStatement select = select(field("id"))
+      .from(tableRef(OPERATION_TABLE))
+      .where(field("status").eq(status.name()));
+
+    String sql = sqlDialect.convertStatementToSQL(select);
+    return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> {
+      int count = 0;
+      while (rs.next()) count++;
+      return count;
+    });
+  }
+
+
+  @Override
+  public Map<DeferredIndexStatus, Integer> countAllByStatus() {
+    SelectStatement select = select(field("status"))
+      .from(tableRef(OPERATION_TABLE));
+
+    String sql = sqlDialect.convertStatementToSQL(select);
+    return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> {
+      Map<DeferredIndexStatus, Integer> counts = new EnumMap<>(DeferredIndexStatus.class);
+      for (DeferredIndexStatus s : DeferredIndexStatus.values()) {
+        counts.put(s, 0);
+      }
+      while (rs.next()) {
+        DeferredIndexStatus status = DeferredIndexStatus.valueOf(rs.getString(1));
+        counts.merge(status, 1, Integer::sum);
+      }
+      return counts;
     });
   }
 

@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.upgrade.deferred;
 
 import java.util.List;
+import java.util.Map;
 
 import com.google.inject.ImplementedBy;
 
@@ -122,4 +123,22 @@ interface DeferredIndexOperationDAO {
    * @return count of failed operations.
    */
   int countFailedOperations();
+
+
+  /**
+   * Returns the number of operations in the given status.
+   *
+   * @param status the status to count.
+   * @return count of operations with the given status.
+   */
+  int countByStatus(DeferredIndexStatus status);
+
+
+  /**
+   * Returns the count of operations grouped by status.
+   *
+   * @return a map from each {@link DeferredIndexStatus} to its count;
+   *         statuses with no operations have a count of zero.
+   */
+  Map<DeferredIndexStatus, Integer> countAllByStatus();
 }
