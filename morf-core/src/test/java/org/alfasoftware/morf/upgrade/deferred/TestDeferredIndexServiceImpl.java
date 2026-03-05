@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.upgrade.deferred;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -24,6 +25,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -44,7 +47,7 @@ public class TestDeferredIndexServiceImpl {
   /** Construction with valid default config should succeed. */
   @Test
   public void testConstructionWithDefaultConfig() {
-    new DeferredIndexServiceImpl(null, null, new DeferredIndexConfig());
+    new DeferredIndexServiceImpl(null, null, null, new DeferredIndexConfig());
   }
 
 
@@ -53,7 +56,7 @@ public class TestDeferredIndexServiceImpl {
   public void testConstructionWithInvalidConfigSucceeds() {
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setThreadPoolSize(0);
-    new DeferredIndexServiceImpl(null, null, config);
+    new DeferredIndexServiceImpl(null, null, null, config);
   }
 
 
@@ -62,7 +65,7 @@ public class TestDeferredIndexServiceImpl {
   public void testInvalidThreadPoolSize() {
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setThreadPoolSize(0);
-    new DeferredIndexServiceImpl(mock(DeferredIndexRecoveryService.class), null, config).execute();
+    new DeferredIndexServiceImpl(mock(DeferredIndexRecoveryService.class), null, null, config).execute();
   }
 
 
@@ -71,7 +74,7 @@ public class TestDeferredIndexServiceImpl {
   public void testInvalidMaxRetries() {
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setMaxRetries(-1);
-    new DeferredIndexServiceImpl(mock(DeferredIndexRecoveryService.class), null, config).execute();
+    new DeferredIndexServiceImpl(mock(DeferredIndexRecoveryService.class), null, null, config).execute();
   }
 
 
@@ -80,7 +83,7 @@ public class TestDeferredIndexServiceImpl {
   public void testInvalidRetryBaseDelayMs() {
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setRetryBaseDelayMs(-1L);
-    new DeferredIndexServiceImpl(mock(DeferredIndexRecoveryService.class), null, config).execute();
+    new DeferredIndexServiceImpl(mock(DeferredIndexRecoveryService.class), null, null, config).execute();
   }
 
 
@@ -90,7 +93,7 @@ public class TestDeferredIndexServiceImpl {
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setRetryBaseDelayMs(10_000L);
     config.setRetryMaxDelayMs(5_000L);
-    new DeferredIndexServiceImpl(mock(DeferredIndexRecoveryService.class), null, config).execute();
+    new DeferredIndexServiceImpl(mock(DeferredIndexRecoveryService.class), null, null, config).execute();
   }
 
 
@@ -99,7 +102,7 @@ public class TestDeferredIndexServiceImpl {
   public void testInvalidStaleThresholdSeconds() {
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setStaleThresholdSeconds(0L);
-    new DeferredIndexServiceImpl(mock(DeferredIndexRecoveryService.class), null, config).execute();
+    new DeferredIndexServiceImpl(mock(DeferredIndexRecoveryService.class), null, null, config).execute();
   }
 
 
@@ -109,7 +112,7 @@ public class TestDeferredIndexServiceImpl {
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setThreadPoolSize(0);
     try {
-      new DeferredIndexServiceImpl(mock(DeferredIndexRecoveryService.class), null, config).execute();
+      new DeferredIndexServiceImpl(mock(DeferredIndexRecoveryService.class), null, null, config).execute();
       fail("Expected IllegalArgumentException");
     } catch (IllegalArgumentException e) {
       assertTrue("Message should mention threadPoolSize", e.getMessage().contains("threadPoolSize"));
@@ -131,7 +134,7 @@ public class TestDeferredIndexServiceImpl {
     DeferredIndexRecoveryService mockRecovery = mock(DeferredIndexRecoveryService.class);
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     when(mockExecutor.execute()).thenReturn(CompletableFuture.completedFuture(null));
-    new DeferredIndexServiceImpl(mockRecovery, mockExecutor, config).execute();
+    new DeferredIndexServiceImpl(mockRecovery, mockExecutor, mock(DeferredIndexOperationDAO.class), config).execute();
 
     verify(mockRecovery).recoverStaleOperations();
   }
@@ -142,7 +145,7 @@ public class TestDeferredIndexServiceImpl {
   public void testNegativeStaleThresholdSeconds() {
     DeferredIndexConfig config = new DeferredIndexConfig();
     config.setStaleThresholdSeconds(-5L);
-    new DeferredIndexServiceImpl(mock(DeferredIndexRecoveryService.class), null, config).execute();
+    new DeferredIndexServiceImpl(mock(DeferredIndexRecoveryService.class), null, null, config).execute();
   }
 
 
@@ -290,12 +293,37 @@ public class TestDeferredIndexServiceImpl {
 
 
   // -------------------------------------------------------------------------
+  // getProgress()
+  // -------------------------------------------------------------------------
+
+  /** getProgress() should delegate to the DAO and return the counts map. */
+  @Test
+  public void testGetProgressDelegatesToDao() {
+    DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
+    Map<DeferredIndexStatus, Integer> counts = new EnumMap<>(DeferredIndexStatus.class);
+    counts.put(DeferredIndexStatus.COMPLETED, 3);
+    counts.put(DeferredIndexStatus.IN_PROGRESS, 1);
+    counts.put(DeferredIndexStatus.PENDING, 5);
+    counts.put(DeferredIndexStatus.FAILED, 0);
+    when(mockDao.countAllByStatus()).thenReturn(counts);
+
+    DeferredIndexServiceImpl service = new DeferredIndexServiceImpl(null, null, mockDao, new DeferredIndexConfig());
+    Map<DeferredIndexStatus, Integer> result = service.getProgress();
+
+    assertEquals(Integer.valueOf(3), result.get(DeferredIndexStatus.COMPLETED));
+    assertEquals(Integer.valueOf(1), result.get(DeferredIndexStatus.IN_PROGRESS));
+    assertEquals(Integer.valueOf(5), result.get(DeferredIndexStatus.PENDING));
+    assertEquals(Integer.valueOf(0), result.get(DeferredIndexStatus.FAILED));
+  }
+
+
+  // -------------------------------------------------------------------------
   // Helpers
   // -------------------------------------------------------------------------
 
   private DeferredIndexServiceImpl serviceWithMocks(DeferredIndexRecoveryService recovery,
                                                      DeferredIndexExecutor executor) {
     DeferredIndexConfig config = new DeferredIndexConfig();
-    return new DeferredIndexServiceImpl(recovery, executor, config);
+    return new DeferredIndexServiceImpl(recovery, executor, mock(DeferredIndexOperationDAO.class), config);
   }
 }

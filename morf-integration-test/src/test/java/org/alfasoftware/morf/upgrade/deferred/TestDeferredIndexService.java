@@ -303,7 +303,7 @@ public class TestDeferredIndexService {
     DeferredIndexOperationDAO dao = new DeferredIndexOperationDAOImpl(connectionResources);
     DeferredIndexRecoveryService recovery = new DeferredIndexRecoveryServiceImpl(dao, connectionResources, config);
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
-    return new DeferredIndexServiceImpl(recovery, executor, config);
+    return new DeferredIndexServiceImpl(recovery, executor, dao, config);
   }
 
 

@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.upgrade.deferred;
 
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -41,6 +42,7 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
 
   private final DeferredIndexRecoveryService recoveryService;
   private final DeferredIndexExecutor executor;
+  private final DeferredIndexOperationDAO dao;
   private final DeferredIndexConfig config;
 
   /** Future representing the current execution; {@code null} if not started. */
@@ -52,14 +54,17 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
    *
    * @param recoveryService service for recovering stale operations.
    * @param executor        executor for building deferred indexes.
+   * @param dao             DAO for querying deferred index operation state.
    * @param config          configuration for deferred index execution.
    */
   @Inject
   DeferredIndexServiceImpl(DeferredIndexRecoveryService recoveryService,
                             DeferredIndexExecutor executor,
+                            DeferredIndexOperationDAO dao,
                             DeferredIndexConfig config) {
     this.recoveryService = recoveryService;
     this.executor = executor;
+    this.dao = dao;
     this.config = config;
   }
 
@@ -106,6 +111,12 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
       log.error("Deferred index service: unexpected error during execution.", e.getCause());
       return true;
     }
+  }
+
+
+  @Override
+  public Map<DeferredIndexStatus, Integer> getProgress() {
+    return dao.countAllByStatus();
   }
 
 

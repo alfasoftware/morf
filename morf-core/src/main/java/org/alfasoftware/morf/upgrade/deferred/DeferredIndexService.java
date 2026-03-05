@@ -15,6 +15,8 @@
 
 package org.alfasoftware.morf.upgrade.deferred;
 
+import java.util.Map;
+
 import com.google.inject.ImplementedBy;
 
 /**
@@ -72,4 +74,16 @@ public interface DeferredIndexService {
    * @throws IllegalStateException if called before {@link #execute()}.
    */
   boolean awaitCompletion(long timeoutSeconds);
+
+
+  /**
+   * Returns the current count of deferred index operations grouped by status.
+   *
+   * <p>Adopters can poll this method on their own schedule (e.g. from a
+   * health endpoint or timer) to monitor progress.</p>
+   *
+   * @return a map from each {@link DeferredIndexStatus} to its count;
+   *         statuses with no operations have a count of zero.
+   */
+  Map<DeferredIndexStatus, Integer> getProgress();
 }
