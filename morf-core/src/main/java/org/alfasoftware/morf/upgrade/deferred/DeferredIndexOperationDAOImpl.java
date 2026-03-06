@@ -16,7 +16,6 @@
 package org.alfasoftware.morf.upgrade.deferred;
 
 import static org.alfasoftware.morf.sql.SqlUtils.field;
-import static org.alfasoftware.morf.sql.SqlUtils.insert;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
@@ -30,11 +29,9 @@ import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
-import org.alfasoftware.morf.jdbc.SqlScriptExecutor.ResultSetProcessor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.TableReference;
@@ -73,50 +70,6 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
   DeferredIndexOperationDAOImpl(SqlScriptExecutorProvider sqlScriptExecutorProvider, ConnectionResources connectionResources) {
     this.sqlScriptExecutorProvider = sqlScriptExecutorProvider;
     this.sqlDialect = connectionResources.sqlDialect();
-  }
-
-
-  /**
-   * Inserts a new operation row together with its column rows.
-   *
-   * @param op the operation to insert.
-   */
-  @Override
-  public void insertOperation(DeferredIndexOperation op) {
-    if (log.isDebugEnabled()) {
-      log.debug("Inserting deferred index operation [" + op.getId() + "]: table=" + op.getTableName()
-          + ", index=" + op.getIndexName() + ", columns=" + op.getColumnNames());
-    }
-    List<String> statements = new ArrayList<>();
-
-    statements.addAll(sqlDialect.convertStatementToSQL(
-      insert().into(tableRef(OPERATION_TABLE))
-        .values(
-          literal(op.getId()).as("id"),
-          literal(op.getUpgradeUUID()).as("upgradeUUID"),
-          literal(op.getTableName()).as("tableName"),
-          literal(op.getIndexName()).as("indexName"),
-          literal(op.isIndexUnique()).as("indexUnique"),
-          literal(op.getStatus().name()).as("status"),
-          literal(op.getRetryCount()).as("retryCount"),
-          literal(op.getCreatedTime()).as("createdTime")
-        )
-    ));
-
-    List<String> columnNames = op.getColumnNames();
-    for (int seq = 0; seq < columnNames.size(); seq++) {
-      statements.addAll(sqlDialect.convertStatementToSQL(
-        insert().into(tableRef(OPERATION_COLUMN_TABLE))
-          .values(
-            literal(UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE).as("id"),
-            literal(op.getId()).as("operationId"),
-            literal(columnNames.get(seq)).as("columnName"),
-            literal(seq).as("columnSequence")
-          )
-      ));
-    }
-
-    sqlScriptExecutorProvider.get().execute(statements);
   }
 
 

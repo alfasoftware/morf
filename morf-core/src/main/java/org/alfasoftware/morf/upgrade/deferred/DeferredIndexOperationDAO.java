@@ -31,14 +31,6 @@ import com.google.inject.ImplementedBy;
 interface DeferredIndexOperationDAO {
 
   /**
-   * Inserts a new operation row together with its column rows.
-   *
-   * @param op the operation to insert.
-   */
-  void insertOperation(DeferredIndexOperation op);
-
-
-  /**
    * Returns all {@link DeferredIndexStatus#PENDING} operations with
    * their ordered column names populated.
    *

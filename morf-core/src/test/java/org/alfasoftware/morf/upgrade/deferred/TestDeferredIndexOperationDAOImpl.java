@@ -16,14 +16,12 @@
 package org.alfasoftware.morf.upgrade.deferred;
 
 import static org.alfasoftware.morf.sql.SqlUtils.field;
-import static org.alfasoftware.morf.sql.SqlUtils.insert;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.SqlUtils.update;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -73,42 +71,6 @@ public class TestDeferredIndexOperationDAOImpl {
     when(sqlDialect.convertStatementToSQL(any(SelectStatement.class))).thenReturn("SELECT_SQL");
     when(connectionResources.sqlDialect()).thenReturn(sqlDialect);
     dao = new DeferredIndexOperationDAOImpl(sqlScriptExecutorProvider, connectionResources);
-  }
-
-
-  /**
-   * Verify insertOperation produces one INSERT for the main table and one
-   * for each column, then executes all statements in a single batch.
-   */
-  @Test
-  public void testInsertOperation() {
-    DeferredIndexOperation op = buildOperation(1001L, List.of("colA", "colB"));
-
-    dao.insertOperation(op);
-
-    // 1 insert for main row + 2 for columns = 3 convertStatementToSQL calls
-    ArgumentCaptor<InsertStatement> captor = ArgumentCaptor.forClass(InsertStatement.class);
-    verify(sqlDialect, times(3)).convertStatementToSQL(captor.capture());
-
-    List<InsertStatement> inserts = captor.getAllValues();
-
-    String expectedMain = insert().into(tableRef(TABLE))
-      .values(
-        literal(1001L).as("id"),
-        literal("uuid-1").as("upgradeUUID"),
-        literal("MyTable").as("tableName"),
-        literal("MyIndex").as("indexName"),
-        literal(false).as("indexUnique"),
-        literal(DeferredIndexStatus.PENDING.name()).as("status"),
-        literal(0).as("retryCount"),
-        literal(20260101120000L).as("createdTime")
-      ).toString();
-
-    assertEquals("Main-table INSERT", expectedMain, inserts.get(0).toString());
-    assertEquals("Column-table INSERT 0", tableRef(COL_TABLE).getName(), inserts.get(1).getTable().getName());
-    assertEquals("Column-table INSERT 1", tableRef(COL_TABLE).getName(), inserts.get(2).getTable().getName());
-
-    verify(sqlScriptExecutor).execute(anyList());
   }
 
 

@@ -24,11 +24,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import javax.sql.DataSource;
-
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
-import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaResource;
@@ -45,7 +42,7 @@ import org.apache.commons.logging.LogFactory;
  *
  * <p>Picks up pending operations, issues the appropriate
  * {@code CREATE INDEX} DDL via
- * {@link SqlDialect#deferredIndexDeploymentStatements(Table, Index)}, and
+ * {@link org.alfasoftware.morf.jdbc.SqlDialect#deferredIndexDeploymentStatements(Table, Index)}, and
  * marks each operation as {@link DeferredIndexStatus#COMPLETED} or
  * {@link DeferredIndexStatus#FAILED}.</p>
  *
@@ -63,9 +60,7 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
 
   private final DeferredIndexOperationDAO dao;
   private final ConnectionResources connectionResources;
-  private final SqlDialect sqlDialect;
   private final SqlScriptExecutorProvider sqlScriptExecutorProvider;
-  private final DataSource dataSource;
   private final DeferredIndexExecutionConfig config;
   private final DeferredIndexExecutorServiceFactory executorServiceFactory;
 
@@ -89,9 +84,7 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
                             DeferredIndexExecutorServiceFactory executorServiceFactory) {
     this.dao = dao;
     this.connectionResources = connectionResources;
-    this.sqlDialect = connectionResources.sqlDialect();
     this.sqlScriptExecutorProvider = sqlScriptExecutorProvider;
-    this.dataSource = connectionResources.getDataSource();
     this.config = config;
     this.executorServiceFactory = executorServiceFactory;
   }
@@ -195,14 +188,14 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
   private void buildIndex(DeferredIndexOperation op) {
     Index index = op.toIndex();
     Table table = table(op.getTableName());
-    Collection<String> statements = sqlDialect.deferredIndexDeploymentStatements(table, index);
+    Collection<String> statements = connectionResources.sqlDialect().deferredIndexDeploymentStatements(table, index);
 
     // Execute with autocommit enabled rather than inside a transaction.
     // Some platforms require this — notably PostgreSQL's CREATE INDEX
     // CONCURRENTLY, which cannot run inside a transaction block. Using a
     // dedicated autocommit connection is harmless for platforms that do
     // not have this restriction (Oracle, MySQL, H2, SQL Server).
-    try (Connection connection = dataSource.getConnection()) {
+    try (Connection connection = connectionResources.getDataSource().getConnection()) {
       boolean wasAutoCommit = connection.getAutoCommit();
       try {
         connection.setAutoCommit(true);
