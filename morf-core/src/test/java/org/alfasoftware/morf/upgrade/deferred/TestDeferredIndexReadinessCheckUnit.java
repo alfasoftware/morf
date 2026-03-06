@@ -68,7 +68,7 @@ public class TestDeferredIndexReadinessCheckUnit {
   @Test
   public void testRunWithEmptyQueue() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
-    when(mockDao.resetAllInProgressToPending()).thenReturn(0);
+
     when(mockDao.findPendingOperations()).thenReturn(Collections.emptyList());
 
     DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
@@ -84,7 +84,7 @@ public class TestDeferredIndexReadinessCheckUnit {
   @Test
   public void testRunExecutesPendingOperationsSuccessfully() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
-    when(mockDao.resetAllInProgressToPending()).thenReturn(0);
+
     when(mockDao.findPendingOperations()).thenReturn(List.of(buildOp(1L)));
     when(mockDao.countAllByStatus()).thenReturn(statusCounts(0));
 
@@ -104,7 +104,7 @@ public class TestDeferredIndexReadinessCheckUnit {
   @Test(expected = IllegalStateException.class)
   public void testRunThrowsWhenOperationsFail() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
-    when(mockDao.resetAllInProgressToPending()).thenReturn(0);
+
     when(mockDao.findPendingOperations()).thenReturn(List.of(buildOp(1L)));
     when(mockDao.countAllByStatus()).thenReturn(statusCounts(1));
 
@@ -121,7 +121,7 @@ public class TestDeferredIndexReadinessCheckUnit {
   @Test
   public void testRunFailureMessageIncludesCount() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
-    when(mockDao.resetAllInProgressToPending()).thenReturn(0);
+
     when(mockDao.findPendingOperations()).thenReturn(List.of(buildOp(1L), buildOp(2L)));
     when(mockDao.countAllByStatus()).thenReturn(statusCounts(2));
 
@@ -143,7 +143,7 @@ public class TestDeferredIndexReadinessCheckUnit {
   @Test
   public void testExecutorNotCalledWhenQueueEmpty() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
-    when(mockDao.resetAllInProgressToPending()).thenReturn(0);
+
     when(mockDao.findPendingOperations()).thenReturn(Collections.emptyList());
 
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
@@ -174,7 +174,7 @@ public class TestDeferredIndexReadinessCheckUnit {
   @Test
   public void testRunResetsInProgressToPending() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
-    when(mockDao.resetAllInProgressToPending()).thenReturn(2);
+
     when(mockDao.findPendingOperations()).thenReturn(Collections.emptyList());
 
     DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();

@@ -83,10 +83,8 @@ interface DeferredIndexOperationDAO {
    * Resets all {@link DeferredIndexStatus#IN_PROGRESS} operations to
    * {@link DeferredIndexStatus#PENDING}. Used for crash recovery: any
    * operation that was mid-build when the process died should be retried.
-   *
-   * @return the number of operations that were reset.
    */
-  int resetAllInProgressToPending();
+  void resetAllInProgressToPending();
 
 
   /**

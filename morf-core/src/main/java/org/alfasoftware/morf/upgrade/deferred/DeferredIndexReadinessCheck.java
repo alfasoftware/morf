@@ -22,22 +22,22 @@ import org.alfasoftware.morf.metadata.Schema;
 import com.google.inject.ImplementedBy;
 
 /**
- * Pre-upgrade safety gate that ensures no deferred index operations remain
- * incomplete before a new upgrade run begins.
+ * Startup safety gate that ensures no deferred index operations remain
+ * incomplete from a previous run.
  *
- * <p>This check is invoked automatically by the upgrade framework
- * ({@link org.alfasoftware.morf.upgrade.Upgrade#findPath findPath}) before
- * schema diffing begins, for both the sequential and graph-based upgrade
- * paths. If any {@link DeferredIndexStatus#PENDING} or stale
+ * <p>This check is invoked during application startup by the upgrade
+ * framework ({@link org.alfasoftware.morf.upgrade.Upgrade#findPath findPath})
+ * before schema diffing begins, for both the sequential and graph-based
+ * upgrade paths. If any {@link DeferredIndexStatus#PENDING} or stale
  * {@link DeferredIndexStatus#IN_PROGRESS} operations are found from a
- * previous upgrade, they are force-built synchronously (blocking the
- * upgrade) before proceeding.</p>
+ * previous run, they are force-built synchronously (blocking startup)
+ * before proceeding.</p>
  *
  * <p><strong>Important:</strong> this check does <em>not</em> automatically
  * build deferred indexes queued by the current upgrade. After an upgrade
  * completes, adopters must explicitly invoke
  * {@link DeferredIndexService#execute()} to start background index builds.
- * If the adopter forgets, the next upgrade will catch it here.</p>
+ * If the adopter forgets, the next startup will catch it here.</p>
  *
  * @see DeferredIndexService
  * @author Copyright (c) Alfa Financial Software Limited. 2026
@@ -46,8 +46,8 @@ import com.google.inject.ImplementedBy;
 public interface DeferredIndexReadinessCheck {
 
   /**
-   * Ensures all deferred index operations from a previous upgrade are
-   * complete before proceeding with a new upgrade (Mode 1).
+   * Ensures all deferred index operations from a previous run are
+   * complete before proceeding with startup (Mode 1).
    *
    * <p>If the deferred index infrastructure table does not exist in the
    * database (e.g. on the first upgrade that introduces the feature),
@@ -73,27 +73,6 @@ public interface DeferredIndexReadinessCheck {
    * @return the augmented schema with deferred indexes included.
    */
   Schema augmentSchemaWithDeferredIndexes(Schema sourceSchema);
-
-
-  /**
-   * Returns a no-op readiness check that does nothing. Useful in test
-   * contexts where the deferred index mechanism is not under test.
-   *
-   * @return a no-op readiness check.
-   */
-  static DeferredIndexReadinessCheck noOp() {
-    return new DeferredIndexReadinessCheck() {
-      @Override
-      public void run() {
-        // no-op
-      }
-
-      @Override
-      public Schema augmentSchemaWithDeferredIndexes(Schema sourceSchema) {
-        return sourceSchema;
-      }
-    };
-  }
 
 
   /**

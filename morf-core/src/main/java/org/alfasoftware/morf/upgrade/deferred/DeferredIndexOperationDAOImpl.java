@@ -176,25 +176,15 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
 
 
   @Override
-  public int resetAllInProgressToPending() {
-    String sql = sqlDialect.convertStatementToSQL(
-      update(tableRef(OPERATION_TABLE))
-        .set(literal(DeferredIndexStatus.PENDING.name()).as("status"))
-        .where(field("status").eq(DeferredIndexStatus.IN_PROGRESS.name()))
-    );
-    // convertStatementToSQL returns a single statement for UPDATE
-    int count = sqlScriptExecutorProvider.get().executeQuery(
+  public void resetAllInProgressToPending() {
+    log.info("Resetting any IN_PROGRESS deferred index operations to PENDING");
+    sqlScriptExecutorProvider.get().execute(
       sqlDialect.convertStatementToSQL(
-        select(field("id")).from(tableRef(OPERATION_TABLE))
+        update(tableRef(OPERATION_TABLE))
+          .set(literal(DeferredIndexStatus.PENDING.name()).as("status"))
           .where(field("status").eq(DeferredIndexStatus.IN_PROGRESS.name()))
-      ),
-      rs -> { int c = 0; while (rs.next()) c++; return c; }
+      )
     );
-    if (count > 0) {
-      log.info("Resetting " + count + " IN_PROGRESS deferred index operation(s) to PENDING");
-      sqlScriptExecutorProvider.get().execute(sql);
-    }
-    return count;
   }
 
 
