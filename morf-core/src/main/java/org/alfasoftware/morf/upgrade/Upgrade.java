@@ -213,7 +213,7 @@ public class Upgrade {
     // sourceSchema will include the newly built indexes. Mode 2: skip — indexes
     // will be augmented into the schema after reading.
     if (upgradeConfigAndContext.isForceDeferredIndexBuildOnRestart()) {
-      deferredIndexReadinessCheck.run();
+      deferredIndexReadinessCheck.forceBuildAllPending();
     }
 
     // Get access to the schema we are starting from
@@ -247,7 +247,7 @@ public class Upgrade {
     // -- Mode 2: augment schema with deferred indexes that haven't been built yet.
     // This ensures the schema comparison treats them as present without blocking.
     if (!upgradeConfigAndContext.isForceDeferredIndexBuildOnRestart()) {
-      sourceSchema = deferredIndexReadinessCheck.augmentSchemaWithDeferredIndexes(sourceSchema);
+      sourceSchema = deferredIndexReadinessCheck.augmentSchemaWithPendingIndexes(sourceSchema);
     }
 
     // -- Get the current UUIDs and deployed views...

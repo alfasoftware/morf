@@ -37,7 +37,7 @@ public class DeferredIndexExecutionConfig {
 
   /**
    * Maximum time in seconds to wait for deferred index operations to complete
-   * during the pre-upgrade readiness check ({@link DeferredIndexReadinessCheck#run()}).
+   * during the pre-upgrade readiness check ({@link DeferredIndexReadinessCheck#forceBuildAllPending()}).
    * Must be strictly greater than zero — infinite blocking during a pre-upgrade
    * check would be dangerous.
    *

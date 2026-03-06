@@ -42,10 +42,10 @@ import com.google.inject.Singleton;
  *
  * <p>Supports two modes:</p>
  * <ul>
- *   <li><strong>Mode 1 (force-build):</strong> {@link #run()} checks for pending
+ *   <li><strong>Mode 1 (force-build):</strong> {@link #forceBuildAllPending()} checks for pending
  *       or crashed operations and force-builds them synchronously before the
  *       upgrade reads the source schema.</li>
- *   <li><strong>Mode 2 (background):</strong> {@link #augmentSchemaWithDeferredIndexes(Schema)}
+ *   <li><strong>Mode 2 (background):</strong> {@link #augmentSchemaWithPendingIndexes(Schema)}
  *       adds virtual indexes from non-terminal operations into the source schema
  *       so that the schema comparison treats them as present.</li>
  * </ul>
@@ -83,7 +83,7 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
 
 
   @Override
-  public void run() {
+  public void forceBuildAllPending() {
     if (!deferredIndexTableExists()) {
       log.debug("DeferredIndexOperation table does not exist — skipping readiness check");
       return;
@@ -100,26 +100,13 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
     log.warn("Found " + pending.size() + " pending deferred index operation(s) before upgrade. "
         + "Executing immediately before proceeding...");
 
-    CompletableFuture<Void> future = executor.execute();
-
-    long timeoutSeconds = config.getExecutionTimeoutSeconds();
-    try {
-      future.get(timeoutSeconds, TimeUnit.SECONDS);
-    } catch (TimeoutException e) {
-      throw new IllegalStateException("Pre-upgrade deferred index readiness check timed out after "
-          + timeoutSeconds + " seconds.");
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new IllegalStateException("Pre-upgrade deferred index readiness check interrupted.");
-    } catch (ExecutionException e) {
-      throw new IllegalStateException("Pre-upgrade deferred index readiness check failed unexpectedly.", e.getCause());
-    }
+    awaitCompletion(executor.execute());
 
     int failedCount = dao.countAllByStatus().get(DeferredIndexStatus.FAILED);
     if (failedCount > 0) {
-      throw new IllegalStateException("Pre-upgrade deferred index readiness check failed: "
+      throw new IllegalStateException("Deferred index force-build failed: "
           + failedCount + " index operation(s) could not be built. "
-          + "Resolve the underlying issue before retrying the upgrade.");
+          + "Resolve the underlying issue before retrying.");
     }
 
     log.info("Pre-upgrade deferred index execution complete.");
@@ -127,7 +114,7 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
 
 
   @Override
-  public Schema augmentSchemaWithDeferredIndexes(Schema sourceSchema) {
+  public Schema augmentSchemaWithPendingIndexes(Schema sourceSchema) {
     if (!deferredIndexTableExists()) {
       return sourceSchema;
     }
@@ -151,6 +138,13 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
       boolean indexAlreadyExists = table.indexes().stream()
           .anyMatch(idx -> idx.getName().equalsIgnoreCase(op.getIndexName()));
       if (indexAlreadyExists) {
+        // The index exists in the database but the operation row is still
+        // non-terminal (e.g. the status update failed after CREATE INDEX
+        // succeeded). The stale row will be cleaned up when the executor
+        // runs: its post-failure indexExistsInDatabase check will mark it
+        // COMPLETED. No schema augmentation is needed here.
+        log.info("Deferred index [" + op.getIndexName() + "] already exists on table ["
+            + op.getTableName() + "] — skipping augmentation; stale row will be resolved by executor");
         continue;
       }
 
@@ -166,6 +160,28 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
     }
 
     return result;
+  }
+
+
+  /**
+   * Blocks until the given future completes, with a timeout from config.
+   *
+   * @param future the future to await.
+   * @throws IllegalStateException on timeout, interruption, or execution failure.
+   */
+  private void awaitCompletion(CompletableFuture<Void> future) {
+    long timeoutSeconds = config.getExecutionTimeoutSeconds();
+    try {
+      future.get(timeoutSeconds, TimeUnit.SECONDS);
+    } catch (TimeoutException e) {
+      throw new IllegalStateException("Deferred index force-build timed out after "
+          + timeoutSeconds + " seconds.");
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Deferred index force-build interrupted.");
+    } catch (ExecutionException e) {
+      throw new IllegalStateException("Deferred index force-build failed unexpectedly.", e.getCause());
+    }
   }
 
 

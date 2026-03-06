@@ -46,8 +46,8 @@ import com.google.inject.ImplementedBy;
 public interface DeferredIndexReadinessCheck {
 
   /**
-   * Ensures all deferred index operations from a previous run are
-   * complete before proceeding with startup (Mode 1).
+   * Force-builds all pending deferred index operations from a previous
+   * run, blocking until complete (Mode 1).
    *
    * <p>If the deferred index infrastructure table does not exist in the
    * database (e.g. on the first upgrade that introduces the feature),
@@ -58,7 +58,7 @@ public interface DeferredIndexReadinessCheck {
    *
    * @throws IllegalStateException if any operations failed permanently.
    */
-  void run();
+  void forceBuildAllPending();
 
 
   /**
@@ -72,7 +72,7 @@ public interface DeferredIndexReadinessCheck {
    * @param sourceSchema the current database schema before upgrade.
    * @return the augmented schema with deferred indexes included.
    */
-  Schema augmentSchemaWithDeferredIndexes(Schema sourceSchema);
+  Schema augmentSchemaWithPendingIndexes(Schema sourceSchema);
 
 
   /**

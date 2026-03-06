@@ -101,18 +101,18 @@ public class TestDeferredIndexReadinessCheck {
 
 
   /**
-   * run() should be a no-op when the queue is empty — no exception thrown
+   * forceBuildAllPending() should be a no-op when the queue is empty — no exception thrown
    * and no operations executed.
    */
   @Test
   public void testValidateWithEmptyQueueIsNoOp() {
     DeferredIndexReadinessCheck validator = createValidator(config);
-    validator.run(); // must not throw
+    validator.forceBuildAllPending(); // must not throw
   }
 
 
   /**
-   * When PENDING operations exist, run() must execute them before returning:
+   * When PENDING operations exist, forceBuildAllPending() must execute them before returning:
    * the index should exist in the schema and the row should be COMPLETED
    * (not PENDING) when the call returns.
    */
@@ -121,7 +121,7 @@ public class TestDeferredIndexReadinessCheck {
     insertPendingRow("Apple", "Apple_V1", false, "pips");
 
     DeferredIndexReadinessCheck validator = createValidator(config);
-    validator.run();
+    validator.forceBuildAllPending();
 
     // Verify no PENDING rows remain
     assertFalse("no non-terminal operations should remain after validate",
@@ -137,7 +137,7 @@ public class TestDeferredIndexReadinessCheck {
 
   /**
    * When multiple PENDING operations exist they should all be executed before
-   * run() returns.
+   * forceBuildAllPending() returns.
    */
   @Test
   public void testMultiplePendingOperationsAllExecuted() {
@@ -145,14 +145,14 @@ public class TestDeferredIndexReadinessCheck {
     insertPendingRow("Apple", "Apple_V3", true, "pips");
 
     DeferredIndexReadinessCheck validator = createValidator(config);
-    validator.run();
+    validator.forceBuildAllPending();
 
     assertFalse("no non-terminal operations should remain", hasPendingOperations());
   }
 
 
   /**
-   * When a PENDING operation targets a non-existent table, run() should
+   * When a PENDING operation targets a non-existent table, forceBuildAllPending() should
    * throw because the forced execution fails.
    */
   @Test
@@ -161,7 +161,7 @@ public class TestDeferredIndexReadinessCheck {
 
     DeferredIndexReadinessCheck validator = createValidator(config);
     try {
-      validator.run();
+      validator.forceBuildAllPending();
       fail("Expected IllegalStateException for failed forced execution");
     } catch (IllegalStateException e) {
       assertTrue("exception message should mention failed count",

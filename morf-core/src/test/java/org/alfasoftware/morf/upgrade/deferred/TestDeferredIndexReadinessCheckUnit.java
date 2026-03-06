@@ -44,8 +44,8 @@ import org.junit.Test;
 
 /**
  * Unit tests for {@link DeferredIndexReadinessCheckImpl} covering the
- * {@link DeferredIndexReadinessCheck#run()} and
- * {@link DeferredIndexReadinessCheck#augmentSchemaWithDeferredIndexes} methods
+ * {@link DeferredIndexReadinessCheck#forceBuildAllPending()} and
+ * {@link DeferredIndexReadinessCheck#augmentSchemaWithPendingIndexes} methods
  * with mocked DAO, executor, and connection dependencies.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
@@ -64,7 +64,7 @@ public class TestDeferredIndexReadinessCheckUnit {
   }
 
 
-  /** run() should return immediately when no pending operations exist. */
+  /** forceBuildAllPending() should return immediately when no pending operations exist. */
   @Test
   public void testRunWithEmptyQueue() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
@@ -73,14 +73,14 @@ public class TestDeferredIndexReadinessCheckUnit {
 
     DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
     DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, null, config, connWithTable);
-    check.run();
+    check.forceBuildAllPending();
 
     verify(mockDao).findPendingOperations();
     verify(mockDao, never()).countAllByStatus();
   }
 
 
-  /** run() should execute pending operations and succeed when all complete. */
+  /** forceBuildAllPending() should execute pending operations and succeed when all complete. */
   @Test
   public void testRunExecutesPendingOperationsSuccessfully() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
@@ -93,14 +93,14 @@ public class TestDeferredIndexReadinessCheckUnit {
     when(mockExecutor.execute()).thenReturn(CompletableFuture.completedFuture(null));
 
     DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mockExecutor, config, connWithTable);
-    check.run();
+    check.forceBuildAllPending();
 
     verify(mockExecutor).execute();
     verify(mockDao).countAllByStatus();
   }
 
 
-  /** run() should throw IllegalStateException when any operations fail. */
+  /** forceBuildAllPending() should throw IllegalStateException when any operations fail. */
   @Test(expected = IllegalStateException.class)
   public void testRunThrowsWhenOperationsFail() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
@@ -113,7 +113,7 @@ public class TestDeferredIndexReadinessCheckUnit {
     when(mockExecutor.execute()).thenReturn(CompletableFuture.completedFuture(null));
 
     DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mockExecutor, config, connWithTable);
-    check.run();
+    check.forceBuildAllPending();
   }
 
 
@@ -131,7 +131,7 @@ public class TestDeferredIndexReadinessCheckUnit {
 
     DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mockExecutor, config, connWithTable);
     try {
-      check.run();
+      check.forceBuildAllPending();
       fail("Expected IllegalStateException");
     } catch (IllegalStateException e) {
       assertTrue("Message should include count", e.getMessage().contains("2"));
@@ -149,13 +149,13 @@ public class TestDeferredIndexReadinessCheckUnit {
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
     DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mockExecutor, config, connWithTable);
-    check.run();
+    check.forceBuildAllPending();
 
     verify(mockExecutor, never()).execute();
   }
 
 
-  /** run() should skip entirely when the DeferredIndexOperation table does not exist. */
+  /** forceBuildAllPending() should skip entirely when the DeferredIndexOperation table does not exist. */
   @Test
   public void testRunSkipsWhenTableDoesNotExist() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
@@ -163,14 +163,14 @@ public class TestDeferredIndexReadinessCheckUnit {
     DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
 
     DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mockExecutor, config, connWithoutTable);
-    check.run();
+    check.forceBuildAllPending();
 
     verify(mockDao, never()).findPendingOperations();
     verify(mockExecutor, never()).execute();
   }
 
 
-  /** run() should reset IN_PROGRESS operations to PENDING before querying. */
+  /** forceBuildAllPending() should reset IN_PROGRESS operations to PENDING before querying. */
   @Test
   public void testRunResetsInProgressToPending() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
@@ -179,7 +179,7 @@ public class TestDeferredIndexReadinessCheckUnit {
 
     DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
     DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, null, config, connWithTable);
-    check.run();
+    check.forceBuildAllPending();
 
     verify(mockDao).resetAllInProgressToPending();
     verify(mockDao).findPendingOperations();
@@ -187,7 +187,7 @@ public class TestDeferredIndexReadinessCheckUnit {
 
 
   // -------------------------------------------------------------------------
-  // augmentSchemaWithDeferredIndexes
+  // augmentSchemaWithPendingIndexes
   // -------------------------------------------------------------------------
 
   /** augment should return the same schema when the table does not exist. */
@@ -199,7 +199,7 @@ public class TestDeferredIndexReadinessCheckUnit {
     DeferredIndexReadinessCheckImpl check = new DeferredIndexReadinessCheckImpl(mockDao, null, config, connWithoutTable);
     Schema input = schema(table("Foo").columns(column("id", DataType.BIG_INTEGER).primaryKey()));
 
-    assertSame("Should return input schema unchanged", input, check.augmentSchemaWithDeferredIndexes(input));
+    assertSame("Should return input schema unchanged", input, check.augmentSchemaWithPendingIndexes(input));
     verify(mockDao, never()).findNonTerminalOperations();
   }
 
@@ -214,7 +214,7 @@ public class TestDeferredIndexReadinessCheckUnit {
     DeferredIndexReadinessCheckImpl check = new DeferredIndexReadinessCheckImpl(mockDao, null, config, connWithTable);
     Schema input = schema(table("Foo").columns(column("id", DataType.BIG_INTEGER).primaryKey()));
 
-    assertSame("Should return input schema unchanged", input, check.augmentSchemaWithDeferredIndexes(input));
+    assertSame("Should return input schema unchanged", input, check.augmentSchemaWithPendingIndexes(input));
   }
 
 
@@ -231,7 +231,7 @@ public class TestDeferredIndexReadinessCheckUnit {
         column("col1", DataType.STRING, 50)
     ));
 
-    Schema result = check.augmentSchemaWithDeferredIndexes(input);
+    Schema result = check.augmentSchemaWithPendingIndexes(input);
     assertTrue("Index should be added",
         result.getTable("Foo").indexes().stream()
             .anyMatch(idx -> "Foo_Col1_1".equals(idx.getName())));
@@ -251,7 +251,7 @@ public class TestDeferredIndexReadinessCheckUnit {
         column("col1", DataType.STRING, 50)
     ));
 
-    Schema result = check.augmentSchemaWithDeferredIndexes(input);
+    Schema result = check.augmentSchemaWithPendingIndexes(input);
     assertTrue("Unique index should be added",
         result.getTable("Foo").indexes().stream()
             .anyMatch(idx -> "Foo_Col1_U".equals(idx.getName()) && idx.isUnique()));
@@ -268,7 +268,7 @@ public class TestDeferredIndexReadinessCheckUnit {
     DeferredIndexReadinessCheckImpl check = new DeferredIndexReadinessCheckImpl(mockDao, null, config, connWithTable);
     Schema input = schema(table("Foo").columns(column("id", DataType.BIG_INTEGER).primaryKey()));
 
-    Schema result = check.augmentSchemaWithDeferredIndexes(input);
+    Schema result = check.augmentSchemaWithPendingIndexes(input);
     // Should still have only the Foo table, no crash
     assertTrue("Foo table should still exist", result.tableExists("Foo"));
     assertEquals("No indexes should be added to Foo", 0, result.getTable("Foo").indexes().size());
@@ -290,7 +290,7 @@ public class TestDeferredIndexReadinessCheckUnit {
         index("Foo_Col1_1").columns("col1")
     ));
 
-    Schema result = check.augmentSchemaWithDeferredIndexes(input);
+    Schema result = check.augmentSchemaWithPendingIndexes(input);
     long indexCount = result.getTable("Foo").indexes().stream()
         .filter(idx -> "Foo_Col1_1".equals(idx.getName()))
         .count();
@@ -320,7 +320,7 @@ public class TestDeferredIndexReadinessCheckUnit {
         )
     );
 
-    Schema result = check.augmentSchemaWithDeferredIndexes(input);
+    Schema result = check.augmentSchemaWithPendingIndexes(input);
     assertTrue("Foo index should be added",
         result.getTable("Foo").indexes().stream().anyMatch(idx -> "Foo_Col1_1".equals(idx.getName())));
     assertTrue("Bar index should be added",
