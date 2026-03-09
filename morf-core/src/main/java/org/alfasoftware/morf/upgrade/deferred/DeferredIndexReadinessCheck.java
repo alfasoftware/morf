@@ -22,22 +22,31 @@ import org.alfasoftware.morf.metadata.Schema;
 import com.google.inject.ImplementedBy;
 
 /**
- * Startup safety gate that ensures no deferred index operations remain
- * incomplete from a previous run.
+ * Startup hook that reconciles deferred index operations from a previous
+ * run before the upgrade framework begins schema diffing.
  *
  * <p>This check is invoked during application startup by the upgrade
  * framework ({@link org.alfasoftware.morf.upgrade.Upgrade#findPath findPath})
- * before schema diffing begins, for both the sequential and graph-based
- * upgrade paths. If any {@link DeferredIndexStatus#PENDING} or stale
- * {@link DeferredIndexStatus#IN_PROGRESS} operations are found from a
- * previous run, they are force-built synchronously (blocking startup)
- * before proceeding.</p>
+ * for both the sequential and graph-based upgrade paths. It operates in
+ * one of two modes:</p>
+ *
+ * <ul>
+ *   <li><strong>Mode 1</strong> ({@code forceDeferredIndexBuildOnRestart = true},
+ *       the default): invoked <em>before</em> the source schema is read.
+ *       Force-builds all pending/stale operations synchronously, blocking
+ *       startup until complete.</li>
+ *   <li><strong>Mode 2</strong> ({@code forceDeferredIndexBuildOnRestart = false}):
+ *       invoked <em>after</em> the source schema is read. Augments the schema
+ *       with virtual indexes for non-terminal operations so the schema diff
+ *       treats them as present. The actual indexes are built in the background
+ *       after startup via {@link DeferredIndexService#execute()}.</li>
+ * </ul>
  *
  * <p><strong>Important:</strong> this check does <em>not</em> automatically
  * build deferred indexes queued by the current upgrade. After an upgrade
  * completes, adopters must explicitly invoke
  * {@link DeferredIndexService#execute()} to start background index builds.
- * If the adopter forgets, the next startup will catch it here.</p>
+ * If the adopter forgets, the next startup will catch it here (Mode 1).</p>
  *
  * @see DeferredIndexService
  * @author Copyright (c) Alfa Financial Software Limited. 2026
