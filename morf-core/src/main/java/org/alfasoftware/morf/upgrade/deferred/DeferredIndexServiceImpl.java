@@ -46,7 +46,7 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
   private final DeferredIndexExecutionConfig config;
 
   /** Future representing the current execution; {@code null} if not started. */
-  private volatile CompletableFuture<Void> executionFuture;
+  private CompletableFuture<Void> executionFuture;
 
 
   /**
