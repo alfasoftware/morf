@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.upgrade.deferred;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.alfasoftware.morf.sql.Statement;
 
@@ -52,6 +53,17 @@ public interface DeferredIndexChangeService {
    * @return {@code true} if a pending deferred ADD is tracked.
    */
   boolean hasPendingDeferred(String tableName, String indexName);
+
+
+  /**
+   * Returns the tracked pending {@link DeferredAddIndex} for the given table
+   * and index, if one is tracked.
+   *
+   * @param tableName the table name.
+   * @param indexName the index name.
+   * @return the tracked operation, or empty if none is tracked.
+   */
+  Optional<DeferredAddIndex> getPendingDeferred(String tableName, String indexName);
 
 
   /**

@@ -2,6 +2,7 @@ package org.alfasoftware.morf.upgrade;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Index;
@@ -85,9 +86,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   @Override
   public void visit(ChangeColumn changeColumn) {
     currentSchema = changeColumn.apply(currentSchema);
-    if (!changeColumn.getFromColumn().getName().equalsIgnoreCase(changeColumn.getToColumn().getName())) {
-      deferredIndexChangeService.updatePendingColumnName(changeColumn.getTableName(), changeColumn.getFromColumn().getName(), changeColumn.getToColumn().getName()).forEach(this::visitStatement);
-    }
+    deferredIndexChangeService.updatePendingColumnName(changeColumn.getTableName(), changeColumn.getFromColumn().getName(), changeColumn.getToColumn().getName()).forEach(this::visitStatement);
     writeStatements(sqlDialect.alterTableChangeColumnStatements(currentSchema.getTable(changeColumn.getTableName()), changeColumn.getFromColumn(), changeColumn.getToColumn()));
   }
 
@@ -117,12 +116,14 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   public void visit(ChangeIndex changeIndex) {
     currentSchema = changeIndex.apply(currentSchema);
     String tableName = changeIndex.getTableName();
-    if (deferredIndexChangeService.hasPendingDeferred(tableName, changeIndex.getFromIndex().getName())) {
+    Optional<DeferredAddIndex> existing = deferredIndexChangeService.getPendingDeferred(tableName, changeIndex.getFromIndex().getName());
+    if (existing.isPresent()) {
       deferredIndexChangeService.cancelPending(tableName, changeIndex.getFromIndex().getName()).forEach(this::visitStatement);
+      deferredIndexChangeService.trackPending(new DeferredAddIndex(existing.get().getTableName(), changeIndex.getToIndex(), existing.get().getUpgradeUUID())).forEach(this::visitStatement);
     } else {
       writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(tableName), changeIndex.getFromIndex()));
+      writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(tableName), changeIndex.getToIndex()));
     }
-    writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(tableName), changeIndex.getToIndex()));
   }
 
 

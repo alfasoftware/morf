@@ -15,6 +15,11 @@
 
 package org.alfasoftware.morf.upgrade.upgrade;
 
+import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
+import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+
+import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.upgrade.DataEditor;
 import org.alfasoftware.morf.upgrade.ExclusiveExecution;
 import org.alfasoftware.morf.upgrade.SchemaEditor;
@@ -22,7 +27,6 @@ import org.alfasoftware.morf.upgrade.Sequence;
 import org.alfasoftware.morf.upgrade.UUID;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
 import org.alfasoftware.morf.upgrade.Version;
-import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 
 /**
  * Create the {@code DeferredIndexOperation} and {@code DeferredIndexOperationColumn} tables,
@@ -47,7 +51,7 @@ public class CreateDeferredIndexOperationTables implements UpgradeStep {
    */
   @Override
   public String getJiraId() {
-    return "MORF-1";
+    return "MORF-111";
   }
 
 
@@ -65,7 +69,38 @@ public class CreateDeferredIndexOperationTables implements UpgradeStep {
    */
   @Override
   public void execute(SchemaEditor schema, DataEditor data) {
-    schema.addTable(DatabaseUpgradeTableContribution.deferredIndexOperationTable());
-    schema.addTable(DatabaseUpgradeTableContribution.deferredIndexOperationColumnTable());
+    schema.addTable(
+      table("DeferredIndexOperation")
+        .columns(
+          column("id", DataType.BIG_INTEGER).primaryKey(),
+          column("upgradeUUID", DataType.STRING, 100),
+          column("tableName", DataType.STRING, 60),
+          column("indexName", DataType.STRING, 60),
+          column("indexUnique", DataType.BOOLEAN),
+          column("status", DataType.STRING, 20),
+          column("retryCount", DataType.INTEGER),
+          column("createdTime", DataType.DECIMAL, 14),
+          column("startedTime", DataType.DECIMAL, 14).nullable(),
+          column("completedTime", DataType.DECIMAL, 14).nullable(),
+          column("errorMessage", DataType.CLOB).nullable()
+        )
+        .indexes(
+          index("DeferredIndexOp_1").columns("status"),
+          index("DeferredIndexOp_3").columns("tableName")
+        )
+    );
+
+    schema.addTable(
+      table("DeferredIndexOperationColumn")
+        .columns(
+          column("id", DataType.BIG_INTEGER).primaryKey(),
+          column("operationId", DataType.BIG_INTEGER),
+          column("columnName", DataType.STRING, 60),
+          column("columnSequence", DataType.INTEGER)
+        )
+        .indexes(
+          index("DeferredIdxOpCol_1").columns("operationId", "columnSequence")
+        )
+    );
   }
 }

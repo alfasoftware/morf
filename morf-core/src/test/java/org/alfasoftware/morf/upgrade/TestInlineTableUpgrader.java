@@ -626,6 +626,8 @@ public class TestInlineTableUpgrader {
     // given — change the same index to a new definition
     Index toIndex = mock(Index.class);
     when(toIndex.getName()).thenReturn("TestIdx");
+    when(toIndex.isUnique()).thenReturn(false);
+    when(toIndex.columnNames()).thenReturn(List.of("col2"));
     Table mockTable = mock(Table.class);
     when(schema.getTable("TestTable")).thenReturn(mockTable);
 
@@ -638,15 +640,16 @@ public class TestInlineTableUpgrader {
     // when
     upgrader.visit(changeIndex);
 
-    // then — cancel emits 2 DELETEs, no DROP INDEX, plus 1 addIndexStatements
+    // then — no DROP INDEX, no addIndexStatements; cancel (2 DELETEs) + re-defer (2 INSERTs)
     verify(sqlDialect, never()).indexDropStatements(ArgumentMatchers.any(), ArgumentMatchers.any());
+    verify(sqlDialect, never()).addIndexStatements(ArgumentMatchers.any(), ArgumentMatchers.any());
     ArgumentCaptor<Statement> stmtCaptor = ArgumentCaptor.forClass(Statement.class);
-    verify(sqlDialect, times(2)).convertStatementToSQL(stmtCaptor.capture(), nullable(Schema.class), nullable(Table.class));
+    verify(sqlDialect, times(4)).convertStatementToSQL(stmtCaptor.capture(), nullable(Schema.class), nullable(Table.class));
     List<Statement> stmts = stmtCaptor.getAllValues();
     assertThat(stmts.get(0).toString(), containsString("DeferredIndexOperationColumn"));
     assertThat(stmts.get(1).toString(), containsString("DeferredIndexOperation"));
-    assertThat(stmts.get(1).toString(), containsString("TestIdx"));
-    verify(sqlDialect).addIndexStatements(mockTable, toIndex);
+    assertThat(stmts.get(2).toString(), containsString("DeferredIndexOperation"));
+    assertThat(stmts.get(3).toString(), containsString("DeferredIndexOperationColumn"));
   }
 
 

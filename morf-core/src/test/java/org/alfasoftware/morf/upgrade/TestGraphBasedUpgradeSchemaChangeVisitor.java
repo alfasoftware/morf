@@ -354,9 +354,11 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     visitor.visit(deferredAddIndex);
     Mockito.clearInvocations(sqlDialect, n1);
 
-    // given — change the same index
+    // given — change the same index to a new definition
     Index toIdx = mock(Index.class);
     when(toIdx.getName()).thenReturn("SomeIndex");
+    when(toIdx.isUnique()).thenReturn(false);
+    when(toIdx.columnNames()).thenReturn(List.of("col2"));
     Table mockTable = mock(Table.class);
     when(sourceSchema.getTable("SomeTable")).thenReturn(mockTable);
 
@@ -369,13 +371,15 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     // when
     visitor.visit(changeIndex);
 
-    // then — no DROP INDEX, 2 DELETEs via convertStatementToSQL, plus addIndexStatements
+    // then — no DROP INDEX, no addIndexStatements; cancel (2 DELETEs) + re-defer (2 INSERTs)
     verify(sqlDialect, never()).indexDropStatements(ArgumentMatchers.any(), ArgumentMatchers.any());
+    verify(sqlDialect, never()).addIndexStatements(ArgumentMatchers.any(), ArgumentMatchers.any());
     ArgumentCaptor<Statement> stmtCaptor = ArgumentCaptor.forClass(Statement.class);
-    verify(sqlDialect, times(2)).convertStatementToSQL(stmtCaptor.capture(), eq(sourceSchema), eq(idTable));
+    verify(sqlDialect, times(4)).convertStatementToSQL(stmtCaptor.capture(), eq(sourceSchema), eq(idTable));
     assertThat(stmtCaptor.getAllValues().get(0).toString(), containsString("DeferredIndexOperationColumn"));
     assertThat(stmtCaptor.getAllValues().get(1).toString(), containsString("DeferredIndexOperation"));
-    verify(sqlDialect).addIndexStatements(mockTable, toIdx);
+    assertThat(stmtCaptor.getAllValues().get(2).toString(), containsString("DeferredIndexOperation"));
+    assertThat(stmtCaptor.getAllValues().get(3).toString(), containsString("DeferredIndexOperationColumn"));
   }
 
 

@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -97,6 +98,13 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
   public boolean hasPendingDeferred(String tableName, String indexName) {
     Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.get(tableName.toUpperCase());
     return tableMap != null && tableMap.containsKey(indexName.toUpperCase());
+  }
+
+
+  @Override
+  public Optional<DeferredAddIndex> getPendingDeferred(String tableName, String indexName) {
+    Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.get(tableName.toUpperCase());
+    return Optional.ofNullable(tableMap != null ? tableMap.get(indexName.toUpperCase()) : null);
   }
 
 
