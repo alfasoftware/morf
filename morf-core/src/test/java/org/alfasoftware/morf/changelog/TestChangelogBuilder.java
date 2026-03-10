@@ -109,7 +109,7 @@ public class TestChangelogBuilder {
 
     String actual = entityWriter.toString();
 
-    String expected = String.join("\r\n",
+    String expected = String.join(System.lineSeparator(),
         "Car",
         "===",
         "* xxx-123: ChangeCar ",
