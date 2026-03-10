@@ -62,7 +62,7 @@ public class TestEntityHumanReadableStatements {
 
   @Ignore
   private List<String> produceLogs(List<Class<? extends UpgradeStep>> items) {
-    return produceLogs(items, "v.1.0.0");
+    return produceLogs(items, "v1.0.0");
   }
 
   @Test

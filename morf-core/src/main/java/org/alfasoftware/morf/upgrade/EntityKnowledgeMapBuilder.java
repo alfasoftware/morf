@@ -96,7 +96,7 @@ public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer
    **/
   @Override
   public void addColumn(String tableName, Column definition, FieldLiteral columnDefault) {
-    if(!currentUpgradeStep.getJiraID().isEmpty()) {
+    if(currentUpgradeStep.isPopulated()) {
       putInMap(tableName, HumanReadableStatementHelper.generateAddColumnString(tableName, definition, columnDefault));
     }
   }
@@ -108,7 +108,7 @@ public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer
    */
   @Override
   public void addColumn(String tableName, Column definition) {
-    if(!currentUpgradeStep.getJiraID().isEmpty()) {
+    if(currentUpgradeStep.isPopulated()) {
       putInMap(tableName, HumanReadableStatementHelper.generateAddColumnString(tableName, definition));
     }
 
@@ -119,7 +119,7 @@ public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer
    **/
   @Override
   public void addIndex(String tableName, Index index) {
-    if(!currentUpgradeStep.getJiraID().isEmpty()) {
+    if(currentUpgradeStep.isPopulated()) {
       putInMap(tableName, HumanReadableStatementHelper.generateAddIndexString(tableName, index));
     }
 
@@ -130,7 +130,7 @@ public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer
    **/
   @Override
   public void addTable(Table definition) {
-    if(!currentUpgradeStep.getJiraID().isEmpty()) {
+    if(currentUpgradeStep.isPopulated()) {
       putInMap(definition.getName(), HumanReadableStatementHelper.generateAddTableString(definition));
     }
 
@@ -141,7 +141,7 @@ public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer
    **/
   @Override
   public void changeColumn(String tableName, Column fromDefinition, Column toDefinition) {
-    if(!currentUpgradeStep.getJiraID().isEmpty()) {
+    if(currentUpgradeStep.isPopulated()) {
       putInMap(tableName, HumanReadableStatementHelper.generateChangeColumnString(tableName, fromDefinition, toDefinition));
     }
 
@@ -152,7 +152,7 @@ public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer
    **/
   @Override
   public void changeIndex(String tableName, Index fromIndex, Index toIndex) {
-    if(!currentUpgradeStep.getJiraID().isEmpty()) {
+    if(currentUpgradeStep.isPopulated()) {
       putInMap(tableName, HumanReadableStatementHelper.generateChangeIndexString(tableName, fromIndex, toIndex));
     }
 
@@ -163,7 +163,7 @@ public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer
    **/
   @Override
   public void removeColumn(String tableName, Column definition) {
-    if(!currentUpgradeStep.getJiraID().isEmpty()) {
+    if(currentUpgradeStep.isPopulated()) {
       putInMap(tableName, HumanReadableStatementHelper.generateRemoveColumnString(tableName, definition));
     }
 
@@ -184,7 +184,7 @@ public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer
    **/
   @Override
   public void removeIndex(String tableName, Index index) {
-    if(!currentUpgradeStep.getJiraID().isEmpty()) {
+    if(currentUpgradeStep.isPopulated()) {
       putInMap(tableName, HumanReadableStatementHelper.generateRemoveIndexString(tableName, index));
     }
 
@@ -196,7 +196,7 @@ public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer
    */
   @Override
   public void renameIndex(String tableName, String fromIndexName, String toIndexName) {
-    if(!currentUpgradeStep.getJiraID().isEmpty()) {
+    if(currentUpgradeStep.isPopulated()) {
       putInMap(tableName, HumanReadableStatementHelper.generateRenameIndexString(tableName, fromIndexName, toIndexName));
     }
 
@@ -207,7 +207,7 @@ public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer
    **/
   @Override
   public void removeTable(Table table) {
-    if(!currentUpgradeStep.getJiraID().isEmpty()) {
+    if(currentUpgradeStep.isPopulated()) {
       putInMap(table.getName(), HumanReadableStatementHelper.generateRemoveTableString(table));
     }
 
@@ -215,7 +215,7 @@ public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer
 
   @Override
   public void renameTable(String fromTableName, String toTableName) {
-    if(!currentUpgradeStep.getJiraID().isEmpty()) {
+    if(currentUpgradeStep.isPopulated()) {
       putInMap(fromTableName, HumanReadableStatementHelper.generateRenameTableString(fromTableName, toTableName));
     }
 
@@ -223,7 +223,7 @@ public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer
 
   @Override
   public void changePrimaryKeyColumns(String tableName, List<String> oldPrimaryKeyColumns, List<String> newPrimaryKeyColumns) {
-    if(!currentUpgradeStep.getJiraID().isEmpty()) {
+    if(currentUpgradeStep.isPopulated()) {
       putInMap(tableName, HumanReadableStatementHelper.generateChangePrimaryKeyColumnsString(tableName, oldPrimaryKeyColumns, newPrimaryKeyColumns));
     }
 
@@ -232,7 +232,7 @@ public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer
 
   @Override
   public void correctPrimaryKeyColumns(String tableName, List<String> newPrimaryKeyColumns) {
-    if(!currentUpgradeStep.getJiraID().isEmpty()) {
+    if(currentUpgradeStep.isPopulated()) {
       putInMap(tableName, HumanReadableStatementHelper.generateChangePrimaryKeyColumnsString(tableName, newPrimaryKeyColumns));
     }
 
@@ -240,7 +240,7 @@ public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer
 
   @Override
   public void addTableFrom(Table table, SelectStatement select) {
-    if(!currentUpgradeStep.getJiraID().isEmpty()) {
+    if(currentUpgradeStep.isPopulated()) {
       putInMap(table.getName(), HumanReadableStatementHelper.generateAddTableFromString(table, select));
     }
   }
@@ -250,7 +250,7 @@ public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer
    **/
   @Override
   public void analyseTable(String tableName) {
-    if(!currentUpgradeStep.getJiraID().isEmpty()) {
+    if(currentUpgradeStep.isPopulated()) {
       putInMap(tableName, HumanReadableStatementHelper.generateAnalyseTableFromString(tableName));
     }
   }
@@ -260,7 +260,7 @@ public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer
    **/
   @Override
   public void addSequence(Sequence sequence) {
-    if(!currentUpgradeStep.getJiraID().isEmpty()) {
+    if(currentUpgradeStep.isPopulated()) {
       putInMap(sequence.getName(), HumanReadableStatementHelper.generateAddSequenceString(sequence));
     }
   }
@@ -270,7 +270,7 @@ public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer
    **/
   @Override
   public void removeSequence(Sequence sequence) {
-    if(!currentUpgradeStep.getJiraID().isEmpty()) {
+    if(currentUpgradeStep.isPopulated()) {
       putInMap(sequence.getName(), HumanReadableStatementHelper.generateRemoveSequenceString(sequence));
     }
   }
@@ -286,7 +286,7 @@ public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer
    */
   @Override
   public void executeStatement(Statement statement) {
-    if(!currentUpgradeStep.getJiraID().isEmpty()) {
+    if(currentUpgradeStep.isPopulated()) {
       putInMap(HumanReadableStatementHelper.dataUpgradeTableName(statement),
           HumanReadableStatementHelper.generateDataUpgradeString(statement, preferredSQLDialect));
     }

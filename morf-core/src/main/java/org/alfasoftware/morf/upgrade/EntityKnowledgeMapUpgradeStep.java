@@ -1,5 +1,8 @@
 package org.alfasoftware.morf.upgrade;
 
+import java.util.function.Predicate;
+import java.util.stream.Stream;
+
 public class EntityKnowledgeMapUpgradeStep {
   private final String name;
   private final String description;
@@ -17,5 +20,8 @@ public class EntityKnowledgeMapUpgradeStep {
   }
   public String getJiraID() {
     return jiraID;
+  }
+  public boolean isPopulated(){
+    return Stream.of(name, description,jiraID).anyMatch(Predicate.not(String::isBlank));
   }
 }
