@@ -118,13 +118,15 @@ public class ChangelogBuilder {
 
   /**
    * Set the version from which the entity based logs start from
+   * and sets flag to include entity based changelogs
+   * depending on versionStart empty or not.
    *
    * @param versionStart of the entity based logs
    * @return This builder for chaining
    */
   public ChangelogBuilder withVersionStart(String versionStart) {
     this.versionStart = versionStart;
-    includeEntityBasedChangelogs = true;
+    includeEntityBasedChangelogs = (versionStart != null &&!versionStart.isBlank());
     return this;
   }
 
