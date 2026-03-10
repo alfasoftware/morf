@@ -15,19 +15,16 @@
 
 package org.alfasoftware.morf.upgrade;
 
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.lang.reflect.Constructor;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.TreeMap;
 
-import org.alfasoftware.morf.metadata.Column;
-import org.alfasoftware.morf.metadata.Index;
-import org.alfasoftware.morf.metadata.Sequence;
-import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.sql.SelectStatement;
-import org.alfasoftware.morf.sql.Statement;
-import org.alfasoftware.morf.sql.element.FieldLiteral;
+import org.alfasoftware.morf.changelog.EntityHumanReadableStatementConsumer;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Supplier;
@@ -95,13 +92,23 @@ public class HumanReadableStatementProducer {
     this.preferredSQLDialect = preferredSQLDialect;
   }
 
+  /**
+   * @deprecated use produceFor(HumanReadableStatementConsumer, EntityHumanReadableStatementConsumer)
+   * @param consumer the consumer to consume the events.
+   */
+  @Deprecated
+  public void produceFor(final HumanReadableStatementConsumer consumer) {
+    produceFor(consumer,
+        new EntityHumanReadableStatementConsumer("1", new PrintWriter(new OutputStreamWriter(System.out, StandardCharsets.UTF_8))));
+  }
 
   /**
    * Produces output via the supplied consumer.
    *
    * @param consumer the consumer to consume the events.
+   * @param entityConsumer the EntityConsumer to consumer the events.
    */
-  public void produceFor(final HumanReadableStatementConsumer consumer) {
+  public void produceFor(final HumanReadableStatementConsumer consumer, final EntityHumanReadableStatementConsumer entityConsumer) {
 
     // Ensure the upgrade steps are in the correct order
     final Collection<Class<? extends UpgradeStep>> upgradeSteps = upgradeGraph.orderedSteps();
@@ -123,7 +130,8 @@ public class HumanReadableStatementProducer {
         }
       });
 
-    // Iterate over the upgrade steps initialising them, and reordering by version and then sequence
+
+    // Iterate over the upgrade steps initializing them, and reordering by version and then sequence
     for (Class<? extends UpgradeStep> currentStepClass : upgradeSteps) {
       try {
         // Create an instance of the upgrade step
@@ -138,136 +146,12 @@ public class HumanReadableStatementProducer {
     }
 
     // Create a proxy schema editor to pass through the consumer events
-    SchemaEditor schemaEditor = new SchemaEditor() {
-
-      /** @see org.alfasoftware.morf.upgrade.SchemaEditor#addColumn(java.lang.String, org.alfasoftware.morf.metadata.Column) **/
-      @Override
-      public void addColumn(String tableName, Column definition, FieldLiteral columnDefault) {
-        consumer.schemaChange(HumanReadableStatementHelper.generateAddColumnString(tableName, definition, columnDefault));
-      }
-
-      /**
-       * @see org.alfasoftware.morf.upgrade.SchemaEditor#addColumn(java.lang.String, org.alfasoftware.morf.metadata.Column)
-       */
-      @Override
-      public void addColumn(String tableName, Column definition) {
-        consumer.schemaChange(HumanReadableStatementHelper.generateAddColumnString(tableName, definition));
-      }
-
-      /** @see org.alfasoftware.morf.upgrade.SchemaEditor#addIndex(java.lang.String, org.alfasoftware.morf.metadata.Index) **/
-      @Override
-      public void addIndex(String tableName, Index index) {
-        consumer.schemaChange(HumanReadableStatementHelper.generateAddIndexString(tableName, index));
-      }
-
-      /** @see org.alfasoftware.morf.upgrade.SchemaEditor#addTable(org.alfasoftware.morf.metadata.Table) **/
-      @Override
-      public void addTable(Table definition) {
-        consumer.schemaChange(HumanReadableStatementHelper.generateAddTableString(definition));
-      }
-
-      /** @see org.alfasoftware.morf.upgrade.SchemaEditor#changeColumn(java.lang.String, org.alfasoftware.morf.metadata.Column, org.alfasoftware.morf.metadata.Column) **/
-      @Override
-      public void changeColumn(String tableName, Column fromDefinition, Column toDefinition) {
-        consumer.schemaChange(HumanReadableStatementHelper.generateChangeColumnString(tableName, fromDefinition, toDefinition));
-      }
-
-      /** @see org.alfasoftware.morf.upgrade.SchemaEditor#changeIndex(java.lang.String, org.alfasoftware.morf.metadata.Index, org.alfasoftware.morf.metadata.Index) **/
-      @Override
-      public void changeIndex(String tableName, Index fromIndex, Index toIndex) {
-        consumer.schemaChange(HumanReadableStatementHelper.generateChangeIndexString(tableName, fromIndex, toIndex));
-      }
-
-      /** @see org.alfasoftware.morf.upgrade.SchemaEditor#removeColumn(java.lang.String, org.alfasoftware.morf.metadata.Column) **/
-      @Override
-      public void removeColumn(String tableName, Column definition) {
-        consumer.schemaChange(HumanReadableStatementHelper.generateRemoveColumnString(tableName, definition));
-      }
-
-      /**
-       * @see org.alfasoftware.morf.upgrade.SchemaEditor#removeColumns(java.lang.String, org.alfasoftware.morf.metadata.Column[])
-       */
-      @Override
-      public void removeColumns(String tableName, Column... definitions) {
-        for (Column definition : definitions) {
-          removeColumn(tableName, definition);
-        }
-      }
-
-      /** @see org.alfasoftware.morf.upgrade.SchemaEditor#removeIndex(java.lang.String, org.alfasoftware.morf.metadata.Index) **/
-      @Override
-      public void removeIndex(String tableName, Index index) {
-        consumer.schemaChange(HumanReadableStatementHelper.generateRemoveIndexString(tableName, index));
-      }
-
-
-      /**
-       * @see org.alfasoftware.morf.upgrade.SchemaEditor#renameIndex(java.lang.String, java.lang.String, java.lang.String)
-       */
-      @Override
-      public void renameIndex(String tableName, String fromIndexName, String toIndexName) {
-        consumer.schemaChange(HumanReadableStatementHelper.generateRenameIndexString(tableName, fromIndexName, toIndexName));
-
-      }
-
-      /** @see org.alfasoftware.morf.upgrade.SchemaEditor#removeTable(org.alfasoftware.morf.metadata.Table) **/
-      @Override
-      public void removeTable(Table table) {
-        consumer.schemaChange(HumanReadableStatementHelper.generateRemoveTableString(table));
-      }
-
-      @Override
-      public void renameTable(String fromTableName, String toTableName) {
-        consumer.schemaChange(HumanReadableStatementHelper.generateRenameTableString(fromTableName, toTableName));
-      }
-
-      @Override
-      public void changePrimaryKeyColumns(String tableName, List<String> oldPrimaryKeyColumns, List<String> newPrimaryKeyColumns) {
-        consumer.schemaChange(HumanReadableStatementHelper.generateChangePrimaryKeyColumnsString(tableName, oldPrimaryKeyColumns, newPrimaryKeyColumns));
-      }
-
-
-      @Override
-      public void correctPrimaryKeyColumns(String tableName, List<String> newPrimaryKeyColumns) {
-        consumer.schemaChange(HumanReadableStatementHelper.generateChangePrimaryKeyColumnsString(tableName, newPrimaryKeyColumns));
-      }
-
-      @Override
-      public void addTableFrom(Table table, SelectStatement select) {
-        consumer.schemaChange(HumanReadableStatementHelper.generateAddTableFromString(table, select));
-      }
-
-      /** @see org.alfasoftware.morf.upgrade.SchemaEditor#analyseTable(String) **/
-      @Override
-      public void analyseTable(String tableName) {
-        consumer.schemaChange(HumanReadableStatementHelper.generateAnalyseTableFromString(tableName));
-      }
-
-      /** @see org.alfasoftware.morf.upgrade.SchemaEditor#addSequence(Sequence) **/
-      @Override
-      public void addSequence(Sequence sequence) {
-        consumer.schemaChange(HumanReadableStatementHelper.generateAddSequenceString(sequence));
-      }
-
-      /** @see org.alfasoftware.morf.upgrade.SchemaEditor#removeSequence(Sequence) **/
-      @Override
-      public void removeSequence(Sequence sequence) {
-        consumer.schemaChange(HumanReadableStatementHelper.generateRemoveSequenceString(sequence));
-      }
-    };
-
+    HumanReadableStatementSchemaEditor schemaEditor = new HumanReadableStatementSchemaEditor(consumer);
     //Similarly, we need a proxy DataEditor
-    DataEditor dataEditor = new DataEditor () {
-      @Override
-      public void executeStatement(Statement statement) {
-        if (reportDataChanges) {
-          consumer.dataChange(HumanReadableStatementHelper.generateDataUpgradeString(statement, preferredSQLDialect));
-        }
-      }
-    };
-
-
-    //Iterate over versions, then over the ordered upgrade steps
+    HumanReadableStatementDataEditor dataEditor = new HumanReadableStatementDataEditor(consumer, reportDataChanges, preferredSQLDialect);
+    // Create entityKnowledgeBuilder for populating entity based changelogs
+    EntityKnowledgeMapBuilder entityKnowledgeMapBuilder =new EntityKnowledgeMapBuilder(preferredSQLDialect);
+    // Iterate over versions, then over the ordered upgrade steps
     for (String version : orderedUpgradeSteps.keySet()) {
       consumer.versionStart("ALFA " + version);
       for (UpgradeStep currentStep : orderedUpgradeSteps.get(version)) {
@@ -276,14 +160,32 @@ public class HumanReadableStatementProducer {
 
         // Fire all the actual schema change events
         currentStep.execute(schemaEditor, dataEditor);
-
         // Indicate to the consumer that the upgrade step has ended
         consumer.upgradeStepEnd(currentStep.getClass().getSimpleName());
+
+        if(versionCompare(entityConsumer.getVersionStart(), version) >= 0){
+          // Populate entityKnowledgeMapBuilder
+          entityKnowledgeMapBuilder.upgradeStepStart(currentStep.getClass().getSimpleName(), currentStep.getDescription(), currentStep.getJiraId());
+          currentStep.execute(entityKnowledgeMapBuilder, entityKnowledgeMapBuilder);
+        }
       }
       consumer.versionEnd("ALFA " + version);
     }
-  }
 
+    //now handle our knowledgeMap and place into consumer...
+    //Iterate over knowledge, then each entity within, then descriptions split by new line
+    entityKnowledgeMapBuilder.getKnowledgeMultimap().forEach((entity, upgradeStep) -> {
+      entityConsumer.entityStart(entity);
+      upgradeStep.forEach((upgradeStepID, schemaChanges) -> {
+        entityConsumer.upgradeStepStart(upgradeStepID.getName(), upgradeStepID.getDescription(), upgradeStepID.getJiraID());
+        schemaChanges.forEach(entityConsumer::schemaChange);
+        entityConsumer.upgradeStepEnd("");
+      });
+      entityConsumer.entityEnd("");
+    });
+
+
+  }
 
   /**
    * Gets the version the upgrade {@code step} belongs in.
@@ -338,4 +240,6 @@ public class HumanReadableStatementProducer {
       return Integer.signum(vals1.length - vals2.length);
     }
   }
+
 }
+

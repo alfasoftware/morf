@@ -510,6 +510,32 @@ class HumanReadableStatementHelper {
     }
   }
 
+  /**
+   * Returns name of table given a Statement object.
+   * @param statement the data upgrade statement to describe.
+   * @param preferredSQLDialect the dialect to use, by preference, when a human readable description is not available. If
+   *          SQL is not available in this dialect, or none was specified, then an arbitrary choice is made from the bundle
+   *          of available raw SQL fragments.
+   * @return name of table given a Statement object.
+   */
+  public static String dataUpgradeTableName(final Statement statement) {
+    if (statement instanceof DeleteStatement) {
+      return ((DeleteStatement)statement).getTable().getName();
+    } else if (statement instanceof InsertStatement) {
+      return ((InsertStatement)statement).getTable().getName();
+    } else if (statement instanceof MergeStatement) {
+      return ((MergeStatement)statement).getTable().getName();
+    } else if (statement instanceof PortableSqlStatement) {
+      return ""; //Table name extraction not possible.
+    } else if (statement instanceof TruncateStatement) {
+      return ((TruncateStatement)statement).getTable().getName();
+    } else if (statement instanceof UpdateStatement) {
+      return ((UpdateStatement)statement).getTable().getName();
+    } else {
+      throw new UnsupportedOperationException("Unable to generate data upgrade string for: [" + statement.getClass().getName() + "]");
+    }
+  }
+
 
   /**
    * Generates a human-readable description of a data delete operation.

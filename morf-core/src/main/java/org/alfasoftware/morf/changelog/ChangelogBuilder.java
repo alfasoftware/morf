@@ -40,6 +40,9 @@ public class ChangelogBuilder {
   private String preferredSQLDialect = "ORACLE";
 
   private PrintWriter outputStream = new PrintWriter(new OutputStreamWriter(System.out, Charset.forName("UTF-8")));
+  private PrintWriter entityOutputStream = new PrintWriter(new OutputStreamWriter(System.out, Charset.forName("UTF-8")));
+  private String versionStart = "v0.0.0";
+  private boolean includeEntityBasedChangelogs;
   private final Set<Class<? extends UpgradeStep>> upgradeSteps = new HashSet<>();
 
   public static ChangelogBuilder changelogBuilder(){
@@ -89,22 +92,54 @@ public class ChangelogBuilder {
   /**
    * Set the {@link PrintWriter} target for this changelog. Default is the
    * console.
-   *
+   * @deprecated
    * @param outputStream The {@link PrintWriter} to output to.
    * @return This builder for chaining
    */
+  @Deprecated
   public ChangelogBuilder withOutputTo(PrintWriter outputStream) {
     this.outputStream = outputStream;
     return this;
   }
 
+  /**
+   * Set the {@link PrintWriter} targets for this changelog. Default is the
+   * console.
+   *
+   * @param outputStream The {@link PrintWriter} to output to.
+   * @param entityOutputStream The {@link PrintWriter} to output entity based changelog to.
+   * @return This builder for chaining
+   */
+  public ChangelogBuilder withOutputTo(PrintWriter outputStream, PrintWriter entityOutputStream) {
+    this.entityOutputStream = entityOutputStream;
+    this.outputStream = outputStream;
+    return this;
+  }
+
+  /**
+   * Set the version from which the entity based logs start from
+   * and sets flag to include entity based changelogs
+   * depending on versionStart empty or not.
+   *
+   * @param versionStart of the entity based logs
+   * @return This builder for chaining
+   */
+  public ChangelogBuilder withVersionStart(String versionStart) {
+    this.versionStart = versionStart;
+    includeEntityBasedChangelogs = (versionStart != null &&!versionStart.isBlank());
+    return this;
+  }
 
   /**
    * Produces the Changelog based on the given input settings.
    */
   public void produceChangelog() {
     HumanReadableStatementProducer producer = new HumanReadableStatementProducer(upgradeSteps, includeDataChanges, preferredSQLDialect);
-    producer.produceFor(new ChangelogStatementConsumer(outputStream));
+    if(includeEntityBasedChangelogs) {
+      producer.produceFor(new ChangelogStatementConsumer(outputStream), new EntityHumanReadableStatementConsumer(versionStart, entityOutputStream));
+    } else {
+      producer.produceFor(new ChangelogStatementConsumer(outputStream));
+    }
   }
 
 }
