@@ -112,7 +112,7 @@ public class HumanReadableStatementProducer {
 
     // Ensure the upgrade steps are in the correct order
     final Collection<Class<? extends UpgradeStep>> upgradeSteps = upgradeGraph.orderedSteps();
-
+    final boolean populateEntityBasedChangelog = entityConsumer.getVersionStart() != null && !entityConsumer.getVersionStart().isBlank();
     //Create a Multimap which has version ordered keys but insertion ordered values
     ListMultimap<String, UpgradeStep> orderedUpgradeSteps = Multimaps.newListMultimap(
       Maps.<String, Collection<UpgradeStep>>newTreeMap(new TreeMap<String, Collection<UpgradeStep>>(
@@ -163,7 +163,7 @@ public class HumanReadableStatementProducer {
         // Indicate to the consumer that the upgrade step has ended
         consumer.upgradeStepEnd(currentStep.getClass().getSimpleName());
 
-        if(versionCompare(entityConsumer.getVersionStart(), version) >= 0){
+        if(populateEntityBasedChangelog && versionCompare(entityConsumer.getVersionStart(), version) >= 0){
           // Populate entityKnowledgeMapBuilder
           entityKnowledgeMapBuilder.upgradeStepStart(currentStep.getClass().getSimpleName(), currentStep.getDescription(), currentStep.getJiraId());
           currentStep.execute(entityKnowledgeMapBuilder, entityKnowledgeMapBuilder);

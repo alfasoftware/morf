@@ -126,7 +126,7 @@ public class ChangelogBuilder {
    */
   public ChangelogBuilder withVersionStart(String versionStart) {
     this.versionStart = versionStart;
-    includeEntityBasedChangelogs = (versionStart != null &&!versionStart.isBlank());
+    includeEntityBasedChangelogs = versionStart != null && !versionStart.isBlank();
     return this;
   }
 
