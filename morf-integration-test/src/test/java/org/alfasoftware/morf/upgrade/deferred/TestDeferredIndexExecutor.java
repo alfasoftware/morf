@@ -214,7 +214,7 @@ public class TestDeferredIndexExecutor {
           .findFirst()
           .orElseThrow(() -> new AssertionError("Multi-column index not found"));
       assertEquals("column count", 2, idx.columnNames().size());
-      assertEquals("first column", "pips", idx.columnNames().get(0).toUpperCase().equals("PIPS") ? "pips" : idx.columnNames().get(0));
+      assertTrue("first column should be pips", idx.columnNames().get(0).equalsIgnoreCase("pips"));
     }
   }
 

@@ -42,10 +42,5 @@ enum DeferredIndexStatus {
    * The operation failed; {@link DeferredIndexOperation#getRetryCount()} indicates
    * how many attempts have been made.
    */
-  FAILED,
-
-  /**
-   * The operation was skipped because the target table no longer exists.
-   */
-  SKIPPED;
+  FAILED;
 }

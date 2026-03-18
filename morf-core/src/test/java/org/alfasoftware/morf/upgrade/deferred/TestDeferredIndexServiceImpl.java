@@ -26,6 +26,7 @@ import static org.mockito.Mockito.when;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 
 import org.junit.Test;
 
@@ -202,10 +203,14 @@ public class TestDeferredIndexServiceImpl {
     DeferredIndexServiceImpl service = serviceWithMocks(mockExecutor);
     service.execute();
 
+    CountDownLatch enteredAwait = new CountDownLatch(1);
     java.util.concurrent.atomic.AtomicBoolean result = new java.util.concurrent.atomic.AtomicBoolean(true);
-    Thread testThread = new Thread(() -> result.set(service.awaitCompletion(60L)));
+    Thread testThread = new Thread(() -> {
+      enteredAwait.countDown();
+      result.set(service.awaitCompletion(60L));
+    });
     testThread.start();
-    Thread.sleep(200);
+    enteredAwait.await();
     testThread.interrupt();
     testThread.join(5_000L);
 
@@ -215,7 +220,7 @@ public class TestDeferredIndexServiceImpl {
 
   /** awaitCompletion() with zero timeout should wait indefinitely until done. */
   @Test
-  public void testAwaitCompletionZeroTimeoutWaitsUntilDone() {
+  public void testAwaitCompletionZeroTimeoutWaitsUntilDone() throws Exception {
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     CompletableFuture<Void> future = new CompletableFuture<>();
     when(mockExecutor.execute()).thenReturn(future);
@@ -223,12 +228,14 @@ public class TestDeferredIndexServiceImpl {
     DeferredIndexServiceImpl service = serviceWithMocks(mockExecutor);
     service.execute();
 
-    // Complete the future after a short delay
+    CountDownLatch enteredAwait = new CountDownLatch(1);
+    // Complete the future once the test thread has entered awaitCompletion
     new Thread(() -> {
-      try { Thread.sleep(200); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+      try { enteredAwait.await(); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
       future.complete(null);
     }).start();
 
+    enteredAwait.countDown();
     assertTrue("Should return true once done", service.awaitCompletion(0L));
   }
 

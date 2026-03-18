@@ -86,7 +86,7 @@ public class CreateDeferredIndexOperationTables implements UpgradeStep {
         )
         .indexes(
           index("DeferredIndexOp_1").columns("status"),
-          index("DeferredIndexOp_3").columns("tableName")
+          index("DeferredIndexOp_2").columns("tableName")
         )
     );
 

@@ -459,16 +459,16 @@ public class TestDeferredIndexIntegration {
   @Test
   public void testForceImmediateIndexBypassesDeferral() {
     upgradeConfigAndContext.setForceImmediateIndexes(Set.of("Product_Name_1"));
+    try {
+      performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
 
-    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
-
-    // Index should exist immediately — no executor needed
-    assertIndexExists("Product", "Product_Name_1");
-    // No deferred operation should have been queued
-    assertEquals("No deferred operations expected", 0, countOperations());
-
-    // Clean up config for other tests
-    upgradeConfigAndContext.setForceImmediateIndexes(Set.of());
+      // Index should exist immediately — no executor needed
+      assertIndexExists("Product", "Product_Name_1");
+      // No deferred operation should have been queued
+      assertEquals("No deferred operations expected", 0, countOperations());
+    } finally {
+      upgradeConfigAndContext.setForceImmediateIndexes(Set.of());
+    }
   }
 
 
@@ -480,25 +480,25 @@ public class TestDeferredIndexIntegration {
   @Test
   public void testForceDeferredIndexOverridesImmediateCreation() {
     upgradeConfigAndContext.setForceDeferredIndexes(Set.of("Product_Name_1"));
+    try {
+      performUpgrade(schemaWithIndex(), AddImmediateIndex.class);
 
-    performUpgrade(schemaWithIndex(), AddImmediateIndex.class);
+      // Index should NOT exist yet — it was deferred
+      assertIndexDoesNotExist("Product", "Product_Name_1");
+      // A PENDING deferred operation should have been queued
+      assertEquals("PENDING", queryOperationStatus("Product_Name_1"));
 
-    // Index should NOT exist yet — it was deferred
-    assertIndexDoesNotExist("Product", "Product_Name_1");
-    // A PENDING deferred operation should have been queued
-    assertEquals("PENDING", queryOperationStatus("Product_Name_1"));
+      // Executor should complete the build
+      DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
+      config.setRetryBaseDelayMs(10L);
+      DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
+      executor.execute().join();
 
-    // Executor should complete the build
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
-    config.setRetryBaseDelayMs(10L);
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
-    executor.execute().join();
-
-    assertEquals("COMPLETED", queryOperationStatus("Product_Name_1"));
-    assertIndexExists("Product", "Product_Name_1");
-
-    // Clean up config for other tests
-    upgradeConfigAndContext.setForceDeferredIndexes(Set.of());
+      assertEquals("COMPLETED", queryOperationStatus("Product_Name_1"));
+      assertIndexExists("Product", "Product_Name_1");
+    } finally {
+      upgradeConfigAndContext.setForceDeferredIndexes(Set.of());
+    }
   }
 
 

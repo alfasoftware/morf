@@ -54,14 +54,16 @@ public interface DeferredIndexExecutorServiceFactory {
 
   /**
    * Default implementation that creates a fixed-size thread pool with
-   * daemon threads named {@code DeferredIndexExecutor}.
+   * daemon threads named {@code DeferredIndexExecutor-N}.
    */
   class Default implements DeferredIndexExecutorServiceFactory {
+
+    private int threadCount;
 
     @Override
     public ExecutorService create(int threadPoolSize) {
       return Executors.newFixedThreadPool(threadPoolSize, r -> {
-        Thread t = new Thread(r, "DeferredIndexExecutor");
+        Thread t = new Thread(r, "DeferredIndexExecutor-" + ++threadCount);
         t.setDaemon(true);
         return t;
       });

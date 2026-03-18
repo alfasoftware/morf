@@ -41,6 +41,7 @@ import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Table;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
@@ -64,12 +65,13 @@ public class TestDeferredIndexExecutorUnit {
   @Mock private Connection connection;
 
   private DeferredIndexExecutionConfig config;
+  private AutoCloseable mocks;
 
 
   /** Set up mocks and a fast-retry config before each test. */
   @Before
   public void setUp() throws SQLException {
-    MockitoAnnotations.openMocks(this);
+    mocks = MockitoAnnotations.openMocks(this);
     config = new DeferredIndexExecutionConfig();
     config.setRetryBaseDelayMs(10L);
     when(connectionResources.sqlDialect()).thenReturn(sqlDialect);
@@ -87,6 +89,13 @@ public class TestDeferredIndexExecutorUnit {
       zeroCounts.put(s, 0);
     }
     when(dao.countAllByStatus()).thenReturn(zeroCounts);
+  }
+
+
+  /** Close mocks after each test. */
+  @After
+  public void tearDown() throws Exception {
+    mocks.close();
   }
 
 

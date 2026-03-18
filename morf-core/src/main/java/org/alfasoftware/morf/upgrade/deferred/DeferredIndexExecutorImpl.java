@@ -92,7 +92,17 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
 
   @Override
   public CompletableFuture<Void> execute() {
-    // Reset any crashed IN_PROGRESS operations from a previous run
+    if (threadPool != null) {
+      log.fatal("execute() called more than once on DeferredIndexExecutorImpl");
+      throw new IllegalStateException("DeferredIndexExecutor.execute() has already been called");
+    }
+
+    // Reset any crashed IN_PROGRESS operations from a previous run.
+    // This is also called by DeferredIndexReadinessCheckImpl.forceBuildAllPending()
+    // (Mode 1) before findPendingOperations(), so in Mode 1 this is a harmless
+    // duplicate — the readiness check must reset first so its findPendingOperations()
+    // includes previously-crashed operations; the executor resets again here because
+    // in Mode 2 the readiness check does not run and the executor is the only caller.
     dao.resetAllInProgressToPending();
 
     List<DeferredIndexOperation> pending = dao.findPendingOperations();
@@ -237,7 +247,7 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
    */
   private void sleepForBackoff(int attempt) {
     try {
-      long delay = Math.min(config.getRetryBaseDelayMs() * (1L << attempt), config.getRetryMaxDelayMs());
+      long delay = Math.min(config.getRetryBaseDelayMs() * (1L << Math.min(attempt, 30)), config.getRetryMaxDelayMs());
       Thread.sleep(delay);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();

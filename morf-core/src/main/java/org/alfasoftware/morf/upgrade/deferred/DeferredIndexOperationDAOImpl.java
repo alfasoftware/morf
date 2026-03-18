@@ -226,8 +226,13 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
         counts.put(s, 0);
       }
       while (rs.next()) {
-        DeferredIndexStatus status = DeferredIndexStatus.valueOf(rs.getString(1));
-        counts.merge(status, 1, Integer::sum);
+        String statusValue = rs.getString(1);
+        try {
+          DeferredIndexStatus status = DeferredIndexStatus.valueOf(statusValue);
+          counts.merge(status, 1, Integer::sum);
+        } catch (IllegalArgumentException e) {
+          log.warn("Ignoring unrecognised deferred index status value: " + statusValue);
+        }
       }
       return counts;
     });

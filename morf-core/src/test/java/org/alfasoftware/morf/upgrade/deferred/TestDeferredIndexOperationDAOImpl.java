@@ -20,6 +20,7 @@ import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.SqlUtils.update;
+import static org.alfasoftware.morf.sql.element.Criterion.or;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -37,7 +38,9 @@ import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.UpdateStatement;
+import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -57,6 +60,7 @@ public class TestDeferredIndexOperationDAOImpl {
   @Mock private ConnectionResources connectionResources;
 
   private DeferredIndexOperationDAO dao;
+  private AutoCloseable mocks;
 
   private static final String TABLE     = DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME;
   private static final String COL_TABLE = DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_COLUMN_NAME;
@@ -64,13 +68,19 @@ public class TestDeferredIndexOperationDAOImpl {
 
   @Before
   public void setUp() {
-    MockitoAnnotations.openMocks(this);
+    mocks = MockitoAnnotations.openMocks(this);
     when(sqlScriptExecutorProvider.get()).thenReturn(sqlScriptExecutor);
     when(sqlDialect.convertStatementToSQL(any(InsertStatement.class))).thenReturn(List.of("SQL"));
     when(sqlDialect.convertStatementToSQL(any(UpdateStatement.class))).thenReturn("UPDATE_SQL");
     when(sqlDialect.convertStatementToSQL(any(SelectStatement.class))).thenReturn("SELECT_SQL");
     when(connectionResources.sqlDialect()).thenReturn(sqlDialect);
     dao = new DeferredIndexOperationDAOImpl(sqlScriptExecutorProvider, connectionResources);
+  }
+
+
+  @After
+  public void tearDown() throws Exception {
+    mocks.close();
   }
 
 
@@ -195,17 +205,80 @@ public class TestDeferredIndexOperationDAOImpl {
   }
 
 
-  private DeferredIndexOperation buildOperation(long id, List<String> columns) {
-    DeferredIndexOperation op = new DeferredIndexOperation();
-    op.setId(id);
-    op.setUpgradeUUID("uuid-1");
-    op.setTableName("MyTable");
-    op.setIndexName("MyIndex");
-    op.setIndexUnique(false);
-    op.setStatus(DeferredIndexStatus.PENDING);
-    op.setRetryCount(0);
-    op.setCreatedTime(20260101120000L);
-    op.setColumnNames(columns);
-    return op;
+  /**
+   * Verify resetAllInProgressToPending produces an UPDATE setting status=PENDING
+   * for all IN_PROGRESS operations.
+   */
+  @Test
+  public void testResetAllInProgressToPending() {
+    dao.resetAllInProgressToPending();
+
+    ArgumentCaptor<UpdateStatement> captor = ArgumentCaptor.forClass(UpdateStatement.class);
+    verify(sqlDialect, times(1)).convertStatementToSQL(captor.capture());
+
+    String expected = update(tableRef(TABLE))
+      .set(literal(DeferredIndexStatus.PENDING.name()).as("status"))
+      .where(field("status").eq(DeferredIndexStatus.IN_PROGRESS.name()))
+      .toString();
+
+    assertEquals("UPDATE statement", expected, captor.getValue().toString());
+  }
+
+
+  /**
+   * Verify countAllByStatus produces a SELECT on the status column.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testCountAllByStatus() {
+    when(sqlScriptExecutor.executeQuery(anyString(), any(ResultSetProcessor.class))).thenReturn(new java.util.EnumMap<>(DeferredIndexStatus.class));
+
+    dao.countAllByStatus();
+
+    ArgumentCaptor<SelectStatement> captor = ArgumentCaptor.forClass(SelectStatement.class);
+    verify(sqlDialect, times(1)).convertStatementToSQL(captor.capture());
+
+    String expected = select(field("status"))
+      .from(tableRef(TABLE))
+      .toString();
+
+    assertEquals("SELECT statement", expected, captor.getValue().toString());
+  }
+
+
+  /**
+   * Verify findNonTerminalOperations selects operations with PENDING, IN_PROGRESS,
+   * or FAILED status, joined with the column table.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testFindNonTerminalOperations() {
+    when(sqlScriptExecutor.executeQuery(anyString(), any(ResultSetProcessor.class))).thenReturn(List.of());
+
+    dao.findNonTerminalOperations();
+
+    ArgumentCaptor<SelectStatement> captor = ArgumentCaptor.forClass(SelectStatement.class);
+    verify(sqlDialect, times(1)).convertStatementToSQL(captor.capture());
+
+    TableReference op = tableRef(TABLE);
+    TableReference col = tableRef(COL_TABLE);
+
+    String expected = select(
+        op.field("id"), op.field("upgradeUUID"), op.field("tableName"),
+        op.field("indexName"), op.field("indexUnique"),
+        op.field("status"), op.field("retryCount"), op.field("createdTime"),
+        op.field("startedTime"), op.field("completedTime"), op.field("errorMessage"),
+        col.field("columnName"), col.field("columnSequence")
+      ).from(op)
+       .leftOuterJoin(col, op.field("id").eq(col.field("operationId")))
+       .where(or(
+         op.field("status").eq(DeferredIndexStatus.PENDING.name()),
+         op.field("status").eq(DeferredIndexStatus.IN_PROGRESS.name()),
+         op.field("status").eq(DeferredIndexStatus.FAILED.name())
+       ))
+       .orderBy(op.field("id"), col.field("columnSequence"))
+       .toString();
+
+    assertEquals("SELECT statement", expected, captor.getValue().toString());
   }
 }

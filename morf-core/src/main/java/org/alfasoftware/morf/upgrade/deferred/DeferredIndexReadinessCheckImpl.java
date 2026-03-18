@@ -89,6 +89,8 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
       return;
     }
 
+    validateConfig(config);
+
     // Reset any crashed IN_PROGRESS operations so they are picked up
     dao.resetAllInProgressToPending();
 
@@ -181,6 +183,33 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
       throw new IllegalStateException("Deferred index force-build interrupted.");
     } catch (ExecutionException e) {
       throw new IllegalStateException("Deferred index force-build failed unexpectedly.", e.getCause());
+    }
+  }
+
+
+  /**
+   * Validates that all configuration values are within acceptable ranges.
+   *
+   * @param config the configuration to validate.
+   * @throws IllegalArgumentException if any value is out of range.
+   */
+  private void validateConfig(DeferredIndexExecutionConfig config) {
+    if (config.getThreadPoolSize() < 1) {
+      throw new IllegalArgumentException("threadPoolSize must be >= 1, was " + config.getThreadPoolSize());
+    }
+    if (config.getMaxRetries() < 0) {
+      throw new IllegalArgumentException("maxRetries must be >= 0, was " + config.getMaxRetries());
+    }
+    if (config.getRetryBaseDelayMs() < 0) {
+      throw new IllegalArgumentException("retryBaseDelayMs must be >= 0 ms, was " + config.getRetryBaseDelayMs() + " ms");
+    }
+    if (config.getRetryMaxDelayMs() < config.getRetryBaseDelayMs()) {
+      throw new IllegalArgumentException("retryMaxDelayMs (" + config.getRetryMaxDelayMs()
+          + " ms) must be >= retryBaseDelayMs (" + config.getRetryBaseDelayMs() + " ms)");
+    }
+    if (config.getExecutionTimeoutSeconds() <= 0) {
+      throw new IllegalArgumentException(
+          "executionTimeoutSeconds must be > 0 s, was " + config.getExecutionTimeoutSeconds() + " s");
     }
   }
 
