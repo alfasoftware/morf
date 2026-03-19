@@ -40,7 +40,7 @@ import com.google.inject.Singleton;
 /**
  * Default implementation of {@link DeferredIndexReadinessCheck}.
  *
-s * <p>{@link #augmentSchemaWithPendingIndexes(Schema)} is always called to
+ * <p>{@link #augmentSchemaWithPendingIndexes(Schema)} is always called to
  * overlay virtual indexes for non-terminal operations into the source schema.
  * {@link #forceBuildAllPending()} is called only when an upgrade with new
  * steps is about to run, to ensure stale indexes from a previous upgrade

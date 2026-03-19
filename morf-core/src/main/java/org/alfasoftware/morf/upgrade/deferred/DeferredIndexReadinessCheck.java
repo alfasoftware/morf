@@ -27,7 +27,7 @@ import com.google.inject.ImplementedBy;
  *
  * <p>This check is invoked during application startup by the upgrade
  * framework ({@link org.alfasoftware.morf.upgrade.Upgrade#findPath findPath})
-xo * for both the sequential and graph-based upgrade paths:</p>
+ * for both the sequential and graph-based upgrade paths:</p>
  *
  * <ul>
  *   <li>{@link #augmentSchemaWithPendingIndexes(Schema)} is always called
