@@ -282,6 +282,9 @@ public interface SchemaChangeAdaptor {
       return second.adapt(first.adapt(removeSequence));
     }
 
+    /**
+     * @see org.alfasoftware.morf.upgrade.SchemaChangeAdaptor#adapt(org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex)
+     */
     @Override
     public DeferredAddIndex adapt(DeferredAddIndex deferredAddIndex) {
       return second.adapt(first.adapt(deferredAddIndex));

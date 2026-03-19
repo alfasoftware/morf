@@ -78,6 +78,9 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
   private final Map<String, Map<String, DeferredAddIndex>> pendingDeferredIndexes = new LinkedHashMap<>();
 
 
+  /**
+   * @see org.alfasoftware.morf.upgrade.deferred.DeferredIndexChangeService#trackPending(DeferredAddIndex)
+   */
   @Override
   public List<Statement> trackPending(DeferredAddIndex deferredAddIndex) {
     if (log.isDebugEnabled()) {
@@ -94,6 +97,9 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.upgrade.deferred.DeferredIndexChangeService#hasPendingDeferred(String, String)
+   */
   @Override
   public boolean hasPendingDeferred(String tableName, String indexName) {
     Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.get(tableName.toUpperCase());
@@ -101,6 +107,9 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.upgrade.deferred.DeferredIndexChangeService#getPendingDeferred(String, String)
+   */
   @Override
   public Optional<DeferredAddIndex> getPendingDeferred(String tableName, String indexName) {
     Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.get(tableName.toUpperCase());
@@ -108,6 +117,9 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.upgrade.deferred.DeferredIndexChangeService#cancelPending(String, String)
+   */
   @Override
   public List<Statement> cancelPending(String tableName, String indexName) {
     Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.get(tableName.toUpperCase());
@@ -130,6 +142,9 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.upgrade.deferred.DeferredIndexChangeService#cancelAllPendingForTable(String)
+   */
   @Override
   public List<Statement> cancelAllPendingForTable(String tableName) {
     Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.remove(tableName.toUpperCase());
@@ -147,6 +162,9 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.upgrade.deferred.DeferredIndexChangeService#cancelPendingReferencingColumn(String, String)
+   */
   @Override
   public List<Statement> cancelPendingReferencingColumn(String tableName, String columnName) {
     Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.get(tableName.toUpperCase());
@@ -175,6 +193,9 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.upgrade.deferred.DeferredIndexChangeService#updatePendingTableName(String, String)
+   */
   @Override
   public List<Statement> updatePendingTableName(String oldTableName, String newTableName) {
     Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.remove(oldTableName.toUpperCase());
@@ -201,6 +222,9 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.upgrade.deferred.DeferredIndexChangeService#updatePendingColumnName(String, String, String)
+   */
   @Override
   public List<Statement> updatePendingColumnName(String tableName, String oldColumnName, String newColumnName) {
     Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.get(tableName.toUpperCase());
@@ -237,6 +261,9 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.upgrade.deferred.DeferredIndexChangeService#updatePendingIndexName(String, String, String)
+   */
   @Override
   public List<Statement> updatePendingIndexName(String tableName, String oldIndexName, String newIndexName) {
     Map<String, DeferredAddIndex> tableMap = pendingDeferredIndexes.get(tableName.toUpperCase());

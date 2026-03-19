@@ -59,7 +59,10 @@ public interface DeferredIndexExecutorServiceFactory {
   class Default implements DeferredIndexExecutorServiceFactory {
 
     private int threadCount;
-
+    
+    /**
+     * @see org.alfasoftware.morf.upgrade.deferred.DeferredIndexExecutorServiceFactory#create(int)
+     */
     @Override
     public ExecutorService create(int threadPoolSize) {
       return Executors.newFixedThreadPool(threadPoolSize, r -> {

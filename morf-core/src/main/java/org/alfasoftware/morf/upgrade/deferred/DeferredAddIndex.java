@@ -217,6 +217,9 @@ public class DeferredAddIndex implements SchemaChange {
   }
 
 
+  /**
+   * @see java.lang.Object#toString()
+   */
   @Override
   public String toString() {
     return "DeferredAddIndex [tableName=" + tableName + ", newIndex=" + newIndex + ", upgradeUUID=" + upgradeUUID + "]";

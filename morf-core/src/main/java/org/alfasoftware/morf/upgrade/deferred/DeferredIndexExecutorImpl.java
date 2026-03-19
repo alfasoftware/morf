@@ -90,6 +90,9 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.upgrade.deferred.DeferredIndexExecutor#execute()
+   */
   @Override
   public CompletableFuture<Void> execute() {
     if (threadPool != null) {

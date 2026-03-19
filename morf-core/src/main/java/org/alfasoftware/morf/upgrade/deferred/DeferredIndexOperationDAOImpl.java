@@ -175,6 +175,9 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.upgrade.deferred.DeferredIndexOperationDAO#resetAllInProgressToPending()
+   */
   @Override
   public void resetAllInProgressToPending() {
     log.info("Resetting any IN_PROGRESS deferred index operations to PENDING");
@@ -188,6 +191,9 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.upgrade.deferred.DeferredIndexOperationDAO#findNonTerminalOperations()
+   */
   @Override
   public List<DeferredIndexOperation> findNonTerminalOperations() {
     TableReference op = tableRef(OPERATION_TABLE);
@@ -213,7 +219,9 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
   }
 
 
-  /** {@inheritDoc} */
+  /**
+   * @see org.alfasoftware.morf.upgrade.deferred.DeferredIndexOperationDAO#countAllByStatus()
+   */
   @Override
   public Map<DeferredIndexStatus, Integer> countAllByStatus() {
     SelectStatement select = select(field("status"))

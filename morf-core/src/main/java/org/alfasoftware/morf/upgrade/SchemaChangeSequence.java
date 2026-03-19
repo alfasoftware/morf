@@ -681,6 +681,9 @@ public class SchemaChangeSequence {
     }
 
 
+    /**
+     * @see org.alfasoftware.morf.upgrade.SchemaChangeVisitor#visit(org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex)
+     */
     @Override
     public void visit(DeferredAddIndex deferredAddIndex) {
       changes.add(schemaChangeAdaptor.adapt(deferredAddIndex));

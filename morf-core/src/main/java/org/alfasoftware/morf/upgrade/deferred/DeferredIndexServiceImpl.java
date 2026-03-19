@@ -66,6 +66,9 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.upgrade.deferred.DeferredIndexService#execute()
+   */
   @Override
   public void execute() {
     validateConfig(config);
@@ -75,6 +78,9 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.upgrade.deferred.DeferredIndexService#awaitCompletion(long)
+   */
   @Override
   public boolean awaitCompletion(long timeoutSeconds) {
     CompletableFuture<Void> future = executionFuture;
@@ -107,6 +113,9 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.upgrade.deferred.DeferredIndexService#getProgress()
+   */
   @Override
   public Map<DeferredIndexStatus, Integer> getProgress() {
     return dao.countAllByStatus();

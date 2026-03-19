@@ -78,6 +78,9 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.upgrade.deferred.DeferredIndexReadinessCheck#forceBuildAllPending()
+   */
   @Override
   public void forceBuildAllPending() {
     if (!deferredIndexTableExists()) {
@@ -112,6 +115,9 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.upgrade.deferred.DeferredIndexReadinessCheck#augmentSchemaWithPendingIndexes(org.alfasoftware.morf.metadata.Schema)
+   */
   @Override
   public Schema augmentSchemaWithPendingIndexes(Schema sourceSchema) {
     if (!deferredIndexTableExists()) {
