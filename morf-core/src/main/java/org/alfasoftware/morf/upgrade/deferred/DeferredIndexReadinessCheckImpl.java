@@ -40,15 +40,11 @@ import com.google.inject.Singleton;
 /**
  * Default implementation of {@link DeferredIndexReadinessCheck}.
  *
- * <p>Supports two modes:</p>
- * <ul>
- *   <li><strong>Mode 1 (force-build):</strong> {@link #forceBuildAllPending()} checks for pending
- *       or crashed operations and force-builds them synchronously before the
- *       upgrade reads the source schema.</li>
- *   <li><strong>Mode 2 (background):</strong> {@link #augmentSchemaWithPendingIndexes(Schema)}
- *       adds virtual indexes from non-terminal operations into the source schema
- *       so that the schema comparison treats them as present.</li>
- * </ul>
+s * <p>{@link #augmentSchemaWithPendingIndexes(Schema)} is always called to
+ * overlay virtual indexes for non-terminal operations into the source schema.
+ * {@link #forceBuildAllPending()} is called only when an upgrade with new
+ * steps is about to run, to ensure stale indexes from a previous upgrade
+ * are built before new changes are applied.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -95,23 +91,24 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
     dao.resetAllInProgressToPending();
 
     List<DeferredIndexOperation> pending = dao.findPendingOperations();
-    if (pending.isEmpty()) {
-      return;
+    if (!pending.isEmpty()) {
+      log.warn("Found " + pending.size() + " pending deferred index operation(s) before upgrade. "
+          + "Executing immediately before proceeding...");
+
+      awaitCompletion(executor.execute());
+
+      log.info("Pre-upgrade deferred index execution complete.");
     }
 
-    log.warn("Found " + pending.size() + " pending deferred index operation(s) before upgrade. "
-        + "Executing immediately before proceeding...");
-
-    awaitCompletion(executor.execute());
-
-    int failedCount = dao.countAllByStatus().get(DeferredIndexStatus.FAILED);
+    // Check for FAILED operations — whether they existed before this run
+    // or were created by the force-build above. An upgrade cannot proceed
+    // with permanently failed index operations from a previous upgrade.
+    int failedCount = dao.countAllByStatus().getOrDefault(DeferredIndexStatus.FAILED, 0);
     if (failedCount > 0) {
       throw new IllegalStateException("Deferred index force-build failed: "
           + failedCount + " index operation(s) could not be built. "
           + "Resolve the underlying issue before retrying.");
     }
-
-    log.info("Pre-upgrade deferred index execution complete.");
   }
 
 
@@ -126,7 +123,7 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
       return sourceSchema;
     }
 
-    log.info("Augmenting schema with " + ops.size() + " deferred index operation(s) for Mode 2 (background build)");
+    log.info("Augmenting schema with " + ops.size() + " deferred index operation(s) not yet built");
 
     Schema result = sourceSchema;
     for (DeferredIndexOperation op : ops) {
@@ -156,6 +153,9 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
         indexNames.add(existing.getName());
       }
       indexNames.add(newIndex.getName());
+
+      log.info("Augmenting schema with deferred index [" + op.getIndexName() + "] on table ["
+          + op.getTableName() + "] [" + op.getStatus() + "]");
 
       result = new TableOverrideSchema(result,
           new AlteredTable(table, null, null, indexNames, Arrays.asList(newIndex)));

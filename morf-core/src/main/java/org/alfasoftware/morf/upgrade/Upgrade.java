@@ -208,14 +208,6 @@ public class Upgrade {
     //
     new SchemaValidator().validate(targetSchema);
 
-    // -- Ensure deferred indexes from the previous upgrade are complete before
-    // reading the source schema. Mode 1 (default): force-build them now so that
-    // sourceSchema will include the newly built indexes. Mode 2: skip — indexes
-    // will be augmented into the schema after reading.
-    if (upgradeConfigAndContext.isForceDeferredIndexBuildOnRestart()) {
-      deferredIndexReadinessCheck.forceBuildAllPending();
-    }
-
     // Get access to the schema we are starting from
     log.info("Reading current schema");
     Schema sourceSchema;
@@ -244,11 +236,9 @@ public class Upgrade {
       }
     }
 
-    // -- Mode 2: augment schema with deferred indexes that haven't been built yet.
+    // Augment the source schema with deferred indexes that haven't been built yet.
     // This ensures the schema comparison treats them as present without blocking.
-    if (!upgradeConfigAndContext.isForceDeferredIndexBuildOnRestart()) {
-      sourceSchema = deferredIndexReadinessCheck.augmentSchemaWithPendingIndexes(sourceSchema);
-    }
+    sourceSchema = deferredIndexReadinessCheck.augmentSchemaWithPendingIndexes(sourceSchema);
 
     // -- Get the current UUIDs and deployed views...
     log.info("Examining current views");    //
@@ -285,6 +275,14 @@ public class Upgrade {
       else {
         throw e;
       }
+    }
+
+    // -- If an upgrade is about to run, force-build any pending deferred
+    // indexes from a previous upgrade first. This ensures the schema is
+    // clean before applying new changes. On a no-upgrade restart, pending
+    // indexes are left for DeferredIndexService.execute() to handle.
+    if (!schemaChangeSequence.getUpgradeSteps().isEmpty()) {
+      deferredIndexReadinessCheck.forceBuildAllPending();
     }
 
     // -- Only run the upgrader if there are any steps to apply...

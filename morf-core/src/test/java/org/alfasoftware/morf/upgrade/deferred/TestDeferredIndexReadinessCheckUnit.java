@@ -64,19 +64,21 @@ public class TestDeferredIndexReadinessCheckUnit {
   }
 
 
-  /** forceBuildAllPending() should return immediately when no pending operations exist. */
+  /** forceBuildAllPending() should not call executor when no pending operations exist. */
   @Test
   public void testRunWithEmptyQueue() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
 
     when(mockDao.findPendingOperations()).thenReturn(Collections.emptyList());
+    when(mockDao.countAllByStatus()).thenReturn(statusCounts(0));
 
     DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
-    DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mock(DeferredIndexExecutor.class), config, connWithTable);
+    DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
+    DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mockExecutor, config, connWithTable);
     check.forceBuildAllPending();
 
     verify(mockDao).findPendingOperations();
-    verify(mockDao, never()).countAllByStatus();
+    verify(mockExecutor, never()).execute();
   }
 
 

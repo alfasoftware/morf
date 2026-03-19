@@ -240,6 +240,30 @@ public class TestDeferredIndexExecutorUnit {
   }
 
 
+  /** execute() should be callable again after a previous execution completes. */
+  @Test
+  public void testExecuteCanBeCalledAgainAfterCompletion() {
+    DeferredIndexOperation op = buildOp(1001L);
+    when(dao.findPendingOperations())
+        .thenReturn(List.of(op))
+        .thenReturn(List.of(op));
+    SqlScriptExecutor scriptExecutor = mock(SqlScriptExecutor.class);
+    when(sqlScriptExecutorProvider.get()).thenReturn(scriptExecutor);
+    when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
+        .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
+
+    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
+
+    // First execution
+    executor.execute().join();
+    verify(dao).markCompleted(eq(1001L), any(Long.class));
+
+    // Second execution should not throw
+    executor.execute().join();
+    verify(dao, org.mockito.Mockito.times(2)).markCompleted(eq(1001L), any(Long.class));
+  }
+
+
   private DeferredIndexOperation buildOp(long id) {
     DeferredIndexOperation op = new DeferredIndexOperation();
     op.setId(id);

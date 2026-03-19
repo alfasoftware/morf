@@ -63,9 +63,13 @@ import net.jcip.annotations.NotThreadSafe;
 
 /**
  * End-to-end lifecycle integration tests for the deferred index mechanism.
- * Exercises upgrade → restart → execute cycles through the real
- * {@link Upgrade#performUpgrade} path, verifying both Mode 1
- * (force-build on restart) and Mode 2 (background build) behaviour.
+ * Exercises upgrade, restart, and execute cycles through the real
+ * {@link Upgrade#performUpgrade} path.
+ *
+ * <p>The upgrade framework always augments the source schema with pending
+ * deferred indexes, and force-builds them only when an upgrade with new
+ * steps is about to run. On a no-upgrade restart, pending indexes are
+ * left for {@link DeferredIndexService#execute()} to build.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -131,90 +135,79 @@ public class TestDeferredIndexLifecycle {
 
 
   // =========================================================================
-  // Mode 1 — force build on restart (default)
+  // No-upgrade restart — pending indexes left for execute()
   // =========================================================================
 
-  /** Mode 1: restart without execute force-builds deferred indexes. */
+  /** No-upgrade restart with pending indexes should pass (schema augmented). */
   @Test
-  public void testMode1_restartWithoutExecute_forceBuilds() {
+  public void testNoUpgradeRestart_pendingIndexesAugmented() {
     performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
     assertEquals("PENDING", queryOperationStatus("Product_Name_1"));
     assertIndexDoesNotExist("Product", "Product_Name_1");
 
-    // Restart without calling execute — Mode 1 should force-build
+    // Restart with same schema — no new upgrade steps
     performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
 
-    assertIndexExists("Product", "Product_Name_1");
-  }
-
-
-  /** Mode 1: crashed IN_PROGRESS ops are found and force-built on restart. */
-  @Test
-  public void testMode1_crashedOpsAreForceBuilt() {
-    performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
-    setOperationStatus("Product_Name_1", "IN_PROGRESS");
-
-    // Restart — Mode 1 should reset IN_PROGRESS → PENDING and force-build
-    performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
-
-    assertIndexExists("Product", "Product_Name_1");
-  }
-
-
-  // =========================================================================
-  // Mode 2 — background build
-  // =========================================================================
-
-  /** Mode 2: restart without execute passes schema check, index built later. */
-  @Test
-  public void testMode2_restartWithoutExecute_backgroundBuild() {
-    performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
-    assertEquals("PENDING", queryOperationStatus("Product_Name_1"));
+    // Index should NOT exist yet — no force-build on no-upgrade restart
     assertIndexDoesNotExist("Product", "Product_Name_1");
 
-    // Restart in Mode 2 — schema augmented, no force-build
-    upgradeConfigAndContext.setForceDeferredIndexBuildOnRestart(false);
-    performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
-
-    // Index should NOT exist yet — Mode 2 does not force-build
-    assertIndexDoesNotExist("Product", "Product_Name_1");
-
-    // Execute builds it in the background
+    // Execute builds it
     executeDeferred();
     assertIndexExists("Product", "Product_Name_1");
     assertEquals("COMPLETED", queryOperationStatus("Product_Name_1"));
   }
 
 
-  /** Mode 2: no-upgrade restart, execute picks up leftovers. */
+  /** No-upgrade restart with crashed IN_PROGRESS ops should pass (schema augmented). */
   @Test
-  public void testMode2_noUpgradeRestart_executeBuildsInBackground() {
-    performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
-    assertIndexDoesNotExist("Product", "Product_Name_1");
-
-    // Restart in Mode 2
-    upgradeConfigAndContext.setForceDeferredIndexBuildOnRestart(false);
-    performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
-
-    // Execute picks up the pending op
-    executeDeferred();
-    assertIndexExists("Product", "Product_Name_1");
-    assertEquals("COMPLETED", queryOperationStatus("Product_Name_1"));
-  }
-
-
-  /** Mode 2: crashed IN_PROGRESS ops are augmented in schema and built by execute. */
-  @Test
-  public void testMode2_crashedOpsBuiltInBackground() {
+  public void testNoUpgradeRestart_crashedOpsAugmented() {
     performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
     setOperationStatus("Product_Name_1", "IN_PROGRESS");
 
-    // Restart in Mode 2 — schema augmented with IN_PROGRESS op
-    upgradeConfigAndContext.setForceDeferredIndexBuildOnRestart(false);
+    // Restart with same schema — schema augmented with IN_PROGRESS op
     performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
+
+    // Index should NOT exist yet
+    assertIndexDoesNotExist("Product", "Product_Name_1");
 
     // Execute resets IN_PROGRESS → PENDING and builds
     executeDeferred();
+    assertIndexExists("Product", "Product_Name_1");
+  }
+
+
+  // =========================================================================
+  // Upgrade with pending indexes — force-built before proceeding
+  // =========================================================================
+
+  /** Upgrade with pending indexes from previous upgrade force-builds them first. */
+  @Test
+  public void testUpgrade_pendingIndexesForceBuiltBeforeProceeding() {
+    // First upgrade — don't execute
+    performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
+    assertIndexDoesNotExist("Product", "Product_Name_1");
+
+    // Second upgrade — readiness check should force-build first index
+    performUpgradeWithSteps(schemaWithBothIndexes(),
+        List.of(AddDeferredIndex.class, AddSecondDeferredIndex.class));
+    assertIndexExists("Product", "Product_Name_1");
+
+    // Execute builds second index
+    executeDeferred();
+    assertIndexExists("Product", "Product_IdName_1");
+  }
+
+
+  /** Upgrade with crashed IN_PROGRESS ops force-builds them. */
+  @Test
+  public void testUpgrade_crashedOpsForceBuilt() {
+    performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
+    setOperationStatus("Product_Name_1", "IN_PROGRESS");
+
+    // Second upgrade — readiness check should reset IN_PROGRESS and force-build
+    performUpgradeWithSteps(schemaWithBothIndexes(),
+        List.of(AddDeferredIndex.class, AddSecondDeferredIndex.class));
+
     assertIndexExists("Product", "Product_Name_1");
   }
 
@@ -253,6 +246,28 @@ public class TestDeferredIndexLifecycle {
 
 
   // =========================================================================
+  // Force-build failure blocks upgrade
+  // =========================================================================
+
+  /** FAILED ops from a previous upgrade should block the force-build before a new upgrade. */
+  @Test
+  public void testUpgrade_failedOpsBlockForceBuild() {
+    performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
+    // Simulate a permanently failed operation
+    setOperationStatus("Product_Name_1", "FAILED");
+
+    // Second upgrade — force-build runs, builds nothing (no PENDING), but FAILED count > 0 → throws
+    try {
+      performUpgradeWithSteps(schemaWithBothIndexes(),
+          List.of(AddDeferredIndex.class, AddSecondDeferredIndex.class));
+      org.junit.Assert.fail("Expected IllegalStateException due to FAILED operations");
+    } catch (IllegalStateException e) {
+      assertTrue("Message should mention failed count", e.getMessage().contains("1"));
+    }
+  }
+
+
+  // =========================================================================
   // Two sequential upgrades
   // =========================================================================
 
@@ -276,39 +291,20 @@ public class TestDeferredIndexLifecycle {
   }
 
 
-  /** Two upgrades, first index not built — Mode 1 force-builds before second upgrade. */
+  /** Two upgrades, first index not built — force-built before second upgrade. */
   @Test
-  public void testTwoUpgrades_firstIndexNotBuilt_mode1() {
+  public void testTwoUpgrades_firstIndexNotBuilt_forceBuiltBeforeSecond() {
     // First upgrade — don't execute
     performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
     assertIndexDoesNotExist("Product", "Product_Name_1");
 
-    // Second upgrade (Mode 1) — readiness check should force-build first index
+    // Second upgrade — readiness check should force-build first index
     performUpgradeWithSteps(schemaWithBothIndexes(),
         List.of(AddDeferredIndex.class, AddSecondDeferredIndex.class));
     assertIndexExists("Product", "Product_Name_1");
 
     // Execute builds second index
     executeDeferred();
-    assertIndexExists("Product", "Product_IdName_1");
-  }
-
-
-  /** Two upgrades, first index not built — Mode 2 augments and builds both in background. */
-  @Test
-  public void testTwoUpgrades_firstIndexNotBuilt_mode2() {
-    // First upgrade — don't execute
-    performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
-    assertIndexDoesNotExist("Product", "Product_Name_1");
-
-    // Second upgrade (Mode 2) — schema augmented
-    upgradeConfigAndContext.setForceDeferredIndexBuildOnRestart(false);
-    performUpgradeWithSteps(schemaWithBothIndexes(),
-        List.of(AddDeferredIndex.class, AddSecondDeferredIndex.class));
-
-    // Execute builds both
-    executeDeferred();
-    assertIndexExists("Product", "Product_Name_1");
     assertIndexExists("Product", "Product_IdName_1");
   }
 

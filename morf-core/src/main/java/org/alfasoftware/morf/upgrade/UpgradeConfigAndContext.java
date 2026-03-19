@@ -59,15 +59,6 @@ public class UpgradeConfigAndContext {
   private Set<String> forceDeferredIndexes = Set.of();
 
 
-  /**
-   * Whether to force-build all pending deferred indexes on restart before
-   * proceeding with schema comparison. When {@code true} (Mode 1, default),
-   * the readiness check blocks until all deferred indexes are built. When
-   * {@code false} (Mode 2), deferred indexes are treated as present in the
-   * schema comparison and built in the background after startup.
-   */
-  private boolean forceDeferredIndexBuildOnRestart = true;
-
 
   /**
    * @see #exclusiveExecutionSteps
@@ -229,22 +220,6 @@ public class UpgradeConfigAndContext {
     return forceDeferredIndexes.contains(indexName.toLowerCase());
   }
 
-
-  /**
-   * @see #forceDeferredIndexBuildOnRestart
-   * @return true if deferred indexes should be force-built on restart (Mode 1)
-   */
-  public boolean isForceDeferredIndexBuildOnRestart() {
-    return forceDeferredIndexBuildOnRestart;
-  }
-
-
-  /**
-   * @see #forceDeferredIndexBuildOnRestart
-   */
-  public void setForceDeferredIndexBuildOnRestart(boolean forceDeferredIndexBuildOnRestart) {
-    this.forceDeferredIndexBuildOnRestart = forceDeferredIndexBuildOnRestart;
-  }
 
 
   private void validateNoIndexConflict() {

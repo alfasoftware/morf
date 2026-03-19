@@ -99,10 +99,11 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
 
     // Reset any crashed IN_PROGRESS operations from a previous run.
     // This is also called by DeferredIndexReadinessCheckImpl.forceBuildAllPending()
-    // (Mode 1) before findPendingOperations(), so in Mode 1 this is a harmless
-    // duplicate — the readiness check must reset first so its findPendingOperations()
-    // includes previously-crashed operations; the executor resets again here because
-    // in Mode 2 the readiness check does not run and the executor is the only caller.
+    // before findPendingOperations() when an upgrade is about to run, so during
+    // upgrades this is a harmless duplicate — the readiness check must reset first
+    // so its findPendingOperations() includes previously-crashed operations; the
+    // executor resets again here because on a no-upgrade restart the readiness
+    // check's forceBuildAllPending() is not called, and the executor is the only caller.
     dao.resetAllInProgressToPending();
 
     List<DeferredIndexOperation> pending = dao.findPendingOperations();
@@ -123,6 +124,7 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
     return CompletableFuture.allOf(futures)
         .whenComplete((v, t) -> {
           threadPool.shutdown();
+          threadPool = null;
           logProgress();
           log.info("Deferred index execution complete.");
         });

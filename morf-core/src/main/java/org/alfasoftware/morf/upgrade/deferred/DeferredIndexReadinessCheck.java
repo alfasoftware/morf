@@ -27,26 +27,23 @@ import com.google.inject.ImplementedBy;
  *
  * <p>This check is invoked during application startup by the upgrade
  * framework ({@link org.alfasoftware.morf.upgrade.Upgrade#findPath findPath})
- * for both the sequential and graph-based upgrade paths. It operates in
- * one of two modes:</p>
+xo * for both the sequential and graph-based upgrade paths:</p>
  *
  * <ul>
- *   <li><strong>Mode 1</strong> ({@code forceDeferredIndexBuildOnRestart = true},
- *       the default): invoked <em>before</em> the source schema is read.
- *       Force-builds all pending/stale operations synchronously, blocking
- *       startup until complete.</li>
- *   <li><strong>Mode 2</strong> ({@code forceDeferredIndexBuildOnRestart = false}):
- *       invoked <em>after</em> the source schema is read. Augments the schema
- *       with virtual indexes for non-terminal operations so the schema diff
- *       treats them as present. The actual indexes are built in the background
- *       after startup via {@link DeferredIndexService#execute()}.</li>
+ *   <li>{@link #augmentSchemaWithPendingIndexes(Schema)} is always called
+ *       after the source schema is read, to overlay virtual indexes for
+ *       non-terminal operations so the schema comparison treats them as
+ *       present.</li>
+ *   <li>{@link #forceBuildAllPending()} is called only when an upgrade
+ *       with new steps is about to run. It force-builds any pending or
+ *       stale operations from a previous upgrade synchronously, ensuring
+ *       the schema is clean before new changes are applied.</li>
  * </ul>
  *
- * <p><strong>Important:</strong> this check does <em>not</em> automatically
- * build deferred indexes queued by the current upgrade. After an upgrade
- * completes, adopters must explicitly invoke
- * {@link DeferredIndexService#execute()} to start background index builds.
- * If the adopter forgets, the next startup will catch it here (Mode 1).</p>
+ * <p>On a normal restart with no upgrade, pending deferred indexes are
+ * left for {@link DeferredIndexService#execute()} to build. After every
+ * upgrade, adopters must call {@link DeferredIndexService#execute()} to
+ * start building deferred indexes queued by the current upgrade.</p>
  *
  * @see DeferredIndexService
  * @author Copyright (c) Alfa Financial Software Limited. 2026
@@ -56,14 +53,14 @@ public interface DeferredIndexReadinessCheck {
 
   /**
    * Force-builds all pending deferred index operations from a previous
-   * run, blocking until complete (Mode 1).
+   * upgrade, blocking until complete.
    *
-   * <p>If the deferred index infrastructure table does not exist in the
-   * database (e.g. on the first upgrade that introduces the feature),
-   * this is a safe no-op. If pending operations are found, they are
-   * force-built synchronously (blocking the caller) before returning.
-   * Any stale IN_PROGRESS operations from a crashed process are also
-   * reset to PENDING and built.</p>
+   * <p>Called by the upgrade framework only when an upgrade with new
+   * steps is about to run. If the deferred index infrastructure table
+   * does not exist (e.g. on the first upgrade), this is a safe no-op.
+   * If pending operations are found, they are force-built synchronously
+   * before returning. Any stale IN_PROGRESS operations from a crashed
+   * process are also reset to PENDING and built.</p>
    *
    * @throws IllegalStateException if any operations failed permanently.
    */
@@ -72,11 +69,12 @@ public interface DeferredIndexReadinessCheck {
 
   /**
    * Augments the given source schema with virtual indexes from non-terminal
-   * deferred index operations (Mode 2).
+   * deferred index operations.
    *
-   * <p>For each PENDING, IN_PROGRESS, or FAILED operation, the corresponding
-   * index is added to the schema so that the schema comparison treats it as
-   * present. The actual index will be built in the background after startup.</p>
+   * <p>Always called after the source schema is read. For each PENDING,
+   * IN_PROGRESS, or FAILED operation, the corresponding index is added to
+   * the schema so that the schema comparison treats it as present. The
+   * actual index will be built by {@link DeferredIndexService#execute()}.</p>
    *
    * @param sourceSchema the current database schema before upgrade.
    * @return the augmented schema with deferred indexes included.
