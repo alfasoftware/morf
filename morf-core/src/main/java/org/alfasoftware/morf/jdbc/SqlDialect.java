@@ -4048,6 +4048,25 @@ public abstract class SqlDialect {
 
 
   /**
+   * Whether this dialect supports deferred index creation. When {@code true},
+   * {@link org.alfasoftware.morf.upgrade.SchemaEditor#addIndexDeferred} queues
+   * the index for background creation. When {@code false}, deferred requests
+   * are silently converted to immediate index creation, because the platform's
+   * {@code CREATE INDEX} blocks DML and deferring would move the lock from the
+   * upgrade window (when no traffic is flowing) to post-startup (when it is).
+   *
+   * <p>The default returns {@code false}. Dialects that support non-blocking
+   * DDL (e.g. PostgreSQL {@code CONCURRENTLY}, Oracle {@code ONLINE}) should
+   * override this to return {@code true}.</p>
+   *
+   * @return {@code true} if deferred index creation is beneficial on this platform.
+   */
+  public boolean supportsDeferredIndexCreation() {
+    return false;
+  }
+
+
+  /**
    * Generates the SQL to build a deferred index on an existing table. By default this
    * delegates to {@link #addIndexStatements(Table, Index)}, which issues a standard
    * {@code CREATE INDEX} statement. Platform-specific dialects may override this method

@@ -5012,6 +5012,25 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * @return Expected value for {@link SqlDialect#supportsDeferredIndexCreation()}.
+   *         Returns {@code false} by default. Subclasses for dialects that support
+   *         deferred creation (PostgreSQL, Oracle, H2) must override to return {@code true}.
+   */
+  protected boolean expectedSupportsDeferredIndexCreation() {
+    return false;
+  }
+
+
+  /**
+   * Test that supportsDeferredIndexCreation returns the expected value for this dialect.
+   */
+  @Test
+  public void testSupportsDeferredIndexCreation() {
+    assertEquals("supportsDeferredIndexCreation", expectedSupportsDeferredIndexCreation(), testDialect.supportsDeferredIndexCreation());
+  }
+
+
+  /**
    * @return Expected SQL for {@link #testDeferredAddIndexStatementsOnSingleColumn()}
    */
   protected List<String> expectedDeferredAddIndexStatementsOnSingleColumn() {

@@ -533,6 +533,30 @@ public class TestDeferredIndexIntegration {
   }
 
 
+  /**
+   * Verify that when the dialect does not support deferred index creation,
+   * addIndexDeferred() builds the index immediately and creates no PENDING row.
+   */
+  @Test
+  public void testUnsupportedDialectFallsBackToImmediateIndex() {
+    // Spy on dialect to return false for supportsDeferredIndexCreation
+    org.alfasoftware.morf.jdbc.SqlDialect realDialect = connectionResources.sqlDialect();
+    org.alfasoftware.morf.jdbc.SqlDialect spyDialect = org.mockito.Mockito.spy(realDialect);
+    org.mockito.Mockito.when(spyDialect.supportsDeferredIndexCreation()).thenReturn(false);
+
+    ConnectionResources spyConn = org.mockito.Mockito.spy(connectionResources);
+    org.mockito.Mockito.when(spyConn.sqlDialect()).thenReturn(spyDialect);
+
+    Upgrade.performUpgrade(schemaWithIndex(), Collections.singletonList(AddDeferredIndex.class),
+        spyConn, upgradeConfigAndContext, viewDeploymentValidator);
+
+    // Index should exist immediately — built during upgrade, not deferred
+    assertIndexExists("Product", "Product_Name_1");
+    // No deferred operation should have been queued
+    assertEquals("No deferred operations expected", 0, countOperations());
+  }
+
+
   private void performUpgrade(Schema targetSchema, Class<? extends UpgradeStep> upgradeStep) {
     Upgrade.performUpgrade(targetSchema, Collections.singletonList(upgradeStep),
         connectionResources, upgradeConfigAndContext, viewDeploymentValidator);

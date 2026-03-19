@@ -818,6 +818,15 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSupportsDeferredIndexCreation()
+   */
+  @Override
+  protected boolean expectedSupportsDeferredIndexCreation() {
+    return true;
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDeferredAddIndexStatementsOnSingleColumn()
    */
   @Override

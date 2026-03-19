@@ -84,6 +84,7 @@ public class TestInlineTableUpgrader {
     sqlStatementWriter = mock(SqlStatementWriter.class);
     upgradeConfigAndContext = new UpgradeConfigAndContext();
     upgradeConfigAndContext.setExclusiveExecutionSteps(Set.of());
+    when(sqlDialect.supportsDeferredIndexCreation()).thenReturn(true);
 
     upgrader = new InlineTableUpgrader(schema, upgradeConfigAndContext, sqlDialect, sqlStatementWriter, SqlDialect.IdTable.withDeterministicName(ID_TABLE_NAME));
   }
@@ -598,6 +599,39 @@ public class TestInlineTableUpgrader {
     assertThat(captured.get(1).toString(), containsString("col1"));
     assertThat(captured.get(2).toString(), containsString("DeferredIndexOperationColumn"));
     assertThat(captured.get(2).toString(), containsString("col2"));
+  }
+
+
+  /** When the dialect does not support deferred index creation, DeferredAddIndex should fall back to AddIndex. */
+  @Test
+  public void testVisitDeferredAddIndexFallsBackWhenDialectUnsupported() {
+    // given — dialect does not support deferred
+    when(sqlDialect.supportsDeferredIndexCreation()).thenReturn(false);
+
+    Table mockTable = mock(Table.class);
+    when(mockTable.getName()).thenReturn("TestTable");
+    when(schema.getTable("TestTable")).thenReturn(mockTable);
+    when(schema.tableExists("TestTable")).thenReturn(true);
+
+    Index mockIndex = mock(Index.class);
+    when(mockIndex.getName()).thenReturn("TestIdx");
+    when(mockIndex.isUnique()).thenReturn(false);
+    when(mockIndex.columnNames()).thenReturn(List.of("col1"));
+
+    DeferredAddIndex deferredAddIndex = mock(DeferredAddIndex.class);
+    when(deferredAddIndex.getTableName()).thenReturn("TestTable");
+    when(deferredAddIndex.getNewIndex()).thenReturn(mockIndex);
+
+    when(mockTable.indexes()).thenReturn(List.of());
+    when(mockTable.columns()).thenReturn(List.of());
+    when(sqlDialect.addIndexStatements(nullable(Table.class), nullable(Index.class))).thenReturn(List.of("CREATE INDEX TestIdx ON TestTable (col1)"));
+
+    // when
+    upgrader.visit(deferredAddIndex);
+
+    // then — should call addIndexStatements, not convertStatementToSQL for INSERT into DeferredIndexOperation
+    verify(sqlDialect).addIndexStatements(nullable(Table.class), nullable(Index.class));
+    verify(sqlDialect, never()).convertStatementToSQL(nullable(Statement.class), nullable(Schema.class), nullable(Table.class));
   }
 
 

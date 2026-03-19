@@ -228,6 +228,12 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
    */
   @Override
   public void visit(DeferredAddIndex deferredAddIndex) {
+    if (!sqlDialect.supportsDeferredIndexCreation()) {
+      // Dialect does not support deferred index creation — fall back to
+      // building the index immediately during the upgrade.
+      visit(new AddIndex(deferredAddIndex.getTableName(), deferredAddIndex.getNewIndex()));
+      return;
+    }
     currentSchema = deferredAddIndex.apply(currentSchema);
     deferredIndexChangeService.trackPending(deferredAddIndex).forEach(this::visitStatement);
   }

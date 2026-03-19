@@ -961,6 +961,15 @@ class OracleDialect extends SqlDialect {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#supportsDeferredIndexCreation()
+   */
+  @Override
+  public boolean supportsDeferredIndexCreation() {
+    return true;
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#deferredIndexDeploymentStatements(org.alfasoftware.morf.metadata.Table, org.alfasoftware.morf.metadata.Index)
    */
   @Override

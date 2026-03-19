@@ -81,6 +81,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     nodes.put(U1.class.getName(), n1);
     nodes.put(U2.class.getName(), n2);
     upgradeConfigAndContext = new UpgradeConfigAndContext();
+    when(sqlDialect.supportsDeferredIndexCreation()).thenReturn(true);
     visitor = new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable, nodes);
   }
 

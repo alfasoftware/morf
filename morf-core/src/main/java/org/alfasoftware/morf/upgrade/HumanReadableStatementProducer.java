@@ -163,7 +163,7 @@ public class HumanReadableStatementProducer {
       /** @see org.alfasoftware.morf.upgrade.SchemaEditor#addIndexDeferred(java.lang.String, org.alfasoftware.morf.metadata.Index) **/
       @Override
       public void addIndexDeferred(String tableName, Index index) {
-        consumer.schemaChange("Deferred: " + HumanReadableStatementHelper.generateAddIndexString(tableName, index));
+        consumer.schemaChange("Add index (deferred if supported): " + HumanReadableStatementHelper.generateAddIndexString(tableName, index));
       }
 
       /** @see org.alfasoftware.morf.upgrade.SchemaEditor#addTable(org.alfasoftware.morf.metadata.Table) **/
