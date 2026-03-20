@@ -236,9 +236,17 @@ public class Upgrade {
       }
     }
 
-    // Augment the source schema with deferred indexes that haven't been built yet.
-    // This ensures the schema comparison treats them as present without blocking.
-    sourceSchema = deferredIndexReadinessCheck.augmentSchemaWithPendingIndexes(sourceSchema);
+    // Load applied step UUIDs early so we can filter for augmentation
+    ExistingTableStateLoader existingTableState = new ExistingTableStateLoader(dataSource, dialect);
+    Set<java.util.UUID> appliedUUIDs = existingTableState.loadAppliedStepUUIDs();
+
+    // Augment the source schema with deferred indexes from already-applied steps
+    // that haven't been built yet. Only applied steps are included — new steps being
+    // applied in this upgrade must not pollute the source schema.
+    Collection<Class<? extends UpgradeStep>> appliedSteps = upgradeSteps.stream()
+        .filter(stepClass -> appliedUUIDs.contains(UpgradePathFinder.readUUID(stepClass)))
+        .collect(java.util.stream.Collectors.toList());
+    sourceSchema = deferredIndexReadinessCheck.augmentSchemaWithPendingIndexes(sourceSchema, appliedSteps);
 
     // -- Get the current UUIDs and deployed views...
     log.info("Examining current views");    //
@@ -249,8 +257,7 @@ public class Upgrade {
     // -- Determine if an upgrade path exists between the two schemas...
     //
     log.info("Searching for upgrade path from [" + sourceSchema + "] to [" + targetSchema + "]");
-    ExistingTableStateLoader existingTableState = new ExistingTableStateLoader(dataSource, dialect);
-    UpgradePathFinder pathFinder = new UpgradePathFinder(upgradeConfigAndContext, upgradeSteps, existingTableState.loadAppliedStepUUIDs());
+    UpgradePathFinder pathFinder = new UpgradePathFinder(upgradeConfigAndContext, upgradeSteps, appliedUUIDs);
     pathFinder.findDiscrepancies(getUpgradeAuditRecords());
 
     SchemaChangeSequence schemaChangeSequence;
@@ -282,7 +289,7 @@ public class Upgrade {
     // clean before applying new changes. On a no-upgrade restart, pending
     // indexes are left for DeferredIndexService.execute() to handle.
     if (!schemaChangeSequence.getUpgradeSteps().isEmpty()) {
-      deferredIndexReadinessCheck.forceBuildAllPending();
+      deferredIndexReadinessCheck.forceBuildAllPending(appliedSteps);
     }
 
     // -- Only run the upgrader if there are any steps to apply...

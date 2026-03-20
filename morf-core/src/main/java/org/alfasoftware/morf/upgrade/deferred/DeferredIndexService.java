@@ -15,7 +15,9 @@
 
 package org.alfasoftware.morf.upgrade.deferred;
 
-import java.util.Map;
+import java.util.Collection;
+
+import org.alfasoftware.morf.upgrade.UpgradeStep;
 
 import com.google.inject.ImplementedBy;
 
@@ -39,6 +41,7 @@ import com.google.inject.ImplementedBy;
  * upgrade.findPath(targetSchema, steps, exceptionRegexes, dataSource);
  *
  * // Then start building deferred indexes in the background:
+ * deferredIndexService.setUpgradeSteps(steps);
  * deferredIndexService.execute();
  *
  * // Optionally block until all indexes are built (or time out):
@@ -55,24 +58,35 @@ import com.google.inject.ImplementedBy;
 public interface DeferredIndexService {
 
   /**
-   * Recovers stale operations and starts building all pending deferred
-   * indexes asynchronously. Returns immediately.
+   * Sets the upgrade step classes used for replay-based discovery of
+   * deferred indexes. Must be called before {@link #execute()}.
+   *
+   * @param upgradeSteps all upgrade step classes.
+   */
+  void setUpgradeSteps(Collection<Class<? extends UpgradeStep>> upgradeSteps);
+
+
+  /**
+   * Discovers missing deferred indexes by replaying upgrade steps and
+   * starts building them asynchronously. Returns immediately.
    *
    * <p>Use {@link #awaitCompletion(long)} to block until all operations
    * reach a terminal state.</p>
+   *
+   * @throws IllegalStateException if upgrade steps have not been set.
    */
   void execute();
 
 
   /**
    * Blocks until all deferred index operations reach a terminal state
-   * ({@code COMPLETED} or {@code FAILED}), or until the timeout elapses.
+   * (built or permanently failed), or until the timeout elapses.
    *
    * <p>A value of zero means "wait indefinitely". This is acceptable here
    * because the caller explicitly opts in to blocking after startup.</p>
    *
    * @param timeoutSeconds maximum time to wait; zero means wait indefinitely.
-   * @return {@code true} if all operations reached a terminal state within the
+   * @return {@code true} if all operations completed within the
    *         timeout; {@code false} if the timeout elapsed first.
    * @throws IllegalStateException if called before {@link #execute()}.
    */
@@ -80,13 +94,12 @@ public interface DeferredIndexService {
 
 
   /**
-   * Returns the current count of deferred index operations grouped by status.
+   * Returns the current progress of deferred index execution.
    *
    * <p>Adopters can poll this method on their own schedule (e.g. from a
    * health endpoint or timer) to monitor progress.</p>
    *
-   * @return a map from each {@link DeferredIndexStatus} to its count;
-   *         statuses with no operations have a count of zero.
+   * @return current progress snapshot.
    */
-  Map<DeferredIndexStatus, Integer> getProgress();
+  DeferredIndexProgress getProgress();
 }

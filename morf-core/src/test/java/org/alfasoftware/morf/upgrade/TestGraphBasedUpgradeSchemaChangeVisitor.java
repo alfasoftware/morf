@@ -7,8 +7,6 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.BDDMockito.given;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -32,7 +30,6 @@ import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeSchemaChangeVisitor.GraphBasedUpgradeSchemaChangeVisitorFactory;
 import org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.junit.Before;
 import org.junit.Test;
@@ -333,9 +330,9 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
 
 
   /**
-   * ChangeIndex for a pending deferred index cancels the deferred operation
-   * (two DELETE statements via convertStatementToSQL) without calling indexDropStatements,
-   * then adds the new index via addIndexStatements.
+   * ChangeIndex for a pending deferred index replaces it in the tracker
+   * in-memory. No SQL statements are emitted — no DROP INDEX, no
+   * addIndexStatements, and no convertStatementToSQL.
    */
   @Test
   public void testChangeIndexCancelsPendingDeferredAdd() {
@@ -372,21 +369,17 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     // when
     visitor.visit(changeIndex);
 
-    // then — no DROP INDEX, no addIndexStatements; cancel (2 DELETEs) + re-defer (2 INSERTs)
+    // then — tracker handles it in-memory; no SQL emitted at all
     verify(sqlDialect, never()).indexDropStatements(ArgumentMatchers.any(), ArgumentMatchers.any());
     verify(sqlDialect, never()).addIndexStatements(ArgumentMatchers.any(), ArgumentMatchers.any());
-    ArgumentCaptor<Statement> stmtCaptor = ArgumentCaptor.forClass(Statement.class);
-    verify(sqlDialect, times(4)).convertStatementToSQL(stmtCaptor.capture(), eq(sourceSchema), eq(idTable));
-    assertThat(stmtCaptor.getAllValues().get(0).toString(), containsString("DeferredIndexOperationColumn"));
-    assertThat(stmtCaptor.getAllValues().get(1).toString(), containsString("DeferredIndexOperation"));
-    assertThat(stmtCaptor.getAllValues().get(2).toString(), containsString("DeferredIndexOperation"));
-    assertThat(stmtCaptor.getAllValues().get(3).toString(), containsString("DeferredIndexOperationColumn"));
+    verify(sqlDialect, never()).convertStatementToSQL(ArgumentMatchers.any(Statement.class), ArgumentMatchers.any(), ArgumentMatchers.any(Table.class));
+    verify(n1, never()).addAllUpgradeStatements(ArgumentMatchers.any());
   }
 
 
   /**
-   * RenameIndex for a pending deferred index updates the queued operation's index name
-   * (one UPDATE via convertStatementToSQL) without calling renameIndexStatements.
+   * RenameIndex for a pending deferred index updates the tracker in-memory.
+   * No SQL statements are emitted — no renameIndexStatements and no convertStatementToSQL.
    */
   @Test
   public void testRenameIndexUpdatesPendingDeferredAdd() {
@@ -416,12 +409,10 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     // when
     visitor.visit(renameIndex);
 
-    // then — no RENAME INDEX DDL, 1 UPDATE via convertStatementToSQL
+    // then — tracker handles it in-memory; no SQL emitted at all
     verify(sqlDialect, never()).renameIndexStatements(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any());
-    ArgumentCaptor<Statement> stmtCaptor = ArgumentCaptor.forClass(Statement.class);
-    verify(sqlDialect, times(1)).convertStatementToSQL(stmtCaptor.capture(), eq(sourceSchema), eq(idTable));
-    assertThat(stmtCaptor.getValue().toString(), containsString("DeferredIndexOperation"));
-    assertThat(stmtCaptor.getValue().toString(), containsString("NewIndex"));
+    verify(sqlDialect, never()).convertStatementToSQL(ArgumentMatchers.any(Statement.class), ArgumentMatchers.any(), ArgumentMatchers.any(Table.class));
+    verify(n1, never()).addAllUpgradeStatements(ArgumentMatchers.any());
   }
 
 

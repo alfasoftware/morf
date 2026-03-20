@@ -18,8 +18,6 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -565,8 +563,8 @@ public class TestInlineTableUpgrader {
 
 
   /**
-   * Tests that visit(DeferredAddIndex) applies the schema change and writes INSERT SQL for
-   * DeferredIndexOperation (one row) and DeferredIndexOperationColumn (one row per index column).
+   * Tests that visit(DeferredAddIndex) applies the schema change and tracks the index
+   * in-memory via the DeferredIndexTracker. No SQL statements are emitted.
    */
   @Test
   public void testVisitDeferredAddIndex() {
@@ -585,20 +583,10 @@ public class TestInlineTableUpgrader {
     // when
     upgrader.visit(deferredAddIndex);
 
-    // then
+    // then — schema applied, but no SQL emitted (tracker handles it in-memory)
     verify(deferredAddIndex).apply(schema);
-    // 1 INSERT for DeferredIndexOperation + 2 INSERTs for DeferredIndexOperationColumn (one per column)
-    ArgumentCaptor<Statement> stmtCaptor = ArgumentCaptor.forClass(Statement.class);
-    verify(sqlDialect, times(3)).convertStatementToSQL(stmtCaptor.capture(), nullable(Schema.class), nullable(Table.class));
-    verify(sqlStatementWriter, times(3)).writeSql(anyCollection());
-
-    List<Statement> captured = stmtCaptor.getAllValues();
-    assertThat(captured.get(0).toString(), containsString("DeferredIndexOperation"));
-    assertThat(captured.get(0).toString(), containsString("PENDING"));
-    assertThat(captured.get(1).toString(), containsString("DeferredIndexOperationColumn"));
-    assertThat(captured.get(1).toString(), containsString("col1"));
-    assertThat(captured.get(2).toString(), containsString("DeferredIndexOperationColumn"));
-    assertThat(captured.get(2).toString(), containsString("col2"));
+    verify(sqlDialect, never()).convertStatementToSQL(nullable(Statement.class), nullable(Schema.class), nullable(Table.class));
+    verify(sqlStatementWriter, never()).writeSql(anyCollection());
   }
 
 
@@ -636,9 +624,9 @@ public class TestInlineTableUpgrader {
 
 
   /**
-   * Tests that ChangeIndex for an index with a pending deferred ADD cancels the deferred
-   * operation (two DELETE statements) and then adds the new index immediately, without
-   * emitting a DROP INDEX DDL.
+   * Tests that ChangeIndex for an index with a pending deferred ADD replaces it in the
+   * tracker in-memory. No SQL is emitted — no DROP INDEX, no addIndexStatements,
+   * and no convertStatementToSQL.
    */
   @Test
   public void testChangeIndexCancelsPendingDeferredAddAndAddsNewIndex() {
@@ -674,22 +662,17 @@ public class TestInlineTableUpgrader {
     // when
     upgrader.visit(changeIndex);
 
-    // then — no DROP INDEX, no addIndexStatements; cancel (2 DELETEs) + re-defer (2 INSERTs)
+    // then — tracker handles it in-memory; no SQL emitted at all
     verify(sqlDialect, never()).indexDropStatements(ArgumentMatchers.any(), ArgumentMatchers.any());
     verify(sqlDialect, never()).addIndexStatements(ArgumentMatchers.any(), ArgumentMatchers.any());
-    ArgumentCaptor<Statement> stmtCaptor = ArgumentCaptor.forClass(Statement.class);
-    verify(sqlDialect, times(4)).convertStatementToSQL(stmtCaptor.capture(), nullable(Schema.class), nullable(Table.class));
-    List<Statement> stmts = stmtCaptor.getAllValues();
-    assertThat(stmts.get(0).toString(), containsString("DeferredIndexOperationColumn"));
-    assertThat(stmts.get(1).toString(), containsString("DeferredIndexOperation"));
-    assertThat(stmts.get(2).toString(), containsString("DeferredIndexOperation"));
-    assertThat(stmts.get(3).toString(), containsString("DeferredIndexOperationColumn"));
+    verify(sqlDialect, never()).convertStatementToSQL(nullable(Statement.class), nullable(Schema.class), nullable(Table.class));
+    verify(sqlStatementWriter, never()).writeSql(anyCollection());
   }
 
 
   /**
-   * Tests that RenameIndex for an index with a pending deferred ADD updates the deferred
-   * operation's index name (one UPDATE statement) instead of emitting RENAME INDEX DDL.
+   * Tests that RenameIndex for an index with a pending deferred ADD updates the tracker
+   * in-memory. No SQL is emitted — no RENAME INDEX DDL and no convertStatementToSQL.
    */
   @Test
   public void testRenameIndexUpdatesPendingDeferredAdd() {
@@ -718,18 +701,16 @@ public class TestInlineTableUpgrader {
     // when
     upgrader.visit(renameIndex);
 
-    // then — 1 UPDATE on DeferredIndexOperation, no RENAME INDEX DDL
+    // then — tracker handles it in-memory; no SQL emitted at all
     verify(sqlDialect, never()).renameIndexStatements(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any());
-    ArgumentCaptor<Statement> stmtCaptor = ArgumentCaptor.forClass(Statement.class);
-    verify(sqlDialect, times(1)).convertStatementToSQL(stmtCaptor.capture(), nullable(Schema.class), nullable(Table.class));
-    assertThat(stmtCaptor.getValue().toString(), containsString("DeferredIndexOperation"));
-    assertThat(stmtCaptor.getValue().toString(), containsString("RenamedIdx"));
+    verify(sqlDialect, never()).convertStatementToSQL(nullable(Statement.class), nullable(Schema.class), nullable(Table.class));
+    verify(sqlStatementWriter, never()).writeSql(anyCollection());
   }
 
 
   /**
-   * Tests that RemoveIndex for an index with a pending deferred ADD emits two DELETE statements
-   * (cancel the queued operation) instead of DROP INDEX DDL.
+   * Tests that RemoveIndex for an index with a pending deferred ADD cancels it in the
+   * tracker in-memory. No SQL is emitted — no DROP INDEX and no convertStatementToSQL.
    */
   @Test
   public void testRemoveIndexCancelsPendingDeferredAdd() {
@@ -757,14 +738,10 @@ public class TestInlineTableUpgrader {
     // when
     upgrader.visit(removeIndex);
 
-    // then — two DELETE statements emitted, no DROP INDEX
+    // then — tracker handles it in-memory; no SQL emitted at all
     verify(sqlDialect, never()).indexDropStatements(ArgumentMatchers.any(), ArgumentMatchers.any());
-    ArgumentCaptor<Statement> stmtCaptor = ArgumentCaptor.forClass(Statement.class);
-    verify(sqlDialect, times(2)).convertStatementToSQL(stmtCaptor.capture(), nullable(Schema.class), nullable(Table.class));
-    List<Statement> stmts = stmtCaptor.getAllValues();
-    assertThat(stmts.get(0).toString(), containsString("DeferredIndexOperationColumn"));
-    assertThat(stmts.get(1).toString(), containsString("DeferredIndexOperation"));
-    assertThat(stmts.get(1).toString(), containsString("TestIdx"));
+    verify(sqlDialect, never()).convertStatementToSQL(nullable(Statement.class), nullable(Schema.class), nullable(Table.class));
+    verify(sqlStatementWriter, never()).writeSql(anyCollection());
   }
 
 
@@ -793,8 +770,8 @@ public class TestInlineTableUpgrader {
 
 
   /**
-   * Tests that RemoveTable cancels all pending deferred indexes for that table before the DROP TABLE,
-   * emitting two DELETE statements.
+   * Tests that RemoveTable cancels all pending deferred indexes for that table in the
+   * tracker in-memory, then still emits the DROP TABLE DDL.
    */
   @Test
   public void testRemoveTableCancelsPendingDeferredIndexes() {
@@ -824,20 +801,15 @@ public class TestInlineTableUpgrader {
     // when
     upgrader.visit(removeTable);
 
-    // then — 2 DELETE + 1 DROP TABLE (via dropStatements)
-    ArgumentCaptor<Statement> stmtCaptor = ArgumentCaptor.forClass(Statement.class);
-    verify(sqlDialect, times(2)).convertStatementToSQL(stmtCaptor.capture(), nullable(Schema.class), nullable(Table.class));
-    List<Statement> stmts = stmtCaptor.getAllValues();
-    assertThat(stmts.get(0).toString(), containsString("DeferredIndexOperationColumn"));
-    assertThat(stmts.get(1).toString(), containsString("DeferredIndexOperation"));
-    assertThat(stmts.get(1).toString(), containsString("TestTable"));
+    // then — no deferred-index SQL emitted; only DROP TABLE DDL
+    verify(sqlDialect, never()).convertStatementToSQL(nullable(Statement.class), nullable(Schema.class), nullable(Table.class));
     verify(sqlDialect).dropStatements(mockTable);
   }
 
 
   /**
-   * Tests that RemoveColumn cancels pending deferred indexes that include that column,
-   * emitting two DELETE statements before the DROP COLUMN.
+   * Tests that RemoveColumn cancels pending deferred indexes that include that column
+   * in the tracker in-memory, then still emits the DROP COLUMN DDL.
    */
   @Test
   public void testRemoveColumnCancelsPendingDeferredIndexContainingColumn() {
@@ -870,19 +842,15 @@ public class TestInlineTableUpgrader {
     // when
     upgrader.visit(removeColumn);
 
-    // then — 2 DELETEs to cancel the deferred index + DROP COLUMN
-    ArgumentCaptor<Statement> stmtCaptor = ArgumentCaptor.forClass(Statement.class);
-    verify(sqlDialect, times(2)).convertStatementToSQL(stmtCaptor.capture(), nullable(Schema.class), nullable(Table.class));
-    List<Statement> stmts = stmtCaptor.getAllValues();
-    assertThat(stmts.get(0).toString(), containsString("DeferredIndexOperationColumn"));
-    assertThat(stmts.get(1).toString(), containsString("DeferredIndexOperation"));
-    assertThat(stmts.get(1).toString(), containsString("TestIdx"));
+    // then — no deferred-index SQL emitted; only DROP COLUMN DDL
+    verify(sqlDialect, never()).convertStatementToSQL(nullable(Statement.class), nullable(Schema.class), nullable(Table.class));
     verify(sqlDialect).alterTableDropColumnStatements(mockTable, mockColumn);
   }
 
 
   /**
-   * Tests that RenameTable emits an UPDATE on pending deferred index rows to reflect the new table name.
+   * Tests that RenameTable updates the pending deferred index table name in the tracker
+   * in-memory, then still emits the RENAME TABLE DDL.
    */
   @Test
   public void testRenameTableUpdatesPendingDeferredIndexTableName() {
@@ -915,19 +883,15 @@ public class TestInlineTableUpgrader {
     // when
     upgrader.visit(renameTable);
 
-    // then — 1 UPDATE on DeferredIndexOperation + RENAME TABLE DDL
-    ArgumentCaptor<Statement> stmtCaptor = ArgumentCaptor.forClass(Statement.class);
-    verify(sqlDialect, times(1)).convertStatementToSQL(stmtCaptor.capture(), nullable(Schema.class), nullable(Table.class));
-    assertThat(stmtCaptor.getValue().toString(), containsString("DeferredIndexOperation"));
-    assertThat(stmtCaptor.getValue().toString(), containsString("NewTable"));
-    assertThat(stmtCaptor.getValue().toString(), containsString("OldTable"));
+    // then — no deferred-index SQL emitted; only RENAME TABLE DDL
+    verify(sqlDialect, never()).convertStatementToSQL(nullable(Statement.class), nullable(Schema.class), nullable(Table.class));
     verify(sqlDialect).renameTableStatements(oldTable, newTable);
   }
 
 
   /**
-   * Tests that ChangeColumn with a column rename emits an UPDATE on pending deferred index
-   * column rows to reflect the new column name.
+   * Tests that ChangeColumn with a column rename updates the pending deferred index column
+   * name in the tracker in-memory, then still emits the ALTER TABLE DDL.
    */
   @Test
   public void testChangeColumnUpdatesPendingDeferredIndexColumnName() {
@@ -946,7 +910,7 @@ public class TestInlineTableUpgrader {
     upgrader.visit(deferredAddIndex);
     Mockito.clearInvocations(sqlDialect, sqlStatementWriter);
 
-    // given — rename column oldCol → newCol on TestTable
+    // given — rename column oldCol -> newCol on TestTable
     Column fromColumn = mock(Column.class);
     when(fromColumn.getName()).thenReturn("oldCol");
     Column toColumn = mock(Column.class);
@@ -963,12 +927,8 @@ public class TestInlineTableUpgrader {
     // when
     upgrader.visit(changeColumn);
 
-    // then — 1 UPDATE on DeferredIndexOperationColumn + ALTER TABLE DDL
-    ArgumentCaptor<Statement> stmtCaptor = ArgumentCaptor.forClass(Statement.class);
-    verify(sqlDialect, times(1)).convertStatementToSQL(stmtCaptor.capture(), nullable(Schema.class), nullable(Table.class));
-    assertThat(stmtCaptor.getValue().toString(), containsString("DeferredIndexOperationColumn"));
-    assertThat(stmtCaptor.getValue().toString(), containsString("newCol"));
-    assertThat(stmtCaptor.getValue().toString(), containsString("oldCol"));
+    // then — no deferred-index SQL emitted; only ALTER TABLE DDL
+    verify(sqlDialect, never()).convertStatementToSQL(nullable(Statement.class), nullable(Schema.class), nullable(Table.class));
     verify(sqlDialect).alterTableChangeColumnStatements(mockTable, fromColumn, toColumn);
   }
 

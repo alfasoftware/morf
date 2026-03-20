@@ -23,7 +23,10 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
@@ -40,11 +43,10 @@ import org.apache.commons.logging.LogFactory;
 /**
  * Default implementation of {@link DeferredIndexExecutor}.
  *
- * <p>Picks up pending operations, issues the appropriate
- * {@code CREATE INDEX} DDL via
- * {@link org.alfasoftware.morf.jdbc.SqlDialect#deferredIndexDeploymentStatements(Table, Index)}, and
- * marks each operation as {@link DeferredIndexStatus#COMPLETED} or
- * {@link DeferredIndexStatus#FAILED}.</p>
+ * <p>Receives a pre-computed list of {@link DeferredAddIndex} operations,
+ * issues the appropriate {@code CREATE INDEX} DDL via
+ * {@link org.alfasoftware.morf.jdbc.SqlDialect#deferredIndexDeploymentStatements(Table, Index)},
+ * and tracks progress with in-memory counters.</p>
  *
  * <p>Retry logic uses exponential back-off up to
  * {@link DeferredIndexExecutionConfig#getMaxRetries()} additional attempts after the
@@ -58,7 +60,6 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
 
   private static final Log log = LogFactory.getLog(DeferredIndexExecutorImpl.class);
 
-  private final DeferredIndexOperationDAO dao;
   private final ConnectionResources connectionResources;
   private final SqlScriptExecutorProvider sqlScriptExecutorProvider;
   private final DeferredIndexExecutionConfig config;
@@ -67,22 +68,28 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
   /** The worker thread pool; may be null if execution has not started. */
   private volatile ExecutorService threadPool;
 
+  /** In-memory progress counters, initialised per execute() call. */
+  private final AtomicInteger completedCount = new AtomicInteger();
+  private final AtomicInteger failedCount = new AtomicInteger();
+  private volatile int totalCount;
+
+  /** Per-operation in-memory retry counts keyed by "tableName/indexName". */
+  private final Map<String, AtomicInteger> retryCounts = new ConcurrentHashMap<>();
+
 
   /**
    * Constructs an executor using the supplied dependencies.
    *
-   * @param dao                      DAO for deferred index operations.
    * @param connectionResources      database connection resources.
    * @param sqlScriptExecutorProvider provider for SQL script executors.
    * @param config                   configuration controlling retry, thread-pool, and timeout behaviour.
    * @param executorServiceFactory   factory for creating the worker thread pool.
    */
   @Inject
-  DeferredIndexExecutorImpl(DeferredIndexOperationDAO dao, ConnectionResources connectionResources,
+  DeferredIndexExecutorImpl(ConnectionResources connectionResources,
                             SqlScriptExecutorProvider sqlScriptExecutorProvider,
                             DeferredIndexExecutionConfig config,
                             DeferredIndexExecutorServiceFactory executorServiceFactory) {
-    this.dao = dao;
     this.connectionResources = connectionResources;
     this.sqlScriptExecutorProvider = sqlScriptExecutorProvider;
     this.config = config;
@@ -91,35 +98,29 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
 
 
   /**
-   * @see org.alfasoftware.morf.upgrade.deferred.DeferredIndexExecutor#execute()
+   * @see org.alfasoftware.morf.upgrade.deferred.DeferredIndexExecutor#execute(List)
    */
   @Override
-  public CompletableFuture<Void> execute() {
+  public CompletableFuture<Void> execute(List<DeferredAddIndex> missingIndexes) {
     if (threadPool != null) {
       log.fatal("execute() called more than once on DeferredIndexExecutorImpl");
       throw new IllegalStateException("DeferredIndexExecutor.execute() has already been called");
     }
 
-    // Reset any crashed IN_PROGRESS operations from a previous run.
-    // This is also called by DeferredIndexReadinessCheckImpl.forceBuildAllPending()
-    // before findPendingOperations() when an upgrade is about to run, so during
-    // upgrades this is a harmless duplicate — the readiness check must reset first
-    // so its findPendingOperations() includes previously-crashed operations; the
-    // executor resets again here because on a no-upgrade restart the readiness
-    // check's forceBuildAllPending() is not called, and the executor is the only caller.
-    dao.resetAllInProgressToPending();
-
-    List<DeferredIndexOperation> pending = dao.findPendingOperations();
-
-    if (pending.isEmpty()) {
+    if (missingIndexes.isEmpty()) {
       return CompletableFuture.completedFuture(null);
     }
 
+    totalCount = missingIndexes.size();
+    completedCount.set(0);
+    failedCount.set(0);
+    retryCounts.clear();
+
     threadPool = executorServiceFactory.create(config.getThreadPoolSize());
 
-    CompletableFuture<?>[] futures = pending.stream()
-        .map(op -> CompletableFuture.runAsync(() -> {
-          executeWithRetry(op);
+    CompletableFuture<?>[] futures = missingIndexes.stream()
+        .map(dai -> CompletableFuture.runAsync(() -> {
+          executeWithRetry(dai);
           logProgress();
         }, threadPool))
         .toArray(CompletableFuture[]::new);
@@ -134,59 +135,90 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
   }
 
 
+  /**
+   * Returns the current completed count.
+   *
+   * @return number of indexes successfully built.
+   */
+  int getCompletedCount() {
+    return completedCount.get();
+  }
+
+
+  /**
+   * Returns the current failed count.
+   *
+   * @return number of indexes permanently failed.
+   */
+  int getFailedCount() {
+    return failedCount.get();
+  }
+
+
+  /**
+   * Returns the total count for the current execution.
+   *
+   * @return total number of indexes to build.
+   */
+  int getTotalCount() {
+    return totalCount;
+  }
+
+
   // -------------------------------------------------------------------------
   // Internal execution logic
   // -------------------------------------------------------------------------
 
   /**
-   * Attempts to build the index for a single operation, retrying with
+   * Attempts to build the index for a single deferred add index, retrying with
    * exponential back-off on failure up to {@link DeferredIndexExecutionConfig#getMaxRetries()}
-   * times. Updates the operation status in the database after each attempt.
+   * times. Tracks progress via in-memory counters.
    *
-   * @param op the deferred index operation to execute.
+   * @param dai the deferred add index operation to execute.
    */
-  private void executeWithRetry(DeferredIndexOperation op) {
+  private void executeWithRetry(DeferredAddIndex dai) {
     int maxAttempts = config.getMaxRetries() + 1;
+    String key = dai.getTableName() + "/" + dai.getNewIndex().getName();
+    AtomicInteger retryCounter = retryCounts.computeIfAbsent(key, k -> new AtomicInteger(0));
 
-    for (int attempt = op.getRetryCount(); attempt < maxAttempts; attempt++) {
-      log.info("Starting deferred index operation [" + op.getId() + "]: table=" + op.getTableName()
-          + ", index=" + op.getIndexName() + ", attempt=" + (attempt + 1) + "/" + maxAttempts);
+    for (int attempt = retryCounter.get(); attempt < maxAttempts; attempt++) {
+      log.info("Starting deferred index build: table=" + dai.getTableName()
+          + ", index=" + dai.getNewIndex().getName() + ", attempt=" + (attempt + 1) + "/" + maxAttempts);
       long startedTime = System.currentTimeMillis();
-      dao.markStarted(op.getId(), startedTime);
 
       try {
-        buildIndex(op);
+        buildIndex(dai);
         long elapsedSeconds = (System.currentTimeMillis() - startedTime) / 1000;
-        dao.markCompleted(op.getId(), System.currentTimeMillis());
-        log.info("Deferred index operation [" + op.getId() + "] completed in " + elapsedSeconds
-            + " s: table=" + op.getTableName() + ", index=" + op.getIndexName());
+        completedCount.incrementAndGet();
+        log.info("Deferred index build completed in " + elapsedSeconds
+            + " s: table=" + dai.getTableName() + ", index=" + dai.getNewIndex().getName());
         return;
 
       } catch (Exception e) {
         long elapsedSeconds = (System.currentTimeMillis() - startedTime) / 1000;
 
         // Post-failure check: if the index actually exists in the database
-        // (e.g. a previous crashed attempt completed the build), mark COMPLETED.
-        if (indexExistsInDatabase(op)) {
-          dao.markCompleted(op.getId(), System.currentTimeMillis());
-          log.info("Deferred index operation [" + op.getId() + "] failed but index exists in database"
-              + " — marking COMPLETED: table=" + op.getTableName() + ", index=" + op.getIndexName());
+        // (e.g. a previous crashed attempt completed the build), mark completed.
+        if (indexExistsInDatabase(dai)) {
+          completedCount.incrementAndGet();
+          log.info("Deferred index build failed but index exists in database"
+              + " — marking completed: table=" + dai.getTableName() + ", index=" + dai.getNewIndex().getName());
           return;
         }
 
         int newRetryCount = attempt + 1;
-        dao.markFailed(op.getId(), e.getMessage(), newRetryCount);
+        retryCounter.set(newRetryCount);
 
         if (newRetryCount < maxAttempts) {
-          log.error("Deferred index operation [" + op.getId() + "] failed after " + elapsedSeconds
+          log.error("Deferred index build failed after " + elapsedSeconds
               + " s (attempt " + newRetryCount + "/" + maxAttempts + "), will retry: table="
-              + op.getTableName() + ", index=" + op.getIndexName() + ", error=" + e.getMessage());
-          dao.resetToPending(op.getId());
+              + dai.getTableName() + ", index=" + dai.getNewIndex().getName() + ", error=" + e.getMessage());
           sleepForBackoff(attempt);
         } else {
-          log.error("Deferred index operation permanently failed after " + elapsedSeconds + " s ("
-              + newRetryCount + " attempt(s)): table=" + op.getTableName()
-              + ", index=" + op.getIndexName(), e);
+          failedCount.incrementAndGet();
+          log.error("Deferred index build permanently failed after " + elapsedSeconds + " s ("
+              + newRetryCount + " attempt(s)): table=" + dai.getTableName()
+              + ", index=" + dai.getNewIndex().getName(), e);
         }
       }
     }
@@ -198,18 +230,13 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
    * autocommit connection. Autocommit is required for PostgreSQL's
    * {@code CREATE INDEX CONCURRENTLY}.
    *
-   * @param op the deferred index operation containing table and index metadata.
+   * @param dai the deferred add index containing table and index metadata.
    */
-  private void buildIndex(DeferredIndexOperation op) {
-    Index index = op.toIndex();
-    Table table = table(op.getTableName());
+  private void buildIndex(DeferredAddIndex dai) {
+    Index index = dai.getNewIndex();
+    Table table = table(dai.getTableName());
     Collection<String> statements = connectionResources.sqlDialect().deferredIndexDeploymentStatements(table, index);
 
-    // Execute with autocommit enabled rather than inside a transaction.
-    // Some platforms require this — notably PostgreSQL's CREATE INDEX
-    // CONCURRENTLY, which cannot run inside a transaction block. Using a
-    // dedicated autocommit connection is harmless for platforms that do
-    // not have this restriction (Oracle, MySQL, H2, SQL Server).
     try (Connection connection = connectionResources.getDataSource().getConnection()) {
       boolean wasAutoCommit = connection.getAutoCommit();
       try {
@@ -219,27 +246,25 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
         connection.setAutoCommit(wasAutoCommit);
       }
     } catch (SQLException e) {
-      throw new RuntimeSqlException("Error building deferred index " + op.getIndexName(), e);
+      throw new RuntimeSqlException("Error building deferred index " + dai.getNewIndex().getName(), e);
     }
   }
 
 
   /**
    * Checks whether the index described by the operation exists in the live
-   * database schema. Used for post-failure recovery: if CREATE INDEX fails
-   * but the index was actually built (e.g. from a previous crashed attempt),
-   * the operation can be marked COMPLETED.
+   * database schema. Used for post-failure recovery.
    *
-   * @param op the operation to check.
+   * @param dai the operation to check.
    * @return {@code true} if the index exists.
    */
-  private boolean indexExistsInDatabase(DeferredIndexOperation op) {
+  private boolean indexExistsInDatabase(DeferredAddIndex dai) {
     try (SchemaResource sr = connectionResources.openSchemaResource()) {
-      if (!sr.tableExists(op.getTableName())) {
+      if (!sr.tableExists(dai.getTableName())) {
         return false;
       }
-      return sr.getTable(op.getTableName()).indexes().stream()
-          .anyMatch(idx -> idx.getName().equalsIgnoreCase(op.getIndexName()));
+      return sr.getTable(dai.getTableName()).indexes().stream()
+          .anyMatch(idx -> idx.getName().equalsIgnoreCase(dai.getNewIndex().getName()));
     }
   }
 
@@ -261,16 +286,16 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
 
 
   /**
-   * Queries the database for current operation counts by status and logs
-   * them at INFO level.
+   * Logs current progress at INFO level.
    */
   void logProgress() {
-    Map<DeferredIndexStatus, Integer> counts = dao.countAllByStatus();
+    int completed = completedCount.get();
+    int failed = failedCount.get();
+    int remaining = totalCount - completed - failed;
 
-    log.info("Deferred index progress: completed=" + counts.get(DeferredIndexStatus.COMPLETED)
-        + ", in-progress=" + counts.get(DeferredIndexStatus.IN_PROGRESS)
-        + ", pending=" + counts.get(DeferredIndexStatus.PENDING)
-        + ", failed=" + counts.get(DeferredIndexStatus.FAILED));
+    log.info("Deferred index progress: completed=" + completed
+        + ", failed=" + failed
+        + ", remaining=" + remaining
+        + ", total=" + totalCount);
   }
-
 }

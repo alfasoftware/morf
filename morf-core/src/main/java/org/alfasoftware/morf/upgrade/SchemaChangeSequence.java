@@ -37,6 +37,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex;
+import org.alfasoftware.morf.upgrade.deferred.DeferredIndexTracker;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -224,6 +225,57 @@ public class SchemaChangeSequence {
     return allChanges.stream()
         .flatMap(u -> u.getChanges().stream())
         .collect(toList());
+  }
+
+
+  /**
+   * Walks all raw changes with a {@link DeferredIndexTracker} to find
+   * deferred indexes that survive cascading schema changes (remove, rename,
+   * changeIndex, removeTable, removeColumn, changeColumn, renameTable).
+   *
+   * <p>This creates its own tracker instance — it does not share state with
+   * the tracker used in {@link AbstractSchemaChangeVisitor} during upgrade
+   * execution.</p>
+   *
+   * @return surviving {@link DeferredAddIndex} instances after cascade resolution.
+   */
+  public List<DeferredAddIndex> findSurvivingDeferredIndexes() {
+    DeferredIndexTracker tracker = new DeferredIndexTracker();
+    for (UpgradeStepWithChanges changesForStep : allChanges) {
+      for (SchemaChange change : changesForStep.getChanges()) {
+        if (change instanceof DeferredAddIndex) {
+          tracker.trackPending((DeferredAddIndex) change);
+        } else if (change instanceof RemoveIndex) {
+          RemoveIndex ri = (RemoveIndex) change;
+          tracker.cancelPending(ri.getTableName(), ri.getIndexToBeRemoved().getName());
+        } else if (change instanceof RemoveTable) {
+          RemoveTable rt = (RemoveTable) change;
+          tracker.cancelAllPendingForTable(rt.getTable().getName());
+        } else if (change instanceof RemoveColumn) {
+          RemoveColumn rc = (RemoveColumn) change;
+          tracker.cancelPendingReferencingColumn(rc.getTableName(), rc.getColumnDefinition().getName());
+        } else if (change instanceof ChangeColumn) {
+          ChangeColumn cc = (ChangeColumn) change;
+          tracker.updatePendingColumnName(cc.getTableName(), cc.getFromColumn().getName(), cc.getToColumn().getName());
+        } else if (change instanceof RenameTable) {
+          RenameTable rt = (RenameTable) change;
+          tracker.updatePendingTableName(rt.getOldTableName(), rt.getNewTableName());
+        } else if (change instanceof RenameIndex) {
+          RenameIndex ri = (RenameIndex) change;
+          tracker.updatePendingIndexName(ri.getTableName(), ri.getFromIndexName(), ri.getToIndexName());
+        } else if (change instanceof ChangeIndex) {
+          ChangeIndex ci = (ChangeIndex) change;
+          if (tracker.hasPendingDeferred(ci.getTableName(), ci.getFromIndex().getName())) {
+            java.util.Optional<DeferredAddIndex> existing = tracker.getPendingDeferred(ci.getTableName(), ci.getFromIndex().getName());
+            tracker.cancelPending(ci.getTableName(), ci.getFromIndex().getName());
+            if (existing.isPresent()) {
+              tracker.trackPending(new DeferredAddIndex(existing.get().getTableName(), ci.getToIndex(), existing.get().getUpgradeUUID()));
+            }
+          }
+        }
+      }
+    }
+    return tracker.getSurvivingDeferredIndexes();
   }
 
 

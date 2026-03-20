@@ -19,21 +19,17 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
-import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.insert;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
-import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.sql.SqlUtils.update;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deferredIndexOperationColumnTable;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deferredIndexOperationTable;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deployedViewsTable;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.upgradeAuditTable;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -47,21 +43,16 @@ import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager.TruncationBehavior;
 import org.alfasoftware.morf.testing.TestingDataSourceModule;
+import org.alfasoftware.morf.upgrade.DataEditor;
+import org.alfasoftware.morf.upgrade.SchemaChangeSequence;
+import org.alfasoftware.morf.upgrade.SchemaEditor;
+import org.alfasoftware.morf.upgrade.Sequence;
+import org.alfasoftware.morf.upgrade.UUID;
 import org.alfasoftware.morf.upgrade.Upgrade;
 import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
+import org.alfasoftware.morf.upgrade.Version;
 import org.alfasoftware.morf.upgrade.ViewDeploymentValidator;
-import org.alfasoftware.morf.upgrade.upgrade.CreateDeferredIndexOperationTables;
-import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredIndex;
-import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddImmediateIndex;
-import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredIndexThenChange;
-import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredIndexThenRemove;
-import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredIndexThenRename;
-import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredIndexThenRenameColumnThenRemove;
-import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredMultiColumnIndex;
-import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredUniqueIndex;
-import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddTableWithDeferredIndex;
-import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddTwoDeferredIndexes;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -73,9 +64,9 @@ import com.google.inject.Inject;
 import net.jcip.annotations.NotThreadSafe;
 
 /**
- * End-to-end integration tests for the deferred index lifecycle (Stage 12).
- * Exercises the full upgrade framework path: upgrade step execution,
- * deferred operation queueing, executor completion, and schema verification.
+ * End-to-end integration tests for the deferred index mechanism. Exercises the
+ * full {@link Upgrade#performUpgrade} pipeline, replay-based discovery via
+ * {@link SchemaChangeSequence#findSurvivingDeferredIndexes()}, and the executor.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -90,13 +81,11 @@ public class TestDeferredIndexIntegration {
   @Inject private SqlScriptExecutorProvider sqlScriptExecutorProvider;
   @Inject private ViewDeploymentValidator viewDeploymentValidator;
 
-  private final UpgradeConfigAndContext upgradeConfigAndContext = new UpgradeConfigAndContext();
+  private UpgradeConfigAndContext upgradeConfigAndContext;
 
   private static final Schema INITIAL_SCHEMA = schema(
       deployedViewsTable(),
       upgradeAuditTable(),
-      deferredIndexOperationTable(),
-      deferredIndexOperationColumnTable(),
       table("Product").columns(
           column("id", DataType.BIG_INTEGER).primaryKey(),
           column("name", DataType.STRING, 100)
@@ -109,6 +98,7 @@ public class TestDeferredIndexIntegration {
   public void setUp() {
     schemaManager.dropAllTables();
     schemaManager.mutateToSupportSchema(INITIAL_SCHEMA, TruncationBehavior.ALWAYS);
+    upgradeConfigAndContext = new UpgradeConfigAndContext();
   }
 
 
@@ -119,208 +109,328 @@ public class TestDeferredIndexIntegration {
   }
 
 
-  /**
-   * Verify that running an upgrade step with addIndexDeferred() inserts
-   * a PENDING row into the DeferredIndexOperation table.
-   */
-  @Test
-  public void testDeferredAddCreatesPendingRow() {
-    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+  // =========================================================================
+  // Inner upgrade step classes
+  // =========================================================================
 
-    assertEquals("PENDING", queryOperationStatus("Product_Name_1"));
-    assertEquals("Row count", 1, countOperations());
+  /** Adds a deferred index on Product.name. */
+  @Sequence(90001)
+  @UUID("d1f00001-0001-0001-0001-000000000001")
+  @Version("1.0.0")
+  public static class StepAddDeferredIndex implements UpgradeStep {
+    @Override
+    public void execute(SchemaEditor schema, DataEditor data) {
+      schema.addIndexDeferred("Product", index("Product_Name_1").columns("name"));
+    }
+
+    @Override public String getJiraId() { return "DEFERRED-000"; }
+    @Override public String getDescription() { return "Add deferred index"; }
   }
 
 
-  /**
-   * Verify that running the executor after the upgrade step completes
-   * the build, marks the row COMPLETED, and the index exists in the schema.
-   */
-  @Test
-  public void testExecutorCompletesAndIndexExistsInSchema() {
-    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+  /** Adds a deferred index then removes it in the same step. */
+  @Sequence(90002)
+  @UUID("d1f00001-0001-0001-0001-000000000002")
+  @Version("1.0.0")
+  public static class StepAddDeferredThenRemove implements UpgradeStep {
+    @Override
+    public void execute(SchemaEditor schema, DataEditor data) {
+      schema.addIndexDeferred("Product", index("Product_Name_1").columns("name"));
+      schema.removeIndex("Product", index("Product_Name_1").columns("name"));
+    }
 
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
-    config.setRetryBaseDelayMs(10L);
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
-    executor.execute().join();
-
-    assertEquals("COMPLETED", queryOperationStatus("Product_Name_1"));
-    assertIndexExists("Product", "Product_Name_1");
+    @Override public String getJiraId() { return "DEFERRED-000"; }
+    @Override public String getDescription() { return "Add deferred then remove"; }
   }
 
 
-  /**
-   * Verify that addIndexDeferred() followed immediately by removeIndex()
-   * in the same step auto-cancels the deferred operation.
-   */
-  @Test
-  public void testAutoCancelDeferredAddFollowedByRemove() {
-    Schema targetSchema = schema(INITIAL_SCHEMA);
-    performUpgrade(targetSchema, AddDeferredIndexThenRemove.class);
+  /** Defers an index then immediately changes it. */
+  @Sequence(90009)
+  @UUID("d1f00001-0001-0001-0001-000000000009")
+  @Version("1.0.0")
+  public static class StepAddDeferredThenChange implements UpgradeStep {
+    @Override
+    public void execute(SchemaEditor schema, DataEditor data) {
+      schema.addIndexDeferred("Product", index("Product_Name_1").columns("name"));
+      schema.changeIndex("Product", index("Product_Name_1").columns("name"),
+          index("Product_Name_2").columns("name"));
+    }
 
-    assertEquals("No deferred operations should remain", 0, countOperations());
+    @Override public String getJiraId() { return "DEFERRED-000"; }
+    @Override public String getDescription() { return "Add deferred then change"; }
+  }
+
+
+  /** Defers an index then immediately renames it. */
+  @Sequence(90010)
+  @UUID("d1f00001-0001-0001-0001-000000000010")
+  @Version("1.0.0")
+  public static class StepAddDeferredThenRename implements UpgradeStep {
+    @Override
+    public void execute(SchemaEditor schema, DataEditor data) {
+      schema.addIndexDeferred("Product", index("Product_Name_1").columns("name"));
+      schema.renameIndex("Product", "Product_Name_1", "Product_Name_Renamed");
+    }
+
+    @Override public String getJiraId() { return "DEFERRED-000"; }
+    @Override public String getDescription() { return "Add deferred then rename"; }
+  }
+
+
+  /** Defers index on description, renames column, then removes index. */
+  @Sequence(90011)
+  @UUID("d1f00001-0001-0001-0001-000000000011")
+  @Version("1.0.0")
+  public static class StepAddDeferredThenRenameColumnThenRemove implements UpgradeStep {
+    @Override
+    public void execute(SchemaEditor schema, DataEditor data) {
+      schema.addColumn("Product", column("description", DataType.STRING, 200).nullable());
+      schema.addIndexDeferred("Product", index("Product_Desc_1").columns("description"));
+      schema.changeColumn("Product",
+          column("description", DataType.STRING, 200).nullable(),
+          column("summary", DataType.STRING, 200).nullable());
+      schema.removeIndex("Product", index("Product_Desc_1").columns("summary"));
+      schema.removeColumn("Product", column("summary", DataType.STRING, 200).nullable());
+    }
+
+    @Override public String getJiraId() { return "DEFERRED-000"; }
+    @Override public String getDescription() { return "Add deferred, rename col, remove"; }
+  }
+
+
+  /** Adds a deferred unique index on Product.name. */
+  @Sequence(90005)
+  @UUID("d1f00001-0001-0001-0001-000000000005")
+  @Version("1.0.0")
+  public static class StepAddDeferredUniqueIndex implements UpgradeStep {
+    @Override
+    public void execute(SchemaEditor schema, DataEditor data) {
+      schema.addIndexDeferred("Product", index("Product_Name_UQ").unique().columns("name"));
+    }
+
+    @Override public String getJiraId() { return "DEFERRED-000"; }
+    @Override public String getDescription() { return "Add deferred unique index"; }
+  }
+
+
+  /** Adds a deferred multi-column index on Product(id, name). */
+  @Sequence(90006)
+  @UUID("d1f00001-0001-0001-0001-000000000006")
+  @Version("1.0.0")
+  public static class StepAddDeferredMultiColumnIndex implements UpgradeStep {
+    @Override
+    public void execute(SchemaEditor schema, DataEditor data) {
+      schema.addIndexDeferred("Product", index("Product_IdName_1").columns("id", "name"));
+    }
+
+    @Override public String getJiraId() { return "DEFERRED-000"; }
+    @Override public String getDescription() { return "Add deferred multi-column index"; }
+  }
+
+
+  /** Creates a new table and immediately defers an index on it. */
+  @Sequence(90007)
+  @UUID("d1f00001-0001-0001-0001-000000000007")
+  @Version("1.0.0")
+  public static class StepAddTableWithDeferredIndex implements UpgradeStep {
+    @Override
+    public void execute(SchemaEditor schema, DataEditor data) {
+      schema.addTable(table("Category").columns(
+          column("id", DataType.BIG_INTEGER).primaryKey(),
+          column("label", DataType.STRING, 50)
+      ));
+      schema.addIndexDeferred("Category", index("Category_Label_1").columns("label"));
+    }
+
+    @Override public String getJiraId() { return "DEFERRED-000"; }
+    @Override public String getDescription() { return "Add table with deferred index"; }
+  }
+
+
+  /** Defers two indexes on Product in a single upgrade step. */
+  @Sequence(90008)
+  @UUID("d1f00001-0001-0001-0001-000000000008")
+  @Version("1.0.0")
+  public static class StepAddTwoDeferredIndexes implements UpgradeStep {
+    @Override
+    public void execute(SchemaEditor schema, DataEditor data) {
+      schema.addIndexDeferred("Product", index("Product_Name_1").columns("name"));
+      schema.addIndexDeferred("Product", index("Product_IdName_1").columns("id", "name"));
+    }
+
+    @Override public String getJiraId() { return "DEFERRED-000"; }
+    @Override public String getDescription() { return "Add two deferred indexes"; }
+  }
+
+
+  /** Adds an immediate (non-deferred) index on Product.name. */
+  @Sequence(90012)
+  @UUID("d1f00001-0001-0001-0001-000000000012")
+  @Version("1.0.0")
+  public static class StepAddImmediateIndex implements UpgradeStep {
+    @Override
+    public void execute(SchemaEditor schema, DataEditor data) {
+      schema.addIndex("Product", index("Product_Name_1").columns("name"));
+    }
+
+    @Override public String getJiraId() { return "DEFERRED-000"; }
+    @Override public String getDescription() { return "Add immediate index"; }
+  }
+
+
+  // =========================================================================
+  // Tests: deferred index NOT built during upgrade
+  // =========================================================================
+
+  /** Deferred index is not built in the DB immediately after upgrade. */
+  @Test
+  public void testDeferredAddDoesNotBuildIndexImmediately() {
+    performUpgrade(schemaWithIndex("Product_Name_1", "name"), StepAddDeferredIndex.class);
     assertIndexDoesNotExist("Product", "Product_Name_1");
   }
 
 
-  /**
-   * Verify that addIndexDeferred() followed by changeIndex() in the same
-   * step cancels the deferred operation and creates the new index immediately.
-   */
+  /** Replay discovers the deferred index, executor builds it. */
+  @Test
+  public void testExecutorCompletesAndIndexExistsInSchema() {
+    performUpgrade(schemaWithIndex("Product_Name_1", "name"), StepAddDeferredIndex.class);
+    assertIndexDoesNotExist("Product", "Product_Name_1");
+
+    List<DeferredAddIndex> missing = findMissing(StepAddDeferredIndex.class);
+    assertEquals("Should find 1 missing deferred index", 1, missing.size());
+
+    executeDeferred(missing);
+    assertIndexExists("Product", "Product_Name_1");
+  }
+
+
+  // =========================================================================
+  // Tests: cascade resolution via replay
+  // =========================================================================
+
+  /** addIndexDeferred followed by removeIndex leaves no surviving deferred indexes. */
+  @Test
+  public void testAutoCancelDeferredAddFollowedByRemove() {
+    performUpgrade(INITIAL_SCHEMA, StepAddDeferredThenRemove.class);
+    List<DeferredAddIndex> surviving = replaySurviving(StepAddDeferredThenRemove.class);
+    assertEquals("No surviving deferred indexes after add+remove", 0, surviving.size());
+    assertIndexDoesNotExist("Product", "Product_Name_1");
+  }
+
+
+  /** addIndexDeferred followed by changeIndex cascades correctly: old cancelled, new deferred. */
   @Test
   public void testDeferredAddFollowedByChangeIndex() {
-    Schema targetSchema = schema(
+    Schema target = schema(
         deployedViewsTable(), upgradeAuditTable(),
-        deferredIndexOperationTable(), deferredIndexOperationColumnTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
             column("name", DataType.STRING, 100)
         ).indexes(index("Product_Name_2").columns("name"))
     );
-    performUpgrade(targetSchema, AddDeferredIndexThenChange.class);
+    performUpgrade(target, StepAddDeferredThenChange.class);
 
-    assertEquals("No deferred operations should remain", 0, countOperations());
+    List<DeferredAddIndex> surviving = replaySurviving(StepAddDeferredThenChange.class);
+    assertEquals("One surviving deferred index after change", 1, surviving.size());
+    assertEquals("Product_Name_2", surviving.get(0).getNewIndex().getName());
     assertIndexDoesNotExist("Product", "Product_Name_1");
+    // Product_Name_2 is deferred — not built yet
+    assertIndexDoesNotExist("Product", "Product_Name_2");
+
+    executeDeferred(findMissing(StepAddDeferredThenChange.class));
     assertIndexExists("Product", "Product_Name_2");
   }
 
 
-  /**
-   * Verify that addIndexDeferred() followed by renameIndex() in the same
-   * step updates the deferred operation's index name in the queue.
-   */
+  /** addIndexDeferred followed by renameIndex yields the renamed index via replay. */
   @Test
   public void testDeferredAddFollowedByRenameIndex() {
-    Schema targetSchema = schema(
+    Schema target = schema(
         deployedViewsTable(), upgradeAuditTable(),
-        deferredIndexOperationTable(), deferredIndexOperationColumnTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
             column("name", DataType.STRING, 100)
         ).indexes(index("Product_Name_Renamed").columns("name"))
     );
-    performUpgrade(targetSchema, AddDeferredIndexThenRename.class);
+    performUpgrade(target, StepAddDeferredThenRename.class);
 
-    assertEquals("PENDING", queryOperationStatus("Product_Name_Renamed"));
-    assertEquals("Row count", 1, countOperations());
+    List<DeferredAddIndex> surviving = replaySurviving(StepAddDeferredThenRename.class);
+    assertEquals(1, surviving.size());
+    assertEquals("Product_Name_Renamed", surviving.get(0).getNewIndex().getName());
 
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
-    config.setRetryBaseDelayMs(10L);
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
-    executor.execute().join();
-
-    assertEquals("COMPLETED", queryOperationStatus("Product_Name_Renamed"));
+    executeDeferred(findMissing(StepAddDeferredThenRename.class));
     assertIndexExists("Product", "Product_Name_Renamed");
   }
 
 
-  /**
-   * Verify that addIndexDeferred() followed by changeColumn() (rename) and
-   * then removeColumn() by the new name cancels the deferred operation, even
-   * though the column name changed between deferral and removal.
-   */
+  /** Cascade through column rename then remove cancels the deferred index. */
   @Test
   public void testDeferredAddFollowedByRenameColumnThenRemove() {
-    // Initial schema has an extra "description" column for this test
-    Schema initialWithDesc = schema(
-        deployedViewsTable(), upgradeAuditTable(),
-        deferredIndexOperationTable(), deferredIndexOperationColumnTable(),
-        table("Product").columns(
-            column("id", DataType.BIG_INTEGER).primaryKey(),
-            column("name", DataType.STRING, 100),
-            column("description", DataType.STRING, 200)
-        )
-    );
-    schemaManager.mutateToSupportSchema(initialWithDesc, TruncationBehavior.ALWAYS);
+    performUpgrade(INITIAL_SCHEMA, StepAddDeferredThenRenameColumnThenRemove.class);
 
-    // After the step: description renamed to summary then removed; index cancelled
-    Schema targetSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(),
-        deferredIndexOperationTable(), deferredIndexOperationColumnTable(),
-        table("Product").columns(
-            column("id", DataType.BIG_INTEGER).primaryKey(),
-            column("name", DataType.STRING, 100)
-        )
-    );
-    performUpgrade(targetSchema, AddDeferredIndexThenRenameColumnThenRemove.class);
-
-    assertEquals("Deferred operation should be cancelled", 0, countOperations());
+    List<DeferredAddIndex> surviving = replaySurviving(StepAddDeferredThenRenameColumnThenRemove.class);
+    assertEquals("Deferred operation should be cancelled", 0, surviving.size());
   }
 
 
-  /**
-   * Verify that a deferred unique index is built correctly with
-   * the unique constraint preserved through the full pipeline.
-   */
+  // =========================================================================
+  // Tests: unique, multi-column, new table, populated table, multiple indexes
+  // =========================================================================
+
+  /** Deferred unique index preserves the unique constraint through the full pipeline. */
   @Test
   public void testDeferredUniqueIndex() {
-    Schema targetSchema = schema(
+    Schema target = schema(
         deployedViewsTable(), upgradeAuditTable(),
-        deferredIndexOperationTable(), deferredIndexOperationColumnTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
             column("name", DataType.STRING, 100)
         ).indexes(index("Product_Name_UQ").unique().columns("name"))
     );
-    performUpgrade(targetSchema, AddDeferredUniqueIndex.class);
+    performUpgrade(target, StepAddDeferredUniqueIndex.class);
 
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
-    config.setRetryBaseDelayMs(10L);
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
-    executor.execute().join();
+    List<DeferredAddIndex> missing = findMissing(StepAddDeferredUniqueIndex.class);
+    assertEquals(1, missing.size());
+    assertTrue("Index should be unique", missing.get(0).getNewIndex().isUnique());
 
-    assertIndexExists("Product", "Product_Name_UQ");
+    executeDeferred(missing);
     try (SchemaResource sr = connectionResources.openSchemaResource()) {
-      assertTrue("Index should be unique",
+      assertTrue("Index should be unique in database",
           sr.getTable("Product").indexes().stream()
               .filter(idx -> "Product_Name_UQ".equalsIgnoreCase(idx.getName()))
-              .findFirst().get().isUnique());
+              .findFirst().orElseThrow().isUnique());
     }
   }
 
 
-  /**
-   * Verify that a deferred multi-column index preserves column ordering
-   * through the full pipeline.
-   */
+  /** Deferred multi-column index preserves column ordering. */
   @Test
   public void testDeferredMultiColumnIndex() {
-    Schema targetSchema = schema(
+    Schema target = schema(
         deployedViewsTable(), upgradeAuditTable(),
-        deferredIndexOperationTable(), deferredIndexOperationColumnTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
             column("name", DataType.STRING, 100)
         ).indexes(index("Product_IdName_1").columns("id", "name"))
     );
-    performUpgrade(targetSchema, AddDeferredMultiColumnIndex.class);
+    performUpgrade(target, StepAddDeferredMultiColumnIndex.class);
 
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
-    config.setRetryBaseDelayMs(10L);
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
-    executor.execute().join();
-
+    executeDeferred(findMissing(StepAddDeferredMultiColumnIndex.class));
     try (SchemaResource sr = connectionResources.openSchemaResource()) {
       org.alfasoftware.morf.metadata.Index idx = sr.getTable("Product").indexes().stream()
           .filter(i -> "Product_IdName_1".equalsIgnoreCase(i.getName()))
-          .findFirst().orElseThrow(() -> new AssertionError("Index not found"));
-      assertEquals("Column count", 2, idx.columnNames().size());
-      assertEquals("First column", "id", idx.columnNames().get(0).toLowerCase());
-      assertEquals("Second column", "name", idx.columnNames().get(1).toLowerCase());
+          .findFirst().orElseThrow();
+      assertEquals("id", idx.columnNames().get(0).toLowerCase());
+      assertEquals("name", idx.columnNames().get(1).toLowerCase());
     }
   }
 
 
-  /**
-   * Verify that creating a new table and deferring an index on it
-   * in the same upgrade step works end-to-end.
-   */
+  /** Creating a new table and deferring an index on it in the same step. */
   @Test
   public void testNewTableWithDeferredIndex() {
-    Schema targetSchema = schema(
+    Schema target = schema(
         deployedViewsTable(), upgradeAuditTable(),
-        deferredIndexOperationTable(), deferredIndexOperationColumnTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
             column("name", DataType.STRING, 100)
@@ -330,51 +440,32 @@ public class TestDeferredIndexIntegration {
             column("label", DataType.STRING, 50)
         ).indexes(index("Category_Label_1").columns("label"))
     );
-    performUpgrade(targetSchema, AddTableWithDeferredIndex.class);
+    performUpgrade(target, StepAddTableWithDeferredIndex.class);
 
-    assertEquals("PENDING", queryOperationStatus("Category_Label_1"));
+    assertIndexDoesNotExist("Category", "Category_Label_1");
 
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
-    config.setRetryBaseDelayMs(10L);
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
-    executor.execute().join();
-
-    assertEquals("COMPLETED", queryOperationStatus("Category_Label_1"));
+    executeDeferred(findMissing(StepAddTableWithDeferredIndex.class));
     assertIndexExists("Category", "Category_Label_1");
   }
 
 
-  /**
-   * Verify that deferring an index on a table that already contains rows
-   * builds the index correctly over existing data.
-   */
+  /** Deferring an index on a table with existing data builds correctly. */
   @Test
   public void testDeferredIndexOnPopulatedTable() {
     insertProductRow(1L, "Widget");
     insertProductRow(2L, "Gadget");
-    insertProductRow(3L, "Doohickey");
 
-    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
-
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
-    config.setRetryBaseDelayMs(10L);
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
-    executor.execute().join();
-
-    assertEquals("COMPLETED", queryOperationStatus("Product_Name_1"));
+    performUpgrade(schemaWithIndex("Product_Name_1", "name"), StepAddDeferredIndex.class);
+    executeDeferred(findMissing(StepAddDeferredIndex.class));
     assertIndexExists("Product", "Product_Name_1");
   }
 
 
-  /**
-   * Verify that deferring two indexes in a single upgrade step queues
-   * both and the executor builds them both to completion.
-   */
+  /** Two deferred indexes in one step are both discovered and built. */
   @Test
   public void testMultipleIndexesDeferredInOneStep() {
-    Schema targetSchema = schema(
+    Schema target = schema(
         deployedViewsTable(), upgradeAuditTable(),
-        deferredIndexOperationTable(), deferredIndexOperationColumnTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
             column("name", DataType.STRING, 100)
@@ -383,163 +474,69 @@ public class TestDeferredIndexIntegration {
             index("Product_IdName_1").columns("id", "name")
         )
     );
-    performUpgrade(targetSchema, AddTwoDeferredIndexes.class);
+    performUpgrade(target, StepAddTwoDeferredIndexes.class);
 
-    assertEquals("Row count", 2, countOperations());
-    assertEquals("PENDING", queryOperationStatus("Product_Name_1"));
-    assertEquals("PENDING", queryOperationStatus("Product_IdName_1"));
+    List<DeferredAddIndex> missing = findMissing(StepAddTwoDeferredIndexes.class);
+    assertEquals(2, missing.size());
 
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
-    config.setRetryBaseDelayMs(10L);
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
-    executor.execute().join();
-
-    assertEquals("COMPLETED", queryOperationStatus("Product_Name_1"));
-    assertEquals("COMPLETED", queryOperationStatus("Product_IdName_1"));
+    executeDeferred(missing);
     assertIndexExists("Product", "Product_Name_1");
     assertIndexExists("Product", "Product_IdName_1");
   }
 
 
-  /**
-   * Verify that running the executor a second time on an already-completed
-   * queue is a safe no-op with no errors.
-   */
+  /** Executing twice is idempotent: second run finds indexes already built. */
   @Test
   public void testExecutorIdempotencyOnCompletedQueue() {
-    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+    performUpgrade(schemaWithIndex("Product_Name_1", "name"), StepAddDeferredIndex.class);
 
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
-    config.setRetryBaseDelayMs(10L);
-
-    // First run: build the index
-    DeferredIndexExecutor executor1 = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
-    executor1.execute().join();
-
-    assertEquals("COMPLETED", queryOperationStatus("Product_Name_1"));
+    List<DeferredAddIndex> missing1 = findMissing(StepAddDeferredIndex.class);
+    assertEquals(1, missing1.size());
+    executeDeferred(missing1);
     assertIndexExists("Product", "Product_Name_1");
 
-    // Second run: should be a no-op
-    DeferredIndexExecutor executor2 = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
-    executor2.execute().join();
-
-    assertEquals("COMPLETED", queryOperationStatus("Product_Name_1"));
-    assertIndexExists("Product", "Product_Name_1");
+    List<DeferredAddIndex> missing2 = findMissing(StepAddDeferredIndex.class);
+    assertEquals("Second run finds 0 missing", 0, missing2.size());
   }
 
 
-  /**
-   * Verify crash recovery: a stale IN_PROGRESS operation is reset to PENDING
-   * by the executor, then picked up and completed.
-   */
-  @Test
-  public void testExecutorResetsInProgressAndCompletes() {
-    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+  // =========================================================================
+  // Tests: forceImmediateIndexes / forceDeferredIndexes / dialect fallback
+  // =========================================================================
 
-    // Simulate a crashed executor by marking the operation IN_PROGRESS
-    setOperationToStaleInProgress("Product_Name_1");
-    assertEquals("IN_PROGRESS", queryOperationStatus("Product_Name_1"));
-
-    // Executor should reset IN_PROGRESS → PENDING and build
-    DeferredIndexExecutionConfig execConfig = new DeferredIndexExecutionConfig();
-    execConfig.setRetryBaseDelayMs(10L);
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), execConfig, new DeferredIndexExecutorServiceFactory.Default());
-    executor.execute().join();
-
-    assertEquals("COMPLETED", queryOperationStatus("Product_Name_1"));
-    assertIndexExists("Product", "Product_Name_1");
-  }
-
-
-  /**
-   * Verify that when forceImmediateIndexes is configured for an index name,
-   * addIndexDeferred() builds the index immediately during the upgrade step
-   * and does not queue a deferred operation.
-   */
+  /** forceImmediateIndexes builds the index during upgrade, no deferral. */
   @Test
   public void testForceImmediateIndexBypassesDeferral() {
     upgradeConfigAndContext.setForceImmediateIndexes(Set.of("Product_Name_1"));
-    try {
-      performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+    performUpgrade(schemaWithIndex("Product_Name_1", "name"), StepAddDeferredIndex.class);
 
-      // Index should exist immediately — no executor needed
-      assertIndexExists("Product", "Product_Name_1");
-      // No deferred operation should have been queued
-      assertEquals("No deferred operations expected", 0, countOperations());
-    } finally {
-      upgradeConfigAndContext.setForceImmediateIndexes(Set.of());
-    }
+    assertIndexExists("Product", "Product_Name_1");
+
+    List<DeferredAddIndex> missing = findMissing(StepAddDeferredIndex.class);
+    assertEquals("No missing indexes after force-immediate", 0, missing.size());
   }
 
 
-  /**
-   * Verify that when forceDeferredIndexes is configured for an index name,
-   * addIndex() queues a deferred operation instead of building the index
-   * immediately, and the executor can then complete it.
-   */
+  /** forceDeferredIndexes overrides an immediate addIndex to defer it. */
   @Test
   public void testForceDeferredIndexOverridesImmediateCreation() {
     upgradeConfigAndContext.setForceDeferredIndexes(Set.of("Product_Name_1"));
-    try {
-      performUpgrade(schemaWithIndex(), AddImmediateIndex.class);
+    performUpgrade(schemaWithIndex("Product_Name_1", "name"), StepAddImmediateIndex.class);
 
-      // Index should NOT exist yet — it was deferred
-      assertIndexDoesNotExist("Product", "Product_Name_1");
-      // A PENDING deferred operation should have been queued
-      assertEquals("PENDING", queryOperationStatus("Product_Name_1"));
+    assertIndexDoesNotExist("Product", "Product_Name_1");
 
-      // Executor should complete the build
-      DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
-      config.setRetryBaseDelayMs(10L);
-      DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
-      executor.execute().join();
+    // findMissing must replay with the same config to see the force-deferred
+    List<DeferredAddIndex> missing = findMissingWithConfig(upgradeConfigAndContext, StepAddImmediateIndex.class);
+    assertEquals(1, missing.size());
 
-      assertEquals("COMPLETED", queryOperationStatus("Product_Name_1"));
-      assertIndexExists("Product", "Product_Name_1");
-    } finally {
-      upgradeConfigAndContext.setForceDeferredIndexes(Set.of());
-    }
+    executeDeferred(missing);
+    assertIndexExists("Product", "Product_Name_1");
   }
 
 
-  /**
-   * Verify that on a fresh database without deferred index tables,
-   * running both {@code CreateDeferredIndexOperationTables} and a step
-   * using {@code addIndexDeferred()} in the same upgrade batch succeeds.
-   * This exercises the {@code @ExclusiveExecution @Sequence(1)} guarantee
-   * that the infrastructure tables are created before any INSERT into them.
-   */
-  @Test
-  public void testFreshDatabaseWithDeferredIndexInSameBatch() {
-    // Start from a schema WITHOUT the deferred index tables
-    Schema schemaWithoutDeferredTables = schema(
-        deployedViewsTable(),
-        upgradeAuditTable(),
-        table("Product").columns(
-            column("id", DataType.BIG_INTEGER).primaryKey(),
-            column("name", DataType.STRING, 100)
-        )
-    );
-    schemaManager.dropAllTables();
-    schemaManager.mutateToSupportSchema(schemaWithoutDeferredTables, TruncationBehavior.ALWAYS);
-
-    // Run upgrade with both the table-creation step and a deferred index step
-    Upgrade.performUpgrade(schemaWithIndex(),
-        List.of(CreateDeferredIndexOperationTables.class, AddDeferredIndex.class),
-        connectionResources, upgradeConfigAndContext, viewDeploymentValidator);
-
-    // The INSERT from AddDeferredIndex must have succeeded — the table existed
-    assertEquals("PENDING", queryOperationStatus("Product_Name_1"));
-  }
-
-
-  /**
-   * Verify that when the dialect does not support deferred index creation,
-   * addIndexDeferred() builds the index immediately and creates no PENDING row.
-   */
+  /** Unsupported dialect falls back to immediate index creation. */
   @Test
   public void testUnsupportedDialectFallsBackToImmediateIndex() {
-    // Spy on dialect to return false for supportsDeferredIndexCreation
     org.alfasoftware.morf.jdbc.SqlDialect realDialect = connectionResources.sqlDialect();
     org.alfasoftware.morf.jdbc.SqlDialect spyDialect = org.mockito.Mockito.spy(realDialect);
     org.mockito.Mockito.when(spyDialect.supportsDeferredIndexCreation()).thenReturn(false);
@@ -547,58 +544,95 @@ public class TestDeferredIndexIntegration {
     ConnectionResources spyConn = org.mockito.Mockito.spy(connectionResources);
     org.mockito.Mockito.when(spyConn.sqlDialect()).thenReturn(spyDialect);
 
-    Upgrade.performUpgrade(schemaWithIndex(), Collections.singletonList(AddDeferredIndex.class),
-        spyConn, upgradeConfigAndContext, viewDeploymentValidator);
+    Upgrade.performUpgrade(schemaWithIndex("Product_Name_1", "name"),
+        Collections.singletonList(StepAddDeferredIndex.class),
+        spyConn, new UpgradeConfigAndContext(), viewDeploymentValidator);
 
-    // Index should exist immediately — built during upgrade, not deferred
     assertIndexExists("Product", "Product_Name_1");
-    // No deferred operation should have been queued
-    assertEquals("No deferred operations expected", 0, countOperations());
   }
 
 
-  private void performUpgrade(Schema targetSchema, Class<? extends UpgradeStep> upgradeStep) {
-    Upgrade.performUpgrade(targetSchema, Collections.singletonList(upgradeStep),
+  // =========================================================================
+  // Helpers
+  // =========================================================================
+
+  private void performUpgrade(Schema targetSchema, Class<? extends UpgradeStep> step) {
+    Upgrade.performUpgrade(targetSchema, Collections.singletonList(step),
         connectionResources, upgradeConfigAndContext, viewDeploymentValidator);
   }
 
 
-  private Schema schemaWithIndex() {
+  private Schema schemaWithIndex(String indexName, String... columns) {
     return schema(
-        deployedViewsTable(),
-        upgradeAuditTable(),
-        deferredIndexOperationTable(),
-        deferredIndexOperationColumnTable(),
+        deployedViewsTable(), upgradeAuditTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
             column("name", DataType.STRING, 100)
-        ).indexes(
-            index("Product_Name_1").columns("name")
-        )
+        ).indexes(index(indexName).columns(columns))
     );
   }
 
 
-  private String queryOperationStatus(String indexName) {
-    String sql = connectionResources.sqlDialect().convertStatementToSQL(
-        select(field("status"))
-            .from(tableRef(DEFERRED_INDEX_OPERATION_NAME))
-            .where(field("indexName").eq(indexName))
-    );
-    return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> rs.next() ? rs.getString(1) : null);
+  @SuppressWarnings("unchecked")
+  private List<DeferredAddIndex> replaySurviving(Class<? extends UpgradeStep>... stepClasses) {
+    List<UpgradeStep> instances = new ArrayList<>();
+    for (Class<? extends UpgradeStep> cls : stepClasses) {
+      try {
+        instances.add(cls.getDeclaredConstructor().newInstance());
+      } catch (ReflectiveOperationException e) {
+        throw new IllegalStateException(e);
+      }
+    }
+    return new SchemaChangeSequence(instances).findSurvivingDeferredIndexes();
   }
 
 
-  private int countOperations() {
-    String sql = connectionResources.sqlDialect().convertStatementToSQL(
-        select(field("id"))
-            .from(tableRef(DEFERRED_INDEX_OPERATION_NAME))
-    );
-    return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> {
-      int count = 0;
-      while (rs.next()) count++;
-      return count;
-    });
+  @SuppressWarnings("unchecked")
+  private List<DeferredAddIndex> findMissing(Class<? extends UpgradeStep>... stepClasses) {
+    DeferredIndexReadinessCheck rc = DeferredIndexReadinessCheck.create(connectionResources);
+    return rc.findMissingDeferredIndexes(List.of(stepClasses));
+  }
+
+
+  @SuppressWarnings("unchecked")
+  private List<DeferredAddIndex> findMissingWithConfig(UpgradeConfigAndContext config,
+                                                        Class<? extends UpgradeStep>... stepClasses) {
+    List<UpgradeStep> instances = new ArrayList<>();
+    for (Class<? extends UpgradeStep> cls : stepClasses) {
+      try {
+        instances.add(cls.getDeclaredConstructor().newInstance());
+      } catch (ReflectiveOperationException e) {
+        throw new IllegalStateException(e);
+      }
+    }
+    List<DeferredAddIndex> surviving = new SchemaChangeSequence(config, instances)
+        .findSurvivingDeferredIndexes();
+    List<DeferredAddIndex> missing = new ArrayList<>();
+    try (SchemaResource sr = connectionResources.openSchemaResource()) {
+      for (DeferredAddIndex dai : surviving) {
+        if (!sr.tableExists(dai.getTableName())) {
+          missing.add(dai);
+          continue;
+        }
+        boolean exists = sr.getTable(dai.getTableName()).indexes().stream()
+            .anyMatch(idx -> idx.getName().equalsIgnoreCase(dai.getNewIndex().getName()));
+        if (!exists) {
+          missing.add(dai);
+        }
+      }
+    }
+    return missing;
+  }
+
+
+  private void executeDeferred(List<DeferredAddIndex> missing) {
+    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
+    config.setRetryBaseDelayMs(10L);
+    config.setMaxRetries(1);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(
+        connectionResources, new SqlScriptExecutorProvider(connectionResources),
+        config, new DeferredIndexExecutorServiceFactory.Default());
+    executor.execute(missing).join();
   }
 
 
@@ -625,20 +659,6 @@ public class TestDeferredIndexIntegration {
         connectionResources.sqlDialect().convertStatementToSQL(
             insert().into(tableRef("Product"))
                 .values(literal(id).as("id"), literal(name).as("name"))
-        )
-    );
-  }
-
-
-  private void setOperationToStaleInProgress(String indexName) {
-    sqlScriptExecutorProvider.get().execute(
-        connectionResources.sqlDialect().convertStatementToSQL(
-            update(tableRef(DEFERRED_INDEX_OPERATION_NAME))
-                .set(
-                    literal("IN_PROGRESS").as("status"),
-                    literal(1_000_000_000L).as("startedTime")
-                )
-                .where(field("indexName").eq(indexName))
         )
     );
   }

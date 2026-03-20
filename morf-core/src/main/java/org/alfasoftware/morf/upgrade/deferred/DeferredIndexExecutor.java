@@ -15,15 +15,16 @@
 
 package org.alfasoftware.morf.upgrade.deferred;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import com.google.inject.ImplementedBy;
 
 /**
- * Picks up {@link DeferredIndexStatus#PENDING} operations and builds them
- * asynchronously using a thread pool. Results are written to the database
- * (each operation is marked {@link DeferredIndexStatus#COMPLETED} or
- * {@link DeferredIndexStatus#FAILED}).
+ * Builds deferred indexes asynchronously using a thread pool. Receives
+ * a pre-computed list of {@link DeferredAddIndex} operations to build
+ * (determined by replaying upgrade steps and comparing against the live
+ * database schema).
  *
  * <p>This is an internal service — callers should use
  * {@link DeferredIndexService} which provides blocking orchestration
@@ -35,13 +36,13 @@ import com.google.inject.ImplementedBy;
 interface DeferredIndexExecutor {
 
   /**
-   * Picks up all {@link DeferredIndexStatus#PENDING} operations and submits
-   * them to a thread pool for asynchronous index building. Returns immediately
-   * with a future that completes when all submitted operations reach a terminal
-   * state.
+   * Builds the given deferred indexes asynchronously. Returns immediately
+   * with a future that completes when all submitted operations reach a
+   * terminal state (built or permanently failed).
    *
+   * @param missingIndexes deferred indexes not yet built in the database.
    * @return a future that completes when all operations are done; completes
-   *         immediately if there are no pending operations.
+   *         immediately if the list is empty.
    */
-  CompletableFuture<Void> execute();
+  CompletableFuture<Void> execute(List<DeferredAddIndex> missingIndexes);
 }

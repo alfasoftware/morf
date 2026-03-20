@@ -35,6 +35,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -1034,7 +1035,7 @@ public class TestUpgrade {
   private static org.alfasoftware.morf.upgrade.deferred.DeferredIndexReadinessCheck mockReadinessCheck() {
     org.alfasoftware.morf.upgrade.deferred.DeferredIndexReadinessCheck check =
         mock(org.alfasoftware.morf.upgrade.deferred.DeferredIndexReadinessCheck.class);
-    when(check.augmentSchemaWithPendingIndexes(any(Schema.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(check.augmentSchemaWithPendingIndexes(any(Schema.class), anyCollection())).thenAnswer(inv -> inv.getArgument(0));
     return check;
   }
 }

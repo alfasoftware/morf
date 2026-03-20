@@ -16,34 +16,33 @@
 package org.alfasoftware.morf.upgrade.deferred;
 
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
-import static org.alfasoftware.morf.sql.SqlUtils.field;
-import static org.alfasoftware.morf.sql.SqlUtils.insert;
-import static org.alfasoftware.morf.sql.SqlUtils.literal;
-import static org.alfasoftware.morf.sql.SqlUtils.select;
-import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_COLUMN_NAME;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deferredIndexOperationColumnTable;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deferredIndexOperationTable;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager.TruncationBehavior;
 import org.alfasoftware.morf.testing.TestingDataSourceModule;
+import org.alfasoftware.morf.upgrade.DataEditor;
+import org.alfasoftware.morf.upgrade.SchemaEditor;
+import org.alfasoftware.morf.upgrade.Sequence;
+import org.alfasoftware.morf.upgrade.UUID;
+import org.alfasoftware.morf.upgrade.UpgradeStep;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -57,6 +56,11 @@ import net.jcip.annotations.NotThreadSafe;
 /**
  * Integration tests for {@link DeferredIndexReadinessCheckImpl}.
  *
+ * <p>Tests use replay-based discovery: inner static {@link UpgradeStep}
+ * classes define tables and deferred indexes. The readiness check replays
+ * these steps, discovers surviving deferred indexes, compares against
+ * the live database, and builds any that are missing.</p>
+ *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
 @NotThreadSafe
@@ -69,12 +73,6 @@ public class TestDeferredIndexReadinessCheck {
   @Inject private DatabaseSchemaManager schemaManager;
   @Inject private SqlScriptExecutorProvider sqlScriptExecutorProvider;
 
-  private static final Schema TEST_SCHEMA = schema(
-      deferredIndexOperationTable(),
-      deferredIndexOperationColumnTable(),
-      table("Apple").columns(column("pips", DataType.STRING, 10).nullable())
-  );
-
   private DeferredIndexExecutionConfig config;
 
 
@@ -84,7 +82,6 @@ public class TestDeferredIndexReadinessCheck {
   @Before
   public void setUp() {
     schemaManager.dropAllTables();
-    schemaManager.mutateToSupportSchema(TEST_SCHEMA, TruncationBehavior.ALWAYS);
     config = new DeferredIndexExecutionConfig();
     config.setMaxRetries(0);
     config.setRetryBaseDelayMs(10L);
@@ -101,76 +98,109 @@ public class TestDeferredIndexReadinessCheck {
 
 
   /**
-   * forceBuildAllPending() should be a no-op when the queue is empty — no exception thrown
-   * and no operations executed.
+   * Replay finds no surviving deferred indexes when no upgrade steps use addIndexDeferred, so forceBuildAllPending is a no-op.
    */
   @Test
-  public void testValidateWithEmptyQueueIsNoOp() {
-    DeferredIndexReadinessCheck validator = createValidator(config);
-    validator.forceBuildAllPending(); // must not throw
+  public void testReplayFindsNoDeferredIndexesIsNoOp() {
+    // Create a table with no deferred indexes
+    Schema dbSchema = schema(
+        table("Fruit").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 50)
+        )
+    );
+    schemaManager.mutateToSupportSchema(dbSchema, TruncationBehavior.ALWAYS);
+
+    DeferredIndexReadinessCheck readinessCheck = createReadinessCheck();
+
+    // Pass the step that only adds a table (no deferred index) — must not throw
+    readinessCheck.forceBuildAllPending(stepClasses(CreateFruitTable.class));
   }
 
 
   /**
-   * When PENDING operations exist, forceBuildAllPending() must execute them before returning:
-   * the index should exist in the schema and the row should be COMPLETED
-   * (not PENDING) when the call returns.
+   * Replay finds a missing deferred index and forceBuildAllPending builds it in the database.
    */
   @Test
-  public void testPendingOperationsAreExecutedBeforeReturning() {
-    insertPendingRow("Apple", "Apple_V1", false, "pips");
+  public void testReplayFindsMissingIndexAndForceBuildsIt() {
+    // Create the table in the DB but NOT the index
+    Schema dbSchema = schema(
+        table("Fruit").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 50)
+        )
+    );
+    schemaManager.mutateToSupportSchema(dbSchema, TruncationBehavior.ALWAYS);
 
-    DeferredIndexReadinessCheck validator = createValidator(config);
-    validator.forceBuildAllPending();
+    DeferredIndexReadinessCheck readinessCheck = createReadinessCheck();
 
-    // Verify no PENDING rows remain
-    assertFalse("no non-terminal operations should remain after validate",
-        hasPendingOperations());
+    // Replay will find CreateFruitTable + AddDeferredFruitIndex, discover the index is missing, and build it
+    readinessCheck.forceBuildAllPending(stepClasses(CreateFruitTable.class, AddDeferredFruitIndex.class));
 
-    // Verify the index actually exists in the database
-    try (var schema = connectionResources.openSchemaResource()) {
-      assertTrue("Apple_V1 index should exist",
-          schema.getTable("Apple").indexes().stream().anyMatch(idx -> "Apple_V1".equalsIgnoreCase(idx.getName())));
+    // Verify the index now exists in the database
+    try (SchemaResource sr = connectionResources.openSchemaResource()) {
+      assertTrue("Fruit_Name_1 index should exist after force-build",
+          sr.getTable("Fruit").indexes().stream()
+              .anyMatch(idx -> "Fruit_Name_1".equalsIgnoreCase(idx.getName())));
     }
   }
 
 
   /**
-   * When multiple PENDING operations exist they should all be executed before
-   * forceBuildAllPending() returns.
+   * Replay finds multiple missing deferred indexes and forceBuildAllPending builds all of them.
    */
   @Test
-  public void testMultiplePendingOperationsAllExecuted() {
-    insertPendingRow("Apple", "Apple_V2", false, "pips");
-    insertPendingRow("Apple", "Apple_V3", true, "pips");
+  public void testReplayFindsMultipleMissingIndexesAndForceBuildsAll() {
+    // Create the table in the DB but none of the indexes
+    Schema dbSchema = schema(
+        table("Fruit").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 50)
+        )
+    );
+    schemaManager.mutateToSupportSchema(dbSchema, TruncationBehavior.ALWAYS);
 
-    DeferredIndexReadinessCheck validator = createValidator(config);
-    validator.forceBuildAllPending();
+    DeferredIndexReadinessCheck readinessCheck = createReadinessCheck();
 
-    assertFalse("no non-terminal operations should remain", hasPendingOperations());
+    // Replay will find both deferred indexes as missing and build them
+    readinessCheck.forceBuildAllPending(
+        stepClasses(CreateFruitTable.class, AddDeferredFruitIndex.class, AddSecondDeferredFruitIndex.class));
+
+    // Verify both indexes now exist
+    try (SchemaResource sr = connectionResources.openSchemaResource()) {
+      List<String> indexNames = new java.util.ArrayList<>();
+      for (Index idx : sr.getTable("Fruit").indexes()) {
+        indexNames.add(idx.getName().toUpperCase());
+      }
+      assertTrue("Fruit_Name_1 index should exist", indexNames.contains("FRUIT_NAME_1"));
+      assertTrue("Fruit_IdName_1 index should exist", indexNames.contains("FRUIT_IDNAME_1"));
+    }
   }
 
 
   /**
-   * When a PENDING operation targets a non-existent table, forceBuildAllPending() should
-   * throw because the forced execution fails.
+   * Force-build fails when the deferred index targets a non-existent table and throws IllegalStateException.
    */
   @Test
-  public void testFailedForcedExecutionThrows() {
-    insertPendingRow("NoSuchTable", "NoSuchTable_V4", false, "col");
+  public void testForceBuildFailsForNonExistentTableTarget() {
+    // Do NOT create any tables — the deferred index targets "Ghost" which does not exist
+    Schema dbSchema = schema(
+        table("Placeholder").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey()
+        )
+    );
+    schemaManager.mutateToSupportSchema(dbSchema, TruncationBehavior.ALWAYS);
 
-    DeferredIndexReadinessCheck validator = createValidator(config);
+    DeferredIndexReadinessCheck readinessCheck = createReadinessCheck();
+
     try {
-      validator.forceBuildAllPending();
+      readinessCheck.forceBuildAllPending(
+          stepClasses(CreateGhostTableAndDeferIndex.class));
       fail("Expected IllegalStateException for failed forced execution");
     } catch (IllegalStateException e) {
       assertTrue("exception message should mention failed count",
           e.getMessage().contains("1 index operation(s) could not be built"));
     }
-
-    // The operation should be FAILED, not PENDING
-    assertEquals("status should be FAILED after forced execution",
-        DeferredIndexStatus.FAILED.name(), queryStatus("NoSuchTable_V4"));
   }
 
 
@@ -178,59 +208,125 @@ public class TestDeferredIndexReadinessCheck {
   // Helpers
   // -------------------------------------------------------------------------
 
-  private void insertPendingRow(String tableName, String indexName,
-                                 boolean unique, String... columns) {
-    long operationId = Math.abs(UUID.randomUUID().getMostSignificantBits());
-    List<String> sql = new ArrayList<>();
-    sql.addAll(connectionResources.sqlDialect().convertStatementToSQL(
-        insert().into(tableRef(DEFERRED_INDEX_OPERATION_NAME)).values(
-            literal(operationId).as("id"),
-            literal("test-upgrade-uuid").as("upgradeUUID"),
-            literal(tableName).as("tableName"),
-            literal(indexName).as("indexName"),
-            literal(unique ? 1 : 0).as("indexUnique"),
-            literal(DeferredIndexStatus.PENDING.name()).as("status"),
-            literal(0).as("retryCount"),
-            literal(System.currentTimeMillis()).as("createdTime")
-        )
-    ));
-    for (int i = 0; i < columns.length; i++) {
-      sql.addAll(connectionResources.sqlDialect().convertStatementToSQL(
-          insert().into(tableRef(DEFERRED_INDEX_OPERATION_COLUMN_NAME)).values(
-              literal(Math.abs(UUID.randomUUID().getMostSignificantBits())).as("id"),
-              literal(operationId).as("operationId"),
-              literal(columns[i]).as("columnName"),
-              literal(i).as("columnSequence")
-          )
+  private DeferredIndexReadinessCheck createReadinessCheck() {
+    SqlScriptExecutorProvider executorProvider = new SqlScriptExecutorProvider(connectionResources);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(
+        connectionResources, executorProvider, config,
+        new DeferredIndexExecutorServiceFactory.Default());
+    return new DeferredIndexReadinessCheckImpl(executor, config, connectionResources);
+  }
+
+
+  @SafeVarargs
+  private static Collection<Class<? extends UpgradeStep>> stepClasses(Class<? extends UpgradeStep>... classes) {
+    return Collections.unmodifiableList(Arrays.asList(classes));
+  }
+
+
+  // -------------------------------------------------------------------------
+  // Inner upgrade step classes for replay-based discovery
+  // -------------------------------------------------------------------------
+
+  /**
+   * Creates the Fruit table with id and name columns.
+   */
+  @Sequence(80001)
+  @UUID("f0f00001-0001-0001-0001-000000000001")
+  public static class CreateFruitTable implements UpgradeStep {
+
+    @Override
+    public String getJiraId() {
+      return "READINESS-001";
+    }
+
+    @Override
+    public String getDescription() {
+      return "Create Fruit table";
+    }
+
+    @Override
+    public void execute(SchemaEditor schema, DataEditor data) {
+      schema.addTable(table("Fruit").columns(
+          column("id", DataType.BIG_INTEGER).primaryKey(),
+          column("name", DataType.STRING, 50)
       ));
     }
-    sqlScriptExecutorProvider.get().execute(sql);
   }
 
 
-  private String queryStatus(String indexName) {
-    String sql = connectionResources.sqlDialect().convertStatementToSQL(
-        select(field("status"))
-            .from(tableRef(DEFERRED_INDEX_OPERATION_NAME))
-            .where(field("indexName").eq(indexName))
-    );
-    return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> rs.next() ? rs.getString(1) : null);
+  /**
+   * Adds a deferred index on Fruit.name.
+   */
+  @Sequence(80002)
+  @UUID("f0f00001-0001-0001-0001-000000000002")
+  public static class AddDeferredFruitIndex implements UpgradeStep {
+
+    @Override
+    public String getJiraId() {
+      return "READINESS-002";
+    }
+
+    @Override
+    public String getDescription() {
+      return "Add deferred index on Fruit.name";
+    }
+
+    @Override
+    public void execute(SchemaEditor schema, DataEditor data) {
+      schema.addIndexDeferred("Fruit", index("Fruit_Name_1").columns("name"));
+    }
   }
 
 
-  private DeferredIndexReadinessCheck createValidator(DeferredIndexExecutionConfig validatorConfig) {
-    DeferredIndexOperationDAO dao = new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources);
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources, new SqlScriptExecutorProvider(connectionResources), validatorConfig, new DeferredIndexExecutorServiceFactory.Default());
-    return new DeferredIndexReadinessCheckImpl(dao, executor, validatorConfig, connectionResources);
+  /**
+   * Adds a second deferred index on Fruit(id, name).
+   */
+  @Sequence(80003)
+  @UUID("f0f00001-0001-0001-0001-000000000003")
+  public static class AddSecondDeferredFruitIndex implements UpgradeStep {
+
+    @Override
+    public String getJiraId() {
+      return "READINESS-003";
+    }
+
+    @Override
+    public String getDescription() {
+      return "Add deferred index on Fruit(id, name)";
+    }
+
+    @Override
+    public void execute(SchemaEditor schema, DataEditor data) {
+      schema.addIndexDeferred("Fruit", index("Fruit_IdName_1").columns("id", "name"));
+    }
   }
 
 
-  private boolean hasPendingOperations() {
-    String sql = connectionResources.sqlDialect().convertStatementToSQL(
-        select(field("id"))
-            .from(tableRef(DEFERRED_INDEX_OPERATION_NAME))
-            .where(field("status").eq(DeferredIndexStatus.PENDING.name()))
-    );
-    return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> rs.next());
+  /**
+   * Creates a Ghost table and defers an index on it. Used to test force-build
+   * failure when the table does not actually exist in the database.
+   */
+  @Sequence(80004)
+  @UUID("f0f00001-0001-0001-0001-000000000004")
+  public static class CreateGhostTableAndDeferIndex implements UpgradeStep {
+
+    @Override
+    public String getJiraId() {
+      return "READINESS-004";
+    }
+
+    @Override
+    public String getDescription() {
+      return "Create Ghost table with deferred index";
+    }
+
+    @Override
+    public void execute(SchemaEditor schema, DataEditor data) {
+      schema.addTable(table("Ghost").columns(
+          column("id", DataType.BIG_INTEGER).primaryKey(),
+          column("col", DataType.STRING, 30)
+      ));
+      schema.addIndexDeferred("Ghost", index("Ghost_Col_1").columns("col"));
+    }
   }
 }

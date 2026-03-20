@@ -17,6 +17,7 @@ package org.alfasoftware.morf.upgrade.deferred;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -28,9 +29,10 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.upgrade.SchemaChangeSequence;
+import org.alfasoftware.morf.upgrade.UpgradeStep;
 import org.alfasoftware.morf.upgrade.adapt.AlteredTable;
 import org.alfasoftware.morf.upgrade.adapt.TableOverrideSchema;
-import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -40,11 +42,10 @@ import com.google.inject.Singleton;
 /**
  * Default implementation of {@link DeferredIndexReadinessCheck}.
  *
- * <p>{@link #augmentSchemaWithPendingIndexes(Schema)} is always called to
- * overlay virtual indexes for non-terminal operations into the source schema.
- * {@link #forceBuildAllPending()} is called only when an upgrade with new
- * steps is about to run, to ensure stale indexes from a previous upgrade
- * are built before new changes are applied.</p>
+ * <p>Uses replay-based discovery: instantiates all upgrade steps, walks their
+ * changes with a {@link DeferredIndexTracker} to resolve cascades, then compares
+ * surviving deferred indexes against the live database schema to find which
+ * ones are missing.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -53,7 +54,6 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
 
   private static final Log log = LogFactory.getLog(DeferredIndexReadinessCheckImpl.class);
 
-  private final DeferredIndexOperationDAO dao;
   private final DeferredIndexExecutor executor;
   private final DeferredIndexExecutionConfig config;
   private final ConnectionResources connectionResources;
@@ -62,16 +62,14 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
   /**
    * Constructs a readiness check with injected dependencies.
    *
-   * @param dao                 DAO for deferred index operations.
    * @param executor            executor used to force-build pending operations.
    * @param config              configuration used when executing pending operations.
    * @param connectionResources database connection resources.
    */
   @Inject
-  DeferredIndexReadinessCheckImpl(DeferredIndexOperationDAO dao, DeferredIndexExecutor executor,
+  DeferredIndexReadinessCheckImpl(DeferredIndexExecutor executor,
                                   DeferredIndexExecutionConfig config,
                                   ConnectionResources connectionResources) {
-    this.dao = dao;
     this.executor = executor;
     this.config = config;
     this.connectionResources = connectionResources;
@@ -79,95 +77,147 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
 
 
   /**
-   * @see org.alfasoftware.morf.upgrade.deferred.DeferredIndexReadinessCheck#forceBuildAllPending()
+   * @see DeferredIndexReadinessCheck#forceBuildAllPending(Collection)
    */
   @Override
-  public void forceBuildAllPending() {
-    if (!deferredIndexTableExists()) {
-      log.debug("DeferredIndexOperation table does not exist — skipping readiness check");
+  public void forceBuildAllPending(Collection<Class<? extends UpgradeStep>> upgradeSteps) {
+    validateConfig(config);
+
+    List<DeferredAddIndex> missing = findMissingDeferredIndexes(upgradeSteps);
+    if (missing.isEmpty()) {
       return;
     }
 
-    validateConfig(config);
+    log.warn("Found " + missing.size() + " pending deferred index(es) before upgrade. "
+        + "Executing immediately before proceeding...");
 
-    // Reset any crashed IN_PROGRESS operations so they are picked up
-    dao.resetAllInProgressToPending();
+    CompletableFuture<Void> future = executor.execute(missing);
+    awaitCompletion(future);
 
-    List<DeferredIndexOperation> pending = dao.findPendingOperations();
-    if (!pending.isEmpty()) {
-      log.warn("Found " + pending.size() + " pending deferred index operation(s) before upgrade. "
-          + "Executing immediately before proceeding...");
+    log.info("Pre-upgrade deferred index execution complete.");
 
-      awaitCompletion(executor.execute());
-
-      log.info("Pre-upgrade deferred index execution complete.");
-    }
-
-    // Check for FAILED operations — whether they existed before this run
-    // or were created by the force-build above. An upgrade cannot proceed
-    // with permanently failed index operations from a previous upgrade.
-    int failedCount = dao.countAllByStatus().getOrDefault(DeferredIndexStatus.FAILED, 0);
-    if (failedCount > 0) {
-      throw new IllegalStateException("Deferred index force-build failed: "
-          + failedCount + " index operation(s) could not be built. "
-          + "Resolve the underlying issue before retrying.");
+    // Check for failures — the executor tracks failed count in-memory
+    if (executor instanceof DeferredIndexExecutorImpl) {
+      int failed = ((DeferredIndexExecutorImpl) executor).getFailedCount();
+      if (failed > 0) {
+        throw new IllegalStateException("Deferred index force-build failed: "
+            + failed + " index operation(s) could not be built. "
+            + "Resolve the underlying issue before retrying.");
+      }
     }
   }
 
 
   /**
-   * @see org.alfasoftware.morf.upgrade.deferred.DeferredIndexReadinessCheck#augmentSchemaWithPendingIndexes(org.alfasoftware.morf.metadata.Schema)
+   * @see DeferredIndexReadinessCheck#augmentSchemaWithPendingIndexes(Schema, Collection)
    */
   @Override
-  public Schema augmentSchemaWithPendingIndexes(Schema sourceSchema) {
-    if (!deferredIndexTableExists()) {
+  public Schema augmentSchemaWithPendingIndexes(Schema sourceSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps) {
+    List<DeferredAddIndex> missing = findMissingDeferredIndexes(upgradeSteps);
+    if (missing.isEmpty()) {
       return sourceSchema;
     }
 
-    List<DeferredIndexOperation> ops = dao.findNonTerminalOperations();
-    if (ops.isEmpty()) {
-      return sourceSchema;
-    }
-
-    log.info("Augmenting schema with " + ops.size() + " deferred index operation(s) not yet built");
+    log.info("Augmenting schema with " + missing.size() + " deferred index(es) not yet built");
 
     Schema result = sourceSchema;
-    for (DeferredIndexOperation op : ops) {
-      if (!result.tableExists(op.getTableName())) {
-        log.warn("Skipping deferred index [" + op.getIndexName() + "] — table ["
-            + op.getTableName() + "] does not exist in schema");
+    for (DeferredAddIndex dai : missing) {
+      if (!result.tableExists(dai.getTableName())) {
+        log.warn("Skipping deferred index [" + dai.getNewIndex().getName() + "] — table ["
+            + dai.getTableName() + "] does not exist in schema");
         continue;
       }
 
-      Table table = result.getTable(op.getTableName());
-      boolean indexAlreadyExists = table.indexes().stream()
-          .anyMatch(idx -> idx.getName().equalsIgnoreCase(op.getIndexName()));
-      if (indexAlreadyExists) {
-        // The index exists in the database but the operation row is still
-        // non-terminal (e.g. the status update failed after CREATE INDEX
-        // succeeded). The stale row will be cleaned up when the executor
-        // runs: its post-failure indexExistsInDatabase check will mark it
-        // COMPLETED. No schema augmentation is needed here.
-        log.info("Deferred index [" + op.getIndexName() + "] already exists on table ["
-            + op.getTableName() + "] — skipping augmentation; stale row will be resolved by executor");
+      Table table = result.getTable(dai.getTableName());
+      boolean indexAlreadyInSchema = table.indexes().stream()
+          .anyMatch(idx -> idx.getName().equalsIgnoreCase(dai.getNewIndex().getName()));
+      if (indexAlreadyInSchema) {
         continue;
       }
 
-      Index newIndex = op.toIndex();
       List<String> indexNames = new ArrayList<>();
       for (Index existing : table.indexes()) {
         indexNames.add(existing.getName());
       }
-      indexNames.add(newIndex.getName());
+      indexNames.add(dai.getNewIndex().getName());
 
-      log.info("Augmenting schema with deferred index [" + op.getIndexName() + "] on table ["
-          + op.getTableName() + "] [" + op.getStatus() + "]");
+      log.info("Augmenting schema with deferred index [" + dai.getNewIndex().getName()
+          + "] on table [" + dai.getTableName() + "]");
 
       result = new TableOverrideSchema(result,
-          new AlteredTable(table, null, null, indexNames, Arrays.asList(newIndex)));
+          new AlteredTable(table, null, null, indexNames, Arrays.asList(dai.getNewIndex())));
     }
 
     return result;
+  }
+
+
+  /**
+   * @see DeferredIndexReadinessCheck#findMissingDeferredIndexes(Collection)
+   */
+  @Override
+  public List<DeferredAddIndex> findMissingDeferredIndexes(Collection<Class<? extends UpgradeStep>> upgradeSteps) {
+    if (upgradeSteps == null || upgradeSteps.isEmpty()) {
+      return List.of();
+    }
+
+    // Replay all steps to find surviving deferred indexes
+    List<UpgradeStep> stepInstances = instantiateSteps(upgradeSteps);
+    SchemaChangeSequence sequence = new SchemaChangeSequence(stepInstances);
+    List<DeferredAddIndex> surviving = sequence.findSurvivingDeferredIndexes();
+
+    if (surviving.isEmpty()) {
+      return List.of();
+    }
+
+    // Compare against live database schema
+    List<DeferredAddIndex> missing = new ArrayList<>();
+    try (SchemaResource sr = connectionResources.openSchemaResource()) {
+      for (DeferredAddIndex dai : surviving) {
+        if (!sr.tableExists(dai.getTableName())) {
+          // Table doesn't exist in DB — index is missing
+          missing.add(dai);
+          continue;
+        }
+        boolean indexExists = sr.getTable(dai.getTableName()).indexes().stream()
+            .anyMatch(idx -> idx.getName().equalsIgnoreCase(dai.getNewIndex().getName()));
+        if (!indexExists) {
+          missing.add(dai);
+        }
+      }
+    }
+
+    if (log.isDebugEnabled()) {
+      log.debug("Replay found " + surviving.size() + " surviving deferred index(es), "
+          + missing.size() + " missing from database");
+    }
+
+    return missing;
+  }
+
+
+  /**
+   * Instantiates all upgrade step classes. Classes that cannot be
+   * reflectively instantiated (non-static inner classes, non-public
+   * constructors, etc.) are skipped with a debug log.
+   */
+  private List<UpgradeStep> instantiateSteps(Collection<Class<? extends UpgradeStep>> stepClasses) {
+    List<UpgradeStep> steps = new ArrayList<>();
+    for (Class<? extends UpgradeStep> stepClass : stepClasses) {
+      try {
+        java.lang.reflect.Constructor<? extends UpgradeStep> ctor = stepClass.getDeclaredConstructor();
+        ctor.setAccessible(true);
+        steps.add(ctor.newInstance());
+      } catch (NoSuchMethodException e) {
+        // Non-static inner class or class without a no-arg constructor — skip
+        if (log.isDebugEnabled()) {
+          log.debug("Skipping upgrade step without no-arg constructor: " + stepClass.getName());
+        }
+      } catch (ReflectiveOperationException e) {
+        throw new IllegalStateException("Failed to instantiate upgrade step: " + stepClass.getName(), e);
+      }
+    }
+    return steps;
   }
 
 
@@ -196,41 +246,26 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
   /**
    * Validates that all configuration values are within acceptable ranges.
    *
-   * @param config the configuration to validate.
+   * @param cfg the configuration to validate.
    * @throws IllegalArgumentException if any value is out of range.
    */
-  private void validateConfig(DeferredIndexExecutionConfig config) {
-    if (config.getThreadPoolSize() < 1) {
-      throw new IllegalArgumentException("threadPoolSize must be >= 1, was " + config.getThreadPoolSize());
+  private void validateConfig(DeferredIndexExecutionConfig cfg) {
+    if (cfg.getThreadPoolSize() < 1) {
+      throw new IllegalArgumentException("threadPoolSize must be >= 1, was " + cfg.getThreadPoolSize());
     }
-    if (config.getMaxRetries() < 0) {
-      throw new IllegalArgumentException("maxRetries must be >= 0, was " + config.getMaxRetries());
+    if (cfg.getMaxRetries() < 0) {
+      throw new IllegalArgumentException("maxRetries must be >= 0, was " + cfg.getMaxRetries());
     }
-    if (config.getRetryBaseDelayMs() < 0) {
-      throw new IllegalArgumentException("retryBaseDelayMs must be >= 0 ms, was " + config.getRetryBaseDelayMs() + " ms");
+    if (cfg.getRetryBaseDelayMs() < 0) {
+      throw new IllegalArgumentException("retryBaseDelayMs must be >= 0 ms, was " + cfg.getRetryBaseDelayMs() + " ms");
     }
-    if (config.getRetryMaxDelayMs() < config.getRetryBaseDelayMs()) {
-      throw new IllegalArgumentException("retryMaxDelayMs (" + config.getRetryMaxDelayMs()
-          + " ms) must be >= retryBaseDelayMs (" + config.getRetryBaseDelayMs() + " ms)");
+    if (cfg.getRetryMaxDelayMs() < cfg.getRetryBaseDelayMs()) {
+      throw new IllegalArgumentException("retryMaxDelayMs (" + cfg.getRetryMaxDelayMs()
+          + " ms) must be >= retryBaseDelayMs (" + cfg.getRetryBaseDelayMs() + " ms)");
     }
-    if (config.getExecutionTimeoutSeconds() <= 0) {
+    if (cfg.getExecutionTimeoutSeconds() <= 0) {
       throw new IllegalArgumentException(
-          "executionTimeoutSeconds must be > 0 s, was " + config.getExecutionTimeoutSeconds() + " s");
+          "executionTimeoutSeconds must be > 0 s, was " + cfg.getExecutionTimeoutSeconds() + " s");
     }
   }
-
-
-  /**
-   * Checks whether the DeferredIndexOperation table exists in the database
-   * by opening a fresh schema resource.
-   *
-   * @return {@code true} if the table exists.
-   */
-  private boolean deferredIndexTableExists() {
-    try (SchemaResource sr = connectionResources.openSchemaResource()) {
-      return sr.tableExists(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME);
-    }
-  }
-
-
 }
