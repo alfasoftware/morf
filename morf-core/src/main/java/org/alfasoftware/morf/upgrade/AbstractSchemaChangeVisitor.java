@@ -2,12 +2,15 @@ package org.alfasoftware.morf.upgrade;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.Statement;
+import org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex;
+import org.alfasoftware.morf.upgrade.deferred.DeferredIndexTracker;
 
 /**
  * Common code between SchemaChangeVisitor implementors
@@ -20,6 +23,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   protected final Table idTable;
   protected final TableNameResolver  tracker;
 
+  private final DeferredIndexTracker deferredIndexTracker = new DeferredIndexTracker();
 
   public AbstractSchemaChangeVisitor(Schema currentSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect,
                                      Table idTable) {
@@ -66,6 +70,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   @Override
   public void visit(RemoveTable removeTable) {
     currentSchema = removeTable.apply(currentSchema);
+    deferredIndexTracker.cancelAllPendingForTable(removeTable.getTable().getName());
     writeStatements(sqlDialect.dropStatements(removeTable.getTable()));
   }
 
@@ -80,6 +85,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   @Override
   public void visit(ChangeColumn changeColumn) {
     currentSchema = changeColumn.apply(currentSchema);
+    deferredIndexTracker.updatePendingColumnName(changeColumn.getTableName(), changeColumn.getFromColumn().getName(), changeColumn.getToColumn().getName());
     writeStatements(sqlDialect.alterTableChangeColumnStatements(currentSchema.getTable(changeColumn.getTableName()), changeColumn.getFromColumn(), changeColumn.getToColumn()));
   }
 
@@ -87,6 +93,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   @Override
   public void visit(RemoveColumn removeColumn) {
     currentSchema = removeColumn.apply(currentSchema);
+    deferredIndexTracker.cancelPendingReferencingColumn(removeColumn.getTableName(), removeColumn.getColumnDefinition().getName());
     writeStatements(sqlDialect.alterTableDropColumnStatements(currentSchema.getTable(removeColumn.getTableName()), removeColumn.getColumnDefinition()));
   }
 
@@ -94,23 +101,41 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   @Override
   public void visit(RemoveIndex removeIndex) {
     currentSchema = removeIndex.apply(currentSchema);
-    writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(removeIndex.getTableName()), removeIndex.getIndexToBeRemoved()));
+    String tableName = removeIndex.getTableName();
+    String indexName = removeIndex.getIndexToBeRemoved().getName();
+    if (deferredIndexTracker.hasPendingDeferred(tableName, indexName)) {
+      deferredIndexTracker.cancelPending(tableName, indexName);
+    } else {
+      writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(tableName), removeIndex.getIndexToBeRemoved()));
+    }
   }
 
 
   @Override
   public void visit(ChangeIndex changeIndex) {
     currentSchema = changeIndex.apply(currentSchema);
-    writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(changeIndex.getTableName()), changeIndex.getFromIndex()));
-    writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(changeIndex.getTableName()), changeIndex.getToIndex()));
+    String tableName = changeIndex.getTableName();
+    Optional<DeferredAddIndex> existing = deferredIndexTracker.getPendingDeferred(tableName, changeIndex.getFromIndex().getName());
+    if (existing.isPresent()) {
+      deferredIndexTracker.cancelPending(tableName, changeIndex.getFromIndex().getName());
+      deferredIndexTracker.trackPending(new DeferredAddIndex(existing.get().getTableName(), changeIndex.getToIndex(), existing.get().getUpgradeUUID()));
+    } else {
+      writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(tableName), changeIndex.getFromIndex()));
+      writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(tableName), changeIndex.getToIndex()));
+    }
   }
 
 
   @Override
   public void visit(final RenameIndex renameIndex) {
     currentSchema = renameIndex.apply(currentSchema);
-    writeStatements(sqlDialect.renameIndexStatements(currentSchema.getTable(renameIndex.getTableName()),
-      renameIndex.getFromIndexName(), renameIndex.getToIndexName()));
+    String tableName = renameIndex.getTableName();
+    if (deferredIndexTracker.hasPendingDeferred(tableName, renameIndex.getFromIndexName())) {
+      deferredIndexTracker.updatePendingIndexName(tableName, renameIndex.getFromIndexName(), renameIndex.getToIndexName());
+    } else {
+      writeStatements(sqlDialect.renameIndexStatements(currentSchema.getTable(tableName),
+        renameIndex.getFromIndexName(), renameIndex.getToIndexName()));
+    }
   }
 
 
@@ -120,6 +145,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     currentSchema = renameTable.apply(currentSchema);
     Table newTable = currentSchema.getTable(renameTable.getNewTableName());
 
+    deferredIndexTracker.updatePendingTableName(renameTable.getOldTableName(), renameTable.getNewTableName());
     writeStatements(sqlDialect.renameTableStatements(oldTable, newTable));
   }
 
@@ -193,6 +219,22 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   private void visitPortableSqlStatement(PortableSqlStatement sql) {
     sql.inplaceUpdateTransitionalTableNames(tracker);
     writeStatement(sql.getStatement(sqlDialect.getDatabaseType().identifier(), sqlDialect.schemaNamePrefix()));
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.upgrade.SchemaChangeVisitor#visit(org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex)
+   */
+  @Override
+  public void visit(DeferredAddIndex deferredAddIndex) {
+    if (!sqlDialect.supportsDeferredIndexCreation()) {
+      // Dialect does not support deferred index creation — fall back to
+      // building the index immediately during the upgrade.
+      visit(new AddIndex(deferredAddIndex.getTableName(), deferredAddIndex.getNewIndex()));
+      return;
+    }
+    currentSchema = deferredAddIndex.apply(currentSchema);
+    deferredIndexTracker.trackPending(deferredAddIndex);
   }
 
 

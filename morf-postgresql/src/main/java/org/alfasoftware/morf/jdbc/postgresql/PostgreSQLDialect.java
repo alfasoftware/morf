@@ -899,6 +899,26 @@ class PostgreSQLDialect extends SqlDialect {
   }
 
 
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#supportsDeferredIndexCreation()
+   */
+  @Override
+  public boolean supportsDeferredIndexCreation() {
+    return true;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#deferredIndexDeploymentStatements(org.alfasoftware.morf.metadata.Table, org.alfasoftware.morf.metadata.Index)
+   */
+  @Override
+  public Collection<String> deferredIndexDeploymentStatements(Table table, Index index) {
+    List<String> statements = new ArrayList<>(indexDeploymentStatements(table, index));
+    statements.set(0, statements.get(0).replaceFirst("INDEX ", "INDEX CONCURRENTLY "));
+    return statements;
+  }
+
+
   @Override
   public void prepareStatementParameters(NamedParameterPreparedStatement statement, DataValueLookup values, SqlParameter parameter) throws SQLException {
     switch (parameter.getMetadata().getType()) {

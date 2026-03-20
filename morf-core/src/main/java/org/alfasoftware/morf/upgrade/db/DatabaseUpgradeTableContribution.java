@@ -41,7 +41,6 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
   /** Name of the table containing information on the views deployed within the app's database. */
   public static final String DEPLOYED_VIEWS_NAME = "DeployedViews";
 
-
   /**
    * @return The Table descriptor of UpgradeAudit
    */

@@ -961,6 +961,27 @@ class OracleDialect extends SqlDialect {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#supportsDeferredIndexCreation()
+   */
+  @Override
+  public boolean supportsDeferredIndexCreation() {
+    return true;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#deferredIndexDeploymentStatements(org.alfasoftware.morf.metadata.Table, org.alfasoftware.morf.metadata.Index)
+   */
+  @Override
+  public Collection<String> deferredIndexDeploymentStatements(Table table, Index index) {
+    return ImmutableList.of(
+      Iterables.getOnlyElement(indexDeploymentStatements(table, index)) + " ONLINE PARALLEL NOLOGGING",
+      indexPostDeploymentStatements(index)
+    );
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#alterTableAddColumnStatements(org.alfasoftware.morf.metadata.Table, org.alfasoftware.morf.metadata.Column)
    */
   @Override

@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -28,6 +29,8 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeSchemaChangeVisitor.GraphBasedUpgradeSchemaChangeVisitorFactory;
+import org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex;
+import org.mockito.Mockito;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentMatchers;
@@ -75,6 +78,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     nodes.put(U1.class.getName(), n1);
     nodes.put(U2.class.getName(), n2);
     upgradeConfigAndContext = new UpgradeConfigAndContext();
+    when(sqlDialect.supportsDeferredIndexCreation()).thenReturn(true);
     visitor = new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable, nodes);
   }
 
@@ -101,7 +105,9 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     // given
     visitor.startStep(U1.class);
     RemoveTable removeTable = mock(RemoveTable.class);
-    when(removeTable.getTable()).thenReturn(mock(Table.class));
+    Table mockTable = mock(Table.class);
+    when(mockTable.getName()).thenReturn("SomeTable");
+    when(removeTable.getTable()).thenReturn(mockTable);
     when(sqlDialect.dropStatements(any(Table.class))).thenReturn(STATEMENTS);
 
     // when
@@ -220,8 +226,15 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
   public void testChangeColumnVisit() {
     // given
     visitor.startStep(U1.class);
+    Column fromCol = mock(Column.class);
+    when(fromCol.getName()).thenReturn("col");
+    Column toCol = mock(Column.class);
+    when(toCol.getName()).thenReturn("col");
     ChangeColumn changeColumn = mock(ChangeColumn.class);
     when(changeColumn.apply(sourceSchema)).thenReturn(sourceSchema);
+    when(changeColumn.getTableName()).thenReturn("SomeTable");
+    when(changeColumn.getFromColumn()).thenReturn(fromCol);
+    when(changeColumn.getToColumn()).thenReturn(toCol);
     when(sqlDialect.alterTableChangeColumnStatements(nullable(Table.class), nullable(Column.class), nullable(Column.class))).thenReturn(STATEMENTS);
 
     // when
@@ -237,8 +250,12 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
   public void testRemoveColumnVisit() {
     // given
     visitor.startStep(U1.class);
+    Column col = mock(Column.class);
+    when(col.getName()).thenReturn("col");
     RemoveColumn removeColumn = mock(RemoveColumn.class);
     when(removeColumn.apply(sourceSchema)).thenReturn(sourceSchema);
+    when(removeColumn.getTableName()).thenReturn("SomeTable");
+    when(removeColumn.getColumnDefinition()).thenReturn(col);
     when(sqlDialect.alterTableDropColumnStatements(nullable(Table.class), nullable(Column.class))).thenReturn(STATEMENTS);
 
     // when
@@ -254,8 +271,12 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
   public void testRemoveIndexVisit() {
     // given
     visitor.startStep(U1.class);
+    Index mockIdx = mock(Index.class);
+    when(mockIdx.getName()).thenReturn("SomeIdx");
     RemoveIndex removeIndex = mock(RemoveIndex.class);
     when(removeIndex.apply(sourceSchema)).thenReturn(sourceSchema);
+    when(removeIndex.getTableName()).thenReturn("SomeTable");
+    when(removeIndex.getIndexToBeRemoved()).thenReturn(mockIdx);
     when(sqlDialect.indexDropStatements(nullable(Table.class), nullable(Index.class))).thenReturn(STATEMENTS);
 
     // when
@@ -273,9 +294,12 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     visitor.startStep(U1.class);
     ChangeIndex changeIndex = mock(ChangeIndex.class);
     when(changeIndex.apply(sourceSchema)).thenReturn(sourceSchema);
+    when(changeIndex.getTableName()).thenReturn("SomeTable");
+    Index fromIdx = mock(Index.class);
+    when(fromIdx.getName()).thenReturn("SomeIndex");
+    when(changeIndex.getFromIndex()).thenReturn(fromIdx);
     when(sqlDialect.indexDropStatements(nullable(Table.class), nullable(Index.class))).thenReturn(STATEMENTS);
     when(sqlDialect.addIndexStatements(nullable(Table.class), nullable(Index.class))).thenReturn(STATEMENTS);
-
 
     // when
     visitor.visit(changeIndex);
@@ -292,6 +316,8 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     visitor.startStep(U1.class);
     RenameIndex renameIndex = mock(RenameIndex.class);
     when(renameIndex.apply(sourceSchema)).thenReturn(sourceSchema);
+    when(renameIndex.getTableName()).thenReturn("SomeTable");
+    when(renameIndex.getFromIndexName()).thenReturn("OldIndex");
     when(sqlDialect.renameIndexStatements(nullable(Table.class), nullable(String.class), nullable(String.class))).thenReturn(STATEMENTS);
 
     // when
@@ -300,6 +326,93 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     // then
     verify(renameIndex).apply(sourceSchema);
     verify(n1).addAllUpgradeStatements(ArgumentMatchers.argThat(c-> c.containsAll(STATEMENTS)));
+  }
+
+
+  /**
+   * ChangeIndex for a pending deferred index replaces it in the tracker
+   * in-memory. No SQL statements are emitted — no DROP INDEX, no
+   * addIndexStatements, and no convertStatementToSQL.
+   */
+  @Test
+  public void testChangeIndexCancelsPendingDeferredAdd() {
+    // given — a pending deferred add on SomeTable/SomeIndex
+    visitor.startStep(U1.class);
+    Index deferredIdx = mock(Index.class);
+    when(deferredIdx.getName()).thenReturn("SomeIndex");
+    when(deferredIdx.isUnique()).thenReturn(false);
+    when(deferredIdx.columnNames()).thenReturn(List.of("col1"));
+
+    DeferredAddIndex deferredAddIndex = mock(DeferredAddIndex.class);
+    when(deferredAddIndex.apply(sourceSchema)).thenReturn(sourceSchema);
+    when(deferredAddIndex.getTableName()).thenReturn("SomeTable");
+    when(deferredAddIndex.getNewIndex()).thenReturn(deferredIdx);
+    when(deferredAddIndex.getUpgradeUUID()).thenReturn("");
+
+    visitor.visit(deferredAddIndex);
+    Mockito.clearInvocations(sqlDialect, n1);
+
+    // given — change the same index to a new definition
+    Index toIdx = mock(Index.class);
+    when(toIdx.getName()).thenReturn("SomeIndex");
+    when(toIdx.isUnique()).thenReturn(false);
+    when(toIdx.columnNames()).thenReturn(List.of("col2"));
+    Table mockTable = mock(Table.class);
+    when(sourceSchema.getTable("SomeTable")).thenReturn(mockTable);
+
+    ChangeIndex changeIndex = mock(ChangeIndex.class);
+    when(changeIndex.apply(sourceSchema)).thenReturn(sourceSchema);
+    when(changeIndex.getTableName()).thenReturn("SomeTable");
+    when(changeIndex.getFromIndex()).thenReturn(deferredIdx);
+    when(changeIndex.getToIndex()).thenReturn(toIdx);
+
+    // when
+    visitor.visit(changeIndex);
+
+    // then — tracker handles it in-memory; no SQL emitted at all
+    verify(sqlDialect, never()).indexDropStatements(ArgumentMatchers.any(), ArgumentMatchers.any());
+    verify(sqlDialect, never()).addIndexStatements(ArgumentMatchers.any(), ArgumentMatchers.any());
+    verify(sqlDialect, never()).convertStatementToSQL(ArgumentMatchers.any(Statement.class), ArgumentMatchers.any(), ArgumentMatchers.any(Table.class));
+    verify(n1, never()).addAllUpgradeStatements(ArgumentMatchers.any());
+  }
+
+
+  /**
+   * RenameIndex for a pending deferred index updates the tracker in-memory.
+   * No SQL statements are emitted — no renameIndexStatements and no convertStatementToSQL.
+   */
+  @Test
+  public void testRenameIndexUpdatesPendingDeferredAdd() {
+    // given — a pending deferred add on SomeTable/OldIndex
+    visitor.startStep(U1.class);
+    Index deferredIdx = mock(Index.class);
+    when(deferredIdx.getName()).thenReturn("OldIndex");
+    when(deferredIdx.isUnique()).thenReturn(false);
+    when(deferredIdx.columnNames()).thenReturn(List.of("col1"));
+
+    DeferredAddIndex deferredAddIndex = mock(DeferredAddIndex.class);
+    when(deferredAddIndex.apply(sourceSchema)).thenReturn(sourceSchema);
+    when(deferredAddIndex.getTableName()).thenReturn("SomeTable");
+    when(deferredAddIndex.getNewIndex()).thenReturn(deferredIdx);
+    when(deferredAddIndex.getUpgradeUUID()).thenReturn("");
+
+    visitor.visit(deferredAddIndex);
+    Mockito.clearInvocations(sqlDialect, n1);
+
+    // given — rename OldIndex to NewIndex
+    RenameIndex renameIndex = mock(RenameIndex.class);
+    when(renameIndex.apply(sourceSchema)).thenReturn(sourceSchema);
+    when(renameIndex.getTableName()).thenReturn("SomeTable");
+    when(renameIndex.getFromIndexName()).thenReturn("OldIndex");
+    when(renameIndex.getToIndexName()).thenReturn("NewIndex");
+
+    // when
+    visitor.visit(renameIndex);
+
+    // then — tracker handles it in-memory; no SQL emitted at all
+    verify(sqlDialect, never()).renameIndexStatements(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any());
+    verify(sqlDialect, never()).convertStatementToSQL(ArgumentMatchers.any(Statement.class), ArgumentMatchers.any(), ArgumentMatchers.any(Table.class));
+    verify(n1, never()).addAllUpgradeStatements(ArgumentMatchers.any());
   }
 
 
@@ -345,6 +458,8 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     visitor.startStep(U1.class);
     RenameTable renameTable = mock(RenameTable.class);
     when(renameTable.apply(sourceSchema)).thenReturn(sourceSchema);
+    when(renameTable.getOldTableName()).thenReturn("OldTable");
+    when(renameTable.getNewTableName()).thenReturn("NewTable");
     when(sqlDialect.renameTableStatements(nullable(Table.class), nullable(Table.class))).thenReturn(STATEMENTS);
 
     // when

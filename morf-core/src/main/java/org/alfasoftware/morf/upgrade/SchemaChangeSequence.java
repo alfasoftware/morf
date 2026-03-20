@@ -36,6 +36,10 @@ import org.alfasoftware.morf.sql.element.FieldLiteral;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex;
+import org.alfasoftware.morf.upgrade.deferred.DeferredIndexTracker;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * Tracks a sequence of {@link SchemaChange}s as various {@link SchemaEditor}
@@ -45,6 +49,8 @@ import com.google.common.collect.Lists;
  * @author Copyright (c) Alfa Financial Software 2010
  */
 public class SchemaChangeSequence {
+
+  private static final Log log = LogFactory.getLog(SchemaChangeSequence.class);
 
   private final UpgradeConfigAndContext upgradeConfigAndContext;
 
@@ -74,7 +80,9 @@ public class SchemaChangeSequence {
     for (UpgradeStep step : steps) {
       InternalVisitor internalVisitor = new InternalVisitor(upgradeConfigAndContext.getSchemaChangeAdaptor());
       UpgradeTableResolutionVisitor resolvedTablesVisitor = new UpgradeTableResolutionVisitor();
-      Editor editor = new Editor(internalVisitor, resolvedTablesVisitor);
+      UUID uuidAnnotation = step.getClass().getAnnotation(UUID.class);
+      String upgradeUUID = uuidAnnotation != null ? uuidAnnotation.value() : "";
+      Editor editor = new Editor(internalVisitor, resolvedTablesVisitor, upgradeUUID);
       // For historical reasons, we need to pass the editor in twice
       step.execute(editor, editor);
 
@@ -221,20 +229,74 @@ public class SchemaChangeSequence {
 
 
   /**
+   * Walks all raw changes with a {@link DeferredIndexTracker} to find
+   * deferred indexes that survive cascading schema changes (remove, rename,
+   * changeIndex, removeTable, removeColumn, changeColumn, renameTable).
+   *
+   * <p>This creates its own tracker instance — it does not share state with
+   * the tracker used in {@link AbstractSchemaChangeVisitor} during upgrade
+   * execution.</p>
+   *
+   * @return surviving {@link DeferredAddIndex} instances after cascade resolution.
+   */
+  public List<DeferredAddIndex> findSurvivingDeferredIndexes() {
+    DeferredIndexTracker tracker = new DeferredIndexTracker();
+    for (UpgradeStepWithChanges changesForStep : allChanges) {
+      for (SchemaChange change : changesForStep.getChanges()) {
+        if (change instanceof DeferredAddIndex) {
+          tracker.trackPending((DeferredAddIndex) change);
+        } else if (change instanceof RemoveIndex) {
+          RemoveIndex ri = (RemoveIndex) change;
+          tracker.cancelPending(ri.getTableName(), ri.getIndexToBeRemoved().getName());
+        } else if (change instanceof RemoveTable) {
+          RemoveTable rt = (RemoveTable) change;
+          tracker.cancelAllPendingForTable(rt.getTable().getName());
+        } else if (change instanceof RemoveColumn) {
+          RemoveColumn rc = (RemoveColumn) change;
+          tracker.cancelPendingReferencingColumn(rc.getTableName(), rc.getColumnDefinition().getName());
+        } else if (change instanceof ChangeColumn) {
+          ChangeColumn cc = (ChangeColumn) change;
+          tracker.updatePendingColumnName(cc.getTableName(), cc.getFromColumn().getName(), cc.getToColumn().getName());
+        } else if (change instanceof RenameTable) {
+          RenameTable rt = (RenameTable) change;
+          tracker.updatePendingTableName(rt.getOldTableName(), rt.getNewTableName());
+        } else if (change instanceof RenameIndex) {
+          RenameIndex ri = (RenameIndex) change;
+          tracker.updatePendingIndexName(ri.getTableName(), ri.getFromIndexName(), ri.getToIndexName());
+        } else if (change instanceof ChangeIndex) {
+          ChangeIndex ci = (ChangeIndex) change;
+          if (tracker.hasPendingDeferred(ci.getTableName(), ci.getFromIndex().getName())) {
+            java.util.Optional<DeferredAddIndex> existing = tracker.getPendingDeferred(ci.getTableName(), ci.getFromIndex().getName());
+            tracker.cancelPending(ci.getTableName(), ci.getFromIndex().getName());
+            if (existing.isPresent()) {
+              tracker.trackPending(new DeferredAddIndex(existing.get().getTableName(), ci.getToIndex(), existing.get().getUpgradeUUID()));
+            }
+          }
+        }
+      }
+    }
+    return tracker.getSurvivingDeferredIndexes();
+  }
+
+
+  /**
    * The editor implementation which is used by upgrade steps
    */
   private class Editor implements SchemaEditor, DataEditor {
 
     private final SchemaChangeVisitor visitor;
     private final SchemaAndDataChangeVisitor schemaAndDataChangeVisitor;
+    private final String upgradeUUID;
 
     /**
      * @param visitor The visitor to pass the changes to.
+     * @param upgradeUUID UUID string of the upgrade step being executed.
      */
-    Editor(SchemaChangeVisitor visitor, SchemaAndDataChangeVisitor schemaAndDataChangeVisitor) {
+    Editor(SchemaChangeVisitor visitor, SchemaAndDataChangeVisitor schemaAndDataChangeVisitor, String upgradeUUID) {
       super();
       this.visitor = visitor;
       this.schemaAndDataChangeVisitor = schemaAndDataChangeVisitor;
+      this.upgradeUUID = upgradeUUID;
     }
 
 
@@ -361,9 +423,36 @@ public class SchemaChangeSequence {
      */
     @Override
     public void addIndex(String tableName, Index index) {
+      if (upgradeConfigAndContext.isForceDeferredIndex(index.getName())) {
+        if (log.isDebugEnabled()) {
+          log.debug("Force-deferring index [" + index.getName() + "] on table [" + tableName + "]");
+        }
+        addIndexDeferred(tableName, index);
+        return;
+      }
       AddIndex addIndex = new AddIndex(tableName, index);
       visitor.visit(addIndex);
       schemaAndDataChangeVisitor.visit(addIndex);
+    }
+
+
+    /**
+     * @see org.alfasoftware.morf.upgrade.SchemaEditor#addIndexDeferred(java.lang.String, org.alfasoftware.morf.metadata.Index)
+     */
+    @Override
+    public void addIndexDeferred(String tableName, Index index) {
+      if (upgradeConfigAndContext.isForceImmediateIndex(index.getName())) {
+        if (log.isDebugEnabled()) {
+          log.debug("Force-immediate index [" + index.getName() + "] on table [" + tableName + "]");
+        }
+        addIndex(tableName, index);
+        return;
+      }
+      DeferredAddIndex deferredAddIndex = new DeferredAddIndex(tableName, index, upgradeUUID);
+      visitor.visit(deferredAddIndex);
+      // schemaAndDataChangeVisitor is intentionally not notified: no DDL runs on tableName
+      // during this upgrade step, so no table-resolution dependency is created. Auto-cancel
+      // logic in AbstractSchemaChangeVisitor handles table/column removal.
     }
 
 
@@ -641,6 +730,15 @@ public class SchemaChangeSequence {
     @Override
     public void visit(RemoveSequence removeSequence) {
       changes.add(schemaChangeAdaptor.adapt(removeSequence));
+    }
+
+
+    /**
+     * @see org.alfasoftware.morf.upgrade.SchemaChangeVisitor#visit(org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex)
+     */
+    @Override
+    public void visit(DeferredAddIndex deferredAddIndex) {
+      changes.add(schemaChangeAdaptor.adapt(deferredAddIndex));
     }
   }
 }

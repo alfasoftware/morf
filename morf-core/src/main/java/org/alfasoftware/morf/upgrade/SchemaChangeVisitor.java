@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.upgrade;
 
+import org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex;
 
 /**
  * Interface for any upgrade / downgrade strategy which handles all the
@@ -154,6 +155,14 @@ public interface SchemaChangeVisitor {
    * @param removeSequence instance of {@link RemoveSequence} to visit.
    */
   public void visit(RemoveSequence removeSequence);
+
+
+  /**
+   * Perform visit operation on a {@link DeferredAddIndex} instance.
+   *
+   * @param deferredAddIndex instance of {@link DeferredAddIndex} to visit.
+   */
+  public void visit(DeferredAddIndex deferredAddIndex);
 
 
   /**
