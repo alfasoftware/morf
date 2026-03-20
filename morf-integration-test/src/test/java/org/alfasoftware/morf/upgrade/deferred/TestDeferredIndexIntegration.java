@@ -166,7 +166,8 @@ public class TestDeferredIndexIntegration {
 
   /**
    * Verify that addIndexDeferred() followed by changeIndex() in the same
-   * step cancels the deferred operation and creates the new index immediately.
+   * step cancels the old deferred operation and re-tracks the new index
+   * as a PENDING deferred operation.
    */
   @Test
   public void testDeferredAddFollowedByChangeIndex() {
@@ -180,9 +181,11 @@ public class TestDeferredIndexIntegration {
     );
     performUpgrade(targetSchema, AddDeferredIndexThenChange.class);
 
-    assertEquals("No deferred operations should remain", 0, countOperations());
+    // Old index cancelled, new index re-tracked as PENDING
+    assertEquals("One deferred operation for new index", 1, countOperations());
+    assertEquals("PENDING", queryOperationStatus("Product_Name_2"));
     assertIndexDoesNotExist("Product", "Product_Name_1");
-    assertIndexExists("Product", "Product_Name_2");
+    assertIndexDoesNotExist("Product", "Product_Name_2");
   }
 
 

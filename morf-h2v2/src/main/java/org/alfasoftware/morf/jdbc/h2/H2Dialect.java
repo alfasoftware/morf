@@ -709,4 +709,19 @@ class H2Dialect extends SqlDialect {
   public boolean useForcedSerialImport() {
     return true;
   }
+
+
+  /**
+   * H2 does not support non-blocking DDL, but returns {@code true} to enable
+   * deferred index creation. H2 is a small in-memory database where indexes
+   * are built very quickly, so blocking is not a concern in practice. Returning
+   * {@code true} allows integration tests to exercise the full deferred index
+   * pipeline (PENDING rows, executor, crash recovery).
+   *
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#supportsDeferredIndexCreation()
+   */
+  @Override
+  public boolean supportsDeferredIndexCreation() {
+    return true;
+  }
 }
