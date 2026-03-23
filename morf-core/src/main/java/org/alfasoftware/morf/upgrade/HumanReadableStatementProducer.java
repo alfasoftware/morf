@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.TreeMap;
 
 import org.alfasoftware.morf.changelog.EntityHumanReadableStatementConsumer;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Supplier;
@@ -40,6 +42,8 @@ import com.google.common.collect.Multimaps;
  * @author Copyright (c) Alfa Financial Software 2010
  */
 public class HumanReadableStatementProducer {
+
+  private static final Log log = LogFactory.getLog(HumanReadableStatementProducer.class);
 
   /**
    * The graph of upgrade steps.
@@ -152,6 +156,8 @@ public class HumanReadableStatementProducer {
     // Create entityKnowledgeBuilder for populating entity based changelogs
     EntityKnowledgeMapBuilder entityKnowledgeMapBuilder =new EntityKnowledgeMapBuilder(preferredSQLDialect);
     // Iterate over versions, then over the ordered upgrade steps
+    log.debug("Populate EntityBasedChangelog: [ " + populateEntityBasedChangelog + " ], "
+        + "Entity Start version sanitised : [ " + sanitise(entityConsumer.getVersionStart()));
     for (String version : orderedUpgradeSteps.keySet()) {
       consumer.versionStart("ALFA " + version);
       for (UpgradeStep currentStep : orderedUpgradeSteps.get(version)) {
@@ -163,7 +169,12 @@ public class HumanReadableStatementProducer {
         // Indicate to the consumer that the upgrade step has ended
         consumer.upgradeStepEnd(currentStep.getClass().getSimpleName());
 
-        if(populateEntityBasedChangelog && versionCompare(entityConsumer.getVersionStart(), version) >= 0){
+
+        log.debug(" ], Upgrade step version sanitised [ " + sanitise(version)
+            + " ], comparison: [ "
+            + versionCompare(sanitise(entityConsumer.getVersionStart()), sanitise(version)) + " ]");
+        if (populateEntityBasedChangelog && versionCompare(sanitise(entityConsumer.getVersionStart()), sanitise(version)) >= 0){
+          log.debug("Upgrade Step [" + currentStep.getClass().getSimpleName() + "] was added to entity based knowledge map");
           // Populate entityKnowledgeMapBuilder
           entityKnowledgeMapBuilder.upgradeStepStart(currentStep.getClass().getSimpleName(), currentStep.getDescription(), currentStep.getJiraId());
           currentStep.execute(entityKnowledgeMapBuilder, entityKnowledgeMapBuilder);
@@ -175,8 +186,10 @@ public class HumanReadableStatementProducer {
     //now handle our knowledgeMap and place into consumer...
     //Iterate over knowledge, then each entity within, then descriptions split by new line
     entityKnowledgeMapBuilder.getKnowledgeMultimap().forEach((entity, upgradeStep) -> {
+      log.debug("Printing information for entity [ " + entity + " ]");
       entityConsumer.entityStart(entity);
       upgradeStep.forEach((upgradeStepID, schemaChanges) -> {
+        log.debug("Printing information for upgrade step [ " + upgradeStepID.getName() + " ]");
         entityConsumer.upgradeStepStart(upgradeStepID.getName(), upgradeStepID.getDescription(), upgradeStepID.getJiraID());
         schemaChanges.forEach(entityConsumer::schemaChange);
         entityConsumer.upgradeStepEnd("");
@@ -185,6 +198,10 @@ public class HumanReadableStatementProducer {
     });
 
 
+  }
+
+  public static String sanitise(String version) {
+    return version.replaceAll("^v", "").replaceAll("\\.r$", "");
   }
 
   /**
