@@ -30,6 +30,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.sql.ResultSet;
 import java.util.UUID;
 
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
@@ -218,6 +219,6 @@ public class TestDeferredIndexReadinessCheck {
             .from(tableRef(DEFERRED_INDEX_OPERATION_NAME))
             .where(field("status").eq(DeferredIndexStatus.PENDING.name()))
     );
-    return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> rs.next());
+    return sqlScriptExecutorProvider.get().executeQuery(sql, ResultSet::next);
   }
 }

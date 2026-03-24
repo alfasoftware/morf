@@ -20,7 +20,6 @@ import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex;
-import org.alfasoftware.morf.upgrade.SchemaChange;
 import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;

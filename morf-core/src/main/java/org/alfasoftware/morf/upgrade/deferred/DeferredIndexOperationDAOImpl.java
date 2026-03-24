@@ -27,7 +27,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -35,7 +34,6 @@ import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.sql.SelectStatement;
-import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 
 import com.google.inject.Inject;
@@ -55,6 +53,22 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
   private static final Log log = LogFactory.getLog(DeferredIndexOperationDAOImpl.class);
 
   private static final String DEFERRED_INDEX_OP_TABLE = DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME;
+
+  // Column name constants
+  private static final String COL_ID = "id";
+  private static final String COL_UPGRADE_UUID = "upgradeUUID";
+  private static final String COL_TABLE_NAME = "tableName";
+  private static final String COL_INDEX_NAME = "indexName";
+  private static final String COL_INDEX_UNIQUE = "indexUnique";
+  private static final String COL_INDEX_COLUMNS = "indexColumns";
+  private static final String COL_STATUS = "status";
+  private static final String COL_RETRY_COUNT = "retryCount";
+  private static final String COL_CREATED_TIME = "createdTime";
+  private static final String COL_STARTED_TIME = "startedTime";
+  private static final String COL_COMPLETED_TIME = "completedTime";
+  private static final String COL_ERROR_MESSAGE = "errorMessage";
+
+  private static final String LOG_MARKING_OP = "Marking operation [";
 
   private final SqlScriptExecutorProvider sqlScriptExecutorProvider;
   private final SqlDialect sqlDialect;
@@ -94,15 +108,15 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
    */
   @Override
   public void markStarted(long id, long startedTime) {
-    if (log.isDebugEnabled()) log.debug("Marking operation [" + id + "] as IN_PROGRESS");
+    if (log.isDebugEnabled()) log.debug(LOG_MARKING_OP + id + "] as IN_PROGRESS");
     sqlScriptExecutorProvider.get().execute(
       sqlDialect.convertStatementToSQL(
         update(tableRef(DEFERRED_INDEX_OP_TABLE))
           .set(
-            literal(DeferredIndexStatus.IN_PROGRESS.name()).as("status"),
-            literal(startedTime).as("startedTime")
+            literal(DeferredIndexStatus.IN_PROGRESS.name()).as(COL_STATUS),
+            literal(startedTime).as(COL_STARTED_TIME)
           )
-          .where(field("id").eq(id))
+          .where(field(COL_ID).eq(id))
       )
     );
   }
@@ -117,15 +131,15 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
    */
   @Override
   public void markCompleted(long id, long completedTime) {
-    if (log.isDebugEnabled()) log.debug("Marking operation [" + id + "] as COMPLETED");
+    if (log.isDebugEnabled()) log.debug(LOG_MARKING_OP + id + "] as COMPLETED");
     sqlScriptExecutorProvider.get().execute(
       sqlDialect.convertStatementToSQL(
         update(tableRef(DEFERRED_INDEX_OP_TABLE))
           .set(
-            literal(DeferredIndexStatus.COMPLETED.name()).as("status"),
-            literal(completedTime).as("completedTime")
+            literal(DeferredIndexStatus.COMPLETED.name()).as(COL_STATUS),
+            literal(completedTime).as(COL_COMPLETED_TIME)
           )
-          .where(field("id").eq(id))
+          .where(field(COL_ID).eq(id))
       )
     );
   }
@@ -141,16 +155,16 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
    */
   @Override
   public void markFailed(long id, String errorMessage, int newRetryCount) {
-    if (log.isDebugEnabled()) log.debug("Marking operation [" + id + "] as FAILED (retryCount=" + newRetryCount + ")");
+    if (log.isDebugEnabled()) log.debug(LOG_MARKING_OP + id + "] as FAILED (retryCount=" + newRetryCount + ")");
     sqlScriptExecutorProvider.get().execute(
       sqlDialect.convertStatementToSQL(
         update(tableRef(DEFERRED_INDEX_OP_TABLE))
           .set(
-            literal(DeferredIndexStatus.FAILED.name()).as("status"),
-            literal(errorMessage).as("errorMessage"),
-            literal(newRetryCount).as("retryCount")
+            literal(DeferredIndexStatus.FAILED.name()).as(COL_STATUS),
+            literal(errorMessage).as(COL_ERROR_MESSAGE),
+            literal(newRetryCount).as(COL_RETRY_COUNT)
           )
-          .where(field("id").eq(id))
+          .where(field(COL_ID).eq(id))
       )
     );
   }
@@ -168,8 +182,8 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
     sqlScriptExecutorProvider.get().execute(
       sqlDialect.convertStatementToSQL(
         update(tableRef(DEFERRED_INDEX_OP_TABLE))
-          .set(literal(DeferredIndexStatus.PENDING.name()).as("status"))
-          .where(field("id").eq(id))
+          .set(literal(DeferredIndexStatus.PENDING.name()).as(COL_STATUS))
+          .where(field(COL_ID).eq(id))
       )
     );
   }
@@ -184,8 +198,8 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
     sqlScriptExecutorProvider.get().execute(
       sqlDialect.convertStatementToSQL(
         update(tableRef(DEFERRED_INDEX_OP_TABLE))
-          .set(literal(DeferredIndexStatus.PENDING.name()).as("status"))
-          .where(field("status").eq(DeferredIndexStatus.IN_PROGRESS.name()))
+          .set(literal(DeferredIndexStatus.PENDING.name()).as(COL_STATUS))
+          .where(field(COL_STATUS).eq(DeferredIndexStatus.IN_PROGRESS.name()))
       )
     );
   }
@@ -197,17 +211,17 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
   @Override
   public List<DeferredIndexOperation> findNonTerminalOperations() {
     SelectStatement select = select(
-        field("id"), field("upgradeUUID"), field("tableName"),
-        field("indexName"), field("indexUnique"), field("indexColumns"),
-        field("status"), field("retryCount"), field("createdTime"),
-        field("startedTime"), field("completedTime"), field("errorMessage")
+        field(COL_ID), field(COL_UPGRADE_UUID), field(COL_TABLE_NAME),
+        field(COL_INDEX_NAME), field(COL_INDEX_UNIQUE), field(COL_INDEX_COLUMNS),
+        field(COL_STATUS), field(COL_RETRY_COUNT), field(COL_CREATED_TIME),
+        field(COL_STARTED_TIME), field(COL_COMPLETED_TIME), field(COL_ERROR_MESSAGE)
       ).from(tableRef(DEFERRED_INDEX_OP_TABLE))
        .where(or(
-         field("status").eq(DeferredIndexStatus.PENDING.name()),
-         field("status").eq(DeferredIndexStatus.IN_PROGRESS.name()),
-         field("status").eq(DeferredIndexStatus.FAILED.name())
+         field(COL_STATUS).eq(DeferredIndexStatus.PENDING.name()),
+         field(COL_STATUS).eq(DeferredIndexStatus.IN_PROGRESS.name()),
+         field(COL_STATUS).eq(DeferredIndexStatus.FAILED.name())
        ))
-       .orderBy(field("id"));
+       .orderBy(field(COL_ID));
 
     String sql = sqlDialect.convertStatementToSQL(select);
     return sqlScriptExecutorProvider.get().executeQuery(sql, this::mapOperations);
@@ -219,7 +233,7 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
    */
   @Override
   public Map<DeferredIndexStatus, Integer> countAllByStatus() {
-    SelectStatement select = select(field("status"))
+    SelectStatement select = select(field(COL_STATUS))
       .from(tableRef(DEFERRED_INDEX_OP_TABLE));
 
     String sql = sqlDialect.convertStatementToSQL(select);
@@ -250,13 +264,13 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
    */
   private List<DeferredIndexOperation> findOperationsByStatus(DeferredIndexStatus status) {
     SelectStatement select = select(
-        field("id"), field("upgradeUUID"), field("tableName"),
-        field("indexName"), field("indexUnique"), field("indexColumns"),
-        field("status"), field("retryCount"), field("createdTime"),
-        field("startedTime"), field("completedTime"), field("errorMessage")
+        field(COL_ID), field(COL_UPGRADE_UUID), field(COL_TABLE_NAME),
+        field(COL_INDEX_NAME), field(COL_INDEX_UNIQUE), field(COL_INDEX_COLUMNS),
+        field(COL_STATUS), field(COL_RETRY_COUNT), field(COL_CREATED_TIME),
+        field(COL_STARTED_TIME), field(COL_COMPLETED_TIME), field(COL_ERROR_MESSAGE)
       ).from(tableRef(DEFERRED_INDEX_OP_TABLE))
-       .where(field("status").eq(status.name()))
-       .orderBy(field("id"));
+       .where(field(COL_STATUS).eq(status.name()))
+       .orderBy(field(COL_ID));
 
     String sql = sqlDialect.convertStatementToSQL(select);
     return sqlScriptExecutorProvider.get().executeQuery(sql, this::mapOperations);
@@ -272,20 +286,20 @@ class DeferredIndexOperationDAOImpl implements DeferredIndexOperationDAO {
 
     while (rs.next()) {
       DeferredIndexOperation op = new DeferredIndexOperation();
-      op.setId(rs.getLong("id"));
-      op.setUpgradeUUID(rs.getString("upgradeUUID"));
-      op.setTableName(rs.getString("tableName"));
-      op.setIndexName(rs.getString("indexName"));
-      op.setIndexUnique(rs.getBoolean("indexUnique"));
-      op.setColumnNames(Arrays.asList(rs.getString("indexColumns").split(",")));
-      op.setStatus(DeferredIndexStatus.valueOf(rs.getString("status")));
-      op.setRetryCount(rs.getInt("retryCount"));
-      op.setCreatedTime(rs.getLong("createdTime"));
-      long startedTime = rs.getLong("startedTime");
+      op.setId(rs.getLong(COL_ID));
+      op.setUpgradeUUID(rs.getString(COL_UPGRADE_UUID));
+      op.setTableName(rs.getString(COL_TABLE_NAME));
+      op.setIndexName(rs.getString(COL_INDEX_NAME));
+      op.setIndexUnique(rs.getBoolean(COL_INDEX_UNIQUE));
+      op.setColumnNames(Arrays.asList(rs.getString(COL_INDEX_COLUMNS).split(",")));
+      op.setStatus(DeferredIndexStatus.valueOf(rs.getString(COL_STATUS)));
+      op.setRetryCount(rs.getInt(COL_RETRY_COUNT));
+      op.setCreatedTime(rs.getLong(COL_CREATED_TIME));
+      long startedTime = rs.getLong(COL_STARTED_TIME);
       op.setStartedTime(rs.wasNull() ? null : startedTime);
-      long completedTime = rs.getLong("completedTime");
+      long completedTime = rs.getLong(COL_COMPLETED_TIME);
       op.setCompletedTime(rs.wasNull() ? null : completedTime);
-      op.setErrorMessage(rs.getString("errorMessage"));
+      op.setErrorMessage(rs.getString(COL_ERROR_MESSAGE));
       result.add(op);
     }
 

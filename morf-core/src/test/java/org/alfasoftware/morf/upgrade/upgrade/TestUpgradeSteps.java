@@ -11,6 +11,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.util.stream.Collectors;
 
+import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.DataEditor;
 import org.alfasoftware.morf.upgrade.SchemaEditor;
@@ -72,7 +74,7 @@ public class TestUpgradeSteps {
         assertEquals("DeferredIndexOperation", table.getName());
 
         java.util.List<String> columnNames = table.columns().stream()
-            .map(c -> c.getName())
+            .map(Column::getName)
             .collect(Collectors.toList());
         assertTrue(columnNames.contains("id"));
         assertTrue(columnNames.contains("upgradeUUID"));
@@ -88,7 +90,7 @@ public class TestUpgradeSteps {
         assertTrue(columnNames.contains("errorMessage"));
 
         java.util.List<String> indexNames = table.indexes().stream()
-            .map(i -> i.getName())
+            .map(Index::getName)
             .collect(Collectors.toList());
         assertTrue(indexNames.contains("DeferredIndexOp_1"));
         assertTrue(indexNames.contains("DeferredIndexOp_2"));

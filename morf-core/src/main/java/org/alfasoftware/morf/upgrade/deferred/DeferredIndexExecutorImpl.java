@@ -59,6 +59,9 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
 
   private static final Log log = LogFactory.getLog(DeferredIndexExecutorImpl.class);
 
+  private static final String LOG_OP_PREFIX = "Deferred index operation [";
+  private static final String LOG_INDEX = ", index=";
+
   private final DeferredIndexOperationDAO dao;
   private final ConnectionResources connectionResources;
   private final SqlScriptExecutorProvider sqlScriptExecutorProvider;
@@ -158,7 +161,7 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
 
     for (int attempt = op.getRetryCount(); attempt < maxAttempts; attempt++) {
       log.info("Starting deferred index operation [" + op.getId() + "]: table=" + op.getTableName()
-          + ", index=" + op.getIndexName() + ", attempt=" + (attempt + 1) + "/" + maxAttempts);
+          + LOG_INDEX + op.getIndexName() + ", attempt=" + (attempt + 1) + "/" + maxAttempts);
       long startedTime = System.currentTimeMillis();
       dao.markStarted(op.getId(), startedTime);
 
@@ -166,8 +169,8 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
         buildIndex(op);
         long elapsedSeconds = (System.currentTimeMillis() - startedTime) / 1000;
         dao.markCompleted(op.getId(), System.currentTimeMillis());
-        log.info("Deferred index operation [" + op.getId() + "] completed in " + elapsedSeconds
-            + " s: table=" + op.getTableName() + ", index=" + op.getIndexName());
+        log.info(LOG_OP_PREFIX + op.getId() + "] completed in " + elapsedSeconds
+            + " s: table=" + op.getTableName() + LOG_INDEX + op.getIndexName());
         return;
 
       } catch (Exception e) {
@@ -177,8 +180,8 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
         // (e.g. a previous crashed attempt completed the build), mark COMPLETED.
         if (indexExistsInDatabase(op)) {
           dao.markCompleted(op.getId(), System.currentTimeMillis());
-          log.info("Deferred index operation [" + op.getId() + "] failed but index exists in database"
-              + " — marking COMPLETED: table=" + op.getTableName() + ", index=" + op.getIndexName());
+          log.info(LOG_OP_PREFIX + op.getId() + "] failed but index exists in database"
+              + " — marking COMPLETED: table=" + op.getTableName() + LOG_INDEX + op.getIndexName());
           return;
         }
 
@@ -186,15 +189,15 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
         dao.markFailed(op.getId(), e.getMessage(), newRetryCount);
 
         if (newRetryCount < maxAttempts) {
-          log.error("Deferred index operation [" + op.getId() + "] failed after " + elapsedSeconds
+          log.error(LOG_OP_PREFIX + op.getId() + "] failed after " + elapsedSeconds
               + " s (attempt " + newRetryCount + "/" + maxAttempts + "), will retry: table="
-              + op.getTableName() + ", index=" + op.getIndexName() + ", error=" + e.getMessage());
+              + op.getTableName() + LOG_INDEX + op.getIndexName() + ", error=" + e.getMessage());
           dao.resetToPending(op.getId());
           sleepForBackoff(attempt);
         } else {
           log.error("Deferred index operation permanently failed after " + elapsedSeconds + " s ("
               + newRetryCount + " attempt(s)): table=" + op.getTableName()
-              + ", index=" + op.getIndexName(), e);
+              + LOG_INDEX + op.getIndexName(), e);
         }
       }
     }

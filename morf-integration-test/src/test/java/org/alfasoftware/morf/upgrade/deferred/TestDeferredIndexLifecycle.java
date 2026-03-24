@@ -290,7 +290,7 @@ public class TestDeferredIndexLifecycle {
   }
 
 
-  /** Two upgrades, first index not built — force-built before second upgrade. */
+  /** Two upgrades, first index not built — force-built before second, second deferred until execute. */
   @Test
   public void testTwoUpgrades_firstIndexNotBuilt_forceBuiltBeforeSecond() {
     // First upgrade — don't execute
@@ -301,6 +301,8 @@ public class TestDeferredIndexLifecycle {
     performUpgradeWithSteps(schemaWithBothIndexes(),
         List.of(AddDeferredIndex.class, AddSecondDeferredIndex.class));
     assertIndexExists("Product", "Product_Name_1");
+    // Second index should NOT be built yet — it was just deferred by the second upgrade
+    assertIndexDoesNotExist("Product", "Product_IdName_1");
 
     // Execute builds second index
     executeDeferred();

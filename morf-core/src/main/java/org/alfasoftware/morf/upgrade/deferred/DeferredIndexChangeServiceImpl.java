@@ -69,6 +69,12 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
 
   private static final Log log = LogFactory.getLog(DeferredIndexChangeServiceImpl.class);
 
+  private static final String COL_TABLE_NAME = "tableName";
+  private static final String COL_INDEX_NAME = "indexName";
+  private static final String COL_STATUS = "status";
+  private static final String STATUS_PENDING = "PENDING";
+  private static final String LOG_ARROW = "] -> [";
+
   /**
    * Pending deferred ADD INDEX operations registered during this upgrade session,
    * keyed by table name (upper-cased) then index name (upper-cased).
@@ -134,8 +140,8 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
     }
 
     return buildDeleteStatements(
-      field("tableName").eq(literal(dai.getTableName())),
-      field("indexName").eq(literal(dai.getNewIndex().getName()))
+      field(COL_TABLE_NAME).eq(literal(dai.getTableName())),
+      field(COL_INDEX_NAME).eq(literal(dai.getNewIndex().getName()))
     );
   }
 
@@ -155,7 +161,7 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
 
     String storedTableName = tableMap.values().iterator().next().getTableName();
     return buildDeleteStatements(
-      field("tableName").eq(literal(storedTableName))
+      field(COL_TABLE_NAME).eq(literal(storedTableName))
     );
   }
 
@@ -214,8 +220,8 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
     pendingDeferredIndexes.put(newTableName.toUpperCase(), updatedMap);
 
     return buildUpdateOperationStatements(
-      literal(newTableName).as("tableName"),
-      field("tableName").eq(literal(storedOldTableName))
+      literal(newTableName).as(COL_TABLE_NAME),
+      field(COL_TABLE_NAME).eq(literal(storedOldTableName))
     );
   }
 
@@ -260,9 +266,9 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
         update(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
           .set(literal(newColumnsStr).as("indexColumns"))
           .where(and(
-            field("tableName").eq(literal(dai.getTableName())),
-            field("indexName").eq(literal(dai.getNewIndex().getName())),
-            field("status").eq(literal("PENDING"))
+            field(COL_TABLE_NAME).eq(literal(dai.getTableName())),
+            field(COL_INDEX_NAME).eq(literal(dai.getNewIndex().getName())),
+            field(COL_STATUS).eq(literal(STATUS_PENDING))
           ))
       );
     }
@@ -294,9 +300,9 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
     tableMap.put(newIndexName.toUpperCase(), new DeferredAddIndex(storedTableName, renamedIndex, existing.getUpgradeUUID()));
 
     return buildUpdateOperationStatements(
-      literal(newIndexName).as("indexName"),
-      field("tableName").eq(literal(storedTableName)),
-      field("indexName").eq(literal(storedIndexName))
+      literal(newIndexName).as(COL_INDEX_NAME),
+      field(COL_TABLE_NAME).eq(literal(storedTableName)),
+      field(COL_INDEX_NAME).eq(literal(storedIndexName))
     );
   }
 
@@ -317,11 +323,11 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
         .values(
           literal(operationId).as("id"),
           literal(deferredAddIndex.getUpgradeUUID()).as("upgradeUUID"),
-          literal(deferredAddIndex.getTableName()).as("tableName"),
-          literal(deferredAddIndex.getNewIndex().getName()).as("indexName"),
+          literal(deferredAddIndex.getTableName()).as(COL_TABLE_NAME),
+          literal(deferredAddIndex.getNewIndex().getName()).as(COL_INDEX_NAME),
           literal(deferredAddIndex.getNewIndex().isUnique()).as("indexUnique"),
           literal(String.join(",", deferredAddIndex.getNewIndex().columnNames())).as("indexColumns"),
-          literal("PENDING").as("status"),
+          literal(STATUS_PENDING).as("status"),
           literal(0).as("retryCount"),
           literal(createdTime).as("createdTime")
         )
@@ -362,7 +368,7 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
    */
   private Criterion pendingWhere(Criterion... criteria) {
     List<Criterion> all = new ArrayList<>(Arrays.asList(criteria));
-    all.add(field("status").eq(literal("PENDING")));
+    all.add(field(COL_STATUS).eq(literal(STATUS_PENDING)));
     return and(all);
   }
 }

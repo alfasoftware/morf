@@ -140,41 +140,57 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
 
     Schema result = sourceSchema;
     for (DeferredIndexOperation op : ops) {
-      if (!result.tableExists(op.getTableName())) {
-        log.warn("Skipping deferred index [" + op.getIndexName() + "] — table ["
-            + op.getTableName() + "] does not exist in schema");
-        continue;
-      }
-
-      Table table = result.getTable(op.getTableName());
-      boolean indexAlreadyExists = table.indexes().stream()
-          .anyMatch(idx -> idx.getName().equalsIgnoreCase(op.getIndexName()));
-      if (indexAlreadyExists) {
-        // The index exists in the database but the operation row is still
-        // non-terminal (e.g. the status update failed after CREATE INDEX
-        // succeeded). The stale row will be cleaned up when the executor
-        // runs: its post-failure indexExistsInDatabase check will mark it
-        // COMPLETED. No schema augmentation is needed here.
-        log.info("Deferred index [" + op.getIndexName() + "] already exists on table ["
-            + op.getTableName() + "] — skipping augmentation; stale row will be resolved by executor");
-        continue;
-      }
-
-      Index newIndex = op.toIndex();
-      List<String> indexNames = new ArrayList<>();
-      for (Index existing : table.indexes()) {
-        indexNames.add(existing.getName());
-      }
-      indexNames.add(newIndex.getName());
-
-      log.info("Augmenting schema with deferred index [" + op.getIndexName() + "] on table ["
-          + op.getTableName() + "] [" + op.getStatus() + "]");
-
-      result = new TableOverrideSchema(result,
-          new AlteredTable(table, null, null, indexNames, Arrays.asList(newIndex)));
+      result = augmentSchemaWithOperation(result, op);
     }
 
     return result;
+  }
+
+
+  /**
+   * Augments the schema with a single deferred index operation, if applicable.
+   * Returns the schema unchanged if:
+   * <ul>
+   *   <li>the target table does not exist in the schema, or</li>
+   *   <li>the index already exists on the table (the operation row is stale —
+   *       e.g. the status update failed after CREATE INDEX succeeded; the
+   *       executor's post-failure indexExistsInDatabase check will clean it
+   *       up on the next run).</li>
+   * </ul>
+   *
+   * @param schema the current schema.
+   * @param op     the deferred index operation.
+   * @return the augmented schema, or the original if no augmentation was needed.
+   */
+  private Schema augmentSchemaWithOperation(Schema schema, DeferredIndexOperation op) {
+    if (!schema.tableExists(op.getTableName())) {
+      log.warn("Skipping deferred index [" + op.getIndexName() + "] — table ["
+          + op.getTableName() + "] does not exist in schema");
+      return schema;
+    }
+
+    Table table = schema.getTable(op.getTableName());
+
+    boolean indexAlreadyExists = table.indexes().stream()
+        .anyMatch(idx -> idx.getName().equalsIgnoreCase(op.getIndexName()));
+    if (indexAlreadyExists) {
+      log.info("Deferred index [" + op.getIndexName() + "] already exists on table ["
+          + op.getTableName() + "] — skipping augmentation; stale row will be resolved by executor");
+      return schema;
+    }
+
+    Index newIndex = op.toIndex();
+    List<String> indexNames = new ArrayList<>();
+    for (Index existing : table.indexes()) {
+      indexNames.add(existing.getName());
+    }
+    indexNames.add(newIndex.getName());
+
+    log.info("Augmenting schema with deferred index [" + op.getIndexName() + "] on table ["
+        + op.getTableName() + "] [" + op.getStatus() + "]");
+
+    return new TableOverrideSchema(schema,
+        new AlteredTable(table, null, null, indexNames, Arrays.asList(newIndex)));
   }
 
 

@@ -94,7 +94,7 @@ public class TestDeferredIndexServiceImpl {
 
   /** awaitCompletion() should return false and restore interrupt flag when interrupted. */
   @Test
-  public void testAwaitCompletionReturnsFalseWhenInterrupted() throws Exception {
+  public void testAwaitCompletionReturnsFalseWhenInterrupted() throws InterruptedException {
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     when(mockExecutor.execute()).thenReturn(new CompletableFuture<>()); // never completes
 
