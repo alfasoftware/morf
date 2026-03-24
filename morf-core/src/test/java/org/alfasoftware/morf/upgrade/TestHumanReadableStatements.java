@@ -204,18 +204,18 @@ public class TestHumanReadableStatements {
    */
   @Test
   public void testDirectionVersionComparison() {
-    assertEquals("5.3.1 less than 5.3.2",Integer.valueOf(-1), HumanReadableStatementProducer.versionCompare("5.3.1", "5.3.2"));
-    assertEquals("5.3.2 greater than 5.3.1",Integer.valueOf(1), HumanReadableStatementProducer.versionCompare("5.3.2", "5.3.1"));
-    assertEquals("5.3.3 equals 5.3.3",Integer.valueOf(0), HumanReadableStatementProducer.versionCompare("5.3.3", "5.3.3"));
+    assertEquals("5.3.1 less than 5.3.2",Integer.valueOf(-1), new HumanReadableStatementProducerUtils().versionCompare("5.3.1", "5.3.2"));
+    assertEquals("5.3.2 greater than 5.3.1",Integer.valueOf(1), new HumanReadableStatementProducerUtils().versionCompare("5.3.2", "5.3.1"));
+    assertEquals("5.3.3 equals 5.3.3",Integer.valueOf(0), new HumanReadableStatementProducerUtils().versionCompare("5.3.3", "5.3.3"));
 
-    assertEquals("5.3.1.2.3.4 less than 5.3.1.2.3.5",Integer.valueOf(-1), HumanReadableStatementProducer.versionCompare("5.3.1.2.3.4", "5.3.1.2.3.5"));
-    assertEquals("5.3.1 less than 5.3.1.2",Integer.valueOf(-1), HumanReadableStatementProducer.versionCompare("5.3.1", "5.3.1.2"));
+    assertEquals("5.3.1.2.3.4 less than 5.3.1.2.3.5",Integer.valueOf(-1), new HumanReadableStatementProducerUtils().versionCompare("5.3.1.2.3.4", "5.3.1.2.3.5"));
+    assertEquals("5.3.1 less than 5.3.1.2",Integer.valueOf(-1), new HumanReadableStatementProducerUtils().versionCompare("5.3.1", "5.3.1.2"));
 
-    assertEquals("5.3.1a less than 5.3.2a",Integer.valueOf(-1), HumanReadableStatementProducer.versionCompare("5.3.1a", "5.3.2a"));
-    assertEquals("5.3.2a greater than 5.3.1a",Integer.valueOf(1), HumanReadableStatementProducer.versionCompare("5.3.2a", "5.3.1a"));
-    assertEquals("5.3.3a less than 5.3.3b",Integer.valueOf(-1), HumanReadableStatementProducer.versionCompare("5.3.3a", "5.3.3b"));
-    assertEquals("5.3.3a equals 5.3.3a",Integer.valueOf(0), HumanReadableStatementProducer.versionCompare("5.3.3a", "5.3.3a"));
-    assertEquals("5.3.3a.a less than 5.3.3a.b",Integer.valueOf(-1), HumanReadableStatementProducer.versionCompare("5.3.3a.a", "5.3.3a.b"));
+    assertEquals("5.3.1a less than 5.3.2a",Integer.valueOf(-1), new HumanReadableStatementProducerUtils().versionCompare("5.3.1a", "5.3.2a"));
+    assertEquals("5.3.2a greater than 5.3.1a",Integer.valueOf(1), new HumanReadableStatementProducerUtils().versionCompare("5.3.2a", "5.3.1a"));
+    assertEquals("5.3.3a less than 5.3.3b",Integer.valueOf(-1), new HumanReadableStatementProducerUtils().versionCompare("5.3.3a", "5.3.3b"));
+    assertEquals("5.3.3a equals 5.3.3a",Integer.valueOf(0), new HumanReadableStatementProducerUtils().versionCompare("5.3.3a", "5.3.3a"));
+    assertEquals("5.3.3a.a less than 5.3.3a.b",Integer.valueOf(-1), new HumanReadableStatementProducerUtils().versionCompare("5.3.3a.a", "5.3.3a.b"));
   }
 
   /**
