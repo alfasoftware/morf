@@ -34,9 +34,8 @@ public interface DeferredIndexChangeService {
 
   /**
    * Records a deferred ADD INDEX operation in the service and returns the
-   * INSERT {@link Statement}s that enqueue it in the database
-   * ({@code DeferredIndexOperation} row plus one {@code DeferredIndexOperationColumn}
-   * row per index column).
+   * INSERT {@link Statement} that enqueues it in the database
+   * as a {@code DeferredIndexOperation} row.
    *
    * @param deferredAddIndex the operation to enqueue.
    * @return INSERT statements to be executed by the caller.

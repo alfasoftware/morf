@@ -21,9 +21,7 @@ import java.util.Map;
 import com.google.inject.ImplementedBy;
 
 /**
- * DAO for reading and writing {@link DeferredIndexOperation} records,
- * including their associated column-name rows from
- * {@code DeferredIndexOperationColumn}.
+ * DAO for reading and writing {@link DeferredIndexOperation} records.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */

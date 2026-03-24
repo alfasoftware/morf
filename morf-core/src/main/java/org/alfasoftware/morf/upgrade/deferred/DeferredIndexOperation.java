@@ -23,8 +23,7 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder;
 
 /**
- * Represents a row in the {@code DeferredIndexOperation} table, together with
- * the ordered column names from {@code DeferredIndexOperationColumn}.
+ * Represents a row in the {@code DeferredIndexOperation} table.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -87,7 +86,7 @@ class DeferredIndexOperation {
   private String errorMessage;
 
   /**
-   * Ordered list of column names making up the index, from {@code DeferredIndexOperationColumn}.
+   * Ordered list of column names making up the index.
    */
   private List<String> columnNames;
 

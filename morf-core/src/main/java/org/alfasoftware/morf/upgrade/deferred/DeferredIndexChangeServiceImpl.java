@@ -19,7 +19,6 @@ import static org.alfasoftware.morf.sql.SqlUtils.delete;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.insert;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
-import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.SqlUtils.update;
 import static org.alfasoftware.morf.sql.element.Criterion.and;
@@ -36,7 +35,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.metadata.Index;
-import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
@@ -242,8 +240,6 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
           + ", [" + oldColumnName + "] -> [" + newColumnName + "]");
     }
 
-    String storedTableName = tableMap.values().iterator().next().getTableName();
-
     for (Map.Entry<String, DeferredAddIndex> entry : tableMap.entrySet()) {
       DeferredAddIndex dai = entry.getValue();
       if (dai.getNewIndex().columnNames().stream().anyMatch(c -> c.equalsIgnoreCase(oldColumnName))) {
@@ -257,7 +253,20 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
       }
     }
 
-    return buildUpdateColumnStatements(storedTableName, oldColumnName, newColumnName);
+    List<Statement> statements = new ArrayList<>();
+    for (DeferredAddIndex dai : tableMap.values()) {
+      String newColumnsStr = String.join(",", dai.getNewIndex().columnNames());
+      statements.add(
+        update(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
+          .set(literal(newColumnsStr).as("indexColumns"))
+          .where(and(
+            field("tableName").eq(literal(dai.getTableName())),
+            field("indexName").eq(literal(dai.getNewIndex().getName())),
+            field("status").eq(literal("PENDING"))
+          ))
+      );
+    }
+    return statements;
   }
 
 
@@ -297,15 +306,13 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
   // -------------------------------------------------------------------------
 
   /**
-   * Builds INSERT statements for a deferred operation and its column rows.
+   * Builds an INSERT statement for a deferred operation.
    */
   private List<Statement> buildInsertStatements(DeferredAddIndex deferredAddIndex) {
     long operationId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
     long createdTime = System.currentTimeMillis();
 
-    List<Statement> statements = new ArrayList<>();
-
-    statements.add(
+    return List.of(
       insert().into(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
         .values(
           literal(operationId).as("id"),
@@ -313,43 +320,23 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
           literal(deferredAddIndex.getTableName()).as("tableName"),
           literal(deferredAddIndex.getNewIndex().getName()).as("indexName"),
           literal(deferredAddIndex.getNewIndex().isUnique()).as("indexUnique"),
+          literal(String.join(",", deferredAddIndex.getNewIndex().columnNames())).as("indexColumns"),
           literal("PENDING").as("status"),
           literal(0).as("retryCount"),
           literal(createdTime).as("createdTime")
         )
     );
-
-    int seq = 0;
-    for (String columnName : deferredAddIndex.getNewIndex().columnNames()) {
-      statements.add(
-        insert().into(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_COLUMN_NAME))
-          .values(
-            literal(UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE).as("id"),
-            literal(operationId).as("operationId"),
-            literal(columnName).as("columnName"),
-            literal(seq++).as("columnSequence")
-          )
-      );
-    }
-
-    return statements;
   }
 
 
   /**
-   * Builds DELETE statements to remove pending operations and their column rows.
+   * Builds a DELETE statement to remove pending operations.
    * The criteria identify which operations to delete (e.g. by table name, index name).
    */
   private List<Statement> buildDeleteStatements(Criterion... operationCriteria) {
     Criterion where = pendingWhere(operationCriteria);
 
-    SelectStatement idSubquery = select(field("id"))
-      .from(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
-      .where(where);
-
     return List.of(
-      delete(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_COLUMN_NAME))
-        .where(field("operationId").in(idSubquery)),
       delete(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
         .where(where)
     );
@@ -366,29 +353,6 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
       update(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
         .set(setClause)
         .where(pendingWhere(whereCriteria))
-    );
-  }
-
-
-  /**
-   * Builds an UPDATE statement to rename a column in the column table, scoped
-   * to pending operations for the given table.
-   */
-  private List<Statement> buildUpdateColumnStatements(String tableName, String oldColumnName, String newColumnName) {
-    return List.of(
-      update(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_COLUMN_NAME))
-        .set(literal(newColumnName).as("columnName"))
-        .where(and(
-          field("columnName").eq(literal(oldColumnName)),
-          field("operationId").in(
-            select(field("id"))
-              .from(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
-              .where(and(
-                field("tableName").eq(literal(tableName)),
-                field("status").eq(literal("PENDING"))
-              ))
-          )
-        ))
     );
   }
 

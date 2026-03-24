@@ -132,7 +132,7 @@ public class TestDeferredIndexOperation {
   }
 
 
-  /** The columnNames field should return the list set via setColumnNames. */
+  /** The columnNames field stores ordered column names. */
   @Test
   public void testColumnNames() {
     DeferredIndexOperation op = new DeferredIndexOperation();

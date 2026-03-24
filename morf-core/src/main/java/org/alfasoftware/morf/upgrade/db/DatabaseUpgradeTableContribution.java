@@ -45,8 +45,7 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
   /** Name of the table tracking deferred index operations. */
   public static final String DEFERRED_INDEX_OPERATION_NAME = "DeferredIndexOperation";
 
-  /** Name of the table storing column details for deferred index operations. */
-  public static final String DEFERRED_INDEX_OPERATION_COLUMN_NAME = "DeferredIndexOperationColumn";
+
 
 
   /**
@@ -86,6 +85,7 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
           column("tableName", DataType.STRING, 60),
           column("indexName", DataType.STRING, 60),
           column("indexUnique", DataType.BOOLEAN),
+          column("indexColumns", DataType.STRING, 2000),
           column("status", DataType.STRING, 20),
           column("retryCount", DataType.INTEGER),
           column("createdTime", DataType.DECIMAL, 14),
@@ -101,23 +101,6 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
 
 
   /**
-   * @return The Table descriptor of DeferredIndexOperationColumn
-   */
-  public static Table deferredIndexOperationColumnTable() {
-    return table(DEFERRED_INDEX_OPERATION_COLUMN_NAME)
-        .columns(
-          column("id", DataType.BIG_INTEGER).primaryKey(),
-          column("operationId", DataType.BIG_INTEGER),
-          column("columnName", DataType.STRING, 60),
-          column("columnSequence", DataType.INTEGER)
-        )
-        .indexes(
-          index("DeferredIdxOpCol_1").columns("operationId", "columnSequence")
-        );
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.upgrade.TableContribution#tables()
    */
   @Override
@@ -125,8 +108,7 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
     return ImmutableList.of(
       deployedViewsTable(),
       upgradeAuditTable(),
-      deferredIndexOperationTable(),
-      deferredIndexOperationColumnTable()
+      deferredIndexOperationTable()
     );
   }
 

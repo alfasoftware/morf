@@ -53,22 +53,19 @@ public class TestDeferredIndexChangeServiceImpl {
 
 
   /**
-   * trackPending returns one INSERT for the operation row and one INSERT per index column,
-   * all containing the expected table, index, and column names.
+   * trackPending returns a single INSERT for the operation row containing the
+   * expected table, index, and comma-separated column names.
    */
   @Test
   public void testTrackPendingReturnsInsertStatements() {
     List<Statement> statements = new ArrayList<>(service.trackPending(makeDeferred("TestTable", "TestIdx", "col1", "col2")));
 
-    assertThat(statements, hasSize(3));
+    assertThat(statements, hasSize(1));
     assertThat(statements.get(0).toString(), containsString("DeferredIndexOperation"));
     assertThat(statements.get(0).toString(), containsString("PENDING"));
     assertThat(statements.get(0).toString(), containsString("TestTable"));
     assertThat(statements.get(0).toString(), containsString("TestIdx"));
-    assertThat(statements.get(1).toString(), containsString("DeferredIndexOperationColumn"));
-    assertThat(statements.get(1).toString(), containsString("col1"));
-    assertThat(statements.get(2).toString(), containsString("DeferredIndexOperationColumn"));
-    assertThat(statements.get(2).toString(), containsString("col2"));
+    assertThat(statements.get(0).toString(), containsString("col1,col2"));
   }
 
 
@@ -95,19 +92,18 @@ public class TestDeferredIndexChangeServiceImpl {
 
 
   /**
-   * cancelPending returns two DELETE statements (column rows first, then operation row)
+   * cancelPending returns a single DELETE statement on the operation table
    * and removes the operation from tracking.
    */
   @Test
-  public void testCancelPendingReturnsTwoDeletesAndRemovesFromTracking() {
+  public void testCancelPendingReturnsDeleteAndRemovesFromTracking() {
     service.trackPending(makeDeferred("TestTable", "TestIdx", "col1"));
 
     List<Statement> statements = new ArrayList<>(service.cancelPending("TestTable", "TestIdx"));
 
-    assertThat(statements, hasSize(2));
-    assertThat(statements.get(0).toString(), containsString("DeferredIndexOperationColumn"));
-    assertThat(statements.get(1).toString(), containsString("DeferredIndexOperation"));
-    assertThat(statements.get(1).toString(), containsString("TestIdx"));
+    assertThat(statements, hasSize(1));
+    assertThat(statements.get(0).toString(), containsString("DeferredIndexOperation"));
+    assertThat(statements.get(0).toString(), containsString("TestIdx"));
     assertFalse(service.hasPendingDeferred("TestTable", "TestIdx"));
   }
 
@@ -137,7 +133,7 @@ public class TestDeferredIndexChangeServiceImpl {
 
 
   /**
-   * cancelAllPendingForTable returns two DELETE statements scoped to the table
+   * cancelAllPendingForTable returns a single DELETE statement scoped to the table
    * and removes all tracked operations for that table, even when multiple indexes are registered.
    */
   @Test
@@ -147,11 +143,9 @@ public class TestDeferredIndexChangeServiceImpl {
 
     List<Statement> statements = new ArrayList<>(service.cancelAllPendingForTable("TestTable"));
 
-    // Still 2 DELETE statements regardless of how many indexes — the SQL uses a WHERE clause
-    assertThat(statements, hasSize(2));
-    assertThat(statements.get(0).toString(), containsString("DeferredIndexOperationColumn"));
-    assertThat(statements.get(1).toString(), containsString("DeferredIndexOperation"));
-    assertThat(statements.get(1).toString(), containsString("TestTable"));
+    assertThat(statements, hasSize(1));
+    assertThat(statements.get(0).toString(), containsString("DeferredIndexOperation"));
+    assertThat(statements.get(0).toString(), containsString("TestTable"));
     assertFalse(service.hasPendingDeferred("TestTable", "Idx1"));
     assertFalse(service.hasPendingDeferred("TestTable", "Idx2"));
   }
@@ -167,7 +161,7 @@ public class TestDeferredIndexChangeServiceImpl {
 
 
   /**
-   * cancelPendingReferencingColumn returns DELETE statements for any pending index
+   * cancelPendingReferencingColumn returns a DELETE statement for any pending index
    * that includes the named column, and removes only those from tracking.
    */
   @Test
@@ -176,10 +170,9 @@ public class TestDeferredIndexChangeServiceImpl {
 
     List<Statement> statements = new ArrayList<>(service.cancelPendingReferencingColumn("TestTable", "col1"));
 
-    assertThat(statements, hasSize(2));
-    assertThat(statements.get(0).toString(), containsString("DeferredIndexOperationColumn"));
-    assertThat(statements.get(1).toString(), containsString("DeferredIndexOperation"));
-    assertThat(statements.get(1).toString(), containsString("TestIdx"));
+    assertThat(statements, hasSize(1));
+    assertThat(statements.get(0).toString(), containsString("DeferredIndexOperation"));
+    assertThat(statements.get(0).toString(), containsString("TestIdx"));
     assertFalse(service.hasPendingDeferred("TestTable", "TestIdx"));
   }
 
@@ -208,7 +201,7 @@ public class TestDeferredIndexChangeServiceImpl {
 
     List<Statement> statements = service.cancelPendingReferencingColumn("TestTable", "mycolumn");
 
-    assertThat(statements, hasSize(2));
+    assertThat(statements, hasSize(1));
     assertFalse(service.hasPendingDeferred("TestTable", "TestIdx"));
   }
 
@@ -253,8 +246,8 @@ public class TestDeferredIndexChangeServiceImpl {
 
 
   /**
-   * updatePendingColumnName returns an UPDATE statement for pending column rows
-   * when a pending index references the old column name.
+   * updatePendingColumnName returns an UPDATE statement on the operation table
+   * setting the indexColumns to the new comma-separated string.
    */
   @Test
   public void testUpdatePendingColumnNameReturnsUpdateStatement() {
@@ -263,27 +256,27 @@ public class TestDeferredIndexChangeServiceImpl {
     List<Statement> statements = new ArrayList<>(service.updatePendingColumnName("TestTable", "oldCol", "newCol"));
 
     assertThat(statements, hasSize(1));
-    assertThat(statements.get(0).toString(), containsString("DeferredIndexOperationColumn"));
-    assertThat(statements.get(0).toString(), containsString("oldCol"));
+    assertThat(statements.get(0).toString(), containsString("DeferredIndexOperation"));
     assertThat(statements.get(0).toString(), containsString("newCol"));
   }
 
 
   /**
-   * updatePendingColumnName returns a single UPDATE even when multiple indexes on the same table
-   * both reference the renamed column — the SQL handles all rows in one WHERE clause.
+   * updatePendingColumnName returns one UPDATE per affected index on the main table
+   * when multiple indexes on the same table both reference the renamed column.
    */
   @Test
-  public void testUpdatePendingColumnNameReturnsSingleUpdateForMultipleAffectedIndexes() {
+  public void testUpdatePendingColumnNameReturnsOneUpdatePerAffectedIndex() {
     service.trackPending(makeDeferred("TestTable", "Idx1", "sharedCol", "col1"));
     service.trackPending(makeDeferred("TestTable", "Idx2", "sharedCol", "col2"));
 
     List<Statement> statements = service.updatePendingColumnName("TestTable", "sharedCol", "renamedCol");
 
-    assertThat(statements, hasSize(1));
-    assertThat(statements.get(0).toString(), containsString("DeferredIndexOperationColumn"));
-    assertThat(statements.get(0).toString(), containsString("sharedCol"));
+    assertThat(statements, hasSize(2));
+    assertThat(statements.get(0).toString(), containsString("DeferredIndexOperation"));
     assertThat(statements.get(0).toString(), containsString("renamedCol"));
+    assertThat(statements.get(1).toString(), containsString("DeferredIndexOperation"));
+    assertThat(statements.get(1).toString(), containsString("renamedCol"));
   }
 
 
@@ -339,7 +332,7 @@ public class TestDeferredIndexChangeServiceImpl {
     service.updatePendingColumnName("TestTable", "oldCol", "newCol");
 
     List<Statement> stmts = new ArrayList<>(service.cancelPendingReferencingColumn("TestTable", "newCol"));
-    assertThat("should cancel by the new column name", stmts, hasSize(2));
+    assertThat("should cancel by the new column name", stmts, hasSize(1));
     assertFalse(service.hasPendingDeferred("TestTable", "TestIdx"));
   }
 
@@ -354,7 +347,7 @@ public class TestDeferredIndexChangeServiceImpl {
     service.updatePendingTableName("OldTable", "NewTable");
 
     List<Statement> stmts = new ArrayList<>(service.cancelPendingReferencingColumn("NewTable", "col1"));
-    assertThat("should cancel under the new table name", stmts, hasSize(2));
+    assertThat("should cancel under the new table name", stmts, hasSize(1));
     assertFalse(service.hasPendingDeferred("NewTable", "TestIdx"));
   }
 

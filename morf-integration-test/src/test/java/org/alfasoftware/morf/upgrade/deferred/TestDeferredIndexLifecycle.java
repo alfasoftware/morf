@@ -25,7 +25,6 @@ import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.SqlUtils.update;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deferredIndexOperationColumnTable;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deferredIndexOperationTable;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deployedViewsTable;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.upgradeAuditTable;
@@ -90,7 +89,6 @@ public class TestDeferredIndexLifecycle {
       deployedViewsTable(),
       upgradeAuditTable(),
       deferredIndexOperationTable(),
-      deferredIndexOperationColumnTable(),
       table("Product").columns(
           column("id", DataType.BIG_INTEGER).primaryKey(),
           column("name", DataType.STRING, 100)
@@ -341,7 +339,7 @@ public class TestDeferredIndexLifecycle {
   private Schema schemaWithFirstIndex() {
     return schema(
         deployedViewsTable(), upgradeAuditTable(),
-        deferredIndexOperationTable(), deferredIndexOperationColumnTable(),
+        deferredIndexOperationTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
             column("name", DataType.STRING, 100)
@@ -355,7 +353,7 @@ public class TestDeferredIndexLifecycle {
   private Schema schemaWithBothIndexes() {
     return schema(
         deployedViewsTable(), upgradeAuditTable(),
-        deferredIndexOperationTable(), deferredIndexOperationColumnTable(),
+        deferredIndexOperationTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
             column("name", DataType.STRING, 100)

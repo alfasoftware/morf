@@ -372,15 +372,13 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     // when
     visitor.visit(changeIndex);
 
-    // then — no DROP INDEX, no addIndexStatements; cancel (2 DELETEs) + re-defer (2 INSERTs)
+    // then — no DROP INDEX, no addIndexStatements; cancel (1 DELETE) + re-defer (1 INSERT)
     verify(sqlDialect, never()).indexDropStatements(ArgumentMatchers.any(), ArgumentMatchers.any());
     verify(sqlDialect, never()).addIndexStatements(ArgumentMatchers.any(), ArgumentMatchers.any());
     ArgumentCaptor<Statement> stmtCaptor = ArgumentCaptor.forClass(Statement.class);
-    verify(sqlDialect, times(4)).convertStatementToSQL(stmtCaptor.capture(), eq(sourceSchema), eq(idTable));
-    assertThat(stmtCaptor.getAllValues().get(0).toString(), containsString("DeferredIndexOperationColumn"));
+    verify(sqlDialect, times(2)).convertStatementToSQL(stmtCaptor.capture(), eq(sourceSchema), eq(idTable));
+    assertThat(stmtCaptor.getAllValues().get(0).toString(), containsString("DeferredIndexOperation"));
     assertThat(stmtCaptor.getAllValues().get(1).toString(), containsString("DeferredIndexOperation"));
-    assertThat(stmtCaptor.getAllValues().get(2).toString(), containsString("DeferredIndexOperation"));
-    assertThat(stmtCaptor.getAllValues().get(3).toString(), containsString("DeferredIndexOperationColumn"));
   }
 
 

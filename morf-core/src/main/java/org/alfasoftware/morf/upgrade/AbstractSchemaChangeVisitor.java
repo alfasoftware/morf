@@ -1,3 +1,4 @@
+
 package org.alfasoftware.morf.upgrade;
 
 import java.util.Collection;

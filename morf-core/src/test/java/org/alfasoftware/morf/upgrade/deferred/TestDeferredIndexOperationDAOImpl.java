@@ -38,7 +38,6 @@ import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.UpdateStatement;
-import org.alfasoftware.morf.sql.element.TableReference;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.junit.After;
 import org.junit.Before;
@@ -63,7 +62,6 @@ public class TestDeferredIndexOperationDAOImpl {
   private AutoCloseable mocks;
 
   private static final String TABLE     = DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME;
-  private static final String COL_TABLE = DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_COLUMN_NAME;
 
 
   @Before
@@ -85,8 +83,8 @@ public class TestDeferredIndexOperationDAOImpl {
 
 
   /**
-   * Verify findPendingOperations selects from the correct table with
-   * a LEFT JOIN to the column table and WHERE status = PENDING clause.
+   * Verify findPendingOperations selects from the operation table
+   * with WHERE status = PENDING clause.
    */
   @SuppressWarnings("unchecked")
   @Test
@@ -98,19 +96,14 @@ public class TestDeferredIndexOperationDAOImpl {
     ArgumentCaptor<SelectStatement> captor = ArgumentCaptor.forClass(SelectStatement.class);
     verify(sqlDialect, times(1)).convertStatementToSQL(captor.capture());
 
-    org.alfasoftware.morf.sql.element.TableReference op = tableRef(TABLE);
-    org.alfasoftware.morf.sql.element.TableReference col = tableRef(COL_TABLE);
-
     String expected = select(
-        op.field("id"), op.field("upgradeUUID"), op.field("tableName"),
-        op.field("indexName"), op.field("indexUnique"),
-        op.field("status"), op.field("retryCount"), op.field("createdTime"),
-        op.field("startedTime"), op.field("completedTime"), op.field("errorMessage"),
-        col.field("columnName"), col.field("columnSequence")
-      ).from(op)
-       .leftOuterJoin(col, op.field("id").eq(col.field("operationId")))
-       .where(op.field("status").eq(DeferredIndexStatus.PENDING.name()))
-       .orderBy(op.field("id"), col.field("columnSequence"))
+        field("id"), field("upgradeUUID"), field("tableName"),
+        field("indexName"), field("indexUnique"), field("indexColumns"),
+        field("status"), field("retryCount"), field("createdTime"),
+        field("startedTime"), field("completedTime"), field("errorMessage")
+      ).from(tableRef(TABLE))
+       .where(field("status").eq(DeferredIndexStatus.PENDING.name()))
+       .orderBy(field("id"))
        .toString();
 
     assertEquals("SELECT statement", expected, captor.getValue().toString());
@@ -248,7 +241,7 @@ public class TestDeferredIndexOperationDAOImpl {
 
   /**
    * Verify findNonTerminalOperations selects operations with PENDING, IN_PROGRESS,
-   * or FAILED status, joined with the column table.
+   * or FAILED status from the operation table.
    */
   @SuppressWarnings("unchecked")
   @Test
@@ -260,23 +253,18 @@ public class TestDeferredIndexOperationDAOImpl {
     ArgumentCaptor<SelectStatement> captor = ArgumentCaptor.forClass(SelectStatement.class);
     verify(sqlDialect, times(1)).convertStatementToSQL(captor.capture());
 
-    TableReference op = tableRef(TABLE);
-    TableReference col = tableRef(COL_TABLE);
-
     String expected = select(
-        op.field("id"), op.field("upgradeUUID"), op.field("tableName"),
-        op.field("indexName"), op.field("indexUnique"),
-        op.field("status"), op.field("retryCount"), op.field("createdTime"),
-        op.field("startedTime"), op.field("completedTime"), op.field("errorMessage"),
-        col.field("columnName"), col.field("columnSequence")
-      ).from(op)
-       .leftOuterJoin(col, op.field("id").eq(col.field("operationId")))
+        field("id"), field("upgradeUUID"), field("tableName"),
+        field("indexName"), field("indexUnique"), field("indexColumns"),
+        field("status"), field("retryCount"), field("createdTime"),
+        field("startedTime"), field("completedTime"), field("errorMessage")
+      ).from(tableRef(TABLE))
        .where(or(
-         op.field("status").eq(DeferredIndexStatus.PENDING.name()),
-         op.field("status").eq(DeferredIndexStatus.IN_PROGRESS.name()),
-         op.field("status").eq(DeferredIndexStatus.FAILED.name())
+         field("status").eq(DeferredIndexStatus.PENDING.name()),
+         field("status").eq(DeferredIndexStatus.IN_PROGRESS.name()),
+         field("status").eq(DeferredIndexStatus.FAILED.name())
        ))
-       .orderBy(op.field("id"), col.field("columnSequence"))
+       .orderBy(field("id"))
        .toString();
 
     assertEquals("SELECT statement", expected, captor.getValue().toString());

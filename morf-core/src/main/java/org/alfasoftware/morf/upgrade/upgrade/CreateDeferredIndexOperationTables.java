@@ -29,8 +29,8 @@ import org.alfasoftware.morf.upgrade.UpgradeStep;
 import org.alfasoftware.morf.upgrade.Version;
 
 /**
- * Create the {@code DeferredIndexOperation} and {@code DeferredIndexOperationColumn} tables,
- * which are used to track index operations deferred for background execution.
+ * Create the {@code DeferredIndexOperation} table, which is used to track
+ * index operations deferred for background execution.
  *
  * <p>{@link ExclusiveExecution} and {@code @Sequence(1)} ensure this step
  * runs before any step that uses {@code addIndexDeferred()}, which generates
@@ -77,6 +77,7 @@ public class CreateDeferredIndexOperationTables implements UpgradeStep {
           column("tableName", DataType.STRING, 60),
           column("indexName", DataType.STRING, 60),
           column("indexUnique", DataType.BOOLEAN),
+          column("indexColumns", DataType.STRING, 2000),
           column("status", DataType.STRING, 20),
           column("retryCount", DataType.INTEGER),
           column("createdTime", DataType.DECIMAL, 14),
@@ -87,19 +88,6 @@ public class CreateDeferredIndexOperationTables implements UpgradeStep {
         .indexes(
           index("DeferredIndexOp_1").columns("status"),
           index("DeferredIndexOp_2").columns("tableName")
-        )
-    );
-
-    schema.addTable(
-      table("DeferredIndexOperationColumn")
-        .columns(
-          column("id", DataType.BIG_INTEGER).primaryKey(),
-          column("operationId", DataType.BIG_INTEGER),
-          column("columnName", DataType.STRING, 60),
-          column("columnSequence", DataType.INTEGER)
-        )
-        .indexes(
-          index("DeferredIdxOpCol_1").columns("operationId", "columnSequence")
         )
     );
   }

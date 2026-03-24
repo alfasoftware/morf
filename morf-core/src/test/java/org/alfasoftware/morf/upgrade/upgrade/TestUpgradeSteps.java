@@ -50,7 +50,7 @@ public class TestUpgradeSteps {
 
 
     /**
-     * Verify CreateDeferredIndexOperationTables has metadata and calls addTable twice (one per table).
+     * Verify CreateDeferredIndexOperationTables has metadata and calls addTable once.
      */
     @Test
     public void testCreateDeferredIndexOperationTables() {
@@ -59,7 +59,7 @@ public class TestUpgradeSteps {
         SchemaEditor schema = mock(SchemaEditor.class);
         DataEditor dataEditor = mock(DataEditor.class);
         upgradeStep.execute(schema, dataEditor);
-        verify(schema, times(2)).addTable(any());
+        verify(schema, times(1)).addTable(any());
     }
 
 
@@ -84,6 +84,7 @@ public class TestUpgradeSteps {
         assertTrue(columnNames.contains("createdTime"));
         assertTrue(columnNames.contains("startedTime"));
         assertTrue(columnNames.contains("completedTime"));
+        assertTrue(columnNames.contains("indexColumns"));
         assertTrue(columnNames.contains("errorMessage"));
 
         java.util.List<String> indexNames = table.indexes().stream()
@@ -91,29 +92,6 @@ public class TestUpgradeSteps {
             .collect(Collectors.toList());
         assertTrue(indexNames.contains("DeferredIndexOp_1"));
         assertTrue(indexNames.contains("DeferredIndexOp_2"));
-    }
-
-
-    /**
-     * Verify DeferredIndexOperationColumn table has all required columns and that PK index is unique.
-     */
-    @Test
-    public void testDeferredIndexOperationColumnTableStructure() {
-        Table table = DatabaseUpgradeTableContribution.deferredIndexOperationColumnTable();
-        assertEquals("DeferredIndexOperationColumn", table.getName());
-
-        java.util.List<String> columnNames = table.columns().stream()
-            .map(c -> c.getName())
-            .collect(Collectors.toList());
-        assertTrue(columnNames.contains("id"));
-        assertTrue(columnNames.contains("operationId"));
-        assertTrue(columnNames.contains("columnName"));
-        assertTrue(columnNames.contains("columnSequence"));
-
-        java.util.List<String> indexNames = table.indexes().stream()
-            .map(i -> i.getName())
-            .collect(Collectors.toList());
-        assertTrue(indexNames.contains("DeferredIdxOpCol_1"));
     }
 
 }

@@ -23,17 +23,13 @@ import static org.alfasoftware.morf.sql.SqlUtils.insert;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_COLUMN_NAME;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deferredIndexOperationColumnTable;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deferredIndexOperationTable;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
@@ -71,7 +67,6 @@ public class TestDeferredIndexReadinessCheck {
 
   private static final Schema TEST_SCHEMA = schema(
       deferredIndexOperationTable(),
-      deferredIndexOperationColumnTable(),
       table("Apple").columns(column("pips", DataType.STRING, 10).nullable())
   );
 
@@ -180,31 +175,21 @@ public class TestDeferredIndexReadinessCheck {
 
   private void insertPendingRow(String tableName, String indexName,
                                  boolean unique, String... columns) {
-    long operationId = Math.abs(UUID.randomUUID().getMostSignificantBits());
-    List<String> sql = new ArrayList<>();
-    sql.addAll(connectionResources.sqlDialect().convertStatementToSQL(
-        insert().into(tableRef(DEFERRED_INDEX_OPERATION_NAME)).values(
-            literal(operationId).as("id"),
-            literal("test-upgrade-uuid").as("upgradeUUID"),
-            literal(tableName).as("tableName"),
-            literal(indexName).as("indexName"),
-            literal(unique ? 1 : 0).as("indexUnique"),
-            literal(DeferredIndexStatus.PENDING.name()).as("status"),
-            literal(0).as("retryCount"),
-            literal(System.currentTimeMillis()).as("createdTime")
+    sqlScriptExecutorProvider.get().execute(
+        connectionResources.sqlDialect().convertStatementToSQL(
+            insert().into(tableRef(DEFERRED_INDEX_OPERATION_NAME)).values(
+                literal(Math.abs(UUID.randomUUID().getMostSignificantBits())).as("id"),
+                literal("test-upgrade-uuid").as("upgradeUUID"),
+                literal(tableName).as("tableName"),
+                literal(indexName).as("indexName"),
+                literal(unique ? 1 : 0).as("indexUnique"),
+                literal(String.join(",", columns)).as("indexColumns"),
+                literal(DeferredIndexStatus.PENDING.name()).as("status"),
+                literal(0).as("retryCount"),
+                literal(System.currentTimeMillis()).as("createdTime")
+            )
         )
-    ));
-    for (int i = 0; i < columns.length; i++) {
-      sql.addAll(connectionResources.sqlDialect().convertStatementToSQL(
-          insert().into(tableRef(DEFERRED_INDEX_OPERATION_COLUMN_NAME)).values(
-              literal(Math.abs(UUID.randomUUID().getMostSignificantBits())).as("id"),
-              literal(operationId).as("operationId"),
-              literal(columns[i]).as("columnName"),
-              literal(i).as("columnSequence")
-          )
-      ));
-    }
-    sqlScriptExecutorProvider.get().execute(sql);
+    );
   }
 
 

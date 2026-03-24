@@ -586,7 +586,7 @@ public class TestGraphBasedUpgradeBuilder {
 
     when(upgradeTableResolution.getModifiedTables(
         org.alfasoftware.morf.upgrade.upgrade.CreateDeferredIndexOperationTables.class.getName()))
-        .thenReturn(Sets.newHashSet("DeferredIndexOperation", "DeferredIndexOperationColumn"));
+        .thenReturn(Sets.newHashSet("DeferredIndexOperation"));
     when(upgradeTableResolution.getModifiedTables(DeferredUser.class.getName()))
         .thenReturn(Sets.newHashSet("Product"));
 
@@ -612,7 +612,7 @@ public class TestGraphBasedUpgradeBuilder {
 
     when(upgradeTableResolution.getModifiedTables(
         org.alfasoftware.morf.upgrade.upgrade.CreateDeferredIndexOperationTables.class.getName()))
-        .thenReturn(Sets.newHashSet("DeferredIndexOperation", "DeferredIndexOperationColumn"));
+        .thenReturn(Sets.newHashSet("DeferredIndexOperation"));
     when(upgradeTableResolution.getModifiedTables(DeferredUser.class.getName()))
         .thenReturn(Sets.newHashSet("Product"));
     when(upgradeTableResolution.getModifiedTables(DeferredUser2.class.getName()))
