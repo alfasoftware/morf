@@ -30,6 +30,7 @@ import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -61,7 +62,7 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
   private final DeferredIndexOperationDAO dao;
   private final ConnectionResources connectionResources;
   private final SqlScriptExecutorProvider sqlScriptExecutorProvider;
-  private final DeferredIndexExecutionConfig config;
+  private final UpgradeConfigAndContext config;
   private final DeferredIndexExecutorServiceFactory executorServiceFactory;
 
   /** The worker thread pool; may be null if execution has not started. */
@@ -74,13 +75,13 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
    * @param dao                      DAO for deferred index operations.
    * @param connectionResources      database connection resources.
    * @param sqlScriptExecutorProvider provider for SQL script executors.
-   * @param config                   configuration controlling retry, thread-pool, and timeout behaviour.
+   * @param config                   upgrade configuration.
    * @param executorServiceFactory   factory for creating the worker thread pool.
    */
   @Inject
   DeferredIndexExecutorImpl(DeferredIndexOperationDAO dao, ConnectionResources connectionResources,
                             SqlScriptExecutorProvider sqlScriptExecutorProvider,
-                            DeferredIndexExecutionConfig config,
+                            UpgradeConfigAndContext config,
                             DeferredIndexExecutorServiceFactory executorServiceFactory) {
     this.dao = dao;
     this.connectionResources = connectionResources;
@@ -100,6 +101,8 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
       throw new IllegalStateException("DeferredIndexExecutor.execute() has already been called");
     }
 
+    validateExecutorConfig();
+
     // Reset any crashed IN_PROGRESS operations from a previous run.
     // This is also called by DeferredIndexReadinessCheckImpl.forceBuildAllPending()
     // before findPendingOperations() when an upgrade is about to run, so during
@@ -115,7 +118,7 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
       return CompletableFuture.completedFuture(null);
     }
 
-    threadPool = executorServiceFactory.create(config.getThreadPoolSize());
+    threadPool = executorServiceFactory.create(config.getDeferredIndexThreadPoolSize());
 
     CompletableFuture<?>[] futures = pending.stream()
         .map(op -> CompletableFuture.runAsync(() -> {
@@ -146,7 +149,7 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
    * @param op the deferred index operation to execute.
    */
   private void executeWithRetry(DeferredIndexOperation op) {
-    int maxAttempts = config.getMaxRetries() + 1;
+    int maxAttempts = config.getDeferredIndexMaxRetries() + 1;
 
     for (int attempt = op.getRetryCount(); attempt < maxAttempts; attempt++) {
       log.info("Starting deferred index operation [" + op.getId() + "]: table=" + op.getTableName()
@@ -252,7 +255,7 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
    */
   private void sleepForBackoff(int attempt) {
     try {
-      long delay = Math.min(config.getRetryBaseDelayMs() * (1L << Math.min(attempt, 30)), config.getRetryMaxDelayMs());
+      long delay = Math.min(config.getDeferredIndexRetryBaseDelayMs() * (1L << Math.min(attempt, 30)), config.getDeferredIndexRetryMaxDelayMs());
       Thread.sleep(delay);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -264,6 +267,26 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
    * Queries the database for current operation counts by status and logs
    * them at INFO level.
    */
+  /**
+   * Validates executor-relevant configuration values.
+   */
+  private void validateExecutorConfig() {
+    if (config.getDeferredIndexThreadPoolSize() < 1) {
+      throw new IllegalArgumentException("deferredIndexThreadPoolSize must be >= 1, was " + config.getDeferredIndexThreadPoolSize());
+    }
+    if (config.getDeferredIndexMaxRetries() < 0) {
+      throw new IllegalArgumentException("deferredIndexMaxRetries must be >= 0, was " + config.getDeferredIndexMaxRetries());
+    }
+    if (config.getDeferredIndexRetryBaseDelayMs() < 0) {
+      throw new IllegalArgumentException("deferredIndexRetryBaseDelayMs must be >= 0 ms, was " + config.getDeferredIndexRetryBaseDelayMs() + " ms");
+    }
+    if (config.getDeferredIndexRetryMaxDelayMs() < config.getDeferredIndexRetryBaseDelayMs()) {
+      throw new IllegalArgumentException("deferredIndexRetryMaxDelayMs (" + config.getDeferredIndexRetryMaxDelayMs()
+          + " ms) must be >= deferredIndexRetryBaseDelayMs (" + config.getDeferredIndexRetryBaseDelayMs() + " ms)");
+    }
+  }
+
+
   void logProgress() {
     Map<DeferredIndexStatus, Integer> counts = dao.countAllByStatus();
 

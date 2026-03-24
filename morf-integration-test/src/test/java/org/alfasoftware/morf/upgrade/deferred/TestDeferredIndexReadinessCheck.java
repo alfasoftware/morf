@@ -34,6 +34,7 @@ import java.util.UUID;
 
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Schema;
@@ -70,7 +71,7 @@ public class TestDeferredIndexReadinessCheck {
       table("Apple").columns(column("pips", DataType.STRING, 10).nullable())
   );
 
-  private DeferredIndexExecutionConfig config;
+  private UpgradeConfigAndContext config;
 
 
   /**
@@ -80,9 +81,9 @@ public class TestDeferredIndexReadinessCheck {
   public void setUp() {
     schemaManager.dropAllTables();
     schemaManager.mutateToSupportSchema(TEST_SCHEMA, TruncationBehavior.ALWAYS);
-    config = new DeferredIndexExecutionConfig();
-    config.setMaxRetries(0);
-    config.setRetryBaseDelayMs(10L);
+    config = new UpgradeConfigAndContext();
+    config.setDeferredIndexMaxRetries(0);
+    config.setDeferredIndexRetryBaseDelayMs(10L);
   }
 
 
@@ -203,7 +204,7 @@ public class TestDeferredIndexReadinessCheck {
   }
 
 
-  private DeferredIndexReadinessCheck createValidator(DeferredIndexExecutionConfig validatorConfig) {
+  private DeferredIndexReadinessCheck createValidator(UpgradeConfigAndContext validatorConfig) {
     DeferredIndexOperationDAO dao = new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources);
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources, new SqlScriptExecutorProvider(connectionResources), validatorConfig, new DeferredIndexExecutorServiceFactory.Default());
     return new DeferredIndexReadinessCheckImpl(dao, executor, validatorConfig, connectionResources);

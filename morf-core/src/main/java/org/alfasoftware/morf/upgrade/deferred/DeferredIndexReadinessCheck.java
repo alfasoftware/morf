@@ -90,7 +90,7 @@ public interface DeferredIndexReadinessCheck {
    * @return a new readiness check instance.
    */
   static DeferredIndexReadinessCheck create(ConnectionResources connectionResources) {
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
+    org.alfasoftware.morf.upgrade.UpgradeConfigAndContext config = new org.alfasoftware.morf.upgrade.UpgradeConfigAndContext();
     SqlScriptExecutorProvider executorProvider = new SqlScriptExecutorProvider(connectionResources);
     DeferredIndexOperationDAO dao = new DeferredIndexOperationDAOImpl(executorProvider, connectionResources);
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources,

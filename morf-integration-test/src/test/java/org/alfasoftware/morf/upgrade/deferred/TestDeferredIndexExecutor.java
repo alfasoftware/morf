@@ -32,6 +32,7 @@ import java.util.UUID;
 
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Schema;
@@ -72,7 +73,7 @@ public class TestDeferredIndexExecutor {
       )
   );
 
-  private DeferredIndexExecutionConfig config;
+  private UpgradeConfigAndContext config;
 
 
   /**
@@ -82,8 +83,8 @@ public class TestDeferredIndexExecutor {
   public void setUp() {
     schemaManager.dropAllTables();
     schemaManager.mutateToSupportSchema(TEST_SCHEMA, TruncationBehavior.ALWAYS);
-    config = new DeferredIndexExecutionConfig();
-    config.setRetryBaseDelayMs(10L); // fast retries for tests
+    config = new UpgradeConfigAndContext();
+    config.setDeferredIndexRetryBaseDelayMs(10L); // fast retries for tests
   }
 
 
@@ -106,7 +107,7 @@ public class TestDeferredIndexExecutor {
    */
   @Test
   public void testPendingTransitionsToCompleted() {
-    config.setMaxRetries(0);
+    config.setDeferredIndexMaxRetries(0);
     insertPendingRow("Apple", "Apple_1", false, "pips");
 
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
@@ -127,7 +128,7 @@ public class TestDeferredIndexExecutor {
    */
   @Test
   public void testFailedAfterMaxRetriesWithNoRetries() {
-    config.setMaxRetries(0);
+    config.setDeferredIndexMaxRetries(0);
     insertPendingRow("NoSuchTable", "NoSuchTable_1", false, "col");
 
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
@@ -144,7 +145,7 @@ public class TestDeferredIndexExecutor {
    */
   @Test
   public void testRetryOnFailure() {
-    config.setMaxRetries(1);
+    config.setDeferredIndexMaxRetries(1);
     insertPendingRow("NoSuchTable", "NoSuchTable_1", false, "col");
 
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
@@ -173,7 +174,7 @@ public class TestDeferredIndexExecutor {
    */
   @Test
   public void testUniqueIndexCreated() {
-    config.setMaxRetries(0);
+    config.setDeferredIndexMaxRetries(0);
     insertPendingRow("Apple", "Apple_Unique_1", true, "pips");
 
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
@@ -195,7 +196,7 @@ public class TestDeferredIndexExecutor {
    */
   @Test
   public void testMultiColumnIndexCreated() {
-    config.setMaxRetries(0);
+    config.setDeferredIndexMaxRetries(0);
     insertPendingRow("Apple", "Apple_Multi_1", false, "pips", "color");
 
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());

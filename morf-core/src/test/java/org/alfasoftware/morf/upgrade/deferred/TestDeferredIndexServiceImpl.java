@@ -18,7 +18,6 @@ package org.alfasoftware.morf.upgrade.deferred;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -31,113 +30,12 @@ import java.util.concurrent.CountDownLatch;
 import org.junit.Test;
 
 /**
- * Unit tests for {@link DeferredIndexServiceImpl} covering config validation
- * and the {@code execute()} / {@code awaitCompletion()} orchestration logic.
+ * Unit tests for {@link DeferredIndexServiceImpl} covering the
+ * {@code execute()} / {@code awaitCompletion()} orchestration logic.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
 public class TestDeferredIndexServiceImpl {
-
-  // -------------------------------------------------------------------------
-  // Config validation (triggered by execute(), not constructor)
-  // -------------------------------------------------------------------------
-
-  /** Construction with valid default config should succeed. */
-  @Test
-  public void testConstructionWithDefaultConfig() {
-    new DeferredIndexServiceImpl(null, null, new DeferredIndexExecutionConfig());
-  }
-
-
-  /** Construction with invalid config should succeed — validation happens in execute(). */
-  @Test
-  public void testConstructionWithInvalidConfigSucceeds() {
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
-    config.setThreadPoolSize(0);
-    new DeferredIndexServiceImpl(null, null, config);
-  }
-
-
-  /** threadPoolSize less than 1 should be rejected on execute(). */
-  @Test(expected = IllegalArgumentException.class)
-  public void testInvalidThreadPoolSize() {
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
-    config.setThreadPoolSize(0);
-    new DeferredIndexServiceImpl(null, null, config).execute();
-  }
-
-
-  /** maxRetries less than 0 should be rejected on execute(). */
-  @Test(expected = IllegalArgumentException.class)
-  public void testInvalidMaxRetries() {
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
-    config.setMaxRetries(-1);
-    new DeferredIndexServiceImpl(null, null, config).execute();
-  }
-
-
-  /** retryBaseDelayMs less than 0 should be rejected on execute(). */
-  @Test(expected = IllegalArgumentException.class)
-  public void testInvalidRetryBaseDelayMs() {
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
-    config.setRetryBaseDelayMs(-1L);
-    new DeferredIndexServiceImpl(null, null, config).execute();
-  }
-
-
-  /** retryMaxDelayMs less than retryBaseDelayMs should be rejected on execute(). */
-  @Test(expected = IllegalArgumentException.class)
-  public void testInvalidRetryMaxDelayMs() {
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
-    config.setRetryBaseDelayMs(10_000L);
-    config.setRetryMaxDelayMs(5_000L);
-    new DeferredIndexServiceImpl(null, null, config).execute();
-  }
-
-
-  /** Validate the error message when threadPoolSize is invalid. */
-  @Test
-  public void testInvalidThreadPoolSizeMessage() {
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
-    config.setThreadPoolSize(0);
-    try {
-      new DeferredIndexServiceImpl(null, null, config).execute();
-      fail("Expected IllegalArgumentException");
-    } catch (IllegalArgumentException e) {
-      assertTrue("Message should mention threadPoolSize", e.getMessage().contains("threadPoolSize"));
-    }
-  }
-
-
-  /** Config validation should accept edge-case valid values. */
-  @Test
-  public void testEdgeCaseValidConfig() {
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
-    config.setThreadPoolSize(1);
-    config.setMaxRetries(0);
-    config.setRetryBaseDelayMs(0L);
-    config.setRetryMaxDelayMs(0L);
-    config.setExecutionTimeoutSeconds(1L);
-
-    DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
-    when(mockExecutor.execute()).thenReturn(CompletableFuture.completedFuture(null));
-    new DeferredIndexServiceImpl(mockExecutor, mock(DeferredIndexOperationDAO.class), config).execute();
-
-    verify(mockExecutor).execute();
-  }
-
-
-  /** Default config should pass all validation checks. */
-  @Test
-  public void testDefaultConfigPassesAllValidation() {
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
-    assertFalse("Default maxRetries should be >= 0", config.getMaxRetries() < 0);
-    assertTrue("Default threadPoolSize should be >= 1", config.getThreadPoolSize() >= 1);
-    assertTrue("Default retryBaseDelayMs should be >= 0", config.getRetryBaseDelayMs() >= 0);
-    assertTrue("Default retryMaxDelayMs >= retryBaseDelayMs",
-        config.getRetryMaxDelayMs() >= config.getRetryBaseDelayMs());
-  }
-
 
   // -------------------------------------------------------------------------
   // execute() orchestration
@@ -255,7 +153,7 @@ public class TestDeferredIndexServiceImpl {
     counts.put(DeferredIndexStatus.FAILED, 0);
     when(mockDao.countAllByStatus()).thenReturn(counts);
 
-    DeferredIndexServiceImpl service = new DeferredIndexServiceImpl(null, mockDao, new DeferredIndexExecutionConfig());
+    DeferredIndexServiceImpl service = new DeferredIndexServiceImpl(null, mockDao);
     Map<DeferredIndexStatus, Integer> result = service.getProgress();
 
     assertEquals(Integer.valueOf(3), result.get(DeferredIndexStatus.COMPLETED));
@@ -270,7 +168,6 @@ public class TestDeferredIndexServiceImpl {
   // -------------------------------------------------------------------------
 
   private DeferredIndexServiceImpl serviceWithMocks(DeferredIndexExecutor executor) {
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
-    return new DeferredIndexServiceImpl(executor, mock(DeferredIndexOperationDAO.class), config);
+    return new DeferredIndexServiceImpl(executor, mock(DeferredIndexOperationDAO.class));
   }
 }

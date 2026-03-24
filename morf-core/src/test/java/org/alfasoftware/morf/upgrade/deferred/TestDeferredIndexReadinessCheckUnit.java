@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
@@ -72,7 +73,7 @@ public class TestDeferredIndexReadinessCheckUnit {
     when(mockDao.findPendingOperations()).thenReturn(Collections.emptyList());
     when(mockDao.countAllByStatus()).thenReturn(statusCounts(0));
 
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mockExecutor, config, connWithTable);
     check.forceBuildAllPending();
@@ -90,7 +91,7 @@ public class TestDeferredIndexReadinessCheckUnit {
     when(mockDao.findPendingOperations()).thenReturn(List.of(buildOp(1L)));
     when(mockDao.countAllByStatus()).thenReturn(statusCounts(0));
 
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     when(mockExecutor.execute()).thenReturn(CompletableFuture.completedFuture(null));
 
@@ -110,7 +111,7 @@ public class TestDeferredIndexReadinessCheckUnit {
     when(mockDao.findPendingOperations()).thenReturn(List.of(buildOp(1L)));
     when(mockDao.countAllByStatus()).thenReturn(statusCounts(1));
 
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     when(mockExecutor.execute()).thenReturn(CompletableFuture.completedFuture(null));
 
@@ -127,7 +128,7 @@ public class TestDeferredIndexReadinessCheckUnit {
     when(mockDao.findPendingOperations()).thenReturn(List.of(buildOp(1L), buildOp(2L)));
     when(mockDao.countAllByStatus()).thenReturn(statusCounts(2));
 
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     when(mockExecutor.execute()).thenReturn(CompletableFuture.completedFuture(null));
 
@@ -149,7 +150,7 @@ public class TestDeferredIndexReadinessCheckUnit {
     when(mockDao.findPendingOperations()).thenReturn(Collections.emptyList());
 
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
     DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mockExecutor, config, connWithTable);
     check.forceBuildAllPending();
 
@@ -162,7 +163,7 @@ public class TestDeferredIndexReadinessCheckUnit {
   public void testRunSkipsWhenTableDoesNotExist() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
 
     DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mockExecutor, config, connWithoutTable);
     check.forceBuildAllPending();
@@ -179,7 +180,7 @@ public class TestDeferredIndexReadinessCheckUnit {
 
     when(mockDao.findPendingOperations()).thenReturn(Collections.emptyList());
 
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
     DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(mockDao, mock(DeferredIndexExecutor.class), config, connWithTable);
     check.forceBuildAllPending();
 
@@ -196,7 +197,7 @@ public class TestDeferredIndexReadinessCheckUnit {
   @Test
   public void testAugmentSkipsWhenTableDoesNotExist() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
 
     DeferredIndexReadinessCheckImpl check = new DeferredIndexReadinessCheckImpl(mockDao, mock(DeferredIndexExecutor.class), config, connWithoutTable);
     Schema input = schema(table("Foo").columns(column("id", DataType.BIG_INTEGER).primaryKey()));
@@ -211,7 +212,7 @@ public class TestDeferredIndexReadinessCheckUnit {
   public void testAugmentReturnsUnchangedWhenNoOps() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
     when(mockDao.findNonTerminalOperations()).thenReturn(Collections.emptyList());
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
 
     DeferredIndexReadinessCheckImpl check = new DeferredIndexReadinessCheckImpl(mockDao, mock(DeferredIndexExecutor.class), config, connWithTable);
     Schema input = schema(table("Foo").columns(column("id", DataType.BIG_INTEGER).primaryKey()));
@@ -225,7 +226,7 @@ public class TestDeferredIndexReadinessCheckUnit {
   public void testAugmentAddsIndex() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
     when(mockDao.findNonTerminalOperations()).thenReturn(List.of(buildOp(1L, "Foo", "Foo_Col1_1", false, "col1")));
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
 
     DeferredIndexReadinessCheckImpl check = new DeferredIndexReadinessCheckImpl(mockDao, mock(DeferredIndexExecutor.class), config, connWithTable);
     Schema input = schema(table("Foo").columns(
@@ -245,7 +246,7 @@ public class TestDeferredIndexReadinessCheckUnit {
   public void testAugmentAddsUniqueIndex() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
     when(mockDao.findNonTerminalOperations()).thenReturn(List.of(buildOp(1L, "Foo", "Foo_Col1_U", true, "col1")));
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
 
     DeferredIndexReadinessCheckImpl check = new DeferredIndexReadinessCheckImpl(mockDao, mock(DeferredIndexExecutor.class), config, connWithTable);
     Schema input = schema(table("Foo").columns(
@@ -265,7 +266,7 @@ public class TestDeferredIndexReadinessCheckUnit {
   public void testAugmentSkipsOpForMissingTable() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
     when(mockDao.findNonTerminalOperations()).thenReturn(List.of(buildOp(1L, "NoSuchTable", "Idx_1", false, "col1")));
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
 
     DeferredIndexReadinessCheckImpl check = new DeferredIndexReadinessCheckImpl(mockDao, mock(DeferredIndexExecutor.class), config, connWithTable);
     Schema input = schema(table("Foo").columns(column("id", DataType.BIG_INTEGER).primaryKey()));
@@ -282,7 +283,7 @@ public class TestDeferredIndexReadinessCheckUnit {
   public void testAugmentSkipsExistingIndex() {
     DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
     when(mockDao.findNonTerminalOperations()).thenReturn(List.of(buildOp(1L, "Foo", "Foo_Col1_1", false, "col1")));
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
 
     DeferredIndexReadinessCheckImpl check = new DeferredIndexReadinessCheckImpl(mockDao, mock(DeferredIndexExecutor.class), config, connWithTable);
     Schema input = schema(table("Foo").columns(
@@ -308,7 +309,7 @@ public class TestDeferredIndexReadinessCheckUnit {
         buildOp(1L, "Foo", "Foo_Col1_1", false, "col1"),
         buildOp(2L, "Bar", "Bar_Val_1", false, "val")
     ));
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
 
     DeferredIndexReadinessCheckImpl check = new DeferredIndexReadinessCheckImpl(mockDao, mock(DeferredIndexExecutor.class), config, connWithTable);
     Schema input = schema(

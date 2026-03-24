@@ -43,7 +43,6 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
 
   private final DeferredIndexExecutor executor;
   private final DeferredIndexOperationDAO dao;
-  private final DeferredIndexExecutionConfig config;
 
   /** Future representing the current execution; {@code null} if not started. */
   private CompletableFuture<Void> executionFuture;
@@ -54,15 +53,12 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
    *
    * @param executor executor for building deferred indexes.
    * @param dao      DAO for querying deferred index operation state.
-   * @param config   configuration for deferred index execution.
    */
   @Inject
   DeferredIndexServiceImpl(DeferredIndexExecutor executor,
-                            DeferredIndexOperationDAO dao,
-                            DeferredIndexExecutionConfig config) {
+                            DeferredIndexOperationDAO dao) {
     this.executor = executor;
     this.dao = dao;
-    this.config = config;
   }
 
 
@@ -71,8 +67,6 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
    */
   @Override
   public void execute() {
-    validateConfig(config);
-
     log.info("Deferred index service: executing pending operations...");
     executionFuture = executor.execute();
   }
@@ -122,29 +116,4 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
   }
 
 
-  /**
-   * Validates that all configuration values are within acceptable ranges.
-   *
-   * @param config the configuration to validate.
-   * @throws IllegalArgumentException if any value is out of range.
-   */
-  private void validateConfig(DeferredIndexExecutionConfig config) {
-    if (config.getThreadPoolSize() < 1) {
-      throw new IllegalArgumentException("threadPoolSize must be >= 1, was " + config.getThreadPoolSize());
-    }
-    if (config.getMaxRetries() < 0) {
-      throw new IllegalArgumentException("maxRetries must be >= 0, was " + config.getMaxRetries());
-    }
-    if (config.getRetryBaseDelayMs() < 0) {
-      throw new IllegalArgumentException("retryBaseDelayMs must be >= 0 ms, was " + config.getRetryBaseDelayMs() + " ms");
-    }
-    if (config.getRetryMaxDelayMs() < config.getRetryBaseDelayMs()) {
-      throw new IllegalArgumentException("retryMaxDelayMs (" + config.getRetryMaxDelayMs()
-          + " ms) must be >= retryBaseDelayMs (" + config.getRetryBaseDelayMs() + " ms)");
-    }
-    if (config.getExecutionTimeoutSeconds() <= 0) {
-      throw new IllegalArgumentException(
-          "executionTimeoutSeconds must be > 0 s, was " + config.getExecutionTimeoutSeconds() + " s");
-    }
-  }
 }

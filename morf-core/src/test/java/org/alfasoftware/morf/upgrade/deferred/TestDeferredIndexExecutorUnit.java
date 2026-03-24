@@ -41,6 +41,7 @@ import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -64,7 +65,7 @@ public class TestDeferredIndexExecutorUnit {
   @Mock private DataSource dataSource;
   @Mock private Connection connection;
 
-  private DeferredIndexExecutionConfig config;
+  private UpgradeConfigAndContext config;
   private AutoCloseable mocks;
 
 
@@ -72,8 +73,8 @@ public class TestDeferredIndexExecutorUnit {
   @Before
   public void setUp() throws SQLException {
     mocks = MockitoAnnotations.openMocks(this);
-    config = new DeferredIndexExecutionConfig();
-    config.setRetryBaseDelayMs(10L);
+    config = new UpgradeConfigAndContext();
+    config.setDeferredIndexRetryBaseDelayMs(10L);
     when(connectionResources.sqlDialect()).thenReturn(sqlDialect);
     when(connectionResources.getDataSource()).thenReturn(dataSource);
     when(dataSource.getConnection()).thenReturn(connection);
@@ -141,9 +142,9 @@ public class TestDeferredIndexExecutorUnit {
   @SuppressWarnings("unchecked")
   @Test
   public void testExecuteRetryThenSuccess() {
-    config.setMaxRetries(2);
-    config.setRetryBaseDelayMs(1L);
-    config.setRetryMaxDelayMs(1L);
+    config.setDeferredIndexMaxRetries(2);
+    config.setDeferredIndexRetryBaseDelayMs(1L);
+    config.setDeferredIndexRetryMaxDelayMs(1L);
 
     DeferredIndexOperation op = buildOp(1001L);
     when(dao.findPendingOperations()).thenReturn(List.of(op));
@@ -165,9 +166,9 @@ public class TestDeferredIndexExecutorUnit {
   /** execute should mark an operation as permanently failed after exhausting retries. */
   @Test
   public void testExecutePermanentFailure() {
-    config.setMaxRetries(1);
-    config.setRetryBaseDelayMs(1L);
-    config.setRetryMaxDelayMs(1L);
+    config.setDeferredIndexMaxRetries(1);
+    config.setDeferredIndexRetryBaseDelayMs(1L);
+    config.setDeferredIndexRetryMaxDelayMs(1L);
 
     DeferredIndexOperation op = buildOp(1001L);
     when(dao.findPendingOperations()).thenReturn(List.of(op));
@@ -206,7 +207,7 @@ public class TestDeferredIndexExecutorUnit {
   /** execute should handle a SQLException from getConnection as a failure. */
   @Test
   public void testExecuteSqlExceptionFromConnection() throws SQLException {
-    config.setMaxRetries(0);
+    config.setDeferredIndexMaxRetries(0);
     DeferredIndexOperation op = buildOp(1001L);
     when(dao.findPendingOperations()).thenReturn(List.of(op));
     when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
@@ -261,6 +262,51 @@ public class TestDeferredIndexExecutorUnit {
     // Second execution should not throw
     executor.execute().join();
     verify(dao, org.mockito.Mockito.times(2)).markCompleted(eq(1001L), any(Long.class));
+  }
+
+
+  // -------------------------------------------------------------------------
+  // Config validation (at point of use in execute())
+  // -------------------------------------------------------------------------
+
+  /** threadPoolSize less than 1 should be rejected. */
+  @Test(expected = IllegalArgumentException.class)
+  public void testInvalidThreadPoolSize() {
+    config.setDeferredIndexThreadPoolSize(0);
+    when(dao.findPendingOperations()).thenReturn(List.of(buildOp(1L)));
+    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
+    executor.execute();
+  }
+
+
+  /** maxRetries less than 0 should be rejected. */
+  @Test(expected = IllegalArgumentException.class)
+  public void testInvalidMaxRetries() {
+    config.setDeferredIndexMaxRetries(-1);
+    when(dao.findPendingOperations()).thenReturn(List.of(buildOp(1L)));
+    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
+    executor.execute();
+  }
+
+
+  /** retryBaseDelayMs less than 0 should be rejected. */
+  @Test(expected = IllegalArgumentException.class)
+  public void testInvalidRetryBaseDelayMs() {
+    config.setDeferredIndexRetryBaseDelayMs(-1L);
+    when(dao.findPendingOperations()).thenReturn(List.of(buildOp(1L)));
+    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
+    executor.execute();
+  }
+
+
+  /** retryMaxDelayMs less than retryBaseDelayMs should be rejected. */
+  @Test(expected = IllegalArgumentException.class)
+  public void testInvalidRetryMaxDelayMs() {
+    config.setDeferredIndexRetryBaseDelayMs(10_000L);
+    config.setDeferredIndexRetryMaxDelayMs(5_000L);
+    when(dao.findPendingOperations()).thenReturn(List.of(buildOp(1L)));
+    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
+    executor.execute();
   }
 
 

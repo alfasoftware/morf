@@ -324,9 +324,9 @@ public class TestDeferredIndexLifecycle {
 
 
   private void executeDeferred() {
-    DeferredIndexExecutionConfig config = new DeferredIndexExecutionConfig();
-    config.setRetryBaseDelayMs(10L);
-    config.setMaxRetries(1);
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexRetryBaseDelayMs(10L);
+    config.setDeferredIndexMaxRetries(1);
     DeferredIndexOperationDAO dao = new DeferredIndexOperationDAOImpl(
         new SqlScriptExecutorProvider(connectionResources), connectionResources);
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(

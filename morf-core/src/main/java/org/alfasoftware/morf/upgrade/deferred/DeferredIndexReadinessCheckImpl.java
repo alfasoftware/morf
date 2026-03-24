@@ -28,6 +28,7 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 import org.alfasoftware.morf.upgrade.adapt.AlteredTable;
 import org.alfasoftware.morf.upgrade.adapt.TableOverrideSchema;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
@@ -55,7 +56,7 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
 
   private final DeferredIndexOperationDAO dao;
   private final DeferredIndexExecutor executor;
-  private final DeferredIndexExecutionConfig config;
+  private final UpgradeConfigAndContext config;
   private final ConnectionResources connectionResources;
 
 
@@ -64,12 +65,12 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
    *
    * @param dao                 DAO for deferred index operations.
    * @param executor            executor used to force-build pending operations.
-   * @param config              configuration used when executing pending operations.
+   * @param config              upgrade configuration.
    * @param connectionResources database connection resources.
    */
   @Inject
   DeferredIndexReadinessCheckImpl(DeferredIndexOperationDAO dao, DeferredIndexExecutor executor,
-                                  DeferredIndexExecutionConfig config,
+                                  UpgradeConfigAndContext config,
                                   ConnectionResources connectionResources) {
     this.dao = dao;
     this.executor = executor;
@@ -87,8 +88,6 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
       log.debug("DeferredIndexOperation table does not exist — skipping readiness check");
       return;
     }
-
-    validateConfig(config);
 
     // Reset any crashed IN_PROGRESS operations so they are picked up
     dao.resetAllInProgressToPending();
@@ -178,7 +177,11 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
    * @throws IllegalStateException on timeout, interruption, or execution failure.
    */
   private void awaitCompletion(CompletableFuture<Void> future) {
-    long timeoutSeconds = config.getExecutionTimeoutSeconds();
+    long timeoutSeconds = config.getDeferredIndexForceBuildTimeoutSeconds();
+    if (timeoutSeconds <= 0) {
+      throw new IllegalArgumentException(
+          "deferredIndexForceBuildTimeoutSeconds must be > 0 s, was " + timeoutSeconds + " s");
+    }
     try {
       future.get(timeoutSeconds, TimeUnit.SECONDS);
     } catch (TimeoutException e) {
@@ -189,33 +192,6 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
       throw new IllegalStateException("Deferred index force-build interrupted.");
     } catch (ExecutionException e) {
       throw new IllegalStateException("Deferred index force-build failed unexpectedly.", e.getCause());
-    }
-  }
-
-
-  /**
-   * Validates that all configuration values are within acceptable ranges.
-   *
-   * @param config the configuration to validate.
-   * @throws IllegalArgumentException if any value is out of range.
-   */
-  private void validateConfig(DeferredIndexExecutionConfig config) {
-    if (config.getThreadPoolSize() < 1) {
-      throw new IllegalArgumentException("threadPoolSize must be >= 1, was " + config.getThreadPoolSize());
-    }
-    if (config.getMaxRetries() < 0) {
-      throw new IllegalArgumentException("maxRetries must be >= 0, was " + config.getMaxRetries());
-    }
-    if (config.getRetryBaseDelayMs() < 0) {
-      throw new IllegalArgumentException("retryBaseDelayMs must be >= 0 ms, was " + config.getRetryBaseDelayMs() + " ms");
-    }
-    if (config.getRetryMaxDelayMs() < config.getRetryBaseDelayMs()) {
-      throw new IllegalArgumentException("retryMaxDelayMs (" + config.getRetryMaxDelayMs()
-          + " ms) must be >= retryBaseDelayMs (" + config.getRetryBaseDelayMs() + " ms)");
-    }
-    if (config.getExecutionTimeoutSeconds() <= 0) {
-      throw new IllegalArgumentException(
-          "executionTimeoutSeconds must be > 0 s, was " + config.getExecutionTimeoutSeconds() + " s");
     }
   }
 
