@@ -95,7 +95,9 @@ public class TestSchemaChangeSequence {
     when(index.columnNames()).thenReturn(List.of("col1"));
 
     // when
-    SchemaChangeSequence seq = new SchemaChangeSequence(List.of(new StepWithDeferredAddIndex()));
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
+    SchemaChangeSequence seq = new SchemaChangeSequence(config, List.of(new StepWithDeferredAddIndex()));
     List<SchemaChange> changes = seq.getAllChanges();
 
     // then
@@ -116,6 +118,7 @@ public class TestSchemaChangeSequence {
     when(index.columnNames()).thenReturn(List.of("col1"));
 
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
     config.setForceImmediateIndexes(Set.of("TestIdx"));
 
     // when
@@ -139,6 +142,7 @@ public class TestSchemaChangeSequence {
     when(index.columnNames()).thenReturn(List.of("col1"));
 
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
     config.setForceImmediateIndexes(Set.of("TESTIDX"));
 
     // when
@@ -155,6 +159,7 @@ public class TestSchemaChangeSequence {
   @Test
   public void testIsForceImmediateIndex() {
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
     config.setForceImmediateIndexes(Set.of("Idx_One", "IDX_TWO"));
 
     assertEquals(true, config.isForceImmediateIndex("Idx_One"));
@@ -174,6 +179,7 @@ public class TestSchemaChangeSequence {
     when(index.columnNames()).thenReturn(List.of("col1"));
 
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
     config.setForceDeferredIndexes(Set.of("TestIdx"));
 
     // when
@@ -198,6 +204,7 @@ public class TestSchemaChangeSequence {
     when(index.columnNames()).thenReturn(List.of("col1"));
 
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
     config.setForceDeferredIndexes(Set.of("TESTIDX"));
 
     // when
@@ -214,6 +221,7 @@ public class TestSchemaChangeSequence {
   @Test
   public void testIsForceDeferredIndex() {
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
     config.setForceDeferredIndexes(Set.of("Idx_One", "IDX_TWO"));
 
     assertEquals(true, config.isForceDeferredIndex("Idx_One"));
@@ -229,6 +237,7 @@ public class TestSchemaChangeSequence {
   @Test(expected = IllegalStateException.class)
   public void testConflictingForceImmediateAndForceDeferredThrows() {
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
     config.setForceImmediateIndexes(Set.of("ConflictIdx"));
     config.setForceDeferredIndexes(Set.of("ConflictIdx"));
   }
@@ -238,6 +247,7 @@ public class TestSchemaChangeSequence {
   @Test(expected = IllegalStateException.class)
   public void testConflictingForceImmediateAndForceDeferredCaseInsensitive() {
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
     config.setForceImmediateIndexes(Set.of("MyIndex"));
     config.setForceDeferredIndexes(Set.of("MYINDEX"));
   }

@@ -84,6 +84,11 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
    */
   @Override
   public void forceBuildAllPending() {
+    if (!config.isDeferredIndexCreationEnabled()) {
+      log.debug("Deferred index creation is disabled — skipping force-build");
+      return;
+    }
+
     if (!deferredIndexTableExists()) {
       log.debug("DeferredIndexOperation table does not exist — skipping readiness check");
       return;
@@ -119,6 +124,9 @@ class DeferredIndexReadinessCheckImpl implements DeferredIndexReadinessCheck {
    */
   @Override
   public Schema augmentSchemaWithPendingIndexes(Schema sourceSchema) {
+    if (!config.isDeferredIndexCreationEnabled()) {
+      return sourceSchema;
+    }
     if (!deferredIndexTableExists()) {
       return sourceSchema;
     }

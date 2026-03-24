@@ -164,7 +164,7 @@ public class Upgrade {
     ViewChangesDeploymentHelper viewChangesDeploymentHelper = new ViewChangesDeploymentHelper(connectionResources.sqlDialect());
     GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory = null;
     org.alfasoftware.morf.upgrade.deferred.DeferredIndexReadinessCheck deferredIndexReadinessCheck =
-        org.alfasoftware.morf.upgrade.deferred.DeferredIndexReadinessCheck.create(connectionResources);
+        org.alfasoftware.morf.upgrade.deferred.DeferredIndexReadinessCheck.create(connectionResources, upgradeConfigAndContext);
 
     Upgrade upgrade = new Upgrade(
       connectionResources,

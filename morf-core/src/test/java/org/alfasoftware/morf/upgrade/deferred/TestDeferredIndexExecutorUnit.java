@@ -74,6 +74,7 @@ public class TestDeferredIndexExecutorUnit {
   public void setUp() throws SQLException {
     mocks = MockitoAnnotations.openMocks(this);
     config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
     config.setDeferredIndexRetryBaseDelayMs(10L);
     when(connectionResources.sqlDialect()).thenReturn(sqlDialect);
     when(connectionResources.getDataSource()).thenReturn(dataSource);

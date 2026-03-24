@@ -90,6 +90,7 @@ public class TestDeferredIndexIntegration {
   @Inject private ViewDeploymentValidator viewDeploymentValidator;
 
   private final UpgradeConfigAndContext upgradeConfigAndContext = new UpgradeConfigAndContext();
+  { upgradeConfigAndContext.setDeferredIndexCreationEnabled(true); }
 
   private static final Schema INITIAL_SCHEMA = schema(
       deployedViewsTable(),
@@ -139,6 +140,7 @@ public class TestDeferredIndexIntegration {
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
 
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
     config.setDeferredIndexRetryBaseDelayMs(10L);
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
     executor.execute().join();
@@ -207,6 +209,7 @@ public class TestDeferredIndexIntegration {
     assertEquals("Row count", 1, countOperations());
 
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
     config.setDeferredIndexRetryBaseDelayMs(10L);
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
     executor.execute().join();
@@ -267,6 +270,7 @@ public class TestDeferredIndexIntegration {
     performUpgrade(targetSchema, AddDeferredUniqueIndex.class);
 
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
     config.setDeferredIndexRetryBaseDelayMs(10L);
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
     executor.execute().join();
@@ -298,6 +302,7 @@ public class TestDeferredIndexIntegration {
     performUpgrade(targetSchema, AddDeferredMultiColumnIndex.class);
 
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
     config.setDeferredIndexRetryBaseDelayMs(10L);
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
     executor.execute().join();
@@ -336,6 +341,7 @@ public class TestDeferredIndexIntegration {
     assertEquals("PENDING", queryOperationStatus("Category_Label_1"));
 
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
     config.setDeferredIndexRetryBaseDelayMs(10L);
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
     executor.execute().join();
@@ -358,6 +364,7 @@ public class TestDeferredIndexIntegration {
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
 
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
     config.setDeferredIndexRetryBaseDelayMs(10L);
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
     executor.execute().join();
@@ -391,6 +398,7 @@ public class TestDeferredIndexIntegration {
     assertEquals("PENDING", queryOperationStatus("Product_IdName_1"));
 
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
     config.setDeferredIndexRetryBaseDelayMs(10L);
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
     executor.execute().join();
@@ -411,6 +419,7 @@ public class TestDeferredIndexIntegration {
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
 
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
     config.setDeferredIndexRetryBaseDelayMs(10L);
 
     // First run: build the index
@@ -443,6 +452,7 @@ public class TestDeferredIndexIntegration {
 
     // Executor should reset IN_PROGRESS → PENDING and build
     UpgradeConfigAndContext execConfig = new UpgradeConfigAndContext();
+    execConfig.setDeferredIndexCreationEnabled(true);
     execConfig.setDeferredIndexRetryBaseDelayMs(10L);
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), execConfig, new DeferredIndexExecutorServiceFactory.Default());
     executor.execute().join();
@@ -491,6 +501,7 @@ public class TestDeferredIndexIntegration {
 
       // Executor should complete the build
       UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
       config.setDeferredIndexRetryBaseDelayMs(10L);
       DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
       executor.execute().join();
@@ -550,6 +561,25 @@ public class TestDeferredIndexIntegration {
 
     Upgrade.performUpgrade(schemaWithIndex(), Collections.singletonList(AddDeferredIndex.class),
         spyConn, upgradeConfigAndContext, viewDeploymentValidator);
+
+    // Index should exist immediately — built during upgrade, not deferred
+    assertIndexExists("Product", "Product_Name_1");
+    // No deferred operation should have been queued
+    assertEquals("No deferred operations expected", 0, countOperations());
+  }
+
+
+  /**
+   * Verify that when deferredIndexCreationEnabled is false (the default),
+   * addIndexDeferred() builds the index immediately and creates no PENDING row.
+   */
+  @Test
+  public void testDisabledFeatureBuildsDeferredIndexImmediately() {
+    UpgradeConfigAndContext disabledConfig = new UpgradeConfigAndContext();
+    // deferredIndexCreationEnabled defaults to false
+
+    Upgrade.performUpgrade(schemaWithIndex(), Collections.singletonList(AddDeferredIndex.class),
+        connectionResources, disabledConfig, viewDeploymentValidator);
 
     // Index should exist immediately — built during upgrade, not deferred
     assertIndexExists("Product", "Product_Name_1");

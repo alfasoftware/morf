@@ -47,17 +47,29 @@ public class UpgradeConfigAndContext {
   private Map<String, List<Index>> ignoredIndexes = Map.of();
 
 
+  // -------------------------------------------------------------------------
+  // Deferred index creation
+  // -------------------------------------------------------------------------
+
+  /**
+   * Whether deferred index creation is enabled. When {@code false} (the default),
+   * {@code addIndexDeferred()} behaves identically to {@code addIndex()} — indexes
+   * are built immediately during the upgrade. The tracking table is unaffected
+   * (not dropped or cleaned up); it simply receives no new rows.
+   */
+  private boolean deferredIndexCreationEnabled;
+
   /**
    * Set of index names that should bypass deferred creation and be built immediately during upgrade.
+   * Only effective when {@link #deferredIndexCreationEnabled} is {@code true}.
    */
   private Set<String> forceImmediateIndexes = Set.of();
 
-
   /**
    * Set of index names that should be deferred even when the upgrade step uses {@code addIndex()}.
+   * Only effective when {@link #deferredIndexCreationEnabled} is {@code true}.
    */
   private Set<String> forceDeferredIndexes = Set.of();
-
 
   /**
    * Number of threads in the deferred index executor thread pool.
@@ -188,6 +200,22 @@ public class UpgradeConfigAndContext {
     } else {
       return List.of();
     }
+  }
+
+
+  /**
+   * @see #deferredIndexCreationEnabled
+   */
+  public boolean isDeferredIndexCreationEnabled() {
+    return deferredIndexCreationEnabled;
+  }
+
+
+  /**
+   * @see #deferredIndexCreationEnabled
+   */
+  public void setDeferredIndexCreationEnabled(boolean deferredIndexCreationEnabled) {
+    this.deferredIndexCreationEnabled = deferredIndexCreationEnabled;
   }
 
 

@@ -371,10 +371,9 @@ public class SchemaChangeSequence {
      */
     @Override
     public void addIndex(String tableName, Index index) {
-      if (upgradeConfigAndContext.isForceDeferredIndex(index.getName())) {
-        if (log.isDebugEnabled()) {
-          log.debug("Force-deferring index [" + index.getName() + "] on table [" + tableName + "]");
-        }
+      if (upgradeConfigAndContext.isDeferredIndexCreationEnabled()
+          && upgradeConfigAndContext.isForceDeferredIndex(index.getName())) {
+        log.info("Force-deferring index [" + index.getName() + "] on table [" + tableName + "]");
         addIndexDeferred(tableName, index);
         return;
       }
@@ -389,10 +388,12 @@ public class SchemaChangeSequence {
      */
     @Override
     public void addIndexDeferred(String tableName, Index index) {
+      if (!upgradeConfigAndContext.isDeferredIndexCreationEnabled()) {
+        addIndex(tableName, index);
+        return;
+      }
       if (upgradeConfigAndContext.isForceImmediateIndex(index.getName())) {
-        if (log.isDebugEnabled()) {
-          log.debug("Force-immediate index [" + index.getName() + "] on table [" + tableName + "]");
-        }
+        log.info("Force-immediate index [" + index.getName() + "] on table [" + tableName + "]");
         addIndex(tableName, index);
         return;
       }

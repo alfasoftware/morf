@@ -96,6 +96,11 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
    */
   @Override
   public CompletableFuture<Void> execute() {
+    if (!config.isDeferredIndexCreationEnabled()) {
+      log.debug("Deferred index creation is disabled — skipping execution");
+      return CompletableFuture.completedFuture(null);
+    }
+
     if (threadPool != null) {
       log.fatal("execute() called more than once on DeferredIndexExecutorImpl");
       throw new IllegalStateException("DeferredIndexExecutor.execute() has already been called");

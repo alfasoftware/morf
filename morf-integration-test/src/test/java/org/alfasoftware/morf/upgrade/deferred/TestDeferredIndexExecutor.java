@@ -84,6 +84,7 @@ public class TestDeferredIndexExecutor {
     schemaManager.dropAllTables();
     schemaManager.mutateToSupportSchema(TEST_SCHEMA, TruncationBehavior.ALWAYS);
     config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
     config.setDeferredIndexRetryBaseDelayMs(10L); // fast retries for tests
   }
 

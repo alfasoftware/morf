@@ -78,6 +78,7 @@ public class TestDeferredIndexService {
   @Inject private ViewDeploymentValidator viewDeploymentValidator;
 
   private final UpgradeConfigAndContext upgradeConfigAndContext = new UpgradeConfigAndContext();
+  { upgradeConfigAndContext.setDeferredIndexCreationEnabled(true); }
 
   private static final Schema INITIAL_SCHEMA = schema(
       deployedViewsTable(),
@@ -115,6 +116,7 @@ public class TestDeferredIndexService {
     assertEquals("PENDING", queryOperationStatus("Product_Name_1"));
 
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
     config.setDeferredIndexRetryBaseDelayMs(10L);
     DeferredIndexService service = createService(config);
     service.execute();
@@ -144,6 +146,7 @@ public class TestDeferredIndexService {
     performUpgrade(targetSchema, AddTwoDeferredIndexes.class);
 
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
     config.setDeferredIndexRetryBaseDelayMs(10L);
     DeferredIndexService service = createService(config);
     service.execute();
@@ -162,6 +165,7 @@ public class TestDeferredIndexService {
   @Test
   public void testExecuteWithEmptyQueue() {
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
     config.setDeferredIndexRetryBaseDelayMs(10L);
     DeferredIndexService service = createService(config);
     service.execute();
@@ -184,6 +188,7 @@ public class TestDeferredIndexService {
     assertEquals("IN_PROGRESS", queryOperationStatus("Product_Name_1"));
 
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
     config.setDeferredIndexRetryBaseDelayMs(10L);
     DeferredIndexService service = createService(config);
     service.execute();
@@ -200,6 +205,7 @@ public class TestDeferredIndexService {
   @Test(expected = IllegalStateException.class)
   public void testAwaitCompletionThrowsWhenNoExecution() {
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
     DeferredIndexService service = createService(config);
     service.awaitCompletion(5L);
   }
@@ -215,6 +221,7 @@ public class TestDeferredIndexService {
 
     // Build the index first
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
     config.setDeferredIndexRetryBaseDelayMs(10L);
     DeferredIndexService firstService = createService(config);
     firstService.execute();
@@ -236,6 +243,7 @@ public class TestDeferredIndexService {
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
 
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
     config.setDeferredIndexRetryBaseDelayMs(10L);
     DeferredIndexService service = createService(config);
 

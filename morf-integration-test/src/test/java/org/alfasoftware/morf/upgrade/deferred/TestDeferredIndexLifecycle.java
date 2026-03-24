@@ -102,6 +102,7 @@ public class TestDeferredIndexLifecycle {
     schemaManager.dropAllTables();
     schemaManager.mutateToSupportSchema(INITIAL_SCHEMA, TruncationBehavior.ALWAYS);
     upgradeConfigAndContext = new UpgradeConfigAndContext();
+    upgradeConfigAndContext.setDeferredIndexCreationEnabled(true);
   }
 
 
@@ -325,6 +326,7 @@ public class TestDeferredIndexLifecycle {
 
   private void executeDeferred() {
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
     config.setDeferredIndexRetryBaseDelayMs(10L);
     config.setDeferredIndexMaxRetries(1);
     DeferredIndexOperationDAO dao = new DeferredIndexOperationDAOImpl(
