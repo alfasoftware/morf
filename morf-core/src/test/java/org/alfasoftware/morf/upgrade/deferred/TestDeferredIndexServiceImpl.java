@@ -118,7 +118,7 @@ public class TestDeferredIndexServiceImpl {
 
   /** awaitCompletion() with zero timeout should wait indefinitely until done. */
   @Test
-  public void testAwaitCompletionZeroTimeoutWaitsUntilDone() throws Exception {
+  public void testAwaitCompletionZeroTimeoutWaitsUntilDone() {
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     CompletableFuture<Void> future = new CompletableFuture<>();
     when(mockExecutor.execute()).thenReturn(future);

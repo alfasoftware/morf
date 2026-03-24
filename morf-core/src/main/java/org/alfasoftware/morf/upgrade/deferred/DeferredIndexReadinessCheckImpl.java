@@ -41,11 +41,10 @@ import com.google.inject.Singleton;
 /**
  * Default implementation of {@link DeferredIndexReadinessCheck}.
  *
- * <p>{@link #augmentSchemaWithPendingIndexes(Schema)} is always called to
- * overlay virtual indexes for non-terminal operations into the source schema.
- * {@link #forceBuildAllPending()} is called only when an upgrade with new
- * steps is about to run, to ensure stale indexes from a previous upgrade
- * are built before new changes are applied.</p>
+ * <p>When the feature is enabled, {@link #augmentSchemaWithPendingIndexes(Schema)}
+ * overlays virtual indexes for non-terminal operations into the source schema,
+ * and {@link #forceBuildAllPending()} force-builds stale indexes before a new
+ * upgrade proceeds. When disabled, both methods are no-ops.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */

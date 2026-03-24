@@ -100,14 +100,6 @@ public class TestDeferredIndexExecutorUnit {
   }
 
 
-  /** logProgress should run without error when no operations have been submitted. */
-  @Test
-  public void testLogProgressOnFreshExecutor() {
-    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
-    executor.logProgress();
-  }
-
-
   /** execute with an empty pending queue should return an already-completed future. */
   @Test
   public void testExecuteEmptyQueue() {

@@ -69,9 +69,15 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
 
   private static final Log log = LogFactory.getLog(DeferredIndexChangeServiceImpl.class);
 
+  private static final String COL_ID = "id";
+  private static final String COL_UPGRADE_UUID = "upgradeUUID";
   private static final String COL_TABLE_NAME = "tableName";
   private static final String COL_INDEX_NAME = "indexName";
+  private static final String COL_INDEX_UNIQUE = "indexUnique";
+  private static final String COL_INDEX_COLUMNS = "indexColumns";
   private static final String COL_STATUS = "status";
+  private static final String COL_RETRY_COUNT = "retryCount";
+  private static final String COL_CREATED_TIME = "createdTime";
   private static final String STATUS_PENDING = "PENDING";
   private static final String LOG_ARROW = "] -> [";
 
@@ -207,7 +213,7 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
       return List.of();
     }
     if (log.isDebugEnabled()) {
-      log.debug("Renaming table in deferred indexes: [" + oldTableName + "] -> [" + newTableName + "]");
+      log.debug("Renaming table in deferred indexes: [" + oldTableName + LOG_ARROW + newTableName + "]");
     }
 
     String storedOldTableName = tableMap.values().iterator().next().getTableName();
@@ -243,9 +249,10 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
     }
     if (log.isDebugEnabled()) {
       log.debug("Renaming column in deferred indexes: table=" + tableName
-          + ", [" + oldColumnName + "] -> [" + newColumnName + "]");
+          + ", [" + oldColumnName + LOG_ARROW + newColumnName + "]");
     }
 
+    List<Statement> statements = new ArrayList<>();
     for (Map.Entry<String, DeferredAddIndex> entry : tableMap.entrySet()) {
       DeferredAddIndex dai = entry.getValue();
       if (dai.getNewIndex().columnNames().stream().anyMatch(c -> c.equalsIgnoreCase(oldColumnName))) {
@@ -255,22 +262,19 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
         Index updatedIndex = dai.getNewIndex().isUnique()
             ? index(dai.getNewIndex().getName()).columns(updatedColumns).unique()
             : index(dai.getNewIndex().getName()).columns(updatedColumns);
-        entry.setValue(new DeferredAddIndex(dai.getTableName(), updatedIndex, dai.getUpgradeUUID()));
-      }
-    }
+        DeferredAddIndex updated = new DeferredAddIndex(dai.getTableName(), updatedIndex, dai.getUpgradeUUID());
+        entry.setValue(updated);
 
-    List<Statement> statements = new ArrayList<>();
-    for (DeferredAddIndex dai : tableMap.values()) {
-      String newColumnsStr = String.join(",", dai.getNewIndex().columnNames());
-      statements.add(
-        update(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
-          .set(literal(newColumnsStr).as("indexColumns"))
-          .where(and(
-            field(COL_TABLE_NAME).eq(literal(dai.getTableName())),
-            field(COL_INDEX_NAME).eq(literal(dai.getNewIndex().getName())),
-            field(COL_STATUS).eq(literal(STATUS_PENDING))
-          ))
-      );
+        statements.add(
+          update(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
+            .set(literal(String.join(",", updatedColumns)).as(COL_INDEX_COLUMNS))
+            .where(and(
+              field(COL_TABLE_NAME).eq(literal(dai.getTableName())),
+              field(COL_INDEX_NAME).eq(literal(dai.getNewIndex().getName())),
+              field(COL_STATUS).eq(literal(STATUS_PENDING))
+            ))
+        );
+      }
     }
     return statements;
   }
@@ -287,7 +291,7 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
     }
     if (log.isDebugEnabled()) {
       log.debug("Renaming index in deferred indexes: table=" + tableName
-          + ", [" + oldIndexName + "] -> [" + newIndexName + "]");
+          + ", [" + oldIndexName + LOG_ARROW + newIndexName + "]");
     }
 
     DeferredAddIndex existing = tableMap.remove(oldIndexName.toUpperCase());
@@ -321,15 +325,15 @@ public class DeferredIndexChangeServiceImpl implements DeferredIndexChangeServic
     return List.of(
       insert().into(tableRef(DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME))
         .values(
-          literal(operationId).as("id"),
-          literal(deferredAddIndex.getUpgradeUUID()).as("upgradeUUID"),
+          literal(operationId).as(COL_ID),
+          literal(deferredAddIndex.getUpgradeUUID()).as(COL_UPGRADE_UUID),
           literal(deferredAddIndex.getTableName()).as(COL_TABLE_NAME),
           literal(deferredAddIndex.getNewIndex().getName()).as(COL_INDEX_NAME),
-          literal(deferredAddIndex.getNewIndex().isUnique()).as("indexUnique"),
-          literal(String.join(",", deferredAddIndex.getNewIndex().columnNames())).as("indexColumns"),
-          literal(STATUS_PENDING).as("status"),
-          literal(0).as("retryCount"),
-          literal(createdTime).as("createdTime")
+          literal(deferredAddIndex.getNewIndex().isUnique()).as(COL_INDEX_UNIQUE),
+          literal(String.join(",", deferredAddIndex.getNewIndex().columnNames())).as(COL_INDEX_COLUMNS),
+          literal(STATUS_PENDING).as(COL_STATUS),
+          literal(0).as(COL_RETRY_COUNT),
+          literal(createdTime).as(COL_CREATED_TIME)
         )
     );
   }

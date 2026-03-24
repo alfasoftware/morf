@@ -30,9 +30,9 @@ import org.apache.commons.logging.LogFactory;
 /**
  * Default implementation of {@link DeferredIndexService}.
  *
- * <p>Orchestrates execution and validation of deferred index operations.
- * Crash recovery (IN_PROGRESS → PENDING reset) is handled by the executor.
- * Configuration is validated when {@link #execute()} is called.</p>
+ * <p>Thin facade over the executor and DAO. Crash recovery
+ * (IN_PROGRESS → PENDING reset) and configuration validation are
+ * handled by the executor.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */

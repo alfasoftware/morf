@@ -22,7 +22,6 @@ import static org.alfasoftware.morf.sql.element.Criterion.and;
 
 import java.sql.ResultSet;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.alfasoftware.morf.jdbc.ConnectionResources;
@@ -114,7 +113,7 @@ public class DeferredAddIndex implements SchemaChange {
     }
     indexes.add(newIndex.getName());
 
-    return new TableOverrideSchema(schema, new AlteredTable(original, null, null, indexes, Arrays.asList(new Index[] {newIndex})));
+    return new TableOverrideSchema(schema, new AlteredTable(original, null, null, indexes, List.of(newIndex)));
   }
 
 

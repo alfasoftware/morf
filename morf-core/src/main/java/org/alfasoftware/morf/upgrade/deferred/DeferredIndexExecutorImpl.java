@@ -263,7 +263,9 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
    */
   private void sleepForBackoff(int attempt) {
     try {
-      long delay = Math.min(config.getDeferredIndexRetryBaseDelayMs() * (1L << Math.min(attempt, 30)), config.getDeferredIndexRetryMaxDelayMs());
+      long delay = Math.min(
+          config.getDeferredIndexRetryBaseDelayMs() * (1L << Math.min(attempt, 30)),
+          config.getDeferredIndexRetryMaxDelayMs());
       Thread.sleep(delay);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -271,10 +273,6 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
   }
 
 
-  /**
-   * Queries the database for current operation counts by status and logs
-   * them at INFO level.
-   */
   /**
    * Validates executor-relevant configuration values.
    */
@@ -295,7 +293,7 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
   }
 
 
-  void logProgress() {
+  private void logProgress() {
     Map<DeferredIndexStatus, Integer> counts = dao.countAllByStatus();
 
     log.info("Deferred index progress: completed=" + counts.get(DeferredIndexStatus.COMPLETED)
