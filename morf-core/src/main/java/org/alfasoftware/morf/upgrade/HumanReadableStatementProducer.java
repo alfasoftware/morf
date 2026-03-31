@@ -121,7 +121,7 @@ public class HumanReadableStatementProducer {
     // Ensure the upgrade steps are in the correct order
     final Collection<Class<? extends UpgradeStep>> upgradeSteps = upgradeGraph.orderedSteps();
     final boolean populateEntityBasedChangelog = entityConsumer.getVersionStart() != null && !entityConsumer.getVersionStart().isBlank();
-    //Create a Multimap which has version ordered keys but insertion ordered values
+    // Create a Multimap which has version ordered keys but insertion ordered values
     ListMultimap<String, UpgradeStep> orderedUpgradeSteps = Multimaps.newListMultimap(
       Maps.<String, Collection<UpgradeStep>>newTreeMap(new TreeMap<String, Collection<UpgradeStep>>(
           new Comparator<String>() {
@@ -155,10 +155,10 @@ public class HumanReadableStatementProducer {
 
     // Create a proxy schema editor to pass through the consumer events
     HumanReadableStatementSchemaEditor schemaEditor = new HumanReadableStatementSchemaEditor(consumer);
-    //Similarly, we need a proxy DataEditor
+    // Similarly, we need a proxy DataEditor
     HumanReadableStatementDataEditor dataEditor = new HumanReadableStatementDataEditor(consumer, reportDataChanges, preferredSQLDialect);
     // Create entityKnowledgeBuilder for populating entity based changelogs
-    EntityKnowledgeMapBuilder entityKnowledgeMapBuilder =new EntityKnowledgeMapBuilder(preferredSQLDialect);
+    EntityKnowledgeMapBuilder entityKnowledgeMapBuilder = new EntityKnowledgeMapBuilder(reportDataChanges, preferredSQLDialect);
     // Iterate over versions, then over the ordered upgrade steps
     log.debug("Populate EntityBasedChangelog: [ "
         + populateEntityBasedChangelog + " ], "
@@ -189,8 +189,8 @@ public class HumanReadableStatementProducer {
       consumer.versionEnd("ALFA " + version);
     }
 
-    //now handle our knowledgeMap and place into consumer...
-    //Iterate over knowledge, then each entity within, then descriptions split by new line
+    // Now handle our knowledgeMap and place into consumer...
+    // Iterate over knowledge, then each entity within, then descriptions split by new line
     entityKnowledgeMapBuilder.getKnowledgeMultimap().forEach((entity, upgradeStep) -> {
       log.debug("Printing information for entity [ " + entity + " ]");
       entityConsumer.entityStart(entity);

@@ -15,6 +15,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer, SchemaEditor, DataEditor {
+  private final boolean reportDataChanges;
   private final String preferredSQLDialect;
   private EntityKnowledgeMapUpgradeStep currentUpgradeStep;
 
@@ -22,7 +23,8 @@ public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer
   private final Map<String, Map<EntityKnowledgeMapUpgradeStep, List<String>>> knowledgeMap = Maps.newTreeMap(String::compareTo);
 
 
-  public EntityKnowledgeMapBuilder(String preferredSQLDialect) {
+  public EntityKnowledgeMapBuilder(boolean reportDataChanges, String preferredSQLDialect) {
+    this.reportDataChanges = reportDataChanges;
     this.preferredSQLDialect = preferredSQLDialect;
   }
 
@@ -38,14 +40,14 @@ public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer
   }
 
   //----------------------------------------------------------------
-  //HumanReadableStatementConsumer Overrides
+  // HumanReadableStatementConsumer Overrides
   //----------------------------------------------------------------
   /**
    * @see HumanReadableStatementConsumer#versionStart(String) 
    */
   @Override
   public void versionStart(String versionNumber) {
-    //nothing to write
+    // nothing to write
   }
 
   /**
@@ -61,7 +63,7 @@ public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer
    */
   @Override
   public void schemaChange(String description) {
-    //nothing to write
+    // nothing to write
   }
 
   /**
@@ -69,7 +71,7 @@ public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer
    */
   @Override
   public void upgradeStepEnd(String name) {
-    //nothing to write
+    // nothing to write
   }
 
   /**
@@ -77,7 +79,7 @@ public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer
    */
   @Override
   public void versionEnd(String versionNumber) {
-    //nothing to write
+    // nothing to write
   }
 
   /**
@@ -85,11 +87,11 @@ public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer
    */
   @Override
   public void dataChange(String description) {
-    //nothing to write
+    // nothing to write
   }
 
   //----------------------------------------------------------------
-  //SchemaEditor Overrides
+  // SchemaEditor Overrides
   //----------------------------------------------------------------
   /**
    * @see SchemaEditor#addColumn(String, Column)
@@ -276,7 +278,7 @@ public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer
   }
 
   //----------------------------------------------------------------
-  //DataEditor Overrides
+  // DataEditor Overrides
   //----------------------------------------------------------------
 
   /**
@@ -286,10 +288,9 @@ public class EntityKnowledgeMapBuilder implements HumanReadableStatementConsumer
    */
   @Override
   public void executeStatement(Statement statement) {
-    if(currentUpgradeStep.isPopulated()) {
+    if (currentUpgradeStep.isPopulated() && reportDataChanges) {
       putInMap(HumanReadableStatementHelper.dataUpgradeTableName(statement),
           HumanReadableStatementHelper.generateDataUpgradeString(statement, preferredSQLDialect));
     }
   }
-
 }
