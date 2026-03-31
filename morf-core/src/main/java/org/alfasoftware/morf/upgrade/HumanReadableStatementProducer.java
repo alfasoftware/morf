@@ -28,7 +28,6 @@ import org.alfasoftware.morf.changelog.EntityHumanReadableStatementConsumer;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Supplier;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Lists;
@@ -108,7 +107,7 @@ public class HumanReadableStatementProducer {
   @Deprecated
   public void produceFor(final HumanReadableStatementConsumer consumer) {
     produceFor(consumer,
-        new EntityHumanReadableStatementConsumer("1", new PrintWriter(new OutputStreamWriter(System.out, StandardCharsets.UTF_8))));
+        new EntityHumanReadableStatementConsumer("", new PrintWriter(new OutputStreamWriter(System.out, StandardCharsets.UTF_8))));
   }
 
   /**
@@ -161,8 +160,11 @@ public class HumanReadableStatementProducer {
     // Create entityKnowledgeBuilder for populating entity based changelogs
     EntityKnowledgeMapBuilder entityKnowledgeMapBuilder =new EntityKnowledgeMapBuilder(preferredSQLDialect);
     // Iterate over versions, then over the ordered upgrade steps
-    log.debug("Populate EntityBasedChangelog: [ " + populateEntityBasedChangelog + " ], "
-        + "Entity Start version sanitised : [ " + utils.sanitise(entityConsumer.getVersionStart()));
+    log.debug("Populate EntityBasedChangelog: [ "
+        + populateEntityBasedChangelog + " ], "
+        + "Entity Start version sanitised : [ "
+        + utils.sanitise(entityConsumer.getVersionStart()) + " ], ");
+
     for (String version : orderedUpgradeSteps.keySet()) {
       consumer.versionStart("ALFA " + version);
       for (UpgradeStep currentStep : orderedUpgradeSteps.get(version)) {
@@ -175,8 +177,7 @@ public class HumanReadableStatementProducer {
         consumer.upgradeStepEnd(currentStep.getClass().getSimpleName());
 
 
-        log.debug(" ], Upgrade step version sanitised [ " + utils.sanitise(version)
-            + " ], comparison: [ "
+        log.debug("Upgrade step version sanitised [ " + utils.sanitise(version) + " ], comparison: [ "
             + utils.versionCompare(utils.sanitise(entityConsumer.getVersionStart()), utils.sanitise(version)) + " ]");
         if (populateEntityBasedChangelog && utils.versionCompare(utils.sanitise(entityConsumer.getVersionStart()), utils.sanitise(version)) >= 0){
           log.debug("Upgrade Step [" + currentStep.getClass().getSimpleName() + "] was added to entity based knowledge map");
