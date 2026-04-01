@@ -29,6 +29,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -4078,6 +4079,23 @@ public abstract class SqlDialect {
    */
   public Collection<String> deferredIndexDeploymentStatements(Table table, Index index) {
     return addIndexStatements(table, index);
+  }
+
+
+  /**
+   * Generates a {@code COMMENT ON TABLE} SQL statement that includes both the standard
+   * table metadata (e.g. REALNAME) and any deferred index declarations. The deferred index
+   * declarations are appended as {@code /DEFERRED:[indexName|col1,col2|unique]} segments.
+   *
+   * <p>The default implementation returns an empty list. Dialects that use table comments
+   * (PostgreSQL, Oracle, H2) override this to produce the appropriate SQL.</p>
+   *
+   * @param table The table to generate the comment for.
+   * @param deferredIndexes The deferred indexes to declare in the comment.
+   * @return A collection of SQL statements, or an empty list if the dialect does not support comments.
+   */
+  public Collection<String> generateTableCommentStatements(Table table, List<Index> deferredIndexes) {
+    return Collections.emptyList();
   }
 
 
