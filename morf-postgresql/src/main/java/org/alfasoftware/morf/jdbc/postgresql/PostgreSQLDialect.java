@@ -466,6 +466,15 @@ class PostgreSQLDialect extends SqlDialect {
   }
 
 
+  @Override
+  public Collection<String> renameIndexStatementsIfExists(Table table, String fromIndexName, String toIndexName) {
+    return ImmutableList.<String>builder()
+        .addAll(super.renameIndexStatementsIfExists(table, fromIndexName, toIndexName))
+        .add(addIndexComment(toIndexName))
+        .build();
+  }
+
+
   private Collection<String> renameSequenceStatements(String fromSeqName, String toSeqName) {
     return ImmutableList.of(String.format("ALTER SEQUENCE %s RENAME TO %s", fromSeqName, toSeqName));
   }

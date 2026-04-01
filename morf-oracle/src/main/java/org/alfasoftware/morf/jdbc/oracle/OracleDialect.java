@@ -1223,6 +1223,24 @@ class OracleDialect extends SqlDialect {
   }
 
 
+  @Override
+  public Collection<String> indexDropStatementsIfExists(Table table, Index indexToBeRemoved) {
+    String indexName = schemaNamePrefix() + indexToBeRemoved.getName();
+    return Arrays.asList(
+      "BEGIN EXECUTE IMMEDIATE 'DROP INDEX " + indexName + "'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -1418 THEN RAISE; END IF; END;"
+    );
+  }
+
+
+  @Override
+  public Collection<String> renameIndexStatementsIfExists(Table table, String fromIndexName, String toIndexName) {
+    String fullName = schemaNamePrefix() + fromIndexName;
+    return Arrays.asList(
+      "BEGIN EXECUTE IMMEDIATE 'ALTER INDEX " + fullName + " RENAME TO " + toIndexName + "'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -1418 THEN RAISE; END IF; END;"
+    );
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlForYYYYMMDDToDate(org.alfasoftware.morf.sql.element.Function)
    */

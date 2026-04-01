@@ -3900,6 +3900,33 @@ public abstract class SqlDialect {
 
 
   /**
+   * Generate the SQL to drop an index if it exists. Used for deferred indexes
+   * which may or may not have been physically built yet.
+   *
+   * @param table The table to drop the index from.
+   * @param indexToBeRemoved The index to be dropped.
+   * @return The SQL to drop the specified index if it exists.
+   */
+  public Collection<String> indexDropStatementsIfExists(@SuppressWarnings("unused") Table table, Index indexToBeRemoved) {
+    return ImmutableList.of("DROP INDEX IF EXISTS " + indexToBeRemoved.getName());
+  }
+
+
+  /**
+   * Generate the SQL to rename an index if it exists. Used for deferred indexes
+   * which may or may not have been physically built yet.
+   *
+   * @param table The table on which the index exists.
+   * @param fromIndexName The index to rename.
+   * @param toIndexName The new index name.
+   * @return The SQL to rename the index if it exists.
+   */
+  public Collection<String> renameIndexStatementsIfExists(Table table, String fromIndexName, String toIndexName) {
+    return ImmutableList.of("ALTER INDEX IF EXISTS " + schemaNamePrefix(table) + fromIndexName + " RENAME TO " + toIndexName);
+  }
+
+
+  /**
    * Generates the SQL to create a table and insert the data specified in the {@link SelectStatement}.
    *
    * @param table The table to create.
