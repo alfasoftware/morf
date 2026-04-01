@@ -2,6 +2,7 @@ package org.alfasoftware.morf.jdbc.postgresql;
 
 import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.getAutoIncrementStartValue;
 import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.getDataTypeFromColumnComment;
+import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.parseDeferredIndexesFromComment;
 import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.shouldIgnoreIndex;
 
 import java.sql.Connection;
@@ -9,6 +10,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -17,13 +20,16 @@ import java.util.Set;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.metadata.AdditionalMetadata;
 import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
+import org.alfasoftware.morf.metadata.Table;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -45,6 +51,9 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
   private final Supplier<Map<AName, RealName>> allIndexNames = Suppliers.memoize(this::loadAllIndexNames);
   private final Supplier<Map<String, List<Index>>> allIgnoredIndexes = Suppliers.memoize(this::loadIgnoredIndexes);
   private final Set<RealName> allIgnoredIndexesTables = new HashSet<>();
+
+  /** Stores raw table comments keyed by uppercase table name, for deferred index parsing. */
+  private final Map<String, String> tableComments = new HashMap<>();
 
   public PostgreSQLMetaDataProvider(Connection connection, String schemaName) {
     super(connection, schemaName);
@@ -106,10 +115,41 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
   protected RealName readTableName(ResultSet tableResultSet) throws SQLException {
     String tableName = tableResultSet.getString(TABLE_NAME);
     String comment = tableResultSet.getString(TABLE_REMARKS);
+    if (StringUtils.isNotBlank(comment)) {
+      tableComments.put(tableName.toUpperCase(), comment);
+    }
     String realName = matchComment(comment);
     return StringUtils.isNotBlank(realName)
         ? createRealName(tableName, realName)
         : super.readTableName(tableResultSet);
+  }
+
+
+  @Override
+  protected Table loadTable(AName tableName) {
+    Table base = super.loadTable(tableName);
+    String comment = tableComments.get(base.getName().toUpperCase());
+    List<Index> deferredFromComment = parseDeferredIndexesFromComment(comment);
+    if (deferredFromComment.isEmpty()) {
+      return base;
+    }
+    // Merge: physical indexes take precedence; add virtual deferred ones only if not physically present
+    Set<String> physicalNames = base.indexes().stream()
+        .map(i -> i.getName().toUpperCase())
+        .collect(Collectors.toSet());
+    List<Index> merged = new ArrayList<>(base.indexes());
+    for (Index deferred : deferredFromComment) {
+      if (!physicalNames.contains(deferred.getName().toUpperCase())) {
+        merged.add(deferred);
+      }
+    }
+    List<Index> finalIndexes = merged;
+    return new Table() {
+      @Override public String getName() { return base.getName(); }
+      @Override public List<Column> columns() { return base.columns(); }
+      @Override public List<Index> indexes() { return finalIndexes; }
+      @Override public boolean isTemporary() { return base.isTemporary(); }
+    };
   }
 
 

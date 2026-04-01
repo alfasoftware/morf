@@ -82,6 +82,9 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
   private Map<String, View> viewMap;
   private Map<String, Sequence> sequenceMap;
 
+  /** Stores raw table comments keyed by table name, for deferred index parsing. */
+  private final Map<String, String> tableComments = new HashMap<>();
+
   private final Connection connection;
   private final String schemaName;
   private Map<String, String> primaryKeyIndexNames;
@@ -249,6 +252,7 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
         String commentType = null;
 
         if (tableComment != null) {
+          tableComments.put(tableName.toUpperCase(), tableComment);
           Matcher matcher = realnameCommentMatcher.matcher(tableComment);
           if (matcher.matches()) {
             String tableNameFromComment = matcher.group(1);
@@ -524,6 +528,23 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
 
     long end = System.currentTimeMillis();
     if (log.isDebugEnabled()) log.debug(String.format("Loaded index column list in %dms", end - pointThree));
+
+    // Merge deferred indexes declared in table comments
+    for (Entry<String, Table> entry : tableMap.entrySet()) {
+      String comment = tableComments.get(entry.getKey().toUpperCase());
+      List<Index> deferredFromComment = DatabaseMetaDataProviderUtils.parseDeferredIndexesFromComment(comment);
+      if (!deferredFromComment.isEmpty()) {
+        Set<String> physicalNames = new HashSet<>();
+        for (Index idx : entry.getValue().indexes()) {
+          physicalNames.add(idx.getName().toUpperCase());
+        }
+        for (Index deferred : deferredFromComment) {
+          if (!physicalNames.contains(deferred.getName().toUpperCase())) {
+            entry.getValue().indexes().add(deferred);
+          }
+        }
+      }
+    }
 
     log.info(String.format("Read table metadata in %dms; %d tables", end - start, tableMap.size()));
   }

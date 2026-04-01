@@ -16,14 +16,23 @@
 package org.alfasoftware.morf.jdbc.h2;
 
 import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.getAutoIncrementStartValue;
+import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.parseDeferredIndexesFromComment;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
+import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
+import org.alfasoftware.morf.metadata.Table;
 
 /**
  * Database meta-data layer for H2.
@@ -32,7 +41,11 @@ import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
  */
 class H2MetaDataProvider extends DatabaseMetaDataProvider {
 
-    /**
+  /** Stores raw table comments keyed by uppercase table name, for deferred index parsing. */
+  private final Map<String, String> tableComments = new HashMap<>();
+
+
+  /**
    * @param connection DataSource to provide meta data for.
    */
   public H2MetaDataProvider(Connection connection) {
@@ -46,6 +59,45 @@ class H2MetaDataProvider extends DatabaseMetaDataProvider {
   public H2MetaDataProvider(Connection connection, String schemaName) {
     super(connection, schemaName);
   }
+
+
+  @Override
+  protected RealName readTableName(ResultSet tableResultSet) throws SQLException {
+    String tableName = tableResultSet.getString(TABLE_NAME);
+    String comment = tableResultSet.getString(TABLE_REMARKS);
+    if (comment != null && !comment.isEmpty()) {
+      tableComments.put(tableName.toUpperCase(), comment);
+    }
+    return super.readTableName(tableResultSet);
+  }
+
+
+  @Override
+  protected Table loadTable(AName tableName) {
+    Table base = super.loadTable(tableName);
+    String comment = tableComments.get(base.getName().toUpperCase());
+    List<Index> deferredFromComment = parseDeferredIndexesFromComment(comment);
+    if (deferredFromComment.isEmpty()) {
+      return base;
+    }
+    Set<String> physicalNames = base.indexes().stream()
+        .map(i -> i.getName().toUpperCase())
+        .collect(Collectors.toSet());
+    List<Index> merged = new ArrayList<>(base.indexes());
+    for (Index deferred : deferredFromComment) {
+      if (!physicalNames.contains(deferred.getName().toUpperCase())) {
+        merged.add(deferred);
+      }
+    }
+    List<Index> finalIndexes = merged;
+    return new Table() {
+      @Override public String getName() { return base.getName(); }
+      @Override public List<Column> columns() { return base.columns(); }
+      @Override public List<Index> indexes() { return finalIndexes; }
+      @Override public boolean isTemporary() { return base.isTemporary(); }
+    };
+  }
+
 
   /**
    * H2 reports its primary key indexes as PRIMARY_KEY_49 or similar.

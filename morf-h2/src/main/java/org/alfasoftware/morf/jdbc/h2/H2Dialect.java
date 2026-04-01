@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Column;
@@ -707,5 +708,13 @@ class H2Dialect extends SqlDialect {
   @Override
   public boolean supportsDeferredIndexCreation() {
     return true;
+  }
+
+
+  @Override
+  public Collection<String> generateTableCommentStatements(Table table, List<Index> deferredIndexes) {
+    String comment = REAL_NAME_COMMENT_LABEL + ":[" + table.getName() + "]"
+        + DatabaseMetaDataProviderUtils.buildDeferredIndexCommentSegments(deferredIndexes);
+    return List.of("COMMENT ON TABLE " + schemaNamePrefix() + table.getName() + " IS '" + comment + "'");
   }
 }

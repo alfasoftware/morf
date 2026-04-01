@@ -35,6 +35,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -401,6 +402,15 @@ class OracleDialect extends SqlDialect {
   private String commentOnTable(String truncatedTableName) {
     return "COMMENT ON TABLE " + schemaNamePrefix() + truncatedTableName + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + truncatedTableName + "]'";
   }
+
+
+  @Override
+  public Collection<String> generateTableCommentStatements(Table table, List<Index> deferredIndexes) {
+    String comment = REAL_NAME_COMMENT_LABEL + ":[" + table.getName() + "]"
+        + DatabaseMetaDataProviderUtils.buildDeferredIndexCommentSegments(deferredIndexes);
+    return Arrays.asList("COMMENT ON TABLE " + schemaNamePrefix() + table.getName() + " IS '" + comment + "'");
+  }
+
 
   private String disableParallelAndEnableLoggingForPrimaryKey(Table table) {
     return "ALTER INDEX " + schemaNamePrefix() + primaryKeyConstraintName(table.getName()) + " NOPARALLEL LOGGING";
