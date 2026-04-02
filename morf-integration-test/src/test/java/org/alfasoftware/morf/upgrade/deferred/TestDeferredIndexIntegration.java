@@ -24,7 +24,6 @@ import static org.alfasoftware.morf.sql.SqlUtils.literal;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deployedViewsTable;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.upgradeAuditTable;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Collections;
@@ -391,15 +390,6 @@ public class TestDeferredIndexIntegration {
       assertTrue("Deferred index " + indexName + " should be present with isDeferred()=true on " + tableName,
           sr.getTable(tableName).indexes().stream()
               .anyMatch(idx -> indexName.equalsIgnoreCase(idx.getName()) && idx.isDeferred()));
-    }
-  }
-
-
-  private void assertIndexDoesNotExist(String tableName, String indexName) {
-    try (SchemaResource sr = connectionResources.openSchemaResource()) {
-      assertFalse("Index " + indexName + " should not exist on " + tableName,
-          sr.getTable(tableName).indexes().stream()
-              .anyMatch(idx -> indexName.equalsIgnoreCase(idx.getName()) && !idx.isDeferred()));
     }
   }
 

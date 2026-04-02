@@ -21,7 +21,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deployedViewsTable;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.upgradeAuditTable;
-import static org.junit.Assert.assertFalse;
+
 import static org.junit.Assert.assertTrue;
 
 import java.util.Collections;
@@ -256,15 +256,6 @@ public class TestDeferredIndexLifecycle {
       assertTrue("Physical index " + indexName + " should exist on " + tableName,
           sr.getTable(tableName).indexes().stream()
               .anyMatch(idx -> indexName.equalsIgnoreCase(idx.getName())));
-    }
-  }
-
-
-  private void assertIndexDoesNotExist(String tableName, String indexName) {
-    try (SchemaResource sr = connectionResources.openSchemaResource()) {
-      assertFalse("Index " + indexName + " should not exist on " + tableName,
-          sr.getTable(tableName).indexes().stream()
-              .anyMatch(idx -> indexName.equalsIgnoreCase(idx.getName()) && !idx.isDeferred()));
     }
   }
 }
