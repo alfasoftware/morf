@@ -28,6 +28,7 @@ import org.alfasoftware.morf.metadata.AdditionalMetadata;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
 import org.alfasoftware.morf.metadata.Table;
 import org.apache.commons.lang3.StringUtils;
@@ -133,13 +134,27 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
     if (deferredFromComment.isEmpty()) {
       return base;
     }
-    // Merge: physical indexes take precedence; add virtual deferred ones only if not physically present
-    Set<String> physicalNames = base.indexes().stream()
+    // Build a set of deferred index names declared in comments
+    Set<String> deferredNames = deferredFromComment.stream()
         .map(i -> i.getName().toUpperCase())
         .collect(Collectors.toSet());
-    List<Index> merged = new ArrayList<>(base.indexes());
+    // Merge: physical indexes declared deferred get isDeferred()=true;
+    // virtual deferred indexes added only if not physically present
+    List<Index> merged = new ArrayList<>();
+    for (Index physical : base.indexes()) {
+      if (deferredNames.contains(physical.getName().toUpperCase())) {
+        // Physical index exists AND comment declares it deferred — mark as deferred
+        SchemaUtils.IndexBuilder builder = SchemaUtils.index(physical.getName())
+            .columns(physical.columnNames()).deferred();
+        merged.add(physical.isUnique() ? builder.unique() : builder);
+        deferredNames.remove(physical.getName().toUpperCase());
+      } else {
+        merged.add(physical);
+      }
+    }
+    // Add virtual deferred indexes that have no physical counterpart
     for (Index deferred : deferredFromComment) {
-      if (!physicalNames.contains(deferred.getName().toUpperCase())) {
+      if (deferredNames.contains(deferred.getName().toUpperCase())) {
         merged.add(deferred);
       }
     }

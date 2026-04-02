@@ -534,13 +534,25 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
       String comment = tableComments.get(entry.getKey().toUpperCase());
       List<Index> deferredFromComment = DatabaseMetaDataProviderUtils.parseDeferredIndexesFromComment(comment);
       if (!deferredFromComment.isEmpty()) {
-        Set<String> physicalNames = new HashSet<>();
-        for (Index idx : entry.getValue().indexes()) {
-          physicalNames.add(idx.getName().toUpperCase());
+        Set<String> deferredNames = new HashSet<>();
+        for (Index d : deferredFromComment) {
+          deferredNames.add(d.getName().toUpperCase());
         }
+        // Mark physical indexes that match deferred declarations as isDeferred=true
+        List<Index> indexes = entry.getValue().indexes();
+        for (int i = 0; i < indexes.size(); i++) {
+          Index physical = indexes.get(i);
+          if (deferredNames.contains(physical.getName().toUpperCase())) {
+            SchemaUtils.IndexBuilder builder = SchemaUtils.index(physical.getName())
+                .columns(physical.columnNames()).deferred();
+            indexes.set(i, physical.isUnique() ? builder.unique() : builder);
+            deferredNames.remove(physical.getName().toUpperCase());
+          }
+        }
+        // Add virtual deferred indexes that have no physical counterpart
         for (Index deferred : deferredFromComment) {
-          if (!physicalNames.contains(deferred.getName().toUpperCase())) {
-            entry.getValue().indexes().add(deferred);
+          if (deferredNames.contains(deferred.getName().toUpperCase())) {
+            indexes.add(deferred);
           }
         }
       }

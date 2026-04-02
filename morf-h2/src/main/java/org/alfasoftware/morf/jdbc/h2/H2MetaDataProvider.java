@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
 import org.alfasoftware.morf.metadata.Table;
 
@@ -72,12 +73,22 @@ class H2MetaDataProvider extends DatabaseMetaDataProvider {
     if (deferredFromComment.isEmpty()) {
       return base;
     }
-    Set<String> physicalNames = base.indexes().stream()
+    Set<String> deferredNames = deferredFromComment.stream()
         .map(i -> i.getName().toUpperCase())
         .collect(Collectors.toSet());
-    List<Index> merged = new ArrayList<>(base.indexes());
+    List<Index> merged = new ArrayList<>();
+    for (Index physical : base.indexes()) {
+      if (deferredNames.contains(physical.getName().toUpperCase())) {
+        SchemaUtils.IndexBuilder builder = SchemaUtils.index(physical.getName())
+            .columns(physical.columnNames()).deferred();
+        merged.add(physical.isUnique() ? builder.unique() : builder);
+        deferredNames.remove(physical.getName().toUpperCase());
+      } else {
+        merged.add(physical);
+      }
+    }
     for (Index deferred : deferredFromComment) {
-      if (!physicalNames.contains(deferred.getName().toUpperCase())) {
+      if (deferredNames.contains(deferred.getName().toUpperCase())) {
         merged.add(deferred);
       }
     }
