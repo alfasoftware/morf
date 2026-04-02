@@ -15,21 +15,22 @@
 
 package org.alfasoftware.morf.upgrade.deferred;
 
+import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
+import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Collection;
 import java.util.Collections;
-import java.util.EnumMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import javax.sql.DataSource;
@@ -38,26 +39,26 @@ import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
+import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 /**
- * Unit tests for {@link DeferredIndexExecutorImpl} covering edge cases
- * that are difficult to exercise in integration tests: progress logging,
- * string truncation, and async execution behaviour.
+ * Unit tests for {@link DeferredIndexExecutorImpl} covering the
+ * comments-based schema scanning approach: the executor finds indexes
+ * with {@code isDeferred()=true} in the SchemaResource and builds them.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
 public class TestDeferredIndexExecutorUnit {
 
-  @Mock private DeferredIndexOperationDAO dao;
   @Mock private ConnectionResources connectionResources;
   @Mock private SqlDialect sqlDialect;
   @Mock private SqlScriptExecutorProvider sqlScriptExecutorProvider;
@@ -68,28 +69,15 @@ public class TestDeferredIndexExecutorUnit {
   private AutoCloseable mocks;
 
 
-  /** Set up mocks and a fast-retry config before each test. */
+  /** Set up mocks and config before each test. */
   @Before
   public void setUp() throws SQLException {
     mocks = MockitoAnnotations.openMocks(this);
     config = new UpgradeConfigAndContext();
     config.setDeferredIndexCreationEnabled(true);
-    config.setDeferredIndexRetryBaseDelayMs(10L);
     when(connectionResources.sqlDialect()).thenReturn(sqlDialect);
     when(connectionResources.getDataSource()).thenReturn(dataSource);
     when(dataSource.getConnection()).thenReturn(connection);
-
-    // Default: openSchemaResource returns a mock that says table does not exist
-    // (post-failure index-exists check will return false)
-    org.alfasoftware.morf.metadata.SchemaResource mockSr = mock(org.alfasoftware.morf.metadata.SchemaResource.class);
-    when(mockSr.tableExists(org.mockito.ArgumentMatchers.anyString())).thenReturn(false);
-    when(connectionResources.openSchemaResource()).thenReturn(mockSr);
-
-    Map<DeferredIndexStatus, Integer> zeroCounts = new EnumMap<>(DeferredIndexStatus.class);
-    for (DeferredIndexStatus s : DeferredIndexStatus.values()) {
-      zeroCounts.put(s, 0);
-    }
-    when(dao.countAllByStatus()).thenReturn(zeroCounts);
   }
 
 
@@ -100,33 +88,55 @@ public class TestDeferredIndexExecutorUnit {
   }
 
 
-  /** execute with an empty pending queue should return an already-completed future. */
+  /** execute with no deferred indexes should return an already-completed future. */
   @Test
-  public void testExecuteEmptyQueue() {
-    when(dao.findPendingOperations()).thenReturn(Collections.emptyList());
+  public void testExecuteNoDeferredIndexes() {
+    SchemaResource sr = mockSchemaResource();
+    when(connectionResources.openSchemaResource()).thenReturn(sr);
 
-    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
+    DeferredIndexExecutorImpl executor = createExecutor();
     CompletableFuture<Void> future = executor.execute();
 
     assertTrue("Future should be completed immediately", future.isDone());
-    verify(dao, never()).markStarted(any(Long.class), any(Long.class));
   }
 
 
-  /** execute with a single successful operation should mark it completed. */
+  /** execute with a single deferred index should build it. */
   @Test
-  public void testExecuteSingleSuccess() {
-    DeferredIndexOperation op = buildOp(1001L);
-    when(dao.findPendingOperations()).thenReturn(List.of(op));
+  public void testExecuteSingleDeferredIndex() {
+    SchemaResource sr = mockSchemaResourceWithDeferredIndex("TestTable", "TestIdx", "col1", "col2");
+    when(connectionResources.openSchemaResource()).thenReturn(sr);
+
     SqlScriptExecutor scriptExecutor = mock(SqlScriptExecutor.class);
     when(sqlScriptExecutorProvider.get()).thenReturn(scriptExecutor);
     when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
-        .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
+        .thenReturn(List.of("CREATE INDEX TestIdx ON TestTable(col1, col2)"));
 
-    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
+    DeferredIndexExecutorImpl executor = createExecutor();
     executor.execute().join();
 
-    verify(dao).markCompleted(eq(1001L), any(Long.class));
+    verify(sqlDialect).deferredIndexDeploymentStatements(any(Table.class), any(Index.class));
+    verify(scriptExecutor).execute(any(Collection.class), any(Connection.class));
+  }
+
+
+  /** execute should skip non-deferred indexes. */
+  @Test
+  public void testExecuteSkipsNonDeferredIndexes() {
+    Table tableWithNonDeferred = table("TestTable")
+        .columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("col1", DataType.STRING, 50)
+        )
+        .indexes(index("TestIdx").columns("id", "col1"));
+    SchemaResource sr = mockSchemaResource(tableWithNonDeferred);
+    when(connectionResources.openSchemaResource()).thenReturn(sr);
+
+    DeferredIndexExecutorImpl executor = createExecutor();
+    CompletableFuture<Void> future = executor.execute();
+
+    assertTrue("Future should be completed immediately (no deferred indexes)", future.isDone());
+    verify(sqlDialect, never()).deferredIndexDeploymentStatements(any(Table.class), any(Index.class));
   }
 
 
@@ -135,64 +145,42 @@ public class TestDeferredIndexExecutorUnit {
   @Test
   public void testExecuteRetryThenSuccess() {
     config.setDeferredIndexMaxRetries(2);
-    config.setDeferredIndexRetryBaseDelayMs(1L);
-    config.setDeferredIndexRetryMaxDelayMs(1L);
 
-    DeferredIndexOperation op = buildOp(1001L);
-    when(dao.findPendingOperations()).thenReturn(List.of(op));
+    SchemaResource sr = mockSchemaResourceWithDeferredIndex("TestTable", "TestIdx", "col1", "col2");
+    when(connectionResources.openSchemaResource()).thenReturn(sr);
+
     SqlScriptExecutor scriptExecutor = mock(SqlScriptExecutor.class);
     when(sqlScriptExecutorProvider.get()).thenReturn(scriptExecutor);
 
     // First call throws, second call succeeds
     when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
         .thenThrow(new RuntimeException("temporary failure"))
-        .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
+        .thenReturn(List.of("CREATE INDEX TestIdx ON TestTable(col1, col2)"));
 
-    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
+    DeferredIndexExecutorImpl executor = createExecutor();
     executor.execute().join();
 
-    verify(dao).markCompleted(eq(1001L), any(Long.class));
+    verify(scriptExecutor).execute(any(Collection.class), any(Connection.class));
   }
 
 
-  /** execute should mark an operation as permanently failed after exhausting retries. */
+  /** execute should give up after exhausting retries. */
   @Test
   public void testExecutePermanentFailure() {
     config.setDeferredIndexMaxRetries(1);
-    config.setDeferredIndexRetryBaseDelayMs(1L);
-    config.setDeferredIndexRetryMaxDelayMs(1L);
 
-    DeferredIndexOperation op = buildOp(1001L);
-    when(dao.findPendingOperations()).thenReturn(List.of(op));
+    SchemaResource sr = mockSchemaResourceWithDeferredIndex("TestTable", "TestIdx", "col1", "col2");
+    when(connectionResources.openSchemaResource()).thenReturn(sr);
+
     SqlScriptExecutor scriptExecutor = mock(SqlScriptExecutor.class);
     when(sqlScriptExecutorProvider.get()).thenReturn(scriptExecutor);
 
     when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
         .thenThrow(new RuntimeException("persistent failure"));
 
-    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
+    DeferredIndexExecutorImpl executor = createExecutor();
+    // Should not throw -- the future completes (the error is logged, not propagated)
     executor.execute().join();
-
-    // Should be called twice (initial + 1 retry), each time with markFailed
-    verify(dao, org.mockito.Mockito.times(2)).markFailed(eq(1001L), any(String.class), any(Integer.class));
-  }
-
-
-  /** execute should correctly reconstruct and build a unique index. */
-  @Test
-  public void testExecuteWithUniqueIndex() {
-    DeferredIndexOperation op = buildOp(1001L);
-    op.setIndexUnique(true);
-    when(dao.findPendingOperations()).thenReturn(List.of(op));
-    SqlScriptExecutor scriptExecutor = mock(SqlScriptExecutor.class);
-    when(sqlScriptExecutorProvider.get()).thenReturn(scriptExecutor);
-    when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
-        .thenReturn(List.of("CREATE UNIQUE INDEX idx ON t(c)"));
-
-    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
-    executor.execute().join();
-
-    verify(dao).markCompleted(eq(1001L), any(Long.class));
   }
 
 
@@ -200,16 +188,16 @@ public class TestDeferredIndexExecutorUnit {
   @Test
   public void testExecuteSqlExceptionFromConnection() throws SQLException {
     config.setDeferredIndexMaxRetries(0);
-    DeferredIndexOperation op = buildOp(1001L);
-    when(dao.findPendingOperations()).thenReturn(List.of(op));
+
+    SchemaResource sr = mockSchemaResourceWithDeferredIndex("TestTable", "TestIdx", "col1", "col2");
+    when(connectionResources.openSchemaResource()).thenReturn(sr);
+
     when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
-        .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
+        .thenReturn(List.of("CREATE INDEX TestIdx ON TestTable(col1, col2)"));
     when(dataSource.getConnection()).thenThrow(new SQLException("connection refused"));
 
-    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
+    DeferredIndexExecutorImpl executor = createExecutor();
     executor.execute().join();
-
-    verify(dao).markFailed(eq(1001L), any(String.class), eq(1));
   }
 
 
@@ -217,57 +205,94 @@ public class TestDeferredIndexExecutorUnit {
   @Test
   public void testAutoCommitRestoredAfterBuildIndex() throws SQLException {
     when(connection.getAutoCommit()).thenReturn(false);
-    DeferredIndexOperation op = buildOp(1001L);
-    when(dao.findPendingOperations()).thenReturn(List.of(op));
+
+    SchemaResource sr = mockSchemaResourceWithDeferredIndex("TestTable", "TestIdx", "col1", "col2");
+    when(connectionResources.openSchemaResource()).thenReturn(sr);
+
     SqlScriptExecutor scriptExecutor = mock(SqlScriptExecutor.class);
     when(sqlScriptExecutorProvider.get()).thenReturn(scriptExecutor);
     when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
-        .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
+        .thenReturn(List.of("CREATE INDEX TestIdx ON TestTable(col1, col2)"));
 
-    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
+    DeferredIndexExecutorImpl executor = createExecutor();
     executor.execute().join();
 
-    InOrder order = inOrder(connection);
+    org.mockito.InOrder order = org.mockito.Mockito.inOrder(connection);
     order.verify(connection).setAutoCommit(true);
     order.verify(connection).setAutoCommit(false);
   }
 
 
-  /** execute() should be callable again after a previous execution completes. */
+  /** execute should be a no-op when deferred index creation is disabled. */
   @Test
-  public void testExecuteCanBeCalledAgainAfterCompletion() {
-    DeferredIndexOperation op = buildOp(1001L);
-    when(dao.findPendingOperations())
-        .thenReturn(List.of(op))
-        .thenReturn(List.of(op));
-    SqlScriptExecutor scriptExecutor = mock(SqlScriptExecutor.class);
-    when(sqlScriptExecutorProvider.get()).thenReturn(scriptExecutor);
-    when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
-        .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
+  public void testExecuteDisabled() {
+    config.setDeferredIndexCreationEnabled(false);
 
-    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
+    DeferredIndexExecutorImpl executor = createExecutor();
+    CompletableFuture<Void> future = executor.execute();
 
-    // First execution
-    executor.execute().join();
-    verify(dao).markCompleted(eq(1001L), any(Long.class));
-
-    // Second execution should not throw
-    executor.execute().join();
-    verify(dao, org.mockito.Mockito.times(2)).markCompleted(eq(1001L), any(Long.class));
+    assertTrue("Future should be completed immediately", future.isDone());
+    verify(connectionResources, never()).openSchemaResource();
   }
 
 
   // -------------------------------------------------------------------------
-  // Config validation (at point of use in execute())
+  // getMissingDeferredIndexStatements
+  // -------------------------------------------------------------------------
+
+  /** getMissingDeferredIndexStatements should return SQL for unbuilt deferred indexes. */
+  @Test
+  public void testGetMissingDeferredIndexStatements() {
+    SchemaResource sr = mockSchemaResourceWithDeferredIndex("TestTable", "TestIdx", "col1", "col2");
+    when(connectionResources.openSchemaResource()).thenReturn(sr);
+    when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
+        .thenReturn(List.of("CREATE INDEX TestIdx ON TestTable(col1, col2)"));
+
+    DeferredIndexExecutorImpl executor = createExecutor();
+    List<String> statements = executor.getMissingDeferredIndexStatements();
+
+    assertEquals(1, statements.size());
+    assertEquals("CREATE INDEX TestIdx ON TestTable(col1, col2)", statements.get(0));
+  }
+
+
+  /** getMissingDeferredIndexStatements should return empty when disabled. */
+  @Test
+  public void testGetMissingDeferredIndexStatementsDisabled() {
+    config.setDeferredIndexCreationEnabled(false);
+
+    DeferredIndexExecutorImpl executor = createExecutor();
+    List<String> statements = executor.getMissingDeferredIndexStatements();
+
+    assertTrue("Should return empty list when disabled", statements.isEmpty());
+  }
+
+
+  /** getMissingDeferredIndexStatements should return empty when no deferred indexes. */
+  @Test
+  public void testGetMissingDeferredIndexStatementsNone() {
+    SchemaResource sr = mockSchemaResource();
+    when(connectionResources.openSchemaResource()).thenReturn(sr);
+
+    DeferredIndexExecutorImpl executor = createExecutor();
+    List<String> statements = executor.getMissingDeferredIndexStatements();
+
+    assertTrue("Should return empty list", statements.isEmpty());
+  }
+
+
+  // -------------------------------------------------------------------------
+  // Config validation
   // -------------------------------------------------------------------------
 
   /** threadPoolSize less than 1 should be rejected. */
   @Test(expected = IllegalArgumentException.class)
   public void testInvalidThreadPoolSize() {
     config.setDeferredIndexThreadPoolSize(0);
-    when(dao.findPendingOperations()).thenReturn(List.of(buildOp(1L)));
-    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
-    executor.execute();
+    SchemaResource sr = mockSchemaResourceWithDeferredIndex("T", "Idx", "c1", "c2");
+    when(connectionResources.openSchemaResource()).thenReturn(sr);
+
+    createExecutor().execute();
   }
 
 
@@ -275,44 +300,62 @@ public class TestDeferredIndexExecutorUnit {
   @Test(expected = IllegalArgumentException.class)
   public void testInvalidMaxRetries() {
     config.setDeferredIndexMaxRetries(-1);
-    when(dao.findPendingOperations()).thenReturn(List.of(buildOp(1L)));
-    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
-    executor.execute();
+    SchemaResource sr = mockSchemaResourceWithDeferredIndex("T", "Idx", "c1", "c2");
+    when(connectionResources.openSchemaResource()).thenReturn(sr);
+
+    createExecutor().execute();
   }
 
 
-  /** retryBaseDelayMs less than 0 should be rejected. */
-  @Test(expected = IllegalArgumentException.class)
-  public void testInvalidRetryBaseDelayMs() {
-    config.setDeferredIndexRetryBaseDelayMs(-1L);
-    when(dao.findPendingOperations()).thenReturn(List.of(buildOp(1L)));
-    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
-    executor.execute();
+  // -------------------------------------------------------------------------
+  // Helpers
+  // -------------------------------------------------------------------------
+
+  private DeferredIndexExecutorImpl createExecutor() {
+    return new DeferredIndexExecutorImpl(connectionResources, sqlScriptExecutorProvider,
+        config, new DeferredIndexExecutorServiceFactory.Default());
   }
 
 
-  /** retryMaxDelayMs less than retryBaseDelayMs should be rejected. */
-  @Test(expected = IllegalArgumentException.class)
-  public void testInvalidRetryMaxDelayMs() {
-    config.setDeferredIndexRetryBaseDelayMs(10_000L);
-    config.setDeferredIndexRetryMaxDelayMs(5_000L);
-    when(dao.findPendingOperations()).thenReturn(List.of(buildOp(1L)));
-    DeferredIndexExecutorImpl executor = new DeferredIndexExecutorImpl(dao, connectionResources, sqlScriptExecutorProvider, config, new DeferredIndexExecutorServiceFactory.Default());
-    executor.execute();
+  /**
+   * Creates a mock SchemaResource with no tables.
+   */
+  private SchemaResource mockSchemaResource() {
+    SchemaResource sr = mock(SchemaResource.class);
+    when(sr.tables()).thenReturn(Collections.emptyList());
+    return sr;
   }
 
 
-  private DeferredIndexOperation buildOp(long id) {
-    DeferredIndexOperation op = new DeferredIndexOperation();
-    op.setId(id);
-    op.setUpgradeUUID("test-uuid");
-    op.setTableName("TestTable");
-    op.setIndexName("TestIndex");
-    op.setIndexUnique(false);
-    op.setStatus(DeferredIndexStatus.PENDING);
-    op.setRetryCount(0);
-    op.setCreatedTime(20260101120000L);
-    op.setColumnNames(List.of("col1"));
-    return op;
+  /**
+   * Creates a mock SchemaResource with a single table containing only
+   * non-deferred indexes.
+   */
+  private SchemaResource mockSchemaResource(Table table) {
+    SchemaResource sr = mock(SchemaResource.class);
+    when(sr.tables()).thenReturn(List.of(table));
+    return sr;
+  }
+
+
+  /**
+   * Creates a mock SchemaResource with a single table that has one
+   * deferred index. The deferred index has {@code isDeferred()=true}.
+   */
+  private SchemaResource mockSchemaResourceWithDeferredIndex(String tableName, String indexName,
+                                                              String col1, String col2) {
+    Index deferredIndex = mock(Index.class);
+    when(deferredIndex.getName()).thenReturn(indexName);
+    when(deferredIndex.isDeferred()).thenReturn(true);
+    when(deferredIndex.isUnique()).thenReturn(false);
+    when(deferredIndex.columnNames()).thenReturn(List.of(col1, col2));
+
+    Table table = mock(Table.class);
+    when(table.getName()).thenReturn(tableName);
+    when(table.indexes()).thenReturn(List.of(deferredIndex));
+
+    SchemaResource sr = mock(SchemaResource.class);
+    when(sr.tables()).thenReturn(List.of(table));
+    return sr;
   }
 }

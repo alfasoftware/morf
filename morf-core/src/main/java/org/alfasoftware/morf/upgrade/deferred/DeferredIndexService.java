@@ -15,7 +15,7 @@
 
 package org.alfasoftware.morf.upgrade.deferred;
 
-import java.util.Map;
+import java.util.List;
 
 import com.google.inject.ImplementedBy;
 
@@ -24,12 +24,10 @@ import com.google.inject.ImplementedBy;
  * this interface and invoke it <em>after</em> the upgrade completes to start
  * background index builds.
  *
- * <p><strong>Post-upgrade execution is the adopter's responsibility.</strong>
- * The upgrade framework does <em>not</em> automatically run this service.
- * A pre-upgrade {@link DeferredIndexReadinessCheck} is wired into the
- * upgrade pipeline as a safety net: if the adopter forgets to call this
- * service, the next upgrade will force-build any outstanding indexes
- * before proceeding.</p>
+ * <p>Deferred indexes are declared in table comments by the upgrade framework.
+ * The MetaDataProvider reads these comments and exposes unbuilt deferred
+ * indexes as virtual indexes with {@code isDeferred()=true}. This service
+ * scans for such indexes and builds them asynchronously.</p>
  *
  * <p>Typical usage (Guice path):</p>
  * <pre>
@@ -55,7 +53,7 @@ import com.google.inject.ImplementedBy;
 public interface DeferredIndexService {
 
   /**
-   * Recovers stale operations and starts building all pending deferred
+   * Scans the database schema and starts building all unbuilt deferred
    * indexes asynchronously. Returns immediately.
    *
    * <p>Use {@link #awaitCompletion(long)} to block until all operations
@@ -66,27 +64,25 @@ public interface DeferredIndexService {
 
   /**
    * Blocks until all deferred index operations reach a terminal state
-   * ({@code COMPLETED} or {@code FAILED}), or until the timeout elapses.
+   * (completed or failed), or until the timeout elapses.
    *
    * <p>A value of zero means "wait indefinitely". This is acceptable here
    * because the caller explicitly opts in to blocking after startup.</p>
    *
    * @param timeoutSeconds maximum time to wait; zero means wait indefinitely.
-   * @return {@code true} if all operations reached a terminal state within the
-   *         timeout; {@code false} if the timeout elapsed first.
+   * @return {@code true} if all operations completed within the timeout;
+   *         {@code false} if the timeout elapsed first.
    * @throws IllegalStateException if called before {@link #execute()}.
    */
   boolean awaitCompletion(long timeoutSeconds);
 
 
   /**
-   * Returns the current count of deferred index operations grouped by status.
+   * Returns the SQL statements that would be executed to build all
+   * currently unbuilt deferred indexes, without actually executing them.
    *
-   * <p>Adopters can poll this method on their own schedule (e.g. from a
-   * health endpoint or timer) to monitor progress.</p>
-   *
-   * @return a map from each {@link DeferredIndexStatus} to its count;
-   *         statuses with no operations have a count of zero.
+   * @return a list of SQL statements; empty if there are no deferred
+   *         indexes to build.
    */
-  Map<DeferredIndexStatus, Integer> getProgress();
+  List<String> getMissingDeferredIndexStatements();
 }

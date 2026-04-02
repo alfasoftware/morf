@@ -15,7 +15,7 @@
 
 package org.alfasoftware.morf.upgrade.deferred;
 
-import java.util.Map;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -30,9 +30,9 @@ import org.apache.commons.logging.LogFactory;
 /**
  * Default implementation of {@link DeferredIndexService}.
  *
- * <p>Thin facade over the executor and DAO. Crash recovery
- * (IN_PROGRESS → PENDING reset) and configuration validation are
- * handled by the executor.</p>
+ * <p>Thin facade over the executor. Scans the database schema for unbuilt
+ * deferred indexes (declared in table comments) and builds them
+ * asynchronously.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -42,7 +42,6 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
   private static final Log log = LogFactory.getLog(DeferredIndexServiceImpl.class);
 
   private final DeferredIndexExecutor executor;
-  private final DeferredIndexOperationDAO dao;
 
   /** Future representing the current execution; {@code null} if not started. */
   private CompletableFuture<Void> executionFuture;
@@ -52,18 +51,15 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
    * Constructs the service.
    *
    * @param executor executor for building deferred indexes.
-   * @param dao      DAO for querying deferred index operation state.
    */
   @Inject
-  DeferredIndexServiceImpl(DeferredIndexExecutor executor,
-                            DeferredIndexOperationDAO dao) {
+  DeferredIndexServiceImpl(DeferredIndexExecutor executor) {
     this.executor = executor;
-    this.dao = dao;
   }
 
 
   /**
-   * @see org.alfasoftware.morf.upgrade.deferred.DeferredIndexService#execute()
+   * @see DeferredIndexService#execute()
    */
   @Override
   public void execute() {
@@ -73,7 +69,7 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
 
 
   /**
-   * @see org.alfasoftware.morf.upgrade.deferred.DeferredIndexService#awaitCompletion(long)
+   * @see DeferredIndexService#awaitCompletion(long)
    */
   @Override
   public boolean awaitCompletion(long timeoutSeconds) {
@@ -108,12 +104,10 @@ class DeferredIndexServiceImpl implements DeferredIndexService {
 
 
   /**
-   * @see org.alfasoftware.morf.upgrade.deferred.DeferredIndexService#getProgress()
+   * @see DeferredIndexService#getMissingDeferredIndexStatements()
    */
   @Override
-  public Map<DeferredIndexStatus, Integer> getProgress() {
-    return dao.countAllByStatus();
+  public List<String> getMissingDeferredIndexStatements() {
+    return executor.getMissingDeferredIndexStatements();
   }
-
-
 }

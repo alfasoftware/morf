@@ -22,8 +22,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.EnumMap;
-import java.util.Map;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 
@@ -47,7 +46,7 @@ public class TestDeferredIndexServiceImpl {
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     when(mockExecutor.execute()).thenReturn(CompletableFuture.completedFuture(null));
 
-    DeferredIndexServiceImpl service = serviceWithMocks(mockExecutor);
+    DeferredIndexServiceImpl service = new DeferredIndexServiceImpl(mockExecutor);
     service.execute();
 
     verify(mockExecutor).execute();
@@ -61,7 +60,7 @@ public class TestDeferredIndexServiceImpl {
   /** awaitCompletion() should throw when execute() has not been called. */
   @Test(expected = IllegalStateException.class)
   public void testAwaitCompletionThrowsWhenNoExecution() {
-    DeferredIndexServiceImpl service = serviceWithMocks(null);
+    DeferredIndexServiceImpl service = new DeferredIndexServiceImpl(mock(DeferredIndexExecutor.class));
     service.awaitCompletion(60L);
   }
 
@@ -72,7 +71,7 @@ public class TestDeferredIndexServiceImpl {
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     when(mockExecutor.execute()).thenReturn(CompletableFuture.completedFuture(null));
 
-    DeferredIndexServiceImpl service = serviceWithMocks(mockExecutor);
+    DeferredIndexServiceImpl service = new DeferredIndexServiceImpl(mockExecutor);
     service.execute();
 
     assertTrue("Should return true when future is complete", service.awaitCompletion(60L));
@@ -85,7 +84,7 @@ public class TestDeferredIndexServiceImpl {
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     when(mockExecutor.execute()).thenReturn(new CompletableFuture<>()); // never completes
 
-    DeferredIndexServiceImpl service = serviceWithMocks(mockExecutor);
+    DeferredIndexServiceImpl service = new DeferredIndexServiceImpl(mockExecutor);
     service.execute();
 
     assertFalse("Should return false on timeout", service.awaitCompletion(1L));
@@ -98,7 +97,7 @@ public class TestDeferredIndexServiceImpl {
     DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
     when(mockExecutor.execute()).thenReturn(new CompletableFuture<>()); // never completes
 
-    DeferredIndexServiceImpl service = serviceWithMocks(mockExecutor);
+    DeferredIndexServiceImpl service = new DeferredIndexServiceImpl(mockExecutor);
     service.execute();
 
     CountDownLatch enteredAwait = new CountDownLatch(1);
@@ -123,7 +122,7 @@ public class TestDeferredIndexServiceImpl {
     CompletableFuture<Void> future = new CompletableFuture<>();
     when(mockExecutor.execute()).thenReturn(future);
 
-    DeferredIndexServiceImpl service = serviceWithMocks(mockExecutor);
+    DeferredIndexServiceImpl service = new DeferredIndexServiceImpl(mockExecutor);
     service.execute();
 
     CountDownLatch enteredAwait = new CountDownLatch(1);
@@ -139,35 +138,20 @@ public class TestDeferredIndexServiceImpl {
 
 
   // -------------------------------------------------------------------------
-  // getProgress()
+  // getMissingDeferredIndexStatements()
   // -------------------------------------------------------------------------
 
-  /** getProgress() should delegate to the DAO and return the counts map. */
+  /** getMissingDeferredIndexStatements() should delegate to the executor. */
   @Test
-  public void testGetProgressDelegatesToDao() {
-    DeferredIndexOperationDAO mockDao = mock(DeferredIndexOperationDAO.class);
-    Map<DeferredIndexStatus, Integer> counts = new EnumMap<>(DeferredIndexStatus.class);
-    counts.put(DeferredIndexStatus.COMPLETED, 3);
-    counts.put(DeferredIndexStatus.IN_PROGRESS, 1);
-    counts.put(DeferredIndexStatus.PENDING, 5);
-    counts.put(DeferredIndexStatus.FAILED, 0);
-    when(mockDao.countAllByStatus()).thenReturn(counts);
+  public void testGetMissingDeferredIndexStatementsDelegatesToExecutor() {
+    DeferredIndexExecutor mockExecutor = mock(DeferredIndexExecutor.class);
+    when(mockExecutor.getMissingDeferredIndexStatements())
+        .thenReturn(List.of("CREATE INDEX idx ON t(c)"));
 
-    DeferredIndexServiceImpl service = new DeferredIndexServiceImpl(null, mockDao);
-    Map<DeferredIndexStatus, Integer> result = service.getProgress();
+    DeferredIndexServiceImpl service = new DeferredIndexServiceImpl(mockExecutor);
+    List<String> result = service.getMissingDeferredIndexStatements();
 
-    assertEquals(Integer.valueOf(3), result.get(DeferredIndexStatus.COMPLETED));
-    assertEquals(Integer.valueOf(1), result.get(DeferredIndexStatus.IN_PROGRESS));
-    assertEquals(Integer.valueOf(5), result.get(DeferredIndexStatus.PENDING));
-    assertEquals(Integer.valueOf(0), result.get(DeferredIndexStatus.FAILED));
-  }
-
-
-  // -------------------------------------------------------------------------
-  // Helpers
-  // -------------------------------------------------------------------------
-
-  private DeferredIndexServiceImpl serviceWithMocks(DeferredIndexExecutor executor) {
-    return new DeferredIndexServiceImpl(executor, mock(DeferredIndexOperationDAO.class));
+    assertEquals(1, result.size());
+    assertEquals("CREATE INDEX idx ON t(c)", result.get(0));
   }
 }

@@ -15,7 +15,6 @@
 package org.alfasoftware.morf.upgrade.db;
 
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
-import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 
 import java.util.Collection;
@@ -41,11 +40,6 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
 
   /** Name of the table containing information on the views deployed within the app's database. */
   public static final String DEPLOYED_VIEWS_NAME = "DeployedViews";
-
-  /** Name of the table tracking deferred index operations. */
-  public static final String DEFERRED_INDEX_OPERATION_NAME = "DeferredIndexOperation";
-
-
 
 
   /**
@@ -75,40 +69,13 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
 
 
   /**
-   * @return The Table descriptor of DeferredIndexOperation
-   */
-  public static Table deferredIndexOperationTable() {
-    return table(DEFERRED_INDEX_OPERATION_NAME)
-        .columns(
-          column("id", DataType.BIG_INTEGER).primaryKey(),
-          column("upgradeUUID", DataType.STRING, 100),
-          column("tableName", DataType.STRING, 60),
-          column("indexName", DataType.STRING, 60),
-          column("indexUnique", DataType.BOOLEAN),
-          column("indexColumns", DataType.STRING, 2000),
-          column("status", DataType.STRING, 20),
-          column("retryCount", DataType.INTEGER),
-          column("createdTime", DataType.DECIMAL, 14),
-          column("startedTime", DataType.DECIMAL, 14).nullable(),
-          column("completedTime", DataType.DECIMAL, 14).nullable(),
-          column("errorMessage", DataType.CLOB).nullable()
-        )
-        .indexes(
-          index("DeferredIndexOp_1").columns("status"),
-          index("DeferredIndexOp_2").columns("tableName")
-        );
-  }
-
-
-  /**
    * @see org.alfasoftware.morf.upgrade.TableContribution#tables()
    */
   @Override
   public Collection<Table> tables() {
     return ImmutableList.of(
       deployedViewsTable(),
-      upgradeAuditTable(),
-      deferredIndexOperationTable()
+      upgradeAuditTable()
     );
   }
 

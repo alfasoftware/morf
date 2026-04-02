@@ -15,35 +15,29 @@
 
 package org.alfasoftware.morf.upgrade.deferred;
 
-import org.alfasoftware.morf.jdbc.ConnectionResources;
-import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Schema;
 
 import com.google.inject.ImplementedBy;
 
 /**
- * Startup hook that reconciles deferred index operations from a previous
- * run before the upgrade framework begins schema diffing.
+ * Startup hook that reconciles deferred index state before the upgrade
+ * framework begins schema diffing.
  *
- * <p>This check is invoked during application startup by the upgrade
- * framework ({@link org.alfasoftware.morf.upgrade.Upgrade#findPath findPath})
- * for both the sequential and graph-based upgrade paths:</p>
+ * <p>In the comments-based model, deferred indexes are declared in table
+ * comments and the MetaDataProvider already includes them as virtual
+ * indexes in the schema. This check is invoked during application startup
+ * by the upgrade framework
+ * ({@link org.alfasoftware.morf.upgrade.Upgrade#findPath findPath}):</p>
  *
  * <ul>
- *   <li>{@link #augmentSchemaWithPendingIndexes(Schema)} is always called
- *       after the source schema is read, to overlay virtual indexes for
- *       non-terminal operations so the schema comparison treats them as
- *       present.</li>
- *   <li>{@link #forceBuildAllPending()} is called only when an upgrade
- *       with new steps is about to run. It force-builds any pending or
- *       stale operations from a previous upgrade synchronously, ensuring
- *       the schema is clean before new changes are applied.</li>
+ *   <li>{@link #augmentSchemaWithPendingIndexes(Schema)} is called after
+ *       the source schema is read. In the comments-based model the
+ *       MetaDataProvider already includes virtual deferred indexes, so
+ *       this method is a no-op pass-through.</li>
  * </ul>
  *
  * <p>On a normal restart with no upgrade, pending deferred indexes are
- * left for {@link DeferredIndexService#execute()} to build. After every
- * upgrade, adopters must call {@link DeferredIndexService#execute()} to
- * start building deferred indexes queued by the current upgrade.</p>
+ * left for {@link DeferredIndexService#execute()} to build.</p>
  *
  * @see DeferredIndexService
  * @author Copyright (c) Alfa Financial Software Limited. 2026
@@ -52,29 +46,12 @@ import com.google.inject.ImplementedBy;
 public interface DeferredIndexReadinessCheck {
 
   /**
-   * Force-builds all pending deferred index operations from a previous
-   * upgrade, blocking until complete.
+   * Augments the given source schema with virtual indexes from deferred
+   * index operations that have not yet been built.
    *
-   * <p>Called by the upgrade framework only when an upgrade with new
-   * steps is about to run. If the deferred index infrastructure table
-   * does not exist (e.g. on the first upgrade), this is a safe no-op.
-   * If pending operations are found, they are force-built synchronously
-   * before returning. Any stale IN_PROGRESS operations from a crashed
-   * process are also reset to PENDING and built.</p>
-   *
-   * @throws IllegalStateException if any operations failed permanently.
-   */
-  void forceBuildAllPending();
-
-
-  /**
-   * Augments the given source schema with virtual indexes from non-terminal
-   * deferred index operations.
-   *
-   * <p>Always called after the source schema is read. For each PENDING,
-   * IN_PROGRESS, or FAILED operation, the corresponding index is added to
-   * the schema so that the schema comparison treats it as present. The
-   * actual index will be built by {@link DeferredIndexService#execute()}.</p>
+   * <p>In the comments-based model, the MetaDataProvider already includes
+   * virtual deferred indexes from table comments, so this method returns
+   * the source schema unchanged.</p>
    *
    * @param sourceSchema the current database schema before upgrade.
    * @return the augmented schema with deferred indexes included.
@@ -83,14 +60,15 @@ public interface DeferredIndexReadinessCheck {
 
 
   /**
-   * Creates a readiness check instance from connection resources, for use
-   * in the static upgrade path where Guice is not available.
+   * Creates a readiness check instance for use in the static upgrade path
+   * where Guice is not available.
    *
-   * @param connectionResources connection details for constructing services.
+   * @param config upgrade configuration.
    * @return a new readiness check instance.
    */
-  static DeferredIndexReadinessCheck create(ConnectionResources connectionResources) {
-    return create(connectionResources, new org.alfasoftware.morf.upgrade.UpgradeConfigAndContext());
+  static DeferredIndexReadinessCheck create(
+      org.alfasoftware.morf.upgrade.UpgradeConfigAndContext config) {
+    return new DeferredIndexReadinessCheckImpl(config);
   }
 
 
@@ -98,17 +76,14 @@ public interface DeferredIndexReadinessCheck {
    * Creates a readiness check instance from connection resources and config,
    * for use in the static upgrade path where Guice is not available.
    *
-   * @param connectionResources connection details for constructing services.
+   * @param connectionResources connection details (unused in comments-based model,
+   *                            retained for API compatibility).
    * @param config              upgrade configuration.
    * @return a new readiness check instance.
    */
-  static DeferredIndexReadinessCheck create(ConnectionResources connectionResources,
-                                             org.alfasoftware.morf.upgrade.UpgradeConfigAndContext config) {
-    SqlScriptExecutorProvider executorProvider = new SqlScriptExecutorProvider(connectionResources);
-    DeferredIndexOperationDAO dao = new DeferredIndexOperationDAOImpl(executorProvider, connectionResources);
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources,
-        executorProvider, config,
-        new DeferredIndexExecutorServiceFactory.Default());
-    return new DeferredIndexReadinessCheckImpl(dao, executor, config, connectionResources);
+  static DeferredIndexReadinessCheck create(
+      org.alfasoftware.morf.jdbc.ConnectionResources connectionResources,
+      org.alfasoftware.morf.upgrade.UpgradeConfigAndContext config) {
+    return new DeferredIndexReadinessCheckImpl(config);
   }
 }

@@ -277,14 +277,6 @@ public class Upgrade {
       }
     }
 
-    // -- If an upgrade is about to run, force-build any pending deferred
-    // indexes from a previous upgrade first. This ensures the schema is
-    // clean before applying new changes. On a no-upgrade restart, pending
-    // indexes are left for DeferredIndexService.execute() to handle.
-    if (!schemaChangeSequence.getUpgradeSteps().isEmpty()) {
-      deferredIndexReadinessCheck.forceBuildAllPending();
-    }
-
     // -- Only run the upgrader if there are any steps to apply...
     //
     if (!schemaChangeSequence.getUpgradeSteps().isEmpty()) {
