@@ -938,6 +938,32 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
+  public String findTablesWithDeferredIndexesSql() {
+    String schema = StringUtils.isNotBlank(getSchemaName())
+        ? " AND n.nspname = '" + getSchemaName() + "'"
+        : "";
+    return "SELECT c.relname FROM pg_description d"
+        + " JOIN pg_class c ON d.objoid = c.oid"
+        + " JOIN pg_namespace n ON n.oid = c.relnamespace" + schema
+        + " WHERE d.objsubid = 0 AND d.description LIKE '%/DEFERRED:%'";
+  }
+
+
+  @Override
+  public String checkInvalidIndexSql(String indexName) {
+    return "SELECT 1 FROM pg_index i"
+        + " JOIN pg_class c ON c.oid = i.indexrelid"
+        + " WHERE LOWER(c.relname) = LOWER('" + indexName + "') AND NOT i.indisvalid";
+  }
+
+
+  @Override
+  public Collection<String> dropInvalidIndexStatements(String indexName) {
+    return List.of("DROP INDEX CONCURRENTLY IF EXISTS " + indexName);
+  }
+
+
+  @Override
   public void prepareStatementParameters(NamedParameterPreparedStatement statement, DataValueLookup values, SqlParameter parameter) throws SQLException {
     switch (parameter.getMetadata().getType()) {
       case BLOB:

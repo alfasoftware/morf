@@ -733,4 +733,13 @@ class H2Dialect extends SqlDialect {
         + DatabaseMetaDataProviderUtils.buildDeferredIndexCommentSegments(deferredIndexes);
     return List.of("COMMENT ON TABLE " + schemaNamePrefix() + table.getName() + " IS '" + comment + "'");
   }
+
+
+  @Override
+  public String findTablesWithDeferredIndexesSql() {
+    String prefix = schemaNamePrefix();
+    String schema = prefix.isEmpty() ? "PUBLIC" : prefix.replace(".", "");
+    return "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES"
+        + " WHERE TABLE_SCHEMA = '" + schema + "' AND REMARKS LIKE '%/DEFERRED:%'";
+  }
 }

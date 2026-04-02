@@ -991,6 +991,14 @@ class OracleDialect extends SqlDialect {
   }
 
 
+  @Override
+  public String findTablesWithDeferredIndexesSql() {
+    String owner = schemaNamePrefix().replace(".", "");
+    return "SELECT table_name FROM ALL_TAB_COMMENTS"
+        + " WHERE owner = '" + owner + "' AND comments LIKE '%/DEFERRED:%'";
+  }
+
+
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#alterTableAddColumnStatements(org.alfasoftware.morf.metadata.Table, org.alfasoftware.morf.metadata.Column)
    */

@@ -4110,6 +4110,53 @@ public abstract class SqlDialect {
 
 
   /**
+   * Returns SQL to find table names that have DEFERRED index declarations in their
+   * table comments. Used by the executor to avoid a full schema scan on large databases.
+   *
+   * <p>The default implementation returns {@code null}, meaning the caller should
+   * fall back to a full schema scan. Dialects that use table comments override this
+   * to produce an efficient query against the database catalog.</p>
+   *
+   * @return SQL that returns a single-column result set of table names, or {@code null}
+   *         if the dialect does not support this optimization.
+   */
+  public String findTablesWithDeferredIndexesSql() {
+    return null;
+  }
+
+
+  /**
+   * Returns SQL to check whether a named index exists but is invalid (e.g. PostgreSQL's
+   * {@code indisvalid=false} after a crashed {@code CREATE INDEX CONCURRENTLY}). The SQL
+   * should return at least one row if the index is invalid, and no rows otherwise.
+   *
+   * <p>The default implementation returns {@code null}, meaning no invalid-index checking
+   * is performed. PostgreSQL overrides this.</p>
+   *
+   * @param indexName the index name to check.
+   * @return SQL that returns rows if the index is invalid, or {@code null} if not supported.
+   */
+  public String checkInvalidIndexSql(String indexName) {
+    return null;
+  }
+
+
+  /**
+   * Returns SQL to drop an invalid index before rebuilding it. Only called when
+   * {@link #checkInvalidIndexSql(String)} indicated the index is invalid.
+   *
+   * <p>The default implementation returns an empty list. PostgreSQL overrides this
+   * with {@code DROP INDEX IF EXISTS}.</p>
+   *
+   * @param indexName the index to drop.
+   * @return SQL statements to drop the invalid index.
+   */
+  public Collection<String> dropInvalidIndexStatements(String indexName) {
+    return Collections.emptyList();
+  }
+
+
+  /**
    * Generates a {@code COMMENT ON TABLE} SQL statement that includes both the standard
    * table metadata (e.g. REALNAME) and any deferred index declarations. The deferred index
    * declarations are appended as {@code /DEFERRED:[indexName|col1,col2|unique]} segments.

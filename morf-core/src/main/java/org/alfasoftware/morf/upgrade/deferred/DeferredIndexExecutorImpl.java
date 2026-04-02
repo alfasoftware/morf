@@ -16,11 +16,15 @@
 package org.alfasoftware.morf.upgrade.deferred;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -163,19 +167,33 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
 
   /**
    * Scans the database schema for deferred indexes that have not yet been
-   * physically built. An index with {@code isDeferred()=true} in the schema
-   * returned by the MetaDataProvider indicates it was declared in a table
-   * comment but does not yet exist as a physical index.
+   * physically built. Uses an optimized query (via
+   * {@link org.alfasoftware.morf.jdbc.SqlDialect#findTablesWithDeferredIndexesSql()}) to
+   * find only tables with DEFERRED comment segments, avoiding a full schema scan
+   * on large databases.
+   *
+   * <p>An index with {@code isDeferred()=true} that was NOT physically built appears
+   * as a virtual index from the MetaDataProvider. An index with {@code isDeferred()=true}
+   * that WAS physically built appears as a real index marked deferred. We skip the
+   * latter by checking {@link #indexExistsPhysically(String, String)}.</p>
    *
    * @return list of table/index pairs to build.
    */
   private List<DeferredIndexEntry> findMissingDeferredIndexes() {
-    List<DeferredIndexEntry> result = new ArrayList<>();
+    Set<String> targetTables = findTablesWithDeferredComments();
+    if (targetTables.isEmpty()) {
+      return Collections.emptyList();
+    }
 
+    List<DeferredIndexEntry> result = new ArrayList<>();
     try (SchemaResource sr = connectionResources.openSchemaResource()) {
-      for (Table table : sr.tables()) {
+      for (String tableName : targetTables) {
+        if (!sr.tableExists(tableName)) {
+          continue;
+        }
+        Table table = sr.getTable(tableName);
         for (Index index : table.indexes()) {
-          if (index.isDeferred()) {
+          if (index.isDeferred() && !indexExistsPhysically(tableName, index.getName())) {
             log.debug("Found unbuilt deferred index [" + index.getName()
                 + "] on table [" + table.getName() + "]");
             result.add(new DeferredIndexEntry(table, index));
@@ -184,6 +202,49 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
       }
     }
 
+    return result;
+  }
+
+
+  /**
+   * Queries the database catalog to find table names that have DEFERRED index
+   * declarations in their table comments. This avoids loading metadata for all
+   * tables on large schemas.
+   *
+   * @return set of table names (case as stored in the catalog).
+   */
+  private Set<String> findTablesWithDeferredComments() {
+    String sql = connectionResources.sqlDialect().findTablesWithDeferredIndexesSql();
+    if (sql == null) {
+      log.debug("Dialect does not support targeted deferred index scan — falling back to full scan");
+      return findAllTableNames();
+    }
+
+    Set<String> result = new HashSet<>();
+    try (Connection conn = connectionResources.getDataSource().getConnection();
+         Statement stmt = conn.createStatement();
+         ResultSet rs = stmt.executeQuery(sql)) {
+      while (rs.next()) {
+        result.add(rs.getString(1));
+      }
+    } catch (SQLException e) {
+      log.warn("Error querying for tables with deferred indexes — falling back to full scan: " + e.getMessage());
+      return findAllTableNames();
+    }
+
+    log.debug("Found " + result.size() + " table(s) with DEFERRED comment segments");
+    return result;
+  }
+
+
+  /**
+   * Fallback: returns all table names from the schema resource.
+   */
+  private Set<String> findAllTableNames() {
+    Set<String> result = new HashSet<>();
+    try (SchemaResource sr = connectionResources.openSchemaResource()) {
+      result.addAll(sr.tableNames());
+    }
     return result;
   }
 
@@ -208,6 +269,7 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
       long startTime = System.currentTimeMillis();
 
       try {
+        repairInvalidIndex(entry);
         buildIndex(entry);
         long elapsedSeconds = (System.currentTimeMillis() - startTime) / 1000;
         log.info("Deferred index [" + entry.index.getName() + "] on table ["
@@ -239,6 +301,39 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
               + " s (" + nextAttempt + " attempt(s))", e);
         }
       }
+    }
+  }
+
+
+  /**
+   * Checks if an invalid index exists (e.g. PostgreSQL's {@code indisvalid=false}
+   * after a crashed {@code CREATE INDEX CONCURRENTLY}) and drops it before rebuilding.
+   * No-op on platforms that don't support this check.
+   *
+   * @param entry the table/index pair to check.
+   */
+  private void repairInvalidIndex(DeferredIndexEntry entry) {
+    String checkSql = connectionResources.sqlDialect().checkInvalidIndexSql(entry.index.getName());
+    if (checkSql == null) {
+      return;
+    }
+
+    try (Connection conn = connectionResources.getDataSource().getConnection()) {
+      conn.setAutoCommit(true);
+      boolean isInvalid;
+      try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(checkSql)) {
+        isInvalid = rs.next();
+      }
+
+      if (isInvalid) {
+        log.warn("Found invalid index [" + entry.index.getName() + "] on table ["
+            + entry.table.getName() + "] — dropping before rebuild");
+        Collection<String> dropSql = connectionResources.sqlDialect()
+            .dropInvalidIndexStatements(entry.index.getName());
+        sqlScriptExecutorProvider.get().execute(dropSql, conn);
+      }
+    } catch (SQLException e) {
+      log.warn("Error checking for invalid index [" + entry.index.getName() + "]: " + e.getMessage());
     }
   }
 
@@ -281,26 +376,38 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
 
 
   /**
-   * Checks whether a physical index exists in the live database catalog.
-   * Used for post-failure recovery: if CREATE INDEX fails but the index
-   * was already built (e.g. from a previous executor run), skip the error.
+   * Checks whether a physical index exists in the live database catalog,
+   * bypassing the MetaDataProvider merge (which marks virtual deferred indexes
+   * as present). Uses JDBC {@code DatabaseMetaData.getIndexInfo()} for a raw
+   * catalog check.
    *
    * @param tableName the table name.
    * @param indexName the index name.
-   * @return true if the physical index exists.
+   * @return true if the physical index exists in the catalog.
    */
   private boolean indexExistsPhysically(String tableName, String indexName) {
-    try (SchemaResource sr = connectionResources.openSchemaResource()) {
-      if (!sr.tableExists(tableName)) {
-        return false;
+    try (Connection conn = connectionResources.getDataSource().getConnection()) {
+      try (ResultSet rs = conn.getMetaData().getIndexInfo(null, null, tableName, false, true)) {
+        while (rs.next()) {
+          String name = rs.getString("INDEX_NAME");
+          if (name != null && name.equalsIgnoreCase(indexName)) {
+            return true;
+          }
+        }
       }
-      // Check the raw catalog — physical indexes that match a DEFERRED
-      // comment have isDeferred()=true in the merged view, so we cannot
-      // use isDeferred() to distinguish. Instead, just check name existence.
-      // If the CREATE INDEX DDL failed with "already exists" and the index
-      // IS in the catalog, it's safe to skip.
-      return sr.getTable(tableName).indexes().stream()
-          .anyMatch(idx -> idx.getName().equalsIgnoreCase(indexName));
+      // H2 folds to uppercase — try again with uppercase table name
+      try (ResultSet rs = conn.getMetaData().getIndexInfo(null, null, tableName.toUpperCase(), false, true)) {
+        while (rs.next()) {
+          String name = rs.getString("INDEX_NAME");
+          if (name != null && name.equalsIgnoreCase(indexName)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    } catch (SQLException e) {
+      log.warn("Error checking physical index existence for [" + indexName + "]: " + e.getMessage());
+      return false;
     }
   }
 

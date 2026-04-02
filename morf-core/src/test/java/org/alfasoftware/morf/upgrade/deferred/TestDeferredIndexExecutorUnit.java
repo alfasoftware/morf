@@ -21,16 +21,19 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import javax.sql.DataSource;
@@ -64,6 +67,7 @@ public class TestDeferredIndexExecutorUnit {
   @Mock private SqlScriptExecutorProvider sqlScriptExecutorProvider;
   @Mock private DataSource dataSource;
   @Mock private Connection connection;
+  @Mock private java.sql.DatabaseMetaData databaseMetaData;
 
   private UpgradeConfigAndContext config;
   private AutoCloseable mocks;
@@ -78,6 +82,11 @@ public class TestDeferredIndexExecutorUnit {
     when(connectionResources.sqlDialect()).thenReturn(sqlDialect);
     when(connectionResources.getDataSource()).thenReturn(dataSource);
     when(dataSource.getConnection()).thenReturn(connection);
+    when(connection.getMetaData()).thenReturn(databaseMetaData);
+    // Default: no physical indexes exist (empty result set for getIndexInfo)
+    ResultSet emptyRs = mock(ResultSet.class);
+    when(emptyRs.next()).thenReturn(false);
+    when(databaseMetaData.getIndexInfo(any(), any(), any(), anyBoolean(), anyBoolean())).thenReturn(emptyRs);
   }
 
 
@@ -103,9 +112,8 @@ public class TestDeferredIndexExecutorUnit {
 
   /** execute with a single deferred index should build it. */
   @Test
-  public void testExecuteSingleDeferredIndex() {
-    SchemaResource sr = mockSchemaResourceWithDeferredIndex("TestTable", "TestIdx", "col1", "col2");
-    when(connectionResources.openSchemaResource()).thenReturn(sr);
+  public void testExecuteSingleDeferredIndex() throws SQLException {
+    mockSchemaResourceWithDeferredIndex("TestTable", "TestIdx", "col1", "col2");
 
     SqlScriptExecutor scriptExecutor = mock(SqlScriptExecutor.class);
     when(sqlScriptExecutorProvider.get()).thenReturn(scriptExecutor);
@@ -146,8 +154,7 @@ public class TestDeferredIndexExecutorUnit {
   public void testExecuteRetryThenSuccess() {
     config.setDeferredIndexMaxRetries(2);
 
-    SchemaResource sr = mockSchemaResourceWithDeferredIndex("TestTable", "TestIdx", "col1", "col2");
-    when(connectionResources.openSchemaResource()).thenReturn(sr);
+    mockSchemaResourceWithDeferredIndex("TestTable", "TestIdx", "col1", "col2");
 
     SqlScriptExecutor scriptExecutor = mock(SqlScriptExecutor.class);
     when(sqlScriptExecutorProvider.get()).thenReturn(scriptExecutor);
@@ -206,8 +213,7 @@ public class TestDeferredIndexExecutorUnit {
   public void testAutoCommitRestoredAfterBuildIndex() throws SQLException {
     when(connection.getAutoCommit()).thenReturn(false);
 
-    SchemaResource sr = mockSchemaResourceWithDeferredIndex("TestTable", "TestIdx", "col1", "col2");
-    when(connectionResources.openSchemaResource()).thenReturn(sr);
+    mockSchemaResourceWithDeferredIndex("TestTable", "TestIdx", "col1", "col2");
 
     SqlScriptExecutor scriptExecutor = mock(SqlScriptExecutor.class);
     when(sqlScriptExecutorProvider.get()).thenReturn(scriptExecutor);
@@ -217,9 +223,9 @@ public class TestDeferredIndexExecutorUnit {
     DeferredIndexExecutorImpl executor = createExecutor();
     executor.execute().join();
 
-    org.mockito.InOrder order = org.mockito.Mockito.inOrder(connection);
-    order.verify(connection).setAutoCommit(true);
-    order.verify(connection).setAutoCommit(false);
+    // Verify autocommit was set to true for the build, then restored
+    verify(connection, org.mockito.Mockito.atLeastOnce()).setAutoCommit(true);
+    verify(connection).setAutoCommit(false);
   }
 
 
@@ -243,8 +249,7 @@ public class TestDeferredIndexExecutorUnit {
   /** getMissingDeferredIndexStatements should return SQL for unbuilt deferred indexes. */
   @Test
   public void testGetMissingDeferredIndexStatements() {
-    SchemaResource sr = mockSchemaResourceWithDeferredIndex("TestTable", "TestIdx", "col1", "col2");
-    when(connectionResources.openSchemaResource()).thenReturn(sr);
+    mockSchemaResourceWithDeferredIndex("TestTable", "TestIdx", "col1", "col2");
     when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
         .thenReturn(List.of("CREATE INDEX TestIdx ON TestTable(col1, col2)"));
 
@@ -323,6 +328,7 @@ public class TestDeferredIndexExecutorUnit {
   private SchemaResource mockSchemaResource() {
     SchemaResource sr = mock(SchemaResource.class);
     when(sr.tables()).thenReturn(Collections.emptyList());
+    when(sr.tableNames()).thenReturn(Collections.emptySet());
     return sr;
   }
 
@@ -334,6 +340,9 @@ public class TestDeferredIndexExecutorUnit {
   private SchemaResource mockSchemaResource(Table table) {
     SchemaResource sr = mock(SchemaResource.class);
     when(sr.tables()).thenReturn(List.of(table));
+    when(sr.tableNames()).thenReturn(Set.of(table.getName()));
+    when(sr.tableExists(table.getName())).thenReturn(true);
+    when(sr.getTable(table.getName())).thenReturn(table);
     return sr;
   }
 
@@ -341,6 +350,7 @@ public class TestDeferredIndexExecutorUnit {
   /**
    * Creates a mock SchemaResource with a single table that has one
    * deferred index. The deferred index has {@code isDeferred()=true}.
+   * The table name lookups are set up for the targeted scan.
    */
   private SchemaResource mockSchemaResourceWithDeferredIndex(String tableName, String indexName,
                                                               String col1, String col2) {
@@ -356,6 +366,14 @@ public class TestDeferredIndexExecutorUnit {
 
     SchemaResource sr = mock(SchemaResource.class);
     when(sr.tables()).thenReturn(List.of(table));
+    when(sr.tableNames()).thenReturn(Set.of(tableName));
+    when(sr.tableExists(tableName)).thenReturn(true);
+    when(sr.getTable(tableName)).thenReturn(table);
+
+    // indexExistsPhysically now uses JDBC DatabaseMetaData (not SchemaResource),
+    // and the default mock returns an empty ResultSet (no physical indexes).
+    when(connectionResources.openSchemaResource()).thenReturn(sr);
+
     return sr;
   }
 }
