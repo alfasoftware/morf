@@ -215,6 +215,15 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
         return;
 
       } catch (Exception e) {
+        // Post-failure check: if the index actually exists in the database
+        // (e.g. from a previous run or a crashed attempt that completed),
+        // treat as success.
+        if (indexExistsPhysically(entry.table.getName(), entry.index.getName())) {
+          log.info("Deferred index [" + entry.index.getName() + "] on table ["
+              + entry.table.getName() + "] already exists — skipping");
+          return;
+        }
+
         long elapsedSeconds = (System.currentTimeMillis() - startTime) / 1000;
         int nextAttempt = attempt + 1;
 
@@ -267,6 +276,31 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
       Thread.sleep(RETRY_DELAY_MS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
+    }
+  }
+
+
+  /**
+   * Checks whether a physical index exists in the live database catalog.
+   * Used for post-failure recovery: if CREATE INDEX fails but the index
+   * was already built (e.g. from a previous executor run), skip the error.
+   *
+   * @param tableName the table name.
+   * @param indexName the index name.
+   * @return true if the physical index exists.
+   */
+  private boolean indexExistsPhysically(String tableName, String indexName) {
+    try (SchemaResource sr = connectionResources.openSchemaResource()) {
+      if (!sr.tableExists(tableName)) {
+        return false;
+      }
+      // Check the raw catalog — physical indexes that match a DEFERRED
+      // comment have isDeferred()=true in the merged view, so we cannot
+      // use isDeferred() to distinguish. Instead, just check name existence.
+      // If the CREATE INDEX DDL failed with "already exists" and the index
+      // IS in the catalog, it's safe to skip.
+      return sr.getTable(tableName).indexes().stream()
+          .anyMatch(idx -> idx.getName().equalsIgnoreCase(indexName));
     }
   }
 
