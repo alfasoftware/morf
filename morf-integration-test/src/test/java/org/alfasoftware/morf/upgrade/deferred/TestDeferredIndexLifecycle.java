@@ -19,16 +19,8 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
-import static org.alfasoftware.morf.sql.SqlUtils.field;
-import static org.alfasoftware.morf.sql.SqlUtils.literal;
-import static org.alfasoftware.morf.sql.SqlUtils.select;
-import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.sql.SqlUtils.update;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deferredIndexOperationTable;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deployedViewsTable;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.upgradeAuditTable;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -63,12 +55,13 @@ import net.jcip.annotations.NotThreadSafe;
 /**
  * End-to-end lifecycle integration tests for the deferred index mechanism.
  * Exercises upgrade, restart, and execute cycles through the real
- * {@link Upgrade#performUpgrade} path.
+ * {@link Upgrade#performUpgrade} path using the comments-based model.
  *
- * <p>The upgrade framework always augments the source schema with pending
- * deferred indexes, and force-builds them only when an upgrade with new
- * steps is about to run. On a no-upgrade restart, pending indexes are
- * left for {@link DeferredIndexService#execute()} to build.</p>
+ * <p>In the comments-based model, deferred indexes are declared in table
+ * comments and the MetaDataProvider includes them as virtual indexes with
+ * {@code isDeferred()=true}. After the executor physically builds them,
+ * the physical index takes precedence and {@code isDeferred()} returns
+ * {@code false}.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -88,7 +81,6 @@ public class TestDeferredIndexLifecycle {
   private static final Schema INITIAL_SCHEMA = schema(
       deployedViewsTable(),
       upgradeAuditTable(),
-      deferredIndexOperationTable(),
       table("Product").columns(
           column("id", DataType.BIG_INTEGER).primaryKey(),
           column("name", DataType.STRING, 100)
@@ -121,148 +113,36 @@ public class TestDeferredIndexLifecycle {
   @Test
   public void testHappyPath_upgradeExecuteRestart() {
     performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
-    assertEquals("PENDING", queryOperationStatus("Product_Name_1"));
+    assertDeferredIndexPending("Product", "Product_Name_1");
 
     executeDeferred();
-    assertEquals("COMPLETED", queryOperationStatus("Product_Name_1"));
-    assertIndexExists("Product", "Product_Name_1");
+    assertPhysicalIndexExists("Product", "Product_Name_1");
 
-    // Restart — same steps, nothing new to do
+    // Restart -- same steps, nothing new to do
     performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
     // Should pass without error
   }
 
 
   // =========================================================================
-  // No-upgrade restart — pending indexes left for execute()
+  // No-upgrade restart -- pending indexes left for execute()
   // =========================================================================
 
-  /** No-upgrade restart with pending indexes should pass (schema augmented). */
+  /** No-upgrade restart with pending deferred indexes should pass. */
   @Test
-  public void testNoUpgradeRestart_pendingIndexesAugmented() {
+  public void testNoUpgradeRestart_pendingIndexesVisible() {
     performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
-    assertEquals("PENDING", queryOperationStatus("Product_Name_1"));
-    assertIndexDoesNotExist("Product", "Product_Name_1");
+    assertDeferredIndexPending("Product", "Product_Name_1");
 
-    // Restart with same schema — no new upgrade steps
+    // Restart with same schema -- no new upgrade steps
     performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
 
-    // Index should NOT exist yet — no force-build on no-upgrade restart
-    assertIndexDoesNotExist("Product", "Product_Name_1");
+    // Index should still be deferred (not physically built)
+    assertDeferredIndexPending("Product", "Product_Name_1");
 
     // Execute builds it
     executeDeferred();
-    assertIndexExists("Product", "Product_Name_1");
-    assertEquals("COMPLETED", queryOperationStatus("Product_Name_1"));
-  }
-
-
-  /** No-upgrade restart with crashed IN_PROGRESS ops should pass (schema augmented). */
-  @Test
-  public void testNoUpgradeRestart_crashedOpsAugmented() {
-    performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
-    setOperationStatus("Product_Name_1", "IN_PROGRESS");
-
-    // Restart with same schema — schema augmented with IN_PROGRESS op
-    performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
-
-    // Index should NOT exist yet
-    assertIndexDoesNotExist("Product", "Product_Name_1");
-
-    // Execute resets IN_PROGRESS → PENDING and builds
-    executeDeferred();
-    assertIndexExists("Product", "Product_Name_1");
-  }
-
-
-  // =========================================================================
-  // Upgrade with pending indexes — force-built before proceeding
-  // =========================================================================
-
-  /** Upgrade with pending indexes from previous upgrade force-builds them first. */
-  @Test
-  public void testUpgrade_pendingIndexesForceBuiltBeforeProceeding() {
-    // First upgrade — don't execute
-    performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
-    assertIndexDoesNotExist("Product", "Product_Name_1");
-
-    // Second upgrade — readiness check should force-build first index
-    performUpgradeWithSteps(schemaWithBothIndexes(),
-        List.of(AddDeferredIndex.class, AddSecondDeferredIndex.class));
-    assertIndexExists("Product", "Product_Name_1");
-
-    // Execute builds second index
-    executeDeferred();
-    assertIndexExists("Product", "Product_IdName_1");
-  }
-
-
-  /** Upgrade with crashed IN_PROGRESS ops force-builds them. */
-  @Test
-  public void testUpgrade_crashedOpsForceBuilt() {
-    performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
-    setOperationStatus("Product_Name_1", "IN_PROGRESS");
-
-    // Second upgrade — readiness check should reset IN_PROGRESS and force-build
-    performUpgradeWithSteps(schemaWithBothIndexes(),
-        List.of(AddDeferredIndex.class, AddSecondDeferredIndex.class));
-
-    assertIndexExists("Product", "Product_Name_1");
-  }
-
-
-  // =========================================================================
-  // Crash recovery via executor
-  // =========================================================================
-
-  /** Executor resets IN_PROGRESS ops to PENDING and builds them. */
-  @Test
-  public void testCrashRecovery_inProgressResetToPending() {
-    performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
-    setOperationStatus("Product_Name_1", "IN_PROGRESS");
-
-    // Execute should reset and build
-    executeDeferred();
-    assertEquals("COMPLETED", queryOperationStatus("Product_Name_1"));
-    assertIndexExists("Product", "Product_Name_1");
-  }
-
-
-  /** Executor handles index already built before crash — marks COMPLETED. */
-  @Test
-  public void testCrashRecovery_indexAlreadyBuilt() {
-    performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
-
-    // Simulate: DB finished building the index before the crash
-    buildIndexManually("Product", "Product_Name_1", "name");
-    setOperationStatus("Product_Name_1", "IN_PROGRESS");
-
-    // Execute resets to PENDING, tries CREATE INDEX, fails (exists), marks COMPLETED
-    executeDeferred();
-    assertEquals("COMPLETED", queryOperationStatus("Product_Name_1"));
-    assertIndexExists("Product", "Product_Name_1");
-  }
-
-
-  // =========================================================================
-  // Force-build failure blocks upgrade
-  // =========================================================================
-
-  /** FAILED ops from a previous upgrade should block the force-build before a new upgrade. */
-  @Test
-  public void testUpgrade_failedOpsBlockForceBuild() {
-    performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
-    // Simulate a permanently failed operation
-    setOperationStatus("Product_Name_1", "FAILED");
-
-    // Second upgrade — force-build runs, builds nothing (no PENDING), but FAILED count > 0 → throws
-    try {
-      performUpgradeWithSteps(schemaWithBothIndexes(),
-          List.of(AddDeferredIndex.class, AddSecondDeferredIndex.class));
-      org.junit.Assert.fail("Expected IllegalStateException due to FAILED operations");
-    } catch (IllegalStateException e) {
-      assertTrue("Message should mention failed count", e.getMessage().contains("1"));
-    }
+    assertPhysicalIndexExists("Product", "Product_Name_1");
   }
 
 
@@ -270,43 +150,41 @@ public class TestDeferredIndexLifecycle {
   // Two sequential upgrades
   // =========================================================================
 
-  /** Two upgrades, both executed — third restart passes. */
+  /** Two upgrades, both executed -- third restart passes. */
   @Test
   public void testTwoSequentialUpgrades() {
     // First upgrade
     performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
     executeDeferred();
-    assertEquals("COMPLETED", queryOperationStatus("Product_Name_1"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
 
     // Second upgrade adds another deferred index
     performUpgradeWithSteps(schemaWithBothIndexes(),
         List.of(AddDeferredIndex.class, AddSecondDeferredIndex.class));
     executeDeferred();
-    assertEquals("COMPLETED", queryOperationStatus("Product_IdName_1"));
+    assertPhysicalIndexExists("Product", "Product_IdName_1");
 
-    // Third restart — everything clean
+    // Third restart -- everything clean
     performUpgradeWithSteps(schemaWithBothIndexes(),
         List.of(AddDeferredIndex.class, AddSecondDeferredIndex.class));
   }
 
 
-  /** Two upgrades, first index not built — force-built before second, second deferred until execute. */
+  /** Two upgrades, first index not built -- first still deferred, second also deferred. */
   @Test
-  public void testTwoUpgrades_firstIndexNotBuilt_forceBuiltBeforeSecond() {
-    // First upgrade — don't execute
+  public void testTwoUpgrades_firstIndexNotBuilt() {
+    // First upgrade -- don't execute
     performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
-    assertIndexDoesNotExist("Product", "Product_Name_1");
+    assertDeferredIndexPending("Product", "Product_Name_1");
 
-    // Second upgrade — readiness check should force-build first index
+    // Second upgrade
     performUpgradeWithSteps(schemaWithBothIndexes(),
         List.of(AddDeferredIndex.class, AddSecondDeferredIndex.class));
-    assertIndexExists("Product", "Product_Name_1");
-    // Second index should NOT be built yet — it was just deferred by the second upgrade
-    assertIndexDoesNotExist("Product", "Product_IdName_1");
 
-    // Execute builds second index
+    // Execute builds both
     executeDeferred();
-    assertIndexExists("Product", "Product_IdName_1");
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+    assertPhysicalIndexExists("Product", "Product_IdName_1");
   }
 
 
@@ -329,12 +207,9 @@ public class TestDeferredIndexLifecycle {
   private void executeDeferred() {
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
     config.setDeferredIndexCreationEnabled(true);
-    config.setDeferredIndexRetryBaseDelayMs(10L);
     config.setDeferredIndexMaxRetries(1);
-    DeferredIndexOperationDAO dao = new DeferredIndexOperationDAOImpl(
-        new SqlScriptExecutorProvider(connectionResources), connectionResources);
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(
-        dao, connectionResources, new SqlScriptExecutorProvider(connectionResources),
+        connectionResources, sqlScriptExecutorProvider,
         config, new DeferredIndexExecutorServiceFactory.Default());
     executor.execute().join();
   }
@@ -343,7 +218,6 @@ public class TestDeferredIndexLifecycle {
   private Schema schemaWithFirstIndex() {
     return schema(
         deployedViewsTable(), upgradeAuditTable(),
-        deferredIndexOperationTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
             column("name", DataType.STRING, 100)
@@ -357,7 +231,6 @@ public class TestDeferredIndexLifecycle {
   private Schema schemaWithBothIndexes() {
     return schema(
         deployedViewsTable(), upgradeAuditTable(),
-        deferredIndexOperationTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
             column("name", DataType.STRING, 100)
@@ -369,37 +242,18 @@ public class TestDeferredIndexLifecycle {
   }
 
 
-  private String queryOperationStatus(String indexName) {
-    String sql = connectionResources.sqlDialect().convertStatementToSQL(
-        select(field("status"))
-            .from(tableRef(DEFERRED_INDEX_OPERATION_NAME))
-            .where(field("indexName").eq(indexName))
-    );
-    return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> rs.next() ? rs.getString(1) : null);
-  }
-
-
-  private void setOperationStatus(String indexName, String status) {
-    sqlScriptExecutorProvider.get().execute(
-        connectionResources.sqlDialect().convertStatementToSQL(
-            update(tableRef(DEFERRED_INDEX_OPERATION_NAME))
-                .set(literal(status).as("status"))
-                .where(field("indexName").eq(indexName))
-        )
-    );
-  }
-
-
-  private void buildIndexManually(String tableName, String indexName, String columnName) {
-    sqlScriptExecutorProvider.get().execute(
-        List.of("CREATE INDEX " + indexName + " ON " + tableName + " (" + columnName + ")")
-    );
-  }
-
-
-  private void assertIndexExists(String tableName, String indexName) {
+  private void assertDeferredIndexPending(String tableName, String indexName) {
     try (SchemaResource sr = connectionResources.openSchemaResource()) {
-      assertTrue("Index " + indexName + " should exist on " + tableName,
+      assertTrue("Deferred index " + indexName + " should be present with isDeferred()=true",
+          sr.getTable(tableName).indexes().stream()
+              .anyMatch(idx -> indexName.equalsIgnoreCase(idx.getName()) && idx.isDeferred()));
+    }
+  }
+
+
+  private void assertPhysicalIndexExists(String tableName, String indexName) {
+    try (SchemaResource sr = connectionResources.openSchemaResource()) {
+      assertTrue("Physical index " + indexName + " should exist on " + tableName,
           sr.getTable(tableName).indexes().stream()
               .anyMatch(idx -> indexName.equalsIgnoreCase(idx.getName())));
     }
@@ -410,7 +264,7 @@ public class TestDeferredIndexLifecycle {
     try (SchemaResource sr = connectionResources.openSchemaResource()) {
       assertFalse("Index " + indexName + " should not exist on " + tableName,
           sr.getTable(tableName).indexes().stream()
-              .anyMatch(idx -> indexName.equalsIgnoreCase(idx.getName())));
+              .anyMatch(idx -> indexName.equalsIgnoreCase(idx.getName()) && !idx.isDeferred()));
     }
   }
 }

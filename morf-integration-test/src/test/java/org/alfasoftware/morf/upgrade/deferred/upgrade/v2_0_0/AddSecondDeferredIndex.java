@@ -32,7 +32,7 @@ public class AddSecondDeferredIndex implements UpgradeStep {
 
   @Override
   public void execute(SchemaEditor schema, DataEditor data) {
-    schema.addIndexDeferred("Product", index("Product_IdName_1").columns("id", "name"));
+    schema.addIndex("Product", index("Product_IdName_1").deferred().columns("id", "name"));
   }
 
 

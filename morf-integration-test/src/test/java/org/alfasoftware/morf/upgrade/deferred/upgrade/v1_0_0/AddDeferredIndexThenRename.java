@@ -31,7 +31,7 @@ public class AddDeferredIndexThenRename extends AbstractDeferredIndexTestStep {
 
   @Override
   public void execute(SchemaEditor schema, DataEditor data) {
-    schema.addIndexDeferred("Product", index("Product_Name_1").columns("name"));
+    schema.addIndex("Product", index("Product_Name_1").deferred().columns("name"));
     schema.renameIndex("Product", "Product_Name_1", "Product_Name_Renamed");
   }
 }

@@ -31,6 +31,6 @@ public class AddDeferredUniqueIndex extends AbstractDeferredIndexTestStep {
 
   @Override
   public void execute(SchemaEditor schema, DataEditor data) {
-    schema.addIndexDeferred("Product", index("Product_Name_UQ").unique().columns("name"));
+    schema.addIndex("Product", index("Product_Name_UQ").deferred().unique().columns("name"));
   }
 }

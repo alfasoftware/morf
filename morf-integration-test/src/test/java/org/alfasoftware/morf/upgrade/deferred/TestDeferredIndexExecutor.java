@@ -16,23 +16,18 @@
 package org.alfasoftware.morf.upgrade.deferred;
 
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
-import static org.alfasoftware.morf.sql.SqlUtils.field;
-import static org.alfasoftware.morf.sql.SqlUtils.insert;
-import static org.alfasoftware.morf.sql.SqlUtils.literal;
-import static org.alfasoftware.morf.sql.SqlUtils.select;
-import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deferredIndexOperationTable;
+import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deployedViewsTable;
+import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.upgradeAuditTable;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import java.util.UUID;
+import java.util.Collections;
 
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
-import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Schema;
@@ -40,6 +35,13 @@ import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager.TruncationBehavior;
 import org.alfasoftware.morf.testing.TestingDataSourceModule;
+import org.alfasoftware.morf.upgrade.Upgrade;
+import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
+import org.alfasoftware.morf.upgrade.ViewDeploymentValidator;
+import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredIndex;
+import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredMultiColumnIndex;
+import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredUniqueIndex;
+import org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddTwoDeferredIndexes;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -51,7 +53,11 @@ import com.google.inject.Inject;
 import net.jcip.annotations.NotThreadSafe;
 
 /**
- * Integration tests for {@link DeferredIndexExecutorImpl} (Stages 7 and 8).
+ * Integration tests for {@link DeferredIndexExecutorImpl}.
+ *
+ * <p>Verifies that the executor scans the database schema for deferred
+ * indexes (declared in table comments but not yet physically built) and
+ * creates them.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -64,127 +70,81 @@ public class TestDeferredIndexExecutor {
   @Inject private ConnectionResources connectionResources;
   @Inject private DatabaseSchemaManager schemaManager;
   @Inject private SqlScriptExecutorProvider sqlScriptExecutorProvider;
+  @Inject private ViewDeploymentValidator viewDeploymentValidator;
 
-  private static final Schema TEST_SCHEMA = schema(
-      deferredIndexOperationTable(),
-      table("Apple").columns(
-          column("pips", DataType.STRING, 10).nullable(),
-          column("color", DataType.STRING, 20).nullable()
+  private static final Schema INITIAL_SCHEMA = schema(
+      deployedViewsTable(),
+      upgradeAuditTable(),
+      table("Product").columns(
+          column("id", DataType.BIG_INTEGER).primaryKey(),
+          column("name", DataType.STRING, 100)
       )
   );
 
-  private UpgradeConfigAndContext config;
+  private UpgradeConfigAndContext upgradeConfigAndContext;
 
 
-  /**
-   * Create a fresh schema and a default config before each test.
-   */
+  /** Create a fresh schema and a default config before each test. */
   @Before
   public void setUp() {
     schemaManager.dropAllTables();
-    schemaManager.mutateToSupportSchema(TEST_SCHEMA, TruncationBehavior.ALWAYS);
-    config = new UpgradeConfigAndContext();
-    config.setDeferredIndexCreationEnabled(true);
-    config.setDeferredIndexRetryBaseDelayMs(10L); // fast retries for tests
+    schemaManager.mutateToSupportSchema(INITIAL_SCHEMA, TruncationBehavior.ALWAYS);
+    upgradeConfigAndContext = new UpgradeConfigAndContext();
+    upgradeConfigAndContext.setDeferredIndexCreationEnabled(true);
   }
 
 
-  /**
-   * Invalidate the schema manager cache after each test.
-   */
+  /** Invalidate the schema manager cache after each test. */
   @After
   public void tearDown() {
     schemaManager.invalidateCache();
   }
 
 
-  // -------------------------------------------------------------------------
-  // Stage 7: execution tests
-  // -------------------------------------------------------------------------
-
   /**
-   * A PENDING operation should transition to COMPLETED and the index should
-   * exist in the database schema after execution completes.
+   * After an upgrade step adds a deferred index, the executor should
+   * physically build it and the index should exist in the database schema.
    */
   @Test
-  public void testPendingTransitionsToCompleted() {
-    config.setDeferredIndexMaxRetries(0);
-    insertPendingRow("Apple", "Apple_1", false, "pips");
+  public void testExecutorBuildsDeferred() {
+    performUpgrade(schemaWithIndex("Product_Name_1", "name"), AddDeferredIndex.class);
+    assertDeferredIndexPending("Product", "Product_Name_1");
 
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
-    executor.execute().join();
+    createExecutor().execute().join();
 
-    assertEquals("status should be COMPLETED", DeferredIndexStatus.COMPLETED.name(), queryStatus("Apple_1"));
-
-    try (SchemaResource schema = connectionResources.openSchemaResource()) {
-      assertTrue("Apple_1 should exist in schema",
-          schema.getTable("Apple").indexes().stream().anyMatch(idx -> "Apple_1".equalsIgnoreCase(idx.getName())));
-    }
+    assertPhysicalIndexExists("Product", "Product_Name_1");
   }
 
 
   /**
-   * With maxRetries=0 an operation that targets a non-existent table should be
-   * marked FAILED in a single attempt with no retries.
+   * Executing on a schema with no deferred indexes should complete
+   * immediately with no errors.
    */
   @Test
-  public void testFailedAfterMaxRetriesWithNoRetries() {
-    config.setDeferredIndexMaxRetries(0);
-    insertPendingRow("NoSuchTable", "NoSuchTable_1", false, "col");
-
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
-    executor.execute().join();
-
-    assertEquals("status should be FAILED", DeferredIndexStatus.FAILED.name(), queryStatus("NoSuchTable_1"));
-    assertEquals("retryCount should be 1", 1, queryRetryCount("NoSuchTable_1"));
+  public void testEmptySchemaReturnsImmediately() {
+    createExecutor().execute().join();
+    // No exception means success
   }
 
 
-  /**
-   * With maxRetries=1 a failing operation should be retried once before being
-   * permanently marked FAILED with retryCount=2.
-   */
-  @Test
-  public void testRetryOnFailure() {
-    config.setDeferredIndexMaxRetries(1);
-    insertPendingRow("NoSuchTable", "NoSuchTable_1", false, "col");
-
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
-    executor.execute().join();
-
-    assertEquals("status should be FAILED", DeferredIndexStatus.FAILED.name(), queryStatus("NoSuchTable_1"));
-    assertEquals("retryCount should be 2 (initial + 1 retry)", 2, queryRetryCount("NoSuchTable_1"));
-  }
-
-
-  /**
-   * Executing on an empty queue should complete immediately with no errors.
-   */
-  @Test
-  public void testEmptyQueueReturnsImmediately() {
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
-    executor.execute().join();
-
-    // No operations in the table at all
-    assertEquals("No operations should exist", 0, countOperations());
-  }
-
-
-  /**
-   * A unique index should be built with the UNIQUE constraint applied.
-   */
+  /** A deferred unique index should be built with the UNIQUE constraint. */
   @Test
   public void testUniqueIndexCreated() {
-    config.setDeferredIndexMaxRetries(0);
-    insertPendingRow("Apple", "Apple_Unique_1", true, "pips");
+    Schema target = schema(
+        deployedViewsTable(), upgradeAuditTable(),
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_UQ").unique().columns("name"))
+    );
+    performUpgrade(target, AddDeferredUniqueIndex.class);
 
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
-    executor.execute().join();
+    createExecutor().execute().join();
 
-    try (SchemaResource schema = connectionResources.openSchemaResource()) {
-      assertTrue("Apple_Unique_1 should be unique",
-          schema.getTable("Apple").indexes().stream()
-              .filter(idx -> "Apple_Unique_1".equalsIgnoreCase(idx.getName()))
+    try (SchemaResource sr = connectionResources.openSchemaResource()) {
+      assertTrue("Product_Name_UQ should be unique",
+          sr.getTable("Product").indexes().stream()
+              .filter(idx -> "Product_Name_UQ".equalsIgnoreCase(idx.getName()))
               .findFirst()
               .orElseThrow(() -> new AssertionError("Index not found"))
               .isUnique());
@@ -192,27 +152,67 @@ public class TestDeferredIndexExecutor {
   }
 
 
-  /**
-   * A multi-column index should be built with columns in the correct order.
-   */
+  /** A deferred multi-column index should preserve column ordering. */
   @Test
   public void testMultiColumnIndexCreated() {
-    config.setDeferredIndexMaxRetries(0);
-    insertPendingRow("Apple", "Apple_Multi_1", false, "pips", "color");
+    Schema target = schema(
+        deployedViewsTable(), upgradeAuditTable(),
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_IdName_1").columns("id", "name"))
+    );
+    performUpgrade(target, AddDeferredMultiColumnIndex.class);
 
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources), connectionResources, new SqlScriptExecutorProvider(connectionResources), config, new DeferredIndexExecutorServiceFactory.Default());
-    executor.execute().join();
+    createExecutor().execute().join();
 
-    assertEquals("status should be COMPLETED", DeferredIndexStatus.COMPLETED.name(), queryStatus("Apple_Multi_1"));
-
-    try (SchemaResource schema = connectionResources.openSchemaResource()) {
-      org.alfasoftware.morf.metadata.Index idx = schema.getTable("Apple").indexes().stream()
-          .filter(i -> "Apple_Multi_1".equalsIgnoreCase(i.getName()))
+    try (SchemaResource sr = connectionResources.openSchemaResource()) {
+      org.alfasoftware.morf.metadata.Index idx = sr.getTable("Product").indexes().stream()
+          .filter(i -> "Product_IdName_1".equalsIgnoreCase(i.getName()))
           .findFirst()
           .orElseThrow(() -> new AssertionError("Multi-column index not found"));
       assertEquals("column count", 2, idx.columnNames().size());
-      assertTrue("first column should be pips", idx.columnNames().get(0).equalsIgnoreCase("pips"));
+      assertTrue("first column should be id", idx.columnNames().get(0).equalsIgnoreCase("id"));
     }
+  }
+
+
+  /** Two deferred indexes added in one step should both be built. */
+  @Test
+  public void testMultipleDeferredIndexesBuilt() {
+    Schema target = schema(
+        deployedViewsTable(), upgradeAuditTable(),
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(
+            index("Product_Name_1").columns("name"),
+            index("Product_IdName_1").columns("id", "name")
+        )
+    );
+    performUpgrade(target, AddTwoDeferredIndexes.class);
+
+    createExecutor().execute().join();
+
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+    assertPhysicalIndexExists("Product", "Product_IdName_1");
+  }
+
+
+  /**
+   * Running the executor a second time after all indexes are built
+   * should be a safe no-op.
+   */
+  @Test
+  public void testExecutorIdempotent() {
+    performUpgrade(schemaWithIndex("Product_Name_1", "name"), AddDeferredIndex.class);
+
+    createExecutor().execute().join();
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+
+    // Second run should complete without error
+    createExecutor().execute().join();
+    assertPhysicalIndexExists("Product", "Product_Name_1");
   }
 
 
@@ -220,56 +220,57 @@ public class TestDeferredIndexExecutor {
   // Helpers
   // -------------------------------------------------------------------------
 
-  private void insertPendingRow(String tableName, String indexName,
-                                 boolean unique, String... columns) {
-    long operationId = Math.abs(UUID.randomUUID().getMostSignificantBits());
-    sqlScriptExecutorProvider.get().execute(
-        connectionResources.sqlDialect().convertStatementToSQL(
-            insert().into(tableRef(DEFERRED_INDEX_OPERATION_NAME)).values(
-                literal(operationId).as("id"),
-                literal("test-upgrade-uuid").as("upgradeUUID"),
-                literal(tableName).as("tableName"),
-                literal(indexName).as("indexName"),
-                literal(unique ? 1 : 0).as("indexUnique"),
-                literal(String.join(",", columns)).as("indexColumns"),
-                literal(DeferredIndexStatus.PENDING.name()).as("status"),
-                literal(0).as("retryCount"),
-                literal(System.currentTimeMillis()).as("createdTime")
-            )
-        )
+  private void performUpgrade(Schema targetSchema,
+                               Class<? extends org.alfasoftware.morf.upgrade.UpgradeStep> step) {
+    Upgrade.performUpgrade(targetSchema, Collections.singletonList(step),
+        connectionResources, upgradeConfigAndContext, viewDeploymentValidator);
+  }
+
+
+  private DeferredIndexExecutor createExecutor() {
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
+    config.setDeferredIndexMaxRetries(0);
+    return new DeferredIndexExecutorImpl(
+        connectionResources,
+        sqlScriptExecutorProvider,
+        config,
+        new DeferredIndexExecutorServiceFactory.Default());
+  }
+
+
+  private Schema schemaWithIndex(String indexName, String... columns) {
+    return schema(
+        deployedViewsTable(), upgradeAuditTable(),
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index(indexName).columns(columns))
     );
   }
 
 
-  private String queryStatus(String indexName) {
-    String sql = connectionResources.sqlDialect().convertStatementToSQL(
-        select(field("status"))
-            .from(tableRef(DEFERRED_INDEX_OPERATION_NAME))
-            .where(field("indexName").eq(indexName))
-    );
-    return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> rs.next() ? rs.getString(1) : null);
+  /**
+   * Verifies that a deferred index exists in the schema as a virtual
+   * (not yet physically built) index with {@code isDeferred()=true}.
+   */
+  private void assertDeferredIndexPending(String tableName, String indexName) {
+    try (SchemaResource sr = connectionResources.openSchemaResource()) {
+      assertTrue("Deferred index " + indexName + " should be present with isDeferred()=true",
+          sr.getTable(tableName).indexes().stream()
+              .anyMatch(idx -> indexName.equalsIgnoreCase(idx.getName()) && idx.isDeferred()));
+    }
   }
 
 
-  private int queryRetryCount(String indexName) {
-    String sql = connectionResources.sqlDialect().convertStatementToSQL(
-        select(field("retryCount"))
-            .from(tableRef(DEFERRED_INDEX_OPERATION_NAME))
-            .where(field("indexName").eq(indexName))
-    );
-    return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> rs.next() ? rs.getInt(1) : 0);
-  }
-
-
-  private int countOperations() {
-    String sql = connectionResources.sqlDialect().convertStatementToSQL(
-        select(field("id"))
-            .from(tableRef(DEFERRED_INDEX_OPERATION_NAME))
-    );
-    return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> {
-      int count = 0;
-      while (rs.next()) count++;
-      return count;
-    });
+  /**
+   * Verifies that a physical index exists in the database schema.
+   */
+  private void assertPhysicalIndexExists(String tableName, String indexName) {
+    try (SchemaResource sr = connectionResources.openSchemaResource()) {
+      assertTrue("Physical index " + indexName + " should exist on " + tableName,
+          sr.getTable(tableName).indexes().stream()
+              .anyMatch(idx -> indexName.equalsIgnoreCase(idx.getName())));
+    }
   }
 }

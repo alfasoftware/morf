@@ -39,7 +39,7 @@ public class AddDeferredIndexThenRenameColumnThenRemove extends AbstractDeferred
 
   @Override
   public void execute(SchemaEditor schema, DataEditor data) {
-    schema.addIndexDeferred("Product", index("Product_Desc_1").columns("description"));
+    schema.addIndex("Product", index("Product_Desc_1").deferred().columns("description"));
     schema.changeColumn("Product",
         column("description", DataType.STRING, 200),
         column("summary", DataType.STRING, 200));

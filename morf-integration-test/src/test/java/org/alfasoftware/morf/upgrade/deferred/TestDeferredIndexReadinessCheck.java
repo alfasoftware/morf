@@ -16,32 +16,21 @@
 package org.alfasoftware.morf.upgrade.deferred;
 
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
-import static org.alfasoftware.morf.sql.SqlUtils.field;
-import static org.alfasoftware.morf.sql.SqlUtils.insert;
-import static org.alfasoftware.morf.sql.SqlUtils.literal;
-import static org.alfasoftware.morf.sql.SqlUtils.select;
-import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deferredIndexOperationTable;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.sql.ResultSet;
-import java.util.UUID;
+import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deployedViewsTable;
+import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.upgradeAuditTable;
+import static org.junit.Assert.assertSame;
 
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
-import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
-import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager.TruncationBehavior;
 import org.alfasoftware.morf.testing.TestingDataSourceModule;
+import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -55,6 +44,12 @@ import net.jcip.annotations.NotThreadSafe;
 /**
  * Integration tests for {@link DeferredIndexReadinessCheckImpl}.
  *
+ * <p>In the comments-based model, the readiness check is a no-op
+ * pass-through because the MetaDataProvider already includes virtual
+ * deferred indexes from table comments. These tests verify that
+ * {@link DeferredIndexReadinessCheck#augmentSchemaWithPendingIndexes(Schema)}
+ * returns the input schema unchanged.</p>
+ *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
 @NotThreadSafe
@@ -65,33 +60,27 @@ public class TestDeferredIndexReadinessCheck {
 
   @Inject private ConnectionResources connectionResources;
   @Inject private DatabaseSchemaManager schemaManager;
-  @Inject private SqlScriptExecutorProvider sqlScriptExecutorProvider;
 
   private static final Schema TEST_SCHEMA = schema(
-      deferredIndexOperationTable(),
+      deployedViewsTable(),
+      upgradeAuditTable(),
       table("Apple").columns(column("pips", DataType.STRING, 10).nullable())
   );
 
   private UpgradeConfigAndContext config;
 
 
-  /**
-   * Drop and recreate the required schema before each test.
-   */
+  /** Drop and recreate the required schema before each test. */
   @Before
   public void setUp() {
     schemaManager.dropAllTables();
     schemaManager.mutateToSupportSchema(TEST_SCHEMA, TruncationBehavior.ALWAYS);
     config = new UpgradeConfigAndContext();
     config.setDeferredIndexCreationEnabled(true);
-    config.setDeferredIndexMaxRetries(0);
-    config.setDeferredIndexRetryBaseDelayMs(10L);
   }
 
 
-  /**
-   * Invalidate the schema manager cache after each test.
-   */
+  /** Invalidate the schema manager cache after each test. */
   @After
   public void tearDown() {
     schemaManager.invalidateCache();
@@ -99,126 +88,54 @@ public class TestDeferredIndexReadinessCheck {
 
 
   /**
-   * forceBuildAllPending() should be a no-op when the queue is empty — no exception thrown
-   * and no operations executed.
+   * augmentSchemaWithPendingIndexes should return the same schema instance
+   * unchanged when deferred index creation is enabled.
    */
   @Test
-  public void testValidateWithEmptyQueueIsNoOp() {
-    DeferredIndexReadinessCheck validator = createValidator(config);
-    validator.forceBuildAllPending(); // must not throw
+  public void testAugmentSchemaReturnsInputUnchanged() {
+    DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(config);
+
+    Schema input = schema(
+        table("Apple").columns(column("pips", DataType.STRING, 10).nullable())
+            .indexes(index("Apple_V1").columns("pips"))
+    );
+
+    Schema result = check.augmentSchemaWithPendingIndexes(input);
+    assertSame("Should return the same schema instance", input, result);
   }
 
 
   /**
-   * When PENDING operations exist, forceBuildAllPending() must execute them before returning:
-   * the index should exist in the schema and the row should be COMPLETED
-   * (not PENDING) when the call returns.
+   * augmentSchemaWithPendingIndexes should return the same schema instance
+   * when deferred index creation is disabled.
    */
   @Test
-  public void testPendingOperationsAreExecutedBeforeReturning() {
-    insertPendingRow("Apple", "Apple_V1", false, "pips");
+  public void testAugmentSchemaReturnsInputWhenDisabled() {
+    UpgradeConfigAndContext disabledConfig = new UpgradeConfigAndContext();
+    // deferredIndexCreationEnabled defaults to false
+    DeferredIndexReadinessCheck check = new DeferredIndexReadinessCheckImpl(disabledConfig);
 
-    DeferredIndexReadinessCheck validator = createValidator(config);
-    validator.forceBuildAllPending();
+    Schema input = schema(
+        table("Apple").columns(column("pips", DataType.STRING, 10).nullable())
+    );
 
-    // Verify no PENDING rows remain
-    assertFalse("no non-terminal operations should remain after validate",
-        hasPendingOperations());
-
-    // Verify the index actually exists in the database
-    try (var schema = connectionResources.openSchemaResource()) {
-      assertTrue("Apple_V1 index should exist",
-          schema.getTable("Apple").indexes().stream().anyMatch(idx -> "Apple_V1".equalsIgnoreCase(idx.getName())));
-    }
+    Schema result = check.augmentSchemaWithPendingIndexes(input);
+    assertSame("Should return the same schema instance when disabled", input, result);
   }
 
 
   /**
-   * When multiple PENDING operations exist they should all be executed before
-   * forceBuildAllPending() returns.
+   * The static factory method should produce a working readiness check.
    */
   @Test
-  public void testMultiplePendingOperationsAllExecuted() {
-    insertPendingRow("Apple", "Apple_V2", false, "pips");
-    insertPendingRow("Apple", "Apple_V3", true, "pips");
+  public void testStaticFactoryMethod() {
+    DeferredIndexReadinessCheck check = DeferredIndexReadinessCheck.create(config);
 
-    DeferredIndexReadinessCheck validator = createValidator(config);
-    validator.forceBuildAllPending();
-
-    assertFalse("no non-terminal operations should remain", hasPendingOperations());
-  }
-
-
-  /**
-   * When a PENDING operation targets a non-existent table, forceBuildAllPending() should
-   * throw because the forced execution fails.
-   */
-  @Test
-  public void testFailedForcedExecutionThrows() {
-    insertPendingRow("NoSuchTable", "NoSuchTable_V4", false, "col");
-
-    DeferredIndexReadinessCheck validator = createValidator(config);
-    try {
-      validator.forceBuildAllPending();
-      fail("Expected IllegalStateException for failed forced execution");
-    } catch (IllegalStateException e) {
-      assertTrue("exception message should mention failed count",
-          e.getMessage().contains("1 index operation(s) could not be built"));
-    }
-
-    // The operation should be FAILED, not PENDING
-    assertEquals("status should be FAILED after forced execution",
-        DeferredIndexStatus.FAILED.name(), queryStatus("NoSuchTable_V4"));
-  }
-
-
-  // -------------------------------------------------------------------------
-  // Helpers
-  // -------------------------------------------------------------------------
-
-  private void insertPendingRow(String tableName, String indexName,
-                                 boolean unique, String... columns) {
-    sqlScriptExecutorProvider.get().execute(
-        connectionResources.sqlDialect().convertStatementToSQL(
-            insert().into(tableRef(DEFERRED_INDEX_OPERATION_NAME)).values(
-                literal(Math.abs(UUID.randomUUID().getMostSignificantBits())).as("id"),
-                literal("test-upgrade-uuid").as("upgradeUUID"),
-                literal(tableName).as("tableName"),
-                literal(indexName).as("indexName"),
-                literal(unique ? 1 : 0).as("indexUnique"),
-                literal(String.join(",", columns)).as("indexColumns"),
-                literal(DeferredIndexStatus.PENDING.name()).as("status"),
-                literal(0).as("retryCount"),
-                literal(System.currentTimeMillis()).as("createdTime")
-            )
-        )
+    Schema input = schema(
+        table("Apple").columns(column("pips", DataType.STRING, 10).nullable())
     );
-  }
 
-
-  private String queryStatus(String indexName) {
-    String sql = connectionResources.sqlDialect().convertStatementToSQL(
-        select(field("status"))
-            .from(tableRef(DEFERRED_INDEX_OPERATION_NAME))
-            .where(field("indexName").eq(indexName))
-    );
-    return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> rs.next() ? rs.getString(1) : null);
-  }
-
-
-  private DeferredIndexReadinessCheck createValidator(UpgradeConfigAndContext validatorConfig) {
-    DeferredIndexOperationDAO dao = new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources);
-    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(dao, connectionResources, new SqlScriptExecutorProvider(connectionResources), validatorConfig, new DeferredIndexExecutorServiceFactory.Default());
-    return new DeferredIndexReadinessCheckImpl(dao, executor, validatorConfig, connectionResources);
-  }
-
-
-  private boolean hasPendingOperations() {
-    String sql = connectionResources.sqlDialect().convertStatementToSQL(
-        select(field("id"))
-            .from(tableRef(DEFERRED_INDEX_OPERATION_NAME))
-            .where(field("status").eq(DeferredIndexStatus.PENDING.name()))
-    );
-    return sqlScriptExecutorProvider.get().executeQuery(sql, ResultSet::next);
+    Schema result = check.augmentSchemaWithPendingIndexes(input);
+    assertSame("Static factory should produce a working check", input, result);
   }
 }
