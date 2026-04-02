@@ -36,7 +36,7 @@ import org.alfasoftware.morf.sql.element.FieldLiteral;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -371,37 +371,40 @@ public class SchemaChangeSequence {
      */
     @Override
     public void addIndex(String tableName, Index index) {
-      if (upgradeConfigAndContext.isDeferredIndexCreationEnabled()
-          && upgradeConfigAndContext.isForceDeferredIndex(index.getName())) {
-        log.info("Force-deferring index [" + index.getName() + "] on table [" + tableName + "]");
-        addIndexDeferred(tableName, index);
-        return;
-      }
-      AddIndex addIndex = new AddIndex(tableName, index);
+      Index effectiveIndex = resolveDeferred(index);
+      AddIndex addIndex = new AddIndex(tableName, effectiveIndex);
       visitor.visit(addIndex);
-      schemaAndDataChangeVisitor.visit(addIndex);
+      // Deferred indexes don't generate DDL on the table data, so no dependency
+      if (!effectiveIndex.isDeferred()) {
+        schemaAndDataChangeVisitor.visit(addIndex);
+      }
     }
 
 
-    /**
-     * @see org.alfasoftware.morf.upgrade.SchemaEditor#addIndexDeferred(java.lang.String, org.alfasoftware.morf.metadata.Index)
-     */
-    @Override
-    public void addIndexDeferred(String tableName, Index index) {
+    private Index resolveDeferred(Index index) {
       if (!upgradeConfigAndContext.isDeferredIndexCreationEnabled()) {
-        addIndex(tableName, index);
-        return;
+        // Kill switch: strip deferred flag
+        return index.isDeferred() ? rebuildIndex(index, false) : index;
       }
       if (upgradeConfigAndContext.isForceImmediateIndex(index.getName())) {
-        log.info("Force-immediate index [" + index.getName() + "] on table [" + tableName + "]");
-        addIndex(tableName, index);
-        return;
+        return index.isDeferred() ? rebuildIndex(index, false) : index;
       }
-      DeferredAddIndex deferredAddIndex = new DeferredAddIndex(tableName, index, upgradeUUID);
-      visitor.visit(deferredAddIndex);
-      // schemaAndDataChangeVisitor is intentionally not notified: no DDL runs on tableName
-      // during this upgrade step, so no table-resolution dependency is created. Auto-cancel
-      // logic in AbstractSchemaChangeVisitor handles table/column removal.
+      if (upgradeConfigAndContext.isForceDeferredIndex(index.getName())) {
+        return index.isDeferred() ? index : rebuildIndex(index, true);
+      }
+      return index;
+    }
+
+
+    private Index rebuildIndex(Index index, boolean deferred) {
+      SchemaUtils.IndexBuilder builder = SchemaUtils.index(index.getName()).columns(index.columnNames());
+      if (index.isUnique()) {
+        builder = builder.unique();
+      }
+      if (deferred) {
+        builder = builder.deferred();
+      }
+      return builder;
     }
 
 
@@ -679,15 +682,6 @@ public class SchemaChangeSequence {
     @Override
     public void visit(RemoveSequence removeSequence) {
       changes.add(schemaChangeAdaptor.adapt(removeSequence));
-    }
-
-
-    /**
-     * @see org.alfasoftware.morf.upgrade.SchemaChangeVisitor#visit(org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex)
-     */
-    @Override
-    public void visit(DeferredAddIndex deferredAddIndex) {
-      changes.add(schemaChangeAdaptor.adapt(deferredAddIndex));
     }
   }
 }

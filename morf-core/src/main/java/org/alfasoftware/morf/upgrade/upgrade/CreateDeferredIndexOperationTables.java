@@ -33,10 +33,10 @@ import org.alfasoftware.morf.upgrade.Version;
  * index operations deferred for background execution.
  *
  * <p>{@link ExclusiveExecution} and {@code @Sequence(1)} ensure this step
- * runs before any step that uses {@code addIndexDeferred()}, which generates
- * INSERT statements targeting these tables. Without this guarantee,
+ * runs before any step that uses deferred indexes, which may generate
+ * statements targeting these tables. Without this guarantee,
  * {@link org.alfasoftware.morf.upgrade.GraphBasedUpgrade} could schedule
- * such steps in parallel, causing INSERTs to fail on a non-existent table.</p>
+ * such steps in parallel, causing statements to fail on a non-existent table.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */

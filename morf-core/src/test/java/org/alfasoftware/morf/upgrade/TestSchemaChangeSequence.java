@@ -19,7 +19,6 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
-import org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex;
 import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
@@ -84,13 +83,14 @@ public class TestSchemaChangeSequence {
 
 
   /**
-   * Tests that addIndexDeferred() records a DeferredAddIndex in the change sequence with the
-   * correct table, index, and upgradeUUID taken from the step's {@code @UUID} annotation.
+   * Tests that addIndex() with a deferred index records an AddIndex in the change sequence
+   * with isDeferred() true and the correct table and index name.
    */
   @Test
-  public void testAddIndexDeferredProducesDeferredAddIndex() {
+  public void testAddIndexDeferredProducesAddIndexWithDeferredFlag() {
     // given
     when(index.getName()).thenReturn("TestIdx");
+    when(index.isDeferred()).thenReturn(true);
     when(index.columnNames()).thenReturn(List.of("col1"));
 
     // when
@@ -101,19 +101,20 @@ public class TestSchemaChangeSequence {
 
     // then
     assertThat(changes, hasSize(1));
-    assertThat(changes.get(0), instanceOf(DeferredAddIndex.class));
-    DeferredAddIndex change = (DeferredAddIndex) changes.get(0);
+    assertThat(changes.get(0), instanceOf(AddIndex.class));
+    AddIndex change = (AddIndex) changes.get(0);
     assertEquals("TestTable", change.getTableName());
     assertEquals("TestIdx", change.getNewIndex().getName());
-    assertEquals("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", change.getUpgradeUUID());
+    assertEquals(true, change.getNewIndex().isDeferred());
   }
 
 
-  /** Tests that addIndexDeferred with force-immediate config produces an AddIndex instead of DeferredAddIndex. */
+  /** Tests that addIndex with a deferred index and force-immediate config produces an AddIndex with isDeferred()=false. */
   @Test
-  public void testAddIndexDeferredWithForceImmediateProducesAddIndex() {
+  public void testAddIndexDeferredWithForceImmediateProducesNonDeferredAddIndex() {
     // given
     when(index.getName()).thenReturn("TestIdx");
+    when(index.isDeferred()).thenReturn(true);
     when(index.columnNames()).thenReturn(List.of("col1"));
 
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
@@ -130,6 +131,7 @@ public class TestSchemaChangeSequence {
     AddIndex change = (AddIndex) changes.get(0);
     assertEquals("TestTable", change.getTableName());
     assertEquals("TestIdx", change.getNewIndex().getName());
+    assertEquals(false, change.getNewIndex().isDeferred());
   }
 
 
@@ -138,6 +140,7 @@ public class TestSchemaChangeSequence {
   public void testAddIndexDeferredWithForceImmediateCaseInsensitive() {
     // given
     when(index.getName()).thenReturn("TestIdx");
+    when(index.isDeferred()).thenReturn(true);
     when(index.columnNames()).thenReturn(List.of("col1"));
 
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
@@ -151,6 +154,7 @@ public class TestSchemaChangeSequence {
     // then
     assertThat(changes, hasSize(1));
     assertThat(changes.get(0), instanceOf(AddIndex.class));
+    assertEquals(false, ((AddIndex) changes.get(0)).getNewIndex().isDeferred());
   }
 
 
@@ -170,7 +174,7 @@ public class TestSchemaChangeSequence {
   }
 
 
-  /** Tests that addIndex with force-deferred config produces a DeferredAddIndex instead of AddIndex. */
+  /** Tests that addIndex with force-deferred config produces an AddIndex with isDeferred()=true. */
   @Test
   public void testAddIndexWithForceDeferredProducesDeferredAddIndex() {
     // given
@@ -187,11 +191,11 @@ public class TestSchemaChangeSequence {
 
     // then
     assertThat(changes, hasSize(1));
-    assertThat(changes.get(0), instanceOf(DeferredAddIndex.class));
-    DeferredAddIndex change = (DeferredAddIndex) changes.get(0);
+    assertThat(changes.get(0), instanceOf(AddIndex.class));
+    AddIndex change = (AddIndex) changes.get(0);
     assertEquals("TestTable", change.getTableName());
     assertEquals("TestIdx", change.getNewIndex().getName());
-    assertEquals("bbbbbbbb-cccc-dddd-eeee-ffffffffffff", change.getUpgradeUUID());
+    assertEquals(true, change.getNewIndex().isDeferred());
   }
 
 
@@ -212,7 +216,8 @@ public class TestSchemaChangeSequence {
 
     // then
     assertThat(changes, hasSize(1));
-    assertThat(changes.get(0), instanceOf(DeferredAddIndex.class));
+    assertThat(changes.get(0), instanceOf(AddIndex.class));
+    assertEquals(true, ((AddIndex) changes.get(0)).getNewIndex().isDeferred());
   }
 
 
@@ -267,7 +272,7 @@ public class TestSchemaChangeSequence {
     @Override public String getJiraId() { return "TEST-1"; }
     @Override public String getDescription() { return "test"; }
     @Override public void execute(SchemaEditor schema, DataEditor data) {
-      schema.addIndexDeferred("TestTable", index);
+      schema.addIndex("TestTable", index);
     }
   }
 
