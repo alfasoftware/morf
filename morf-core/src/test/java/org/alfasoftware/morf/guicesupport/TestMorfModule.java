@@ -33,7 +33,6 @@ public class TestMorfModule {
   @Mock GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
   @Mock DatabaseUpgradePathValidationService databaseUpgradePathValidationService;
   @Mock UpgradeConfigAndContext upgradeConfigAndContext;
-  @Mock org.alfasoftware.morf.upgrade.deferred.DeferredIndexReadinessCheck deferredIndexReadinessCheck;
 
   private MorfModule module;
 
@@ -52,7 +51,7 @@ public class TestMorfModule {
   @Test
   public void testProvideUpgrade() {
     Upgrade upgrade = module.provideUpgrade(connectionResources, factory, upgradeStatusTableService,
-      viewChangesDeploymentHelper, viewDeploymentValidator, databaseUpgradePathValidationService, graphBasedUpgradeBuilderFactory, upgradeConfigAndContext, deferredIndexReadinessCheck);
+      viewChangesDeploymentHelper, viewDeploymentValidator, databaseUpgradePathValidationService, graphBasedUpgradeBuilderFactory, upgradeConfigAndContext);
 
     assertNotNull("Instance of Upgrade should not be null", upgrade);
     assertThat("Instance of Upgrade", upgrade, IsInstanceOf.instanceOf(Upgrade.class));

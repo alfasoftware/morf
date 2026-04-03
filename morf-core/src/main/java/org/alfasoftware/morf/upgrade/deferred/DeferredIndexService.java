@@ -46,7 +46,6 @@ import com.google.inject.ImplementedBy;
  * }
  * </pre>
  *
- * @see DeferredIndexReadinessCheck
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
 @ImplementedBy(DeferredIndexServiceImpl.class)
