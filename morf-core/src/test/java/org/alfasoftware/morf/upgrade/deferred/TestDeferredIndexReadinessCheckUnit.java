@@ -75,16 +75,4 @@ public class TestDeferredIndexReadinessCheckUnit {
   }
 
 
-  /** Static factory create(connectionResources, config) should return a working instance. */
-  @Test
-  public void testStaticFactoryCreateWithConnectionResources() {
-    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
-    config.setDeferredIndexCreationEnabled(true);
-
-    DeferredIndexReadinessCheck check = DeferredIndexReadinessCheck.create(null, config);
-    Schema input = schema(table("Foo").columns(column("id", DataType.BIG_INTEGER).primaryKey()));
-
-    assertSame("Static factory with connectionResources should produce a working no-op check",
-        input, check.augmentSchemaWithPendingIndexes(input));
-  }
 }

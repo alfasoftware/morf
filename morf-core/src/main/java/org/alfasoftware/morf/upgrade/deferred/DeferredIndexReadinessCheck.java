@@ -70,20 +70,4 @@ public interface DeferredIndexReadinessCheck {
       org.alfasoftware.morf.upgrade.UpgradeConfigAndContext config) {
     return new DeferredIndexReadinessCheckImpl(config);
   }
-
-
-  /**
-   * Creates a readiness check instance from connection resources and config,
-   * for use in the static upgrade path where Guice is not available.
-   *
-   * @param connectionResources connection details (unused in comments-based model,
-   *                            retained for API compatibility).
-   * @param config              upgrade configuration.
-   * @return a new readiness check instance.
-   */
-  static DeferredIndexReadinessCheck create(
-      org.alfasoftware.morf.jdbc.ConnectionResources connectionResources,
-      org.alfasoftware.morf.upgrade.UpgradeConfigAndContext config) {
-    return new DeferredIndexReadinessCheckImpl(config);
-  }
 }

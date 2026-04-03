@@ -4342,11 +4342,11 @@ public abstract class AbstractSqlDialectTest {
    */
   @SuppressWarnings("unchecked")
   @Test
-  public void testDeferredAddIndexStatementsOnSingleColumn() {
+  public void testDeferredIndexDeploymentStatementsOnSingleColumn() {
     Table table = metadata.getTable(TEST_TABLE);
     Index index = index("indexName").columns(table.columns().get(0).getName());
     compareStatements(
-      expectedDeferredAddIndexStatementsOnSingleColumn(),
+      expectedDeferredIndexDeploymentStatementsOnSingleColumn(),
       testDialect.deferredIndexDeploymentStatements(table, index));
   }
 
@@ -4356,11 +4356,11 @@ public abstract class AbstractSqlDialectTest {
    */
   @SuppressWarnings("unchecked")
   @Test
-  public void testDeferredAddIndexStatementsOnMultipleColumns() {
+  public void testDeferredIndexDeploymentStatementsOnMultipleColumns() {
     Table table = metadata.getTable(TEST_TABLE);
     Index index = index("indexName").columns(table.columns().get(0).getName(), table.columns().get(1).getName());
     compareStatements(
-      expectedDeferredAddIndexStatementsOnMultipleColumns(),
+      expectedDeferredIndexDeploymentStatementsOnMultipleColumns(),
       testDialect.deferredIndexDeploymentStatements(table, index));
   }
 
@@ -4370,11 +4370,11 @@ public abstract class AbstractSqlDialectTest {
    */
   @SuppressWarnings("unchecked")
   @Test
-  public void testDeferredAddIndexStatementsUnique() {
+  public void testDeferredIndexDeploymentStatementsUnique() {
     Table table = metadata.getTable(TEST_TABLE);
     Index index = index("indexName").unique().columns(table.columns().get(0).getName());
     compareStatements(
-      expectedDeferredAddIndexStatementsUnique(),
+      expectedDeferredIndexDeploymentStatementsUnique(),
       testDialect.deferredIndexDeploymentStatements(table, index));
   }
 
@@ -5031,25 +5031,25 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
-   * @return Expected SQL for {@link #testDeferredAddIndexStatementsOnSingleColumn()}
+   * @return Expected SQL for {@link #testDeferredIndexDeploymentStatementsOnSingleColumn()}
    */
-  protected List<String> expectedDeferredAddIndexStatementsOnSingleColumn() {
+  protected List<String> expectedDeferredIndexDeploymentStatementsOnSingleColumn() {
     return expectedAddIndexStatementsOnSingleColumn();
   }
 
 
   /**
-   * @return Expected SQL for {@link #testDeferredAddIndexStatementsOnMultipleColumns()}
+   * @return Expected SQL for {@link #testDeferredIndexDeploymentStatementsOnMultipleColumns()}
    */
-  protected List<String> expectedDeferredAddIndexStatementsOnMultipleColumns() {
+  protected List<String> expectedDeferredIndexDeploymentStatementsOnMultipleColumns() {
     return expectedAddIndexStatementsOnMultipleColumns();
   }
 
 
   /**
-   * @return Expected SQL for {@link #testDeferredAddIndexStatementsUnique()}
+   * @return Expected SQL for {@link #testDeferredIndexDeploymentStatementsUnique()}
    */
-  protected List<String> expectedDeferredAddIndexStatementsUnique() {
+  protected List<String> expectedDeferredIndexDeploymentStatementsUnique() {
     return expectedAddIndexStatementsUnique();
   }
 

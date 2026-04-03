@@ -869,30 +869,30 @@ public class TestOracleDialect extends AbstractSqlDialectTest {
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDeferredAddIndexStatementsOnSingleColumn()
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDeferredIndexDeploymentStatementsOnSingleColumn()
    */
   @Override
-  protected List<String> expectedDeferredAddIndexStatementsOnSingleColumn() {
+  protected List<String> expectedDeferredIndexDeploymentStatementsOnSingleColumn() {
     return Arrays.asList("CREATE INDEX TESTSCHEMA.indexName ON TESTSCHEMA.Test (id) ONLINE PARALLEL NOLOGGING",
       "ALTER INDEX TESTSCHEMA.indexName NOPARALLEL LOGGING");
   }
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDeferredAddIndexStatementsOnMultipleColumns()
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDeferredIndexDeploymentStatementsOnMultipleColumns()
    */
   @Override
-  protected List<String> expectedDeferredAddIndexStatementsOnMultipleColumns() {
+  protected List<String> expectedDeferredIndexDeploymentStatementsOnMultipleColumns() {
     return Arrays.asList("CREATE INDEX TESTSCHEMA.indexName ON TESTSCHEMA.Test (id, version) ONLINE PARALLEL NOLOGGING",
       "ALTER INDEX TESTSCHEMA.indexName NOPARALLEL LOGGING");
   }
 
 
   /**
-   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDeferredAddIndexStatementsUnique()
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDeferredIndexDeploymentStatementsUnique()
    */
   @Override
-  protected List<String> expectedDeferredAddIndexStatementsUnique() {
+  protected List<String> expectedDeferredIndexDeploymentStatementsUnique() {
     return Arrays.asList("CREATE UNIQUE INDEX TESTSCHEMA.indexName ON TESTSCHEMA.Test (id) ONLINE PARALLEL NOLOGGING",
       "ALTER INDEX TESTSCHEMA.indexName NOPARALLEL LOGGING");
   }

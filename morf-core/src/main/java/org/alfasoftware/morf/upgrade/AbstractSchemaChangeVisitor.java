@@ -1,6 +1,7 @@
 
 package org.alfasoftware.morf.upgrade;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -8,8 +9,10 @@ import java.util.stream.Collectors;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.Statement;
+import org.alfasoftware.morf.upgrade.adapt.TableOverrideSchema;
 
 /**
  * Common code between SchemaChangeVisitor implementors
@@ -329,34 +332,63 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
 
   /**
-   * Removes deferred indexes that reference the given column from the current schema.
-   * Returns true if any deferred indexes were found referencing the column.
+   * Removes deferred indexes that reference the given column from the current schema,
+   * emitting DROP INDEX IF EXISTS DDL and updating the in-memory schema so that the
+   * regenerated comment does not contain stale index declarations.
+   *
+   * @return true if any deferred indexes were found and removed.
    */
   private boolean removeDeferredIndexesReferencingColumn(String tableName, String columnName) {
     if (!currentSchema.tableExists(tableName)) {
       return false;
     }
     Table table = currentSchema.getTable(tableName);
+    List<Index> survivingIndexes = new ArrayList<>();
     boolean found = false;
     for (Index idx : table.indexes()) {
       if (idx.isDeferred() && idx.columnNames().stream().anyMatch(c -> c.equalsIgnoreCase(columnName))) {
         writeStatements(sqlDialect.indexDropStatementsIfExists(table, idx));
         found = true;
+      } else {
+        survivingIndexes.add(idx);
       }
+    }
+    if (found) {
+      Table updatedTable = SchemaUtils.table(table.getName()).columns(table.columns()).indexes(survivingIndexes);
+      currentSchema = new TableOverrideSchema(currentSchema, updatedTable);
     }
     return found;
   }
 
 
   /**
-   * Updates deferred index declarations in memory when a column is renamed.
-   * The actual comment update is written after the schema change is applied.
+   * Updates deferred index column references in the current schema when a column is renamed.
+   * Indexes store column names as strings, so ChangeColumn.apply() does not update them.
+   * This method rebuilds affected deferred indexes with the new column name so that the
+   * regenerated comment contains the correct references.
    */
   private void updateDeferredIndexColumnName(String tableName, String oldColName, String newColName) {
-    // The column rename in the schema change will not automatically update
-    // deferred index column references since indexes store column names as strings.
-    // The deferred index comment will be regenerated from the current schema state
-    // after the ChangeColumn apply(), which handles this in the schema model.
-    // No extra action needed here — the comment is regenerated from currentSchema.
+    if (!currentSchema.tableExists(tableName)) {
+      return;
+    }
+    Table table = currentSchema.getTable(tableName);
+    List<Index> updatedIndexes = new ArrayList<>();
+    boolean changed = false;
+    for (Index idx : table.indexes()) {
+      if (idx.isDeferred() && idx.columnNames().stream().anyMatch(c -> c.equalsIgnoreCase(oldColName))) {
+        List<String> newCols = idx.columnNames().stream()
+            .map(c -> c.equalsIgnoreCase(oldColName) ? newColName : c)
+            .collect(Collectors.toList());
+        SchemaUtils.IndexBuilder builder = SchemaUtils.index(idx.getName()).columns(newCols).deferred();
+        updatedIndexes.add(idx.isUnique() ? builder.unique() : builder);
+        changed = true;
+      } else {
+        updatedIndexes.add(idx);
+      }
+    }
+    if (changed) {
+      Table updatedTable = SchemaUtils.table(table.getName()).columns(table.columns()).indexes(updatedIndexes);
+      currentSchema = new TableOverrideSchema(currentSchema, updatedTable);
+    }
   }
 }

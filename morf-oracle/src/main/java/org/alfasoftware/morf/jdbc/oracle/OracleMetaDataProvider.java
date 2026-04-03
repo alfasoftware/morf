@@ -532,29 +532,10 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
     // Merge deferred indexes declared in table comments
     for (Entry<String, Table> entry : tableMap.entrySet()) {
       String comment = tableComments.get(entry.getKey().toUpperCase());
-      List<Index> deferredFromComment = DatabaseMetaDataProviderUtils.parseDeferredIndexesFromComment(comment);
-      if (!deferredFromComment.isEmpty()) {
-        Set<String> deferredNames = new HashSet<>();
-        for (Index d : deferredFromComment) {
-          deferredNames.add(d.getName().toUpperCase());
-        }
-        // Mark physical indexes that match deferred declarations as isDeferred=true
-        List<Index> indexes = entry.getValue().indexes();
-        for (int i = 0; i < indexes.size(); i++) {
-          Index physical = indexes.get(i);
-          if (deferredNames.contains(physical.getName().toUpperCase())) {
-            SchemaUtils.IndexBuilder builder = SchemaUtils.index(physical.getName())
-                .columns(physical.columnNames()).deferred();
-            indexes.set(i, physical.isUnique() ? builder.unique() : builder);
-            deferredNames.remove(physical.getName().toUpperCase());
-          }
-        }
-        // Add virtual deferred indexes that have no physical counterpart
-        for (Index deferred : deferredFromComment) {
-          if (deferredNames.contains(deferred.getName().toUpperCase())) {
-            indexes.add(deferred);
-          }
-        }
+      Table table = entry.getValue();
+      List<Index> merged = DatabaseMetaDataProviderUtils.mergeDeferredIndexes(table.indexes(), comment);
+      if (merged != table.indexes()) {
+        entry.setValue(SchemaUtils.table(table.getName()).columns(table.columns()).indexes(merged));
       }
     }
 

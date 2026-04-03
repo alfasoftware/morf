@@ -16,20 +16,17 @@
 package org.alfasoftware.morf.jdbc.h2;
 
 import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.getAutoIncrementStartValue;
-import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.parseDeferredIndexesFromComment;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
-import org.alfasoftware.morf.metadata.Column;
+import org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
@@ -77,36 +74,11 @@ class H2MetaDataProvider extends DatabaseMetaDataProvider {
   protected Table loadTable(AName tableName) {
     Table base = super.loadTable(tableName);
     String comment = tableComments.get(base.getName().toUpperCase());
-    List<Index> deferredFromComment = parseDeferredIndexesFromComment(comment);
-    if (deferredFromComment.isEmpty()) {
+    List<Index> merged = DatabaseMetaDataProviderUtils.mergeDeferredIndexes(base.indexes(), comment);
+    if (merged == base.indexes()) {
       return base;
     }
-    Set<String> deferredNames = deferredFromComment.stream()
-        .map(i -> i.getName().toUpperCase())
-        .collect(Collectors.toSet());
-    List<Index> merged = new ArrayList<>();
-    for (Index physical : base.indexes()) {
-      if (deferredNames.contains(physical.getName().toUpperCase())) {
-        SchemaUtils.IndexBuilder builder = SchemaUtils.index(physical.getName())
-            .columns(physical.columnNames()).deferred();
-        merged.add(physical.isUnique() ? builder.unique() : builder);
-        deferredNames.remove(physical.getName().toUpperCase());
-      } else {
-        merged.add(physical);
-      }
-    }
-    for (Index deferred : deferredFromComment) {
-      if (deferredNames.contains(deferred.getName().toUpperCase())) {
-        merged.add(deferred);
-      }
-    }
-    List<Index> finalIndexes = merged;
-    return new Table() {
-      @Override public String getName() { return base.getName(); }
-      @Override public List<Column> columns() { return base.columns(); }
-      @Override public List<Index> indexes() { return finalIndexes; }
-      @Override public boolean isTemporary() { return base.isTemporary(); }
-    };
+    return SchemaUtils.table(base.getName()).columns(base.columns()).indexes(merged);
   }
 
 

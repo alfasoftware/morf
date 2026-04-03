@@ -2,7 +2,6 @@ package org.alfasoftware.morf.jdbc.postgresql;
 
 import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.getAutoIncrementStartValue;
 import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.getDataTypeFromColumnComment;
-import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.parseDeferredIndexesFromComment;
 import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.shouldIgnoreIndex;
 
 import java.sql.Connection;
@@ -10,7 +9,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -20,9 +18,9 @@ import java.util.Set;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
+import org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.metadata.AdditionalMetadata;
 import org.alfasoftware.morf.metadata.DataType;
@@ -130,41 +128,11 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
   protected Table loadTable(AName tableName) {
     Table base = super.loadTable(tableName);
     String comment = tableComments.get(base.getName().toUpperCase());
-    List<Index> deferredFromComment = parseDeferredIndexesFromComment(comment);
-    if (deferredFromComment.isEmpty()) {
+    List<Index> merged = DatabaseMetaDataProviderUtils.mergeDeferredIndexes(base.indexes(), comment);
+    if (merged == base.indexes()) {
       return base;
     }
-    // Build a set of deferred index names declared in comments
-    Set<String> deferredNames = deferredFromComment.stream()
-        .map(i -> i.getName().toUpperCase())
-        .collect(Collectors.toSet());
-    // Merge: physical indexes declared deferred get isDeferred()=true;
-    // virtual deferred indexes added only if not physically present
-    List<Index> merged = new ArrayList<>();
-    for (Index physical : base.indexes()) {
-      if (deferredNames.contains(physical.getName().toUpperCase())) {
-        // Physical index exists AND comment declares it deferred — mark as deferred
-        SchemaUtils.IndexBuilder builder = SchemaUtils.index(physical.getName())
-            .columns(physical.columnNames()).deferred();
-        merged.add(physical.isUnique() ? builder.unique() : builder);
-        deferredNames.remove(physical.getName().toUpperCase());
-      } else {
-        merged.add(physical);
-      }
-    }
-    // Add virtual deferred indexes that have no physical counterpart
-    for (Index deferred : deferredFromComment) {
-      if (deferredNames.contains(deferred.getName().toUpperCase())) {
-        merged.add(deferred);
-      }
-    }
-    List<Index> finalIndexes = merged;
-    return new Table() {
-      @Override public String getName() { return base.getName(); }
-      @Override public List<Column> columns() { return base.columns(); }
-      @Override public List<Index> indexes() { return finalIndexes; }
-      @Override public boolean isTemporary() { return base.isTemporary(); }
-    };
+    return SchemaUtils.table(base.getName()).columns(base.columns()).indexes(merged);
   }
 
 

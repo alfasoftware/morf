@@ -794,7 +794,7 @@ public class TestInlineTableUpgrader {
     when(mockColumn.getName()).thenReturn("col1");
 
     RemoveColumn removeColumn = mock(RemoveColumn.class);
-    given(removeColumn.apply(schema)).willReturn(schema);
+    given(removeColumn.apply(ArgumentMatchers.any())).willReturn(schema);
     when(removeColumn.getTableName()).thenReturn("TestTable");
     when(removeColumn.getColumnDefinition()).thenReturn(mockColumn);
 
@@ -802,8 +802,8 @@ public class TestInlineTableUpgrader {
     upgrader.visit(removeColumn);
 
     // then -- IF EXISTS drop for the deferred index + DROP COLUMN
-    verify(sqlDialect).indexDropStatementsIfExists(mockTable, mockIndex);
-    verify(sqlDialect).alterTableDropColumnStatements(mockTable, mockColumn);
+    verify(sqlDialect).indexDropStatementsIfExists(ArgumentMatchers.any(), ArgumentMatchers.eq(mockIndex));
+    verify(sqlDialect).alterTableDropColumnStatements(ArgumentMatchers.any(), ArgumentMatchers.eq(mockColumn));
   }
 
 
@@ -870,7 +870,7 @@ public class TestInlineTableUpgrader {
     when(toColumn.getName()).thenReturn("newCol");
 
     ChangeColumn changeColumn = mock(ChangeColumn.class);
-    given(changeColumn.apply(schema)).willReturn(schema);
+    given(changeColumn.apply(ArgumentMatchers.any())).willReturn(schema);
     when(changeColumn.getTableName()).thenReturn("TestTable");
     when(changeColumn.getFromColumn()).thenReturn(fromColumn);
     when(changeColumn.getToColumn()).thenReturn(toColumn);
@@ -879,7 +879,7 @@ public class TestInlineTableUpgrader {
     upgrader.visit(changeColumn);
 
     // then -- ALTER TABLE DDL + comment regeneration for deferred indexes
-    verify(sqlDialect).alterTableChangeColumnStatements(mockTable, fromColumn, toColumn);
+    verify(sqlDialect).alterTableChangeColumnStatements(ArgumentMatchers.any(), ArgumentMatchers.eq(fromColumn), ArgumentMatchers.eq(toColumn));
     verify(sqlDialect).generateTableCommentStatements(nullable(Table.class), ArgumentMatchers.anyList());
   }
 

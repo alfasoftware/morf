@@ -525,6 +525,209 @@ public class TestDeferredIndexIntegration {
   }
 
 
+  // =========================================================================
+  // Cross-step: column and table modifications affecting deferred indexes
+  // =========================================================================
+
+  /**
+   * Step A defers an index on column "name". Step B renames "name" to "label".
+   * The deferred index comment should be updated with the new column name,
+   * and the executor should build the index using the renamed column.
+   */
+  @Test
+  public void testCrossStepColumnRenameUpdatesDeferredIndex() {
+    Schema renamedColSchema = schema(
+        deployedViewsTable(), upgradeAuditTable(),
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("label", DataType.STRING, 100)
+        ).indexes(index("Product_Name_1").columns("label"))
+    );
+
+    performUpgradeSteps(renamedColSchema,
+        AddDeferredIndex.class,
+        org.alfasoftware.morf.upgrade.deferred.upgrade.v2_0_0.RenameColumnWithDeferredIndex.class);
+
+    assertDeferredIndexPending("Product", "Product_Name_1");
+
+    executeDeferred();
+
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+  }
+
+
+  /**
+   * Step A defers an index on column "name". Step B removes the index and
+   * column "name". The deferred index should be cleaned up — no ghost
+   * entries in the comment, and the column removal should not trip over
+   * stale deferred index declarations.
+   */
+  @Test
+  public void testCrossStepColumnRemovalCleansDeferredIndex() {
+    Schema noNameColSchema = schema(
+        deployedViewsTable(), upgradeAuditTable(),
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey()
+        )
+    );
+
+    performUpgradeSteps(noNameColSchema,
+        AddDeferredIndex.class,
+        org.alfasoftware.morf.upgrade.deferred.upgrade.v2_0_0.RemoveColumnWithDeferredIndex.class);
+
+    assertIndexNotPresent("Product", "Product_Name_1");
+  }
+
+
+  /**
+   * Step A defers an index on table "Product". Step B renames table to "Item".
+   * The deferred index comment should migrate to the new table and the executor
+   * should build the index under the new table name.
+   */
+  @Test
+  public void testCrossStepTableRenamePreservesDeferredIndex() {
+    Schema renamedTableSchema = schema(
+        deployedViewsTable(), upgradeAuditTable(),
+        table("Item").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_1").columns("name"))
+    );
+
+    performUpgradeSteps(renamedTableSchema,
+        AddDeferredIndex.class,
+        org.alfasoftware.morf.upgrade.deferred.upgrade.v2_0_0.RenameTableWithDeferredIndex.class);
+
+    assertDeferredIndexPending("Item", "Product_Name_1");
+
+    executeDeferred();
+
+    assertPhysicalIndexExists("Item", "Product_Name_1");
+  }
+
+
+  // =========================================================================
+  // Additional edge cases
+  // =========================================================================
+
+  /**
+   * Adding a deferred index to a table that already has a non-deferred index
+   * should preserve the existing index.
+   */
+  @Test
+  public void testDeferredIndexOnTableWithExistingIndex() {
+    // Create table with an existing immediate index
+    Schema schemaWithExisting = schema(
+        deployedViewsTable(), upgradeAuditTable(),
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Id_1").columns("id", "name"))
+    );
+    schemaManager.mutateToSupportSchema(schemaWithExisting, DatabaseSchemaManager.TruncationBehavior.ALWAYS);
+
+    // Add deferred index on same table
+    Schema targetSchema = schema(
+        deployedViewsTable(), upgradeAuditTable(),
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(
+            index("Product_Id_1").columns("id", "name"),
+            index("Product_Name_1").columns("name")
+        )
+    );
+    performUpgrade(targetSchema, AddDeferredIndex.class);
+
+    // Existing index should still be present
+    assertPhysicalIndexExists("Product", "Product_Id_1");
+    assertDeferredIndexPending("Product", "Product_Name_1");
+
+    executeDeferred();
+
+    assertPhysicalIndexExists("Product", "Product_Id_1");
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+  }
+
+
+  /**
+   * getMissingDeferredIndexStatements should return valid SQL for unbuilt deferred indexes.
+   */
+  @Test
+  public void testGetMissingDeferredIndexStatements() {
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(
+        connectionResources, sqlScriptExecutorProvider, config,
+        new DeferredIndexExecutorServiceFactory.Default());
+
+    java.util.List<String> statements = executor.getMissingDeferredIndexStatements();
+    assertFalse("Should return at least one statement", statements.isEmpty());
+    assertTrue("Statement should reference the index name",
+        statements.stream().anyMatch(s -> s.toUpperCase().contains("PRODUCT_NAME_1")));
+  }
+
+
+  /**
+   * Deferred indexes on multiple tables should all be found and built by the executor.
+   */
+  @Test
+  public void testDeferredIndexesOnMultipleTables() {
+    Schema multiTableSchema = schema(
+        deployedViewsTable(), upgradeAuditTable(),
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_1").columns("name")),
+        table("Category").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("label", DataType.STRING, 50)
+        ).indexes(index("Category_Label_1").columns("label"))
+    );
+
+    performUpgradeSteps(multiTableSchema,
+        AddDeferredIndex.class,
+        org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddTableWithDeferredIndex.class);
+
+    assertDeferredIndexPending("Product", "Product_Name_1");
+    assertDeferredIndexPending("Category", "Category_Label_1");
+
+    executeDeferred();
+
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+    assertPhysicalIndexExists("Category", "Category_Label_1");
+  }
+
+
+  /**
+   * A deferred unique index on a table with duplicate data should fail gracefully.
+   */
+  @Test
+  public void testDeferredUniqueIndexWithDuplicateDataFailsGracefully() {
+    // Insert rows with duplicate names
+    insertProductRow(1L, "Widget");
+    insertProductRow(2L, "Widget");
+
+    Schema targetSchema = schema(
+        deployedViewsTable(), upgradeAuditTable(),
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_UQ").unique().columns("name"))
+    );
+    performUpgrade(targetSchema, AddDeferredUniqueIndex.class);
+
+    // Execute should not throw — the failure is logged
+    executeDeferred();
+
+    // The index should NOT exist (build failed due to duplicates)
+    // The deferred declaration remains in the comment
+    assertDeferredIndexPending("Product", "Product_Name_UQ");
+  }
+
+
   // -------------------------------------------------------------------------
   // Helpers
   // -------------------------------------------------------------------------

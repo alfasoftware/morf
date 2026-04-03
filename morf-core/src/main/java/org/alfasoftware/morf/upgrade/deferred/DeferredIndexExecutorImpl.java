@@ -264,6 +264,10 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
     int maxAttempts = config.getDeferredIndexMaxRetries() + 1;
 
     for (int attempt = 0; attempt < maxAttempts; attempt++) {
+      if (Thread.currentThread().isInterrupted()) {
+        log.warn("Deferred index build interrupted for [" + entry.index.getName() + "] — aborting retries");
+        return;
+      }
       log.info("Building deferred index [" + entry.index.getName() + "] on table ["
           + entry.table.getName() + "], attempt " + (attempt + 1) + "/" + maxAttempts);
       long startTime = System.currentTimeMillis();
@@ -302,6 +306,10 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
         }
       }
     }
+
+    log.error("DEFERRED INDEX BUILD FAILED: giving up on index [" + entry.index.getName()
+        + "] on table [" + entry.table.getName() + "] after " + maxAttempts
+        + " attempt(s). The index was NOT built. Manual intervention is required.");
   }
 
 
@@ -388,15 +396,6 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
   private boolean indexExistsPhysically(String tableName, String indexName) {
     try (Connection conn = connectionResources.getDataSource().getConnection()) {
       try (ResultSet rs = conn.getMetaData().getIndexInfo(null, null, tableName, false, true)) {
-        while (rs.next()) {
-          String name = rs.getString("INDEX_NAME");
-          if (name != null && name.equalsIgnoreCase(indexName)) {
-            return true;
-          }
-        }
-      }
-      // H2 folds to uppercase — try again with uppercase table name
-      try (ResultSet rs = conn.getMetaData().getIndexInfo(null, null, tableName.toUpperCase(), false, true)) {
         while (rs.next()) {
           String name = rs.getString("INDEX_NAME");
           if (name != null && name.equalsIgnoreCase(indexName)) {

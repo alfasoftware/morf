@@ -931,9 +931,20 @@ class PostgreSQLDialect extends SqlDialect {
    */
   @Override
   public Collection<String> deferredIndexDeploymentStatements(Table table, Index index) {
-    List<String> statements = new ArrayList<>(indexDeploymentStatements(table, index));
-    statements.set(0, statements.get(0).replaceFirst("INDEX ", "INDEX CONCURRENTLY "));
-    return statements;
+    StringBuilder statement = new StringBuilder();
+    statement.append("CREATE ");
+    if (index.isUnique()) {
+      statement.append("UNIQUE ");
+    }
+    statement.append("INDEX CONCURRENTLY ")
+             .append(index.getName())
+             .append(" ON ")
+             .append(schemaNamePrefix(table))
+             .append(table.getName())
+             .append(" (")
+             .append(Joiner.on(", ").join(index.columnNames()))
+             .append(")");
+    return ImmutableList.of(statement.toString(), addIndexComment(index.getName()));
   }
 
 

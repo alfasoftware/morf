@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -146,6 +147,48 @@ public class DatabaseMetaDataProviderUtils {
       sb.append("]");
     }
     return sb.toString();
+  }
+
+
+  /**
+   * Merges deferred index declarations from a table comment with physical indexes
+   * loaded from the database catalog.
+   *
+   * <p>Physical indexes whose names match a deferred declaration are returned with
+   * {@code isDeferred()=true}. Deferred declarations with no physical counterpart
+   * are returned as virtual indexes (also with {@code isDeferred()=true}).</p>
+   *
+   * @param physicalIndexes the indexes loaded from the database catalog.
+   * @param tableComment the raw table comment string, may be null or empty.
+   * @return the merged index list, or {@code physicalIndexes} unchanged if
+   *         no deferred declarations are found.
+   */
+  public static List<Index> mergeDeferredIndexes(List<Index> physicalIndexes, String tableComment) {
+    List<Index> deferredFromComment = parseDeferredIndexesFromComment(tableComment);
+    if (deferredFromComment.isEmpty()) {
+      return physicalIndexes;
+    }
+
+    Set<String> deferredNames = deferredFromComment.stream()
+        .map(i -> i.getName().toUpperCase())
+        .collect(Collectors.toCollection(java.util.HashSet::new));
+
+    List<Index> merged = new ArrayList<>();
+    for (Index physical : physicalIndexes) {
+      if (deferredNames.contains(physical.getName().toUpperCase())) {
+        IndexBuilder builder = index(physical.getName()).columns(physical.columnNames()).deferred();
+        merged.add(physical.isUnique() ? builder.unique() : builder);
+        deferredNames.remove(physical.getName().toUpperCase());
+      } else {
+        merged.add(physical);
+      }
+    }
+    for (Index deferred : deferredFromComment) {
+      if (deferredNames.contains(deferred.getName().toUpperCase())) {
+        merged.add(deferred);
+      }
+    }
+    return merged;
   }
 
 
