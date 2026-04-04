@@ -890,25 +890,7 @@ class PostgreSQLDialect extends SqlDialect {
 
   @Override
   protected Collection<String> indexDeploymentStatements(Table table, Index index) {
-    StringBuilder statement = new StringBuilder();
-
-    statement.append("CREATE ");
-    if (index.isUnique()) {
-      statement.append("UNIQUE ");
-    }
-    statement.append("INDEX ")
-             .append(index.getName())
-             .append(" ON ")
-             .append(schemaNamePrefix(table))
-             .append(table.getName())
-             .append(" (")
-             .append(Joiner.on(", ").join(index.columnNames()))
-             .append(")");
-
-    return ImmutableList.<String>builder()
-      .add(statement.toString())
-      .add(addIndexComment(index.getName()))
-      .build();
+    return ImmutableList.of(buildPostgreSqlCreateIndex(table, index, ""), addIndexComment(index.getName()));
   }
 
 
@@ -931,20 +913,38 @@ class PostgreSQLDialect extends SqlDialect {
    */
   @Override
   public Collection<String> deferredIndexDeploymentStatements(Table table, Index index) {
+    return ImmutableList.of(buildPostgreSqlCreateIndex(table, index, "CONCURRENTLY"), addIndexComment(index.getName()));
+  }
+
+
+  /**
+   * Builds a PostgreSQL CREATE INDEX statement. PostgreSQL does not schema-qualify
+   * the index name (only the table name), so this cannot use the base class
+   * {@link #buildCreateIndexStatement(Table, Index, String)} which prefixes both.
+   *
+   * @param table the table to index.
+   * @param index the index to create.
+   * @param afterIndexKeyword keyword inserted after INDEX (e.g. "CONCURRENTLY"), or empty string.
+   * @return the CREATE INDEX SQL string.
+   */
+  private String buildPostgreSqlCreateIndex(Table table, Index index, String afterIndexKeyword) {
     StringBuilder statement = new StringBuilder();
     statement.append("CREATE ");
     if (index.isUnique()) {
       statement.append("UNIQUE ");
     }
-    statement.append("INDEX CONCURRENTLY ")
-             .append(index.getName())
+    statement.append("INDEX ");
+    if (!afterIndexKeyword.isEmpty()) {
+      statement.append(afterIndexKeyword).append(' ');
+    }
+    statement.append(index.getName())
              .append(" ON ")
              .append(schemaNamePrefix(table))
              .append(table.getName())
              .append(" (")
              .append(Joiner.on(", ").join(index.columnNames()))
              .append(")");
-    return ImmutableList.of(statement.toString(), addIndexComment(index.getName()));
+    return statement.toString();
   }
 
 
