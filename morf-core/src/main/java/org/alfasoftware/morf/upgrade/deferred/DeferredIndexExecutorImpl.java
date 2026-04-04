@@ -160,6 +160,10 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
     int maxAttempts = config.getDeferredIndexMaxRetries() + 1;
 
     for (int attempt = op.getRetryCount(); attempt < maxAttempts; attempt++) {
+      if (Thread.currentThread().isInterrupted()) {
+        log.warn("Deferred index build interrupted for [" + op.getIndexName() + "] — aborting retries");
+        return;
+      }
       log.info("Starting deferred index operation [" + op.getId() + "]: table=" + op.getTableName()
           + LOG_INDEX + op.getIndexName() + ", attempt=" + (attempt + 1) + "/" + maxAttempts);
       long startedTime = System.currentTimeMillis();
@@ -201,6 +205,10 @@ class DeferredIndexExecutorImpl implements DeferredIndexExecutor {
         }
       }
     }
+
+    log.error("DEFERRED INDEX BUILD FAILED: giving up on index [" + op.getIndexName()
+        + "] on table [" + op.getTableName() + "] after " + maxAttempts
+        + " attempt(s). The index was NOT built. Manual intervention is required.");
   }
 
 

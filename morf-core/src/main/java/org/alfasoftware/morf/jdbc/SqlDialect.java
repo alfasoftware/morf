@@ -4104,13 +4104,31 @@ public abstract class SqlDialect {
    * @return The SQL to deploy the index on the table.
    */
   protected Collection<String> indexDeploymentStatements(Table table, Index index) {
+    return ImmutableList.of(buildCreateIndexStatement(table, index, ""));
+  }
+
+
+  /**
+   * Builds a {@code CREATE [UNIQUE] INDEX} statement with an optional keyword
+   * inserted between {@code INDEX} and the index name (e.g. {@code "CONCURRENTLY"}).
+   *
+   * @param table The table to create the index on.
+   * @param index The index to create.
+   * @param afterIndexKeyword keyword to insert after {@code INDEX}, or empty string for none.
+   * @return the complete CREATE INDEX SQL string.
+   */
+  protected String buildCreateIndexStatement(Table table, Index index, String afterIndexKeyword) {
     StringBuilder statement = new StringBuilder();
 
     statement.append("CREATE ");
     if (index.isUnique()) {
       statement.append("UNIQUE ");
     }
-    statement.append("INDEX ")
+    statement.append("INDEX ");
+    if (!afterIndexKeyword.isEmpty()) {
+      statement.append(afterIndexKeyword).append(' ');
+    }
+    statement
       .append(schemaNamePrefix(table))
       .append(index.getName())
       .append(" ON ")
@@ -4120,7 +4138,7 @@ public abstract class SqlDialect {
       .append(Joiner.on(", ").join(index.columnNames()))
       .append(')');
 
-    return ImmutableList.of(statement.toString());
+    return statement.toString();
   }
 
 

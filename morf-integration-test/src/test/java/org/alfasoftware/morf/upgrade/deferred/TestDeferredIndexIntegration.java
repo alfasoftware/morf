@@ -588,6 +588,153 @@ public class TestDeferredIndexIntegration {
   }
 
 
+  // =========================================================================
+  // Cross-step: column and table modifications affecting deferred indexes
+  // =========================================================================
+
+  /**
+   * Step A defers an index on column "name". Step B renames "name" to "label".
+   * The deferred index operation should reflect the renamed column.
+   */
+  @Test
+  public void testCrossStepColumnRenameUpdatesDeferredIndex() {
+    Schema renamedColSchema = schema(
+        deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("label", DataType.STRING, 100)
+        ).indexes(index("Product_Name_1").columns("label"))
+    );
+
+    performUpgradeSteps(renamedColSchema,
+        AddDeferredIndex.class,
+        org.alfasoftware.morf.upgrade.deferred.upgrade.v2_0_0.RenameColumnWithDeferredIndex.class);
+
+    assertEquals("PENDING", queryOperationStatus("Product_Name_1"));
+    assertEquals("Column name should be updated to label", "label", queryOperationField("Product_Name_1", "indexColumns"));
+  }
+
+
+  /**
+   * Step A defers an index on column "name". Step B removes the index and
+   * column "name". The deferred operation should be cancelled.
+   */
+  @Test
+  public void testCrossStepColumnRemovalCleansDeferredIndex() {
+    Schema noNameColSchema = schema(
+        deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey()
+        )
+    );
+
+    performUpgradeSteps(noNameColSchema,
+        AddDeferredIndex.class,
+        org.alfasoftware.morf.upgrade.deferred.upgrade.v2_0_0.RemoveColumnWithDeferredIndex.class);
+
+    assertIndexDoesNotExist("Product", "Product_Name_1");
+    assertEquals("No deferred operations should remain", 0, countOperations());
+  }
+
+
+  /**
+   * Step A defers an index on table "Product". Step B renames table to "Item".
+   * The deferred operation should reflect the renamed table.
+   */
+  @Test
+  public void testCrossStepTableRenamePreservesDeferredIndex() {
+    Schema renamedTableSchema = schema(
+        deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+        table("Item").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_1").columns("name"))
+    );
+
+    performUpgradeSteps(renamedTableSchema,
+        AddDeferredIndex.class,
+        org.alfasoftware.morf.upgrade.deferred.upgrade.v2_0_0.RenameTableWithDeferredIndex.class);
+
+    assertEquals("PENDING", queryOperationStatus("Product_Name_1"));
+    assertEquals("Table name should be updated to Item", "Item", queryOperationField("Product_Name_1", "tableName"));
+  }
+
+
+  /**
+   * Deferred indexes on multiple tables should both be tracked.
+   */
+  @Test
+  public void testDeferredIndexesOnMultipleTables() {
+    Schema multiTableSchema = schema(
+        deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_1").columns("name")),
+        table("Category").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("label", DataType.STRING, 50)
+        ).indexes(index("Category_Label_1").columns("label"))
+    );
+
+    performUpgradeSteps(multiTableSchema,
+        AddDeferredIndex.class,
+        org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddTableWithDeferredIndex.class);
+
+    assertEquals("PENDING", queryOperationStatus("Product_Name_1"));
+    assertEquals("PENDING", queryOperationStatus("Category_Label_1"));
+  }
+
+
+  /**
+   * A deferred unique index on a table with duplicate data should fail gracefully
+   * when the executor tries to build it.
+   */
+  @Test
+  public void testDeferredUniqueIndexWithDuplicateDataFailsGracefully() {
+    insertProductRow(1L, "Widget");
+    insertProductRow(2L, "Widget");
+
+    Schema targetSchema = schema(
+        deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_UQ").unique().columns("name"))
+    );
+    performUpgrade(targetSchema, AddDeferredUniqueIndex.class);
+
+    executeDeferred();
+
+    assertEquals("FAILED", queryOperationStatus("Product_Name_UQ"));
+    assertIndexDoesNotExist("Product", "Product_Name_UQ");
+  }
+
+
+  @SafeVarargs
+  private void performUpgradeSteps(Schema targetSchema, Class<? extends UpgradeStep>... upgradeSteps) {
+    Upgrade.performUpgrade(targetSchema, java.util.Arrays.asList(upgradeSteps),
+        connectionResources, upgradeConfigAndContext, viewDeploymentValidator);
+  }
+
+
+  private void executeDeferred() {
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(true);
+    config.setDeferredIndexRetryBaseDelayMs(10L);
+    config.setDeferredIndexMaxRetries(0);
+    DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(
+        new DeferredIndexOperationDAOImpl(new SqlScriptExecutorProvider(connectionResources), connectionResources),
+        connectionResources, new SqlScriptExecutorProvider(connectionResources),
+        config, new DeferredIndexExecutorServiceFactory.Default());
+    executor.execute().join();
+  }
+
+
+  // -------------------------------------------------------------------------
+  // Helpers
+  // -------------------------------------------------------------------------
+
   private void performUpgrade(Schema targetSchema, Class<? extends UpgradeStep> upgradeStep) {
     Upgrade.performUpgrade(targetSchema, Collections.singletonList(upgradeStep),
         connectionResources, upgradeConfigAndContext, viewDeploymentValidator);
@@ -610,8 +757,13 @@ public class TestDeferredIndexIntegration {
 
 
   private String queryOperationStatus(String indexName) {
+    return queryOperationField(indexName, "status");
+  }
+
+
+  private String queryOperationField(String indexName, String fieldName) {
     String sql = connectionResources.sqlDialect().convertStatementToSQL(
-        select(field("status"))
+        select(field(fieldName))
             .from(tableRef(DEFERRED_INDEX_OPERATION_NAME))
             .where(field("indexName").eq(indexName))
     );
