@@ -598,6 +598,7 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testCrossStepColumnRenameUpdatesDeferredIndex() {
+    // given -- target schema with column renamed from "name" to "label"
     Schema renamedColSchema = schema(
         deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
         table("Product").columns(
@@ -606,10 +607,12 @@ public class TestDeferredIndexIntegration {
         ).indexes(index("Product_Name_1").columns("label"))
     );
 
+    // when -- step 1 defers index on "name", step 2 renames "name" to "label"
     performUpgradeSteps(renamedColSchema,
         AddDeferredIndex.class,
         org.alfasoftware.morf.upgrade.deferred.upgrade.v2_0_0.RenameColumnWithDeferredIndex.class);
 
+    // then -- operation still pending with updated column name
     assertEquals("PENDING", queryOperationStatus("Product_Name_1"));
     assertEquals("Column name should be updated to label", "label", queryOperationField("Product_Name_1", "indexColumns"));
   }
@@ -621,6 +624,7 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testCrossStepColumnRemovalCleansDeferredIndex() {
+    // given
     Schema noNameColSchema = schema(
         deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
         table("Product").columns(
@@ -628,10 +632,12 @@ public class TestDeferredIndexIntegration {
         )
     );
 
+    // when -- step 1 defers index on "name", step 2 removes index and column
     performUpgradeSteps(noNameColSchema,
         AddDeferredIndex.class,
         org.alfasoftware.morf.upgrade.deferred.upgrade.v2_0_0.RemoveColumnWithDeferredIndex.class);
 
+    // then -- operation cancelled, no index
     assertIndexDoesNotExist("Product", "Product_Name_1");
     assertEquals("No deferred operations should remain", 0, countOperations());
   }
@@ -643,6 +649,7 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testCrossStepTableRenamePreservesDeferredIndex() {
+    // given
     Schema renamedTableSchema = schema(
         deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
         table("Item").columns(
@@ -651,10 +658,12 @@ public class TestDeferredIndexIntegration {
         ).indexes(index("Product_Name_1").columns("name"))
     );
 
+    // when -- step 1 defers index on "Product", step 2 renames table to "Item"
     performUpgradeSteps(renamedTableSchema,
         AddDeferredIndex.class,
         org.alfasoftware.morf.upgrade.deferred.upgrade.v2_0_0.RenameTableWithDeferredIndex.class);
 
+    // then -- operation still pending with updated table name
     assertEquals("PENDING", queryOperationStatus("Product_Name_1"));
     assertEquals("Table name should be updated to Item", "Item", queryOperationField("Product_Name_1", "tableName"));
   }
@@ -665,6 +674,7 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testDeferredIndexesOnMultipleTables() {
+    // given -- deferred indexes on two different tables
     Schema multiTableSchema = schema(
         deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
         table("Product").columns(
@@ -677,10 +687,12 @@ public class TestDeferredIndexIntegration {
         ).indexes(index("Category_Label_1").columns("label"))
     );
 
+    // when
     performUpgradeSteps(multiTableSchema,
         AddDeferredIndex.class,
         org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddTableWithDeferredIndex.class);
 
+    // then -- both tracked as PENDING
     assertEquals("PENDING", queryOperationStatus("Product_Name_1"));
     assertEquals("PENDING", queryOperationStatus("Category_Label_1"));
   }
@@ -692,9 +704,9 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testDeferredUniqueIndexWithDuplicateDataFailsGracefully() {
+    // given -- table with duplicate values in the indexed column
     insertProductRow(1L, "Widget");
     insertProductRow(2L, "Widget");
-
     Schema targetSchema = schema(
         deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
         table("Product").columns(
@@ -704,8 +716,10 @@ public class TestDeferredIndexIntegration {
     );
     performUpgrade(targetSchema, AddDeferredUniqueIndex.class);
 
+    // when -- executor attempts to build (should not throw)
     executeDeferred();
 
+    // then -- marked FAILED, index not built
     assertEquals("FAILED", queryOperationStatus("Product_Name_UQ"));
     assertIndexDoesNotExist("Product", "Product_Name_UQ");
   }
