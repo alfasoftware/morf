@@ -100,12 +100,15 @@ public class TestDeferredIndexExecutorUnit {
   /** execute with no deferred indexes should return an already-completed future. */
   @Test
   public void testExecuteNoDeferredIndexes() {
+    // given -- schema with no deferred indexes
     SchemaResource sr = mockSchemaResource();
     when(connectionResources.openSchemaResource()).thenReturn(sr);
 
+    // when
     DeferredIndexExecutorImpl executor = createExecutor();
     CompletableFuture<Void> future = executor.execute();
 
+    // then
     assertTrue("Future should be completed immediately", future.isDone());
   }
 
@@ -113,16 +116,18 @@ public class TestDeferredIndexExecutorUnit {
   /** execute with a single deferred index should build it. */
   @Test
   public void testExecuteSingleDeferredIndex() throws SQLException {
+    // given -- one deferred index on TestTable
     mockSchemaResourceWithDeferredIndex("TestTable", "TestIdx", "col1", "col2");
-
     SqlScriptExecutor scriptExecutor = mock(SqlScriptExecutor.class);
     when(sqlScriptExecutorProvider.get()).thenReturn(scriptExecutor);
     when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
         .thenReturn(List.of("CREATE INDEX TestIdx ON TestTable(col1, col2)"));
 
+    // when
     DeferredIndexExecutorImpl executor = createExecutor();
     executor.execute().join();
 
+    // then
     verify(sqlDialect).deferredIndexDeploymentStatements(any(Table.class), any(Index.class));
     verify(scriptExecutor).execute(any(Collection.class), any(Connection.class));
   }
@@ -131,6 +136,7 @@ public class TestDeferredIndexExecutorUnit {
   /** execute should skip non-deferred indexes. */
   @Test
   public void testExecuteSkipsNonDeferredIndexes() {
+    // given -- table with only non-deferred indexes
     Table tableWithNonDeferred = table("TestTable")
         .columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
@@ -140,9 +146,11 @@ public class TestDeferredIndexExecutorUnit {
     SchemaResource sr = mockSchemaResource(tableWithNonDeferred);
     when(connectionResources.openSchemaResource()).thenReturn(sr);
 
+    // when
     DeferredIndexExecutorImpl executor = createExecutor();
     CompletableFuture<Void> future = executor.execute();
 
+    // then
     assertTrue("Future should be completed immediately (no deferred indexes)", future.isDone());
     verify(sqlDialect, never()).deferredIndexDeploymentStatements(any(Table.class), any(Index.class));
   }
@@ -152,21 +160,20 @@ public class TestDeferredIndexExecutorUnit {
   @SuppressWarnings("unchecked")
   @Test
   public void testExecuteRetryThenSuccess() {
+    // given -- deferred index that fails on first attempt, succeeds on second
     config.setDeferredIndexMaxRetries(2);
-
     mockSchemaResourceWithDeferredIndex("TestTable", "TestIdx", "col1", "col2");
-
     SqlScriptExecutor scriptExecutor = mock(SqlScriptExecutor.class);
     when(sqlScriptExecutorProvider.get()).thenReturn(scriptExecutor);
-
-    // First call throws, second call succeeds
     when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
         .thenThrow(new RuntimeException("temporary failure"))
         .thenReturn(List.of("CREATE INDEX TestIdx ON TestTable(col1, col2)"));
 
+    // when
     DeferredIndexExecutorImpl executor = createExecutor();
     executor.execute().join();
 
+    // then
     verify(scriptExecutor).execute(any(Collection.class), any(Connection.class));
   }
 
@@ -174,19 +181,17 @@ public class TestDeferredIndexExecutorUnit {
   /** execute should give up after exhausting retries. */
   @Test
   public void testExecutePermanentFailure() {
+    // given -- deferred index that always fails
     config.setDeferredIndexMaxRetries(1);
-
     SchemaResource sr = mockSchemaResourceWithDeferredIndex("TestTable", "TestIdx", "col1", "col2");
     when(connectionResources.openSchemaResource()).thenReturn(sr);
-
     SqlScriptExecutor scriptExecutor = mock(SqlScriptExecutor.class);
     when(sqlScriptExecutorProvider.get()).thenReturn(scriptExecutor);
-
     when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
         .thenThrow(new RuntimeException("persistent failure"));
 
+    // when -- should not throw; the future completes and the error is logged
     DeferredIndexExecutorImpl executor = createExecutor();
-    // Should not throw -- the future completes (the error is logged, not propagated)
     executor.execute().join();
   }
 
@@ -194,15 +199,15 @@ public class TestDeferredIndexExecutorUnit {
   /** execute should handle a SQLException from getConnection as a failure. */
   @Test
   public void testExecuteSqlExceptionFromConnection() throws SQLException {
+    // given -- deferred index exists but connection fails during build
     config.setDeferredIndexMaxRetries(0);
-
     SchemaResource sr = mockSchemaResourceWithDeferredIndex("TestTable", "TestIdx", "col1", "col2");
     when(connectionResources.openSchemaResource()).thenReturn(sr);
-
     when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
         .thenReturn(List.of("CREATE INDEX TestIdx ON TestTable(col1, col2)"));
     when(dataSource.getConnection()).thenThrow(new SQLException("connection refused"));
 
+    // when
     DeferredIndexExecutorImpl executor = createExecutor();
     executor.execute().join();
   }
@@ -211,19 +216,19 @@ public class TestDeferredIndexExecutorUnit {
   /** buildIndex should restore autocommit to its original value after execution. */
   @Test
   public void testAutoCommitRestoredAfterBuildIndex() throws SQLException {
+    // given -- connection with autocommit=false and a deferred index to build
     when(connection.getAutoCommit()).thenReturn(false);
-
     mockSchemaResourceWithDeferredIndex("TestTable", "TestIdx", "col1", "col2");
-
     SqlScriptExecutor scriptExecutor = mock(SqlScriptExecutor.class);
     when(sqlScriptExecutorProvider.get()).thenReturn(scriptExecutor);
     when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
         .thenReturn(List.of("CREATE INDEX TestIdx ON TestTable(col1, col2)"));
 
+    // when
     DeferredIndexExecutorImpl executor = createExecutor();
     executor.execute().join();
 
-    // Verify autocommit was set to true for the build, then restored
+    // then -- autocommit was set to true for the build, then restored
     verify(connection, org.mockito.Mockito.atLeastOnce()).setAutoCommit(true);
     verify(connection).setAutoCommit(false);
   }
@@ -232,11 +237,14 @@ public class TestDeferredIndexExecutorUnit {
   /** execute should be a no-op when deferred index creation is disabled. */
   @Test
   public void testExecuteDisabled() {
+    // given
     config.setDeferredIndexCreationEnabled(false);
 
+    // when
     DeferredIndexExecutorImpl executor = createExecutor();
     CompletableFuture<Void> future = executor.execute();
 
+    // then
     assertTrue("Future should be completed immediately", future.isDone());
     verify(connectionResources, never()).openSchemaResource();
   }
@@ -249,13 +257,16 @@ public class TestDeferredIndexExecutorUnit {
   /** getMissingDeferredIndexStatements should return SQL for unbuilt deferred indexes. */
   @Test
   public void testGetMissingDeferredIndexStatements() {
+    // given
     mockSchemaResourceWithDeferredIndex("TestTable", "TestIdx", "col1", "col2");
     when(sqlDialect.deferredIndexDeploymentStatements(any(Table.class), any(Index.class)))
         .thenReturn(List.of("CREATE INDEX TestIdx ON TestTable(col1, col2)"));
 
+    // when
     DeferredIndexExecutorImpl executor = createExecutor();
     List<String> statements = executor.getMissingDeferredIndexStatements();
 
+    // then
     assertEquals(1, statements.size());
     assertEquals("CREATE INDEX TestIdx ON TestTable(col1, col2)", statements.get(0));
   }
@@ -264,11 +275,14 @@ public class TestDeferredIndexExecutorUnit {
   /** getMissingDeferredIndexStatements should return empty when disabled. */
   @Test
   public void testGetMissingDeferredIndexStatementsDisabled() {
+    // given
     config.setDeferredIndexCreationEnabled(false);
 
+    // when
     DeferredIndexExecutorImpl executor = createExecutor();
     List<String> statements = executor.getMissingDeferredIndexStatements();
 
+    // then
     assertTrue("Should return empty list when disabled", statements.isEmpty());
   }
 
@@ -276,12 +290,15 @@ public class TestDeferredIndexExecutorUnit {
   /** getMissingDeferredIndexStatements should return empty when no deferred indexes. */
   @Test
   public void testGetMissingDeferredIndexStatementsNone() {
+    // given
     SchemaResource sr = mockSchemaResource();
     when(connectionResources.openSchemaResource()).thenReturn(sr);
 
+    // when
     DeferredIndexExecutorImpl executor = createExecutor();
     List<String> statements = executor.getMissingDeferredIndexStatements();
 
+    // then
     assertTrue("Should return empty list", statements.isEmpty());
   }
 
@@ -293,10 +310,12 @@ public class TestDeferredIndexExecutorUnit {
   /** threadPoolSize less than 1 should be rejected. */
   @Test(expected = IllegalArgumentException.class)
   public void testInvalidThreadPoolSize() {
+    // given
     config.setDeferredIndexThreadPoolSize(0);
     SchemaResource sr = mockSchemaResourceWithDeferredIndex("T", "Idx", "c1", "c2");
     when(connectionResources.openSchemaResource()).thenReturn(sr);
 
+    // when -- should throw
     createExecutor().execute();
   }
 
@@ -304,10 +323,12 @@ public class TestDeferredIndexExecutorUnit {
   /** maxRetries less than 0 should be rejected. */
   @Test(expected = IllegalArgumentException.class)
   public void testInvalidMaxRetries() {
+    // given
     config.setDeferredIndexMaxRetries(-1);
     SchemaResource sr = mockSchemaResourceWithDeferredIndex("T", "Idx", "c1", "c2");
     when(connectionResources.openSchemaResource()).thenReturn(sr);
 
+    // when -- should throw
     createExecutor().execute();
   }
 

@@ -100,12 +100,15 @@ public class TestDeferredIndexService {
   /** Verify that execute() builds the deferred index and it exists in the schema. */
   @Test
   public void testExecuteBuildsIndexEndToEnd() {
+    // given
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
 
+    // when
     DeferredIndexService service = createService();
     service.execute();
     service.awaitCompletion(60L);
 
+    // then
     assertIndexExists("Product", "Product_Name_1");
   }
 
@@ -113,6 +116,7 @@ public class TestDeferredIndexService {
   /** Verify that execute() handles multiple deferred indexes in a single run. */
   @Test
   public void testExecuteBuildsMultipleIndexes() {
+    // given
     Schema targetSchema = schema(
         deployedViewsTable(), upgradeAuditTable(),
         table("Product").columns(
@@ -125,10 +129,12 @@ public class TestDeferredIndexService {
     );
     performUpgrade(targetSchema, AddTwoDeferredIndexes.class);
 
+    // when
     DeferredIndexService service = createService();
     service.execute();
     service.awaitCompletion(60L);
 
+    // then
     assertIndexExists("Product", "Product_Name_1");
     assertIndexExists("Product", "Product_IdName_1");
   }
@@ -137,8 +143,11 @@ public class TestDeferredIndexService {
   /** Verify that execute() with no deferred indexes completes immediately. */
   @Test
   public void testExecuteWithEmptySchema() {
+    // when
     DeferredIndexService service = createService();
     service.execute();
+
+    // then
     assertTrue("Should complete immediately on empty schema", service.awaitCompletion(5L));
   }
 
@@ -146,7 +155,10 @@ public class TestDeferredIndexService {
   /** Verify that awaitCompletion() throws when called before execute(). */
   @Test(expected = IllegalStateException.class)
   public void testAwaitCompletionThrowsWhenNoExecution() {
+    // given
     DeferredIndexService service = createService();
+
+    // when -- should throw
     service.awaitCompletion(5L);
   }
 
@@ -154,17 +166,19 @@ public class TestDeferredIndexService {
   /** Verify that execute() is idempotent -- second run is a safe no-op. */
   @Test
   public void testExecuteIdempotent() {
+    // given -- deferred index already built
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
-
     DeferredIndexService service = createService();
     service.execute();
     service.awaitCompletion(60L);
     assertIndexExists("Product", "Product_Name_1");
 
-    // Second execute on a fresh service -- should be a no-op
+    // when -- second execute on a fresh service
     DeferredIndexService service2 = createService();
     service2.execute();
     service2.awaitCompletion(60L);
+
+    // then -- still exists, no error
     assertIndexExists("Product", "Product_Name_1");
   }
 

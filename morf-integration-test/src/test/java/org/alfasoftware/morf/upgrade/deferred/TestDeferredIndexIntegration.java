@@ -121,12 +121,16 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testDeferredIndexLifecycle() {
+    // when -- upgrade step defers an index
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
 
+    // then -- virtual index present
     assertDeferredIndexPending("Product", "Product_Name_1");
 
+    // when -- execute deferred
     executeDeferred();
 
+    // then -- physical index built
     assertPhysicalIndexExists("Product", "Product_Name_1");
   }
 
@@ -137,6 +141,7 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testDeferredUniqueIndex() {
+    // given
     Schema targetSchema = schema(
         deployedViewsTable(), upgradeAuditTable(),
         table("Product").columns(
@@ -146,8 +151,10 @@ public class TestDeferredIndexIntegration {
     );
     performUpgrade(targetSchema, AddDeferredUniqueIndex.class);
 
+    // when
     executeDeferred();
 
+    // then
     assertPhysicalIndexExists("Product", "Product_Name_UQ");
     try (SchemaResource sr = connectionResources.openSchemaResource()) {
       assertTrue("Index should be unique",
@@ -163,6 +170,7 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testDeferredMultiColumnIndex() {
+    // given
     Schema targetSchema = schema(
         deployedViewsTable(), upgradeAuditTable(),
         table("Product").columns(
@@ -172,8 +180,10 @@ public class TestDeferredIndexIntegration {
     );
     performUpgrade(targetSchema, AddDeferredMultiColumnIndex.class);
 
+    // when
     executeDeferred();
 
+    // then
     try (SchemaResource sr = connectionResources.openSchemaResource()) {
       org.alfasoftware.morf.metadata.Index idx = sr.getTable("Product").indexes().stream()
           .filter(i -> "Product_IdName_1".equalsIgnoreCase(i.getName()))
@@ -190,6 +200,7 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testNewTableWithDeferredIndex() {
+    // given
     Schema targetSchema = schema(
         deployedViewsTable(), upgradeAuditTable(),
         table("Product").columns(
@@ -201,12 +212,17 @@ public class TestDeferredIndexIntegration {
             column("label", DataType.STRING, 50)
         ).indexes(index("Category_Label_1").columns("label"))
     );
+
+    // when
     performUpgrade(targetSchema, AddTableWithDeferredIndex.class);
 
+    // then -- deferred index present
     assertDeferredIndexPending("Category", "Category_Label_1");
 
+    // when -- execute deferred
     executeDeferred();
 
+    // then -- physical index built
     assertPhysicalIndexExists("Category", "Category_Label_1");
   }
 
@@ -217,14 +233,16 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testDeferredIndexOnPopulatedTable() {
+    // given -- table with existing rows
     insertProductRow(1L, "Widget");
     insertProductRow(2L, "Gadget");
     insertProductRow(3L, "Doohickey");
 
+    // when
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
-
     executeDeferred();
 
+    // then
     assertPhysicalIndexExists("Product", "Product_Name_1");
   }
 
@@ -235,6 +253,7 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testMultipleIndexesDeferredInOneStep() {
+    // given
     Schema targetSchema = schema(
         deployedViewsTable(), upgradeAuditTable(),
         table("Product").columns(
@@ -245,10 +264,12 @@ public class TestDeferredIndexIntegration {
             index("Product_IdName_1").columns("id", "name")
         )
     );
-    performUpgrade(targetSchema, AddTwoDeferredIndexes.class);
 
+    // when
+    performUpgrade(targetSchema, AddTwoDeferredIndexes.class);
     executeDeferred();
 
+    // then
     assertPhysicalIndexExists("Product", "Product_Name_1");
     assertPhysicalIndexExists("Product", "Product_IdName_1");
   }
@@ -260,13 +281,15 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testExecutorIdempotencyOnBuiltIndexes() {
+    // given -- deferred index already built
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
-
     executeDeferred();
     assertPhysicalIndexExists("Product", "Product_Name_1");
 
-    // Second run -- should be a no-op
+    // when -- second run
     executeDeferred();
+
+    // then -- still exists, no error
     assertPhysicalIndexExists("Product", "Product_Name_1");
   }
 
@@ -278,11 +301,13 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testForceImmediateIndexBypassesDeferral() {
+    // given
     upgradeConfigAndContext.setForceImmediateIndexes(Set.of("Product_Name_1"));
     try {
+      // when
       performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
 
-      // Index should exist immediately -- no executor needed
+      // then -- index built immediately, no executor needed
       assertPhysicalIndexExists("Product", "Product_Name_1");
     } finally {
       upgradeConfigAndContext.setForceImmediateIndexes(Set.of());
@@ -296,15 +321,19 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testForceDeferredIndexOverridesImmediateCreation() {
+    // given
     upgradeConfigAndContext.setForceDeferredIndexes(Set.of("Product_Name_1"));
     try {
+      // when -- addIndex() with force-deferred override
       performUpgrade(schemaWithIndex(), AddImmediateIndex.class);
 
-      // Index should NOT be physically built yet -- it was deferred
+      // then -- index deferred, not built yet
       assertDeferredIndexPending("Product", "Product_Name_1");
 
-      // Executor should build it
+      // when -- execute deferred
       executeDeferred();
+
+      // then -- physical index built
       assertPhysicalIndexExists("Product", "Product_Name_1");
     } finally {
       upgradeConfigAndContext.setForceDeferredIndexes(Set.of());
@@ -318,13 +347,14 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testDisabledFeatureBuildsDeferredIndexImmediately() {
+    // given -- kill switch disabled (default)
     UpgradeConfigAndContext disabledConfig = new UpgradeConfigAndContext();
-    // deferredIndexCreationEnabled defaults to false
 
+    // when
     Upgrade.performUpgrade(schemaWithIndex(), Collections.singletonList(AddDeferredIndex.class),
         connectionResources, disabledConfig, viewDeploymentValidator);
 
-    // Index should exist immediately
+    // then -- index built immediately
     assertPhysicalIndexExists("Product", "Product_Name_1");
   }
 
@@ -335,17 +365,18 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testUnsupportedDialectFallsBackToImmediateIndex() {
+    // given -- dialect that does not support deferred creation
     org.alfasoftware.morf.jdbc.SqlDialect realDialect = connectionResources.sqlDialect();
     org.alfasoftware.morf.jdbc.SqlDialect spyDialect = org.mockito.Mockito.spy(realDialect);
     org.mockito.Mockito.when(spyDialect.supportsDeferredIndexCreation()).thenReturn(false);
-
     ConnectionResources spyConn = org.mockito.Mockito.spy(connectionResources);
     org.mockito.Mockito.when(spyConn.sqlDialect()).thenReturn(spyDialect);
 
+    // when
     Upgrade.performUpgrade(schemaWithIndex(), Collections.singletonList(AddDeferredIndex.class),
         spyConn, upgradeConfigAndContext, viewDeploymentValidator);
 
-    // Index should exist immediately -- built during upgrade, not deferred
+    // then -- index built immediately during upgrade
     assertPhysicalIndexExists("Product", "Product_Name_1");
   }
 
@@ -360,8 +391,10 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testAddDeferredThenRemoveInSameStep() {
+    // when -- add deferred then remove in same step
     performUpgrade(INITIAL_SCHEMA, AddDeferredIndexThenRemove.class);
 
+    // then
     assertIndexNotPresent("Product", "Product_Name_1");
   }
 
@@ -372,6 +405,7 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testAddDeferredThenChangeInSameStep() {
+    // given
     Schema targetSchema = schema(
         deployedViewsTable(), upgradeAuditTable(),
         table("Product").columns(
@@ -379,9 +413,11 @@ public class TestDeferredIndexIntegration {
             column("name", DataType.STRING, 100)
         ).indexes(index("Product_Name_2").columns("name"))
     );
+
+    // when -- add deferred then change to non-deferred in same step
     performUpgrade(targetSchema, AddDeferredIndexThenChange.class);
 
-    // The changed index is not deferred (no .deferred() on toIndex), so built immediately
+    // then -- changed index built immediately, original gone
     assertPhysicalIndexExists("Product", "Product_Name_2");
     assertIndexNotPresent("Product", "Product_Name_1");
   }
@@ -393,6 +429,7 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testAddDeferredThenRenameInSameStep() {
+    // given
     Schema targetSchema = schema(
         deployedViewsTable(), upgradeAuditTable(),
         table("Product").columns(
@@ -400,14 +437,18 @@ public class TestDeferredIndexIntegration {
             column("name", DataType.STRING, 100)
         ).indexes(index("Product_Name_Renamed").columns("name"))
     );
+
+    // when -- add deferred then rename in same step
     performUpgrade(targetSchema, AddDeferredIndexThenRename.class);
 
-    // Renamed index is still deferred
+    // then -- renamed index still deferred
     assertDeferredIndexPending("Product", "Product_Name_Renamed");
     assertIndexNotPresent("Product", "Product_Name_1");
 
+    // when -- execute deferred
     executeDeferred();
 
+    // then -- physical index built with renamed name
     assertPhysicalIndexExists("Product", "Product_Name_Renamed");
   }
 
@@ -423,12 +464,14 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testRemoveUnbuiltDeferredIndexInLaterStep() {
+    // given -- step A defers an index
     performUpgradeSteps(schemaWithIndex(), AddDeferredIndex.class);
-
     assertDeferredIndexPending("Product", "Product_Name_1");
 
+    // when -- step B removes it before executor runs
     performUpgradeSteps(INITIAL_SCHEMA, AddDeferredIndex.class, RemoveDeferredIndex.class);
 
+    // then -- index never built
     assertIndexNotPresent("Product", "Product_Name_1");
   }
 
@@ -440,6 +483,7 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testChangeUnbuiltDeferredIndexInLaterStep() {
+    // given
     Schema targetSchema = schema(
         deployedViewsTable(), upgradeAuditTable(),
         table("Product").columns(
@@ -448,9 +492,10 @@ public class TestDeferredIndexIntegration {
         ).indexes(index("Product_Name_1").columns("id", "name"))
     );
 
+    // when -- step B changes the unbuilt deferred index to non-deferred
     performUpgradeSteps(targetSchema, AddDeferredIndex.class, ChangeDeferredIndex.class);
 
-    // The changed index is not deferred (no .deferred() on toIndex), so built immediately
+    // then -- changed index built immediately
     assertPhysicalIndexExists("Product", "Product_Name_1");
   }
 
@@ -461,6 +506,7 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testRenameUnbuiltDeferredIndexInLaterStep() {
+    // given
     Schema targetSchema = schema(
         deployedViewsTable(), upgradeAuditTable(),
         table("Product").columns(
@@ -469,13 +515,17 @@ public class TestDeferredIndexIntegration {
         ).indexes(index("Product_Name_Renamed").columns("name"))
     );
 
+    // when -- step B renames the unbuilt deferred index
     performUpgradeSteps(targetSchema, AddDeferredIndex.class, RenameDeferredIndex.class);
 
+    // then -- renamed deferred index present
     assertDeferredIndexPending("Product", "Product_Name_Renamed");
     assertIndexNotPresent("Product", "Product_Name_1");
 
+    // when -- execute deferred
     executeDeferred();
 
+    // then -- physical index built with new name
     assertPhysicalIndexExists("Product", "Product_Name_Renamed");
   }
 
@@ -490,12 +540,15 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testRemoveBuiltDeferredIndexInLaterStep() {
+    // given -- deferred index already built
     performUpgradeSteps(schemaWithIndex(), AddDeferredIndex.class);
     executeDeferred();
     assertPhysicalIndexExists("Product", "Product_Name_1");
 
+    // when -- step B removes it
     performUpgradeSteps(INITIAL_SCHEMA, AddDeferredIndex.class, RemoveDeferredIndex.class);
 
+    // then
     assertIndexNotPresent("Product", "Product_Name_1");
   }
 
@@ -506,6 +559,7 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testRenameBuiltDeferredIndexInLaterStep() {
+    // given -- deferred index already built
     Schema renamedSchema = schema(
         deployedViewsTable(), upgradeAuditTable(),
         table("Product").columns(
@@ -513,13 +567,14 @@ public class TestDeferredIndexIntegration {
             column("name", DataType.STRING, 100)
         ).indexes(index("Product_Name_Renamed").columns("name"))
     );
-
     performUpgradeSteps(schemaWithIndex(), AddDeferredIndex.class);
     executeDeferred();
     assertPhysicalIndexExists("Product", "Product_Name_1");
 
+    // when -- step B renames it
     performUpgradeSteps(renamedSchema, AddDeferredIndex.class, RenameDeferredIndex.class);
 
+    // then
     assertPhysicalIndexExists("Product", "Product_Name_Renamed");
     assertIndexNotPresent("Product", "Product_Name_1");
   }
@@ -536,6 +591,7 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testCrossStepColumnRenameUpdatesDeferredIndex() {
+    // given -- target schema with column renamed from "name" to "label"
     Schema renamedColSchema = schema(
         deployedViewsTable(), upgradeAuditTable(),
         table("Product").columns(
@@ -544,14 +600,18 @@ public class TestDeferredIndexIntegration {
         ).indexes(index("Product_Name_1").columns("label"))
     );
 
+    // when -- step 1 defers index on "name", step 2 renames "name" to "label"
     performUpgradeSteps(renamedColSchema,
         AddDeferredIndex.class,
         org.alfasoftware.morf.upgrade.deferred.upgrade.v2_0_0.RenameColumnWithDeferredIndex.class);
 
+    // then -- deferred index references new column
     assertDeferredIndexPending("Product", "Product_Name_1");
 
+    // when -- execute deferred
     executeDeferred();
 
+    // then -- physical index built using renamed column
     assertPhysicalIndexExists("Product", "Product_Name_1");
   }
 
@@ -564,6 +624,7 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testCrossStepColumnRemovalCleansDeferredIndex() {
+    // given
     Schema noNameColSchema = schema(
         deployedViewsTable(), upgradeAuditTable(),
         table("Product").columns(
@@ -571,10 +632,12 @@ public class TestDeferredIndexIntegration {
         )
     );
 
+    // when -- step 1 defers index on "name", step 2 removes index and column
     performUpgradeSteps(noNameColSchema,
         AddDeferredIndex.class,
         org.alfasoftware.morf.upgrade.deferred.upgrade.v2_0_0.RemoveColumnWithDeferredIndex.class);
 
+    // then
     assertIndexNotPresent("Product", "Product_Name_1");
   }
 
@@ -586,6 +649,7 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testCrossStepTableRenamePreservesDeferredIndex() {
+    // given
     Schema renamedTableSchema = schema(
         deployedViewsTable(), upgradeAuditTable(),
         table("Item").columns(
@@ -594,14 +658,18 @@ public class TestDeferredIndexIntegration {
         ).indexes(index("Product_Name_1").columns("name"))
     );
 
+    // when -- step 1 defers index on "Product", step 2 renames table to "Item"
     performUpgradeSteps(renamedTableSchema,
         AddDeferredIndex.class,
         org.alfasoftware.morf.upgrade.deferred.upgrade.v2_0_0.RenameTableWithDeferredIndex.class);
 
+    // then -- deferred index migrates to new table
     assertDeferredIndexPending("Item", "Product_Name_1");
 
+    // when -- execute deferred
     executeDeferred();
 
+    // then -- physical index built on renamed table
     assertPhysicalIndexExists("Item", "Product_Name_1");
   }
 
@@ -616,7 +684,7 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testDeferredIndexOnTableWithExistingIndex() {
-    // Create table with an existing immediate index
+    // given -- table already has a non-deferred index
     Schema schemaWithExisting = schema(
         deployedViewsTable(), upgradeAuditTable(),
         table("Product").columns(
@@ -625,8 +693,6 @@ public class TestDeferredIndexIntegration {
         ).indexes(index("Product_Id_1").columns("id", "name"))
     );
     schemaManager.mutateToSupportSchema(schemaWithExisting, DatabaseSchemaManager.TruncationBehavior.ALWAYS);
-
-    // Add deferred index on same table
     Schema targetSchema = schema(
         deployedViewsTable(), upgradeAuditTable(),
         table("Product").columns(
@@ -637,14 +703,18 @@ public class TestDeferredIndexIntegration {
             index("Product_Name_1").columns("name")
         )
     );
+
+    // when -- add deferred index to same table
     performUpgrade(targetSchema, AddDeferredIndex.class);
 
-    // Existing index should still be present
+    // then -- existing index preserved, deferred index pending
     assertPhysicalIndexExists("Product", "Product_Id_1");
     assertDeferredIndexPending("Product", "Product_Name_1");
 
+    // when -- execute deferred
     executeDeferred();
 
+    // then -- both indexes present
     assertPhysicalIndexExists("Product", "Product_Id_1");
     assertPhysicalIndexExists("Product", "Product_Name_1");
   }
@@ -655,15 +725,18 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testGetMissingDeferredIndexStatements() {
+    // given -- one unbuilt deferred index
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
-
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
     config.setDeferredIndexCreationEnabled(true);
     DeferredIndexExecutor executor = new DeferredIndexExecutorImpl(
         connectionResources, sqlScriptExecutorProvider, config,
         new DeferredIndexExecutorServiceFactory.Default());
 
+    // when
     java.util.List<String> statements = executor.getMissingDeferredIndexStatements();
+
+    // then
     assertFalse("Should return at least one statement", statements.isEmpty());
     assertTrue("Statement should reference the index name",
         statements.stream().anyMatch(s -> s.toUpperCase().contains("PRODUCT_NAME_1")));
@@ -675,6 +748,7 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testDeferredIndexesOnMultipleTables() {
+    // given -- deferred indexes on two different tables
     Schema multiTableSchema = schema(
         deployedViewsTable(), upgradeAuditTable(),
         table("Product").columns(
@@ -687,15 +761,19 @@ public class TestDeferredIndexIntegration {
         ).indexes(index("Category_Label_1").columns("label"))
     );
 
+    // when
     performUpgradeSteps(multiTableSchema,
         AddDeferredIndex.class,
         org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddTableWithDeferredIndex.class);
 
+    // then -- both deferred
     assertDeferredIndexPending("Product", "Product_Name_1");
     assertDeferredIndexPending("Category", "Category_Label_1");
 
+    // when -- execute deferred
     executeDeferred();
 
+    // then -- both physical indexes built
     assertPhysicalIndexExists("Product", "Product_Name_1");
     assertPhysicalIndexExists("Category", "Category_Label_1");
   }
@@ -706,10 +784,9 @@ public class TestDeferredIndexIntegration {
    */
   @Test
   public void testDeferredUniqueIndexWithDuplicateDataFailsGracefully() {
-    // Insert rows with duplicate names
+    // given -- table with duplicate values in the indexed column
     insertProductRow(1L, "Widget");
     insertProductRow(2L, "Widget");
-
     Schema targetSchema = schema(
         deployedViewsTable(), upgradeAuditTable(),
         table("Product").columns(
@@ -719,11 +796,10 @@ public class TestDeferredIndexIntegration {
     );
     performUpgrade(targetSchema, AddDeferredUniqueIndex.class);
 
-    // Execute should not throw — the failure is logged
+    // when -- executor attempts to build (should not throw)
     executeDeferred();
 
-    // The index should NOT exist (build failed due to duplicates)
-    // The deferred declaration remains in the comment
+    // then -- index not built, deferred declaration remains
     assertDeferredIndexPending("Product", "Product_Name_UQ");
   }
 

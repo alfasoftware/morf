@@ -112,15 +112,21 @@ public class TestDeferredIndexLifecycle {
   /** Upgrade defers index, execute builds it, restart finds schema correct. */
   @Test
   public void testHappyPath_upgradeExecuteRestart() {
+    // when -- upgrade defers index
     performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
+
+    // then -- deferred
     assertDeferredIndexPending("Product", "Product_Name_1");
 
+    // when -- execute
     executeDeferred();
+
+    // then -- built
     assertPhysicalIndexExists("Product", "Product_Name_1");
 
-    // Restart -- same steps, nothing new to do
+    // when -- restart (same steps, nothing new)
     performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
-    // Should pass without error
+    // then -- should pass without error
   }
 
 
@@ -131,17 +137,20 @@ public class TestDeferredIndexLifecycle {
   /** No-upgrade restart with pending deferred indexes should pass. */
   @Test
   public void testNoUpgradeRestart_pendingIndexesVisible() {
+    // given -- upgrade defers index
     performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
     assertDeferredIndexPending("Product", "Product_Name_1");
 
-    // Restart with same schema -- no new upgrade steps
+    // when -- restart with same schema (no new upgrade steps)
     performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
 
-    // Index should still be deferred (not physically built)
+    // then -- index still deferred
     assertDeferredIndexPending("Product", "Product_Name_1");
 
-    // Execute builds it
+    // when -- execute
     executeDeferred();
+
+    // then -- built
     assertPhysicalIndexExists("Product", "Product_Name_1");
   }
 
@@ -153,36 +162,43 @@ public class TestDeferredIndexLifecycle {
   /** Two upgrades, both executed -- third restart passes. */
   @Test
   public void testTwoSequentialUpgrades() {
-    // First upgrade
+    // when -- first upgrade, execute
     performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
     executeDeferred();
+
+    // then
     assertPhysicalIndexExists("Product", "Product_Name_1");
 
-    // Second upgrade adds another deferred index
+    // when -- second upgrade adds another deferred index, execute
     performUpgradeWithSteps(schemaWithBothIndexes(),
         List.of(AddDeferredIndex.class, AddSecondDeferredIndex.class));
     executeDeferred();
+
+    // then
     assertPhysicalIndexExists("Product", "Product_IdName_1");
 
-    // Third restart -- everything clean
+    // when -- third restart
     performUpgradeWithSteps(schemaWithBothIndexes(),
         List.of(AddDeferredIndex.class, AddSecondDeferredIndex.class));
+    // then -- should pass without error
   }
 
 
   /** Two upgrades, first index not built -- first still deferred, second also deferred. */
   @Test
   public void testTwoUpgrades_firstIndexNotBuilt() {
-    // First upgrade -- don't execute
+    // given -- first upgrade defers index, not executed
     performUpgrade(schemaWithFirstIndex(), AddDeferredIndex.class);
     assertDeferredIndexPending("Product", "Product_Name_1");
 
-    // Second upgrade
+    // when -- second upgrade adds another deferred index
     performUpgradeWithSteps(schemaWithBothIndexes(),
         List.of(AddDeferredIndex.class, AddSecondDeferredIndex.class));
 
-    // Execute builds both
+    // when -- execute builds both
     executeDeferred();
+
+    // then
     assertPhysicalIndexExists("Product", "Product_Name_1");
     assertPhysicalIndexExists("Product", "Product_IdName_1");
   }
