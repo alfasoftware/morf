@@ -1445,4 +1445,13 @@ public class TestH2Dialect extends AbstractSqlDialectTest {
   protected String expectedSelectWithOrderByWhereAndLimit() {
     return "SELECT id, stringField FROM " + tableName(TEST_TABLE) + " WHERE (stringField IS NOT NULL) ORDER BY id DESC LIMIT 10";
   }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSupportsDeferredIndexCreation()
+   */
+  @Override
+  protected boolean expectedSupportsDeferredIndexCreation() {
+    return true;
+  }
 }

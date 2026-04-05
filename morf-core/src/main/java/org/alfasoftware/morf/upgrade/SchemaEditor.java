@@ -139,6 +139,17 @@ public interface SchemaEditor {
 
 
   /**
+   * Causes an add index schema change to be deferred and executed in the background
+   * after the upgrade completes. The index is reflected in the schema metadata immediately,
+   * but the actual DDL is executed by {@code DeferredIndexExecutor}.
+   *
+   * @param tableName name of table to add index to
+   * @param index {@link Index} to be added in the background
+   */
+  public void addIndexDeferred(String tableName, Index index);
+
+
+  /**
    * Causes a remove index schema change to be added to the change sequence.
    *
    * @param tableName name of table to remove index from

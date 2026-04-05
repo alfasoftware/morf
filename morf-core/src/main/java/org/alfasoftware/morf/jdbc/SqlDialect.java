@@ -4048,6 +4048,40 @@ public abstract class SqlDialect {
 
 
   /**
+   * Whether this dialect supports deferred index creation. When {@code true},
+   * {@link org.alfasoftware.morf.upgrade.SchemaEditor#addIndexDeferred} queues
+   * the index for background creation. When {@code false}, deferred requests
+   * are silently converted to immediate index creation, because the platform's
+   * {@code CREATE INDEX} blocks DML and deferring would move the lock from the
+   * upgrade window (when no traffic is flowing) to post-startup (when it is).
+   *
+   * <p>The default returns {@code false}. Dialects that support non-blocking
+   * DDL (e.g. PostgreSQL {@code CONCURRENTLY}, Oracle {@code ONLINE}) should
+   * override this to return {@code true}.</p>
+   *
+   * @return {@code true} if deferred index creation is beneficial on this platform.
+   */
+  public boolean supportsDeferredIndexCreation() {
+    return false;
+  }
+
+
+  /**
+   * Generates the SQL to build a deferred index on an existing table. By default this
+   * delegates to {@link #addIndexStatements(Table, Index)}, which issues a standard
+   * {@code CREATE INDEX} statement. Platform-specific dialects may override this method
+   * to emit non-blocking variants (e.g. {@code CREATE INDEX CONCURRENTLY} on PostgreSQL).
+   *
+   * @param table The existing table.
+   * @param index The new index to build in the background.
+   * @return A collection of SQL statements.
+   */
+  public Collection<String> deferredIndexDeploymentStatements(Table table, Index index) {
+    return addIndexStatements(table, index);
+  }
+
+
+  /**
    * Helper method to create all index statements defined for a table
    *
    * @param table the table to create indexes for
@@ -4070,13 +4104,31 @@ public abstract class SqlDialect {
    * @return The SQL to deploy the index on the table.
    */
   protected Collection<String> indexDeploymentStatements(Table table, Index index) {
+    return ImmutableList.of(buildCreateIndexStatement(table, index, ""));
+  }
+
+
+  /**
+   * Builds a {@code CREATE [UNIQUE] INDEX} statement with an optional keyword
+   * inserted between {@code INDEX} and the index name (e.g. {@code "CONCURRENTLY"}).
+   *
+   * @param table The table to create the index on.
+   * @param index The index to create.
+   * @param afterIndexKeyword keyword to insert after {@code INDEX}, or empty string for none.
+   * @return the complete CREATE INDEX SQL string.
+   */
+  protected String buildCreateIndexStatement(Table table, Index index, String afterIndexKeyword) {
     StringBuilder statement = new StringBuilder();
 
     statement.append("CREATE ");
     if (index.isUnique()) {
       statement.append("UNIQUE ");
     }
-    statement.append("INDEX ")
+    statement.append("INDEX ");
+    if (!afterIndexKeyword.isEmpty()) {
+      statement.append(afterIndexKeyword).append(' ');
+    }
+    statement
       .append(schemaNamePrefix(table))
       .append(index.getName())
       .append(" ON ")
@@ -4086,7 +4138,7 @@ public abstract class SqlDialect {
       .append(Joiner.on(", ").join(index.columnNames()))
       .append(')');
 
-    return ImmutableList.of(statement.toString());
+    return statement.toString();
   }
 
 
