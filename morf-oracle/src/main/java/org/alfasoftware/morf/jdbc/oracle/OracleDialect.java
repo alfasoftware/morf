@@ -35,6 +35,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -401,6 +402,15 @@ class OracleDialect extends SqlDialect {
   private String commentOnTable(String truncatedTableName) {
     return "COMMENT ON TABLE " + schemaNamePrefix() + truncatedTableName + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + truncatedTableName + "]'";
   }
+
+
+  @Override
+  public Collection<String> generateTableCommentStatements(Table table, List<Index> deferredIndexes) {
+    String comment = REAL_NAME_COMMENT_LABEL + ":[" + table.getName() + "]"
+        + DatabaseMetaDataProviderUtils.buildDeferredIndexCommentSegments(deferredIndexes);
+    return Arrays.asList("COMMENT ON TABLE " + schemaNamePrefix() + table.getName() + " IS '" + comment + "'");
+  }
+
 
   private String disableParallelAndEnableLoggingForPrimaryKey(Table table) {
     return "ALTER INDEX " + schemaNamePrefix() + primaryKeyConstraintName(table.getName()) + " NOPARALLEL LOGGING";
@@ -905,7 +915,7 @@ class OracleDialect extends SqlDialect {
   public Collection<String> addIndexStatements(Table table, Index index) {
     return ImmutableList.of(
       // when adding indexes to existing tables, use PARALLEL NOLOGGING to efficiently build the index
-      Iterables.getOnlyElement(indexDeploymentStatements(table, index)) + " PARALLEL NOLOGGING",
+      buildCreateIndexStatement(table, index, "") + " PARALLEL NOLOGGING",
       indexPostDeploymentStatements(index)
     );
   }
@@ -916,31 +926,7 @@ class OracleDialect extends SqlDialect {
    */
   @Override
   protected Collection<String> indexDeploymentStatements(Table table, Index index) {
-    StringBuilder createIndexStatement = new StringBuilder();
-
-    // Specify the preamble
-    createIndexStatement.append("CREATE ");
-    if (index.isUnique()) {
-      createIndexStatement.append("UNIQUE ");
-    }
-
-    // Name the index
-    createIndexStatement
-      .append("INDEX ")
-      .append(schemaNamePrefix())
-      .append(index.getName())
-
-      // Specify which table the index is over
-      .append(" ON ")
-      .append(schemaNamePrefix())
-      .append(table.getName())
-
-      // Specify the fields that are used in the index
-      .append(" (")
-      .append(Joiner.on(", ").join(index.columnNames()))
-      .append(")");
-
-    return Collections.singletonList(createIndexStatement.toString());
+    return Collections.singletonList(buildCreateIndexStatement(table, index, ""));
   }
 
 
@@ -957,6 +943,35 @@ class OracleDialect extends SqlDialect {
       .append(index.getName())
       .append(" NOPARALLEL LOGGING")
       .toString();
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#supportsDeferredIndexCreation()
+   */
+  @Override
+  public boolean supportsDeferredIndexCreation() {
+    return true;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#deferredIndexDeploymentStatements(org.alfasoftware.morf.metadata.Table, org.alfasoftware.morf.metadata.Index)
+   */
+  @Override
+  public Collection<String> deferredIndexDeploymentStatements(Table table, Index index) {
+    return ImmutableList.of(
+      buildCreateIndexStatement(table, index, "") + " ONLINE PARALLEL NOLOGGING",
+      indexPostDeploymentStatements(index)
+    );
+  }
+
+
+  @Override
+  public String findTablesWithDeferredIndexesSql() {
+    String owner = schemaNamePrefix().replace(".", "");
+    return "SELECT table_name FROM ALL_TAB_COMMENTS"
+        + " WHERE owner = '" + owner + "' AND comments LIKE '%/DEFERRED:%'";
   }
 
 
@@ -1199,6 +1214,24 @@ class OracleDialect extends SqlDialect {
     .append(indexToBeRemoved.getName());
 
     return Arrays.asList(statement.toString());
+  }
+
+
+  @Override
+  public Collection<String> indexDropStatementsIfExists(Table table, Index indexToBeRemoved) {
+    String indexName = schemaNamePrefix() + indexToBeRemoved.getName();
+    return Arrays.asList(
+      "BEGIN EXECUTE IMMEDIATE 'DROP INDEX " + indexName + "'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -1418 THEN RAISE; END IF; END;"
+    );
+  }
+
+
+  @Override
+  public Collection<String> renameIndexStatementsIfExists(Table table, String fromIndexName, String toIndexName) {
+    String fullName = schemaNamePrefix() + fromIndexName;
+    return Arrays.asList(
+      "BEGIN EXECUTE IMMEDIATE 'ALTER INDEX " + fullName + " RENAME TO " + toIndexName + "'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -1418 THEN RAISE; END IF; END;"
+    );
   }
 
 

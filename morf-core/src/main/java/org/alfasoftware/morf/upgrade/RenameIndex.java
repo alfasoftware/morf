@@ -24,6 +24,7 @@ import java.util.List;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.adapt.AlteredTable;
 import org.alfasoftware.morf.upgrade.adapt.TableOverrideSchema;
@@ -145,11 +146,14 @@ public class RenameIndex implements SchemaChange {
       if (currentIndexName.equalsIgnoreCase(indexStartName)) {
         // Substitute in the new index name
         currentIndexName = indexEndName;
+        IndexBuilder builder = index(indexEndName).columns(index.columnNames());
         if (index.isUnique()) {
-          newIndex = index(indexEndName).columns(index.columnNames()).unique();
-        } else {
-          newIndex = index(indexEndName).columns(index.columnNames());
+          builder = builder.unique();
         }
+        if (index.isDeferred()) {
+          builder = builder.deferred();
+        }
+        newIndex = builder;
 
         foundMatch = true;
       }

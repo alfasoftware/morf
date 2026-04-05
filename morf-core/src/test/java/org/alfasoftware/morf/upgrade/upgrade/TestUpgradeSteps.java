@@ -3,15 +3,14 @@ package org.alfasoftware.morf.upgrade.upgrade;
 import static org.junit.Assert.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import org.alfasoftware.morf.upgrade.DataEditor;
 import org.alfasoftware.morf.upgrade.SchemaEditor;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
 import org.junit.Test;
-
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 
 public class TestUpgradeSteps {
 
@@ -42,5 +41,6 @@ public class TestUpgradeSteps {
         upgradeStep.execute(schema, dataEditor);
         verifyNoInteractions(schema);
     }
+
 
 }

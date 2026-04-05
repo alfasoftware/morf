@@ -1029,4 +1029,6 @@ public class TestUpgrade {
   public static Table deployedViews() {
     return table(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME).columns(column("name", DataType.STRING, 30), column("hash", DataType.STRING, 64));
   }
+
+
 }

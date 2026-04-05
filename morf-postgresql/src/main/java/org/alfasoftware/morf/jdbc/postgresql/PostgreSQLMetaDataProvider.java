@@ -9,6 +9,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -19,11 +20,15 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
+import org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils;
 import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.metadata.AdditionalMetadata;
 import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
+import org.alfasoftware.morf.metadata.Table;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -45,6 +50,9 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
   private final Supplier<Map<AName, RealName>> allIndexNames = Suppliers.memoize(this::loadAllIndexNames);
   private final Supplier<Map<String, List<Index>>> allIgnoredIndexes = Suppliers.memoize(this::loadIgnoredIndexes);
   private final Set<RealName> allIgnoredIndexesTables = new HashSet<>();
+
+  /** Stores raw table comments keyed by uppercase table name, for deferred index parsing. */
+  private final Map<String, String> tableComments = new HashMap<>();
 
   public PostgreSQLMetaDataProvider(Connection connection, String schemaName) {
     super(connection, schemaName);
@@ -106,10 +114,25 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
   protected RealName readTableName(ResultSet tableResultSet) throws SQLException {
     String tableName = tableResultSet.getString(TABLE_NAME);
     String comment = tableResultSet.getString(TABLE_REMARKS);
+    if (StringUtils.isNotBlank(comment)) {
+      tableComments.put(tableName.toUpperCase(), comment);
+    }
     String realName = matchComment(comment);
     return StringUtils.isNotBlank(realName)
         ? createRealName(tableName, realName)
         : super.readTableName(tableResultSet);
+  }
+
+
+  @Override
+  protected Table loadTable(AName tableName) {
+    Table base = super.loadTable(tableName);
+    String comment = tableComments.get(base.getName().toUpperCase());
+    List<Index> merged = DatabaseMetaDataProviderUtils.mergeDeferredIndexes(base.indexes(), comment);
+    if (merged == base.indexes()) {
+      return base;
+    }
+    return SchemaUtils.table(base.getName()).columns(base.columns()).indexes(merged);
   }
 
 

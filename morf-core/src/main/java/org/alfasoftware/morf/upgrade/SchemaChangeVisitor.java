@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.upgrade;
 
 
+
 /**
  * Interface for any upgrade / downgrade strategy which handles all the
  * defined {@link SchemaChange} implementations.

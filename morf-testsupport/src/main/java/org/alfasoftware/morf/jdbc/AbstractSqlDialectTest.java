@@ -4338,6 +4338,48 @@ public abstract class AbstractSqlDialectTest {
 
 
   /**
+   * Test deferred index creation over a single column.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testDeferredIndexDeploymentStatementsOnSingleColumn() {
+    Table table = metadata.getTable(TEST_TABLE);
+    Index index = index("indexName").columns(table.columns().get(0).getName());
+    compareStatements(
+      expectedDeferredIndexDeploymentStatementsOnSingleColumn(),
+      testDialect.deferredIndexDeploymentStatements(table, index));
+  }
+
+
+  /**
+   * Test deferred index creation over multiple columns.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testDeferredIndexDeploymentStatementsOnMultipleColumns() {
+    Table table = metadata.getTable(TEST_TABLE);
+    Index index = index("indexName").columns(table.columns().get(0).getName(), table.columns().get(1).getName());
+    compareStatements(
+      expectedDeferredIndexDeploymentStatementsOnMultipleColumns(),
+      testDialect.deferredIndexDeploymentStatements(table, index));
+  }
+
+
+  /**
+   * Test deferred unique index creation.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testDeferredIndexDeploymentStatementsUnique() {
+    Table table = metadata.getTable(TEST_TABLE);
+    Index index = index("indexName").unique().columns(table.columns().get(0).getName());
+    compareStatements(
+      expectedDeferredIndexDeploymentStatementsUnique(),
+      testDialect.deferredIndexDeploymentStatements(table, index));
+  }
+
+
+  /**
    * Test adding a unique index.
    */
   @SuppressWarnings("unchecked")
@@ -4967,6 +5009,49 @@ public abstract class AbstractSqlDialectTest {
    * @return Expected SQL for {@link #testAddIndexStatementsUnique()}
    */
   protected abstract List<String> expectedAddIndexStatementsUnique();
+
+
+  /**
+   * @return Expected value for {@link SqlDialect#supportsDeferredIndexCreation()}.
+   *         Returns {@code false} by default. Subclasses for dialects that support
+   *         deferred creation (PostgreSQL, Oracle, H2) must override to return {@code true}.
+   */
+  protected boolean expectedSupportsDeferredIndexCreation() {
+    return false;
+  }
+
+
+  /**
+   * Test that supportsDeferredIndexCreation returns the expected value for this dialect.
+   */
+  @Test
+  public void testSupportsDeferredIndexCreation() {
+    assertEquals("supportsDeferredIndexCreation", expectedSupportsDeferredIndexCreation(), testDialect.supportsDeferredIndexCreation());
+  }
+
+
+  /**
+   * @return Expected SQL for {@link #testDeferredIndexDeploymentStatementsOnSingleColumn()}
+   */
+  protected List<String> expectedDeferredIndexDeploymentStatementsOnSingleColumn() {
+    return expectedAddIndexStatementsOnSingleColumn();
+  }
+
+
+  /**
+   * @return Expected SQL for {@link #testDeferredIndexDeploymentStatementsOnMultipleColumns()}
+   */
+  protected List<String> expectedDeferredIndexDeploymentStatementsOnMultipleColumns() {
+    return expectedAddIndexStatementsOnMultipleColumns();
+  }
+
+
+  /**
+   * @return Expected SQL for {@link #testDeferredIndexDeploymentStatementsUnique()}
+   */
+  protected List<String> expectedDeferredIndexDeploymentStatementsUnique() {
+    return expectedAddIndexStatementsUnique();
+  }
 
 
   /**

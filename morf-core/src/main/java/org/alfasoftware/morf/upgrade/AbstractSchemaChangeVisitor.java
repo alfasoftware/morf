@@ -1,13 +1,18 @@
+
 package org.alfasoftware.morf.upgrade;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.Statement;
+import org.alfasoftware.morf.upgrade.adapt.TableOverrideSchema;
 
 /**
  * Common code between SchemaChangeVisitor implementors
@@ -19,7 +24,6 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   protected final UpgradeConfigAndContext upgradeConfigAndContext;
   protected final Table idTable;
   protected final TableNameResolver  tracker;
-
 
   public AbstractSchemaChangeVisitor(Schema currentSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect,
                                      Table idTable) {
@@ -79,38 +83,99 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
   @Override
   public void visit(ChangeColumn changeColumn) {
+    String tableName = changeColumn.getTableName();
+    String oldColName = changeColumn.getFromColumn().getName();
+    String newColName = changeColumn.getToColumn().getName();
+
+    // If a column is renamed and deferred indexes reference the old name, update the in-memory schema
+    if (!oldColName.equalsIgnoreCase(newColName)) {
+      updateDeferredIndexColumnName(tableName, oldColName, newColName);
+    }
+
     currentSchema = changeColumn.apply(currentSchema);
-    writeStatements(sqlDialect.alterTableChangeColumnStatements(currentSchema.getTable(changeColumn.getTableName()), changeColumn.getFromColumn(), changeColumn.getToColumn()));
+    writeStatements(sqlDialect.alterTableChangeColumnStatements(currentSchema.getTable(tableName), changeColumn.getFromColumn(), changeColumn.getToColumn()));
+
+    if (!oldColName.equalsIgnoreCase(newColName) && hasDeferredIndexes(tableName)) {
+      writeDeferredIndexComment(tableName);
+    }
   }
 
 
   @Override
   public void visit(RemoveColumn removeColumn) {
+    String tableName = removeColumn.getTableName();
+    String colName = removeColumn.getColumnDefinition().getName();
+
+    // Remove deferred indexes that reference the removed column
+    boolean hadDeferred = removeDeferredIndexesReferencingColumn(tableName, colName);
+
     currentSchema = removeColumn.apply(currentSchema);
-    writeStatements(sqlDialect.alterTableDropColumnStatements(currentSchema.getTable(removeColumn.getTableName()), removeColumn.getColumnDefinition()));
+    writeStatements(sqlDialect.alterTableDropColumnStatements(currentSchema.getTable(tableName), removeColumn.getColumnDefinition()));
+
+    if (hadDeferred) {
+      writeDeferredIndexComment(tableName);
+    }
   }
 
 
   @Override
   public void visit(RemoveIndex removeIndex) {
+    String tableName = removeIndex.getTableName();
+    boolean wasDeferred = isIndexDeferred(tableName, removeIndex.getIndexToBeRemoved().getName());
+
     currentSchema = removeIndex.apply(currentSchema);
-    writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(removeIndex.getTableName()), removeIndex.getIndexToBeRemoved()));
+
+    if (wasDeferred) {
+      writeStatements(sqlDialect.indexDropStatementsIfExists(currentSchema.getTable(tableName), removeIndex.getIndexToBeRemoved()));
+      writeDeferredIndexComment(tableName);
+    } else {
+      writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(tableName), removeIndex.getIndexToBeRemoved()));
+    }
   }
 
 
   @Override
   public void visit(ChangeIndex changeIndex) {
+    String tableName = changeIndex.getTableName();
+    boolean fromDeferred = isIndexDeferred(tableName, changeIndex.getFromIndex().getName());
+
     currentSchema = changeIndex.apply(currentSchema);
-    writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(changeIndex.getTableName()), changeIndex.getFromIndex()));
-    writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(changeIndex.getTableName()), changeIndex.getToIndex()));
+    Table table = currentSchema.getTable(tableName);
+
+    if (fromDeferred) {
+      writeStatements(sqlDialect.indexDropStatementsIfExists(table, changeIndex.getFromIndex()));
+    } else {
+      writeStatements(sqlDialect.indexDropStatements(table, changeIndex.getFromIndex()));
+    }
+
+    boolean toDeferred = changeIndex.getToIndex().isDeferred() && sqlDialect.supportsDeferredIndexCreation();
+    if (toDeferred) {
+      writeDeferredIndexComment(tableName);
+    } else {
+      writeStatements(sqlDialect.addIndexStatements(table, changeIndex.getToIndex()));
+      if (fromDeferred) {
+        // Old was deferred, new is not — update comment to remove old deferred declaration
+        writeDeferredIndexComment(tableName);
+      }
+    }
   }
 
 
   @Override
   public void visit(final RenameIndex renameIndex) {
+    String tableName = renameIndex.getTableName();
+    boolean wasDeferred = isIndexDeferred(tableName, renameIndex.getFromIndexName());
+
     currentSchema = renameIndex.apply(currentSchema);
-    writeStatements(sqlDialect.renameIndexStatements(currentSchema.getTable(renameIndex.getTableName()),
-      renameIndex.getFromIndexName(), renameIndex.getToIndexName()));
+
+    if (wasDeferred) {
+      writeStatements(sqlDialect.renameIndexStatementsIfExists(currentSchema.getTable(tableName),
+        renameIndex.getFromIndexName(), renameIndex.getToIndexName()));
+      writeDeferredIndexComment(tableName);
+    } else {
+      writeStatements(sqlDialect.renameIndexStatements(currentSchema.getTable(tableName),
+        renameIndex.getFromIndexName(), renameIndex.getToIndexName()));
+    }
   }
 
 
@@ -121,6 +186,11 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     Table newTable = currentSchema.getTable(renameTable.getNewTableName());
 
     writeStatements(sqlDialect.renameTableStatements(oldTable, newTable));
+
+    // Regenerate deferred index comment with the new table name
+    if (hasDeferredIndexes(renameTable.getNewTableName())) {
+      writeDeferredIndexComment(renameTable.getNewTableName());
+    }
   }
 
 
@@ -202,19 +272,123 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   @Override
   public void visit(AddIndex addIndex) {
     currentSchema = addIndex.apply(currentSchema);
-    Index foundIndex = null;
-    List<Index> ignoredIndexes = upgradeConfigAndContext.getIgnoredIndexesForTable(addIndex.getTableName());
-    for (Index index : ignoredIndexes) {
-      if (index.columnNames().equals(addIndex.getNewIndex().columnNames()) && index.isUnique() == addIndex.getNewIndex().isUnique()) {
-        foundIndex = index;
-        break;
+    boolean shouldDefer = addIndex.getNewIndex().isDeferred() && sqlDialect.supportsDeferredIndexCreation();
+
+    if (shouldDefer) {
+      writeDeferredIndexComment(addIndex.getTableName());
+    } else {
+      Index foundIndex = null;
+      List<Index> ignoredIndexes = upgradeConfigAndContext.getIgnoredIndexesForTable(addIndex.getTableName());
+      for (Index index : ignoredIndexes) {
+        if (index.columnNames().equals(addIndex.getNewIndex().columnNames()) && index.isUnique() == addIndex.getNewIndex().isUnique()) {
+          foundIndex = index;
+          break;
+        }
+      }
+
+      if (foundIndex != null) {
+        writeStatements(sqlDialect.renameIndexStatements(currentSchema.getTable(addIndex.getTableName()), foundIndex.getName(), addIndex.getNewIndex().getName()));
+      } else {
+        writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(addIndex.getTableName()), addIndex.getNewIndex()));
       }
     }
+  }
 
-    if (foundIndex != null) {
-      writeStatements(sqlDialect.renameIndexStatements(currentSchema.getTable(addIndex.getTableName()), foundIndex.getName(), addIndex.getNewIndex().getName()));
-    } else {
-      writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(addIndex.getTableName()), addIndex.getNewIndex()));
+
+  // -------------------------------------------------------------------------
+  // Deferred index helpers
+  // -------------------------------------------------------------------------
+
+  /**
+   * Generates a COMMENT ON TABLE statement declaring all deferred indexes for the given table.
+   */
+  private void writeDeferredIndexComment(String tableName) {
+    Table table = currentSchema.getTable(tableName);
+    List<Index> deferredIndexes = getDeferredIndexes(table);
+    writeStatements(sqlDialect.generateTableCommentStatements(table, deferredIndexes));
+  }
+
+
+  private List<Index> getDeferredIndexes(Table table) {
+    return table.indexes().stream()
+        .filter(Index::isDeferred)
+        .collect(Collectors.toList());
+  }
+
+
+  private boolean hasDeferredIndexes(String tableName) {
+    return currentSchema.tableExists(tableName)
+        && currentSchema.getTable(tableName).indexes().stream().anyMatch(Index::isDeferred);
+  }
+
+
+  private boolean isIndexDeferred(String tableName, String indexName) {
+    if (!currentSchema.tableExists(tableName)) {
+      return false;
+    }
+    return currentSchema.getTable(tableName).indexes().stream()
+        .anyMatch(i -> i.getName().equalsIgnoreCase(indexName) && i.isDeferred());
+  }
+
+
+  /**
+   * Removes deferred indexes that reference the given column from the current schema,
+   * emitting DROP INDEX IF EXISTS DDL and updating the in-memory schema so that the
+   * regenerated comment does not contain stale index declarations.
+   *
+   * @return true if any deferred indexes were found and removed.
+   */
+  private boolean removeDeferredIndexesReferencingColumn(String tableName, String columnName) {
+    if (!currentSchema.tableExists(tableName)) {
+      return false;
+    }
+    Table table = currentSchema.getTable(tableName);
+    List<Index> survivingIndexes = new ArrayList<>();
+    boolean found = false;
+    for (Index idx : table.indexes()) {
+      if (idx.isDeferred() && idx.columnNames().stream().anyMatch(c -> c.equalsIgnoreCase(columnName))) {
+        writeStatements(sqlDialect.indexDropStatementsIfExists(table, idx));
+        found = true;
+      } else {
+        survivingIndexes.add(idx);
+      }
+    }
+    if (found) {
+      Table updatedTable = SchemaUtils.table(table.getName()).columns(table.columns()).indexes(survivingIndexes);
+      currentSchema = new TableOverrideSchema(currentSchema, updatedTable);
+    }
+    return found;
+  }
+
+
+  /**
+   * Updates deferred index column references in the current schema when a column is renamed.
+   * Indexes store column names as strings, so ChangeColumn.apply() does not update them.
+   * This method rebuilds affected deferred indexes with the new column name so that the
+   * regenerated comment contains the correct references.
+   */
+  private void updateDeferredIndexColumnName(String tableName, String oldColName, String newColName) {
+    if (!currentSchema.tableExists(tableName)) {
+      return;
+    }
+    Table table = currentSchema.getTable(tableName);
+    List<Index> updatedIndexes = new ArrayList<>();
+    boolean changed = false;
+    for (Index idx : table.indexes()) {
+      if (idx.isDeferred() && idx.columnNames().stream().anyMatch(c -> c.equalsIgnoreCase(oldColName))) {
+        List<String> newCols = idx.columnNames().stream()
+            .map(c -> c.equalsIgnoreCase(oldColName) ? newColName : c)
+            .collect(Collectors.toList());
+        SchemaUtils.IndexBuilder builder = SchemaUtils.index(idx.getName()).columns(newCols).deferred();
+        updatedIndexes.add(idx.isUnique() ? builder.unique() : builder);
+        changed = true;
+      } else {
+        updatedIndexes.add(idx);
+      }
+    }
+    if (changed) {
+      Table updatedTable = SchemaUtils.table(table.getName()).columns(table.columns()).indexes(updatedIndexes);
+      currentSchema = new TableOverrideSchema(currentSchema, updatedTable);
     }
   }
 }

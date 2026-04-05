@@ -29,6 +29,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -3899,6 +3900,33 @@ public abstract class SqlDialect {
 
 
   /**
+   * Generate the SQL to drop an index if it exists. Used for deferred indexes
+   * which may or may not have been physically built yet.
+   *
+   * @param table The table to drop the index from.
+   * @param indexToBeRemoved The index to be dropped.
+   * @return The SQL to drop the specified index if it exists.
+   */
+  public Collection<String> indexDropStatementsIfExists(@SuppressWarnings("unused") Table table, Index indexToBeRemoved) {
+    return ImmutableList.of("DROP INDEX IF EXISTS " + indexToBeRemoved.getName());
+  }
+
+
+  /**
+   * Generate the SQL to rename an index if it exists. Used for deferred indexes
+   * which may or may not have been physically built yet.
+   *
+   * @param table The table on which the index exists.
+   * @param fromIndexName The index to rename.
+   * @param toIndexName The new index name.
+   * @return The SQL to rename the index if it exists.
+   */
+  public Collection<String> renameIndexStatementsIfExists(Table table, String fromIndexName, String toIndexName) {
+    return ImmutableList.of("ALTER INDEX IF EXISTS " + schemaNamePrefix(table) + fromIndexName + " RENAME TO " + toIndexName);
+  }
+
+
+  /**
    * Generates the SQL to create a table and insert the data specified in the {@link SelectStatement}.
    *
    * @param table The table to create.
@@ -4048,6 +4076,104 @@ public abstract class SqlDialect {
 
 
   /**
+   * Whether this dialect supports deferred index creation. When {@code true},
+   * indexes marked as deferred are queued for background creation via table
+   * comments. When {@code false}, deferred requests are silently converted to
+   * immediate index creation, because the platform's {@code CREATE INDEX} blocks
+   * DML and deferring would move the lock from the upgrade window (when no
+   * traffic is flowing) to post-startup (when it is).
+   *
+   * <p>The default returns {@code false}. Dialects that support non-blocking
+   * DDL (e.g. PostgreSQL {@code CONCURRENTLY}, Oracle {@code ONLINE}) should
+   * override this to return {@code true}.</p>
+   *
+   * @return {@code true} if deferred index creation is beneficial on this platform.
+   */
+  public boolean supportsDeferredIndexCreation() {
+    return false;
+  }
+
+
+  /**
+   * Generates the SQL to build a deferred index on an existing table. By default this
+   * delegates to {@link #addIndexStatements(Table, Index)}, which issues a standard
+   * {@code CREATE INDEX} statement. Platform-specific dialects may override this method
+   * to emit non-blocking variants (e.g. {@code CREATE INDEX CONCURRENTLY} on PostgreSQL).
+   *
+   * @param table The existing table.
+   * @param index The new index to build in the background.
+   * @return A collection of SQL statements.
+   */
+  public Collection<String> deferredIndexDeploymentStatements(Table table, Index index) {
+    return addIndexStatements(table, index);
+  }
+
+
+  /**
+   * Returns SQL to find table names that have DEFERRED index declarations in their
+   * table comments. Used by the executor to avoid a full schema scan on large databases.
+   *
+   * <p>The default implementation returns {@code null}, meaning the caller should
+   * fall back to a full schema scan. Dialects that use table comments override this
+   * to produce an efficient query against the database catalog.</p>
+   *
+   * @return SQL that returns a single-column result set of table names, or {@code null}
+   *         if the dialect does not support this optimization.
+   */
+  public String findTablesWithDeferredIndexesSql() {
+    return null;
+  }
+
+
+  /**
+   * Returns SQL to check whether a named index exists but is invalid (e.g. PostgreSQL's
+   * {@code indisvalid=false} after a crashed {@code CREATE INDEX CONCURRENTLY}). The SQL
+   * should return at least one row if the index is invalid, and no rows otherwise.
+   *
+   * <p>The default implementation returns {@code null}, meaning no invalid-index checking
+   * is performed. PostgreSQL overrides this.</p>
+   *
+   * @param indexName the index name to check.
+   * @return SQL that returns rows if the index is invalid, or {@code null} if not supported.
+   */
+  public String checkInvalidIndexSql(String indexName) {
+    return null;
+  }
+
+
+  /**
+   * Returns SQL to drop an invalid index before rebuilding it. Only called when
+   * {@link #checkInvalidIndexSql(String)} indicated the index is invalid.
+   *
+   * <p>The default implementation returns an empty list. PostgreSQL overrides this
+   * with {@code DROP INDEX IF EXISTS}.</p>
+   *
+   * @param indexName the index to drop.
+   * @return SQL statements to drop the invalid index.
+   */
+  public Collection<String> dropInvalidIndexStatements(String indexName) {
+    return Collections.emptyList();
+  }
+
+
+  /**
+   * Generates a {@code COMMENT ON TABLE} SQL statement that includes both the standard
+   * table metadata (e.g. REALNAME) and any deferred index declarations. The deferred index
+   * declarations are appended as {@code /DEFERRED:[indexName|col1,col2|unique]} segments.
+   *
+   * <p>The default implementation returns an empty list. Dialects that use table comments
+   * (PostgreSQL, Oracle, H2) override this to produce the appropriate SQL.</p>
+   *
+   * @param table The table to generate the comment for.
+   * @param deferredIndexes The deferred indexes to declare in the comment.
+   * @return A collection of SQL statements, or an empty list if the dialect does not support comments.
+   */
+  public Collection<String> generateTableCommentStatements(Table table, List<Index> deferredIndexes) {
+    return Collections.emptyList();
+  }
+
+
+  /**
    * Helper method to create all index statements defined for a table
    *
    * @param table the table to create indexes for
@@ -4070,13 +4196,31 @@ public abstract class SqlDialect {
    * @return The SQL to deploy the index on the table.
    */
   protected Collection<String> indexDeploymentStatements(Table table, Index index) {
+    return ImmutableList.of(buildCreateIndexStatement(table, index, ""));
+  }
+
+
+  /**
+   * Builds a {@code CREATE [UNIQUE] INDEX} statement with an optional keyword
+   * inserted between {@code INDEX} and the index name (e.g. {@code "CONCURRENTLY"}).
+   *
+   * @param table The table to create the index on.
+   * @param index The index to create.
+   * @param afterIndexKeyword keyword to insert after {@code INDEX}, or empty string for none.
+   * @return the complete CREATE INDEX SQL string.
+   */
+  protected String buildCreateIndexStatement(Table table, Index index, String afterIndexKeyword) {
     StringBuilder statement = new StringBuilder();
 
     statement.append("CREATE ");
     if (index.isUnique()) {
       statement.append("UNIQUE ");
     }
-    statement.append("INDEX ")
+    statement.append("INDEX ");
+    if (!afterIndexKeyword.isEmpty()) {
+      statement.append(afterIndexKeyword).append(' ');
+    }
+    statement
       .append(schemaNamePrefix(table))
       .append(index.getName())
       .append(" ON ")
@@ -4086,7 +4230,7 @@ public abstract class SqlDialect {
       .append(Joiner.on(", ").join(index.columnNames()))
       .append(')');
 
-    return ImmutableList.of(statement.toString());
+    return statement.toString();
   }
 
 

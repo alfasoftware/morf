@@ -15,10 +15,20 @@
 
 package org.alfasoftware.morf.jdbc;
 
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
+import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder;
 import org.apache.commons.lang3.StringUtils;
 
 /**
@@ -62,6 +72,123 @@ public class DatabaseMetaDataProviderUtils {
       }
     }
     return Optional.empty();
+  }
+
+
+  /**
+   * Label used in table comments to declare deferred indexes.
+   */
+  public static final String DEFERRED_COMMENT_LABEL = "DEFERRED";
+
+  /**
+   * Regex for extracting DEFERRED segments from table comments.
+   * Matches: /DEFERRED:[indexName|col1,col2|unique] or /DEFERRED:[indexName|col1,col2]
+   */
+  private static final Pattern DEFERRED_INDEX_REGEX = Pattern.compile("DEFERRED:\\[([^\\]]+)\\]");
+
+
+  /**
+   * Parses deferred index declarations from a table comment string.
+   * Each DEFERRED segment has the format: {@code DEFERRED:[indexName|col1,col2|unique]}
+   * where the {@code |unique} suffix is optional.
+   *
+   * @param tableComment the full table comment string, may be null or empty.
+   * @return a list of deferred indexes parsed from the comment, each with {@code isDeferred()=true}.
+   */
+  public static List<Index> parseDeferredIndexesFromComment(String tableComment) {
+    if (StringUtils.isEmpty(tableComment)) {
+      return Collections.emptyList();
+    }
+
+    List<Index> result = new ArrayList<>();
+    Matcher matcher = DEFERRED_INDEX_REGEX.matcher(tableComment);
+    while (matcher.find()) {
+      String content = matcher.group(1);
+      String[] parts = content.split("\\|");
+      if (parts.length < 2) {
+        continue;
+      }
+
+      String indexName = parts[0];
+      List<String> columns = Arrays.asList(parts[1].split(","));
+      boolean unique = parts.length >= 3 && "unique".equalsIgnoreCase(parts[2]);
+
+      IndexBuilder builder = index(indexName).columns(columns).deferred();
+      if (unique) {
+        builder = builder.unique();
+      }
+      result.add(builder);
+    }
+    return result;
+  }
+
+
+  /**
+   * Builds the DEFERRED comment segments for the given deferred indexes.
+   * Each index produces a segment like {@code /DEFERRED:[indexName|col1,col2|unique]}.
+   *
+   * @param deferredIndexes the deferred indexes to serialize.
+   * @return the concatenated DEFERRED segments, or an empty string if none.
+   */
+  public static String buildDeferredIndexCommentSegments(List<Index> deferredIndexes) {
+    if (deferredIndexes == null || deferredIndexes.isEmpty()) {
+      return "";
+    }
+
+    StringBuilder sb = new StringBuilder();
+    for (Index idx : deferredIndexes) {
+      sb.append("/").append(DEFERRED_COMMENT_LABEL).append(":[");
+      sb.append(idx.getName());
+      sb.append("|");
+      sb.append(idx.columnNames().stream().collect(Collectors.joining(",")));
+      if (idx.isUnique()) {
+        sb.append("|unique");
+      }
+      sb.append("]");
+    }
+    return sb.toString();
+  }
+
+
+  /**
+   * Merges deferred index declarations from a table comment with physical indexes
+   * loaded from the database catalog.
+   *
+   * <p>Physical indexes whose names match a deferred declaration are returned with
+   * {@code isDeferred()=true}. Deferred declarations with no physical counterpart
+   * are returned as virtual indexes (also with {@code isDeferred()=true}).</p>
+   *
+   * @param physicalIndexes the indexes loaded from the database catalog.
+   * @param tableComment the raw table comment string, may be null or empty.
+   * @return the merged index list, or {@code physicalIndexes} unchanged if
+   *         no deferred declarations are found.
+   */
+  public static List<Index> mergeDeferredIndexes(List<Index> physicalIndexes, String tableComment) {
+    List<Index> deferredFromComment = parseDeferredIndexesFromComment(tableComment);
+    if (deferredFromComment.isEmpty()) {
+      return physicalIndexes;
+    }
+
+    Set<String> deferredNames = deferredFromComment.stream()
+        .map(i -> i.getName().toUpperCase())
+        .collect(Collectors.toCollection(java.util.HashSet::new));
+
+    List<Index> merged = new ArrayList<>();
+    for (Index physical : physicalIndexes) {
+      if (deferredNames.contains(physical.getName().toUpperCase())) {
+        IndexBuilder builder = index(physical.getName()).columns(physical.columnNames()).deferred();
+        merged.add(physical.isUnique() ? builder.unique() : builder);
+        deferredNames.remove(physical.getName().toUpperCase());
+      } else {
+        merged.add(physical);
+      }
+    }
+    for (Index deferred : deferredFromComment) {
+      if (deferredNames.contains(deferred.getName().toUpperCase())) {
+        merged.add(deferred);
+      }
+    }
+    return merged;
   }
 
 

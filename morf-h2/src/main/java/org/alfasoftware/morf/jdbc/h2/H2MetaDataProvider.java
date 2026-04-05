@@ -20,9 +20,16 @@ import static org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils.getAutoIn
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
+import org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils;
+import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
+import org.alfasoftware.morf.metadata.Table;
 
 /**
  * Database meta-data layer for H2.
@@ -31,11 +38,38 @@ import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
  */
 class H2MetaDataProvider extends DatabaseMetaDataProvider {
 
-    /**
+  /** Stores raw table comments keyed by uppercase table name, for deferred index parsing. */
+  private final Map<String, String> tableComments = new HashMap<>();
+
+
+  /**
    * @param connection DataSource to provide meta data for.
    */
   public H2MetaDataProvider(Connection connection) {
     super(connection, null);
+  }
+
+
+  @Override
+  protected RealName readTableName(ResultSet tableResultSet) throws SQLException {
+    String tableName = tableResultSet.getString(TABLE_NAME);
+    String comment = tableResultSet.getString(TABLE_REMARKS);
+    if (comment != null && !comment.isEmpty()) {
+      tableComments.put(tableName.toUpperCase(), comment);
+    }
+    return super.readTableName(tableResultSet);
+  }
+
+
+  @Override
+  protected Table loadTable(AName tableName) {
+    Table base = super.loadTable(tableName);
+    String comment = tableComments.get(base.getName().toUpperCase());
+    List<Index> merged = DatabaseMetaDataProviderUtils.mergeDeferredIndexes(base.indexes(), comment);
+    if (merged == base.indexes()) {
+      return base;
+    }
+    return SchemaUtils.table(base.getName()).columns(base.columns()).indexes(merged);
   }
 
 

@@ -818,6 +818,45 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedSupportsDeferredIndexCreation()
+   */
+  @Override
+  protected boolean expectedSupportsDeferredIndexCreation() {
+    return true;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDeferredIndexDeploymentStatementsOnSingleColumn()
+   */
+  @Override
+  protected List<String> expectedDeferredIndexDeploymentStatementsOnSingleColumn() {
+    return Arrays.asList("CREATE INDEX CONCURRENTLY indexName ON testschema.Test (id)",
+                         "COMMENT ON INDEX indexName IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[indexName]'");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDeferredIndexDeploymentStatementsOnMultipleColumns()
+   */
+  @Override
+  protected List<String> expectedDeferredIndexDeploymentStatementsOnMultipleColumns() {
+    return Arrays.asList("CREATE INDEX CONCURRENTLY indexName ON testschema.Test (id, version)",
+                         "COMMENT ON INDEX indexName IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[indexName]'");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedDeferredIndexDeploymentStatementsUnique()
+   */
+  @Override
+  protected List<String> expectedDeferredIndexDeploymentStatementsUnique() {
+    return Arrays.asList("CREATE UNIQUE INDEX CONCURRENTLY indexName ON testschema.Test (id)",
+                         "COMMENT ON INDEX indexName IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[indexName]'");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.AbstractSqlDialectTest#expectedAddIndexStatementsUniqueNullable()
    */
   @Override

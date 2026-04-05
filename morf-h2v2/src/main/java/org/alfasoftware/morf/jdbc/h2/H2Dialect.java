@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Column;
@@ -708,5 +709,37 @@ class H2Dialect extends SqlDialect {
   @Override
   public boolean useForcedSerialImport() {
     return true;
+  }
+
+
+  /**
+   * H2 does not support non-blocking DDL, but returns {@code true} to enable
+   * deferred index creation. H2 is a small in-memory database where indexes
+   * are built very quickly, so blocking is not a concern in practice. Returning
+   * {@code true} allows integration tests to exercise the full deferred index
+   * pipeline (PENDING rows, executor, crash recovery).
+   *
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#supportsDeferredIndexCreation()
+   */
+  @Override
+  public boolean supportsDeferredIndexCreation() {
+    return true;
+  }
+
+
+  @Override
+  public Collection<String> generateTableCommentStatements(Table table, List<Index> deferredIndexes) {
+    String comment = REAL_NAME_COMMENT_LABEL + ":[" + table.getName() + "]"
+        + DatabaseMetaDataProviderUtils.buildDeferredIndexCommentSegments(deferredIndexes);
+    return List.of("COMMENT ON TABLE " + schemaNamePrefix() + table.getName() + " IS '" + comment + "'");
+  }
+
+
+  @Override
+  public String findTablesWithDeferredIndexesSql() {
+    String prefix = schemaNamePrefix();
+    String schema = prefix.isEmpty() ? "PUBLIC" : prefix.replace(".", "");
+    return "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES"
+        + " WHERE TABLE_SCHEMA = '" + schema + "' AND REMARKS LIKE '%/DEFERRED:%'";
   }
 }

@@ -1,5 +1,7 @@
 package org.alfasoftware.morf.upgrade;
 
+
+
 /**
  * Interface for adapting schema changes, i.e. {@link SchemaChange} implementations.
  *

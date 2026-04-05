@@ -36,6 +36,9 @@ import org.alfasoftware.morf.sql.element.FieldLiteral;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * Tracks a sequence of {@link SchemaChange}s as various {@link SchemaEditor}
@@ -45,6 +48,8 @@ import com.google.common.collect.Lists;
  * @author Copyright (c) Alfa Financial Software 2010
  */
 public class SchemaChangeSequence {
+
+  private static final Log log = LogFactory.getLog(SchemaChangeSequence.class);
 
   private final UpgradeConfigAndContext upgradeConfigAndContext;
 
@@ -74,7 +79,9 @@ public class SchemaChangeSequence {
     for (UpgradeStep step : steps) {
       InternalVisitor internalVisitor = new InternalVisitor(upgradeConfigAndContext.getSchemaChangeAdaptor());
       UpgradeTableResolutionVisitor resolvedTablesVisitor = new UpgradeTableResolutionVisitor();
-      Editor editor = new Editor(internalVisitor, resolvedTablesVisitor);
+      UUID uuidAnnotation = step.getClass().getAnnotation(UUID.class);
+      String upgradeUUID = uuidAnnotation != null ? uuidAnnotation.value() : "";
+      Editor editor = new Editor(internalVisitor, resolvedTablesVisitor, upgradeUUID);
       // For historical reasons, we need to pass the editor in twice
       step.execute(editor, editor);
 
@@ -227,14 +234,17 @@ public class SchemaChangeSequence {
 
     private final SchemaChangeVisitor visitor;
     private final SchemaAndDataChangeVisitor schemaAndDataChangeVisitor;
+    private final String upgradeUUID;
 
     /**
      * @param visitor The visitor to pass the changes to.
+     * @param upgradeUUID UUID string of the upgrade step being executed.
      */
-    Editor(SchemaChangeVisitor visitor, SchemaAndDataChangeVisitor schemaAndDataChangeVisitor) {
+    Editor(SchemaChangeVisitor visitor, SchemaAndDataChangeVisitor schemaAndDataChangeVisitor, String upgradeUUID) {
       super();
       this.visitor = visitor;
       this.schemaAndDataChangeVisitor = schemaAndDataChangeVisitor;
+      this.upgradeUUID = upgradeUUID;
     }
 
 
@@ -361,9 +371,40 @@ public class SchemaChangeSequence {
      */
     @Override
     public void addIndex(String tableName, Index index) {
-      AddIndex addIndex = new AddIndex(tableName, index);
+      Index effectiveIndex = resolveDeferred(index);
+      AddIndex addIndex = new AddIndex(tableName, effectiveIndex);
       visitor.visit(addIndex);
-      schemaAndDataChangeVisitor.visit(addIndex);
+      // Deferred indexes don't generate DDL on the table data, so no dependency
+      if (!effectiveIndex.isDeferred()) {
+        schemaAndDataChangeVisitor.visit(addIndex);
+      }
+    }
+
+
+    private Index resolveDeferred(Index index) {
+      if (!upgradeConfigAndContext.isDeferredIndexCreationEnabled()) {
+        // Kill switch: strip deferred flag
+        return index.isDeferred() ? rebuildIndex(index, false) : index;
+      }
+      if (upgradeConfigAndContext.isForceImmediateIndex(index.getName())) {
+        return index.isDeferred() ? rebuildIndex(index, false) : index;
+      }
+      if (upgradeConfigAndContext.isForceDeferredIndex(index.getName())) {
+        return index.isDeferred() ? index : rebuildIndex(index, true);
+      }
+      return index;
+    }
+
+
+    private Index rebuildIndex(Index index, boolean deferred) {
+      SchemaUtils.IndexBuilder builder = SchemaUtils.index(index.getName()).columns(index.columnNames());
+      if (index.isUnique()) {
+        builder = builder.unique();
+      }
+      if (deferred) {
+        builder = builder.deferred();
+      }
+      return builder;
     }
 
 

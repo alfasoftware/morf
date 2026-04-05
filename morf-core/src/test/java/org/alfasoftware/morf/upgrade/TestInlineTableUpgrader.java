@@ -49,6 +49,7 @@ import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.sql.UpdateStatement;
+import org.mockito.ArgumentMatchers;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -80,6 +81,7 @@ public class TestInlineTableUpgrader {
     sqlStatementWriter = mock(SqlStatementWriter.class);
     upgradeConfigAndContext = new UpgradeConfigAndContext();
     upgradeConfigAndContext.setExclusiveExecutionSteps(Set.of());
+    when(sqlDialect.supportsDeferredIndexCreation()).thenReturn(true);
 
     upgrader = new InlineTableUpgrader(schema, upgradeConfigAndContext, sqlDialect, sqlStatementWriter, SqlDialect.IdTable.withDeterministicName(ID_TABLE_NAME));
   }
@@ -139,8 +141,11 @@ public class TestInlineTableUpgrader {
   @Test
   public void testVisitRemoveTable() {
     // given
+    Table mockTable = mock(Table.class);
+    when(mockTable.getName()).thenReturn("SomeTable");
     RemoveTable removeTable = mock(RemoveTable.class);
     given(removeTable.apply(schema)).willReturn(schema);
+    when(removeTable.getTable()).thenReturn(mockTable);
 
     // when
     upgrader.visit(removeTable);
@@ -158,9 +163,12 @@ public class TestInlineTableUpgrader {
   @Test
   public void testVisitAddIndex() {
     // given
+    Index newIndex = mock(Index.class);
+    when(newIndex.isDeferred()).thenReturn(false);
     AddIndex addIndex = mock(AddIndex.class);
     given(addIndex.apply(schema)).willReturn(schema);
     when(addIndex.getTableName()).thenReturn(ID_TABLE_NAME);
+    when(addIndex.getNewIndex()).thenReturn(newIndex);
 
     Table newTable = mock(Table.class);
     when(newTable.getName()).thenReturn(ID_TABLE_NAME);
@@ -283,8 +291,15 @@ public class TestInlineTableUpgrader {
   @Test
   public void testVisitChangeColumn() {
     // given
+    Column fromCol = mock(Column.class);
+    when(fromCol.getName()).thenReturn("col");
+    Column toCol = mock(Column.class);
+    when(toCol.getName()).thenReturn("col");
     ChangeColumn changeColumn = mock(ChangeColumn.class);
     given(changeColumn.apply(schema)).willReturn(schema);
+    when(changeColumn.getTableName()).thenReturn("SomeTable");
+    when(changeColumn.getFromColumn()).thenReturn(fromCol);
+    when(changeColumn.getToColumn()).thenReturn(toCol);
 
     // when
     upgrader.visit(changeColumn);
@@ -302,8 +317,12 @@ public class TestInlineTableUpgrader {
   @Test
   public void testVisitRemoveColumn() {
     // given
+    Column col = mock(Column.class);
+    when(col.getName()).thenReturn("col");
     RemoveColumn removeColumn = mock(RemoveColumn.class);
     given(removeColumn.apply(schema)).willReturn(schema);
+    when(removeColumn.getTableName()).thenReturn("SomeTable");
+    when(removeColumn.getColumnDefinition()).thenReturn(col);
 
     // when
     upgrader.visit(removeColumn);
@@ -321,8 +340,12 @@ public class TestInlineTableUpgrader {
   @Test
   public void testVisitRemoveIndex() {
     // given
+    Index mockIndex = mock(Index.class);
+    when(mockIndex.getName()).thenReturn("SomeIdx");
     RemoveIndex removeIndex = mock(RemoveIndex.class);
     given(removeIndex.apply(schema)).willReturn(schema);
+    when(removeIndex.getTableName()).thenReturn("SomeTable");
+    when(removeIndex.getIndexToBeRemoved()).thenReturn(mockIndex);
 
     // when
     upgrader.visit(removeIndex);
@@ -342,6 +365,13 @@ public class TestInlineTableUpgrader {
     // given
     ChangeIndex changeIndex = mock(ChangeIndex.class);
     given(changeIndex.apply(schema)).willReturn(schema);
+    given(changeIndex.getTableName()).willReturn("SomeTable");
+    Index fromIndex = mock(Index.class);
+    given(fromIndex.getName()).willReturn("SomeIndex");
+    given(changeIndex.getFromIndex()).willReturn(fromIndex);
+    Index toIndex = mock(Index.class);
+    when(toIndex.isDeferred()).thenReturn(false);
+    given(changeIndex.getToIndex()).willReturn(toIndex);
 
     // when
     upgrader.visit(changeIndex);
@@ -534,6 +564,323 @@ public class TestInlineTableUpgrader {
     verify(removeSequence).apply(schema);
     verify(sqlDialect).dropStatements(nullable(Sequence.class));
     verify(sqlStatementWriter).writeSql(anyCollection());
+  }
+
+
+  /**
+   * Tests that visit(AddIndex) with a deferred index generates a COMMENT ON TABLE statement
+   * instead of a CREATE INDEX statement.
+   */
+  @Test
+  public void testVisitAddIndexDeferred() {
+    // given
+    Index mockIndex = mock(Index.class);
+    when(mockIndex.getName()).thenReturn("TestIdx");
+    when(mockIndex.isUnique()).thenReturn(false);
+    when(mockIndex.isDeferred()).thenReturn(true);
+    when(mockIndex.columnNames()).thenReturn(List.of("col1", "col2"));
+
+    Table mockTable = mock(Table.class);
+    when(mockTable.getName()).thenReturn("TestTable");
+    when(mockTable.indexes()).thenReturn(List.of(mockIndex));
+    when(schema.getTable("TestTable")).thenReturn(mockTable);
+
+    AddIndex addIndex = mock(AddIndex.class);
+    given(addIndex.apply(schema)).willReturn(schema);
+    when(addIndex.getTableName()).thenReturn("TestTable");
+    when(addIndex.getNewIndex()).thenReturn(mockIndex);
+
+    // when
+    upgrader.visit(addIndex);
+
+    // then
+    verify(addIndex).apply(schema);
+    verify(sqlDialect).generateTableCommentStatements(nullable(Table.class), ArgumentMatchers.anyList());
+    verify(sqlDialect, never()).addIndexStatements(nullable(Table.class), nullable(Index.class));
+    verify(sqlStatementWriter).writeSql(anyCollection());
+  }
+
+
+  /** When the dialect does not support deferred index creation, a deferred AddIndex falls back to CREATE INDEX. */
+  @Test
+  public void testVisitAddIndexDeferredFallsBackWhenDialectUnsupported() {
+    // given -- dialect does not support deferred
+    when(sqlDialect.supportsDeferredIndexCreation()).thenReturn(false);
+
+    Table mockTable = mock(Table.class);
+    when(mockTable.getName()).thenReturn("TestTable");
+    when(schema.getTable("TestTable")).thenReturn(mockTable);
+
+    Index mockIndex = mock(Index.class);
+    when(mockIndex.getName()).thenReturn("TestIdx");
+    when(mockIndex.isUnique()).thenReturn(false);
+    when(mockIndex.isDeferred()).thenReturn(true);
+    when(mockIndex.columnNames()).thenReturn(List.of("col1"));
+
+    AddIndex addIndex = mock(AddIndex.class);
+    given(addIndex.apply(schema)).willReturn(schema);
+    when(addIndex.getTableName()).thenReturn("TestTable");
+    when(addIndex.getNewIndex()).thenReturn(mockIndex);
+
+    when(sqlDialect.addIndexStatements(nullable(Table.class), nullable(Index.class))).thenReturn(List.of("CREATE INDEX TestIdx ON TestTable (col1)"));
+
+    // when
+    upgrader.visit(addIndex);
+
+    // then -- should call addIndexStatements, not generateTableCommentStatements
+    verify(sqlDialect).addIndexStatements(nullable(Table.class), nullable(Index.class));
+    verify(sqlDialect, never()).generateTableCommentStatements(nullable(Table.class), ArgumentMatchers.anyList());
+  }
+
+
+  /**
+   * Tests that ChangeIndex for an index that was deferred uses IF EXISTS drop
+   * instead of standard DROP INDEX.
+   */
+  @Test
+  public void testChangeIndexOnDeferredIndexUsesIfExistsDrop() {
+    // given -- a deferred index on TestTable/TestIdx
+    Index mockIndex = mock(Index.class);
+    when(mockIndex.getName()).thenReturn("TestIdx");
+    when(mockIndex.isUnique()).thenReturn(false);
+    when(mockIndex.isDeferred()).thenReturn(true);
+    when(mockIndex.columnNames()).thenReturn(List.of("col1"));
+
+    Table mockTable = mock(Table.class);
+    when(mockTable.getName()).thenReturn("TestTable");
+    when(mockTable.indexes()).thenReturn(List.of(mockIndex));
+    when(schema.getTable("TestTable")).thenReturn(mockTable);
+    when(schema.tableExists("TestTable")).thenReturn(true);
+
+    // given -- change the same index to a new non-deferred definition
+    Index toIndex = mock(Index.class);
+    when(toIndex.getName()).thenReturn("TestIdx");
+    when(toIndex.isUnique()).thenReturn(false);
+    when(toIndex.isDeferred()).thenReturn(false);
+    when(toIndex.columnNames()).thenReturn(List.of("col2"));
+
+    ChangeIndex changeIndex = mock(ChangeIndex.class);
+    given(changeIndex.apply(schema)).willReturn(schema);
+    when(changeIndex.getTableName()).thenReturn("TestTable");
+    when(changeIndex.getFromIndex()).thenReturn(mockIndex);
+    when(changeIndex.getToIndex()).thenReturn(toIndex);
+
+    // when
+    upgrader.visit(changeIndex);
+
+    // then -- uses IF EXISTS drop since from-index was deferred, plus addIndexStatements for new
+    verify(sqlDialect).indexDropStatementsIfExists(ArgumentMatchers.any(), ArgumentMatchers.any());
+    verify(sqlDialect, never()).indexDropStatements(ArgumentMatchers.any(), ArgumentMatchers.any());
+    verify(sqlDialect).addIndexStatements(ArgumentMatchers.any(), ArgumentMatchers.any());
+  }
+
+
+  /**
+   * Tests that RenameIndex for a deferred index uses IF EXISTS rename
+   * instead of standard RENAME INDEX.
+   */
+  @Test
+  public void testRenameIndexOnDeferredIndexUsesIfExistsRename() {
+    // given -- a deferred index on TestTable/TestIdx
+    Index mockIndex = mock(Index.class);
+    when(mockIndex.getName()).thenReturn("TestIdx");
+    when(mockIndex.isUnique()).thenReturn(false);
+    when(mockIndex.isDeferred()).thenReturn(true);
+    when(mockIndex.columnNames()).thenReturn(List.of("col1"));
+
+    Table mockTable = mock(Table.class);
+    when(mockTable.getName()).thenReturn("TestTable");
+    when(mockTable.indexes()).thenReturn(List.of(mockIndex));
+    when(schema.getTable("TestTable")).thenReturn(mockTable);
+    when(schema.tableExists("TestTable")).thenReturn(true);
+
+    // given -- rename TestIdx to RenamedIdx
+    RenameIndex renameIndex = mock(RenameIndex.class);
+    given(renameIndex.apply(schema)).willReturn(schema);
+    when(renameIndex.getTableName()).thenReturn("TestTable");
+    when(renameIndex.getFromIndexName()).thenReturn("TestIdx");
+    when(renameIndex.getToIndexName()).thenReturn("RenamedIdx");
+
+    // when
+    upgrader.visit(renameIndex);
+
+    // then -- uses IF EXISTS rename since index was deferred
+    verify(sqlDialect, never()).renameIndexStatements(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any());
+    verify(sqlDialect).renameIndexStatementsIfExists(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any());
+  }
+
+
+  /**
+   * Tests that RemoveIndex for a deferred index uses IF EXISTS drop
+   * instead of standard DROP INDEX.
+   */
+  @Test
+  public void testRemoveIndexOnDeferredIndexUsesIfExistsDrop() {
+    // given -- a deferred index on TestTable/TestIdx
+    Index mockIndex = mock(Index.class);
+    when(mockIndex.getName()).thenReturn("TestIdx");
+    when(mockIndex.isUnique()).thenReturn(false);
+    when(mockIndex.isDeferred()).thenReturn(true);
+    when(mockIndex.columnNames()).thenReturn(List.of("col1"));
+
+    Table mockTable = mock(Table.class);
+    when(mockTable.getName()).thenReturn("TestTable");
+    when(mockTable.indexes()).thenReturn(List.of(mockIndex));
+    when(schema.getTable("TestTable")).thenReturn(mockTable);
+    when(schema.tableExists("TestTable")).thenReturn(true);
+
+    // given -- a remove of the same index
+    RemoveIndex removeIndex = mock(RemoveIndex.class);
+    given(removeIndex.apply(schema)).willReturn(schema);
+    when(removeIndex.getTableName()).thenReturn("TestTable");
+    when(removeIndex.getIndexToBeRemoved()).thenReturn(mockIndex);
+
+    // when
+    upgrader.visit(removeIndex);
+
+    // then -- uses IF EXISTS drop since index was deferred
+    verify(sqlDialect, never()).indexDropStatements(ArgumentMatchers.any(), ArgumentMatchers.any());
+    verify(sqlDialect).indexDropStatementsIfExists(ArgumentMatchers.any(), ArgumentMatchers.any());
+  }
+
+
+  /**
+   * Tests that RemoveIndex for an index with no pending deferred ADD emits normal DROP INDEX DDL.
+   */
+  @Test
+  public void testRemoveIndexDropsNonDeferredIndex() {
+    // given — no pending deferred index
+    Index mockIndex = mock(Index.class);
+    when(mockIndex.getName()).thenReturn("TestIdx");
+    Table mockTable = mock(Table.class);
+    when(schema.getTable("TestTable")).thenReturn(mockTable);
+
+    RemoveIndex removeIndex = mock(RemoveIndex.class);
+    given(removeIndex.apply(schema)).willReturn(schema);
+    when(removeIndex.getTableName()).thenReturn("TestTable");
+    when(removeIndex.getIndexToBeRemoved()).thenReturn(mockIndex);
+
+    // when
+    upgrader.visit(removeIndex);
+
+    // then — normal DROP INDEX DDL emitted
+    verify(sqlDialect).indexDropStatements(mockTable, mockIndex);
+  }
+
+
+
+
+  /**
+   * Tests that RemoveColumn drops deferred indexes referencing the removed column
+   * using IF EXISTS before the DROP COLUMN.
+   */
+  @Test
+  public void testRemoveColumnDropsDeferredIndexContainingColumn() {
+    // given -- a deferred index on TestTable referencing col1
+    Index mockIndex = mock(Index.class);
+    when(mockIndex.getName()).thenReturn("TestIdx");
+    when(mockIndex.isUnique()).thenReturn(false);
+    when(mockIndex.isDeferred()).thenReturn(true);
+    when(mockIndex.columnNames()).thenReturn(List.of("col1", "col2"));
+
+    Table mockTable = mock(Table.class);
+    when(mockTable.getName()).thenReturn("TestTable");
+    when(mockTable.indexes()).thenReturn(List.of(mockIndex));
+    when(schema.getTable("TestTable")).thenReturn(mockTable);
+    when(schema.tableExists("TestTable")).thenReturn(true);
+
+    // given -- remove col1 from TestTable
+    Column mockColumn = mock(Column.class);
+    when(mockColumn.getName()).thenReturn("col1");
+
+    RemoveColumn removeColumn = mock(RemoveColumn.class);
+    given(removeColumn.apply(ArgumentMatchers.any())).willReturn(schema);
+    when(removeColumn.getTableName()).thenReturn("TestTable");
+    when(removeColumn.getColumnDefinition()).thenReturn(mockColumn);
+
+    // when
+    upgrader.visit(removeColumn);
+
+    // then -- IF EXISTS drop for the deferred index + DROP COLUMN
+    verify(sqlDialect).indexDropStatementsIfExists(ArgumentMatchers.any(), ArgumentMatchers.eq(mockIndex));
+    verify(sqlDialect).alterTableDropColumnStatements(ArgumentMatchers.any(), ArgumentMatchers.eq(mockColumn));
+  }
+
+
+  /**
+   * Tests that RenameTable regenerates the deferred index comment with the new table name.
+   */
+  @Test
+  public void testRenameTableRegeneratesDeferredIndexComment() {
+    // given -- a deferred index on OldTable
+    Index mockIndex = mock(Index.class);
+    when(mockIndex.getName()).thenReturn("TestIdx");
+    when(mockIndex.isUnique()).thenReturn(false);
+    when(mockIndex.isDeferred()).thenReturn(true);
+    when(mockIndex.columnNames()).thenReturn(List.of("col1"));
+
+    Table oldTable = mock(Table.class);
+    when(oldTable.getName()).thenReturn("OldTable");
+    when(oldTable.indexes()).thenReturn(List.of(mockIndex));
+    when(schema.getTable("OldTable")).thenReturn(oldTable);
+
+    Table newTable = mock(Table.class);
+    when(newTable.getName()).thenReturn("NewTable");
+    when(newTable.indexes()).thenReturn(List.of(mockIndex));
+    when(schema.getTable("NewTable")).thenReturn(newTable);
+    when(schema.tableExists("NewTable")).thenReturn(true);
+
+    RenameTable renameTable = mock(RenameTable.class);
+    given(renameTable.apply(schema)).willReturn(schema);
+    when(renameTable.getOldTableName()).thenReturn("OldTable");
+    when(renameTable.getNewTableName()).thenReturn("NewTable");
+
+    // when
+    upgrader.visit(renameTable);
+
+    // then -- RENAME TABLE DDL + comment regeneration for deferred indexes
+    verify(sqlDialect).renameTableStatements(oldTable, newTable);
+    verify(sqlDialect).generateTableCommentStatements(nullable(Table.class), ArgumentMatchers.anyList());
+  }
+
+
+  /**
+   * Tests that ChangeColumn with a column rename regenerates the deferred index comment
+   * with the updated column name.
+   */
+  @Test
+  public void testChangeColumnRegeneratesDeferredIndexComment() {
+    // given -- a deferred index referencing "oldCol"
+    Index mockIndex = mock(Index.class);
+    when(mockIndex.getName()).thenReturn("TestIdx");
+    when(mockIndex.isUnique()).thenReturn(false);
+    when(mockIndex.isDeferred()).thenReturn(true);
+    when(mockIndex.columnNames()).thenReturn(List.of("oldCol"));
+
+    Table mockTable = mock(Table.class);
+    when(mockTable.getName()).thenReturn("TestTable");
+    when(mockTable.indexes()).thenReturn(List.of(mockIndex));
+    when(schema.getTable("TestTable")).thenReturn(mockTable);
+    when(schema.tableExists("TestTable")).thenReturn(true);
+
+    // given -- rename column oldCol to newCol on TestTable
+    Column fromColumn = mock(Column.class);
+    when(fromColumn.getName()).thenReturn("oldCol");
+    Column toColumn = mock(Column.class);
+    when(toColumn.getName()).thenReturn("newCol");
+
+    ChangeColumn changeColumn = mock(ChangeColumn.class);
+    given(changeColumn.apply(ArgumentMatchers.any())).willReturn(schema);
+    when(changeColumn.getTableName()).thenReturn("TestTable");
+    when(changeColumn.getFromColumn()).thenReturn(fromColumn);
+    when(changeColumn.getToColumn()).thenReturn(toColumn);
+
+    // when
+    upgrader.visit(changeColumn);
+
+    // then -- ALTER TABLE DDL + comment regeneration for deferred indexes
+    verify(sqlDialect).alterTableChangeColumnStatements(ArgumentMatchers.any(), ArgumentMatchers.eq(fromColumn), ArgumentMatchers.eq(toColumn));
+    verify(sqlDialect).generateTableCommentStatements(nullable(Table.class), ArgumentMatchers.anyList());
   }
 
 }

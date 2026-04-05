@@ -17,6 +17,7 @@ import java.util.Optional;
 import java.util.StringJoiner;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
+import org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.jdbc.NamedParameterPreparedStatement;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -436,6 +437,14 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   @Override
+  public Collection<String> generateTableCommentStatements(Table table, List<Index> deferredIndexes) {
+    String comment = REAL_NAME_COMMENT_LABEL + ":[" + table.getName() + "]"
+        + DatabaseMetaDataProviderUtils.buildDeferredIndexCommentSegments(deferredIndexes);
+    return List.of("COMMENT ON TABLE " + schemaNamePrefix(table) + table.getName() + " IS '" + comment + "'");
+  }
+
+
+  @Override
   public Collection<String> renameTableStatements(Table from, Table to) {
     Iterable<String> renameTable = ImmutableList.of("ALTER TABLE " + schemaNamePrefix(from) + from.getName() + " RENAME TO " + to.getName());
 
@@ -461,6 +470,15 @@ class PostgreSQLDialect extends SqlDialect {
   public Collection<String> renameIndexStatements(Table table, String fromIndexName, String toIndexName) {
     return ImmutableList.<String>builder()
         .addAll(super.renameIndexStatements(table, fromIndexName, toIndexName))
+        .add(addIndexComment(toIndexName))
+        .build();
+  }
+
+
+  @Override
+  public Collection<String> renameIndexStatementsIfExists(Table table, String fromIndexName, String toIndexName) {
+    return ImmutableList.<String>builder()
+        .addAll(super.renameIndexStatementsIfExists(table, fromIndexName, toIndexName))
         .add(addIndexComment(toIndexName))
         .build();
   }
@@ -872,30 +890,87 @@ class PostgreSQLDialect extends SqlDialect {
 
   @Override
   protected Collection<String> indexDeploymentStatements(Table table, Index index) {
-    StringBuilder statement = new StringBuilder();
+    return ImmutableList.of(buildPostgreSqlCreateIndex(table, index, ""), addIndexComment(index.getName()));
+  }
 
+
+  private String addIndexComment(String indexName) {
+    return "COMMENT ON INDEX " + indexName + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + indexName + "]'";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#supportsDeferredIndexCreation()
+   */
+  @Override
+  public boolean supportsDeferredIndexCreation() {
+    return true;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#deferredIndexDeploymentStatements(org.alfasoftware.morf.metadata.Table, org.alfasoftware.morf.metadata.Index)
+   */
+  @Override
+  public Collection<String> deferredIndexDeploymentStatements(Table table, Index index) {
+    return ImmutableList.of(buildPostgreSqlCreateIndex(table, index, "CONCURRENTLY"), addIndexComment(index.getName()));
+  }
+
+
+  /**
+   * Builds a PostgreSQL CREATE INDEX statement. PostgreSQL does not schema-qualify
+   * the index name (only the table name), so this cannot use the base class
+   * {@link #buildCreateIndexStatement(Table, Index, String)} which prefixes both.
+   *
+   * @param table the table to index.
+   * @param index the index to create.
+   * @param afterIndexKeyword keyword inserted after INDEX (e.g. "CONCURRENTLY"), or empty string.
+   * @return the CREATE INDEX SQL string.
+   */
+  private String buildPostgreSqlCreateIndex(Table table, Index index, String afterIndexKeyword) {
+    StringBuilder statement = new StringBuilder();
     statement.append("CREATE ");
     if (index.isUnique()) {
       statement.append("UNIQUE ");
     }
-    statement.append("INDEX ")
-             .append(index.getName())
+    statement.append("INDEX ");
+    if (!afterIndexKeyword.isEmpty()) {
+      statement.append(afterIndexKeyword).append(' ');
+    }
+    statement.append(index.getName())
              .append(" ON ")
              .append(schemaNamePrefix(table))
              .append(table.getName())
              .append(" (")
              .append(Joiner.on(", ").join(index.columnNames()))
              .append(")");
-
-    return ImmutableList.<String>builder()
-      .add(statement.toString())
-      .add(addIndexComment(index.getName()))
-      .build();
+    return statement.toString();
   }
 
 
-  private String addIndexComment(String indexName) {
-    return "COMMENT ON INDEX " + indexName + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + indexName + "]'";
+  @Override
+  public String findTablesWithDeferredIndexesSql() {
+    String schema = StringUtils.isNotBlank(getSchemaName())
+        ? " AND n.nspname = '" + getSchemaName() + "'"
+        : "";
+    return "SELECT c.relname FROM pg_description d"
+        + " JOIN pg_class c ON d.objoid = c.oid"
+        + " JOIN pg_namespace n ON n.oid = c.relnamespace" + schema
+        + " WHERE d.objsubid = 0 AND d.description LIKE '%/DEFERRED:%'";
+  }
+
+
+  @Override
+  public String checkInvalidIndexSql(String indexName) {
+    return "SELECT 1 FROM pg_index i"
+        + " JOIN pg_class c ON c.oid = i.indexrelid"
+        + " WHERE LOWER(c.relname) = LOWER('" + indexName + "') AND NOT i.indisvalid";
+  }
+
+
+  @Override
+  public Collection<String> dropInvalidIndexStatements(String indexName) {
+    return List.of("DROP INDEX CONCURRENTLY IF EXISTS " + indexName);
   }
 
 
