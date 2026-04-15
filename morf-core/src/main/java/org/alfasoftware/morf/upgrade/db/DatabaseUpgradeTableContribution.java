@@ -45,6 +45,9 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
   /** Name of the table tracking deferred index operations. */
   public static final String DEFERRED_INDEX_OPERATION_NAME = "DeferredIndexOperation";
 
+  /** Name of the table tracking all deployed indexes (deferred and non-deferred). */
+  public static final String DEPLOYED_INDEXES_NAME = "DeployedIndexes";
+
 
 
 
@@ -101,6 +104,33 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
 
 
   /**
+   * @return The Table descriptor of DeployedIndexes.
+   */
+  public static Table deployedIndexesTable() {
+    return table(DEPLOYED_INDEXES_NAME)
+        .columns(
+          column("id", DataType.BIG_INTEGER).primaryKey(),
+          column("upgradeUUID", DataType.STRING, 100).nullable(),
+          column("tableName", DataType.STRING, 60),
+          column("indexName", DataType.STRING, 60),
+          column("indexUnique", DataType.BOOLEAN),
+          column("indexColumns", DataType.STRING, 2000),
+          column("indexDeferred", DataType.BOOLEAN),
+          column("status", DataType.STRING, 20),
+          column("retryCount", DataType.INTEGER),
+          column("createdTime", DataType.DECIMAL, 14),
+          column("startedTime", DataType.DECIMAL, 14).nullable(),
+          column("completedTime", DataType.DECIMAL, 14).nullable(),
+          column("errorMessage", DataType.CLOB).nullable()
+        )
+        .indexes(
+          index("DeployedIdx_1").columns("tableName", "indexName").unique(),
+          index("DeployedIdx_2").columns("status")
+        );
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.upgrade.TableContribution#tables()
    */
   @Override
@@ -108,7 +138,8 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
     return ImmutableList.of(
       deployedViewsTable(),
       upgradeAuditTable(),
-      deferredIndexOperationTable()
+      deferredIndexOperationTable(),
+      deployedIndexesTable()
     );
   }
 
