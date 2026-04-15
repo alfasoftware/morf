@@ -1,9 +1,9 @@
 
 package org.alfasoftware.morf.upgrade;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Index;
@@ -11,8 +11,8 @@ import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex;
-import org.alfasoftware.morf.upgrade.deferred.DeferredIndexChangeService;
-import org.alfasoftware.morf.upgrade.deferred.DeferredIndexChangeServiceImpl;
+import org.alfasoftware.morf.upgrade.deployed.DeployedIndexesChangeService;
+import org.alfasoftware.morf.upgrade.deployed.DeployedIndexesChangeServiceImpl;
 
 /**
  * Common code between SchemaChangeVisitor implementors
@@ -25,7 +25,10 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   protected final Table idTable;
   protected final TableNameResolver  tracker;
 
-  private final DeferredIndexChangeService deferredIndexChangeService = new DeferredIndexChangeServiceImpl();
+  private final DeployedIndexesChangeService deployedIndexesChangeService = new DeployedIndexesChangeServiceImpl();
+
+  /** Deferred indexes collected during visitation for getDeferredIndexStatements(). */
+  private final List<AddIndex> deferredIndexes = new ArrayList<>();
 
   public AbstractSchemaChangeVisitor(Schema currentSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect,
                                      Table idTable) {
@@ -66,13 +69,21 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   public void visit(AddTable addTable) {
     currentSchema = addTable.apply(currentSchema);
     writeStatements(sqlDialect.tableDeploymentStatements(addTable.getTable()));
+
+    // Track all indexes on the new table in DeployedIndexes
+    for (Index index : addTable.getTable().indexes()) {
+      deployedIndexesChangeService.trackIndex(addTable.getTable().getName(), index, null)
+          .forEach(this::visitStatement);
+    }
   }
 
 
   @Override
   public void visit(RemoveTable removeTable) {
+    // Remove all tracked indexes for this table
+    deployedIndexesChangeService.removeAllForTable(removeTable.getTable().getName())
+        .forEach(this::visitStatement);
     currentSchema = removeTable.apply(currentSchema);
-    deferredIndexChangeService.cancelAllPendingForTable(removeTable.getTable().getName()).forEach(this::visitStatement);
     writeStatements(sqlDialect.dropStatements(removeTable.getTable()));
   }
 
@@ -86,57 +97,102 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
   @Override
   public void visit(ChangeColumn changeColumn) {
+    String tableName = changeColumn.getTableName();
+    String oldColName = changeColumn.getFromColumn().getName();
+    String newColName = changeColumn.getToColumn().getName();
+
     currentSchema = changeColumn.apply(currentSchema);
-    deferredIndexChangeService.updatePendingColumnName(changeColumn.getTableName(), changeColumn.getFromColumn().getName(), changeColumn.getToColumn().getName()).forEach(this::visitStatement);
-    writeStatements(sqlDialect.alterTableChangeColumnStatements(currentSchema.getTable(changeColumn.getTableName()), changeColumn.getFromColumn(), changeColumn.getToColumn()));
+    writeStatements(sqlDialect.alterTableChangeColumnStatements(currentSchema.getTable(tableName), changeColumn.getFromColumn(), changeColumn.getToColumn()));
+
+    // Update column references in DeployedIndexes if column was renamed
+    if (!oldColName.equalsIgnoreCase(newColName)) {
+      deployedIndexesChangeService.updateColumnName(tableName, oldColName, newColName)
+          .forEach(this::visitStatement);
+    }
   }
 
 
   @Override
   public void visit(RemoveColumn removeColumn) {
+    String tableName = removeColumn.getTableName();
+    String colName = removeColumn.getColumnDefinition().getName();
+
+    // Remove tracked indexes referencing the column
+    deployedIndexesChangeService.removeIndexesReferencingColumn(tableName, colName)
+        .forEach(this::visitStatement);
+
     currentSchema = removeColumn.apply(currentSchema);
-    deferredIndexChangeService.cancelPendingReferencingColumn(removeColumn.getTableName(), removeColumn.getColumnDefinition().getName()).forEach(this::visitStatement);
-    writeStatements(sqlDialect.alterTableDropColumnStatements(currentSchema.getTable(removeColumn.getTableName()), removeColumn.getColumnDefinition()));
+    writeStatements(sqlDialect.alterTableDropColumnStatements(currentSchema.getTable(tableName), removeColumn.getColumnDefinition()));
   }
 
 
   @Override
   public void visit(RemoveIndex removeIndex) {
-    currentSchema = removeIndex.apply(currentSchema);
     String tableName = removeIndex.getTableName();
-    String indexName = removeIndex.getIndexToBeRemoved().getName();
-    if (deferredIndexChangeService.hasPendingDeferred(tableName, indexName)) {
-      deferredIndexChangeService.cancelPending(tableName, indexName).forEach(this::visitStatement);
-    } else {
-      writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(tableName), removeIndex.getIndexToBeRemoved()));
+    Index indexToRemove = removeIndex.getIndexToBeRemoved();
+
+    // Check if the index is physically present via the model
+    boolean physicallyPresent = isPhysicallyPresent(tableName, indexToRemove.getName());
+
+    // Remove from DeployedIndexes tracking
+    deployedIndexesChangeService.removeIndex(tableName, indexToRemove.getName())
+        .forEach(this::visitStatement);
+
+    currentSchema = removeIndex.apply(currentSchema);
+
+    // Only emit physical DDL if the index is actually in the database
+    if (physicallyPresent) {
+      writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(tableName), indexToRemove));
     }
   }
 
 
   @Override
   public void visit(ChangeIndex changeIndex) {
-    currentSchema = changeIndex.apply(currentSchema);
     String tableName = changeIndex.getTableName();
-    Optional<DeferredAddIndex> existing = deferredIndexChangeService.getPendingDeferred(tableName, changeIndex.getFromIndex().getName());
-    if (existing.isPresent()) {
-      deferredIndexChangeService.cancelPending(tableName, changeIndex.getFromIndex().getName()).forEach(this::visitStatement);
-      deferredIndexChangeService.trackPending(new DeferredAddIndex(existing.get().getTableName(), changeIndex.getToIndex(), existing.get().getUpgradeUUID())).forEach(this::visitStatement);
+    Index fromIndex = changeIndex.getFromIndex();
+    Index toIndex = changeIndex.getToIndex();
+    boolean fromPhysicallyPresent = isPhysicallyPresent(tableName, fromIndex.getName());
+
+    // Remove old from DeployedIndexes
+    deployedIndexesChangeService.removeIndex(tableName, fromIndex.getName())
+        .forEach(this::visitStatement);
+
+    currentSchema = changeIndex.apply(currentSchema);
+    Table table = currentSchema.getTable(tableName);
+
+    // Drop old physical index if present
+    if (fromPhysicallyPresent) {
+      writeStatements(sqlDialect.indexDropStatements(table, fromIndex));
+    }
+
+    // Add new index: deferred or immediate
+    if (toIndex.isDeferred() && sqlDialect.supportsDeferredIndexCreation()) {
+      deployedIndexesChangeService.trackIndex(tableName, toIndex, null)
+          .forEach(this::visitStatement);
     } else {
-      writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(tableName), changeIndex.getFromIndex()));
-      writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(tableName), changeIndex.getToIndex()));
+      writeStatements(sqlDialect.addIndexStatements(table, toIndex));
+      deployedIndexesChangeService.trackIndex(tableName, toIndex, null)
+          .forEach(this::visitStatement);
     }
   }
 
 
   @Override
   public void visit(final RenameIndex renameIndex) {
-    currentSchema = renameIndex.apply(currentSchema);
     String tableName = renameIndex.getTableName();
-    if (deferredIndexChangeService.hasPendingDeferred(tableName, renameIndex.getFromIndexName())) {
-      deferredIndexChangeService.updatePendingIndexName(tableName, renameIndex.getFromIndexName(), renameIndex.getToIndexName()).forEach(this::visitStatement);
-    } else {
+    boolean physicallyPresent = isPhysicallyPresent(tableName, renameIndex.getFromIndexName());
+
+    // Update in DeployedIndexes
+    deployedIndexesChangeService.updateIndexName(tableName, renameIndex.getFromIndexName(), renameIndex.getToIndexName())
+        .forEach(this::visitStatement);
+
+    currentSchema = renameIndex.apply(currentSchema);
+
+    // Only emit physical DDL if the index is actually in the database
+    if (physicallyPresent) {
       writeStatements(sqlDialect.renameIndexStatements(currentSchema.getTable(tableName),
-        renameIndex.getFromIndexName(), renameIndex.getToIndexName()));
+          renameIndex.getFromIndexName(), renameIndex.getToIndexName()));
     }
   }
 
@@ -144,10 +200,13 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   @Override
   public void visit(RenameTable renameTable) {
     Table oldTable = currentSchema.getTable(renameTable.getOldTableName());
+
+    // Update table name in DeployedIndexes for ALL indexes on this table
+    deployedIndexesChangeService.updateTableName(renameTable.getOldTableName(), renameTable.getNewTableName())
+        .forEach(this::visitStatement);
+
     currentSchema = renameTable.apply(currentSchema);
     Table newTable = currentSchema.getTable(renameTable.getNewTableName());
-
-    deferredIndexChangeService.updatePendingTableName(renameTable.getOldTableName(), renameTable.getNewTableName()).forEach(this::visitStatement);
     writeStatements(sqlDialect.renameTableStatements(oldTable, newTable));
   }
 
@@ -225,18 +284,12 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
 
   /**
-   * @see org.alfasoftware.morf.upgrade.SchemaChangeVisitor#visit(org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex)
+   * Legacy visitor method for DeferredAddIndex. Delegates to visit(AddIndex)
+   * since deferred is now a property on the Index itself.
    */
   @Override
   public void visit(DeferredAddIndex deferredAddIndex) {
-    if (!sqlDialect.supportsDeferredIndexCreation()) {
-      // Dialect does not support deferred index creation — fall back to
-      // building the index immediately during the upgrade.
-      visit(new AddIndex(deferredAddIndex.getTableName(), deferredAddIndex.getNewIndex()));
-      return;
-    }
-    currentSchema = deferredAddIndex.apply(currentSchema);
-    deferredIndexChangeService.trackPending(deferredAddIndex).forEach(this::visitStatement);
+    visit(new AddIndex(deferredAddIndex.getTableName(), deferredAddIndex.getNewIndex()));
   }
 
 
@@ -246,19 +299,65 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   @Override
   public void visit(AddIndex addIndex) {
     currentSchema = addIndex.apply(currentSchema);
-    Index foundIndex = null;
-    List<Index> ignoredIndexes = upgradeConfigAndContext.getIgnoredIndexesForTable(addIndex.getTableName());
-    for (Index index : ignoredIndexes) {
-      if (index.columnNames().equals(addIndex.getNewIndex().columnNames()) && index.isUnique() == addIndex.getNewIndex().isUnique()) {
-        foundIndex = index;
-        break;
-      }
-    }
 
-    if (foundIndex != null) {
-      writeStatements(sqlDialect.renameIndexStatements(currentSchema.getTable(addIndex.getTableName()), foundIndex.getName(), addIndex.getNewIndex().getName()));
+    boolean shouldDefer = addIndex.getNewIndex().isDeferred() && sqlDialect.supportsDeferredIndexCreation();
+
+    if (shouldDefer) {
+      // Deferred: only track in DeployedIndexes, no physical CREATE INDEX
+      deployedIndexesChangeService.trackIndex(addIndex.getTableName(), addIndex.getNewIndex(), null)
+          .forEach(this::visitStatement);
+      deferredIndexes.add(addIndex);
     } else {
-      writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(addIndex.getTableName()), addIndex.getNewIndex()));
+      // Immediate: check for ignored index rename optimization, then CREATE INDEX + track
+      Index foundIndex = null;
+      List<Index> ignoredIndexes = upgradeConfigAndContext.getIgnoredIndexesForTable(addIndex.getTableName());
+      for (Index index : ignoredIndexes) {
+        if (index.columnNames().equals(addIndex.getNewIndex().columnNames()) && index.isUnique() == addIndex.getNewIndex().isUnique()) {
+          foundIndex = index;
+          break;
+        }
+      }
+
+      if (foundIndex != null) {
+        writeStatements(sqlDialect.renameIndexStatements(currentSchema.getTable(addIndex.getTableName()), foundIndex.getName(), addIndex.getNewIndex().getName()));
+      } else {
+        writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(addIndex.getTableName()), addIndex.getNewIndex()));
+      }
+
+      deployedIndexesChangeService.trackIndex(addIndex.getTableName(), addIndex.getNewIndex(), null)
+          .forEach(this::visitStatement);
     }
+  }
+
+
+  /**
+   * Returns the deferred indexes collected during visitation.
+   *
+   * @return list of deferred AddIndex operations.
+   */
+  public List<AddIndex> getDeferredIndexes() {
+    return deferredIndexes;
+  }
+
+
+  // -------------------------------------------------------------------------
+  // Model helpers
+  // -------------------------------------------------------------------------
+
+  /**
+   * Checks whether an index physically exists in the database by consulting
+   * the enriched model. Returns {@code true} if the index has
+   * {@code isPhysicallyPresent()=true} or if no enrichment data is available
+   * (pre-DeployedIndexes state).
+   */
+  private boolean isPhysicallyPresent(String tableName, String indexName) {
+    if (!currentSchema.tableExists(tableName)) {
+      return false;
+    }
+    return currentSchema.getTable(tableName).indexes().stream()
+        .filter(i -> i.getName().equalsIgnoreCase(indexName))
+        .findFirst()
+        .map(Index::isPhysicallyPresent)
+        .orElse(false);
   }
 }
