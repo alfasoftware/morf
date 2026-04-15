@@ -183,10 +183,12 @@ public class DeployedIndexEntry {
    * @return an Index with the name, columns, and uniqueness from this entry.
    */
   public Index toIndex() {
-    // Note: deferred() added to IndexBuilder in Stage 2
     IndexBuilder builder = index(indexName).columns(indexColumns.toArray(new String[0]));
     if (indexUnique) {
       builder = builder.unique();
+    }
+    if (indexDeferred) {
+      builder = builder.deferred();
     }
     return builder;
   }
