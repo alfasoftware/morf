@@ -604,6 +604,59 @@ public class TestDeployedIndexesIntegration {
   }
 
 
+  /**
+   * RemoveTable should delete all DeployedIndexes rows for that table.
+   * Step A adds a deferred index on Product. Step B removes the Product
+   * table entirely. After upgrade, no DeployedIndexes row should remain
+   * for the removed table.
+   */
+  @Test
+  public void testRemoveTableCleansUpDeployedIndexes() {
+    // given -- target schema without Product table
+    Schema noProductSchema = schemaWith();
+
+    // when
+    performUpgradeSteps(noProductSchema,
+        AddDeferredIndex.class,
+        org.alfasoftware.morf.upgrade.deferred.upgrade.v2_0_0.RemoveProductTable.class);
+
+    // then -- no DeployedIndexes row for the removed table's index
+    assertNull("DeployedIndexes row should be deleted after removeTable",
+        queryDeployedIndexField("Product_Name_1", "status"));
+  }
+
+
+  /**
+   * Crash recovery: if the DeployedIndexTracker marks an index as IN_PROGRESS
+   * and the process crashes, the DAO's resetAllInProgressToPending() should
+   * transition it back to PENDING on next startup.
+   */
+  @Test
+  public void testCrashRecoveryResetsInProgressToPending() {
+    // given -- upgrade creates a PENDING deferred index
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+
+    // given -- simulate crash: mark as IN_PROGRESS directly
+    org.alfasoftware.morf.upgrade.deployed.DeployedIndexTracker tracker =
+        new org.alfasoftware.morf.upgrade.deployed.DeployedIndexTrackerImpl(
+            new org.alfasoftware.morf.upgrade.deployed.DeployedIndexesDAOImpl(
+                sqlScriptExecutorProvider, connectionResources));
+    tracker.markStarted("Product", "Product_Name_1");
+    assertEquals("IN_PROGRESS",
+        queryDeployedIndexField("Product_Name_1", "status"));
+
+    // when -- simulate restart: DAO resets IN_PROGRESS to PENDING
+    org.alfasoftware.morf.upgrade.deployed.DeployedIndexesDAO dao =
+        new org.alfasoftware.morf.upgrade.deployed.DeployedIndexesDAOImpl(
+            sqlScriptExecutorProvider, connectionResources);
+    dao.resetAllInProgressToPending();
+
+    // then
+    assertEquals("PENDING",
+        queryDeployedIndexField("Product_Name_1", "status"));
+  }
+
+
   // =========================================================================
   // Config overrides (additional)
   // =========================================================================

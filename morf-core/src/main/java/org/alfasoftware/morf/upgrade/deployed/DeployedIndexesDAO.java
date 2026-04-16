@@ -27,7 +27,7 @@ import com.google.inject.ImplementedBy;
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
 @ImplementedBy(DeployedIndexesDAOImpl.class)
-interface DeployedIndexesDAO {
+public interface DeployedIndexesDAO {
 
   /**
    * Returns all entries in the DeployedIndexes table.
