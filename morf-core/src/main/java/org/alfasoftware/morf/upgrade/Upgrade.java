@@ -37,9 +37,11 @@ import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor.ResultSetProcessor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
+import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.SchemaValidator;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.TableReference;
@@ -303,6 +305,32 @@ public class Upgrade {
       upgrader.postUpgrade();
     }
 
+    // -- Collect deferred index SQL for getDeferredIndexStatements() --
+    List<String> deferredIndexStatements = new ArrayList<>();
+    if (upgradeConfigAndContext.isDeferredIndexCreationEnabled()) {
+      // 1. New deferred indexes from this upgrade
+      if (upgrader != null) {
+        Schema finalSchema = schemaChangeSequence.applyToSchema(sourceSchema);
+        for (AddIndex deferredAdd : upgrader.getDeferredIndexes()) {
+          if (finalSchema.tableExists(deferredAdd.getTableName())) {
+            deferredIndexStatements.addAll(
+                dialect.deferredIndexDeploymentStatements(
+                    finalSchema.getTable(deferredAdd.getTableName()),
+                    deferredAdd.getNewIndex()));
+          }
+        }
+      }
+      // 2. Existing unbuilt deferred indexes from previous upgrades
+      for (Table table : sourceSchema.tables()) {
+        for (Index idx : table.indexes()) {
+          if (idx.isDeferred() && !idx.isPhysicallyPresent()) {
+            deferredIndexStatements.addAll(
+                dialect.deferredIndexDeploymentStatements(table, idx));
+          }
+        }
+      }
+    }
+
     // -- Upgrade path...
     //
     List<UpgradeStep> upgradesToApply = new ArrayList<>(schemaChangeSequence.getUpgradeSteps());
@@ -333,7 +361,11 @@ public class Upgrade {
     }
 
     // Build the actual upgrade path
-    return buildUpgradePath(connectionResources, sourceSchema, targetSchema, upgradeStatements, schemaConsistencyStatements, schemaAutoHealingStatements, viewChanges, upgradesToApply, graphBasedUpgradeBuilder, upgradeAuditCount);
+    UpgradePath path = buildUpgradePath(connectionResources, sourceSchema, targetSchema, upgradeStatements, schemaConsistencyStatements, schemaAutoHealingStatements, viewChanges, upgradesToApply, graphBasedUpgradeBuilder, upgradeAuditCount);
+    if (!deferredIndexStatements.isEmpty()) {
+      path.setDeferredIndexStatements(deferredIndexStatements);
+    }
+    return path;
   }
 
 

@@ -18,20 +18,28 @@ package org.alfasoftware.morf.upgrade.upgrade;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
+import static org.alfasoftware.morf.sql.SqlUtils.insert;
+import static org.alfasoftware.morf.sql.SqlUtils.literal;
+import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 
+import java.util.UUID;
+
+import org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils;
 import org.alfasoftware.morf.metadata.DataType;
+import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.DataEditor;
 import org.alfasoftware.morf.upgrade.ExclusiveExecution;
 import org.alfasoftware.morf.upgrade.SchemaEditor;
 import org.alfasoftware.morf.upgrade.Sequence;
-import org.alfasoftware.morf.upgrade.UUID;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
 import org.alfasoftware.morf.upgrade.Version;
+import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 
 /**
- * Creates the DeployedIndexes table which tracks all deployed indexes
- * (deferred and non-deferred). Prepopulation with existing indexes is
- * handled by {@code Upgrade.findPath()} after this step runs.
+ * Creates the DeployedIndexes table and prepopulates it with all existing
+ * indexes from the source schema.
  *
  * <p>Must run before any step that uses deferred indexes. The
  * {@link ExclusiveExecution} annotation ensures this runs alone,
@@ -41,9 +49,11 @@ import org.alfasoftware.morf.upgrade.Version;
  */
 @ExclusiveExecution
 @Sequence(2)
-@UUID("c7d8e9f0-1a2b-3c4d-5e6f-7a8b9c0d1e2f")
+@org.alfasoftware.morf.upgrade.UUID("c7d8e9f0-1a2b-3c4d-5e6f-7a8b9c0d1e2f")
 @Version("2.31.1")
 public class CreateDeployedIndexes implements UpgradeStep {
+
+  private static final String DEPLOYED_INDEXES = DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME;
 
   @Override
   public String getJiraId() {
@@ -52,13 +62,14 @@ public class CreateDeployedIndexes implements UpgradeStep {
 
   @Override
   public String getDescription() {
-    return "Create DeployedIndexes table for tracking all deployed indexes";
+    return "Create DeployedIndexes table and prepopulate with existing indexes";
   }
 
   @Override
   public void execute(SchemaEditor schema, DataEditor data) {
+    // Create the table
     schema.addTable(
-        table("DeployedIndexes")
+        table(DEPLOYED_INDEXES)
             .columns(
                 column("id", DataType.BIG_INTEGER).primaryKey(),
                 column("upgradeUUID", DataType.STRING, 100).nullable(),
@@ -79,5 +90,45 @@ public class CreateDeployedIndexes implements UpgradeStep {
                 index("DeployedIdx_2").columns("status")
             )
     );
+
+    // Prepopulate with all existing indexes from the source schema
+    Schema sourceSchema = schema.getSourceSchema();
+    long createdTime = System.currentTimeMillis();
+
+    for (Table sourceTable : sourceSchema.tables()) {
+      // Skip Morf infrastructure tables
+      if (isMorfTable(sourceTable.getName())) {
+        continue;
+      }
+      for (Index idx : sourceTable.indexes()) {
+        if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(idx.getName())) {
+          continue;
+        }
+        long id = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
+        data.executeStatement(
+            insert().into(tableRef(DEPLOYED_INDEXES))
+                .values(
+                    literal(id).as("id"),
+                    literal((String) null).as("upgradeUUID"),
+                    literal(sourceTable.getName()).as("tableName"),
+                    literal(idx.getName()).as("indexName"),
+                    literal(idx.isUnique()).as("indexUnique"),
+                    literal(String.join(",", idx.columnNames())).as("indexColumns"),
+                    literal(false).as("indexDeferred"),
+                    literal("COMPLETED").as("status"),
+                    literal(0).as("retryCount"),
+                    literal(createdTime).as("createdTime")
+                )
+        );
+      }
+    }
+  }
+
+
+  private boolean isMorfTable(String tableName) {
+    return DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME.equalsIgnoreCase(tableName)
+        || DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME.equalsIgnoreCase(tableName)
+        || DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME.equalsIgnoreCase(tableName)
+        || DEPLOYED_INDEXES.equalsIgnoreCase(tableName);
   }
 }

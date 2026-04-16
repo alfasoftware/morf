@@ -20,6 +20,7 @@ import java.util.List;
 
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.SelectStatement;
@@ -267,4 +268,15 @@ public interface SchemaEditor {
    */
   public void removeSequence(Sequence sequence);
 
+
+  /**
+   * Returns the source database schema as it was before the upgrade started.
+   * Used by infrastructure upgrade steps (e.g. DeployedIndexes prepopulation)
+   * that need to inspect the existing schema.
+   *
+   * @return the source schema, or an empty schema if not available.
+   */
+  default Schema getSourceSchema() {
+    return org.alfasoftware.morf.metadata.SchemaUtils.schema();
+  }
 }
