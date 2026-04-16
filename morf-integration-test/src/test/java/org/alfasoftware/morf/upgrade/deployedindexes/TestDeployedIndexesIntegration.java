@@ -250,8 +250,9 @@ public class TestDeployedIndexesIntegration {
 
   /**
    * Step A defers an index on column "name". Step B renames "name" to "label".
-   * The DeployedIndexes table should be updated with the new column name
-   * via the DeployedIndexesChangeService.
+   * The DeployedIndexes table's indexColumns is updated via the change service,
+   * and the rebuilt schema preserves isDeferred() so getDeferredIndexStatements()
+   * emits SQL referencing the new column name.
    */
   @Test
   public void testCrossStepColumnRename() {
@@ -263,16 +264,48 @@ public class TestDeployedIndexesIntegration {
         ).indexes(index("Product_Name_1").columns("label"))
     );
 
-    // when -- should not throw (upgrade path exists)
+    // when -- defer an index, then rename the column it references
     UpgradePath path = performUpgradeSteps(renamedColSchema,
         AddDeferredIndex.class,
         org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v2_0_0.RenameColumnWithDeferredIndex.class);
 
-    // then -- upgrade completed successfully
-    // Note: getDeferredIndexStatements may be empty if ChangeColumn.apply()
-    // doesn't propagate column renames to index metadata (known limitation).
-    // The DeployedIndexes table column is updated via the change service.
-    assertTrue("Upgrade should complete", path != null);
+    // then -- DeployedIndexes row reflects the renamed column
+    assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
+    assertEquals("label", queryDeployedIndexField("Product_Name_1", "indexColumns"));
+
+    // then -- getDeferredIndexStatements emits SQL with the new column name
+    List<String> deferredSql = path.getDeferredIndexStatements();
+    assertFalse("Should have deferred statements after rename", deferredSql.isEmpty());
+    assertTrue("Should reference new column name 'label'",
+        deferredSql.stream().anyMatch(s -> s.toUpperCase().contains("LABEL")));
+  }
+
+
+  /**
+   * Step A adds a non-deferred index on column "name". Step B renames "name"
+   * to "label". The DeployedIndexes row's indexColumns should be updated to
+   * "label" (the physical index is automatically updated by the DDL).
+   */
+  @Test
+  public void testCrossStepColumnRenameOnNonDeferredIndex() {
+    // given
+    Schema renamedColSchema = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("label", DataType.STRING, 100)
+        ).indexes(index("Product_Name_1").columns("label"))
+    );
+
+    // when -- add an immediate (non-deferred) index, then rename the column
+    performUpgradeSteps(renamedColSchema,
+        org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddImmediateIndex.class,
+        org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v2_0_0.RenameColumnWithDeferredIndex.class);
+
+    // then -- DeployedIndexes row has the new column name and remains COMPLETED
+    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
+    assertEquals("label", queryDeployedIndexField("Product_Name_1", "indexColumns"));
+    assertTrue("Should not be deferred",
+        "FALSE".equalsIgnoreCase(queryDeployedIndexField("Product_Name_1", "indexDeferred")));
   }
 
 
@@ -657,6 +690,49 @@ public class TestDeployedIndexesIntegration {
   }
 
 
+  /**
+   * CreateDeployedIndexes should create the DeployedIndexes table and
+   * prepopulate it with all pre-existing physical indexes (status COMPLETED,
+   * indexDeferred false). _PRF indexes and Morf infrastructure tables are
+   * excluded.
+   */
+  @Test
+  public void testPrepopulationPopulatesExistingIndexes() {
+    // given -- Product has a pre-existing physical index but no DeployedIndexes table
+    schemaManager.dropAllTables();
+    schemaManager.mutateToSupportSchema(
+        schema(
+            deployedViewsTable(),
+            upgradeAuditTable(),
+            table("Product").columns(
+                column("id", DataType.BIG_INTEGER).primaryKey(),
+                column("name", DataType.STRING, 100)
+            ).indexes(index("Product_Name_1").columns("name"))
+        ),
+        TruncationBehavior.ALWAYS);
+
+    // when -- run CreateDeployedIndexes to create and prepopulate the table
+    Schema targetSchema = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_1").columns("name"))
+    );
+    performUpgrade(targetSchema,
+        org.alfasoftware.morf.upgrade.upgrade.CreateDeployedIndexes.class);
+
+    // then -- pre-existing index is tracked (names come from H2 metadata, folded to uppercase)
+    assertTrue("Expected COMPLETED status for pre-populated index",
+        "COMPLETED".equalsIgnoreCase(queryDeployedIndexField("Product_Name_1", "status")));
+    assertTrue("Expected tableName Product",
+        "PRODUCT".equalsIgnoreCase(queryDeployedIndexField("Product_Name_1", "tableName")));
+    assertTrue("Expected column 'name'",
+        "NAME".equalsIgnoreCase(queryDeployedIndexField("Product_Name_1", "indexColumns")));
+    assertTrue("Should not be deferred",
+        "FALSE".equalsIgnoreCase(queryDeployedIndexField("Product_Name_1", "indexDeferred")));
+  }
+
+
   // =========================================================================
   // Config overrides (additional)
   // =========================================================================
@@ -762,12 +838,8 @@ public class TestDeployedIndexesIntegration {
   }
 
   private String queryDeployedIndexField(String indexName, String fieldName) {
-    String sql = connectionResources.sqlDialect().convertStatementToSQL(
-        org.alfasoftware.morf.sql.SqlUtils.select(
-            org.alfasoftware.morf.sql.SqlUtils.field(fieldName))
-            .from(org.alfasoftware.morf.sql.SqlUtils.tableRef("DeployedIndexes"))
-            .where(org.alfasoftware.morf.sql.SqlUtils.field("indexName").eq(indexName))
-    );
+    String sql = "SELECT " + fieldName + " FROM DeployedIndexes WHERE UPPER(indexName) = '"
+        + indexName.toUpperCase() + "'";
     return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> rs.next() ? rs.getString(1) : null);
   }
 
