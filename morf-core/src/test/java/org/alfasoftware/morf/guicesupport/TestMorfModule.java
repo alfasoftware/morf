@@ -33,7 +33,7 @@ public class TestMorfModule {
   @Mock GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
   @Mock DatabaseUpgradePathValidationService databaseUpgradePathValidationService;
   @Mock UpgradeConfigAndContext upgradeConfigAndContext;
-  @Mock org.alfasoftware.morf.upgrade.deployed.DeployedIndexesModelEnricher deployedIndexesModelEnricher;
+  @Mock org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher deployedIndexesModelEnricher;
 
   private MorfModule module;
 

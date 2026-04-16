@@ -79,7 +79,7 @@ public class Upgrade {
   private final DatabaseUpgradePathValidationService databaseUpgradePathValidationService;
   private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
   private final UpgradeConfigAndContext upgradeConfigAndContext;
-  private final org.alfasoftware.morf.upgrade.deployed.DeployedIndexesModelEnricher deployedIndexesModelEnricher;
+  private final org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher deployedIndexesModelEnricher;
 
 
   public Upgrade(
@@ -91,7 +91,7 @@ public class Upgrade {
       DatabaseUpgradePathValidationService databaseUpgradePathValidationService,
       GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
       UpgradeConfigAndContext upgradeConfigAndContext,
-      org.alfasoftware.morf.upgrade.deployed.DeployedIndexesModelEnricher deployedIndexesModelEnricher) {
+      org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher deployedIndexesModelEnricher) {
     super();
     this.connectionResources = connectionResources;
     this.upgradePathFactory = upgradePathFactory;
@@ -166,9 +166,9 @@ public class Upgrade {
     UpgradePathFactory upgradePathFactory = new UpgradePathFactoryImpl(upgradeScriptAdditionsProvider, upgradeStatusTableServiceFactory);
     ViewChangesDeploymentHelper viewChangesDeploymentHelper = new ViewChangesDeploymentHelper(connectionResources.sqlDialect());
     GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory = null;
-    org.alfasoftware.morf.upgrade.deployed.DeployedIndexesModelEnricher enricher =
-        new org.alfasoftware.morf.upgrade.deployed.DeployedIndexesModelEnricher(
-            new org.alfasoftware.morf.upgrade.deployed.DeployedIndexesDAOImpl(
+    org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher enricher =
+        new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher(
+            new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesDAOImpl(
                 new org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider(connectionResources), connectionResources),
             upgradeConfigAndContext);
 
@@ -525,7 +525,7 @@ public class Upgrade {
     private final ViewDeploymentValidator.Factory viewDeploymentValidatorFactory;
     private final DatabaseUpgradePathValidationService.Factory databaseUpgradePathValidationServiceFactory;
     private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
-    private final org.alfasoftware.morf.upgrade.deployed.DeployedIndexesModelEnricher deployedIndexesModelEnricher;
+    private final org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher deployedIndexesModelEnricher;
 
     private UpgradeConfigAndContext upgradeConfiguration = new UpgradeConfigAndContext();
 
@@ -536,7 +536,7 @@ public class Upgrade {
                    ViewDeploymentValidator.Factory viewDeploymentValidatorFactory,
                    DatabaseUpgradePathValidationService.Factory databaseUpgradePathValidationServiceFactory,
                    GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
-                   org.alfasoftware.morf.upgrade.deployed.DeployedIndexesModelEnricher deployedIndexesModelEnricher) {
+                   org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher deployedIndexesModelEnricher) {
       this.upgradePathFactory = upgradePathFactory;
       this.upgradeStatusTableServiceFactory =  upgradeStatusTableServiceFactory;
       this.viewChangesDeploymentHelperFactory = viewChangesDeploymentHelperFactory;

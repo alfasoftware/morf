@@ -71,7 +71,7 @@ public class MorfModule extends AbstractModule {
       DatabaseUpgradePathValidationService databaseUpgradePathValidationService,
       GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
       UpgradeConfigAndContext upgradeConfigAndContext,
-      org.alfasoftware.morf.upgrade.deployed.DeployedIndexesModelEnricher deployedIndexesModelEnricher) {
+      org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher deployedIndexesModelEnricher) {
     return new Upgrade(connectionResources, factory, upgradeStatusTableService, viewChangesDeploymentHelper,
       viewDeploymentValidator, databaseUpgradePathValidationService, graphBasedUpgradeBuilderFactory,
       upgradeConfigAndContext, deployedIndexesModelEnricher);

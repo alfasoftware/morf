@@ -10,8 +10,8 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.Statement;
-import org.alfasoftware.morf.upgrade.deployed.DeployedIndexesChangeService;
-import org.alfasoftware.morf.upgrade.deployed.DeployedIndexesChangeServiceImpl;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesChangeService;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesChangeServiceImpl;
 
 /**
  * Common code between SchemaChangeVisitor implementors
