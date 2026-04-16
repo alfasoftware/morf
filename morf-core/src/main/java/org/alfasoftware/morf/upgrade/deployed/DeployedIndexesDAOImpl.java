@@ -208,8 +208,7 @@ public class DeployedIndexesDAOImpl implements DeployedIndexesDAO {
   public void resetAllInProgressToPending() {
     String sql = sqlDialect.convertStatementToSQL(
         update(tableRef(TABLE))
-            .set(literal(DeployedIndexStatus.PENDING.name()).as(COL_STATUS),
-                 literal((Long) null).as(COL_STARTED_TIME))
+            .set(literal(DeployedIndexStatus.PENDING.name()).as(COL_STATUS))
             .where(field(COL_STATUS).eq(DeployedIndexStatus.IN_PROGRESS.name()))
     );
     executeSql(sql);

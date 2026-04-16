@@ -138,8 +138,7 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
     return ImmutableList.of(
       deployedViewsTable(),
       upgradeAuditTable(),
-      deferredIndexOperationTable(),
-      deployedIndexesTable()
+      deferredIndexOperationTable()
     );
   }
 

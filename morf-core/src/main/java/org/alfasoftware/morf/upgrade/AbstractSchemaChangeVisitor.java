@@ -65,6 +65,35 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   }
 
 
+  /**
+   * Whether DeployedIndexes tracking is active.
+   */
+  private boolean isDeployedIndexesEnabled() {
+    return upgradeConfigAndContext.isDeferredIndexCreationEnabled();
+  }
+
+
+  /**
+   * Converts and writes a DSL statement for the DeployedIndexes table DML.
+   * Uses conversion without schema validation, since DeployedIndexes is
+   * a Morf infrastructure table not in the user schema model.
+   */
+  private void visitDeployedIndexesStatement(Statement statement) {
+    if (!isDeployedIndexesEnabled()) {
+      return;
+    }
+    if (statement instanceof org.alfasoftware.morf.sql.InsertStatement) {
+      writeStatements(sqlDialect.convertStatementToSQL((org.alfasoftware.morf.sql.InsertStatement) statement));
+    } else if (statement instanceof org.alfasoftware.morf.sql.UpdateStatement) {
+      writeStatements(List.of(sqlDialect.convertStatementToSQL((org.alfasoftware.morf.sql.UpdateStatement) statement)));
+    } else if (statement instanceof org.alfasoftware.morf.sql.DeleteStatement) {
+      writeStatements(List.of(sqlDialect.convertStatementToSQL((org.alfasoftware.morf.sql.DeleteStatement) statement)));
+    } else {
+      visitStatement(statement);
+    }
+  }
+
+
   @Override
   public void visit(AddTable addTable) {
     currentSchema = addTable.apply(currentSchema);
@@ -73,7 +102,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     // Track all indexes on the new table in DeployedIndexes
     for (Index index : addTable.getTable().indexes()) {
       deployedIndexesChangeService.trackIndex(addTable.getTable().getName(), index, null)
-          .forEach(this::visitStatement);
+          .forEach(this::visitDeployedIndexesStatement);
     }
   }
 
@@ -82,7 +111,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   public void visit(RemoveTable removeTable) {
     // Remove all tracked indexes for this table
     deployedIndexesChangeService.removeAllForTable(removeTable.getTable().getName())
-        .forEach(this::visitStatement);
+        .forEach(this::visitDeployedIndexesStatement);
     currentSchema = removeTable.apply(currentSchema);
     writeStatements(sqlDialect.dropStatements(removeTable.getTable()));
   }
@@ -107,7 +136,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     // Update column references in DeployedIndexes if column was renamed
     if (!oldColName.equalsIgnoreCase(newColName)) {
       deployedIndexesChangeService.updateColumnName(tableName, oldColName, newColName)
-          .forEach(this::visitStatement);
+          .forEach(this::visitDeployedIndexesStatement);
     }
   }
 
@@ -119,7 +148,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
     // Remove tracked indexes referencing the column
     deployedIndexesChangeService.removeIndexesReferencingColumn(tableName, colName)
-        .forEach(this::visitStatement);
+        .forEach(this::visitDeployedIndexesStatement);
 
     currentSchema = removeColumn.apply(currentSchema);
     writeStatements(sqlDialect.alterTableDropColumnStatements(currentSchema.getTable(tableName), removeColumn.getColumnDefinition()));
@@ -136,7 +165,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
     // Remove from DeployedIndexes tracking
     deployedIndexesChangeService.removeIndex(tableName, indexToRemove.getName())
-        .forEach(this::visitStatement);
+        .forEach(this::visitDeployedIndexesStatement);
 
     currentSchema = removeIndex.apply(currentSchema);
 
@@ -156,7 +185,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
     // Remove old from DeployedIndexes
     deployedIndexesChangeService.removeIndex(tableName, fromIndex.getName())
-        .forEach(this::visitStatement);
+        .forEach(this::visitDeployedIndexesStatement);
 
     currentSchema = changeIndex.apply(currentSchema);
     Table table = currentSchema.getTable(tableName);
@@ -169,11 +198,11 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     // Add new index: deferred or immediate
     if (toIndex.isDeferred() && sqlDialect.supportsDeferredIndexCreation()) {
       deployedIndexesChangeService.trackIndex(tableName, toIndex, null)
-          .forEach(this::visitStatement);
+          .forEach(this::visitDeployedIndexesStatement);
     } else {
       writeStatements(sqlDialect.addIndexStatements(table, toIndex));
       deployedIndexesChangeService.trackIndex(tableName, toIndex, null)
-          .forEach(this::visitStatement);
+          .forEach(this::visitDeployedIndexesStatement);
     }
   }
 
@@ -185,7 +214,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
     // Update in DeployedIndexes
     deployedIndexesChangeService.updateIndexName(tableName, renameIndex.getFromIndexName(), renameIndex.getToIndexName())
-        .forEach(this::visitStatement);
+        .forEach(this::visitDeployedIndexesStatement);
 
     currentSchema = renameIndex.apply(currentSchema);
 
@@ -203,7 +232,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
     // Update table name in DeployedIndexes for ALL indexes on this table
     deployedIndexesChangeService.updateTableName(renameTable.getOldTableName(), renameTable.getNewTableName())
-        .forEach(this::visitStatement);
+        .forEach(this::visitDeployedIndexesStatement);
 
     currentSchema = renameTable.apply(currentSchema);
     Table newTable = currentSchema.getTable(renameTable.getNewTableName());
@@ -305,7 +334,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     if (shouldDefer) {
       // Deferred: only track in DeployedIndexes, no physical CREATE INDEX
       deployedIndexesChangeService.trackIndex(addIndex.getTableName(), addIndex.getNewIndex(), null)
-          .forEach(this::visitStatement);
+          .forEach(this::visitDeployedIndexesStatement);
       deferredIndexes.add(addIndex);
     } else {
       // Immediate: check for ignored index rename optimization, then CREATE INDEX + track
@@ -325,7 +354,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
       }
 
       deployedIndexesChangeService.trackIndex(addIndex.getTableName(), addIndex.getNewIndex(), null)
-          .forEach(this::visitStatement);
+          .forEach(this::visitDeployedIndexesStatement);
     }
   }
 
