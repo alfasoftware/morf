@@ -70,13 +70,6 @@ public class UpgradeConfigAndContext {
    */
   private Set<String> forceDeferredIndexes = Set.of();
 
-  /**
-   * Number of threads in the deferred index executor thread pool.
-   */
-  private int deferredIndexThreadPoolSize = 1;
-
-
-
 
   /**
    * @see #exclusiveExecutionSteps
@@ -254,22 +247,6 @@ public class UpgradeConfigAndContext {
     return forceDeferredIndexes.contains(indexName.toLowerCase());
   }
 
-
-
-  /**
-   * @see #deferredIndexThreadPoolSize
-   */
-  public int getDeferredIndexThreadPoolSize() {
-    return deferredIndexThreadPoolSize;
-  }
-
-
-  /**
-   * @see #deferredIndexThreadPoolSize
-   */
-  public void setDeferredIndexThreadPoolSize(int deferredIndexThreadPoolSize) {
-    this.deferredIndexThreadPoolSize = deferredIndexThreadPoolSize;
-  }
 
 
   private void validateNoIndexConflict() {
