@@ -86,10 +86,10 @@ public class UpgradePath implements SqlStatementWriter {
   private final UpgradeStatus upgradeStatus;
 
   /**
-   * SQL statements to build deferred indexes. The application is responsible
+   * Jobs for building unbuilt deferred indexes. The application is responsible
    * for executing these after the upgrade completes.
    */
-  private List<String> deferredIndexStatements = Collections.emptyList();
+  private List<org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexJob> deferredIndexJobs = Collections.emptyList();
 
   /**
    * Supplier of {@link GraphBasedUpgrade}. May supply null if
@@ -207,23 +207,26 @@ public class UpgradePath implements SqlStatementWriter {
 
 
   /**
-   * Returns the SQL statements needed to build all unbuilt deferred indexes.
-   * The application is responsible for executing these after the upgrade.
+   * Returns jobs for building all unbuilt deferred indexes. Each job
+   * carries the table name, index name, and SQL statement(s) to build
+   * that one index, so the application can pair the SQL execution with
+   * {@link org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexTracker}
+   * status updates without parsing SQL.
    *
-   * @return list of CREATE INDEX SQL statements, or empty if none.
+   * @return list of deferred index jobs, or empty if none.
    */
-  public List<String> getDeferredIndexStatements() {
-    return Collections.unmodifiableList(deferredIndexStatements);
+  public List<org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexJob> getDeferredIndexStatements() {
+    return Collections.unmodifiableList(deferredIndexJobs);
   }
 
 
   /**
-   * Sets the deferred index SQL statements.
+   * Sets the deferred index jobs.
    *
-   * @param deferredIndexStatements the statements.
+   * @param deferredIndexJobs the jobs.
    */
-  void setDeferredIndexStatements(List<String> deferredIndexStatements) {
-    this.deferredIndexStatements = deferredIndexStatements;
+  void setDeferredIndexStatements(List<org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexJob> deferredIndexJobs) {
+    this.deferredIndexJobs = deferredIndexJobs;
   }
 
 

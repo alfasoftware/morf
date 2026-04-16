@@ -312,13 +312,13 @@ public class Upgrade {
       upgrader.postUpgrade();
     }
 
-    // -- Collect deferred index SQL for getDeferredIndexStatements() --
+    // -- Collect deferred index jobs for getDeferredIndexStatements() --
     // Scan the final schema (after all upgrade steps applied) for deferred
     // indexes that are not physically present. This covers:
     // - New deferred indexes from this upgrade
     // - Existing unbuilt deferred indexes from previous upgrades
     // - Deferred indexes that were renamed/modified during this upgrade
-    List<String> deferredIndexStatements = new ArrayList<>();
+    List<org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexJob> deferredIndexJobs = new ArrayList<>();
     if (upgradeConfigAndContext.isDeferredIndexCreationEnabled()) {
       Schema finalSchema = schemaChangeSequence.applyToSchema(sourceSchema);
       for (Table table : finalSchema.tables()) {
@@ -326,8 +326,10 @@ public class Upgrade {
           if (idx.isDeferred()
               && deployedIndexState.getPresence(table.getName(), idx.getName())
                   != org.alfasoftware.morf.upgrade.deployedindexes.IndexPresence.PRESENT) {
-            deferredIndexStatements.addAll(
-                dialect.deferredIndexDeploymentStatements(table, idx));
+            deferredIndexJobs.add(new org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexJob(
+                table.getName(),
+                idx.getName(),
+                new ArrayList<>(dialect.deferredIndexDeploymentStatements(table, idx))));
           }
         }
       }
@@ -364,8 +366,8 @@ public class Upgrade {
 
     // Build the actual upgrade path
     UpgradePath path = buildUpgradePath(connectionResources, sourceSchema, targetSchema, upgradeStatements, schemaConsistencyStatements, schemaAutoHealingStatements, viewChanges, upgradesToApply, graphBasedUpgradeBuilder, upgradeAuditCount);
-    if (!deferredIndexStatements.isEmpty()) {
-      path.setDeferredIndexStatements(deferredIndexStatements);
+    if (!deferredIndexJobs.isEmpty()) {
+      path.setDeferredIndexStatements(deferredIndexJobs);
     }
     return path;
   }

@@ -45,6 +45,7 @@ import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 import org.alfasoftware.morf.upgrade.UpgradePath;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
 import org.alfasoftware.morf.upgrade.ViewDeploymentValidator;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexJob;
 import org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddDeferredIndex;
 import org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddDeferredUniqueIndex;
 import org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddTableWithDeferredIndex;
@@ -123,11 +124,11 @@ public class TestDeployedIndexesIntegration {
     // then -- physical index NOT built (deferred)
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
 
-    // then -- getDeferredIndexStatements returns SQL
-    List<String> deferredSql = path.getDeferredIndexStatements();
-    assertFalse("Should return at least one deferred statement", deferredSql.isEmpty());
-    assertTrue("Statement should reference the index name",
-        deferredSql.stream().anyMatch(s -> s.toUpperCase().contains("PRODUCT_NAME_1")));
+    // then -- getDeferredIndexStatements returns a job for the index
+    List<DeferredIndexJob> deferredJobs = path.getDeferredIndexStatements();
+    assertFalse("Should return at least one deferred job", deferredJobs.isEmpty());
+    assertTrue("Job should reference the index name",
+        deferredJobs.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
 
     // then -- DeployedIndexes row is PENDING and deferred
     assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
@@ -185,11 +186,11 @@ public class TestDeployedIndexesIntegration {
     assertPhysicalIndexDoesNotExist("Product", "Product_IdName_1");
 
     // then -- both in getDeferredIndexStatements
-    List<String> deferredSql = path.getDeferredIndexStatements();
+    List<DeferredIndexJob> deferredJobs = path.getDeferredIndexStatements();
     assertTrue("Should contain Product_Name_1",
-        deferredSql.stream().anyMatch(s -> s.toUpperCase().contains("PRODUCT_NAME_1")));
+        deferredJobs.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
     assertTrue("Should contain Product_IdName_1",
-        deferredSql.stream().anyMatch(s -> s.toUpperCase().contains("PRODUCT_IDNAME_1")));
+        deferredJobs.stream().anyMatch(j -> "Product_IdName_1".equalsIgnoreCase(j.getIndexName())));
 
     // then -- both PENDING in DeployedIndexes
     assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
@@ -274,10 +275,11 @@ public class TestDeployedIndexesIntegration {
     assertEquals("label", queryDeployedIndexField("Product_Name_1", "indexColumns"));
 
     // then -- getDeferredIndexStatements emits SQL with the new column name
-    List<String> deferredSql = path.getDeferredIndexStatements();
-    assertFalse("Should have deferred statements after rename", deferredSql.isEmpty());
-    assertTrue("Should reference new column name 'label'",
-        deferredSql.stream().anyMatch(s -> s.toUpperCase().contains("LABEL")));
+    List<DeferredIndexJob> deferredJobs = path.getDeferredIndexStatements();
+    assertFalse("Should have a deferred job after rename", deferredJobs.isEmpty());
+    assertTrue("Job's SQL should reference new column name 'label'",
+        deferredJobs.stream().flatMap(j -> j.getSql().stream())
+            .anyMatch(s -> s.toUpperCase().contains("LABEL")));
   }
 
 
@@ -355,9 +357,11 @@ public class TestDeployedIndexesIntegration {
         AddDeferredIndex.class,
         org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v2_0_0.RenameTableWithDeferredIndex.class);
 
-    // then -- deferred index SQL references new table
-    List<String> deferredSql = path.getDeferredIndexStatements();
-    assertFalse("Should have deferred statements", deferredSql.isEmpty());
+    // then -- deferred index job references new table
+    List<DeferredIndexJob> deferredJobs = path.getDeferredIndexStatements();
+    assertFalse("Should have a deferred job", deferredJobs.isEmpty());
+    assertTrue("Job's table should be Item",
+        deferredJobs.stream().anyMatch(j -> "Item".equalsIgnoreCase(j.getTableName())));
 
     // then -- DeployedIndexes tableName updated
     assertEquals("Item", queryDeployedIndexField("Product_Name_1", "tableName"));
@@ -388,11 +392,11 @@ public class TestDeployedIndexesIntegration {
         AddTableWithDeferredIndex.class);
 
     // then
-    List<String> deferredSql = path.getDeferredIndexStatements();
-    assertTrue("Should contain Product index",
-        deferredSql.stream().anyMatch(s -> s.toUpperCase().contains("PRODUCT_NAME_1")));
-    assertTrue("Should contain Category index",
-        deferredSql.stream().anyMatch(s -> s.toUpperCase().contains("CATEGORY_LABEL_1")));
+    List<DeferredIndexJob> deferredJobs = path.getDeferredIndexStatements();
+    assertTrue("Should contain Product_Name_1",
+        deferredJobs.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
+    assertTrue("Should contain Category_Label_1",
+        deferredJobs.stream().anyMatch(j -> "Category_Label_1".equalsIgnoreCase(j.getIndexName())));
   }
 
 
@@ -486,12 +490,12 @@ public class TestDeployedIndexesIntegration {
     UpgradePath path = performUpgrade(targetSchema,
         org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddDeferredIndexThenRename.class);
 
-    // then -- renamed deferred index in statements
-    List<String> deferredSql = path.getDeferredIndexStatements();
+    // then -- renamed deferred index in jobs
+    List<DeferredIndexJob> deferredJobs = path.getDeferredIndexStatements();
     assertTrue("Should contain renamed index",
-        deferredSql.stream().anyMatch(s -> s.toUpperCase().contains("PRODUCT_NAME_RENAMED")));
+        deferredJobs.stream().anyMatch(j -> "Product_Name_Renamed".equalsIgnoreCase(j.getIndexName())));
     assertFalse("Should not contain original name",
-        deferredSql.stream().anyMatch(s -> s.toUpperCase().contains("PRODUCT_NAME_1")));
+        deferredJobs.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
   }
 
 
@@ -514,10 +518,11 @@ public class TestDeployedIndexesIntegration {
     UpgradePath path = performUpgrade(targetSchema, AddDeferredUniqueIndex.class);
 
     // then
-    List<String> deferredSql = path.getDeferredIndexStatements();
-    assertFalse("Should have deferred statements", deferredSql.isEmpty());
-    assertTrue("Should contain UNIQUE keyword",
-        deferredSql.stream().anyMatch(s -> s.toUpperCase().contains("UNIQUE")));
+    List<DeferredIndexJob> deferredJobs = path.getDeferredIndexStatements();
+    assertFalse("Should have a deferred job", deferredJobs.isEmpty());
+    assertTrue("Job's SQL should contain UNIQUE keyword",
+        deferredJobs.stream().flatMap(j -> j.getSql().stream())
+            .anyMatch(s -> s.toUpperCase().contains("UNIQUE")));
   }
 
 
@@ -544,8 +549,8 @@ public class TestDeployedIndexesIntegration {
     assertPhysicalIndexDoesNotExist("Product", "Product_IdName_1");
 
     // then -- SQL generated with both columns
-    List<String> deferredSql = path.getDeferredIndexStatements();
-    assertFalse("Should have deferred statements", deferredSql.isEmpty());
+    List<DeferredIndexJob> deferredJobs = path.getDeferredIndexStatements();
+    assertFalse("Should have a deferred job", deferredJobs.isEmpty());
 
     // then -- DeployedIndexes has correct columns
     assertEquals("PENDING", queryDeployedIndexField("Product_IdName_1", "status"));
@@ -581,11 +586,11 @@ public class TestDeployedIndexesIntegration {
         org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v2_0_0.AddSecondDeferredIndex.class);
 
     // then — should include BOTH deferred indexes
-    List<String> deferredSql = path2.getDeferredIndexStatements();
+    List<DeferredIndexJob> deferredJobs = path2.getDeferredIndexStatements();
     assertTrue("Should contain first deferred index",
-        deferredSql.stream().anyMatch(s -> s.toUpperCase().contains("PRODUCT_NAME_1")));
+        deferredJobs.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
     assertTrue("Should contain second deferred index",
-        deferredSql.stream().anyMatch(s -> s.toUpperCase().contains("PRODUCT_IDNAME_1")));
+        deferredJobs.stream().anyMatch(j -> "Product_IdName_1".equalsIgnoreCase(j.getIndexName())));
   }
 
 
