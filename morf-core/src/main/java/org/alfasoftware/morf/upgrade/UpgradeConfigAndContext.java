@@ -76,33 +76,6 @@ public class UpgradeConfigAndContext {
    */
   private int deferredIndexThreadPoolSize = 1;
 
-  /**
-   * Maximum number of retry attempts per deferred index operation before marking it permanently FAILED.
-   */
-  private int deferredIndexMaxRetries = 3;
-
-  /**
-   * Base delay in milliseconds between deferred index retry attempts.
-   * Each successive retry doubles this delay (exponential backoff).
-   */
-  private long deferredIndexRetryBaseDelayMs = 5_000L;
-
-  /**
-   * Maximum delay in milliseconds between deferred index retry attempts.
-   * The exponential backoff is capped at this value.
-   */
-  private long deferredIndexRetryMaxDelayMs = 300_000L;
-
-  /**
-   * Maximum time in seconds to wait for all deferred index operations to complete
-   * during the pre-upgrade force-build ({@link org.alfasoftware.morf.upgrade.deferred.DeferredIndexReadinessCheck#forceBuildAllPending()}).
-   * Must be strictly greater than zero.
-   *
-   * <p>This is distinct from the {@code timeoutSeconds} parameter on
-   * {@link org.alfasoftware.morf.upgrade.deferred.DeferredIndexService#awaitCompletion(long)},
-   * where zero means "wait indefinitely".</p>
-   */
-  private long deferredIndexForceBuildTimeoutSeconds = 28_800L;
 
 
 
@@ -297,70 +270,6 @@ public class UpgradeConfigAndContext {
    */
   public void setDeferredIndexThreadPoolSize(int deferredIndexThreadPoolSize) {
     this.deferredIndexThreadPoolSize = deferredIndexThreadPoolSize;
-  }
-
-
-  /**
-   * @see #deferredIndexMaxRetries
-   */
-  public int getDeferredIndexMaxRetries() {
-    return deferredIndexMaxRetries;
-  }
-
-
-  /**
-   * @see #deferredIndexMaxRetries
-   */
-  public void setDeferredIndexMaxRetries(int deferredIndexMaxRetries) {
-    this.deferredIndexMaxRetries = deferredIndexMaxRetries;
-  }
-
-
-  /**
-   * @see #deferredIndexRetryBaseDelayMs
-   */
-  public long getDeferredIndexRetryBaseDelayMs() {
-    return deferredIndexRetryBaseDelayMs;
-  }
-
-
-  /**
-   * @see #deferredIndexRetryBaseDelayMs
-   */
-  public void setDeferredIndexRetryBaseDelayMs(long deferredIndexRetryBaseDelayMs) {
-    this.deferredIndexRetryBaseDelayMs = deferredIndexRetryBaseDelayMs;
-  }
-
-
-  /**
-   * @see #deferredIndexRetryMaxDelayMs
-   */
-  public long getDeferredIndexRetryMaxDelayMs() {
-    return deferredIndexRetryMaxDelayMs;
-  }
-
-
-  /**
-   * @see #deferredIndexRetryMaxDelayMs
-   */
-  public void setDeferredIndexRetryMaxDelayMs(long deferredIndexRetryMaxDelayMs) {
-    this.deferredIndexRetryMaxDelayMs = deferredIndexRetryMaxDelayMs;
-  }
-
-
-  /**
-   * @see #deferredIndexForceBuildTimeoutSeconds
-   */
-  public long getDeferredIndexForceBuildTimeoutSeconds() {
-    return deferredIndexForceBuildTimeoutSeconds;
-  }
-
-
-  /**
-   * @see #deferredIndexForceBuildTimeoutSeconds
-   */
-  public void setDeferredIndexForceBuildTimeoutSeconds(long deferredIndexForceBuildTimeoutSeconds) {
-    this.deferredIndexForceBuildTimeoutSeconds = deferredIndexForceBuildTimeoutSeconds;
   }
 
 
