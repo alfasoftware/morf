@@ -118,14 +118,14 @@ public class DeployedIndexesModelEnricher {
       return new Result(physicalSchema, DeployedIndexState.empty());
     }
 
-    List<DeployedIndexEntry> allEntries = dao.findAll();
+    List<DeployedIndex> allEntries = dao.findAll();
     if (allEntries.isEmpty()) {
       log.debug("DeployedIndexes table is empty — returning physical schema unchanged");
       return new Result(physicalSchema, DeployedIndexState.empty());
     }
 
     // Build a lookup: tableName (upper) -> indexName (upper) -> entry
-    Map<String, Map<String, DeployedIndexEntry>> entryMap = buildEntryMap(allEntries);
+    Map<String, Map<String, DeployedIndex>> entryMap = buildEntryMap(allEntries);
     Map<String, Boolean> presence = new HashMap<>();
 
     List<Table> enrichedTables = new ArrayList<>();
@@ -138,7 +138,7 @@ public class DeployedIndexesModelEnricher {
         continue;
       }
 
-      Map<String, DeployedIndexEntry> tableEntries = entryMap.getOrDefault(
+      Map<String, DeployedIndex> tableEntries = entryMap.getOrDefault(
           physicalTable.getName().toUpperCase(), new HashMap<>());
 
       List<Index> rebuiltIndexes = new ArrayList<>();
@@ -151,7 +151,7 @@ public class DeployedIndexesModelEnricher {
           continue;
         }
 
-        DeployedIndexEntry entry = tableEntries.remove(physicalIndex.getName().toUpperCase());
+        DeployedIndex entry = tableEntries.remove(physicalIndex.getName().toUpperCase());
         if (entry == null) {
           // Physical index not tracked — schema inconsistency after initial population
           throw new IllegalStateException(
@@ -165,7 +165,7 @@ public class DeployedIndexesModelEnricher {
       }
 
       // Remaining entries: declared in DeployedIndexes but not physically present
-      for (DeployedIndexEntry entry : tableEntries.values()) {
+      for (DeployedIndex entry : tableEntries.values()) {
         if (!entry.isIndexDeferred()) {
           throw new IllegalStateException(
               "Non-deferred index [" + entry.getIndexName() + "] on table [" + entry.getTableName()
@@ -189,7 +189,7 @@ public class DeployedIndexesModelEnricher {
     }
 
     // Check for entries referencing tables that don't exist in the physical schema
-    for (Map.Entry<String, Map<String, DeployedIndexEntry>> tableGroup : entryMap.entrySet()) {
+    for (Map.Entry<String, Map<String, DeployedIndex>> tableGroup : entryMap.entrySet()) {
       if (tableGroup.getValue().isEmpty()) {
         continue;
       }
@@ -201,7 +201,7 @@ public class DeployedIndexesModelEnricher {
         }
       }
       if (!isMorfTable) {
-        for (DeployedIndexEntry orphan : tableGroup.getValue().values()) {
+        for (DeployedIndex orphan : tableGroup.getValue().values()) {
           log.warn("DeployedIndexes entry for index [" + orphan.getIndexName()
               + "] on table [" + orphan.getTableName() + "] references a table not in the schema");
         }
@@ -230,9 +230,9 @@ public class DeployedIndexesModelEnricher {
   }
 
 
-  private Map<String, Map<String, DeployedIndexEntry>> buildEntryMap(List<DeployedIndexEntry> entries) {
-    Map<String, Map<String, DeployedIndexEntry>> map = new HashMap<>();
-    for (DeployedIndexEntry entry : entries) {
+  private Map<String, Map<String, DeployedIndex>> buildEntryMap(List<DeployedIndex> entries) {
+    Map<String, Map<String, DeployedIndex>> map = new HashMap<>();
+    for (DeployedIndex entry : entries) {
       map.computeIfAbsent(entry.getTableName().toUpperCase(), k -> new HashMap<>())
           .put(entry.getIndexName().toUpperCase(), entry);
     }

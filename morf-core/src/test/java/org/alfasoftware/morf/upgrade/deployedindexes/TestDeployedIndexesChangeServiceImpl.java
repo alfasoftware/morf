@@ -49,7 +49,7 @@ public class TestDeployedIndexesChangeServiceImpl {
     Index idx = index("Idx1").columns("col1");
 
     // when
-    List<Statement> stmts = service.trackIndex("Table1", idx, "uuid-1");
+    List<Statement> stmts = service.trackIndex("Table1", idx);
 
     // then
     assertEquals(1, stmts.size());
@@ -65,7 +65,7 @@ public class TestDeployedIndexesChangeServiceImpl {
     Index idx = index("Idx1").deferred().columns("col1");
 
     // when
-    service.trackIndex("Table1", idx, null);
+    service.trackIndex("Table1", idx);
 
     // then
     assertTrue("Should be tracked", service.isTracked("Table1", "Idx1"));
@@ -80,7 +80,7 @@ public class TestDeployedIndexesChangeServiceImpl {
     Index idx = index("Idx1").columns("col1");
 
     // when
-    service.trackIndex("Table1", idx, null);
+    service.trackIndex("Table1", idx);
 
     // then
     assertTrue("Should be tracked", service.isTracked("Table1", "Idx1"));
@@ -92,7 +92,7 @@ public class TestDeployedIndexesChangeServiceImpl {
   @Test
   public void testIsTrackedCaseInsensitive() {
     // given
-    service.trackIndex("MyTable", index("MyIdx").columns("col1"), null);
+    service.trackIndex("MyTable", index("MyIdx").columns("col1"));
 
     // then
     assertTrue(service.isTracked("MYTABLE", "MYIDX"));
@@ -104,7 +104,7 @@ public class TestDeployedIndexesChangeServiceImpl {
   @Test
   public void testRemoveIndex() {
     // given
-    service.trackIndex("Table1", index("Idx1").columns("col1"), null);
+    service.trackIndex("Table1", index("Idx1").columns("col1"));
 
     // when
     List<Statement> stmts = service.removeIndex("Table1", "Idx1");
@@ -130,9 +130,9 @@ public class TestDeployedIndexesChangeServiceImpl {
   @Test
   public void testRemoveAllForTable() {
     // given
-    service.trackIndex("Table1", index("Idx1").columns("col1"), null);
-    service.trackIndex("Table1", index("Idx2").columns("col2"), null);
-    service.trackIndex("Table2", index("Idx3").columns("col3"), null);
+    service.trackIndex("Table1", index("Idx1").columns("col1"));
+    service.trackIndex("Table1", index("Idx2").columns("col2"));
+    service.trackIndex("Table2", index("Idx3").columns("col3"));
 
     // when
     List<Statement> stmts = service.removeAllForTable("Table1");
@@ -149,8 +149,8 @@ public class TestDeployedIndexesChangeServiceImpl {
   @Test
   public void testRemoveIndexesReferencingColumn() {
     // given
-    service.trackIndex("Table1", index("Idx1").columns("col1", "col2"), null);
-    service.trackIndex("Table1", index("Idx2").columns("col3"), null);
+    service.trackIndex("Table1", index("Idx1").columns("col1", "col2"));
+    service.trackIndex("Table1", index("Idx2").columns("col3"));
 
     // when
     List<Statement> stmts = service.removeIndexesReferencingColumn("Table1", "col1");
@@ -165,7 +165,7 @@ public class TestDeployedIndexesChangeServiceImpl {
   @Test
   public void testUpdateTableName() {
     // given
-    service.trackIndex("OldTable", index("Idx1").columns("col1"), null);
+    service.trackIndex("OldTable", index("Idx1").columns("col1"));
 
     // when
     List<Statement> stmts = service.updateTableName("OldTable", "NewTable");
@@ -181,7 +181,7 @@ public class TestDeployedIndexesChangeServiceImpl {
   @Test
   public void testUpdateIndexName() {
     // given
-    service.trackIndex("Table1", index("OldIdx").columns("col1"), null);
+    service.trackIndex("Table1", index("OldIdx").columns("col1"));
 
     // when
     List<Statement> stmts = service.updateIndexName("Table1", "OldIdx", "NewIdx");
@@ -197,8 +197,8 @@ public class TestDeployedIndexesChangeServiceImpl {
   @Test
   public void testUpdateColumnName() {
     // given
-    service.trackIndex("Table1", index("Idx1").columns("oldCol", "col2"), null);
-    service.trackIndex("Table1", index("Idx2").columns("col3"), null);
+    service.trackIndex("Table1", index("Idx1").columns("oldCol", "col2"));
+    service.trackIndex("Table1", index("Idx2").columns("col3"));
 
     // when
     List<Statement> stmts = service.updateColumnName("Table1", "oldCol", "newCol");

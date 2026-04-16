@@ -69,7 +69,7 @@ public class DeployedIndexTrackerImpl implements DeployedIndexTracker {
 
 
   @Override
-  public List<DeployedIndexEntry> getPendingIndexes() {
+  public List<DeployedIndex> getPendingIndexes() {
     return dao.findNonTerminalOperations();
   }
 }

@@ -25,17 +25,17 @@ import org.alfasoftware.morf.metadata.Index;
 import org.junit.Test;
 
 /**
- * Unit tests for {@link DeployedIndexEntry}.
+ * Unit tests for {@link DeployedIndex}.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-public class TestDeployedIndexEntry {
+public class TestDeployedIndex {
 
   /** toIndex should reconstruct a non-deferred, non-unique index. */
   @Test
   public void testToIndexBasic() {
     // given
-    DeployedIndexEntry entry = new DeployedIndexEntry();
+    DeployedIndex entry = new DeployedIndex();
     entry.setIndexName("Idx1");
     entry.setIndexColumns(List.of("col1", "col2"));
     entry.setIndexUnique(false);
@@ -56,7 +56,7 @@ public class TestDeployedIndexEntry {
   @Test
   public void testToIndexUniqueDeferred() {
     // given
-    DeployedIndexEntry entry = new DeployedIndexEntry();
+    DeployedIndex entry = new DeployedIndex();
     entry.setIndexName("Idx2");
     entry.setIndexColumns(List.of("col1"));
     entry.setIndexUnique(true);
@@ -71,24 +71,4 @@ public class TestDeployedIndexEntry {
   }
 
 
-  /** parseColumns should split comma-separated values. */
-  @Test
-  public void testParseColumns() {
-    // when
-    List<String> cols = DeployedIndexEntry.parseColumns("col1,col2,col3");
-
-    // then
-    assertEquals(List.of("col1", "col2", "col3"), cols);
-  }
-
-
-  /** joinColumns should produce comma-separated string. */
-  @Test
-  public void testJoinColumns() {
-    // when
-    String result = DeployedIndexEntry.joinColumns(List.of("a", "b", "c"));
-
-    // then
-    assertEquals("a,b,c", result);
-  }
 }

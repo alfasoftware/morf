@@ -88,5 +88,5 @@ public interface DeployedIndexTracker {
    *
    * @return list of non-terminal deferred index entries.
    */
-  List<DeployedIndexEntry> getPendingIndexes();
+  List<DeployedIndex> getPendingIndexes();
 }

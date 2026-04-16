@@ -84,9 +84,7 @@ public class SchemaChangeSequence {
     for (UpgradeStep step : steps) {
       InternalVisitor internalVisitor = new InternalVisitor(upgradeConfigAndContext.getSchemaChangeAdaptor());
       UpgradeTableResolutionVisitor resolvedTablesVisitor = new UpgradeTableResolutionVisitor();
-      UUID uuidAnnotation = step.getClass().getAnnotation(UUID.class);
-      String upgradeUUID = uuidAnnotation != null ? uuidAnnotation.value() : "";
-      Editor editor = new Editor(internalVisitor, resolvedTablesVisitor, upgradeUUID, sourceSchema);
+      Editor editor = new Editor(internalVisitor, resolvedTablesVisitor, sourceSchema);
       // For historical reasons, we need to pass the editor in twice
       step.execute(editor, editor);
 
@@ -239,19 +237,12 @@ public class SchemaChangeSequence {
 
     private final SchemaChangeVisitor visitor;
     private final SchemaAndDataChangeVisitor schemaAndDataChangeVisitor;
-    private final String upgradeUUID;
-
-    /**
-     * @param visitor The visitor to pass the changes to.
-     * @param upgradeUUID UUID string of the upgrade step being executed.
-     */
     private final Schema sourceSchema;
 
-    Editor(SchemaChangeVisitor visitor, SchemaAndDataChangeVisitor schemaAndDataChangeVisitor, String upgradeUUID, Schema sourceSchema) {
+    Editor(SchemaChangeVisitor visitor, SchemaAndDataChangeVisitor schemaAndDataChangeVisitor, Schema sourceSchema) {
       super();
       this.visitor = visitor;
       this.schemaAndDataChangeVisitor = schemaAndDataChangeVisitor;
-      this.upgradeUUID = upgradeUUID;
       this.sourceSchema = sourceSchema;
     }
 

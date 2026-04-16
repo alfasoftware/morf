@@ -72,11 +72,10 @@ public class CreateDeployedIndexes implements UpgradeStep {
         table(DEPLOYED_INDEXES)
             .columns(
                 column("id", DataType.BIG_INTEGER).primaryKey(),
-                column("upgradeUUID", DataType.STRING, 100).nullable(),
                 column("tableName", DataType.STRING, 60),
                 column("indexName", DataType.STRING, 60),
                 column("indexUnique", DataType.BOOLEAN),
-                column("indexColumns", DataType.STRING, 2000),
+                column("indexColumns", DataType.STRING, 4000),
                 column("indexDeferred", DataType.BOOLEAN),
                 column("status", DataType.STRING, 20),
                 column("retryCount", DataType.INTEGER),
@@ -109,7 +108,6 @@ public class CreateDeployedIndexes implements UpgradeStep {
             insert().into(tableRef(DEPLOYED_INDEXES))
                 .values(
                     literal(id).as("id"),
-                    literal((String) null).as("upgradeUUID"),
                     literal(sourceTable.getName()).as("tableName"),
                     literal(idx.getName()).as("indexName"),
                     literal(idx.isUnique()).as("indexUnique"),

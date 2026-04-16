@@ -17,7 +17,6 @@ package org.alfasoftware.morf.upgrade.deployedindexes;
 
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 
-import java.util.Arrays;
 import java.util.List;
 
 import org.alfasoftware.morf.metadata.Index;
@@ -29,10 +28,9 @@ import org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder;
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-public class DeployedIndexEntry {
+public class DeployedIndex {
 
   private long id;
-  private String upgradeUUID;
   private String tableName;
   private String indexName;
   private boolean indexUnique;
@@ -54,16 +52,6 @@ public class DeployedIndexEntry {
   /** @see #id */
   public void setId(long id) {
     this.id = id;
-  }
-
-  /** @see #upgradeUUID */
-  public String getUpgradeUUID() {
-    return upgradeUUID;
-  }
-
-  /** @see #upgradeUUID */
-  public void setUpgradeUUID(String upgradeUUID) {
-    this.upgradeUUID = upgradeUUID;
   }
 
   /** @see #tableName */
@@ -191,27 +179,5 @@ public class DeployedIndexEntry {
       builder = builder.deferred();
     }
     return builder;
-  }
-
-
-  /**
-   * Parses a comma-separated column string into a list.
-   *
-   * @param columnsCsv the comma-separated column names.
-   * @return the parsed list.
-   */
-  public static List<String> parseColumns(String columnsCsv) {
-    return Arrays.asList(columnsCsv.split(","));
-  }
-
-
-  /**
-   * Joins a list of column names into a comma-separated string.
-   *
-   * @param columns the column names.
-   * @return the joined string.
-   */
-  public static String joinColumns(List<String> columns) {
-    return String.join(",", columns);
   }
 }

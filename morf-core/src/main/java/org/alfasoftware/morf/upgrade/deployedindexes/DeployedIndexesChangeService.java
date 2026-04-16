@@ -38,10 +38,9 @@ public interface DeployedIndexesChangeService {
    *
    * @param tableName the table the index belongs to.
    * @param index the index metadata.
-   * @param upgradeUUID UUID of the upgrade step, or null.
    * @return INSERT statements to be executed by the caller.
    */
-  List<Statement> trackIndex(String tableName, Index index, String upgradeUUID);
+  List<Statement> trackIndex(String tableName, Index index);
 
 
   /**

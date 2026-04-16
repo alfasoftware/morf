@@ -81,11 +81,10 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
     return table(DEPLOYED_INDEXES_NAME)
         .columns(
           column("id", DataType.BIG_INTEGER).primaryKey(),
-          column("upgradeUUID", DataType.STRING, 100).nullable(),
           column("tableName", DataType.STRING, 60),
           column("indexName", DataType.STRING, 60),
           column("indexUnique", DataType.BOOLEAN),
-          column("indexColumns", DataType.STRING, 2000),
+          column("indexColumns", DataType.STRING, 4000),
           column("indexDeferred", DataType.BOOLEAN),
           column("status", DataType.STRING, 20),
           column("retryCount", DataType.INTEGER),

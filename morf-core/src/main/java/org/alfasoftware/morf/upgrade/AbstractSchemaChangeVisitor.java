@@ -109,7 +109,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
     // Track all indexes on the new table in DeployedIndexes
     for (Index index : addTable.getTable().indexes()) {
-      deployedIndexesChangeService.trackIndex(addTable.getTable().getName(), index, null)
+      deployedIndexesChangeService.trackIndex(addTable.getTable().getName(), index)
           .forEach(this::visitDeployedIndexesStatement);
     }
   }
@@ -205,11 +205,11 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
     // Add new index: deferred or immediate
     if (toIndex.isDeferred() && sqlDialect.supportsDeferredIndexCreation()) {
-      deployedIndexesChangeService.trackIndex(tableName, toIndex, null)
+      deployedIndexesChangeService.trackIndex(tableName, toIndex)
           .forEach(this::visitDeployedIndexesStatement);
     } else {
       writeStatements(sqlDialect.addIndexStatements(table, toIndex));
-      deployedIndexesChangeService.trackIndex(tableName, toIndex, null)
+      deployedIndexesChangeService.trackIndex(tableName, toIndex)
           .forEach(this::visitDeployedIndexesStatement);
     }
   }
@@ -331,7 +331,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
     if (shouldDefer) {
       // Deferred: only track in DeployedIndexes, no physical CREATE INDEX
-      deployedIndexesChangeService.trackIndex(addIndex.getTableName(), addIndex.getNewIndex(), null)
+      deployedIndexesChangeService.trackIndex(addIndex.getTableName(), addIndex.getNewIndex())
           .forEach(this::visitDeployedIndexesStatement);
       deferredIndexes.add(addIndex);
     } else {
@@ -351,7 +351,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
         writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(addIndex.getTableName()), addIndex.getNewIndex()));
       }
 
-      deployedIndexesChangeService.trackIndex(addIndex.getTableName(), addIndex.getNewIndex(), null)
+      deployedIndexesChangeService.trackIndex(addIndex.getTableName(), addIndex.getNewIndex())
           .forEach(this::visitDeployedIndexesStatement);
     }
   }

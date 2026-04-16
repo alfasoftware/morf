@@ -54,7 +54,6 @@ public class DeployedIndexesChangeServiceImpl implements DeployedIndexesChangeSe
 
   private static final String TABLE = DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME;
   private static final String COL_ID = "id";
-  private static final String COL_UPGRADE_UUID = "upgradeUUID";
   private static final String COL_TABLE_NAME = "tableName";
   private static final String COL_INDEX_NAME = "indexName";
   private static final String COL_INDEX_UNIQUE = "indexUnique";
@@ -69,13 +68,13 @@ public class DeployedIndexesChangeServiceImpl implements DeployedIndexesChangeSe
 
 
   @Override
-  public List<Statement> trackIndex(String tableName, Index index, String upgradeUUID) {
+  public List<Statement> trackIndex(String tableName, Index index) {
     if (log.isDebugEnabled()) {
       log.debug("Tracking index: table=" + tableName + ", index=" + index.getName()
           + ", deferred=" + index.isDeferred());
     }
 
-    IndexRecord record = new IndexRecord(tableName, index, upgradeUUID);
+    IndexRecord record = new IndexRecord(tableName, index);
     trackedIndexes
         .computeIfAbsent(tableName.toUpperCase(), k -> new LinkedHashMap<>())
         .put(index.getName().toUpperCase(), record);
@@ -162,7 +161,7 @@ public class DeployedIndexesChangeServiceImpl implements DeployedIndexesChangeSe
     Map<String, IndexRecord> updatedMap = new LinkedHashMap<>();
     for (Map.Entry<String, IndexRecord> entry : tableMap.entrySet()) {
       IndexRecord r = entry.getValue();
-      updatedMap.put(entry.getKey(), new IndexRecord(newTableName, r.index, r.upgradeUUID));
+      updatedMap.put(entry.getKey(), new IndexRecord(newTableName, r.index));
     }
     trackedIndexes.put(newTableName.toUpperCase(), updatedMap);
 
@@ -194,7 +193,7 @@ public class DeployedIndexesChangeServiceImpl implements DeployedIndexesChangeSe
         if (r.index.isDeferred()) builder = builder.deferred();
         Index updatedIndex = builder;
 
-        entry.setValue(new IndexRecord(r.tableName, updatedIndex, r.upgradeUUID));
+        entry.setValue(new IndexRecord(r.tableName, updatedIndex));
 
         statements.add(
             update(tableRef(TABLE))
@@ -224,7 +223,7 @@ public class DeployedIndexesChangeServiceImpl implements DeployedIndexesChangeSe
     if (existing.index.isDeferred()) builder = builder.deferred();
     Index renamedIndex = builder;
 
-    tableMap.put(newIndexName.toUpperCase(), new IndexRecord(existing.tableName, renamedIndex, existing.upgradeUUID));
+    tableMap.put(newIndexName.toUpperCase(), new IndexRecord(existing.tableName, renamedIndex));
 
     return List.of(
         update(tableRef(TABLE))
@@ -252,7 +251,6 @@ public class DeployedIndexesChangeServiceImpl implements DeployedIndexesChangeSe
         insert().into(tableRef(TABLE))
             .values(
                 literal(operationId).as(COL_ID),
-                literal(record.upgradeUUID).as(COL_UPGRADE_UUID),
                 literal(record.tableName).as(COL_TABLE_NAME),
                 literal(record.index.getName()).as(COL_INDEX_NAME),
                 literal(record.index.isUnique()).as(COL_INDEX_UNIQUE),
@@ -279,12 +277,10 @@ public class DeployedIndexesChangeServiceImpl implements DeployedIndexesChangeSe
   private static final class IndexRecord {
     final String tableName;
     final Index index;
-    final String upgradeUUID;
 
-    IndexRecord(String tableName, Index index, String upgradeUUID) {
+    IndexRecord(String tableName, Index index) {
       this.tableName = tableName;
       this.index = index;
-      this.upgradeUUID = upgradeUUID;
     }
   }
 }

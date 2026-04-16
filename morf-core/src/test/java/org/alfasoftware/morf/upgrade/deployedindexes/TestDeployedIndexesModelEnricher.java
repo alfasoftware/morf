@@ -124,7 +124,7 @@ public class TestDeployedIndexesModelEnricher {
         table("MyTable").columns(column("id", DataType.BIG_INTEGER).primaryKey())
             .indexes(index("MyIdx").columns("id"))
     );
-    DeployedIndexEntry entry = new DeployedIndexEntry();
+    DeployedIndex entry = new DeployedIndex();
     entry.setTableName("MyTable");
     entry.setIndexName("MyIdx");
     entry.setIndexDeferred(true);
@@ -158,7 +158,7 @@ public class TestDeployedIndexesModelEnricher {
             .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
         table("MyTable").columns(column("id", DataType.BIG_INTEGER).primaryKey(), column("name", DataType.STRING, 50))
     );
-    DeployedIndexEntry entry = new DeployedIndexEntry();
+    DeployedIndex entry = new DeployedIndex();
     entry.setTableName("MyTable");
     entry.setIndexName("MyIdx");
     entry.setIndexDeferred(true);
@@ -193,7 +193,7 @@ public class TestDeployedIndexesModelEnricher {
             .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
         table("MyTable").columns(column("id", DataType.BIG_INTEGER).primaryKey())
     );
-    DeployedIndexEntry entry = new DeployedIndexEntry();
+    DeployedIndex entry = new DeployedIndex();
     entry.setTableName("MyTable");
     entry.setIndexName("MissingIdx");
     entry.setIndexDeferred(false);
@@ -219,7 +219,7 @@ public class TestDeployedIndexesModelEnricher {
             .indexes(index("UntrackedIdx").columns("id"))
     );
     // DAO returns entry for a DIFFERENT index
-    DeployedIndexEntry entry = new DeployedIndexEntry();
+    DeployedIndex entry = new DeployedIndex();
     entry.setTableName("MyTable");
     entry.setIndexName("OtherIdx");
     entry.setIndexDeferred(false);

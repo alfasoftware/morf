@@ -160,7 +160,7 @@ public class TestDeployedIndexTracker {
     // then
     assertEquals("Should have 1 FAILED", Integer.valueOf(1),
         tracker.getProgress().get(DeployedIndexStatus.FAILED));
-    java.util.List<org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexEntry> pending = tracker.getPendingIndexes();
+    java.util.List<org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndex> pending = tracker.getPendingIndexes();
     assertEquals(1, pending.size());
     assertEquals("Unique constraint violation", pending.get(0).getErrorMessage());
     assertEquals(org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexStatus.FAILED, pending.get(0).getStatus());

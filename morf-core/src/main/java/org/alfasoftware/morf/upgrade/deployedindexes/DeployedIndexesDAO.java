@@ -34,7 +34,7 @@ public interface DeployedIndexesDAO {
    *
    * @return all deployed index entries.
    */
-  List<DeployedIndexEntry> findAll();
+  List<DeployedIndex> findAll();
 
 
   /**
@@ -43,7 +43,7 @@ public interface DeployedIndexesDAO {
    * @param tableName the table name.
    * @return entries for that table.
    */
-  List<DeployedIndexEntry> findByTable(String tableName);
+  List<DeployedIndex> findByTable(String tableName);
 
 
   /**
@@ -52,7 +52,7 @@ public interface DeployedIndexesDAO {
    *
    * @return non-terminal deferred index entries.
    */
-  List<DeployedIndexEntry> findNonTerminalOperations();
+  List<DeployedIndex> findNonTerminalOperations();
 
 
   /**

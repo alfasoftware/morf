@@ -54,7 +54,6 @@ public class DeployedIndexesDAOImpl implements DeployedIndexesDAO {
   private static final String TABLE = DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME;
 
   static final String COL_ID = "id";
-  static final String COL_UPGRADE_UUID = "upgradeUUID";
   static final String COL_TABLE_NAME = "tableName";
   static final String COL_INDEX_NAME = "indexName";
   static final String COL_INDEX_UNIQUE = "indexUnique";
@@ -86,9 +85,9 @@ public class DeployedIndexesDAOImpl implements DeployedIndexesDAO {
 
 
   @Override
-  public List<DeployedIndexEntry> findAll() {
+  public List<DeployedIndex> findAll() {
     return executeQuery(
-        select(field(COL_ID), field(COL_UPGRADE_UUID), field(COL_TABLE_NAME),
+        select(field(COL_ID), field(COL_TABLE_NAME),
                field(COL_INDEX_NAME), field(COL_INDEX_UNIQUE), field(COL_INDEX_COLUMNS),
                field(COL_INDEX_DEFERRED), field(COL_STATUS), field(COL_RETRY_COUNT),
                field(COL_CREATED_TIME), field(COL_STARTED_TIME), field(COL_COMPLETED_TIME),
@@ -100,9 +99,9 @@ public class DeployedIndexesDAOImpl implements DeployedIndexesDAO {
 
 
   @Override
-  public List<DeployedIndexEntry> findByTable(String tableName) {
+  public List<DeployedIndex> findByTable(String tableName) {
     return executeQuery(
-        select(field(COL_ID), field(COL_UPGRADE_UUID), field(COL_TABLE_NAME),
+        select(field(COL_ID), field(COL_TABLE_NAME),
                field(COL_INDEX_NAME), field(COL_INDEX_UNIQUE), field(COL_INDEX_COLUMNS),
                field(COL_INDEX_DEFERRED), field(COL_STATUS), field(COL_RETRY_COUNT),
                field(COL_CREATED_TIME), field(COL_STARTED_TIME), field(COL_COMPLETED_TIME),
@@ -115,9 +114,9 @@ public class DeployedIndexesDAOImpl implements DeployedIndexesDAO {
 
 
   @Override
-  public List<DeployedIndexEntry> findNonTerminalOperations() {
+  public List<DeployedIndex> findNonTerminalOperations() {
     return executeQuery(
-        select(field(COL_ID), field(COL_UPGRADE_UUID), field(COL_TABLE_NAME),
+        select(field(COL_ID), field(COL_TABLE_NAME),
                field(COL_INDEX_NAME), field(COL_INDEX_UNIQUE), field(COL_INDEX_COLUMNS),
                field(COL_INDEX_DEFERRED), field(COL_STATUS), field(COL_RETRY_COUNT),
                field(COL_CREATED_TIME), field(COL_STARTED_TIME), field(COL_COMPLETED_TIME),
@@ -220,22 +219,21 @@ public class DeployedIndexesDAOImpl implements DeployedIndexesDAO {
   // Helpers
   // -------------------------------------------------------------------------
 
-  private List<DeployedIndexEntry> executeQuery(SelectStatement select) {
+  private List<DeployedIndex> executeQuery(SelectStatement select) {
     String sql = sqlDialect.convertStatementToSQL(select);
     return sqlScriptExecutorProvider.get().executeQuery(sql, this::mapEntries);
   }
 
 
-  private List<DeployedIndexEntry> mapEntries(ResultSet rs) throws SQLException {
-    List<DeployedIndexEntry> result = new ArrayList<>();
+  private List<DeployedIndex> mapEntries(ResultSet rs) throws SQLException {
+    List<DeployedIndex> result = new ArrayList<>();
     while (rs.next()) {
-      DeployedIndexEntry entry = new DeployedIndexEntry();
+      DeployedIndex entry = new DeployedIndex();
       entry.setId(rs.getLong(COL_ID));
-      entry.setUpgradeUUID(rs.getString(COL_UPGRADE_UUID));
       entry.setTableName(rs.getString(COL_TABLE_NAME));
       entry.setIndexName(rs.getString(COL_INDEX_NAME));
       entry.setIndexUnique(rs.getBoolean(COL_INDEX_UNIQUE));
-      entry.setIndexColumns(DeployedIndexEntry.parseColumns(rs.getString(COL_INDEX_COLUMNS)));
+      entry.setIndexColumns(java.util.Arrays.asList(rs.getString(COL_INDEX_COLUMNS).split(",")));
       entry.setIndexDeferred(rs.getBoolean(COL_INDEX_DEFERRED));
       entry.setStatus(DeployedIndexStatus.valueOf(rs.getString(COL_STATUS)));
       entry.setRetryCount(rs.getInt(COL_RETRY_COUNT));
