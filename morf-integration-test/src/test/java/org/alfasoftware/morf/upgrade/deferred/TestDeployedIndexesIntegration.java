@@ -582,7 +582,30 @@ public class TestDeployedIndexesIntegration {
 
 
   // =========================================================================
-  // Missing edge cases
+  // Idempotency and edge cases
+  // =========================================================================
+
+  /**
+   * Running the same upgrade twice should be idempotent — the second run
+   * should detect no new steps to apply and produce no errors. The
+   * DeployedIndexes state should be unchanged.
+   */
+  @Test
+  public void testReUpgradeIsIdempotent() {
+    // given -- first upgrade defers an index
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+    assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
+
+    // when -- second upgrade with same schema and steps
+    UpgradePath path2 = performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+
+    // then -- no errors, state unchanged
+    assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
+  }
+
+
+  // =========================================================================
+  // Config overrides (additional)
   // =========================================================================
 
   /**
