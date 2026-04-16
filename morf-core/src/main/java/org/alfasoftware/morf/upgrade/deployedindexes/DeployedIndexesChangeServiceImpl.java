@@ -16,35 +16,25 @@
 package org.alfasoftware.morf.upgrade.deployedindexes;
 
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
-import static org.alfasoftware.morf.sql.SqlUtils.delete;
-import static org.alfasoftware.morf.sql.SqlUtils.field;
-import static org.alfasoftware.morf.sql.SqlUtils.insert;
-import static org.alfasoftware.morf.sql.SqlUtils.literal;
-import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.sql.SqlUtils.update;
-import static org.alfasoftware.morf.sql.element.Criterion.and;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder;
 import org.alfasoftware.morf.sql.Statement;
-import org.alfasoftware.morf.sql.element.Criterion;
-import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 /**
- * Default implementation of {@link DeployedIndexesChangeService}.
- *
- * <p>Tracks ALL index operations during an upgrade session in an in-memory
- * map and produces SQL statements to keep the DeployedIndexes table in sync.</p>
+ * Default implementation of {@link DeployedIndexesChangeService}. Owns the
+ * in-memory session state for tracked indexes and orchestrates statement
+ * lists via {@link DeployedIndexesStatementFactory}. Does not build DSL
+ * or hold column constants of its own.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -52,19 +42,22 @@ public class DeployedIndexesChangeServiceImpl implements DeployedIndexesChangeSe
 
   private static final Log log = LogFactory.getLog(DeployedIndexesChangeServiceImpl.class);
 
-  private static final String TABLE = DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME;
-  private static final String COL_ID = "id";
-  private static final String COL_TABLE_NAME = "tableName";
-  private static final String COL_INDEX_NAME = "indexName";
-  private static final String COL_INDEX_UNIQUE = "indexUnique";
-  private static final String COL_INDEX_COLUMNS = "indexColumns";
-  private static final String COL_INDEX_DEFERRED = "indexDeferred";
-  private static final String COL_STATUS = "status";
-  private static final String COL_RETRY_COUNT = "retryCount";
-  private static final String COL_CREATED_TIME = "createdTime";
+  private final DeployedIndexesStatementFactory factory;
 
-  /** Tracked indexes: tableName (upper) -> indexName (upper) -> IndexRecord. */
+  /** Tracked indexes: tableName (upper) -&gt; indexName (upper) -&gt; IndexRecord. */
   private final Map<String, Map<String, IndexRecord>> trackedIndexes = new LinkedHashMap<>();
+
+
+  /** Default constructor — creates its own factory. */
+  public DeployedIndexesChangeServiceImpl() {
+    this(new DeployedIndexesStatementFactory());
+  }
+
+
+  /** Constructor with explicit factory — for tests. */
+  public DeployedIndexesChangeServiceImpl(DeployedIndexesStatementFactory factory) {
+    this.factory = factory;
+  }
 
 
   @Override
@@ -73,13 +66,11 @@ public class DeployedIndexesChangeServiceImpl implements DeployedIndexesChangeSe
       log.debug("Tracking index: table=" + tableName + ", index=" + index.getName()
           + ", deferred=" + index.isDeferred());
     }
-
-    IndexRecord record = new IndexRecord(tableName, index);
     trackedIndexes
         .computeIfAbsent(tableName.toUpperCase(), k -> new LinkedHashMap<>())
-        .put(index.getName().toUpperCase(), record);
+        .put(index.getName().toUpperCase(), new IndexRecord(tableName, index));
 
-    return buildInsertStatements(record);
+    return List.of(factory.statementToTrackIndex(tableName, index));
   }
 
 
@@ -111,10 +102,7 @@ public class DeployedIndexesChangeServiceImpl implements DeployedIndexesChangeSe
     if (tableMap.isEmpty()) {
       trackedIndexes.remove(tableName.toUpperCase());
     }
-    return buildDeleteStatements(
-        field(COL_TABLE_NAME).eq(literal(removed.tableName)),
-        field(COL_INDEX_NAME).eq(literal(removed.index.getName()))
-    );
+    return List.of(factory.statementToRemoveIndex(removed.tableName, removed.index.getName()));
   }
 
 
@@ -125,7 +113,7 @@ public class DeployedIndexesChangeServiceImpl implements DeployedIndexesChangeSe
       return List.of();
     }
     String storedTableName = tableMap.values().iterator().next().tableName;
-    return buildDeleteStatements(field(COL_TABLE_NAME).eq(literal(storedTableName)));
+    return List.of(factory.statementToRemoveAllForTable(storedTableName));
   }
 
 
@@ -155,21 +143,15 @@ public class DeployedIndexesChangeServiceImpl implements DeployedIndexesChangeSe
     if (tableMap == null || tableMap.isEmpty()) {
       return List.of();
     }
-
     String storedOldTableName = tableMap.values().iterator().next().tableName;
 
     Map<String, IndexRecord> updatedMap = new LinkedHashMap<>();
     for (Map.Entry<String, IndexRecord> entry : tableMap.entrySet()) {
-      IndexRecord r = entry.getValue();
-      updatedMap.put(entry.getKey(), new IndexRecord(newTableName, r.index));
+      updatedMap.put(entry.getKey(), new IndexRecord(newTableName, entry.getValue().index));
     }
     trackedIndexes.put(newTableName.toUpperCase(), updatedMap);
 
-    return List.of(
-        update(tableRef(TABLE))
-            .set(literal(newTableName).as(COL_TABLE_NAME))
-            .where(field(COL_TABLE_NAME).eq(literal(storedOldTableName)))
-    );
+    return List.of(factory.statementToUpdateTableName(storedOldTableName, newTableName));
   }
 
 
@@ -191,18 +173,10 @@ public class DeployedIndexesChangeServiceImpl implements DeployedIndexesChangeSe
         IndexBuilder builder = index(r.index.getName()).columns(updatedColumns);
         if (r.index.isUnique()) builder = builder.unique();
         if (r.index.isDeferred()) builder = builder.deferred();
-        Index updatedIndex = builder;
+        entry.setValue(new IndexRecord(r.tableName, builder));
 
-        entry.setValue(new IndexRecord(r.tableName, updatedIndex));
-
-        statements.add(
-            update(tableRef(TABLE))
-                .set(literal(String.join(",", updatedColumns)).as(COL_INDEX_COLUMNS))
-                .where(and(
-                    field(COL_TABLE_NAME).eq(literal(r.tableName)),
-                    field(COL_INDEX_NAME).eq(literal(r.index.getName()))
-                ))
-        );
+        statements.add(factory.statementToUpdateIndexColumns(
+            r.tableName, r.index.getName(), String.join(",", updatedColumns)));
       }
     }
     return statements;
@@ -221,52 +195,10 @@ public class DeployedIndexesChangeServiceImpl implements DeployedIndexesChangeSe
     IndexBuilder builder = index(newIndexName).columns(existing.index.columnNames());
     if (existing.index.isUnique()) builder = builder.unique();
     if (existing.index.isDeferred()) builder = builder.deferred();
-    Index renamedIndex = builder;
+    tableMap.put(newIndexName.toUpperCase(), new IndexRecord(existing.tableName, builder));
 
-    tableMap.put(newIndexName.toUpperCase(), new IndexRecord(existing.tableName, renamedIndex));
-
-    return List.of(
-        update(tableRef(TABLE))
-            .set(literal(newIndexName).as(COL_INDEX_NAME))
-            .where(and(
-                field(COL_TABLE_NAME).eq(literal(existing.tableName)),
-                field(COL_INDEX_NAME).eq(literal(existing.index.getName()))
-            ))
-    );
-  }
-
-
-  // -------------------------------------------------------------------------
-  // SQL builders
-  // -------------------------------------------------------------------------
-
-  private List<Statement> buildInsertStatements(IndexRecord record) {
-    long operationId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
-    long createdTime = System.currentTimeMillis();
-    String status = record.index.isDeferred()
-        ? DeployedIndexStatus.PENDING.name()
-        : DeployedIndexStatus.COMPLETED.name();
-
-    return List.of(
-        insert().into(tableRef(TABLE))
-            .values(
-                literal(operationId).as(COL_ID),
-                literal(record.tableName).as(COL_TABLE_NAME),
-                literal(record.index.getName()).as(COL_INDEX_NAME),
-                literal(record.index.isUnique()).as(COL_INDEX_UNIQUE),
-                literal(String.join(",", record.index.columnNames())).as(COL_INDEX_COLUMNS),
-                literal(record.index.isDeferred()).as(COL_INDEX_DEFERRED),
-                literal(status).as(COL_STATUS),
-                literal(0).as(COL_RETRY_COUNT),
-                literal(createdTime).as(COL_CREATED_TIME)
-            )
-    );
-  }
-
-
-  private List<Statement> buildDeleteStatements(Criterion... criteria) {
-    Criterion where = criteria.length == 1 ? criteria[0] : and(List.of(criteria));
-    return List.of(delete(tableRef(TABLE)).where(where));
+    return List.of(factory.statementToUpdateIndexName(
+        existing.tableName, existing.index.getName(), newIndexName));
   }
 
 
