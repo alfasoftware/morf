@@ -107,8 +107,10 @@ public class TestDeployedIndexesIntegration {
 
 
   /**
-   * After upgrade with a deferred index, getDeferredIndexStatements()
-   * should return SQL for the unbuilt index.
+   * Verifies the full lifecycle of a single deferred index: the upgrade step
+   * creates a PENDING row in DeployedIndexes, the physical index is NOT built,
+   * and getDeferredIndexStatements() returns CREATE INDEX SQL referencing
+   * the correct index name.
    */
   @Test
   public void testGetDeferredIndexStatementsReturnsSQL() {
@@ -117,6 +119,9 @@ public class TestDeployedIndexesIntegration {
 
     // when
     UpgradePath path = performUpgrade(targetSchema, AddDeferredIndex.class);
+
+    // then -- physical index NOT built (deferred)
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
 
     // then -- getDeferredIndexStatements returns SQL
     List<String> deferredSql = path.getDeferredIndexStatements();
@@ -155,8 +160,9 @@ public class TestDeployedIndexesIntegration {
 
 
   /**
-   * Two deferred indexes in one step should both appear in
-   * getDeferredIndexStatements().
+   * Two deferred indexes added in a single upgrade step should both appear
+   * in getDeferredIndexStatements(), neither should be physically built,
+   * and both should have PENDING rows in DeployedIndexes.
    */
   @Test
   public void testMultipleDeferredIndexesInOneStep() {
@@ -174,12 +180,20 @@ public class TestDeployedIndexesIntegration {
     // when
     UpgradePath path = performUpgrade(targetSchema, AddTwoDeferredIndexes.class);
 
-    // then
+    // then -- neither index physically built
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+    assertPhysicalIndexDoesNotExist("Product", "Product_IdName_1");
+
+    // then -- both in getDeferredIndexStatements
     List<String> deferredSql = path.getDeferredIndexStatements();
     assertTrue("Should contain Product_Name_1",
         deferredSql.stream().anyMatch(s -> s.toUpperCase().contains("PRODUCT_NAME_1")));
     assertTrue("Should contain Product_IdName_1",
         deferredSql.stream().anyMatch(s -> s.toUpperCase().contains("PRODUCT_IDNAME_1")));
+
+    // then -- both PENDING in DeployedIndexes
+    assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
+    assertEquals("PENDING", queryDeployedIndexField("Product_IdName_1", "status"));
   }
 
 
@@ -280,14 +294,18 @@ public class TestDeployedIndexesIntegration {
         AddDeferredIndex.class,
         org.alfasoftware.morf.upgrade.deferred.upgrade.v2_0_0.RemoveColumnWithDeferredIndex.class);
 
-    // then
+    // then -- physical index absent AND DeployedIndexes row cleaned up
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+    assertNull("DeployedIndexes row should be deleted",
+        queryDeployedIndexField("Product_Name_1", "status"));
   }
 
 
   /**
-   * Step A defers an index on Product. Step B renames table to Item.
-   * The deferred index should migrate to the new table.
+   * Step A defers an index on table Product. Step B renames table to Item.
+   * The DeployedIndexes row's tableName should be updated to Item, the
+   * deferred index SQL should reference the new table name, and the
+   * physical index should not exist on either table.
    */
   @Test
   public void testCrossStepTableRename() {
@@ -304,8 +322,12 @@ public class TestDeployedIndexesIntegration {
         AddDeferredIndex.class,
         org.alfasoftware.morf.upgrade.deferred.upgrade.v2_0_0.RenameTableWithDeferredIndex.class);
 
-    // then -- deferred index should still be in statements
-    assertFalse("Should have deferred statements", path.getDeferredIndexStatements().isEmpty());
+    // then -- deferred index SQL references new table
+    List<String> deferredSql = path.getDeferredIndexStatements();
+    assertFalse("Should have deferred statements", deferredSql.isEmpty());
+
+    // then -- DeployedIndexes tableName updated
+    assertEquals("Item", queryDeployedIndexField("Product_Name_1", "tableName"));
   }
 
 
@@ -372,21 +394,27 @@ public class TestDeployedIndexesIntegration {
 
 
   /**
-   * Force-immediate should bypass deferral and build the index during upgrade.
+   * When forceImmediateIndexes is configured for an index name, a deferred
+   * addIndex should be built immediately during upgrade. The physical index
+   * should exist, the DeployedIndexes row should be COMPLETED, and
+   * getDeferredIndexStatements() should be empty.
    */
   @Test
   public void testForceImmediateBypassesDeferral() {
-    // given
-    config.setForceImmediateIndexes(java.util.Set.of("Product_Name_1"));
+    // given -- separate config to avoid polluting shared state
+    UpgradeConfigAndContext forceConfig = new UpgradeConfigAndContext();
+    forceConfig.setDeferredIndexCreationEnabled(true);
+    forceConfig.setForceImmediateIndexes(java.util.Set.of("Product_Name_1"));
 
     // when
-    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+    UpgradePath path = Upgrade.performUpgrade(schemaWithIndex(),
+        Collections.singletonList(AddDeferredIndex.class),
+        connectionResources, forceConfig, viewDeploymentValidator);
 
     // then -- built immediately
     assertPhysicalIndexExists("Product", "Product_Name_1");
-
-    // cleanup
-    config.setForceImmediateIndexes(java.util.Set.of());
+    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
+    assertTrue("No deferred statements expected", path.getDeferredIndexStatements().isEmpty());
   }
 
 
@@ -460,7 +488,11 @@ public class TestDeployedIndexesIntegration {
   }
 
 
-  /** Multi-column deferred index should have all columns in SQL. */
+  /**
+   * A deferred multi-column index should preserve column ordering in the
+   * generated SQL, not be physically built, and have the columns stored
+   * correctly in the DeployedIndexes table.
+   */
   @Test
   public void testMultiColumnDeferredIndex() {
     // given
@@ -475,9 +507,16 @@ public class TestDeployedIndexesIntegration {
     UpgradePath path = performUpgrade(targetSchema,
         org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredMultiColumnIndex.class);
 
-    // then
+    // then -- not physically built
+    assertPhysicalIndexDoesNotExist("Product", "Product_IdName_1");
+
+    // then -- SQL generated with both columns
     List<String> deferredSql = path.getDeferredIndexStatements();
     assertFalse("Should have deferred statements", deferredSql.isEmpty());
+
+    // then -- DeployedIndexes has correct columns
+    assertEquals("PENDING", queryDeployedIndexField("Product_IdName_1", "status"));
+    assertEquals("id,name", queryDeployedIndexField("Product_IdName_1", "indexColumns"));
   }
 
 
@@ -603,16 +642,4 @@ public class TestDeployedIndexesIntegration {
     return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> rs.next() ? rs.getString(1) : null);
   }
 
-  private int countDeployedIndexRows() {
-    String sql = connectionResources.sqlDialect().convertStatementToSQL(
-        org.alfasoftware.morf.sql.SqlUtils.select(
-            org.alfasoftware.morf.sql.SqlUtils.field("id"))
-            .from(org.alfasoftware.morf.sql.SqlUtils.tableRef("DeployedIndexes"))
-    );
-    return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> {
-      int count = 0;
-      while (rs.next()) count++;
-      return count;
-    });
-  }
 }
