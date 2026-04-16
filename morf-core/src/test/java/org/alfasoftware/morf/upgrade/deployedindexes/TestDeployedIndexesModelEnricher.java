@@ -69,10 +69,8 @@ public class TestDeployedIndexesModelEnricher {
 
     // then
     assertSame(input, result.getSchema());
-    assertFalse("Empty state should report no known presence",
-        result.getState().isKnownPhysicallyPresent("Foo", "Any"));
-    assertFalse("Empty state should report no known absence",
-        result.getState().isKnownPhysicallyAbsent("Foo", "Any"));
+    assertEquals("Empty state should report UNKNOWN for any index",
+        IndexPresence.UNKNOWN, result.getState().getPresence("Foo", "Any"));
   }
 
 
@@ -141,10 +139,8 @@ public class TestDeployedIndexesModelEnricher {
     Index rebuilt = result.getSchema().getTable("MyTable").indexes().get(0);
     assertTrue("Deferred flag should be propagated from tracking row", rebuilt.isDeferred());
     // and -- state records physical presence
-    assertTrue("State should record physical presence",
-        result.getState().isKnownPhysicallyPresent("MyTable", "MyIdx"));
-    assertFalse("State should not record absence",
-        result.getState().isKnownPhysicallyAbsent("MyTable", "MyIdx"));
+    assertEquals("State should record PRESENT",
+        IndexPresence.PRESENT, result.getState().getPresence("MyTable", "MyIdx"));
   }
 
 
@@ -177,10 +173,8 @@ public class TestDeployedIndexesModelEnricher {
     assertEquals("MyIdx", virtual.getName());
     assertTrue("Should be deferred", virtual.isDeferred());
     // and -- state records physical absence
-    assertTrue("State should record physical absence",
-        result.getState().isKnownPhysicallyAbsent("MyTable", "MyIdx"));
-    assertFalse("State should not record presence",
-        result.getState().isKnownPhysicallyPresent("MyTable", "MyIdx"));
+    assertEquals("State should record ABSENT",
+        IndexPresence.ABSENT, result.getState().getPresence("MyTable", "MyIdx"));
   }
 
 

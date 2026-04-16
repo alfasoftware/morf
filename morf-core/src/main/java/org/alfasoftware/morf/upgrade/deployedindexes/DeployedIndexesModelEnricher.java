@@ -126,7 +126,7 @@ public class DeployedIndexesModelEnricher {
 
     // Build a lookup: tableName (upper) -> indexName (upper) -> entry
     Map<String, Map<String, DeployedIndex>> entryMap = buildEntryMap(allEntries);
-    Map<String, Boolean> presence = new HashMap<>();
+    Map<String, IndexPresence> presence = new HashMap<>();
 
     List<Table> enrichedTables = new ArrayList<>();
     boolean changed = false;
@@ -160,7 +160,7 @@ public class DeployedIndexesModelEnricher {
               + "This indicates a schema inconsistency.");
         }
         rebuiltIndexes.add(rebuildIndex(physicalIndex, entry.isIndexDeferred()));
-        presence.put(DeployedIndexState.key(physicalTable.getName(), physicalIndex.getName()), true);
+        presence.put(DeployedIndexState.key(physicalTable.getName(), physicalIndex.getName()), IndexPresence.PRESENT);
         tableChanged = true;
       }
 
@@ -174,7 +174,7 @@ public class DeployedIndexesModelEnricher {
         }
         // Deferred index not yet built — add as a virtual declarative index
         rebuiltIndexes.add(entry.toIndex());
-        presence.put(DeployedIndexState.key(physicalTable.getName(), entry.getIndexName()), false);
+        presence.put(DeployedIndexState.key(physicalTable.getName(), entry.getIndexName()), IndexPresence.ABSENT);
         tableChanged = true;
       }
 

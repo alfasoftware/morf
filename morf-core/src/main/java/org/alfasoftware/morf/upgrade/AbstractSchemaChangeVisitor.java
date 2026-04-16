@@ -13,6 +13,7 @@ import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexState;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesChangeService;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesChangeServiceImpl;
+import org.alfasoftware.morf.upgrade.deployedindexes.IndexPresence;
 
 /**
  * Common code between SchemaChangeVisitor implementors
@@ -386,6 +387,6 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     if (!currentSchema.tableExists(tableName)) {
       return false;
     }
-    return !deployedIndexState.isKnownPhysicallyAbsent(tableName, indexName);
+    return deployedIndexState.getPresence(tableName, indexName) != IndexPresence.ABSENT;
   }
 }

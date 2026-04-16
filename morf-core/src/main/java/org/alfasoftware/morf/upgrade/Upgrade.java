@@ -324,7 +324,8 @@ public class Upgrade {
       for (Table table : finalSchema.tables()) {
         for (Index idx : table.indexes()) {
           if (idx.isDeferred()
-              && !deployedIndexState.isKnownPhysicallyPresent(table.getName(), idx.getName())) {
+              && deployedIndexState.getPresence(table.getName(), idx.getName())
+                  != org.alfasoftware.morf.upgrade.deployedindexes.IndexPresence.PRESENT) {
             deferredIndexStatements.addAll(
                 dialect.deferredIndexDeploymentStatements(table, idx));
           }

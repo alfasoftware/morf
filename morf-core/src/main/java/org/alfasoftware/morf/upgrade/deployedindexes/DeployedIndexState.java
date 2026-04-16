@@ -36,32 +36,23 @@ import java.util.Map;
  * run) are tracked by {@link DeployedIndexesChangeService} and composed
  * with this state by the visitor.</p>
  *
- * <p>Presence questions come in two flavours because the right default for
- * unknown entries depends on who is asking:</p>
- * <ul>
- *   <li>{@link #isKnownPhysicallyPresent(String, String)} — only
- *       {@code true} if we explicitly recorded the index as present. Use
- *       for "should we emit a CREATE INDEX for this deferred entry?" —
- *       an unknown entry is a new deferred index from this session and
- *       needs its CREATE INDEX emitted.</li>
- *   <li>{@link #isKnownPhysicallyAbsent(String, String)} — only
- *       {@code true} if we explicitly recorded the index as absent (a
- *       virtual deferred entry from the tracking table). Use for "should
- *       we skip physical DDL for this schema change?" — an unknown entry
- *       is assumed present (either pre-existing or added earlier in this
- *       session).</li>
- * </ul>
+ * <p>Every query returns {@link IndexPresence}, a three-valued enum: the
+ * tri-state nature of "physical presence" (known present, known absent,
+ * or not seen) is explicit in the type. Callers decide what UNKNOWN means
+ * in their context by comparing against PRESENT or ABSENT as appropriate,
+ * e.g. {@code getPresence(...) != ABSENT} for "present or unknown" and
+ * {@code getPresence(...) != PRESENT} for "absent or unknown".</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
 public final class DeployedIndexState {
 
   /** Key format: {@code TABLE_UPPER + ':' + INDEX_UPPER}. */
-  private final Map<String, Boolean> physicallyPresent;
+  private final Map<String, IndexPresence> presence;
 
 
-  DeployedIndexState(Map<String, Boolean> physicallyPresent) {
-    this.physicallyPresent = Collections.unmodifiableMap(new HashMap<>(physicallyPresent));
+  DeployedIndexState(Map<String, IndexPresence> presence) {
+    this.presence = Collections.unmodifiableMap(new HashMap<>(presence));
   }
 
 
@@ -74,33 +65,16 @@ public final class DeployedIndexState {
 
 
   /**
-   * Whether the enricher recorded this index as physically present.
-   * Returns {@code false} both for indexes known to be absent and for
-   * indexes the enricher didn't see at all.
+   * Returns what the enricher recorded for this index.
    *
    * @param tableName the table.
    * @param indexName the index.
-   * @return {@code true} iff the enricher saw this index physically.
+   * @return {@link IndexPresence#PRESENT} / {@link IndexPresence#ABSENT} if
+   *         the enricher recorded it; {@link IndexPresence#UNKNOWN}
+   *         otherwise.
    */
-  public boolean isKnownPhysicallyPresent(String tableName, String indexName) {
-    Boolean known = physicallyPresent.get(key(tableName, indexName));
-    return known != null && known;
-  }
-
-
-  /**
-   * Whether the enricher recorded this index as physically absent (e.g. a
-   * virtual deferred entry from the {@code DeployedIndexes} table with no
-   * matching physical index). Returns {@code false} both for indexes known
-   * to be present and for indexes the enricher didn't see at all.
-   *
-   * @param tableName the table.
-   * @param indexName the index.
-   * @return {@code true} iff the enricher recorded this index as absent.
-   */
-  public boolean isKnownPhysicallyAbsent(String tableName, String indexName) {
-    Boolean known = physicallyPresent.get(key(tableName, indexName));
-    return known != null && !known;
+  public IndexPresence getPresence(String tableName, String indexName) {
+    return presence.getOrDefault(key(tableName, indexName), IndexPresence.UNKNOWN);
   }
 
 
