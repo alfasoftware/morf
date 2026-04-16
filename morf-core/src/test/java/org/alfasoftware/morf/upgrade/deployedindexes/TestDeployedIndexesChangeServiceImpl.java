@@ -206,4 +206,121 @@ public class TestDeployedIndexesChangeServiceImpl {
     // then
     assertEquals("Only Idx1 should be affected", 1, stmts.size());
   }
+
+
+  // ---- Negative / no-op paths -------------------------------------------
+
+  /** removeIndex for an untracked (table, index) pair is a no-op. */
+  @Test
+  public void testRemoveIndexOnUntrackedTableIsNoOp() {
+    // when
+    List<Statement> stmts = service.removeIndex("NoSuchTable", "NoSuchIdx");
+
+    // then
+    assertTrue("no-op should return empty list", stmts.isEmpty());
+  }
+
+
+  /** removeAllForTable on a table that isn't tracked is a no-op. */
+  @Test
+  public void testRemoveAllForUntrackedTableIsNoOp() {
+    // when
+    List<Statement> stmts = service.removeAllForTable("NoSuchTable");
+
+    // then
+    assertTrue(stmts.isEmpty());
+  }
+
+
+  /** removeIndexesReferencingColumn on an untracked table is a no-op. */
+  @Test
+  public void testRemoveIndexesReferencingColumnOnUntrackedTableIsNoOp() {
+    // when
+    List<Statement> stmts = service.removeIndexesReferencingColumn("NoSuchTable", "anyCol");
+
+    // then
+    assertTrue(stmts.isEmpty());
+  }
+
+
+  /** updateTableName on a table that isn't tracked is a no-op. */
+  @Test
+  public void testUpdateTableNameOnUntrackedTableIsNoOp() {
+    // when
+    List<Statement> stmts = service.updateTableName("NoSuchTable", "NewName");
+
+    // then
+    assertTrue(stmts.isEmpty());
+  }
+
+
+  /** updateColumnName on a table that isn't tracked is a no-op. */
+  @Test
+  public void testUpdateColumnNameOnUntrackedTableIsNoOp() {
+    // when
+    List<Statement> stmts = service.updateColumnName("NoSuchTable", "oldCol", "newCol");
+
+    // then
+    assertTrue(stmts.isEmpty());
+  }
+
+
+  /** updateIndexName on a table that isn't tracked is a no-op. */
+  @Test
+  public void testUpdateIndexNameOnUntrackedTableIsNoOp() {
+    // when
+    List<Statement> stmts = service.updateIndexName("NoSuchTable", "oldIdx", "newIdx");
+
+    // then
+    assertTrue(stmts.isEmpty());
+  }
+
+
+  /** updateIndexName on a tracked table with unknown index is a no-op. */
+  @Test
+  public void testUpdateIndexNameOnUnknownIndexIsNoOp() {
+    // given -- table tracked, but only has Idx1
+    service.trackIndex("Table1", index("Idx1").columns("col1"));
+
+    // when
+    List<Statement> stmts = service.updateIndexName("Table1", "DifferentIdx", "NewIdx");
+
+    // then
+    assertTrue(stmts.isEmpty());
+  }
+
+
+  /** updateColumnName matches columns case-insensitively. */
+  @Test
+  public void testUpdateColumnNameIsCaseInsensitive() {
+    // given -- column stored in mixed case
+    service.trackIndex("Table1", index("Idx1").columns("MyCol"));
+
+    // when -- upper-case lookup
+    List<Statement> stmts = service.updateColumnName("Table1", "MYCOL", "newName");
+
+    // then -- matches and emits the UPDATE
+    assertEquals(1, stmts.size());
+  }
+
+
+  /** trackIndex for a multi-column index emits an INSERT whose indexColumns
+   *  value is the columns comma-joined in the order they were declared. */
+  @Test
+  public void testTrackMultiColumnIndexJoinsCommaSeparated() {
+    // given
+    Index idx = index("Multi").columns("a", "b", "c");
+
+    // when
+    List<Statement> stmts = service.trackIndex("Table1", idx);
+
+    // then -- the INSERT statement has a FieldLiteral "a,b,c" among its values
+    assertEquals(1, stmts.size());
+    org.alfasoftware.morf.sql.InsertStatement insert = (org.alfasoftware.morf.sql.InsertStatement) stmts.get(0);
+    boolean sawJoined = insert.getValues().stream()
+        .filter(f -> f instanceof org.alfasoftware.morf.sql.element.FieldLiteral)
+        .map(f -> ((org.alfasoftware.morf.sql.element.FieldLiteral) f).getValue())
+        .anyMatch("a,b,c"::equals);
+    assertTrue("multi-column indexColumns should be comma-joined in declared order", sawJoined);
+  }
 }

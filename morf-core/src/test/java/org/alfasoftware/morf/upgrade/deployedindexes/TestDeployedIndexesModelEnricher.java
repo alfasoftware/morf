@@ -248,4 +248,173 @@ public class TestDeployedIndexesModelEnricher {
     assertTrue("PRF index should pass through", result.getSchema().getTable("MyTable").indexes().stream()
         .anyMatch(i -> "MyTable_PRF1".equals(i.getName())));
   }
+
+
+  // ---- Rebuild preserves index properties -------------------------------
+
+  /** rebuildIndex preserves isUnique and multi-column ordering. */
+  @Test
+  public void testRebuildPreservesUniqueAndColumnOrder() {
+    // given -- physical index is unique and multi-column; tracking says not deferred
+    org.alfasoftware.morf.metadata.Schema input = schema(
+        table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
+            .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
+        table("MyTable").columns(column("id", DataType.BIG_INTEGER).primaryKey())
+            .indexes(index("UniqueIdx").unique().columns("a", "b", "c"))
+    );
+    DeployedIndex entry = new DeployedIndex();
+    entry.setTableName("MyTable");
+    entry.setIndexName("UniqueIdx");
+    entry.setIndexDeferred(false);
+    entry.setIndexUnique(true);
+    entry.setIndexColumns(List.of("a", "b", "c"));
+    entry.setStatus(DeployedIndexStatus.COMPLETED);
+    when(dao.findAll()).thenReturn(List.of(entry));
+    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
+
+    // when
+    EnrichedModel result = enricher.enrich(input);
+
+    // then -- rebuilt index is unique, columns in declared order, not deferred
+    Index rebuilt = result.getSchema().getTable("MyTable").indexes().get(0);
+    assertTrue("isUnique should be preserved", rebuilt.isUnique());
+    assertEquals(List.of("a", "b", "c"), rebuilt.columnNames());
+    assertFalse("isDeferred should be false", rebuilt.isDeferred());
+  }
+
+
+  /** Non-deferred tracking row + matching physical: state records PRESENT. */
+  @Test
+  public void testNonDeferredPhysicalRecordsPresent() {
+    // given
+    org.alfasoftware.morf.metadata.Schema input = schema(
+        table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
+            .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
+        table("MyTable").columns(column("id", DataType.BIG_INTEGER).primaryKey())
+            .indexes(index("MyIdx").columns("id"))
+    );
+    DeployedIndex entry = new DeployedIndex();
+    entry.setTableName("MyTable");
+    entry.setIndexName("MyIdx");
+    entry.setIndexDeferred(false);
+    entry.setIndexUnique(false);
+    entry.setIndexColumns(List.of("id"));
+    entry.setStatus(DeployedIndexStatus.COMPLETED);
+    when(dao.findAll()).thenReturn(List.of(entry));
+    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
+
+    // when
+    EnrichedModel result = enricher.enrich(input);
+
+    // then -- rebuilt index is not deferred, state is PRESENT
+    assertFalse(result.getSchema().getTable("MyTable").indexes().get(0).isDeferred());
+    assertEquals(IndexPresence.PRESENT, result.getState().getPresence("MyTable", "MyIdx"));
+  }
+
+
+  /** Mixed physical + virtual-deferred on one table: both appear in schema, state
+   *  records PRESENT for the physical one and ABSENT for the virtual. */
+  @Test
+  public void testMixedPhysicalAndVirtualOnOneTable() {
+    // given -- physical Idx1 + tracking row Idx1 + tracking row Idx2 (deferred, no physical)
+    org.alfasoftware.morf.metadata.Schema input = schema(
+        table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
+            .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
+        table("MyTable").columns(column("id", DataType.BIG_INTEGER).primaryKey(), column("name", DataType.STRING, 50))
+            .indexes(index("Idx1").columns("id"))
+    );
+    DeployedIndex physicalEntry = new DeployedIndex();
+    physicalEntry.setTableName("MyTable");
+    physicalEntry.setIndexName("Idx1");
+    physicalEntry.setIndexDeferred(false);
+    physicalEntry.setIndexUnique(false);
+    physicalEntry.setIndexColumns(List.of("id"));
+    physicalEntry.setStatus(DeployedIndexStatus.COMPLETED);
+    DeployedIndex virtualEntry = new DeployedIndex();
+    virtualEntry.setTableName("MyTable");
+    virtualEntry.setIndexName("Idx2");
+    virtualEntry.setIndexDeferred(true);
+    virtualEntry.setIndexUnique(false);
+    virtualEntry.setIndexColumns(List.of("name"));
+    virtualEntry.setStatus(DeployedIndexStatus.PENDING);
+    when(dao.findAll()).thenReturn(List.of(physicalEntry, virtualEntry));
+    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
+
+    // when
+    EnrichedModel result = enricher.enrich(input);
+
+    // then -- schema has both indexes; state distinguishes them
+    assertEquals(2, result.getSchema().getTable("MyTable").indexes().size());
+    assertEquals(IndexPresence.PRESENT, result.getState().getPresence("MyTable", "Idx1"));
+    assertEquals(IndexPresence.ABSENT, result.getState().getPresence("MyTable", "Idx2"));
+  }
+
+
+  /** Multiple tables in a single enrich call — each is enriched independently. */
+  @Test
+  public void testMultipleTables() {
+    // given -- two tables, each with its own physical index tracked in DeployedIndexes
+    org.alfasoftware.morf.metadata.Schema input = schema(
+        table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
+            .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
+        table("TableA").columns(column("id", DataType.BIG_INTEGER).primaryKey())
+            .indexes(index("A_Idx").columns("id")),
+        table("TableB").columns(column("id", DataType.BIG_INTEGER).primaryKey())
+            .indexes(index("B_Idx").columns("id"))
+    );
+    DeployedIndex ea = new DeployedIndex();
+    ea.setTableName("TableA");
+    ea.setIndexName("A_Idx");
+    ea.setIndexDeferred(true);
+    ea.setIndexUnique(false);
+    ea.setIndexColumns(List.of("id"));
+    ea.setStatus(DeployedIndexStatus.COMPLETED);
+    DeployedIndex eb = new DeployedIndex();
+    eb.setTableName("TableB");
+    eb.setIndexName("B_Idx");
+    eb.setIndexDeferred(false);
+    eb.setIndexUnique(false);
+    eb.setIndexColumns(List.of("id"));
+    eb.setStatus(DeployedIndexStatus.COMPLETED);
+    when(dao.findAll()).thenReturn(List.of(ea, eb));
+    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
+
+    // when
+    EnrichedModel result = enricher.enrich(input);
+
+    // then -- deferred flag from tracking row propagates per-table
+    assertTrue(result.getSchema().getTable("TableA").indexes().get(0).isDeferred());
+    assertFalse(result.getSchema().getTable("TableB").indexes().get(0).isDeferred());
+    assertEquals(IndexPresence.PRESENT, result.getState().getPresence("TableA", "A_Idx"));
+    assertEquals(IndexPresence.PRESENT, result.getState().getPresence("TableB", "B_Idx"));
+  }
+
+
+  /** Orphan tracking row (table not in physical schema and not a Morf table)
+   *  is tolerated — logs a warning, doesn't throw. */
+  @Test
+  public void testOrphanRowForMissingTableDoesNotThrow() {
+    // given -- DeployedIndexes references GoneTable which isn't in the physical schema
+    org.alfasoftware.morf.metadata.Schema input = schema(
+        table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
+            .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
+        table("ExistingTable").columns(column("id", DataType.BIG_INTEGER).primaryKey())
+    );
+    DeployedIndex orphan = new DeployedIndex();
+    orphan.setTableName("GoneTable");
+    orphan.setIndexName("OrphanIdx");
+    orphan.setIndexDeferred(true);
+    orphan.setIndexUnique(false);
+    orphan.setIndexColumns(List.of("c"));
+    orphan.setStatus(DeployedIndexStatus.PENDING);
+    when(dao.findAll()).thenReturn(List.of(orphan));
+    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
+
+    // when -- should NOT throw; orphan is logged and ignored
+    EnrichedModel result = enricher.enrich(input);
+
+    // then -- the enriched schema does not contain the orphan index
+    assertFalse(result.getSchema().tableExists("GoneTable"));
+    assertEquals(IndexPresence.UNKNOWN, result.getState().getPresence("GoneTable", "OrphanIdx"));
+  }
 }

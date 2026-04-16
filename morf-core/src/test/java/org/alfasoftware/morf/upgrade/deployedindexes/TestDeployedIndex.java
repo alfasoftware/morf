@@ -71,4 +71,20 @@ public class TestDeployedIndex {
   }
 
 
+  /** toIndex preserves column order for composite indexes. */
+  @Test
+  public void testToIndexPreservesCompositeColumnOrder() {
+    // given -- columns declared in a specific non-alphabetical order
+    DeployedIndex entry = new DeployedIndex();
+    entry.setIndexName("CompositeIdx");
+    entry.setIndexColumns(List.of("z", "a", "m"));
+    entry.setIndexUnique(false);
+    entry.setIndexDeferred(false);
+
+    // when
+    Index idx = entry.toIndex();
+
+    // then -- same order preserved
+    assertEquals(List.of("z", "a", "m"), idx.columnNames());
+  }
 }
