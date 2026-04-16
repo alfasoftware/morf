@@ -33,7 +33,7 @@ import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher.Result;
+import org.alfasoftware.morf.upgrade.deployedindexes.EnrichedModel;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -65,7 +65,7 @@ public class TestDeployedIndexesModelEnricher {
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
 
     // when
-    Result result = enricher.enrich(input);
+    EnrichedModel result = enricher.enrich(input);
 
     // then
     assertSame(input, result.getSchema());
@@ -83,7 +83,7 @@ public class TestDeployedIndexesModelEnricher {
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
 
     // when
-    Result result = enricher.enrich(input);
+    EnrichedModel result = enricher.enrich(input);
 
     // then
     assertSame(input, result.getSchema());
@@ -104,7 +104,7 @@ public class TestDeployedIndexesModelEnricher {
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
 
     // when
-    Result result = enricher.enrich(input);
+    EnrichedModel result = enricher.enrich(input);
 
     // then
     assertSame(input, result.getSchema());
@@ -133,7 +133,7 @@ public class TestDeployedIndexesModelEnricher {
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
 
     // when
-    Result result = enricher.enrich(input);
+    EnrichedModel result = enricher.enrich(input);
 
     // then -- schema carries deferred flag
     Index rebuilt = result.getSchema().getTable("MyTable").indexes().get(0);
@@ -165,7 +165,7 @@ public class TestDeployedIndexesModelEnricher {
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
 
     // when
-    Result result = enricher.enrich(input);
+    EnrichedModel result = enricher.enrich(input);
 
     // then -- virtual deferred index appears in schema
     assertEquals(1, result.getSchema().getTable("MyTable").indexes().size());
@@ -242,7 +242,7 @@ public class TestDeployedIndexesModelEnricher {
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
 
     // when -- should NOT throw despite untracked PRF index
-    Result result = enricher.enrich(input);
+    EnrichedModel result = enricher.enrich(input);
 
     // then
     assertTrue("PRF index should pass through", result.getSchema().getTable("MyTable").indexes().stream()

@@ -249,7 +249,7 @@ public class Upgrade {
     org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexState deployedIndexState =
         org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexState.empty();
     if (deployedIndexesModelEnricher != null) {
-      org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher.Result enrichment =
+      org.alfasoftware.morf.upgrade.deployedindexes.EnrichedModel enrichment =
           deployedIndexesModelEnricher.enrich(sourceSchema);
       sourceSchema = enrichment.getSchema();
       deployedIndexState = enrichment.getState();
