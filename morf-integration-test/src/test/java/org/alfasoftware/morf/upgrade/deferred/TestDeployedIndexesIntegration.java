@@ -445,6 +445,57 @@ public class TestDeployedIndexesIntegration {
 
 
   // =========================================================================
+  // Unique and multi-column deferred indexes
+  // =========================================================================
+
+  /** Unique deferred index should preserve unique flag in getDeferredIndexStatements. */
+  @Test
+  public void testUniqueDeferredIndex() {
+    // given
+    Schema targetSchema = schema(
+        deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+        deployedIndexesTable(),
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_UQ").unique().columns("name"))
+    );
+
+    // when
+    UpgradePath path = performUpgrade(targetSchema, AddDeferredUniqueIndex.class);
+
+    // then
+    List<String> deferredSql = path.getDeferredIndexStatements();
+    assertFalse("Should have deferred statements", deferredSql.isEmpty());
+    assertTrue("Should contain UNIQUE keyword",
+        deferredSql.stream().anyMatch(s -> s.toUpperCase().contains("UNIQUE")));
+  }
+
+
+  /** Multi-column deferred index should have all columns in SQL. */
+  @Test
+  public void testMultiColumnDeferredIndex() {
+    // given
+    Schema targetSchema = schema(
+        deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+        deployedIndexesTable(),
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_IdName_1").columns("id", "name"))
+    );
+
+    // when
+    UpgradePath path = performUpgrade(targetSchema,
+        org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredMultiColumnIndex.class);
+
+    // then
+    List<String> deferredSql = path.getDeferredIndexStatements();
+    assertFalse("Should have deferred statements", deferredSql.isEmpty());
+  }
+
+
+  // =========================================================================
   // DeployedIndexes table state verification
   // =========================================================================
 
