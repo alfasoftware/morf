@@ -125,8 +125,12 @@ public class TestInlineTableUpgrader {
   @Test
   public void testVisitAddTable() {
     // given
+    Table mockTable = mock(Table.class);
+    when(mockTable.getName()).thenReturn("TestTable");
+    when(mockTable.indexes()).thenReturn(List.of());
     AddTable addTable = mock(AddTable.class);
     given(addTable.apply(schema)).willReturn(schema);
+    when(addTable.getTable()).thenReturn(mockTable);
 
     // when
     upgrader.visit(addTable);
@@ -134,7 +138,7 @@ public class TestInlineTableUpgrader {
     // then
     verify(addTable).apply(schema);
     verify(sqlDialect, atLeastOnce()).tableDeploymentStatements(nullable(Table.class));
-    verify(sqlStatementWriter).writeSql(anyCollection()); // deploying the specified table and indexes
+    verify(sqlStatementWriter).writeSql(anyCollection());
   }
 
 
@@ -166,9 +170,16 @@ public class TestInlineTableUpgrader {
   @Test
   public void testVisitAddIndex() {
     // given
+    Index newIndex = mock(Index.class);
+    when(newIndex.getName()).thenReturn("TestIdx");
+    when(newIndex.isDeferred()).thenReturn(false);
+    when(newIndex.isUnique()).thenReturn(false);
+    when(newIndex.columnNames()).thenReturn(List.of("col1"));
+
     AddIndex addIndex = mock(AddIndex.class);
     given(addIndex.apply(schema)).willReturn(schema);
     when(addIndex.getTableName()).thenReturn(ID_TABLE_NAME);
+    when(addIndex.getNewIndex()).thenReturn(newIndex);
 
     Table newTable = mock(Table.class);
     when(newTable.getName()).thenReturn(ID_TABLE_NAME);

@@ -5,6 +5,7 @@ import static org.hamcrest.Matchers.any;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -99,13 +100,13 @@ public class TestSchemaChangeSequence {
     SchemaChangeSequence seq = new SchemaChangeSequence(config, List.of(new StepWithDeferredAddIndex()));
     List<SchemaChange> changes = seq.getAllChanges();
 
-    // then
+    // then -- now produces AddIndex with isDeferred()=true
     assertThat(changes, hasSize(1));
-    assertThat(changes.get(0), instanceOf(DeferredAddIndex.class));
-    DeferredAddIndex change = (DeferredAddIndex) changes.get(0);
+    assertThat(changes.get(0), instanceOf(AddIndex.class));
+    AddIndex change = (AddIndex) changes.get(0);
     assertEquals("TestTable", change.getTableName());
     assertEquals("TestIdx", change.getNewIndex().getName());
-    assertEquals("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", change.getUpgradeUUID());
+    assertTrue("Index should be deferred", change.getNewIndex().isDeferred());
   }
 
 
@@ -185,13 +186,13 @@ public class TestSchemaChangeSequence {
     SchemaChangeSequence seq = new SchemaChangeSequence(config, List.of(new StepWithAddIndex()));
     List<SchemaChange> changes = seq.getAllChanges();
 
-    // then
+    // then -- force-deferred produces AddIndex with isDeferred()=true
     assertThat(changes, hasSize(1));
-    assertThat(changes.get(0), instanceOf(DeferredAddIndex.class));
-    DeferredAddIndex change = (DeferredAddIndex) changes.get(0);
+    assertThat(changes.get(0), instanceOf(AddIndex.class));
+    AddIndex change = (AddIndex) changes.get(0);
     assertEquals("TestTable", change.getTableName());
     assertEquals("TestIdx", change.getNewIndex().getName());
-    assertEquals("bbbbbbbb-cccc-dddd-eeee-ffffffffffff", change.getUpgradeUUID());
+    assertTrue("Index should be deferred", change.getNewIndex().isDeferred());
   }
 
 
@@ -212,7 +213,8 @@ public class TestSchemaChangeSequence {
 
     // then
     assertThat(changes, hasSize(1));
-    assertThat(changes.get(0), instanceOf(DeferredAddIndex.class));
+    assertThat(changes.get(0), instanceOf(AddIndex.class));
+    assertTrue("Index should be deferred", ((AddIndex) changes.get(0)).getNewIndex().isDeferred());
   }
 
 
