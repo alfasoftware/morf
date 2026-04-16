@@ -362,7 +362,6 @@ public class TestInlineTableUpgrader {
     // given — physically present index
     Index mockIndex = mock(Index.class);
     when(mockIndex.getName()).thenReturn("SomeIdx");
-    when(mockIndex.isPhysicallyPresent()).thenReturn(true);
 
     Table mockTable = mock(Table.class);
     when(mockTable.indexes()).thenReturn(List.of(mockIndex));
@@ -391,7 +390,6 @@ public class TestInlineTableUpgrader {
     // given — physically present index being changed
     Index fromIndex = mock(Index.class);
     when(fromIndex.getName()).thenReturn("SomeIndex");
-    when(fromIndex.isPhysicallyPresent()).thenReturn(true);
 
     Index toIndex = mock(Index.class);
     when(toIndex.getName()).thenReturn("SomeIndex");
@@ -670,7 +668,6 @@ public class TestInlineTableUpgrader {
     when(mockIndex.getName()).thenReturn("TestIdx");
     when(mockIndex.isUnique()).thenReturn(false);
     when(mockIndex.isDeferred()).thenReturn(true);
-    when(mockIndex.isPhysicallyPresent()).thenReturn(false);
     when(mockIndex.columnNames()).thenReturn(List.of("col1"));
 
     AddIndex addIndex = mock(AddIndex.class);
@@ -719,7 +716,6 @@ public class TestInlineTableUpgrader {
     when(mockIndex.getName()).thenReturn("TestIdx");
     when(mockIndex.isUnique()).thenReturn(false);
     when(mockIndex.isDeferred()).thenReturn(true);
-    when(mockIndex.isPhysicallyPresent()).thenReturn(false);
     when(mockIndex.columnNames()).thenReturn(List.of("col1"));
 
     AddIndex addIndex = mock(AddIndex.class);
@@ -761,7 +757,6 @@ public class TestInlineTableUpgrader {
     when(mockIndex.getName()).thenReturn("TestIdx");
     when(mockIndex.isUnique()).thenReturn(false);
     when(mockIndex.isDeferred()).thenReturn(true);
-    when(mockIndex.isPhysicallyPresent()).thenReturn(false);
     when(mockIndex.columnNames()).thenReturn(List.of("col1"));
 
     AddIndex addIndex = mock(AddIndex.class);
@@ -799,7 +794,6 @@ public class TestInlineTableUpgrader {
     // given — a non-deferred index that is physically present
     Index mockIndex = mock(Index.class);
     when(mockIndex.getName()).thenReturn("TestIdx");
-    when(mockIndex.isPhysicallyPresent()).thenReturn(true);
 
     Table mockTable = mock(Table.class);
     when(mockTable.indexes()).thenReturn(List.of(mockIndex));

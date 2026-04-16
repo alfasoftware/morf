@@ -288,7 +288,6 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     visitor.startStep(U1.class);
     Index mockIdx = mock(Index.class);
     when(mockIdx.getName()).thenReturn("SomeIdx");
-    when(mockIdx.isPhysicallyPresent()).thenReturn(true);
 
     Table mockTable = mock(Table.class);
     when(mockTable.indexes()).thenReturn(List.of(mockIdx));
@@ -315,7 +314,6 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     visitor.startStep(U1.class);
     Index fromIdx = mock(Index.class);
     when(fromIdx.getName()).thenReturn("SomeIndex");
-    when(fromIdx.isPhysicallyPresent()).thenReturn(true);
 
     Index toIdx = mock(Index.class);
     when(toIdx.getName()).thenReturn("SomeIndex");
@@ -350,7 +348,6 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     visitor.startStep(U1.class);
     Index mockIdx = mock(Index.class);
     when(mockIdx.getName()).thenReturn("OldIndex");
-    when(mockIdx.isPhysicallyPresent()).thenReturn(true);
 
     Table mockTable = mock(Table.class);
     when(mockTable.indexes()).thenReturn(List.of(mockIdx));
@@ -384,7 +381,6 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     when(deferredIdx.getName()).thenReturn("SomeIndex");
     when(deferredIdx.isUnique()).thenReturn(false);
     when(deferredIdx.isDeferred()).thenReturn(true);
-    when(deferredIdx.isPhysicallyPresent()).thenReturn(false);
     when(deferredIdx.columnNames()).thenReturn(List.of("col1"));
 
     AddIndex addIndex = mock(AddIndex.class);
@@ -432,7 +428,6 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     when(deferredIdx.getName()).thenReturn("OldIndex");
     when(deferredIdx.isUnique()).thenReturn(false);
     when(deferredIdx.isDeferred()).thenReturn(true);
-    when(deferredIdx.isPhysicallyPresent()).thenReturn(false);
     when(deferredIdx.columnNames()).thenReturn(List.of("col1"));
 
     AddIndex addIndex = mock(AddIndex.class);

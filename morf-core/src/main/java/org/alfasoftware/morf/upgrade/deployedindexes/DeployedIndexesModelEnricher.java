@@ -15,6 +15,7 @@
 
 package org.alfasoftware.morf.upgrade.deployedindexes;
 
+import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 
 import java.util.ArrayList;
@@ -23,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils;
-import org.alfasoftware.morf.metadata.ObservedIndex;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaUtils;
@@ -38,16 +38,28 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 /**
- * Enriches a physical database schema with metadata from the DeployedIndexes
- * table. After enrichment, every {@link Index} in the schema carries
- * {@link Index#isDeferred()} and {@link Index#isPhysicallyPresent()} properties
- * that the visitor uses for DDL decisions.
+ * Merges the physical database schema with the {@code DeployedIndexes}
+ * tracking table to produce:
+ * <ul>
+ *   <li>a schema where each index carries the correct declarative
+ *       {@link Index#isDeferred()} (propagated from the tracking row),
+ *       with deferred-but-not-yet-built indexes added as virtual entries;
+ *       and</li>
+ *   <li>a {@link DeployedIndexState} that records operational facts
+ *       (physical presence per index) for the visitor to consult when
+ *       deciding DDL strategies.</li>
+ * </ul>
+ *
+ * <p>Keeping the operational state out of the {@link Index} model preserves
+ * the declarative nature of the schema types. Questions like "is this
+ * index physically there?" go to the {@link DeployedIndexState}, not to
+ * the index itself.</p>
  *
  * <p>Consistency validation is performed during enrichment:</p>
  * <ul>
  *   <li>Non-deferred index missing from DB &rarr; error</li>
  *   <li>Physical index not tracked in DeployedIndexes (after initial population,
- *       excluding _PRF indexes) &rarr; error</li>
+ *       excluding {@code _PRF} indexes) &rarr; error</li>
  * </ul>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
@@ -85,108 +97,105 @@ public class DeployedIndexesModelEnricher {
 
 
   /**
-   * Enriches the given physical schema with DeployedIndexes metadata.
-   * Returns a new schema where each index carries {@code isDeferred()}
-   * and {@code isPhysicallyPresent()} from the DeployedIndexes table.
+   * Enriches the physical schema with {@code DeployedIndexes} metadata
+   * and produces a companion {@link DeployedIndexState}.
    *
-   * <p>If the DeployedIndexes table does not exist in the schema, the
-   * source schema is returned unchanged (pre-initial-population state).</p>
+   * <p>If the feature is disabled or the {@code DeployedIndexes} table does
+   * not yet exist, the physical schema is returned unchanged alongside an
+   * empty state.</p>
    *
    * @param physicalSchema the schema read from JDBC metadata.
-   * @return the enriched schema.
+   * @return the enrichment result: schema + operational state.
    * @throws IllegalStateException if consistency validation fails.
    */
-  public Schema enrichSchema(Schema physicalSchema) {
+  public Result enrich(Schema physicalSchema) {
     if (!config.isDeferredIndexCreationEnabled()) {
-      return physicalSchema;
+      return new Result(physicalSchema, DeployedIndexState.empty());
     }
 
     if (!physicalSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)) {
       log.debug("DeployedIndexes table does not exist yet — returning physical schema unchanged");
-      return physicalSchema;
+      return new Result(physicalSchema, DeployedIndexState.empty());
     }
 
     List<DeployedIndexEntry> allEntries = dao.findAll();
     if (allEntries.isEmpty()) {
       log.debug("DeployedIndexes table is empty — returning physical schema unchanged");
-      return physicalSchema;
+      return new Result(physicalSchema, DeployedIndexState.empty());
     }
 
     // Build a lookup: tableName (upper) -> indexName (upper) -> entry
     Map<String, Map<String, DeployedIndexEntry>> entryMap = buildEntryMap(allEntries);
+    Map<String, Boolean> presence = new HashMap<>();
 
-    // Enrich each table's indexes
     List<Table> enrichedTables = new ArrayList<>();
     boolean changed = false;
 
-    for (Table table : physicalSchema.tables()) {
+    for (Table physicalTable : physicalSchema.tables()) {
       // Skip Morf infrastructure tables
-      if (isMorfInfrastructureTable(table.getName())) {
-        enrichedTables.add(table);
+      if (isMorfInfrastructureTable(physicalTable.getName())) {
+        enrichedTables.add(physicalTable);
         continue;
       }
 
       Map<String, DeployedIndexEntry> tableEntries = entryMap.getOrDefault(
-          table.getName().toUpperCase(), new HashMap<>());
+          physicalTable.getName().toUpperCase(), new HashMap<>());
 
-      List<Index> enrichedIndexes = new ArrayList<>();
+      List<Index> rebuiltIndexes = new ArrayList<>();
       boolean tableChanged = false;
 
-      // Process physical indexes
-      for (Index physicalIndex : table.indexes()) {
+      // Physical indexes: rebuild with correct deferred flag from tracking
+      for (Index physicalIndex : physicalTable.indexes()) {
         if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(physicalIndex.getName())) {
-          enrichedIndexes.add(physicalIndex);
+          rebuiltIndexes.add(physicalIndex);
           continue;
         }
 
         DeployedIndexEntry entry = tableEntries.remove(physicalIndex.getName().toUpperCase());
-        if (entry != null) {
-          // Physical index tracked in DeployedIndexes — enrich
-          enrichedIndexes.add(new ObservedIndex(physicalIndex, entry.isIndexDeferred(), true));
-          tableChanged = true;
-        } else {
-          // Physical index NOT in DeployedIndexes — error after initial population
+        if (entry == null) {
+          // Physical index not tracked — schema inconsistency after initial population
           throw new IllegalStateException(
-              "Index [" + physicalIndex.getName() + "] on table [" + table.getName()
+              "Index [" + physicalIndex.getName() + "] on table [" + physicalTable.getName()
               + "] exists in the database but is not tracked in the DeployedIndexes table. "
               + "This indicates a schema inconsistency.");
         }
+        rebuiltIndexes.add(rebuildIndex(physicalIndex, entry.isIndexDeferred()));
+        presence.put(DeployedIndexState.key(physicalTable.getName(), physicalIndex.getName()), true);
+        tableChanged = true;
       }
 
       // Remaining entries: declared in DeployedIndexes but not physically present
       for (DeployedIndexEntry entry : tableEntries.values()) {
         if (!entry.isIndexDeferred()) {
-          // Non-deferred index missing from DB — error
           throw new IllegalStateException(
               "Non-deferred index [" + entry.getIndexName() + "] on table [" + entry.getTableName()
               + "] is tracked in DeployedIndexes but does not exist in the database. "
               + "This indicates a schema inconsistency.");
         }
-        // Deferred index not yet built — add as virtual
-        Index virtualIndex = entry.toIndex();
-        enrichedIndexes.add(new ObservedIndex(virtualIndex, true, false));
+        // Deferred index not yet built — add as a virtual declarative index
+        rebuiltIndexes.add(entry.toIndex());
+        presence.put(DeployedIndexState.key(physicalTable.getName(), entry.getIndexName()), false);
         tableChanged = true;
       }
 
       if (tableChanged) {
-        enrichedTables.add(table(table.getName()).columns(table.columns()).indexes(enrichedIndexes));
+        enrichedTables.add(table(physicalTable.getName())
+            .columns(physicalTable.columns())
+            .indexes(rebuiltIndexes));
         changed = true;
       } else {
-        enrichedTables.add(table);
+        enrichedTables.add(physicalTable);
       }
     }
 
     // Check for entries referencing tables that don't exist in the physical schema
     for (Map.Entry<String, Map<String, DeployedIndexEntry>> tableGroup : entryMap.entrySet()) {
-      String tableNameUpper = tableGroup.getKey();
-      // Skip if this table was already processed (entries consumed above)
       if (tableGroup.getValue().isEmpty()) {
         continue;
       }
-      // Check if this is a Morf infrastructure table
       boolean isMorfTable = false;
       for (Table t : physicalSchema.tables()) {
-        if (t.getName().toUpperCase().equals(tableNameUpper)) {
+        if (t.getName().toUpperCase().equals(tableGroup.getKey())) {
           isMorfTable = isMorfInfrastructureTable(t.getName());
           break;
         }
@@ -199,11 +208,25 @@ public class DeployedIndexesModelEnricher {
       }
     }
 
-    if (!changed) {
-      return physicalSchema;
-    }
+    Schema schema = changed ? SchemaUtils.schema(enrichedTables) : physicalSchema;
+    return new Result(schema, new DeployedIndexState(presence));
+  }
 
-    return SchemaUtils.schema(enrichedTables);
+
+  /**
+   * Rebuilds the given physical index carrying the deferred flag from the
+   * tracking table. Uses the public {@code SchemaUtils} builder so the
+   * result is a plain declarative {@link Index}.
+   */
+  private Index rebuildIndex(Index physicalIndex, boolean deferred) {
+    SchemaUtils.IndexBuilder builder = index(physicalIndex.getName()).columns(physicalIndex.columnNames());
+    if (physicalIndex.isUnique()) {
+      builder = builder.unique();
+    }
+    if (deferred) {
+      builder = builder.deferred();
+    }
+    return builder;
   }
 
 
@@ -221,5 +244,42 @@ public class DeployedIndexesModelEnricher {
     return DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME.equalsIgnoreCase(tableName)
         || DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME.equalsIgnoreCase(tableName)
         || DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME.equalsIgnoreCase(tableName);
+  }
+
+
+  /**
+   * Output of {@link #enrich(Schema)}: the enriched schema plus the
+   * companion {@link DeployedIndexState} carrying operational facts.
+   */
+  public static final class Result {
+    private final Schema schema;
+    private final DeployedIndexState state;
+
+    /**
+     * Constructs an enrichment result.
+     *
+     * @param schema the enriched schema.
+     * @param state the companion operational state.
+     */
+    public Result(Schema schema, DeployedIndexState state) {
+      this.schema = schema;
+      this.state = state;
+    }
+
+    /**
+     * @return the enriched schema. Indexes carry the correct
+     *         {@link Index#isDeferred()} and deferred-not-yet-built
+     *         indexes appear as virtual entries.
+     */
+    public Schema getSchema() {
+      return schema;
+    }
+
+    /**
+     * @return operational state: physical presence per index.
+     */
+    public DeployedIndexState getState() {
+      return state;
+    }
   }
 }

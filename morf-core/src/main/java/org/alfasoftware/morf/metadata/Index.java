@@ -54,18 +54,6 @@ public interface Index {
 
 
   /**
-   * Returns whether this index physically exists in the database catalog.
-   * Defaults to {@code true}. Deferred indexes that have not yet been built
-   * return {@code false} when read through the model enricher.
-   *
-   * @return True if the index is physically present in the database.
-   */
-  public default boolean isPhysicallyPresent() {
-    return true;
-  }
-
-
-  /**
    * Helper for {@link Object#toString()} implementations.
    *
    * @return String representation of the index.
@@ -77,9 +65,6 @@ public interface Index {
         .append("-").append(Joiner.on(',').join(columnNames()));
     if (isDeferred()) {
       sb.append("-deferred");
-    }
-    if (!isPhysicallyPresent()) {
-      sb.append("-virtual");
     }
     return sb.toString();
   }

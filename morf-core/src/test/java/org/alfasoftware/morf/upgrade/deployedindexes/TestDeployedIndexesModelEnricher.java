@@ -31,9 +31,9 @@ import java.util.List;
 
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
-import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher.Result;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -55,42 +55,48 @@ public class TestDeployedIndexesModelEnricher {
   }
 
 
-  /** When feature is disabled, enrichSchema returns input unchanged. */
+  /** When feature is disabled, enrich returns input schema unchanged and empty state. */
   @Test
   public void testDisabledReturnsInputUnchanged() {
     // given
     config.setDeferredIndexCreationEnabled(false);
-    Schema input = schema(table("Foo").columns(column("id", DataType.BIG_INTEGER).primaryKey()));
+    org.alfasoftware.morf.metadata.Schema input =
+        schema(table("Foo").columns(column("id", DataType.BIG_INTEGER).primaryKey()));
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
 
     // when
-    Schema result = enricher.enrichSchema(input);
+    Result result = enricher.enrich(input);
 
     // then
-    assertSame(input, result);
+    assertSame(input, result.getSchema());
+    assertFalse("Empty state should report no known presence",
+        result.getState().isKnownPhysicallyPresent("Foo", "Any"));
+    assertFalse("Empty state should report no known absence",
+        result.getState().isKnownPhysicallyAbsent("Foo", "Any"));
   }
 
 
-  /** When DeployedIndexes table doesn't exist, returns input unchanged. */
+  /** When DeployedIndexes table doesn't exist, returns input schema unchanged and empty state. */
   @Test
   public void testNoDeployedIndexesTableReturnsUnchanged() {
-    // given -- schema without DeployedIndexes table
-    Schema input = schema(table("Foo").columns(column("id", DataType.BIG_INTEGER).primaryKey()));
+    // given
+    org.alfasoftware.morf.metadata.Schema input =
+        schema(table("Foo").columns(column("id", DataType.BIG_INTEGER).primaryKey()));
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
 
     // when
-    Schema result = enricher.enrichSchema(input);
+    Result result = enricher.enrich(input);
 
     // then
-    assertSame(input, result);
+    assertSame(input, result.getSchema());
   }
 
 
-  /** When DeployedIndexes table is empty, returns input unchanged. */
+  /** When DeployedIndexes table is empty, returns input schema unchanged and empty state. */
   @Test
   public void testEmptyDeployedIndexesReturnsUnchanged() {
     // given
-    Schema input = schema(
+    org.alfasoftware.morf.metadata.Schema input = schema(
         table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
             .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
         table("Foo").columns(column("id", DataType.BIG_INTEGER).primaryKey())
@@ -100,18 +106,19 @@ public class TestDeployedIndexesModelEnricher {
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
 
     // when
-    Schema result = enricher.enrichSchema(input);
+    Result result = enricher.enrich(input);
 
     // then
-    assertSame(input, result);
+    assertSame(input, result.getSchema());
   }
 
 
-  /** Physical index with matching DeployedIndexes row should be enriched. */
+  /** Physical index with a matching DeployedIndexes row has its deferred flag propagated,
+   *  and the state records it as physically present. */
   @Test
-  public void testPhysicalIndexEnrichedWithDeployedData() {
+  public void testPhysicalIndexCarriesDeferredFlagAndStateRecordsPresent() {
     // given
-    Schema input = schema(
+    org.alfasoftware.morf.metadata.Schema input = schema(
         table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
             .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
         table("MyTable").columns(column("id", DataType.BIG_INTEGER).primaryKey())
@@ -128,20 +135,25 @@ public class TestDeployedIndexesModelEnricher {
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
 
     // when
-    Schema result = enricher.enrichSchema(input);
+    Result result = enricher.enrich(input);
 
-    // then
-    Index enrichedIdx = result.getTable("MyTable").indexes().get(0);
-    assertTrue("Should be deferred", enrichedIdx.isDeferred());
-    assertTrue("Should be physically present", enrichedIdx.isPhysicallyPresent());
+    // then -- schema carries deferred flag
+    Index rebuilt = result.getSchema().getTable("MyTable").indexes().get(0);
+    assertTrue("Deferred flag should be propagated from tracking row", rebuilt.isDeferred());
+    // and -- state records physical presence
+    assertTrue("State should record physical presence",
+        result.getState().isKnownPhysicallyPresent("MyTable", "MyIdx"));
+    assertFalse("State should not record absence",
+        result.getState().isKnownPhysicallyAbsent("MyTable", "MyIdx"));
   }
 
 
-  /** Deferred index with no physical counterpart should be added as virtual. */
+  /** Deferred index with no physical counterpart is added to the schema as a virtual entry,
+   *  and the state records it as absent. */
   @Test
-  public void testDeferredIndexAddedAsVirtual() {
+  public void testDeferredIndexAddedAsVirtualAndStateRecordsAbsent() {
     // given -- table with no physical indexes
-    Schema input = schema(
+    org.alfasoftware.morf.metadata.Schema input = schema(
         table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
             .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
         table("MyTable").columns(column("id", DataType.BIG_INTEGER).primaryKey(), column("name", DataType.STRING, 50))
@@ -157,14 +169,18 @@ public class TestDeployedIndexesModelEnricher {
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
 
     // when
-    Schema result = enricher.enrichSchema(input);
+    Result result = enricher.enrich(input);
 
-    // then
-    assertEquals(1, result.getTable("MyTable").indexes().size());
-    Index virtual = result.getTable("MyTable").indexes().get(0);
+    // then -- virtual deferred index appears in schema
+    assertEquals(1, result.getSchema().getTable("MyTable").indexes().size());
+    Index virtual = result.getSchema().getTable("MyTable").indexes().get(0);
     assertEquals("MyIdx", virtual.getName());
     assertTrue("Should be deferred", virtual.isDeferred());
-    assertFalse("Should not be physically present", virtual.isPhysicallyPresent());
+    // and -- state records physical absence
+    assertTrue("State should record physical absence",
+        result.getState().isKnownPhysicallyAbsent("MyTable", "MyIdx"));
+    assertFalse("State should not record presence",
+        result.getState().isKnownPhysicallyPresent("MyTable", "MyIdx"));
   }
 
 
@@ -172,7 +188,7 @@ public class TestDeployedIndexesModelEnricher {
   @Test(expected = IllegalStateException.class)
   public void testNonDeferredMissingFromDbThrowsError() {
     // given -- DeployedIndexes says non-deferred index exists, but it's not in the physical schema
-    Schema input = schema(
+    org.alfasoftware.morf.metadata.Schema input = schema(
         table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
             .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
         table("MyTable").columns(column("id", DataType.BIG_INTEGER).primaryKey())
@@ -188,7 +204,7 @@ public class TestDeployedIndexesModelEnricher {
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
 
     // when -- should throw
-    enricher.enrichSchema(input);
+    enricher.enrich(input);
   }
 
 
@@ -196,7 +212,7 @@ public class TestDeployedIndexesModelEnricher {
   @Test(expected = IllegalStateException.class)
   public void testUntrackedPhysicalIndexThrowsError() {
     // given -- physical index exists but no DeployedIndexes row
-    Schema input = schema(
+    org.alfasoftware.morf.metadata.Schema input = schema(
         table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
             .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
         table("MyTable").columns(column("id", DataType.BIG_INTEGER).primaryKey())
@@ -214,7 +230,7 @@ public class TestDeployedIndexesModelEnricher {
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
 
     // when -- should throw
-    enricher.enrichSchema(input);
+    enricher.enrich(input);
   }
 
 
@@ -222,7 +238,7 @@ public class TestDeployedIndexesModelEnricher {
   @Test
   public void testPrfIndexExcludedFromValidation() {
     // given -- _PRF index in physical schema with no DeployedIndexes row
-    Schema input = schema(
+    org.alfasoftware.morf.metadata.Schema input = schema(
         table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
             .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
         table("MyTable").columns(column("id", DataType.BIG_INTEGER).primaryKey())
@@ -232,10 +248,10 @@ public class TestDeployedIndexesModelEnricher {
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
 
     // when -- should NOT throw despite untracked PRF index
-    Schema result = enricher.enrichSchema(input);
+    Result result = enricher.enrich(input);
 
     // then
-    assertTrue("PRF index should pass through", result.getTable("MyTable").indexes().stream()
+    assertTrue("PRF index should pass through", result.getSchema().getTable("MyTable").indexes().stream()
         .anyMatch(i -> "MyTable_PRF1".equals(i.getName())));
   }
 }

@@ -242,11 +242,17 @@ public class Upgrade {
       }
     }
 
-    // Enrich the source schema with DeployedIndexes metadata. This adds
-    // isDeferred() and isPhysicallyPresent() properties to each index,
-    // enabling model-based DDL decisions in the visitor.
+    // Enrich the source schema with DeployedIndexes metadata. This propagates
+    // the declarative isDeferred() onto indexes (from the tracking table) and
+    // produces a companion DeployedIndexState carrying operational facts
+    // (physical presence) that the visitor consults for DDL decisions.
+    org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexState deployedIndexState =
+        org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexState.empty();
     if (deployedIndexesModelEnricher != null) {
-      sourceSchema = deployedIndexesModelEnricher.enrichSchema(sourceSchema);
+      org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher.Result enrichment =
+          deployedIndexesModelEnricher.enrich(sourceSchema);
+      sourceSchema = enrichment.getSchema();
+      deployedIndexState = enrichment.getState();
     }
 
     // -- Get the current UUIDs and deployed views...
@@ -300,7 +306,7 @@ public class Upgrade {
         public void writeSql(Collection<String> sql) {
           upgradeStatements.addAll(sql);
         }
-      }, SqlDialect.IdTable.withPrefix(dialect, "temp_id_"));
+      }, SqlDialect.IdTable.withPrefix(dialect, "temp_id_"), deployedIndexState);
       upgrader.preUpgrade();
       schemaChangeSequence.applyTo(upgrader);
       upgrader.postUpgrade();
@@ -317,19 +323,10 @@ public class Upgrade {
       Schema finalSchema = schemaChangeSequence.applyToSchema(sourceSchema);
       for (Table table : finalSchema.tables()) {
         for (Index idx : table.indexes()) {
-          if (idx.isDeferred()) {
-            // Check if this deferred index was already physically built
-            // by looking at the enriched source schema
-            boolean alreadyBuilt = false;
-            if (sourceSchema.tableExists(table.getName())) {
-              alreadyBuilt = sourceSchema.getTable(table.getName()).indexes().stream()
-                  .anyMatch(srcIdx -> srcIdx.getName().equalsIgnoreCase(idx.getName())
-                      && srcIdx.isPhysicallyPresent());
-            }
-            if (!alreadyBuilt) {
-              deferredIndexStatements.addAll(
-                  dialect.deferredIndexDeploymentStatements(table, idx));
-            }
+          if (idx.isDeferred()
+              && !deployedIndexState.isKnownPhysicallyPresent(table.getName(), idx.getName())) {
+            deferredIndexStatements.addAll(
+                dialect.deferredIndexDeploymentStatements(table, idx));
           }
         }
       }

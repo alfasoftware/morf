@@ -10,6 +10,7 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.Statement;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexState;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesChangeService;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesChangeServiceImpl;
 
@@ -25,17 +26,25 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   protected final TableNameResolver  tracker;
 
   private final DeployedIndexesChangeService deployedIndexesChangeService = new DeployedIndexesChangeServiceImpl();
+  private final DeployedIndexState deployedIndexState;
 
   /** Deferred indexes collected during visitation for getDeferredIndexStatements(). */
   private final List<AddIndex> deferredIndexes = new ArrayList<>();
 
   public AbstractSchemaChangeVisitor(Schema currentSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect,
                                      Table idTable) {
+    this(currentSchema, upgradeConfigAndContext, sqlDialect, idTable, DeployedIndexState.empty());
+  }
+
+
+  public AbstractSchemaChangeVisitor(Schema currentSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect,
+                                     Table idTable, DeployedIndexState deployedIndexState) {
     this.currentSchema = currentSchema;
     this.upgradeConfigAndContext = upgradeConfigAndContext;
     this.sqlDialect = sqlDialect;
     this.idTable = idTable;
     this.tracker = new IdTableTracker(idTable.getName());
+    this.deployedIndexState = deployedIndexState;
   }
 
 
@@ -363,23 +372,20 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   // -------------------------------------------------------------------------
 
   /**
-   * Checks whether an index physically exists in the database by consulting
-   * the enriched model AND the in-session tracking. If the index was added
-   * as deferred in this same upgrade session, it's not physically present
-   * even though it's in the schema model.
+   * Checks whether an index physically exists in the database by composing
+   * in-session tracking (changes made by steps in THIS upgrade run) with
+   * the at-start operational state from the enricher. Defaults to "present"
+   * when the state doesn't explicitly say otherwise: in-session non-deferred
+   * additions are treated as present (their CREATE INDEX is already queued),
+   * pre-existing non-tracked indexes likewise.
    */
   private boolean isPhysicallyPresent(String tableName, String indexName) {
-    // If tracked as deferred in this session, it's not physically present
     if (deployedIndexesChangeService.isTrackedDeferred(tableName, indexName)) {
       return false;
     }
     if (!currentSchema.tableExists(tableName)) {
       return false;
     }
-    return currentSchema.getTable(tableName).indexes().stream()
-        .filter(i -> i.getName().equalsIgnoreCase(indexName))
-        .findFirst()
-        .map(Index::isPhysicallyPresent)
-        .orElse(false);
+    return !deployedIndexState.isKnownPhysicallyAbsent(tableName, indexName);
   }
 }
