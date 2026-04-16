@@ -581,6 +581,59 @@ public class TestDeployedIndexesIntegration {
   }
 
 
+  // =========================================================================
+  // Missing edge cases
+  // =========================================================================
+
+  /**
+   * Force-deferred: an addIndex() without .deferred() should be deferred
+   * when forceDeferredIndexes config includes the index name. The physical
+   * index should NOT be built, and getDeferredIndexStatements() should
+   * contain the SQL.
+   */
+  @Test
+  public void testForceDeferredOverridesImmediate() {
+    // given
+    UpgradeConfigAndContext forceConfig = new UpgradeConfigAndContext();
+    forceConfig.setDeferredIndexCreationEnabled(true);
+    forceConfig.setForceDeferredIndexes(java.util.Set.of("Product_Name_1"));
+
+    // when -- AddImmediateIndex uses addIndex() without .deferred()
+    UpgradePath path = Upgrade.performUpgrade(schemaWithIndex(),
+        Collections.singletonList(
+            org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddImmediateIndex.class),
+        connectionResources, forceConfig, viewDeploymentValidator);
+
+    // then -- deferred despite no .deferred() on the index
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+    assertFalse("Should have deferred statements", path.getDeferredIndexStatements().isEmpty());
+    assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
+  }
+
+
+  /**
+   * Unsupported dialect fallback: when the dialect does not support deferred
+   * index creation, a .deferred() index should be built immediately.
+   */
+  @Test
+  public void testUnsupportedDialectFallsBackToImmediate() {
+    // given -- spy dialect returning supportsDeferredIndexCreation()=false
+    org.alfasoftware.morf.jdbc.SqlDialect realDialect = connectionResources.sqlDialect();
+    org.alfasoftware.morf.jdbc.SqlDialect spyDialect = org.mockito.Mockito.spy(realDialect);
+    org.mockito.Mockito.when(spyDialect.supportsDeferredIndexCreation()).thenReturn(false);
+    org.alfasoftware.morf.jdbc.ConnectionResources spyConn = org.mockito.Mockito.spy(connectionResources);
+    org.mockito.Mockito.when(spyConn.sqlDialect()).thenReturn(spyDialect);
+
+    // when
+    Upgrade.performUpgrade(schemaWithIndex(),
+        Collections.singletonList(AddDeferredIndex.class),
+        spyConn, config, viewDeploymentValidator);
+
+    // then -- built immediately despite .deferred()
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+  }
+
+
   // -------------------------------------------------------------------------
   // Helpers
   // -------------------------------------------------------------------------
