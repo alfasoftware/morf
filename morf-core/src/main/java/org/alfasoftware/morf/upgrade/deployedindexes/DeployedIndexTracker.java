@@ -89,4 +89,13 @@ public interface DeployedIndexTracker {
    * @return list of non-terminal deferred index entries.
    */
   List<DeployedIndex> getPendingIndexes();
+
+
+  /**
+   * Resets every {@link DeployedIndexStatus#IN_PROGRESS} row back to
+   * {@link DeployedIndexStatus#PENDING}. Intended to be called on
+   * application startup to recover from crashes where an index build
+   * was mid-flight when the process exited.
+   */
+  void resetInProgress();
 }

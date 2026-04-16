@@ -167,10 +167,8 @@ public class Upgrade {
     ViewChangesDeploymentHelper viewChangesDeploymentHelper = new ViewChangesDeploymentHelper(connectionResources.sqlDialect());
     GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory = null;
     org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher enricher =
-        new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher(
-            new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesDAOImpl(
-                new org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider(connectionResources), connectionResources),
-            upgradeConfigAndContext);
+        org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher.create(
+            connectionResources, upgradeConfigAndContext);
 
     Upgrade upgrade = new Upgrade(
       connectionResources,

@@ -46,7 +46,7 @@ import org.apache.commons.logging.LogFactory;
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
 @Singleton
-public class DeployedIndexesDAOImpl implements DeployedIndexesDAO {
+class DeployedIndexesDAOImpl implements DeployedIndexesDAO {
 
   private static final Log log = LogFactory.getLog(DeployedIndexesDAOImpl.class);
 
@@ -59,8 +59,8 @@ public class DeployedIndexesDAOImpl implements DeployedIndexesDAO {
    * Constructs the DAO with injected dependencies and a default factory.
    */
   @Inject
-  public DeployedIndexesDAOImpl(SqlScriptExecutorProvider sqlScriptExecutorProvider,
-                                ConnectionResources connectionResources) {
+  DeployedIndexesDAOImpl(SqlScriptExecutorProvider sqlScriptExecutorProvider,
+                         ConnectionResources connectionResources) {
     this(sqlScriptExecutorProvider, connectionResources, new DeployedIndexesStatementFactory());
   }
 

@@ -72,4 +72,10 @@ public class DeployedIndexTrackerImpl implements DeployedIndexTracker {
   public List<DeployedIndex> getPendingIndexes() {
     return dao.findNonTerminalOperations();
   }
+
+
+  @Override
+  public void resetInProgress() {
+    dao.resetAllInProgressToPending();
+  }
 }

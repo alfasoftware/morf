@@ -47,7 +47,7 @@ import com.google.inject.Singleton;
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
 @Singleton
-public class DeployedIndexesStatementFactory {
+class DeployedIndexesStatementFactory {
 
   static final String TABLE = DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME;
 

@@ -665,16 +665,16 @@ public class TestDeployedIndexesIntegration {
 
 
   /**
-   * Crash recovery: if the DeployedIndexTracker marks an index as IN_PROGRESS
-   * and the process crashes, the DAO's resetAllInProgressToPending() should
-   * transition it back to PENDING on next startup.
+   * Crash recovery: if the tracker marks an index as IN_PROGRESS and the
+   * process crashes, {@code tracker.resetInProgress()} should transition
+   * it back to PENDING on next startup.
    */
   @Test
   public void testCrashRecoveryResetsInProgressToPending() {
     // given -- upgrade creates a PENDING deferred index
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
 
-    // given -- simulate crash: mark as IN_PROGRESS directly
+    // given -- simulate crash: mark as IN_PROGRESS
     org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexTracker tracker =
         new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexTrackerImpl(
             new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesDAOImpl(
@@ -683,11 +683,8 @@ public class TestDeployedIndexesIntegration {
     assertEquals("IN_PROGRESS",
         queryDeployedIndexField("Product_Name_1", "status"));
 
-    // when -- simulate restart: DAO resets IN_PROGRESS to PENDING
-    org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesDAO dao =
-        new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesDAOImpl(
-            sqlScriptExecutorProvider, connectionResources);
-    dao.resetAllInProgressToPending();
+    // when -- simulate restart
+    tracker.resetInProgress();
 
     // then
     assertEquals("PENDING",

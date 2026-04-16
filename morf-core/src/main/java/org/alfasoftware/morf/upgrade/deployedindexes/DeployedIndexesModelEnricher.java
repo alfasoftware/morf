@@ -76,19 +76,27 @@ public class DeployedIndexesModelEnricher {
    * @param config upgrade configuration.
    */
   @Inject
-  public DeployedIndexesModelEnricher(DeployedIndexesDAO dao, UpgradeConfigAndContext config) {
+  DeployedIndexesModelEnricher(DeployedIndexesDAO dao, UpgradeConfigAndContext config) {
     this.dao = dao;
     this.config = config;
   }
 
 
   /**
-   * Non-Guice constructor for use in the static upgrade path.
+   * Convenience factory for the static upgrade path — wires up the DAO
+   * from connection resources without exposing it to callers.
    *
-   * @param dao DAO for reading DeployedIndexes.
+   * @param connectionResources database connection resources.
+   * @param config upgrade configuration.
+   * @return a new enricher.
    */
-  public DeployedIndexesModelEnricher(DeployedIndexesDAO dao) {
-    this(dao, new UpgradeConfigAndContext());
+  public static DeployedIndexesModelEnricher create(
+      org.alfasoftware.morf.jdbc.ConnectionResources connectionResources,
+      UpgradeConfigAndContext config) {
+    DeployedIndexesDAO dao = new DeployedIndexesDAOImpl(
+        new org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider(connectionResources),
+        connectionResources);
+    return new DeployedIndexesModelEnricher(dao, config);
   }
 
 
