@@ -32,7 +32,6 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeSchemaChangeVisitor.GraphBasedUpgradeSchemaChangeVisitorFactory;
-import org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.junit.Before;

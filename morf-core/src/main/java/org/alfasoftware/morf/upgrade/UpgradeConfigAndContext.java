@@ -53,9 +53,8 @@ public class UpgradeConfigAndContext {
 
   /**
    * Whether deferred index creation is enabled. When {@code false} (the default),
-   * {@code addIndexDeferred()} behaves identically to {@code addIndex()} — indexes
-   * are built immediately during the upgrade. The tracking table is unaffected
-   * (not dropped or cleaned up); it simply receives no new rows.
+   * the deferred flag on indexes is stripped — all indexes are built immediately
+   * during the upgrade. No DeployedIndexes tracking for deferred indexes occurs.
    */
   private boolean deferredIndexCreationEnabled;
 

@@ -4049,8 +4049,8 @@ public abstract class SqlDialect {
 
   /**
    * Whether this dialect supports deferred index creation. When {@code true},
-   * {@link org.alfasoftware.morf.upgrade.SchemaEditor#addIndexDeferred} queues
-   * the index for background creation. When {@code false}, deferred requests
+   * indexes marked with {@code .deferred()} are queued for background creation
+   * via the DeployedIndexes table. When {@code false}, deferred requests
    * are silently converted to immediate index creation, because the platform's
    * {@code CREATE INDEX} blocks DML and deferring would move the lock from the
    * upgrade window (when no traffic is flowing) to post-startup (when it is).

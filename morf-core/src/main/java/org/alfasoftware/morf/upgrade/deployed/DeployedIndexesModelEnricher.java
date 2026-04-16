@@ -220,7 +220,6 @@ public class DeployedIndexesModelEnricher {
   private boolean isMorfInfrastructureTable(String tableName) {
     return DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME.equalsIgnoreCase(tableName)
         || DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME.equalsIgnoreCase(tableName)
-        || DatabaseUpgradeTableContribution.DEFERRED_INDEX_OPERATION_NAME.equalsIgnoreCase(tableName)
         || DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME.equalsIgnoreCase(tableName);
   }
 }

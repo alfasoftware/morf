@@ -20,7 +20,6 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
-import org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex;
 import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
@@ -93,6 +92,7 @@ public class TestSchemaChangeSequence {
     // given
     when(index.getName()).thenReturn("TestIdx");
     when(index.columnNames()).thenReturn(List.of("col1"));
+    when(index.isDeferred()).thenReturn(true);
 
     // when
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
@@ -269,7 +269,7 @@ public class TestSchemaChangeSequence {
     @Override public String getJiraId() { return "TEST-1"; }
     @Override public String getDescription() { return "test"; }
     @Override public void execute(SchemaEditor schema, DataEditor data) {
-      schema.addIndexDeferred("TestTable", index);
+      schema.addIndex("TestTable", index);
     }
   }
 

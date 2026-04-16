@@ -21,7 +21,6 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deployedViewsTable;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.upgradeAuditTable;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deferredIndexOperationTable;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deployedIndexesTable;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -84,8 +83,7 @@ public class TestDeployedIndexesIntegration {
   private static final Schema INITIAL_SCHEMA = schema(
       deployedViewsTable(),
       upgradeAuditTable(),
-      deferredIndexOperationTable(),
-        deployedIndexesTable(),
+      deployedIndexesTable(),
       table("Product").columns(
           column("id", DataType.BIG_INTEGER).primaryKey(),
           column("name", DataType.STRING, 100)
@@ -136,7 +134,7 @@ public class TestDeployedIndexesIntegration {
   public void testNoDeferredIndexesReturnsEmptyStatements() {
     // given -- feature enabled but no deferred indexes in the step
     Schema targetSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+        deployedViewsTable(), upgradeAuditTable(),
         deployedIndexesTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
@@ -161,7 +159,7 @@ public class TestDeployedIndexesIntegration {
   public void testMultipleDeferredIndexesInOneStep() {
     // given
     Schema targetSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+        deployedViewsTable(), upgradeAuditTable(),
         deployedIndexesTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
@@ -215,7 +213,7 @@ public class TestDeployedIndexesIntegration {
   public void testAddDeferredThenChangeInSameStep() {
     // given
     Schema targetSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+        deployedViewsTable(), upgradeAuditTable(),
         deployedIndexesTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
@@ -246,7 +244,7 @@ public class TestDeployedIndexesIntegration {
   public void testCrossStepColumnRename() {
     // given -- target schema with renamed column and updated index
     Schema renamedColSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+        deployedViewsTable(), upgradeAuditTable(),
         deployedIndexesTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
@@ -275,7 +273,7 @@ public class TestDeployedIndexesIntegration {
   public void testCrossStepColumnRemoval() {
     // given
     Schema noNameColSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+        deployedViewsTable(), upgradeAuditTable(),
         deployedIndexesTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey()
@@ -300,7 +298,7 @@ public class TestDeployedIndexesIntegration {
   public void testCrossStepTableRename() {
     // given
     Schema renamedTableSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+        deployedViewsTable(), upgradeAuditTable(),
         deployedIndexesTable(),
         table("Item").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
@@ -326,7 +324,7 @@ public class TestDeployedIndexesIntegration {
   public void testDeferredIndexesOnMultipleTables() {
     // given
     Schema multiTableSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+        deployedViewsTable(), upgradeAuditTable(),
         deployedIndexesTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
@@ -364,7 +362,7 @@ public class TestDeployedIndexesIntegration {
   public void testNonDeferredIndexBuiltImmediately() {
     // given
     Schema targetSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+        deployedViewsTable(), upgradeAuditTable(),
         deployedIndexesTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
@@ -423,7 +421,7 @@ public class TestDeployedIndexesIntegration {
   public void testAddDeferredThenRenameInSameStep() {
     // given
     Schema targetSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+        deployedViewsTable(), upgradeAuditTable(),
         deployedIndexesTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
@@ -453,7 +451,7 @@ public class TestDeployedIndexesIntegration {
   public void testUniqueDeferredIndex() {
     // given
     Schema targetSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+        deployedViewsTable(), upgradeAuditTable(),
         deployedIndexesTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
@@ -477,7 +475,7 @@ public class TestDeployedIndexesIntegration {
   public void testMultiColumnDeferredIndex() {
     // given
     Schema targetSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+        deployedViewsTable(), upgradeAuditTable(),
         deployedIndexesTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
@@ -511,8 +509,8 @@ public class TestDeployedIndexesIntegration {
     // when — second upgrade with a new step (schema unchanged = same target)
     UpgradePath path2 = performUpgradeSteps(
         schema(
-            deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
-            deployedIndexesTable(),
+        deployedViewsTable(), upgradeAuditTable(),
+        deployedIndexesTable(),
             table("Product").columns(
                 column("id", DataType.BIG_INTEGER).primaryKey(),
                 column("name", DataType.STRING, 100)
@@ -540,7 +538,7 @@ public class TestDeployedIndexesIntegration {
   public void testAddTableTracksIndexesInDeployedTable() {
     // given
     Schema targetSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+        deployedViewsTable(), upgradeAuditTable(),
         deployedIndexesTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
@@ -584,7 +582,7 @@ public class TestDeployedIndexesIntegration {
   public void testNonDeferredIndexCreatesCompletedRow() {
     // given
     Schema targetSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+        deployedViewsTable(), upgradeAuditTable(),
         deployedIndexesTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
@@ -635,7 +633,7 @@ public class TestDeployedIndexesIntegration {
 
   private Schema schemaWithIndex() {
     return schema(
-        deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+        deployedViewsTable(), upgradeAuditTable(),
         deployedIndexesTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),

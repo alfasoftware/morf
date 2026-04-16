@@ -10,7 +10,6 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.Statement;
-import org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex;
 import org.alfasoftware.morf.upgrade.deployed.DeployedIndexesChangeService;
 import org.alfasoftware.morf.upgrade.deployed.DeployedIndexesChangeServiceImpl;
 
@@ -309,16 +308,6 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   private void visitPortableSqlStatement(PortableSqlStatement sql) {
     sql.inplaceUpdateTransitionalTableNames(tracker);
     writeStatement(sql.getStatement(sqlDialect.getDatabaseType().identifier(), sqlDialect.schemaNamePrefix()));
-  }
-
-
-  /**
-   * Legacy visitor method for DeferredAddIndex. Delegates to visit(AddIndex)
-   * since deferred is now a property on the Index itself.
-   */
-  @Override
-  public void visit(DeferredAddIndex deferredAddIndex) {
-    visit(new AddIndex(deferredAddIndex.getTableName(), deferredAddIndex.getNewIndex()));
   }
 
 

@@ -1,6 +1,5 @@
 package org.alfasoftware.morf.upgrade;
 
-import org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex;
 
 /**
  * Interface for adapting schema changes, i.e. {@link SchemaChange} implementations.
@@ -172,16 +171,6 @@ public interface SchemaChangeAdaptor {
 
 
   /**
-   * Perform adapt operation on a {@link DeferredAddIndex} instance.
-   *
-   * @param deferredAddIndex instance of {@link DeferredAddIndex} to adapt.
-   */
-  public default DeferredAddIndex adapt(DeferredAddIndex deferredAddIndex) {
-    return deferredAddIndex;
-  }
-
-
-  /**
    * Simply uses the default implementation, which is already no-op.
    * By no-op, we mean non-changing: the input is passed through as output.
    */
@@ -282,12 +271,5 @@ public interface SchemaChangeAdaptor {
       return second.adapt(first.adapt(removeSequence));
     }
 
-    /**
-     * @see org.alfasoftware.morf.upgrade.SchemaChangeAdaptor#adapt(org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex)
-     */
-    @Override
-    public DeferredAddIndex adapt(DeferredAddIndex deferredAddIndex) {
-      return second.adapt(first.adapt(deferredAddIndex));
-    }
   }
 }

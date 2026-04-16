@@ -31,7 +31,7 @@ public class AddTwoDeferredIndexes extends AbstractDeferredIndexTestStep {
 
   @Override
   public void execute(SchemaEditor schema, DataEditor data) {
-    schema.addIndexDeferred("Product", index("Product_Name_1").columns("name"));
-    schema.addIndexDeferred("Product", index("Product_IdName_1").columns("id", "name"));
+    schema.addIndex("Product", index("Product_Name_1").columns("name").deferred());
+    schema.addIndex("Product", index("Product_IdName_1").columns("id", "name").deferred());
   }
 }

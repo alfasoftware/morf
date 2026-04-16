@@ -52,7 +52,6 @@ import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.sql.UpdateStatement;
-import org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex;
 import org.mockito.ArgumentMatchers;
 import org.junit.Before;
 import org.junit.Test;

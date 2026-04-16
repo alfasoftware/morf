@@ -37,7 +37,6 @@ import org.alfasoftware.morf.sql.element.FieldLiteral;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -396,16 +395,6 @@ public class SchemaChangeSequence {
     }
 
 
-    /**
-     * @see org.alfasoftware.morf.upgrade.SchemaEditor#addIndexDeferred(java.lang.String, org.alfasoftware.morf.metadata.Index)
-     */
-    @Override
-    public void addIndexDeferred(String tableName, Index index) {
-      // Legacy API: convert to addIndex with deferred flag set
-      addIndex(tableName, rebuildIndex(index, true));
-    }
-
-
     private Index resolveDeferred(Index index) {
       if (!upgradeConfigAndContext.isDeferredIndexCreationEnabled()) {
         return index.isDeferred() ? rebuildIndex(index, false) : index;
@@ -709,12 +698,5 @@ public class SchemaChangeSequence {
     }
 
 
-    /**
-     * @see org.alfasoftware.morf.upgrade.SchemaChangeVisitor#visit(org.alfasoftware.morf.upgrade.deferred.DeferredAddIndex)
-     */
-    @Override
-    public void visit(DeferredAddIndex deferredAddIndex) {
-      changes.add(schemaChangeAdaptor.adapt(deferredAddIndex));
-    }
   }
 }

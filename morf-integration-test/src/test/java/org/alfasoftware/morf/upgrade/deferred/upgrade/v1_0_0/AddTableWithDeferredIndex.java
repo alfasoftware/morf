@@ -38,6 +38,6 @@ public class AddTableWithDeferredIndex extends AbstractDeferredIndexTestStep {
         column("id", DataType.BIG_INTEGER).primaryKey(),
         column("label", DataType.STRING, 50)
     ));
-    schema.addIndexDeferred("Category", index("Category_Label_1").columns("label"));
+    schema.addIndex("Category", index("Category_Label_1").columns("label").deferred());
   }
 }

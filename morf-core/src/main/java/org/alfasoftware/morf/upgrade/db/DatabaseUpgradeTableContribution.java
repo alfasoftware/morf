@@ -42,9 +42,6 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
   /** Name of the table containing information on the views deployed within the app's database. */
   public static final String DEPLOYED_VIEWS_NAME = "DeployedViews";
 
-  /** Name of the table tracking deferred index operations. */
-  public static final String DEFERRED_INDEX_OPERATION_NAME = "DeferredIndexOperation";
-
   /** Name of the table tracking all deployed indexes (deferred and non-deferred). */
   public static final String DEPLOYED_INDEXES_NAME = "DeployedIndexes";
 
@@ -73,32 +70,6 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
           column("name", DataType.STRING, 100).primaryKey(),
           column("hash", DataType.STRING, 64),
           column("sqlDefinition", DataType.CLOB).nullable()
-        );
-  }
-
-
-  /**
-   * @return The Table descriptor of DeferredIndexOperation
-   */
-  public static Table deferredIndexOperationTable() {
-    return table(DEFERRED_INDEX_OPERATION_NAME)
-        .columns(
-          column("id", DataType.BIG_INTEGER).primaryKey(),
-          column("upgradeUUID", DataType.STRING, 100),
-          column("tableName", DataType.STRING, 60),
-          column("indexName", DataType.STRING, 60),
-          column("indexUnique", DataType.BOOLEAN),
-          column("indexColumns", DataType.STRING, 2000),
-          column("status", DataType.STRING, 20),
-          column("retryCount", DataType.INTEGER),
-          column("createdTime", DataType.DECIMAL, 14),
-          column("startedTime", DataType.DECIMAL, 14).nullable(),
-          column("completedTime", DataType.DECIMAL, 14).nullable(),
-          column("errorMessage", DataType.CLOB).nullable()
-        )
-        .indexes(
-          index("DeferredIndexOp_1").columns("status"),
-          index("DeferredIndexOp_2").columns("tableName")
         );
   }
 
@@ -137,8 +108,7 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
   public Collection<Table> tables() {
     return ImmutableList.of(
       deployedViewsTable(),
-      upgradeAuditTable(),
-      deferredIndexOperationTable()
+      upgradeAuditTable()
     );
   }
 

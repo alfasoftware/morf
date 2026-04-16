@@ -22,7 +22,6 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deployedIndexesTable;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deployedViewsTable;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.upgradeAuditTable;
-import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deferredIndexOperationTable;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
@@ -75,7 +74,7 @@ public class TestDeployedIndexTracker {
   { config.setDeferredIndexCreationEnabled(true); }
 
   private static final Schema INITIAL_SCHEMA = schema(
-      deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+      deployedViewsTable(), upgradeAuditTable(),
       deployedIndexesTable(),
       table("Product").columns(
           column("id", DataType.BIG_INTEGER).primaryKey(),
@@ -101,7 +100,7 @@ public class TestDeployedIndexTracker {
   public void testMarkStartedTransitionsToInProgress() {
     // given — upgrade creates a PENDING deferred index
     Schema target = schema(
-        deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+        deployedViewsTable(), upgradeAuditTable(),
         deployedIndexesTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
@@ -127,7 +126,7 @@ public class TestDeployedIndexTracker {
   public void testMarkCompletedTransitionsToCompleted() {
     // given
     Schema target = schema(
-        deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+        deployedViewsTable(), upgradeAuditTable(),
         deployedIndexesTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
@@ -157,7 +156,7 @@ public class TestDeployedIndexTracker {
   public void testMarkFailedTransitionsToFailed() {
     // given
     Schema target = schema(
-        deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+        deployedViewsTable(), upgradeAuditTable(),
         deployedIndexesTable(),
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
