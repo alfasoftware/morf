@@ -375,11 +375,15 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
   /**
    * Checks whether an index physically exists in the database by consulting
-   * the enriched model. Returns {@code true} if the index has
-   * {@code isPhysicallyPresent()=true} or if no enrichment data is available
-   * (pre-DeployedIndexes state).
+   * the enriched model AND the in-session tracking. If the index was added
+   * as deferred in this same upgrade session, it's not physically present
+   * even though it's in the schema model.
    */
   private boolean isPhysicallyPresent(String tableName, String indexName) {
+    // If tracked as deferred in this session, it's not physically present
+    if (deployedIndexesChangeService.isTrackedDeferred(tableName, indexName)) {
+      return false;
+    }
     if (!currentSchema.tableExists(tableName)) {
       return false;
     }

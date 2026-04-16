@@ -307,26 +307,29 @@ public class Upgrade {
     }
 
     // -- Collect deferred index SQL for getDeferredIndexStatements() --
+    // Scan the final schema (after all upgrade steps applied) for deferred
+    // indexes that are not physically present. This covers:
+    // - New deferred indexes from this upgrade
+    // - Existing unbuilt deferred indexes from previous upgrades
+    // - Deferred indexes that were renamed/modified during this upgrade
     List<String> deferredIndexStatements = new ArrayList<>();
     if (upgradeConfigAndContext.isDeferredIndexCreationEnabled()) {
-      // 1. New deferred indexes from this upgrade
-      if (upgrader != null) {
-        Schema finalSchema = schemaChangeSequence.applyToSchema(sourceSchema);
-        for (AddIndex deferredAdd : upgrader.getDeferredIndexes()) {
-          if (finalSchema.tableExists(deferredAdd.getTableName())) {
-            deferredIndexStatements.addAll(
-                dialect.deferredIndexDeploymentStatements(
-                    finalSchema.getTable(deferredAdd.getTableName()),
-                    deferredAdd.getNewIndex()));
-          }
-        }
-      }
-      // 2. Existing unbuilt deferred indexes from previous upgrades
-      for (Table table : sourceSchema.tables()) {
+      Schema finalSchema = schemaChangeSequence.applyToSchema(sourceSchema);
+      for (Table table : finalSchema.tables()) {
         for (Index idx : table.indexes()) {
-          if (idx.isDeferred() && !idx.isPhysicallyPresent()) {
-            deferredIndexStatements.addAll(
-                dialect.deferredIndexDeploymentStatements(table, idx));
+          if (idx.isDeferred()) {
+            // Check if this deferred index was already physically built
+            // by looking at the enriched source schema
+            boolean alreadyBuilt = false;
+            if (sourceSchema.tableExists(table.getName())) {
+              alreadyBuilt = sourceSchema.getTable(table.getName()).indexes().stream()
+                  .anyMatch(srcIdx -> srcIdx.getName().equalsIgnoreCase(idx.getName())
+                      && srcIdx.isPhysicallyPresent());
+            }
+            if (!alreadyBuilt) {
+              deferredIndexStatements.addAll(
+                  dialect.deferredIndexDeploymentStatements(table, idx));
+            }
           }
         }
       }
