@@ -905,7 +905,7 @@ class OracleDialect extends SqlDialect {
   public Collection<String> addIndexStatements(Table table, Index index) {
     return ImmutableList.of(
       // when adding indexes to existing tables, use PARALLEL NOLOGGING to efficiently build the index
-      buildCreateIndexStatement(table, index, "") + " PARALLEL NOLOGGING",
+      buildCreateIndexStatement(table, index) + " PARALLEL NOLOGGING",
       indexPostDeploymentStatements(index)
     );
   }
@@ -916,7 +916,7 @@ class OracleDialect extends SqlDialect {
    */
   @Override
   protected Collection<String> indexDeploymentStatements(Table table, Index index) {
-    return Collections.singletonList(buildCreateIndexStatement(table, index, ""));
+    return Collections.singletonList(buildCreateIndexStatement(table, index));
   }
 
 
@@ -951,7 +951,7 @@ class OracleDialect extends SqlDialect {
   @Override
   public Collection<String> deferredIndexDeploymentStatements(Table table, Index index) {
     return ImmutableList.of(
-      buildCreateIndexStatement(table, index, "") + " ONLINE PARALLEL NOLOGGING",
+      buildCreateIndexStatement(table, index) + " ONLINE PARALLEL NOLOGGING",
       indexPostDeploymentStatements(index)
     );
   }

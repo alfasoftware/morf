@@ -872,7 +872,7 @@ class PostgreSQLDialect extends SqlDialect {
 
   @Override
   protected Collection<String> indexDeploymentStatements(Table table, Index index) {
-    return ImmutableList.of(buildPostgreSqlCreateIndex(table, index, ""), addIndexComment(index.getName()));
+    return ImmutableList.of(buildPostgreSqlCreateIndex(table, index, false), addIndexComment(index.getName()));
   }
 
 
@@ -895,29 +895,29 @@ class PostgreSQLDialect extends SqlDialect {
    */
   @Override
   public Collection<String> deferredIndexDeploymentStatements(Table table, Index index) {
-    return ImmutableList.of(buildPostgreSqlCreateIndex(table, index, "CONCURRENTLY"), addIndexComment(index.getName()));
+    return ImmutableList.of(buildPostgreSqlCreateIndex(table, index, true), addIndexComment(index.getName()));
   }
 
 
   /**
    * Builds a PostgreSQL CREATE INDEX statement. PostgreSQL does not schema-qualify
    * the index name (only the table name), so this cannot use the base class
-   * {@link #buildCreateIndexStatement(Table, Index, String)} which prefixes both.
+   * {@link SqlDialect#buildCreateIndexStatement(Table, Index)} which prefixes both.
    *
    * @param table the table to index.
    * @param index the index to create.
-   * @param afterIndexKeyword keyword inserted after INDEX (e.g. "CONCURRENTLY"), or empty string.
+   * @param concurrent whether to emit {@code CREATE INDEX CONCURRENTLY} (non-blocking build).
    * @return the CREATE INDEX SQL string.
    */
-  private String buildPostgreSqlCreateIndex(Table table, Index index, String afterIndexKeyword) {
+  private String buildPostgreSqlCreateIndex(Table table, Index index, boolean concurrent) {
     StringBuilder statement = new StringBuilder();
     statement.append("CREATE ");
     if (index.isUnique()) {
       statement.append("UNIQUE ");
     }
     statement.append("INDEX ");
-    if (!afterIndexKeyword.isEmpty()) {
-      statement.append(afterIndexKeyword).append(' ');
+    if (concurrent) {
+      statement.append("CONCURRENTLY ");
     }
     statement.append(index.getName())
              .append(" ON ")

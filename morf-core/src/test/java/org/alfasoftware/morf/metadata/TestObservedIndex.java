@@ -25,38 +25,38 @@ import java.util.List;
 import org.junit.Test;
 
 /**
- * Unit tests for {@link EnrichedIndex}.
+ * Unit tests for {@link ObservedIndex}.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-public class TestEnrichedIndex {
+public class TestObservedIndex {
 
-  /** Enriched index delegates name, columns, unique to the underlying index. */
+  /** Observed index delegates name, columns, unique to the underlying index. */
   @Test
   public void testDelegation() {
     // given
     Index base = index("Idx1").unique().columns("col1", "col2");
-    EnrichedIndex enriched = new EnrichedIndex(base, true, false);
+    ObservedIndex observed = new ObservedIndex(base, true, false);
 
     // then
-    assertEquals("Idx1", enriched.getName());
-    assertEquals(List.of("col1", "col2"), enriched.columnNames());
-    assertTrue(enriched.isUnique());
-    assertTrue(enriched.isDeferred());
-    assertFalse(enriched.isPhysicallyPresent());
+    assertEquals("Idx1", observed.getName());
+    assertEquals(List.of("col1", "col2"), observed.columnNames());
+    assertTrue(observed.isUnique());
+    assertTrue(observed.isDeferred());
+    assertFalse(observed.isPhysicallyPresent());
   }
 
 
-  /** Non-deferred, physically present enriched index. */
+  /** Non-deferred, physically present observed index. */
   @Test
   public void testNonDeferredPhysicallyPresent() {
     // given
     Index base = index("Idx2").columns("col1");
-    EnrichedIndex enriched = new EnrichedIndex(base, false, true);
+    ObservedIndex observed = new ObservedIndex(base, false, true);
 
     // then
-    assertFalse(enriched.isDeferred());
-    assertTrue(enriched.isPhysicallyPresent());
+    assertFalse(observed.isDeferred());
+    assertTrue(observed.isPhysicallyPresent());
   }
 
 
@@ -65,10 +65,10 @@ public class TestEnrichedIndex {
   public void testToStringWithDeferred() {
     // given
     Index base = index("Idx3").columns("col1");
-    EnrichedIndex enriched = new EnrichedIndex(base, true, false);
+    ObservedIndex observed = new ObservedIndex(base, true, false);
 
     // then
-    String str = enriched.toString();
+    String str = observed.toString();
     assertTrue("Should contain deferred", str.contains("deferred"));
     assertTrue("Should contain virtual", str.contains("virtual"));
   }

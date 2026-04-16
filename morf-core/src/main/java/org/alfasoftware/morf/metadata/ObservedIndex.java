@@ -18,17 +18,18 @@ package org.alfasoftware.morf.metadata;
 import java.util.List;
 
 /**
- * Decorator over an {@link Index} that carries additional metadata from
- * the DeployedIndexes table: whether the index is deferred and whether
- * it physically exists in the database catalog.
- *
- * <p>Created by the model enricher during schema building. The visitor
- * uses these properties to make DDL decisions without runtime IF EXISTS
- * checks.</p>
+ * Decorator that overlays runtime-observed state (deferred flag and
+ * physical presence, sourced from the {@code DeployedIndexes} table)
+ * onto an {@link Index}. Kept separate from {@link IndexBean} to keep
+ * the declarative builder API clean of runtime-only concepts — e.g.
+ * {@code isPhysicallyPresent=false} has no meaning when declaring a
+ * schema, only when observing one. Produced by the model enricher at
+ * schema-read time; the visitor uses the flags for DDL decisions
+ * without runtime {@code IF EXISTS} checks.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-public class EnrichedIndex implements Index {
+public class ObservedIndex implements Index {
 
   private final Index delegate;
   private final boolean deferred;
@@ -36,13 +37,13 @@ public class EnrichedIndex implements Index {
 
 
   /**
-   * Creates an enriched index.
+   * Creates an observed index.
    *
    * @param delegate the underlying index.
    * @param deferred whether the index is deferred.
    * @param physicallyPresent whether the index physically exists in the DB.
    */
-  public EnrichedIndex(Index delegate, boolean deferred, boolean physicallyPresent) {
+  public ObservedIndex(Index delegate, boolean deferred, boolean physicallyPresent) {
     this.delegate = delegate;
     this.deferred = deferred;
     this.physicallyPresent = physicallyPresent;

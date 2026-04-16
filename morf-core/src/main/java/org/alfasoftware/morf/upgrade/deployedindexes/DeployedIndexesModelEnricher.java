@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils;
-import org.alfasoftware.morf.metadata.EnrichedIndex;
+import org.alfasoftware.morf.metadata.ObservedIndex;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaUtils;
@@ -142,7 +142,7 @@ public class DeployedIndexesModelEnricher {
         DeployedIndexEntry entry = tableEntries.remove(physicalIndex.getName().toUpperCase());
         if (entry != null) {
           // Physical index tracked in DeployedIndexes — enrich
-          enrichedIndexes.add(new EnrichedIndex(physicalIndex, entry.isIndexDeferred(), true));
+          enrichedIndexes.add(new ObservedIndex(physicalIndex, entry.isIndexDeferred(), true));
           tableChanged = true;
         } else {
           // Physical index NOT in DeployedIndexes — error after initial population
@@ -164,7 +164,7 @@ public class DeployedIndexesModelEnricher {
         }
         // Deferred index not yet built — add as virtual
         Index virtualIndex = entry.toIndex();
-        enrichedIndexes.add(new EnrichedIndex(virtualIndex, true, false));
+        enrichedIndexes.add(new ObservedIndex(virtualIndex, true, false));
         tableChanged = true;
       }
 
