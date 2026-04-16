@@ -500,6 +500,33 @@ public class TestDeployedIndexesIntegration {
   // =========================================================================
 
   /**
+   * Creating a new table should track all its indexes in DeployedIndexes.
+   */
+  @Test
+  public void testAddTableTracksIndexesInDeployedTable() {
+    // given
+    Schema targetSchema = schema(
+        deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+        deployedIndexesTable(),
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ),
+        table("Category").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("label", DataType.STRING, 50)
+        ).indexes(index("Category_Label_1").columns("label"))
+    );
+
+    // when
+    performUpgrade(targetSchema, AddTableWithDeferredIndex.class);
+
+    // then -- Category_Label_1 should be tracked (deferred)
+    assertEquals("PENDING", queryDeployedIndexField("Category_Label_1", "status"));
+  }
+
+
+  /**
    * After a deferred addIndex, the DeployedIndexes table should have a
    * PENDING row for the deferred index.
    */
