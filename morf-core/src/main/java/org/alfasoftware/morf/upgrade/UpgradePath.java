@@ -86,6 +86,12 @@ public class UpgradePath implements SqlStatementWriter {
   private final UpgradeStatus upgradeStatus;
 
   /**
+   * SQL statements to build deferred indexes. The application is responsible
+   * for executing these after the upgrade completes.
+   */
+  private List<String> deferredIndexStatements = Collections.emptyList();
+
+  /**
    * Supplier of {@link GraphBasedUpgrade}. May supply null if
    * {@link GraphBasedUpgrade} instance is not available.
    */
@@ -197,6 +203,27 @@ public class UpgradePath implements SqlStatementWriter {
       results.addAll(finalisationSql);
 
     return Collections.unmodifiableList(results);
+  }
+
+
+  /**
+   * Returns the SQL statements needed to build all unbuilt deferred indexes.
+   * The application is responsible for executing these after the upgrade.
+   *
+   * @return list of CREATE INDEX SQL statements, or empty if none.
+   */
+  public List<String> getDeferredIndexStatements() {
+    return Collections.unmodifiableList(deferredIndexStatements);
+  }
+
+
+  /**
+   * Sets the deferred index SQL statements.
+   *
+   * @param deferredIndexStatements the statements.
+   */
+  void setDeferredIndexStatements(List<String> deferredIndexStatements) {
+    this.deferredIndexStatements = deferredIndexStatements;
   }
 
 

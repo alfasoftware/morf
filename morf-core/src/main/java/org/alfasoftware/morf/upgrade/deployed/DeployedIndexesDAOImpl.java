@@ -47,7 +47,7 @@ import org.apache.commons.logging.LogFactory;
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
 @Singleton
-class DeployedIndexesDAOImpl implements DeployedIndexesDAO {
+public class DeployedIndexesDAOImpl implements DeployedIndexesDAO {
 
   private static final Log log = LogFactory.getLog(DeployedIndexesDAOImpl.class);
 
@@ -78,7 +78,7 @@ class DeployedIndexesDAOImpl implements DeployedIndexesDAO {
    * @param connectionResources database connection resources.
    */
   @Inject
-  DeployedIndexesDAOImpl(SqlScriptExecutorProvider sqlScriptExecutorProvider,
+  public DeployedIndexesDAOImpl(SqlScriptExecutorProvider sqlScriptExecutorProvider,
                           ConnectionResources connectionResources) {
     this.sqlScriptExecutorProvider = sqlScriptExecutorProvider;
     this.sqlDialect = connectionResources.sqlDialect();
