@@ -500,6 +500,40 @@ public class TestDeployedIndexesIntegration {
   // =========================================================================
 
   /**
+   * A second upgrade should include previously-unbuilt deferred indexes
+   * in getDeferredIndexStatements().
+   */
+  @Test
+  public void testSequentialUpgradeIncludesPreviousDeferred() {
+    // given — first upgrade defers an index
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+
+    // when — second upgrade with a new step (schema unchanged = same target)
+    UpgradePath path2 = performUpgradeSteps(
+        schema(
+            deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+            deployedIndexesTable(),
+            table("Product").columns(
+                column("id", DataType.BIG_INTEGER).primaryKey(),
+                column("name", DataType.STRING, 100)
+            ).indexes(
+                index("Product_Name_1").columns("name"),
+                index("Product_IdName_1").columns("id", "name")
+            )
+        ),
+        AddDeferredIndex.class,
+        org.alfasoftware.morf.upgrade.deferred.upgrade.v2_0_0.AddSecondDeferredIndex.class);
+
+    // then — should include BOTH deferred indexes
+    List<String> deferredSql = path2.getDeferredIndexStatements();
+    assertTrue("Should contain first deferred index",
+        deferredSql.stream().anyMatch(s -> s.toUpperCase().contains("PRODUCT_NAME_1")));
+    assertTrue("Should contain second deferred index",
+        deferredSql.stream().anyMatch(s -> s.toUpperCase().contains("PRODUCT_IDNAME_1")));
+  }
+
+
+  /**
    * Creating a new table should track all its indexes in DeployedIndexes.
    */
   @Test

@@ -28,7 +28,7 @@ import com.google.inject.Singleton;
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
 @Singleton
-class DeployedIndexTrackerImpl implements DeployedIndexTracker {
+public class DeployedIndexTrackerImpl implements DeployedIndexTracker {
 
   private final DeployedIndexesDAO dao;
 
@@ -39,7 +39,7 @@ class DeployedIndexTrackerImpl implements DeployedIndexTracker {
    * @param dao DAO for DeployedIndexes operations.
    */
   @Inject
-  DeployedIndexTrackerImpl(DeployedIndexesDAO dao) {
+  public DeployedIndexTrackerImpl(DeployedIndexesDAO dao) {
     this.dao = dao;
   }
 
