@@ -118,11 +118,16 @@ public class TestDeployedIndexesIntegration {
     // when
     UpgradePath path = performUpgrade(targetSchema, AddDeferredIndex.class);
 
-    // then
+    // then -- getDeferredIndexStatements returns SQL
     List<String> deferredSql = path.getDeferredIndexStatements();
     assertFalse("Should return at least one deferred statement", deferredSql.isEmpty());
     assertTrue("Statement should reference the index name",
         deferredSql.stream().anyMatch(s -> s.toUpperCase().contains("PRODUCT_NAME_1")));
+
+    // then -- DeployedIndexes row is PENDING and deferred
+    assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
+    assertTrue("Should be deferred",
+        "TRUE".equalsIgnoreCase(queryDeployedIndexField("Product_Name_1", "indexDeferred")));
   }
 
 
@@ -133,9 +138,7 @@ public class TestDeployedIndexesIntegration {
   @Test
   public void testNoDeferredIndexesReturnsEmptyStatements() {
     // given -- feature enabled but no deferred indexes in the step
-    Schema targetSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(),
-        deployedIndexesTable(),
+    Schema targetSchema = schemaWith(
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
             column("name", DataType.STRING, 100)
@@ -158,9 +161,7 @@ public class TestDeployedIndexesIntegration {
   @Test
   public void testMultipleDeferredIndexesInOneStep() {
     // given
-    Schema targetSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(),
-        deployedIndexesTable(),
+    Schema targetSchema = schemaWith(
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
             column("name", DataType.STRING, 100)
@@ -212,9 +213,7 @@ public class TestDeployedIndexesIntegration {
   @Test
   public void testAddDeferredThenChangeInSameStep() {
     // given
-    Schema targetSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(),
-        deployedIndexesTable(),
+    Schema targetSchema = schemaWith(
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
             column("name", DataType.STRING, 100)
@@ -243,9 +242,7 @@ public class TestDeployedIndexesIntegration {
   @Test
   public void testCrossStepColumnRename() {
     // given -- target schema with renamed column and updated index
-    Schema renamedColSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(),
-        deployedIndexesTable(),
+    Schema renamedColSchema = schemaWith(
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
             column("label", DataType.STRING, 100)
@@ -272,9 +269,7 @@ public class TestDeployedIndexesIntegration {
   @Test
   public void testCrossStepColumnRemoval() {
     // given
-    Schema noNameColSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(),
-        deployedIndexesTable(),
+    Schema noNameColSchema = schemaWith(
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey()
         )
@@ -297,9 +292,7 @@ public class TestDeployedIndexesIntegration {
   @Test
   public void testCrossStepTableRename() {
     // given
-    Schema renamedTableSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(),
-        deployedIndexesTable(),
+    Schema renamedTableSchema = schemaWith(
         table("Item").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
             column("name", DataType.STRING, 100)
@@ -323,9 +316,7 @@ public class TestDeployedIndexesIntegration {
   @Test
   public void testDeferredIndexesOnMultipleTables() {
     // given
-    Schema multiTableSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(),
-        deployedIndexesTable(),
+    Schema multiTableSchema = schemaWith(
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
             column("name", DataType.STRING, 100)
@@ -355,15 +346,13 @@ public class TestDeployedIndexesIntegration {
   // =========================================================================
 
   /**
-   * A non-deferred addIndex should be built immediately and appear
-   * as a physical index in the database.
+   * A non-deferred addIndex should be built immediately, exist physically,
+   * and have a COMPLETED row in DeployedIndexes.
    */
   @Test
   public void testNonDeferredIndexBuiltImmediately() {
     // given
-    Schema targetSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(),
-        deployedIndexesTable(),
+    Schema targetSchema = schemaWith(
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
             column("name", DataType.STRING, 100)
@@ -374,8 +363,11 @@ public class TestDeployedIndexesIntegration {
     performUpgrade(targetSchema,
         org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddImmediateIndex.class);
 
-    // then
+    // then -- physical index exists AND DeployedIndexes row is COMPLETED
     assertPhysicalIndexExists("Product", "Product_Name_1");
+    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
+    assertTrue("Should not be deferred",
+        "FALSE".equalsIgnoreCase(queryDeployedIndexField("Product_Name_1", "indexDeferred")));
   }
 
 
@@ -399,8 +391,8 @@ public class TestDeployedIndexesIntegration {
 
 
   /**
-   * Same-step: add deferred then remove in the same step. No index
-   * should exist after upgrade.
+   * Same-step: add deferred then remove in the same step. No physical
+   * index and no DeployedIndexes row should exist after upgrade.
    */
   @Test
   public void testAddDeferredThenRemoveInSameStep() {
@@ -408,8 +400,10 @@ public class TestDeployedIndexesIntegration {
     performUpgrade(INITIAL_SCHEMA,
         org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredIndexThenRemove.class);
 
-    // then
+    // then -- neither physical index nor DeployedIndexes row
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+    assertNull("Should have no DeployedIndexes row",
+        queryDeployedIndexField("Product_Name_1", "status"));
   }
 
 
@@ -420,9 +414,7 @@ public class TestDeployedIndexesIntegration {
   @Test
   public void testAddDeferredThenRenameInSameStep() {
     // given
-    Schema targetSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(),
-        deployedIndexesTable(),
+    Schema targetSchema = schemaWith(
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
             column("name", DataType.STRING, 100)
@@ -450,9 +442,7 @@ public class TestDeployedIndexesIntegration {
   @Test
   public void testUniqueDeferredIndex() {
     // given
-    Schema targetSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(),
-        deployedIndexesTable(),
+    Schema targetSchema = schemaWith(
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
             column("name", DataType.STRING, 100)
@@ -474,9 +464,7 @@ public class TestDeployedIndexesIntegration {
   @Test
   public void testMultiColumnDeferredIndex() {
     // given
-    Schema targetSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(),
-        deployedIndexesTable(),
+    Schema targetSchema = schemaWith(
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
             column("name", DataType.STRING, 100)
@@ -508,9 +496,7 @@ public class TestDeployedIndexesIntegration {
 
     // when — second upgrade with a new step (schema unchanged = same target)
     UpgradePath path2 = performUpgradeSteps(
-        schema(
-        deployedViewsTable(), upgradeAuditTable(),
-        deployedIndexesTable(),
+        schemaWith(
             table("Product").columns(
                 column("id", DataType.BIG_INTEGER).primaryKey(),
                 column("name", DataType.STRING, 100)
@@ -537,9 +523,7 @@ public class TestDeployedIndexesIntegration {
   @Test
   public void testAddTableTracksIndexesInDeployedTable() {
     // given
-    Schema targetSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(),
-        deployedIndexesTable(),
+    Schema targetSchema = schemaWith(
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
             column("name", DataType.STRING, 100)
@@ -558,64 +542,6 @@ public class TestDeployedIndexesIntegration {
   }
 
 
-  /**
-   * After a deferred addIndex, the DeployedIndexes table should have a
-   * PENDING row for the deferred index.
-   */
-  @Test
-  public void testDeferredIndexCreatesDeployedRow() {
-    // when
-    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
-
-    // then
-    assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
-    assertTrue("Should be deferred",
-        "TRUE".equalsIgnoreCase(queryDeployedIndexField("Product_Name_1", "indexDeferred")));
-  }
-
-
-  /**
-   * After a non-deferred addIndex, the DeployedIndexes table should have a
-   * COMPLETED row.
-   */
-  @Test
-  public void testNonDeferredIndexCreatesCompletedRow() {
-    // given
-    Schema targetSchema = schema(
-        deployedViewsTable(), upgradeAuditTable(),
-        deployedIndexesTable(),
-        table("Product").columns(
-            column("id", DataType.BIG_INTEGER).primaryKey(),
-            column("name", DataType.STRING, 100)
-        ).indexes(index("Product_Name_1").columns("name"))
-    );
-
-    // when
-    performUpgrade(targetSchema,
-        org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddImmediateIndex.class);
-
-    // then
-    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
-    assertTrue("Should not be deferred",
-        "FALSE".equalsIgnoreCase(queryDeployedIndexField("Product_Name_1", "indexDeferred")));
-  }
-
-
-  /**
-   * After same-step add+remove, the DeployedIndexes row should be cleaned up.
-   */
-  @Test
-  public void testAddDeferredThenRemoveCleanupDeployedRow() {
-    // when
-    performUpgrade(INITIAL_SCHEMA,
-        org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredIndexThenRemove.class);
-
-    // then -- no row for the removed index
-    assertNull("Should have no row for removed index",
-        queryDeployedIndexField("Product_Name_1", "status"));
-  }
-
-
   // -------------------------------------------------------------------------
   // Helpers
   // -------------------------------------------------------------------------
@@ -631,15 +557,24 @@ public class TestDeployedIndexesIntegration {
         connectionResources, config, viewDeploymentValidator);
   }
 
+  /** Helper: schema with Product table having one index on name. */
   private Schema schemaWithIndex() {
-    return schema(
-        deployedViewsTable(), upgradeAuditTable(),
-        deployedIndexesTable(),
+    return schemaWith(
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),
             column("name", DataType.STRING, 100)
         ).indexes(index("Product_Name_1").columns("name"))
     );
+  }
+
+  /** Helper: builds a schema with Morf infrastructure tables + the given user tables. */
+  private static Schema schemaWith(org.alfasoftware.morf.metadata.Table... tables) {
+    java.util.List<org.alfasoftware.morf.metadata.Table> all = new java.util.ArrayList<>();
+    all.add(deployedViewsTable());
+    all.add(upgradeAuditTable());
+    all.add(deployedIndexesTable());
+    java.util.Collections.addAll(all, tables);
+    return schema(all);
   }
 
   private void assertPhysicalIndexExists(String tableName, String indexName) {
