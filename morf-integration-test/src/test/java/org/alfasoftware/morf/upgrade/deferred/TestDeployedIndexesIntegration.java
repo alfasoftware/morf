@@ -23,7 +23,9 @@ import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.upgradeAuditTable;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deferredIndexOperationTable;
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deployedIndexesTable;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
@@ -442,6 +444,68 @@ public class TestDeployedIndexesIntegration {
   }
 
 
+  // =========================================================================
+  // DeployedIndexes table state verification
+  // =========================================================================
+
+  /**
+   * After a deferred addIndex, the DeployedIndexes table should have a
+   * PENDING row for the deferred index.
+   */
+  @Test
+  public void testDeferredIndexCreatesDeployedRow() {
+    // when
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+
+    // then
+    assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
+    assertTrue("Should be deferred",
+        "TRUE".equalsIgnoreCase(queryDeployedIndexField("Product_Name_1", "indexDeferred")));
+  }
+
+
+  /**
+   * After a non-deferred addIndex, the DeployedIndexes table should have a
+   * COMPLETED row.
+   */
+  @Test
+  public void testNonDeferredIndexCreatesCompletedRow() {
+    // given
+    Schema targetSchema = schema(
+        deployedViewsTable(), upgradeAuditTable(), deferredIndexOperationTable(),
+        deployedIndexesTable(),
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_1").columns("name"))
+    );
+
+    // when
+    performUpgrade(targetSchema,
+        org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddImmediateIndex.class);
+
+    // then
+    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
+    assertTrue("Should not be deferred",
+        "FALSE".equalsIgnoreCase(queryDeployedIndexField("Product_Name_1", "indexDeferred")));
+  }
+
+
+  /**
+   * After same-step add+remove, the DeployedIndexes row should be cleaned up.
+   */
+  @Test
+  public void testAddDeferredThenRemoveCleanupDeployedRow() {
+    // when
+    performUpgrade(INITIAL_SCHEMA,
+        org.alfasoftware.morf.upgrade.deferred.upgrade.v1_0_0.AddDeferredIndexThenRemove.class);
+
+    // then -- no row for the removed index
+    assertNull("Should have no row for removed index",
+        queryDeployedIndexField("Product_Name_1", "status"));
+  }
+
+
   // -------------------------------------------------------------------------
   // Helpers
   // -------------------------------------------------------------------------
@@ -482,5 +546,28 @@ public class TestDeployedIndexesIntegration {
           sr.getTable(tableName).indexes().stream()
               .anyMatch(idx -> indexName.equalsIgnoreCase(idx.getName())));
     }
+  }
+
+  private String queryDeployedIndexField(String indexName, String fieldName) {
+    String sql = connectionResources.sqlDialect().convertStatementToSQL(
+        org.alfasoftware.morf.sql.SqlUtils.select(
+            org.alfasoftware.morf.sql.SqlUtils.field(fieldName))
+            .from(org.alfasoftware.morf.sql.SqlUtils.tableRef("DeployedIndexes"))
+            .where(org.alfasoftware.morf.sql.SqlUtils.field("indexName").eq(indexName))
+    );
+    return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> rs.next() ? rs.getString(1) : null);
+  }
+
+  private int countDeployedIndexRows() {
+    String sql = connectionResources.sqlDialect().convertStatementToSQL(
+        org.alfasoftware.morf.sql.SqlUtils.select(
+            org.alfasoftware.morf.sql.SqlUtils.field("id"))
+            .from(org.alfasoftware.morf.sql.SqlUtils.tableRef("DeployedIndexes"))
+    );
+    return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> {
+      int count = 0;
+      while (rs.next()) count++;
+      return count;
+    });
   }
 }
