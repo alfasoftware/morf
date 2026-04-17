@@ -193,7 +193,9 @@ public class TestDeployedIndexesChangeServiceImpl {
   }
 
 
-  /** updateColumnName should update column references. */
+  /** updateColumnName should update column references on the matching index only,
+   *  emit an UPDATE whose SET targets indexColumns with the renamed CSV, and
+   *  filter on (tableName, indexName) of the affected index. */
   @Test
   public void testUpdateColumnName() {
     // given
@@ -203,8 +205,19 @@ public class TestDeployedIndexesChangeServiceImpl {
     // when
     List<Statement> stmts = service.updateColumnName("Table1", "oldCol", "newCol");
 
-    // then
+    // then -- only Idx1 is affected
     assertEquals("Only Idx1 should be affected", 1, stmts.size());
+
+    // and -- UPDATE sets indexColumns="newCol,col2" and filters on (Table1, Idx1)
+    org.alfasoftware.morf.sql.UpdateStatement upd =
+        (org.alfasoftware.morf.sql.UpdateStatement) stmts.get(0);
+    assertEquals(1, upd.getFields().size());
+    assertEquals("indexColumns", upd.getFields().get(0).getAlias());
+    assertEquals("newCol,col2",
+        ((org.alfasoftware.morf.sql.element.FieldLiteral) upd.getFields().get(0)).getValue());
+    org.alfasoftware.morf.sql.element.Criterion where = upd.getWhereCriterion();
+    assertEquals(org.alfasoftware.morf.sql.element.Operator.AND, where.getOperator());
+    assertEquals(2, where.getCriteria().size());
   }
 
 

@@ -17,15 +17,22 @@ package org.alfasoftware.morf.upgrade.deployedindexes;
 
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.UpdateStatement;
+import org.alfasoftware.morf.sql.element.AliasedField;
+import org.alfasoftware.morf.sql.element.Criterion;
+import org.alfasoftware.morf.sql.element.FieldLiteral;
+import org.alfasoftware.morf.sql.element.FieldReference;
+import org.alfasoftware.morf.sql.element.Operator;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.junit.Test;
 
@@ -52,9 +59,9 @@ public class TestDeployedIndexesStatementFactory {
     assertEquals(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME,
         stmt.getTable().getName());
     assertEquals(1, stmt.getOrderBys().size());
-    assertEquals("id", ((org.alfasoftware.morf.sql.element.FieldReference) stmt.getOrderBys().get(0)).getName());
-    // and -- projects all columns
-    assertEquals(DeployedIndexesStatementFactory.allColumns().size(), stmt.getFields().size());
+    assertEquals("id", ((FieldReference) stmt.getOrderBys().get(0)).getName());
+    // and -- projects all 12 tracked columns
+    assertEquals(12, stmt.getFields().size());
   }
 
 
@@ -64,10 +71,14 @@ public class TestDeployedIndexesStatementFactory {
     // when
     SelectStatement stmt = factory.statementToFindByTable("Product");
 
-    // then
+    // then -- WHERE is tableName = 'Product'
     assertEquals(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME,
         stmt.getTable().getName());
-    assertTrue("should have a WHERE clause", stmt.getWhereCriterion() != null);
+    Criterion where = stmt.getWhereCriterion();
+    assertNotNull("should have a WHERE clause", where);
+    assertEquals(Operator.EQ, where.getOperator());
+    assertEquals("tableName", ((FieldReference) where.getField()).getName());
+    assertEquals("Product", where.getValue());
   }
 
 
@@ -98,52 +109,61 @@ public class TestDeployedIndexesStatementFactory {
 
   // ---- Status update statements ------------------------------------------
 
-  /** markStarted sets status=IN_PROGRESS and startedTime. */
+  /** markStarted sets status=IN_PROGRESS and startedTime, filters on (tableName, indexName). */
   @Test
   public void testStatementToMarkStarted() {
     // when
     UpdateStatement stmt = factory.statementToMarkStarted("Product", "Idx1", 12345L);
 
-    // then
+    // then -- SET status=IN_PROGRESS, startedTime=12345
     assertEquals(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME,
         stmt.getTable().getName());
-    assertEquals(2, stmt.getFields().size());  // status + startedTime
-    assertTrue(stmt.getWhereCriterion() != null);
+    assertEquals(List.of("status", "startedTime"), aliases(stmt.getFields()));
+    assertEquals(List.of(DeployedIndexStatus.IN_PROGRESS.name(), "12345"), literalValues(stmt.getFields()));
+    assertWhereOnTableAndIndex(stmt.getWhereCriterion(), "Product", "Idx1");
   }
 
 
-  /** markCompleted sets status=COMPLETED and completedTime. */
+  /** markCompleted sets status=COMPLETED and completedTime, filters on (tableName, indexName). */
   @Test
   public void testStatementToMarkCompleted() {
     // when
     UpdateStatement stmt = factory.statementToMarkCompleted("Product", "Idx1", 12345L);
 
     // then
-    assertEquals(2, stmt.getFields().size());  // status + completedTime
-    assertTrue(stmt.getWhereCriterion() != null);
+    assertEquals(List.of("status", "completedTime"), aliases(stmt.getFields()));
+    assertEquals(List.of(DeployedIndexStatus.COMPLETED.name(), "12345"), literalValues(stmt.getFields()));
+    assertWhereOnTableAndIndex(stmt.getWhereCriterion(), "Product", "Idx1");
   }
 
 
-  /** markFailed sets status=FAILED and errorMessage. */
+  /** markFailed sets status=FAILED and errorMessage, filters on (tableName, indexName). */
   @Test
   public void testStatementToMarkFailed() {
     // when
     UpdateStatement stmt = factory.statementToMarkFailed("Product", "Idx1", "boom");
 
     // then
-    assertEquals(2, stmt.getFields().size());  // status + errorMessage
+    assertEquals(List.of("status", "errorMessage"), aliases(stmt.getFields()));
+    assertEquals(List.of(DeployedIndexStatus.FAILED.name(), "boom"), literalValues(stmt.getFields()));
+    assertWhereOnTableAndIndex(stmt.getWhereCriterion(), "Product", "Idx1");
   }
 
 
-  /** resetInProgress filters on status=IN_PROGRESS. */
+  /** resetInProgress sets status=PENDING, filters on status=IN_PROGRESS. */
   @Test
   public void testStatementToResetInProgress() {
     // when
     UpdateStatement stmt = factory.statementToResetInProgress();
 
-    // then
-    assertEquals(1, stmt.getFields().size());  // status
-    assertTrue(stmt.getWhereCriterion() != null);
+    // then -- SET status=PENDING
+    assertEquals(List.of("status"), aliases(stmt.getFields()));
+    assertEquals(List.of(DeployedIndexStatus.PENDING.name()), literalValues(stmt.getFields()));
+    // and -- WHERE status=IN_PROGRESS
+    Criterion where = stmt.getWhereCriterion();
+    assertEquals(Operator.EQ, where.getOperator());
+    assertEquals("status", ((FieldReference) where.getField()).getName());
+    assertEquals(DeployedIndexStatus.IN_PROGRESS.name(), where.getValue());
   }
 
 
@@ -262,17 +282,38 @@ public class TestDeployedIndexesStatementFactory {
   }
 
 
-  // ---- Column constants --------------------------------------------------
+  // ---- Helpers -----------------------------------------------------------
 
-  /** allColumns() returns a stable 12-column list in deterministic order. */
-  @Test
-  public void testAllColumns() {
-    // when
-    List<String> cols = DeployedIndexesStatementFactory.allColumns();
+  private static List<String> aliases(List<AliasedField> fields) {
+    return fields.stream().map(AliasedField::getAlias).collect(Collectors.toList());
+  }
 
-    // then
-    assertEquals(12, cols.size());
-    assertEquals("id", cols.get(0));
-    assertEquals("errorMessage", cols.get(cols.size() - 1));
+
+  private static List<String> literalValues(List<AliasedField> fields) {
+    return fields.stream()
+        .map(f -> f instanceof FieldLiteral ? ((FieldLiteral) f).getValue() : null)
+        .collect(Collectors.toList());
+  }
+
+
+  /**
+   * Assert that a WHERE criterion is an AND of exactly two EQ leaves:
+   * {@code tableName=<t>} and {@code indexName=<i>}, in any order.
+   */
+  private static void assertWhereOnTableAndIndex(Criterion where, String expectedTable, String expectedIndex) {
+    assertNotNull(where);
+    assertEquals(Operator.AND, where.getOperator());
+    List<Criterion> leaves = where.getCriteria();
+    assertEquals("AND should have exactly two leaves", 2, leaves.size());
+    List<String> fieldNames = leaves.stream()
+        .map(c -> ((FieldReference) c.getField()).getName())
+        .sorted()
+        .collect(Collectors.toList());
+    List<Object> values = leaves.stream()
+        .map(Criterion::getValue)
+        .collect(Collectors.toList());
+    assertEquals(List.of("indexName", "tableName"), fieldNames);
+    assertTrue("values should include the expected table: " + values, values.contains(expectedTable));
+    assertTrue("values should include the expected index: " + values, values.contains(expectedIndex));
   }
 }

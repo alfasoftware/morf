@@ -29,8 +29,6 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   private final DeployedIndexesChangeService deployedIndexesChangeService = new DeployedIndexesChangeServiceImpl();
   private final DeployedIndexState deployedIndexState;
 
-  /** Deferred indexes collected during visitation for getDeferredIndexStatements(). */
-  private final List<AddIndex> deferredIndexes = new ArrayList<>();
 
   public AbstractSchemaChangeVisitor(Schema currentSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect,
                                      Table idTable) {
@@ -98,7 +96,11 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     } else if (statement instanceof org.alfasoftware.morf.sql.DeleteStatement) {
       writeStatements(List.of(sqlDialect.convertStatementToSQL((org.alfasoftware.morf.sql.DeleteStatement) statement)));
     } else {
-      visitStatement(statement);
+      // visitStatement would run schema validation against currentSchema, which
+      // this method's contract explicitly avoids. Any factory method that returns
+      // a Statement subtype other than Insert/Update/Delete must add a branch above.
+      throw new IllegalStateException(
+          "Unexpected DeployedIndexes statement type: " + statement.getClass().getName());
     }
   }
 
@@ -334,7 +336,6 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
       // Deferred: only track in DeployedIndexes, no physical CREATE INDEX
       deployedIndexesChangeService.trackIndex(addIndex.getTableName(), addIndex.getNewIndex())
           .forEach(this::visitDeployedIndexesStatement);
-      deferredIndexes.add(addIndex);
     } else {
       // Immediate: check for ignored index rename optimization, then CREATE INDEX + track
       Index foundIndex = null;
@@ -355,16 +356,6 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
       deployedIndexesChangeService.trackIndex(addIndex.getTableName(), addIndex.getNewIndex())
           .forEach(this::visitDeployedIndexesStatement);
     }
-  }
-
-
-  /**
-   * Returns the deferred indexes collected during visitation.
-   *
-   * @return list of deferred AddIndex operations.
-   */
-  public List<AddIndex> getDeferredIndexes() {
-    return deferredIndexes;
   }
 
 

@@ -17,6 +17,7 @@ package org.alfasoftware.morf.upgrade.deployedindexes;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * One unit of work for the app-side deferred-index executor: a (table,
@@ -48,9 +49,9 @@ public final class DeferredIndexJob {
    * @param sql the SQL statement(s) to build this one index.
    */
   public DeferredIndexJob(String tableName, String indexName, List<String> sql) {
-    this.tableName = tableName;
-    this.indexName = indexName;
-    this.sql = Collections.unmodifiableList(List.copyOf(sql));
+    this.tableName = Objects.requireNonNull(tableName, "tableName");
+    this.indexName = Objects.requireNonNull(indexName, "indexName");
+    this.sql = Collections.unmodifiableList(List.copyOf(Objects.requireNonNull(sql, "sql")));
   }
 
 

@@ -46,6 +46,7 @@ import org.alfasoftware.morf.upgrade.UpgradePath;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
 import org.alfasoftware.morf.upgrade.ViewDeploymentValidator;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexJob;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexTracker;
 import org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddDeferredIndex;
 import org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddDeferredUniqueIndex;
 import org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddTableWithDeferredIndex;
@@ -208,12 +209,16 @@ public class TestDeployedIndexesIntegration {
     UpgradeConfigAndContext disabledConfig = new UpgradeConfigAndContext();
 
     // when
-    Upgrade.performUpgrade(schemaWithIndex(),
+    UpgradePath path = Upgrade.performUpgrade(schemaWithIndex(),
         Collections.singletonList(AddDeferredIndex.class),
         connectionResources, disabledConfig, viewDeploymentValidator);
 
     // then -- index built immediately
     assertPhysicalIndexExists("Product", "Product_Name_1");
+
+    // and -- no deferred jobs returned (adopter contract when feature is disabled)
+    assertTrue("No deferred jobs expected when feature is disabled",
+        path.getDeferredIndexStatements().isEmpty());
   }
 
 
@@ -665,6 +670,67 @@ public class TestDeployedIndexesIntegration {
 
 
   /**
+   * Adopter flow — happy path: the full loop documented in the integration
+   * guide. Iterate jobs from getDeferredIndexStatements(), markStarted, run
+   * each SQL statement, markCompleted. After the loop: physical index exists
+   * and the DeployedIndexes row is COMPLETED.
+   */
+  @Test
+  public void testAppSideAdopterFlowBuildsAndMarksCompleted() {
+    // given -- upgrade creates a PENDING deferred index
+    UpgradePath path = performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+    assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+    DeployedIndexTracker tracker = newTracker();
+
+    // when -- the app-side loop (use literal names since H2 folds schema-
+    // derived names to uppercase; the stored row uses the step's mixed case)
+    List<org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexJob> jobs =
+        path.getDeferredIndexStatements();
+    assertFalse("Should have a job to execute", jobs.isEmpty());
+    for (org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexJob job : jobs) {
+      tracker.markStarted("Product", "Product_Name_1");
+      sqlScriptExecutorProvider.get().execute(job.getSql());
+      tracker.markCompleted("Product", "Product_Name_1");
+    }
+
+    // then -- physical index built AND row flipped to COMPLETED
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
+  }
+
+
+  /**
+   * Adopter flow — failure path: if executing a job's SQL fails, the app
+   * calls markFailed with an error message; the row flips to FAILED and
+   * the errorMessage is persisted.
+   */
+  @Test
+  public void testAppSideAdopterFlowMarksFailed() {
+    // given -- upgrade creates a PENDING deferred index
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+    DeployedIndexTracker tracker = newTracker();
+
+    // when -- app-side loop simulates a failure mid-execution
+    tracker.markStarted("Product", "Product_Name_1");
+    tracker.markFailed("Product", "Product_Name_1", "disk full");
+
+    // then -- row flipped to FAILED, error message persisted, physical index NOT built
+    assertEquals("FAILED", queryDeployedIndexField("Product_Name_1", "status"));
+    assertEquals("disk full", queryDeployedIndexField("Product_Name_1", "errorMessage"));
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+  }
+
+
+  /** Helper: construct a tracker backed by the test's executor + connection. */
+  private DeployedIndexTracker newTracker() {
+    return new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexTrackerImpl(
+        new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesDAOImpl(
+            sqlScriptExecutorProvider, connectionResources));
+  }
+
+
+  /**
    * Crash recovery: if the tracker marks an index as IN_PROGRESS and the
    * process crashes, {@code tracker.resetInProgress()} should transition
    * it back to PENDING on next startup.
@@ -675,10 +741,7 @@ public class TestDeployedIndexesIntegration {
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
 
     // given -- simulate crash: mark as IN_PROGRESS
-    org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexTracker tracker =
-        new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexTrackerImpl(
-            new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesDAOImpl(
-                sqlScriptExecutorProvider, connectionResources));
+    DeployedIndexTracker tracker = newTracker();
     tracker.markStarted("Product", "Product_Name_1");
     assertEquals("IN_PROGRESS",
         queryDeployedIndexField("Product_Name_1", "status"));

@@ -17,7 +17,7 @@ package org.alfasoftware.morf.upgrade.deployedindexes;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -50,7 +50,7 @@ public class TestDeployedIndexTrackerImpl {
   }
 
 
-  /** markStarted passes the current time to DAO.markStarted. */
+  /** markStarted passes a time in the [before, after] window to DAO.markStarted. */
   @Test
   public void testMarkStartedDelegatesWithCurrentTime() {
     // given
@@ -58,23 +58,33 @@ public class TestDeployedIndexTrackerImpl {
 
     // when
     tracker.markStarted("Product", "Idx1");
+    long after = System.currentTimeMillis();
 
-    // then
+    // then -- captured time is bounded on both sides
     ArgumentCaptor<Long> captor = ArgumentCaptor.forClass(Long.class);
     verify(dao).markStarted(eq("Product"), eq("Idx1"), captor.capture());
     long passed = captor.getValue();
-    assertEquals("time should be >= snapshot before call", true, passed >= before);
+    assertTrue("time should be >= before snapshot (" + before + "), was " + passed, passed >= before);
+    assertTrue("time should be <= after snapshot (" + after + "), was " + passed, passed <= after);
   }
 
 
-  /** markCompleted passes the current time to DAO.markCompleted. */
+  /** markCompleted passes a time in the [before, after] window to DAO.markCompleted. */
   @Test
   public void testMarkCompletedDelegatesWithCurrentTime() {
+    // given
+    long before = System.currentTimeMillis();
+
     // when
     tracker.markCompleted("Product", "Idx1");
+    long after = System.currentTimeMillis();
 
-    // then
-    verify(dao).markCompleted(eq("Product"), eq("Idx1"), anyLong());
+    // then -- captured time is bounded on both sides
+    ArgumentCaptor<Long> captor = ArgumentCaptor.forClass(Long.class);
+    verify(dao).markCompleted(eq("Product"), eq("Idx1"), captor.capture());
+    long passed = captor.getValue();
+    assertTrue("time should be >= before snapshot (" + before + "), was " + passed, passed >= before);
+    assertTrue("time should be <= after snapshot (" + after + "), was " + passed, passed <= after);
   }
 
 

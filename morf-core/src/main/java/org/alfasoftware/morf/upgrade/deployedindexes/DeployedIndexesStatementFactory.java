@@ -24,7 +24,6 @@ import static org.alfasoftware.morf.sql.SqlUtils.update;
 import static org.alfasoftware.morf.sql.element.Criterion.and;
 import static org.alfasoftware.morf.sql.element.Criterion.or;
 
-import java.util.List;
 import java.util.UUID;
 
 import org.alfasoftware.morf.metadata.Index;
@@ -122,8 +121,9 @@ class DeployedIndexesStatementFactory {
     return update(tableRef(TABLE))
         .set(literal(DeployedIndexStatus.IN_PROGRESS.name()).as(COL_STATUS),
              literal(startedTime).as(COL_STARTED_TIME))
-        .where(field(COL_TABLE_NAME).eq(tableName)
-            .and(field(COL_INDEX_NAME).eq(indexName)));
+        .where(and(
+            field(COL_TABLE_NAME).eq(tableName),
+            field(COL_INDEX_NAME).eq(indexName)));
   }
 
 
@@ -134,8 +134,9 @@ class DeployedIndexesStatementFactory {
     return update(tableRef(TABLE))
         .set(literal(DeployedIndexStatus.COMPLETED.name()).as(COL_STATUS),
              literal(completedTime).as(COL_COMPLETED_TIME))
-        .where(field(COL_TABLE_NAME).eq(tableName)
-            .and(field(COL_INDEX_NAME).eq(indexName)));
+        .where(and(
+            field(COL_TABLE_NAME).eq(tableName),
+            field(COL_INDEX_NAME).eq(indexName)));
   }
 
 
@@ -146,8 +147,9 @@ class DeployedIndexesStatementFactory {
     return update(tableRef(TABLE))
         .set(literal(DeployedIndexStatus.FAILED.name()).as(COL_STATUS),
              literal(errorMessage).as(COL_ERROR_MESSAGE))
-        .where(field(COL_TABLE_NAME).eq(tableName)
-            .and(field(COL_INDEX_NAME).eq(indexName)));
+        .where(and(
+            field(COL_TABLE_NAME).eq(tableName),
+            field(COL_INDEX_NAME).eq(indexName)));
   }
 
 
@@ -158,8 +160,9 @@ class DeployedIndexesStatementFactory {
   public UpdateStatement statementToBumpRetryCount(String tableName, String indexName) {
     return update(tableRef(TABLE))
         .set(literal(1).as(COL_RETRY_COUNT))
-        .where(field(COL_TABLE_NAME).eq(tableName)
-            .and(field(COL_INDEX_NAME).eq(indexName)));
+        .where(and(
+            field(COL_TABLE_NAME).eq(tableName),
+            field(COL_INDEX_NAME).eq(indexName)));
   }
 
 
@@ -270,17 +273,5 @@ class DeployedIndexesStatementFactory {
         field(COL_CREATED_TIME), field(COL_STARTED_TIME), field(COL_COMPLETED_TIME),
         field(COL_ERROR_MESSAGE))
         .from(tableRef(TABLE));
-  }
-
-
-  /**
-   * @return all projection columns as a fixed list — useful for tests asserting
-   *     the mapping order.
-   */
-  public static List<String> allColumns() {
-    return List.of(
-        COL_ID, COL_TABLE_NAME, COL_INDEX_NAME, COL_INDEX_UNIQUE, COL_INDEX_COLUMNS,
-        COL_INDEX_DEFERRED, COL_STATUS, COL_RETRY_COUNT, COL_CREATED_TIME,
-        COL_STARTED_TIME, COL_COMPLETED_TIME, COL_ERROR_MESSAGE);
   }
 }
