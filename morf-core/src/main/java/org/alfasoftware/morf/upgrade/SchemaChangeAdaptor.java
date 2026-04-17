@@ -270,6 +270,5 @@ public interface SchemaChangeAdaptor {
     public RemoveSequence adapt(RemoveSequence removeSequence) {
       return second.adapt(first.adapt(removeSequence));
     }
-
   }
 }

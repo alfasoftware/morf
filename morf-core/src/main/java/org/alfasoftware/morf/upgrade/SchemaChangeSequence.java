@@ -687,7 +687,5 @@ public class SchemaChangeSequence {
     public void visit(RemoveSequence removeSequence) {
       changes.add(schemaChangeAdaptor.adapt(removeSequence));
     }
-
-
   }
 }
