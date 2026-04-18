@@ -96,7 +96,9 @@ public final class DeployedIndexState {
 
 
   /**
-   * Returns what the enricher recorded for this index.
+   * Returns what the enricher recorded for this index. UNKNOWN is the normal
+   * result for in-session additions — see {@link IndexPresence#UNKNOWN} for
+   * the happy-path-vs-bug distinction and caller interpretations.
    *
    * @param tableName the table.
    * @param indexName the index.

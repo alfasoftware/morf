@@ -18,26 +18,41 @@ package org.alfasoftware.morf.upgrade.deployedindexes;
 /**
  * Operational presence of an index as observed by the enricher.
  *
- * <ul>
- *   <li>{@link #PRESENT} — the enricher saw a matching physical index.</li>
- *   <li>{@link #ABSENT} — the enricher saw a tracking row with no matching
- *       physical index (e.g. a virtual deferred index not yet built).</li>
- *   <li>{@link #UNKNOWN} — the enricher didn't see this index at all. Callers
- *       decide whether to treat unknown as "present" (e.g. an in-session
- *       addition whose CREATE INDEX is already queued) or "not built yet"
- *       (e.g. a new deferred index needing its CREATE INDEX emitted).</li>
- * </ul>
+ * <p>{@link #UNKNOWN} deserves special attention: hitting it is the
+ * <em>normal</em> result for indexes that first appear during the current
+ * upgrade session (the enricher runs once against the source schema +
+ * tracking table and does not see subsequent in-memory mutations). It is
+ * NOT an error signal in that common case — callers decide how to interpret
+ * it in their context. UNKNOWN should, however, never appear for an index
+ * that was live in the source schema or had a tracking row when the
+ * enricher ran; that would indicate the enricher silently skipped work
+ * (a bug).</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
 public enum IndexPresence {
 
-  /** The enricher saw a matching physical index. */
+  /** Enricher observed a matching physical index. */
   PRESENT,
 
-  /** The enricher saw a tracking row with no matching physical index. */
+  /** Enricher observed a tracking row with no matching physical index
+   *  (e.g. a deferred index that hasn't been built yet). */
   ABSENT,
 
-  /** The enricher didn't see this index at all. */
+  /**
+   * Enricher has no record of this index. The <em>normal</em> result for
+   * indexes that first appear during the current upgrade session —
+   * e.g. an in-session {@code AddIndex} queues a CREATE INDEX but the
+   * enricher ran before that step. Callers decide the meaning:
+   * <ul>
+   *   <li>{@code AbstractSchemaChangeVisitor.willBePhysicallyPresentAtThisEmission}
+   *       treats UNKNOWN as "present" (the CREATE is already queued in-session).</li>
+   *   <li>{@code Upgrade.collectDeferredIndexJobs} treats UNKNOWN as "needs
+   *       building" when emitting deferred index statements.</li>
+   * </ul>
+   * <p>UNKNOWN should NOT appear for an index that was live in the source
+   * schema or had a tracking row when the enricher ran; that would indicate
+   * a logic bug in the enricher.</p>
+   */
   UNKNOWN
 }
