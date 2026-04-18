@@ -849,6 +849,14 @@ public class TestDeployedIndexesIntegration {
         "NAME".equalsIgnoreCase(queryDeployedIndexField("Product_Name_1", "indexColumns")));
     assertTrue("Should not be deferred",
         "FALSE".equalsIgnoreCase(queryDeployedIndexField("Product_Name_1", "indexDeferred")));
+
+    // and -- the DeployedIndexes table's own indexes are tracked via visit(AddTable).
+    // This exercises the P1.2 change that removed the Morf-infrastructure-table skip:
+    // Morf tables' indexes are now tracked the same way as user tables' indexes.
+    assertTrue("DeployedIdx_1 should be tracked (visit(AddTable) recorded it)",
+        "COMPLETED".equalsIgnoreCase(queryDeployedIndexField("DeployedIdx_1", "status")));
+    assertTrue("DeployedIdx_2 should be tracked (visit(AddTable) recorded it)",
+        "COMPLETED".equalsIgnoreCase(queryDeployedIndexField("DeployedIdx_2", "status")));
   }
 
 

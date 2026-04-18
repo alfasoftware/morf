@@ -111,6 +111,34 @@ public class TestSchemaChangeSequence {
   }
 
 
+  /**
+   * resolveDeferred kill-switch-off branch: when deferred-index creation is
+   * disabled in the config, a declared-deferred index is rebuilt as
+   * non-deferred before the AddIndex is recorded.
+   */
+  @Test
+  public void testAddIndexDeferredWithKillSwitchOffProducesImmediate() {
+    // given
+    when(index.getName()).thenReturn("TestIdx");
+    when(index.columnNames()).thenReturn(List.of("col1"));
+    when(index.isDeferred()).thenReturn(true);
+
+    UpgradeConfigAndContext config = new UpgradeConfigAndContext();
+    config.setDeferredIndexCreationEnabled(false);
+
+    // when
+    SchemaChangeSequence seq = new SchemaChangeSequence(config, List.of(new StepWithDeferredAddIndex()), SchemaUtils.schema());
+    List<SchemaChange> changes = seq.getAllChanges();
+
+    // then
+    assertThat(changes, hasSize(1));
+    assertThat(changes.get(0), instanceOf(AddIndex.class));
+    AddIndex change = (AddIndex) changes.get(0);
+    assertEquals("TestIdx", change.getNewIndex().getName());
+    assertEquals("Kill switch off should force non-deferred", false, change.getNewIndex().isDeferred());
+  }
+
+
   /** Tests that addIndexDeferred with force-immediate config produces an AddIndex instead of DeferredAddIndex. */
   @Test
   public void testAddIndexDeferredWithForceImmediateProducesAddIndex() {
