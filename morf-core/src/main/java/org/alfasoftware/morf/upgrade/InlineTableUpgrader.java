@@ -35,21 +35,7 @@ public class InlineTableUpgrader extends AbstractSchemaChangeVisitor implements 
 
 
   /**
-   * Default constructor. Uses an empty {@link DeployedIndexState}.
-   *
-   * @param startSchema schema prior to upgrade step.
-   * @param upgradeConfigAndContext upgrade config
-   * @param sqlDialect Dialect to generate statements for the target database.
-   * @param sqlStatementWriter recipient for all upgrade SQL statements.
-   * @param idTable table for id generation.
-   */
-  public InlineTableUpgrader(Schema startSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect, SqlStatementWriter sqlStatementWriter, Table idTable) {
-    this(startSchema, upgradeConfigAndContext, sqlDialect, sqlStatementWriter, idTable, DeployedIndexState.empty());
-  }
-
-
-  /**
-   * Constructor with explicit operational state.
+   * Default constructor.
    *
    * @param startSchema schema prior to upgrade step.
    * @param upgradeConfigAndContext upgrade config

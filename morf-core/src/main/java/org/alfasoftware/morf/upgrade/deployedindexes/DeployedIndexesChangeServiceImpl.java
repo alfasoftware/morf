@@ -48,13 +48,11 @@ public class DeployedIndexesChangeServiceImpl implements DeployedIndexesChangeSe
   private final Map<String, Map<String, IndexRecord>> trackedIndexes = new LinkedHashMap<>();
 
 
-  /** Default constructor — creates its own factory. */
-  public DeployedIndexesChangeServiceImpl() {
-    this(new DeployedIndexesStatementFactory());
-  }
-
-
-  /** Constructor with explicit factory — for tests. */
+  /**
+   * Constructs the service.
+   *
+   * @param factory statement factory used to build every tracking DML.
+   */
   public DeployedIndexesChangeServiceImpl(DeployedIndexesStatementFactory factory) {
     this.factory = factory;
   }

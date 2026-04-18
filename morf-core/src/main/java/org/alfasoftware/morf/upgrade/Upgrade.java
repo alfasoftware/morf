@@ -359,7 +359,8 @@ public class Upgrade {
         connectionResources,
         upgradeConfigAndContext,
         schemaChangeSequence,
-        viewChanges);
+        viewChanges,
+        deployedIndexState);
     }
 
     // Build the actual upgrade path

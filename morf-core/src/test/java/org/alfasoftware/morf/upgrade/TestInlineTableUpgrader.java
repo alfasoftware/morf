@@ -52,6 +52,7 @@ import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.sql.UpdateStatement;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexState;
 import org.mockito.ArgumentMatchers;
 import org.junit.Before;
 import org.junit.Test;
@@ -91,7 +92,7 @@ public class TestInlineTableUpgrader {
     when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.UpdateStatement.class))).thenReturn("UPDATE DeployedIndexes ...");
     when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.DeleteStatement.class))).thenReturn("DELETE FROM DeployedIndexes ...");
 
-    upgrader = new InlineTableUpgrader(schema, upgradeConfigAndContext, sqlDialect, sqlStatementWriter, SqlDialect.IdTable.withDeterministicName(ID_TABLE_NAME));
+    upgrader = new InlineTableUpgrader(schema, upgradeConfigAndContext, sqlDialect, sqlStatementWriter, SqlDialect.IdTable.withDeterministicName(ID_TABLE_NAME), DeployedIndexState.empty());
   }
 
 

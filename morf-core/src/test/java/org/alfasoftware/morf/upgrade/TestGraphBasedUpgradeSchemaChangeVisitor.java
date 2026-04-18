@@ -32,6 +32,7 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeSchemaChangeVisitor.GraphBasedUpgradeSchemaChangeVisitorFactory;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexState;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.junit.Before;
@@ -87,7 +88,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.InsertStatement.class))).thenReturn(List.of("INSERT INTO DeployedIndexes ..."));
     when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.UpdateStatement.class))).thenReturn("UPDATE DeployedIndexes ...");
     when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.DeleteStatement.class))).thenReturn("DELETE FROM DeployedIndexes ...");
-    visitor = new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable, nodes);
+    visitor = new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable, DeployedIndexState.empty(), nodes);
   }
 
 
@@ -305,6 +306,46 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
 
     // then
     verify(n1).addAllUpgradeStatements(ArgumentMatchers.argThat(c-> c.containsAll(STATEMENTS)));
+  }
+
+
+  /**
+   * Regression test: before P1.1, GraphBasedUpgradeSchemaChangeVisitor was
+   * constructed via its 4-arg super constructor, silently substituting
+   * DeployedIndexState.empty(). As a result the visitor emitted DROP INDEX
+   * DDL even for unbuilt deferred indexes (state = ABSENT) because the
+   * defaulted-empty state returned UNKNOWN, which is interpreted as "present".
+   * This test confirms that a non-empty DeployedIndexState threaded through
+   * to the graph-based visitor is actually consulted: when state says ABSENT,
+   * DROP INDEX DDL must not be emitted.
+   */
+  @Test
+  public void testRemoveIndexVisitRespectsAbsentStateForGraphBasedPath() {
+    // given — enricher reports SomeIdx as ABSENT (unbuilt deferred index)
+    DeployedIndexState absentState = DeployedIndexState.of("SomeTable", "SomeIdx", org.alfasoftware.morf.upgrade.deployedindexes.IndexPresence.ABSENT);
+    GraphBasedUpgradeSchemaChangeVisitor visitorWithAbsentState =
+        new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable, absentState, nodes);
+    visitorWithAbsentState.startStep(U1.class);
+
+    Index mockIdx = mock(Index.class);
+    when(mockIdx.getName()).thenReturn("SomeIdx");
+
+    Table mockTable = mock(Table.class);
+    when(mockTable.indexes()).thenReturn(List.of(mockIdx));
+    when(sourceSchema.getTable("SomeTable")).thenReturn(mockTable);
+    when(sourceSchema.tableExists("SomeTable")).thenReturn(true);
+
+    RemoveIndex removeIndex = mock(RemoveIndex.class);
+    when(removeIndex.apply(ArgumentMatchers.any())).thenReturn(sourceSchema);
+    when(removeIndex.getTableName()).thenReturn("SomeTable");
+    when(removeIndex.getIndexToBeRemoved()).thenReturn(mockIdx);
+    when(sqlDialect.indexDropStatements(nullable(Table.class), nullable(Index.class))).thenReturn(STATEMENTS);
+
+    // when
+    visitorWithAbsentState.visit(removeIndex);
+
+    // then — no DROP INDEX DDL emitted (state was ABSENT)
+    verify(n1, never()).addAllUpgradeStatements(ArgumentMatchers.argThat(c -> c.containsAll(STATEMENTS)));
   }
 
 
@@ -645,7 +686,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     GraphBasedUpgradeSchemaChangeVisitorFactory factory = new GraphBasedUpgradeSchemaChangeVisitorFactory();
 
     // when
-    GraphBasedUpgradeSchemaChangeVisitor created = factory.create(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable, nodes);
+    GraphBasedUpgradeSchemaChangeVisitor created = factory.create(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable, DeployedIndexState.empty(), nodes);
 
     // then
     assertNotNull(created);

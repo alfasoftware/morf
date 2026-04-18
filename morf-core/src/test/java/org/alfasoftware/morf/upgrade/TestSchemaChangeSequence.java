@@ -16,6 +16,7 @@ import java.util.Set;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.Statement;
@@ -71,7 +72,7 @@ public class TestSchemaChangeSequence {
     upgSteps.add(new UpgradeStep1());
 
     // when
-    SchemaChangeSequence schemaChangeSequence = new SchemaChangeSequence(upgSteps);
+    SchemaChangeSequence schemaChangeSequence = new SchemaChangeSequence(new UpgradeConfigAndContext(), upgSteps, SchemaUtils.schema());
 
     // then
     UpgradeTableResolution res = schemaChangeSequence.getUpgradeTableResolution();
@@ -97,7 +98,7 @@ public class TestSchemaChangeSequence {
     // when
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
     config.setDeferredIndexCreationEnabled(true);
-    SchemaChangeSequence seq = new SchemaChangeSequence(config, List.of(new StepWithDeferredAddIndex()));
+    SchemaChangeSequence seq = new SchemaChangeSequence(config, List.of(new StepWithDeferredAddIndex()), SchemaUtils.schema());
     List<SchemaChange> changes = seq.getAllChanges();
 
     // then -- now produces AddIndex with isDeferred()=true
@@ -122,7 +123,7 @@ public class TestSchemaChangeSequence {
     config.setForceImmediateIndexes(Set.of("TestIdx"));
 
     // when
-    SchemaChangeSequence seq = new SchemaChangeSequence(config, List.of(new StepWithDeferredAddIndex()));
+    SchemaChangeSequence seq = new SchemaChangeSequence(config, List.of(new StepWithDeferredAddIndex()), SchemaUtils.schema());
     List<SchemaChange> changes = seq.getAllChanges();
 
     // then
@@ -146,7 +147,7 @@ public class TestSchemaChangeSequence {
     config.setForceImmediateIndexes(Set.of("TESTIDX"));
 
     // when
-    SchemaChangeSequence seq = new SchemaChangeSequence(config, List.of(new StepWithDeferredAddIndex()));
+    SchemaChangeSequence seq = new SchemaChangeSequence(config, List.of(new StepWithDeferredAddIndex()), SchemaUtils.schema());
     List<SchemaChange> changes = seq.getAllChanges();
 
     // then
@@ -183,7 +184,7 @@ public class TestSchemaChangeSequence {
     config.setForceDeferredIndexes(Set.of("TestIdx"));
 
     // when
-    SchemaChangeSequence seq = new SchemaChangeSequence(config, List.of(new StepWithAddIndex()));
+    SchemaChangeSequence seq = new SchemaChangeSequence(config, List.of(new StepWithAddIndex()), SchemaUtils.schema());
     List<SchemaChange> changes = seq.getAllChanges();
 
     // then -- force-deferred produces AddIndex with isDeferred()=true
@@ -208,7 +209,7 @@ public class TestSchemaChangeSequence {
     config.setForceDeferredIndexes(Set.of("TESTIDX"));
 
     // when
-    SchemaChangeSequence seq = new SchemaChangeSequence(config, List.of(new StepWithAddIndex()));
+    SchemaChangeSequence seq = new SchemaChangeSequence(config, List.of(new StepWithAddIndex()), SchemaUtils.schema());
     List<SchemaChange> changes = seq.getAllChanges();
 
     // then

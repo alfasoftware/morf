@@ -95,7 +95,8 @@ public class DeployedIndexesModelEnricher {
       UpgradeConfigAndContext config) {
     DeployedIndexesDAO dao = new DeployedIndexesDAOImpl(
         new org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider(connectionResources),
-        connectionResources);
+        connectionResources,
+        new DeployedIndexesStatementFactory());
     return new DeployedIndexesModelEnricher(dao, config);
   }
 

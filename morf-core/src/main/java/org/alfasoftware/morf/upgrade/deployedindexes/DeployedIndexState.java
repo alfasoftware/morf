@@ -65,6 +65,38 @@ public final class DeployedIndexState {
 
 
   /**
+   * Test-friendly factory: returns a state containing the single
+   * {@code (tableName, indexName) → presence} entry. Compose by calling
+   * {@link #with(String, String, IndexPresence)} on the result.
+   *
+   * @param tableName table name (case-insensitive).
+   * @param indexName index name (case-insensitive).
+   * @param presence presence to record.
+   * @return a state containing the one entry.
+   */
+  public static DeployedIndexState of(String tableName, String indexName, IndexPresence presence) {
+    Map<String, IndexPresence> map = new HashMap<>();
+    map.put(key(tableName, indexName), presence);
+    return new DeployedIndexState(map);
+  }
+
+
+  /**
+   * Test-friendly combinator: returns a new state with one extra entry.
+   *
+   * @param tableName table name.
+   * @param indexName index name.
+   * @param p presence to record.
+   * @return a new state including this entry plus all existing entries.
+   */
+  public DeployedIndexState with(String tableName, String indexName, IndexPresence p) {
+    Map<String, IndexPresence> map = new HashMap<>(this.presence);
+    map.put(key(tableName, indexName), p);
+    return new DeployedIndexState(map);
+  }
+
+
+  /**
    * Returns what the enricher recorded for this index.
    *
    * @param tableName the table.

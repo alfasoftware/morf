@@ -38,7 +38,7 @@ public class TestDeployedIndexesChangeServiceImpl {
 
   @Before
   public void setUp() {
-    service = new DeployedIndexesChangeServiceImpl();
+    service = new DeployedIndexesChangeServiceImpl(new DeployedIndexesStatementFactory());
   }
 
 

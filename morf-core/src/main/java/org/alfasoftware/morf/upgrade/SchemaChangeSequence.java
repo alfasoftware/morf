@@ -61,16 +61,6 @@ public class SchemaChangeSequence {
   private final List<UpgradeStepWithChanges> allChanges;
 
 
-  public SchemaChangeSequence(List<UpgradeStep> steps) {
-    this(new UpgradeConfigAndContext(), steps);
-  }
-
-
-  public SchemaChangeSequence(UpgradeConfigAndContext upgradeConfigAndContext, List<UpgradeStep> steps) {
-    this(upgradeConfigAndContext, steps, null);
-  }
-
-
   public SchemaChangeSequence(UpgradeConfigAndContext upgradeConfigAndContext, List<UpgradeStep> steps, Schema sourceSchema) {
     this.upgradeConfigAndContext = upgradeConfigAndContext;
 
@@ -243,13 +233,13 @@ public class SchemaChangeSequence {
       super();
       this.visitor = visitor;
       this.schemaAndDataChangeVisitor = schemaAndDataChangeVisitor;
-      this.sourceSchema = sourceSchema;
+      this.sourceSchema = java.util.Objects.requireNonNull(sourceSchema, "sourceSchema");
     }
 
 
     @Override
     public Schema getSourceSchema() {
-      return sourceSchema != null ? sourceSchema : SchemaUtils.schema();
+      return sourceSchema;
     }
 
 

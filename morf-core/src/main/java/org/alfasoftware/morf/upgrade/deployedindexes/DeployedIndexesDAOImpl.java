@@ -56,18 +56,13 @@ class DeployedIndexesDAOImpl implements DeployedIndexesDAO {
 
 
   /**
-   * Constructs the DAO with injected dependencies and a default factory.
+   * Constructs the DAO with injected dependencies.
+   *
+   * @param sqlScriptExecutorProvider provider for SQL script execution.
+   * @param connectionResources connection resources (supplies the dialect).
+   * @param factory statement factory — Guice-injected; tests supply a stub.
    */
   @Inject
-  DeployedIndexesDAOImpl(SqlScriptExecutorProvider sqlScriptExecutorProvider,
-                         ConnectionResources connectionResources) {
-    this(sqlScriptExecutorProvider, connectionResources, new DeployedIndexesStatementFactory());
-  }
-
-
-  /**
-   * Constructor with explicit factory — for tests.
-   */
   DeployedIndexesDAOImpl(SqlScriptExecutorProvider sqlScriptExecutorProvider,
                           ConnectionResources connectionResources,
                           DeployedIndexesStatementFactory factory) {

@@ -96,17 +96,12 @@ public class UpgradePathFinder {
 
 
   /**
-   * Returns a {@link SchemaChangeSequence} from all steps to apply.
-   * @return All the steps to apply
-   */
-  public SchemaChangeSequence getSchemaChangeSequence() {
-    return getSchemaChangeSequence(null);
-  }
-
-
-  /**
    * Returns a {@link SchemaChangeSequence} from all steps to apply, with the source schema
    * available to upgrade steps via {@link SchemaEditor#getSourceSchema()}.
+   *
+   * @param sourceSchema schema prior to the upgrade; exposed to upgrade steps that need
+   *     read access (e.g. {@code CreateDeployedIndexes} for prepopulation).
+   * @return the resulting schema change sequence.
    */
   public SchemaChangeSequence getSchemaChangeSequence(Schema sourceSchema) {
     List<UpgradeStep> upgradeSteps = Lists.newArrayList();

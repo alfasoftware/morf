@@ -726,7 +726,8 @@ public class TestDeployedIndexesIntegration {
   private DeployedIndexTracker newTracker() {
     return new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexTrackerImpl(
         new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesDAOImpl(
-            sqlScriptExecutorProvider, connectionResources));
+            sqlScriptExecutorProvider, connectionResources,
+            new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesStatementFactory()));
   }
 
 

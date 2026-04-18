@@ -259,11 +259,26 @@ public interface SchemaEditor {
 
 
   /**
-   * Returns the source database schema as it was before the upgrade started.
-   * Used by infrastructure upgrade steps (e.g. DeployedIndexes prepopulation)
-   * that need to inspect the existing schema.
+   * Returns the pre-upgrade source schema — a read method retrofitted onto
+   * this otherwise-pure-write interface.
    *
-   * @return the source schema, or an empty schema if not available.
+   * <p>Added to support infrastructure upgrade steps that must inspect the
+   * schema as it stood at the start of the upgrade — currently only
+   * {@code CreateDeployedIndexes}, which prepopulates the {@code DeployedIndexes}
+   * tracking table with a row per existing index. Regular upgrade steps do
+   * not need this and should not use it.</p>
+   *
+   * <p><b>Invariant:</b> the returned schema is the source-of-upgrade-start
+   * schema — it is unaffected by any in-session {@code addTable}, {@code
+   * addColumn}, etc. calls this step may have already made on the editor.</p>
+   *
+   * <p>The default implementation returns an empty schema — appropriate for
+   * pathways (e.g. tests) that never exercise steps which read the source
+   * schema. Production callers go through {@code SchemaChangeSequence.Editor},
+   * which returns the real source schema threaded through from
+   * {@link UpgradePathFinder#getSchemaChangeSequence(Schema)}.</p>
+   *
+   * @return the source schema.
    */
   default Schema getSourceSchema() {
     return org.alfasoftware.morf.metadata.SchemaUtils.schema();
