@@ -44,8 +44,8 @@ public class TestDeployedIndexState {
   @Test
   public void testPresentEntryReportsPresent() {
     // given
-    Map<String, IndexPresence> map = new HashMap<>();
-    map.put(DeployedIndexState.key("MyTable", "MyIdx"), IndexPresence.PRESENT);
+    Map<IndexKey, IndexPresence> map = new HashMap<>();
+    map.put(new IndexKey("MyTable", "MyIdx"), IndexPresence.PRESENT);
     DeployedIndexState state = new DeployedIndexState(map);
 
     // then
@@ -57,8 +57,8 @@ public class TestDeployedIndexState {
   @Test
   public void testAbsentEntryReportsAbsent() {
     // given
-    Map<String, IndexPresence> map = new HashMap<>();
-    map.put(DeployedIndexState.key("MyTable", "MyIdx"), IndexPresence.ABSENT);
+    Map<IndexKey, IndexPresence> map = new HashMap<>();
+    map.put(new IndexKey("MyTable", "MyIdx"), IndexPresence.ABSENT);
     DeployedIndexState state = new DeployedIndexState(map);
 
     // then
@@ -70,8 +70,8 @@ public class TestDeployedIndexState {
   @Test
   public void testUnknownEntryReportsUnknown() {
     // given
-    Map<String, IndexPresence> map = new HashMap<>();
-    map.put(DeployedIndexState.key("MyTable", "MyIdx"), IndexPresence.PRESENT);
+    Map<IndexKey, IndexPresence> map = new HashMap<>();
+    map.put(new IndexKey("MyTable", "MyIdx"), IndexPresence.PRESENT);
     DeployedIndexState state = new DeployedIndexState(map);
 
     // then
@@ -84,8 +84,8 @@ public class TestDeployedIndexState {
   @Test
   public void testLookupIsCaseInsensitive() {
     // given -- stored in mixed case
-    Map<String, IndexPresence> map = new HashMap<>();
-    map.put(DeployedIndexState.key("MyTable", "MyIdx"), IndexPresence.PRESENT);
+    Map<IndexKey, IndexPresence> map = new HashMap<>();
+    map.put(new IndexKey("MyTable", "MyIdx"), IndexPresence.PRESENT);
     DeployedIndexState state = new DeployedIndexState(map);
 
     // then -- any casing retrieves the same entry

@@ -128,7 +128,7 @@ public class DeployedIndexesModelEnricher {
     // mutated as entries are consumed by the physical-indexes pass; what
     // remains is, by invariant, "tracked but not physically present".
     Map<String, Map<String, DeployedIndex>> trackingRowsByTable = buildTrackingRowsByTable(entries);
-    Map<String, IndexPresence> observedPresence = new HashMap<>();
+    Map<IndexKey, IndexPresence> observedPresence = new HashMap<>();
 
     List<Table> enrichedTables = new ArrayList<>();
     boolean changed = false;
@@ -180,7 +180,7 @@ public class DeployedIndexesModelEnricher {
    */
   private Optional<Table> enrichTable(Table physicalTable,
                                        Map<String, DeployedIndex> tableEntries,
-                                       Map<String, IndexPresence> observedPresence) {
+                                       Map<IndexKey, IndexPresence> observedPresence) {
     List<Index> rebuiltIndexes = new ArrayList<>();
     boolean changed = processPhysicalIndexes(physicalTable, tableEntries, rebuiltIndexes, observedPresence);
     changed |= processRemainingTrackingEntries(physicalTable.getName(), tableEntries, rebuiltIndexes, observedPresence);
@@ -219,7 +219,7 @@ public class DeployedIndexesModelEnricher {
   private boolean processPhysicalIndexes(Table physicalTable,
                                           Map<String, DeployedIndex> tableEntries,
                                           List<Index> rebuiltIndexes,
-                                          Map<String, IndexPresence> observedPresence) {
+                                          Map<IndexKey, IndexPresence> observedPresence) {
     boolean changed = false;
     for (Index physicalIndex : physicalTable.indexes()) {
       if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(physicalIndex.getName())) {
@@ -235,7 +235,7 @@ public class DeployedIndexesModelEnricher {
             + "This indicates a schema inconsistency.");
       }
       rebuiltIndexes.add(rebuildIndex(physicalIndex, entry.isIndexDeferred()));
-      observedPresence.put(DeployedIndexState.key(physicalTable.getName(), physicalIndex.getName()),
+      observedPresence.put(new IndexKey(physicalTable.getName(), physicalIndex.getName()),
           IndexPresence.PRESENT);
       changed = true;
     }
@@ -257,7 +257,7 @@ public class DeployedIndexesModelEnricher {
   private boolean processRemainingTrackingEntries(String tableName,
                                                    Map<String, DeployedIndex> remainingEntries,
                                                    List<Index> rebuiltIndexes,
-                                                   Map<String, IndexPresence> observedPresence) {
+                                                   Map<IndexKey, IndexPresence> observedPresence) {
     boolean changed = false;
     for (DeployedIndex entry : remainingEntries.values()) {
       if (!entry.isIndexDeferred()) {
@@ -267,7 +267,7 @@ public class DeployedIndexesModelEnricher {
             + "This indicates a schema inconsistency.");
       }
       rebuiltIndexes.add(entry.toIndex());
-      observedPresence.put(DeployedIndexState.key(tableName, entry.getIndexName()), IndexPresence.ABSENT);
+      observedPresence.put(new IndexKey(tableName, entry.getIndexName()), IndexPresence.ABSENT);
       changed = true;
     }
     // All entries have been consumed (either rebuilt as virtual deferred indexes or thrown

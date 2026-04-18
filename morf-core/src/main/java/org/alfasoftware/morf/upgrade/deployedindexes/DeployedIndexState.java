@@ -47,11 +47,10 @@ import java.util.Map;
  */
 public final class DeployedIndexState {
 
-  /** Key format: {@code TABLE_UPPER + ':' + INDEX_UPPER}. */
-  private final Map<String, IndexPresence> presence;
+  private final Map<IndexKey, IndexPresence> presence;
 
 
-  DeployedIndexState(Map<String, IndexPresence> presence) {
+  DeployedIndexState(Map<IndexKey, IndexPresence> presence) {
     this.presence = Collections.unmodifiableMap(new HashMap<>(presence));
   }
 
@@ -75,8 +74,8 @@ public final class DeployedIndexState {
    * @return a state containing the one entry.
    */
   public static DeployedIndexState of(String tableName, String indexName, IndexPresence presence) {
-    Map<String, IndexPresence> map = new HashMap<>();
-    map.put(key(tableName, indexName), presence);
+    Map<IndexKey, IndexPresence> map = new HashMap<>();
+    map.put(new IndexKey(tableName, indexName), presence);
     return new DeployedIndexState(map);
   }
 
@@ -90,8 +89,8 @@ public final class DeployedIndexState {
    * @return a new state including this entry plus all existing entries.
    */
   public DeployedIndexState with(String tableName, String indexName, IndexPresence p) {
-    Map<String, IndexPresence> map = new HashMap<>(this.presence);
-    map.put(key(tableName, indexName), p);
+    Map<IndexKey, IndexPresence> map = new HashMap<>(this.presence);
+    map.put(new IndexKey(tableName, indexName), p);
     return new DeployedIndexState(map);
   }
 
@@ -106,11 +105,6 @@ public final class DeployedIndexState {
    *         otherwise.
    */
   public IndexPresence getPresence(String tableName, String indexName) {
-    return presence.getOrDefault(key(tableName, indexName), IndexPresence.UNKNOWN);
-  }
-
-
-  static String key(String tableName, String indexName) {
-    return tableName.toUpperCase() + ":" + indexName.toUpperCase();
+    return presence.getOrDefault(new IndexKey(tableName, indexName), IndexPresence.UNKNOWN);
   }
 }
