@@ -111,15 +111,29 @@ public class Upgrade {
 
 
   /**
-   * Static convenience method which takes the specified database and upgrades it to the target
-   * schema, using the upgrade steps supplied which have not already been applied.
-   * <b>This static context does not support Graph Based Upgrade.</b>
+   * Simplified entry point that takes the specified database and upgrades
+   * it to the target schema using the supplied upgrade steps. Primarily
+   * used from tests and examples; production code typically goes through
+   * {@link Upgrade.Factory}.
+   *
+   * <p><b>This static context does not support Graph Based Upgrade.</b></p>
+   *
+   * <p>Returns the computed {@link UpgradePath}, primarily so callers can
+   * access {@link UpgradePath#getDeferredIndexStatements()} — the list of
+   * {@link org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexJob}
+   * entries the application must execute asynchronously after the upgrade
+   * completes. Applications use
+   * {@link org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexTracker}
+   * to report markStarted / markCompleted / markFailed per job.</p>
    *
    * @param targetSchema The target database schema.
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
    * @param connectionResources Connection details for the database.
    * @param upgradeConfigAndContext Config and context object.
    * @param viewDeploymentValidator External view deployment validator.
+   * @return the upgrade path that was executed; inspect
+   *     {@link UpgradePath#getDeferredIndexStatements()} for deferred-index
+   *     work the application must drive.
    */
   public static UpgradePath performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeConfigAndContext upgradeConfigAndContext, ViewDeploymentValidator viewDeploymentValidator) {
     SqlScriptExecutorProvider sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
@@ -137,6 +151,17 @@ public class Upgrade {
   }
 
 
+  /**
+   * Backwards-compatible overload without explicit config — delegates with a
+   * default {@link UpgradeConfigAndContext}.
+   *
+   * @param targetSchema The target database schema.
+   * @param upgradeSteps All upgrade steps which should be deemed to have already run.
+   * @param connectionResources Connection details for the database.
+   * @param viewDeploymentValidator External view deployment validator.
+   * @return the upgrade path; see the 5-arg overload for details about the
+   *     return value and deferred-index jobs.
+   */
   @Deprecated
   public static UpgradePath performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, ViewDeploymentValidator viewDeploymentValidator) {
     return performUpgrade(targetSchema, upgradeSteps, connectionResources, new UpgradeConfigAndContext(), viewDeploymentValidator);
@@ -245,18 +270,9 @@ public class Upgrade {
       }
     }
 
-    // Enrich the source schema with DeployedIndexes metadata. This propagates
-    // the declarative isDeferred() onto indexes (from the tracking table) and
-    // produces a companion DeployedIndexState carrying operational facts
-    // (physical presence) that the visitor consults for DDL decisions.
-    DeployedIndexState deployedIndexState =
-        DeployedIndexState.empty();
-    if (deployedIndexesModelEnricher != null) {
-      EnrichedModel enrichment =
-          deployedIndexesModelEnricher.enrich(sourceSchema);
-      sourceSchema = enrichment.getSchema();
-      deployedIndexState = enrichment.getState();
-    }
+    EnrichedModel enriched = enrichSourceSchema(sourceSchema);
+    sourceSchema = enriched.getSchema();
+    DeployedIndexState deployedIndexState = enriched.getState();
 
     // -- Get the current UUIDs and deployed views...
     log.info("Examining current views");    //
@@ -310,28 +326,8 @@ public class Upgrade {
       upgrader.postUpgrade();
     }
 
-    // -- Collect deferred index jobs for getDeferredIndexStatements() --
-    // Scan the final schema (after all upgrade steps applied) for deferred
-    // indexes that are not physically present. This covers:
-    // - New deferred indexes from this upgrade
-    // - Existing unbuilt deferred indexes from previous upgrades
-    // - Deferred indexes that were renamed/modified during this upgrade
-    List<DeferredIndexJob> deferredIndexJobs = new ArrayList<>();
-    if (upgradeConfigAndContext.isDeferredIndexCreationEnabled()) {
-      Schema finalSchema = schemaChangeSequence.applyToSchema(sourceSchema);
-      for (Table table : finalSchema.tables()) {
-        for (Index idx : table.indexes()) {
-          if (idx.isDeferred()
-              && deployedIndexState.getPresence(table.getName(), idx.getName())
-                  != IndexPresence.PRESENT) {
-            deferredIndexJobs.add(new DeferredIndexJob(
-                table.getName(),
-                idx.getName(),
-                new ArrayList<>(dialect.deferredIndexDeploymentStatements(table, idx))));
-          }
-        }
-      }
-    }
+    List<DeferredIndexJob> deferredIndexJobs =
+        collectDeferredIndexJobs(schemaChangeSequence, sourceSchema, deployedIndexState, dialect);
 
     // -- Upgrade path...
     //
@@ -395,11 +391,7 @@ public class Upgrade {
     initialisationSql.addAll(schemaConsistencyStatements);
     initialisationSql.addAll(schemaAutoHealingStatements);
 
-    UpgradePath path = upgradePathFactory.create(upgradesToApply, connectionResources, graphBasedUpgradeBuilder, initialisationSql);
-
-    if (!deferredIndexJobs.isEmpty()) {
-      path.setDeferredIndexStatements(deferredIndexJobs);
-    }
+    UpgradePath path = upgradePathFactory.create(upgradesToApply, connectionResources, graphBasedUpgradeBuilder, initialisationSql, deferredIndexJobs);
 
     path.writeSql(UpgradeHelper.preSchemaUpgrade(new UpgradeSchemas(sourceSchema, targetSchema), viewChanges, viewChangesDeploymentHelper));
 
@@ -511,6 +503,66 @@ public class Upgrade {
     return select(count(upgradeAuditTable.field(COLUMN_NAME_UPGRADE_UUID)))
         .from(upgradeAuditTable)
         .build();
+  }
+
+
+  /**
+   * Enriches the source schema with DeployedIndexes metadata — propagates the
+   * declarative {@code isDeferred()} onto indexes (from the tracking table)
+   * and returns a companion {@link DeployedIndexState} carrying operational
+   * facts (physical presence) that the visitor consults for DDL decisions.
+   *
+   * <p>Falls back to an empty {@link EnrichedModel} when no enricher is
+   * available (e.g. legacy test paths that construct {@link Upgrade} with a
+   * null enricher).</p>
+   *
+   * @param sourceSchema the source schema read from JDBC metadata.
+   * @return the enriched model.
+   */
+  private EnrichedModel enrichSourceSchema(Schema sourceSchema) {
+    if (deployedIndexesModelEnricher == null) {
+      return new EnrichedModel(sourceSchema, DeployedIndexState.empty());
+    }
+    return deployedIndexesModelEnricher.enrich(sourceSchema);
+  }
+
+
+  /**
+   * Scans the final schema for deferred indexes that are not physically
+   * present and produces the jobs the application will execute asynchronously.
+   *
+   * <p>Covers new deferred indexes from this upgrade, existing unbuilt
+   * deferred indexes from previous upgrades, and deferred indexes renamed
+   * or modified during this upgrade.</p>
+   *
+   * @param schemaChangeSequence the computed sequence of schema changes.
+   * @param sourceSchema the source schema.
+   * @param deployedIndexState operational state from the enricher.
+   * @param dialect the SQL dialect.
+   * @return empty list when deferred-index creation is disabled; otherwise the
+   *     list of jobs for each unbuilt deferred index in the final schema.
+   */
+  private List<DeferredIndexJob> collectDeferredIndexJobs(SchemaChangeSequence schemaChangeSequence,
+                                                           Schema sourceSchema,
+                                                           DeployedIndexState deployedIndexState,
+                                                           SqlDialect dialect) {
+    if (!upgradeConfigAndContext.isDeferredIndexCreationEnabled()) {
+      return List.of();
+    }
+    List<DeferredIndexJob> jobs = new ArrayList<>();
+    Schema finalSchema = schemaChangeSequence.applyToSchema(sourceSchema);
+    for (Table table : finalSchema.tables()) {
+      for (Index idx : table.indexes()) {
+        if (idx.isDeferred()
+            && deployedIndexState.getPresence(table.getName(), idx.getName()) != IndexPresence.PRESENT) {
+          jobs.add(new DeferredIndexJob(
+              table.getName(),
+              idx.getName(),
+              new ArrayList<>(dialect.deferredIndexDeploymentStatements(table, idx))));
+        }
+      }
+    }
+    return jobs;
   }
 
 

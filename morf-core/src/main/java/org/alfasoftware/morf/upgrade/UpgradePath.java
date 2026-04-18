@@ -26,6 +26,7 @@ import java.util.function.Supplier;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.upgrade.additions.UpgradeScriptAddition;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexJob;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -87,9 +88,10 @@ public class UpgradePath implements SqlStatementWriter {
 
   /**
    * Jobs for building unbuilt deferred indexes. The application is responsible
-   * for executing these after the upgrade completes.
+   * for executing these after the upgrade completes. Populated at construction
+   * time via the factory; the list is unmodifiable.
    */
-  private List<org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexJob> deferredIndexJobs = Collections.emptyList();
+  private final List<DeferredIndexJob> deferredIndexJobs;
 
   /**
    * Supplier of {@link GraphBasedUpgrade}. May supply null if
@@ -99,7 +101,8 @@ public class UpgradePath implements SqlStatementWriter {
 
 
   /**
-   * Create a new complete deployment.
+   * Create a new complete deployment. Has no upgrade steps and no deferred
+   * index jobs — used for empty-path sentinel scenarios.
    *
    * @param upgradeScriptAdditions The SQL to be appended to the upgrade.
    * @param connectionResources the connection resources being used for this upgrade path
@@ -107,12 +110,13 @@ public class UpgradePath implements SqlStatementWriter {
    * @param finalisationSql the SQL to execute after all other, if and only if there is other SQL to execute.
    */
   public UpgradePath(Set<UpgradeScriptAddition> upgradeScriptAdditions, ConnectionResources connectionResources, List<String> initialisationSql, List<String> finalisationSql) {
-    this(upgradeScriptAdditions, new ArrayList<>(), connectionResources, initialisationSql, finalisationSql, null);
+    this(upgradeScriptAdditions, new ArrayList<>(), connectionResources, initialisationSql, finalisationSql, null, Collections.emptyList());
   }
 
 
   /**
-   * Create a new upgrade for the given list of steps. Graph based upgrade will not be available.
+   * Create a new upgrade for the given list of steps. Graph-based upgrade is
+   * not available; no deferred index jobs — used for simpler test/build paths.
    *
    * @param upgradeScriptAdditions The SQL to be appended to the upgrade.
    * @param steps the upgrade steps to run
@@ -121,7 +125,7 @@ public class UpgradePath implements SqlStatementWriter {
    * @param finalisationSql the SQL to execute after all other, if and only if there is other SQL to execute.
    */
   public UpgradePath(Set<UpgradeScriptAddition> upgradeScriptAdditions, List<UpgradeStep> steps, ConnectionResources connectionResources, List<String> initialisationSql, List<String> finalisationSql) {
-    this(upgradeScriptAdditions, steps, connectionResources, initialisationSql, finalisationSql, null);
+    this(upgradeScriptAdditions, steps, connectionResources, initialisationSql, finalisationSql, null, Collections.emptyList());
   }
 
 
@@ -134,8 +138,9 @@ public class UpgradePath implements SqlStatementWriter {
    * @param initialisationSql the SQL to execute before all other, if and only if there is other SQL to execute.
    * @param finalisationSql the SQL to execute after all other, if and only if there is other SQL to execute.
    * @param graphBasedUpgradeBuilder prepares {@link GraphBasedUpgrade} instance, may be null if graph based upgrade is not available
+   * @param deferredIndexJobs deferred-index build jobs the application must execute after the upgrade completes.
    */
-  public UpgradePath(Set<UpgradeScriptAddition> upgradeScriptAdditions, List<UpgradeStep> steps, ConnectionResources connectionResources, List<String> initialisationSql, List<String> finalisationSql, GraphBasedUpgradeBuilder graphBasedUpgradeBuilder) {
+  public UpgradePath(Set<UpgradeScriptAddition> upgradeScriptAdditions, List<UpgradeStep> steps, ConnectionResources connectionResources, List<String> initialisationSql, List<String> finalisationSql, GraphBasedUpgradeBuilder graphBasedUpgradeBuilder, List<DeferredIndexJob> deferredIndexJobs) {
     super();
     this.steps = Collections.unmodifiableList(steps);
     this.connectionResources = connectionResources;
@@ -143,6 +148,7 @@ public class UpgradePath implements SqlStatementWriter {
     this.upgradeStatus = null;
     this.initialisationSql = initialisationSql;
     this.finalisationSql = finalisationSql;
+    this.deferredIndexJobs = Collections.unmodifiableList(new ArrayList<>(deferredIndexJobs));
     this.graphBasedUpgradeSupplier = Suppliers.memoize(() -> graphBasedUpgradeBuilder != null ? graphBasedUpgradeBuilder.prepareGraphBasedUpgrade(initialisationSql) : null);
   }
 
@@ -160,6 +166,7 @@ public class UpgradePath implements SqlStatementWriter {
     this.upgradeStatus = upgradeStatus;
     this.initialisationSql = null;
     this.finalisationSql = null;
+    this.deferredIndexJobs = Collections.emptyList();
     this.graphBasedUpgradeSupplier = Suppliers.memoize(() -> null);
   }
 
@@ -215,18 +222,8 @@ public class UpgradePath implements SqlStatementWriter {
    *
    * @return list of deferred index jobs, or empty if none.
    */
-  public List<org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexJob> getDeferredIndexStatements() {
-    return Collections.unmodifiableList(deferredIndexJobs);
-  }
-
-
-  /**
-   * Sets the deferred index jobs.
-   *
-   * @param deferredIndexJobs the jobs.
-   */
-  void setDeferredIndexStatements(List<org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexJob> deferredIndexJobs) {
-    this.deferredIndexJobs = deferredIndexJobs;
+  public List<DeferredIndexJob> getDeferredIndexStatements() {
+    return deferredIndexJobs;
   }
 
 
@@ -327,7 +324,8 @@ public class UpgradePath implements SqlStatementWriter {
 
 
     /**
-     * Creates an instance of {@link UpgradePath} with provided connection resources.
+     * Creates an empty-path sentinel {@link UpgradePath} — no upgrade steps,
+     * no deferred index jobs. Used when no work is required.
      *
      * @param connectionResources The ConnectionResources.
      * @return The resulting {@link UpgradePath}.
@@ -336,7 +334,8 @@ public class UpgradePath implements SqlStatementWriter {
 
 
     /**
-     * Creates an instance of {@link UpgradePath} with provided connection resources.
+     * Creates a simpler-form {@link UpgradePath} for test/build paths without
+     * graph-based execution or deferred indexes.
      *
      * @param steps The steps represented by the {@link UpgradePath}.
      * @param connectionResources The ConnectionResources.
@@ -347,18 +346,21 @@ public class UpgradePath implements SqlStatementWriter {
 
 
     /**
-     * Creates an instance of {@link UpgradePath} with provided connection resources.
+     * Creates a fully-specified {@link UpgradePath} including deferred index
+     * jobs that the application must execute asynchronously after the upgrade.
      *
      * @param steps The steps represented by the {@link UpgradePath}.
      * @param connectionResources The ConnectionResources.
      * @param graphBasedUpgradeBuilder to be used to create a graph based upgrade if needed
      * @param initialisationSql statement to be run at the start of the upgrade to provide path validation
+     * @param deferredIndexJobs deferred-index build jobs the application must execute after the upgrade completes.
      * @return The resulting {@link UpgradePath}.
      */
     UpgradePath create(List<UpgradeStep> steps,
                        ConnectionResources connectionResources,
                        GraphBasedUpgradeBuilder graphBasedUpgradeBuilder,
-                       List<String> initialisationSql);
+                       List<String> initialisationSql,
+                       List<DeferredIndexJob> deferredIndexJobs);
   }
 
 
@@ -398,8 +400,7 @@ public class UpgradePath implements SqlStatementWriter {
       UpgradeStatusTableService upgradeStatusTableService = upgradeStatusTableServiceFactory.create(connectionResources);
       return new UpgradePath(upgradeScriptAdditions, steps, connectionResources,
               upgradeStatusTableService.updateTableScript(UpgradeStatus.NONE, UpgradeStatus.IN_PROGRESS),
-              upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED),
-              null);
+              upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED));
     }
 
 
@@ -407,11 +408,13 @@ public class UpgradePath implements SqlStatementWriter {
     public UpgradePath create(List<UpgradeStep> steps,
                               ConnectionResources connectionResources,
                               GraphBasedUpgradeBuilder graphBasedUpgradeBuilder,
-                              List<String> initialisationSql) {
+                              List<String> initialisationSql,
+                              List<DeferredIndexJob> deferredIndexJobs) {
       UpgradeStatusTableService upgradeStatusTableService = upgradeStatusTableServiceFactory.create(connectionResources);
       return new UpgradePath(upgradeScriptAdditions, steps, connectionResources, initialisationSql,
           upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED),
-          graphBasedUpgradeBuilder);
+          graphBasedUpgradeBuilder,
+          deferredIndexJobs);
     }
 
   }
