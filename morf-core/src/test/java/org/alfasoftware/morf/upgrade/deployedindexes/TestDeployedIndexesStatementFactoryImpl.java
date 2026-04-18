@@ -42,9 +42,9 @@ import org.junit.Test;
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-public class TestDeployedIndexesStatementFactory {
+public class TestDeployedIndexesStatementFactoryImpl {
 
-  private final DeployedIndexesStatementFactory factory = new DeployedIndexesStatementFactory();
+  private final DeployedIndexesStatementFactory factory = new DeployedIndexesStatementFactoryImpl();
 
 
   // ---- Read queries ------------------------------------------------------

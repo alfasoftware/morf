@@ -33,7 +33,7 @@ import org.alfasoftware.morf.sql.UpdateStatement;
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-public interface DeployedIndexesChangeService {
+public interface DeployedIndexesService {
 
   /**
    * Records an index in the service and returns the INSERT statement

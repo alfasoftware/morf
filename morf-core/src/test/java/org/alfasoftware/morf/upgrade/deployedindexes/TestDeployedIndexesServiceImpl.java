@@ -28,17 +28,17 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * Unit tests for {@link DeployedIndexesChangeServiceImpl}.
+ * Unit tests for {@link DeployedIndexesServiceImpl}.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-public class TestDeployedIndexesChangeServiceImpl {
+public class TestDeployedIndexesServiceImpl {
 
-  private DeployedIndexesChangeServiceImpl service;
+  private DeployedIndexesServiceImpl service;
 
   @Before
   public void setUp() {
-    service = new DeployedIndexesChangeServiceImpl(new DeployedIndexesStatementFactory());
+    service = new DeployedIndexesServiceImpl(new DeployedIndexesStatementFactoryImpl());
   }
 
 

@@ -33,16 +33,16 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 /**
- * Default implementation of {@link DeployedIndexesChangeService}. Owns the
+ * Default implementation of {@link DeployedIndexesService}. Owns the
  * in-memory session state for tracked indexes and orchestrates statement
  * lists via {@link DeployedIndexesStatementFactory}. Does not build DSL
  * or hold column constants of its own.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-public class DeployedIndexesChangeServiceImpl implements DeployedIndexesChangeService {
+public class DeployedIndexesServiceImpl implements DeployedIndexesService {
 
-  private static final Log log = LogFactory.getLog(DeployedIndexesChangeServiceImpl.class);
+  private static final Log log = LogFactory.getLog(DeployedIndexesServiceImpl.class);
 
   private final DeployedIndexesStatementFactory factory;
 
@@ -55,7 +55,7 @@ public class DeployedIndexesChangeServiceImpl implements DeployedIndexesChangeSe
    *
    * @param factory statement factory used to build every tracking DML.
    */
-  public DeployedIndexesChangeServiceImpl(DeployedIndexesStatementFactory factory) {
+  public DeployedIndexesServiceImpl(DeployedIndexesStatementFactory factory) {
     this.factory = factory;
   }
 

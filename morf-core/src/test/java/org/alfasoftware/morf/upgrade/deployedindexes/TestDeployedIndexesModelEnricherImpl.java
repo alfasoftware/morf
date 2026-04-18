@@ -42,7 +42,7 @@ import org.junit.Test;
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-public class TestDeployedIndexesModelEnricher {
+public class TestDeployedIndexesModelEnricherImpl {
 
   private DeployedIndexesDAO dao;
   private UpgradeConfigAndContext config;
@@ -62,7 +62,7 @@ public class TestDeployedIndexesModelEnricher {
     config.setDeferredIndexCreationEnabled(false);
     org.alfasoftware.morf.metadata.Schema input =
         schema(table("Foo").columns(column("id", DataType.BIG_INTEGER).primaryKey()));
-    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
+    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when
     EnrichedModel result = enricher.enrich(input);
@@ -80,7 +80,7 @@ public class TestDeployedIndexesModelEnricher {
     // given
     org.alfasoftware.morf.metadata.Schema input =
         schema(table("Foo").columns(column("id", DataType.BIG_INTEGER).primaryKey()));
-    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
+    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when
     EnrichedModel result = enricher.enrich(input);
@@ -101,7 +101,7 @@ public class TestDeployedIndexesModelEnricher {
             .indexes(index("Foo_1").columns("id"))
     );
     when(dao.findAll()).thenReturn(Collections.emptyList());
-    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
+    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when
     EnrichedModel result = enricher.enrich(input);
@@ -130,7 +130,7 @@ public class TestDeployedIndexesModelEnricher {
     entry.setIndexColumns(List.of("id"));
     entry.setStatus(DeployedIndexStatus.COMPLETED);
     when(dao.findAll()).thenReturn(List.of(entry));
-    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
+    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when
     EnrichedModel result = enricher.enrich(input);
@@ -162,7 +162,7 @@ public class TestDeployedIndexesModelEnricher {
     entry.setIndexColumns(List.of("name"));
     entry.setStatus(DeployedIndexStatus.PENDING);
     when(dao.findAll()).thenReturn(List.of(entry));
-    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
+    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when
     EnrichedModel result = enricher.enrich(input);
@@ -195,7 +195,7 @@ public class TestDeployedIndexesModelEnricher {
     entry.setIndexColumns(List.of("id"));
     entry.setStatus(DeployedIndexStatus.COMPLETED);
     when(dao.findAll()).thenReturn(List.of(entry));
-    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
+    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when -- should throw
     enricher.enrich(input);
@@ -221,7 +221,7 @@ public class TestDeployedIndexesModelEnricher {
     entry.setIndexColumns(List.of("id"));
     entry.setStatus(DeployedIndexStatus.COMPLETED);
     when(dao.findAll()).thenReturn(List.of(entry));
-    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
+    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when -- should throw
     enricher.enrich(input);
@@ -239,7 +239,7 @@ public class TestDeployedIndexesModelEnricher {
             .indexes(index("MyTable_PRF1").columns("id"))
     );
     when(dao.findAll()).thenReturn(Collections.emptyList());
-    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
+    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when -- should NOT throw despite untracked PRF index
     EnrichedModel result = enricher.enrich(input);
@@ -270,7 +270,7 @@ public class TestDeployedIndexesModelEnricher {
     entry.setIndexColumns(List.of("a", "b", "c"));
     entry.setStatus(DeployedIndexStatus.COMPLETED);
     when(dao.findAll()).thenReturn(List.of(entry));
-    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
+    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when
     EnrichedModel result = enricher.enrich(input);
@@ -301,7 +301,7 @@ public class TestDeployedIndexesModelEnricher {
     entry.setIndexColumns(List.of("id"));
     entry.setStatus(DeployedIndexStatus.COMPLETED);
     when(dao.findAll()).thenReturn(List.of(entry));
-    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
+    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when
     EnrichedModel result = enricher.enrich(input);
@@ -338,7 +338,7 @@ public class TestDeployedIndexesModelEnricher {
     virtualEntry.setIndexColumns(List.of("name"));
     virtualEntry.setStatus(DeployedIndexStatus.PENDING);
     when(dao.findAll()).thenReturn(List.of(physicalEntry, virtualEntry));
-    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
+    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when
     EnrichedModel result = enricher.enrich(input);
@@ -377,7 +377,7 @@ public class TestDeployedIndexesModelEnricher {
     eb.setIndexColumns(List.of("id"));
     eb.setStatus(DeployedIndexStatus.COMPLETED);
     when(dao.findAll()).thenReturn(List.of(ea, eb));
-    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
+    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when
     EnrichedModel result = enricher.enrich(input);
@@ -414,7 +414,7 @@ public class TestDeployedIndexesModelEnricher {
     orphan.setIndexColumns(List.of("c"));
     orphan.setStatus(DeployedIndexStatus.PENDING);
     when(dao.findAll()).thenReturn(List.of(orphan));
-    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
+    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when -- throws because the orphan row is a schema inconsistency
     enricher.enrich(input);
@@ -445,7 +445,7 @@ public class TestDeployedIndexesModelEnricher {
     entry.setIndexColumns(List.of("id"));
     entry.setStatus(DeployedIndexStatus.COMPLETED);
     when(dao.findAll()).thenReturn(List.of(entry));
-    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
+    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when
     EnrichedModel result = enricher.enrich(input);
@@ -479,7 +479,7 @@ public class TestDeployedIndexesModelEnricher {
     otherEntry.setIndexColumns(List.of("id"));
     otherEntry.setStatus(DeployedIndexStatus.COMPLETED);
     when(dao.findAll()).thenReturn(List.of(otherEntry));
-    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
+    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when -- throws: DeployedViews_1 exists physically but no tracking row
     enricher.enrich(input);

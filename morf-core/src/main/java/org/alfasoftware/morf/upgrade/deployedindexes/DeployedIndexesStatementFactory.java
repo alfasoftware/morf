@@ -15,17 +15,6 @@
 
 package org.alfasoftware.morf.upgrade.deployedindexes;
 
-import static org.alfasoftware.morf.sql.SqlUtils.delete;
-import static org.alfasoftware.morf.sql.SqlUtils.field;
-import static org.alfasoftware.morf.sql.SqlUtils.insert;
-import static org.alfasoftware.morf.sql.SqlUtils.literal;
-import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
-import static org.alfasoftware.morf.sql.SqlUtils.update;
-import static org.alfasoftware.morf.sql.element.Criterion.and;
-import static org.alfasoftware.morf.sql.element.Criterion.or;
-
-import java.util.UUID;
-
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
@@ -33,35 +22,48 @@ import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.UpdateStatement;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 
-import com.google.inject.Singleton;
+import com.google.inject.ImplementedBy;
 
 /**
  * Single source of DSL construction for every statement that targets the
  * {@code DeployedIndexes} table — reads, status updates, and the tracking
  * DML used by the visitor. Owns the column-name constants. The
  * {@link DeployedIndexesDAO} executes these statements; the
- * {@link DeployedIndexesChangeService} orchestrates them into
+ * {@link DeployedIndexesService} orchestrates them into
  * visitor-usable lists. Neither builds DSL of its own.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-@Singleton
-public class DeployedIndexesStatementFactory {
+@ImplementedBy(DeployedIndexesStatementFactoryImpl.class)
+public interface DeployedIndexesStatementFactory {
 
-  static final String TABLE = DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME;
+  /** Table name — the DeployedIndexes tracking table. */
+  String TABLE = DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME;
 
-  static final String COL_ID = "id";
-  static final String COL_TABLE_NAME = "tableName";
-  static final String COL_INDEX_NAME = "indexName";
-  static final String COL_INDEX_UNIQUE = "indexUnique";
-  static final String COL_INDEX_COLUMNS = "indexColumns";
-  static final String COL_INDEX_DEFERRED = "indexDeferred";
-  static final String COL_STATUS = "status";
-  static final String COL_RETRY_COUNT = "retryCount";
-  static final String COL_CREATED_TIME = "createdTime";
-  static final String COL_STARTED_TIME = "startedTime";
-  static final String COL_COMPLETED_TIME = "completedTime";
-  static final String COL_ERROR_MESSAGE = "errorMessage";
+  /** Column: primary key. */
+  String COL_ID = "id";
+  /** Column: table the tracked index belongs to. */
+  String COL_TABLE_NAME = "tableName";
+  /** Column: index name. */
+  String COL_INDEX_NAME = "indexName";
+  /** Column: whether the index is unique. */
+  String COL_INDEX_UNIQUE = "indexUnique";
+  /** Column: comma-separated column list the index covers. */
+  String COL_INDEX_COLUMNS = "indexColumns";
+  /** Column: whether the index is deferred (built async after upgrade). */
+  String COL_INDEX_DEFERRED = "indexDeferred";
+  /** Column: lifecycle status (PENDING/IN_PROGRESS/COMPLETED/FAILED). */
+  String COL_STATUS = "status";
+  /** Column: retry count for failed deferred builds. */
+  String COL_RETRY_COUNT = "retryCount";
+  /** Column: epoch ms when the tracking row was created. */
+  String COL_CREATED_TIME = "createdTime";
+  /** Column: epoch ms when the app started building this deferred index. */
+  String COL_STARTED_TIME = "startedTime";
+  /** Column: epoch ms when the app finished building this deferred index. */
+  String COL_COMPLETED_TIME = "completedTime";
+  /** Column: failure message for FAILED builds. */
+  String COL_ERROR_MESSAGE = "errorMessage";
 
 
   // -------------------------------------------------------------------------
@@ -71,43 +73,27 @@ public class DeployedIndexesStatementFactory {
   /**
    * @return SELECT all rows, ordered by id.
    */
-  public SelectStatement statementToFindAll() {
-    return selectAllColumns().orderBy(field(COL_ID));
-  }
+  SelectStatement statementToFindAll();
 
 
   /**
    * @param tableName filter to this table.
    * @return SELECT rows for {@code tableName}, ordered by id.
    */
-  public SelectStatement statementToFindByTable(String tableName) {
-    return selectAllColumns()
-        .where(field(COL_TABLE_NAME).eq(tableName))
-        .orderBy(field(COL_ID));
-  }
+  SelectStatement statementToFindByTable(String tableName);
 
 
   /**
    * @return SELECT rows whose status is not terminal (PENDING/IN_PROGRESS/FAILED),
    *     ordered by id.
    */
-  public SelectStatement statementToFindNonTerminalOperations() {
-    return selectAllColumns()
-        .where(or(
-            field(COL_STATUS).eq(DeployedIndexStatus.PENDING.name()),
-            field(COL_STATUS).eq(DeployedIndexStatus.IN_PROGRESS.name()),
-            field(COL_STATUS).eq(DeployedIndexStatus.FAILED.name())))
-        .orderBy(field(COL_ID));
-  }
+  SelectStatement statementToFindNonTerminalOperations();
 
 
   /**
    * @return SELECT status column alone (the DAO aggregates into a status-&gt;count map).
    */
-  public SelectStatement statementToSelectStatusColumn() {
-    return org.alfasoftware.morf.sql.SqlUtils.select(field(COL_STATUS))
-        .from(tableRef(TABLE));
-  }
+  SelectStatement statementToSelectStatusColumn();
 
 
   // -------------------------------------------------------------------------
@@ -115,65 +101,45 @@ public class DeployedIndexesStatementFactory {
   // -------------------------------------------------------------------------
 
   /**
+   * @param tableName the table the index belongs to.
+   * @param indexName the index name.
+   * @param startedTime epoch ms when the app started building this deferred index.
    * @return UPDATE flipping status to IN_PROGRESS and setting {@code startedTime}.
    */
-  public UpdateStatement statementToMarkStarted(String tableName, String indexName, long startedTime) {
-    return update(tableRef(TABLE))
-        .set(literal(DeployedIndexStatus.IN_PROGRESS.name()).as(COL_STATUS),
-             literal(startedTime).as(COL_STARTED_TIME))
-        .where(and(
-            field(COL_TABLE_NAME).eq(tableName),
-            field(COL_INDEX_NAME).eq(indexName)));
-  }
+  UpdateStatement statementToMarkStarted(String tableName, String indexName, long startedTime);
 
 
   /**
+   * @param tableName the table the index belongs to.
+   * @param indexName the index name.
+   * @param completedTime epoch ms when the app finished building this deferred index.
    * @return UPDATE flipping status to COMPLETED and setting {@code completedTime}.
    */
-  public UpdateStatement statementToMarkCompleted(String tableName, String indexName, long completedTime) {
-    return update(tableRef(TABLE))
-        .set(literal(DeployedIndexStatus.COMPLETED.name()).as(COL_STATUS),
-             literal(completedTime).as(COL_COMPLETED_TIME))
-        .where(and(
-            field(COL_TABLE_NAME).eq(tableName),
-            field(COL_INDEX_NAME).eq(indexName)));
-  }
+  UpdateStatement statementToMarkCompleted(String tableName, String indexName, long completedTime);
 
 
   /**
+   * @param tableName the table the index belongs to.
+   * @param indexName the index name.
+   * @param errorMessage the failure message.
    * @return UPDATE flipping status to FAILED and setting {@code errorMessage}.
    */
-  public UpdateStatement statementToMarkFailed(String tableName, String indexName, String errorMessage) {
-    return update(tableRef(TABLE))
-        .set(literal(DeployedIndexStatus.FAILED.name()).as(COL_STATUS),
-             literal(errorMessage).as(COL_ERROR_MESSAGE))
-        .where(and(
-            field(COL_TABLE_NAME).eq(tableName),
-            field(COL_INDEX_NAME).eq(indexName)));
-  }
+  UpdateStatement statementToMarkFailed(String tableName, String indexName, String errorMessage);
 
 
   /**
+   * @param tableName the table the index belongs to.
+   * @param indexName the index name.
    * @return UPDATE bumping retry count to 1 (simplified — Morf DSL doesn't
    *     support {@code field + 1}; the app manages retry counts).
    */
-  public UpdateStatement statementToBumpRetryCount(String tableName, String indexName) {
-    return update(tableRef(TABLE))
-        .set(literal(1).as(COL_RETRY_COUNT))
-        .where(and(
-            field(COL_TABLE_NAME).eq(tableName),
-            field(COL_INDEX_NAME).eq(indexName)));
-  }
+  UpdateStatement statementToBumpRetryCount(String tableName, String indexName);
 
 
   /**
    * @return UPDATE flipping every IN_PROGRESS row back to PENDING.
    */
-  public UpdateStatement statementToResetInProgress() {
-    return update(tableRef(TABLE))
-        .set(literal(DeployedIndexStatus.PENDING.name()).as(COL_STATUS))
-        .where(field(COL_STATUS).eq(DeployedIndexStatus.IN_PROGRESS.name()));
-  }
+  UpdateStatement statementToResetInProgress();
 
 
   // -------------------------------------------------------------------------
@@ -181,97 +147,53 @@ public class DeployedIndexesStatementFactory {
   // -------------------------------------------------------------------------
 
   /**
+   * @param tableName the target table.
+   * @param index the index metadata.
    * @return INSERT adding a new tracking row for {@code index} on {@code tableName}.
    *     Non-deferred indexes go in as COMPLETED; deferred indexes as PENDING.
    */
-  public InsertStatement statementToTrackIndex(String tableName, Index index) {
-    long operationId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
-    long createdTime = System.currentTimeMillis();
-    String status = index.isDeferred()
-        ? DeployedIndexStatus.PENDING.name()
-        : DeployedIndexStatus.COMPLETED.name();
-
-    return insert().into(tableRef(TABLE))
-        .values(
-            literal(operationId).as(COL_ID),
-            literal(tableName).as(COL_TABLE_NAME),
-            literal(index.getName()).as(COL_INDEX_NAME),
-            literal(index.isUnique()).as(COL_INDEX_UNIQUE),
-            literal(String.join(",", index.columnNames())).as(COL_INDEX_COLUMNS),
-            literal(index.isDeferred()).as(COL_INDEX_DEFERRED),
-            literal(status).as(COL_STATUS),
-            literal(0).as(COL_RETRY_COUNT),
-            literal(createdTime).as(COL_CREATED_TIME)
-        );
-  }
+  InsertStatement statementToTrackIndex(String tableName, Index index);
 
 
   /**
+   * @param tableName the table the index belongs to.
+   * @param indexName the index name.
    * @return DELETE removing the tracking row for one (table, index).
    */
-  public DeleteStatement statementToRemoveIndex(String tableName, String indexName) {
-    return delete(tableRef(TABLE))
-        .where(and(
-            field(COL_TABLE_NAME).eq(literal(tableName)),
-            field(COL_INDEX_NAME).eq(literal(indexName))));
-  }
+  DeleteStatement statementToRemoveIndex(String tableName, String indexName);
 
 
   /**
+   * @param tableName the table to scope the delete to.
    * @return DELETE removing all tracking rows for {@code tableName}.
    */
-  public DeleteStatement statementToRemoveAllForTable(String tableName) {
-    return delete(tableRef(TABLE)).where(field(COL_TABLE_NAME).eq(literal(tableName)));
-  }
+  DeleteStatement statementToRemoveAllForTable(String tableName);
 
 
   /**
+   * @param oldTableName the old table name.
+   * @param newTableName the new table name.
    * @return UPDATE renaming the {@code tableName} column for every tracking
    *     row that currently has {@code oldTableName}.
    */
-  public UpdateStatement statementToUpdateTableName(String oldTableName, String newTableName) {
-    return update(tableRef(TABLE))
-        .set(literal(newTableName).as(COL_TABLE_NAME))
-        .where(field(COL_TABLE_NAME).eq(literal(oldTableName)));
-  }
+  UpdateStatement statementToUpdateTableName(String oldTableName, String newTableName);
 
 
   /**
+   * @param tableName the table.
+   * @param indexName the index.
+   * @param newColumnsCsv the new column list as a CSV string.
    * @return UPDATE replacing the {@code indexColumns} CSV for one (table,
-   *     index). The caller supplies the new column list as a CSV string.
+   *     index).
    */
-  public UpdateStatement statementToUpdateIndexColumns(String tableName, String indexName, String newColumnsCsv) {
-    return update(tableRef(TABLE))
-        .set(literal(newColumnsCsv).as(COL_INDEX_COLUMNS))
-        .where(and(
-            field(COL_TABLE_NAME).eq(literal(tableName)),
-            field(COL_INDEX_NAME).eq(literal(indexName))));
-  }
+  UpdateStatement statementToUpdateIndexColumns(String tableName, String indexName, String newColumnsCsv);
 
 
   /**
+   * @param tableName the table.
+   * @param oldIndexName the old index name.
+   * @param newIndexName the new index name.
    * @return UPDATE renaming the index in its tracking row.
    */
-  public UpdateStatement statementToUpdateIndexName(String tableName, String oldIndexName, String newIndexName) {
-    return update(tableRef(TABLE))
-        .set(literal(newIndexName).as(COL_INDEX_NAME))
-        .where(and(
-            field(COL_TABLE_NAME).eq(literal(tableName)),
-            field(COL_INDEX_NAME).eq(literal(oldIndexName))));
-  }
-
-
-  // -------------------------------------------------------------------------
-  // Helpers
-  // -------------------------------------------------------------------------
-
-  private SelectStatement selectAllColumns() {
-    return org.alfasoftware.morf.sql.SqlUtils.select(
-        field(COL_ID), field(COL_TABLE_NAME),
-        field(COL_INDEX_NAME), field(COL_INDEX_UNIQUE), field(COL_INDEX_COLUMNS),
-        field(COL_INDEX_DEFERRED), field(COL_STATUS), field(COL_RETRY_COUNT),
-        field(COL_CREATED_TIME), field(COL_STARTED_TIME), field(COL_COMPLETED_TIME),
-        field(COL_ERROR_MESSAGE))
-        .from(tableRef(TABLE));
-  }
+  UpdateStatement statementToUpdateIndexName(String tableName, String oldIndexName, String newIndexName);
 }

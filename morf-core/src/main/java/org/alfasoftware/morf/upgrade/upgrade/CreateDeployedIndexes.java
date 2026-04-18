@@ -67,36 +67,40 @@ public class CreateDeployedIndexes implements UpgradeStep {
 
   @Override
   public void execute(SchemaEditor schema, DataEditor data) {
-    // Build the DeployedIndexes table locally so we can iterate its indexes
-    // during prepopulation — they need tracking rows too, same as any other
-    // table's indexes.
-    Table deployedIndexesTable = table(DEPLOYED_INDEXES)
-        .columns(
-            column("id", DataType.BIG_INTEGER).primaryKey(),
-            column("tableName", DataType.STRING, 60),
-            column("indexName", DataType.STRING, 60),
-            column("indexUnique", DataType.BOOLEAN),
-            column("indexColumns", DataType.STRING, 4000),
-            column("indexDeferred", DataType.BOOLEAN),
-            column("status", DataType.STRING, 20),
-            column("retryCount", DataType.INTEGER),
-            column("createdTime", DataType.DECIMAL, 14),
-            column("startedTime", DataType.DECIMAL, 14).nullable(),
-            column("completedTime", DataType.DECIMAL, 14).nullable(),
-            column("errorMessage", DataType.CLOB).nullable()
-        )
-        .indexes(
-            index("DeployedIdx_1").columns("tableName", "indexName").unique(),
-            index("DeployedIdx_2").columns("status")
-        );
-    schema.addTable(deployedIndexesTable);
+    // Create the DeployedIndexes table. The visitor's visit(AddTable) path
+    // automatically tracks this table's own indexes (DeployedIdx_1, DeployedIdx_2)
+    // into DeployedIndexes via deployedIndexesChangeService.trackIndex(...), so
+    // no explicit prepopulation is needed for them.
+    schema.addTable(
+        table(DEPLOYED_INDEXES)
+            .columns(
+                column("id", DataType.BIG_INTEGER).primaryKey(),
+                column("tableName", DataType.STRING, 60),
+                column("indexName", DataType.STRING, 60),
+                column("indexUnique", DataType.BOOLEAN),
+                column("indexColumns", DataType.STRING, 4000),
+                column("indexDeferred", DataType.BOOLEAN),
+                column("status", DataType.STRING, 20),
+                column("retryCount", DataType.INTEGER),
+                column("createdTime", DataType.DECIMAL, 14),
+                column("startedTime", DataType.DECIMAL, 14).nullable(),
+                column("completedTime", DataType.DECIMAL, 14).nullable(),
+                column("errorMessage", DataType.CLOB).nullable()
+            )
+            .indexes(
+                index("DeployedIdx_1").columns("tableName", "indexName").unique(),
+                index("DeployedIdx_2").columns("status")
+            )
+    );
 
+    // Prepopulate with all existing indexes from the source schema (tables
+    // that were already in the DB before this upgrade ran). The enricher
+    // treats any physical index without a tracking row as a consistency
+    // error on the next run.
+    Schema sourceSchema = schema.getSourceSchema();
     long createdTime = System.currentTimeMillis();
 
-    // Prepopulate with all existing indexes from the source schema plus the
-    // DeployedIndexes table's own indexes (which would otherwise be physical
-    // but untracked — the enricher would then hard-fail on a subsequent run).
-    for (Table sourceTable : sourceSchema(schema)) {
+    for (Table sourceTable : sourceSchema.tables()) {
       for (Index idx : sourceTable.indexes()) {
         if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(idx.getName())) {
           continue;
@@ -118,32 +122,5 @@ public class CreateDeployedIndexes implements UpgradeStep {
         );
       }
     }
-    // DeployedIndexes table's own indexes
-    for (Index idx : deployedIndexesTable.indexes()) {
-      long id = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
-      data.executeStatement(
-          insert().into(tableRef(DEPLOYED_INDEXES))
-              .values(
-                  literal(id).as("id"),
-                  literal(DEPLOYED_INDEXES).as("tableName"),
-                  literal(idx.getName()).as("indexName"),
-                  literal(idx.isUnique()).as("indexUnique"),
-                  literal(String.join(",", idx.columnNames())).as("indexColumns"),
-                  literal(false).as("indexDeferred"),
-                  literal("COMPLETED").as("status"),
-                  literal(0).as("retryCount"),
-                  literal(createdTime).as("createdTime")
-              )
-      );
-    }
-  }
-
-
-  /**
-   * @return iterable over source-schema tables; split out so the main
-   *     prepopulation loop stays a single for-each.
-   */
-  private Iterable<Table> sourceSchema(SchemaEditor schema) {
-    return schema.getSourceSchema().tables();
   }
 }

@@ -33,7 +33,7 @@ import java.util.Map;
  *
  * <p>The state is a snapshot: it reflects the database at the start of the
  * upgrade. In-session mutations (indexes added/removed by steps in this
- * run) are tracked by {@link DeployedIndexesChangeService} and composed
+ * run) are tracked by {@link DeployedIndexesService} and composed
  * with this state by the visitor.</p>
  *
  * <p>Every query returns {@link IndexPresence}, a three-valued enum: the
