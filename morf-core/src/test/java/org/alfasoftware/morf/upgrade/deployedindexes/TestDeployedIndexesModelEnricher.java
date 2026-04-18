@@ -392,8 +392,14 @@ public class TestDeployedIndexesModelEnricher {
 
   /** Orphan tracking row (table not in physical schema and not a Morf table)
    *  is tolerated — logs a warning, doesn't throw. */
-  @Test
-  public void testOrphanRowForMissingTableDoesNotThrow() {
+  /**
+   * An orphan tracking row referencing a missing table now hard-fails. P1.2
+   * tightened the policy from log-warn to throw: in a correctly-managed Morf
+   * database orphans cannot be produced by normal operation, so surfacing
+   * them as an error is the right default.
+   */
+  @Test(expected = IllegalStateException.class)
+  public void testOrphanRowForMissingTableThrows() {
     // given -- DeployedIndexes references GoneTable which isn't in the physical schema
     org.alfasoftware.morf.metadata.Schema input = schema(
         table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
@@ -410,11 +416,72 @@ public class TestDeployedIndexesModelEnricher {
     when(dao.findAll()).thenReturn(List.of(orphan));
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
 
-    // when -- should NOT throw; orphan is logged and ignored
+    // when -- throws because the orphan row is a schema inconsistency
+    enricher.enrich(input);
+  }
+
+
+  /**
+   * Morf infrastructure tables (UpgradeAudit, DeployedViews, DeployedIndexes)
+   * are no longer skipped during enrichment. Their indexes are enriched the
+   * same way as user tables: a physical index must have a matching tracking
+   * row, else consistency validation throws.
+   */
+  @Test
+  public void testMorfInfrastructureTableIndexIsEnriched() {
+    // given -- UpgradeAudit is in the physical schema with a tracked index
+    org.alfasoftware.morf.metadata.Schema input = schema(
+        table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
+            .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
+        table(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME)
+            .columns(column("id", DataType.BIG_INTEGER).primaryKey())
+            .indexes(index("UpgradeAudit_1").columns("id"))
+    );
+    DeployedIndex entry = new DeployedIndex();
+    entry.setTableName(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME);
+    entry.setIndexName("UpgradeAudit_1");
+    entry.setIndexDeferred(false);
+    entry.setIndexUnique(false);
+    entry.setIndexColumns(List.of("id"));
+    entry.setStatus(DeployedIndexStatus.COMPLETED);
+    when(dao.findAll()).thenReturn(List.of(entry));
+    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
+
+    // when
     EnrichedModel result = enricher.enrich(input);
 
-    // then -- the enriched schema does not contain the orphan index
-    assertFalse(result.getSchema().tableExists("GoneTable"));
-    assertEquals(IndexPresence.UNKNOWN, result.getState().getPresence("GoneTable", "OrphanIdx"));
+    // then -- the Morf-table index is recorded as PRESENT (not skipped)
+    assertEquals(IndexPresence.PRESENT,
+        result.getState().getPresence(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME, "UpgradeAudit_1"));
+  }
+
+
+  /**
+   * A physical index on a Morf infrastructure table without a tracking row
+   * triggers consistency validation — no Morf-table skip.
+   */
+  @Test(expected = IllegalStateException.class)
+  public void testUntrackedPhysicalIndexOnMorfTableThrows() {
+    // given -- DeployedViews has a physical index but no tracking row
+    org.alfasoftware.morf.metadata.Schema input = schema(
+        table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
+            .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
+        table(DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME)
+            .columns(column("id", DataType.BIG_INTEGER).primaryKey())
+            .indexes(index("DeployedViews_1").columns("id"))
+    );
+    // Need at least one non-orphan tracking row so enrich doesn't skip via empty-table fast path
+    DeployedIndex otherEntry = new DeployedIndex();
+    otherEntry.setTableName(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME);
+    otherEntry.setIndexName("DeployedIdx_placeholder");
+    otherEntry.setIndexDeferred(false);
+    otherEntry.setIndexUnique(false);
+    otherEntry.setIndexColumns(List.of("id"));
+    otherEntry.setStatus(DeployedIndexStatus.COMPLETED);
+    when(dao.findAll()).thenReturn(List.of(otherEntry));
+    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricher(dao, config);
+
+    // when -- throws: DeployedViews_1 exists physically but no tracking row
+    enricher.enrich(input);
   }
 }

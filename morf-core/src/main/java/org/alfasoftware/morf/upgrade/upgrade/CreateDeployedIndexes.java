@@ -95,10 +95,6 @@ public class CreateDeployedIndexes implements UpgradeStep {
     long createdTime = System.currentTimeMillis();
 
     for (Table sourceTable : sourceSchema.tables()) {
-      // Skip Morf infrastructure tables
-      if (isMorfTable(sourceTable.getName())) {
-        continue;
-      }
       for (Index idx : sourceTable.indexes()) {
         if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(idx.getName())) {
           continue;
@@ -120,12 +116,5 @@ public class CreateDeployedIndexes implements UpgradeStep {
         );
       }
     }
-  }
-
-
-  private boolean isMorfTable(String tableName) {
-    return DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME.equalsIgnoreCase(tableName)
-        || DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME.equalsIgnoreCase(tableName)
-        || DEPLOYED_INDEXES.equalsIgnoreCase(tableName);
   }
 }

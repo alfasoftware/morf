@@ -114,64 +114,56 @@ public class DeployedIndexesModelEnricher {
    * @throws IllegalStateException if consistency validation fails.
    */
   public EnrichedModel enrich(Schema physicalSchema) {
-    Optional<EnrichedModel> fastPath = fastPathEmpty(physicalSchema);
-    if (fastPath.isPresent()) {
-      return fastPath.get();
+    if (shouldSkipEnrichment(physicalSchema)) {
+      return new EnrichedModel(physicalSchema, DeployedIndexState.empty());
+    }
+
+    List<DeployedIndex> entries = dao.findAll();
+    if (entries.isEmpty()) {
+      log.debug("Skipping enrichment — DeployedIndexes table is empty");
+      return new EnrichedModel(physicalSchema, DeployedIndexState.empty());
     }
 
     // tableName (upper) -> indexName (upper) -> entry. The inner maps are
     // mutated as entries are consumed by the physical-indexes pass; what
     // remains is, by invariant, "tracked but not physically present".
-    Map<String, Map<String, DeployedIndex>> entryMap = buildEntryMap(dao.findAll());
-    Map<String, IndexPresence> presence = new HashMap<>();
+    Map<String, Map<String, DeployedIndex>> trackingRowsByTable = buildTrackingRowsByTable(entries);
+    Map<String, IndexPresence> observedPresence = new HashMap<>();
 
     List<Table> enrichedTables = new ArrayList<>();
     boolean changed = false;
 
     for (Table physicalTable : physicalSchema.tables()) {
-      // Morf infrastructure tables (UpgradeAudit, DeployedViews, DeployedIndexes)
-      // are not user indexes; skip enrichment for them entirely.
-      if (isMorfInfrastructureTable(physicalTable.getName())) {
-        enrichedTables.add(physicalTable);
-        continue;
-      }
-
       Optional<Table> enriched = enrichTable(physicalTable,
-          entryMap.getOrDefault(physicalTable.getName().toUpperCase(), new HashMap<>()),
-          presence);
-      if (enriched.isPresent()) {
-        enrichedTables.add(enriched.get());
-        changed = true;
-      } else {
-        enrichedTables.add(physicalTable);
-      }
+          trackingRowsByTable.getOrDefault(physicalTable.getName().toUpperCase(), new HashMap<>()),
+          observedPresence);
+      enrichedTables.add(enriched.orElse(physicalTable));
+      changed |= enriched.isPresent();
     }
 
-    logOrphanTrackingRows(entryMap, physicalSchema);
+    validateNoOrphanTrackingRows(trackingRowsByTable);
 
     Schema schema = changed ? SchemaUtils.schema(enrichedTables) : physicalSchema;
-    return new EnrichedModel(schema, new DeployedIndexState(presence));
+    return new EnrichedModel(schema, new DeployedIndexState(observedPresence));
   }
 
 
   /**
-   * Early-exit paths that produce an empty state and return the schema
-   * unchanged: feature disabled, tracking table not yet created, or
-   * tracking table empty.
+   * Early-exit checks that produce an empty state and return the schema
+   * unchanged: feature disabled or tracking table not yet created. The
+   * third case (table exists but is empty) is handled inline in {@code enrich}
+   * to avoid a double {@code dao.findAll()} call.
    */
-  private Optional<EnrichedModel> fastPathEmpty(Schema physicalSchema) {
+  private boolean shouldSkipEnrichment(Schema physicalSchema) {
     if (!config.isDeferredIndexCreationEnabled()) {
-      return Optional.of(new EnrichedModel(physicalSchema, DeployedIndexState.empty()));
+      log.debug("Skipping enrichment — feature disabled");
+      return true;
     }
     if (!physicalSchema.tableExists(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)) {
-      log.debug("DeployedIndexes table does not exist yet — returning physical schema unchanged");
-      return Optional.of(new EnrichedModel(physicalSchema, DeployedIndexState.empty()));
+      log.debug("Skipping enrichment — DeployedIndexes table does not exist yet");
+      return true;
     }
-    if (dao.findAll().isEmpty()) {
-      log.debug("DeployedIndexes table is empty — returning physical schema unchanged");
-      return Optional.of(new EnrichedModel(physicalSchema, DeployedIndexState.empty()));
-    }
-    return Optional.empty();
+    return false;
   }
 
 
@@ -188,10 +180,10 @@ public class DeployedIndexesModelEnricher {
    */
   private Optional<Table> enrichTable(Table physicalTable,
                                        Map<String, DeployedIndex> tableEntries,
-                                       Map<String, IndexPresence> presence) {
+                                       Map<String, IndexPresence> observedPresence) {
     List<Index> rebuiltIndexes = new ArrayList<>();
-    boolean changed = processPhysicalIndexes(physicalTable, tableEntries, rebuiltIndexes, presence);
-    changed |= processRemainingTrackingEntries(physicalTable.getName(), tableEntries, rebuiltIndexes, presence);
+    boolean changed = processPhysicalIndexes(physicalTable, tableEntries, rebuiltIndexes, observedPresence);
+    changed |= processRemainingTrackingEntries(physicalTable.getName(), tableEntries, rebuiltIndexes, observedPresence);
 
     if (!changed) {
       return Optional.empty();
@@ -227,7 +219,7 @@ public class DeployedIndexesModelEnricher {
   private boolean processPhysicalIndexes(Table physicalTable,
                                           Map<String, DeployedIndex> tableEntries,
                                           List<Index> rebuiltIndexes,
-                                          Map<String, IndexPresence> presence) {
+                                          Map<String, IndexPresence> observedPresence) {
     boolean changed = false;
     for (Index physicalIndex : physicalTable.indexes()) {
       if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(physicalIndex.getName())) {
@@ -243,7 +235,7 @@ public class DeployedIndexesModelEnricher {
             + "This indicates a schema inconsistency.");
       }
       rebuiltIndexes.add(rebuildIndex(physicalIndex, entry.isIndexDeferred()));
-      presence.put(DeployedIndexState.key(physicalTable.getName(), physicalIndex.getName()),
+      observedPresence.put(DeployedIndexState.key(physicalTable.getName(), physicalIndex.getName()),
           IndexPresence.PRESENT);
       changed = true;
     }
@@ -265,7 +257,7 @@ public class DeployedIndexesModelEnricher {
   private boolean processRemainingTrackingEntries(String tableName,
                                                    Map<String, DeployedIndex> remainingEntries,
                                                    List<Index> rebuiltIndexes,
-                                                   Map<String, IndexPresence> presence) {
+                                                   Map<String, IndexPresence> observedPresence) {
     boolean changed = false;
     for (DeployedIndex entry : remainingEntries.values()) {
       if (!entry.isIndexDeferred()) {
@@ -275,38 +267,38 @@ public class DeployedIndexesModelEnricher {
             + "This indicates a schema inconsistency.");
       }
       rebuiltIndexes.add(entry.toIndex());
-      presence.put(DeployedIndexState.key(tableName, entry.getIndexName()), IndexPresence.ABSENT);
+      observedPresence.put(DeployedIndexState.key(tableName, entry.getIndexName()), IndexPresence.ABSENT);
       changed = true;
     }
+    // All entries have been consumed (either rebuilt as virtual deferred indexes or thrown
+    // above). Clear so validateNoOrphanTrackingRows sees only tables not in the schema.
+    remainingEntries.clear();
     return changed;
   }
 
 
   /**
-   * Logs a warning for any tracking row whose table isn't in the physical
-   * schema (and isn't a Morf infrastructure table). Only a warn, not an
-   * error, because the table may have been legitimately removed by an
-   * upgrade step — we tolerate this but surface it for diagnosis.
+   * Hard-fails on any tracking row whose table isn't in the physical schema.
+   *
+   * <p>An orphan row cannot be produced by correct Morf operation:
+   * {@code RemoveTable} emits a matching {@code DELETE FROM DeployedIndexes}
+   * alongside the {@code DROP TABLE}, and {@code RenameTable} emits a
+   * matching {@code UPDATE} to the tracking row. So an orphan indicates
+   * either a visitor bug, a crashed/partial upgrade, a manual DROP TABLE
+   * outside Morf, or a restored DB snapshot out of sync with the tracking
+   * table — all "something went wrong outside the normal path", which is
+   * the same severity class as a non-deferred tracked index missing from
+   * the DB (already a hard error).</p>
    */
-  private void logOrphanTrackingRows(Map<String, Map<String, DeployedIndex>> entryMap,
-                                      Schema physicalSchema) {
-    for (Map.Entry<String, Map<String, DeployedIndex>> tableGroup : entryMap.entrySet()) {
-      if (tableGroup.getValue().isEmpty()) {
-        continue;
-      }
-      boolean isMorfTable = false;
-      for (Table t : physicalSchema.tables()) {
-        if (t.getName().toUpperCase().equals(tableGroup.getKey())) {
-          isMorfTable = isMorfInfrastructureTable(t.getName());
-          break;
-        }
-      }
-      if (isMorfTable) {
-        continue;
-      }
-      for (DeployedIndex orphan : tableGroup.getValue().values()) {
-        log.warn("DeployedIndexes entry for index [" + orphan.getIndexName()
-            + "] on table [" + orphan.getTableName() + "] references a table not in the schema");
+  private void validateNoOrphanTrackingRows(Map<String, Map<String, DeployedIndex>> trackingRowsByTable) {
+    for (Map<String, DeployedIndex> byIndex : trackingRowsByTable.values()) {
+      if (!byIndex.isEmpty()) {
+        DeployedIndex orphan = byIndex.values().iterator().next();
+        throw new IllegalStateException(
+            "DeployedIndexes entry for index [" + orphan.getIndexName()
+            + "] on table [" + orphan.getTableName()
+            + "] references a table not in the schema. "
+            + "This indicates a schema inconsistency.");
       }
     }
   }
@@ -329,19 +321,15 @@ public class DeployedIndexesModelEnricher {
   }
 
 
-  private Map<String, Map<String, DeployedIndex>> buildEntryMap(List<DeployedIndex> entries) {
+  /**
+   * Buckets tracking rows by upper-cased table name → upper-cased index name → row.
+   */
+  private Map<String, Map<String, DeployedIndex>> buildTrackingRowsByTable(List<DeployedIndex> entries) {
     Map<String, Map<String, DeployedIndex>> map = new HashMap<>();
     for (DeployedIndex entry : entries) {
       map.computeIfAbsent(entry.getTableName().toUpperCase(), k -> new HashMap<>())
           .put(entry.getIndexName().toUpperCase(), entry);
     }
     return map;
-  }
-
-
-  private boolean isMorfInfrastructureTable(String tableName) {
-    return DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME.equalsIgnoreCase(tableName)
-        || DatabaseUpgradeTableContribution.DEPLOYED_VIEWS_NAME.equalsIgnoreCase(tableName)
-        || DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME.equalsIgnoreCase(tableName);
   }
 }

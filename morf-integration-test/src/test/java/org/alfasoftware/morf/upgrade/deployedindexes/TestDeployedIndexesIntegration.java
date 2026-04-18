@@ -758,9 +758,11 @@ public class TestDeployedIndexesIntegration {
 
   /**
    * CreateDeployedIndexes should create the DeployedIndexes table and
-   * prepopulate it with all pre-existing physical indexes (status COMPLETED,
-   * indexDeferred false). _PRF indexes and Morf infrastructure tables are
-   * excluded.
+   * prepopulate it with all pre-existing physical indexes across every
+   * table — including Morf infrastructure tables (UpgradeAudit,
+   * DeployedViews, DeployedIndexes) — with status COMPLETED and
+   * indexDeferred false. Only {@code _PRF} indexes are excluded
+   * (performance-testing, by design).
    */
   @Test
   public void testPrepopulationPopulatesExistingIndexes() {
