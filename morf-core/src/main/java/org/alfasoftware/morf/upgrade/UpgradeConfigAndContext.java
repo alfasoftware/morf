@@ -205,18 +205,6 @@ public class UpgradeConfigAndContext {
 
 
   /**
-   * Check whether the given index name should be forced to build immediately
-   * during upgrade, bypassing deferred creation.
-   *
-   * @param indexName the index name to check
-   * @return true if the index should be built immediately
-   */
-  public boolean isForceImmediateIndex(String indexName) {
-    return forceImmediateIndexes.contains(indexName.toLowerCase());
-  }
-
-
-  /**
    * @see #forceDeferredIndexes
    * @return forceDeferredIndexes set
    */
@@ -233,18 +221,6 @@ public class UpgradeConfigAndContext {
       .map(String::toLowerCase)
       .collect(ImmutableSet.toImmutableSet());
     validateNoIndexConflict();
-  }
-
-
-  /**
-   * Check whether the given index name should be forced to defer during upgrade,
-   * even when the upgrade step uses {@code addIndex()}.
-   *
-   * @param indexName the index name to check
-   * @return true if the index should be deferred
-   */
-  public boolean isForceDeferredIndex(String indexName) {
-    return forceDeferredIndexes.contains(indexName.toLowerCase());
   }
 
 

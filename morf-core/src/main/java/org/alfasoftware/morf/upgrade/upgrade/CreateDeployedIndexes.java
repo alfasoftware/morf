@@ -48,7 +48,7 @@ import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
 @ExclusiveExecution
-@Sequence(2)
+@Sequence(1)
 @org.alfasoftware.morf.upgrade.UUID("c7d8e9f0-1a2b-3c4d-5e6f-7a8b9c0d1e2f")
 @Version("2.31.1")
 public class CreateDeployedIndexes implements UpgradeStep {

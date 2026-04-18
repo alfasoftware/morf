@@ -25,7 +25,9 @@ import java.util.stream.Collectors;
 
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder;
-import org.alfasoftware.morf.sql.Statement;
+import org.alfasoftware.morf.sql.DeleteStatement;
+import org.alfasoftware.morf.sql.InsertStatement;
+import org.alfasoftware.morf.sql.UpdateStatement;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -59,7 +61,7 @@ public class DeployedIndexesChangeServiceImpl implements DeployedIndexesChangeSe
 
 
   @Override
-  public List<Statement> trackIndex(String tableName, Index index) {
+  public List<InsertStatement> trackIndex(String tableName, Index index) {
     if (log.isDebugEnabled()) {
       log.debug("Tracking index: table=" + tableName + ", index=" + index.getName()
           + ", deferred=" + index.isDeferred());
@@ -91,7 +93,7 @@ public class DeployedIndexesChangeServiceImpl implements DeployedIndexesChangeSe
 
 
   @Override
-  public List<Statement> removeIndex(String tableName, String indexName) {
+  public List<DeleteStatement> removeIndex(String tableName, String indexName) {
     Map<String, IndexRecord> tableMap = trackedIndexes.get(tableName.toUpperCase());
     if (tableMap == null || !tableMap.containsKey(indexName.toUpperCase())) {
       return List.of();
@@ -105,7 +107,7 @@ public class DeployedIndexesChangeServiceImpl implements DeployedIndexesChangeSe
 
 
   @Override
-  public List<Statement> removeAllForTable(String tableName) {
+  public List<DeleteStatement> removeAllForTable(String tableName) {
     Map<String, IndexRecord> tableMap = trackedIndexes.remove(tableName.toUpperCase());
     if (tableMap == null || tableMap.isEmpty()) {
       return List.of();
@@ -116,7 +118,7 @@ public class DeployedIndexesChangeServiceImpl implements DeployedIndexesChangeSe
 
 
   @Override
-  public List<Statement> removeIndexesReferencingColumn(String tableName, String columnName) {
+  public List<DeleteStatement> removeIndexesReferencingColumn(String tableName, String columnName) {
     Map<String, IndexRecord> tableMap = trackedIndexes.get(tableName.toUpperCase());
     if (tableMap == null) {
       return List.of();
@@ -127,7 +129,7 @@ public class DeployedIndexesChangeServiceImpl implements DeployedIndexesChangeSe
         .map(r -> r.index.getName())
         .collect(Collectors.toList());
 
-    List<Statement> statements = new ArrayList<>();
+    List<DeleteStatement> statements = new ArrayList<>();
     for (String idxName : toRemove) {
       statements.addAll(removeIndex(tableName, idxName));
     }
@@ -136,7 +138,7 @@ public class DeployedIndexesChangeServiceImpl implements DeployedIndexesChangeSe
 
 
   @Override
-  public List<Statement> updateTableName(String oldTableName, String newTableName) {
+  public List<UpdateStatement> updateTableName(String oldTableName, String newTableName) {
     Map<String, IndexRecord> tableMap = trackedIndexes.remove(oldTableName.toUpperCase());
     if (tableMap == null || tableMap.isEmpty()) {
       return List.of();
@@ -154,13 +156,13 @@ public class DeployedIndexesChangeServiceImpl implements DeployedIndexesChangeSe
 
 
   @Override
-  public List<Statement> updateColumnName(String tableName, String oldColumnName, String newColumnName) {
+  public List<UpdateStatement> updateColumnName(String tableName, String oldColumnName, String newColumnName) {
     Map<String, IndexRecord> tableMap = trackedIndexes.get(tableName.toUpperCase());
     if (tableMap == null) {
       return List.of();
     }
 
-    List<Statement> statements = new ArrayList<>();
+    List<UpdateStatement> statements = new ArrayList<>();
     for (Map.Entry<String, IndexRecord> entry : tableMap.entrySet()) {
       IndexRecord r = entry.getValue();
       if (r.index.columnNames().stream().anyMatch(c -> c.equalsIgnoreCase(oldColumnName))) {
@@ -182,7 +184,7 @@ public class DeployedIndexesChangeServiceImpl implements DeployedIndexesChangeSe
 
 
   @Override
-  public List<Statement> updateIndexName(String tableName, String oldIndexName, String newIndexName) {
+  public List<UpdateStatement> updateIndexName(String tableName, String oldIndexName, String newIndexName) {
     Map<String, IndexRecord> tableMap = trackedIndexes.get(tableName.toUpperCase());
     if (tableMap == null || !tableMap.containsKey(oldIndexName.toUpperCase())) {
       return List.of();

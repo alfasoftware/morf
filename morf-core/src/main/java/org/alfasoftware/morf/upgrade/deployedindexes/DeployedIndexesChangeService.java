@@ -18,12 +18,15 @@ package org.alfasoftware.morf.upgrade.deployedindexes;
 import java.util.List;
 
 import org.alfasoftware.morf.metadata.Index;
-import org.alfasoftware.morf.sql.Statement;
+import org.alfasoftware.morf.sql.DeleteStatement;
+import org.alfasoftware.morf.sql.InsertStatement;
+import org.alfasoftware.morf.sql.UpdateStatement;
 
 /**
  * Tracks ALL index operations (deferred and non-deferred) during a single
- * upgrade session and produces the DSL {@link Statement}s needed to keep
- * the DeployedIndexes table in sync with schema changes.
+ * upgrade session and produces the DSL DML statements
+ * ({@link InsertStatement}, {@link UpdateStatement}, {@link DeleteStatement})
+ * needed to keep the DeployedIndexes table in sync with schema changes.
  *
  * <p>This service is stateful and scoped to one upgrade run. A fresh
  * instance must be created for each upgrade execution.</p>
@@ -40,7 +43,7 @@ public interface DeployedIndexesChangeService {
    * @param index the index metadata.
    * @return INSERT statements to be executed by the caller.
    */
-  List<Statement> trackIndex(String tableName, Index index);
+  List<InsertStatement> trackIndex(String tableName, Index index);
 
 
   /**
@@ -71,7 +74,7 @@ public interface DeployedIndexesChangeService {
    * @param indexName the index name.
    * @return DELETE statements, or empty if not tracked.
    */
-  List<Statement> removeIndex(String tableName, String indexName);
+  List<DeleteStatement> removeIndex(String tableName, String indexName);
 
 
   /**
@@ -80,7 +83,7 @@ public interface DeployedIndexesChangeService {
    * @param tableName the table name.
    * @return DELETE statements, or empty if no indexes tracked for that table.
    */
-  List<Statement> removeAllForTable(String tableName);
+  List<DeleteStatement> removeAllForTable(String tableName);
 
 
   /**
@@ -90,7 +93,7 @@ public interface DeployedIndexesChangeService {
    * @param columnName the column name being removed.
    * @return DELETE statements for affected indexes.
    */
-  List<Statement> removeIndexesReferencingColumn(String tableName, String columnName);
+  List<DeleteStatement> removeIndexesReferencingColumn(String tableName, String columnName);
 
 
   /**
@@ -100,7 +103,7 @@ public interface DeployedIndexesChangeService {
    * @param newTableName the new table name.
    * @return UPDATE statements.
    */
-  List<Statement> updateTableName(String oldTableName, String newTableName);
+  List<UpdateStatement> updateTableName(String oldTableName, String newTableName);
 
 
   /**
@@ -111,7 +114,7 @@ public interface DeployedIndexesChangeService {
    * @param newColumnName the new column name.
    * @return UPDATE statements for affected indexes.
    */
-  List<Statement> updateColumnName(String tableName, String oldColumnName, String newColumnName);
+  List<UpdateStatement> updateColumnName(String tableName, String oldColumnName, String newColumnName);
 
 
   /**
@@ -122,5 +125,5 @@ public interface DeployedIndexesChangeService {
    * @param newIndexName the new index name.
    * @return UPDATE statements.
    */
-  List<Statement> updateIndexName(String tableName, String oldIndexName, String newIndexName);
+  List<UpdateStatement> updateIndexName(String tableName, String oldIndexName, String newIndexName);
 }

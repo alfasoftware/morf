@@ -49,7 +49,7 @@ public class TestDeployedIndexesChangeServiceImpl {
     Index idx = index("Idx1").columns("col1");
 
     // when
-    List<Statement> stmts = service.trackIndex("Table1", idx);
+    List<? extends Statement> stmts = service.trackIndex("Table1", idx);
 
     // then
     assertEquals(1, stmts.size());
@@ -107,7 +107,7 @@ public class TestDeployedIndexesChangeServiceImpl {
     service.trackIndex("Table1", index("Idx1").columns("col1"));
 
     // when
-    List<Statement> stmts = service.removeIndex("Table1", "Idx1");
+    List<? extends Statement> stmts = service.removeIndex("Table1", "Idx1");
 
     // then
     assertEquals(1, stmts.size());
@@ -119,7 +119,7 @@ public class TestDeployedIndexesChangeServiceImpl {
   @Test
   public void testRemoveNonTrackedIndex() {
     // when
-    List<Statement> stmts = service.removeIndex("Table1", "NonExistent");
+    List<? extends Statement> stmts = service.removeIndex("Table1", "NonExistent");
 
     // then
     assertTrue("Should return empty", stmts.isEmpty());
@@ -135,7 +135,7 @@ public class TestDeployedIndexesChangeServiceImpl {
     service.trackIndex("Table2", index("Idx3").columns("col3"));
 
     // when
-    List<Statement> stmts = service.removeAllForTable("Table1");
+    List<? extends Statement> stmts = service.removeAllForTable("Table1");
 
     // then
     assertEquals(1, stmts.size());
@@ -153,7 +153,7 @@ public class TestDeployedIndexesChangeServiceImpl {
     service.trackIndex("Table1", index("Idx2").columns("col3"));
 
     // when
-    List<Statement> stmts = service.removeIndexesReferencingColumn("Table1", "col1");
+    List<? extends Statement> stmts = service.removeIndexesReferencingColumn("Table1", "col1");
 
     // then
     assertFalse("Idx1 should be removed", service.isTracked("Table1", "Idx1"));
@@ -168,7 +168,7 @@ public class TestDeployedIndexesChangeServiceImpl {
     service.trackIndex("OldTable", index("Idx1").columns("col1"));
 
     // when
-    List<Statement> stmts = service.updateTableName("OldTable", "NewTable");
+    List<? extends Statement> stmts = service.updateTableName("OldTable", "NewTable");
 
     // then
     assertEquals(1, stmts.size());
@@ -184,7 +184,7 @@ public class TestDeployedIndexesChangeServiceImpl {
     service.trackIndex("Table1", index("OldIdx").columns("col1"));
 
     // when
-    List<Statement> stmts = service.updateIndexName("Table1", "OldIdx", "NewIdx");
+    List<? extends Statement> stmts = service.updateIndexName("Table1", "OldIdx", "NewIdx");
 
     // then
     assertEquals(1, stmts.size());
@@ -203,7 +203,7 @@ public class TestDeployedIndexesChangeServiceImpl {
     service.trackIndex("Table1", index("Idx2").columns("col3"));
 
     // when
-    List<Statement> stmts = service.updateColumnName("Table1", "oldCol", "newCol");
+    List<? extends Statement> stmts = service.updateColumnName("Table1", "oldCol", "newCol");
 
     // then -- only Idx1 is affected
     assertEquals("Only Idx1 should be affected", 1, stmts.size());
@@ -227,7 +227,7 @@ public class TestDeployedIndexesChangeServiceImpl {
   @Test
   public void testRemoveIndexOnUntrackedTableIsNoOp() {
     // when
-    List<Statement> stmts = service.removeIndex("NoSuchTable", "NoSuchIdx");
+    List<? extends Statement> stmts = service.removeIndex("NoSuchTable", "NoSuchIdx");
 
     // then
     assertTrue("no-op should return empty list", stmts.isEmpty());
@@ -238,7 +238,7 @@ public class TestDeployedIndexesChangeServiceImpl {
   @Test
   public void testRemoveAllForUntrackedTableIsNoOp() {
     // when
-    List<Statement> stmts = service.removeAllForTable("NoSuchTable");
+    List<? extends Statement> stmts = service.removeAllForTable("NoSuchTable");
 
     // then
     assertTrue(stmts.isEmpty());
@@ -249,7 +249,7 @@ public class TestDeployedIndexesChangeServiceImpl {
   @Test
   public void testRemoveIndexesReferencingColumnOnUntrackedTableIsNoOp() {
     // when
-    List<Statement> stmts = service.removeIndexesReferencingColumn("NoSuchTable", "anyCol");
+    List<? extends Statement> stmts = service.removeIndexesReferencingColumn("NoSuchTable", "anyCol");
 
     // then
     assertTrue(stmts.isEmpty());
@@ -260,7 +260,7 @@ public class TestDeployedIndexesChangeServiceImpl {
   @Test
   public void testUpdateTableNameOnUntrackedTableIsNoOp() {
     // when
-    List<Statement> stmts = service.updateTableName("NoSuchTable", "NewName");
+    List<? extends Statement> stmts = service.updateTableName("NoSuchTable", "NewName");
 
     // then
     assertTrue(stmts.isEmpty());
@@ -271,7 +271,7 @@ public class TestDeployedIndexesChangeServiceImpl {
   @Test
   public void testUpdateColumnNameOnUntrackedTableIsNoOp() {
     // when
-    List<Statement> stmts = service.updateColumnName("NoSuchTable", "oldCol", "newCol");
+    List<? extends Statement> stmts = service.updateColumnName("NoSuchTable", "oldCol", "newCol");
 
     // then
     assertTrue(stmts.isEmpty());
@@ -282,7 +282,7 @@ public class TestDeployedIndexesChangeServiceImpl {
   @Test
   public void testUpdateIndexNameOnUntrackedTableIsNoOp() {
     // when
-    List<Statement> stmts = service.updateIndexName("NoSuchTable", "oldIdx", "newIdx");
+    List<? extends Statement> stmts = service.updateIndexName("NoSuchTable", "oldIdx", "newIdx");
 
     // then
     assertTrue(stmts.isEmpty());
@@ -296,7 +296,7 @@ public class TestDeployedIndexesChangeServiceImpl {
     service.trackIndex("Table1", index("Idx1").columns("col1"));
 
     // when
-    List<Statement> stmts = service.updateIndexName("Table1", "DifferentIdx", "NewIdx");
+    List<? extends Statement> stmts = service.updateIndexName("Table1", "DifferentIdx", "NewIdx");
 
     // then
     assertTrue(stmts.isEmpty());
@@ -310,7 +310,7 @@ public class TestDeployedIndexesChangeServiceImpl {
     service.trackIndex("Table1", index("Idx1").columns("MyCol"));
 
     // when -- upper-case lookup
-    List<Statement> stmts = service.updateColumnName("Table1", "MYCOL", "newName");
+    List<? extends Statement> stmts = service.updateColumnName("Table1", "MYCOL", "newName");
 
     // then -- matches and emits the UPDATE
     assertEquals(1, stmts.size());
@@ -325,7 +325,7 @@ public class TestDeployedIndexesChangeServiceImpl {
     Index idx = index("Multi").columns("a", "b", "c");
 
     // when
-    List<Statement> stmts = service.trackIndex("Table1", idx);
+    List<? extends Statement> stmts = service.trackIndex("Table1", idx);
 
     // then -- the INSERT statement has a FieldLiteral "a,b,c" among its values
     assertEquals(1, stmts.size());

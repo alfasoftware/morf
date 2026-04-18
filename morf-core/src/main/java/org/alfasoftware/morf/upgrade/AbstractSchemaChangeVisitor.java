@@ -1,15 +1,18 @@
 
 package org.alfasoftware.morf.upgrade;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.sql.DeleteStatement;
+import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.Statement;
+import org.alfasoftware.morf.sql.UpdateStatement;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexState;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesChangeService;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesChangeServiceImpl;
@@ -76,27 +79,45 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
 
   /**
-   * Converts and writes a DSL statement for the DeployedIndexes table DML.
-   * Uses conversion without schema validation, since DeployedIndexes is
-   * a Morf infrastructure table not in the user schema model.
+   * Converts and writes an INSERT against the DeployedIndexes table. Uses
+   * the schema-free overload because DeployedIndexes is Morf infrastructure,
+   * not part of the user schema model. Each typed overload is its own
+   * compile-time entry point — new DML types (e.g. MERGE) force a new
+   * overload rather than a runtime instanceof failure.
+   *
+   * @param s the INSERT.
    */
-  private void visitDeployedIndexesStatement(Statement statement) {
+  private void writeDeployedIndexesDml(InsertStatement s) {
     if (!isDeployedIndexesEnabled()) {
       return;
     }
-    if (statement instanceof org.alfasoftware.morf.sql.InsertStatement) {
-      writeStatements(sqlDialect.convertStatementToSQL((org.alfasoftware.morf.sql.InsertStatement) statement));
-    } else if (statement instanceof org.alfasoftware.morf.sql.UpdateStatement) {
-      writeStatements(List.of(sqlDialect.convertStatementToSQL((org.alfasoftware.morf.sql.UpdateStatement) statement)));
-    } else if (statement instanceof org.alfasoftware.morf.sql.DeleteStatement) {
-      writeStatements(List.of(sqlDialect.convertStatementToSQL((org.alfasoftware.morf.sql.DeleteStatement) statement)));
-    } else {
-      // visitStatement would run schema validation against currentSchema, which
-      // this method's contract explicitly avoids. Any factory method that returns
-      // a Statement subtype other than Insert/Update/Delete must add a branch above.
-      throw new IllegalStateException(
-          "Unexpected DeployedIndexes statement type: " + statement.getClass().getName());
+    writeStatements(sqlDialect.convertStatementToSQL(s));
+  }
+
+
+  /**
+   * Converts and writes an UPDATE against the DeployedIndexes table.
+   *
+   * @param s the UPDATE.
+   */
+  private void writeDeployedIndexesDml(UpdateStatement s) {
+    if (!isDeployedIndexesEnabled()) {
+      return;
     }
+    writeStatements(List.of(sqlDialect.convertStatementToSQL(s)));
+  }
+
+
+  /**
+   * Converts and writes a DELETE against the DeployedIndexes table.
+   *
+   * @param s the DELETE.
+   */
+  private void writeDeployedIndexesDml(DeleteStatement s) {
+    if (!isDeployedIndexesEnabled()) {
+      return;
+    }
+    writeStatements(List.of(sqlDialect.convertStatementToSQL(s)));
   }
 
 
@@ -108,7 +129,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     // Track all indexes on the new table in DeployedIndexes
     for (Index index : addTable.getTable().indexes()) {
       deployedIndexesChangeService.trackIndex(addTable.getTable().getName(), index)
-          .forEach(this::visitDeployedIndexesStatement);
+          .forEach(this::writeDeployedIndexesDml);
     }
   }
 
@@ -117,7 +138,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   public void visit(RemoveTable removeTable) {
     // Remove all tracked indexes for this table
     deployedIndexesChangeService.removeAllForTable(removeTable.getTable().getName())
-        .forEach(this::visitDeployedIndexesStatement);
+        .forEach(this::writeDeployedIndexesDml);
     currentSchema = removeTable.apply(currentSchema);
     writeStatements(sqlDialect.dropStatements(removeTable.getTable()));
   }
@@ -142,7 +163,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     // Update column references in DeployedIndexes if column was renamed
     if (!oldColName.equalsIgnoreCase(newColName)) {
       deployedIndexesChangeService.updateColumnName(tableName, oldColName, newColName)
-          .forEach(this::visitDeployedIndexesStatement);
+          .forEach(this::writeDeployedIndexesDml);
     }
   }
 
@@ -154,7 +175,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
     // Remove tracked indexes referencing the column
     deployedIndexesChangeService.removeIndexesReferencingColumn(tableName, colName)
-        .forEach(this::visitDeployedIndexesStatement);
+        .forEach(this::writeDeployedIndexesDml);
 
     currentSchema = removeColumn.apply(currentSchema);
     writeStatements(sqlDialect.alterTableDropColumnStatements(currentSchema.getTable(tableName), removeColumn.getColumnDefinition()));
@@ -166,17 +187,17 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     String tableName = removeIndex.getTableName();
     Index indexToRemove = removeIndex.getIndexToBeRemoved();
 
-    // Check if the index is physically present via the model
-    boolean physicallyPresent = isPhysicallyPresent(tableName, indexToRemove.getName());
+    // Capture BEFORE the tracking/schema mutations below: both
+    // isTrackedDeferred and the enricher state would be out of sync by the
+    // time the DDL emission runs otherwise.
+    boolean willBePresent = willBePhysicallyPresentAtThisEmission(tableName, indexToRemove.getName());
 
-    // Remove from DeployedIndexes tracking
     deployedIndexesChangeService.removeIndex(tableName, indexToRemove.getName())
-        .forEach(this::visitDeployedIndexesStatement);
+        .forEach(this::writeDeployedIndexesDml);
 
     currentSchema = removeIndex.apply(currentSchema);
 
-    // Only emit physical DDL if the index is actually in the database
-    if (physicallyPresent) {
+    if (willBePresent) {
       writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(tableName), indexToRemove));
     }
   }
@@ -187,45 +208,37 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     String tableName = changeIndex.getTableName();
     Index fromIndex = changeIndex.getFromIndex();
     Index toIndex = changeIndex.getToIndex();
-    boolean fromPhysicallyPresent = isPhysicallyPresent(tableName, fromIndex.getName());
 
-    // Remove old from DeployedIndexes
+    // Capture BEFORE the tracking/schema mutations below (see visit(RemoveIndex) note).
+    boolean fromWillBePresent = willBePhysicallyPresentAtThisEmission(tableName, fromIndex.getName());
+
     deployedIndexesChangeService.removeIndex(tableName, fromIndex.getName())
-        .forEach(this::visitDeployedIndexesStatement);
-
+        .forEach(this::writeDeployedIndexesDml);
     currentSchema = changeIndex.apply(currentSchema);
-    Table table = currentSchema.getTable(tableName);
 
-    // Drop old physical index if present
-    if (fromPhysicallyPresent) {
-      writeStatements(sqlDialect.indexDropStatements(table, fromIndex));
+    if (fromWillBePresent) {
+      writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(tableName), fromIndex));
     }
-
-    // Add new index: deferred or immediate
-    if (toIndex.isDeferred() && sqlDialect.supportsDeferredIndexCreation()) {
-      deployedIndexesChangeService.trackIndex(tableName, toIndex)
-          .forEach(this::visitDeployedIndexesStatement);
-    } else {
-      writeStatements(sqlDialect.addIndexStatements(table, toIndex));
-      deployedIndexesChangeService.trackIndex(tableName, toIndex)
-          .forEach(this::visitDeployedIndexesStatement);
+    if (shouldEmitPhysicalIndexDdl(toIndex)) {
+      writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(tableName), toIndex));
     }
+    trackInDeployedIndexes(tableName, toIndex);
   }
 
 
   @Override
   public void visit(final RenameIndex renameIndex) {
     String tableName = renameIndex.getTableName();
-    boolean physicallyPresent = isPhysicallyPresent(tableName, renameIndex.getFromIndexName());
 
-    // Update in DeployedIndexes
+    // Capture BEFORE the tracking/schema mutations below (see visit(RemoveIndex) note).
+    boolean willBePresent = willBePhysicallyPresentAtThisEmission(tableName, renameIndex.getFromIndexName());
+
     deployedIndexesChangeService.updateIndexName(tableName, renameIndex.getFromIndexName(), renameIndex.getToIndexName())
-        .forEach(this::visitDeployedIndexesStatement);
+        .forEach(this::writeDeployedIndexesDml);
 
     currentSchema = renameIndex.apply(currentSchema);
 
-    // Only emit physical DDL if the index is actually in the database
-    if (physicallyPresent) {
+    if (willBePresent) {
       writeStatements(sqlDialect.renameIndexStatements(currentSchema.getTable(tableName),
           renameIndex.getFromIndexName(), renameIndex.getToIndexName()));
     }
@@ -238,7 +251,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
     // Update table name in DeployedIndexes for ALL indexes on this table
     deployedIndexesChangeService.updateTableName(renameTable.getOldTableName(), renameTable.getNewTableName())
-        .forEach(this::visitDeployedIndexesStatement);
+        .forEach(this::writeDeployedIndexesDml);
 
     currentSchema = renameTable.apply(currentSchema);
     Table newTable = currentSchema.getTable(renameTable.getNewTableName());
@@ -324,33 +337,73 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   @Override
   public void visit(AddIndex addIndex) {
     currentSchema = addIndex.apply(currentSchema);
+    String tableName = addIndex.getTableName();
+    Index newIndex = addIndex.getNewIndex();
 
-    boolean shouldDefer = addIndex.getNewIndex().isDeferred() && sqlDialect.supportsDeferredIndexCreation();
-
-    if (shouldDefer) {
-      // Deferred: only track in DeployedIndexes, no physical CREATE INDEX
-      deployedIndexesChangeService.trackIndex(addIndex.getTableName(), addIndex.getNewIndex())
-          .forEach(this::visitDeployedIndexesStatement);
-    } else {
-      // Immediate: check for ignored index rename optimization, then CREATE INDEX + track
-      Index foundIndex = null;
-      List<Index> ignoredIndexes = upgradeConfigAndContext.getIgnoredIndexesForTable(addIndex.getTableName());
-      for (Index index : ignoredIndexes) {
-        if (index.columnNames().equals(addIndex.getNewIndex().columnNames()) && index.isUnique() == addIndex.getNewIndex().isUnique()) {
-          foundIndex = index;
-          break;
-        }
-      }
-
-      if (foundIndex != null) {
-        writeStatements(sqlDialect.renameIndexStatements(currentSchema.getTable(addIndex.getTableName()), foundIndex.getName(), addIndex.getNewIndex().getName()));
-      } else {
-        writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(addIndex.getTableName()), addIndex.getNewIndex()));
-      }
-
-      deployedIndexesChangeService.trackIndex(addIndex.getTableName(), addIndex.getNewIndex())
-          .forEach(this::visitDeployedIndexesStatement);
+    if (shouldEmitPhysicalIndexDdl(newIndex)) {
+      emitAddIndexOrRename(tableName, newIndex);
     }
+    trackInDeployedIndexes(tableName, newIndex);
+  }
+
+
+  /**
+   * Whether a physical CREATE INDEX (or rename) should be emitted for this
+   * index. Deferred indexes on dialects supporting deferred creation skip
+   * the DDL (the app executes their deferred statements after the upgrade).
+   *
+   * @param index the index being added or changed-to.
+   * @return true if physical DDL is required.
+   */
+  private boolean shouldEmitPhysicalIndexDdl(Index index) {
+    return !(index.isDeferred() && sqlDialect.supportsDeferredIndexCreation());
+  }
+
+
+  /**
+   * Emits CREATE INDEX for {@code newIndex}, unless the upgrade config lists
+   * an ignored index with matching shape (columns + unique flag) — in which
+   * case a RENAME INDEX reuses the existing physical index rather than
+   * creating a new one.
+   *
+   * @param tableName the target table.
+   * @param newIndex the index being added.
+   */
+  private void emitAddIndexOrRename(String tableName, Index newIndex) {
+    Table table = currentSchema.getTable(tableName);
+    Optional<Index> rename = findMatchingIgnoredIndex(tableName, newIndex);
+    if (rename.isPresent()) {
+      writeStatements(sqlDialect.renameIndexStatements(table, rename.get().getName(), newIndex.getName()));
+    } else {
+      writeStatements(sqlDialect.addIndexStatements(table, newIndex));
+    }
+  }
+
+
+  /**
+   * Looks for an ignored index on {@code tableName} that has the same shape
+   * (columns and uniqueness) as {@code newIndex} — the rename-optimisation.
+   *
+   * @param tableName the table.
+   * @param newIndex the index being added.
+   * @return the matching ignored index if found.
+   */
+  private Optional<Index> findMatchingIgnoredIndex(String tableName, Index newIndex) {
+    return upgradeConfigAndContext.getIgnoredIndexesForTable(tableName).stream()
+        .filter(i -> i.columnNames().equals(newIndex.columnNames()) && i.isUnique() == newIndex.isUnique())
+        .findFirst();
+  }
+
+
+  /**
+   * Records the index in DeployedIndexes and emits the INSERT DML.
+   *
+   * @param tableName the table the index belongs to.
+   * @param index the index being tracked.
+   */
+  private void trackInDeployedIndexes(String tableName, Index index) {
+    deployedIndexesChangeService.trackIndex(tableName, index)
+        .forEach(this::writeDeployedIndexesDml);
   }
 
 
@@ -359,18 +412,28 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   // -------------------------------------------------------------------------
 
   /**
-   * Checks whether an index physically exists in the database by composing
-   * in-session tracking (changes made by steps in THIS upgrade run) with
-   * the at-start operational state from the enricher. Defaults to "present"
-   * when the state doesn't explicitly say otherwise: in-session non-deferred
-   * additions are treated as present (their CREATE INDEX is already queued),
-   * pre-existing non-tracked indexes likewise.
+   * Projects forward: will this index exist in the DB by the time the
+   * generated script reaches the current emission point? Composes two
+   * sources:
+   *
+   * <ul>
+   *   <li>The at-start snapshot from the enricher ({@code deployedIndexState}).</li>
+   *   <li>The in-session deltas recorded by earlier visits this run
+   *       ({@code deployedIndexesChangeService}).</li>
+   * </ul>
+   *
+   * <p>Defaults to "present" when the state doesn't explicitly say
+   * otherwise: in-session non-deferred additions are treated as present
+   * (their CREATE INDEX is already queued), pre-existing non-tracked
+   * indexes likewise. The name reflects the script-generation semantics —
+   * nothing has hit the DB yet; this is a projection, not a query.</p>
+   *
+   * @param tableName the table name.
+   * @param indexName the index name.
+   * @return true if the index will exist at script-emission time.
    */
-  private boolean isPhysicallyPresent(String tableName, String indexName) {
+  private boolean willBePhysicallyPresentAtThisEmission(String tableName, String indexName) {
     if (deployedIndexesChangeService.isTrackedDeferred(tableName, indexName)) {
-      return false;
-    }
-    if (!currentSchema.tableExists(tableName)) {
       return false;
     }
     return deployedIndexState.getPresence(tableName, indexName) != IndexPresence.ABSENT;

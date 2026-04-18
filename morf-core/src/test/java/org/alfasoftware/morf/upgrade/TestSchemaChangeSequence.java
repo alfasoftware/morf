@@ -156,19 +156,21 @@ public class TestSchemaChangeSequence {
   }
 
 
-  /** Tests that isForceImmediateIndex returns correct results with case-insensitive matching. */
+  /**
+   * Force-immediate is stored case-insensitively in the config setter;
+   * resolveDeferred behaviour under force-immediate is covered by
+   * testAddIndexDeferredWithForceImmediate{ProducesAddIndex,CaseInsensitive}.
+   * This test only asserts the storage contract (normalised, deduped).
+   */
   @Test
-  public void testIsForceImmediateIndex() {
+  public void testForceImmediateIndexesStoredCaseInsensitively() {
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
     config.setDeferredIndexCreationEnabled(true);
     config.setForceImmediateIndexes(Set.of("Idx_One", "IDX_TWO"));
 
-    assertEquals(true, config.isForceImmediateIndex("Idx_One"));
-    assertEquals(true, config.isForceImmediateIndex("idx_one"));
-    assertEquals(true, config.isForceImmediateIndex("IDX_ONE"));
-    assertEquals(true, config.isForceImmediateIndex("idx_two"));
-    assertEquals(false, config.isForceImmediateIndex("Idx_Three"));
     assertEquals(2, config.getForceImmediateIndexes().size());
+    assertTrue(config.getForceImmediateIndexes().contains("idx_one"));
+    assertTrue(config.getForceImmediateIndexes().contains("idx_two"));
   }
 
 
@@ -219,19 +221,21 @@ public class TestSchemaChangeSequence {
   }
 
 
-  /** Tests that isForceDeferredIndex returns correct results with case-insensitive matching. */
+  /**
+   * Force-deferred is stored case-insensitively in the config setter;
+   * resolveDeferred behaviour under force-deferred is covered by
+   * testAddIndexWithForceDeferred{ProducesDeferredAddIndex,CaseInsensitive}.
+   * This test only asserts the storage contract (normalised, deduped).
+   */
   @Test
-  public void testIsForceDeferredIndex() {
+  public void testForceDeferredIndexesStoredCaseInsensitively() {
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
     config.setDeferredIndexCreationEnabled(true);
     config.setForceDeferredIndexes(Set.of("Idx_One", "IDX_TWO"));
 
-    assertEquals(true, config.isForceDeferredIndex("Idx_One"));
-    assertEquals(true, config.isForceDeferredIndex("idx_one"));
-    assertEquals(true, config.isForceDeferredIndex("IDX_ONE"));
-    assertEquals(true, config.isForceDeferredIndex("idx_two"));
-    assertEquals(false, config.isForceDeferredIndex("Idx_Three"));
     assertEquals(2, config.getForceDeferredIndexes().size());
+    assertTrue(config.getForceDeferredIndexes().contains("idx_one"));
+    assertTrue(config.getForceDeferredIndexes().contains("idx_two"));
   }
 
 

@@ -377,16 +377,47 @@ public class SchemaChangeSequence {
 
 
     private Index resolveDeferred(Index index) {
+      boolean targetDeferred = resolveTargetDeferred(index);
+      return index.isDeferred() == targetDeferred ? index : rebuildIndex(index, targetDeferred);
+    }
+
+
+    /**
+     * Decides whether {@code index} should end up deferred, considering the
+     * kill-switch and per-index force-immediate / force-deferred overrides.
+     *
+     * @param index the declarative index.
+     * @return true if the target should be deferred.
+     */
+    private boolean resolveTargetDeferred(Index index) {
       if (!upgradeConfigAndContext.isDeferredIndexCreationEnabled()) {
-        return index.isDeferred() ? rebuildIndex(index, false) : index;
+        return false;
       }
-      if (upgradeConfigAndContext.isForceImmediateIndex(index.getName())) {
-        return index.isDeferred() ? rebuildIndex(index, false) : index;
+      if (isForcedImmediate(index.getName())) {
+        return false;
       }
-      if (upgradeConfigAndContext.isForceDeferredIndex(index.getName())) {
-        return index.isDeferred() ? index : rebuildIndex(index, true);
+      if (isForcedDeferred(index.getName())) {
+        return true;
       }
-      return index;
+      return index.isDeferred();
+    }
+
+
+    /**
+     * @param indexName the index name to check.
+     * @return true if the config's force-immediate list contains {@code indexName} (case-insensitive).
+     */
+    private boolean isForcedImmediate(String indexName) {
+      return upgradeConfigAndContext.getForceImmediateIndexes().contains(indexName.toLowerCase());
+    }
+
+
+    /**
+     * @param indexName the index name to check.
+     * @return true if the config's force-deferred list contains {@code indexName} (case-insensitive).
+     */
+    private boolean isForcedDeferred(String indexName) {
+      return upgradeConfigAndContext.getForceDeferredIndexes().contains(indexName.toLowerCase());
     }
 
 
