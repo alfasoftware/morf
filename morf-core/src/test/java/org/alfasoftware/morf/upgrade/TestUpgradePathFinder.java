@@ -526,7 +526,7 @@ public class TestUpgradePathFinder {
     upgradeSteps.add(AddCakeTable.class);
 
     UpgradePathFinder upgradePathFinder = makeFinder(upgradeConfigAndContext, upgradeSteps, appliedSteps());
-    SchemaChangeSequence schemaChangeSequence = upgradePathFinder.getSchemaChangeSequence();
+    SchemaChangeSequence schemaChangeSequence = upgradePathFinder.getSchemaChangeSequence(schema(sconeTable));
     Schema resultingSchema = schemaChangeSequence.applyToSchema(schema(sconeTable));
 
     assertTrue(resultingSchema.tableExists("NewTableName"));

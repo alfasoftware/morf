@@ -185,7 +185,7 @@ public class TestUpgradePath {
 
     when(upgradeStatusTableService.updateTableScript(UpgradeStatus.IN_PROGRESS, UpgradeStatus.COMPLETED)).thenReturn(ImmutableList.of("FIN1", "FIN2"));
 
-    UpgradePath path = factory.create(ImmutableList.of(mock(UpgradeStep.class)), connectionResources, mock(GraphBasedUpgradeBuilder.class), ImmutableList.of("INIT1", "INIT2"));
+    UpgradePath path = factory.create(ImmutableList.of(mock(UpgradeStep.class)), connectionResources, mock(GraphBasedUpgradeBuilder.class), ImmutableList.of("INIT1", "INIT2"), ImmutableList.of());
     path.writeSql(ImmutableList.of("XYZZY"));
 
     List<String> sql = path.getSql();

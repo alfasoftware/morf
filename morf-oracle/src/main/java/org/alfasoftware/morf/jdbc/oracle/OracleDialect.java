@@ -905,7 +905,7 @@ class OracleDialect extends SqlDialect {
   public Collection<String> addIndexStatements(Table table, Index index) {
     return ImmutableList.of(
       // when adding indexes to existing tables, use PARALLEL NOLOGGING to efficiently build the index
-      Iterables.getOnlyElement(indexDeploymentStatements(table, index)) + " PARALLEL NOLOGGING",
+      buildCreateIndexStatement(table, index) + " PARALLEL NOLOGGING",
       indexPostDeploymentStatements(index)
     );
   }
@@ -916,31 +916,7 @@ class OracleDialect extends SqlDialect {
    */
   @Override
   protected Collection<String> indexDeploymentStatements(Table table, Index index) {
-    StringBuilder createIndexStatement = new StringBuilder();
-
-    // Specify the preamble
-    createIndexStatement.append("CREATE ");
-    if (index.isUnique()) {
-      createIndexStatement.append("UNIQUE ");
-    }
-
-    // Name the index
-    createIndexStatement
-      .append("INDEX ")
-      .append(schemaNamePrefix())
-      .append(index.getName())
-
-      // Specify which table the index is over
-      .append(" ON ")
-      .append(schemaNamePrefix())
-      .append(table.getName())
-
-      // Specify the fields that are used in the index
-      .append(" (")
-      .append(Joiner.on(", ").join(index.columnNames()))
-      .append(")");
-
-    return Collections.singletonList(createIndexStatement.toString());
+    return Collections.singletonList(buildCreateIndexStatement(table, index));
   }
 
 
@@ -957,6 +933,27 @@ class OracleDialect extends SqlDialect {
       .append(index.getName())
       .append(" NOPARALLEL LOGGING")
       .toString();
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#supportsDeferredIndexCreation()
+   */
+  @Override
+  public boolean supportsDeferredIndexCreation() {
+    return true;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#deferredIndexDeploymentStatements(org.alfasoftware.morf.metadata.Table, org.alfasoftware.morf.metadata.Index)
+   */
+  @Override
+  public Collection<String> deferredIndexDeploymentStatements(Table table, Index index) {
+    return ImmutableList.of(
+      buildCreateIndexStatement(table, index) + " ONLINE PARALLEL NOLOGGING",
+      indexPostDeploymentStatements(index)
+    );
   }
 
 

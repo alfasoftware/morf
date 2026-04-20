@@ -26,6 +26,7 @@ import java.util.Set;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.SchemaUtils.ColumnBuilder;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
@@ -36,6 +37,8 @@ import org.alfasoftware.morf.sql.element.FieldLiteral;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * Tracks a sequence of {@link SchemaChange}s as various {@link SchemaEditor}
@@ -45,6 +48,8 @@ import com.google.common.collect.Lists;
  * @author Copyright (c) Alfa Financial Software 2010
  */
 public class SchemaChangeSequence {
+
+  private static final Log log = LogFactory.getLog(SchemaChangeSequence.class);
 
   private final UpgradeConfigAndContext upgradeConfigAndContext;
 
@@ -56,12 +61,7 @@ public class SchemaChangeSequence {
   private final List<UpgradeStepWithChanges> allChanges;
 
 
-  public SchemaChangeSequence(List<UpgradeStep> steps) {
-    this(new UpgradeConfigAndContext(), steps);
-  }
-
-
-  public SchemaChangeSequence(UpgradeConfigAndContext upgradeConfigAndContext, List<UpgradeStep> steps) {
+  public SchemaChangeSequence(UpgradeConfigAndContext upgradeConfigAndContext, List<UpgradeStep> steps, Schema sourceSchema) {
     this.upgradeConfigAndContext = upgradeConfigAndContext;
 
     this.upgradeSteps = steps;
@@ -71,12 +71,15 @@ public class SchemaChangeSequence {
 
     ImmutableList.Builder<UpgradeStepWithChanges> allChangesBuilder = ImmutableList.builder();
 
+    UpgradeContext upgradeContext = () -> sourceSchema;
     for (UpgradeStep step : steps) {
       InternalVisitor internalVisitor = new InternalVisitor(upgradeConfigAndContext.getSchemaChangeAdaptor());
       UpgradeTableResolutionVisitor resolvedTablesVisitor = new UpgradeTableResolutionVisitor();
       Editor editor = new Editor(internalVisitor, resolvedTablesVisitor);
-      // For historical reasons, we need to pass the editor in twice
-      step.execute(editor, editor);
+      // For historical reasons, we need to pass the editor in twice. The
+      // framework always calls the 3-arg execute; steps without context needs
+      // pick up the default-bridge to their 2-arg override.
+      step.execute(editor, editor, upgradeContext);
 
       allChangesBuilder.add(new UpgradeStepWithChanges(step, internalVisitor.getChanges()));
       upgradeTableResolution.addDiscoveredTables(step.getClass().getName(), resolvedTablesVisitor.getResolvedTables());
@@ -221,16 +224,16 @@ public class SchemaChangeSequence {
 
 
   /**
-   * The editor implementation which is used by upgrade steps
+   * The editor implementation which is used by upgrade steps. Pure command
+   * surface — the source schema, when needed by an upgrade step, is
+   * provided via the separate {@link UpgradeContext} parameter on the
+   * 3-arg {@link UpgradeStep#execute(SchemaEditor, DataEditor, UpgradeContext)}.
    */
   private class Editor implements SchemaEditor, DataEditor {
 
     private final SchemaChangeVisitor visitor;
     private final SchemaAndDataChangeVisitor schemaAndDataChangeVisitor;
 
-    /**
-     * @param visitor The visitor to pass the changes to.
-     */
     Editor(SchemaChangeVisitor visitor, SchemaAndDataChangeVisitor schemaAndDataChangeVisitor) {
       super();
       this.visitor = visitor;
@@ -361,9 +364,70 @@ public class SchemaChangeSequence {
      */
     @Override
     public void addIndex(String tableName, Index index) {
-      AddIndex addIndex = new AddIndex(tableName, index);
+      Index effectiveIndex = resolveDeferred(index);
+      AddIndex addIndex = new AddIndex(tableName, effectiveIndex);
       visitor.visit(addIndex);
-      schemaAndDataChangeVisitor.visit(addIndex);
+      // Deferred indexes don't generate DDL on the table data, so no dependency
+      if (!effectiveIndex.isDeferred()) {
+        schemaAndDataChangeVisitor.visit(addIndex);
+      }
+    }
+
+
+    private Index resolveDeferred(Index index) {
+      boolean targetDeferred = resolveTargetDeferred(index);
+      return index.isDeferred() == targetDeferred ? index : rebuildIndex(index, targetDeferred);
+    }
+
+
+    /**
+     * Decides whether {@code index} should end up deferred, considering the
+     * kill-switch and per-index force-immediate / force-deferred overrides.
+     *
+     * @param index the declarative index.
+     * @return true if the target should be deferred.
+     */
+    private boolean resolveTargetDeferred(Index index) {
+      if (!upgradeConfigAndContext.isDeferredIndexCreationEnabled()) {
+        return false;
+      }
+      if (isForcedImmediate(index.getName())) {
+        return false;
+      }
+      if (isForcedDeferred(index.getName())) {
+        return true;
+      }
+      return index.isDeferred();
+    }
+
+
+    /**
+     * @param indexName the index name to check.
+     * @return true if the config's force-immediate list contains {@code indexName} (case-insensitive).
+     */
+    private boolean isForcedImmediate(String indexName) {
+      return upgradeConfigAndContext.getForceImmediateIndexes().contains(indexName.toLowerCase());
+    }
+
+
+    /**
+     * @param indexName the index name to check.
+     * @return true if the config's force-deferred list contains {@code indexName} (case-insensitive).
+     */
+    private boolean isForcedDeferred(String indexName) {
+      return upgradeConfigAndContext.getForceDeferredIndexes().contains(indexName.toLowerCase());
+    }
+
+
+    private Index rebuildIndex(Index index, boolean deferred) {
+      SchemaUtils.IndexBuilder builder = SchemaUtils.index(index.getName()).columns(index.columnNames());
+      if (index.isUnique()) {
+        builder = builder.unique();
+      }
+      if (deferred) {
+        builder = builder.deferred();
+      }
+      return builder;
     }
 
 

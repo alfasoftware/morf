@@ -14,6 +14,7 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeSchemaChangeVisitor.GraphBasedUpgradeSchemaChangeVisitorFactory;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexState;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeScriptGenerator.GraphBasedUpgradeScriptGeneratorFactory;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -43,6 +44,7 @@ public class GraphBasedUpgradeBuilder {
   private final Set<String> exclusiveExecutionSteps;
   private final SchemaChangeSequence schemaChangeSequence;
   private final ViewChanges viewChanges;
+  private final DeployedIndexState deployedIndexState;
 
   /**
    * Default constructor
@@ -63,6 +65,9 @@ public class GraphBasedUpgradeBuilder {
    *                                  {@link GraphBasedUpgrade}
    * @param viewChanges             view changes which need to be made to match
    *                                  the target schema
+   * @param deployedIndexState      at-start physical-presence facts from the
+   *                                  enricher, consulted by the visitor for
+   *                                  DDL decisions
    */
   GraphBasedUpgradeBuilder(
       GraphBasedUpgradeSchemaChangeVisitorFactory visitorFactory,
@@ -73,7 +78,8 @@ public class GraphBasedUpgradeBuilder {
       ConnectionResources connectionResources,
       UpgradeConfigAndContext upgradeConfigAndContext,
       SchemaChangeSequence schemaChangeSequence,
-      ViewChanges viewChanges) {
+      ViewChanges viewChanges,
+      DeployedIndexState deployedIndexState) {
     this.visitorFactory = visitorFactory;
     this.scriptGeneratorFactory = scriptGeneratorFactory;
     this.drawIOGraphPrinter = drawIOGraphPrinter;
@@ -84,6 +90,7 @@ public class GraphBasedUpgradeBuilder {
     this.exclusiveExecutionSteps = upgradeConfigAndContext.getExclusiveExecutionSteps();
     this.schemaChangeSequence = schemaChangeSequence;
     this.viewChanges = viewChanges;
+    this.deployedIndexState = deployedIndexState;
   }
 
 
@@ -105,6 +112,7 @@ public class GraphBasedUpgradeBuilder {
       upgradeConfigAndContext,
       connectionResources.sqlDialect(),
       idTable,
+      deployedIndexState,
       nodes.stream().collect(Collectors.toMap(GraphBasedUpgradeNode::getName, Function.identity())));
 
     GraphBasedUpgradeScriptGenerator scriptGenerator = scriptGeneratorFactory.create(sourceSchema, targetSchema, connectionResources, idTable, viewChanges, initialisationSql);
@@ -443,6 +451,8 @@ public class GraphBasedUpgradeBuilder {
      *                                  {@link GraphBasedUpgrade}
      * @param viewChanges             view changes which need to be made to match
      *                                  the target schema
+     * @param deployedIndexState      at-start physical-presence facts from the
+     *                                  enricher
      * @return new {@link GraphBasedUpgradeBuilder} instance
      */
     GraphBasedUpgradeBuilder create(
@@ -451,7 +461,8 @@ public class GraphBasedUpgradeBuilder {
         ConnectionResources connectionResources,
         UpgradeConfigAndContext upgradeConfigAndContext,
         SchemaChangeSequence schemaChangeSequence,
-        ViewChanges viewChanges) {
+        ViewChanges viewChanges,
+        DeployedIndexState deployedIndexState) {
       return new GraphBasedUpgradeBuilder(
         visitorFactory,
         scriptGeneratorFactory,
@@ -461,7 +472,8 @@ public class GraphBasedUpgradeBuilder {
         connectionResources,
         upgradeConfigAndContext,
         schemaChangeSequence,
-        viewChanges);
+        viewChanges,
+        deployedIndexState);
     }
   }
 }

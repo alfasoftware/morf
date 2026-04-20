@@ -561,7 +561,7 @@ public class TestUpdateToCtasAdaptor {
 
 
   private Pair<List<SchemaChange>, List<SchemaChange>> findAndAdaptUpgradePath(Schema initialSchema, Schema targetSchema, List<UpgradeStep> steps) {
-    SchemaChangeSequence originalChangesSequence = new SchemaChangeSequence(upgradeConfigAndContext, steps);
+    SchemaChangeSequence originalChangesSequence = new SchemaChangeSequence(upgradeConfigAndContext, steps, initialSchema);
     List<SchemaChange> originalChanges = originalChangesSequence.getAllChanges();
 
     SchemaChangeSequence adaptedChangeSequence = originalChangesSequence.adaptToSchema(initialSchema);

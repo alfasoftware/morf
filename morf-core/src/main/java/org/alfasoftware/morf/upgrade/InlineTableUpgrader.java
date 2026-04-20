@@ -22,6 +22,7 @@ import java.util.UUID;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexState;
 
 /**
  * Schema change visitor which doesn't use transitional tables.
@@ -41,9 +42,10 @@ public class InlineTableUpgrader extends AbstractSchemaChangeVisitor implements 
    * @param sqlDialect Dialect to generate statements for the target database.
    * @param sqlStatementWriter recipient for all upgrade SQL statements.
    * @param idTable table for id generation.
+   * @param deployedIndexState at-start physical-presence facts from the enricher.
    */
-  public InlineTableUpgrader(Schema startSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect, SqlStatementWriter sqlStatementWriter, Table idTable) {
-    super(startSchema, upgradeConfigAndContext, sqlDialect, idTable);
+  public InlineTableUpgrader(Schema startSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect, SqlStatementWriter sqlStatementWriter, Table idTable, DeployedIndexState deployedIndexState) {
+    super(startSchema, upgradeConfigAndContext, sqlDialect, idTable, deployedIndexState);
     this.currentSchema = startSchema;
     this.sqlDialect = sqlDialect;
     this.sqlStatementWriter = sqlStatementWriter;
