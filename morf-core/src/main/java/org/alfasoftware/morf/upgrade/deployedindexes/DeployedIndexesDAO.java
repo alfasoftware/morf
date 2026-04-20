@@ -22,7 +22,7 @@ import com.google.inject.ImplementedBy;
 
 /**
  * Data access interface for the DeployedIndexes table. Provides read and
- * write operations for tracking all deployed indexes (deferred and non-deferred).
+ * write operations for the slim tracking model (deferred-only rows).
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */

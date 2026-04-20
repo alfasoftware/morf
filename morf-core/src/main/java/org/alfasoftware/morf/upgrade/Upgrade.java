@@ -539,19 +539,34 @@ public class Upgrade {
 
 
   /**
-   * Scans the final schema for deferred indexes that are not physically
-   * present and produces the jobs the application will execute asynchronously.
+   * Scans the final schema for deferred indexes that will not be physically
+   * present after the upgrade runs, and produces jobs for the application to
+   * execute asynchronously.
    *
-   * <p>Covers new deferred indexes from this upgrade, existing unbuilt
-   * deferred indexes from previous upgrades, and deferred indexes renamed
-   * or modified during this upgrade.</p>
+   * <p>Source of truth is the final schema (source + visitor operations)
+   * paired with {@link DeployedIndexState} from the enricher:</p>
+   * <ul>
+   *   <li>Prior-session unbuilt deferred indexes were virtualized by the
+   *       enricher into the source schema and marked ABSENT in state — they
+   *       survive into the final schema as {@code isDeferred=true} indexes.</li>
+   *   <li>New deferred indexes added this session are in the final schema
+   *       with {@code UNKNOWN} state (the default), which the {@code != PRESENT}
+   *       guard below counts as "not yet physically there".</li>
+   *   <li>Renames/column-renames applied by the visitor mutate the schema
+   *       in place, so the job carries the current shape.</li>
+   * </ul>
+   *
+   * <p>Using the schema+state pair rather than a DAO query avoids a timing
+   * bug: the visitor's tracking-row INSERTs are queued in the upgrade script
+   * but have not been executed at this point, so {@code dao.findAll()}
+   * would miss any row added by this upgrade.</p>
    *
    * @param schemaChangeSequence the computed sequence of schema changes.
-   * @param sourceSchema the source schema.
+   * @param sourceSchema the enriched source schema.
    * @param deployedIndexState operational state from the enricher.
    * @param dialect the SQL dialect.
-   * @return empty list when deferred-index creation is disabled; otherwise the
-   *     list of jobs for each unbuilt deferred index in the final schema.
+   * @return empty list when deferred-index creation is disabled or the
+   *     dialect doesn't support it; otherwise the list of jobs.
    */
   private List<DeferredIndexJob> collectDeferredIndexJobs(SchemaChangeSequence schemaChangeSequence,
                                                            Schema sourceSchema,
@@ -561,9 +576,9 @@ public class Upgrade {
       return List.of();
     }
     // On dialects without deferred-creation support the visitor emits CREATE
-    // INDEX immediately at upgrade time (and tracks as COMPLETED). No jobs
-    // for the app-side executor — handing them out would produce duplicate
-    // CREATE INDEX errors.
+    // INDEX immediately at upgrade time (and tracks nothing in slim). No
+    // jobs for the app-side executor — handing them out would produce
+    // duplicate CREATE INDEX errors.
     if (!dialect.supportsDeferredIndexCreation()) {
       return List.of();
     }
