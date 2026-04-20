@@ -61,7 +61,7 @@ public class SchemaChangeSequence {
   private final List<UpgradeStepWithChanges> allChanges;
 
 
-  public SchemaChangeSequence(UpgradeConfigAndContext upgradeConfigAndContext, List<UpgradeStep> steps, Schema sourceSchema) {
+  public SchemaChangeSequence(UpgradeConfigAndContext upgradeConfigAndContext, List<UpgradeStep> steps) {
     this.upgradeConfigAndContext = upgradeConfigAndContext;
 
     this.upgradeSteps = steps;
@@ -71,15 +71,12 @@ public class SchemaChangeSequence {
 
     ImmutableList.Builder<UpgradeStepWithChanges> allChangesBuilder = ImmutableList.builder();
 
-    UpgradeContext upgradeContext = () -> sourceSchema;
     for (UpgradeStep step : steps) {
       InternalVisitor internalVisitor = new InternalVisitor(upgradeConfigAndContext.getSchemaChangeAdaptor());
       UpgradeTableResolutionVisitor resolvedTablesVisitor = new UpgradeTableResolutionVisitor();
       Editor editor = new Editor(internalVisitor, resolvedTablesVisitor);
-      // For historical reasons, we need to pass the editor in twice. The
-      // framework always calls the 3-arg execute; steps without context needs
-      // pick up the default-bridge to their 2-arg override.
-      step.execute(editor, editor, upgradeContext);
+      // For historical reasons, we need to pass the editor in twice.
+      step.execute(editor, editor);
 
       allChangesBuilder.add(new UpgradeStepWithChanges(step, internalVisitor.getChanges()));
       upgradeTableResolution.addDiscoveredTables(step.getClass().getName(), resolvedTablesVisitor.getResolvedTables());
@@ -224,10 +221,7 @@ public class SchemaChangeSequence {
 
 
   /**
-   * The editor implementation which is used by upgrade steps. Pure command
-   * surface — the source schema, when needed by an upgrade step, is
-   * provided via the separate {@link UpgradeContext} parameter on the
-   * 3-arg {@link UpgradeStep#execute(SchemaEditor, DataEditor, UpgradeContext)}.
+   * The editor implementation which is used by upgrade steps.
    */
   private class Editor implements SchemaEditor, DataEditor {
 

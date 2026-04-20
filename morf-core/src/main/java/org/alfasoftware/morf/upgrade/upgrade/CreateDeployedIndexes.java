@@ -18,33 +18,26 @@ package org.alfasoftware.morf.upgrade.upgrade;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
-import static org.alfasoftware.morf.sql.SqlUtils.insert;
-import static org.alfasoftware.morf.sql.SqlUtils.literal;
-import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 
-import java.util.UUID;
-
-import org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils;
 import org.alfasoftware.morf.metadata.DataType;
-import org.alfasoftware.morf.metadata.Index;
-import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.DataEditor;
 import org.alfasoftware.morf.upgrade.ExclusiveExecution;
 import org.alfasoftware.morf.upgrade.SchemaEditor;
 import org.alfasoftware.morf.upgrade.Sequence;
-import org.alfasoftware.morf.upgrade.UpgradeContext;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
 import org.alfasoftware.morf.upgrade.Version;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 
 /**
- * Creates the DeployedIndexes table and prepopulates it with all existing
- * indexes from the source schema.
+ * Creates the DeployedIndexes tracking table.
  *
- * <p>Must run before any step that uses deferred indexes. The
- * {@link ExclusiveExecution} annotation ensures this runs alone,
- * not in parallel with other steps.</p>
+ * <p>Under the slim invariant the table only ever holds rows for deferred
+ * indexes, so there's no prepopulation step — nothing to seed for indexes
+ * that existed before the feature was introduced (they're non-deferred and
+ * live only in the physical DB, where {@code SchemaHomology} handles them).</p>
+ *
+ * <p>Runs under {@link ExclusiveExecution} so it can't race with other
+ * steps.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -63,29 +56,11 @@ public class CreateDeployedIndexes implements UpgradeStep {
 
   @Override
   public String getDescription() {
-    return "Create DeployedIndexes table and prepopulate with existing indexes";
+    return "Create DeployedIndexes table";
   }
 
-  /**
-   * Never invoked — the framework always calls the 3-arg
-   * {@link #execute(SchemaEditor, DataEditor, UpgradeContext)}, which is
-   * where the real work lives. This step needs read access to the
-   * pre-upgrade source schema (for prepopulation), and that's only available
-   * through {@link UpgradeContext}.
-   */
   @Override
   public void execute(SchemaEditor schema, DataEditor data) {
-    throw new UnsupportedOperationException(
-        "CreateDeployedIndexes requires an UpgradeContext; use execute(SchemaEditor, DataEditor, UpgradeContext).");
-  }
-
-
-  @Override
-  public void execute(SchemaEditor schema, DataEditor data, UpgradeContext context) {
-    // Create the DeployedIndexes table. The visitor's visit(AddTable) path
-    // automatically tracks this table's own indexes (DeployedIdx_1, DeployedIdx_2)
-    // into DeployedIndexes via deployedIndexesService.trackIndex(...), so
-    // no explicit prepopulation is needed for them.
     schema.addTable(
         table(DEPLOYED_INDEXES)
             .columns(
@@ -107,35 +82,5 @@ public class CreateDeployedIndexes implements UpgradeStep {
                 index("DeployedIdx_2").columns("status")
             )
     );
-
-    // Prepopulate with all existing indexes from the source schema (tables
-    // that were already in the DB before this upgrade ran). The enricher
-    // treats any physical index without a tracking row as a consistency
-    // error on the next run.
-    Schema sourceSchema = context.getSourceSchema();
-    long createdTime = System.currentTimeMillis();
-
-    for (Table sourceTable : sourceSchema.tables()) {
-      for (Index idx : sourceTable.indexes()) {
-        if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(idx.getName())) {
-          continue;
-        }
-        long id = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
-        data.executeStatement(
-            insert().into(tableRef(DEPLOYED_INDEXES))
-                .values(
-                    literal(id).as("id"),
-                    literal(sourceTable.getName()).as("tableName"),
-                    literal(idx.getName()).as("indexName"),
-                    literal(idx.isUnique()).as("indexUnique"),
-                    literal(String.join(",", idx.columnNames())).as("indexColumns"),
-                    literal(false).as("indexDeferred"),
-                    literal("COMPLETED").as("status"),
-                    literal(0).as("retryCount"),
-                    literal(createdTime).as("createdTime")
-                )
-        );
-      }
-    }
   }
 }

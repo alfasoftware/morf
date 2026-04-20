@@ -98,57 +98,6 @@ public class TestDeployedIndexesIntegration {
   public void setUp() {
     schemaManager.dropAllTables();
     schemaManager.mutateToSupportSchema(INITIAL_SCHEMA, TruncationBehavior.ALWAYS);
-    // INITIAL_SCHEMA pre-creates the DeployedIndexes table via schemaManager
-    // (not via CreateDeployedIndexes step), so its own indexes DeployedIdx_1
-    // and DeployedIdx_2 are physical but untracked. Post-P1.2 the enricher
-    // hard-fails on untracked physical indexes, so seed the tracking rows
-    // here — mirrors what CreateDeployedIndexes would have done in production.
-    seedDeployedIndexesOwnTrackingRows();
-  }
-
-
-  /**
-   * Inserts tracking rows for {@code DeployedIdx_1} and {@code DeployedIdx_2}
-   * on the {@code DeployedIndexes} table itself. Kept in the fixture because
-   * INITIAL_SCHEMA bypasses {@code CreateDeployedIndexes}, which is where
-   * the rows would otherwise be created in production.
-   */
-  private void seedDeployedIndexesOwnTrackingRows() {
-    long now = System.currentTimeMillis();
-    java.util.List<String> sql = new java.util.ArrayList<>();
-    sql.addAll(connectionResources.sqlDialect().convertStatementToSQL(
-        org.alfasoftware.morf.sql.SqlUtils.insert()
-            .into(org.alfasoftware.morf.sql.SqlUtils.tableRef(
-                org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME))
-            .values(
-                org.alfasoftware.morf.sql.SqlUtils.literal(1L).as("id"),
-                org.alfasoftware.morf.sql.SqlUtils.literal("DeployedIndexes").as("tableName"),
-                org.alfasoftware.morf.sql.SqlUtils.literal("DeployedIdx_1").as("indexName"),
-                org.alfasoftware.morf.sql.SqlUtils.literal(true).as("indexUnique"),
-                org.alfasoftware.morf.sql.SqlUtils.literal("tableName,indexName").as("indexColumns"),
-                org.alfasoftware.morf.sql.SqlUtils.literal(false).as("indexDeferred"),
-                org.alfasoftware.morf.sql.SqlUtils.literal("COMPLETED").as("status"),
-                org.alfasoftware.morf.sql.SqlUtils.literal(0).as("retryCount"),
-                org.alfasoftware.morf.sql.SqlUtils.literal(now).as("createdTime")
-            )
-    ));
-    sql.addAll(connectionResources.sqlDialect().convertStatementToSQL(
-        org.alfasoftware.morf.sql.SqlUtils.insert()
-            .into(org.alfasoftware.morf.sql.SqlUtils.tableRef(
-                org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME))
-            .values(
-                org.alfasoftware.morf.sql.SqlUtils.literal(2L).as("id"),
-                org.alfasoftware.morf.sql.SqlUtils.literal("DeployedIndexes").as("tableName"),
-                org.alfasoftware.morf.sql.SqlUtils.literal("DeployedIdx_2").as("indexName"),
-                org.alfasoftware.morf.sql.SqlUtils.literal(false).as("indexUnique"),
-                org.alfasoftware.morf.sql.SqlUtils.literal("status").as("indexColumns"),
-                org.alfasoftware.morf.sql.SqlUtils.literal(false).as("indexDeferred"),
-                org.alfasoftware.morf.sql.SqlUtils.literal("COMPLETED").as("status"),
-                org.alfasoftware.morf.sql.SqlUtils.literal(0).as("retryCount"),
-                org.alfasoftware.morf.sql.SqlUtils.literal(now).as("createdTime")
-            )
-    ));
-    sqlScriptExecutorProvider.get().execute(sql);
   }
 
 

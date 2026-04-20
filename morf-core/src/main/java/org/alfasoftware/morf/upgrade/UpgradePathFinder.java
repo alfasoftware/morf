@@ -96,22 +96,16 @@ public class UpgradePathFinder {
 
 
   /**
-   * Returns a {@link SchemaChangeSequence} from all steps to apply, with the
-   * source schema exposed to upgrade steps via the 3-arg
-   * {@link UpgradeStep#execute(SchemaEditor, DataEditor, UpgradeContext)}
-   * overload (reachable by steps that override it — e.g.
-   * {@code CreateDeployedIndexes} for prepopulation).
+   * Returns a {@link SchemaChangeSequence} from all steps to apply.
    *
-   * @param sourceSchema schema prior to the upgrade; exposed to upgrade steps that need
-   *     read access.
    * @return the resulting schema change sequence.
    */
-  public SchemaChangeSequence getSchemaChangeSequence(Schema sourceSchema) {
+  public SchemaChangeSequence getSchemaChangeSequence() {
     List<UpgradeStep> upgradeSteps = Lists.newArrayList();
     for (CandidateStep upgradeStepClass : stepsToApply) {
       upgradeSteps.add(upgradeStepClass.createStep());
     }
-    return new SchemaChangeSequence(upgradeConfigAndContext, upgradeSteps, sourceSchema);
+    return new SchemaChangeSequence(upgradeConfigAndContext, upgradeSteps);
   }
 
 
@@ -128,7 +122,7 @@ public class UpgradePathFinder {
   public SchemaChangeSequence determinePath(Schema current, Schema target, Collection<String> exceptionRegexes) throws NoUpgradePathExistsException {
 
     // Create sequence of schema changes, adapt them to the current schema
-    SchemaChangeSequence schemaChangeSequence = getSchemaChangeSequence(current)
+    SchemaChangeSequence schemaChangeSequence = getSchemaChangeSequence()
         .adaptToSchema(current);
 
     // We have changes to make. Apply them against the current schema to see whether they get us the right position

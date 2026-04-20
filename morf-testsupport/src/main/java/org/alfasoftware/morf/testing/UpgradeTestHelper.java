@@ -35,7 +35,6 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaHomology;
-import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager.TruncationBehavior;
 import org.alfasoftware.morf.upgrade.InlineTableUpgrader;
 import org.alfasoftware.morf.upgrade.LoggingSqlScriptVisitor;
@@ -109,7 +108,7 @@ public class UpgradeTestHelper {
     Collection<Class<? extends UpgradeStep>> orderedSteps = new UpgradeGraph(upgradeSteps).orderedSteps();
 
     // Build the change sequence, and the "from" schema (the start point for the upgrade)
-    SchemaChangeSequence schemaChangeSequence = new SchemaChangeSequence(upgradeConfigAndContext, instantiateAndValidateUpgradeSteps(orderedSteps), SchemaUtils.schema());
+    SchemaChangeSequence schemaChangeSequence = new SchemaChangeSequence(upgradeConfigAndContext, instantiateAndValidateUpgradeSteps(orderedSteps));
     Schema fromSchema = schemaChangeSequence.applyInReverseToSchema(finalSchema);
 
     // Apply the changes forwards to prime the sequence.
