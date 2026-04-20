@@ -42,6 +42,37 @@ public class TestDeployedIndexesServiceImpl {
   }
 
 
+  /**
+   * prime populates the in-session map from a persisted tracking row
+   * without emitting any DML. After priming, isTracked / isTrackedDeferred
+   * must return true so subsequent remove/rename/etc. calls correctly
+   * produce DML against the persisted row.
+   */
+  @Test
+  public void testPrimeSeedsInSessionStateWithoutEmittingDml() {
+    // given — a persisted deferred row
+    DeployedIndex entry = new DeployedIndex();
+    entry.setTableName("Product");
+    entry.setIndexName("Product_Name_1");
+    entry.setIndexUnique(false);
+    entry.setIndexColumns(List.of("name"));
+    entry.setIndexDeferred(true);
+    entry.setStatus(DeployedIndexStatus.PENDING);
+
+    // when
+    service.prime(entry);
+
+    // then — state is seeded
+    assertTrue("Primed entry should be tracked", service.isTracked("Product", "Product_Name_1"));
+    assertTrue("Primed entry should be tracked as deferred", service.isTrackedDeferred("Product", "Product_Name_1"));
+
+    // and — a subsequent removeIndex produces a DELETE DML (not a no-op),
+    // because the primed row is treated as if it existed in-session.
+    List<? extends Statement> deleteStmts = service.removeIndex("Product", "Product_Name_1");
+    assertEquals("removeIndex on primed row should emit one DELETE", 1, deleteStmts.size());
+  }
+
+
   /** trackIndex should register and return INSERT statement. */
   @Test
   public void testTrackIndexReturnsInsert() {

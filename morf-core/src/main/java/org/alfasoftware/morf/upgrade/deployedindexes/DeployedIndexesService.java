@@ -23,24 +23,49 @@ import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.UpdateStatement;
 
 /**
- * Tracks ALL index operations (deferred and non-deferred) during a single
- * upgrade session and produces the DSL DML statements
+ * Tracks deferred-index operations during a single upgrade session and
+ * produces the DSL DML statements
  * ({@link InsertStatement}, {@link UpdateStatement}, {@link DeleteStatement})
  * needed to keep the DeployedIndexes table in sync with schema changes.
  *
+ * <p><b>Slim invariant</b> (this branch): the service tracks only
+ * <em>deferred</em> indexes — non-deferred indexes live only in the physical
+ * DB. The visitor gates {@link #trackIndex(String, Index)} calls on
+ * {@code isDeferred()}.</p>
+ *
  * <p>This service is stateful and scoped to one upgrade run. A fresh
- * instance must be created for each upgrade execution.</p>
+ * instance must be created for each upgrade execution. At the start of
+ * each session the enricher
+ * {@link DeployedIndexesModelEnricher#enrich(org.alfasoftware.morf.metadata.Schema)}
+ * calls {@link #prime(DeployedIndex)} for every persisted deferred row so
+ * that subsequent {@link #removeIndex(String, String)} / rename / column
+ * operations correctly produce DML against previously-persisted rows.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
 public interface DeployedIndexesService {
 
   /**
-   * Records an index in the service and returns the INSERT statement
-   * that adds it to the DeployedIndexes table.
+   * Seeds the in-session state with a persisted tracking row WITHOUT
+   * emitting any DML. Called by the enricher at the start of an upgrade
+   * session for every row already in the DeployedIndexes table — so that
+   * subsequent {@link #removeIndex}, {@link #updateIndexName},
+   * {@link #updateColumnName}, etc. can correctly identify and emit DML for
+   * rows persisted by earlier upgrades.
+   *
+   * @param entry the persisted row to seed.
+   */
+  void prime(DeployedIndex entry);
+
+
+  /**
+   * Records a deferred index in the service and returns the INSERT
+   * statement that adds it to the DeployedIndexes table. Non-deferred
+   * indexes are not tracked in the slim model — the visitor gates calls
+   * on {@code index.isDeferred()}.
    *
    * @param tableName the table the index belongs to.
-   * @param index the index metadata.
+   * @param index the index metadata (must be {@code isDeferred()=true}).
    * @return INSERT statements to be executed by the caller.
    */
   List<InsertStatement> trackIndex(String tableName, Index index);

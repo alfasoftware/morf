@@ -970,12 +970,11 @@ public class TestInlineTableUpgrader {
 
 
   /**
-   * On a dialect without deferred-index-creation support, a declared-deferred
-   * AddIndex must be treated as immediate: physical CREATE INDEX is emitted
-   * and the DeployedIndexes tracking row must record indexDeferred=false /
-   * status=COMPLETED — NOT PENDING / deferred=true. Otherwise the app-side
-   * executor would see the index in getDeferredIndexStatements() and issue a
-   * duplicate CREATE INDEX.
+   * Slim invariant + dialect-support normalization: on a dialect without
+   * deferred-index-creation support, a declared-deferred AddIndex is
+   * normalized to immediate (CREATE INDEX runs now) AND — because the slim
+   * model only tracks deferred indexes — produces NO DeployedIndexes INSERT
+   * at all. The app-side executor therefore cannot double-CREATE.
    */
   @Test
   public void testVisitAddIndexDeferredOnDialectWithoutDeferredSupport() {
@@ -997,31 +996,23 @@ public class TestInlineTableUpgrader {
     when(newTable.getName()).thenReturn(ID_TABLE_NAME);
     when(schema.getTable(ID_TABLE_NAME)).thenReturn(newTable);
 
-    ArgumentCaptor<org.alfasoftware.morf.sql.InsertStatement> insertCaptor =
-        ArgumentCaptor.forClass(org.alfasoftware.morf.sql.InsertStatement.class);
-
     // when
     upgrader.visit(addIndex);
 
     // then — physical CREATE INDEX emitted (declared-deferred promoted-to-immediate)
     verify(sqlDialect).addIndexStatements(nullable(Table.class), nullable(Index.class));
 
-    // and — the tracking INSERT carries indexDeferred=false and status=COMPLETED
-    verify(sqlDialect, atLeastOnce()).convertStatementToSQL(insertCaptor.capture());
-    org.alfasoftware.morf.sql.InsertStatement captured = insertCaptor.getValue();
-    boolean indexDeferred = findBooleanLiteralByAlias(captured, "indexDeferred");
-    String status = findStringLiteralByAlias(captured, "status");
-    assertEquals("indexDeferred should be normalized to false on unsupported dialect",
-        false, indexDeferred);
-    assertEquals("status should be COMPLETED (physical index was built)",
-        "COMPLETED", status);
+    // and — NO tracking INSERT (slim: non-deferred is not tracked)
+    verify(sqlDialect, never()).convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.InsertStatement.class));
   }
 
 
   /**
-   * On a dialect without deferred-index-creation support, a ChangeIndex
-   * from immediate to declared-deferred must be treated as immediate:
-   * physical DROP + CREATE emitted, tracking row COMPLETED / indexDeferred=false.
+   * Slim invariant + dialect-support normalization: ChangeIndex from
+   * immediate to declared-deferred on a dialect without deferred support
+   * emits physical DROP + CREATE (the to-index normalizes to immediate) AND
+   * produces no DeployedIndexes INSERT for the new row. No DELETE either,
+   * since the from-index wasn't tracked in the first place.
    */
   @Test
   public void testVisitChangeIndexToDeferredOnDialectWithoutDeferredSupport() {
@@ -1051,9 +1042,6 @@ public class TestInlineTableUpgrader {
     when(changeIndex.getFromIndex()).thenReturn(fromIndex);
     when(changeIndex.getToIndex()).thenReturn(toIndex);
 
-    ArgumentCaptor<org.alfasoftware.morf.sql.InsertStatement> insertCaptor =
-        ArgumentCaptor.forClass(org.alfasoftware.morf.sql.InsertStatement.class);
-
     // when
     upgrader.visit(changeIndex);
 
@@ -1061,42 +1049,7 @@ public class TestInlineTableUpgrader {
     verify(sqlDialect).indexDropStatements(nullable(Table.class), nullable(Index.class));
     verify(sqlDialect).addIndexStatements(nullable(Table.class), nullable(Index.class));
 
-    // and — the tracking INSERT carries indexDeferred=false and status=COMPLETED
-    verify(sqlDialect, atLeastOnce()).convertStatementToSQL(insertCaptor.capture());
-    org.alfasoftware.morf.sql.InsertStatement captured = insertCaptor.getValue();
-    boolean indexDeferred = findBooleanLiteralByAlias(captured, "indexDeferred");
-    String status = findStringLiteralByAlias(captured, "status");
-    assertEquals("indexDeferred should be normalized to false on unsupported dialect",
-        false, indexDeferred);
-    assertEquals("status should be COMPLETED (physical index was built)",
-        "COMPLETED", status);
-  }
-
-
-  /**
-   * Looks up a boolean literal value in an InsertStatement by its column
-   * alias. Used by the dialect-support tests above to inspect the tracking
-   * row's indexDeferred flag without parsing SQL.
-   */
-  private static boolean findBooleanLiteralByAlias(org.alfasoftware.morf.sql.InsertStatement insert, String alias) {
-    for (org.alfasoftware.morf.sql.element.AliasedField field : insert.getValues()) {
-      if (alias.equalsIgnoreCase(field.getAlias()) && field instanceof org.alfasoftware.morf.sql.element.FieldLiteral) {
-        return Boolean.parseBoolean(((org.alfasoftware.morf.sql.element.FieldLiteral) field).getValue());
-      }
-    }
-    throw new AssertionError("No boolean literal with alias [" + alias + "] in INSERT");
-  }
-
-
-  /**
-   * Looks up a string literal value in an InsertStatement by its column alias.
-   */
-  private static String findStringLiteralByAlias(org.alfasoftware.morf.sql.InsertStatement insert, String alias) {
-    for (org.alfasoftware.morf.sql.element.AliasedField field : insert.getValues()) {
-      if (alias.equalsIgnoreCase(field.getAlias()) && field instanceof org.alfasoftware.morf.sql.element.FieldLiteral) {
-        return ((org.alfasoftware.morf.sql.element.FieldLiteral) field).getValue();
-      }
-    }
-    throw new AssertionError("No string literal with alias [" + alias + "] in INSERT");
+    // and — NO tracking INSERT (slim: non-deferred is not tracked)
+    verify(sqlDialect, never()).convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.InsertStatement.class));
   }
 }

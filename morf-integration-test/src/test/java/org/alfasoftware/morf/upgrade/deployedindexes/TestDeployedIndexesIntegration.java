@@ -341,11 +341,12 @@ public class TestDeployedIndexesIntegration {
 
   /**
    * Step A adds a non-deferred index on column "name". Step B renames "name"
-   * to "label". The DeployedIndexes row's indexColumns should be updated to
-   * "label" (the physical index is automatically updated by the DDL).
+   * to "label". <b>Slim invariant:</b> non-deferred indexes are not tracked
+   * in {@code DeployedIndexes} — the rename is applied physically via
+   * ALTER TABLE and no tracking row exists to update.
    */
   @Test
-  public void testCrossStepColumnRenameOnNonDeferredIndex() {
+  public void testCrossStepColumnRenameOnNonDeferredIndexDoesNotTrack() {
     // given
     Schema renamedColSchema = schemaWith(
         table("Product").columns(
@@ -359,11 +360,10 @@ public class TestDeployedIndexesIntegration {
         org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddImmediateIndex.class,
         org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v2_0_0.RenameColumnWithDeferredIndex.class);
 
-    // then -- DeployedIndexes row has the new column name and remains COMPLETED
-    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
-    assertEquals("label", queryDeployedIndexField("Product_Name_1", "indexColumns"));
-    assertTrue("Should not be deferred",
-        "FALSE".equalsIgnoreCase(queryDeployedIndexField("Product_Name_1", "indexDeferred")));
+    // then -- physical index exists (under the renamed column) and no tracking row
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+    assertNull("Slim: non-deferred indexes are not tracked in DeployedIndexes",
+        queryDeployedIndexField("Product_Name_1", "status"));
   }
 
 
@@ -461,8 +461,9 @@ public class TestDeployedIndexesIntegration {
   // =========================================================================
 
   /**
-   * A non-deferred addIndex should be built immediately, exist physically,
-   * and have a COMPLETED row in DeployedIndexes.
+   * A non-deferred addIndex should be built immediately and exist physically.
+   * <b>Slim invariant:</b> non-deferred indexes are not tracked in
+   * {@code DeployedIndexes}.
    */
   @Test
   public void testNonDeferredIndexBuiltImmediately() {
@@ -478,19 +479,19 @@ public class TestDeployedIndexesIntegration {
     performUpgrade(targetSchema,
         org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddImmediateIndex.class);
 
-    // then -- physical index exists AND DeployedIndexes row is COMPLETED
+    // then -- physical index exists and NO tracking row (slim invariant)
     assertPhysicalIndexExists("Product", "Product_Name_1");
-    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
-    assertTrue("Should not be deferred",
-        "FALSE".equalsIgnoreCase(queryDeployedIndexField("Product_Name_1", "indexDeferred")));
+    assertNull("Slim: non-deferred indexes are not tracked in DeployedIndexes",
+        queryDeployedIndexField("Product_Name_1", "status"));
   }
 
 
   /**
    * When forceImmediateIndexes is configured for an index name, a deferred
    * addIndex should be built immediately during upgrade. The physical index
-   * should exist, the DeployedIndexes row should be COMPLETED, and
-   * getDeferredIndexStatements() should be empty.
+   * should exist and {@code getDeferredIndexStatements()} should be empty.
+   * <b>Slim invariant:</b> since the index ends up non-deferred after the
+   * force-immediate resolution, it is not tracked.
    */
   @Test
   public void testForceImmediateBypassesDeferral() {
@@ -504,9 +505,10 @@ public class TestDeployedIndexesIntegration {
         Collections.singletonList(AddDeferredIndex.class),
         connectionResources, forceConfig, viewDeploymentValidator);
 
-    // then -- built immediately
+    // then -- built immediately + no tracking row (slim: non-deferred not tracked)
     assertPhysicalIndexExists("Product", "Product_Name_1");
-    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
+    assertNull("Slim: force-immediate ends up non-deferred → not tracked",
+        queryDeployedIndexField("Product_Name_1", "status"));
     assertTrue("No deferred statements expected", path.getDeferredIndexStatements().isEmpty());
   }
 
@@ -807,57 +809,9 @@ public class TestDeployedIndexesIntegration {
   }
 
 
-  /**
-   * CreateDeployedIndexes should create the DeployedIndexes table and
-   * prepopulate it with all pre-existing physical indexes across every
-   * table — including Morf infrastructure tables (UpgradeAudit,
-   * DeployedViews, DeployedIndexes) — with status COMPLETED and
-   * indexDeferred false. Only {@code _PRF} indexes are excluded
-   * (performance-testing, by design).
-   */
-  @Test
-  public void testPrepopulationPopulatesExistingIndexes() {
-    // given -- Product has a pre-existing physical index but no DeployedIndexes table
-    schemaManager.dropAllTables();
-    schemaManager.mutateToSupportSchema(
-        schema(
-            deployedViewsTable(),
-            upgradeAuditTable(),
-            table("Product").columns(
-                column("id", DataType.BIG_INTEGER).primaryKey(),
-                column("name", DataType.STRING, 100)
-            ).indexes(index("Product_Name_1").columns("name"))
-        ),
-        TruncationBehavior.ALWAYS);
-
-    // when -- run CreateDeployedIndexes to create and prepopulate the table
-    Schema targetSchema = schemaWith(
-        table("Product").columns(
-            column("id", DataType.BIG_INTEGER).primaryKey(),
-            column("name", DataType.STRING, 100)
-        ).indexes(index("Product_Name_1").columns("name"))
-    );
-    performUpgrade(targetSchema,
-        org.alfasoftware.morf.upgrade.upgrade.CreateDeployedIndexes.class);
-
-    // then -- pre-existing index is tracked (names come from H2 metadata, folded to uppercase)
-    assertTrue("Expected COMPLETED status for pre-populated index",
-        "COMPLETED".equalsIgnoreCase(queryDeployedIndexField("Product_Name_1", "status")));
-    assertTrue("Expected tableName Product",
-        "PRODUCT".equalsIgnoreCase(queryDeployedIndexField("Product_Name_1", "tableName")));
-    assertTrue("Expected column 'name'",
-        "NAME".equalsIgnoreCase(queryDeployedIndexField("Product_Name_1", "indexColumns")));
-    assertTrue("Should not be deferred",
-        "FALSE".equalsIgnoreCase(queryDeployedIndexField("Product_Name_1", "indexDeferred")));
-
-    // and -- the DeployedIndexes table's own indexes are tracked via visit(AddTable).
-    // This exercises the P1.2 change that removed the Morf-infrastructure-table skip:
-    // Morf tables' indexes are now tracked the same way as user tables' indexes.
-    assertTrue("DeployedIdx_1 should be tracked (visit(AddTable) recorded it)",
-        "COMPLETED".equalsIgnoreCase(queryDeployedIndexField("DeployedIdx_1", "status")));
-    assertTrue("DeployedIdx_2 should be tracked (visit(AddTable) recorded it)",
-        "COMPLETED".equalsIgnoreCase(queryDeployedIndexField("DeployedIdx_2", "status")));
-  }
+  // testPrepopulationPopulatesExistingIndexes: deleted in slim.
+  // Prepopulation was a full-model feature — slim tracks only deferred,
+  // so there are no pre-existing indexes to prepopulate rows for.
 
 
   // =========================================================================

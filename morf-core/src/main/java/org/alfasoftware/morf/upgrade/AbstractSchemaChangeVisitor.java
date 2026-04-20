@@ -127,12 +127,15 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     currentSchema = addTable.apply(currentSchema);
     writeStatements(sqlDialect.tableDeploymentStatements(addTable.getTable()));
 
-    // Track all indexes on the new table in DeployedIndexes. Normalize against
-    // dialect support so indexes declared deferred on a dialect that doesn't
-    // support deferred creation are tracked as indexDeferred=false / COMPLETED —
-    // matching the fact that CREATE TABLE just built them immediately.
+    // Slim invariant: DeployedIndexes tracks ONLY deferred indexes. For each
+    // index on the new table, first normalize against dialect support
+    // (declared-deferred on an unsupported dialect becomes immediate, not
+    // tracked) — then track only if the effective form is still deferred.
     for (Index index : addTable.getTable().indexes()) {
-      trackInDeployedIndexes(addTable.getTable().getName(), effectiveIndex(index));
+      Index effective = effectiveIndex(index);
+      if (effective.isDeferred()) {
+        trackInDeployedIndexes(addTable.getTable().getName(), effective);
+      }
     }
   }
 
@@ -212,12 +215,15 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     Index fromIndex = changeIndex.getFromIndex();
     // Normalize the toIndex's deferred flag against dialect support so the
     // tracking row matches physical reality on dialects that don't support
-    // deferred creation (CREATE runs immediately → track as COMPLETED, not PENDING).
+    // deferred creation (CREATE runs immediately → nothing tracked in slim).
     Index toIndex = effectiveIndex(changeIndex.getToIndex());
 
     // Capture BEFORE the tracking/schema mutations below (see visit(RemoveIndex) note).
     boolean fromWillBePresent = willBePhysicallyPresentAtThisEmission(tableName, fromIndex.getName());
 
+    // Always call removeIndex: the DELETE WHERE (table, index) clause is a
+    // no-op if the row doesn't exist, and we want to purge any prior deferred
+    // tracking row if we're changing away from a deferred index.
     deployedIndexesService.removeIndex(tableName, fromIndex.getName())
         .forEach(this::writeDeployedIndexesDml);
     currentSchema = changeIndex.apply(currentSchema);
@@ -228,7 +234,10 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     if (shouldEmitPhysicalIndexDdl(toIndex)) {
       writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(tableName), toIndex));
     }
-    trackInDeployedIndexes(tableName, toIndex);
+    // Slim invariant: track only if the effective new index is deferred.
+    if (toIndex.isDeferred()) {
+      trackInDeployedIndexes(tableName, toIndex);
+    }
   }
 
 
@@ -350,7 +359,10 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     if (shouldEmitPhysicalIndexDdl(newIndex)) {
       emitAddIndexOrRename(tableName, newIndex);
     }
-    trackInDeployedIndexes(tableName, newIndex);
+    // Slim invariant: track only if the effective index is deferred.
+    if (newIndex.isDeferred()) {
+      trackInDeployedIndexes(tableName, newIndex);
+    }
   }
 
 

@@ -61,6 +61,26 @@ public class DeployedIndexesServiceImpl implements DeployedIndexesService {
 
 
   @Override
+  public void prime(DeployedIndex entry) {
+    if (log.isDebugEnabled()) {
+      log.debug("Priming (persisted row): table=" + entry.getTableName()
+          + ", index=" + entry.getIndexName());
+    }
+    // Reconstruct the Index from the persisted row. Slim invariant: every
+    // persisted row is a deferred index, so the rebuilt Index is always
+    // marked deferred regardless of the legacy indexDeferred column.
+    IndexBuilder builder = index(entry.getIndexName()).columns(entry.getIndexColumns());
+    if (entry.isIndexUnique()) {
+      builder = builder.unique();
+    }
+    builder = builder.deferred();
+    trackedIndexes
+        .computeIfAbsent(entry.getTableName().toUpperCase(), k -> new LinkedHashMap<>())
+        .put(entry.getIndexName().toUpperCase(), new IndexRecord(entry.getTableName(), builder));
+  }
+
+
+  @Override
   public List<InsertStatement> trackIndex(String tableName, Index index) {
     if (log.isDebugEnabled()) {
       log.debug("Tracking index: table=" + tableName + ", index=" + index.getName()
