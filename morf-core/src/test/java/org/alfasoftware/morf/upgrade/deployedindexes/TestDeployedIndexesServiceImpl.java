@@ -62,7 +62,7 @@ public class TestDeployedIndexesServiceImpl {
     service.prime(entry);
 
     // then — state is seeded
-    assertTrue("Primed entry should be tracked", service.isTracked("Product", "Product_Name_1"));
+    assertTrue("Primed entry should be tracked", service.isTrackedDeferred("Product", "Product_Name_1"));
     assertTrue("Primed entry should be tracked as deferred", service.isTrackedDeferred("Product", "Product_Name_1"));
 
     // and — a subsequent removeIndex produces a DELETE DML (not a no-op),
@@ -83,12 +83,14 @@ public class TestDeployedIndexesServiceImpl {
 
     // then
     assertEquals(1, stmts.size());
-    assertTrue("Should be tracked", service.isTracked("Table1", "Idx1"));
+    assertTrue("Should be tracked", service.isTrackedDeferred("Table1", "Idx1"));
     assertTrue("Should contain DeployedIndexes", stmts.get(0).toString().contains("DeployedIndexes"));
   }
 
 
-  /** trackIndex for deferred should set isTrackedDeferred. */
+  /** trackIndex for deferred should set isTrackedDeferred. In the slim
+   *  invariant the visitor only ever calls trackIndex for deferred indexes,
+   *  so there is no non-deferred case to test. */
   @Test
   public void testTrackDeferredIndex() {
     // given
@@ -98,23 +100,7 @@ public class TestDeployedIndexesServiceImpl {
     service.trackIndex("Table1", idx);
 
     // then
-    assertTrue("Should be tracked", service.isTracked("Table1", "Idx1"));
     assertTrue("Should be tracked as deferred", service.isTrackedDeferred("Table1", "Idx1"));
-  }
-
-
-  /** trackIndex for non-deferred should not be tracked as deferred. */
-  @Test
-  public void testTrackNonDeferredIndex() {
-    // given
-    Index idx = index("Idx1").columns("col1");
-
-    // when
-    service.trackIndex("Table1", idx);
-
-    // then
-    assertTrue("Should be tracked", service.isTracked("Table1", "Idx1"));
-    assertFalse("Should not be tracked as deferred", service.isTrackedDeferred("Table1", "Idx1"));
   }
 
 
@@ -125,8 +111,8 @@ public class TestDeployedIndexesServiceImpl {
     service.trackIndex("MyTable", index("MyIdx").columns("col1"));
 
     // then
-    assertTrue(service.isTracked("MYTABLE", "MYIDX"));
-    assertTrue(service.isTracked("mytable", "myidx"));
+    assertTrue(service.isTrackedDeferred("MYTABLE", "MYIDX"));
+    assertTrue(service.isTrackedDeferred("mytable", "myidx"));
   }
 
 
@@ -141,7 +127,7 @@ public class TestDeployedIndexesServiceImpl {
 
     // then
     assertEquals(1, stmts.size());
-    assertFalse("Should be untracked", service.isTracked("Table1", "Idx1"));
+    assertFalse("Should be untracked", service.isTrackedDeferred("Table1", "Idx1"));
   }
 
 
@@ -169,9 +155,9 @@ public class TestDeployedIndexesServiceImpl {
 
     // then
     assertEquals(1, stmts.size());
-    assertFalse(service.isTracked("Table1", "Idx1"));
-    assertFalse(service.isTracked("Table1", "Idx2"));
-    assertTrue("Table2 should be unaffected", service.isTracked("Table2", "Idx3"));
+    assertFalse(service.isTrackedDeferred("Table1", "Idx1"));
+    assertFalse(service.isTrackedDeferred("Table1", "Idx2"));
+    assertTrue("Table2 should be unaffected", service.isTrackedDeferred("Table2", "Idx3"));
   }
 
 
@@ -186,8 +172,8 @@ public class TestDeployedIndexesServiceImpl {
     List<? extends Statement> stmts = service.removeIndexesReferencingColumn("Table1", "col1");
 
     // then
-    assertFalse("Idx1 should be removed", service.isTracked("Table1", "Idx1"));
-    assertTrue("Idx2 should remain", service.isTracked("Table1", "Idx2"));
+    assertFalse("Idx1 should be removed", service.isTrackedDeferred("Table1", "Idx1"));
+    assertTrue("Idx2 should remain", service.isTrackedDeferred("Table1", "Idx2"));
   }
 
 
@@ -202,8 +188,8 @@ public class TestDeployedIndexesServiceImpl {
 
     // then
     assertEquals(1, stmts.size());
-    assertFalse(service.isTracked("OldTable", "Idx1"));
-    assertTrue(service.isTracked("NewTable", "Idx1"));
+    assertFalse(service.isTrackedDeferred("OldTable", "Idx1"));
+    assertTrue(service.isTrackedDeferred("NewTable", "Idx1"));
   }
 
 
@@ -218,8 +204,8 @@ public class TestDeployedIndexesServiceImpl {
 
     // then
     assertEquals(1, stmts.size());
-    assertFalse(service.isTracked("Table1", "OldIdx"));
-    assertTrue(service.isTracked("Table1", "NewIdx"));
+    assertFalse(service.isTrackedDeferred("Table1", "OldIdx"));
+    assertTrue(service.isTrackedDeferred("Table1", "NewIdx"));
   }
 
 

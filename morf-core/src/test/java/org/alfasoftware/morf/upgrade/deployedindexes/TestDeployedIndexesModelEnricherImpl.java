@@ -238,7 +238,7 @@ public class TestDeployedIndexesModelEnricherImpl {
 
     // then — service is populated; visitor can now operate on this persisted row
     assertTrue("Persisted row should be tracked in service after priming",
-        service.isTracked("MyTable", "MyIdx"));
+        service.isTrackedDeferred("MyTable", "MyIdx"));
     assertTrue("Persisted deferred row should read as deferred after priming",
         service.isTrackedDeferred("MyTable", "MyIdx"));
   }

@@ -93,20 +93,9 @@ public class DeployedIndexesServiceImpl implements DeployedIndexesService {
 
 
   @Override
-  public boolean isTracked(String tableName, String indexName) {
-    Map<String, IndexRecord> tableMap = trackedIndexes.get(tableName.toUpperCase());
-    return tableMap != null && tableMap.containsKey(indexName.toUpperCase());
-  }
-
-
-  @Override
   public boolean isTrackedDeferred(String tableName, String indexName) {
     Map<String, IndexRecord> tableMap = trackedIndexes.get(tableName.toUpperCase());
-    if (tableMap == null) {
-      return false;
-    }
-    IndexRecord record = tableMap.get(indexName.toUpperCase());
-    return record != null && record.index.isDeferred();
+    return tableMap != null && tableMap.containsKey(indexName.toUpperCase());
   }
 
 

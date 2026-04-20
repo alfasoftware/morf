@@ -74,21 +74,13 @@ public interface DeployedIndexesService {
 
   /**
    * Returns {@code true} if an index is currently tracked for the given
-   * table and index name (case-insensitive).
+   * table and index name (case-insensitive). Under the slim invariant every
+   * tracked index is deferred, so this is both the "is tracked" and the
+   * "is tracked deferred" query.
    *
    * @param tableName the table name.
    * @param indexName the index name.
    * @return true if tracked.
-   */
-  boolean isTracked(String tableName, String indexName);
-
-
-  /**
-   * Returns {@code true} if the tracked index is deferred.
-   *
-   * @param tableName the table name.
-   * @param indexName the index name.
-   * @return true if tracked and deferred.
    */
   boolean isTrackedDeferred(String tableName, String indexName);
 
