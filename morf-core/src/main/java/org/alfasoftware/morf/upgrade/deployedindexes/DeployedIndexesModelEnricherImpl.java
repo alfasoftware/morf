@@ -15,16 +15,13 @@
 
 package org.alfasoftware.morf.upgrade.deployedindexes;
 
-import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
-import org.alfasoftware.morf.jdbc.DatabaseMetaDataProviderUtils;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaUtils;
@@ -39,8 +36,23 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 /**
- * Default implementation of {@link DeployedIndexesModelEnricher}. See the
- * interface for overall contract and consistency-validation rules.
+ * Default implementation of {@link DeployedIndexesModelEnricher} for the
+ * slim invariant (tracking = deferred-only).
+ *
+ * <p>Responsibilities:</p>
+ * <ol>
+ *   <li><b>Prime the per-session service</b> with every persisted tracking
+ *       row so that remove/rename/column operations on indexes added by
+ *       earlier upgrades emit correct DML against the existing rows.</li>
+ *   <li><b>Virtualize unbuilt deferred indexes</b> (status not COMPLETED)
+ *       into the schema so that {@code SchemaHomology.schemasMatch} treats
+ *       them as declared — which they are — and does not treat them as
+ *       missing from the physical schema.</li>
+ * </ol>
+ *
+ * <p>Physical-vs-declared consistency for non-deferred indexes is not this
+ * class's concern — {@code SchemaHomology} handles drift detection at
+ * upgrade-path-finding time.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -66,13 +78,8 @@ public class DeployedIndexesModelEnricherImpl implements DeployedIndexesModelEnr
   }
 
 
-  /**
-   * {@inheritDoc}
-   *
-   * @throws IllegalStateException if consistency validation fails.
-   */
   @Override
-  public EnrichedModel enrich(Schema physicalSchema) {
+  public EnrichedModel enrich(Schema physicalSchema, DeployedIndexesService service) {
     if (shouldSkipEnrichment(physicalSchema)) {
       return new EnrichedModel(physicalSchema, DeployedIndexState.empty());
     }
@@ -83,24 +90,65 @@ public class DeployedIndexesModelEnricherImpl implements DeployedIndexesModelEnr
       return new EnrichedModel(physicalSchema, DeployedIndexState.empty());
     }
 
-    // tableName (upper) -> indexName (upper) -> entry. The inner maps are
-    // mutated as entries are consumed by the physical-indexes pass; what
-    // remains is, by invariant, "tracked but not physically present".
-    Map<String, Map<String, DeployedIndex>> trackingRowsByTable = buildTrackingRowsByTable(entries);
-    Map<IndexKey, IndexPresence> observedPresence = new HashMap<>();
+    // Prime the service with every persisted row — remove/rename/column
+    // operations in this session need the in-memory map populated to emit
+    // correct DML against rows persisted by prior upgrades.
+    for (DeployedIndex entry : entries) {
+      service.prime(entry);
+    }
 
+    // Bucket unbuilt entries by upper-cased table name. COMPLETED entries are
+    // already in the physical schema, so no virtualization is needed (and no
+    // state entry — UNKNOWN is the correct default for the visitor).
+    Map<String, List<DeployedIndex>> unbuiltByTable = new HashMap<>();
+    for (DeployedIndex entry : entries) {
+      if (entry.getStatus() == DeployedIndexStatus.COMPLETED) {
+        continue;
+      }
+      unbuiltByTable
+          .computeIfAbsent(entry.getTableName().toUpperCase(), k -> new ArrayList<>())
+          .add(entry);
+    }
+
+    if (unbuiltByTable.isEmpty()) {
+      return new EnrichedModel(physicalSchema, DeployedIndexState.empty());
+    }
+
+    Map<IndexKey, IndexPresence> observedPresence = new HashMap<>();
     List<Table> enrichedTables = new ArrayList<>();
     boolean changed = false;
 
     for (Table physicalTable : physicalSchema.tables()) {
-      Optional<Table> enriched = enrichTable(physicalTable,
-          trackingRowsByTable.getOrDefault(physicalTable.getName().toUpperCase(), new HashMap<>()),
-          observedPresence);
-      enrichedTables.add(enriched.orElse(physicalTable));
-      changed |= enriched.isPresent();
+      List<DeployedIndex> unbuilt = unbuiltByTable.remove(physicalTable.getName().toUpperCase());
+      if (unbuilt == null || unbuilt.isEmpty()) {
+        enrichedTables.add(physicalTable);
+        continue;
+      }
+
+      List<Index> indexes = new ArrayList<>(physicalTable.indexes());
+      for (DeployedIndex entry : unbuilt) {
+        indexes.add(entry.toIndex());
+        observedPresence.put(new IndexKey(physicalTable.getName(), entry.getIndexName()),
+            IndexPresence.ABSENT);
+      }
+      enrichedTables.add(table(physicalTable.getName())
+          .columns(physicalTable.columns())
+          .indexes(indexes));
+      changed = true;
     }
 
-    validateNoOrphanTrackingRows(trackingRowsByTable);
+    // Any unbuilt entries left in the map reference tables not in the physical
+    // schema — likely a crashed/partial upgrade or out-of-band DROP TABLE.
+    // We don't hard-fail (SchemaHomology will surface real drift later); log
+    // and move on.
+    if (!unbuiltByTable.isEmpty() && log.isDebugEnabled()) {
+      for (List<DeployedIndex> stragglers : unbuiltByTable.values()) {
+        for (DeployedIndex e : stragglers) {
+          log.debug("Unbuilt deferred row for table not in schema: "
+              + e.getTableName() + "." + e.getIndexName());
+        }
+      }
+    }
 
     Schema schema = changed ? SchemaUtils.schema(enrichedTables) : physicalSchema;
     return new EnrichedModel(schema, new DeployedIndexState(observedPresence));
@@ -123,172 +171,5 @@ public class DeployedIndexesModelEnricherImpl implements DeployedIndexesModelEnr
       return true;
     }
     return false;
-  }
-
-
-  /**
-   * Enriches a single table's indexes. Returns a new {@link Table} if any
-   * index changed (rebuilt with deferred flag or a virtual deferred added);
-   * {@link Optional#empty()} if no change was needed and the caller should
-   * keep the original.
-   *
-   * @param physicalTable the physical table.
-   * @param tableEntries tracking rows for this table, keyed by upper-case
-   *     index name; this map is mutated — consumed entries are removed.
-   * @param presence output map: operational state is written into this.
-   */
-  private Optional<Table> enrichTable(Table physicalTable,
-                                       Map<String, DeployedIndex> tableEntries,
-                                       Map<IndexKey, IndexPresence> observedPresence) {
-    List<Index> rebuiltIndexes = new ArrayList<>();
-    boolean changed = processPhysicalIndexes(physicalTable, tableEntries, rebuiltIndexes, observedPresence);
-    changed |= processRemainingTrackingEntries(physicalTable.getName(), tableEntries, rebuiltIndexes, observedPresence);
-
-    if (!changed) {
-      return Optional.empty();
-    }
-    return Optional.of(table(physicalTable.getName())
-        .columns(physicalTable.columns())
-        .indexes(rebuiltIndexes));
-  }
-
-
-  /**
-   * Walks the table's physical indexes. For each index, rebuilds it with
-   * the declarative deferred flag from its tracking row (if any) and
-   * records PRESENT in the state.
-   *
-   * <p>Two corner cases:</p>
-   * <ul>
-   *   <li>{@code _PRF} indexes are performance-testing indexes excluded
-   *       from DeployedIndexes by design — they pass through without
-   *       tracking validation.</li>
-   *   <li>Any other physical index without a matching tracking row is a
-   *       hard error: the schema is inconsistent. Recovering silently
-   *       would risk losing metadata about whether the index was meant
-   *       to be deferred.</li>
-   * </ul>
-   *
-   * <p>Consumed tracking entries are removed from {@code tableEntries}.
-   * The leftover entries after this loop are, by construction, "tracked
-   * but not physically present" — the virtual-deferred candidates.</p>
-   *
-   * @return {@code true} if at least one index was rebuilt or added.
-   */
-  private boolean processPhysicalIndexes(Table physicalTable,
-                                          Map<String, DeployedIndex> tableEntries,
-                                          List<Index> rebuiltIndexes,
-                                          Map<IndexKey, IndexPresence> observedPresence) {
-    boolean changed = false;
-    for (Index physicalIndex : physicalTable.indexes()) {
-      if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(physicalIndex.getName())) {
-        rebuiltIndexes.add(physicalIndex);
-        continue;
-      }
-
-      DeployedIndex entry = tableEntries.remove(physicalIndex.getName().toUpperCase());
-      if (entry == null) {
-        throw new IllegalStateException(
-            "Index [" + physicalIndex.getName() + "] on table [" + physicalTable.getName()
-            + "] exists in the database but is not tracked in the DeployedIndexes table. "
-            + "This indicates a schema inconsistency.");
-      }
-      rebuiltIndexes.add(rebuildIndex(physicalIndex, entry.isIndexDeferred()));
-      observedPresence.put(new IndexKey(physicalTable.getName(), physicalIndex.getName()),
-          IndexPresence.PRESENT);
-      changed = true;
-    }
-    return changed;
-  }
-
-
-  /**
-   * Adds a virtual declarative index for every tracking row that wasn't
-   * matched by a physical index (i.e. "deferred but not yet built").
-   *
-   * <p>A non-deferred leftover is a hard error: the schema is
-   * inconsistent (an index that was once built is now missing, and it's
-   * not safe to silently recreate it — the original intent may have been
-   * different).</p>
-   *
-   * @return {@code true} if at least one virtual index was added.
-   */
-  private boolean processRemainingTrackingEntries(String tableName,
-                                                   Map<String, DeployedIndex> remainingEntries,
-                                                   List<Index> rebuiltIndexes,
-                                                   Map<IndexKey, IndexPresence> observedPresence) {
-    boolean changed = false;
-    for (DeployedIndex entry : remainingEntries.values()) {
-      if (!entry.isIndexDeferred()) {
-        throw new IllegalStateException(
-            "Non-deferred index [" + entry.getIndexName() + "] on table [" + entry.getTableName()
-            + "] is tracked in DeployedIndexes but does not exist in the database. "
-            + "This indicates a schema inconsistency.");
-      }
-      rebuiltIndexes.add(entry.toIndex());
-      observedPresence.put(new IndexKey(tableName, entry.getIndexName()), IndexPresence.ABSENT);
-      changed = true;
-    }
-    // All entries have been consumed (either rebuilt as virtual deferred indexes or thrown
-    // above). Clear so validateNoOrphanTrackingRows sees only tables not in the schema.
-    remainingEntries.clear();
-    return changed;
-  }
-
-
-  /**
-   * Hard-fails on any tracking row whose table isn't in the physical schema.
-   *
-   * <p>An orphan row cannot be produced by correct Morf operation:
-   * {@code RemoveTable} emits a matching {@code DELETE FROM DeployedIndexes}
-   * alongside the {@code DROP TABLE}, and {@code RenameTable} emits a
-   * matching {@code UPDATE} to the tracking row. So an orphan indicates
-   * either a visitor bug, a crashed/partial upgrade, a manual DROP TABLE
-   * outside Morf, or a restored DB snapshot out of sync with the tracking
-   * table — all "something went wrong outside the normal path", which is
-   * the same severity class as a non-deferred tracked index missing from
-   * the DB (already a hard error).</p>
-   */
-  private void validateNoOrphanTrackingRows(Map<String, Map<String, DeployedIndex>> trackingRowsByTable) {
-    for (Map<String, DeployedIndex> byIndex : trackingRowsByTable.values()) {
-      if (!byIndex.isEmpty()) {
-        DeployedIndex orphan = byIndex.values().iterator().next();
-        throw new IllegalStateException(
-            "DeployedIndexes entry for index [" + orphan.getIndexName()
-            + "] on table [" + orphan.getTableName()
-            + "] references a table not in the schema. "
-            + "This indicates a schema inconsistency.");
-      }
-    }
-  }
-
-
-  /**
-   * Rebuilds the given physical index carrying the deferred flag from the
-   * tracking table. Uses the public {@code SchemaUtils} builder so the
-   * result is a plain declarative {@link Index}.
-   */
-  private Index rebuildIndex(Index physicalIndex, boolean deferred) {
-    SchemaUtils.IndexBuilder builder = index(physicalIndex.getName()).columns(physicalIndex.columnNames());
-    if (physicalIndex.isUnique()) {
-      builder = builder.unique();
-    }
-    if (deferred) {
-      builder = builder.deferred();
-    }
-    return builder;
-  }
-
-
-  /**
-   * Buckets tracking rows by upper-cased table name → upper-cased index name → row.
-   */
-  private Map<String, Map<String, DeployedIndex>> buildTrackingRowsByTable(List<DeployedIndex> entries) {
-    Map<String, Map<String, DeployedIndex>> map = new HashMap<>();
-    for (DeployedIndex entry : entries) {
-      map.computeIfAbsent(entry.getTableName().toUpperCase(), k -> new HashMap<>())
-          .put(entry.getIndexName().toUpperCase(), entry);
-    }
-    return map;
   }
 }

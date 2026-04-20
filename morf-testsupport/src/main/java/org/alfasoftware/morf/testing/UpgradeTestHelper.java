@@ -133,7 +133,9 @@ public class UpgradeTestHelper {
       public void writeSql(Collection<String> sql) {
         sqlScript.addAll(sql);
       }
-    }, SqlDialect.IdTable.withPrefix(connectionResources.sqlDialect(), "temp_id_"), DeployedIndexState.empty());
+    }, SqlDialect.IdTable.withPrefix(connectionResources.sqlDialect(), "temp_id_"), DeployedIndexState.empty(),
+      new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesServiceImpl(
+          new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesStatementFactoryImpl()));
 
     // Apply the steps to the upgrader
     inlineTableUpgrader.preUpgrade();

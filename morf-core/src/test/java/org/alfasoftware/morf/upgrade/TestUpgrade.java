@@ -1034,10 +1034,12 @@ public class TestUpgrade {
   private static org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher mockEnricher() {
     org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher enricher =
         mock(org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher.class);
-    when(enricher.enrich(any(Schema.class))).thenAnswer(inv ->
-        new org.alfasoftware.morf.upgrade.deployedindexes.EnrichedModel(
-            inv.getArgument(0),
-            org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexState.empty()));
+    when(enricher.enrich(any(Schema.class),
+            any(org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesService.class)))
+        .thenAnswer(inv ->
+            new org.alfasoftware.morf.upgrade.deployedindexes.EnrichedModel(
+                inv.getArgument(0),
+                org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexState.empty()));
     return enricher;
   }
 }

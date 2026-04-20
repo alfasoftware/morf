@@ -88,7 +88,10 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.InsertStatement.class))).thenReturn(List.of("INSERT INTO DeployedIndexes ..."));
     when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.UpdateStatement.class))).thenReturn("UPDATE DeployedIndexes ...");
     when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.DeleteStatement.class))).thenReturn("DELETE FROM DeployedIndexes ...");
-    visitor = new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable, DeployedIndexState.empty(), nodes);
+    visitor = new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable, DeployedIndexState.empty(),
+        new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesServiceImpl(
+            new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesStatementFactoryImpl()),
+        nodes);
   }
 
 
@@ -324,7 +327,10 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     // given — enricher reports SomeIdx as ABSENT (unbuilt deferred index)
     DeployedIndexState absentState = DeployedIndexState.of("SomeTable", "SomeIdx", org.alfasoftware.morf.upgrade.deployedindexes.IndexPresence.ABSENT);
     GraphBasedUpgradeSchemaChangeVisitor visitorWithAbsentState =
-        new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable, absentState, nodes);
+        new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable, absentState,
+            new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesServiceImpl(
+                new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesStatementFactoryImpl()),
+            nodes);
     visitorWithAbsentState.startStep(U1.class);
 
     Index mockIdx = mock(Index.class);
@@ -686,7 +692,10 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     GraphBasedUpgradeSchemaChangeVisitorFactory factory = new GraphBasedUpgradeSchemaChangeVisitorFactory();
 
     // when
-    GraphBasedUpgradeSchemaChangeVisitor created = factory.create(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable, DeployedIndexState.empty(), nodes);
+    GraphBasedUpgradeSchemaChangeVisitor created = factory.create(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable, DeployedIndexState.empty(),
+        new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesServiceImpl(
+            new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesStatementFactoryImpl()),
+        nodes);
 
     // then
     assertNotNull(created);

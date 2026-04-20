@@ -15,18 +15,17 @@
 
 package org.alfasoftware.morf.upgrade.deployedindexes;
 
-import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 
 /**
- * Output of {@link DeployedIndexesModelEnricher#enrich(Schema)}: the
+ * Output of {@link DeployedIndexesModelEnricher#enrich(Schema, DeployedIndexesService)}: the
  * enriched schema paired with the companion {@link DeployedIndexState}.
  *
- * <p>The schema carries the correct declarative {@link Index#isDeferred()}
- * on each index (propagated from the tracking row), and deferred-but-not-
- * yet-built indexes appear as virtual entries. The state records
- * operational facts (physical presence) for the visitor and the deferred-
- * SQL scan to consult.</p>
+ * <p><b>Slim invariant</b>: deferred-but-not-yet-built indexes (status not
+ * COMPLETED) appear as virtual entries on their tables so
+ * {@code SchemaHomology.schemasMatch} treats them as declared. The state
+ * records operational facts (physical presence) for the visitor and the
+ * deferred-SQL scan to consult.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */

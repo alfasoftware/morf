@@ -55,6 +55,9 @@ import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexJob;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexState;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesService;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesServiceImpl;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesStatementFactoryImpl;
 import org.alfasoftware.morf.upgrade.deployedindexes.EnrichedModel;
 import org.alfasoftware.morf.upgrade.deployedindexes.IndexPresence;
 import org.apache.commons.logging.Log;
@@ -270,7 +273,14 @@ public class Upgrade {
       }
     }
 
-    EnrichedModel enriched = enrichSourceSchema(sourceSchema);
+    // Construct a per-session tracking service. The enricher primes it with
+    // every persisted DeployedIndexes row before anything else so that the
+    // visitor's remove/rename/column operations emit correct DML against
+    // prior-upgrade tracking rows.
+    DeployedIndexesService deployedIndexesService =
+        new DeployedIndexesServiceImpl(new DeployedIndexesStatementFactoryImpl());
+
+    EnrichedModel enriched = enrichSourceSchema(sourceSchema, deployedIndexesService);
     sourceSchema = enriched.getSchema();
     DeployedIndexState deployedIndexState = enriched.getState();
 
@@ -320,7 +330,7 @@ public class Upgrade {
         public void writeSql(Collection<String> sql) {
           upgradeStatements.addAll(sql);
         }
-      }, SqlDialect.IdTable.withPrefix(dialect, "temp_id_"), deployedIndexState);
+      }, SqlDialect.IdTable.withPrefix(dialect, "temp_id_"), deployedIndexState, deployedIndexesService);
       upgrader.preUpgrade();
       schemaChangeSequence.applyTo(upgrader);
       upgrader.postUpgrade();
@@ -356,7 +366,8 @@ public class Upgrade {
         upgradeConfigAndContext,
         schemaChangeSequence,
         viewChanges,
-        deployedIndexState);
+        deployedIndexState,
+        deployedIndexesService);
     }
 
     // Build the actual upgrade path
@@ -519,11 +530,11 @@ public class Upgrade {
    * @param sourceSchema the source schema read from JDBC metadata.
    * @return the enriched model.
    */
-  private EnrichedModel enrichSourceSchema(Schema sourceSchema) {
+  private EnrichedModel enrichSourceSchema(Schema sourceSchema, DeployedIndexesService service) {
     if (deployedIndexesModelEnricher == null) {
       return new EnrichedModel(sourceSchema, DeployedIndexState.empty());
     }
-    return deployedIndexesModelEnricher.enrich(sourceSchema);
+    return deployedIndexesModelEnricher.enrich(sourceSchema, service);
   }
 
 

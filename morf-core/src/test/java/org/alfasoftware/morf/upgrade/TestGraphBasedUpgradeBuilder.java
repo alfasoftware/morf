@@ -108,7 +108,9 @@ public class TestGraphBasedUpgradeBuilder {
     upgradeConfigAndContext.setExclusiveExecutionSteps(exclusiveExecutionSteps);
 
     builder = new GraphBasedUpgradeBuilder(visitorFactory, scriptGeneratorFactory, drawIOGraphPrinter, sourceSchema, targetSchema,
-        connectionResources, upgradeConfigAndContext, schemaChangeSequence, viewChanges, DeployedIndexState.empty());
+        connectionResources, upgradeConfigAndContext, schemaChangeSequence, viewChanges, DeployedIndexState.empty(),
+        new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesServiceImpl(
+            new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesStatementFactoryImpl()));
   }
 
 
@@ -396,7 +398,9 @@ public class TestGraphBasedUpgradeBuilder {
     upgradeConfigAndContext.setExclusiveExecutionSteps(exclusiveExecutionSteps);
 
     // when
-    GraphBasedUpgradeBuilder created = factory.create(sourceSchema, targetSchema, connectionResources, upgradeConfigAndContext, schemaChangeSequence, viewChanges, DeployedIndexState.empty());
+    GraphBasedUpgradeBuilder created = factory.create(sourceSchema, targetSchema, connectionResources, upgradeConfigAndContext, schemaChangeSequence, viewChanges, DeployedIndexState.empty(),
+        new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesServiceImpl(
+            new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesStatementFactoryImpl()));
 
     // then
     assertNotNull(created);

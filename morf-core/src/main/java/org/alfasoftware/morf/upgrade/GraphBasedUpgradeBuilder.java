@@ -15,6 +15,7 @@ import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeSchemaChangeVisitor.GraphBasedUpgradeSchemaChangeVisitorFactory;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexState;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesService;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeScriptGenerator.GraphBasedUpgradeScriptGeneratorFactory;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -45,6 +46,7 @@ public class GraphBasedUpgradeBuilder {
   private final SchemaChangeSequence schemaChangeSequence;
   private final ViewChanges viewChanges;
   private final DeployedIndexState deployedIndexState;
+  private final DeployedIndexesService deployedIndexesService;
 
   /**
    * Default constructor
@@ -68,6 +70,9 @@ public class GraphBasedUpgradeBuilder {
    * @param deployedIndexState      at-start physical-presence facts from the
    *                                  enricher, consulted by the visitor for
    *                                  DDL decisions
+   * @param deployedIndexesService  the per-session tracking service, primed
+   *                                  by the enricher; the visitor uses it to
+   *                                  emit DML against persisted tracking rows
    */
   GraphBasedUpgradeBuilder(
       GraphBasedUpgradeSchemaChangeVisitorFactory visitorFactory,
@@ -79,7 +84,8 @@ public class GraphBasedUpgradeBuilder {
       UpgradeConfigAndContext upgradeConfigAndContext,
       SchemaChangeSequence schemaChangeSequence,
       ViewChanges viewChanges,
-      DeployedIndexState deployedIndexState) {
+      DeployedIndexState deployedIndexState,
+      DeployedIndexesService deployedIndexesService) {
     this.visitorFactory = visitorFactory;
     this.scriptGeneratorFactory = scriptGeneratorFactory;
     this.drawIOGraphPrinter = drawIOGraphPrinter;
@@ -91,6 +97,7 @@ public class GraphBasedUpgradeBuilder {
     this.schemaChangeSequence = schemaChangeSequence;
     this.viewChanges = viewChanges;
     this.deployedIndexState = deployedIndexState;
+    this.deployedIndexesService = deployedIndexesService;
   }
 
 
@@ -113,6 +120,7 @@ public class GraphBasedUpgradeBuilder {
       connectionResources.sqlDialect(),
       idTable,
       deployedIndexState,
+      deployedIndexesService,
       nodes.stream().collect(Collectors.toMap(GraphBasedUpgradeNode::getName, Function.identity())));
 
     GraphBasedUpgradeScriptGenerator scriptGenerator = scriptGeneratorFactory.create(sourceSchema, targetSchema, connectionResources, idTable, viewChanges, initialisationSql);
@@ -453,6 +461,8 @@ public class GraphBasedUpgradeBuilder {
      *                                  the target schema
      * @param deployedIndexState      at-start physical-presence facts from the
      *                                  enricher
+     * @param deployedIndexesService  the per-session tracking service, primed
+     *                                  by the enricher
      * @return new {@link GraphBasedUpgradeBuilder} instance
      */
     GraphBasedUpgradeBuilder create(
@@ -462,7 +472,8 @@ public class GraphBasedUpgradeBuilder {
         UpgradeConfigAndContext upgradeConfigAndContext,
         SchemaChangeSequence schemaChangeSequence,
         ViewChanges viewChanges,
-        DeployedIndexState deployedIndexState) {
+        DeployedIndexState deployedIndexState,
+        DeployedIndexesService deployedIndexesService) {
       return new GraphBasedUpgradeBuilder(
         visitorFactory,
         scriptGeneratorFactory,
@@ -473,7 +484,8 @@ public class GraphBasedUpgradeBuilder {
         upgradeConfigAndContext,
         schemaChangeSequence,
         viewChanges,
-        deployedIndexState);
+        deployedIndexState,
+        deployedIndexesService);
     }
   }
 }

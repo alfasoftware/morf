@@ -16,8 +16,6 @@ import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.sql.UpdateStatement;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexState;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesService;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesServiceImpl;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesStatementFactoryImpl;
 import org.alfasoftware.morf.upgrade.deployedindexes.IndexPresence;
 
 /**
@@ -31,18 +29,20 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   protected final Table idTable;
   protected final TableNameResolver  tracker;
 
-  private final DeployedIndexesService deployedIndexesService = new DeployedIndexesServiceImpl(new DeployedIndexesStatementFactoryImpl());
+  private final DeployedIndexesService deployedIndexesService;
   private final DeployedIndexState deployedIndexState;
 
 
   public AbstractSchemaChangeVisitor(Schema currentSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect,
-                                     Table idTable, DeployedIndexState deployedIndexState) {
+                                     Table idTable, DeployedIndexState deployedIndexState,
+                                     DeployedIndexesService deployedIndexesService) {
     this.currentSchema = currentSchema;
     this.upgradeConfigAndContext = upgradeConfigAndContext;
     this.sqlDialect = sqlDialect;
     this.idTable = idTable;
     this.tracker = new IdTableTracker(idTable.getName());
     this.deployedIndexState = deployedIndexState;
+    this.deployedIndexesService = deployedIndexesService;
   }
 
 

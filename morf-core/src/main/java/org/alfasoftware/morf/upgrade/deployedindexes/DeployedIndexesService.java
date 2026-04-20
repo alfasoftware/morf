@@ -36,7 +36,8 @@ import org.alfasoftware.morf.sql.UpdateStatement;
  * <p>This service is stateful and scoped to one upgrade run. A fresh
  * instance must be created for each upgrade execution. At the start of
  * each session the enricher
- * {@link DeployedIndexesModelEnricher#enrich(org.alfasoftware.morf.metadata.Schema)}
+ * {@link DeployedIndexesModelEnricher#enrich(org.alfasoftware.morf.metadata.Schema,
+ * DeployedIndexesService)}
  * calls {@link #prime(DeployedIndex)} for every persisted deferred row so
  * that subsequent {@link #removeIndex(String, String)} / rename / column
  * operations correctly produce DML against previously-persisted rows.</p>
