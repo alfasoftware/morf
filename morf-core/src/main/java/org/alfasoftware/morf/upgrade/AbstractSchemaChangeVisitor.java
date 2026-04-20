@@ -8,6 +8,7 @@ import java.util.Optional;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
@@ -126,10 +127,12 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     currentSchema = addTable.apply(currentSchema);
     writeStatements(sqlDialect.tableDeploymentStatements(addTable.getTable()));
 
-    // Track all indexes on the new table in DeployedIndexes
+    // Track all indexes on the new table in DeployedIndexes. Normalize against
+    // dialect support so indexes declared deferred on a dialect that doesn't
+    // support deferred creation are tracked as indexDeferred=false / COMPLETED —
+    // matching the fact that CREATE TABLE just built them immediately.
     for (Index index : addTable.getTable().indexes()) {
-      deployedIndexesService.trackIndex(addTable.getTable().getName(), index)
-          .forEach(this::writeDeployedIndexesDml);
+      trackInDeployedIndexes(addTable.getTable().getName(), effectiveIndex(index));
     }
   }
 
@@ -207,7 +210,10 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   public void visit(ChangeIndex changeIndex) {
     String tableName = changeIndex.getTableName();
     Index fromIndex = changeIndex.getFromIndex();
-    Index toIndex = changeIndex.getToIndex();
+    // Normalize the toIndex's deferred flag against dialect support so the
+    // tracking row matches physical reality on dialects that don't support
+    // deferred creation (CREATE runs immediately → track as COMPLETED, not PENDING).
+    Index toIndex = effectiveIndex(changeIndex.getToIndex());
 
     // Capture BEFORE the tracking/schema mutations below (see visit(RemoveIndex) note).
     boolean fromWillBePresent = willBePhysicallyPresentAtThisEmission(tableName, fromIndex.getName());
@@ -338,7 +344,8 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   public void visit(AddIndex addIndex) {
     currentSchema = addIndex.apply(currentSchema);
     String tableName = addIndex.getTableName();
-    Index newIndex = addIndex.getNewIndex();
+    // Normalize against dialect support — see effectiveIndex Javadoc.
+    Index newIndex = effectiveIndex(addIndex.getNewIndex());
 
     if (shouldEmitPhysicalIndexDdl(newIndex)) {
       emitAddIndexOrRename(tableName, newIndex);
@@ -404,6 +411,35 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   private void trackInDeployedIndexes(String tableName, Index index) {
     deployedIndexesService.trackIndex(tableName, index)
         .forEach(this::writeDeployedIndexesDml);
+  }
+
+
+  /**
+   * Returns the index as the framework will actually treat it, normalizing
+   * the declared deferred flag against dialect support.
+   *
+   * <p>When the dialect doesn't support deferred creation
+   * ({@link SqlDialect#supportsDeferredIndexCreation()} returns {@code false}),
+   * an index declared {@code deferred} is effectively immediate — the visitor
+   * emits {@code CREATE INDEX} at upgrade time rather than handing SQL to the
+   * app-side executor. The tracking row must reflect that reality (COMPLETED,
+   * {@code indexDeferred=false}); otherwise the app-side executor would see
+   * the index in {@code getDeferredIndexStatements()} and issue a duplicate
+   * {@code CREATE INDEX}, producing an error.</p>
+   *
+   * @param declared the index as declared in the schema.
+   * @return an index whose {@code isDeferred()} reflects actual behaviour:
+   *     true only if declared AND the dialect supports deferred creation.
+   */
+  private Index effectiveIndex(Index declared) {
+    if (!declared.isDeferred() || sqlDialect.supportsDeferredIndexCreation()) {
+      return declared;
+    }
+    SchemaUtils.IndexBuilder builder = SchemaUtils.index(declared.getName()).columns(declared.columnNames());
+    if (declared.isUnique()) {
+      builder = builder.unique();
+    }
+    return builder;
   }
 
 

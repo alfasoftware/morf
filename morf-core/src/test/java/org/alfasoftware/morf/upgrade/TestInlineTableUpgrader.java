@@ -968,4 +968,135 @@ public class TestInlineTableUpgrader {
     verify(sqlStatementWriter, atLeast(1)).writeSql(anyCollection());
   }
 
+
+  /**
+   * On a dialect without deferred-index-creation support, a declared-deferred
+   * AddIndex must be treated as immediate: physical CREATE INDEX is emitted
+   * and the DeployedIndexes tracking row must record indexDeferred=false /
+   * status=COMPLETED — NOT PENDING / deferred=true. Otherwise the app-side
+   * executor would see the index in getDeferredIndexStatements() and issue a
+   * duplicate CREATE INDEX.
+   */
+  @Test
+  public void testVisitAddIndexDeferredOnDialectWithoutDeferredSupport() {
+    // given — dialect does not support deferred index creation
+    when(sqlDialect.supportsDeferredIndexCreation()).thenReturn(false);
+
+    Index declared = mock(Index.class);
+    when(declared.getName()).thenReturn("TestIdx");
+    when(declared.isDeferred()).thenReturn(true);
+    when(declared.isUnique()).thenReturn(false);
+    when(declared.columnNames()).thenReturn(List.of("col1"));
+
+    AddIndex addIndex = mock(AddIndex.class);
+    given(addIndex.apply(schema)).willReturn(schema);
+    when(addIndex.getTableName()).thenReturn(ID_TABLE_NAME);
+    when(addIndex.getNewIndex()).thenReturn(declared);
+
+    Table newTable = mock(Table.class);
+    when(newTable.getName()).thenReturn(ID_TABLE_NAME);
+    when(schema.getTable(ID_TABLE_NAME)).thenReturn(newTable);
+
+    ArgumentCaptor<org.alfasoftware.morf.sql.InsertStatement> insertCaptor =
+        ArgumentCaptor.forClass(org.alfasoftware.morf.sql.InsertStatement.class);
+
+    // when
+    upgrader.visit(addIndex);
+
+    // then — physical CREATE INDEX emitted (declared-deferred promoted-to-immediate)
+    verify(sqlDialect).addIndexStatements(nullable(Table.class), nullable(Index.class));
+
+    // and — the tracking INSERT carries indexDeferred=false and status=COMPLETED
+    verify(sqlDialect, atLeastOnce()).convertStatementToSQL(insertCaptor.capture());
+    org.alfasoftware.morf.sql.InsertStatement captured = insertCaptor.getValue();
+    boolean indexDeferred = findBooleanLiteralByAlias(captured, "indexDeferred");
+    String status = findStringLiteralByAlias(captured, "status");
+    assertEquals("indexDeferred should be normalized to false on unsupported dialect",
+        false, indexDeferred);
+    assertEquals("status should be COMPLETED (physical index was built)",
+        "COMPLETED", status);
+  }
+
+
+  /**
+   * On a dialect without deferred-index-creation support, a ChangeIndex
+   * from immediate to declared-deferred must be treated as immediate:
+   * physical DROP + CREATE emitted, tracking row COMPLETED / indexDeferred=false.
+   */
+  @Test
+  public void testVisitChangeIndexToDeferredOnDialectWithoutDeferredSupport() {
+    // given — dialect does not support deferred index creation
+    when(sqlDialect.supportsDeferredIndexCreation()).thenReturn(false);
+
+    Index fromIndex = mock(Index.class);
+    when(fromIndex.getName()).thenReturn("TestIdx");
+    when(fromIndex.isDeferred()).thenReturn(false);
+    when(fromIndex.isUnique()).thenReturn(false);
+    when(fromIndex.columnNames()).thenReturn(List.of("col1"));
+
+    Index toIndex = mock(Index.class);
+    when(toIndex.getName()).thenReturn("TestIdx");
+    when(toIndex.isDeferred()).thenReturn(true);  // declared deferred
+    when(toIndex.isUnique()).thenReturn(false);
+    when(toIndex.columnNames()).thenReturn(List.of("col2"));
+
+    Table mockTable = mock(Table.class);
+    when(mockTable.indexes()).thenReturn(List.of(fromIndex));
+    when(schema.getTable("TestTable")).thenReturn(mockTable);
+    when(schema.tableExists("TestTable")).thenReturn(true);
+
+    ChangeIndex changeIndex = mock(ChangeIndex.class);
+    given(changeIndex.apply(ArgumentMatchers.any())).willReturn(schema);
+    when(changeIndex.getTableName()).thenReturn("TestTable");
+    when(changeIndex.getFromIndex()).thenReturn(fromIndex);
+    when(changeIndex.getToIndex()).thenReturn(toIndex);
+
+    ArgumentCaptor<org.alfasoftware.morf.sql.InsertStatement> insertCaptor =
+        ArgumentCaptor.forClass(org.alfasoftware.morf.sql.InsertStatement.class);
+
+    // when
+    upgrader.visit(changeIndex);
+
+    // then — both DROP and CREATE are emitted (declared-deferred promoted-to-immediate)
+    verify(sqlDialect).indexDropStatements(nullable(Table.class), nullable(Index.class));
+    verify(sqlDialect).addIndexStatements(nullable(Table.class), nullable(Index.class));
+
+    // and — the tracking INSERT carries indexDeferred=false and status=COMPLETED
+    verify(sqlDialect, atLeastOnce()).convertStatementToSQL(insertCaptor.capture());
+    org.alfasoftware.morf.sql.InsertStatement captured = insertCaptor.getValue();
+    boolean indexDeferred = findBooleanLiteralByAlias(captured, "indexDeferred");
+    String status = findStringLiteralByAlias(captured, "status");
+    assertEquals("indexDeferred should be normalized to false on unsupported dialect",
+        false, indexDeferred);
+    assertEquals("status should be COMPLETED (physical index was built)",
+        "COMPLETED", status);
+  }
+
+
+  /**
+   * Looks up a boolean literal value in an InsertStatement by its column
+   * alias. Used by the dialect-support tests above to inspect the tracking
+   * row's indexDeferred flag without parsing SQL.
+   */
+  private static boolean findBooleanLiteralByAlias(org.alfasoftware.morf.sql.InsertStatement insert, String alias) {
+    for (org.alfasoftware.morf.sql.element.AliasedField field : insert.getValues()) {
+      if (alias.equalsIgnoreCase(field.getAlias()) && field instanceof org.alfasoftware.morf.sql.element.FieldLiteral) {
+        return Boolean.parseBoolean(((org.alfasoftware.morf.sql.element.FieldLiteral) field).getValue());
+      }
+    }
+    throw new AssertionError("No boolean literal with alias [" + alias + "] in INSERT");
+  }
+
+
+  /**
+   * Looks up a string literal value in an InsertStatement by its column alias.
+   */
+  private static String findStringLiteralByAlias(org.alfasoftware.morf.sql.InsertStatement insert, String alias) {
+    for (org.alfasoftware.morf.sql.element.AliasedField field : insert.getValues()) {
+      if (alias.equalsIgnoreCase(field.getAlias()) && field instanceof org.alfasoftware.morf.sql.element.FieldLiteral) {
+        return ((org.alfasoftware.morf.sql.element.FieldLiteral) field).getValue();
+      }
+    }
+    throw new AssertionError("No string literal with alias [" + alias + "] in INSERT");
+  }
 }

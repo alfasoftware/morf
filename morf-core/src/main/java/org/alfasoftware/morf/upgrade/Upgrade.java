@@ -549,6 +549,13 @@ public class Upgrade {
     if (!upgradeConfigAndContext.isDeferredIndexCreationEnabled()) {
       return List.of();
     }
+    // On dialects without deferred-creation support the visitor emits CREATE
+    // INDEX immediately at upgrade time (and tracks as COMPLETED). No jobs
+    // for the app-side executor — handing them out would produce duplicate
+    // CREATE INDEX errors.
+    if (!dialect.supportsDeferredIndexCreation()) {
+      return List.of();
+    }
     List<DeferredIndexJob> jobs = new ArrayList<>();
     Schema finalSchema = schemaChangeSequence.applyToSchema(sourceSchema);
     for (Table table : finalSchema.tables()) {
