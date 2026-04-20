@@ -66,9 +66,7 @@ public class DeployedIndexesServiceImpl implements DeployedIndexesService {
       log.debug("Priming (persisted row): table=" + entry.getTableName()
           + ", index=" + entry.getIndexName());
     }
-    // Reconstruct the Index from the persisted row. Slim invariant: every
-    // persisted row is a deferred index, so the rebuilt Index is always
-    // marked deferred regardless of the legacy indexDeferred column.
+    // Slim invariant: every persisted row is a deferred index.
     IndexBuilder builder = index(entry.getIndexName()).columns(entry.getIndexColumns());
     if (entry.isIndexUnique()) {
       builder = builder.unique();

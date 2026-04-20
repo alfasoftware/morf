@@ -23,8 +23,9 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder;
 
 /**
- * Represents a row in the DeployedIndexes table, tracking both deferred
- * and non-deferred indexes.
+ * Represents a row in the DeployedIndexes table. Under the slim invariant
+ * every row is a deferred index — the {@code indexDeferred} column was
+ * dropped in SP5 as redundant.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -35,7 +36,6 @@ public class DeployedIndex {
   private String indexName;
   private boolean indexUnique;
   private List<String> indexColumns;
-  private boolean indexDeferred;
   private DeployedIndexStatus status;
   private int retryCount;
   private long createdTime;
@@ -92,16 +92,6 @@ public class DeployedIndex {
   /** @see #indexColumns */
   public void setIndexColumns(List<String> indexColumns) {
     this.indexColumns = indexColumns;
-  }
-
-  /** @see #indexDeferred */
-  public boolean isIndexDeferred() {
-    return indexDeferred;
-  }
-
-  /** @see #indexDeferred */
-  public void setIndexDeferred(boolean indexDeferred) {
-    this.indexDeferred = indexDeferred;
   }
 
   /** @see #status */
@@ -175,9 +165,6 @@ public class DeployedIndex {
     if (indexUnique) {
       builder = builder.unique();
     }
-    if (indexDeferred) {
-      builder = builder.deferred();
-    }
-    return builder;
+    return builder.deferred();
   }
 }

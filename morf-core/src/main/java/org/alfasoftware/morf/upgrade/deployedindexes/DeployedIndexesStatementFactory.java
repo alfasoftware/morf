@@ -50,8 +50,6 @@ public interface DeployedIndexesStatementFactory {
   String COL_INDEX_UNIQUE = "indexUnique";
   /** Column: comma-separated column list the index covers. */
   String COL_INDEX_COLUMNS = "indexColumns";
-  /** Column: whether the index is deferred (built async after upgrade). */
-  String COL_INDEX_DEFERRED = "indexDeferred";
   /** Column: lifecycle status (PENDING/IN_PROGRESS/COMPLETED/FAILED). */
   String COL_STATUS = "status";
   /** Column: retry count for failed deferred builds. */
@@ -148,9 +146,9 @@ public interface DeployedIndexesStatementFactory {
 
   /**
    * @param tableName the target table.
-   * @param index the index metadata.
-   * @return INSERT adding a new tracking row for {@code index} on {@code tableName}.
-   *     Non-deferred indexes go in as COMPLETED; deferred indexes as PENDING.
+   * @param index the index metadata (must be deferred under the slim invariant).
+   * @return INSERT adding a new tracking row for {@code index} on {@code tableName}
+   *     with status PENDING.
    */
   InsertStatement statementToTrackIndex(String tableName, Index index);
 

@@ -136,9 +136,6 @@ public class DeployedIndexesStatementFactoryImpl implements DeployedIndexesState
   public InsertStatement statementToTrackIndex(String tableName, Index index) {
     long operationId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
     long createdTime = System.currentTimeMillis();
-    String status = index.isDeferred()
-        ? DeployedIndexStatus.PENDING.name()
-        : DeployedIndexStatus.COMPLETED.name();
 
     return insert().into(tableRef(TABLE))
         .values(
@@ -147,8 +144,7 @@ public class DeployedIndexesStatementFactoryImpl implements DeployedIndexesState
             literal(index.getName()).as(COL_INDEX_NAME),
             literal(index.isUnique()).as(COL_INDEX_UNIQUE),
             literal(String.join(",", index.columnNames())).as(COL_INDEX_COLUMNS),
-            literal(index.isDeferred()).as(COL_INDEX_DEFERRED),
-            literal(status).as(COL_STATUS),
+            literal(DeployedIndexStatus.PENDING.name()).as(COL_STATUS),
             literal(0).as(COL_RETRY_COUNT),
             literal(createdTime).as(COL_CREATED_TIME)
         );
@@ -199,14 +195,14 @@ public class DeployedIndexesStatementFactoryImpl implements DeployedIndexesState
 
 
   /**
-   * @return a pre-configured SELECT of all 12 DeployedIndexes columns from
-   *     the table. Used as the base for most read queries.
+   * @return a pre-configured SELECT of all DeployedIndexes columns from the
+   *     table. Used as the base for most read queries.
    */
   private SelectStatement selectAllColumns() {
     return select(
         field(COL_ID), field(COL_TABLE_NAME),
         field(COL_INDEX_NAME), field(COL_INDEX_UNIQUE), field(COL_INDEX_COLUMNS),
-        field(COL_INDEX_DEFERRED), field(COL_STATUS), field(COL_RETRY_COUNT),
+        field(COL_STATUS), field(COL_RETRY_COUNT),
         field(COL_CREATED_TIME), field(COL_STARTED_TIME), field(COL_COMPLETED_TIME),
         field(COL_ERROR_MESSAGE))
         .from(tableRef(TABLE));

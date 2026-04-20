@@ -434,10 +434,10 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
    * ({@link SqlDialect#supportsDeferredIndexCreation()} returns {@code false}),
    * an index declared {@code deferred} is effectively immediate — the visitor
    * emits {@code CREATE INDEX} at upgrade time rather than handing SQL to the
-   * app-side executor. The tracking row must reflect that reality (COMPLETED,
-   * {@code indexDeferred=false}); otherwise the app-side executor would see
-   * the index in {@code getDeferredIndexStatements()} and issue a duplicate
-   * {@code CREATE INDEX}, producing an error.</p>
+   * app-side executor. Under the slim invariant, normalizing to non-deferred
+   * here means {@link #trackInDeployedIndexes} is skipped (no tracking row
+   * is written), so the app-side executor sees nothing to build and cannot
+   * issue a duplicate {@code CREATE INDEX}.</p>
    *
    * @param declared the index as declared in the schema.
    * @return an index whose {@code isDeferred()} reflects actual behaviour:

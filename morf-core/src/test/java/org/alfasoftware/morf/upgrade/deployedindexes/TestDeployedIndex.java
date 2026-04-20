@@ -31,7 +31,7 @@ import org.junit.Test;
  */
 public class TestDeployedIndex {
 
-  /** toIndex should reconstruct a non-deferred, non-unique index. */
+  /** toIndex reconstructs a non-unique deferred index (slim: always deferred). */
   @Test
   public void testToIndexBasic() {
     // given
@@ -39,7 +39,6 @@ public class TestDeployedIndex {
     entry.setIndexName("Idx1");
     entry.setIndexColumns(List.of("col1", "col2"));
     entry.setIndexUnique(false);
-    entry.setIndexDeferred(false);
 
     // when
     Index idx = entry.toIndex();
@@ -48,19 +47,18 @@ public class TestDeployedIndex {
     assertEquals("Idx1", idx.getName());
     assertEquals(List.of("col1", "col2"), idx.columnNames());
     assertFalse(idx.isUnique());
-    assertFalse(idx.isDeferred());
+    assertTrue("Slim invariant: every persisted row reconstructs as deferred", idx.isDeferred());
   }
 
 
-  /** toIndex should preserve unique and deferred flags. */
+  /** toIndex preserves the unique flag. */
   @Test
-  public void testToIndexUniqueDeferred() {
+  public void testToIndexUnique() {
     // given
     DeployedIndex entry = new DeployedIndex();
     entry.setIndexName("Idx2");
     entry.setIndexColumns(List.of("col1"));
     entry.setIndexUnique(true);
-    entry.setIndexDeferred(true);
 
     // when
     Index idx = entry.toIndex();
@@ -74,17 +72,16 @@ public class TestDeployedIndex {
   /** toIndex preserves column order for composite indexes. */
   @Test
   public void testToIndexPreservesCompositeColumnOrder() {
-    // given -- columns declared in a specific non-alphabetical order
+    // given — columns declared in a specific non-alphabetical order
     DeployedIndex entry = new DeployedIndex();
     entry.setIndexName("CompositeIdx");
     entry.setIndexColumns(List.of("z", "a", "m"));
     entry.setIndexUnique(false);
-    entry.setIndexDeferred(false);
 
     // when
     Index idx = entry.toIndex();
 
-    // then -- same order preserved
+    // then — same order preserved
     assertEquals(List.of("z", "a", "m"), idx.columnNames());
   }
 }

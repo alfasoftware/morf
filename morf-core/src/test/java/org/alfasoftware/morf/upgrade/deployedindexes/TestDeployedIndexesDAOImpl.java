@@ -227,7 +227,6 @@ public class TestDeployedIndexesDAOImpl {
     when(rs.getString("indexName")).thenReturn("I");
     when(rs.getBoolean("indexUnique")).thenReturn(false);
     when(rs.getString("indexColumns")).thenReturn("c1,c2");
-    when(rs.getBoolean("indexDeferred")).thenReturn(true);
     when(rs.getString("status")).thenReturn("PENDING");
     when(rs.getInt("retryCount")).thenReturn(0);
     when(rs.getLong("createdTime")).thenReturn(42L);

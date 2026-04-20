@@ -169,7 +169,6 @@ class DeployedIndexesDAOImpl implements DeployedIndexesDAO {
       entry.setIndexUnique(rs.getBoolean(DeployedIndexesStatementFactory.COL_INDEX_UNIQUE));
       entry.setIndexColumns(Arrays.asList(
           rs.getString(DeployedIndexesStatementFactory.COL_INDEX_COLUMNS).split(",")));
-      entry.setIndexDeferred(rs.getBoolean(DeployedIndexesStatementFactory.COL_INDEX_DEFERRED));
       entry.setStatus(DeployedIndexStatus.valueOf(
           rs.getString(DeployedIndexesStatementFactory.COL_STATUS)));
       entry.setRetryCount(rs.getInt(DeployedIndexesStatementFactory.COL_RETRY_COUNT));

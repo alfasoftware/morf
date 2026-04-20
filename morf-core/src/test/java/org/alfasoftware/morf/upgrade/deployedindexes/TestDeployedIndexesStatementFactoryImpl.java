@@ -60,8 +60,8 @@ public class TestDeployedIndexesStatementFactoryImpl {
         stmt.getTable().getName());
     assertEquals(1, stmt.getOrderBys().size());
     assertEquals("id", ((FieldReference) stmt.getOrderBys().get(0)).getName());
-    // and -- projects all 12 tracked columns
-    assertEquals(12, stmt.getFields().size());
+    // and -- projects all 11 tracked columns (indexDeferred dropped in SP5 slim)
+    assertEquals(11, stmt.getFields().size());
   }
 
 
@@ -170,7 +170,7 @@ public class TestDeployedIndexesStatementFactoryImpl {
   // ---- Tracking DML ------------------------------------------------------
 
   /** trackIndex produces an INSERT against the DeployedIndexes table with
-   *  status=PENDING for a deferred index. */
+   *  status=PENDING for a deferred index (slim: only deferred gets tracked). */
   @Test
   public void testStatementToTrackDeferredIndex() {
     // given
@@ -179,28 +179,17 @@ public class TestDeployedIndexesStatementFactoryImpl {
     // when
     InsertStatement stmt = factory.statementToTrackIndex("Product", idx);
 
-    // then -- 9 values corresponding to the 9 columns the factory populates
+    // then -- 8 values corresponding to the 8 columns the factory populates
+    // (id, tableName, indexName, indexUnique, indexColumns, status, retryCount, createdTime)
     assertEquals(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME,
         stmt.getTable().getName());
-    assertEquals(9, stmt.getValues().size());
-  }
-
-
-  /** trackIndex for a non-deferred index emits status=COMPLETED. */
-  @Test
-  public void testStatementToTrackNonDeferredIndex() {
-    // given
-    Index idx = index("ImmIdx").columns("col1");
-
-    // when
-    InsertStatement stmt = factory.statementToTrackIndex("Product", idx);
-
-    // then -- status literal should be COMPLETED (verify by scanning values)
-    boolean sawCompleted = stmt.getValues().stream()
+    assertEquals(8, stmt.getValues().size());
+    // and -- status literal should be PENDING
+    boolean sawPending = stmt.getValues().stream()
         .filter(f -> f instanceof org.alfasoftware.morf.sql.element.FieldLiteral)
         .map(f -> ((org.alfasoftware.morf.sql.element.FieldLiteral) f).getValue())
-        .anyMatch(v -> DeployedIndexStatus.COMPLETED.name().equals(v));
-    assertTrue("non-deferred track should emit COMPLETED", sawCompleted);
+        .anyMatch(v -> DeployedIndexStatus.PENDING.name().equals(v));
+    assertTrue("deferred track should emit PENDING", sawPending);
   }
 
 

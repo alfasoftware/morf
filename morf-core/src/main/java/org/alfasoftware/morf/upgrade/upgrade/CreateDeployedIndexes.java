@@ -69,7 +69,6 @@ public class CreateDeployedIndexes implements UpgradeStep {
                 column("indexName", DataType.STRING, 60),
                 column("indexUnique", DataType.BOOLEAN),
                 column("indexColumns", DataType.STRING, 4000),
-                column("indexDeferred", DataType.BOOLEAN),
                 column("status", DataType.STRING, 20),
                 column("retryCount", DataType.INTEGER),
                 column("createdTime", DataType.DECIMAL, 14),

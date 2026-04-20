@@ -56,7 +56,6 @@ public class TestDeployedIndexesServiceImpl {
     entry.setIndexName("Product_Name_1");
     entry.setIndexUnique(false);
     entry.setIndexColumns(List.of("name"));
-    entry.setIndexDeferred(true);
     entry.setStatus(DeployedIndexStatus.PENDING);
 
     // when

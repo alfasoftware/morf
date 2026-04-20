@@ -131,10 +131,8 @@ public class TestDeployedIndexesIntegration {
     assertTrue("Job should reference the index name",
         deferredJobs.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
 
-    // then -- DeployedIndexes row is PENDING and deferred
+    // then -- DeployedIndexes row is PENDING (slim: every tracked row is deferred by invariant)
     assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
-    assertTrue("Should be deferred",
-        "TRUE".equalsIgnoreCase(queryDeployedIndexField("Product_Name_1", "indexDeferred")));
   }
 
 

@@ -125,7 +125,6 @@ public class TestDeployedIndexesModelEnricherImpl {
     DeployedIndex entry = new DeployedIndex();
     entry.setTableName("MyTable");
     entry.setIndexName("MyIdx");
-    entry.setIndexDeferred(true);
     entry.setIndexUnique(false);
     entry.setIndexColumns(List.of("name"));
     entry.setStatus(DeployedIndexStatus.PENDING);
@@ -160,7 +159,6 @@ public class TestDeployedIndexesModelEnricherImpl {
     DeployedIndex entry = new DeployedIndex();
     entry.setTableName("MyTable");
     entry.setIndexName("MyIdx");
-    entry.setIndexDeferred(true);
     entry.setIndexUnique(false);
     entry.setIndexColumns(List.of("id"));
     entry.setStatus(DeployedIndexStatus.COMPLETED);
@@ -192,14 +190,12 @@ public class TestDeployedIndexesModelEnricherImpl {
     DeployedIndex entryA = new DeployedIndex();
     entryA.setTableName("TableA");
     entryA.setIndexName("A_Idx");
-    entryA.setIndexDeferred(true);
     entryA.setIndexUnique(false);
     entryA.setIndexColumns(List.of("id"));
     entryA.setStatus(DeployedIndexStatus.COMPLETED);
     DeployedIndex entryB = new DeployedIndex();
     entryB.setTableName("TableB");
     entryB.setIndexName("B_Idx");
-    entryB.setIndexDeferred(true);
     entryB.setIndexUnique(false);
     entryB.setIndexColumns(List.of("name"));
     entryB.setStatus(DeployedIndexStatus.PENDING);
@@ -231,7 +227,6 @@ public class TestDeployedIndexesModelEnricherImpl {
     DeployedIndex entry = new DeployedIndex();
     entry.setTableName("MyTable");
     entry.setIndexName("MyIdx");
-    entry.setIndexDeferred(true);
     entry.setIndexUnique(false);
     entry.setIndexColumns(List.of("name"));
     entry.setStatus(DeployedIndexStatus.PENDING);
