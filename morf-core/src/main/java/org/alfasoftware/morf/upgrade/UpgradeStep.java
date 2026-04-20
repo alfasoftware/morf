@@ -65,8 +65,42 @@ public interface UpgradeStep {
    * Implemented by upgrade authors to specify the sequence of changes required
    * to bring a database to the required state.
    *
+   * <p><b>Override one of the two {@code execute} overloads — not both.</b>
+   * Most steps override this 2-arg form and never see an {@link UpgradeContext}.
+   * Steps that need upgrade-time context (e.g. the source schema) should
+   * override
+   * {@link #execute(SchemaEditor, DataEditor, UpgradeContext)} instead and
+   * leave this 2-arg form with a throwing stub: the framework always calls
+   * the 3-arg form, so this 2-arg body will never execute when its 3-arg
+   * sibling is overridden.</p>
+   *
    * @param schema {@link SchemaEditor} available for changing the database schema.
    * @param data {@link DataEditor} available for changing the database data.
    */
   public void execute(SchemaEditor schema, DataEditor data);
+
+
+  /**
+   * Context-aware variant of {@link #execute(SchemaEditor, DataEditor)}.
+   *
+   * <p><b>Override one of the two {@code execute} overloads — not both.</b>
+   * The framework always invokes this 3-arg form; its default
+   * implementation bridges to the 2-arg form for steps that don't need
+   * context. Steps that need read access to pre-upgrade state
+   * (e.g. the source schema via {@link UpgradeContext#getSourceSchema()})
+   * should override this method and leave the 2-arg form with a throwing
+   * stub.</p>
+   *
+   * <p>Overriding both is legal but not useful: the 2-arg body is dormant
+   * (framework calls 3-arg, adopter's 3-arg runs; the 2-arg default bridge
+   * is replaced and never reaches the 2-arg body). To combine the two, the
+   * 3-arg override must invoke {@code execute(schema, data)} explicitly.</p>
+   *
+   * @param schema {@link SchemaEditor} available for changing the database schema.
+   * @param data {@link DataEditor} available for changing the database data.
+   * @param context read-only upgrade-time context (e.g. source schema).
+   */
+  public default void execute(SchemaEditor schema, DataEditor data, UpgradeContext context) {
+    execute(schema, data);
+  }
 }

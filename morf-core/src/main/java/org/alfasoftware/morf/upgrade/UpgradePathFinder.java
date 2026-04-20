@@ -96,11 +96,14 @@ public class UpgradePathFinder {
 
 
   /**
-   * Returns a {@link SchemaChangeSequence} from all steps to apply, with the source schema
-   * available to upgrade steps via {@link SchemaEditor#getSourceSchema()}.
+   * Returns a {@link SchemaChangeSequence} from all steps to apply, with the
+   * source schema exposed to upgrade steps via the 3-arg
+   * {@link UpgradeStep#execute(SchemaEditor, DataEditor, UpgradeContext)}
+   * overload (reachable by steps that override it — e.g.
+   * {@code CreateDeployedIndexes} for prepopulation).
    *
    * @param sourceSchema schema prior to the upgrade; exposed to upgrade steps that need
-   *     read access (e.g. {@code CreateDeployedIndexes} for prepopulation).
+   *     read access.
    * @return the resulting schema change sequence.
    */
   public SchemaChangeSequence getSchemaChangeSequence(Schema sourceSchema) {

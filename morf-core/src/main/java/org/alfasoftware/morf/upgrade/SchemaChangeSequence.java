@@ -71,12 +71,15 @@ public class SchemaChangeSequence {
 
     ImmutableList.Builder<UpgradeStepWithChanges> allChangesBuilder = ImmutableList.builder();
 
+    UpgradeContext upgradeContext = () -> sourceSchema;
     for (UpgradeStep step : steps) {
       InternalVisitor internalVisitor = new InternalVisitor(upgradeConfigAndContext.getSchemaChangeAdaptor());
       UpgradeTableResolutionVisitor resolvedTablesVisitor = new UpgradeTableResolutionVisitor();
-      Editor editor = new Editor(internalVisitor, resolvedTablesVisitor, sourceSchema);
-      // For historical reasons, we need to pass the editor in twice
-      step.execute(editor, editor);
+      Editor editor = new Editor(internalVisitor, resolvedTablesVisitor);
+      // For historical reasons, we need to pass the editor in twice. The
+      // framework always calls the 3-arg execute; steps without context needs
+      // pick up the default-bridge to their 2-arg override.
+      step.execute(editor, editor, upgradeContext);
 
       allChangesBuilder.add(new UpgradeStepWithChanges(step, internalVisitor.getChanges()));
       upgradeTableResolution.addDiscoveredTables(step.getClass().getName(), resolvedTablesVisitor.getResolvedTables());
@@ -221,25 +224,20 @@ public class SchemaChangeSequence {
 
 
   /**
-   * The editor implementation which is used by upgrade steps
+   * The editor implementation which is used by upgrade steps. Pure command
+   * surface — the source schema, when needed by an upgrade step, is
+   * provided via the separate {@link UpgradeContext} parameter on the
+   * 3-arg {@link UpgradeStep#execute(SchemaEditor, DataEditor, UpgradeContext)}.
    */
   private class Editor implements SchemaEditor, DataEditor {
 
     private final SchemaChangeVisitor visitor;
     private final SchemaAndDataChangeVisitor schemaAndDataChangeVisitor;
-    private final Schema sourceSchema;
 
-    Editor(SchemaChangeVisitor visitor, SchemaAndDataChangeVisitor schemaAndDataChangeVisitor, Schema sourceSchema) {
+    Editor(SchemaChangeVisitor visitor, SchemaAndDataChangeVisitor schemaAndDataChangeVisitor) {
       super();
       this.visitor = visitor;
       this.schemaAndDataChangeVisitor = schemaAndDataChangeVisitor;
-      this.sourceSchema = java.util.Objects.requireNonNull(sourceSchema, "sourceSchema");
-    }
-
-
-    @Override
-    public Schema getSourceSchema() {
-      return sourceSchema;
     }
 
 

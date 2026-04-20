@@ -33,6 +33,7 @@ import org.alfasoftware.morf.upgrade.DataEditor;
 import org.alfasoftware.morf.upgrade.ExclusiveExecution;
 import org.alfasoftware.morf.upgrade.SchemaEditor;
 import org.alfasoftware.morf.upgrade.Sequence;
+import org.alfasoftware.morf.upgrade.UpgradeContext;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
 import org.alfasoftware.morf.upgrade.Version;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
@@ -65,11 +66,25 @@ public class CreateDeployedIndexes implements UpgradeStep {
     return "Create DeployedIndexes table and prepopulate with existing indexes";
   }
 
+  /**
+   * Never invoked — the framework always calls the 3-arg
+   * {@link #execute(SchemaEditor, DataEditor, UpgradeContext)}, which is
+   * where the real work lives. This step needs read access to the
+   * pre-upgrade source schema (for prepopulation), and that's only available
+   * through {@link UpgradeContext}.
+   */
   @Override
   public void execute(SchemaEditor schema, DataEditor data) {
+    throw new UnsupportedOperationException(
+        "CreateDeployedIndexes requires an UpgradeContext; use execute(SchemaEditor, DataEditor, UpgradeContext).");
+  }
+
+
+  @Override
+  public void execute(SchemaEditor schema, DataEditor data, UpgradeContext context) {
     // Create the DeployedIndexes table. The visitor's visit(AddTable) path
     // automatically tracks this table's own indexes (DeployedIdx_1, DeployedIdx_2)
-    // into DeployedIndexes via deployedIndexesChangeService.trackIndex(...), so
+    // into DeployedIndexes via deployedIndexesService.trackIndex(...), so
     // no explicit prepopulation is needed for them.
     schema.addTable(
         table(DEPLOYED_INDEXES)
@@ -97,7 +112,7 @@ public class CreateDeployedIndexes implements UpgradeStep {
     // that were already in the DB before this upgrade ran). The enricher
     // treats any physical index without a tracking row as a consistency
     // error on the next run.
-    Schema sourceSchema = schema.getSourceSchema();
+    Schema sourceSchema = context.getSourceSchema();
     long createdTime = System.currentTimeMillis();
 
     for (Table sourceTable : sourceSchema.tables()) {
