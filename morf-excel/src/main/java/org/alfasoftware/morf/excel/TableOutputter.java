@@ -65,6 +65,8 @@ class TableOutputter {
   private static final int MAX_EXCEL_ROWS = 65536;
   private static final int MAX_EXCEL_COLUMNS = 256;
   private static final int MAX_CELL_CHARACTERS = 32767;
+  private static final String ID = "id";
+  private static final String VERSION = "version";
   private static final Set<DataType> SUPPORTED_DATA_TYPES = Sets.immutableEnumSet(STRING, DECIMAL, BIG_INTEGER, INTEGER, CLOB);
 
   private final AdditionalSchemaData additionalSchemaData;
@@ -120,13 +122,15 @@ class TableOutputter {
     }
   }
 
+
+
   private int outputHelp(Sheet worksheet, Workbook workbook, Table table, int startRow, Map<String, Integer> helpTextRowNumbers) {
     int currentRow = startRow;
     writeValue(worksheet, currentRow++, 0, "Column Descriptions", getBoldFormat(workbook));
 
     int currentColumn = 0;
     for (Column column : table.columns()) {
-      if ("id".equals(column.getName()) || "version".equals(column.getName())) {
+      if (ID.equals(column.getName()) || VERSION.equals(column.getName())) {
         continue;
       }
 
@@ -148,7 +152,7 @@ class TableOutputter {
   private int outputDataHeadings(Sheet worksheet, Workbook workbook, Table table, int rowIndex, Map<String, Integer> helpTextRowNumbers) {
     int columnIndex = 0;
     for (Column column : table.columns()) {
-      if ("id".equals(column.getName()) || "version".equals(column.getName())) {
+      if (ID.equals(column.getName()) || VERSION.equals(column.getName())) {
         continue;
       }
       if (columnIndex >= MAX_EXCEL_COLUMNS) {
@@ -167,81 +171,123 @@ class TableOutputter {
   }
 
   private int outputExampleData(Integer numberOfExamples, Sheet worksheet, Workbook workbook, Table table, int startRow,
-      Iterable<Record> records) {
+                                Iterable<Record> records) {
     int currentRow = startRow;
     int written = 0;
+
     for (Record record : records) {
-      if (currentRow >= MAX_EXCEL_ROWS) {
-        continue;
+      if (currentRow >= MAX_EXCEL_ROWS || hasWrittenRequestedExamples(numberOfExamples, written)) {
+        break;
       }
-      if (numberOfExamples != null && written >= numberOfExamples) {
-        continue;
-      }
-      int columnIndex = 0;
-      for (Column column : table.columns()) {
-        if ("id".equals(column.getName()) || "version".equals(column.getName())) {
-          continue;
-        }
-        if (columnIndex >= MAX_EXCEL_COLUMNS) {
-          break;
-        }
-        writeColumnValue(worksheet, workbook, currentRow, columnIndex, column, record);
-        columnIndex++;
-      }
+
+      outputExampleRow(worksheet, workbook, table, currentRow, record);
       currentRow++;
       written++;
     }
+
     if (currentRow >= MAX_EXCEL_ROWS) {
       throw new RowLimitExceededException("Output for table '" + table.getName() + "' exceeds the maximum number of rows (" + MAX_EXCEL_ROWS + ") in an Excel worksheet. It will be truncated.");
     }
     return currentRow + 1;
   }
 
+  private boolean hasWrittenRequestedExamples(Integer numberOfExamples, int written) {
+    return numberOfExamples != null && written >= numberOfExamples;
+  }
+
+  private void outputExampleRow(Sheet worksheet, Workbook workbook, Table table, int rowIndex, Record record) {
+    int columnIndex = 0;
+
+    for (Column column : table.columns()) {
+      if (!isSystemColumn(column)) {
+        if (columnIndex >= MAX_EXCEL_COLUMNS) {
+          return;
+        }
+        writeColumnValue(worksheet, workbook, rowIndex, columnIndex, column, record);
+        columnIndex++;
+      }
+    }
+  }
+
+  private boolean isSystemColumn(Column column) {
+    return ID.equals(column.getName()) || VERSION.equals(column.getName());
+  }
+
   private void writeColumnValue(Sheet worksheet, Workbook workbook, int rowIndex, int columnIndex, Column column, Record record) {
     CellStyle style = getStandardFormat(workbook);
+
     switch (column.getType()) {
       case STRING:
         writeStringCell(worksheet, rowIndex, columnIndex, record.getString(column.getName()), style);
-        break;
+        return;
+
       case DECIMAL:
-        BigDecimal decimalValue = record.getBigDecimal(column.getName());
-        try {
-          if (decimalValue == null) {
-            createBlankCell(worksheet, rowIndex, columnIndex, style);
-          } else {
-            writeNumericCell(worksheet, rowIndex, columnIndex, decimalValue.doubleValue(), style);
-          }
-        } catch (Exception e) {
-          throw new UnsupportedOperationException("Cannot generate Excel cell (parseDouble) for data [" + decimalValue + "]" + unsupportedOperationExceptionMessageSuffix(column, worksheet), e);
-        }
-        break;
+        writeDecimalCell(worksheet, rowIndex, columnIndex, column, record, style);
+        return;
+
       case BIG_INTEGER:
       case INTEGER:
-        Long longValue = record.getLong(column.getName());
-        try {
-          if (longValue == null) {
-            createBlankCell(worksheet, rowIndex, columnIndex, style);
-          } else {
-            writeNumericCell(worksheet, rowIndex, columnIndex, longValue.doubleValue(), style);
-          }
-        } catch (Exception e) {
-          throw new UnsupportedOperationException("Cannot generate Excel cell (parseInt) for data [" + longValue + "]" + unsupportedOperationExceptionMessageSuffix(column, worksheet), e);
-        }
-        break;
+        writeIntegerCell(worksheet, rowIndex, columnIndex, column, record, style);
+        return;
+
       case CLOB:
-        try {
-          String stringValue = record.getString(column.getName());
-          if (stringValue == null) {
-            createBlankCell(worksheet, rowIndex, columnIndex, style);
-          } else {
-            writeStringCell(worksheet, rowIndex, columnIndex, StringUtils.substring(stringValue, 0, MAX_CELL_CHARACTERS), style);
-          }
-        } catch (Exception e) {
-          throw new UnsupportedOperationException("Cannot generate Excel cell for CLOB data" + unsupportedOperationExceptionMessageSuffix(column, worksheet), e);
-        }
-        break;
+        writeClobCell(worksheet, rowIndex, columnIndex, column, record, style);
+        return;
+
       default:
         throw new UnsupportedOperationException("Cannot output data type [" + column.getType() + "] to a spreadsheet");
+    }
+  }
+
+  private void writeDecimalCell(Sheet worksheet, int rowIndex, int columnIndex, Column column, Record record, CellStyle style) {
+    BigDecimal decimalValue = record.getBigDecimal(column.getName());
+    try {
+      writeNullableNumericCell(worksheet, rowIndex, columnIndex, decimalValue, style);
+    } catch (Exception e) {
+      throw new UnsupportedOperationException(
+              "Cannot generate Excel cell (parseDouble) for data [" + decimalValue + "]"
+                      + unsupportedOperationExceptionMessageSuffix(column, worksheet),
+              e);
+    }
+  }
+
+  private void writeIntegerCell(Sheet worksheet, int rowIndex, int columnIndex, Column column, Record record, CellStyle style) {
+    Long longValue = record.getLong(column.getName());
+    try {
+      writeNullableNumericCell(worksheet, rowIndex, columnIndex, longValue, style);
+    } catch (Exception e) {
+      throw new UnsupportedOperationException(
+              "Cannot generate Excel cell (parseInt) for data [" + longValue + "]"
+                      + unsupportedOperationExceptionMessageSuffix(column, worksheet),
+              e);
+    }
+  }
+
+  private void writeClobCell(Sheet worksheet, int rowIndex, int columnIndex, Column column, Record record, CellStyle style) {
+    try {
+      String stringValue = record.getString(column.getName());
+      if (stringValue == null) {
+        createBlankCell(worksheet, rowIndex, columnIndex, style);
+      } else {
+        writeStringCell(
+                worksheet,
+                rowIndex,
+                columnIndex,
+                StringUtils.substring(stringValue, 0, MAX_CELL_CHARACTERS),
+                style);
+      }
+    } catch (Exception e) {
+      throw new UnsupportedOperationException(
+              "Cannot generate Excel cell for CLOB data" + unsupportedOperationExceptionMessageSuffix(column, worksheet),
+              e);
+    }
+  }
+
+  private void writeNullableNumericCell(Sheet worksheet, int rowIndex, int columnIndex, Number value, CellStyle style) {
+    if (value == null) {
+      createBlankCell(worksheet, rowIndex, columnIndex, style);
+    } else {
+      writeNumericCell(worksheet, rowIndex, columnIndex, value.doubleValue(), style);
     }
   }
 
@@ -321,12 +367,7 @@ class TableOutputter {
 
 
   private CellStyles getStyles(Workbook workbook) {
-    CellStyles styles = styleCache.get(workbook);
-    if (styles == null) {
-      styles = new CellStyles(workbook);
-      styleCache.put(workbook, styles);
-    }
-    return styles;
+    return styleCache.computeIfAbsent(workbook, CellStyles::new);
   }
 
   boolean tableHasUnsupportedColumns(Table table) {

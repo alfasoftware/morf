@@ -245,8 +245,26 @@ public class SpreadsheetDataSetProducer implements DataSetProducer {
     };
   }
 
-  @Override public void open() { }
-  @Override public void close() { }
+  /**
+   * No-op.
+   *
+   * <p>This producer is eagerly initialised: the spreadsheet is fully parsed
+   * during construction. There are therefore no resources to open.</p>
+   */
+  @Override public void open() {
+    // Intentionally empty
+  }
+
+
+  /**
+   * No-op.
+   *
+   * <p>This producer does not hold any open resources after construction,
+   * so there is nothing to close.</p>
+   */
+  @Override public void close() {
+    // Intentionally empty
+  }
   @Override public Iterable<Record> records(String tableName) { return tables.get(tableName); }
   @Override public boolean isTableEmpty(String tableName) { return tables.get(tableName).isEmpty(); }
 
