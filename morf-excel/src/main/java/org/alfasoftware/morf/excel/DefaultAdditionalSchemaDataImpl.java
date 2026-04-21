@@ -15,9 +15,8 @@
 
 package org.alfasoftware.morf.excel;
 
-import org.apache.commons.lang3.StringUtils;
-
 import org.alfasoftware.morf.metadata.Table;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * A default implementation of {@link AdditionalSchemaData} which provides blank

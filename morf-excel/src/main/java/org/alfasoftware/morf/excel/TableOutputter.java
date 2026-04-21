@@ -25,6 +25,7 @@ import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -35,557 +36,425 @@ import org.alfasoftware.morf.metadata.Table;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.poi.common.usermodel.HyperlinkType;
+import org.apache.poi.hssf.util.HSSFColor.HSSFColorPredefined;
+import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.Hyperlink;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.VerticalAlignment;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.util.WorkbookUtil;
 
-import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
-import jxl.Cell;
-import jxl.format.Alignment;
-import jxl.format.Border;
-import jxl.format.BorderLineStyle;
-import jxl.format.Colour;
-import jxl.format.UnderlineStyle;
-import jxl.format.VerticalAlignment;
-import jxl.write.Label;
-import jxl.write.WritableCell;
-import jxl.write.WritableCellFormat;
-import jxl.write.WritableFont;
-import jxl.write.WritableHyperlink;
-import jxl.write.WritableSheet;
-import jxl.write.WritableWorkbook;
-import jxl.write.WriteException;
 
 /**
  * Outputs tables to an excel spreadsheet.
- *
- * @author Copyright (c) Alfa Financial Software 2010
  */
 class TableOutputter {
 
   private static final Log log = LogFactory.getLog(TableOutputter.class);
-
-  /**
-   * The number of rows in the title.
-   */
   private static final int NUMBER_OF_ROWS_IN_TITLE = 2;
-
-  /**
-   * The maximum number of rows supported in an XLS.
-   */
   private static final int MAX_EXCEL_ROWS = 65536;
-
-  /**
-   * The maximum number of rows supported in an XLS.
-   */
   private static final int MAX_EXCEL_COLUMNS = 256;
-
-  /**
-   * The maximum number of characters supported in an XLS cell.
-   */
   private static final int MAX_CELL_CHARACTERS = 32767;
+  private static final String ID = "id";
+  private static final String VERSION = "version";
+  private static final Set<DataType> SUPPORTED_DATA_TYPES = Sets.immutableEnumSet(STRING, DECIMAL, BIG_INTEGER, INTEGER, CLOB);
 
-  /**
-   * The data types we can output to a spreadsheet.
-   */
-  private static final Set<DataType> supportedDataTypes = Sets.immutableEnumSet(STRING, DECIMAL, BIG_INTEGER, INTEGER, CLOB);
-
-  /**
-   * A source of non-schema related data.
-   */
   private final AdditionalSchemaData additionalSchemaData;
+  private final Map<Workbook, CellStyles> styleCache = new IdentityHashMap<>();
 
-
-  /**
-   * Constructor.
-   *
-   * @param additionalSchemaData A source of non-schema related data.
-   */
   public TableOutputter(AdditionalSchemaData additionalSchemaData) {
     this.additionalSchemaData = additionalSchemaData;
   }
 
-
-  /**
-   * Output the given table to the given workbook.
-   *
-   * @param maxSampleRows the maximum number of rows to export in the "sample data" section
-   *                      (all rows are included in the "Parameters to set up" section).
-   * @param workbook to add the table to.
-   * @param table to add to the workbook.
-   * @param records of data to output.
-   */
-  public void table(int maxSampleRows, final WritableWorkbook workbook, final Table table, final Iterable<Record> records) {
-    final WritableSheet workSheet = workbook.createSheet(spreadsheetifyName(table.getName()), workbook.getNumberOfSheets());
+  public void table(int maxSampleRows, final Workbook workbook, final Table table, final Iterable<Record> records) {
+    final Sheet worksheet = workbook.createSheet(WorkbookUtil.createSafeSheetName(spreadsheetifyName(table.getName())));
 
     boolean columnsTruncated = table.columns().size() > MAX_EXCEL_COLUMNS;
-    if(columnsTruncated) {
+    if (columnsTruncated) {
       log.warn("Output for table '" + table.getName() + "' exceeds the maximum number of columns (" + MAX_EXCEL_COLUMNS + ") in an Excel worksheet. It will be truncated.");
     }
 
     boolean rowsTruncated = false;
-
     try {
-
       int currentRow = NUMBER_OF_ROWS_IN_TITLE + 1;
-
       try {
-
         final Map<String, Integer> helpTextRowNumbers = new HashMap<>();
-
-        //Now output....
-        //Help text
-        currentRow = outputHelp(workSheet, table, currentRow, helpTextRowNumbers);
-
-        //"Example Data"
-        Label exampleLabel = new Label(0, currentRow, "Example Data");
-        exampleLabel.setCellFormat(getBoldFormat());
-        workSheet.addCell(exampleLabel);
-        currentRow++;
-
-        //Headings for example data
-        currentRow = outputDataHeadings(workSheet, table, currentRow, helpTextRowNumbers);
-
-        //Actual example data
-        currentRow = outputExampleData(maxSampleRows, workSheet, table, currentRow, records);
-
-        //"Parameters to Set Up"
-        Label dataLabel = new Label(0, currentRow, "Parameters to Set Up");
-        dataLabel.setCellFormat(getBoldFormat());
-        workSheet.addCell(dataLabel);
-        currentRow++;
-
-        //Headings for parameters to be uploaded
-        currentRow = outputDataHeadings(workSheet, table, currentRow, helpTextRowNumbers);
-        currentRow = outputExampleData(null, workSheet, table, currentRow, records);
+        currentRow = outputHelp(worksheet, workbook, table, currentRow, helpTextRowNumbers);
+        writeValue(worksheet, currentRow++, 0, "Example Data", getBoldFormat(workbook));
+        currentRow = outputDataHeadings(worksheet, workbook, table, currentRow, helpTextRowNumbers);
+        currentRow = outputExampleData(maxSampleRows, worksheet, workbook, table, currentRow, records);
+        writeValue(worksheet, currentRow++, 0, "Parameters to Set Up", getBoldFormat(workbook));
+        currentRow = outputDataHeadings(worksheet, workbook, table, currentRow, helpTextRowNumbers);
+        outputExampleData(null, worksheet, workbook, table, currentRow, records);
       } catch (RowLimitExceededException e) {
         log.warn(e.getMessage());
         rowsTruncated = true;
       }
-    }
-    catch (Exception e) {
+    } catch (Exception e) {
       throw new RuntimeException("Error outputting table '" + table.getName() + "'", e);
     }
 
-    /*
-     * Write the title for the worksheet - adding truncation information if appropriate
-     */
-    if(columnsTruncated || rowsTruncated) {
-      StringBuilder truncatedSuffix = new StringBuilder();
-      truncatedSuffix.append(" [");
-
-      if(columnsTruncated) {
-        truncatedSuffix.append("COLUMNS");
+    if (columnsTruncated || rowsTruncated) {
+      StringBuilder suffix = new StringBuilder(" [");
+      if (columnsTruncated) {
+        suffix.append("COLUMNS");
       }
-
-      if(columnsTruncated && rowsTruncated) {
-        truncatedSuffix.append(" & ");
+      if (columnsTruncated && rowsTruncated) {
+        suffix.append(" & ");
       }
-
-      if(rowsTruncated) {
-        truncatedSuffix.append("ROWS");
+      if (rowsTruncated) {
+        suffix.append("ROWS");
       }
-
-      truncatedSuffix.append(" TRUNCATED]");
-
-      createTitle(workSheet, workSheet.getName() + truncatedSuffix.toString(), table.getName());
-    }
-    else {
-      createTitle(workSheet, workSheet.getName(), table.getName());
+      suffix.append(" TRUNCATED]");
+      createTitle(worksheet, workbook, worksheet.getSheetName() + suffix, table.getName());
+    } else {
+      createTitle(worksheet, workbook, worksheet.getSheetName(), table.getName());
     }
   }
 
 
-  /**
-   * Converts camel capped names to something we can show in a spreadsheet.
-   *
-   * @param name Name to convert.
-   * @return A human readable version of the name wtih camel caps replaced by spaces.
-   */
-  private String spreadsheetifyName(String name) {
-    return StringUtils.capitalize(name).replaceAll("([A-Z][a-z])", " $1").trim();
-  }
 
-
-  /**
-   * Inserts a row at the top of the sheet with the given title
-   * @param sheet to add the title to
-   * @param title to add
-   * @param fileName of the ALFA file to which the sheet relates
-   */
-  private void createTitle(WritableSheet sheet, String title, String fileName) {
-    try {
-      //Friendly file name in A1
-      Label cell = new Label(0, 0, title);
-      WritableFont headingFont = new WritableFont(WritableFont.ARIAL, 16, WritableFont.BOLD);
-      WritableCellFormat headingFormat = new WritableCellFormat(headingFont);
-      cell.setCellFormat(headingFormat);
-      sheet.addCell(cell);
-
-      //ALFA file name in B2 (hidden in white)
-      cell = new Label(1, 1, fileName);
-      WritableFont fileNameFont = new WritableFont(WritableFont.ARIAL,10,WritableFont.NO_BOLD,false,UnderlineStyle.NO_UNDERLINE,Colour.WHITE);
-      WritableCellFormat fileNameFormat = new WritableCellFormat(fileNameFont);
-      cell.setCellFormat(fileNameFormat);
-      sheet.addCell(cell);
-
-      //Copyright notice in M1
-      cell = new Label(12, 0, "Copyright " + new SimpleDateFormat("yyyy").format(new Date()) + " Alfa Financial Software Ltd.");
-      WritableCellFormat copyrightFormat = new WritableCellFormat();
-      copyrightFormat.setAlignment(Alignment.RIGHT);
-      cell.setCellFormat(copyrightFormat);
-      sheet.addCell(cell);
-
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-
-  /**
-   * @return the standard font to use
-   */
-  private WritableFont getStandardFont() {
-    return new WritableFont(WritableFont.ARIAL, 8);
-  }
-
-
-  /**
-   * @return the format to use for normal cells
-   * @throws WriteException if the format could not be created
-   */
-  private WritableCellFormat getStandardFormat() throws WriteException {
-    WritableCellFormat standardFormat = new WritableCellFormat(getStandardFont());
-    standardFormat.setVerticalAlignment(VerticalAlignment.TOP);
-    return standardFormat;
-  }
-
-
-  /**
-   * @return the format to use for bold cells
-   * @throws WriteException if the format could not be created
-   */
-  private WritableCellFormat getBoldFormat() throws WriteException {
-    WritableFont boldFont = new WritableFont(WritableFont.ARIAL, 8, WritableFont.BOLD);
-    WritableCellFormat boldHeading = new WritableCellFormat(boldFont);
-    boldHeading.setBorder(Border.BOTTOM, BorderLineStyle.MEDIUM);
-    boldHeading.setVerticalAlignment(VerticalAlignment.CENTRE);
-    boldHeading.setBackground(Colour.GRAY_25);
-
-
-    WritableCellFormat boldFormat = new WritableCellFormat(boldFont);
-    boldFormat.setVerticalAlignment(VerticalAlignment.TOP);
-    return boldFormat;
-  }
-
-
-  /**
-   * Outputs the example data rows.
-   *
-   * @param numberOfExamples to output
-   * @param workSheet to add the data rows to
-   * @param table to get metadata from
-   * @param startRow to start adding the example rows at
-   * @param records to add as examples
-   * @return the new row to carry on outputting at
-   * @throws WriteException if any of the writes to workSheet fail
-   */
-  private int outputExampleData(final Integer numberOfExamples, WritableSheet workSheet, Table table, final int startRow, Iterable<Record> records) throws WriteException {
+  private int outputHelp(Sheet worksheet, Workbook workbook, Table table, int startRow, Map<String, Integer> helpTextRowNumbers) {
     int currentRow = startRow;
+    writeValue(worksheet, currentRow++, 0, "Column Descriptions", getBoldFormat(workbook));
 
-    int rowsOutput = 0;
-    for (Record record : records) {
-
-      if (currentRow >= MAX_EXCEL_ROWS) {
+    int currentColumn = 0;
+    for (Column column : table.columns()) {
+      if (ID.equals(column.getName()) || VERSION.equals(column.getName())) {
         continue;
       }
 
-      if (numberOfExamples != null && rowsOutput >= numberOfExamples) {
-        // Need to continue the loop rather than break as we need to close
-        // the connection which happens at the end of iteration...
-        continue;
+      writeValue(worksheet, currentRow, 0, spreadsheetifyName(column.getName()), getBoldFormat(workbook));
+      String typeString = column.getType() + "(" + column.getWidth() + (column.getScale() == 0 ? "" : "," + column.getScale()) + ")";
+      writeValue(worksheet, currentRow, 1, typeString, getStandardFormat(workbook));
+      writeValue(worksheet, currentRow, 2, additionalSchemaData.columnDefaultValue(table, column.getName()), getStandardFormat(workbook));
+      writeValue(worksheet, currentRow, 3, additionalSchemaData.columnDocumentation(table, column.getName()), getWrappedFormat(workbook));
+      if (currentColumn >= MAX_EXCEL_COLUMNS) {
+        writeValue(worksheet, currentRow, 13, "[TRUNCATED]", getBoldFormat(workbook));
       }
-
-      record(currentRow, workSheet, table, record);
-      rowsOutput++;
+      helpTextRowNumbers.put(column.getName(), currentRow);
       currentRow++;
+      currentColumn++;
+    }
+    return currentRow + 1;
+  }
+
+  private int outputDataHeadings(Sheet worksheet, Workbook workbook, Table table, int rowIndex, Map<String, Integer> helpTextRowNumbers) {
+    int columnIndex = 0;
+    for (Column column : table.columns()) {
+      if (ID.equals(column.getName()) || VERSION.equals(column.getName())) {
+        continue;
+      }
+      if (columnIndex >= MAX_EXCEL_COLUMNS) {
+        break;
+      }
+      Cell cell = writeValue(worksheet, rowIndex, columnIndex, spreadsheetifyName(column.getName()), getBoldHeadingFormat(workbook));
+      Integer helpRow = helpTextRowNumbers.get(column.getName());
+      if (helpRow != null) {
+        Hyperlink hyperlink = workbook.getCreationHelper().createHyperlink(HyperlinkType.DOCUMENT);
+        hyperlink.setAddress("'" + worksheet.getSheetName() + "'!A" + (helpRow + 1));
+        cell.setHyperlink(hyperlink);
+        cell.setCellStyle(getHyperlinkFormat(workbook));
+      }
+      columnIndex++;
+    }
+    return rowIndex + 1;
+  }
+
+  private int outputExampleData(Integer numberOfExamples, Sheet worksheet, Workbook workbook, Table table, int startRow,
+                                Iterable<Record> records) {
+    int currentRow = startRow;
+    int written = 0;
+
+    for (Record record : records) {
+      if (currentRow >= MAX_EXCEL_ROWS || hasWrittenRequestedExamples(numberOfExamples, written)) {
+        break;
+      }
+
+      outputExampleRow(worksheet, workbook, table, currentRow, record);
+      currentRow++;
+      written++;
     }
 
     if (currentRow >= MAX_EXCEL_ROWS) {
-      // This is a fix for WEB-56074. It will be removed if/when WEB-42351 is developed.
       throw new RowLimitExceededException("Output for table '" + table.getName() + "' exceeds the maximum number of rows (" + MAX_EXCEL_ROWS + ") in an Excel worksheet. It will be truncated.");
     }
-
-    currentRow++;
-    return currentRow;
+    return currentRow + 1;
   }
 
+  private boolean hasWrittenRequestedExamples(Integer numberOfExamples, int written) {
+    return numberOfExamples != null && written >= numberOfExamples;
+  }
 
-  /**
-   * @param workSheet to add the help to
-   * @param table to fetch metadata from
-   * @param startRow to start adding rows at
-   * @param helpTextRowNumbers - map to insert row numbers for each help field into
-   * @return the index of the next row to use
-   * @throws WriteException if any of the writes to workSheet failed
-   */
-  private int outputHelp(WritableSheet workSheet, Table table, final int startRow, final Map<String, Integer> helpTextRowNumbers) throws WriteException {
-    int currentRow = startRow;
-
-    // Title for the descriptions
-    Label dataLabel = new Label(0, currentRow, "Column Descriptions");
-    dataLabel.setCellFormat(getBoldFormat());
-    workSheet.addCell(dataLabel);
-    currentRow++;
-
-    int currentColumn = 0;
+  private void outputExampleRow(Sheet worksheet, Workbook workbook, Table table, int rowIndex, Record record) {
+    int columnIndex = 0;
 
     for (Column column : table.columns()) {
-      if (!column.getName().equals("id") && !column.getName().equals("version")) {
-        // Field name to go with the description
-        Label fieldName = new Label(0, currentRow, spreadsheetifyName(column.getName()));
-        fieldName.setCellFormat(getBoldFormat());
-        workSheet.addCell(fieldName);
-
-        // The type/width
-        String typeString = column.getType() + "(" + column.getWidth() + (column.getScale() == 0 ? "" : "," + column.getScale()) + ")";
-        Label fieldType = new Label(1, currentRow, typeString);
-        fieldType.setCellFormat(getStandardFormat());
-        workSheet.addCell(fieldType);
-
-        // The default
-        String defaultValue = additionalSchemaData.columnDefaultValue(table, column.getName());
-        Label fieldDefault = new Label(2, currentRow, defaultValue);
-        fieldDefault.setCellFormat(getStandardFormat());
-        workSheet.addCell(fieldDefault);
-
-        // The field documentation
-        workSheet.mergeCells(3, currentRow, 12, currentRow);
-        String documentation = additionalSchemaData.columnDocumentation(table, column.getName());
-        Label documentationLabel = new Label(3, currentRow, documentation);
-        WritableCellFormat format = new WritableCellFormat(getStandardFormat());
-        format.setWrap(true);
-        format.setVerticalAlignment(VerticalAlignment.TOP);
-        documentationLabel.setCellFormat(format);
-        workSheet.addCell(documentationLabel);
-
-        //If we've exceed the maximum number of columns - then output truncated warnings
-        if(currentColumn >= MAX_EXCEL_COLUMNS) {
-          Label truncatedWarning = new Label(13, currentRow, "[TRUNCATED]");
-          truncatedWarning.setCellFormat(getBoldFormat());
-          workSheet.addCell(truncatedWarning);
+      if (!isSystemColumn(column)) {
+        if (columnIndex >= MAX_EXCEL_COLUMNS) {
+          return;
         }
-
-        // We are aiming for 150px. 1px is 15 Excel "Units"
-        workSheet.setRowView(currentRow, 150 * 15);
-
-        // Remember at what row we created the help text for this column
-        helpTextRowNumbers.put(column.getName(), currentRow);
-
-        currentRow++;
-        currentColumn++;
-      }
-
-    }
-
-    // Group all the help rows together
-    workSheet.setRowGroup(startRow + 1, currentRow - 1, true);
-
-    // Some extra blank space for neatness
-    currentRow++;
-
-    return currentRow;
-  }
-
-
-  /**
-   * Outputs the data headings row.
-   *
-   * @param workSheet to add the row to
-   * @param table to fetch metadata from
-   * @param startRow to add the headings at
-   * @param helpTextRowNumbers - the map of column names to row index for each
-   *   bit of help text
-   * @throws WriteException if any of the writes to workSheet failed
-   * @return the row to carry on inserting at
-   */
-  private int outputDataHeadings(WritableSheet workSheet, Table table, final int startRow, final Map<String, Integer> helpTextRowNumbers) throws WriteException {
-    int currentRow = startRow;
-
-    int columnNumber = 0;
-    final WritableCellFormat columnHeadingFormat = getBoldFormat();
-
-    columnHeadingFormat.setBackground(Colour.VERY_LIGHT_YELLOW);
-    WritableFont font = new WritableFont(WritableFont.ARIAL, 8, WritableFont.BOLD);
-    font.setColour(Colour.BLUE);
-    font.setUnderlineStyle(UnderlineStyle.SINGLE);
-    columnHeadingFormat.setFont(font);
-
-    for (Column column : table.columns()) {
-
-      if(columnNumber < MAX_EXCEL_COLUMNS && !column.getName().equals("id") && !column.getName().equals("version")) {
-        // Data heading is a link back to the help text
-        WritableHyperlink linkToHelp = new WritableHyperlink(
-          columnNumber, currentRow,
-          spreadsheetifyName(column.getName()),
-          workSheet, 0, helpTextRowNumbers.get(column.getName()));
-        workSheet.addHyperlink(linkToHelp);
-        WritableCell label = workSheet.getWritableCell(columnNumber, currentRow);
-        label.setCellFormat(columnHeadingFormat);
-
-        // Update the help text such that it is a link to the heading
-        Cell helpCell = workSheet.getCell(0, helpTextRowNumbers.get(column.getName()));
-        WritableHyperlink linkFromHelp = new WritableHyperlink(
-          0, helpTextRowNumbers.get(column.getName()),
-          helpCell.getContents(),
-          workSheet, columnNumber, currentRow);
-        workSheet.addHyperlink(linkFromHelp);
-
-        columnNumber++;
-      }
-    }
-
-    currentRow++;
-
-    return currentRow;
-  }
-
-
-  /**
-   * @param row to add the record at
-   * @param worksheet to add the record to
-   * @param table that the record comes from
-   * @param record Record to serialise. This method is part of the old Cryo API.
-   */
-  private void record(final int row, final WritableSheet worksheet, final Table table, Record record) {
-    int columnNumber = 0;
-    WritableFont standardFont = new WritableFont(WritableFont.ARIAL, 8);
-    WritableCellFormat standardFormat = new WritableCellFormat(standardFont);
-
-    WritableCellFormat exampleFormat = new WritableCellFormat(standardFont);
-    try {
-      exampleFormat.setBackground(Colour.ICE_BLUE);
-    } catch (WriteException e) {
-      throw new RuntimeException("Failed to set example background colour", e);
-    }
-
-    for (Column column : table.columns()) {
-      if(columnNumber < MAX_EXCEL_COLUMNS && !column.getName().equals("id") && !column.getName().equals("version")) {
-        createCell(worksheet, column, columnNumber, row, record, standardFormat);
-        columnNumber++;
+        writeColumnValue(worksheet, workbook, rowIndex, columnIndex, column, record);
+        columnIndex++;
       }
     }
   }
 
-  /**
-   * Creates the cell at the given position.
-   *
-   * @param currentWorkSheet to add the cell to
-   * @param column The meta data for the column in the source table
-   * @param columnNumber The column number to insert at (0 based)
-   * @param rowIndex The row number to insert at (0 based)
-   * @param record The source record
-   * @param format The format to apply to the cell
-   */
-  private void createCell(final WritableSheet currentWorkSheet, Column column, int columnNumber, int rowIndex, Record record, WritableCellFormat format) {
-    WritableCell writableCell;
+  private boolean isSystemColumn(Column column) {
+    return ID.equals(column.getName()) || VERSION.equals(column.getName());
+  }
+
+  private void writeColumnValue(Sheet worksheet, Workbook workbook, int rowIndex, int columnIndex, Column column, Record record) {
+    CellStyle style = getStandardFormat(workbook);
 
     switch (column.getType()) {
       case STRING:
-        writableCell = new Label(columnNumber, rowIndex, record.getString(column.getName()));
-        break;
+        writeStringCell(worksheet, rowIndex, columnIndex, record.getString(column.getName()), style);
+        return;
 
       case DECIMAL:
-        BigDecimal decimalValue = record.getBigDecimal(column.getName());
-        try {
-          writableCell = decimalValue == null ? createBlankWriteableCell(columnNumber, rowIndex) : new jxl.write.Number(columnNumber, rowIndex, decimalValue.doubleValue());
-        } catch (Exception e) {
-          throw new UnsupportedOperationException("Cannot generate Excel cell (parseDouble) for data [" + decimalValue + "]" + unsupportedOperationExceptionMessageSuffix(column, currentWorkSheet), e);
-        }
-        break;
+        writeDecimalCell(worksheet, rowIndex, columnIndex, column, record, style);
+        return;
 
       case BIG_INTEGER:
       case INTEGER:
-        Long longValue = record.getLong(column.getName());
-        try {
-          writableCell = longValue == null ? createBlankWriteableCell(columnNumber, rowIndex) :  new jxl.write.Number(columnNumber, rowIndex, longValue);
-        } catch (Exception e) {
-          throw new UnsupportedOperationException("Cannot generate Excel cell (parseInt) for data [" + longValue + "]" + unsupportedOperationExceptionMessageSuffix(column, currentWorkSheet), e);
-        }
-        break;
+        writeIntegerCell(worksheet, rowIndex, columnIndex, column, record, style);
+        return;
 
       case CLOB:
-        try {
-          String stringValue = record.getString(column.getName());
-          writableCell = stringValue == null ? createBlankWriteableCell(columnNumber, rowIndex) : new Label(columnNumber, rowIndex, StringUtils.substring(stringValue, 0, MAX_CELL_CHARACTERS));
-        } catch (Exception e) {
-          throw new UnsupportedOperationException("Cannot generate Excel cell for CLOB data" + unsupportedOperationExceptionMessageSuffix(column, currentWorkSheet), e);
-        }
-        break;
+        writeClobCell(worksheet, rowIndex, columnIndex, column, record, style);
+        return;
 
       default:
         throw new UnsupportedOperationException("Cannot output data type [" + column.getType() + "] to a spreadsheet");
     }
-    writableCell.setCellFormat(format);
+  }
 
+  private void writeDecimalCell(Sheet worksheet, int rowIndex, int columnIndex, Column column, Record record, CellStyle style) {
+    BigDecimal decimalValue = record.getBigDecimal(column.getName());
     try {
-      currentWorkSheet.addCell(writableCell);
+      writeNullableNumericCell(worksheet, rowIndex, columnIndex, decimalValue, style);
     } catch (Exception e) {
-      throw new RuntimeException("Error writing value to spreadsheet", e);
+      throw new UnsupportedOperationException(
+              "Cannot generate Excel cell (parseDouble) for data [" + decimalValue + "]"
+                      + unsupportedOperationExceptionMessageSuffix(column, worksheet),
+              e);
     }
   }
 
-
-  /**
-   * Indicates if the table has a column with a column type which we can't
-   * output to a spreadsheet.
-   *
-   * @param table The table metadata.
-   * @return
-   */
-  boolean tableHasUnsupportedColumns(Table table) {
-    return Iterables.any(table.columns(), new Predicate<Column>() {
-      @Override
-      public boolean apply(Column column) {
-        return !supportedDataTypes.contains(column.getType());
-      }
-    });
+  private void writeIntegerCell(Sheet worksheet, int rowIndex, int columnIndex, Column column, Record record, CellStyle style) {
+    Long longValue = record.getLong(column.getName());
+    try {
+      writeNullableNumericCell(worksheet, rowIndex, columnIndex, longValue, style);
+    } catch (Exception e) {
+      throw new UnsupportedOperationException(
+              "Cannot generate Excel cell (parseInt) for data [" + longValue + "]"
+                      + unsupportedOperationExceptionMessageSuffix(column, worksheet),
+              e);
+    }
   }
 
+  private void writeClobCell(Sheet worksheet, int rowIndex, int columnIndex, Column column, Record record, CellStyle style) {
+    try {
+      String stringValue = record.getString(column.getName());
+      if (stringValue == null) {
+        createBlankCell(worksheet, rowIndex, columnIndex, style);
+      } else {
+        writeStringCell(
+                worksheet,
+                rowIndex,
+                columnIndex,
+                StringUtils.substring(stringValue, 0, MAX_CELL_CHARACTERS),
+                style);
+      }
+    } catch (Exception e) {
+      throw new UnsupportedOperationException(
+              "Cannot generate Excel cell for CLOB data" + unsupportedOperationExceptionMessageSuffix(column, worksheet),
+              e);
+    }
+  }
 
-  /**
-   * Thrown if the excel representation of the table has more than {@link TableOutputter#MAX_EXCEL_ROWS}
-   *
-   * @author Copyright (c) Alfa Financial Software 2017
-   */
-  private class RowLimitExceededException extends RuntimeException {
+  private void writeNullableNumericCell(Sheet worksheet, int rowIndex, int columnIndex, Number value, CellStyle style) {
+    if (value == null) {
+      createBlankCell(worksheet, rowIndex, columnIndex, style);
+    } else {
+      writeNumericCell(worksheet, rowIndex, columnIndex, value.doubleValue(), style);
+    }
+  }
 
-    public RowLimitExceededException(String message) {
+  private Cell writeValue(Sheet sheet, int rowIndex, int columnIndex, String value, CellStyle style) {
+    Row row = getOrCreateRow(sheet, rowIndex);
+    Cell cell = row.createCell(columnIndex);
+    cell.setCellValue(value);
+    cell.setCellStyle(style);
+    return cell;
+  }
+
+  private void writeStringCell(Sheet sheet, int rowIndex, int columnIndex, String value, CellStyle style) {
+    if (value == null) {
+      createBlankCell(sheet, rowIndex, columnIndex, style);
+    } else {
+      writeValue(sheet, rowIndex, columnIndex, value, style);
+    }
+  }
+
+  private void writeNumericCell(Sheet sheet, int rowIndex, int columnIndex, double value, CellStyle style) {
+    Row row = getOrCreateRow(sheet, rowIndex);
+    Cell cell = row.createCell(columnIndex, CellType.NUMERIC);
+    cell.setCellValue(value);
+    cell.setCellStyle(style);
+  }
+
+  private void createBlankCell(Sheet sheet, int rowIndex, int columnIndex, CellStyle style) {
+    Row row = getOrCreateRow(sheet, rowIndex);
+    Cell cell = row.createCell(columnIndex, CellType.BLANK);
+    cell.setCellStyle(style);
+  }
+
+  private void createTitle(Sheet sheet, Workbook workbook, String title, String fileName) {
+    Cell titleCell = writeValue(sheet, 0, 0, title, titleStyle(workbook));
+    titleCell.setCellStyle(titleStyle(workbook));
+
+    Cell fileNameCell = writeValue(sheet, 1, 1, fileName, hiddenFileNameStyle(workbook));
+    fileNameCell.setCellStyle(hiddenFileNameStyle(workbook));
+
+    Cell copyrightCell = writeValue(sheet, 0, 12,
+        "Copyright " + new SimpleDateFormat("yyyy").format(new Date()) + " Alfa Financial Software Ltd.",
+        copyrightStyle(workbook));
+    copyrightCell.setCellStyle(copyrightStyle(workbook));
+  }
+
+  private CellStyle titleStyle(Workbook workbook) {
+    return getStyles(workbook).titleStyle;
+  }
+
+  private CellStyle hiddenFileNameStyle(Workbook workbook) {
+    return getStyles(workbook).hiddenFileNameStyle;
+  }
+
+  private CellStyle copyrightStyle(Workbook workbook) {
+    return getStyles(workbook).copyrightStyle;
+  }
+
+  private String spreadsheetifyName(String name) {
+    return StringUtils.capitalize(name).replaceAll("([A-Z][a-z])", " $1").trim();
+  }
+
+  private CellStyle getStandardFormat(Workbook workbook) {
+    return getStyles(workbook).standardFormat;
+  }
+
+  private CellStyle getWrappedFormat(Workbook workbook) {
+    return getStyles(workbook).wrappedFormat;
+  }
+
+  private CellStyle getBoldFormat(Workbook workbook) {
+    return getStyles(workbook).boldFormat;
+  }
+
+  private CellStyle getBoldHeadingFormat(Workbook workbook) {
+    return getStyles(workbook).boldHeadingFormat;
+  }
+
+  private CellStyle getHyperlinkFormat(Workbook workbook){
+    return getStyles(workbook).hyperlinkFormat;
+  }
+
+  private CellStyles getStyles(Workbook workbook) {
+    return styleCache.computeIfAbsent(workbook, CellStyles::new);
+  }
+
+  boolean tableHasUnsupportedColumns(Table table) {
+    return Iterables.any(table.columns(), column -> !SUPPORTED_DATA_TYPES.contains(column.getType()));
+  }
+
+  private Row getOrCreateRow(Sheet sheet, int rowIndex) {
+    Row row = sheet.getRow(rowIndex);
+    return row == null ? sheet.createRow(rowIndex) : row;
+  }
+
+  private String unsupportedOperationExceptionMessageSuffix(Column column, Sheet worksheet) {
+    return " in column [" + column.getName() + "] of table [" + worksheet.getSheetName() + "]";
+  }
+
+  private static final class CellStyles {
+    private final CellStyle titleStyle;
+    private final CellStyle hiddenFileNameStyle;
+    private final CellStyle copyrightStyle;
+    private final CellStyle standardFormat;
+    private final CellStyle wrappedFormat;
+    private final CellStyle boldFormat;
+    private final CellStyle boldHeadingFormat;
+    private final CellStyle hyperlinkFormat;
+
+    private CellStyles(Workbook workbook) {
+      Font standardFont = workbook.createFont();
+      standardFont.setFontHeightInPoints((short) 8);
+
+      Font boldFont = workbook.createFont();
+      boldFont.setBold(true);
+      boldFont.setFontHeightInPoints((short) 8);
+
+      Font titleFont = workbook.createFont();
+      titleFont.setBold(true);
+      titleFont.setFontHeightInPoints((short) 16);
+
+      Font hyperlinkFont = workbook.createFont();
+      hyperlinkFont.setUnderline(Font.U_SINGLE);
+      hyperlinkFont.setColor(IndexedColors.BLUE.getIndex());
+      hyperlinkFont.setFontHeightInPoints((short) 8);
+
+      Font hiddenFileNameFont = workbook.createFont();
+      hiddenFileNameFont.setColor(HSSFColorPredefined.WHITE.getIndex());
+
+      titleStyle = workbook.createCellStyle();
+      titleStyle.setFont(titleFont);
+
+      hiddenFileNameStyle = workbook.createCellStyle();
+      hiddenFileNameStyle.setFont(hiddenFileNameFont);
+
+      copyrightStyle = workbook.createCellStyle();
+      copyrightStyle.setAlignment(HorizontalAlignment.RIGHT);
+
+      standardFormat = workbook.createCellStyle();
+      standardFormat.setVerticalAlignment(VerticalAlignment.TOP);
+      standardFormat.setFont(standardFont);
+
+      wrappedFormat = workbook.createCellStyle();
+      wrappedFormat.cloneStyleFrom(standardFormat);
+      wrappedFormat.setWrapText(true);
+
+      boldFormat = workbook.createCellStyle();
+      boldFormat.setVerticalAlignment(VerticalAlignment.TOP);
+      boldFormat.setFont(boldFont);
+
+      boldHeadingFormat = workbook.createCellStyle();
+      boldHeadingFormat.cloneStyleFrom(boldFormat);
+      boldHeadingFormat.setBorderBottom(BorderStyle.MEDIUM);
+      boldHeadingFormat.setVerticalAlignment(VerticalAlignment.CENTER);
+      boldHeadingFormat.setFillForegroundColor(HSSFColorPredefined.GREY_25_PERCENT.getIndex());
+      boldHeadingFormat.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+      hyperlinkFormat = workbook.createCellStyle();
+      hyperlinkFormat.setVerticalAlignment(VerticalAlignment.TOP);
+      hyperlinkFormat.setFont(hyperlinkFont);
+    }
+  }
+
+  private static class RowLimitExceededException extends RuntimeException {
+    RowLimitExceededException(String message) {
       super(message);
     }
-  }
-
-
-  /**
-   * Creates a blank {@link WritableCell} for a given column number and row index.
-   *
-   * @param columnNumber the column number
-   * @param rowIndex the row index
-   * @return a blank {@link WritableCell}
-   */
-  private WritableCell createBlankWriteableCell(int columnNumber, int rowIndex) {
-    return new jxl.write.Blank(columnNumber, rowIndex);
-  }
-
-
-  /**
-   * Creates an {@link UnsupportedOperationException} message suffix for a given
-   * {@link Column} and {@link WritableSheet}.
-   *
-   * @param column the {@link Column}
-   * @param writableSheet the {@link WritableSheet}
-   * @return the {@link UnsupportedOperationException} message suffix
-   */
-  private String unsupportedOperationExceptionMessageSuffix(Column column, WritableSheet writableSheet) {
-    return " in column [" + column.getName() + "] of table [" + writableSheet.getName() + "]";
   }
 }
