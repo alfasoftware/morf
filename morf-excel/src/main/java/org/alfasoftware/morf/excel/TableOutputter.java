@@ -52,7 +52,6 @@ import org.apache.poi.ss.usermodel.VerticalAlignment;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.util.WorkbookUtil;
 
-import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 
@@ -331,12 +330,7 @@ class TableOutputter {
   }
 
   boolean tableHasUnsupportedColumns(Table table) {
-    return Iterables.any(table.columns(), new Predicate<Column>() {
-      @Override
-      public boolean apply(Column column) {
-        return !SUPPORTED_DATA_TYPES.contains(column.getType());
-      }
-    });
+    return Iterables.any(table.columns(), column -> !SUPPORTED_DATA_TYPES.contains(column.getType()));
   }
 
   private Row getOrCreateRow(Sheet sheet, int rowIndex) {
