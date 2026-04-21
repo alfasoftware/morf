@@ -46,6 +46,7 @@ import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.HorizontalAlignment;
 import org.apache.poi.ss.usermodel.Hyperlink;
+import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.VerticalAlignment;
@@ -164,6 +165,7 @@ class TableOutputter {
         Hyperlink hyperlink = workbook.getCreationHelper().createHyperlink(HyperlinkType.DOCUMENT);
         hyperlink.setAddress("'" + worksheet.getSheetName() + "'!A" + (helpRow + 1));
         cell.setHyperlink(hyperlink);
+        cell.setCellStyle(getHyperlinkFormat(workbook));
       }
       columnIndex++;
     }
@@ -365,6 +367,9 @@ class TableOutputter {
     return getStyles(workbook).boldHeadingFormat;
   }
 
+  private CellStyle getHyperlinkFormat(Workbook workbook){
+    return getStyles(workbook).hyperlinkFormat;
+  }
 
   private CellStyles getStyles(Workbook workbook) {
     return styleCache.computeIfAbsent(workbook, CellStyles::new);
@@ -391,6 +396,7 @@ class TableOutputter {
     private final CellStyle wrappedFormat;
     private final CellStyle boldFormat;
     private final CellStyle boldHeadingFormat;
+    private final CellStyle hyperlinkFormat;
 
     private CellStyles(Workbook workbook) {
       Font standardFont = workbook.createFont();
@@ -403,6 +409,11 @@ class TableOutputter {
       Font titleFont = workbook.createFont();
       titleFont.setBold(true);
       titleFont.setFontHeightInPoints((short) 16);
+
+      Font hyperlinkFont = workbook.createFont();
+      hyperlinkFont.setUnderline(Font.U_SINGLE);
+      hyperlinkFont.setColor(IndexedColors.BLUE.getIndex());
+      hyperlinkFont.setFontHeightInPoints((short) 8);
 
       Font hiddenFileNameFont = workbook.createFont();
       hiddenFileNameFont.setColor(HSSFColorPredefined.WHITE.getIndex());
@@ -434,6 +445,10 @@ class TableOutputter {
       boldHeadingFormat.setVerticalAlignment(VerticalAlignment.CENTER);
       boldHeadingFormat.setFillForegroundColor(HSSFColorPredefined.GREY_25_PERCENT.getIndex());
       boldHeadingFormat.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+      hyperlinkFormat = workbook.createCellStyle();
+      hyperlinkFormat.setVerticalAlignment(VerticalAlignment.TOP);
+      hyperlinkFormat.setFont(hyperlinkFont);
     }
   }
 

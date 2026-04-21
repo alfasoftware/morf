@@ -173,22 +173,20 @@ public class TestSpreadsheetDataSetConsumer {
     try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(outputStream.toByteArray()))) {
       String safeSheetName = WorkbookUtil.createSafeSheetName("Bad:/Name*[]?");
       assertNotNull("Unsafe table name should be converted to a valid sheet name", workbook.getSheet(safeSheetName));
-      assertTrue("Original unsafe sheet name should not exist",
-        workbook.getSheet("Bad:/Name*[]?") == null);
+      assertTrue("Original unsafe sheet name should not exist", workbook.getSheet("Bad:/Name*[]?") == null);
     }
   }
 
-
   private static class MockTableOutputter extends TableOutputter {
     private String tableReceived;
-    private Number rowCountReceived;
+    private Integer rowCountReceived;
 
     MockTableOutputter() {
       super(new DefaultAdditionalSchemaDataImpl());
     }
 
     @Override
-    public void table(int maxRows, Workbook workbook, Table table, Iterable records) {
+    public void table(int maxRows, Workbook workbook, Table table, Iterable<Record> records) {
       tableReceived = table.getName();
       rowCountReceived = maxRows;
     }

@@ -34,6 +34,7 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -53,11 +54,12 @@ public class SpreadsheetDataSetConsumer implements DataSetConsumer {
 
   private final OutputStream documentOutputStream;
   private Workbook workbook;
+  private ConsumerStyles consumerStyles;
   private final Optional<Map<String, Integer>> rowsPerTable;
   private final TableOutputter tableOutputter;
 
   public SpreadsheetDataSetConsumer(OutputStream documentOutputStream) {
-    this(documentOutputStream, Optional.empty());
+    this(documentOutputStream, Optional.<Map<String, Integer>>empty());
   }
 
   public SpreadsheetDataSetConsumer(OutputStream documentOutputStream, Optional<Map<String, Integer>> rowsPerTable) {
@@ -79,6 +81,7 @@ public class SpreadsheetDataSetConsumer implements DataSetConsumer {
   @Override
   public void open() {
     workbook = new HSSFWorkbook();
+    consumerStyles = new ConsumerStyles(workbook);
   }
 
   public void createIndex() {
@@ -96,7 +99,7 @@ public class SpreadsheetDataSetConsumer implements DataSetConsumer {
         linkCell.setCellValue(tableSheet.getSheetName());
         linkCell.setHyperlink(workbook.getCreationHelper().createHyperlink(HyperlinkType.DOCUMENT));
         linkCell.getHyperlink().setAddress("'" + tableSheet.getSheetName() + "'!A1");
-
+        linkCell.setCellStyle(consumerStyles.hyperlinkStyle);
         String fileName = getCellString(tableSheet, 1, 1);
         Cell fileNameCell = row.createCell(1);
         fileNameCell.setCellValue(fileName);
@@ -107,6 +110,7 @@ public class SpreadsheetDataSetConsumer implements DataSetConsumer {
         backLinkCell.setCellValue("Back to index");
         backLinkCell.setHyperlink(workbook.getCreationHelper().createHyperlink(HyperlinkType.DOCUMENT));
         backLinkCell.getHyperlink().setAddress("'" + sheet.getSheetName() + "'!A" + (rowIndex + 1));
+        backLinkCell.setCellStyle(consumerStyles.hyperlinkStyle);
         tableSheet.setColumnWidth(0, 13 * 256);
       }
 
@@ -118,11 +122,7 @@ public class SpreadsheetDataSetConsumer implements DataSetConsumer {
   }
 
   private CellStyle indexFileNameStyle() {
-    CellStyle style = workbook.createCellStyle();
-    Font font = workbook.createFont();
-    font.setColor(Font.COLOR_NORMAL);
-    style.setFont(font);
-    return style;
+    return consumerStyles.indexFileNameStyle;
   }
 
   private String spreadsheetifyName(String name) {
@@ -133,18 +133,11 @@ public class SpreadsheetDataSetConsumer implements DataSetConsumer {
     try {
       Cell cell = getOrCreateRow(sheet, 0).createCell(0);
       cell.setCellValue(title);
-      CellStyle headingStyle = workbook.createCellStyle();
-      Font headingFont = workbook.createFont();
-      headingFont.setBold(true);
-      headingFont.setFontHeightInPoints((short) 16);
-      headingStyle.setFont(headingFont);
-      cell.setCellStyle(headingStyle);
+      cell.setCellStyle(consumerStyles.headingStyle);
 
       Cell copyrightCell = getOrCreateRow(sheet, 0).createCell(12);
       copyrightCell.setCellValue("Copyright " + new SimpleDateFormat("yyyy").format(new Date()) + " Alfa Financial Software Ltd.");
-      CellStyle copyrightStyle = workbook.createCellStyle();
-      copyrightStyle.setAlignment(HorizontalAlignment.RIGHT);
-      copyrightCell.setCellStyle(copyrightStyle);
+      copyrightCell.setCellStyle(consumerStyles.copyrightStyle);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
@@ -194,5 +187,40 @@ public class SpreadsheetDataSetConsumer implements DataSetConsumer {
 
   private String safeSheetName(String name) {
     return WorkbookUtil.createSafeSheetName(name);
+  }
+
+  private static final class ConsumerStyles {
+    private final CellStyle indexFileNameStyle;
+    private final CellStyle headingStyle;
+    private final CellStyle copyrightStyle;
+
+    private final CellStyle hyperlinkStyle;
+
+    private ConsumerStyles(Workbook workbook) {
+      Font normalFont = workbook.createFont();
+      normalFont.setColor(Font.COLOR_NORMAL);
+
+      Font headingFont = workbook.createFont();
+      headingFont.setBold(true);
+      headingFont.setFontHeightInPoints((short) 16);
+
+      Font hyperlinkFont = workbook.createFont();
+      hyperlinkFont.setUnderline(Font.U_SINGLE);
+      hyperlinkFont.setColor(IndexedColors.BLUE.getIndex());
+      hyperlinkFont.setFontHeightInPoints((short) 8);
+
+
+      indexFileNameStyle = workbook.createCellStyle();
+      indexFileNameStyle.setFont(normalFont);
+
+      headingStyle = workbook.createCellStyle();
+      headingStyle.setFont(headingFont);
+
+      copyrightStyle = workbook.createCellStyle();
+      copyrightStyle.setAlignment(HorizontalAlignment.RIGHT);
+
+      hyperlinkStyle = workbook.createCellStyle();
+      hyperlinkStyle.setFont(hyperlinkFont);
+    }
   }
 }

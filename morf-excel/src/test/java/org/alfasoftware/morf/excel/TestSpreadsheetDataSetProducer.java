@@ -16,6 +16,7 @@ package org.alfasoftware.morf.excel;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -134,7 +135,6 @@ public class TestSpreadsheetDataSetProducer {
     assertEquals("1", records.get(0).getString("translationId"));
   }
 
-
   @Test
   public void testMissingHyperlinkInIndexIsWrapped() throws Exception {
     try {
@@ -147,7 +147,6 @@ public class TestSpreadsheetDataSetProducer {
         findMessage(e, "Failed to find hyperlink in index sheet at [0,2]"));
     }
   }
-
 
   @Test
   public void testMissingWorksheetIsWrapped() throws Exception {
@@ -162,7 +161,6 @@ public class TestSpreadsheetDataSetProducer {
     }
   }
 
-
   @Test
   public void testMissingHeaderRowIsWrapped() throws Exception {
     try {
@@ -176,7 +174,6 @@ public class TestSpreadsheetDataSetProducer {
     }
   }
 
-
   @Test
   public void testNoTranslationColumnStillProducesRecords() throws Exception {
     SpreadsheetDataSetProducer producer = new SpreadsheetDataSetProducer(new ByteArrayInputStream(
@@ -186,14 +183,23 @@ public class TestSpreadsheetDataSetProducer {
     assertEquals("One populated data row should be parsed", 1, records.size());
     assertEquals("KM", records.get(0).getString("usageMeter"));
     assertEquals("Kilometers", records.get(0).getString("description"));
+    assertEquals("0", String.valueOf(records.get(0).getInteger("translationId")));
   }
 
+  @Test
+  public void testQuotedHyperlinkAddressResolvesWorksheet() throws Exception {
+    SpreadsheetDataSetProducer producer = new SpreadsheetDataSetProducer(new ByteArrayInputStream(
+      workbookBytes(workbookWithSingleTable("UsageMeterType", "'UsageMeterType'!A1", true, true, false, false, true))));
+
+    List<Record> records = Lists.newArrayList(producer.records("UsageMeterType"));
+    assertEquals(1, records.size());
+    assertNotNull(records.get(0));
+  }
 
   private SpreadsheetDataSetProducer produceTestSpreadsheet() {
     InputStream testExcel = getClass().getResourceAsStream("TestSpreadsheetDataSetProducer.xls");
     return new SpreadsheetDataSetProducer(testExcel);
   }
-
 
   private Workbook workbookWithSingleTable(String tableName, String hyperlinkAddress, boolean createWorksheet,
       boolean indexHasHyperlink, boolean useTranslationColumn, boolean omitHeaderHyperlink, boolean noTranslationColumn) {
@@ -214,13 +220,11 @@ public class TestSpreadsheetDataSetProducer {
       tableSheet.createRow(1).createCell(0).setCellValue("Parameters to Set Up");
 
       Row headerRow = tableSheet.createRow(2);
+      headerRow.createCell(0).setCellValue("Usage Meter");
       if (!omitHeaderHyperlink) {
-        headerRow.createCell(0).setHyperlink(workbook.getCreationHelper().createHyperlink(HyperlinkType.DOCUMENT));
+        headerRow.getCell(0).setHyperlink(workbook.getCreationHelper().createHyperlink(HyperlinkType.DOCUMENT));
         headerRow.getCell(0).getHyperlink().setAddress("'Index'!A1");
-      } else {
-        headerRow.createCell(0);
       }
-      headerRow.getCell(0).setCellValue("Usage Meter");
       headerRow.createCell(1).setCellValue("Description");
       if (useTranslationColumn && !noTranslationColumn) {
         headerRow.createCell(2).setCellValue("");
@@ -234,23 +238,18 @@ public class TestSpreadsheetDataSetProducer {
         dataRow.createCell(3).setCellValue("M");
       }
 
-      if (useTranslationColumn && !noTranslationColumn) {
-        tableSheet.createRow(5);
-      }
+      tableSheet.createRow(4);
     }
 
     return workbook;
   }
 
-
   private byte[] workbookBytes(Workbook workbook) throws IOException {
-    try (Workbook closeableWorkbook = workbook;
-         ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+    try (Workbook closeableWorkbook = workbook; ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
       closeableWorkbook.write(outputStream);
       return outputStream.toByteArray();
     }
   }
-
 
   private boolean findMessage(Throwable throwable, String expectedMessage) {
     Throwable current = throwable;
