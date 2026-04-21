@@ -215,13 +215,13 @@ public class TestPostgreSqlMetaDataProvider {
         "join pg_namespace n on n.oid = par.relnamespace \n" +
         "join pg_description d ON d.objoid = par.oid and d.objsubid = 0\n" +
         "where not par.relispartition and par.relkind = 'p'"))
-      .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition", "Partition"));
+      .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition", "REALNAME:[Partition]"));
     when(statement.executeQuery("select par.relname, d.description\n" +
         "from pg_class par \n" +
         "join pg_namespace n on n.oid = par.relnamespace\n" +
         "join pg_description d ON d.objoid = par.oid and d.objsubid = 0\n" +
         " where par.relispartition and par.relkind = 'r'"))
-      .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition_p0", "Partition_p0"));
+      .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition_p0", "REALNAME:[Partition_p0]"));
 
     // When
     final AdditionalMetadata postgresMetaDataProvider = (AdditionalMetadata)postgres.openSchema(connection, "TestDatabase", "TestSchema");
@@ -282,13 +282,13 @@ public class TestPostgreSqlMetaDataProvider {
         "join pg_namespace n on n.oid = par.relnamespace \n" +
         "join pg_description d ON d.objoid = par.oid and d.objsubid = 0\n" +
         "where not par.relispartition and par.relkind = 'p'"))
-      .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition", "Partition"));
+      .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition", "REALNAME:[Partition]"));
     when(statement.executeQuery("select par.relname, d.description\n" +
         "from pg_class par \n" +
         "join pg_namespace n on n.oid = par.relnamespace\n" +
         "join pg_description d ON d.objoid = par.oid and d.objsubid = 0\n" +
         " where par.relispartition and par.relkind = 'r'"))
-      .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition_p0", "Partition_p0"));
+      .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition_p0", "REALNAME:[Partition_p0]"));
     DatabaseMetaData postgreSQLMetaDataMock = mock(DatabaseMetaData.class);
     when(connection.getMetaData()).thenReturn(postgreSQLMetaDataMock);
     when(postgreSQLMetaDataMock.getTables(any(), any(), any(), any()))
