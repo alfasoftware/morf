@@ -57,6 +57,7 @@ import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.FunctionType;
+import org.alfasoftware.morf.sql.element.PortableSqlExpression;
 import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
@@ -74,6 +75,12 @@ class PostgreSQLDialect extends SqlDialect {
 
   public PostgreSQLDialect(String schemaName) {
    super(schemaName);
+  }
+
+
+  @Override
+  protected String databaseTypeIdentifier() {
+    return PostgreSQL.IDENTIFIER;
   }
 
 
@@ -522,6 +529,7 @@ class PostgreSQLDialect extends SqlDialect {
   public Collection<String> renameTableStatements(Table from, Table to) {
     Iterable<String> renameTable = ImmutableList.of("ALTER TABLE " + schemaNamePrefix(from) + from.getName() + " RENAME TO " + to.getName());
 
+    // Important: PK does not get dropped upon rename!
     Iterable<String> renamePk = SchemaUtils.primaryKeysForTable(from).isEmpty()
         ? ImmutableList.of()
         : renameIndexStatements(from, from.getName() + "_pk", to.getName() + "_pk");
@@ -612,9 +620,7 @@ class PostgreSQLDialect extends SqlDialect {
 
   @Override
   protected String getSqlFrom(BlobFieldLiteral field) {
-    // this format doesn't work with blob fields: String.format("E'\\x%s'", field.getValue());
-    // see org.alfasoftware.morf.integration.TestSqlStatements#testBlobFields
-    return String.format("'%s'", field.getValue());
+    return String.format("decode('%s','hex')", field.getValue());
   }
 
   @Override
@@ -813,6 +819,12 @@ class PostgreSQLDialect extends SqlDialect {
     result.append(" LIMIT 1 OFFSET 0");
 
     return result.toString().trim();
+  }
+
+
+  @Override
+  protected Optional<String> getSelectLimitSuffix(int limit) {
+    return Optional.of("LIMIT " + limit);
   }
 
 
@@ -1045,12 +1057,6 @@ class PostgreSQLDialect extends SqlDialect {
   }
 
 
-  @Override
-  protected String getSqlFrom(PortableSqlFunction function) {
-    return super.getSqlForPortableFunction(function.getFunctionForDatabaseType(PostgreSQL.IDENTIFIER));
-  }
-
-
   /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#tableNameWithSchemaName(org.alfasoftware.morf.sql.element.TableReference)
    */
@@ -1120,4 +1126,5 @@ class PostgreSQLDialect extends SqlDialect {
             .filter(instanceOf(PostgreSQLMetaDataProvider.class))
             .map(PostgreSQLMetaDataProvider.class::cast);
   }
+
 }

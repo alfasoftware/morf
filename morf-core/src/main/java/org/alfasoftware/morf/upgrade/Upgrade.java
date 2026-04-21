@@ -64,7 +64,10 @@ import com.google.inject.Inject;
  * @author Copyright (c) Alfa Financial Software 2010 - 2013
  */
 public class Upgrade {
+
   private static final Log log = LogFactory.getLog(Upgrade.class);
+
+  private static final String COLUMN_NAME_UPGRADE_UUID = "upgradeUUID";
 
   private final ConnectionResources connectionResources;
   private final UpgradePathFactory upgradePathFactory;
@@ -105,20 +108,27 @@ public class Upgrade {
    * @param targetSchema The target database schema.
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
    * @param connectionResources Connection details for the database.
+   * @param upgradeConfigAndContext Config and context object.
    * @param viewDeploymentValidator External view deployment validator.
    */
-  public static void performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, ViewDeploymentValidator viewDeploymentValidator) {
+  public static void performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeConfigAndContext upgradeConfigAndContext, ViewDeploymentValidator viewDeploymentValidator) {
     SqlScriptExecutorProvider sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
     UpgradeStatusTableService upgradeStatusTableService = new UpgradeStatusTableServiceImpl(sqlScriptExecutorProvider, connectionResources.sqlDialect());
     DatabaseUpgradePathValidationService databaseUpgradePathValidationService = new DatabaseUpgradePathValidationServiceImpl(connectionResources, upgradeStatusTableService);
     try {
-      UpgradePath path = Upgrade.createPath(targetSchema, upgradeSteps, connectionResources, upgradeStatusTableService, viewDeploymentValidator, databaseUpgradePathValidationService);
+      UpgradePath path = Upgrade.createPath(targetSchema, upgradeSteps, connectionResources, upgradeConfigAndContext, upgradeStatusTableService, viewDeploymentValidator, databaseUpgradePathValidationService);
       if (path.hasStepsToApply()) {
         sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor()).execute(path.getSql());
       }
     } finally {
       upgradeStatusTableService.tidyUp(connectionResources.getDataSource());
     }
+  }
+
+
+  @Deprecated
+  public static void performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, ViewDeploymentValidator viewDeploymentValidator) {
+    performUpgrade(targetSchema, upgradeSteps, connectionResources, new UpgradeConfigAndContext(), viewDeploymentValidator);
   }
 
 
@@ -131,6 +141,7 @@ public class Upgrade {
    * @param targetSchema The target database schema.
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
    * @param connectionResources Connection details for the database.
+   * @param upgradeConfigAndContext Config and context object.
    * @param upgradeStatusTableService Service used to manage the upgrade status coordination table.
    * @param viewDeploymentValidator External view deployment validator.
    * @return The required upgrade path.
@@ -139,6 +150,7 @@ public class Upgrade {
       Schema targetSchema,
       Collection<Class<? extends UpgradeStep>> upgradeSteps,
       ConnectionResources connectionResources,
+      UpgradeConfigAndContext upgradeConfigAndContext,
       UpgradeStatusTableService upgradeStatusTableService,
       ViewDeploymentValidator viewDeploymentValidator,
       DatabaseUpgradePathValidationService databaseUpgradePathValidationService) {
@@ -148,7 +160,6 @@ public class Upgrade {
     UpgradePathFactory upgradePathFactory = new UpgradePathFactoryImpl(upgradeScriptAdditionsProvider, upgradeStatusTableServiceFactory);
     ViewChangesDeploymentHelper viewChangesDeploymentHelper = new ViewChangesDeploymentHelper(connectionResources.sqlDialect());
     GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory = null;
-    UpgradeConfigAndContext upgradeConfigAndContext = new UpgradeConfigAndContext();
 
     Upgrade upgrade = new Upgrade(
       connectionResources,
@@ -158,6 +169,12 @@ public class Upgrade {
     Set<String> exceptionRegexes = Collections.emptySet();
 
     return upgrade.findPath(targetSchema, upgradeSteps, exceptionRegexes, connectionResources.getDataSource());
+  }
+
+
+  @Deprecated
+  public static UpgradePath createPath(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeStatusTableService upgradeStatusTableService, ViewDeploymentValidator viewDeploymentValidator, DatabaseUpgradePathValidationService databaseUpgradePathValidationService) {
+    return createPath(targetSchema, upgradeSteps, connectionResources, new UpgradeConfigAndContext(), upgradeStatusTableService, viewDeploymentValidator, databaseUpgradePathValidationService);
   }
 
 
@@ -390,7 +407,7 @@ public class Upgrade {
       TableReference upgradeAuditTable = tableRef(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME);
 
       SelectStatement selectStatement = select(
-              upgradeAuditTable.field("upgradeUUID"),
+              upgradeAuditTable.field(COLUMN_NAME_UPGRADE_UUID),
               upgradeAuditTable.field("description")
       )
               .from(upgradeAuditTable)
@@ -418,7 +435,7 @@ public class Upgrade {
       try {
         while(resultSet.next()) {
           String description = resultSet.getString("description");
-          String upgradeUUID = resultSet.getString("upgradeUUID");
+          String upgradeUUID = resultSet.getString(COLUMN_NAME_UPGRADE_UUID);
           upgradeAudit.put(description, upgradeUUID);
         }
       } catch (SQLException e) {
@@ -434,7 +451,7 @@ public class Upgrade {
    */
   private SelectStatement selectUpgradeAuditTableCount() {
     TableReference upgradeAuditTable = tableRef(DatabaseUpgradeTableContribution.UPGRADE_AUDIT_NAME);
-    return select(count(upgradeAuditTable.field("upgradeUUID")))
+    return select(count(upgradeAuditTable.field(COLUMN_NAME_UPGRADE_UUID)))
         .from(upgradeAuditTable)
         .build();
   }

@@ -202,4 +202,10 @@ public class RenameTable implements SchemaChange {
       return null;
     }
   }
+
+
+  @Override
+  public String toString() {
+    return "RenameTable [oldTableName=" + oldTableName + ", newTableName=" + newTableName + "]";
+  }
 }

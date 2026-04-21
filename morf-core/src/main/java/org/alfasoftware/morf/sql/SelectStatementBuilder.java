@@ -17,6 +17,7 @@ package org.alfasoftware.morf.sql;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.alfasoftware.morf.sql.UnionSetOperator.UnionStrategy;
 import org.alfasoftware.morf.sql.element.AliasedField;
@@ -40,6 +41,7 @@ public class SelectStatementBuilder extends AbstractSelectStatementBuilder<Selec
   boolean distinct;
   Criterion having;
   boolean forUpdate;
+  Optional<Integer> limit = Optional.empty();
   final List<AliasedField> groupBys = new ArrayList<>();
   final List<SetOperator> setOperators = new ArrayList<>();
   final List<Hint> hints = new ArrayList<>();
@@ -60,6 +62,7 @@ public class SelectStatementBuilder extends AbstractSelectStatementBuilder<Selec
     this.distinct = copyOf.isDistinct();
     this.having = copyOf.getHaving();
     this.forUpdate = copyOf.isForUpdate();
+    this.limit = copyOf.getLimit();
     this.groupBys.addAll(copyOf.getGroupBys());
     this.setOperators.addAll(copyOf.getSetOperators());
     this.hints.addAll(copyOf.getHints());
@@ -77,6 +80,7 @@ public class SelectStatementBuilder extends AbstractSelectStatementBuilder<Selec
     this.distinct = copyOf.isDistinct();
     this.having = transformation.deepCopy(copyOf.getHaving());
     this.forUpdate = copyOf.isForUpdate();;
+    this.limit = copyOf.getLimit();
     this.groupBys.addAll(DeepCopyTransformations.transformIterable(copyOf.getGroupBys(), transformation));
     this.setOperators.addAll(DeepCopyTransformations.transformIterable(copyOf.getSetOperators(),transformation));
     this.hints.addAll(copyOf.getHints()); // FIXME these should get transformed - UseIndex in particular
@@ -101,6 +105,30 @@ public class SelectStatementBuilder extends AbstractSelectStatementBuilder<Selec
    */
   public SelectStatementBuilder notForUpdate() {
     this.forUpdate = false;
+    return this;
+  }
+
+
+  /**
+   * Limits the number of rows returned by this SELECT statement.
+   *
+   * <blockquote><pre>
+   * select()
+   *   .from(tableRef("Foo"))
+   *   .limit(10);</pre></blockquote>
+   *
+   * <p>Note: This is not supported by all database platforms. MySQL and SQL Server will throw
+   * {@link UnsupportedOperationException} when attempting to generate SQL for a SELECT with LIMIT.</p>
+   *
+   * @param rowLimit the maximum number of rows to return (must be positive)
+   * @return this, for method chaining.
+   * @throws IllegalArgumentException if rowLimit is less than 1
+   */
+  public SelectStatementBuilder limit(int rowLimit) {
+    if (rowLimit < 1) {
+      throw new IllegalArgumentException("Limit must be positive, got: " + rowLimit);
+    }
+    this.limit = Optional.of(rowLimit);
     return this;
   }
 

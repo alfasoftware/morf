@@ -80,6 +80,7 @@ public class TestDatabaseUpgradePathValidationService {
 
   @After
   public void tearDown() {
+    dropUpgradeStatusTable();
     schemaManager.invalidateCache();
     // to make following test on test suite run clean - org.alfasoftware.morf.upgrade.TestFullDeployment
     schemaManager.dropAllTables();
@@ -146,3 +147,4 @@ public class TestDatabaseUpgradePathValidationService {
     sqlScriptExecutorProvider.get().execute(connectionResources.sqlDialect().convertStatementToSQL(insertIntoUpgradeAudit));
   }
 }
+

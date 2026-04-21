@@ -88,7 +88,9 @@ public class TestSelectStatementDeepCopyContract extends AbstractShallowAndDeepC
       testCase("select().except(SELECT_1)", () -> select().except(SELECT_1)),
       testCase("select().except(SELECT_2)", () -> select().except(SELECT_2)),
       testCase("select().unionAll(SELECT_1)", () -> select().unionAll(SELECT_1)),
-      testCase("select().unionAll(SELECT_2)", () -> select().unionAll(SELECT_2))
+      testCase("select().unionAll(SELECT_2)", () -> select().unionAll(SELECT_2)),
+      testCase("select().limit(10)", () -> select().limit(10)),
+      testCase("select().limit(20)", () -> select().limit(20))
     );
   }
 

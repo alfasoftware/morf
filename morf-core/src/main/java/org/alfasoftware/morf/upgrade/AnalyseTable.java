@@ -101,5 +101,11 @@ public class AnalyseTable implements SchemaChange {
     return tableName;
   }
 
+
+  @Override
+  public String toString() {
+    return "AnalyseTable [tableName=" + tableName + "]";
+  }
+
 }
 

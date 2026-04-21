@@ -120,7 +120,9 @@ public class UpgradePathFinder {
    */
   public SchemaChangeSequence determinePath(Schema current, Schema target, Collection<String> exceptionRegexes) throws NoUpgradePathExistsException {
 
-    SchemaChangeSequence schemaChangeSequence = getSchemaChangeSequence();
+    // Create sequence of schema changes, adapt them to the current schema
+    SchemaChangeSequence schemaChangeSequence = getSchemaChangeSequence()
+        .adaptToSchema(current);
 
     // We have changes to make. Apply them against the current schema to see whether they get us the right position
     Schema trialUpgradedSchema = schemaChangeSequence.applyToSchema(current);

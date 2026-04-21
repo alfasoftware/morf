@@ -36,7 +36,6 @@ import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.FunctionType;
-import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
@@ -69,6 +68,12 @@ class H2Dialect extends SqlDialect {
    */
   public H2Dialect(String schemaName) {
     super(schemaName);
+  }
+
+
+  @Override
+  protected String databaseTypeIdentifier() {
+    return H2.IDENTIFIER;
   }
 
 
@@ -225,6 +230,15 @@ class H2Dialect extends SqlDialect {
   @Override
   public DatabaseType getDatabaseType() {
     return DatabaseType.Registry.findByIdentifier(H2.IDENTIFIER);
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSelectLimitSuffix(int)
+   */
+  @Override
+  protected Optional<String> getSelectLimitSuffix(int limit) {
+    return Optional.of("LIMIT " + limit);
   }
 
 
@@ -507,6 +521,7 @@ class H2Dialect extends SqlDialect {
 
     Builder<String> builder = ImmutableList.builder();
 
+    // H2 special: PK gets dropped upon rename!
     if (!primaryKeysForTable(from).isEmpty()) {
       builder.add(dropPrimaryKeyConstraintStatement(from));
     }
@@ -671,12 +686,6 @@ class H2Dialect extends SqlDialect {
   protected String tableNameWithSchemaName(TableReference tableRef) {
     if (!StringUtils.isEmpty(tableRef.getDblink())) throw new IllegalStateException("DB Links are not supported in the H2 dialect. Found dbLink=" + tableRef.getDblink() + " for tableNameWithSchemaName=" + super.tableNameWithSchemaName(tableRef));
     return super.tableNameWithSchemaName(tableRef);
-  }
-
-
-  @Override
-  protected String getSqlFrom(PortableSqlFunction function) {
-    return super.getSqlForPortableFunction(function.getFunctionForDatabaseType(H2.IDENTIFIER));
   }
 
 

@@ -15,8 +15,10 @@
 
 package org.alfasoftware.morf.upgrade;
 
+import static java.util.stream.Collectors.toList;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -31,6 +33,7 @@ import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 
@@ -45,28 +48,28 @@ public class SchemaChangeSequence {
 
   private final UpgradeConfigAndContext upgradeConfigAndContext;
 
-  private final List<UpgradeStep>            upgradeSteps;
+  private final List<UpgradeStep> upgradeSteps;
 
-  private final Set<String> tableAdditions = new HashSet<>();
+  private final Set<String> tableAdditions;
+  private final UpgradeTableResolution upgradeTableResolution;
 
-  private final List<UpgradeStepWithChanges> allChanges     = Lists.newArrayList();
-
-  private final UpgradeTableResolution upgradeTableResolution = new UpgradeTableResolution();
+  private final List<UpgradeStepWithChanges> allChanges;
 
 
   public SchemaChangeSequence(List<UpgradeStep> steps) {
     this(new UpgradeConfigAndContext(), steps);
   }
 
-  /**
-   * Create an instance of {@link SchemaChangeSequence}.
-   *
-   * @param steps the upgrade steps
-   */
+
   public SchemaChangeSequence(UpgradeConfigAndContext upgradeConfigAndContext, List<UpgradeStep> steps) {
     this.upgradeConfigAndContext = upgradeConfigAndContext;
 
-    upgradeSteps = steps;
+    this.upgradeSteps = steps;
+
+    this.tableAdditions = new HashSet<>();
+    this.upgradeTableResolution = new UpgradeTableResolution();
+
+    ImmutableList.Builder<UpgradeStepWithChanges> allChangesBuilder = ImmutableList.builder();
 
     for (UpgradeStep step : steps) {
       InternalVisitor internalVisitor = new InternalVisitor(upgradeConfigAndContext.getSchemaChangeAdaptor());
@@ -75,9 +78,50 @@ public class SchemaChangeSequence {
       // For historical reasons, we need to pass the editor in twice
       step.execute(editor, editor);
 
-      allChanges.add(new UpgradeStepWithChanges(step, internalVisitor.getChanges()));
+      allChangesBuilder.add(new UpgradeStepWithChanges(step, internalVisitor.getChanges()));
       upgradeTableResolution.addDiscoveredTables(step.getClass().getName(), resolvedTablesVisitor.getResolvedTables());
     }
+
+    this.allChanges = allChangesBuilder.build();
+  }
+
+
+  private SchemaChangeSequence(SchemaChangeSequence that, List<UpgradeStepWithChanges> allChanges) {
+    this.upgradeConfigAndContext = that.upgradeConfigAndContext;
+    this.upgradeSteps = that.upgradeSteps;
+    this.tableAdditions = that.tableAdditions;
+    this.allChanges = allChanges;
+    this.upgradeTableResolution = that.upgradeTableResolution;
+  }
+
+
+  /**
+   * Adapts the changes to the given schema.
+   *
+   * @param initialSchema The schema to apply changes to.
+   * @return new resulting schema change sequence after adapting the changes
+   */
+  public SchemaChangeSequence adaptToSchema(Schema initialSchema) {
+    Schema currentSchema = initialSchema;
+    ImmutableList.Builder<UpgradeStepWithChanges> adaptedAllChanges = ImmutableList.builder();
+    SchemaChangeToSchemaAdaptor schemaChangeToSchemaAdaptor = upgradeConfigAndContext.getSchemaChangeToSchemaAdaptor();
+    for (UpgradeStepWithChanges changesForStep : allChanges) {
+      ImmutableList.Builder<SchemaChange> adaptedStepChanges = ImmutableList.builder();
+      for (SchemaChange originalChange : changesForStep.getChanges()) {
+        try {
+          List<SchemaChange> adaptedChanges = schemaChangeToSchemaAdaptor.adapt(originalChange, currentSchema);
+          for(SchemaChange adaptedChange : adaptedChanges) {
+            currentSchema = adaptedChange.apply(currentSchema);
+            adaptedStepChanges.add(adaptedChange);
+          }
+        }
+        catch (RuntimeException rte) {
+          throw new RuntimeException("Failed to apply change [" + originalChange + "] from upgrade step " + changesForStep.getUpgradeClass(), rte);
+        }
+      }
+      adaptedAllChanges.add(new UpgradeStepWithChanges(changesForStep.getUpgradeStep(), adaptedStepChanges.build()));
+    }
+    return new SchemaChangeSequence(this, adaptedAllChanges.build());
   }
 
 
@@ -164,7 +208,15 @@ public class SchemaChangeSequence {
    * @return The set of all table which are added by this sequence.
    */
   public Set<String> tableAdditions() {
-    return tableAdditions;
+    return Collections.unmodifiableSet(tableAdditions);
+  }
+
+
+  @VisibleForTesting
+  List<SchemaChange> getAllChanges() {
+    return allChanges.stream()
+        .flatMap(u -> u.getChanges().stream())
+        .collect(toList());
   }
 
 
@@ -431,6 +483,12 @@ public class SchemaChangeSequence {
       this.delegate = delegate;
       this.changes = changes;
     }
+
+
+    private UpgradeStep getUpgradeStep() {
+      return delegate;
+    }
+
 
     public Class<? extends UpgradeStep> getUpgradeClass() {
       return delegate.getClass();

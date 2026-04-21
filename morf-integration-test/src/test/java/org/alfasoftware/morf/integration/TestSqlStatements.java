@@ -234,6 +234,11 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     (byte)0xFF
   };
 
+  private static final String DATABASE_TYPE_MYSQL = "MY_SQL";
+  private static final String DATABASE_TYPE_SQL_SERVER = "SQL_SERVER";
+  private static final String MYSQL_LIMIT_NOT_SUPPORTED = "LIMIT not supported by Morf for MySQL";
+  private static final String SQL_SERVER_LIMIT_NOT_SUPPORTED = "LIMIT not supported by Morf for SQL Server";
+
   @Rule public InjectMembersRule injectMembersRule = new InjectMembersRule(new TestingDataSourceModule());
 
   @Inject
@@ -3567,6 +3572,223 @@ public class TestSqlStatements { //CHECKSTYLE:OFF
     Integer numberOfRecords = getNumberOfRecordsFromSelect(selectStatement);
 
     assertEquals("Should only have 1 record selected", 1, numberOfRecords.intValue());
+  }
+
+
+  /**
+   * Test basic LIMIT functionality on a simple SELECT.
+   */
+  @Test
+  public void testLimitBasicSelectWithLimit() {
+    Assume.assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(connectionResources.getDatabaseType()));
+    Assume.assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(connectionResources.getDatabaseType()));
+
+    SelectStatement stmt = select(field("field1"), field("field2"))
+      .from(tableRef("SelectFirstTable"))
+      .limit(3);
+
+    Integer count = getNumberOfRecordsFromSelect(stmt);
+    assertEquals("Should return exactly 3 rows", 3, count.intValue());
+  }
+
+
+  /**
+   * Test LIMIT returns correct rows when combined with ORDER BY.
+   */
+  @Test
+  public void testLimitWithOrderBy() {
+    Assume.assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(connectionResources.getDatabaseType()));
+    Assume.assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(connectionResources.getDatabaseType()));
+
+    SelectStatement stmt = select(field("field1"), field("field2"))
+      .from(tableRef("SelectFirstTable"))
+      .orderBy(field("field1").asc())
+      .limit(2);
+
+    SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+    String sql = convertStatementToSQL(stmt);
+
+    executor.executeQuery(sql, connection, new ResultSetProcessor<Void>() {
+      @Override
+      public Void process(ResultSet resultSet) throws SQLException {
+        int rowCount = 0;
+        while (resultSet.next()) {
+          rowCount++;
+          if (rowCount == 1) {
+            assertEquals("First row should have field1=1", 1, resultSet.getInt(1));
+          } else if (rowCount == 2) {
+            assertEquals("Second row should have field1=2", 2, resultSet.getInt(1));
+          }
+        }
+        assertEquals("Should return exactly 2 rows", 2, rowCount);
+        return null;
+      }
+    });
+  }
+
+
+  /**
+   * Test LIMIT works correctly with WHERE filtering.
+   */
+  @Test
+  public void testLimitWithWhereClause() {
+    Assume.assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(connectionResources.getDatabaseType()));
+    Assume.assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(connectionResources.getDatabaseType()));
+
+    SelectStatement stmt = select(field("id"), field("column1"))
+      .from(tableRef("SelectDistinctJoinTable"))
+      .where(eq(field("foreignKeyId"), literal(1)))
+      .limit(2);
+
+    Integer count = getNumberOfRecordsFromSelect(stmt);
+    assertEquals("Should return exactly 2 rows from 3 matching WHERE", 2, count.intValue());
+  }
+
+
+  /**
+   * Test LIMIT works with JOIN operations.
+   */
+  @Test
+  public void testLimitWithJoin() {
+    Assume.assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(connectionResources.getDatabaseType()));
+    Assume.assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(connectionResources.getDatabaseType()));
+
+    TableReference selectTable = tableRef("SelectDistinctTable");
+    TableReference joinTable = tableRef("SelectDistinctJoinTable");
+
+    SelectStatement stmt = select(selectTable.field("column1"), joinTable.field("column1"))
+      .from(selectTable)
+      .innerJoin(joinTable, eq(joinTable.field("foreignKeyId"), selectTable.field("id")))
+      .where(eq(selectTable.field("column1"), literal("TEST1")))
+      .limit(2);
+
+    Integer count = getNumberOfRecordsFromSelect(stmt);
+    assertEquals("Should return exactly 2 rows from join", 2, count.intValue());
+  }
+
+
+  /**
+   * Test LIMIT larger than result set returns all rows.
+   */
+  @Test
+  public void testLimitLargerThanResultSet() {
+    Assume.assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(connectionResources.getDatabaseType()));
+    Assume.assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(connectionResources.getDatabaseType()));
+
+    SelectStatement stmt = select(field("id"), field("column1"))
+      .from(tableRef("SelectDistinctTable"))
+      .limit(100);
+
+    Integer count = getNumberOfRecordsFromSelect(stmt);
+    assertEquals("Should return all 2 available rows", 2, count.intValue());
+  }
+
+
+  /**
+   * Test LIMIT with combined WHERE and ORDER BY clauses.
+   */
+  @Test
+  public void testLimitWithOrderByAndWhere() {
+    Assume.assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(connectionResources.getDatabaseType()));
+    Assume.assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(connectionResources.getDatabaseType()));
+
+    SelectStatement stmt = select(field("field1"), field("field2"))
+      .from(tableRef("SelectFirstTable"))
+      .where(field("field1").greaterThan(literal(1)))
+      .orderBy(field("field1").asc())
+      .limit(3);
+
+    SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+    String sql = convertStatementToSQL(stmt);
+
+    executor.executeQuery(sql, connection, new ResultSetProcessor<Void>() {
+      @Override
+      public Void process(ResultSet resultSet) throws SQLException {
+        int rowCount = 0;
+        while (resultSet.next()) {
+          rowCount++;
+          int field1Value = resultSet.getInt(1);
+          assertTrue("All rows should have field1 > 1", field1Value > 1);
+        }
+        assertEquals("Should return exactly 3 rows", 3, rowCount);
+        return null;
+      }
+    });
+  }
+
+
+  /**
+   * Test LIMIT in subqueries.
+   */
+  @Test
+  public void testLimitInSubquery() {
+    Assume.assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(connectionResources.getDatabaseType()));
+    Assume.assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(connectionResources.getDatabaseType()));
+
+    SelectStatement innerStmt = select(field("field1"), field("field2"))
+      .from(tableRef("SelectFirstTable"))
+      .orderBy(field("field1").asc())
+      .limit(3)
+      .alias("limitedSubquery");
+
+    SelectStatement outerStmt = select(count().as("cnt"))
+      .from(innerStmt);
+
+    SqlScriptExecutor executor = sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor());
+    String sql = convertStatementToSQL(outerStmt);
+
+    executor.executeQuery(sql, connection, new ResultSetProcessor<Void>() {
+      @Override
+      public Void process(ResultSet resultSet) throws SQLException {
+        assertTrue("Should have one result row", resultSet.next());
+        assertEquals("Count should be 3", 3, resultSet.getInt(1));
+        return null;
+      }
+    });
+  }
+
+
+  /**
+   * Test LIMIT works with SELECT DISTINCT.
+   */
+  @Test
+  public void testLimitWithDistinct() {
+    Assume.assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(connectionResources.getDatabaseType()));
+    Assume.assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(connectionResources.getDatabaseType()));
+
+    TableReference selectTable = tableRef("SelectDistinctTable");
+    TableReference joinTable = tableRef("SelectDistinctJoinTable");
+
+    SelectStatement stmt = selectDistinct(selectTable.field("column1"))
+      .from(selectTable)
+      .innerJoin(joinTable, eq(joinTable.field("foreignKeyId"), selectTable.field("id")))
+      .where(eq(selectTable.field("column1"), literal("TEST1")))
+      .limit(1);
+
+    Integer count = getNumberOfRecordsFromSelect(stmt);
+    assertEquals("Should return exactly 1 distinct row", 1, count.intValue());
+  }
+
+
+  /**
+   * Test LIMIT works with aggregation and GROUP BY.
+   */
+  @Test
+  public void testLimitWithAggregation() {
+    Assume.assumeFalse(MYSQL_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_MYSQL.equals(connectionResources.getDatabaseType()));
+    Assume.assumeFalse(SQL_SERVER_LIMIT_NOT_SUPPORTED, DATABASE_TYPE_SQL_SERVER.equals(connectionResources.getDatabaseType()));
+
+    SelectStatement stmt = select(
+        field("field1"),
+        count().as("cnt")
+      )
+      .from(tableRef("SelectFirstTable"))
+      .groupBy(field("field1"))
+      .orderBy(field("field1").asc())
+      .limit(2);
+
+    Integer count = getNumberOfRecordsFromSelect(stmt);
+    assertEquals("Should return exactly 2 groups", 2, count.intValue());
   }
 
 

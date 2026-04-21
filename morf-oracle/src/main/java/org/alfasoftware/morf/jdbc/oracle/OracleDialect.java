@@ -76,6 +76,7 @@ import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
+import org.alfasoftware.morf.sql.element.PortableSqlExpression;
 import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
@@ -127,6 +128,12 @@ class OracleDialect extends SqlDialect {
    */
   public OracleDialect(String schemaName) {
     super(schemaName);
+  }
+
+
+  @Override
+  protected String databaseTypeIdentifier() {
+    return Oracle.IDENTIFIER;
   }
 
 
@@ -810,6 +817,15 @@ class OracleDialect extends SqlDialect {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#getSelectLimitSuffix(int)
+   */
+  @Override
+  protected Optional<String> getSelectLimitSuffix(int limit) {
+    return Optional.of("FETCH FIRST " + limit + " ROWS ONLY");
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#getSqlFrom(ConcatenatedField)
    */
   @Override
@@ -1301,6 +1317,7 @@ class OracleDialect extends SqlDialect {
 
     ArrayList<String> statements = new ArrayList<>();
 
+    // Important: PK does not get dropped upon rename!
     if (!primaryKeysForTable(fromTable).isEmpty()) {
       // Rename the PK constraint
       statements.add("ALTER TABLE " + schemaNamePrefix() + from + " RENAME CONSTRAINT " + fromConstraint + " TO " + toConstraint);
@@ -1494,7 +1511,7 @@ class OracleDialect extends SqlDialect {
   protected String getSqlFrom(SequenceReference sequenceReference) {
     StringBuilder result = new StringBuilder();
 
-    if (getSchemaName() != null || !getSchemaName().isBlank()) {
+    if (getSchemaName() != null && !getSchemaName().isBlank()) {
       result.append(getSchemaName());
       result.append(".");
     }
@@ -1714,12 +1731,6 @@ class OracleDialect extends SqlDialect {
   protected String getSqlFrom(ExceptSetOperator operator) {
     return String.format(" MINUS %s", // MINUS has been supported by Oracle for a long time and the EXCEPT support was added in 21c
         getSqlFrom(operator.getSelectStatement()));
-  }
-
-
-  @Override
-  protected String getSqlFrom(PortableSqlFunction function) {
-    return super.getSqlForPortableFunction(function.getFunctionForDatabaseType(Oracle.IDENTIFIER));
   }
 
 
