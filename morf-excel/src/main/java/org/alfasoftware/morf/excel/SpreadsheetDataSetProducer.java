@@ -202,7 +202,7 @@ public class SpreadsheetDataSetProducer implements DataSetProducer {
       final Sheet sheet, final int rowIndex) {
     final int translationId;
     String translationValue = translationColumn == -1 ? "" : getCellContents(sheet, translationColumn, rowIndex);
-    if (translationColumn != -1 && translationValue.length() > 0) {
+    if (translationColumn != -1 && !translationValue.isEmpty()) {
       translationId = translations.size() + 1;
       translations.add(createTranslationRecord(translationId, translationValue));
     } else {

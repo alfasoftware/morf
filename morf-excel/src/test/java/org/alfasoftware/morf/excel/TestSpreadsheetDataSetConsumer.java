@@ -26,7 +26,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.OutputStream;
-import java.util.Map;
 import java.util.Optional;
 
 import org.alfasoftware.morf.dataset.Record;
@@ -39,14 +38,14 @@ import com.google.common.collect.ImmutableMap;
 
 public class TestSpreadsheetDataSetConsumer {
 
-  private static final ImmutableList<Record> NO_RECORDS = ImmutableList.<Record>of();
+  private static final ImmutableList<Record> NO_RECORDS = ImmutableList.of();
 
   @Test
   public void testIgnoreTable() {
     final MockTableOutputter outputter = new MockTableOutputter();
     final SpreadsheetDataSetConsumer consumer = new SpreadsheetDataSetConsumer(
         mock(OutputStream.class),
-        Optional.<Map<String, Integer>>of(ImmutableMap.of("COMPANY", 5)),
+        Optional.of(ImmutableMap.of("COMPANY", 5)),
         outputter);
 
     consumer.table(table("NotCompany"), NO_RECORDS);
@@ -58,7 +57,7 @@ public class TestSpreadsheetDataSetConsumer {
     TableOutputter outputter = mock(TableOutputter.class);
     final SpreadsheetDataSetConsumer consumer = new SpreadsheetDataSetConsumer(
         mock(OutputStream.class),
-        Optional.<Map<String, Integer>>empty(),
+        Optional.empty(),
         outputter);
 
     Table one = table("one");
@@ -78,13 +77,13 @@ public class TestSpreadsheetDataSetConsumer {
     final MockTableOutputter outputter = new MockTableOutputter();
     SpreadsheetDataSetConsumer consumer = new SpreadsheetDataSetConsumer(
         mock(OutputStream.class),
-        Optional.<Map<String, Integer>>of(ImmutableMap.of("COMPANY", 5)),
+        Optional.of(ImmutableMap.of("COMPANY", 5)),
         outputter);
 
     consumer.table(table("Company"), NO_RECORDS);
 
     assertEquals("Table passed through for output", "Company", outputter.tableReceived);
-    assertEquals("Number of rows desired", Integer.valueOf(5), outputter.rowCountReceived);
+    assertEquals("Number of rows desired", 5, outputter.rowCountReceived);
   }
 
   private static class MockTableOutputter extends TableOutputter {

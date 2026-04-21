@@ -137,11 +137,7 @@ public class TestTableOutputter {
   public void testClobTruncation() {
     when(table.columns()).thenReturn(ImmutableList.of(column("Col1", DataType.CLOB)));
     Record record1 = mock(Record.class);
-    StringBuilder clobValue = new StringBuilder();
-    for (int c = 0; c < 35000; c++) {
-      clobValue.append('X');
-    }
-    when(record1.getString("Col1")).thenReturn(clobValue.toString());
+      when(record1.getString("Col1")).thenReturn("X".repeat(35000));
 
     tableOutputter.table(1, workbook, table, ImmutableList.of(record1));
     sheet = workbook.getSheetAt(0);

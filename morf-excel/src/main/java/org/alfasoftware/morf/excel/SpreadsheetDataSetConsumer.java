@@ -57,7 +57,7 @@ public class SpreadsheetDataSetConsumer implements DataSetConsumer {
   private final TableOutputter tableOutputter;
 
   public SpreadsheetDataSetConsumer(OutputStream documentOutputStream) {
-    this(documentOutputStream, Optional.<Map<String, Integer>>empty());
+    this(documentOutputStream, Optional.empty());
   }
 
   public SpreadsheetDataSetConsumer(OutputStream documentOutputStream, Optional<Map<String, Integer>> rowsPerTable) {

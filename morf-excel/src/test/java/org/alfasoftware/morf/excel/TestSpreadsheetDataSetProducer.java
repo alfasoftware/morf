@@ -21,7 +21,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.InputStream;
-import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.List;
 
@@ -39,11 +38,9 @@ public class TestSpreadsheetDataSetProducer {
 
   /**
    * Ensure that the schema can be retrieved from a set of excel files
-   *
-   * @throws URISyntaxException ...
    */
   @Test
-  public void testGetSchema() throws URISyntaxException {
+  public void testGetSchema()  {
     final SpreadsheetDataSetProducer producer = produceTestSpreadsheet();
 
     // Check that the table names were picked up correctly
@@ -57,10 +54,9 @@ public class TestSpreadsheetDataSetProducer {
   /**
    * Ensure that the rows can be retrieved from a set of excel files
    *
-   * @throws URISyntaxException ...
    */
   @Test
-  public void testGetRecords() throws URISyntaxException {
+  public void testGetRecords() {
     final SpreadsheetDataSetProducer producer = produceTestSpreadsheet();
 
     // Check that the table names were picked up correctly
@@ -81,10 +77,9 @@ public class TestSpreadsheetDataSetProducer {
   /**
    * Ensure that the generated schema behaves as expected
    *
-   * @throws URISyntaxException ...
    */
   @Test
-  public void testGetSchemaMethods() throws URISyntaxException {
+  public void testGetSchemaMethods() {
     final SpreadsheetDataSetProducer producer = produceTestSpreadsheet();
     try {
       // Getting the metadata of a table is an unsupported method of the
@@ -110,7 +105,6 @@ public class TestSpreadsheetDataSetProducer {
 
   private SpreadsheetDataSetProducer produceTestSpreadsheet() {
     InputStream testExcel = getClass().getResourceAsStream("TestSpreadsheetDataSetProducer.xls");
-    final SpreadsheetDataSetProducer producer = new SpreadsheetDataSetProducer(testExcel);
-    return producer;
+      return new SpreadsheetDataSetProducer(testExcel);
   }
 }
