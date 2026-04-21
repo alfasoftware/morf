@@ -58,7 +58,7 @@
     <joda-time.version>2.1</joda-time.version>
     <junit.version>4.13.1</junit.version>
     <junitparams.version>1.0.4</junitparams.version>
-    <jxl.version>2.6.12</jxl.version>
+    <apache-poi.version>5.5.1</apache-poi.version>
     <log4j.version>1.2.16</log4j.version>
     <mockito.version>5.4.0</mockito.version>
     <ognl.version>2.6.9</ognl.version>
@@ -356,9 +356,43 @@
         <version>${junitparams.version}</version>
       </dependency>
       <dependency>
-        <groupId>net.sourceforge.jexcelapi</groupId>
-        <artifactId>jxl</artifactId>
-        <version>${jxl.version}</version>
+        <groupId>org.apache.poi</groupId>
+        <artifactId>poi</artifactId>
+        <version>${apache-poi.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>org.slf4j</groupId>
+            <artifactId>jcl-over-slf4j</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.poi</groupId>
+        <artifactId>poi-ooxml</artifactId>
+        <version>${apache-poi.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>org.apache.xmlgraphics</groupId>
+            <artifactId>batik-all</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>de.rototor.pdfbox</groupId>
+            <artifactId>graphics2d</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk15on</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk15on</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.poi</groupId>
+        <artifactId>poi-ooxml-lite</artifactId>
+        <version>${apache-poi.version}</version>
       </dependency>
       <dependency>
         <groupId>log4j</groupId>

@@ -1,13 +1,10 @@
 package org.alfasoftware.morf.excel;
 
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -18,33 +15,23 @@ import org.alfasoftware.morf.dataset.Record;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Table;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.ArgumentCaptor;
 
 import com.google.common.collect.ImmutableList;
-import jxl.Cell;
-import jxl.write.WritableCell;
-import jxl.write.WritableSheet;
-import jxl.write.WritableWorkbook;
-import jxl.write.WriteException;
 
-/**
- * Ensure that {@link TableOutputter} works correctly.
- *
- * @author Copyright (c) Alfa Financial Software 2023
- */
 public class TestTableOutputter {
 
   private Table table;
   private TableOutputter tableOutputter;
-  private WritableSheet writableSheet;
-  private WritableWorkbook writableWorkbook;
+  private Workbook workbook;
+  private Sheet sheet;
+  private final DataFormatter formatter = new DataFormatter();
 
-
-  /**
-   * Set up the test.
-   */
   @Before
   public void setUp() {
     table = mock(Table.class);
@@ -54,247 +41,146 @@ public class TestTableOutputter {
         column("Col2", DataType.DECIMAL),
         column("Col3", DataType.BIG_INTEGER),
         column("Col4", DataType.INTEGER),
-        column("Col5", DataType.CLOB)
-    ));
+        column("Col5", DataType.CLOB)));
 
-    writableWorkbook = mock(WritableWorkbook.class);
-    writableSheet = mock(WritableSheet.class);
-    when(writableSheet.getName()).thenReturn("Sheet1");
-    when(writableSheet.getWritableCell(anyInt(), anyInt())).thenReturn(mock(WritableCell.class));
-    when(writableSheet.getCell(anyInt(), anyInt())).thenReturn(mock(Cell.class));
-    when(writableWorkbook.createSheet(any(String.class), any(Integer.class))).thenReturn(writableSheet);
-
+    workbook = new HSSFWorkbook();
     AdditionalSchemaData additionalSchemaData = mock(AdditionalSchemaData.class);
+    when(additionalSchemaData.columnDocumentation(table, "Col1")).thenReturn("");
+    when(additionalSchemaData.columnDocumentation(table, "Col2")).thenReturn("");
+    when(additionalSchemaData.columnDocumentation(table, "Col3")).thenReturn("");
+    when(additionalSchemaData.columnDocumentation(table, "Col4")).thenReturn("");
+    when(additionalSchemaData.columnDocumentation(table, "Col5")).thenReturn("");
+    when(additionalSchemaData.columnDefaultValue(table, "Col1")).thenReturn("");
+    when(additionalSchemaData.columnDefaultValue(table, "Col2")).thenReturn("");
+    when(additionalSchemaData.columnDefaultValue(table, "Col3")).thenReturn("");
+    when(additionalSchemaData.columnDefaultValue(table, "Col4")).thenReturn("");
+    when(additionalSchemaData.columnDefaultValue(table, "Col5")).thenReturn("");
     tableOutputter = new TableOutputter(additionalSchemaData);
   }
 
-
-  /**
-   * Tests that a table with fields containing different populated data types is written correctly to the worksheet.
-   *
-   * @throws {@link WriteException} if an error occurs
-   */
   @Test
-  public void testTableOutputWithFieldsPopulated() throws WriteException {
-    // Given
+  public void testTableOutputWithFieldsPopulated() {
     Record record1 = mock(Record.class);
     when(record1.getString("Col1")).thenReturn("STRING VALUE");
     when(record1.getBigDecimal("Col2")).thenReturn(BigDecimal.valueOf(12.34));
     when(record1.getLong("Col3")).thenReturn(22L);
     when(record1.getLong("Col4")).thenReturn(33L);
     when(record1.getString("Col5")).thenReturn("CLOB VALUE");
-    ImmutableList<Record> recordList = ImmutableList.<Record>of(record1);
 
-    // When
-    tableOutputter.table(1, writableWorkbook, table, recordList);
+    tableOutputter.table(1, workbook, table, ImmutableList.of(record1));
+    sheet = workbook.getSheetAt(0);
 
-    ArgumentCaptor<WritableCell> writableCellCaptor = ArgumentCaptor.forClass(WritableCell.class);
-    verify(writableSheet, times(36)).addCell(writableCellCaptor.capture());
-    List<WritableCell> capturedWritableCellList = writableCellCaptor.getAllValues();
-    // Example Data
-    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,12, 0, "STRING VALUE"));
-    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,12, 1, BigDecimal.valueOf(12.34).toString()));
-    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,12, 2, Long.valueOf(22).toString()));
-    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,12, 3, Long.valueOf(33).toString()));
-    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,12, 4, "CLOB VALUE"));
+    assertEquals("STRING VALUE", value(12, 0));
+    assertEquals("12.34", value(12, 1));
+    assertEquals("22", value(12, 2));
+    assertEquals("33", value(12, 3));
+    assertEquals("CLOB VALUE", value(12, 4));
 
-    // Parameters to Set Up
-    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,16, 0, "STRING VALUE"));
-    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,16, 1, BigDecimal.valueOf(12.34).toString()));
-    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,16, 2, Long.valueOf(22).toString()));
-    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,16, 3, Long.valueOf(33).toString()));
-    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,16, 4, "CLOB VALUE"));
+    assertEquals("STRING VALUE", value(16, 0));
+    assertEquals("12.34", value(16, 1));
+    assertEquals("22", value(16, 2));
+    assertEquals("33", value(16, 3));
+    assertEquals("CLOB VALUE", value(16, 4));
   }
 
-
-  /**
-   * Tests that a table with fields containing different unpopulated data types is written correctly to the worksheet.
-   *
-   * @throws {@link WriteException} if an error occurs
-   */
   @Test
-  public void testTableOutputWithFieldsUnpopulated() throws WriteException {
-    // Given
+  public void testTableOutputWithFieldsUnpopulated() {
     Record record1 = mock(Record.class);
-    ImmutableList<Record> recordList = ImmutableList.<Record>of(record1);
 
-    // When
-    tableOutputter.table(1, writableWorkbook, table, recordList);
+    tableOutputter.table(1, workbook, table, ImmutableList.of(record1));
+    sheet = workbook.getSheetAt(0);
 
-    ArgumentCaptor<WritableCell> writableCellCaptor = ArgumentCaptor.forClass(WritableCell.class);
-    verify(writableSheet, times(36)).addCell(writableCellCaptor.capture());
-    List<WritableCell> capturedWritableCellList = writableCellCaptor.getAllValues();
-    // Example Data
-    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,12, 0, ""));
-    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,12, 1, ""));
-    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,12, 2, "0"));
-    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,12, 3, "0"));
-    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,12, 4, ""));
+    assertEquals("", value(12, 0));
+    assertEquals("", value(12, 1));
+    assertEquals("0", value(12, 2));
+    assertEquals("0", value(12, 3));
+    assertEquals("", value(12, 4));
 
-    // Parameters to Set Up
-    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,16, 0, ""));
-    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,16, 1, ""));
-    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,16, 2, "0"));
-    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,16, 3, "0"));
-    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,16, 4, ""));
+    assertEquals("", value(16, 0));
+    assertEquals("", value(16, 1));
+    assertEquals("0", value(16, 2));
+    assertEquals("0", value(16, 3));
+    assertEquals("", value(16, 4));
   }
 
-
-  /**
-   * Tests that columns are truncated correctly.
-   *
-   * @throws {@link WriteException} if an error occurs
-   */
   @Test
-  public void testColumnTruncation() throws WriteException {
-    // Given
+  public void testColumnTruncation() {
     Record record1 = mock(Record.class);
     List<Column> columnList = new ArrayList<>();
-
     for (int c = 1; c <= 257; c++) {
       columnList.add(column("Col" + c, DataType.STRING));
-      when(record1.getString("Col") + c).thenReturn("Value" + c);
+      when(record1.getString("Col" + c)).thenReturn("Value" + c);
     }
-
     when(table.columns()).thenReturn(columnList);
-    ImmutableList<Record> recordList = ImmutableList.<Record>of(record1);
 
-    // When
-    tableOutputter.table(1, writableWorkbook, table, recordList);
+    tableOutputter.table(1, workbook, table, ImmutableList.of(record1));
+    sheet = workbook.getSheetAt(0);
 
-    // Then
-    ArgumentCaptor<WritableCell> writableCellCaptor = ArgumentCaptor.forClass(WritableCell.class);
-    verify(writableSheet, times(1547)).addCell(writableCellCaptor.capture());
-    List<WritableCell> capturedWritableCellList = writableCellCaptor.getAllValues();
-    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,260, 13, "[TRUNCATED]"));
+    assertEquals("[TRUNCATED]", value(12, 256));
   }
 
-
-
-  /**
-   * Tests that rows are truncated correctly.
-   *
-   * @throws {@link WriteException} if an error occurs
-   */
   @Test
-  public void testRowTruncation() throws WriteException {
-    // Given
-    Record record1 = mock(Record.class);
+  public void testRowTruncation() {
     when(table.columns()).thenReturn(ImmutableList.of(column("Col1", DataType.STRING)));
     List<Record> recordList = new ArrayList<>();
-
     for (int r = 1; r < 65537; r++) {
       recordList.add(mock(Record.class));
     }
 
-    // When
-    tableOutputter.table(1, writableWorkbook, table, recordList);
+    tableOutputter.table(1, workbook, table, recordList);
+    sheet = workbook.getSheetAt(0);
 
-    // Then
-    ArgumentCaptor<WritableCell> writableCellCaptor = ArgumentCaptor.forClass(WritableCell.class);
-    verify(writableSheet, times(65535)).addCell(writableCellCaptor.capture());
-    List<WritableCell> capturedWritableCellList = writableCellCaptor.getAllValues();
-
-    for (int i = 0; i < capturedWritableCellList.size(); i++) {
-      if (capturedWritableCellList.get(i).getContents().contains("TRUNC")) {
-        System.out.println("x");
-      }
-    }
-
-    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,0, 0, "Sheet1 [ROWS TRUNCATED]"));
+    assertTrue(value(0, 0).contains("ROWS TRUNCATED"));
   }
 
-
-  /**
-   * Tests that a clob value that exceeds the max length supported by Excel is truncated before being written to the worksheet.
-   *
-   * @throws {@link WriteException} if an error occurs
-   */
   @Test
-  public void testClobTruncation() throws WriteException {
-    // Given
-    when(table.columns()).thenReturn(ImmutableList.of(
-        column("Col1", DataType.CLOB)
-    ));
-
+  public void testClobTruncation() {
+    when(table.columns()).thenReturn(ImmutableList.of(column("Col1", DataType.CLOB)));
     Record record1 = mock(Record.class);
-
-    String clobValue = "";
-
+    StringBuilder clobValue = new StringBuilder();
     for (int c = 0; c < 35000; c++) {
-      clobValue += "X";
+      clobValue.append('X');
     }
+    when(record1.getString("Col1")).thenReturn(clobValue.toString());
 
-    when(record1.getString("Col1")).thenReturn(clobValue);
-    ImmutableList<Record> recordList = ImmutableList.<Record>of(record1);
-    int expectedMaxClobLength = 32767;
+    tableOutputter.table(1, workbook, table, ImmutableList.of(record1));
+    sheet = workbook.getSheetAt(0);
 
-    // When
-    tableOutputter.table(1, writableWorkbook, table, recordList);
-
-    ArgumentCaptor<WritableCell> writableCellCaptor = ArgumentCaptor.forClass(WritableCell.class);
-    verify(writableSheet, times(12)).addCell(writableCellCaptor.capture());
-    List<WritableCell> capturedWritableCellList = writableCellCaptor.getAllValues();
-    // Example Data
-    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,12, 0, clobValue.substring(0, expectedMaxClobLength)));
-
-    // Parameters to Set Up
-    assertTrue(isCapturedWritableCellListContains(capturedWritableCellList,12, 0, clobValue.substring(0, expectedMaxClobLength)));
+    assertEquals(32767, value(12, 0).length());
+    assertEquals(32767, value(16, 0).length());
   }
 
-
-  /**
-   * Tests that a table with fields containing invalid data results in a {@link UnsupportedOperationException}.
-   */
   @Test
   public void testUnsupportedOperationExceptionHandling() {
-    // Given
     Record record1 = mock(Record.class);
 
-    // DECIMAL
     when(table.columns()).thenReturn(ImmutableList.of(column("Col1", DataType.DECIMAL)));
     BigDecimal bigDecimal = mock(BigDecimal.class);
     when(record1.getBigDecimal("Col1")).thenReturn(bigDecimal);
-    when(bigDecimal.doubleValue()).thenThrow(new RuntimeException("BAD BIG DECIMAL"));
+    when(bigDecimal.toString()).thenThrow(new RuntimeException("BAD BIG DECIMAL"));
 
     try {
-      // When
-      tableOutputter.table(1, writableWorkbook, table, ImmutableList.<Record>of(record1));
+      tableOutputter.table(1, workbook, table, ImmutableList.of(record1));
       fail("UnsupportedOperationException should be thrown");
     } catch (Exception e) {
-      // Then
-      assertTrue(e.getCause().getMessage().startsWith("Cannot generate Excel cell (parseDouble) for data [Mock for BigDecimal"));
+      assertTrue(e.getCause().getMessage().startsWith("Cannot generate Excel cell for data"));
     }
 
-    // CLOB
     when(table.columns()).thenReturn(ImmutableList.of(column("Col1", DataType.CLOB)));
     when(record1.getString("Col1")).thenThrow(new RuntimeException("BAD CLOB"));
 
     try {
-      // When
-      tableOutputter.table(1, writableWorkbook, table, ImmutableList.<Record>of(record1));
+      tableOutputter.table(1, workbook, table, ImmutableList.of(record1));
       fail("UnsupportedOperationException should be thrown");
     } catch (Exception e) {
-      // Then
       assertTrue(e.getCause().getMessage().startsWith("Cannot generate Excel cell for CLOB data"));
     }
   }
 
-
-  /**
-   * Tests whether a given {@link WritableCell} {@link List} contains an entry with a given row, column and value.
-   *
-   * @param capturedWritableCellList the {@link WritableCell} {@link List}
-   * @param row the row
-   * @param col the column
-   * @param value the value
-   * @return true if capturedWritableCellList contains the entry, otherwise false
-   */
-  private boolean isCapturedWritableCellListContains(List<WritableCell> capturedWritableCellList, int row, int col, String value) {
-    return capturedWritableCellList.stream()
-      .filter(writableCell -> writableCell.getRow() == row &&
-          writableCell.getColumn() == col &&
-          writableCell.getContents().equals(value))
-      .count() == 1;
+  private String value(int rowIndex, int colIndex) {
+    if (sheet.getRow(rowIndex) == null || sheet.getRow(rowIndex).getCell(colIndex) == null) {
+      return "";
+    }
+    return formatter.formatCellValue(sheet.getRow(rowIndex).getCell(colIndex));
   }
 }
