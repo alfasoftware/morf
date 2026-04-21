@@ -75,6 +75,9 @@ public class SpreadsheetDataSetProducer implements DataSetProducer {
   }
 
   private void parseWorkbook(final InputStream inputStream) {
+    if (inputStream == null) {
+      throw new IllegalArgumentException("Spreadsheet input stream was null");
+    }
     try (Workbook workbook = WorkbookFactory.create(inputStream)) {
       final Sheet sheet = workbook.getSheetAt(0);
       final int column = 1;
@@ -202,7 +205,7 @@ public class SpreadsheetDataSetProducer implements DataSetProducer {
       final Sheet sheet, final int rowIndex) {
     final int translationId;
     String translationValue = translationColumn == -1 ? "" : getCellContents(sheet, translationColumn, rowIndex);
-    if (translationColumn != -1 && !translationValue.isEmpty()) {
+    if (translationColumn != -1 && translationValue.length() > 0) {
       translationId = translations.size() + 1;
       translations.add(createTranslationRecord(translationId, translationValue));
     } else {

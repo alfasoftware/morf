@@ -25,6 +25,7 @@ import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -40,6 +41,7 @@ import org.apache.poi.hssf.util.HSSFColor.HSSFColorPredefined;
 import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.HorizontalAlignment;
@@ -50,6 +52,7 @@ import org.apache.poi.ss.usermodel.VerticalAlignment;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.util.WorkbookUtil;
 
+import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 
@@ -66,6 +69,7 @@ class TableOutputter {
   private static final Set<DataType> SUPPORTED_DATA_TYPES = Sets.immutableEnumSet(STRING, DECIMAL, BIG_INTEGER, INTEGER, CLOB);
 
   private final AdditionalSchemaData additionalSchemaData;
+  private final Map<Workbook, CellStyles> styleCache = new IdentityHashMap<>();
 
   public TableOutputter(AdditionalSchemaData additionalSchemaData) {
     this.additionalSchemaData = additionalSchemaData;
@@ -119,18 +123,25 @@ class TableOutputter {
 
   private int outputHelp(Sheet worksheet, Workbook workbook, Table table, int startRow, Map<String, Integer> helpTextRowNumbers) {
     int currentRow = startRow;
-    int columnIndex = 0;
+    writeValue(worksheet, currentRow++, 0, "Column Descriptions", getBoldFormat(workbook));
+
+    int currentColumn = 0;
     for (Column column : table.columns()) {
-      if (columnIndex >= MAX_EXCEL_COLUMNS) {
-        writeValue(worksheet, currentRow, columnIndex, "[TRUNCATED]", getStandardFormat(workbook));
-        break;
+      if ("id".equals(column.getName()) || "version".equals(column.getName())) {
+        continue;
+      }
+
+      writeValue(worksheet, currentRow, 0, spreadsheetifyName(column.getName()), getBoldFormat(workbook));
+      String typeString = column.getType() + "(" + column.getWidth() + (column.getScale() == 0 ? "" : "," + column.getScale()) + ")";
+      writeValue(worksheet, currentRow, 1, typeString, getStandardFormat(workbook));
+      writeValue(worksheet, currentRow, 2, additionalSchemaData.columnDefaultValue(table, column.getName()), getStandardFormat(workbook));
+      writeValue(worksheet, currentRow, 3, additionalSchemaData.columnDocumentation(table, column.getName()), getWrappedFormat(workbook));
+      if (currentColumn >= MAX_EXCEL_COLUMNS) {
+        writeValue(worksheet, currentRow, 13, "[TRUNCATED]", getBoldFormat(workbook));
       }
       helpTextRowNumbers.put(column.getName(), currentRow);
-      writeValue(worksheet, currentRow, 0, column.getName(), getBoldFormat(workbook));
-      writeValue(worksheet, currentRow, 1, additionalSchemaData.columnDocumentation(table, column.getName()), getStandardFormat(workbook));
-      writeValue(worksheet, currentRow, 2, additionalSchemaData.columnDefaultValue(table, column.getName()), getStandardFormat(workbook));
       currentRow++;
-      columnIndex++;
+      currentColumn++;
     }
     return currentRow + 1;
   }
@@ -138,6 +149,9 @@ class TableOutputter {
   private int outputDataHeadings(Sheet worksheet, Workbook workbook, Table table, int rowIndex, Map<String, Integer> helpTextRowNumbers) {
     int columnIndex = 0;
     for (Column column : table.columns()) {
+      if ("id".equals(column.getName()) || "version".equals(column.getName())) {
+        continue;
+      }
       if (columnIndex >= MAX_EXCEL_COLUMNS) {
         break;
       }
@@ -158,16 +172,18 @@ class TableOutputter {
     int currentRow = startRow;
     int written = 0;
     for (Record record : records) {
-      if (numberOfExamples != null && written >= numberOfExamples) {
-        break;
+      if (currentRow >= MAX_EXCEL_ROWS) {
+        continue;
       }
-      if (currentRow >= MAX_EXCEL_ROWS - 1) {
-        throw new RowLimitExceededException("Output for table '" + table.getName() + "' exceeds the maximum number of rows (" + MAX_EXCEL_ROWS + ") in an Excel worksheet. It will be truncated.");
+      if (numberOfExamples != null && written >= numberOfExamples) {
+        continue;
       }
       int columnIndex = 0;
       for (Column column : table.columns()) {
+        if ("id".equals(column.getName()) || "version".equals(column.getName())) {
+          continue;
+        }
         if (columnIndex >= MAX_EXCEL_COLUMNS) {
-          writeValue(worksheet, currentRow, columnIndex, "[TRUNCATED]", getStandardFormat(workbook));
           break;
         }
         writeColumnValue(worksheet, workbook, currentRow, columnIndex, column, record);
@@ -176,40 +192,57 @@ class TableOutputter {
       currentRow++;
       written++;
     }
+    if (currentRow >= MAX_EXCEL_ROWS) {
+      throw new RowLimitExceededException("Output for table '" + table.getName() + "' exceeds the maximum number of rows (" + MAX_EXCEL_ROWS + ") in an Excel worksheet. It will be truncated.");
+    }
     return currentRow + 1;
   }
 
   private void writeColumnValue(Sheet worksheet, Workbook workbook, int rowIndex, int columnIndex, Column column, Record record) {
-    try {
-      switch (column.getType()) {
-        case STRING:
-        case CLOB:
-          String text = record.getString(column.getName());
-          if (text == null) {
-            text = "";
+    CellStyle style = getStandardFormat(workbook);
+    switch (column.getType()) {
+      case STRING:
+        writeStringCell(worksheet, rowIndex, columnIndex, record.getString(column.getName()), style);
+        break;
+      case DECIMAL:
+        BigDecimal decimalValue = record.getBigDecimal(column.getName());
+        try {
+          if (decimalValue == null) {
+            createBlankCell(worksheet, rowIndex, columnIndex, style);
+          } else {
+            writeNumericCell(worksheet, rowIndex, columnIndex, decimalValue.doubleValue(), style);
           }
-          if (text.length() > MAX_CELL_CHARACTERS) {
-            text = text.substring(0, MAX_CELL_CHARACTERS);
+        } catch (Exception e) {
+          throw new UnsupportedOperationException("Cannot generate Excel cell (parseDouble) for data [" + decimalValue + "]" + unsupportedOperationExceptionMessageSuffix(column, worksheet), e);
+        }
+        break;
+      case BIG_INTEGER:
+      case INTEGER:
+        Long longValue = record.getLong(column.getName());
+        try {
+          if (longValue == null) {
+            createBlankCell(worksheet, rowIndex, columnIndex, style);
+          } else {
+            writeNumericCell(worksheet, rowIndex, columnIndex, longValue.doubleValue(), style);
           }
-          writeValue(worksheet, rowIndex, columnIndex, text, getStandardFormat(workbook));
-          break;
-        case DECIMAL:
-          BigDecimal decimal = record.getBigDecimal(column.getName());
-          writeValue(worksheet, rowIndex, columnIndex, decimal == null ? "" : decimal.toString(), getStandardFormat(workbook));
-          break;
-        case BIG_INTEGER:
-        case INTEGER:
-          Long longValue = record.getLong(column.getName());
-          writeValue(worksheet, rowIndex, columnIndex, longValue == null ? "0" : longValue.toString(), getStandardFormat(workbook));
-          break;
-        default:
-          throw new UnsupportedOperationException("Unsupported data type " + column.getType() + unsupportedOperationExceptionMessageSuffix(column, worksheet));
-      }
-    } catch (RuntimeException e) {
-      String message = column.getType() == CLOB
-          ? "Cannot generate Excel cell for CLOB data" + unsupportedOperationExceptionMessageSuffix(column, worksheet)
-          : "Cannot generate Excel cell for data" + unsupportedOperationExceptionMessageSuffix(column, worksheet);
-      throw new UnsupportedOperationException(message, e);
+        } catch (Exception e) {
+          throw new UnsupportedOperationException("Cannot generate Excel cell (parseInt) for data [" + longValue + "]" + unsupportedOperationExceptionMessageSuffix(column, worksheet), e);
+        }
+        break;
+      case CLOB:
+        try {
+          String stringValue = record.getString(column.getName());
+          if (stringValue == null) {
+            createBlankCell(worksheet, rowIndex, columnIndex, style);
+          } else {
+            writeStringCell(worksheet, rowIndex, columnIndex, StringUtils.substring(stringValue, 0, MAX_CELL_CHARACTERS), style);
+          }
+        } catch (Exception e) {
+          throw new UnsupportedOperationException("Cannot generate Excel cell for CLOB data" + unsupportedOperationExceptionMessageSuffix(column, worksheet), e);
+        }
+        break;
+      default:
+        throw new UnsupportedOperationException("Cannot output data type [" + column.getType() + "] to a spreadsheet");
     }
   }
 
@@ -219,6 +252,27 @@ class TableOutputter {
     cell.setCellValue(value);
     cell.setCellStyle(style);
     return cell;
+  }
+
+  private void writeStringCell(Sheet sheet, int rowIndex, int columnIndex, String value, CellStyle style) {
+    if (value == null) {
+      createBlankCell(sheet, rowIndex, columnIndex, style);
+    } else {
+      writeValue(sheet, rowIndex, columnIndex, value, style);
+    }
+  }
+
+  private void writeNumericCell(Sheet sheet, int rowIndex, int columnIndex, double value, CellStyle style) {
+    Row row = getOrCreateRow(sheet, rowIndex);
+    Cell cell = row.createCell(columnIndex, CellType.NUMERIC);
+    cell.setCellValue(value);
+    cell.setCellStyle(style);
+  }
+
+  private void createBlankCell(Sheet sheet, int rowIndex, int columnIndex, CellStyle style) {
+    Row row = getOrCreateRow(sheet, rowIndex);
+    Cell cell = row.createCell(columnIndex, CellType.BLANK);
+    cell.setCellStyle(style);
   }
 
   private void createTitle(Sheet sheet, Workbook workbook, String title, String fileName) {
@@ -235,26 +289,15 @@ class TableOutputter {
   }
 
   private CellStyle titleStyle(Workbook workbook) {
-    CellStyle style = workbook.createCellStyle();
-    Font font = workbook.createFont();
-    font.setBold(true);
-    font.setFontHeightInPoints((short) 16);
-    style.setFont(font);
-    return style;
+    return getStyles(workbook).titleStyle;
   }
 
   private CellStyle hiddenFileNameStyle(Workbook workbook) {
-    CellStyle style = workbook.createCellStyle();
-    Font font = workbook.createFont();
-    font.setColor(HSSFColorPredefined.WHITE.getIndex());
-    style.setFont(font);
-    return style;
+    return getStyles(workbook).hiddenFileNameStyle;
   }
 
   private CellStyle copyrightStyle(Workbook workbook) {
-    CellStyle style = workbook.createCellStyle();
-    style.setAlignment(HorizontalAlignment.RIGHT);
-    return style;
+    return getStyles(workbook).copyrightStyle;
   }
 
   private String spreadsheetifyName(String name) {
@@ -262,35 +305,38 @@ class TableOutputter {
   }
 
   private CellStyle getStandardFormat(Workbook workbook) {
-    CellStyle style = workbook.createCellStyle();
-    style.setVerticalAlignment(VerticalAlignment.TOP);
-    Font font = workbook.createFont();
-    font.setFontHeightInPoints((short) 8);
-    style.setFont(font);
-    return style;
+    return getStyles(workbook).standardFormat;
+  }
+
+  private CellStyle getWrappedFormat(Workbook workbook) {
+    return getStyles(workbook).wrappedFormat;
   }
 
   private CellStyle getBoldFormat(Workbook workbook) {
-    CellStyle style = workbook.createCellStyle();
-    style.setVerticalAlignment(VerticalAlignment.TOP);
-    Font font = workbook.createFont();
-    font.setBold(true);
-    font.setFontHeightInPoints((short) 8);
-    style.setFont(font);
-    return style;
+    return getStyles(workbook).boldFormat;
   }
 
   private CellStyle getBoldHeadingFormat(Workbook workbook) {
-    CellStyle style = getBoldFormat(workbook);
-    style.setBorderBottom(BorderStyle.MEDIUM);
-    style.setVerticalAlignment(VerticalAlignment.CENTER);
-    style.setFillForegroundColor(HSSFColorPredefined.GREY_25_PERCENT.getIndex());
-    style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-    return style;
+    return getStyles(workbook).boldHeadingFormat;
+  }
+
+
+  private CellStyles getStyles(Workbook workbook) {
+    CellStyles styles = styleCache.get(workbook);
+    if (styles == null) {
+      styles = new CellStyles(workbook);
+      styleCache.put(workbook, styles);
+    }
+    return styles;
   }
 
   boolean tableHasUnsupportedColumns(Table table) {
-    return Iterables.any(table.columns(), column -> !SUPPORTED_DATA_TYPES.contains(column.getType()));
+    return Iterables.any(table.columns(), new Predicate<Column>() {
+      @Override
+      public boolean apply(Column column) {
+        return !SUPPORTED_DATA_TYPES.contains(column.getType());
+      }
+    });
   }
 
   private Row getOrCreateRow(Sheet sheet, int rowIndex) {
@@ -300,6 +346,60 @@ class TableOutputter {
 
   private String unsupportedOperationExceptionMessageSuffix(Column column, Sheet worksheet) {
     return " in column [" + column.getName() + "] of table [" + worksheet.getSheetName() + "]";
+  }
+
+  private static final class CellStyles {
+    private final CellStyle titleStyle;
+    private final CellStyle hiddenFileNameStyle;
+    private final CellStyle copyrightStyle;
+    private final CellStyle standardFormat;
+    private final CellStyle wrappedFormat;
+    private final CellStyle boldFormat;
+    private final CellStyle boldHeadingFormat;
+
+    private CellStyles(Workbook workbook) {
+      Font standardFont = workbook.createFont();
+      standardFont.setFontHeightInPoints((short) 8);
+
+      Font boldFont = workbook.createFont();
+      boldFont.setBold(true);
+      boldFont.setFontHeightInPoints((short) 8);
+
+      Font titleFont = workbook.createFont();
+      titleFont.setBold(true);
+      titleFont.setFontHeightInPoints((short) 16);
+
+      Font hiddenFileNameFont = workbook.createFont();
+      hiddenFileNameFont.setColor(HSSFColorPredefined.WHITE.getIndex());
+
+      titleStyle = workbook.createCellStyle();
+      titleStyle.setFont(titleFont);
+
+      hiddenFileNameStyle = workbook.createCellStyle();
+      hiddenFileNameStyle.setFont(hiddenFileNameFont);
+
+      copyrightStyle = workbook.createCellStyle();
+      copyrightStyle.setAlignment(HorizontalAlignment.RIGHT);
+
+      standardFormat = workbook.createCellStyle();
+      standardFormat.setVerticalAlignment(VerticalAlignment.TOP);
+      standardFormat.setFont(standardFont);
+
+      wrappedFormat = workbook.createCellStyle();
+      wrappedFormat.cloneStyleFrom(standardFormat);
+      wrappedFormat.setWrapText(true);
+
+      boldFormat = workbook.createCellStyle();
+      boldFormat.setVerticalAlignment(VerticalAlignment.TOP);
+      boldFormat.setFont(boldFont);
+
+      boldHeadingFormat = workbook.createCellStyle();
+      boldHeadingFormat.cloneStyleFrom(boldFormat);
+      boldHeadingFormat.setBorderBottom(BorderStyle.MEDIUM);
+      boldHeadingFormat.setVerticalAlignment(VerticalAlignment.CENTER);
+      boldHeadingFormat.setFillForegroundColor(HSSFColorPredefined.GREY_25_PERCENT.getIndex());
+      boldHeadingFormat.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+    }
   }
 
   private static class RowLimitExceededException extends RuntimeException {

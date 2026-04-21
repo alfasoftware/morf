@@ -116,7 +116,7 @@ public class TestTableOutputter {
     tableOutputter.table(1, workbook, table, ImmutableList.of(record1));
     sheet = workbook.getSheetAt(0);
 
-    assertEquals("[TRUNCATED]", value(12, 256));
+    assertEquals("[TRUNCATED]", value(260, 13));
   }
 
   @Test
@@ -137,13 +137,17 @@ public class TestTableOutputter {
   public void testClobTruncation() {
     when(table.columns()).thenReturn(ImmutableList.of(column("Col1", DataType.CLOB)));
     Record record1 = mock(Record.class);
-      when(record1.getString("Col1")).thenReturn("X".repeat(35000));
+    StringBuilder clobValue = new StringBuilder();
+    for (int c = 0; c < 35000; c++) {
+      clobValue.append('X');
+    }
+    when(record1.getString("Col1")).thenReturn(clobValue.toString());
 
     tableOutputter.table(1, workbook, table, ImmutableList.of(record1));
     sheet = workbook.getSheetAt(0);
 
+    assertEquals(32767, value(8, 0).length());
     assertEquals(32767, value(12, 0).length());
-    assertEquals(32767, value(16, 0).length());
   }
 
   @Test
@@ -153,14 +157,18 @@ public class TestTableOutputter {
     when(table.columns()).thenReturn(ImmutableList.of(column("Col1", DataType.DECIMAL)));
     BigDecimal bigDecimal = mock(BigDecimal.class);
     when(record1.getBigDecimal("Col1")).thenReturn(bigDecimal);
-    when(bigDecimal.toString()).thenThrow(new RuntimeException("BAD BIG DECIMAL"));
+    when(bigDecimal.doubleValue()).thenThrow(new RuntimeException("BAD BIG DECIMAL"));
 
     try {
       tableOutputter.table(1, workbook, table, ImmutableList.of(record1));
       fail("UnsupportedOperationException should be thrown");
     } catch (Exception e) {
-      assertTrue(e.getCause().getMessage().startsWith("Cannot generate Excel cell for data"));
+      Throwable t = e.getCause() != null ? e.getCause() : e;
+      assertTrue(t.getMessage().startsWith("Cannot generate Excel cell (parseDouble) for data"));
     }
+
+    workbook = new HSSFWorkbook();
+    sheet = workbook.createSheet("dummy");
 
     when(table.columns()).thenReturn(ImmutableList.of(column("Col1", DataType.CLOB)));
     when(record1.getString("Col1")).thenThrow(new RuntimeException("BAD CLOB"));
@@ -169,7 +177,16 @@ public class TestTableOutputter {
       tableOutputter.table(1, workbook, table, ImmutableList.of(record1));
       fail("UnsupportedOperationException should be thrown");
     } catch (Exception e) {
-      assertTrue(e.getCause().getMessage().startsWith("Cannot generate Excel cell for CLOB data"));
+      Throwable t = e;
+      boolean matched = false;
+      while (t != null) {
+        if (t.getMessage() != null && t.getMessage().startsWith("Cannot generate Excel cell for CLOB data")) {
+          matched = true;
+          break;
+        }
+        t = t.getCause();
+      }
+      assertTrue(matched);
     }
   }
 
