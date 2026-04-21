@@ -38,6 +38,7 @@ import java.util.Map;
 
 import javax.sql.DataSource;
 
+import org.alfasoftware.morf.jdbc.DatabaseMetaDataProvider;
 import org.alfasoftware.morf.jdbc.DatabaseType;
 import org.alfasoftware.morf.metadata.AdditionalMetadata;
 import org.alfasoftware.morf.metadata.Index;
@@ -108,10 +109,18 @@ public class TestPostgreSqlMetaDataProvider {
     final Statement statement0 = mock(Statement.class, RETURNS_SMART_NULLS);
     final Statement statement1 = mock(Statement.class, RETURNS_SMART_NULLS);
     when(connection.createStatement()).thenReturn(statement0, statement1);
-    when(statement0.executeQuery("select relname from pg_class where relispartition and relkind = 'r'"))
-        .thenAnswer(new ReturnMockResultSetWithPartitionTables(0, ""));
-    when(statement1.executeQuery("select relname from pg_class where not relispartition and relkind = 'p'"))
-        .thenAnswer(new ReturnMockResultSetWithPartitionTables(0, ""));
+    when(statement0.executeQuery("select par.relname, d.description\n" +
+        "from pg_class par \n" +
+        "join pg_namespace n on n.oid = par.relnamespace\n" +
+        "join pg_description d ON d.objoid = par.oid and d.objsubid = 0\n" +
+        " where par.relispartition and par.relkind = 'r'"))
+        .thenAnswer(new ReturnMockResultSetWithPartitionTables(0, "", ""));
+    when(statement1.executeQuery("select par.relname as tableName, d.description\n" +
+        "from pg_class par \n" +
+        "join pg_namespace n on n.oid = par.relnamespace \n" +
+        "join pg_description d ON d.objoid = par.oid and d.objsubid = 0\n" +
+        "where not par.relispartition and par.relkind = 'p'"))
+        .thenAnswer(new ReturnMockResultSetWithPartitionTables(0, "", ""));
 
     Statement statement = mock(Statement.class, RETURNS_SMART_NULLS);
     when(connection.createStatement(eq(ResultSet.TYPE_FORWARD_ONLY), eq(ResultSet.CONCUR_READ_ONLY))).thenReturn(statement);
@@ -201,16 +210,24 @@ public class TestPostgreSqlMetaDataProvider {
     // Given
     final Statement statement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
     when(connection.createStatement()).thenReturn(statement);
-    when(statement.executeQuery("select relname from pg_class where not relispartition and relkind = 'p'"))
-      .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition"));
-    when(statement.executeQuery("select relname from pg_class where relispartition and relkind = 'r'"))
-      .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition_p0"));
+    when(statement.executeQuery("select par.relname as tableName, d.description\n" +
+        "from pg_class par \n" +
+        "join pg_namespace n on n.oid = par.relnamespace \n" +
+        "join pg_description d ON d.objoid = par.oid and d.objsubid = 0\n" +
+        "where not par.relispartition and par.relkind = 'p'"))
+      .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition", "Partition"));
+    when(statement.executeQuery("select par.relname, d.description\n" +
+        "from pg_class par \n" +
+        "join pg_namespace n on n.oid = par.relnamespace\n" +
+        "join pg_description d ON d.objoid = par.oid and d.objsubid = 0\n" +
+        " where par.relispartition and par.relkind = 'r'"))
+      .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition_p0", "Partition_p0"));
 
     // When
     final AdditionalMetadata postgresMetaDataProvider = (AdditionalMetadata)postgres.openSchema(connection, "TestDatabase", "TestSchema");
-    assertEquals("Partition Table name", "[partition]", postgresMetaDataProvider.partitionedTableNames().toString());
-    String partitionTable = postgresMetaDataProvider.partitionedTableNames().iterator().next();
-    assertEquals("Partition Table name", "partition", partitionTable);
+    assertEquals("Partition Table name", "[partition/Partition]", postgresMetaDataProvider.partitionedTableNames().toString());
+    DatabaseMetaDataProvider.RealName partitionTable = postgresMetaDataProvider.partitionedTableNames().iterator().next();
+    assertEquals("Partition Table name", "partition", partitionTable.getDbName());
   }
 
 
@@ -224,17 +241,25 @@ public class TestPostgreSqlMetaDataProvider {
     // Given
     final Statement statement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
     when(connection.createStatement()).thenReturn(statement);
-    when(statement.executeQuery("select relname from pg_class where not relispartition and relkind = 'p'"))
-      .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition"));
-    when(statement.executeQuery("select relname from pg_class where relispartition and relkind = 'r'"))
-      .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition_p0"));
+    when(statement.executeQuery("select par.relname as tableName, d.description\n" +
+        "from pg_class par \n" +
+        "join pg_namespace n on n.oid = par.relnamespace \n" +
+        "join pg_description d ON d.objoid = par.oid and d.objsubid = 0\n" +
+        "where not par.relispartition and par.relkind = 'p'"))
+      .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition", "Partition"));
+    when(statement.executeQuery("select par.relname, d.description\n" +
+        "from pg_class par \n" +
+        "join pg_namespace n on n.oid = par.relnamespace\n" +
+        "join pg_description d ON d.objoid = par.oid and d.objsubid = 0\n" +
+        " where par.relispartition and par.relkind = 'r'"))
+      .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition_p0", "Partition_p0"));
 
     // When
     final AdditionalMetadata postgresMetaDataProvider = (AdditionalMetadata)postgres.openSchema(connection, "TestDatabase", "TestSchema");
 
-    assertEquals("Partition Table name", "[partition_p0]", postgresMetaDataProvider.partitionTableNames().toString());
-    String partitionTable = postgresMetaDataProvider.partitionTableNames().iterator().next();
-    assertEquals("Partition Table name", "partition_p0", partitionTable);
+    assertEquals("Partition Table name", "[partition_p0/Partition_p0]", postgresMetaDataProvider.partitionTableNames().toString());
+    DatabaseMetaDataProvider.RealName partitionTable = postgresMetaDataProvider.partitionTableNames().iterator().next();
+    assertEquals("Partition Table name", "partition_p0", partitionTable.getDbName());
   }
 
 
@@ -252,10 +277,18 @@ public class TestPostgreSqlMetaDataProvider {
     when(connection.prepareStatement(anyString())).thenReturn(statement1);
 
     when(connection.createStatement()).thenReturn(statement);
-    when(statement.executeQuery("select relname from pg_class where not relispartition and relkind = 'p'"))
-      .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition"));
-    when(statement.executeQuery("select relname from pg_class where relispartition and relkind = 'r'"))
-      .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition_p0"));
+    when(statement.executeQuery("select par.relname as tableName, d.description\n" +
+        "from pg_class par \n" +
+        "join pg_namespace n on n.oid = par.relnamespace \n" +
+        "join pg_description d ON d.objoid = par.oid and d.objsubid = 0\n" +
+        "where not par.relispartition and par.relkind = 'p'"))
+      .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition", "Partition"));
+    when(statement.executeQuery("select par.relname, d.description\n" +
+        "from pg_class par \n" +
+        "join pg_namespace n on n.oid = par.relnamespace\n" +
+        "join pg_description d ON d.objoid = par.oid and d.objsubid = 0\n" +
+        " where par.relispartition and par.relkind = 'r'"))
+      .thenAnswer(new ReturnMockResultSetWithPartitionTables(1, "partition_p0", "Partition_p0"));
     DatabaseMetaData postgreSQLMetaDataMock = mock(DatabaseMetaData.class);
     when(connection.getMetaData()).thenReturn(postgreSQLMetaDataMock);
     when(postgreSQLMetaDataMock.getTables(any(), any(), any(), any()))
@@ -264,7 +297,7 @@ public class TestPostgreSqlMetaDataProvider {
     // When
     final Schema postgresMetaDataProvider = postgres.openSchema(connection, "TestDatabase", "TestSchema");
     // Then
-    assertEquals("Partition Table name", "[partition]", postgresMetaDataProvider.tableNames().toString());
+    assertEquals("Partition Table name", "[Partition]", postgresMetaDataProvider.tableNames().toString());
     assertFalse("Table names", postgresMetaDataProvider.tableNames().toString().contains("partition_p0"));
   }
 
@@ -278,7 +311,7 @@ public class TestPostgreSqlMetaDataProvider {
 
 
     /**
-     * @param numberOfResultRows
+     * @param numberOfResultRows number of result rows
      */
     private ReturnMockResultSetWithSequence(int numberOfResultRows) {
       super();
@@ -310,16 +343,18 @@ public class TestPostgreSqlMetaDataProvider {
 
     private final int numberOfResultRows;
     private final String partitionResult;
+    private final String partitionName;
 
 
     /**
-     * @param numberOfResultRows
+     * @param numberOfResultRows number of result rows
      */
-    private ReturnMockResultSetWithPartitionTables(int numberOfResultRows, String partitionResult) {
+    private ReturnMockResultSetWithPartitionTables(int numberOfResultRows, String partitionResult, String partitionName) {
       super();
       this.numberOfResultRows = numberOfResultRows;
       // class is rigged for just one value
       this.partitionResult = partitionResult;
+      this.partitionName = partitionName;
     }
 
     @Override
@@ -335,6 +370,7 @@ public class TestPostgreSqlMetaDataProvider {
       });
 
       when(resultSet.getString(1)).thenReturn(partitionResult);
+      when(resultSet.getString(2)).thenReturn(partitionName);
 
       return resultSet;
     }

@@ -9,10 +9,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -55,45 +53,51 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
 
 
   @Override
-  protected ImmutableSet<String> loadIgnoredTables() {
-    ImmutableSet.Builder<String> ignoredTables = new ImmutableSet.Builder<>();
+  protected Set<RealName> loadIgnoredPartitionTables() {
+    ImmutableSet.Builder<RealName> ignoredTables = new ImmutableSet.Builder<>();
     try(Statement ignoredTablesStmt = connection.createStatement()) {
       // distinguish partitioned tables from regular ones: relkind = 'p' (partition) or 'r' (regular) also can use boolean col relispartition
-      // a partition table attached has (r, true)
-      try (ResultSet ignoredTablesRs = ignoredTablesStmt.executeQuery("select relname from pg_class where relispartition and relkind = 'r'")) {
+      // a partition table attached has (r, true) -- CREATE TABLE MEASURE_P1 (id, a, b) FOR VALUES ('0) TO ('37000');
+      // a partitioned table has (p, false) -- CREATE TABLE MEASURE(id, a, b) PARTITION by ID;
+      try (ResultSet ignoredTablesRs = ignoredTablesStmt.executeQuery("select par.relname, d.description\n" +
+          "from pg_class par \n" +
+          "join pg_namespace n on n.oid = par.relnamespace\n" +
+          "join pg_description d ON d.objoid = par.oid and d.objsubid = 0\n" +
+          " where par.relispartition and par.relkind = 'r'")) {
         while (ignoredTablesRs.next()) {
-          ignoredTables.add(ignoredTablesRs.getString(1).toLowerCase(Locale.ROOT));
+          ignoredTables.add(createRealName(ignoredTablesRs.getString(1), ignoredTablesRs.getString(2)));
         }
       }
     } catch (SQLException e) {
         // ignore exception, if it fails then incompatible Postgres version
+      log.info("The loading of ignored partitions failed, probably because it is a version before 11");
     }
     return ignoredTables.build();
   }
 
   @Override
-  protected ImmutableSet<String> loadPartitionedTables() {
-    ImmutableSet.Builder<String> partitionedTables = new ImmutableSet.Builder<>();
+  protected Set<RealName> loadPartitionedTables() {
+    ImmutableSet.Builder<RealName> partitionedTables = new ImmutableSet.Builder<>();
     try(Statement partitionedTablesStmt = connection.createStatement()) {
       // distinguish partitioned tables from regular ones: relkind = 'p' (partition) or 'r' (regular) also can use boolean col relispartition
-      // a partition table attached has (r, true)
-      // a partition table has (p, false)
-      try (ResultSet ignoredTablesRs = partitionedTablesStmt.executeQuery("select relname from pg_class where not relispartition and relkind = 'p'")) {
+      // a partition table attached has (r, true) -- CREATE TABLE MEASURE_P1 (id, a, b) FOR VALUES ('0) TO ('37000');
+      // a partitioned table has (p, false) -- CREATE TABLE MEASURE(id, a, b) PARTITION by ID;
+      try (ResultSet ignoredTablesRs = partitionedTablesStmt.executeQuery("select par.relname as tableName, d.description\n" +
+          "from pg_class par \n" +
+          "join pg_namespace n on n.oid = par.relnamespace \n" +
+          "join pg_description d ON d.objoid = par.oid and d.objsubid = 0\n" +
+          "where not par.relispartition and par.relkind = 'p'")) {
         while (ignoredTablesRs.next()) {
-          partitionedTables.add(ignoredTablesRs.getString(1).toLowerCase(Locale.ROOT));
+          partitionedTables.add(createRealName(ignoredTablesRs.getString(1), matchComment(ignoredTablesRs.getString(2))));
         }
       }
     } catch (SQLException e) {
       // ignore exception, if it fails then incompatible Postgres version
+      log.info("The loading of ignored partitions failed, probably because it is a version before 11");
     }
     return partitionedTables.build();
   }
 
-
-  @Override
-  protected boolean isIgnoredTable(RealName tableName) {
-    return ignoredTables.get().contains(tableName.getDbName().toLowerCase(Locale.ROOT)) || super.isIgnoredTable(tableName);
-  }
 
   @Override
   protected boolean isPrimaryKeyIndex(RealName indexName) {
@@ -280,12 +284,12 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
 
 
   @Override
-  public Collection<String> partitionedTableNames() {
+  public Set<RealName> partitionedTableNames() {
     return super.partitionedTables.get();
   }
 
   @Override
-  public Collection<String> partitionTableNames() {
-    return super.ignoredTables.get();
+  public Set<RealName> partitionTableNames() {
+    return super.ignoredPartitionTables.get();
   }
 }

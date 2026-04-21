@@ -181,7 +181,6 @@ public class TestDatabaseMetaDataProvider {
       String schema = Strings.isNullOrEmpty(database.getSchemaName()) ? "" : database.getSchemaName() + ".";
       connection.createStatement().executeUpdate("DROP TABLE " + schema + "WithTimestamp");
     }
-
     schemaManager.invalidateCache();
   }
 
@@ -294,7 +293,7 @@ public class TestDatabaseMetaDataProvider {
       ));
 
       schemaResource.getAdditionalMetadata().ifPresent(additionalMetadata ->
-        assertThat(additionalMetadata.ignoredIndexes().get("WITHTYPES"), containsInAnyOrder(ImmutableList.of(
+        assertThat(additionalMetadata.ignoredIndexes().get("withtypes"), containsInAnyOrder(ImmutableList.of(
           indexMatcher(index("WithTypes_PRF1").columns("decimalNineFiveCol", "bigIntegerCol"))
       ))));
     }
@@ -338,8 +337,11 @@ public class TestDatabaseMetaDataProvider {
         String tableSchema = Strings.isNullOrEmpty(database.getSchemaName()) ? "" : database.getSchemaName() + ".";
         connection.createStatement().executeUpdate("DROP TABLE " + tableSchema + "WithPartition");
         connection.createStatement().executeUpdate("CREATE TABLE " + tableSchema + "WithPartition(id numeric(19) NOT NULL, stringCol VARCHAR(20)) PARTITION BY RANGE (id)");
+        connection.createStatement().executeUpdate("COMMENT ON TABLE "+ tableSchema + "WithPartition IS 'REALNAME:[WithPartition]'");
         connection.createStatement().executeUpdate("CREATE TABLE " + tableSchema + "WithPartition_p0 PARTITION OF " + tableSchema + "WithPartition FOR VALUES FROM (0) TO (10000)");
+        connection.createStatement().executeUpdate("COMMENT ON TABLE "+ tableSchema + "WithPartition_p0 IS 'REALNAME:[WithPartition_p0]'");
         connection.createStatement().executeUpdate("CREATE TABLE " + tableSchema + "WithPartition_p1 PARTITION OF " + tableSchema + "WithPartition FOR VALUES FROM (10000) TO (99999)");
+        connection.createStatement().executeUpdate("COMMENT ON TABLE "+ tableSchema + "WithPartition_p1 IS 'REALNAME:[WithPartition_p1]'");
       }
     }
 

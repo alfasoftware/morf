@@ -29,6 +29,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -382,7 +383,7 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
 
           if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName)) {
             Index ignoredIndex = getAssembledIndex(unique, indexNameFinal);
-            String currentTableName = currentTable.getName().toUpperCase();
+            String currentTableName = currentTable.getName().toLowerCase(Locale.ROOT);
             if (ignoredIndexes.containsKey(currentTableName)) {
               ignoredIndexes.compute(currentTableName, (k, tableIgnoredIndexes) -> {
                 List<Index> newList = tableIgnoredIndexes == null ? new ArrayList<>() : new ArrayList<>(tableIgnoredIndexes);
@@ -471,7 +472,7 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
 
           if (DatabaseMetaDataProviderUtils.shouldIgnoreIndex(indexName)) {
             Index lastIndex = null;
-            for (Index currentIndex : ignoredIndexes.get(currentTable.getName().toUpperCase())) {
+            for (Index currentIndex : ignoredIndexes.get(currentTable.getName().toLowerCase())) {
               if (currentIndex.getName().equalsIgnoreCase(indexName)) {
                 lastIndex = currentIndex;
                 break;
@@ -788,22 +789,16 @@ public class OracleMetaDataProvider implements AdditionalMetadata {
    */
   private void runSQL(String sql, ResultSetHandler handler) {
     try {
-      PreparedStatement statement = connection.prepareStatement(sql);
-      try {
+      try (PreparedStatement statement = connection.prepareStatement(sql)) {
         // We'll inevitably need a lot of meta data so may as well get it in big chunks.
         statement.setFetchSize(100);
 
         // pass through the schema name
         statement.setString(1, schemaName);
 
-        ResultSet resultSet = statement.executeQuery();
-        try {
+        try (ResultSet resultSet = statement.executeQuery()){
           handler.handle(resultSet);
-        } finally {
-          resultSet.close();
         }
-      } finally {
-        statement.close();
       }
     } catch (SQLException sqle) {
       throw new RuntimeSqlException("Error running SQL: " + sql, sqle);
