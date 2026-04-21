@@ -33,6 +33,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import javax.sql.DataSource;
@@ -155,7 +156,7 @@ public class TestOracleMetaDataProvider {
 
   /**
    * Checks the building of the collection of primary key index names.
-   * @throws SQLException
+   * @throws SQLException with error
    */
   @Test
   public void testIgnoredIndexes() throws SQLException {
@@ -211,7 +212,7 @@ public class TestOracleMetaDataProvider {
     // When
     final AdditionalMetadata oracleMetaDataProvider = (AdditionalMetadata) oracle.openSchema(connection, "TESTDATABASE", "TESTSCHEMA");
 
-    List<Index> actualIgnoredIndexes = oracleMetaDataProvider.ignoredIndexes().get("AREALTABLE");
+    List<Index> actualIgnoredIndexes = oracleMetaDataProvider.ignoredIndexes().get("AREALTABLE".toLowerCase(Locale.ROOT));
     assertEquals("Ignored indexes size.", 2, actualIgnoredIndexes.size());
     assertEquals("Ignored AREALTABLE table indexes size.", 2, actualIgnoredIndexes.size());
     Index index = actualIgnoredIndexes.get(0);

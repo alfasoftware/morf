@@ -30,6 +30,7 @@ import org.apache.commons.logging.LogFactory;
 
 import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 
 /**
  * Provides meta data from a PostgreSQL database connection.
@@ -48,6 +49,53 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
 
   public PostgreSQLMetaDataProvider(Connection connection, String schemaName) {
     super(connection, schemaName);
+  }
+
+
+  @Override
+  protected Set<RealName> loadIgnoredPartitionTables() {
+    ImmutableSet.Builder<RealName> ignoredTables = new ImmutableSet.Builder<>();
+    try(Statement ignoredTablesStmt = connection.createStatement()) {
+      // distinguish partitioned tables from regular ones: relkind = 'p' (partition) or 'r' (regular) also can use boolean col relispartition
+      // a partition table attached has (r, true) -- CREATE TABLE MEASURE_P1 (id, a, b) FOR VALUES ('0) TO ('37000');
+      // a partitioned table has (p, false) -- CREATE TABLE MEASURE(id, a, b) PARTITION by ID;
+      try (ResultSet ignoredTablesRs = ignoredTablesStmt.executeQuery("select par.relname, d.description\n" +
+          "from pg_class par \n" +
+          "join pg_namespace n on n.oid = par.relnamespace\n" +
+          "join pg_description d ON d.objoid = par.oid and d.objsubid = 0\n" +
+          " where par.relispartition and par.relkind = 'r'")) {
+        while (ignoredTablesRs.next()) {
+          ignoredTables.add(createRealName(ignoredTablesRs.getString(1), ignoredTablesRs.getString(2)));
+        }
+      }
+    } catch (SQLException e) {
+        // ignore exception, if it fails then incompatible Postgres version
+      log.info("The loading of ignored partitions failed, probably because it is a version before 11");
+    }
+    return ignoredTables.build();
+  }
+
+  @Override
+  protected Set<RealName> loadPartitionedTables() {
+    ImmutableSet.Builder<RealName> partitionedTables = new ImmutableSet.Builder<>();
+    try(Statement partitionedTablesStmt = connection.createStatement()) {
+      // distinguish partitioned tables from regular ones: relkind = 'p' (partition) or 'r' (regular) also can use boolean col relispartition
+      // a partition table attached has (r, true) -- CREATE TABLE MEASURE_P1 (id, a, b) FOR VALUES ('0) TO ('37000');
+      // a partitioned table has (p, false) -- CREATE TABLE MEASURE(id, a, b) PARTITION by ID;
+      try (ResultSet ignoredTablesRs = partitionedTablesStmt.executeQuery("select par.relname as tableName, d.description\n" +
+          "from pg_class par \n" +
+          "join pg_namespace n on n.oid = par.relnamespace \n" +
+          "join pg_description d ON d.objoid = par.oid and d.objsubid = 0\n" +
+          "where not par.relispartition and par.relkind = 'p'")) {
+        while (ignoredTablesRs.next()) {
+          partitionedTables.add(createRealName(ignoredTablesRs.getString(1), matchComment(ignoredTablesRs.getString(2))));
+        }
+      }
+    } catch (SQLException e) {
+      // ignore exception, if it fails then incompatible Postgres version
+      log.info("The loading of ignored partitions failed, probably because it is a version before 11");
+    }
+    return partitionedTables.build();
   }
 
 
@@ -232,5 +280,16 @@ public class PostgreSQLMetaDataProvider extends DatabaseMetaDataProvider impleme
     }
 
     return sequenceSqlBuilder.toString();
+  }
+
+
+  @Override
+  public Set<RealName> partitionedTableNames() {
+    return super.partitionedTables.get();
+  }
+
+  @Override
+  public Set<RealName> partitionTableNames() {
+    return super.ignoredPartitionTables.get();
   }
 }
