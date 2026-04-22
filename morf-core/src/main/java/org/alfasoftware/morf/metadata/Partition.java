@@ -7,4 +7,5 @@ package org.alfasoftware.morf.metadata;
  */
 public interface Partition {
   String name();
+  PartitioningRuleType partitioningRuleType();
 }

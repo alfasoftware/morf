@@ -13,6 +13,7 @@ public class PartitionByHashBean extends PartitionBean implements PartitionByHas
     super(name);
     this.divider = divider;
     this.remainder = remainder;
+    this.partitioningRuleType = PartitioningRuleType.hashPartitioning;
   }
 
   @Override

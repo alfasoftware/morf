@@ -140,6 +140,8 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
           "COMMENT ON COLUMN testschema.Measurement.intField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[DECIMAL]'",
           "COMMENT ON COLUMN testschema.Measurement.dateField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[dateField]/TYPE:[DATE]'",
           "COMMENT ON COLUMN testschema.Measurement.stringField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[stringField]/TYPE:[STRING]'",
+          "COMMENT ON TABLE testschema.Measurement_p1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Measurement_p1]'",
+          "COMMENT ON TABLE testschema.Measurement_p2 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[Measurement_p2]'",
           "CREATE TABLE testschema.MeasurementHash (intField DECIMAL(8,0) NOT NULL, dateField DATE NOT NULL, stringField VARCHAR(3) COLLATE \"POSIX\" NOT NULL) PARTITION BY HASH (intField)",
           "CREATE TABLE testschema.MeasurementHash_p1 PARTITION OF testschema.MeasurementHash FOR VALUES WITH (MODULUS 8, REMAINDER 0)",
           "CREATE TABLE testschema.MeasurementHash_p2 PARTITION OF testschema.MeasurementHash FOR VALUES WITH (MODULUS 8, REMAINDER 1)",
@@ -152,7 +154,15 @@ public class TestPostgreSQLDialect extends AbstractSqlDialectTest {
           "COMMENT ON TABLE testschema.MeasurementHash IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[MeasurementHash]'",
           "COMMENT ON COLUMN testschema.MeasurementHash.intField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[intField]/TYPE:[DECIMAL]'",
           "COMMENT ON COLUMN testschema.MeasurementHash.dateField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[dateField]/TYPE:[DATE]'",
-          "COMMENT ON COLUMN testschema.MeasurementHash.stringField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[stringField]/TYPE:[STRING]'");
+          "COMMENT ON COLUMN testschema.MeasurementHash.stringField IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[stringField]/TYPE:[STRING]'",
+          "COMMENT ON TABLE testschema.MeasurementHash_p1 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[MeasurementHash_p1]'",
+          "COMMENT ON TABLE testschema.MeasurementHash_p2 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[MeasurementHash_p2]'",
+          "COMMENT ON TABLE testschema.MeasurementHash_p3 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[MeasurementHash_p3]'",
+          "COMMENT ON TABLE testschema.MeasurementHash_p4 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[MeasurementHash_p4]'",
+          "COMMENT ON TABLE testschema.MeasurementHash_p5 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[MeasurementHash_p5]'",
+          "COMMENT ON TABLE testschema.MeasurementHash_p6 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[MeasurementHash_p6]'",
+          "COMMENT ON TABLE testschema.MeasurementHash_p7 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[MeasurementHash_p7]'",
+          "COMMENT ON TABLE testschema.MeasurementHash_p8 IS '"+PostgreSQLDialect.REAL_NAME_COMMENT_LABEL+":[MeasurementHash_p8]'");
   }
 
 

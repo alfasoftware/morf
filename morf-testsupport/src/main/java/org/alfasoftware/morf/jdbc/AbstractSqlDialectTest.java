@@ -22,6 +22,8 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.autonumber;
 import static org.alfasoftware.morf.metadata.SchemaUtils.column;
 import static org.alfasoftware.morf.metadata.SchemaUtils.idColumn;
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
+import static org.alfasoftware.morf.metadata.SchemaUtils.partitionByHash;
+import static org.alfasoftware.morf.metadata.SchemaUtils.partitions;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.sequence;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
@@ -505,8 +507,18 @@ public abstract class AbstractSqlDialectTest {
         column(INT_FIELD, DataType.DECIMAL, 8).partitioned(),
         column(DATE_FIELD, DataType.DATE),
         column(STRING_FIELD, DataType.STRING, 3)
-      ).partitionBy(
-        new PartitioningByHashRule(INT_FIELD, 8));
+      ).partitionBy(partitions().column(column(INT_FIELD, DataType.DECIMAL, 8))
+            .partitions(List.of(
+                partitionByHash("MeasurementHash_p1").divider("8").remainder("0"),
+                partitionByHash("MeasurementHash_p2").divider("8").remainder("1"),
+                partitionByHash("MeasurementHash_p3").divider("8").remainder("2"),
+                partitionByHash("MeasurementHash_p4").divider("8").remainder("3"),
+                partitionByHash("MeasurementHash_p5").divider("8").remainder("4"),
+                partitionByHash("MeasurementHash_p6").divider("8").remainder("5"),
+                partitionByHash("MeasurementHash_p7").divider("8").remainder("6"),
+                partitionByHash("MeasurementHash_p8").divider("8").remainder("7"))
+            )
+        );
 
     // Test view
     TableReference tr = new TableReference(TEST_TABLE);

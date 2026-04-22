@@ -359,7 +359,7 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   private String createTablePartitionHashStatement(Table table, String sourceTableName, String tablePartitionName, int modulus, int remainder) {
-    return "CREATE TABLE " + tablePartitionName + " PARTITION OF " + sourceTableName
+    return "CREATE TABLE " + schemaNamePrefix(table) + tablePartitionName + " PARTITION OF " + schemaNamePrefix(table) + sourceTableName
       + " FOR VALUES WITH (MODULUS " + modulus + ", REMAINDER " + remainder + ")";
   }
 
@@ -516,12 +516,36 @@ class PostgreSQLDialect extends SqlDialect {
       commentStatements.add(addColumnComment(table, column));
     }
 
+    commentStatements.addAll(addPartitionTableComments(table));
+
     return commentStatements;
   }
 
 
   private String addTableComment(Table table) {
     return "COMMENT ON TABLE " + schemaNamePrefix(table) + table.getName() + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + table.getName() + "]'";
+  }
+
+
+  private List<String> addPartitionTableComments(Table table) {
+    List<String> comments = new ArrayList<>();
+    if (table.isPartitioned()) {
+      if (table.partitioningRule() instanceof DatePartitionedByPeriodRule) {
+        DatePartitionedByPeriodRule datePartitionedByPeriodRule = (DatePartitionedByPeriodRule) table.partitioningRule();
+        String partitionTableNamePrefix = table.getName() + "_p";
+        AtomicInteger i = new AtomicInteger(1);
+        datePartitionedByPeriodRule.getRanges().forEach(pair -> {
+          String tablePartitionName = partitionTableNamePrefix + i.get();
+          comments.add("COMMENT ON TABLE " + schemaNamePrefix(table) + tablePartitionName + " IS '" + REAL_NAME_COMMENT_LABEL + ":[" + partitionTableNamePrefix + i.getAndIncrement() + "]'");
+        });
+
+      } else {
+        table.partitions().getPartitions().forEach(partition ->
+            comments.add("COMMENT ON TABLE " + schemaNamePrefix(table) + partition.name() + " IS '" + REAL_NAME_COMMENT_LABEL + ":[" + partition.name() + "]'")
+        );
+      }
+    }
+    return comments;
   }
 
 

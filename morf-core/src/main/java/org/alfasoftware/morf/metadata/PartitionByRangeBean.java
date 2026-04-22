@@ -13,6 +13,7 @@ public class PartitionByRangeBean extends PartitionBean implements PartitionByRa
     super(name);
     this.start = start;
     this.end = end;
+    this.partitioningRuleType = PartitioningRuleType.rangePartitioning;
   }
 
   @Override

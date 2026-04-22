@@ -8,6 +8,7 @@ package org.alfasoftware.morf.metadata;
 public abstract class PartitionBean implements Partition {
 
   protected String name;
+  protected PartitioningRuleType partitioningRuleType;
 
   public PartitionBean(String name) {
     this.name = name;
@@ -16,5 +17,10 @@ public abstract class PartitionBean implements Partition {
   @Override
   public String name() {
     return name;
+  }
+
+  @Override
+  public PartitioningRuleType partitioningRuleType() {
+    return partitioningRuleType;
   }
 }

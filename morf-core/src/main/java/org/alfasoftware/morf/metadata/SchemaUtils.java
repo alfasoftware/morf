@@ -557,6 +557,9 @@ public final class SchemaUtils {
      */
     public TableBuilder partitionBy(PartitioningRule rule);
 
+
+    TableBuilder partitionBy(Partitions partitions);
+
   }
 
 
@@ -803,6 +806,13 @@ public final class SchemaUtils {
     }
 
     @Override
+    public TableBuilder partitionBy(Partitions partitions) {
+      this.partitionColumn = partitions.column().getName();
+      this.partitions = partitions;
+      return this;
+    }
+
+    @Override
     public boolean isPartitioned() { return !StringUtils.isEmpty(this.partitionColumn); };
   }
 
@@ -981,7 +991,7 @@ public final class SchemaUtils {
 
     @Override
     public PartitionsBuilder partitions(Iterable<? extends Partition> partitions) {
-      return new PartitionsBuilderImpl(column, partitioningType, partitioningRule, partitions);
+      return new PartitionsBuilderImpl(column, partitions.iterator().next().partitioningRuleType(), partitioningRule, partitions);
     }
   }
 
