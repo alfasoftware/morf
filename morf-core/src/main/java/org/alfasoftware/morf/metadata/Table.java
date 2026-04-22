@@ -66,4 +66,16 @@ public interface Table {
    */
   public boolean isTemporary();
 
+  /**
+   * @return Indicates whether the table is partitioned
+   */
+  boolean isPartitioned();
+
+
+  /**
+   * @return the partitioning rule if it exists.
+   */
+  Partitions partitions();
+
+  PartitioningRule partitioningRule();
 }
