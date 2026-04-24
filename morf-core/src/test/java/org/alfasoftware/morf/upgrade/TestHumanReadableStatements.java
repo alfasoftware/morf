@@ -204,18 +204,18 @@ public class TestHumanReadableStatements {
    */
   @Test
   public void testDirectionVersionComparison() {
-    assertEquals("5.3.1 less than 5.3.2",Integer.valueOf(-1), HumanReadableStatementProducer.versionCompare("5.3.1", "5.3.2"));
-    assertEquals("5.3.2 greater than 5.3.1",Integer.valueOf(1), HumanReadableStatementProducer.versionCompare("5.3.2", "5.3.1"));
-    assertEquals("5.3.3 equals 5.3.3",Integer.valueOf(0), HumanReadableStatementProducer.versionCompare("5.3.3", "5.3.3"));
+    assertEquals("5.3.1 less than 5.3.2",Integer.valueOf(-1), new HumanReadableStatementProducerUtils().versionCompare("5.3.1", "5.3.2"));
+    assertEquals("5.3.2 greater than 5.3.1",Integer.valueOf(1), new HumanReadableStatementProducerUtils().versionCompare("5.3.2", "5.3.1"));
+    assertEquals("5.3.3 equals 5.3.3",Integer.valueOf(0), new HumanReadableStatementProducerUtils().versionCompare("5.3.3", "5.3.3"));
 
-    assertEquals("5.3.1.2.3.4 less than 5.3.1.2.3.5",Integer.valueOf(-1), HumanReadableStatementProducer.versionCompare("5.3.1.2.3.4", "5.3.1.2.3.5"));
-    assertEquals("5.3.1 less than 5.3.1.2",Integer.valueOf(-1), HumanReadableStatementProducer.versionCompare("5.3.1", "5.3.1.2"));
+    assertEquals("5.3.1.2.3.4 less than 5.3.1.2.3.5",Integer.valueOf(-1), new HumanReadableStatementProducerUtils().versionCompare("5.3.1.2.3.4", "5.3.1.2.3.5"));
+    assertEquals("5.3.1 less than 5.3.1.2",Integer.valueOf(-1), new HumanReadableStatementProducerUtils().versionCompare("5.3.1", "5.3.1.2"));
 
-    assertEquals("5.3.1a less than 5.3.2a",Integer.valueOf(-1), HumanReadableStatementProducer.versionCompare("5.3.1a", "5.3.2a"));
-    assertEquals("5.3.2a greater than 5.3.1a",Integer.valueOf(1), HumanReadableStatementProducer.versionCompare("5.3.2a", "5.3.1a"));
-    assertEquals("5.3.3a less than 5.3.3b",Integer.valueOf(-1), HumanReadableStatementProducer.versionCompare("5.3.3a", "5.3.3b"));
-    assertEquals("5.3.3a equals 5.3.3a",Integer.valueOf(0), HumanReadableStatementProducer.versionCompare("5.3.3a", "5.3.3a"));
-    assertEquals("5.3.3a.a less than 5.3.3a.b",Integer.valueOf(-1), HumanReadableStatementProducer.versionCompare("5.3.3a.a", "5.3.3a.b"));
+    assertEquals("5.3.1a less than 5.3.2a",Integer.valueOf(-1), new HumanReadableStatementProducerUtils().versionCompare("5.3.1a", "5.3.2a"));
+    assertEquals("5.3.2a greater than 5.3.1a",Integer.valueOf(1), new HumanReadableStatementProducerUtils().versionCompare("5.3.2a", "5.3.1a"));
+    assertEquals("5.3.3a less than 5.3.3b",Integer.valueOf(-1), new HumanReadableStatementProducerUtils().versionCompare("5.3.3a", "5.3.3b"));
+    assertEquals("5.3.3a equals 5.3.3a",Integer.valueOf(0), new HumanReadableStatementProducerUtils().versionCompare("5.3.3a", "5.3.3a"));
+    assertEquals("5.3.3a.a less than 5.3.3a.b",Integer.valueOf(-1), new HumanReadableStatementProducerUtils().versionCompare("5.3.3a.a", "5.3.3a.b"));
   }
 
   /**
@@ -319,81 +319,4 @@ public class TestHumanReadableStatements {
   }
 
 
-  /**
-   * A statement consumer which adds any consumed items to an internal list.
-   *
-   * @author Copyright (c) Alfa Financial Software 2010
-   */
-  private static class ListBackedHumanReadableStatementConsumer implements HumanReadableStatementConsumer {
-
-    /**
-     * List of strings written to the consumer.
-     */
-    private final List<String> list = new ArrayList<>();
-
-
-    /**
-     * @see org.alfasoftware.morf.upgrade.HumanReadableStatementConsumer#versionStart(java.lang.String)
-     */
-    @Override
-    public void versionStart(String versionNumber) {
-      list.add("VERSIONSTART:[" + versionNumber + "]");
-    }
-
-
-    /**
-     * @see org.alfasoftware.morf.upgrade.HumanReadableStatementConsumer#upgradeStepStart(java.lang.String, java.lang.String, String)
-     */
-    @Override
-    public void upgradeStepStart(String name, String description, String jiraId) {
-      list.add("STEPSTART:[" + jiraId + "]-[" + name + "]-[" + description + "]");
-    }
-
-
-    /**
-     * @see org.alfasoftware.morf.upgrade.HumanReadableStatementConsumer#schemaChange(java.lang.String)
-     */
-    @Override
-    public void schemaChange(String description) {
-      list.add("CHANGE:[" + description + "]");
-    }
-
-
-    /**
-     * @see org.alfasoftware.morf.upgrade.HumanReadableStatementConsumer#upgradeStepEnd(java.lang.String)
-     */
-    @Override
-    public void upgradeStepEnd(String name) {
-      list.add("STEPEND:[" + name + "]");
-    }
-
-
-    /**
-     * @see org.alfasoftware.morf.upgrade.HumanReadableStatementConsumer#versionEnd(java.lang.String)
-     */
-    @Override
-    public void versionEnd(String versionNumber) {
-      list.add("VERSIONEND:[" + versionNumber + "]");
-    }
-
-
-    /**
-     * @see org.alfasoftware.morf.upgrade.HumanReadableStatementConsumer#dataChange(java.lang.String)
-     */
-    @Override
-    public void dataChange(String description) {
-      list.add("DATACHANGE:[" + description + "]");
-    }
-
-
-    /**
-     * Gets the list of items sent to the consumer.
-     *
-     * @return the list
-     */
-    public List<String> getList() {
-      return list;
-    }
-
-  }
 }
