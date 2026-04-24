@@ -107,7 +107,7 @@ public class HumanReadableStatementProducer {
   @Deprecated
   public void produceFor(final HumanReadableStatementConsumer consumer) {
     produceFor(consumer,
-        new EntityHumanReadableStatementConsumer("", new PrintWriter(new OutputStreamWriter(System.out, StandardCharsets.UTF_8))));
+        new EntityHumanReadableStatementConsumer("", null));
   }
 
   /**
