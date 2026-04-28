@@ -8,13 +8,13 @@ import java.util.Optional;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
-import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.sql.UpdateStatement;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexTrackingPolicy;
 
 /**
  * Common code between SchemaChangeVisitor implementors
@@ -28,6 +28,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   protected final TableNameResolver  tracker;
 
   private final DeferredIndexSession deferredIndexSession;
+  private final DeferredIndexTrackingPolicy trackingPolicy;
 
 
   public AbstractSchemaChangeVisitor(Schema currentSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect,
@@ -38,6 +39,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     this.idTable = idTable;
     this.tracker = new IdTableTracker(idTable.getName());
     this.deferredIndexSession = deferredIndexSession;
+    this.trackingPolicy = new DeferredIndexTrackingPolicy(sqlDialect);
   }
 
 
@@ -122,15 +124,12 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     currentSchema = addTable.apply(currentSchema);
     writeStatements(sqlDialect.tableDeploymentStatements(addTable.getTable()));
 
-    // Slim invariant: DeployedIndexes tracks ONLY deferred indexes. For each
-    // index on the new table, first normalize against dialect support
-    // (declared-deferred on an unsupported dialect becomes immediate, not
-    // tracked) — then track only if the effective form is still deferred.
+    // Slim invariant: DeployedIndexes tracks ONLY deferred indexes. The
+    // tracking policy decides whether each index produces a tracking row,
+    // factoring in dialect support.
     for (Index index : addTable.getTable().indexes()) {
-      Index effective = effectiveIndex(index);
-      if (effective.isDeferred()) {
-        trackInDeployedIndexes(addTable.getTable().getName(), effective);
-      }
+      trackingPolicy.toTrackedIndex(index)
+          .ifPresent(toTrack -> trackInDeployedIndexes(addTable.getTable().getName(), toTrack));
     }
   }
 
@@ -208,10 +207,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   public void visit(ChangeIndex changeIndex) {
     String tableName = changeIndex.getTableName();
     Index fromIndex = changeIndex.getFromIndex();
-    // Normalize the toIndex's deferred flag against dialect support so the
-    // tracking row matches physical reality on dialects that don't support
-    // deferred creation (CREATE runs immediately → nothing tracked in slim).
-    Index toIndex = effectiveIndex(changeIndex.getToIndex());
+    Index toIndex = trackingPolicy.effectiveIndex(changeIndex.getToIndex());
 
     // Capture BEFORE the tracking/schema mutations below (see visit(RemoveIndex) note).
     boolean fromWillBePresent = willBePhysicallyPresentAtThisEmission(tableName, fromIndex.getName());
@@ -226,13 +222,11 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     if (fromWillBePresent) {
       writeStatements(sqlDialect.indexDropStatements(currentSchema.getTable(tableName), fromIndex));
     }
-    if (shouldEmitPhysicalIndexDdl(toIndex)) {
+    if (trackingPolicy.requiresImmediateBuild(toIndex)) {
       writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(tableName), toIndex));
     }
-    // Slim invariant: track only if the effective new index is deferred.
-    if (toIndex.isDeferred()) {
-      trackInDeployedIndexes(tableName, toIndex);
-    }
+    trackingPolicy.toTrackedIndex(toIndex)
+        .ifPresent(toTrack -> trackInDeployedIndexes(tableName, toTrack));
   }
 
 
@@ -348,29 +342,13 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   public void visit(AddIndex addIndex) {
     currentSchema = addIndex.apply(currentSchema);
     String tableName = addIndex.getTableName();
-    // Normalize against dialect support — see effectiveIndex Javadoc.
-    Index newIndex = effectiveIndex(addIndex.getNewIndex());
+    Index newIndex = trackingPolicy.effectiveIndex(addIndex.getNewIndex());
 
-    if (shouldEmitPhysicalIndexDdl(newIndex)) {
+    if (trackingPolicy.requiresImmediateBuild(newIndex)) {
       emitAddIndexOrRename(tableName, newIndex);
     }
-    // Slim invariant: track only if the effective index is deferred.
-    if (newIndex.isDeferred()) {
-      trackInDeployedIndexes(tableName, newIndex);
-    }
-  }
-
-
-  /**
-   * Whether a physical CREATE INDEX (or rename) should be emitted for this
-   * index. Deferred indexes on dialects supporting deferred creation skip
-   * the DDL (the app executes their deferred statements after the upgrade).
-   *
-   * @param index the index being added or changed-to.
-   * @return true if physical DDL is required.
-   */
-  private boolean shouldEmitPhysicalIndexDdl(Index index) {
-    return !(index.isDeferred() && sqlDialect.supportsDeferredIndexCreation());
+    trackingPolicy.toTrackedIndex(newIndex)
+        .ifPresent(toTrack -> trackInDeployedIndexes(tableName, toTrack));
   }
 
 
@@ -418,35 +396,6 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   private void trackInDeployedIndexes(String tableName, Index index) {
     deferredIndexSession.trackIndex(tableName, index)
         .forEach(this::writeDeployedIndexesDml);
-  }
-
-
-  /**
-   * Returns the index as the framework will actually treat it, normalizing
-   * the declared deferred flag against dialect support.
-   *
-   * <p>When the dialect doesn't support deferred creation
-   * ({@link SqlDialect#supportsDeferredIndexCreation()} returns {@code false}),
-   * an index declared {@code deferred} is effectively immediate — the visitor
-   * emits {@code CREATE INDEX} at upgrade time rather than handing SQL to the
-   * app-side executor. Under the slim invariant, normalizing to non-deferred
-   * here means {@link #trackInDeployedIndexes} is skipped (no tracking row
-   * is written), so the app-side executor sees nothing to build and cannot
-   * issue a duplicate {@code CREATE INDEX}.</p>
-   *
-   * @param declared the index as declared in the schema.
-   * @return an index whose {@code isDeferred()} reflects actual behaviour:
-   *     true only if declared AND the dialect supports deferred creation.
-   */
-  private Index effectiveIndex(Index declared) {
-    if (!declared.isDeferred() || sqlDialect.supportsDeferredIndexCreation()) {
-      return declared;
-    }
-    SchemaUtils.IndexBuilder builder = SchemaUtils.index(declared.getName()).columns(declared.columnNames());
-    if (declared.isUnique()) {
-      builder = builder.unique();
-    }
-    return builder;
   }
 
 
