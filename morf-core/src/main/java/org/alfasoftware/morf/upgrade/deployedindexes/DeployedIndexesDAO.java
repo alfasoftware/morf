@@ -35,7 +35,7 @@ import org.apache.commons.logging.LogFactory;
  * Package-private persistence layer for the {@code DeployedIndexes} table.
  * Executes every read and write via {@link SqlScriptExecutorProvider} and
  * {@link SqlDialect}; DSL construction and row mapping live in
- * {@link DeployedIndexesSql}.
+ * {@link DeployedIndexesStatements}.
  *
  * <p>A concrete class rather than an interface+impl pair — the previous
  * split served no behavioural purpose (every method was a 1-line wrapper)
@@ -70,13 +70,13 @@ class DeployedIndexesDAO {
 
   /** @return every persisted tracking row, ordered by id. */
   List<DeployedIndex> findAll() {
-    return executeQuery(DeployedIndexesSql.selectAll());
+    return executeQuery(DeployedIndexesStatements.selectAll());
   }
 
 
   /** @return non-terminal (PENDING/IN_PROGRESS/FAILED) rows, ordered by id. */
   List<DeployedIndex> findNonTerminal() {
-    return executeQuery(DeployedIndexesSql.selectNonTerminal());
+    return executeQuery(DeployedIndexesStatements.selectNonTerminal());
   }
 
 
@@ -87,7 +87,7 @@ class DeployedIndexesDAO {
       result.put(s, 0);
     }
 
-    String sql = sqlDialect.convertStatementToSQL(DeployedIndexesSql.selectStatusColumn());
+    String sql = sqlDialect.convertStatementToSQL(DeployedIndexesStatements.selectStatusColumn());
     sqlScriptExecutorProvider.get().executeQuery(sql, rs -> {
       while (rs.next()) {
         String statusStr = rs.getString(1);
@@ -109,7 +109,7 @@ class DeployedIndexesDAO {
    * @param startedTime epoch ms.
    */
   void markStarted(String tableName, String indexName, long startedTime) {
-    executeUpdate(DeployedIndexesSql.markStarted(tableName, indexName, startedTime));
+    executeUpdate(DeployedIndexesStatements.markStarted(tableName, indexName, startedTime));
   }
 
 
@@ -119,7 +119,7 @@ class DeployedIndexesDAO {
    * @param completedTime epoch ms.
    */
   void markCompleted(String tableName, String indexName, long completedTime) {
-    executeUpdate(DeployedIndexesSql.markCompleted(tableName, indexName, completedTime));
+    executeUpdate(DeployedIndexesStatements.markCompleted(tableName, indexName, completedTime));
   }
 
 
@@ -129,14 +129,14 @@ class DeployedIndexesDAO {
    * @param errorMessage the failure message.
    */
   void markFailed(String tableName, String indexName, String errorMessage) {
-    executeUpdate(DeployedIndexesSql.markFailed(tableName, indexName, errorMessage));
-    executeUpdate(DeployedIndexesSql.bumpRetryCount(tableName, indexName));
+    executeUpdate(DeployedIndexesStatements.markFailed(tableName, indexName, errorMessage));
+    executeUpdate(DeployedIndexesStatements.bumpRetryCount(tableName, indexName));
   }
 
 
   /** Flips every IN_PROGRESS row back to PENDING. */
   void resetInProgress() {
-    executeUpdate(DeployedIndexesSql.resetInProgress());
+    executeUpdate(DeployedIndexesStatements.resetInProgress());
     log.debug("Reset all IN_PROGRESS entries in DeployedIndexes to PENDING");
   }
 
@@ -147,7 +147,7 @@ class DeployedIndexesDAO {
 
   private List<DeployedIndex> executeQuery(SelectStatement select) {
     String sql = sqlDialect.convertStatementToSQL(select);
-    return sqlScriptExecutorProvider.get().executeQuery(sql, DeployedIndexesSql::mapAll);
+    return sqlScriptExecutorProvider.get().executeQuery(sql, DeployedIndexesStatements::mapAll);
   }
 
 

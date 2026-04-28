@@ -52,7 +52,7 @@ import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-final class DeployedIndexesSql {
+final class DeployedIndexesStatements {
 
   /** Table name — the DeployedIndexes tracking table. */
   static final String TABLE = DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME;
@@ -81,7 +81,7 @@ final class DeployedIndexesSql {
   static final String COL_ERROR_MESSAGE = "errorMessage";
 
 
-  private DeployedIndexesSql() {
+  private DeployedIndexesStatements() {
     // no instances
   }
 

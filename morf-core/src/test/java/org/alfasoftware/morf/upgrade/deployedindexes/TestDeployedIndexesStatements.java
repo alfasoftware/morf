@@ -37,12 +37,12 @@ import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.junit.Test;
 
 /**
- * Unit tests for {@link DeployedIndexesSql}. Asserts DSL shape — not the
+ * Unit tests for {@link DeployedIndexesStatements}. Asserts DSL shape — not the
  * SQL dialect output, which varies.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-public class TestDeployedIndexesSql {
+public class TestDeployedIndexesStatements {
 
   // ---- Read queries ------------------------------------------------------
 
@@ -50,7 +50,7 @@ public class TestDeployedIndexesSql {
   @Test
   public void testSelectAll() {
     // when
-    SelectStatement stmt = DeployedIndexesSql.selectAll();
+    SelectStatement stmt = DeployedIndexesStatements.selectAll();
 
     // then -- targets the correct table, orders by id
     assertEquals(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME,
@@ -66,7 +66,7 @@ public class TestDeployedIndexesSql {
   @Test
   public void testSelectNonTerminal() {
     // when
-    SelectStatement stmt = DeployedIndexesSql.selectNonTerminal();
+    SelectStatement stmt = DeployedIndexesStatements.selectNonTerminal();
 
     // then -- WHERE is OR(status=PENDING, status=IN_PROGRESS, status=FAILED)
     assertNotNull(stmt.getWhereCriterion());
@@ -79,7 +79,7 @@ public class TestDeployedIndexesSql {
   @Test
   public void testSelectStatusColumn() {
     // when
-    SelectStatement stmt = DeployedIndexesSql.selectStatusColumn();
+    SelectStatement stmt = DeployedIndexesStatements.selectStatusColumn();
 
     // then
     assertEquals(1, stmt.getFields().size());
@@ -92,7 +92,7 @@ public class TestDeployedIndexesSql {
   @Test
   public void testMarkStarted() {
     // when
-    UpdateStatement stmt = DeployedIndexesSql.markStarted("Product", "Idx1", 12345L);
+    UpdateStatement stmt = DeployedIndexesStatements.markStarted("Product", "Idx1", 12345L);
 
     // then -- SET status=IN_PROGRESS, startedTime=12345
     assertEquals(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME,
@@ -107,7 +107,7 @@ public class TestDeployedIndexesSql {
   @Test
   public void testMarkCompleted() {
     // when
-    UpdateStatement stmt = DeployedIndexesSql.markCompleted("Product", "Idx1", 12345L);
+    UpdateStatement stmt = DeployedIndexesStatements.markCompleted("Product", "Idx1", 12345L);
 
     // then
     assertEquals(List.of("status", "completedTime"), aliases(stmt.getFields()));
@@ -120,7 +120,7 @@ public class TestDeployedIndexesSql {
   @Test
   public void testMarkFailed() {
     // when
-    UpdateStatement stmt = DeployedIndexesSql.markFailed("Product", "Idx1", "boom");
+    UpdateStatement stmt = DeployedIndexesStatements.markFailed("Product", "Idx1", "boom");
 
     // then
     assertEquals(List.of("status", "errorMessage"), aliases(stmt.getFields()));
@@ -133,7 +133,7 @@ public class TestDeployedIndexesSql {
   @Test
   public void testResetInProgress() {
     // when
-    UpdateStatement stmt = DeployedIndexesSql.resetInProgress();
+    UpdateStatement stmt = DeployedIndexesStatements.resetInProgress();
 
     // then -- SET status=PENDING
     assertEquals(List.of("status"), aliases(stmt.getFields()));
@@ -156,7 +156,7 @@ public class TestDeployedIndexesSql {
     Index idx = index("DeferIdx").deferred().columns("col1", "col2");
 
     // when
-    InsertStatement stmt = DeployedIndexesSql.trackIndex("Product", idx);
+    InsertStatement stmt = DeployedIndexesStatements.trackIndex("Product", idx);
 
     // then -- 8 values corresponding to the 8 columns the factory populates
     // (id, tableName, indexName, indexUnique, indexColumns, status, retryCount, createdTime)
@@ -179,7 +179,7 @@ public class TestDeployedIndexesSql {
     Index idx = index("MultiIdx").columns("a", "b", "c");
 
     // when
-    InsertStatement stmt = DeployedIndexesSql.trackIndex("Product", idx);
+    InsertStatement stmt = DeployedIndexesStatements.trackIndex("Product", idx);
 
     // then -- one of the literals should be "a,b,c"
     boolean sawJoined = stmt.getValues().stream()
@@ -194,7 +194,7 @@ public class TestDeployedIndexesSql {
   @Test
   public void testRemoveIndex() {
     // when
-    DeleteStatement stmt = DeployedIndexesSql.removeIndex("Product", "Idx1");
+    DeleteStatement stmt = DeployedIndexesStatements.removeIndex("Product", "Idx1");
 
     // then
     assertEquals(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME,
@@ -207,7 +207,7 @@ public class TestDeployedIndexesSql {
   @Test
   public void testRemoveAllForTable() {
     // when
-    DeleteStatement stmt = DeployedIndexesSql.removeAllForTable("Product");
+    DeleteStatement stmt = DeployedIndexesStatements.removeAllForTable("Product");
 
     // then
     assertNotNull(stmt.getWhereCriterion());
@@ -218,7 +218,7 @@ public class TestDeployedIndexesSql {
   @Test
   public void testUpdateTableName() {
     // when
-    UpdateStatement stmt = DeployedIndexesSql.updateTableName("OldT", "NewT");
+    UpdateStatement stmt = DeployedIndexesStatements.updateTableName("OldT", "NewT");
 
     // then
     assertEquals(1, stmt.getFields().size());
@@ -230,7 +230,7 @@ public class TestDeployedIndexesSql {
   @Test
   public void testUpdateIndexColumns() {
     // when
-    UpdateStatement stmt = DeployedIndexesSql.updateIndexColumns("Product", "Idx1", "newCol");
+    UpdateStatement stmt = DeployedIndexesStatements.updateIndexColumns("Product", "Idx1", "newCol");
 
     // then
     assertEquals(1, stmt.getFields().size());
@@ -242,7 +242,7 @@ public class TestDeployedIndexesSql {
   @Test
   public void testUpdateIndexName() {
     // when
-    UpdateStatement stmt = DeployedIndexesSql.updateIndexName("Product", "Old", "New");
+    UpdateStatement stmt = DeployedIndexesStatements.updateIndexName("Product", "Old", "New");
 
     // then
     assertEquals(1, stmt.getFields().size());
