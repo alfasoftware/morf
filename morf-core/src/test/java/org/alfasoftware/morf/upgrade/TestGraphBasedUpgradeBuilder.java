@@ -20,7 +20,6 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeBuilder.GraphBasedUpgradeBuilderFactory;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeSchemaChangeVisitor.GraphBasedUpgradeSchemaChangeVisitorFactory;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeScriptGenerator.GraphBasedUpgradeScriptGeneratorFactory;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexState;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -108,7 +107,7 @@ public class TestGraphBasedUpgradeBuilder {
     upgradeConfigAndContext.setExclusiveExecutionSteps(exclusiveExecutionSteps);
 
     builder = new GraphBasedUpgradeBuilder(visitorFactory, scriptGeneratorFactory, drawIOGraphPrinter, sourceSchema, targetSchema,
-        connectionResources, upgradeConfigAndContext, schemaChangeSequence, viewChanges, DeployedIndexState.empty(),
+        connectionResources, upgradeConfigAndContext, schemaChangeSequence, viewChanges,
         org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession.create());
   }
 
@@ -397,7 +396,7 @@ public class TestGraphBasedUpgradeBuilder {
     upgradeConfigAndContext.setExclusiveExecutionSteps(exclusiveExecutionSteps);
 
     // when
-    GraphBasedUpgradeBuilder created = factory.create(sourceSchema, targetSchema, connectionResources, upgradeConfigAndContext, schemaChangeSequence, viewChanges, DeployedIndexState.empty(),
+    GraphBasedUpgradeBuilder created = factory.create(sourceSchema, targetSchema, connectionResources, upgradeConfigAndContext, schemaChangeSequence, viewChanges,
         org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession.create());
 
     // then

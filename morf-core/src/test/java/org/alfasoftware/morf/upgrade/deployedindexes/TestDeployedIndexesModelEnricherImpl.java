@@ -21,6 +21,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -31,13 +32,14 @@ import java.util.List;
 
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.junit.Before;
 import org.junit.Test;
 
 /**
- * Unit tests for {@link DeployedIndexesModelEnricher} (slim invariant).
+ * Unit tests for {@link DeployedIndexesModelEnricher} (row-existence model).
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -56,46 +58,42 @@ public class TestDeployedIndexesModelEnricherImpl {
   }
 
 
-  /** When feature is disabled, enrich returns input schema unchanged and empty state. */
+  /** When feature is disabled, enrich returns input schema unchanged. */
   @Test
   public void testDisabledReturnsInputUnchanged() {
     // given
     config.setDeferredIndexCreationEnabled(false);
-    org.alfasoftware.morf.metadata.Schema input =
-        schema(table("Foo").columns(column("id", DataType.BIG_INTEGER).primaryKey()));
+    Schema input = schema(table("Foo").columns(column("id", DataType.BIG_INTEGER).primaryKey()));
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when
-    EnrichedModel result = enricher.enrich(input, session);
+    Schema result = enricher.enrich(input, session);
 
     // then
-    assertSame(input, result.getSchema());
-    assertEquals("Empty state should report UNKNOWN for any index",
-        IndexPresence.UNKNOWN, result.getState().getPresence("Foo", "Any"));
+    assertSame(input, result);
   }
 
 
-  /** When DeployedIndexes table doesn't exist, returns input schema unchanged and empty state. */
+  /** When DeployedIndexes table doesn't exist, returns input schema unchanged. */
   @Test
   public void testNoDeployedIndexesTableReturnsUnchanged() {
     // given
-    org.alfasoftware.morf.metadata.Schema input =
-        schema(table("Foo").columns(column("id", DataType.BIG_INTEGER).primaryKey()));
+    Schema input = schema(table("Foo").columns(column("id", DataType.BIG_INTEGER).primaryKey()));
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when
-    EnrichedModel result = enricher.enrich(input, session);
+    Schema result = enricher.enrich(input, session);
 
     // then
-    assertSame(input, result.getSchema());
+    assertSame(input, result);
   }
 
 
-  /** When DeployedIndexes table is empty, returns input schema unchanged and empty state. */
+  /** When DeployedIndexes table is empty, returns input schema unchanged. */
   @Test
   public void testEmptyDeployedIndexesReturnsUnchanged() {
     // given
-    org.alfasoftware.morf.metadata.Schema input = schema(
+    Schema input = schema(
         table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
             .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
         table("Foo").columns(column("id", DataType.BIG_INTEGER).primaryKey())
@@ -105,100 +103,158 @@ public class TestDeployedIndexesModelEnricherImpl {
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when
-    EnrichedModel result = enricher.enrich(input, session);
+    Schema result = enricher.enrich(input, session);
 
     // then
-    assertSame(input, result.getSchema());
+    assertSame(input, result);
   }
 
 
-  /** Deferred index with no physical counterpart (status != COMPLETED) is added to the schema as
-   *  a virtual entry, and the state records it as absent. */
+  /** Non-COMPLETED row with no physical match → virtualized as deferred,
+   *  session marks it as awaiting build. */
   @Test
-  public void testDeferredIndexAddedAsVirtualAndStateRecordsAbsent() {
+  public void testUnbuiltDeferredVirtualizedAsDeferred() {
     // given — table with no physical indexes, tracking row says PENDING
-    org.alfasoftware.morf.metadata.Schema input = schema(
+    Schema input = schema(
         table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
             .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
-        table("MyTable").columns(column("id", DataType.BIG_INTEGER).primaryKey(), column("name", DataType.STRING, 50))
+        table("MyTable").columns(column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 50))
     );
-    DeployedIndex entry = new DeployedIndex();
-    entry.setTableName("MyTable");
-    entry.setIndexName("MyIdx");
-    entry.setIndexUnique(false);
-    entry.setIndexColumns(List.of("name"));
-    entry.setStatus(DeployedIndexStatus.PENDING);
+    DeployedIndex entry = makeRow("MyTable", "MyIdx", List.of("name"), DeployedIndexStatus.PENDING);
     when(dao.findAll()).thenReturn(List.of(entry));
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when
-    EnrichedModel result = enricher.enrich(input, session);
+    Schema result = enricher.enrich(input, session);
 
     // then — virtual deferred index appears in schema
-    assertEquals(1, result.getSchema().getTable("MyTable").indexes().size());
-    Index virtual = result.getSchema().getTable("MyTable").indexes().get(0);
+    assertEquals(1, result.getTable("MyTable").indexes().size());
+    Index virtual = result.getTable("MyTable").indexes().get(0);
     assertEquals("MyIdx", virtual.getName());
     assertTrue("Should be deferred", virtual.isDeferred());
-    // and — state records physical absence
-    assertEquals("State should record ABSENT",
-        IndexPresence.ABSENT, result.getState().getPresence("MyTable", "MyIdx"));
+    // and — session sees it as awaiting build
+    assertTrue(session.isAwaitingBuild("MyTable", "MyIdx"));
   }
 
 
-  /** Slim invariant: COMPLETED tracking rows are not virtualized — the index is already
-   *  in the physical schema; no state entry is needed (UNKNOWN default). */
+  /** COMPLETED row + matching physical → physical index rebuilt with .deferred()
+   *  in enriched schema; session sees it as NOT awaiting (built). */
   @Test
-  public void testCompletedEntryIsNotVirtualized() {
-    // given — tracking row is COMPLETED (deferred but now physically built)
-    org.alfasoftware.morf.metadata.Schema input = schema(
+  public void testCompletedDeferredRebuiltWithDeferredFlag() {
+    // given — physical index exists, tracking row says COMPLETED
+    Schema input = schema(
+        table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
+            .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
+        table("MyTable").columns(column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 50))
+            .indexes(index("MyIdx").columns("name"))  // physical, NOT marked deferred
+    );
+    DeployedIndex entry = makeRow("MyTable", "MyIdx", List.of("name"), DeployedIndexStatus.COMPLETED);
+    when(dao.findAll()).thenReturn(List.of(entry));
+    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
+
+    // when
+    Schema result = enricher.enrich(input, session);
+
+    // then — index in enriched schema is now marked deferred
+    Index enriched = result.getTable("MyTable").indexes().get(0);
+    assertEquals("MyIdx", enriched.getName());
+    assertTrue("Built deferred should be reported isDeferred()=true after enrichment",
+        enriched.isDeferred());
+    // and — session knows it's tracked but NOT awaiting build (status=COMPLETED)
+    assertTrue(session.isTrackedDeferred("MyTable", "MyIdx"));
+    assertEquals("Built deferred should NOT be awaiting build",
+        false, session.isAwaitingBuild("MyTable", "MyIdx"));
+  }
+
+
+  /** COMPLETED row + NO physical match → drift, throws IllegalStateException. */
+  @Test
+  public void testCompletedRowWithoutPhysicalMatchThrowsDrift() {
+    // given — tracking row says COMPLETED but physical index is missing
+    Schema input = schema(
         table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
             .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
         table("MyTable").columns(column("id", DataType.BIG_INTEGER).primaryKey())
-            .indexes(index("MyIdx").columns("id").deferred())
+            // no physical MyIdx
     );
-    DeployedIndex entry = new DeployedIndex();
-    entry.setTableName("MyTable");
-    entry.setIndexName("MyIdx");
-    entry.setIndexUnique(false);
-    entry.setIndexColumns(List.of("id"));
-    entry.setStatus(DeployedIndexStatus.COMPLETED);
+    DeployedIndex entry = makeRow("MyTable", "MyIdx", List.of("id"), DeployedIndexStatus.COMPLETED);
     when(dao.findAll()).thenReturn(List.of(entry));
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
-    // when
-    EnrichedModel result = enricher.enrich(input, session);
-
-    // then — schema unchanged (physical already has it), state has no entry
-    assertSame(input, result.getSchema());
-    assertEquals("Non-virtualized index yields no state entry (UNKNOWN default)",
-        IndexPresence.UNKNOWN, result.getState().getPresence("MyTable", "MyIdx"));
+    // when / then
+    IllegalStateException ex = assertThrows(IllegalStateException.class,
+        () -> enricher.enrich(input, session));
+    assertTrue("Message should mention the missing index",
+        ex.getMessage().contains("MyIdx"));
+    assertTrue("Message should mention COMPLETED",
+        ex.getMessage().contains("COMPLETED"));
   }
 
 
-  /** Enricher primes the service with every persisted row so visitor operations
-   *  against prior-upgrade deferred rows emit correct DML. */
+  /** Non-COMPLETED row + matching physical → drift, throws IllegalStateException
+   *  (tracker thinks it's not built but it IS — adopter probably crashed
+   *  between CREATE INDEX and markCompleted). */
   @Test
-  public void testEnrichPrimesServiceWithEveryPersistedRow() {
-    // given — two persisted rows; service is spied so prime() calls can be verified
-    org.alfasoftware.morf.metadata.Schema input = schema(
+  public void testNonCompletedRowWithPhysicalMatchThrowsDrift() {
+    // given — physical index exists but tracking row says PENDING
+    Schema input = schema(
         table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
             .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
-        table("TableA").columns(column("id", DataType.BIG_INTEGER).primaryKey()),
+        table("MyTable").columns(column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 50))
+            .indexes(index("MyIdx").columns("name"))
+    );
+    DeployedIndex entry = makeRow("MyTable", "MyIdx", List.of("name"), DeployedIndexStatus.PENDING);
+    when(dao.findAll()).thenReturn(List.of(entry));
+    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
+
+    // when / then
+    IllegalStateException ex = assertThrows(IllegalStateException.class,
+        () -> enricher.enrich(input, session));
+    assertTrue("Message should mention the index",
+        ex.getMessage().contains("MyIdx"));
+    assertTrue("Message should mention PENDING status",
+        ex.getMessage().contains("PENDING"));
+  }
+
+
+  /** Row references a table not in the physical schema → throws IllegalStateException. */
+  @Test
+  public void testRowReferencingMissingTableThrowsDrift() {
+    // given
+    Schema input = schema(
+        table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
+            .columns(column("id", DataType.BIG_INTEGER).primaryKey())
+            // no other tables
+    );
+    DeployedIndex entry = makeRow("Ghost", "GhostIdx", List.of("id"), DeployedIndexStatus.PENDING);
+    when(dao.findAll()).thenReturn(List.of(entry));
+    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
+
+    // when / then
+    IllegalStateException ex = assertThrows(IllegalStateException.class,
+        () -> enricher.enrich(input, session));
+    assertTrue("Message should mention the orphan table",
+        ex.getMessage().contains("Ghost"));
+  }
+
+
+  /** Enricher primes the session with every persisted row regardless of status. */
+  @Test
+  public void testEnrichPrimesSessionWithEveryPersistedRow() {
+    // given — two persisted rows, one COMPLETED one PENDING
+    Schema input = schema(
+        table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
+            .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
+        table("TableA").columns(column("id", DataType.BIG_INTEGER).primaryKey())
+            .indexes(index("A_Idx").columns("id")),
         table("TableB").columns(column("id", DataType.BIG_INTEGER).primaryKey(),
             column("name", DataType.STRING, 50))
     );
-    DeployedIndex entryA = new DeployedIndex();
-    entryA.setTableName("TableA");
-    entryA.setIndexName("A_Idx");
-    entryA.setIndexUnique(false);
-    entryA.setIndexColumns(List.of("id"));
-    entryA.setStatus(DeployedIndexStatus.COMPLETED);
-    DeployedIndex entryB = new DeployedIndex();
-    entryB.setTableName("TableB");
-    entryB.setIndexName("B_Idx");
-    entryB.setIndexUnique(false);
-    entryB.setIndexColumns(List.of("name"));
-    entryB.setStatus(DeployedIndexStatus.PENDING);
+    DeployedIndex entryA = makeRow("TableA", "A_Idx", List.of("id"), DeployedIndexStatus.COMPLETED);
+    DeployedIndex entryB = makeRow("TableB", "B_Idx", List.of("name"), DeployedIndexStatus.PENDING);
     when(dao.findAll()).thenReturn(List.of(entryA, entryB));
     DeferredIndexSession spy = mock(DeferredIndexSession.class);
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
@@ -206,40 +262,22 @@ public class TestDeployedIndexesModelEnricherImpl {
     // when
     enricher.enrich(input, spy);
 
-    // then — every persisted row primes the session exactly once
+    // then — both rows primed
     verify(spy).prime(entryA);
     verify(spy).prime(entryB);
   }
 
 
-  /** After priming, the primed service can answer isTracked / isTrackedDeferred
-   *  for persisted deferred rows — the visitor depends on this to know whether
-   *  remove/rename operations should emit DML. */
-  @Test
-  public void testPrimingEnablesIsTrackedChecks() {
-    // given
-    org.alfasoftware.morf.metadata.Schema input = schema(
-        table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
-            .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
-        table("MyTable").columns(column("id", DataType.BIG_INTEGER).primaryKey(),
-            column("name", DataType.STRING, 50))
-    );
+  // ---- helpers --------------------------------------------------------------
+
+  private static DeployedIndex makeRow(String table, String idx, List<String> cols,
+                                        DeployedIndexStatus status) {
     DeployedIndex entry = new DeployedIndex();
-    entry.setTableName("MyTable");
-    entry.setIndexName("MyIdx");
+    entry.setTableName(table);
+    entry.setIndexName(idx);
     entry.setIndexUnique(false);
-    entry.setIndexColumns(List.of("name"));
-    entry.setStatus(DeployedIndexStatus.PENDING);
-    when(dao.findAll()).thenReturn(List.of(entry));
-    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
-
-    // when
-    enricher.enrich(input, session);
-
-    // then — service is populated; visitor can now operate on this persisted row
-    assertTrue("Persisted row should be tracked in service after priming",
-        session.isTrackedDeferred("MyTable", "MyIdx"));
-    assertTrue("Persisted deferred row should read as deferred after priming",
-        session.isTrackedDeferred("MyTable", "MyIdx"));
+    entry.setIndexColumns(cols);
+    entry.setStatus(status);
+    return entry;
   }
 }

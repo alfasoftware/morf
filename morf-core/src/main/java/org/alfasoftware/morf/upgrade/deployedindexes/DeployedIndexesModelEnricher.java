@@ -24,28 +24,25 @@ import com.google.inject.ImplementedBy;
 
 /**
  * Merges the physical database schema with the {@code DeployedIndexes}
- * tracking table to produce an {@link EnrichedModel}: an enriched schema
- * (with deferred-but-not-yet-built indexes added as virtual entries) plus a
- * companion {@link DeployedIndexState} recording operational facts (physical
- * presence per index).
+ * tracking table. Returns an enriched {@link Schema} where built-deferred
+ * indexes carry the {@code .deferred()} flag and unbuilt-deferred rows
+ * are virtualized as declared indexes.
  *
  * <p><b>Slim invariant</b> (this branch): only deferred indexes are tracked
- * in the {@code DeployedIndexes} table. The enricher's job is to
+ * in the {@code DeployedIndexes} table. A row exists in the table iff the
+ * index is currently declared {@code .deferred()}. The enricher's job is to
  * (a) <b>prime</b> the per-upgrade {@link DeferredIndexSession} with every
- * persisted row so that in-session remove/rename/column operations against
- * prior-upgrade deferred rows generate correct DML; and (b) <b>virtualize</b>
- * unbuilt deferred indexes (status not COMPLETED) into the schema so
- * {@code SchemaHomology.schemasMatch} treats them as declared.</p>
+ * persisted row so that in-session mutations (remove/rename/column) cascade
+ * correctly to all currently-declared deferred indexes; (b) <b>rebuild</b>
+ * COMPLETED-row physical indexes with the {@code .deferred()} flag so
+ * {@code Index.isDeferred()} is durable across the build lifecycle; and
+ * (c) <b>virtualize</b> non-COMPLETED rows (PENDING/IN_PROGRESS/FAILED)
+ * into the schema so {@code SchemaHomology.schemasMatch} treats them as
+ * declared.</p>
  *
- * <p>Physical-vs-declared consistency for non-deferred indexes is NOT this
- * class's concern — {@code SchemaHomology} handles drift detection at
- * upgrade-path-finding time.</p>
- *
- * <p>Keeping operational state out of the
- * {@link org.alfasoftware.morf.metadata.Index} model preserves the
- * declarative nature of the schema types. Questions like "is this index
- * physically there?" go to the {@link DeployedIndexState}, not to the
- * index itself.</p>
+ * <p>Drift between the tracking table and the physical schema is treated as
+ * a fatal error — {@link IllegalStateException} is thrown. Morf does not
+ * auto-heal indexes elsewhere, so the enricher follows the same policy.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -58,16 +55,31 @@ public interface DeployedIndexesModelEnricher {
    *
    * <p>If the feature is disabled, the {@code DeployedIndexes} table does
    * not yet exist, or the table is empty, the physical schema is returned
-   * unchanged alongside an empty state — and the session is not primed.</p>
+   * unchanged — and the session is not primed.</p>
+   *
+   * <p>Otherwise:</p>
+   * <ul>
+   *   <li>Every persisted row primes the session (so the visitor's
+   *       remove/rename/column operations emit correct DML against
+   *       prior-upgrade tracking rows).</li>
+   *   <li>{@code COMPLETED} rows whose physical index exists are rebuilt
+   *       in the enriched schema with the {@code .deferred()} flag — so
+   *       {@code Index.isDeferred()} is a durable declarative property.</li>
+   *   <li>Non-{@code COMPLETED} rows whose index is not physically present
+   *       are virtualized into the schema as declared deferred indexes.</li>
+   *   <li>Drift — a {@code COMPLETED} row with no matching physical index,
+   *       or a non-{@code COMPLETED} row with a matching physical index —
+   *       throws {@link IllegalStateException}. Morf does not auto-heal
+   *       indexes; the operator must reconcile manually.</li>
+   * </ul>
    *
    * @param physicalSchema the schema read from JDBC metadata.
    * @param session the per-upgrade session to prime with persisted rows.
-   *     Its in-memory cache is populated as a side-effect so the visitor's
-   *     remove/rename/column operations emit correct DML against
-   *     prior-upgrade tracking rows.
-   * @return the enrichment result: schema + operational state.
+   * @return the enriched schema.
+   * @throws IllegalStateException if the tracking table disagrees with the
+   *     physical schema (drift detected).
    */
-  EnrichedModel enrich(Schema physicalSchema, DeferredIndexSession session);
+  Schema enrich(Schema physicalSchema, DeferredIndexSession session);
 
 
   /**

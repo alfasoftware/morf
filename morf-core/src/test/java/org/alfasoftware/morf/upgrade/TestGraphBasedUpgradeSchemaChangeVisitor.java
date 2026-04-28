@@ -32,7 +32,6 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeSchemaChangeVisitor.GraphBasedUpgradeSchemaChangeVisitorFactory;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexState;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.junit.Before;
@@ -88,7 +87,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.InsertStatement.class))).thenReturn(List.of("INSERT INTO DeployedIndexes ..."));
     when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.UpdateStatement.class))).thenReturn("UPDATE DeployedIndexes ...");
     when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.DeleteStatement.class))).thenReturn("DELETE FROM DeployedIndexes ...");
-    visitor = new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable, DeployedIndexState.empty(),
+    visitor = new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable,
         org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession.create(),
         nodes);
   }
@@ -312,24 +311,31 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
 
 
   /**
-   * Regression test: before P1.1, GraphBasedUpgradeSchemaChangeVisitor was
-   * constructed via its 4-arg super constructor, silently substituting
-   * DeployedIndexState.empty(). As a result the visitor emitted DROP INDEX
-   * DDL even for unbuilt deferred indexes (state = ABSENT) because the
-   * defaulted-empty state returned UNKNOWN, which is interpreted as "present".
-   * This test confirms that a non-empty DeployedIndexState threaded through
-   * to the graph-based visitor is actually consulted: when state says ABSENT,
-   * DROP INDEX DDL must not be emitted.
+   * Regression test: GraphBasedUpgradeSchemaChangeVisitor must consult its
+   * session's {@code isAwaitingBuild} when deciding whether to emit physical
+   * DDL. When the index is tracked as awaiting build (PENDING / IN_PROGRESS /
+   * FAILED row), a RemoveIndex visit must NOT emit DROP INDEX DDL — the
+   * physical index isn't there yet.
    */
   @Test
-  public void testRemoveIndexVisitRespectsAbsentStateForGraphBasedPath() {
-    // given — enricher reports SomeIdx as ABSENT (unbuilt deferred index)
-    DeployedIndexState absentState = DeployedIndexState.of("SomeTable", "SomeIdx", org.alfasoftware.morf.upgrade.deployedindexes.IndexPresence.ABSENT);
-    GraphBasedUpgradeSchemaChangeVisitor visitorWithAbsentState =
-        new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable, absentState,
-            org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession.create(),
+  public void testRemoveIndexVisitRespectsAwaitingBuildSession() {
+    // given — primed session with a PENDING entry for SomeIdx
+    org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession primedSession =
+        org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession.create();
+    org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndex pendingRow =
+        new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndex();
+    pendingRow.setTableName("SomeTable");
+    pendingRow.setIndexName("SomeIdx");
+    pendingRow.setIndexUnique(false);
+    pendingRow.setIndexColumns(List.of("col1"));
+    pendingRow.setStatus(org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexStatus.PENDING);
+    primedSession.prime(pendingRow);
+
+    GraphBasedUpgradeSchemaChangeVisitor visitorWithAwaitingBuild =
+        new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable,
+            primedSession,
             nodes);
-    visitorWithAbsentState.startStep(U1.class);
+    visitorWithAwaitingBuild.startStep(U1.class);
 
     Index mockIdx = mock(Index.class);
     when(mockIdx.getName()).thenReturn("SomeIdx");
@@ -346,9 +352,9 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     when(sqlDialect.indexDropStatements(nullable(Table.class), nullable(Index.class))).thenReturn(STATEMENTS);
 
     // when
-    visitorWithAbsentState.visit(removeIndex);
+    visitorWithAwaitingBuild.visit(removeIndex);
 
-    // then — no DROP INDEX DDL emitted (state was ABSENT)
+    // then — no DROP INDEX DDL emitted (session reports awaiting build)
     verify(n1, never()).addAllUpgradeStatements(ArgumentMatchers.argThat(c -> c.containsAll(STATEMENTS)));
   }
 
@@ -690,7 +696,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     GraphBasedUpgradeSchemaChangeVisitorFactory factory = new GraphBasedUpgradeSchemaChangeVisitorFactory();
 
     // when
-    GraphBasedUpgradeSchemaChangeVisitor created = factory.create(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable, DeployedIndexState.empty(),
+    GraphBasedUpgradeSchemaChangeVisitor created = factory.create(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable,
         org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession.create(),
         nodes);
 

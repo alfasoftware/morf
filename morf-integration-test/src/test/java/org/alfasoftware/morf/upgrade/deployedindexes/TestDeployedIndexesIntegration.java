@@ -701,6 +701,85 @@ public class TestDeployedIndexesIntegration {
 
 
   /**
+   * Row-existence model: after a deferred index is built (status=COMPLETED),
+   * a subsequent column-rename upgrade still propagates correctly to the
+   * tracking row's indexColumns and to the physical index. The COMPLETED
+   * row stays as COMPLETED because the index is still currently declared
+   * deferred — its declarative form is just rewritten.
+   */
+  @Test
+  public void testCompletedDeferredIndexSurvivesColumnRename() {
+    // given — upgrade 1 creates and adopter builds the deferred index
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+    DeployedIndexTracker tracker = newTracker();
+    UpgradePath path1 = performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+    for (DeferredIndexJob job : path1.getDeferredIndexStatements()) {
+      tracker.markStarted("Product", "Product_Name_1");
+      sqlScriptExecutorProvider.get().execute(job.getSql());
+      tracker.markCompleted("Product", "Product_Name_1");
+    }
+    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+
+    // when — upgrade 2 renames the underlying column (physical column rename
+    // propagates to the index's column reference; tracking-row indexColumns
+    // is updated by the visitor)
+    Schema renamedColSchema = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("label", DataType.STRING, 100)
+        ).indexes(index("Product_Name_1").columns("label"))
+    );
+    performUpgradeSteps(renamedColSchema,
+        AddDeferredIndex.class,
+        org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v2_0_0.RenameColumnWithDeferredIndex.class);
+
+    // then — row's indexColumns updated; row stays COMPLETED (still declared deferred)
+    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
+    assertEquals("label", queryDeployedIndexField("Product_Name_1", "indexColumns"));
+  }
+
+
+  /**
+   * Drift policy: if a tracking row says COMPLETED but the physical index
+   * is missing (manual DROP, restored backup, etc.), the next upgrade's
+   * enricher must throw IllegalStateException. Morf does not auto-heal.
+   */
+  @Test
+  public void testEnricherHardFailsOnCompletedRowWithoutPhysicalIndex() {
+    // given — manually insert a fabricated COMPLETED row referencing a
+    // physical index that doesn't exist
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "INSERT INTO DeployedIndexes (id, tableName, indexName, indexUnique, "
+            + "indexColumns, status, retryCount, createdTime) "
+            + "VALUES (1, 'Product', 'Phantom_Idx', 0, 'name', 'COMPLETED', 0, 0)"));
+    assertPhysicalIndexDoesNotExist("Product", "Phantom_Idx");
+
+    // when / then — any subsequent upgrade trips the enricher's drift check
+    try {
+      performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+      org.junit.Assert.fail("Expected IllegalStateException for drift");
+    } catch (RuntimeException e) {
+      // The exception may be wrapped by the upgrade framework; walk the cause chain.
+      Throwable cause = e;
+      boolean foundDriftMessage = false;
+      while (cause != null) {
+        if (cause instanceof IllegalStateException
+            && cause.getMessage() != null
+            && cause.getMessage().contains("Phantom_Idx")
+            && cause.getMessage().contains("COMPLETED")) {
+          foundDriftMessage = true;
+          break;
+        }
+        cause = cause.getCause();
+      }
+      assertTrue("Expected drift IllegalStateException mentioning Phantom_Idx + COMPLETED, got: " + e,
+          foundDriftMessage);
+    }
+  }
+
+
+  /**
    * Adopter flow — failure path: if executing a job's SQL fails, the app
    * calls markFailed with an error message; the row flips to FAILED and
    * the errorMessage is persisted.

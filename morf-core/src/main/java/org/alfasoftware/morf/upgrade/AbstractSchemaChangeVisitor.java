@@ -14,9 +14,7 @@ import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.sql.UpdateStatement;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexState;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession;
-import org.alfasoftware.morf.upgrade.deployedindexes.IndexPresence;
 
 /**
  * Common code between SchemaChangeVisitor implementors
@@ -30,18 +28,15 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   protected final TableNameResolver  tracker;
 
   private final DeferredIndexSession deferredIndexSession;
-  private final DeployedIndexState deployedIndexState;
 
 
   public AbstractSchemaChangeVisitor(Schema currentSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect,
-                                     Table idTable, DeployedIndexState deployedIndexState,
-                                     DeferredIndexSession deferredIndexSession) {
+                                     Table idTable, DeferredIndexSession deferredIndexSession) {
     this.currentSchema = currentSchema;
     this.upgradeConfigAndContext = upgradeConfigAndContext;
     this.sqlDialect = sqlDialect;
     this.idTable = idTable;
     this.tracker = new IdTableTracker(idTable.getName());
-    this.deployedIndexState = deployedIndexState;
     this.deferredIndexSession = deferredIndexSession;
   }
 
@@ -461,29 +456,19 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
   /**
    * Projects forward: will this index exist in the DB by the time the
-   * generated script reaches the current emission point? Composes two
-   * sources:
+   * generated script reaches the current emission point?
    *
-   * <ul>
-   *   <li>The at-start snapshot from the enricher ({@code deployedIndexState}).</li>
-   *   <li>The in-session deltas recorded by earlier visits this run
-   *       ({@code deferredIndexSession}).</li>
-   * </ul>
-   *
-   * <p>Defaults to "present" when the state doesn't explicitly say
-   * otherwise: in-session non-deferred additions are treated as present
-   * (their CREATE INDEX is already queued), pre-existing non-tracked
-   * indexes likewise. The name reflects the script-generation semantics —
-   * nothing has hit the DB yet; this is a projection, not a query.</p>
+   * <p>Under the "row-existence = declared deferred" model, the session
+   * has the answer: an index is physically absent iff it's tracked AND its
+   * status is non-terminal (declared deferred but not yet built by the
+   * adopter). All other indexes — non-tracked (non-deferred physical) and
+   * tracked-COMPLETED (built deferred) — are present.</p>
    *
    * @param tableName the table name.
    * @param indexName the index name.
    * @return true if the index will exist at script-emission time.
    */
   private boolean willBePhysicallyPresentAtThisEmission(String tableName, String indexName) {
-    if (deferredIndexSession.isTrackedDeferred(tableName, indexName)) {
-      return false;
-    }
-    return deployedIndexState.getPresence(tableName, indexName) != IndexPresence.ABSENT;
+    return !deferredIndexSession.isAwaitingBuild(tableName, indexName);
   }
 }

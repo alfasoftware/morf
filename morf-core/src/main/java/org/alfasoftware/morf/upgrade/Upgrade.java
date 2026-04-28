@@ -54,10 +54,7 @@ import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsExcept
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexJob;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexState;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher;
-import org.alfasoftware.morf.upgrade.deployedindexes.EnrichedModel;
-import org.alfasoftware.morf.upgrade.deployedindexes.IndexPresence;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -277,9 +274,7 @@ public class Upgrade {
     // prior-upgrade tracking rows.
     DeferredIndexSession deferredIndexSession = DeferredIndexSession.create();
 
-    EnrichedModel enriched = enrichSourceSchema(sourceSchema, deferredIndexSession);
-    sourceSchema = enriched.getSchema();
-    DeployedIndexState deployedIndexState = enriched.getState();
+    sourceSchema = enrichSourceSchema(sourceSchema, deferredIndexSession);
 
     // -- Get the current UUIDs and deployed views...
     log.info("Examining current views");    //
@@ -327,14 +322,14 @@ public class Upgrade {
         public void writeSql(Collection<String> sql) {
           upgradeStatements.addAll(sql);
         }
-      }, SqlDialect.IdTable.withPrefix(dialect, "temp_id_"), deployedIndexState, deferredIndexSession);
+      }, SqlDialect.IdTable.withPrefix(dialect, "temp_id_"), deferredIndexSession);
       upgrader.preUpgrade();
       schemaChangeSequence.applyTo(upgrader);
       upgrader.postUpgrade();
     }
 
     List<DeferredIndexJob> deferredIndexJobs =
-        collectDeferredIndexJobs(schemaChangeSequence, sourceSchema, deployedIndexState, dialect);
+        collectDeferredIndexJobs(schemaChangeSequence, sourceSchema, deferredIndexSession, dialect);
 
     // -- Upgrade path...
     //
@@ -363,7 +358,6 @@ public class Upgrade {
         upgradeConfigAndContext,
         schemaChangeSequence,
         viewChanges,
-        deployedIndexState,
         deferredIndexSession);
     }
 
@@ -515,59 +509,48 @@ public class Upgrade {
 
 
   /**
-   * Enriches the source schema with DeployedIndexes metadata — propagates the
-   * declarative {@code isDeferred()} onto indexes (from the tracking table)
-   * and returns a companion {@link DeployedIndexState} carrying operational
-   * facts (physical presence) that the visitor consults for DDL decisions.
+   * Enriches the source schema with DeployedIndexes metadata: rebuilds
+   * built-deferred indexes with the {@code .deferred()} flag, virtualizes
+   * unbuilt-deferred rows as declared indexes, and primes the per-upgrade
+   * session so the visitor can answer presence queries via
+   * {@link DeferredIndexSession#isAwaitingBuild}.
    *
-   * <p>Falls back to an empty {@link EnrichedModel} when no enricher is
-   * available (e.g. legacy test paths that construct {@link Upgrade} with a
-   * null enricher).</p>
+   * <p>Falls back to the input schema when no enricher is available (e.g.
+   * legacy test paths that construct {@link Upgrade} with a null enricher).</p>
    *
    * @param sourceSchema the source schema read from JDBC metadata.
-   * @return the enriched model.
+   * @param session the per-upgrade session to prime.
+   * @return the enriched schema.
    */
-  private EnrichedModel enrichSourceSchema(Schema sourceSchema, DeferredIndexSession service) {
+  private Schema enrichSourceSchema(Schema sourceSchema, DeferredIndexSession session) {
     if (deployedIndexesModelEnricher == null) {
-      return new EnrichedModel(sourceSchema, DeployedIndexState.empty());
+      return sourceSchema;
     }
-    return deployedIndexesModelEnricher.enrich(sourceSchema, service);
+    return deployedIndexesModelEnricher.enrich(sourceSchema, session);
   }
 
 
   /**
-   * Scans the final schema for deferred indexes that will not be physically
-   * present after the upgrade runs, and produces jobs for the application to
-   * execute asynchronously.
+   * Scans the final schema for deferred indexes that are still awaiting
+   * build, and produces jobs for the application to execute asynchronously.
    *
-   * <p>Source of truth is the final schema (source + visitor operations)
-   * paired with {@link DeployedIndexState} from the enricher:</p>
-   * <ul>
-   *   <li>Prior-session unbuilt deferred indexes were virtualized by the
-   *       enricher into the source schema and marked ABSENT in state — they
-   *       survive into the final schema as {@code isDeferred=true} indexes.</li>
-   *   <li>New deferred indexes added this session are in the final schema
-   *       with {@code UNKNOWN} state (the default), which the {@code != PRESENT}
-   *       guard below counts as "not yet physically there".</li>
-   *   <li>Renames/column-renames applied by the visitor mutate the schema
-   *       in place, so the job carries the current shape.</li>
-   * </ul>
-   *
-   * <p>Using the schema+state pair rather than a DAO query avoids a timing
-   * bug: the visitor's tracking-row INSERTs are queued in the upgrade script
-   * but have not been executed at this point, so {@code dao.findAll()}
-   * would miss any row added by this upgrade.</p>
+   * <p>Under the "row-existence = declared deferred" model, the session
+   * answers "is this index awaiting build?" — true iff a tracking row exists
+   * with non-terminal status. The final schema's {@code isDeferred()} flag
+   * is set on every declared-deferred index (built or unbuilt) thanks to the
+   * enricher rebuilding COMPLETED rows as {@code .deferred()}; we filter to
+   * the awaiting-build subset via {@link DeferredIndexSession#isAwaitingBuild}.</p>
    *
    * @param schemaChangeSequence the computed sequence of schema changes.
    * @param sourceSchema the enriched source schema.
-   * @param deployedIndexState operational state from the enricher.
+   * @param session the per-upgrade session, mutated by the visitor.
    * @param dialect the SQL dialect.
    * @return empty list when deferred-index creation is disabled or the
    *     dialect doesn't support it; otherwise the list of jobs.
    */
   private List<DeferredIndexJob> collectDeferredIndexJobs(SchemaChangeSequence schemaChangeSequence,
                                                            Schema sourceSchema,
-                                                           DeployedIndexState deployedIndexState,
+                                                           DeferredIndexSession session,
                                                            SqlDialect dialect) {
     if (!upgradeConfigAndContext.isDeferredIndexCreationEnabled()) {
       return List.of();
@@ -583,8 +566,7 @@ public class Upgrade {
     Schema finalSchema = schemaChangeSequence.applyToSchema(sourceSchema);
     for (Table table : finalSchema.tables()) {
       for (Index idx : table.indexes()) {
-        if (idx.isDeferred()
-            && deployedIndexState.getPresence(table.getName(), idx.getName()) != IndexPresence.PRESENT) {
+        if (idx.isDeferred() && session.isAwaitingBuild(table.getName(), idx.getName())) {
           jobs.add(new DeferredIndexJob(
               table.getName(),
               idx.getName(),

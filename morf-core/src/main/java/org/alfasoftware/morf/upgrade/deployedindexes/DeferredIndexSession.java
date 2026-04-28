@@ -69,9 +69,22 @@ public interface DeferredIndexSession {
   /**
    * @param tableName the table.
    * @param indexName the index.
-   * @return {@code true} if the index is currently tracked as deferred.
+   * @return {@code true} if the index is currently tracked as deferred
+   *     (any status — built or unbuilt).
    */
   boolean isTrackedDeferred(String tableName, String indexName);
+
+
+  /**
+   * @param tableName the table.
+   * @param indexName the index.
+   * @return {@code true} if the index is currently tracked AND its status is
+   *     non-terminal (PENDING / IN_PROGRESS / FAILED) — i.e. it has been
+   *     declared deferred and the adopter has not yet built it. The visitor
+   *     uses this to decide whether to emit physical DDL: an awaiting-build
+   *     index is not yet physically present.
+   */
+  boolean isAwaitingBuild(String tableName, String indexName);
 
 
   /**

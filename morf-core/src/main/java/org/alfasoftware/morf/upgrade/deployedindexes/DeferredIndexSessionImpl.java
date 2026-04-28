@@ -65,7 +65,7 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
   public void prime(DeployedIndex entry) {
     if (log.isDebugEnabled()) {
       log.debug("Priming (persisted row): table=" + entry.getTableName()
-          + ", index=" + entry.getIndexName());
+          + ", index=" + entry.getIndexName() + ", status=" + entry.getStatus());
     }
     // Slim invariant: every persisted row is a deferred index.
     IndexBuilder builder = index(entry.getIndexName()).columns(entry.getIndexColumns());
@@ -75,7 +75,8 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
     builder = builder.deferred();
     trackedIndexes
         .computeIfAbsent(entry.getTableName().toUpperCase(), k -> new LinkedHashMap<>())
-        .put(entry.getIndexName().toUpperCase(), new IndexRecord(entry.getTableName(), builder));
+        .put(entry.getIndexName().toUpperCase(),
+             new IndexRecord(entry.getTableName(), builder, entry.getStatus()));
   }
 
 
@@ -85,9 +86,11 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
       log.debug("Tracking index: table=" + tableName + ", index=" + idx.getName()
           + ", deferred=" + idx.isDeferred());
     }
+    // New declaration → status PENDING (adopter hasn't built it yet).
     trackedIndexes
         .computeIfAbsent(tableName.toUpperCase(), k -> new LinkedHashMap<>())
-        .put(idx.getName().toUpperCase(), new IndexRecord(tableName, idx));
+        .put(idx.getName().toUpperCase(),
+             new IndexRecord(tableName, idx, DeployedIndexStatus.PENDING));
 
     return List.of(statements.trackIndex(tableName, idx));
   }
@@ -97,6 +100,16 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
   public boolean isTrackedDeferred(String tableName, String indexName) {
     Map<String, IndexRecord> tableMap = trackedIndexes.get(tableName.toUpperCase());
     return tableMap != null && tableMap.containsKey(indexName.toUpperCase());
+  }
+
+
+  @Override
+  public boolean isAwaitingBuild(String tableName, String indexName) {
+    Map<String, IndexRecord> tableMap = trackedIndexes.get(tableName.toUpperCase());
+    if (tableMap == null) return false;
+    IndexRecord record = tableMap.get(indexName.toUpperCase());
+    if (record == null) return false;
+    return record.status != DeployedIndexStatus.COMPLETED;
   }
 
 
@@ -155,7 +168,8 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
 
     Map<String, IndexRecord> updatedMap = new LinkedHashMap<>();
     for (Map.Entry<String, IndexRecord> entry : tableMap.entrySet()) {
-      updatedMap.put(entry.getKey(), new IndexRecord(newTableName, entry.getValue().index));
+      IndexRecord r = entry.getValue();
+      updatedMap.put(entry.getKey(), new IndexRecord(newTableName, r.index, r.status));
     }
     trackedIndexes.put(newTableName.toUpperCase(), updatedMap);
 
@@ -181,7 +195,7 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
         IndexBuilder builder = index(r.index.getName()).columns(updatedColumns);
         if (r.index.isUnique()) builder = builder.unique();
         if (r.index.isDeferred()) builder = builder.deferred();
-        entry.setValue(new IndexRecord(r.tableName, builder));
+        entry.setValue(new IndexRecord(r.tableName, builder, r.status));
 
         updates.add(statements.updateIndexColumns(
             r.tableName, r.index.getName(), String.join(",", updatedColumns)));
@@ -203,7 +217,7 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
     IndexBuilder builder = index(newIndexName).columns(existing.index.columnNames());
     if (existing.index.isUnique()) builder = builder.unique();
     if (existing.index.isDeferred()) builder = builder.deferred();
-    tableMap.put(newIndexName.toUpperCase(), new IndexRecord(existing.tableName, builder));
+    tableMap.put(newIndexName.toUpperCase(), new IndexRecord(existing.tableName, builder, existing.status));
 
     return List.of(statements.updateIndexName(
         existing.tableName, existing.index.getName(), newIndexName));
@@ -217,10 +231,12 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
   private static final class IndexRecord {
     final String tableName;
     final Index index;
+    final DeployedIndexStatus status;
 
-    IndexRecord(String tableName, Index index) {
+    IndexRecord(String tableName, Index index, DeployedIndexStatus status) {
       this.tableName = tableName;
       this.index = index;
+      this.status = status;
     }
   }
 }
