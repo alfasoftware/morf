@@ -38,7 +38,7 @@ public class TestDeferredIndexSessionImpl {
 
   @Before
   public void setUp() {
-    session = new DeferredIndexSessionImpl();
+    session = new DeferredIndexSessionImpl(new DeployedIndexesStatements());
   }
 
 

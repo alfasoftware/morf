@@ -39,20 +39,25 @@ import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.UpdateStatement;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
+
 /**
- * Package-private utility holding the DeployedIndexes column names, every
- * DSL statement that targets the table, and the ResultSet → DeployedIndex
- * mapping. Pure static — no instances, no state.
+ * Package-private collaborator holding the DeployedIndexes column names,
+ * every DSL statement that targets the table, and the ResultSet → DeployedIndex
+ * mapping. Stateless but injectable — callers depend on this via constructor
+ * injection rather than static method calls, matching the rest of the
+ * deployedindexes package's wiring style.
  *
  * <p>Replaces the previous {@code DeployedIndexesStatementFactory} +
- * {@code Impl} pair: since the factory had no dependencies and every
- * caller holds a fresh reference, an interface + DI layer added no value.
- * Keeping it private to the {@code deployedindexes} package prevents
- * adopters from depending on column names or statement shape.</p>
+ * {@code Impl} pair: with no behavioural variants there's nothing to model
+ * behind an interface, so this is a single concrete class. Package-private
+ * keeps it out of the adopter-facing API surface.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-final class DeployedIndexesStatements {
+@Singleton
+class DeployedIndexesStatements {
 
   /** Table name — the DeployedIndexes tracking table. */
   static final String TABLE = DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME;
@@ -81,8 +86,10 @@ final class DeployedIndexesStatements {
   static final String COL_ERROR_MESSAGE = "errorMessage";
 
 
-  private DeployedIndexesStatements() {
-    // no instances
+  /** Default constructor. No state, no dependencies. */
+  @Inject
+  DeployedIndexesStatements() {
+    // no-op
   }
 
 
@@ -91,13 +98,13 @@ final class DeployedIndexesStatements {
   // -------------------------------------------------------------------------
 
   /** @return SELECT all rows, ordered by id. */
-  static SelectStatement selectAll() {
+  SelectStatement selectAll() {
     return selectAllColumns().orderBy(field(COL_ID));
   }
 
 
   /** @return SELECT rows whose status is non-terminal (PENDING/IN_PROGRESS/FAILED). */
-  static SelectStatement selectNonTerminal() {
+  SelectStatement selectNonTerminal() {
     return selectAllColumns()
         .where(or(
             field(COL_STATUS).eq(DeployedIndexStatus.PENDING.name()),
@@ -108,7 +115,7 @@ final class DeployedIndexesStatements {
 
 
   /** @return SELECT status column alone (caller aggregates into status → count). */
-  static SelectStatement selectStatusColumn() {
+  SelectStatement selectStatusColumn() {
     return select(field(COL_STATUS)).from(tableRef(TABLE));
   }
 
@@ -123,7 +130,7 @@ final class DeployedIndexesStatements {
    * @param startedTime epoch ms.
    * @return UPDATE flipping status to IN_PROGRESS and setting startedTime.
    */
-  static UpdateStatement markStarted(String tableName, String indexName, long startedTime) {
+  UpdateStatement markStarted(String tableName, String indexName, long startedTime) {
     return update(tableRef(TABLE))
         .set(literal(DeployedIndexStatus.IN_PROGRESS.name()).as(COL_STATUS),
              literal(startedTime).as(COL_STARTED_TIME))
@@ -139,7 +146,7 @@ final class DeployedIndexesStatements {
    * @param completedTime epoch ms.
    * @return UPDATE flipping status to COMPLETED and setting completedTime.
    */
-  static UpdateStatement markCompleted(String tableName, String indexName, long completedTime) {
+  UpdateStatement markCompleted(String tableName, String indexName, long completedTime) {
     return update(tableRef(TABLE))
         .set(literal(DeployedIndexStatus.COMPLETED.name()).as(COL_STATUS),
              literal(completedTime).as(COL_COMPLETED_TIME))
@@ -155,7 +162,7 @@ final class DeployedIndexesStatements {
    * @param errorMessage the failure message.
    * @return UPDATE flipping status to FAILED and setting errorMessage.
    */
-  static UpdateStatement markFailed(String tableName, String indexName, String errorMessage) {
+  UpdateStatement markFailed(String tableName, String indexName, String errorMessage) {
     return update(tableRef(TABLE))
         .set(literal(DeployedIndexStatus.FAILED.name()).as(COL_STATUS),
              literal(errorMessage).as(COL_ERROR_MESSAGE))
@@ -171,7 +178,7 @@ final class DeployedIndexesStatements {
    * @return UPDATE bumping retry count to 1 (simplified — the DSL doesn't
    *     support field + 1; the adopter manages retry counts).
    */
-  static UpdateStatement bumpRetryCount(String tableName, String indexName) {
+  UpdateStatement bumpRetryCount(String tableName, String indexName) {
     return update(tableRef(TABLE))
         .set(literal(1).as(COL_RETRY_COUNT))
         .where(and(
@@ -181,7 +188,7 @@ final class DeployedIndexesStatements {
 
 
   /** @return UPDATE flipping every IN_PROGRESS row back to PENDING. */
-  static UpdateStatement resetInProgress() {
+  UpdateStatement resetInProgress() {
     return update(tableRef(TABLE))
         .set(literal(DeployedIndexStatus.PENDING.name()).as(COL_STATUS))
         .where(field(COL_STATUS).eq(DeployedIndexStatus.IN_PROGRESS.name()));
@@ -197,7 +204,7 @@ final class DeployedIndexesStatements {
    * @param index the index (deferred under the slim invariant).
    * @return INSERT adding a new tracking row with status PENDING.
    */
-  static InsertStatement trackIndex(String tableName, Index index) {
+  InsertStatement trackIndex(String tableName, Index index) {
     long operationId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
     long createdTime = System.currentTimeMillis();
 
@@ -220,7 +227,7 @@ final class DeployedIndexesStatements {
    * @param indexName the index.
    * @return DELETE removing the tracking row.
    */
-  static DeleteStatement removeIndex(String tableName, String indexName) {
+  DeleteStatement removeIndex(String tableName, String indexName) {
     return delete(tableRef(TABLE))
         .where(and(
             field(COL_TABLE_NAME).eq(literal(tableName)),
@@ -232,7 +239,7 @@ final class DeployedIndexesStatements {
    * @param tableName the table.
    * @return DELETE removing all tracking rows for the table.
    */
-  static DeleteStatement removeAllForTable(String tableName) {
+  DeleteStatement removeAllForTable(String tableName) {
     return delete(tableRef(TABLE)).where(field(COL_TABLE_NAME).eq(literal(tableName)));
   }
 
@@ -242,7 +249,7 @@ final class DeployedIndexesStatements {
    * @param newTableName the new table name.
    * @return UPDATE renaming the tableName column for every tracking row.
    */
-  static UpdateStatement updateTableName(String oldTableName, String newTableName) {
+  UpdateStatement updateTableName(String oldTableName, String newTableName) {
     return update(tableRef(TABLE))
         .set(literal(newTableName).as(COL_TABLE_NAME))
         .where(field(COL_TABLE_NAME).eq(literal(oldTableName)));
@@ -255,7 +262,7 @@ final class DeployedIndexesStatements {
    * @param newColumnsCsv the new column list, CSV.
    * @return UPDATE replacing the indexColumns CSV.
    */
-  static UpdateStatement updateIndexColumns(String tableName, String indexName, String newColumnsCsv) {
+  UpdateStatement updateIndexColumns(String tableName, String indexName, String newColumnsCsv) {
     return update(tableRef(TABLE))
         .set(literal(newColumnsCsv).as(COL_INDEX_COLUMNS))
         .where(and(
@@ -270,7 +277,7 @@ final class DeployedIndexesStatements {
    * @param newIndexName the new index name.
    * @return UPDATE renaming the index in its tracking row.
    */
-  static UpdateStatement updateIndexName(String tableName, String oldIndexName, String newIndexName) {
+  UpdateStatement updateIndexName(String tableName, String oldIndexName, String newIndexName) {
     return update(tableRef(TABLE))
         .set(literal(newIndexName).as(COL_INDEX_NAME))
         .where(and(
@@ -285,14 +292,13 @@ final class DeployedIndexesStatements {
 
   /**
    * Maps a ResultSet positioned on a DeployedIndexes row to a
-   * {@link DeployedIndex}. Advances past the resultset's first row if at
-   * BOF; callers typically pass in a result that already {@code rs.next()}'d.
+   * {@link DeployedIndex}.
    *
    * @param rs the result set.
    * @return the populated DeployedIndex.
    * @throws SQLException if reading fails.
    */
-  static DeployedIndex mapRow(ResultSet rs) throws SQLException {
+  DeployedIndex mapRow(ResultSet rs) throws SQLException {
     DeployedIndex entry = new DeployedIndex();
     entry.setId(rs.getLong(COL_ID));
     entry.setTableName(rs.getString(COL_TABLE_NAME));
@@ -321,7 +327,7 @@ final class DeployedIndexesStatements {
    * @return all rows mapped.
    * @throws SQLException if reading fails.
    */
-  static List<DeployedIndex> mapAll(ResultSet rs) throws SQLException {
+  List<DeployedIndex> mapAll(ResultSet rs) throws SQLException {
     List<DeployedIndex> result = new ArrayList<>();
     while (rs.next()) {
       result.add(mapRow(rs));
@@ -334,7 +340,7 @@ final class DeployedIndexesStatements {
   // Internals
   // -------------------------------------------------------------------------
 
-  private static SelectStatement selectAllColumns() {
+  private SelectStatement selectAllColumns() {
     return select(
         field(COL_ID), field(COL_TABLE_NAME),
         field(COL_INDEX_NAME), field(COL_INDEX_UNIQUE), field(COL_INDEX_COLUMNS),

@@ -134,4 +134,15 @@ public interface DeferredIndexSession {
    * @return UPDATE statements, empty if not tracked.
    */
   List<UpdateStatement> updateIndexName(String tableName, String oldIndexName, String newIndexName);
+
+
+  /**
+   * Convenience factory for the static upgrade path. Wires up the package-private
+   * {@link DeployedIndexesStatements} helper without exposing it to callers.
+   *
+   * @return a new per-upgrade session.
+   */
+  static DeferredIndexSession create() {
+    return new DeferredIndexSessionImpl(new DeployedIndexesStatements());
+  }
 }

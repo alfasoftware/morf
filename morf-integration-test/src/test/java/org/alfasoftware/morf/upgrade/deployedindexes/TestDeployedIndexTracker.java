@@ -182,6 +182,6 @@ public class TestDeployedIndexTracker {
 
 
   private DeployedIndexTracker createTracker() {
-    return new DeployedIndexTrackerImpl(new DeployedIndexesDAO(sqlScriptExecutorProvider, connectionResources));
+    return new DeployedIndexTrackerImpl(new DeployedIndexesDAO(sqlScriptExecutorProvider, connectionResources, new DeployedIndexesStatements()));
   }
 }

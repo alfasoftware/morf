@@ -50,7 +50,7 @@ public class TestDeployedIndexesModelEnricherImpl {
   @Before
   public void setUp() {
     dao = mock(DeployedIndexesDAO.class);
-    session = new DeferredIndexSessionImpl();
+    session = new DeferredIndexSessionImpl(new DeployedIndexesStatements());
     config = new UpgradeConfigAndContext();
     config.setDeferredIndexCreationEnabled(true);
   }

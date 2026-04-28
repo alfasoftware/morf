@@ -82,7 +82,7 @@ public interface DeployedIndexesModelEnricher {
   static DeployedIndexesModelEnricher create(ConnectionResources connectionResources,
                                               UpgradeConfigAndContext config) {
     DeployedIndexesDAO dao = new DeployedIndexesDAO(
-        new SqlScriptExecutorProvider(connectionResources), connectionResources);
+        new SqlScriptExecutorProvider(connectionResources), connectionResources, new DeployedIndexesStatements());
     return new DeployedIndexesModelEnricherImpl(dao, config);
   }
 }

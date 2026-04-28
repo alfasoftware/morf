@@ -54,7 +54,6 @@ import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsExcept
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexJob;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSessionImpl;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexState;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher;
 import org.alfasoftware.morf.upgrade.deployedindexes.EnrichedModel;
@@ -276,7 +275,7 @@ public class Upgrade {
     // persisted DeployedIndexes row before anything else so that the
     // visitor's remove/rename/column operations emit correct DML against
     // prior-upgrade tracking rows.
-    DeferredIndexSession deferredIndexSession = new DeferredIndexSessionImpl();
+    DeferredIndexSession deferredIndexSession = DeferredIndexSession.create();
 
     EnrichedModel enriched = enrichSourceSchema(sourceSchema, deferredIndexSession);
     sourceSchema = enriched.getSchema();

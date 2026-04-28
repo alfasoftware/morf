@@ -34,11 +34,12 @@ import org.apache.commons.logging.LogFactory;
 
 /**
  * Default implementation of {@link DeferredIndexSession}. Owns the
- * in-memory per-upgrade cache; defers DSL construction to
+ * in-memory per-upgrade cache; defers DSL construction to the injected
  * {@link DeployedIndexesStatements}.
  *
- * <p>Not a Guice singleton — constructed per upgrade run. No injected
- * dependencies: state is the cache, DSL is static.</p>
+ * <p>Not a Guice singleton — constructed per upgrade run. The
+ * {@link DeployedIndexesStatements} dependency is stateless and could be a
+ * fresh instance or a Guice-managed singleton.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -49,10 +50,14 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
   /** Cache: tableName (upper) -&gt; indexName (upper) -&gt; IndexRecord. */
   private final Map<String, Map<String, IndexRecord>> trackedIndexes = new LinkedHashMap<>();
 
+  private final DeployedIndexesStatements statements;
 
-  /** Default constructor. No dependencies. */
-  public DeferredIndexSessionImpl() {
-    // no-op
+
+  /**
+   * @param statements DSL helper for the DeployedIndexes table.
+   */
+  public DeferredIndexSessionImpl(DeployedIndexesStatements statements) {
+    this.statements = statements;
   }
 
 
@@ -84,7 +89,7 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
         .computeIfAbsent(tableName.toUpperCase(), k -> new LinkedHashMap<>())
         .put(idx.getName().toUpperCase(), new IndexRecord(tableName, idx));
 
-    return List.of(DeployedIndexesStatements.trackIndex(tableName, idx));
+    return List.of(statements.trackIndex(tableName, idx));
   }
 
 
@@ -105,7 +110,7 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
     if (tableMap.isEmpty()) {
       trackedIndexes.remove(tableName.toUpperCase());
     }
-    return List.of(DeployedIndexesStatements.removeIndex(removed.tableName, removed.index.getName()));
+    return List.of(statements.removeIndex(removed.tableName, removed.index.getName()));
   }
 
 
@@ -116,7 +121,7 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
       return List.of();
     }
     String storedTableName = tableMap.values().iterator().next().tableName;
-    return List.of(DeployedIndexesStatements.removeAllForTable(storedTableName));
+    return List.of(statements.removeAllForTable(storedTableName));
   }
 
 
@@ -132,11 +137,11 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
         .map(r -> r.index.getName())
         .collect(Collectors.toList());
 
-    List<DeleteStatement> statements = new ArrayList<>();
+    List<DeleteStatement> deletes = new ArrayList<>();
     for (String idxName : toRemove) {
-      statements.addAll(removeIndex(tableName, idxName));
+      deletes.addAll(removeIndex(tableName, idxName));
     }
-    return statements;
+    return deletes;
   }
 
 
@@ -154,7 +159,7 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
     }
     trackedIndexes.put(newTableName.toUpperCase(), updatedMap);
 
-    return List.of(DeployedIndexesStatements.updateTableName(storedOldTableName, newTableName));
+    return List.of(statements.updateTableName(storedOldTableName, newTableName));
   }
 
 
@@ -165,7 +170,7 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
       return List.of();
     }
 
-    List<UpdateStatement> statements = new ArrayList<>();
+    List<UpdateStatement> updates = new ArrayList<>();
     for (Map.Entry<String, IndexRecord> entry : tableMap.entrySet()) {
       IndexRecord r = entry.getValue();
       if (r.index.columnNames().stream().anyMatch(c -> c.equalsIgnoreCase(oldColumnName))) {
@@ -178,11 +183,11 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
         if (r.index.isDeferred()) builder = builder.deferred();
         entry.setValue(new IndexRecord(r.tableName, builder));
 
-        statements.add(DeployedIndexesStatements.updateIndexColumns(
+        updates.add(statements.updateIndexColumns(
             r.tableName, r.index.getName(), String.join(",", updatedColumns)));
       }
     }
-    return statements;
+    return updates;
   }
 
 
@@ -200,7 +205,7 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
     if (existing.index.isDeferred()) builder = builder.deferred();
     tableMap.put(newIndexName.toUpperCase(), new IndexRecord(existing.tableName, builder));
 
-    return List.of(DeployedIndexesStatements.updateIndexName(
+    return List.of(statements.updateIndexName(
         existing.tableName, existing.index.getName(), newIndexName));
   }
 

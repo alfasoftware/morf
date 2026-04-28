@@ -109,7 +109,7 @@ public class TestGraphBasedUpgradeBuilder {
 
     builder = new GraphBasedUpgradeBuilder(visitorFactory, scriptGeneratorFactory, drawIOGraphPrinter, sourceSchema, targetSchema,
         connectionResources, upgradeConfigAndContext, schemaChangeSequence, viewChanges, DeployedIndexState.empty(),
-        new org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSessionImpl());
+        org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession.create());
   }
 
 
@@ -398,7 +398,7 @@ public class TestGraphBasedUpgradeBuilder {
 
     // when
     GraphBasedUpgradeBuilder created = factory.create(sourceSchema, targetSchema, connectionResources, upgradeConfigAndContext, schemaChangeSequence, viewChanges, DeployedIndexState.empty(),
-        new org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSessionImpl());
+        org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession.create());
 
     // then
     assertNotNull(created);
