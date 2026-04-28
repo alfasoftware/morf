@@ -785,6 +785,116 @@ public class TestDeployedIndexesIntegration {
 
 
   /**
+   * Drift policy: if a tracking row says non-terminal (e.g. PENDING) but
+   * the physical index already exists, the enricher must throw — adopter
+   * probably crashed between CREATE INDEX and markCompleted.
+   */
+  @Test
+  public void testEnricherHardFailsOnNonCompletedRowWithMatchingPhysicalIndex() {
+    // given — first upgrade creates a PENDING deferred index
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+    assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
+    // then — manually create the physical index without going through the tracker
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "CREATE INDEX Product_Name_1 ON Product(name)"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+
+    // when / then — next upgrade's enricher detects drift
+    try {
+      performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+      org.junit.Assert.fail("Expected IllegalStateException for drift");
+    } catch (RuntimeException e) {
+      Throwable cause = e;
+      boolean foundDrift = false;
+      while (cause != null) {
+        if (cause instanceof IllegalStateException
+            && cause.getMessage() != null
+            && cause.getMessage().contains("Product_Name_1")
+            && cause.getMessage().contains("PENDING")) {
+          foundDrift = true;
+          break;
+        }
+        cause = cause.getCause();
+      }
+      assertTrue("Expected drift IllegalStateException mentioning Product_Name_1 + PENDING, got: " + e,
+          foundDrift);
+    }
+  }
+
+
+  /**
+   * Drift policy: a tracking row referencing a table not in the physical
+   * schema is fatal. Could happen if the table was DROPped without removing
+   * the row, or after restoring a partial backup.
+   */
+  @Test
+  public void testEnricherHardFailsOnRowForMissingTable() {
+    // given — manually insert a row referencing a non-existent table
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "INSERT INTO DeployedIndexes (id, tableName, indexName, indexUnique, "
+            + "indexColumns, status, retryCount, createdTime) "
+            + "VALUES (42, 'GhostTable', 'GhostIdx', 0, 'col', 'PENDING', 0, 0)"));
+
+    // when / then — enricher detects the orphan
+    try {
+      performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+      org.junit.Assert.fail("Expected IllegalStateException for orphan-row drift");
+    } catch (RuntimeException e) {
+      Throwable cause = e;
+      boolean foundDrift = false;
+      while (cause != null) {
+        if (cause instanceof IllegalStateException
+            && cause.getMessage() != null
+            && cause.getMessage().contains("GhostTable")) {
+          foundDrift = true;
+          break;
+        }
+        cause = cause.getCause();
+      }
+      assertTrue("Expected drift IllegalStateException mentioning GhostTable, got: " + e,
+          foundDrift);
+    }
+  }
+
+
+  /**
+   * Row-existence model: changing a built deferred index to non-deferred
+   * should DELETE the tracking row (no longer declared deferred). The
+   * physical index is dropped and recreated as non-deferred via the
+   * standard ChangeIndex flow.
+   */
+  @Test
+  public void testCompletedDeferredChangedToNonDeferredDeletesRow() {
+    // given — upgrade 1 creates and adopter builds the deferred index
+    UpgradePath path1 = performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+    DeployedIndexTracker tracker = newTracker();
+    for (DeferredIndexJob job : path1.getDeferredIndexStatements()) {
+      tracker.markStarted("Product", "Product_Name_1");
+      sqlScriptExecutorProvider.get().execute(job.getSql());
+      tracker.markCompleted("Product", "Product_Name_1");
+    }
+    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+
+    // when — upgrade 2 changes the index from deferred to non-deferred
+    Schema target = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_1").columns("name"))  // non-deferred now
+    );
+    performUpgradeSteps(target,
+        AddDeferredIndex.class,
+        org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v2_0_0.ChangeDeferredToNonDeferred.class);
+
+    // then — tracking row deleted, physical index still exists (rebuilt as non-deferred)
+    assertNull("Tracking row for Product_Name_1 should be deleted (no longer declared deferred)",
+        queryDeployedIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+  }
+
+
+  /**
    * Drift policy: if a tracking row says COMPLETED but the physical index
    * is missing (manual DROP, restored backup, etc.), the next upgrade's
    * enricher must throw IllegalStateException. Morf does not auto-heal.
