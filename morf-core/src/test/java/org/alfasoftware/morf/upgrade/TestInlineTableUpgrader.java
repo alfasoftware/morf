@@ -93,8 +93,7 @@ public class TestInlineTableUpgrader {
     when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.DeleteStatement.class))).thenReturn("DELETE FROM DeployedIndexes ...");
 
     upgrader = new InlineTableUpgrader(schema, upgradeConfigAndContext, sqlDialect, sqlStatementWriter, SqlDialect.IdTable.withDeterministicName(ID_TABLE_NAME), DeployedIndexState.empty(),
-        new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesServiceImpl(
-            new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesStatementFactoryImpl()));
+        new org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSessionImpl());
   }
 
 

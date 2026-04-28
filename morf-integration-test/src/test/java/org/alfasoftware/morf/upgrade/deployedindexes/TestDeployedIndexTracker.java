@@ -42,8 +42,7 @@ import org.alfasoftware.morf.upgrade.ViewDeploymentValidator;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexStatus;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexTracker;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexTrackerImpl;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesDAOImpl;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesStatementFactoryImpl;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesDAO;
 import org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddDeferredIndex;
 import org.junit.After;
 import org.junit.Before;
@@ -183,7 +182,6 @@ public class TestDeployedIndexTracker {
 
 
   private DeployedIndexTracker createTracker() {
-    return new DeployedIndexTrackerImpl(
-        new DeployedIndexesDAOImpl(sqlScriptExecutorProvider, connectionResources, new DeployedIndexesStatementFactoryImpl()));
+    return new DeployedIndexTrackerImpl(new DeployedIndexesDAO(sqlScriptExecutorProvider, connectionResources));
   }
 }

@@ -8,7 +8,7 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexState;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesService;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession;
 
 /**
  * Graph Based Upgrade implementation of the {@link SchemaChangeVisitor} which
@@ -31,12 +31,12 @@ class GraphBasedUpgradeSchemaChangeVisitor extends AbstractSchemaChangeVisitor i
    * @param sqlDialect   dialect to generate statements for the target database.
    * @param idTable      table for id generation.
    * @param deployedIndexState at-start physical-presence facts from the enricher.
-   * @param deployedIndexesService the per-session tracking service, primed by the enricher.
+   * @param deferredIndexSession the per-session tracking service, primed by the enricher.
    * @param upgradeNodes all the {@link GraphBasedUpgradeNode} instances in the
    *                       upgrade for which the visitor will generate statements
    */
-  GraphBasedUpgradeSchemaChangeVisitor(Schema currentSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect, Table idTable, DeployedIndexState deployedIndexState, DeployedIndexesService deployedIndexesService, Map<String, GraphBasedUpgradeNode> upgradeNodes) {
-    super(currentSchema, upgradeConfigAndContext, sqlDialect, idTable, deployedIndexState, deployedIndexesService);
+  GraphBasedUpgradeSchemaChangeVisitor(Schema currentSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect, Table idTable, DeployedIndexState deployedIndexState, DeferredIndexSession deferredIndexSession, Map<String, GraphBasedUpgradeNode> upgradeNodes) {
+    super(currentSchema, upgradeConfigAndContext, sqlDialect, idTable, deployedIndexState, deferredIndexSession);
     this.currentSchema = currentSchema;
     this.sqlDialect = sqlDialect;
     this.upgradeNodes = upgradeNodes;
@@ -96,16 +96,16 @@ class GraphBasedUpgradeSchemaChangeVisitor extends AbstractSchemaChangeVisitor i
      * @param sqlDialect   dialect to generate statements for the target database
      * @param idTable      table for id generation
      * @param deployedIndexState at-start physical-presence facts from the enricher
-     * @param deployedIndexesService the per-session tracking service, primed by the enricher
+     * @param deferredIndexSession the per-session tracking service, primed by the enricher
      * @param upgradeNodes all the {@link GraphBasedUpgradeNode} instances in the upgrade for
      *                       which the visitor will generate statements
      * @return new {@link GraphBasedUpgradeSchemaChangeVisitor} instance
      */
     GraphBasedUpgradeSchemaChangeVisitor create(Schema currentSchema, UpgradeConfigAndContext upgradeConfigAndContext, SqlDialect sqlDialect, Table idTable,
                                                 DeployedIndexState deployedIndexState,
-                                                DeployedIndexesService deployedIndexesService,
+                                                DeferredIndexSession deferredIndexSession,
                                                 Map<String, GraphBasedUpgradeNode> upgradeNodes) {
-      return new GraphBasedUpgradeSchemaChangeVisitor(currentSchema, upgradeConfigAndContext, sqlDialect, idTable, deployedIndexState, deployedIndexesService, upgradeNodes);
+      return new GraphBasedUpgradeSchemaChangeVisitor(currentSchema, upgradeConfigAndContext, sqlDialect, idTable, deployedIndexState, deferredIndexSession, upgradeNodes);
     }
   }
 }

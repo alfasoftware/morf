@@ -18,7 +18,7 @@ package org.alfasoftware.morf.upgrade.deployedindexes;
 import org.alfasoftware.morf.metadata.Schema;
 
 /**
- * Output of {@link DeployedIndexesModelEnricher#enrich(Schema, DeployedIndexesService)}: the
+ * Output of {@link DeployedIndexesModelEnricher#enrich(Schema, DeferredIndexSession)}: the
  * enriched schema paired with the companion {@link DeployedIndexState}.
  *
  * <p><b>Slim invariant</b>: deferred-but-not-yet-built indexes (status not

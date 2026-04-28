@@ -89,8 +89,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.UpdateStatement.class))).thenReturn("UPDATE DeployedIndexes ...");
     when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.DeleteStatement.class))).thenReturn("DELETE FROM DeployedIndexes ...");
     visitor = new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable, DeployedIndexState.empty(),
-        new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesServiceImpl(
-            new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesStatementFactoryImpl()),
+        new org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSessionImpl(),
         nodes);
   }
 
@@ -328,8 +327,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     DeployedIndexState absentState = DeployedIndexState.of("SomeTable", "SomeIdx", org.alfasoftware.morf.upgrade.deployedindexes.IndexPresence.ABSENT);
     GraphBasedUpgradeSchemaChangeVisitor visitorWithAbsentState =
         new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable, absentState,
-            new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesServiceImpl(
-                new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesStatementFactoryImpl()),
+            new org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSessionImpl(),
             nodes);
     visitorWithAbsentState.startStep(U1.class);
 
@@ -693,8 +691,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
 
     // when
     GraphBasedUpgradeSchemaChangeVisitor created = factory.create(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable, DeployedIndexState.empty(),
-        new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesServiceImpl(
-            new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesStatementFactoryImpl()),
+        new org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSessionImpl(),
         nodes);
 
     // then

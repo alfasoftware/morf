@@ -44,13 +44,13 @@ import org.junit.Test;
 public class TestDeployedIndexesModelEnricherImpl {
 
   private DeployedIndexesDAO dao;
-  private DeployedIndexesService service;
+  private DeferredIndexSession session;
   private UpgradeConfigAndContext config;
 
   @Before
   public void setUp() {
     dao = mock(DeployedIndexesDAO.class);
-    service = new DeployedIndexesServiceImpl(new DeployedIndexesStatementFactoryImpl());
+    session = new DeferredIndexSessionImpl();
     config = new UpgradeConfigAndContext();
     config.setDeferredIndexCreationEnabled(true);
   }
@@ -66,7 +66,7 @@ public class TestDeployedIndexesModelEnricherImpl {
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when
-    EnrichedModel result = enricher.enrich(input, service);
+    EnrichedModel result = enricher.enrich(input, session);
 
     // then
     assertSame(input, result.getSchema());
@@ -84,7 +84,7 @@ public class TestDeployedIndexesModelEnricherImpl {
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when
-    EnrichedModel result = enricher.enrich(input, service);
+    EnrichedModel result = enricher.enrich(input, session);
 
     // then
     assertSame(input, result.getSchema());
@@ -105,7 +105,7 @@ public class TestDeployedIndexesModelEnricherImpl {
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when
-    EnrichedModel result = enricher.enrich(input, service);
+    EnrichedModel result = enricher.enrich(input, session);
 
     // then
     assertSame(input, result.getSchema());
@@ -132,7 +132,7 @@ public class TestDeployedIndexesModelEnricherImpl {
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when
-    EnrichedModel result = enricher.enrich(input, service);
+    EnrichedModel result = enricher.enrich(input, session);
 
     // then — virtual deferred index appears in schema
     assertEquals(1, result.getSchema().getTable("MyTable").indexes().size());
@@ -166,7 +166,7 @@ public class TestDeployedIndexesModelEnricherImpl {
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when
-    EnrichedModel result = enricher.enrich(input, service);
+    EnrichedModel result = enricher.enrich(input, session);
 
     // then — schema unchanged (physical already has it), state has no entry
     assertSame(input, result.getSchema());
@@ -200,15 +200,15 @@ public class TestDeployedIndexesModelEnricherImpl {
     entryB.setIndexColumns(List.of("name"));
     entryB.setStatus(DeployedIndexStatus.PENDING);
     when(dao.findAll()).thenReturn(List.of(entryA, entryB));
-    DeployedIndexesService spyService = mock(DeployedIndexesService.class);
+    DeferredIndexSession spy = mock(DeferredIndexSession.class);
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when
-    enricher.enrich(input, spyService);
+    enricher.enrich(input, spy);
 
-    // then — every persisted row primes the service exactly once
-    verify(spyService).prime(entryA);
-    verify(spyService).prime(entryB);
+    // then — every persisted row primes the session exactly once
+    verify(spy).prime(entryA);
+    verify(spy).prime(entryB);
   }
 
 
@@ -234,12 +234,12 @@ public class TestDeployedIndexesModelEnricherImpl {
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when
-    enricher.enrich(input, service);
+    enricher.enrich(input, session);
 
     // then — service is populated; visitor can now operate on this persisted row
     assertTrue("Persisted row should be tracked in service after priming",
-        service.isTrackedDeferred("MyTable", "MyIdx"));
+        session.isTrackedDeferred("MyTable", "MyIdx"));
     assertTrue("Persisted deferred row should read as deferred after priming",
-        service.isTrackedDeferred("MyTable", "MyIdx"));
+        session.isTrackedDeferred("MyTable", "MyIdx"));
   }
 }

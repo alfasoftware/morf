@@ -22,8 +22,9 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 
 /**
- * Default implementation of {@link DeployedIndexTracker} backed by the
- * {@link DeployedIndexesDAO}.
+ * Default implementation of {@link DeployedIndexTracker}. Delegates every
+ * call to {@link DeployedIndexesDAO}; mark-started/completed additionally
+ * captures the current wall-clock time.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -34,9 +35,7 @@ public class DeployedIndexTrackerImpl implements DeployedIndexTracker {
 
 
   /**
-   * Constructs the tracker.
-   *
-   * @param dao DAO for DeployedIndexes operations.
+   * @param dao persistence layer for DeployedIndexes.
    */
   @Inject
   public DeployedIndexTrackerImpl(DeployedIndexesDAO dao) {
@@ -64,18 +63,18 @@ public class DeployedIndexTrackerImpl implements DeployedIndexTracker {
 
   @Override
   public Map<DeployedIndexStatus, Integer> getProgress() {
-    return dao.countAllByStatus();
+    return dao.getProgressCounts();
   }
 
 
   @Override
   public List<DeployedIndex> getPendingIndexes() {
-    return dao.findNonTerminalOperations();
+    return dao.findNonTerminal();
   }
 
 
   @Override
   public void resetInProgress() {
-    dao.resetAllInProgressToPending();
+    dao.resetInProgress();
   }
 }

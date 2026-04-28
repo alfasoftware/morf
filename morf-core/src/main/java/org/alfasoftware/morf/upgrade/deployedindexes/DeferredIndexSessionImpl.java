@@ -33,30 +33,26 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 /**
- * Default implementation of {@link DeployedIndexesService}. Owns the
- * in-memory session state for tracked indexes and orchestrates statement
- * lists via {@link DeployedIndexesStatementFactory}. Does not build DSL
- * or hold column constants of its own.
+ * Default implementation of {@link DeferredIndexSession}. Owns the
+ * in-memory per-upgrade cache; defers DSL construction to
+ * {@link DeployedIndexesSql}.
+ *
+ * <p>Not a Guice singleton — constructed per upgrade run. No injected
+ * dependencies: state is the cache, DSL is static.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-public class DeployedIndexesServiceImpl implements DeployedIndexesService {
+public class DeferredIndexSessionImpl implements DeferredIndexSession {
 
-  private static final Log log = LogFactory.getLog(DeployedIndexesServiceImpl.class);
+  private static final Log log = LogFactory.getLog(DeferredIndexSessionImpl.class);
 
-  private final DeployedIndexesStatementFactory factory;
-
-  /** Tracked indexes: tableName (upper) -&gt; indexName (upper) -&gt; IndexRecord. */
+  /** Cache: tableName (upper) -&gt; indexName (upper) -&gt; IndexRecord. */
   private final Map<String, Map<String, IndexRecord>> trackedIndexes = new LinkedHashMap<>();
 
 
-  /**
-   * Constructs the service.
-   *
-   * @param factory statement factory used to build every tracking DML.
-   */
-  public DeployedIndexesServiceImpl(DeployedIndexesStatementFactory factory) {
-    this.factory = factory;
+  /** Default constructor. No dependencies. */
+  public DeferredIndexSessionImpl() {
+    // no-op
   }
 
 
@@ -79,16 +75,16 @@ public class DeployedIndexesServiceImpl implements DeployedIndexesService {
 
 
   @Override
-  public List<InsertStatement> trackIndex(String tableName, Index index) {
+  public List<InsertStatement> trackIndex(String tableName, Index idx) {
     if (log.isDebugEnabled()) {
-      log.debug("Tracking index: table=" + tableName + ", index=" + index.getName()
-          + ", deferred=" + index.isDeferred());
+      log.debug("Tracking index: table=" + tableName + ", index=" + idx.getName()
+          + ", deferred=" + idx.isDeferred());
     }
     trackedIndexes
         .computeIfAbsent(tableName.toUpperCase(), k -> new LinkedHashMap<>())
-        .put(index.getName().toUpperCase(), new IndexRecord(tableName, index));
+        .put(idx.getName().toUpperCase(), new IndexRecord(tableName, idx));
 
-    return List.of(factory.statementToTrackIndex(tableName, index));
+    return List.of(DeployedIndexesSql.trackIndex(tableName, idx));
   }
 
 
@@ -109,7 +105,7 @@ public class DeployedIndexesServiceImpl implements DeployedIndexesService {
     if (tableMap.isEmpty()) {
       trackedIndexes.remove(tableName.toUpperCase());
     }
-    return List.of(factory.statementToRemoveIndex(removed.tableName, removed.index.getName()));
+    return List.of(DeployedIndexesSql.removeIndex(removed.tableName, removed.index.getName()));
   }
 
 
@@ -120,7 +116,7 @@ public class DeployedIndexesServiceImpl implements DeployedIndexesService {
       return List.of();
     }
     String storedTableName = tableMap.values().iterator().next().tableName;
-    return List.of(factory.statementToRemoveAllForTable(storedTableName));
+    return List.of(DeployedIndexesSql.removeAllForTable(storedTableName));
   }
 
 
@@ -158,7 +154,7 @@ public class DeployedIndexesServiceImpl implements DeployedIndexesService {
     }
     trackedIndexes.put(newTableName.toUpperCase(), updatedMap);
 
-    return List.of(factory.statementToUpdateTableName(storedOldTableName, newTableName));
+    return List.of(DeployedIndexesSql.updateTableName(storedOldTableName, newTableName));
   }
 
 
@@ -182,7 +178,7 @@ public class DeployedIndexesServiceImpl implements DeployedIndexesService {
         if (r.index.isDeferred()) builder = builder.deferred();
         entry.setValue(new IndexRecord(r.tableName, builder));
 
-        statements.add(factory.statementToUpdateIndexColumns(
+        statements.add(DeployedIndexesSql.updateIndexColumns(
             r.tableName, r.index.getName(), String.join(",", updatedColumns)));
       }
     }
@@ -204,7 +200,7 @@ public class DeployedIndexesServiceImpl implements DeployedIndexesService {
     if (existing.index.isDeferred()) builder = builder.deferred();
     tableMap.put(newIndexName.toUpperCase(), new IndexRecord(existing.tableName, builder));
 
-    return List.of(factory.statementToUpdateIndexName(
+    return List.of(DeployedIndexesSql.updateIndexName(
         existing.tableName, existing.index.getName(), newIndexName));
   }
 

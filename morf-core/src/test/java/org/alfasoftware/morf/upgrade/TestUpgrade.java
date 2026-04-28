@@ -1035,7 +1035,7 @@ public class TestUpgrade {
     org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher enricher =
         mock(org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher.class);
     when(enricher.enrich(any(Schema.class),
-            any(org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesService.class)))
+            any(org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession.class)))
         .thenAnswer(inv ->
             new org.alfasoftware.morf.upgrade.deployedindexes.EnrichedModel(
                 inv.getArgument(0),

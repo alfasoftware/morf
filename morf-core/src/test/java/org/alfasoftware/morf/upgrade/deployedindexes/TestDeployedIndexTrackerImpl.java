@@ -15,7 +15,6 @@
 
 package org.alfasoftware.morf.upgrade.deployedindexes;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
@@ -33,7 +32,8 @@ import org.mockito.ArgumentCaptor;
 
 /**
  * Unit tests for {@link DeployedIndexTrackerImpl}. Mocks the DAO and
- * verifies pure delegation.
+ * verifies pure delegation — the tracker is intentionally a thin adapter
+ * that injects a wall-clock timestamp and forwards everything else.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -79,7 +79,7 @@ public class TestDeployedIndexTrackerImpl {
     tracker.markCompleted("Product", "Idx1");
     long after = System.currentTimeMillis();
 
-    // then -- captured time is bounded on both sides
+    // then
     ArgumentCaptor<Long> captor = ArgumentCaptor.forClass(Long.class);
     verify(dao).markCompleted(eq("Product"), eq("Idx1"), captor.capture());
     long passed = captor.getValue();
@@ -99,13 +99,13 @@ public class TestDeployedIndexTrackerImpl {
   }
 
 
-  /** getProgress returns the map from DAO.countAllByStatus. */
+  /** getProgress returns the map from DAO.getProgressCounts. */
   @Test
   public void testGetProgressDelegates() {
     // given
     Map<DeployedIndexStatus, Integer> daoResult = new EnumMap<>(DeployedIndexStatus.class);
     daoResult.put(DeployedIndexStatus.PENDING, 5);
-    when(dao.countAllByStatus()).thenReturn(daoResult);
+    when(dao.getProgressCounts()).thenReturn(daoResult);
 
     // when
     Map<DeployedIndexStatus, Integer> result = tracker.getProgress();
@@ -115,13 +115,13 @@ public class TestDeployedIndexTrackerImpl {
   }
 
 
-  /** getPendingIndexes returns what DAO.findNonTerminalOperations returns. */
+  /** getPendingIndexes returns what DAO.findNonTerminal returns. */
   @Test
   public void testGetPendingIndexesDelegates() {
     // given
     DeployedIndex e = new DeployedIndex();
     List<DeployedIndex> daoResult = List.of(e);
-    when(dao.findNonTerminalOperations()).thenReturn(daoResult);
+    when(dao.findNonTerminal()).thenReturn(daoResult);
 
     // when
     List<DeployedIndex> result = tracker.getPendingIndexes();
@@ -131,13 +131,13 @@ public class TestDeployedIndexTrackerImpl {
   }
 
 
-  /** resetInProgress delegates to DAO.resetAllInProgressToPending. */
+  /** resetInProgress delegates to DAO.resetInProgress. */
   @Test
   public void testResetInProgressDelegates() {
     // when
     tracker.resetInProgress();
 
     // then
-    verify(dao).resetAllInProgressToPending();
+    verify(dao).resetInProgress();
   }
 }

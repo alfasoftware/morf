@@ -31,7 +31,7 @@ import com.google.inject.ImplementedBy;
  *
  * <p><b>Slim invariant</b> (this branch): only deferred indexes are tracked
  * in the {@code DeployedIndexes} table. The enricher's job is to
- * (a) <b>prime</b> the per-session {@link DeployedIndexesService} with every
+ * (a) <b>prime</b> the per-upgrade {@link DeferredIndexSession} with every
  * persisted row so that in-session remove/rename/column operations against
  * prior-upgrade deferred rows generate correct DML; and (b) <b>virtualize</b>
  * unbuilt deferred indexes (status not COMPLETED) into the schema so
@@ -54,25 +54,26 @@ public interface DeployedIndexesModelEnricher {
 
   /**
    * Enriches the physical schema with {@code DeployedIndexes} metadata and
-   * primes the per-session service with persisted tracking rows.
+   * primes the per-upgrade session with persisted tracking rows.
    *
    * <p>If the feature is disabled, the {@code DeployedIndexes} table does
    * not yet exist, or the table is empty, the physical schema is returned
-   * unchanged alongside an empty state — and the service is not primed.</p>
+   * unchanged alongside an empty state — and the session is not primed.</p>
    *
    * @param physicalSchema the schema read from JDBC metadata.
-   * @param service the per-session service to prime with persisted rows —
-   *     its in-memory map is populated as a side-effect so that the
-   *     visitor's remove/rename/column operations emit correct DML against
+   * @param session the per-upgrade session to prime with persisted rows.
+   *     Its in-memory cache is populated as a side-effect so the visitor's
+   *     remove/rename/column operations emit correct DML against
    *     prior-upgrade tracking rows.
    * @return the enrichment result: schema + operational state.
    */
-  EnrichedModel enrich(Schema physicalSchema, DeployedIndexesService service);
+  EnrichedModel enrich(Schema physicalSchema, DeferredIndexSession session);
 
 
   /**
-   * Convenience factory for the static upgrade path — wires up the DAO
-   * from connection resources without exposing it to callers.
+   * Convenience factory for the static upgrade path — wires up the
+   * {@link DeployedIndexesDAO} from connection resources without exposing
+   * it to callers.
    *
    * @param connectionResources database connection resources.
    * @param config upgrade configuration.
@@ -80,10 +81,8 @@ public interface DeployedIndexesModelEnricher {
    */
   static DeployedIndexesModelEnricher create(ConnectionResources connectionResources,
                                               UpgradeConfigAndContext config) {
-    DeployedIndexesDAO dao = new DeployedIndexesDAOImpl(
-        new SqlScriptExecutorProvider(connectionResources),
-        connectionResources,
-        new DeployedIndexesStatementFactoryImpl());
+    DeployedIndexesDAO dao = new DeployedIndexesDAO(
+        new SqlScriptExecutorProvider(connectionResources), connectionResources);
     return new DeployedIndexesModelEnricherImpl(dao, config);
   }
 }

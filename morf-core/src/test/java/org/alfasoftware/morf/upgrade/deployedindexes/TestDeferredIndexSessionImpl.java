@@ -28,17 +28,17 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * Unit tests for {@link DeployedIndexesServiceImpl}.
+ * Unit tests for {@link DeferredIndexSessionImpl}.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-public class TestDeployedIndexesServiceImpl {
+public class TestDeferredIndexSessionImpl {
 
-  private DeployedIndexesServiceImpl service;
+  private DeferredIndexSessionImpl session;
 
   @Before
   public void setUp() {
-    service = new DeployedIndexesServiceImpl(new DeployedIndexesStatementFactoryImpl());
+    session = new DeferredIndexSessionImpl();
   }
 
 
@@ -59,15 +59,15 @@ public class TestDeployedIndexesServiceImpl {
     entry.setStatus(DeployedIndexStatus.PENDING);
 
     // when
-    service.prime(entry);
+    session.prime(entry);
 
     // then — state is seeded
-    assertTrue("Primed entry should be tracked", service.isTrackedDeferred("Product", "Product_Name_1"));
-    assertTrue("Primed entry should be tracked as deferred", service.isTrackedDeferred("Product", "Product_Name_1"));
+    assertTrue("Primed entry should be tracked", session.isTrackedDeferred("Product", "Product_Name_1"));
+    assertTrue("Primed entry should be tracked as deferred", session.isTrackedDeferred("Product", "Product_Name_1"));
 
     // and — a subsequent removeIndex produces a DELETE DML (not a no-op),
     // because the primed row is treated as if it existed in-session.
-    List<? extends Statement> deleteStmts = service.removeIndex("Product", "Product_Name_1");
+    List<? extends Statement> deleteStmts = session.removeIndex("Product", "Product_Name_1");
     assertEquals("removeIndex on primed row should emit one DELETE", 1, deleteStmts.size());
   }
 
@@ -79,11 +79,11 @@ public class TestDeployedIndexesServiceImpl {
     Index idx = index("Idx1").columns("col1");
 
     // when
-    List<? extends Statement> stmts = service.trackIndex("Table1", idx);
+    List<? extends Statement> stmts = session.trackIndex("Table1", idx);
 
     // then
     assertEquals(1, stmts.size());
-    assertTrue("Should be tracked", service.isTrackedDeferred("Table1", "Idx1"));
+    assertTrue("Should be tracked", session.isTrackedDeferred("Table1", "Idx1"));
     assertTrue("Should contain DeployedIndexes", stmts.get(0).toString().contains("DeployedIndexes"));
   }
 
@@ -97,10 +97,10 @@ public class TestDeployedIndexesServiceImpl {
     Index idx = index("Idx1").deferred().columns("col1");
 
     // when
-    service.trackIndex("Table1", idx);
+    session.trackIndex("Table1", idx);
 
     // then
-    assertTrue("Should be tracked as deferred", service.isTrackedDeferred("Table1", "Idx1"));
+    assertTrue("Should be tracked as deferred", session.isTrackedDeferred("Table1", "Idx1"));
   }
 
 
@@ -108,11 +108,11 @@ public class TestDeployedIndexesServiceImpl {
   @Test
   public void testIsTrackedCaseInsensitive() {
     // given
-    service.trackIndex("MyTable", index("MyIdx").columns("col1"));
+    session.trackIndex("MyTable", index("MyIdx").columns("col1"));
 
     // then
-    assertTrue(service.isTrackedDeferred("MYTABLE", "MYIDX"));
-    assertTrue(service.isTrackedDeferred("mytable", "myidx"));
+    assertTrue(session.isTrackedDeferred("MYTABLE", "MYIDX"));
+    assertTrue(session.isTrackedDeferred("mytable", "myidx"));
   }
 
 
@@ -120,14 +120,14 @@ public class TestDeployedIndexesServiceImpl {
   @Test
   public void testRemoveIndex() {
     // given
-    service.trackIndex("Table1", index("Idx1").columns("col1"));
+    session.trackIndex("Table1", index("Idx1").columns("col1"));
 
     // when
-    List<? extends Statement> stmts = service.removeIndex("Table1", "Idx1");
+    List<? extends Statement> stmts = session.removeIndex("Table1", "Idx1");
 
     // then
     assertEquals(1, stmts.size());
-    assertFalse("Should be untracked", service.isTrackedDeferred("Table1", "Idx1"));
+    assertFalse("Should be untracked", session.isTrackedDeferred("Table1", "Idx1"));
   }
 
 
@@ -135,7 +135,7 @@ public class TestDeployedIndexesServiceImpl {
   @Test
   public void testRemoveNonTrackedIndex() {
     // when
-    List<? extends Statement> stmts = service.removeIndex("Table1", "NonExistent");
+    List<? extends Statement> stmts = session.removeIndex("Table1", "NonExistent");
 
     // then
     assertTrue("Should return empty", stmts.isEmpty());
@@ -146,18 +146,18 @@ public class TestDeployedIndexesServiceImpl {
   @Test
   public void testRemoveAllForTable() {
     // given
-    service.trackIndex("Table1", index("Idx1").columns("col1"));
-    service.trackIndex("Table1", index("Idx2").columns("col2"));
-    service.trackIndex("Table2", index("Idx3").columns("col3"));
+    session.trackIndex("Table1", index("Idx1").columns("col1"));
+    session.trackIndex("Table1", index("Idx2").columns("col2"));
+    session.trackIndex("Table2", index("Idx3").columns("col3"));
 
     // when
-    List<? extends Statement> stmts = service.removeAllForTable("Table1");
+    List<? extends Statement> stmts = session.removeAllForTable("Table1");
 
     // then
     assertEquals(1, stmts.size());
-    assertFalse(service.isTrackedDeferred("Table1", "Idx1"));
-    assertFalse(service.isTrackedDeferred("Table1", "Idx2"));
-    assertTrue("Table2 should be unaffected", service.isTrackedDeferred("Table2", "Idx3"));
+    assertFalse(session.isTrackedDeferred("Table1", "Idx1"));
+    assertFalse(session.isTrackedDeferred("Table1", "Idx2"));
+    assertTrue("Table2 should be unaffected", session.isTrackedDeferred("Table2", "Idx3"));
   }
 
 
@@ -165,15 +165,15 @@ public class TestDeployedIndexesServiceImpl {
   @Test
   public void testRemoveIndexesReferencingColumn() {
     // given
-    service.trackIndex("Table1", index("Idx1").columns("col1", "col2"));
-    service.trackIndex("Table1", index("Idx2").columns("col3"));
+    session.trackIndex("Table1", index("Idx1").columns("col1", "col2"));
+    session.trackIndex("Table1", index("Idx2").columns("col3"));
 
     // when
-    List<? extends Statement> stmts = service.removeIndexesReferencingColumn("Table1", "col1");
+    List<? extends Statement> stmts = session.removeIndexesReferencingColumn("Table1", "col1");
 
     // then
-    assertFalse("Idx1 should be removed", service.isTrackedDeferred("Table1", "Idx1"));
-    assertTrue("Idx2 should remain", service.isTrackedDeferred("Table1", "Idx2"));
+    assertFalse("Idx1 should be removed", session.isTrackedDeferred("Table1", "Idx1"));
+    assertTrue("Idx2 should remain", session.isTrackedDeferred("Table1", "Idx2"));
   }
 
 
@@ -181,15 +181,15 @@ public class TestDeployedIndexesServiceImpl {
   @Test
   public void testUpdateTableName() {
     // given
-    service.trackIndex("OldTable", index("Idx1").columns("col1"));
+    session.trackIndex("OldTable", index("Idx1").columns("col1"));
 
     // when
-    List<? extends Statement> stmts = service.updateTableName("OldTable", "NewTable");
+    List<? extends Statement> stmts = session.updateTableName("OldTable", "NewTable");
 
     // then
     assertEquals(1, stmts.size());
-    assertFalse(service.isTrackedDeferred("OldTable", "Idx1"));
-    assertTrue(service.isTrackedDeferred("NewTable", "Idx1"));
+    assertFalse(session.isTrackedDeferred("OldTable", "Idx1"));
+    assertTrue(session.isTrackedDeferred("NewTable", "Idx1"));
   }
 
 
@@ -197,15 +197,15 @@ public class TestDeployedIndexesServiceImpl {
   @Test
   public void testUpdateIndexName() {
     // given
-    service.trackIndex("Table1", index("OldIdx").columns("col1"));
+    session.trackIndex("Table1", index("OldIdx").columns("col1"));
 
     // when
-    List<? extends Statement> stmts = service.updateIndexName("Table1", "OldIdx", "NewIdx");
+    List<? extends Statement> stmts = session.updateIndexName("Table1", "OldIdx", "NewIdx");
 
     // then
     assertEquals(1, stmts.size());
-    assertFalse(service.isTrackedDeferred("Table1", "OldIdx"));
-    assertTrue(service.isTrackedDeferred("Table1", "NewIdx"));
+    assertFalse(session.isTrackedDeferred("Table1", "OldIdx"));
+    assertTrue(session.isTrackedDeferred("Table1", "NewIdx"));
   }
 
 
@@ -215,11 +215,11 @@ public class TestDeployedIndexesServiceImpl {
   @Test
   public void testUpdateColumnName() {
     // given
-    service.trackIndex("Table1", index("Idx1").columns("oldCol", "col2"));
-    service.trackIndex("Table1", index("Idx2").columns("col3"));
+    session.trackIndex("Table1", index("Idx1").columns("oldCol", "col2"));
+    session.trackIndex("Table1", index("Idx2").columns("col3"));
 
     // when
-    List<? extends Statement> stmts = service.updateColumnName("Table1", "oldCol", "newCol");
+    List<? extends Statement> stmts = session.updateColumnName("Table1", "oldCol", "newCol");
 
     // then -- only Idx1 is affected
     assertEquals("Only Idx1 should be affected", 1, stmts.size());
@@ -243,7 +243,7 @@ public class TestDeployedIndexesServiceImpl {
   @Test
   public void testRemoveIndexOnUntrackedTableIsNoOp() {
     // when
-    List<? extends Statement> stmts = service.removeIndex("NoSuchTable", "NoSuchIdx");
+    List<? extends Statement> stmts = session.removeIndex("NoSuchTable", "NoSuchIdx");
 
     // then
     assertTrue("no-op should return empty list", stmts.isEmpty());
@@ -254,7 +254,7 @@ public class TestDeployedIndexesServiceImpl {
   @Test
   public void testRemoveAllForUntrackedTableIsNoOp() {
     // when
-    List<? extends Statement> stmts = service.removeAllForTable("NoSuchTable");
+    List<? extends Statement> stmts = session.removeAllForTable("NoSuchTable");
 
     // then
     assertTrue(stmts.isEmpty());
@@ -265,7 +265,7 @@ public class TestDeployedIndexesServiceImpl {
   @Test
   public void testRemoveIndexesReferencingColumnOnUntrackedTableIsNoOp() {
     // when
-    List<? extends Statement> stmts = service.removeIndexesReferencingColumn("NoSuchTable", "anyCol");
+    List<? extends Statement> stmts = session.removeIndexesReferencingColumn("NoSuchTable", "anyCol");
 
     // then
     assertTrue(stmts.isEmpty());
@@ -276,7 +276,7 @@ public class TestDeployedIndexesServiceImpl {
   @Test
   public void testUpdateTableNameOnUntrackedTableIsNoOp() {
     // when
-    List<? extends Statement> stmts = service.updateTableName("NoSuchTable", "NewName");
+    List<? extends Statement> stmts = session.updateTableName("NoSuchTable", "NewName");
 
     // then
     assertTrue(stmts.isEmpty());
@@ -287,7 +287,7 @@ public class TestDeployedIndexesServiceImpl {
   @Test
   public void testUpdateColumnNameOnUntrackedTableIsNoOp() {
     // when
-    List<? extends Statement> stmts = service.updateColumnName("NoSuchTable", "oldCol", "newCol");
+    List<? extends Statement> stmts = session.updateColumnName("NoSuchTable", "oldCol", "newCol");
 
     // then
     assertTrue(stmts.isEmpty());
@@ -298,7 +298,7 @@ public class TestDeployedIndexesServiceImpl {
   @Test
   public void testUpdateIndexNameOnUntrackedTableIsNoOp() {
     // when
-    List<? extends Statement> stmts = service.updateIndexName("NoSuchTable", "oldIdx", "newIdx");
+    List<? extends Statement> stmts = session.updateIndexName("NoSuchTable", "oldIdx", "newIdx");
 
     // then
     assertTrue(stmts.isEmpty());
@@ -309,10 +309,10 @@ public class TestDeployedIndexesServiceImpl {
   @Test
   public void testUpdateIndexNameOnUnknownIndexIsNoOp() {
     // given -- table tracked, but only has Idx1
-    service.trackIndex("Table1", index("Idx1").columns("col1"));
+    session.trackIndex("Table1", index("Idx1").columns("col1"));
 
     // when
-    List<? extends Statement> stmts = service.updateIndexName("Table1", "DifferentIdx", "NewIdx");
+    List<? extends Statement> stmts = session.updateIndexName("Table1", "DifferentIdx", "NewIdx");
 
     // then
     assertTrue(stmts.isEmpty());
@@ -323,10 +323,10 @@ public class TestDeployedIndexesServiceImpl {
   @Test
   public void testUpdateColumnNameIsCaseInsensitive() {
     // given -- column stored in mixed case
-    service.trackIndex("Table1", index("Idx1").columns("MyCol"));
+    session.trackIndex("Table1", index("Idx1").columns("MyCol"));
 
     // when -- upper-case lookup
-    List<? extends Statement> stmts = service.updateColumnName("Table1", "MYCOL", "newName");
+    List<? extends Statement> stmts = session.updateColumnName("Table1", "MYCOL", "newName");
 
     // then -- matches and emits the UPDATE
     assertEquals(1, stmts.size());
@@ -341,7 +341,7 @@ public class TestDeployedIndexesServiceImpl {
     Index idx = index("Multi").columns("a", "b", "c");
 
     // when
-    List<? extends Statement> stmts = service.trackIndex("Table1", idx);
+    List<? extends Statement> stmts = session.trackIndex("Table1", idx);
 
     // then -- the INSERT statement has a FieldLiteral "a,b,c" among its values
     assertEquals(1, stmts.size());

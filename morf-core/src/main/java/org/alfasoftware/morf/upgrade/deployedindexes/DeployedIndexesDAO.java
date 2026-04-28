@@ -15,86 +15,143 @@
 
 package org.alfasoftware.morf.upgrade.deployedindexes;
 
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
-import com.google.inject.ImplementedBy;
+import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.jdbc.SqlDialect;
+import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
+import org.alfasoftware.morf.sql.SelectStatement;
+import org.alfasoftware.morf.sql.UpdateStatement;
+
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
- * Data access interface for the DeployedIndexes table. Provides read and
- * write operations for the slim tracking model (deferred-only rows).
+ * Package-private persistence layer for the {@code DeployedIndexes} table.
+ * Executes every read and write via {@link SqlScriptExecutorProvider} and
+ * {@link SqlDialect}; DSL construction and row mapping live in
+ * {@link DeployedIndexesSql}.
+ *
+ * <p>A concrete class rather than an interface+impl pair — the previous
+ * split served no behavioural purpose (every method was a 1-line wrapper)
+ * and the class is package-private, so there's no adopter-facing contract
+ * to model. Contributors inside this package depend on it directly;
+ * {@link DeployedIndexTrackerImpl} delegates here, and
+ * {@link DeployedIndexesModelEnricherImpl} injects it for the upgrade-start
+ * {@link #findAll()} read.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-@ImplementedBy(DeployedIndexesDAOImpl.class)
-interface DeployedIndexesDAO {
+@Singleton
+class DeployedIndexesDAO {
 
-  /**
-   * Returns all entries in the DeployedIndexes table.
-   *
-   * @return all deployed index entries.
-   */
-  List<DeployedIndex> findAll();
+  private static final Log log = LogFactory.getLog(DeployedIndexesDAO.class);
+
+  private final SqlScriptExecutorProvider sqlScriptExecutorProvider;
+  private final SqlDialect sqlDialect;
 
 
   /**
-   * Returns all entries for a given table name.
-   *
-   * @param tableName the table name.
-   * @return entries for that table.
+   * @param sqlScriptExecutorProvider provider for SQL script execution.
+   * @param connectionResources connection resources (supplies the dialect).
    */
-  List<DeployedIndex> findByTable(String tableName);
+  @Inject
+  DeployedIndexesDAO(SqlScriptExecutorProvider sqlScriptExecutorProvider,
+                     ConnectionResources connectionResources) {
+    this.sqlScriptExecutorProvider = sqlScriptExecutorProvider;
+    this.sqlDialect = connectionResources.sqlDialect();
+  }
+
+
+  /** @return every persisted tracking row, ordered by id. */
+  List<DeployedIndex> findAll() {
+    return executeQuery(DeployedIndexesSql.selectAll());
+  }
+
+
+  /** @return non-terminal (PENDING/IN_PROGRESS/FAILED) rows, ordered by id. */
+  List<DeployedIndex> findNonTerminal() {
+    return executeQuery(DeployedIndexesSql.selectNonTerminal());
+  }
+
+
+  /** @return counts of every persisted row grouped by status. */
+  Map<DeployedIndexStatus, Integer> getProgressCounts() {
+    Map<DeployedIndexStatus, Integer> result = new EnumMap<>(DeployedIndexStatus.class);
+    for (DeployedIndexStatus s : DeployedIndexStatus.values()) {
+      result.put(s, 0);
+    }
+
+    String sql = sqlDialect.convertStatementToSQL(DeployedIndexesSql.selectStatusColumn());
+    sqlScriptExecutorProvider.get().executeQuery(sql, rs -> {
+      while (rs.next()) {
+        String statusStr = rs.getString(1);
+        try {
+          result.merge(DeployedIndexStatus.valueOf(statusStr), 1, Integer::sum);
+        } catch (IllegalArgumentException e) {
+          log.warn("Unknown status value in DeployedIndexes: " + statusStr);
+        }
+      }
+      return null;
+    });
+    return result;
+  }
 
 
   /**
-   * Returns all entries with status {@link DeployedIndexStatus#PENDING},
-   * {@link DeployedIndexStatus#IN_PROGRESS}, or {@link DeployedIndexStatus#FAILED}.
-   *
-   * @return non-terminal deferred index entries.
+   * @param tableName the table.
+   * @param indexName the index.
+   * @param startedTime epoch ms.
    */
-  List<DeployedIndex> findNonTerminalOperations();
+  void markStarted(String tableName, String indexName, long startedTime) {
+    executeUpdate(DeployedIndexesSql.markStarted(tableName, indexName, startedTime));
+  }
 
 
   /**
-   * Returns counts of entries grouped by status.
-   *
-   * @return map from status to count.
+   * @param tableName the table.
+   * @param indexName the index.
+   * @param completedTime epoch ms.
    */
-  Map<DeployedIndexStatus, Integer> countAllByStatus();
+  void markCompleted(String tableName, String indexName, long completedTime) {
+    executeUpdate(DeployedIndexesSql.markCompleted(tableName, indexName, completedTime));
+  }
 
 
   /**
-   * Marks a deferred index as started (IN_PROGRESS).
-   *
-   * @param tableName the table name.
-   * @param indexName the index name.
-   * @param startedTime epoch milliseconds.
+   * @param tableName the table.
+   * @param indexName the index.
+   * @param errorMessage the failure message.
    */
-  void markStarted(String tableName, String indexName, long startedTime);
+  void markFailed(String tableName, String indexName, String errorMessage) {
+    executeUpdate(DeployedIndexesSql.markFailed(tableName, indexName, errorMessage));
+    executeUpdate(DeployedIndexesSql.bumpRetryCount(tableName, indexName));
+  }
 
 
-  /**
-   * Marks a deferred index as completed.
-   *
-   * @param tableName the table name.
-   * @param indexName the index name.
-   * @param completedTime epoch milliseconds.
-   */
-  void markCompleted(String tableName, String indexName, long completedTime);
+  /** Flips every IN_PROGRESS row back to PENDING. */
+  void resetInProgress() {
+    executeUpdate(DeployedIndexesSql.resetInProgress());
+    log.debug("Reset all IN_PROGRESS entries in DeployedIndexes to PENDING");
+  }
 
 
-  /**
-   * Marks a deferred index as failed with an error message and incremented retry count.
-   *
-   * @param tableName the table name.
-   * @param indexName the index name.
-   * @param errorMessage the error description.
-   */
-  void markFailed(String tableName, String indexName, String errorMessage);
+  // -------------------------------------------------------------------------
+  // Execution helpers
+  // -------------------------------------------------------------------------
+
+  private List<DeployedIndex> executeQuery(SelectStatement select) {
+    String sql = sqlDialect.convertStatementToSQL(select);
+    return sqlScriptExecutorProvider.get().executeQuery(sql, DeployedIndexesSql::mapAll);
+  }
 
 
-  /**
-   * Resets all IN_PROGRESS entries to PENDING. Used on startup for crash recovery.
-   */
-  void resetAllInProgressToPending();
+  private void executeUpdate(UpdateStatement update) {
+    sqlScriptExecutorProvider.get().execute(List.of(sqlDialect.convertStatementToSQL(update)));
+  }
 }

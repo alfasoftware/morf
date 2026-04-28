@@ -37,23 +37,20 @@ import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.junit.Test;
 
 /**
- * Unit tests for {@link DeployedIndexesStatementFactory}. Asserts DSL
- * shape — not the SQL dialect output, which varies.
+ * Unit tests for {@link DeployedIndexesSql}. Asserts DSL shape — not the
+ * SQL dialect output, which varies.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-public class TestDeployedIndexesStatementFactoryImpl {
-
-  private final DeployedIndexesStatementFactory factory = new DeployedIndexesStatementFactoryImpl();
-
+public class TestDeployedIndexesSql {
 
   // ---- Read queries ------------------------------------------------------
 
-  /** findAll projects all columns and orders by id. */
+  /** selectAll projects all columns and orders by id. */
   @Test
-  public void testStatementToFindAll() {
+  public void testSelectAll() {
     // when
-    SelectStatement stmt = factory.statementToFindAll();
+    SelectStatement stmt = DeployedIndexesSql.selectAll();
 
     // then -- targets the correct table, orders by id
     assertEquals(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME,
@@ -65,42 +62,24 @@ public class TestDeployedIndexesStatementFactoryImpl {
   }
 
 
-  /** findByTable filters on tableName. */
+  /** selectNonTerminal uses an OR across three statuses. */
   @Test
-  public void testStatementToFindByTable() {
+  public void testSelectNonTerminal() {
     // when
-    SelectStatement stmt = factory.statementToFindByTable("Product");
-
-    // then -- WHERE is tableName = 'Product'
-    assertEquals(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME,
-        stmt.getTable().getName());
-    Criterion where = stmt.getWhereCriterion();
-    assertNotNull("should have a WHERE clause", where);
-    assertEquals(Operator.EQ, where.getOperator());
-    assertEquals("tableName", ((FieldReference) where.getField()).getName());
-    assertEquals("Product", where.getValue());
-  }
-
-
-  /** findNonTerminalOperations uses an OR across three statuses. */
-  @Test
-  public void testStatementToFindNonTerminalOperations() {
-    // when
-    SelectStatement stmt = factory.statementToFindNonTerminalOperations();
+    SelectStatement stmt = DeployedIndexesSql.selectNonTerminal();
 
     // then -- WHERE is OR(status=PENDING, status=IN_PROGRESS, status=FAILED)
-    assertTrue(stmt.getWhereCriterion() != null);
-    assertEquals(org.alfasoftware.morf.sql.element.Operator.OR,
-        stmt.getWhereCriterion().getOperator());
+    assertNotNull(stmt.getWhereCriterion());
+    assertEquals(Operator.OR, stmt.getWhereCriterion().getOperator());
     assertEquals(3, stmt.getWhereCriterion().getCriteria().size());
   }
 
 
-  /** statusColumn select is a single-field projection of status. */
+  /** selectStatusColumn is a single-field projection of status. */
   @Test
-  public void testStatementToSelectStatusColumn() {
+  public void testSelectStatusColumn() {
     // when
-    SelectStatement stmt = factory.statementToSelectStatusColumn();
+    SelectStatement stmt = DeployedIndexesSql.selectStatusColumn();
 
     // then
     assertEquals(1, stmt.getFields().size());
@@ -111,9 +90,9 @@ public class TestDeployedIndexesStatementFactoryImpl {
 
   /** markStarted sets status=IN_PROGRESS and startedTime, filters on (tableName, indexName). */
   @Test
-  public void testStatementToMarkStarted() {
+  public void testMarkStarted() {
     // when
-    UpdateStatement stmt = factory.statementToMarkStarted("Product", "Idx1", 12345L);
+    UpdateStatement stmt = DeployedIndexesSql.markStarted("Product", "Idx1", 12345L);
 
     // then -- SET status=IN_PROGRESS, startedTime=12345
     assertEquals(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME,
@@ -126,9 +105,9 @@ public class TestDeployedIndexesStatementFactoryImpl {
 
   /** markCompleted sets status=COMPLETED and completedTime, filters on (tableName, indexName). */
   @Test
-  public void testStatementToMarkCompleted() {
+  public void testMarkCompleted() {
     // when
-    UpdateStatement stmt = factory.statementToMarkCompleted("Product", "Idx1", 12345L);
+    UpdateStatement stmt = DeployedIndexesSql.markCompleted("Product", "Idx1", 12345L);
 
     // then
     assertEquals(List.of("status", "completedTime"), aliases(stmt.getFields()));
@@ -139,9 +118,9 @@ public class TestDeployedIndexesStatementFactoryImpl {
 
   /** markFailed sets status=FAILED and errorMessage, filters on (tableName, indexName). */
   @Test
-  public void testStatementToMarkFailed() {
+  public void testMarkFailed() {
     // when
-    UpdateStatement stmt = factory.statementToMarkFailed("Product", "Idx1", "boom");
+    UpdateStatement stmt = DeployedIndexesSql.markFailed("Product", "Idx1", "boom");
 
     // then
     assertEquals(List.of("status", "errorMessage"), aliases(stmt.getFields()));
@@ -152,9 +131,9 @@ public class TestDeployedIndexesStatementFactoryImpl {
 
   /** resetInProgress sets status=PENDING, filters on status=IN_PROGRESS. */
   @Test
-  public void testStatementToResetInProgress() {
+  public void testResetInProgress() {
     // when
-    UpdateStatement stmt = factory.statementToResetInProgress();
+    UpdateStatement stmt = DeployedIndexesSql.resetInProgress();
 
     // then -- SET status=PENDING
     assertEquals(List.of("status"), aliases(stmt.getFields()));
@@ -172,12 +151,12 @@ public class TestDeployedIndexesStatementFactoryImpl {
   /** trackIndex produces an INSERT against the DeployedIndexes table with
    *  status=PENDING for a deferred index (slim: only deferred gets tracked). */
   @Test
-  public void testStatementToTrackDeferredIndex() {
+  public void testTrackDeferredIndex() {
     // given
     Index idx = index("DeferIdx").deferred().columns("col1", "col2");
 
     // when
-    InsertStatement stmt = factory.statementToTrackIndex("Product", idx);
+    InsertStatement stmt = DeployedIndexesSql.trackIndex("Product", idx);
 
     // then -- 8 values corresponding to the 8 columns the factory populates
     // (id, tableName, indexName, indexUnique, indexColumns, status, retryCount, createdTime)
@@ -186,8 +165,8 @@ public class TestDeployedIndexesStatementFactoryImpl {
     assertEquals(8, stmt.getValues().size());
     // and -- status literal should be PENDING
     boolean sawPending = stmt.getValues().stream()
-        .filter(f -> f instanceof org.alfasoftware.morf.sql.element.FieldLiteral)
-        .map(f -> ((org.alfasoftware.morf.sql.element.FieldLiteral) f).getValue())
+        .filter(f -> f instanceof FieldLiteral)
+        .map(f -> ((FieldLiteral) f).getValue())
         .anyMatch(v -> DeployedIndexStatus.PENDING.name().equals(v));
     assertTrue("deferred track should emit PENDING", sawPending);
   }
@@ -200,12 +179,12 @@ public class TestDeployedIndexesStatementFactoryImpl {
     Index idx = index("MultiIdx").columns("a", "b", "c");
 
     // when
-    InsertStatement stmt = factory.statementToTrackIndex("Product", idx);
+    InsertStatement stmt = DeployedIndexesSql.trackIndex("Product", idx);
 
     // then -- one of the literals should be "a,b,c"
     boolean sawJoined = stmt.getValues().stream()
-        .filter(f -> f instanceof org.alfasoftware.morf.sql.element.FieldLiteral)
-        .map(f -> ((org.alfasoftware.morf.sql.element.FieldLiteral) f).getValue())
+        .filter(f -> f instanceof FieldLiteral)
+        .map(f -> ((FieldLiteral) f).getValue())
         .anyMatch("a,b,c"::equals);
     assertTrue("multi-column indexColumns should be comma-joined", sawJoined);
   }
@@ -213,61 +192,61 @@ public class TestDeployedIndexesStatementFactoryImpl {
 
   /** removeIndex produces a DELETE with WHERE on (tableName, indexName). */
   @Test
-  public void testStatementToRemoveIndex() {
+  public void testRemoveIndex() {
     // when
-    DeleteStatement stmt = factory.statementToRemoveIndex("Product", "Idx1");
+    DeleteStatement stmt = DeployedIndexesSql.removeIndex("Product", "Idx1");
 
     // then
     assertEquals(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME,
         stmt.getTable().getName());
-    assertTrue(stmt.getWhereCriterion() != null);
+    assertNotNull(stmt.getWhereCriterion());
   }
 
 
   /** removeAllForTable produces a DELETE with WHERE on tableName only. */
   @Test
-  public void testStatementToRemoveAllForTable() {
+  public void testRemoveAllForTable() {
     // when
-    DeleteStatement stmt = factory.statementToRemoveAllForTable("Product");
+    DeleteStatement stmt = DeployedIndexesSql.removeAllForTable("Product");
 
     // then
-    assertTrue(stmt.getWhereCriterion() != null);
+    assertNotNull(stmt.getWhereCriterion());
   }
 
 
   /** updateTableName produces an UPDATE SETTING tableName WHERE old name. */
   @Test
-  public void testStatementToUpdateTableName() {
+  public void testUpdateTableName() {
     // when
-    UpdateStatement stmt = factory.statementToUpdateTableName("OldT", "NewT");
+    UpdateStatement stmt = DeployedIndexesSql.updateTableName("OldT", "NewT");
 
     // then
     assertEquals(1, stmt.getFields().size());
-    assertTrue(stmt.getWhereCriterion() != null);
+    assertNotNull(stmt.getWhereCriterion());
   }
 
 
   /** updateIndexColumns produces an UPDATE SETTING indexColumns WHERE (table, index). */
   @Test
-  public void testStatementToUpdateIndexColumns() {
+  public void testUpdateIndexColumns() {
     // when
-    UpdateStatement stmt = factory.statementToUpdateIndexColumns("Product", "Idx1", "newCol");
+    UpdateStatement stmt = DeployedIndexesSql.updateIndexColumns("Product", "Idx1", "newCol");
 
     // then
     assertEquals(1, stmt.getFields().size());
-    assertTrue(stmt.getWhereCriterion() != null);
+    assertNotNull(stmt.getWhereCriterion());
   }
 
 
   /** updateIndexName produces an UPDATE SETTING indexName WHERE old name. */
   @Test
-  public void testStatementToUpdateIndexName() {
+  public void testUpdateIndexName() {
     // when
-    UpdateStatement stmt = factory.statementToUpdateIndexName("Product", "Old", "New");
+    UpdateStatement stmt = DeployedIndexesSql.updateIndexName("Product", "Old", "New");
 
     // then
     assertEquals(1, stmt.getFields().size());
-    assertTrue(stmt.getWhereCriterion() != null);
+    assertNotNull(stmt.getWhereCriterion());
   }
 
 

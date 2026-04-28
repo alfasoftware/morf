@@ -41,7 +41,7 @@ import org.apache.commons.logging.LogFactory;
  *
  * <p>Responsibilities:</p>
  * <ol>
- *   <li><b>Prime the per-session service</b> with every persisted tracking
+ *   <li><b>Prime the per-upgrade session</b> with every persisted tracking
  *       row so that remove/rename/column operations on indexes added by
  *       earlier upgrades emit correct DML against the existing rows.</li>
  *   <li><b>Virtualize unbuilt deferred indexes</b> (status not COMPLETED)
@@ -49,6 +49,9 @@ import org.apache.commons.logging.LogFactory;
  *       them as declared — which they are — and does not treat them as
  *       missing from the physical schema.</li>
  * </ol>
+ *
+ * <p>Reads persisted rows via {@link DeployedIndexesDAO#findAll()} — a
+ * package-private concrete class that also backs {@link DeployedIndexTrackerImpl}.</p>
  *
  * <p>Physical-vs-declared consistency for non-deferred indexes is not this
  * class's concern — {@code SchemaHomology} handles drift detection at
@@ -68,7 +71,8 @@ public class DeployedIndexesModelEnricherImpl implements DeployedIndexesModelEnr
   /**
    * Constructs the enricher.
    *
-   * @param dao DAO for reading DeployedIndexes.
+   * @param dao persistence layer — provides the {@code findAll()} read at
+   *     upgrade start. Package-private, not exposed to adopters.
    * @param config upgrade configuration.
    */
   @Inject
@@ -79,7 +83,7 @@ public class DeployedIndexesModelEnricherImpl implements DeployedIndexesModelEnr
 
 
   @Override
-  public EnrichedModel enrich(Schema physicalSchema, DeployedIndexesService service) {
+  public EnrichedModel enrich(Schema physicalSchema, DeferredIndexSession session) {
     if (shouldSkipEnrichment(physicalSchema)) {
       return new EnrichedModel(physicalSchema, DeployedIndexState.empty());
     }
@@ -90,11 +94,11 @@ public class DeployedIndexesModelEnricherImpl implements DeployedIndexesModelEnr
       return new EnrichedModel(physicalSchema, DeployedIndexState.empty());
     }
 
-    // Prime the service with every persisted row — remove/rename/column
-    // operations in this session need the in-memory map populated to emit
+    // Prime the session with every persisted row — remove/rename/column
+    // operations in this session need the in-memory cache populated to emit
     // correct DML against rows persisted by prior upgrades.
     for (DeployedIndex entry : entries) {
-      service.prime(entry);
+      session.prime(entry);
     }
 
     // Bucket unbuilt entries by upper-cased table name. COMPLETED entries are
@@ -159,7 +163,7 @@ public class DeployedIndexesModelEnricherImpl implements DeployedIndexesModelEnr
    * Early-exit checks that produce an empty state and return the schema
    * unchanged: feature disabled or tracking table not yet created. The
    * third case (table exists but is empty) is handled inline in {@code enrich}
-   * to avoid a double {@code dao.findAll()} call.
+   * to avoid a double read.
    */
   private boolean shouldSkipEnrichment(Schema physicalSchema) {
     if (!config.isDeferredIndexCreationEnabled()) {
