@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-package org.alfasoftware.morf.upgrade.deployedindexes;
+package org.alfasoftware.morf.upgrade;
 
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Index;
@@ -36,7 +36,7 @@ import org.alfasoftware.morf.metadata.SchemaUtils;
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
-public final class DeferredIndexTrackingPolicy {
+final class DeferredIndexTrackingPolicy {
 
   private final SqlDialect sqlDialect;
 
@@ -44,7 +44,7 @@ public final class DeferredIndexTrackingPolicy {
   /**
    * @param sqlDialect dialect used to ask {@link SqlDialect#supportsDeferredIndexCreation()}.
    */
-  public DeferredIndexTrackingPolicy(SqlDialect sqlDialect) {
+  DeferredIndexTrackingPolicy(SqlDialect sqlDialect) {
     this.sqlDialect = sqlDialect;
   }
 
@@ -63,7 +63,7 @@ public final class DeferredIndexTrackingPolicy {
    * @param declared the index (raw or normalized).
    * @return true if a tracking row should be created for this index.
    */
-  public boolean shouldTrack(Index declared) {
+  boolean shouldTrack(Index declared) {
     return declared.isDeferred() && sqlDialect.supportsDeferredIndexCreation();
   }
 
@@ -82,7 +82,7 @@ public final class DeferredIndexTrackingPolicy {
    * @param declared the index (raw or normalized).
    * @return true if physical DDL is required at upgrade time.
    */
-  public boolean requiresImmediateBuild(Index declared) {
+  boolean requiresImmediateBuild(Index declared) {
     return !declared.isDeferred() || !sqlDialect.supportsDeferredIndexCreation();
   }
 
@@ -96,7 +96,7 @@ public final class DeferredIndexTrackingPolicy {
    * @param declared the index as declared.
    * @return the dialect-normalized form.
    */
-  public Index effectiveIndex(Index declared) {
+  Index effectiveIndex(Index declared) {
     if (!declared.isDeferred() || sqlDialect.supportsDeferredIndexCreation()) {
       return declared;
     }

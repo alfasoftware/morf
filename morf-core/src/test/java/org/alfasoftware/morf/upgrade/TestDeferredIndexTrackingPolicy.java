@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-package org.alfasoftware.morf.upgrade.deployedindexes;
+package org.alfasoftware.morf.upgrade;
 
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.junit.Assert.assertEquals;
