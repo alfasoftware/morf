@@ -1,6 +1,7 @@
 
 package org.alfasoftware.morf.upgrade;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -8,6 +9,8 @@ import java.util.Optional;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
+import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.SchemaUtils.TableBuilder;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
@@ -121,15 +124,18 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
   @Override
   public void visit(AddTable addTable) {
+    Table original = addTable.getTable();
     currentSchema = addTable.apply(currentSchema);
-    writeStatements(sqlDialect.tableDeploymentStatements(addTable.getTable()));
 
-    // Slim invariant: DeployedIndexes tracks ONLY deferred indexes. The
-    // tracking policy decides whether each index produces a tracking row,
-    // factoring in dialect support.
-    for (Index index : addTable.getTable().indexes()) {
-      trackingPolicy.toTrackedIndex(index)
-          .ifPresent(toTrack -> trackInDeployedIndexes(addTable.getTable().getName(), toTrack));
+    // Slim invariant: deferred indexes are NOT built immediately. Filter them
+    // out of the CREATE TABLE statement so the adopter builds them via the
+    // deferred pipeline. Track them as PENDING (same as addIndex separately).
+    writeStatements(sqlDialect.tableDeploymentStatements(withoutDeferredOnSupportingDialect(original)));
+
+    for (Index index : original.indexes()) {
+      Index effective = trackingPolicy.effectiveIndex(index);
+      trackingPolicy.toTrackedIndex(effective)
+          .ifPresent(toTrack -> trackInDeployedIndexes(original.getName(), toTrack));
     }
   }
 
@@ -275,8 +281,19 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
    */
   @Override
   public void visit(AddTableFrom addTableFrom) {
+    Table original = addTableFrom.getTable();
     currentSchema = addTableFrom.apply(currentSchema);
-    writeStatements(sqlDialect.addTableFromStatements(addTableFrom.getTable(), addTableFrom.getSelectStatement()));
+
+    // Same actually-defer treatment as visit(AddTable): filter deferred-on-
+    // supporting indexes out of the CTAS statement and track them as PENDING.
+    writeStatements(sqlDialect.addTableFromStatements(
+        withoutDeferredOnSupportingDialect(original), addTableFrom.getSelectStatement()));
+
+    for (Index index : original.indexes()) {
+      Index effective = trackingPolicy.effectiveIndex(index);
+      trackingPolicy.toTrackedIndex(effective)
+          .ifPresent(toTrack -> trackInDeployedIndexes(original.getName(), toTrack));
+    }
   }
 
 
@@ -396,6 +413,36 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   private void trackInDeployedIndexes(String tableName, Index index) {
     deferredIndexSession.trackIndex(tableName, index)
         .forEach(this::writeDeployedIndexesDml);
+  }
+
+
+  /**
+   * Returns a Table view of {@code original} with deferred-on-supporting-
+   * dialect indexes filtered out and the remainder normalized via
+   * {@link DeferredIndexTrackingPolicy#effectiveIndex}. Used at CREATE TABLE
+   * (and CREATE TABLE AS SELECT) emission time so the adopter, not the
+   * upgrade script, builds deferred indexes.
+   *
+   * @param original the table as declared by the upgrade step.
+   * @return a Table preserving name, columns and isTemporary, with the
+   *     index list filtered for immediate emission.
+   */
+  private Table withoutDeferredOnSupportingDialect(Table original) {
+    List<Index> kept = new ArrayList<>();
+    for (Index idx : original.indexes()) {
+      Index effective = trackingPolicy.effectiveIndex(idx);
+      // Skip deferred-on-supporting (adopter will build); keep everything
+      // else (non-deferred + deferred-on-unsupported normalized to immediate).
+      if (trackingPolicy.toTrackedIndex(effective).isPresent()) continue;
+      kept.add(effective);
+    }
+    TableBuilder builder = SchemaUtils.table(original.getName())
+        .columns(original.columns())
+        .indexes(kept);
+    if (original.isTemporary()) {
+      builder = builder.temporary();
+    }
+    return builder;
   }
 
 

@@ -600,6 +600,50 @@ public class TestDeployedIndexesIntegration {
 
 
   /**
+   * Inline-deferred index on AddTable: the actually-defer fix. Declaring a
+   * deferred index inline on the addTable call must NOT emit CREATE INDEX at
+   * upgrade time. The index is queued for the adopter via the deferred
+   * pipeline; physical creation happens when the adopter executes the job.
+   */
+  @Test
+  public void testAddTableWithInlineDeferredIndexDoesNotBuildImmediately() {
+    // given -- target schema where Category has the deferred index already
+    Schema targetSchema = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ),
+        table("Category").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("label", DataType.STRING, 50)
+        ).indexes(index("Category_Label_1").columns("label").deferred())
+    );
+
+    // when -- upgrade adds the table with the deferred index inline
+    UpgradePath path = performUpgrade(targetSchema,
+        org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddTableWithInlineDeferredIndex.class);
+
+    // then -- physical index NOT built; tracking row PENDING; job available
+    assertPhysicalIndexDoesNotExist("Category", "Category_Label_1");
+    assertEquals("PENDING", queryDeployedIndexField("Category_Label_1", "status"));
+    assertFalse("getDeferredIndexStatements should return a job for the inline-deferred index",
+        path.getDeferredIndexStatements().isEmpty());
+
+    // when -- adopter executes the deferred SQL
+    DeployedIndexTracker tracker = newTracker();
+    for (DeferredIndexJob job : path.getDeferredIndexStatements()) {
+      tracker.markStarted("Category", "Category_Label_1");
+      sqlScriptExecutorProvider.get().execute(job.getSql());
+      tracker.markCompleted("Category", "Category_Label_1");
+    }
+
+    // then -- physical built, row COMPLETED
+    assertPhysicalIndexExists("Category", "Category_Label_1");
+    assertEquals("COMPLETED", queryDeployedIndexField("Category_Label_1", "status"));
+  }
+
+
+  /**
    * Creating a new table should track all its indexes in DeployedIndexes.
    */
   @Test

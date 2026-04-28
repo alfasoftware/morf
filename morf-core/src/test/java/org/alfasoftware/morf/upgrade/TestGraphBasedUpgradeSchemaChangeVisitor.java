@@ -625,6 +625,11 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     // given
     visitor.startStep(U1.class);
     AddTableFrom addTableFrom = mock(AddTableFrom.class);
+    Table mockTable = mock(Table.class);
+    when(mockTable.getName()).thenReturn("MyTable");
+    when(mockTable.columns()).thenReturn(Collections.emptyList());
+    when(mockTable.indexes()).thenReturn(Collections.emptyList());
+    when(addTableFrom.getTable()).thenReturn(mockTable);
     when(addTableFrom.apply(sourceSchema)).thenReturn(sourceSchema);
     when(sqlDialect.addTableFromStatements(nullable(Table.class), nullable(SelectStatement.class))).thenReturn(STATEMENTS);
 
