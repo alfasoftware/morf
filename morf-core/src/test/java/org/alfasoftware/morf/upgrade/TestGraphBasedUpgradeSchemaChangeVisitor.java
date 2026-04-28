@@ -32,6 +32,9 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeSchemaChangeVisitor.GraphBasedUpgradeSchemaChangeVisitorFactory;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndex;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexStatus;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.junit.Before;
@@ -88,7 +91,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.UpdateStatement.class))).thenReturn("UPDATE DeployedIndexes ...");
     when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.DeleteStatement.class))).thenReturn("DELETE FROM DeployedIndexes ...");
     visitor = new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable,
-        org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession.create(),
+        DeferredIndexSession.create(),
         nodes);
   }
 
@@ -320,15 +323,13 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
   @Test
   public void testRemoveIndexVisitRespectsAwaitingBuildSession() {
     // given — primed session with a PENDING entry for SomeIdx
-    org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession primedSession =
-        org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession.create();
-    org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndex pendingRow =
-        new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndex();
+    DeferredIndexSession primedSession = DeferredIndexSession.create();
+    DeployedIndex pendingRow = new DeployedIndex();
     pendingRow.setTableName("SomeTable");
     pendingRow.setIndexName("SomeIdx");
     pendingRow.setIndexUnique(false);
     pendingRow.setIndexColumns(List.of("col1"));
-    pendingRow.setStatus(org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexStatus.PENDING);
+    pendingRow.setStatus(DeployedIndexStatus.PENDING);
     primedSession.prime(pendingRow);
 
     GraphBasedUpgradeSchemaChangeVisitor visitorWithAwaitingBuild =
@@ -702,7 +703,7 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
 
     // when
     GraphBasedUpgradeSchemaChangeVisitor created = factory.create(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable,
-        org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession.create(),
+        DeferredIndexSession.create(),
         nodes);
 
     // then

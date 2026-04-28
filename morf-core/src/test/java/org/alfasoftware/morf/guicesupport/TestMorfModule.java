@@ -12,6 +12,7 @@ import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.UpgradeStatusTableService;
 import org.alfasoftware.morf.upgrade.ViewChangesDeploymentHelper;
 import org.alfasoftware.morf.upgrade.ViewDeploymentValidator;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher;
 import org.hamcrest.core.IsInstanceOf;
 import org.junit.Before;
 import org.junit.Test;
@@ -33,7 +34,7 @@ public class TestMorfModule {
   @Mock GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
   @Mock DatabaseUpgradePathValidationService databaseUpgradePathValidationService;
   @Mock UpgradeConfigAndContext upgradeConfigAndContext;
-  @Mock org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher deployedIndexesModelEnricher;
+  @Mock DeployedIndexesModelEnricher deployedIndexesModelEnricher;
 
   private MorfModule module;
 

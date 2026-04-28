@@ -729,10 +729,9 @@ public class TestDeployedIndexesIntegration {
 
     // when -- the app-side loop (use literal names since H2 folds schema-
     // derived names to uppercase; the stored row uses the step's mixed case)
-    List<org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexJob> jobs =
-        path.getDeferredIndexStatements();
+    List<DeferredIndexJob> jobs = path.getDeferredIndexStatements();
     assertFalse("Should have a job to execute", jobs.isEmpty());
-    for (org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexJob job : jobs) {
+    for (DeferredIndexJob job : jobs) {
       tracker.markStarted("Product", "Product_Name_1");
       sqlScriptExecutorProvider.get().execute(job.getSql());
       tracker.markCompleted("Product", "Product_Name_1");
@@ -956,10 +955,9 @@ public class TestDeployedIndexesIntegration {
 
   /** Helper: construct a tracker backed by the test's executor + connection. */
   private DeployedIndexTracker newTracker() {
-    return new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexTrackerImpl(
-        new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesDAO(
-            sqlScriptExecutorProvider, connectionResources,
-            new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesStatements()));
+    return new DeployedIndexTrackerImpl(
+        new DeployedIndexesDAO(sqlScriptExecutorProvider, connectionResources,
+            new DeployedIndexesStatements()));
   }
 
 

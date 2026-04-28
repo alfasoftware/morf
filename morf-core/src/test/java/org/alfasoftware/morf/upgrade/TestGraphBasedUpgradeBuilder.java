@@ -18,6 +18,7 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeBuilder.GraphBasedUpgradeBuilderFactory;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeSchemaChangeVisitor.GraphBasedUpgradeSchemaChangeVisitorFactory;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeScriptGenerator.GraphBasedUpgradeScriptGeneratorFactory;
 import org.junit.Before;
@@ -108,7 +109,7 @@ public class TestGraphBasedUpgradeBuilder {
 
     builder = new GraphBasedUpgradeBuilder(visitorFactory, scriptGeneratorFactory, drawIOGraphPrinter, sourceSchema, targetSchema,
         connectionResources, upgradeConfigAndContext, schemaChangeSequence, viewChanges,
-        org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession.create());
+        DeferredIndexSession.create());
   }
 
 
@@ -397,7 +398,7 @@ public class TestGraphBasedUpgradeBuilder {
 
     // when
     GraphBasedUpgradeBuilder created = factory.create(sourceSchema, targetSchema, connectionResources, upgradeConfigAndContext, schemaChangeSequence, viewChanges,
-        org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession.create());
+        DeferredIndexSession.create());
 
     // then
     assertNotNull(created);
