@@ -99,23 +99,11 @@ public class DeployedIndexesModelEnricherImpl implements DeployedIndexesModelEnr
       return physicalSchema;
     }
 
-    // Prime the session with every persisted row.
-    for (DeployedIndex entry : entries) {
-      session.prime(entry);
-    }
-
-    // Bucket entries by upper-cased table name for fast lookup as we walk
-    // the physical schema.
-    Map<String, Map<String, DeployedIndex>> entriesByTable = new HashMap<>();
-    for (DeployedIndex entry : entries) {
-      entriesByTable
-          .computeIfAbsent(entry.getTableName().toUpperCase(), k -> new HashMap<>())
-          .put(entry.getIndexName().toUpperCase(), entry);
-    }
+    primeSession(entries, session);
+    Map<String, Map<String, DeployedIndex>> entriesByTable = bucketByTable(entries);
 
     List<Table> enrichedTables = new ArrayList<>();
     boolean changed = false;
-
     for (Table physicalTable : physicalSchema.tables()) {
       Map<String, DeployedIndex> rowsForTable =
           entriesByTable.remove(physicalTable.getName().toUpperCase());
@@ -123,73 +111,102 @@ public class DeployedIndexesModelEnricherImpl implements DeployedIndexesModelEnr
         enrichedTables.add(physicalTable);
         continue;
       }
-
-      // Rebuild the table's index list:
-      //   - physical index matching a COMPLETED row → rebuild with .deferred()
-      //   - physical index matching a non-COMPLETED row → drift, throw
-      //   - tracking row with no matching physical index → virtualize as deferred
-      Set<String> matchedRowNames = new HashSet<>();
-      List<Index> indexes = new ArrayList<>();
-
-      for (Index physical : physicalTable.indexes()) {
-        DeployedIndex row = rowsForTable.get(physical.getName().toUpperCase());
-        if (row == null) {
-          indexes.add(physical);
-          continue;
-        }
-        matchedRowNames.add(row.getIndexName().toUpperCase());
-        if (row.getStatus() == DeployedIndexStatus.COMPLETED) {
-          // Rebuild as declared-deferred so isDeferred() is preserved.
-          indexes.add(asDeferred(physical));
-          changed = true;
-        } else {
-          // Non-COMPLETED row with a matching physical index — drift.
-          throw new IllegalStateException(
-              "DeployedIndexes drift: row for index '" + row.getIndexName()
-                  + "' on table '" + row.getTableName() + "' has status " + row.getStatus()
-                  + " but the physical index already exists. Reconcile manually before retrying.");
-        }
-      }
-
-      // Virtualize tracking rows whose physical index isn't there.
-      for (DeployedIndex row : rowsForTable.values()) {
-        if (matchedRowNames.contains(row.getIndexName().toUpperCase())) {
-          continue;
-        }
-        if (row.getStatus() == DeployedIndexStatus.COMPLETED) {
-          // COMPLETED row with no matching physical — drift.
-          throw new IllegalStateException(
-              "DeployedIndexes drift: row for index '" + row.getIndexName()
-                  + "' on table '" + row.getTableName() + "' is COMPLETED but the physical"
-                  + " index is missing. Reconcile manually before retrying.");
-        }
-        indexes.add(row.toIndex());
-        changed = true;
-      }
-
-      enrichedTables.add(table(physicalTable.getName())
-          .columns(physicalTable.columns())
-          .indexes(indexes));
+      enrichedTables.add(reconcileTable(physicalTable, rowsForTable));
+      changed = true;
     }
 
-    // Any rows left in the map reference tables not in the physical schema —
-    // a different drift class. SchemaHomology would normally surface this,
-    // but at this point we have a row pointing nowhere; surfacing it here
-    // gives a clearer message.
-    if (!entriesByTable.isEmpty()) {
-      List<DeployedIndex> stragglers = new ArrayList<>();
-      for (Map<String, DeployedIndex> rows : entriesByTable.values()) {
-        stragglers.addAll(rows.values());
-      }
-      DeployedIndex first = stragglers.get(0);
-      throw new IllegalStateException(
-          "DeployedIndexes drift: row for index '" + first.getIndexName()
-              + "' references table '" + first.getTableName() + "' which is not in the"
-              + " physical schema. Reconcile manually before retrying."
-              + (stragglers.size() > 1 ? " (" + (stragglers.size() - 1) + " more like this.)" : ""));
-    }
-
+    failOnOrphanedRows(entriesByTable);
     return changed ? SchemaUtils.schema(enrichedTables) : physicalSchema;
+  }
+
+
+  /** Side-effect: every persisted row primes the session so visitor mutations
+   *  cascade to all currently-declared deferred indexes. */
+  private void primeSession(List<DeployedIndex> entries, DeferredIndexSession session) {
+    for (DeployedIndex entry : entries) {
+      session.prime(entry);
+    }
+  }
+
+
+  /** Index entries by upper-cased (tableName, indexName) for fast lookup
+   *  while walking the physical schema. */
+  private Map<String, Map<String, DeployedIndex>> bucketByTable(List<DeployedIndex> entries) {
+    Map<String, Map<String, DeployedIndex>> byTable = new HashMap<>();
+    for (DeployedIndex entry : entries) {
+      byTable
+          .computeIfAbsent(entry.getTableName().toUpperCase(), k -> new HashMap<>())
+          .put(entry.getIndexName().toUpperCase(), entry);
+    }
+    return byTable;
+  }
+
+
+  /**
+   * Rebuilds the index list for one physical table by reconciling against
+   * its tracking rows. Applies three rules in order:
+   * <ul>
+   *   <li>physical index matching a COMPLETED row → rebuilt with {@code .deferred()}</li>
+   *   <li>physical index matching a non-COMPLETED row → throws (drift)</li>
+   *   <li>tracking row with no matching physical → virtualized, unless
+   *       COMPLETED in which case throws (drift)</li>
+   * </ul>
+   */
+  private Table reconcileTable(Table physicalTable, Map<String, DeployedIndex> rowsForTable) {
+    Set<String> matchedRowNames = new HashSet<>();
+    List<Index> indexes = new ArrayList<>();
+
+    for (Index physical : physicalTable.indexes()) {
+      DeployedIndex row = rowsForTable.get(physical.getName().toUpperCase());
+      if (row == null) {
+        indexes.add(physical);
+        continue;
+      }
+      matchedRowNames.add(row.getIndexName().toUpperCase());
+      if (row.getStatus() == DeployedIndexStatus.COMPLETED) {
+        indexes.add(asDeferred(physical));
+      } else {
+        throw new IllegalStateException(
+            "DeployedIndexes drift: row for index '" + row.getIndexName()
+                + "' on table '" + row.getTableName() + "' has status " + row.getStatus()
+                + " but the physical index already exists. Reconcile manually before retrying.");
+      }
+    }
+
+    for (DeployedIndex row : rowsForTable.values()) {
+      if (matchedRowNames.contains(row.getIndexName().toUpperCase())) {
+        continue;
+      }
+      if (row.getStatus() == DeployedIndexStatus.COMPLETED) {
+        throw new IllegalStateException(
+            "DeployedIndexes drift: row for index '" + row.getIndexName()
+                + "' on table '" + row.getTableName() + "' is COMPLETED but the physical"
+                + " index is missing. Reconcile manually before retrying.");
+      }
+      indexes.add(row.toIndex());
+    }
+
+    return table(physicalTable.getName())
+        .columns(physicalTable.columns())
+        .indexes(indexes);
+  }
+
+
+  /** Throws if any tracking rows reference tables not in the physical
+   *  schema. SchemaHomology would normally surface this later, but a
+   *  table-level message here is clearer. */
+  private void failOnOrphanedRows(Map<String, Map<String, DeployedIndex>> remaining) {
+    if (remaining.isEmpty()) return;
+    List<DeployedIndex> stragglers = new ArrayList<>();
+    for (Map<String, DeployedIndex> rows : remaining.values()) {
+      stragglers.addAll(rows.values());
+    }
+    DeployedIndex first = stragglers.get(0);
+    throw new IllegalStateException(
+        "DeployedIndexes drift: row for index '" + first.getIndexName()
+            + "' references table '" + first.getTableName() + "' which is not in the"
+            + " physical schema. Reconcile manually before retrying."
+            + (stragglers.size() > 1 ? " (" + (stragglers.size() - 1) + " more like this.)" : ""));
   }
 
 
