@@ -754,9 +754,8 @@ public class TestDeployedIndexesIntegration {
   @Test
   public void testCompletedDeferredIndexSurvivesColumnRename() {
     // given — upgrade 1 creates and adopter builds the deferred index
-    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
-    DeployedIndexTracker tracker = newTracker();
     UpgradePath path1 = performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+    DeployedIndexTracker tracker = newTracker();
     for (DeferredIndexJob job : path1.getDeferredIndexStatements()) {
       tracker.markStarted("Product", "Product_Name_1");
       sqlScriptExecutorProvider.get().execute(job.getSql());
