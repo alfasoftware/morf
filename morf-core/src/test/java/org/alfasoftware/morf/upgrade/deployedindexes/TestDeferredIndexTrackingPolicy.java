@@ -22,8 +22,6 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import java.util.Optional;
-
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Index;
 import org.junit.Test;
@@ -42,8 +40,7 @@ public class TestDeferredIndexTrackingPolicy {
     DeferredIndexTrackingPolicy policy = new DeferredIndexTrackingPolicy(dialect(true));
     Index idx = index("Foo_Idx").columns("col");
 
-    assertFalse("non-deferred should not be tracked",
-        policy.toTrackedIndex(idx).isPresent());
+    assertFalse("non-deferred should not be tracked", policy.shouldTrack(idx));
     assertTrue("non-deferred requires immediate build",
         policy.requiresImmediateBuild(idx));
     assertEquals("effective form unchanged for non-deferred",
@@ -57,9 +54,8 @@ public class TestDeferredIndexTrackingPolicy {
     DeferredIndexTrackingPolicy policy = new DeferredIndexTrackingPolicy(dialect(true));
     Index idx = index("Foo_Idx").deferred().columns("col");
 
-    Optional<Index> tracked = policy.toTrackedIndex(idx);
-    assertTrue("deferred on supporting dialect should be tracked", tracked.isPresent());
-    assertTrue("tracked form keeps deferred flag", tracked.get().isDeferred());
+    assertTrue("deferred on supporting dialect should be tracked",
+        policy.shouldTrack(idx));
     assertFalse("deferred on supporting dialect skips immediate build",
         policy.requiresImmediateBuild(idx));
     assertTrue("effective form preserves deferred flag",
@@ -75,7 +71,7 @@ public class TestDeferredIndexTrackingPolicy {
     Index idx = index("Foo_Idx").deferred().columns("col");
 
     assertFalse("deferred on non-supporting dialect should not be tracked",
-        policy.toTrackedIndex(idx).isPresent());
+        policy.shouldTrack(idx));
     assertTrue("deferred on non-supporting dialect requires immediate build",
         policy.requiresImmediateBuild(idx));
     Index effective = policy.effectiveIndex(idx);
@@ -92,9 +88,23 @@ public class TestDeferredIndexTrackingPolicy {
     DeferredIndexTrackingPolicy policy = new DeferredIndexTrackingPolicy(dialect(false));
     Index idx = index("Foo_Idx").columns("col");
 
-    assertFalse(policy.toTrackedIndex(idx).isPresent());
+    assertFalse(policy.shouldTrack(idx));
     assertTrue(policy.requiresImmediateBuild(idx));
     assertEquals(idx, policy.effectiveIndex(idx));
+  }
+
+
+  /** Idempotency: calling shouldTrack/requiresImmediateBuild on the
+   *  already-normalized form returns the same answer as on the raw form. */
+  @Test
+  public void testIdempotencyUnderEffectiveIndex() {
+    DeferredIndexTrackingPolicy policy = new DeferredIndexTrackingPolicy(dialect(false));
+    Index raw = index("Foo_Idx").deferred().columns("col");
+    Index normalized = policy.effectiveIndex(raw);
+
+    assertEquals(policy.shouldTrack(raw), policy.shouldTrack(normalized));
+    assertEquals(policy.requiresImmediateBuild(raw), policy.requiresImmediateBuild(normalized));
+    assertEquals(normalized, policy.effectiveIndex(normalized));
   }
 
 

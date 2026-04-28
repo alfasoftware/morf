@@ -15,8 +15,6 @@
 
 package org.alfasoftware.morf.upgrade.deployedindexes;
 
-import java.util.Optional;
-
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaUtils;
@@ -52,25 +50,21 @@ public final class DeferredIndexTrackingPolicy {
 
 
   /**
-   * Decides whether the index should produce a tracking row, returning
-   * the form the row should describe.
+   * Decides whether the index should produce a tracking row.
    *
    * <p>An index is tracked iff it is declared {@code .deferred()} AND the
    * dialect supports deferred creation. On dialects that don't support
    * deferred creation, declared-deferred indexes are normalized to
    * immediate (built at upgrade time, no tracking row).</p>
    *
-   * @param declared the index as declared in the schema change.
-   * @return the form to track if it should be tracked, otherwise empty.
+   * <p>Idempotent under {@link #effectiveIndex} — calling on either the raw
+   * or the normalized form produces the same answer.</p>
+   *
+   * @param declared the index (raw or normalized).
+   * @return true if a tracking row should be created for this index.
    */
-  public Optional<Index> toTrackedIndex(Index declared) {
-    if (!declared.isDeferred()) {
-      return Optional.empty();
-    }
-    if (!sqlDialect.supportsDeferredIndexCreation()) {
-      return Optional.empty();
-    }
-    return Optional.of(declared);
+  public boolean shouldTrack(Index declared) {
+    return declared.isDeferred() && sqlDialect.supportsDeferredIndexCreation();
   }
 
 
@@ -82,7 +76,10 @@ public final class DeferredIndexTrackingPolicy {
    * support deferred creation. In both cases, the index has to be built
    * immediately during the upgrade rather than queued for the adopter.</p>
    *
-   * @param declared the index as declared in the schema change.
+   * <p>Idempotent under {@link #effectiveIndex} — calling on either the raw
+   * or the normalized form produces the same answer.</p>
+   *
+   * @param declared the index (raw or normalized).
    * @return true if physical DDL is required at upgrade time.
    */
   public boolean requiresImmediateBuild(Index declared) {
@@ -94,7 +91,7 @@ public final class DeferredIndexTrackingPolicy {
    * Returns the index in the form the visitor should physically emit DDL
    * for. On unsupported-dialect normalization, drops the {@code .deferred()}
    * flag so dialect handlers don't go down a deferred-DDL path that doesn't
-   * exist.
+   * exist. Idempotent: calling repeatedly returns the same form.
    *
    * @param declared the index as declared.
    * @return the dialect-normalized form.

@@ -134,8 +134,9 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
     for (Index index : original.indexes()) {
       Index effective = trackingPolicy.effectiveIndex(index);
-      trackingPolicy.toTrackedIndex(effective)
-          .ifPresent(toTrack -> trackInDeployedIndexes(original.getName(), toTrack));
+      if (trackingPolicy.shouldTrack(effective)) {
+        trackInDeployedIndexes(original.getName(), effective);
+      }
     }
   }
 
@@ -231,8 +232,9 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     if (trackingPolicy.requiresImmediateBuild(toIndex)) {
       writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(tableName), toIndex));
     }
-    trackingPolicy.toTrackedIndex(toIndex)
-        .ifPresent(toTrack -> trackInDeployedIndexes(tableName, toTrack));
+    if (trackingPolicy.shouldTrack(toIndex)) {
+      trackInDeployedIndexes(tableName, toIndex);
+    }
   }
 
 
@@ -291,8 +293,9 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
     for (Index index : original.indexes()) {
       Index effective = trackingPolicy.effectiveIndex(index);
-      trackingPolicy.toTrackedIndex(effective)
-          .ifPresent(toTrack -> trackInDeployedIndexes(original.getName(), toTrack));
+      if (trackingPolicy.shouldTrack(effective)) {
+        trackInDeployedIndexes(original.getName(), effective);
+      }
     }
   }
 
@@ -364,8 +367,9 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     if (trackingPolicy.requiresImmediateBuild(newIndex)) {
       emitAddIndexOrRename(tableName, newIndex);
     }
-    trackingPolicy.toTrackedIndex(newIndex)
-        .ifPresent(toTrack -> trackInDeployedIndexes(tableName, toTrack));
+    if (trackingPolicy.shouldTrack(newIndex)) {
+      trackInDeployedIndexes(tableName, newIndex);
+    }
   }
 
 
@@ -433,7 +437,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
       Index effective = trackingPolicy.effectiveIndex(idx);
       // Skip deferred-on-supporting (adopter will build); keep everything
       // else (non-deferred + deferred-on-unsupported normalized to immediate).
-      if (trackingPolicy.toTrackedIndex(effective).isPresent()) continue;
+      if (trackingPolicy.shouldTrack(effective)) continue;
       kept.add(effective);
     }
     TableBuilder builder = SchemaUtils.table(original.getName())
