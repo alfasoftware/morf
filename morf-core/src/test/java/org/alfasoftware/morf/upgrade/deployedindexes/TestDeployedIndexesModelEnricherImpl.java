@@ -24,13 +24,22 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.sql.Connection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
+import javax.sql.DataSource;
+
+import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
@@ -40,7 +49,12 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * Unit tests for {@link DeployedIndexesModelEnricher} (row-existence model).
+ * Unit tests for {@link DeployedIndexesModelEnricher} (background-build model).
+ *
+ * <p>Drift policy is narrow: only operator-caused corruption of COMPLETED
+ * rows throws. Non-COMPLETED rows with a present physical index — the
+ * routine-restart case — are rebuilt as deferred and the build task
+ * reconciles them on the next pass.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -49,13 +63,28 @@ public class TestDeployedIndexesModelEnricherImpl {
   private DeployedIndexesDAO dao;
   private DeferredIndexSession session;
   private UpgradeConfigAndContext config;
+  private ConnectionResources connectionResources;
+  private SqlDialect dialect;
+  private Connection connection;
+
 
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     dao = mock(DeployedIndexesDAO.class);
     session = new DeferredIndexSessionImpl(new DeployedIndexesStatements());
     config = new UpgradeConfigAndContext();
     config.setDeferredIndexCreationEnabled(true);
+
+    connectionResources = mock(ConnectionResources.class);
+    dialect = mock(SqlDialect.class);
+    connection = mock(Connection.class);
+    DataSource dataSource = mock(DataSource.class);
+    when(connectionResources.sqlDialect()).thenReturn(dialect);
+    when(connectionResources.getDataSource()).thenReturn(dataSource);
+    when(dataSource.getConnection()).thenReturn(connection);
+    // Default: dialects without an isIndexValid implementation return empty;
+    // the enricher's orElse(true) treats this as VALID.
+    when(dialect.isIndexValid(any(), anyString(), anyString())).thenReturn(Optional.empty());
   }
 
 
@@ -65,7 +94,7 @@ public class TestDeployedIndexesModelEnricherImpl {
     // given
     config.setDeferredIndexCreationEnabled(false);
     Schema input = schema(table("Foo").columns(column("id", DataType.BIG_INTEGER).primaryKey()));
-    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
+    DeployedIndexesModelEnricher enricher = newEnricher();
 
     // when
     Schema result = enricher.enrich(input, session);
@@ -80,7 +109,7 @@ public class TestDeployedIndexesModelEnricherImpl {
   public void testNoDeployedIndexesTableReturnsUnchanged() {
     // given
     Schema input = schema(table("Foo").columns(column("id", DataType.BIG_INTEGER).primaryKey()));
-    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
+    DeployedIndexesModelEnricher enricher = newEnricher();
 
     // when
     Schema result = enricher.enrich(input, session);
@@ -101,7 +130,7 @@ public class TestDeployedIndexesModelEnricherImpl {
             .indexes(index("Foo_1").columns("id"))
     );
     when(dao.findAll()).thenReturn(Collections.emptyList());
-    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
+    DeployedIndexesModelEnricher enricher = newEnricher();
 
     // when
     Schema result = enricher.enrich(input, session);
@@ -124,7 +153,7 @@ public class TestDeployedIndexesModelEnricherImpl {
     );
     DeployedIndex entry = makeRow("MyTable", "MyIdx", List.of("name"), DeployedIndexStatus.PENDING);
     when(dao.findAll()).thenReturn(List.of(entry));
-    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
+    DeployedIndexesModelEnricher enricher = newEnricher();
 
     // when
     Schema result = enricher.enrich(input, session);
@@ -139,38 +168,155 @@ public class TestDeployedIndexesModelEnricherImpl {
   }
 
 
-  /** COMPLETED row + matching physical → physical index rebuilt with .deferred()
-   *  in enriched schema; session sees it as NOT awaiting (built). */
+  /**
+   * Non-COMPLETED row + matching physical → rebuilt as deferred (USED to
+   * throw on the slim branch). This is the routine-restart case: the build
+   * task crashed mid-build; the next pass will see {@code isIndexValid} and
+   * either mark COMPLETED or DROP+CREATE.
+   */
   @Test
-  public void testCompletedDeferredRebuiltWithDeferredFlag() {
-    // given — physical index exists, tracking row says COMPLETED
+  public void testNonCompletedRowWithPhysicalMatchRebuiltAsDeferred() {
+    // given — physical index exists but tracking row says PENDING
     Schema input = schema(
         table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
             .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
         table("MyTable").columns(column("id", DataType.BIG_INTEGER).primaryKey(),
             column("name", DataType.STRING, 50))
-            .indexes(index("MyIdx").columns("name"))  // physical, NOT marked deferred
+            .indexes(index("MyIdx").columns("name"))
+    );
+    DeployedIndex entry = makeRow("MyTable", "MyIdx", List.of("name"), DeployedIndexStatus.PENDING);
+    when(dao.findAll()).thenReturn(List.of(entry));
+    DeployedIndexesModelEnricher enricher = newEnricher();
+
+    // when — does NOT throw
+    Schema result = enricher.enrich(input, session);
+
+    // then — physical rebuilt with .deferred() flag
+    Index enriched = result.getTable("MyTable").indexes().get(0);
+    assertEquals("MyIdx", enriched.getName());
+    assertTrue("Non-COMPLETED + physical present should be marked deferred for the build task",
+        enriched.isDeferred());
+    // and — session knows it's tracked AND awaiting build (status=PENDING)
+    assertTrue(session.isTrackedDeferred("MyTable", "MyIdx"));
+    assertTrue("Non-COMPLETED row should still be awaiting build",
+        session.isAwaitingBuild("MyTable", "MyIdx"));
+  }
+
+
+  /** Same case for IN_PROGRESS — also no throw, build task self-heals. */
+  @Test
+  public void testInProgressRowWithPhysicalMatchRebuiltAsDeferred() {
+    // given
+    Schema input = schema(
+        table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
+            .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
+        table("MyTable").columns(column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 50))
+            .indexes(index("MyIdx").columns("name"))
+    );
+    DeployedIndex entry = makeRow("MyTable", "MyIdx", List.of("name"), DeployedIndexStatus.IN_PROGRESS);
+    when(dao.findAll()).thenReturn(List.of(entry));
+    DeployedIndexesModelEnricher enricher = newEnricher();
+
+    // when / then — no throw
+    Schema result = enricher.enrich(input, session);
+    assertTrue(result.getTable("MyTable").indexes().get(0).isDeferred());
+  }
+
+
+  /**
+   * COMPLETED row + matching physical + dialect reports VALID → rebuilt with
+   * {@code .deferred()} flag; session sees it as NOT awaiting (built).
+   */
+  @Test
+  public void testCompletedDeferredWithValidPhysicalRebuiltAsDeferred() {
+    // given — physical index exists, tracking row says COMPLETED, dialect reports VALID
+    Schema input = schema(
+        table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
+            .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
+        table("MyTable").columns(column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 50))
+            .indexes(index("MyIdx").columns("name"))
     );
     DeployedIndex entry = makeRow("MyTable", "MyIdx", List.of("name"), DeployedIndexStatus.COMPLETED);
     when(dao.findAll()).thenReturn(List.of(entry));
-    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
+    when(dialect.isIndexValid(eq(connection), eq("MyTable"), eq("MyIdx")))
+        .thenReturn(Optional.of(Boolean.TRUE));
+    DeployedIndexesModelEnricher enricher = newEnricher();
 
     // when
     Schema result = enricher.enrich(input, session);
 
-    // then — index in enriched schema is now marked deferred
+    // then
     Index enriched = result.getTable("MyTable").indexes().get(0);
-    assertEquals("MyIdx", enriched.getName());
-    assertTrue("Built deferred should be reported isDeferred()=true after enrichment",
-        enriched.isDeferred());
-    // and — session knows it's tracked but NOT awaiting build (status=COMPLETED)
+    assertTrue(enriched.isDeferred());
     assertTrue(session.isTrackedDeferred("MyTable", "MyIdx"));
     assertFalse("Built deferred should NOT be awaiting build",
         session.isAwaitingBuild("MyTable", "MyIdx"));
   }
 
 
-  /** COMPLETED row + NO physical match → drift, throws IllegalStateException. */
+  /**
+   * COMPLETED row + matching physical + dialect returns empty (unknown — e.g.
+   * MySQL or SQL Server) → rebuilt with {@code .deferred()} (orElse(true)).
+   */
+  @Test
+  public void testCompletedDeferredWithUnknownValidityTreatedAsValid() {
+    // given
+    Schema input = schema(
+        table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
+            .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
+        table("MyTable").columns(column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 50))
+            .indexes(index("MyIdx").columns("name"))
+    );
+    DeployedIndex entry = makeRow("MyTable", "MyIdx", List.of("name"), DeployedIndexStatus.COMPLETED);
+    when(dao.findAll()).thenReturn(List.of(entry));
+    when(dialect.isIndexValid(eq(connection), eq("MyTable"), eq("MyIdx")))
+        .thenReturn(Optional.empty());
+    DeployedIndexesModelEnricher enricher = newEnricher();
+
+    // when / then — does not throw, rebuilds as deferred
+    Schema result = enricher.enrich(input, session);
+    assertTrue(result.getTable("MyTable").indexes().get(0).isDeferred());
+  }
+
+
+  /**
+   * COMPLETED row + matching physical + dialect reports INVALID → drift,
+   * throws. The executor cannot auto-recover; operator must intervene.
+   */
+  @Test
+  public void testCompletedRowWithInvalidPhysicalThrowsDrift() {
+    // given
+    Schema input = schema(
+        table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
+            .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
+        table("MyTable").columns(column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 50))
+            .indexes(index("MyIdx").columns("name"))
+    );
+    DeployedIndex entry = makeRow("MyTable", "MyIdx", List.of("name"), DeployedIndexStatus.COMPLETED);
+    when(dao.findAll()).thenReturn(List.of(entry));
+    when(dialect.isIndexValid(eq(connection), eq("MyTable"), eq("MyIdx")))
+        .thenReturn(Optional.of(Boolean.FALSE));
+    DeployedIndexesModelEnricher enricher = newEnricher();
+
+    // when / then
+    IllegalStateException ex = assertThrows(IllegalStateException.class,
+        () -> enricher.enrich(input, session));
+    assertTrue("Message should mention the index",
+        ex.getMessage().contains("MyIdx"));
+    assertTrue("Message should mention COMPLETED",
+        ex.getMessage().contains("COMPLETED"));
+    assertTrue("Message should mention INVALID",
+        ex.getMessage().contains("INVALID"));
+    assertTrue("Message should hint at manual recovery",
+        ex.getMessage().toLowerCase().contains("manually"));
+  }
+
+
+  /** COMPLETED row + NO physical match → drift; sharpened message hints at manual recovery. */
   @Test
   public void testCompletedRowWithoutPhysicalMatchThrowsDrift() {
     // given — tracking row says COMPLETED but physical index is missing
@@ -182,7 +328,7 @@ public class TestDeployedIndexesModelEnricherImpl {
     );
     DeployedIndex entry = makeRow("MyTable", "MyIdx", List.of("id"), DeployedIndexStatus.COMPLETED);
     when(dao.findAll()).thenReturn(List.of(entry));
-    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
+    DeployedIndexesModelEnricher enricher = newEnricher();
 
     // when / then
     IllegalStateException ex = assertThrows(IllegalStateException.class,
@@ -191,33 +337,9 @@ public class TestDeployedIndexesModelEnricherImpl {
         ex.getMessage().contains("MyIdx"));
     assertTrue("Message should mention COMPLETED",
         ex.getMessage().contains("COMPLETED"));
-  }
-
-
-  /** Non-COMPLETED row + matching physical → drift, throws IllegalStateException
-   *  (tracker thinks it's not built but it IS — adopter probably crashed
-   *  between CREATE INDEX and markCompleted). */
-  @Test
-  public void testNonCompletedRowWithPhysicalMatchThrowsDrift() {
-    // given — physical index exists but tracking row says PENDING
-    Schema input = schema(
-        table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
-            .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
-        table("MyTable").columns(column("id", DataType.BIG_INTEGER).primaryKey(),
-            column("name", DataType.STRING, 50))
-            .indexes(index("MyIdx").columns("name"))
-    );
-    DeployedIndex entry = makeRow("MyTable", "MyIdx", List.of("name"), DeployedIndexStatus.PENDING);
-    when(dao.findAll()).thenReturn(List.of(entry));
-    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
-
-    // when / then
-    IllegalStateException ex = assertThrows(IllegalStateException.class,
-        () -> enricher.enrich(input, session));
-    assertTrue("Message should mention the index",
-        ex.getMessage().contains("MyIdx"));
-    assertTrue("Message should mention PENDING status",
-        ex.getMessage().contains("PENDING"));
+    assertTrue("Message should mention manual recovery",
+        ex.getMessage().toLowerCase().contains("backup")
+        || ex.getMessage().toLowerCase().contains("manual"));
   }
 
 
@@ -232,7 +354,7 @@ public class TestDeployedIndexesModelEnricherImpl {
     );
     DeployedIndex entry = makeRow("Ghost", "GhostIdx", List.of("id"), DeployedIndexStatus.PENDING);
     when(dao.findAll()).thenReturn(List.of(entry));
-    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
+    DeployedIndexesModelEnricher enricher = newEnricher();
 
     // when / then
     IllegalStateException ex = assertThrows(IllegalStateException.class,
@@ -258,7 +380,7 @@ public class TestDeployedIndexesModelEnricherImpl {
     DeployedIndex entryB = makeRow("TableB", "B_Idx", List.of("name"), DeployedIndexStatus.PENDING);
     when(dao.findAll()).thenReturn(List.of(entryA, entryB));
     DeferredIndexSession mockSession = mock(DeferredIndexSession.class);
-    DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
+    DeployedIndexesModelEnricher enricher = newEnricher();
 
     // when
     enricher.enrich(input, mockSession);
@@ -270,6 +392,11 @@ public class TestDeployedIndexesModelEnricherImpl {
 
 
   // ---- helpers --------------------------------------------------------------
+
+  private DeployedIndexesModelEnricher newEnricher() {
+    return new DeployedIndexesModelEnricherImpl(dao, connectionResources, config);
+  }
+
 
   private static DeployedIndex makeRow(String table, String idx, List<String> cols,
                                         DeployedIndexStatus status) {

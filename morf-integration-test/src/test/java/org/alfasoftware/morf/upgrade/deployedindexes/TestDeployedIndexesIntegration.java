@@ -143,7 +143,7 @@ public class TestDeployedIndexesIntegration {
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
 
     // then -- getDeferredIndexStatements returns a job for the index
-    List<DeferredIndexJob> deferredJobs = path.getDeferredIndexStatements();
+    List<DeployedIndex> deferredJobs = newDao().findNonTerminal();
     assertFalse("Should return at least one deferred job", deferredJobs.isEmpty());
     assertTrue("Job should reference the index name",
         deferredJobs.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
@@ -172,7 +172,7 @@ public class TestDeployedIndexesIntegration {
         AddImmediateIndex.class);
 
     // then
-    assertTrue("No deferred statements expected", path.getDeferredIndexStatements().isEmpty());
+    assertTrue("No deferred statements expected", newDao().findNonTerminal().isEmpty());
   }
 
 
@@ -202,7 +202,7 @@ public class TestDeployedIndexesIntegration {
     assertPhysicalIndexDoesNotExist("Product", "Product_IdName_1");
 
     // then -- both in getDeferredIndexStatements
-    List<DeferredIndexJob> deferredJobs = path.getDeferredIndexStatements();
+    List<DeployedIndex> deferredJobs = newDao().findNonTerminal();
     assertTrue("Should contain Product_Name_1",
         deferredJobs.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
     assertTrue("Should contain Product_IdName_1",
@@ -234,7 +234,7 @@ public class TestDeployedIndexesIntegration {
 
     // and -- no deferred jobs returned (adopter contract when feature is disabled)
     assertTrue("No deferred jobs expected when feature is disabled",
-        path.getDeferredIndexStatements().isEmpty());
+        newDao().findNonTerminal().isEmpty());
   }
 
 
@@ -295,12 +295,12 @@ public class TestDeployedIndexesIntegration {
     assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
     assertEquals("label", queryDeployedIndexField("Product_Name_1", "indexColumns"));
 
-    // then -- getDeferredIndexStatements emits SQL with the new column name
-    List<DeferredIndexJob> deferredJobs = path.getDeferredIndexStatements();
-    assertFalse("Should have a deferred job after rename", deferredJobs.isEmpty());
-    assertTrue("Job's SQL should reference new column name 'label'",
-        deferredJobs.stream().flatMap(j -> j.getSql().stream())
-            .anyMatch(s -> s.toUpperCase().contains("LABEL")));
+    // then -- the persisted row carries the new column name 'label'
+    List<DeployedIndex> deferredJobs = newDao().findNonTerminal();
+    assertFalse("Should have a deferred row after rename", deferredJobs.isEmpty());
+    assertTrue("Row's indexColumns should reference new column name 'label'",
+        deferredJobs.stream().flatMap(j -> j.getIndexColumns().stream())
+            .anyMatch(c -> c.equalsIgnoreCase("label")));
   }
 
 
@@ -379,7 +379,7 @@ public class TestDeployedIndexesIntegration {
         RenameTableWithDeferredIndex.class);
 
     // then -- deferred index job references new table
-    List<DeferredIndexJob> deferredJobs = path.getDeferredIndexStatements();
+    List<DeployedIndex> deferredJobs = newDao().findNonTerminal();
     assertFalse("Should have a deferred job", deferredJobs.isEmpty());
     assertTrue("Job's table should be Item",
         deferredJobs.stream().anyMatch(j -> "Item".equalsIgnoreCase(j.getTableName())));
@@ -413,7 +413,7 @@ public class TestDeployedIndexesIntegration {
         AddTableWithDeferredIndex.class);
 
     // then
-    List<DeferredIndexJob> deferredJobs = path.getDeferredIndexStatements();
+    List<DeployedIndex> deferredJobs = newDao().findNonTerminal();
     assertTrue("Should contain Product_Name_1",
         deferredJobs.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
     assertTrue("Should contain Category_Label_1",
@@ -474,7 +474,7 @@ public class TestDeployedIndexesIntegration {
     assertPhysicalIndexExists("Product", "Product_Name_1");
     assertNull("Slim: force-immediate ends up non-deferred → not tracked",
         queryDeployedIndexField("Product_Name_1", "status"));
-    assertTrue("No deferred statements expected", path.getDeferredIndexStatements().isEmpty());
+    assertTrue("No deferred statements expected", newDao().findNonTerminal().isEmpty());
   }
 
 
@@ -514,7 +514,7 @@ public class TestDeployedIndexesIntegration {
         AddDeferredIndexThenRename.class);
 
     // then -- renamed deferred index in jobs
-    List<DeferredIndexJob> deferredJobs = path.getDeferredIndexStatements();
+    List<DeployedIndex> deferredJobs = newDao().findNonTerminal();
     assertTrue("Should contain renamed index",
         deferredJobs.stream().anyMatch(j -> "Product_Name_Renamed".equalsIgnoreCase(j.getIndexName())));
     assertFalse("Should not contain original name",
@@ -541,11 +541,10 @@ public class TestDeployedIndexesIntegration {
     UpgradePath path = performUpgrade(targetSchema, AddDeferredUniqueIndex.class);
 
     // then
-    List<DeferredIndexJob> deferredJobs = path.getDeferredIndexStatements();
-    assertFalse("Should have a deferred job", deferredJobs.isEmpty());
-    assertTrue("Job's SQL should contain UNIQUE keyword",
-        deferredJobs.stream().flatMap(j -> j.getSql().stream())
-            .anyMatch(s -> s.toUpperCase().contains("UNIQUE")));
+    List<DeployedIndex> deferredJobs = newDao().findNonTerminal();
+    assertFalse("Should have a deferred row", deferredJobs.isEmpty());
+    assertTrue("Row's indexUnique flag should be true for a unique deferred index",
+        deferredJobs.stream().anyMatch(DeployedIndex::isIndexUnique));
   }
 
 
@@ -572,7 +571,7 @@ public class TestDeployedIndexesIntegration {
     assertPhysicalIndexDoesNotExist("Product", "Product_IdName_1");
 
     // then -- SQL generated with both columns
-    List<DeferredIndexJob> deferredJobs = path.getDeferredIndexStatements();
+    List<DeployedIndex> deferredJobs = newDao().findNonTerminal();
     assertFalse("Should have a deferred job", deferredJobs.isEmpty());
 
     // then -- DeployedIndexes has correct columns
@@ -609,7 +608,7 @@ public class TestDeployedIndexesIntegration {
         AddSecondDeferredIndex.class);
 
     // then — should include BOTH deferred indexes
-    List<DeferredIndexJob> deferredJobs = path2.getDeferredIndexStatements();
+    List<DeployedIndex> deferredJobs = newDao().findNonTerminal();
     assertTrue("Should contain first deferred index",
         deferredJobs.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
     assertTrue("Should contain second deferred index",
@@ -645,7 +644,7 @@ public class TestDeployedIndexesIntegration {
     assertPhysicalIndexDoesNotExist("Category", "Category_Label_1");
     assertEquals("PENDING", queryDeployedIndexField("Category_Label_1", "status"));
     assertFalse("getDeferredIndexStatements should return a job for the inline-deferred index",
-        path.getDeferredIndexStatements().isEmpty());
+        newDao().findNonTerminal().isEmpty());
 
     // when -- adopter executes the deferred SQL
     buildDeferredIndexesViaAdopter(path, "Category", "Category_Label_1");
@@ -738,7 +737,7 @@ public class TestDeployedIndexesIntegration {
     UpgradePath path = performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
     assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
-    assertFalse("Should have a job to execute", path.getDeferredIndexStatements().isEmpty());
+    assertFalse("Should have a job to execute", newDao().findNonTerminal().isEmpty());
 
     // when -- the app-side loop
     buildDeferredIndexesViaAdopter(path, "Product", "Product_Name_1");
@@ -936,7 +935,7 @@ public class TestDeployedIndexesIntegration {
 
     // then -- deferred despite no .deferred() on the index
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
-    assertFalse("Should have deferred statements", path.getDeferredIndexStatements().isEmpty());
+    assertFalse("Should have deferred statements", newDao().findNonTerminal().isEmpty());
     assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
   }
 
@@ -1000,22 +999,22 @@ public class TestDeployedIndexesIntegration {
   }
 
   /**
-   * Simulates an adopter executing every job from {@code path.getDeferredIndexStatements()}:
-   * markStarted → run the SQL → markCompleted. The (tableName, indexName) literals are
-   * passed explicitly because dialect schema scans (e.g. H2) fold names to upper case while
-   * the persisted row carries the step's original mixed case — and the DAO match is
-   * case-sensitive.
+   * Drives every non-COMPLETED tracking row through the new
+   * {@link DeferredIndexService} build flow — the equivalent adopter
+   * operation.
    *
-   * <p>TODO (Phase 5): rewrite to drive via
-   * {@code service.getBuildTasks().forEach(Runnable::run)} once the new flow lands.</p>
+   * <p>The {@code path}, {@code tableName}, and {@code indexName} parameters
+   * are kept for caller compatibility but unused: the service picks up every
+   * non-COMPLETED row and reconciles each via isIndexValid / DROP / CREATE
+   * as needed.</p>
+   *
+   * <p>TODO (Phase 5): rewrite the surrounding tests to call this style
+   * directly.</p>
    */
+  @SuppressWarnings("unused")
   private void buildDeferredIndexesViaAdopter(UpgradePath path, String tableName, String indexName) {
-    DeployedIndexesDAO dao = newDao();
-    for (DeferredIndexJob job : path.getDeferredIndexStatements()) {
-      dao.markStarted(tableName, indexName, System.currentTimeMillis(), 1);
-      sqlScriptExecutorProvider.get().execute(job.getSql());
-      dao.markCompleted(tableName, indexName, System.currentTimeMillis());
-    }
+    DeferredIndexService service = new DeferredIndexServiceImpl(connectionResources, newDao());
+    service.getBuildTasks().forEach(Runnable::run);
   }
 
   /**

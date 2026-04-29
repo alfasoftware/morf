@@ -52,7 +52,6 @@ import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
 import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsException;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexJob;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession;
 import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher;
 import org.apache.commons.logging.Log;
@@ -327,9 +326,6 @@ public class Upgrade {
       upgrader.postUpgrade();
     }
 
-    List<DeferredIndexJob> deferredIndexJobs =
-        collectDeferredIndexJobs(schemaChangeSequence, sourceSchema, deferredIndexSession, dialect);
-
     // -- Upgrade path...
     //
     List<UpgradeStep> upgradesToApply = new ArrayList<>(schemaChangeSequence.getUpgradeSteps());
@@ -361,7 +357,7 @@ public class Upgrade {
     }
 
     // Build the actual upgrade path
-    return buildUpgradePath(connectionResources, sourceSchema, targetSchema, upgradeStatements, schemaConsistencyStatements, schemaAutoHealingStatements, viewChanges, upgradesToApply, graphBasedUpgradeBuilder, upgradeAuditCount, deferredIndexJobs);
+    return buildUpgradePath(connectionResources, sourceSchema, targetSchema, upgradeStatements, schemaConsistencyStatements, schemaAutoHealingStatements, viewChanges, upgradesToApply, graphBasedUpgradeBuilder, upgradeAuditCount);
   }
 
 
@@ -376,7 +372,6 @@ public class Upgrade {
    * @param upgradesToApply Upgrade steps identified.
    * @param graphBasedUpgradeBuilder Builder for the Graph Based Upgrade
    * @param upgradeAuditCount Number of already applied upgrade steps
-   * @param deferredIndexJobs Deferred index jobs the app must execute after the upgrade.
    * @return An upgrade path.
    */
   private UpgradePath buildUpgradePath(
@@ -384,15 +379,14 @@ public class Upgrade {
       List<String> upgradeStatements, List<String> schemaConsistencyStatements, List<String> schemaAutoHealingStatements, ViewChanges viewChanges,
       List<UpgradeStep> upgradesToApply,
       GraphBasedUpgradeBuilder graphBasedUpgradeBuilder,
-      long upgradeAuditCount,
-      List<DeferredIndexJob> deferredIndexJobs) {
+      long upgradeAuditCount) {
 
     List<String> initialisationSql = Lists.newArrayList();
     initialisationSql.addAll(databaseUpgradePathValidationService.getPathValidationSql(upgradeAuditCount));
     initialisationSql.addAll(schemaConsistencyStatements);
     initialisationSql.addAll(schemaAutoHealingStatements);
 
-    UpgradePath path = upgradePathFactory.create(upgradesToApply, connectionResources, graphBasedUpgradeBuilder, initialisationSql, deferredIndexJobs);
+    UpgradePath path = upgradePathFactory.create(upgradesToApply, connectionResources, graphBasedUpgradeBuilder, initialisationSql);
 
     path.writeSql(UpgradeHelper.preSchemaUpgrade(new UpgradeSchemas(sourceSchema, targetSchema), viewChanges, viewChangesDeploymentHelper));
 
@@ -526,54 +520,6 @@ public class Upgrade {
       return sourceSchema;
     }
     return deployedIndexesModelEnricher.enrich(sourceSchema, session);
-  }
-
-
-  /**
-   * Scans the final schema for deferred indexes that are still awaiting
-   * build, and produces jobs for the application to execute asynchronously.
-   *
-   * <p>Under the "row-existence = declared deferred" model, the session
-   * answers "is this index awaiting build?" — true iff a tracking row exists
-   * with non-terminal status. The final schema's {@code isDeferred()} flag
-   * is set on every declared-deferred index (built or unbuilt) thanks to the
-   * enricher rebuilding COMPLETED rows as {@code .deferred()}; we filter to
-   * the awaiting-build subset via {@link DeferredIndexSession#isAwaitingBuild}.</p>
-   *
-   * @param schemaChangeSequence the computed sequence of schema changes.
-   * @param sourceSchema the enriched source schema.
-   * @param session the per-upgrade session, mutated by the visitor.
-   * @param dialect the SQL dialect.
-   * @return empty list when deferred-index creation is disabled or the
-   *     dialect doesn't support it; otherwise the list of jobs.
-   */
-  private List<DeferredIndexJob> collectDeferredIndexJobs(SchemaChangeSequence schemaChangeSequence,
-                                                           Schema sourceSchema,
-                                                           DeferredIndexSession session,
-                                                           SqlDialect dialect) {
-    if (!upgradeConfigAndContext.isDeferredIndexCreationEnabled()) {
-      return List.of();
-    }
-    // On dialects without deferred-creation support the visitor emits CREATE
-    // INDEX immediately at upgrade time (and tracks nothing in slim). No
-    // jobs for the app-side executor — handing them out would produce
-    // duplicate CREATE INDEX errors.
-    if (!dialect.supportsDeferredIndexCreation()) {
-      return List.of();
-    }
-    List<DeferredIndexJob> jobs = new ArrayList<>();
-    Schema finalSchema = schemaChangeSequence.applyToSchema(sourceSchema);
-    for (Table table : finalSchema.tables()) {
-      for (Index idx : table.indexes()) {
-        if (idx.isDeferred() && session.isAwaitingBuild(table.getName(), idx.getName())) {
-          jobs.add(new DeferredIndexJob(
-              table.getName(),
-              idx.getName(),
-              new ArrayList<>(dialect.deferredIndexDeploymentStatements(table, idx))));
-        }
-      }
-    }
-    return jobs;
   }
 
 

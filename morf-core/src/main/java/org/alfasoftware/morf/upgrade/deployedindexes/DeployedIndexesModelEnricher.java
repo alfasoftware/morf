@@ -28,21 +28,23 @@ import com.google.inject.ImplementedBy;
  * indexes carry the {@code .deferred()} flag and unbuilt-deferred rows
  * are virtualized as declared indexes.
  *
- * <p><b>Slim invariant</b> (this branch): only deferred indexes are tracked
- * in the {@code DeployedIndexes} table. A row exists in the table iff the
- * index is currently declared {@code .deferred()}. The enricher's job is to
- * (a) <b>prime</b> the per-upgrade {@link DeferredIndexSession} with every
- * persisted row so that in-session mutations (remove/rename/column) cascade
- * correctly to all currently-declared deferred indexes; (b) <b>rebuild</b>
- * COMPLETED-row physical indexes with the {@code .deferred()} flag so
+ * <p><b>Background-build invariant</b>: only deferred indexes are tracked.
+ * A row exists in the table iff the index is currently declared
+ * {@code .deferred()}. The enricher's job is to (a) <b>prime</b> the
+ * per-upgrade {@link DeferredIndexSession} with every persisted row so that
+ * in-session mutations (remove/rename/column) cascade correctly to all
+ * currently-declared deferred indexes; (b) <b>rebuild</b> COMPLETED-row
+ * physical indexes with the {@code .deferred()} flag so
  * {@code Index.isDeferred()} is durable across the build lifecycle; and
  * (c) <b>virtualize</b> non-COMPLETED rows (PENDING/IN_PROGRESS/FAILED)
  * into the schema so {@code SchemaHomology.schemasMatch} treats them as
  * declared.</p>
  *
- * <p>Drift between the tracking table and the physical schema is treated as
- * a fatal error — {@link IllegalStateException} is thrown. Morf does not
- * auto-heal indexes elsewhere, so the enricher follows the same policy.</p>
+ * <p><b>Narrow drift policy</b>: only operator-caused corruption of
+ * {@code COMPLETED} rows throws — a missing physical index (manual DROP)
+ * or an {@code INVALID} physical (corruption). The routine-restart case
+ * (non-COMPLETED row + physical present) does NOT throw — the build task
+ * reconciles via {@code dialect.isIndexValid} on its next pass.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -62,22 +64,27 @@ public interface DeployedIndexesModelEnricher {
    *   <li>Every persisted row primes the session (so the visitor's
    *       remove/rename/column operations emit correct DML against
    *       prior-upgrade tracking rows).</li>
-   *   <li>{@code COMPLETED} rows whose physical index exists are rebuilt
-   *       in the enriched schema with the {@code .deferred()} flag — so
-   *       {@code Index.isDeferred()} is a durable declarative property.</li>
-   *   <li>Non-{@code COMPLETED} rows whose index is not physically present
-   *       are virtualized into the schema as declared deferred indexes.</li>
-   *   <li>Drift — a {@code COMPLETED} row with no matching physical index,
-   *       or a non-{@code COMPLETED} row with a matching physical index —
-   *       throws {@link IllegalStateException}. Morf does not auto-heal
-   *       indexes; the operator must reconcile manually.</li>
+   *   <li>{@code COMPLETED} rows whose physical index is present and VALID
+   *       (or unknown — dialects without {@code isIndexValid} support)
+   *       are rebuilt in the enriched schema with the {@code .deferred()}
+   *       flag — so {@code Index.isDeferred()} is a durable declarative
+   *       property.</li>
+   *   <li>Non-{@code COMPLETED} rows are <b>always</b> represented as
+   *       deferred indexes in the enriched schema, whether their physical
+   *       counterpart is present or not — the build task reconciles the
+   *       physical state via {@code isIndexValid} on its next pass.</li>
+   *   <li>Drift — only operator-caused corruption of {@code COMPLETED}
+   *       rows: missing physical (manual DROP) or {@code INVALID} physical
+   *       — throws {@link IllegalStateException}. Operator must reconcile
+   *       manually.</li>
    * </ul>
    *
    * @param physicalSchema the schema read from JDBC metadata.
    * @param session the per-upgrade session to prime with persisted rows.
    * @return the enriched schema.
-   * @throws IllegalStateException if the tracking table disagrees with the
-   *     physical schema (drift detected).
+   * @throws IllegalStateException if a {@code COMPLETED} row's physical
+   *     index is missing or {@code INVALID} (operator-caused drift the
+   *     executor cannot auto-recover from).
    */
   Schema enrich(Schema physicalSchema, DeferredIndexSession session);
 
@@ -95,6 +102,6 @@ public interface DeployedIndexesModelEnricher {
                                               UpgradeConfigAndContext config) {
     DeployedIndexesDAO dao = new DeployedIndexesDAO(
         new SqlScriptExecutorProvider(connectionResources), connectionResources, new DeployedIndexesStatements());
-    return new DeployedIndexesModelEnricherImpl(dao, config);
+    return new DeployedIndexesModelEnricherImpl(dao, connectionResources, config);
   }
 }
