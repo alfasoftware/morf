@@ -24,6 +24,7 @@ import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.
 import static org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution.deployedIndexesTable;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -81,7 +82,7 @@ import net.jcip.annotations.NotThreadSafe;
 /**
  * Integration tests for the DeployedIndexes architecture. Exercises the
  * full upgrade framework path with the new DeployedIndexes table,
- * model enricher, and getDeferredIndexStatements().
+ * model enricher, and the non-terminal row list.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -128,7 +129,7 @@ public class TestDeployedIndexesIntegration {
   /**
    * Verifies the full lifecycle of a single deferred index: the upgrade step
    * creates a PENDING row in DeployedIndexes, the physical index is NOT built,
-   * and getDeferredIndexStatements() returns CREATE INDEX SQL referencing
+   * and the non-terminal row list returns CREATE INDEX SQL referencing
    * the correct index name.
    */
   @Test
@@ -142,7 +143,7 @@ public class TestDeployedIndexesIntegration {
     // then -- physical index NOT built (deferred)
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
 
-    // then -- getDeferredIndexStatements returns a job for the index
+    // then -- the non-terminal row list returns a job for the index
     List<DeployedIndex> deferredJobs = newDao().findNonTerminal();
     assertFalse("Should return at least one deferred job", deferredJobs.isEmpty());
     assertTrue("Job should reference the index name",
@@ -155,7 +156,7 @@ public class TestDeployedIndexesIntegration {
 
   /**
    * An upgrade with no deferred indexes should return empty
-   * getDeferredIndexStatements().
+   * the non-terminal row list.
    */
   @Test
   public void testNoDeferredIndexesReturnsEmptyStatements() {
@@ -178,7 +179,7 @@ public class TestDeployedIndexesIntegration {
 
   /**
    * Two deferred indexes added in a single upgrade step should both appear
-   * in getDeferredIndexStatements(), neither should be physically built,
+   * in the non-terminal row list, neither should be physically built,
    * and both should have PENDING rows in DeployedIndexes.
    */
   @Test
@@ -201,7 +202,7 @@ public class TestDeployedIndexesIntegration {
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
     assertPhysicalIndexDoesNotExist("Product", "Product_IdName_1");
 
-    // then -- both in getDeferredIndexStatements
+    // then -- both in the non-terminal row list
     List<DeployedIndex> deferredJobs = newDao().findNonTerminal();
     assertTrue("Should contain Product_Name_1",
         deferredJobs.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
@@ -216,7 +217,7 @@ public class TestDeployedIndexesIntegration {
 
   /**
    * When deferredIndexCreationEnabled is false, deferred indexes should
-   * be built immediately and getDeferredIndexStatements() is empty.
+   * be built immediately and the non-terminal row list is empty.
    */
   @Test
   public void testDisabledFeatureBuildsDeferredImmediately() {
@@ -273,7 +274,7 @@ public class TestDeployedIndexesIntegration {
   /**
    * Step A defers an index on column "name". Step B renames "name" to "label".
    * The DeployedIndexes table's indexColumns is updated via the change service,
-   * and the rebuilt schema preserves isDeferred() so getDeferredIndexStatements()
+   * and the rebuilt schema preserves isDeferred() so the non-terminal row list
    * emits SQL referencing the new column name.
    */
   @Test
@@ -391,7 +392,7 @@ public class TestDeployedIndexesIntegration {
 
   /**
    * Deferred indexes on multiple tables should all appear in
-   * getDeferredIndexStatements().
+   * the non-terminal row list.
    */
   @Test
   public void testDeferredIndexesOnMultipleTables() {
@@ -454,7 +455,7 @@ public class TestDeployedIndexesIntegration {
   /**
    * When forceImmediateIndexes is configured for an index name, a deferred
    * addIndex should be built immediately during upgrade. The physical index
-   * should exist and {@code getDeferredIndexStatements()} should be empty.
+   * should exist and {@code the non-terminal row list} should be empty.
    * <b>Slim invariant:</b> since the index ends up non-deferred after the
    * force-immediate resolution, it is not tracked.
    */
@@ -497,7 +498,7 @@ public class TestDeployedIndexesIntegration {
 
   /**
    * Same-step: add deferred then rename in the same step. Renamed
-   * deferred index should appear in getDeferredIndexStatements().
+   * deferred index should appear in the non-terminal row list.
    */
   @Test
   public void testAddDeferredThenRenameInSameStep() {
@@ -526,7 +527,7 @@ public class TestDeployedIndexesIntegration {
   // Unique and multi-column deferred indexes
   // =========================================================================
 
-  /** Unique deferred index should preserve unique flag in getDeferredIndexStatements. */
+  /** Unique deferred index should preserve unique flag in the non-terminal row list. */
   @Test
   public void testUniqueDeferredIndex() {
     // given
@@ -586,7 +587,7 @@ public class TestDeployedIndexesIntegration {
 
   /**
    * A second upgrade should include previously-unbuilt deferred indexes
-   * in getDeferredIndexStatements().
+   * in the non-terminal row list.
    */
   @Test
   public void testSequentialUpgradeIncludesPreviousDeferred() {
@@ -643,7 +644,7 @@ public class TestDeployedIndexesIntegration {
     // then -- physical index NOT built; tracking row PENDING; job available
     assertPhysicalIndexDoesNotExist("Category", "Category_Label_1");
     assertEquals("PENDING", queryDeployedIndexField("Category_Label_1", "status"));
-    assertFalse("getDeferredIndexStatements should return a job for the inline-deferred index",
+    assertFalse("the non-terminal row list should return a job for the inline-deferred index",
         newDao().findNonTerminal().isEmpty());
 
     // when -- adopter executes the deferred SQL
@@ -726,10 +727,10 @@ public class TestDeployedIndexesIntegration {
 
 
   /**
-   * Adopter flow — happy path: the full loop documented in the integration
-   * guide. Iterate jobs from getDeferredIndexStatements(), markStarted, run
-   * each SQL statement, markCompleted. After the loop: physical index exists
-   * and the DeployedIndexes row is COMPLETED.
+   * Adopter flow — happy path: drive the build tasks via
+   * {@link DeferredIndexService#getBuildTasks()} and run each. After the
+   * loop the physical index exists and the {@code DeployedIndexes} row is
+   * {@code COMPLETED}.
    */
   @Test
   public void testAppSideAdopterFlowBuildsAndMarksCompleted() {
@@ -783,24 +784,33 @@ public class TestDeployedIndexesIntegration {
 
 
   /**
-   * Drift policy: if a tracking row says non-terminal (e.g. PENDING) but
-   * the physical index already exists, the enricher must throw — adopter
-   * probably crashed between CREATE INDEX and markCompleted.
+   * Self-heal policy: if a tracking row says non-terminal (e.g. PENDING) but
+   * the physical index already exists, the enricher does NOT throw — it
+   * rebuilds the index as deferred in the enriched schema and the build
+   * task reconciles via {@code dialect.isIndexValid} on its next pass
+   * (marking it COMPLETED if VALID). This is the routine-restart case that
+   * used to boot-loop on the slim branch.
    */
   @Test
-  public void testEnricherHardFailsOnNonCompletedRowWithMatchingPhysicalIndex() {
+  public void testNonCompletedRowWithMatchingPhysicalAutoRecovers() {
     // given — first upgrade creates a PENDING deferred index
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
     assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
-    // then — manually create the physical index without going through the tracker
+    // simulate the routine-restart case: physical index already exists but
+    // the row never got flipped to COMPLETED (process crashed mid-build)
     sqlScriptExecutorProvider.get().execute(List.of(
         "CREATE INDEX Product_Name_1 ON Product(name)"));
     assertPhysicalIndexExists("Product", "Product_Name_1");
 
-    // when / then — next upgrade's enricher detects drift
-    assertThrowsDriftWithMessageContaining(
-        () -> performUpgrade(schemaWithIndex(), AddDeferredIndex.class),
-        "Product_Name_1", "PENDING");
+    // when — next upgrade succeeds without throwing (no drift)
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+
+    // and — running the build tasks reconciles the row to COMPLETED
+    runBuildTasks();
+
+    // then — row flipped to COMPLETED via isIndexValid auto-detect
+    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
   }
 
 
@@ -879,27 +889,122 @@ public class TestDeployedIndexesIntegration {
 
 
   /**
-   * Adopter flow — failure path: if executing a job's SQL fails, the app
-   * marks the row FAILED with an error message; the row flips to FAILED
-   * and the errorMessage is persisted.
-   *
-   * <p>TODO (Phase 5): rewrite to drive via the new
-   * {@code DeferredIndexService.getBuildTasks().forEach(Runnable::run)} flow.</p>
+   * Build task — realistic failure path. CREATE INDEX fails because the
+   * underlying data violates the unique constraint. The build task catches
+   * the SQLException, marks the row FAILED, and persists the error message.
+   * No exception propagates to the adopter.
    */
   @Test
-  public void testAppSideAdopterFlowMarksFailed() {
-    // given -- upgrade creates a PENDING deferred index
+  public void testBuildTaskMarksFailedOnUniqueConstraintViolation() {
+    // given — schema declaring a unique deferred index on Product.name
+    Schema target = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_UQ").unique().columns("name").deferred())
+    );
+    performUpgrade(target, AddDeferredUniqueIndex.class);
+    assertEquals("PENDING", queryDeployedIndexField("Product_Name_UQ", "status"));
+
+    // and — pre-populate the table with duplicates so CREATE UNIQUE INDEX must fail
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "INSERT INTO Product (id, name) VALUES (1, 'dup')",
+        "INSERT INTO Product (id, name) VALUES (2, 'dup')"));
+
+    // when — build tasks run; the failure is caught and persisted internally
+    runBuildTasks();
+
+    // then — row is FAILED with an error message; physical index NOT built
+    assertEquals("FAILED", queryDeployedIndexField("Product_Name_UQ", "status"));
+    String err = queryDeployedIndexField("Product_Name_UQ", "errorMessage");
+    assertNotNull("Error message should be persisted on failure", err);
+    assertFalse("Error message should not be empty", err.isEmpty());
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_UQ");
+  }
+
+
+  /**
+   * Crash-near-completion auto-heal: a row stuck in IN_PROGRESS whose
+   * physical index is already VALID is auto-promoted to COMPLETED on the
+   * next build pass via {@code dialect.isIndexValid}. Slim used to
+   * boot-loop on this case.
+   */
+  @Test
+  public void testInProgressRowWithValidPhysicalAutoCompletes() {
+    // given — upgrade creates a PENDING row; we then simulate a crash-near-completion
+    // by manually creating the physical index and flipping the row to IN_PROGRESS
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
-    DeployedIndexesDAO dao = newDao();
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "CREATE INDEX Product_Name_1 ON Product(name)",
+        "UPDATE DeployedIndexes SET status = 'IN_PROGRESS' WHERE indexName = 'Product_Name_1'"));
+    assertEquals("IN_PROGRESS", queryDeployedIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
 
-    // when -- app-side loop simulates a failure mid-execution
-    dao.markStarted("Product", "Product_Name_1", System.currentTimeMillis(), 1);
-    dao.markFailed("Product", "Product_Name_1", "disk full");
+    // when — build tasks run
+    runBuildTasks();
 
-    // then -- row flipped to FAILED, error message persisted, physical index NOT built
-    assertEquals("FAILED", queryDeployedIndexField("Product_Name_1", "status"));
-    assertEquals("disk full", queryDeployedIndexField("Product_Name_1", "errorMessage"));
-    assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
+    // then — row auto-promoted to COMPLETED
+    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
+  }
+
+
+  /**
+   * attemptsCount + errorMessage lifecycle: a row that fails-then-succeeds
+   * shows non-zero attempts mid-flight and gets reset to 0 once COMPLETED;
+   * errorMessage is populated on FAILED and cleared on COMPLETED.
+   */
+  @Test
+  public void testAttemptsCountAndErrorMessageResetOnCompletion() {
+    // given — unique deferred index whose first build attempt will fail (duplicates)
+    Schema target = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_UQ").unique().columns("name").deferred())
+    );
+    performUpgrade(target, AddDeferredUniqueIndex.class);
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "INSERT INTO Product (id, name) VALUES (1, 'dup')",
+        "INSERT INTO Product (id, name) VALUES (2, 'dup')"));
+
+    // when — first pass: build fails, attemptsCount=1, errorMessage set
+    runBuildTasks();
+    assertEquals("FAILED", queryDeployedIndexField("Product_Name_UQ", "status"));
+    assertEquals("1", queryDeployedIndexField("Product_Name_UQ", "attemptsCount"));
+    assertNotNull(queryDeployedIndexField("Product_Name_UQ", "errorMessage"));
+
+    // and — second pass after fixing the data: build succeeds
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "DELETE FROM Product WHERE id = 2"));
+    runBuildTasks();
+
+    // then — attemptsCount reset to 0, errorMessage cleared
+    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_UQ", "status"));
+    assertEquals("0", queryDeployedIndexField("Product_Name_UQ", "attemptsCount"));
+    assertNull("errorMessage should be cleared on success",
+        queryDeployedIndexField("Product_Name_UQ", "errorMessage"));
+  }
+
+
+  /**
+   * Idempotency: calling {@code runBuildTasks()} twice in a row leaves the
+   * row state correct — the second pass sees {@code status=COMPLETED} (or
+   * {@code isIndexValid()=true}) and no-ops.
+   */
+  @Test
+  public void testBuildTasksIdempotentAcrossInvocations() {
+    // given
+    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
+    runBuildTasks();
+    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
+
+    // when — call again; no rows are non-COMPLETED so no work
+    new DeferredIndexServiceImpl(connectionResources, newDao()).getBuildTasks()
+        .forEach(Runnable::run);
+
+    // then — state unchanged
+    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
   }
 
 
@@ -910,6 +1015,17 @@ public class TestDeployedIndexesIntegration {
   }
 
 
+  /**
+   * Helper: drive every non-COMPLETED tracking row through the new
+   * {@link DeferredIndexService} build flow — the equivalent adopter
+   * operation.
+   */
+  private void runBuildTasks() {
+    new DeferredIndexServiceImpl(connectionResources, newDao()).getBuildTasks()
+        .forEach(Runnable::run);
+  }
+
+
   // =========================================================================
   // Config overrides (additional)
   // =========================================================================
@@ -917,7 +1033,7 @@ public class TestDeployedIndexesIntegration {
   /**
    * Force-deferred: an addIndex() without .deferred() should be deferred
    * when forceDeferredIndexes config includes the index name. The physical
-   * index should NOT be built, and getDeferredIndexStatements() should
+   * index should NOT be built, and the non-terminal row list should
    * contain the SQL.
    */
   @Test
