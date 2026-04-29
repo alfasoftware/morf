@@ -45,6 +45,7 @@ import org.alfasoftware.morf.upgrade.UUID;
 import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 import org.alfasoftware.morf.upgrade.UpgradeGraph;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -107,7 +108,7 @@ public class UpgradeTestHelper {
     Collection<Class<? extends UpgradeStep>> orderedSteps = new UpgradeGraph(upgradeSteps).orderedSteps();
 
     // Build the change sequence, and the "from" schema (the start point for the upgrade)
-    SchemaChangeSequence schemaChangeSequence = new SchemaChangeSequence(instantiateAndValidateUpgradeSteps(orderedSteps));
+    SchemaChangeSequence schemaChangeSequence = new SchemaChangeSequence(upgradeConfigAndContext, instantiateAndValidateUpgradeSteps(orderedSteps));
     Schema fromSchema = schemaChangeSequence.applyInReverseToSchema(finalSchema);
 
     // Apply the changes forwards to prime the sequence.
@@ -131,7 +132,7 @@ public class UpgradeTestHelper {
       public void writeSql(Collection<String> sql) {
         sqlScript.addAll(sql);
       }
-    }, SqlDialect.IdTable.withPrefix(connectionResources.sqlDialect(), "temp_id_"));
+    }, SqlDialect.IdTable.withPrefix(connectionResources.sqlDialect(), "temp_id_"), DeferredIndexSession.create());
 
     // Apply the steps to the upgrader
     inlineTableUpgrader.preUpgrade();

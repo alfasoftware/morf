@@ -872,30 +872,61 @@ class PostgreSQLDialect extends SqlDialect {
 
   @Override
   protected Collection<String> indexDeploymentStatements(Table table, Index index) {
-    StringBuilder statement = new StringBuilder();
+    return ImmutableList.of(buildPostgreSqlCreateIndex(table, index, false), addIndexComment(index.getName()));
+  }
 
+
+  private String addIndexComment(String indexName) {
+    return "COMMENT ON INDEX " + indexName + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + indexName + "]'";
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#supportsDeferredIndexCreation()
+   */
+  @Override
+  public boolean supportsDeferredIndexCreation() {
+    return true;
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#deferredIndexDeploymentStatements(org.alfasoftware.morf.metadata.Table, org.alfasoftware.morf.metadata.Index)
+   */
+  @Override
+  public Collection<String> deferredIndexDeploymentStatements(Table table, Index index) {
+    return ImmutableList.of(buildPostgreSqlCreateIndex(table, index, true), addIndexComment(index.getName()));
+  }
+
+
+  /**
+   * Builds a PostgreSQL CREATE INDEX statement. PostgreSQL does not schema-qualify
+   * the index name (only the table name), so this cannot use the base class
+   * {@link SqlDialect#buildCreateIndexStatement(Table, Index)} which prefixes both.
+   *
+   * @param table the table to index.
+   * @param index the index to create.
+   * @param concurrent whether to emit {@code CREATE INDEX CONCURRENTLY} (non-blocking build).
+   * @return the CREATE INDEX SQL string.
+   */
+  private String buildPostgreSqlCreateIndex(Table table, Index index, boolean concurrent) {
+    StringBuilder statement = new StringBuilder();
     statement.append("CREATE ");
     if (index.isUnique()) {
       statement.append("UNIQUE ");
     }
-    statement.append("INDEX ")
-             .append(index.getName())
+    statement.append("INDEX ");
+    if (concurrent) {
+      statement.append("CONCURRENTLY ");
+    }
+    statement.append(index.getName())
              .append(" ON ")
              .append(schemaNamePrefix(table))
              .append(table.getName())
              .append(" (")
              .append(Joiner.on(", ").join(index.columnNames()))
              .append(")");
-
-    return ImmutableList.<String>builder()
-      .add(statement.toString())
-      .add(addIndexComment(index.getName()))
-      .build();
-  }
-
-
-  private String addIndexComment(String indexName) {
-    return "COMMENT ON INDEX " + indexName + " IS '"+REAL_NAME_COMMENT_LABEL+":[" + indexName + "]'";
+    return statement.toString();
   }
 
 

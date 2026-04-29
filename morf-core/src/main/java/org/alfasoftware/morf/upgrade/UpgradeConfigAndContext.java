@@ -8,6 +8,8 @@ import org.alfasoftware.morf.metadata.Index;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 
 /**
  * Configuration and context bean for the {@link Upgrade} process.
@@ -43,6 +45,30 @@ public class UpgradeConfigAndContext {
    * A map of ignored indexes.
    */
   private Map<String, List<Index>> ignoredIndexes = Map.of();
+
+
+  // -------------------------------------------------------------------------
+  // Deferred index creation
+  // -------------------------------------------------------------------------
+
+  /**
+   * Whether deferred index creation is enabled. When {@code false} (the default),
+   * the deferred flag on indexes is stripped — all indexes are built immediately
+   * during the upgrade. No DeployedIndexes tracking for deferred indexes occurs.
+   */
+  private boolean deferredIndexCreationEnabled;
+
+  /**
+   * Set of index names that should bypass deferred creation and be built immediately during upgrade.
+   * Only effective when {@link #deferredIndexCreationEnabled} is {@code true}.
+   */
+  private Set<String> forceImmediateIndexes = Set.of();
+
+  /**
+   * Set of index names that should be deferred even when the upgrade step uses {@code addIndex()}.
+   * Only effective when {@link #deferredIndexCreationEnabled} is {@code true}.
+   */
+  private Set<String> forceDeferredIndexes = Set.of();
 
 
   /**
@@ -138,6 +164,72 @@ public class UpgradeConfigAndContext {
       return ignoredIndexes.get(toLowerCase);
     } else {
       return List.of();
+    }
+  }
+
+
+  /**
+   * @see #deferredIndexCreationEnabled
+   */
+  public boolean isDeferredIndexCreationEnabled() {
+    return deferredIndexCreationEnabled;
+  }
+
+
+  /**
+   * @see #deferredIndexCreationEnabled
+   */
+  public void setDeferredIndexCreationEnabled(boolean deferredIndexCreationEnabled) {
+    this.deferredIndexCreationEnabled = deferredIndexCreationEnabled;
+  }
+
+
+  /**
+   * @see #forceImmediateIndexes
+   * @return forceImmediateIndexes set
+   */
+  public Set<String> getForceImmediateIndexes() {
+    return forceImmediateIndexes;
+  }
+
+
+  /**
+   * @see #forceImmediateIndexes
+   */
+  public void setForceImmediateIndexes(Set<String> forceImmediateIndexes) {
+    this.forceImmediateIndexes = forceImmediateIndexes.stream()
+      .map(String::toLowerCase)
+      .collect(ImmutableSet.toImmutableSet());
+    validateNoIndexConflict();
+  }
+
+
+  /**
+   * @see #forceDeferredIndexes
+   * @return forceDeferredIndexes set
+   */
+  public Set<String> getForceDeferredIndexes() {
+    return forceDeferredIndexes;
+  }
+
+
+  /**
+   * @see #forceDeferredIndexes
+   */
+  public void setForceDeferredIndexes(Set<String> forceDeferredIndexes) {
+    this.forceDeferredIndexes = forceDeferredIndexes.stream()
+      .map(String::toLowerCase)
+      .collect(ImmutableSet.toImmutableSet());
+    validateNoIndexConflict();
+  }
+
+
+
+  private void validateNoIndexConflict() {
+    Set<String> overlap = Sets.intersection(forceImmediateIndexes, forceDeferredIndexes);
+    if (!overlap.isEmpty()) {
+      throw new IllegalStateException(
+        "Index names cannot be both force-immediate and force-deferred: " + overlap);
     }
   }
 }

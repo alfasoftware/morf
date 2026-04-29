@@ -14,6 +14,7 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeSchemaChangeVisitor.GraphBasedUpgradeSchemaChangeVisitorFactory;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeScriptGenerator.GraphBasedUpgradeScriptGeneratorFactory;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -43,6 +44,7 @@ public class GraphBasedUpgradeBuilder {
   private final Set<String> exclusiveExecutionSteps;
   private final SchemaChangeSequence schemaChangeSequence;
   private final ViewChanges viewChanges;
+  private final DeferredIndexSession deferredIndexSession;
 
   /**
    * Default constructor
@@ -63,6 +65,10 @@ public class GraphBasedUpgradeBuilder {
    *                                  {@link GraphBasedUpgrade}
    * @param viewChanges             view changes which need to be made to match
    *                                  the target schema
+   * @param deferredIndexSession  the per-session tracking service, primed
+   *                                  by the enricher; the visitor uses it to
+   *                                  emit DML against persisted tracking rows
+   *                                  and to answer physical-presence queries
    */
   GraphBasedUpgradeBuilder(
       GraphBasedUpgradeSchemaChangeVisitorFactory visitorFactory,
@@ -73,7 +79,8 @@ public class GraphBasedUpgradeBuilder {
       ConnectionResources connectionResources,
       UpgradeConfigAndContext upgradeConfigAndContext,
       SchemaChangeSequence schemaChangeSequence,
-      ViewChanges viewChanges) {
+      ViewChanges viewChanges,
+      DeferredIndexSession deferredIndexSession) {
     this.visitorFactory = visitorFactory;
     this.scriptGeneratorFactory = scriptGeneratorFactory;
     this.drawIOGraphPrinter = drawIOGraphPrinter;
@@ -84,6 +91,7 @@ public class GraphBasedUpgradeBuilder {
     this.exclusiveExecutionSteps = upgradeConfigAndContext.getExclusiveExecutionSteps();
     this.schemaChangeSequence = schemaChangeSequence;
     this.viewChanges = viewChanges;
+    this.deferredIndexSession = deferredIndexSession;
   }
 
 
@@ -105,6 +113,7 @@ public class GraphBasedUpgradeBuilder {
       upgradeConfigAndContext,
       connectionResources.sqlDialect(),
       idTable,
+      deferredIndexSession,
       nodes.stream().collect(Collectors.toMap(GraphBasedUpgradeNode::getName, Function.identity())));
 
     GraphBasedUpgradeScriptGenerator scriptGenerator = scriptGeneratorFactory.create(sourceSchema, targetSchema, connectionResources, idTable, viewChanges, initialisationSql);
@@ -443,6 +452,8 @@ public class GraphBasedUpgradeBuilder {
      *                                  {@link GraphBasedUpgrade}
      * @param viewChanges             view changes which need to be made to match
      *                                  the target schema
+     * @param deferredIndexSession  the per-session tracking service, primed
+     *                                  by the enricher
      * @return new {@link GraphBasedUpgradeBuilder} instance
      */
     GraphBasedUpgradeBuilder create(
@@ -451,7 +462,8 @@ public class GraphBasedUpgradeBuilder {
         ConnectionResources connectionResources,
         UpgradeConfigAndContext upgradeConfigAndContext,
         SchemaChangeSequence schemaChangeSequence,
-        ViewChanges viewChanges) {
+        ViewChanges viewChanges,
+        DeferredIndexSession deferredIndexSession) {
       return new GraphBasedUpgradeBuilder(
         visitorFactory,
         scriptGeneratorFactory,
@@ -461,7 +473,8 @@ public class GraphBasedUpgradeBuilder {
         connectionResources,
         upgradeConfigAndContext,
         schemaChangeSequence,
-        viewChanges);
+        viewChanges,
+        deferredIndexSession);
     }
   }
 }

@@ -12,6 +12,7 @@ import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.UpgradeStatusTableService;
 import org.alfasoftware.morf.upgrade.ViewChangesDeploymentHelper;
 import org.alfasoftware.morf.upgrade.ViewDeploymentValidator;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher;
 import org.hamcrest.core.IsInstanceOf;
 import org.junit.Before;
 import org.junit.Test;
@@ -33,6 +34,7 @@ public class TestMorfModule {
   @Mock GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
   @Mock DatabaseUpgradePathValidationService databaseUpgradePathValidationService;
   @Mock UpgradeConfigAndContext upgradeConfigAndContext;
+  @Mock DeployedIndexesModelEnricher deployedIndexesModelEnricher;
 
   private MorfModule module;
 
@@ -51,7 +53,7 @@ public class TestMorfModule {
   @Test
   public void testProvideUpgrade() {
     Upgrade upgrade = module.provideUpgrade(connectionResources, factory, upgradeStatusTableService,
-      viewChangesDeploymentHelper, viewDeploymentValidator, databaseUpgradePathValidationService, graphBasedUpgradeBuilderFactory, upgradeConfigAndContext);
+      viewChangesDeploymentHelper, viewDeploymentValidator, databaseUpgradePathValidationService, graphBasedUpgradeBuilderFactory, upgradeConfigAndContext, deployedIndexesModelEnricher);
 
     assertNotNull("Instance of Upgrade should not be null", upgrade);
     assertThat("Instance of Upgrade", upgrade, IsInstanceOf.instanceOf(Upgrade.class));

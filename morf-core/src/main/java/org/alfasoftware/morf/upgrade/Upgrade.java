@@ -37,9 +37,11 @@ import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutor.ResultSetProcessor;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
+import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
 import org.alfasoftware.morf.metadata.SchemaUtils;
+import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.SchemaValidator;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.element.TableReference;
@@ -50,6 +52,9 @@ import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
 import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsException;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexJob;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -77,6 +82,7 @@ public class Upgrade {
   private final DatabaseUpgradePathValidationService databaseUpgradePathValidationService;
   private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
   private final UpgradeConfigAndContext upgradeConfigAndContext;
+  private final DeployedIndexesModelEnricher deployedIndexesModelEnricher;
 
 
   public Upgrade(
@@ -87,7 +93,8 @@ public class Upgrade {
       ViewDeploymentValidator viewDeploymentValidator,
       DatabaseUpgradePathValidationService databaseUpgradePathValidationService,
       GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
-      UpgradeConfigAndContext upgradeConfigAndContext) {
+      UpgradeConfigAndContext upgradeConfigAndContext,
+      DeployedIndexesModelEnricher deployedIndexesModelEnricher) {
     super();
     this.connectionResources = connectionResources;
     this.upgradePathFactory = upgradePathFactory;
@@ -97,21 +104,36 @@ public class Upgrade {
     this.databaseUpgradePathValidationService = databaseUpgradePathValidationService;
     this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
     this.upgradeConfigAndContext = upgradeConfigAndContext;
+    this.deployedIndexesModelEnricher = deployedIndexesModelEnricher;
   }
 
 
   /**
-   * Static convenience method which takes the specified database and upgrades it to the target
-   * schema, using the upgrade steps supplied which have not already been applied.
-   * <b>This static context does not support Graph Based Upgrade.</b>
+   * Simplified entry point that takes the specified database and upgrades
+   * it to the target schema using the supplied upgrade steps. Primarily
+   * used from tests and examples; production code typically goes through
+   * {@link Upgrade.Factory}.
+   *
+   * <p><b>This static context does not support Graph Based Upgrade.</b></p>
+   *
+   * <p>Returns the computed {@link UpgradePath}, primarily so callers can
+   * access {@link UpgradePath#getDeferredIndexStatements()} — the list of
+   * {@link org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexJob}
+   * entries the application must execute asynchronously after the upgrade
+   * completes. Applications use
+   * {@link org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexTracker}
+   * to report markStarted / markCompleted / markFailed per job.</p>
    *
    * @param targetSchema The target database schema.
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
    * @param connectionResources Connection details for the database.
    * @param upgradeConfigAndContext Config and context object.
    * @param viewDeploymentValidator External view deployment validator.
+   * @return the upgrade path that was executed; inspect
+   *     {@link UpgradePath#getDeferredIndexStatements()} for deferred-index
+   *     work the application must drive.
    */
-  public static void performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeConfigAndContext upgradeConfigAndContext, ViewDeploymentValidator viewDeploymentValidator) {
+  public static UpgradePath performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeConfigAndContext upgradeConfigAndContext, ViewDeploymentValidator viewDeploymentValidator) {
     SqlScriptExecutorProvider sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
     UpgradeStatusTableService upgradeStatusTableService = new UpgradeStatusTableServiceImpl(sqlScriptExecutorProvider, connectionResources.sqlDialect());
     DatabaseUpgradePathValidationService databaseUpgradePathValidationService = new DatabaseUpgradePathValidationServiceImpl(connectionResources, upgradeStatusTableService);
@@ -120,15 +142,27 @@ public class Upgrade {
       if (path.hasStepsToApply()) {
         sqlScriptExecutorProvider.get(new LoggingSqlScriptVisitor()).execute(path.getSql());
       }
+      return path;
     } finally {
       upgradeStatusTableService.tidyUp(connectionResources.getDataSource());
     }
   }
 
 
+  /**
+   * Backwards-compatible overload without explicit config — delegates with a
+   * default {@link UpgradeConfigAndContext}.
+   *
+   * @param targetSchema The target database schema.
+   * @param upgradeSteps All upgrade steps which should be deemed to have already run.
+   * @param connectionResources Connection details for the database.
+   * @param viewDeploymentValidator External view deployment validator.
+   * @return the upgrade path; see the 5-arg overload for details about the
+   *     return value and deferred-index jobs.
+   */
   @Deprecated
-  public static void performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, ViewDeploymentValidator viewDeploymentValidator) {
-    performUpgrade(targetSchema, upgradeSteps, connectionResources, new UpgradeConfigAndContext(), viewDeploymentValidator);
+  public static UpgradePath performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, ViewDeploymentValidator viewDeploymentValidator) {
+    return performUpgrade(targetSchema, upgradeSteps, connectionResources, new UpgradeConfigAndContext(), viewDeploymentValidator);
   }
 
 
@@ -160,11 +194,14 @@ public class Upgrade {
     UpgradePathFactory upgradePathFactory = new UpgradePathFactoryImpl(upgradeScriptAdditionsProvider, upgradeStatusTableServiceFactory);
     ViewChangesDeploymentHelper viewChangesDeploymentHelper = new ViewChangesDeploymentHelper(connectionResources.sqlDialect());
     GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory = null;
+    DeployedIndexesModelEnricher enricher =
+        DeployedIndexesModelEnricher.create(
+            connectionResources, upgradeConfigAndContext);
 
     Upgrade upgrade = new Upgrade(
       connectionResources,
       upgradePathFactory, upgradeStatusTableService, viewChangesDeploymentHelper, viewDeploymentValidator, databaseUpgradePathValidationService,
-      graphBasedUpgradeBuilderFactory, upgradeConfigAndContext);
+      graphBasedUpgradeBuilderFactory, upgradeConfigAndContext, enricher);
 
     Set<String> exceptionRegexes = Collections.emptySet();
 
@@ -231,6 +268,14 @@ public class Upgrade {
       }
     }
 
+    // Construct a per-upgrade session. The enricher primes it with every
+    // persisted DeployedIndexes row before anything else so that the
+    // visitor's remove/rename/column operations emit correct DML against
+    // prior-upgrade tracking rows.
+    DeferredIndexSession deferredIndexSession = DeferredIndexSession.create();
+
+    sourceSchema = enrichSourceSchema(sourceSchema, deferredIndexSession);
+
     // -- Get the current UUIDs and deployed views...
     log.info("Examining current views");    //
     ExistingViewStateLoader existingViewState = new ExistingViewStateLoader(dialect, new ExistingViewHashLoader(dataSource, dialect), viewDeploymentValidator);
@@ -277,11 +322,14 @@ public class Upgrade {
         public void writeSql(Collection<String> sql) {
           upgradeStatements.addAll(sql);
         }
-      }, SqlDialect.IdTable.withPrefix(dialect, "temp_id_"));
+      }, SqlDialect.IdTable.withPrefix(dialect, "temp_id_"), deferredIndexSession);
       upgrader.preUpgrade();
       schemaChangeSequence.applyTo(upgrader);
       upgrader.postUpgrade();
     }
+
+    List<DeferredIndexJob> deferredIndexJobs =
+        collectDeferredIndexJobs(schemaChangeSequence, sourceSchema, deferredIndexSession, dialect);
 
     // -- Upgrade path...
     //
@@ -309,11 +357,12 @@ public class Upgrade {
         connectionResources,
         upgradeConfigAndContext,
         schemaChangeSequence,
-        viewChanges);
+        viewChanges,
+        deferredIndexSession);
     }
 
     // Build the actual upgrade path
-    return buildUpgradePath(connectionResources, sourceSchema, targetSchema, upgradeStatements, schemaConsistencyStatements, schemaAutoHealingStatements, viewChanges, upgradesToApply, graphBasedUpgradeBuilder, upgradeAuditCount);
+    return buildUpgradePath(connectionResources, sourceSchema, targetSchema, upgradeStatements, schemaConsistencyStatements, schemaAutoHealingStatements, viewChanges, upgradesToApply, graphBasedUpgradeBuilder, upgradeAuditCount, deferredIndexJobs);
   }
 
 
@@ -328,6 +377,7 @@ public class Upgrade {
    * @param upgradesToApply Upgrade steps identified.
    * @param graphBasedUpgradeBuilder Builder for the Graph Based Upgrade
    * @param upgradeAuditCount Number of already applied upgrade steps
+   * @param deferredIndexJobs Deferred index jobs the app must execute after the upgrade.
    * @return An upgrade path.
    */
   private UpgradePath buildUpgradePath(
@@ -335,14 +385,15 @@ public class Upgrade {
       List<String> upgradeStatements, List<String> schemaConsistencyStatements, List<String> schemaAutoHealingStatements, ViewChanges viewChanges,
       List<UpgradeStep> upgradesToApply,
       GraphBasedUpgradeBuilder graphBasedUpgradeBuilder,
-      long upgradeAuditCount) {
+      long upgradeAuditCount,
+      List<DeferredIndexJob> deferredIndexJobs) {
 
     List<String> initialisationSql = Lists.newArrayList();
     initialisationSql.addAll(databaseUpgradePathValidationService.getPathValidationSql(upgradeAuditCount));
     initialisationSql.addAll(schemaConsistencyStatements);
     initialisationSql.addAll(schemaAutoHealingStatements);
 
-    UpgradePath path = upgradePathFactory.create(upgradesToApply, connectionResources, graphBasedUpgradeBuilder, initialisationSql);
+    UpgradePath path = upgradePathFactory.create(upgradesToApply, connectionResources, graphBasedUpgradeBuilder, initialisationSql, deferredIndexJobs);
 
     path.writeSql(UpgradeHelper.preSchemaUpgrade(new UpgradeSchemas(sourceSchema, targetSchema), viewChanges, viewChangesDeploymentHelper));
 
@@ -458,6 +509,76 @@ public class Upgrade {
 
 
   /**
+   * Enriches the source schema with DeployedIndexes metadata: rebuilds
+   * built-deferred indexes with the {@code .deferred()} flag, virtualizes
+   * unbuilt-deferred rows as declared indexes, and primes the per-upgrade
+   * session so the visitor can answer presence queries via
+   * {@link DeferredIndexSession#isAwaitingBuild}.
+   *
+   * <p>Falls back to the input schema when no enricher is available (e.g.
+   * legacy test paths that construct {@link Upgrade} with a null enricher).</p>
+   *
+   * @param sourceSchema the source schema read from JDBC metadata.
+   * @param session the per-upgrade session to prime.
+   * @return the enriched schema.
+   */
+  private Schema enrichSourceSchema(Schema sourceSchema, DeferredIndexSession session) {
+    if (deployedIndexesModelEnricher == null) {
+      return sourceSchema;
+    }
+    return deployedIndexesModelEnricher.enrich(sourceSchema, session);
+  }
+
+
+  /**
+   * Scans the final schema for deferred indexes that are still awaiting
+   * build, and produces jobs for the application to execute asynchronously.
+   *
+   * <p>Under the "row-existence = declared deferred" model, the session
+   * answers "is this index awaiting build?" — true iff a tracking row exists
+   * with non-terminal status. The final schema's {@code isDeferred()} flag
+   * is set on every declared-deferred index (built or unbuilt) thanks to the
+   * enricher rebuilding COMPLETED rows as {@code .deferred()}; we filter to
+   * the awaiting-build subset via {@link DeferredIndexSession#isAwaitingBuild}.</p>
+   *
+   * @param schemaChangeSequence the computed sequence of schema changes.
+   * @param sourceSchema the enriched source schema.
+   * @param session the per-upgrade session, mutated by the visitor.
+   * @param dialect the SQL dialect.
+   * @return empty list when deferred-index creation is disabled or the
+   *     dialect doesn't support it; otherwise the list of jobs.
+   */
+  private List<DeferredIndexJob> collectDeferredIndexJobs(SchemaChangeSequence schemaChangeSequence,
+                                                           Schema sourceSchema,
+                                                           DeferredIndexSession session,
+                                                           SqlDialect dialect) {
+    if (!upgradeConfigAndContext.isDeferredIndexCreationEnabled()) {
+      return List.of();
+    }
+    // On dialects without deferred-creation support the visitor emits CREATE
+    // INDEX immediately at upgrade time (and tracks nothing in slim). No
+    // jobs for the app-side executor — handing them out would produce
+    // duplicate CREATE INDEX errors.
+    if (!dialect.supportsDeferredIndexCreation()) {
+      return List.of();
+    }
+    List<DeferredIndexJob> jobs = new ArrayList<>();
+    Schema finalSchema = schemaChangeSequence.applyToSchema(sourceSchema);
+    for (Table table : finalSchema.tables()) {
+      for (Index idx : table.indexes()) {
+        if (idx.isDeferred() && session.isAwaitingBuild(table.getName(), idx.getName())) {
+          jobs.add(new DeferredIndexJob(
+              table.getName(),
+              idx.getName(),
+              new ArrayList<>(dialect.deferredIndexDeploymentStatements(table, idx))));
+        }
+      }
+    }
+    return jobs;
+  }
+
+
+  /**
    * Factory that can be used to create {@link Upgrade}s.
    *
    * @author Copyright (c) Alfa Financial Software 2022
@@ -469,6 +590,7 @@ public class Upgrade {
     private final ViewDeploymentValidator.Factory viewDeploymentValidatorFactory;
     private final DatabaseUpgradePathValidationService.Factory databaseUpgradePathValidationServiceFactory;
     private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
+    private final DeployedIndexesModelEnricher deployedIndexesModelEnricher;
 
     private UpgradeConfigAndContext upgradeConfiguration = new UpgradeConfigAndContext();
 
@@ -478,13 +600,15 @@ public class Upgrade {
                    ViewChangesDeploymentHelper.Factory viewChangesDeploymentHelperFactory,
                    ViewDeploymentValidator.Factory viewDeploymentValidatorFactory,
                    DatabaseUpgradePathValidationService.Factory databaseUpgradePathValidationServiceFactory,
-                   GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory) {
+                   GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
+                   DeployedIndexesModelEnricher deployedIndexesModelEnricher) {
       this.upgradePathFactory = upgradePathFactory;
       this.upgradeStatusTableServiceFactory =  upgradeStatusTableServiceFactory;
       this.viewChangesDeploymentHelperFactory = viewChangesDeploymentHelperFactory;
       this.viewDeploymentValidatorFactory = viewDeploymentValidatorFactory;
       this.databaseUpgradePathValidationServiceFactory = databaseUpgradePathValidationServiceFactory;
       this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
+      this.deployedIndexesModelEnricher = deployedIndexesModelEnricher;
     }
 
     public Factory withUpgradeConfiguration(UpgradeConfigAndContext upgradeConfiguration) {
@@ -500,7 +624,8 @@ public class Upgrade {
                          viewDeploymentValidatorFactory.createViewDeploymentValidator(connectionResources),
                          databaseUpgradePathValidationServiceFactory.create(connectionResources),
                          graphBasedUpgradeBuilderFactory,
-                         upgradeConfiguration);
+                         upgradeConfiguration,
+                         deployedIndexesModelEnricher);
     }
   }
 }

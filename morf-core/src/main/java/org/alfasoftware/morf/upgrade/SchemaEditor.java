@@ -256,4 +256,5 @@ public interface SchemaEditor {
    */
   public void removeSequence(Sequence sequence);
 
+
 }
