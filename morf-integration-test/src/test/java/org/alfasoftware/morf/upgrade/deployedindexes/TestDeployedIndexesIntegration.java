@@ -26,17 +26,24 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
 import org.alfasoftware.morf.jdbc.ConnectionResources;
+import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.jdbc.SqlScriptExecutorProvider;
 import org.alfasoftware.morf.metadata.DataType;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.SchemaResource;
+import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager;
 import org.alfasoftware.morf.testing.DatabaseSchemaManager.TruncationBehavior;
 import org.alfasoftware.morf.testing.TestingDataSourceModule;
@@ -45,12 +52,22 @@ import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 import org.alfasoftware.morf.upgrade.UpgradePath;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
 import org.alfasoftware.morf.upgrade.ViewDeploymentValidator;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexJob;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexTracker;
 import org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddDeferredIndex;
+import org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddDeferredIndexThenChange;
+import org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddDeferredIndexThenRemove;
+import org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddDeferredIndexThenRename;
+import org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddDeferredMultiColumnIndex;
 import org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddDeferredUniqueIndex;
+import org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddImmediateIndex;
 import org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddTableWithDeferredIndex;
+import org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddTableWithInlineDeferredIndex;
 import org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddTwoDeferredIndexes;
+import org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v2_0_0.AddSecondDeferredIndex;
+import org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v2_0_0.ChangeDeferredToNonDeferred;
+import org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v2_0_0.RemoveColumnWithDeferredIndex;
+import org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v2_0_0.RemoveProductTable;
+import org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v2_0_0.RenameColumnWithDeferredIndex;
+import org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v2_0_0.RenameTableWithDeferredIndex;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -152,7 +169,7 @@ public class TestDeployedIndexesIntegration {
 
     // when
     UpgradePath path = performUpgrade(targetSchema,
-        org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddImmediateIndex.class);
+        AddImmediateIndex.class);
 
     // then
     assertTrue("No deferred statements expected", path.getDeferredIndexStatements().isEmpty());
@@ -205,6 +222,7 @@ public class TestDeployedIndexesIntegration {
   public void testDisabledFeatureBuildsDeferredImmediately() {
     // given
     UpgradeConfigAndContext disabledConfig = new UpgradeConfigAndContext();
+    disabledConfig.setDeferredIndexCreationEnabled(false);
 
     // when
     UpgradePath path = Upgrade.performUpgrade(schemaWithIndex(),
@@ -240,7 +258,7 @@ public class TestDeployedIndexesIntegration {
 
     // when
     performUpgrade(targetSchema,
-        org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddDeferredIndexThenChange.class);
+        AddDeferredIndexThenChange.class);
 
     // then -- changed index built immediately
     assertPhysicalIndexExists("Product", "Product_Name_2");
@@ -271,7 +289,7 @@ public class TestDeployedIndexesIntegration {
     // when -- defer an index, then rename the column it references
     UpgradePath path = performUpgradeSteps(renamedColSchema,
         AddDeferredIndex.class,
-        org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v2_0_0.RenameColumnWithDeferredIndex.class);
+        RenameColumnWithDeferredIndex.class);
 
     // then -- DeployedIndexes row reflects the renamed column
     assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
@@ -304,8 +322,8 @@ public class TestDeployedIndexesIntegration {
 
     // when -- add an immediate (non-deferred) index, then rename the column
     performUpgradeSteps(renamedColSchema,
-        org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddImmediateIndex.class,
-        org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v2_0_0.RenameColumnWithDeferredIndex.class);
+        AddImmediateIndex.class,
+        RenameColumnWithDeferredIndex.class);
 
     // then -- physical index exists (under the renamed column) and no tracking row
     assertPhysicalIndexExists("Product", "Product_Name_1");
@@ -330,7 +348,7 @@ public class TestDeployedIndexesIntegration {
     // when
     performUpgradeSteps(noNameColSchema,
         AddDeferredIndex.class,
-        org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v2_0_0.RemoveColumnWithDeferredIndex.class);
+        RemoveColumnWithDeferredIndex.class);
 
     // then -- physical index absent AND DeployedIndexes row cleaned up
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
@@ -358,7 +376,7 @@ public class TestDeployedIndexesIntegration {
     // when
     UpgradePath path = performUpgradeSteps(renamedTableSchema,
         AddDeferredIndex.class,
-        org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v2_0_0.RenameTableWithDeferredIndex.class);
+        RenameTableWithDeferredIndex.class);
 
     // then -- deferred index job references new table
     List<DeferredIndexJob> deferredJobs = path.getDeferredIndexStatements();
@@ -424,7 +442,7 @@ public class TestDeployedIndexesIntegration {
 
     // when
     performUpgrade(targetSchema,
-        org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddImmediateIndex.class);
+        AddImmediateIndex.class);
 
     // then -- physical index exists and NO tracking row (slim invariant)
     assertPhysicalIndexExists("Product", "Product_Name_1");
@@ -445,7 +463,7 @@ public class TestDeployedIndexesIntegration {
     // given -- separate config to avoid polluting shared state
     UpgradeConfigAndContext forceConfig = new UpgradeConfigAndContext();
     forceConfig.setDeferredIndexCreationEnabled(true);
-    forceConfig.setForceImmediateIndexes(java.util.Set.of("Product_Name_1"));
+    forceConfig.setForceImmediateIndexes(Set.of("Product_Name_1"));
 
     // when
     UpgradePath path = Upgrade.performUpgrade(schemaWithIndex(),
@@ -468,7 +486,7 @@ public class TestDeployedIndexesIntegration {
   public void testAddDeferredThenRemoveInSameStep() {
     // when
     performUpgrade(INITIAL_SCHEMA,
-        org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddDeferredIndexThenRemove.class);
+        AddDeferredIndexThenRemove.class);
 
     // then -- neither physical index nor DeployedIndexes row
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
@@ -493,7 +511,7 @@ public class TestDeployedIndexesIntegration {
 
     // when
     UpgradePath path = performUpgrade(targetSchema,
-        org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddDeferredIndexThenRename.class);
+        AddDeferredIndexThenRename.class);
 
     // then -- renamed deferred index in jobs
     List<DeferredIndexJob> deferredJobs = path.getDeferredIndexStatements();
@@ -548,7 +566,7 @@ public class TestDeployedIndexesIntegration {
 
     // when
     UpgradePath path = performUpgrade(targetSchema,
-        org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddDeferredMultiColumnIndex.class);
+        AddDeferredMultiColumnIndex.class);
 
     // then -- not physically built
     assertPhysicalIndexDoesNotExist("Product", "Product_IdName_1");
@@ -588,7 +606,7 @@ public class TestDeployedIndexesIntegration {
             )
         ),
         AddDeferredIndex.class,
-        org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v2_0_0.AddSecondDeferredIndex.class);
+        AddSecondDeferredIndex.class);
 
     // then — should include BOTH deferred indexes
     List<DeferredIndexJob> deferredJobs = path2.getDeferredIndexStatements();
@@ -621,7 +639,7 @@ public class TestDeployedIndexesIntegration {
 
     // when -- upgrade adds the table with the deferred index inline
     UpgradePath path = performUpgrade(targetSchema,
-        org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddTableWithInlineDeferredIndex.class);
+        AddTableWithInlineDeferredIndex.class);
 
     // then -- physical index NOT built; tracking row PENDING; job available
     assertPhysicalIndexDoesNotExist("Category", "Category_Label_1");
@@ -630,12 +648,7 @@ public class TestDeployedIndexesIntegration {
         path.getDeferredIndexStatements().isEmpty());
 
     // when -- adopter executes the deferred SQL
-    DeployedIndexTracker tracker = newTracker();
-    for (DeferredIndexJob job : path.getDeferredIndexStatements()) {
-      tracker.markStarted("Category", "Category_Label_1");
-      sqlScriptExecutorProvider.get().execute(job.getSql());
-      tracker.markCompleted("Category", "Category_Label_1");
-    }
+    buildDeferredIndexesViaAdopter(path, "Category", "Category_Label_1");
 
     // then -- physical built, row COMPLETED
     assertPhysicalIndexExists("Category", "Category_Label_1");
@@ -705,7 +718,7 @@ public class TestDeployedIndexesIntegration {
     // when
     performUpgradeSteps(noProductSchema,
         AddDeferredIndex.class,
-        org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v2_0_0.RemoveProductTable.class);
+        RemoveProductTable.class);
 
     // then -- no DeployedIndexes row for the removed table's index
     assertNull("DeployedIndexes row should be deleted after removeTable",
@@ -725,17 +738,10 @@ public class TestDeployedIndexesIntegration {
     UpgradePath path = performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
     assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
-    DeployedIndexTracker tracker = newTracker();
+    assertFalse("Should have a job to execute", path.getDeferredIndexStatements().isEmpty());
 
-    // when -- the app-side loop (use literal names since H2 folds schema-
-    // derived names to uppercase; the stored row uses the step's mixed case)
-    List<DeferredIndexJob> jobs = path.getDeferredIndexStatements();
-    assertFalse("Should have a job to execute", jobs.isEmpty());
-    for (DeferredIndexJob job : jobs) {
-      tracker.markStarted("Product", "Product_Name_1");
-      sqlScriptExecutorProvider.get().execute(job.getSql());
-      tracker.markCompleted("Product", "Product_Name_1");
-    }
+    // when -- the app-side loop
+    buildDeferredIndexesViaAdopter(path, "Product", "Product_Name_1");
 
     // then -- physical index built AND row flipped to COMPLETED
     assertPhysicalIndexExists("Product", "Product_Name_1");
@@ -754,12 +760,7 @@ public class TestDeployedIndexesIntegration {
   public void testCompletedDeferredIndexSurvivesColumnRename() {
     // given — upgrade 1 creates and adopter builds the deferred index
     UpgradePath path1 = performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
-    DeployedIndexTracker tracker = newTracker();
-    for (DeferredIndexJob job : path1.getDeferredIndexStatements()) {
-      tracker.markStarted("Product", "Product_Name_1");
-      sqlScriptExecutorProvider.get().execute(job.getSql());
-      tracker.markCompleted("Product", "Product_Name_1");
-    }
+    buildDeferredIndexesViaAdopter(path1, "Product", "Product_Name_1");
     assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
     assertPhysicalIndexExists("Product", "Product_Name_1");
 
@@ -774,7 +775,7 @@ public class TestDeployedIndexesIntegration {
     );
     performUpgradeSteps(renamedColSchema,
         AddDeferredIndex.class,
-        org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v2_0_0.RenameColumnWithDeferredIndex.class);
+        RenameColumnWithDeferredIndex.class);
 
     // then — row's indexColumns updated; row stays COMPLETED (still declared deferred)
     assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
@@ -798,25 +799,9 @@ public class TestDeployedIndexesIntegration {
     assertPhysicalIndexExists("Product", "Product_Name_1");
 
     // when / then — next upgrade's enricher detects drift
-    try {
-      performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
-      org.junit.Assert.fail("Expected IllegalStateException for drift");
-    } catch (RuntimeException e) {
-      Throwable cause = e;
-      boolean foundDrift = false;
-      while (cause != null) {
-        if (cause instanceof IllegalStateException
-            && cause.getMessage() != null
-            && cause.getMessage().contains("Product_Name_1")
-            && cause.getMessage().contains("PENDING")) {
-          foundDrift = true;
-          break;
-        }
-        cause = cause.getCause();
-      }
-      assertTrue("Expected drift IllegalStateException mentioning Product_Name_1 + PENDING, got: " + e,
-          foundDrift);
-    }
+    assertThrowsDriftWithMessageContaining(
+        () -> performUpgrade(schemaWithIndex(), AddDeferredIndex.class),
+        "Product_Name_1", "PENDING");
   }
 
 
@@ -834,24 +819,9 @@ public class TestDeployedIndexesIntegration {
             + "VALUES (42, 'GhostTable', 'GhostIdx', 0, 'col', 'PENDING', 0, 0)"));
 
     // when / then — enricher detects the orphan
-    try {
-      performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
-      org.junit.Assert.fail("Expected IllegalStateException for orphan-row drift");
-    } catch (RuntimeException e) {
-      Throwable cause = e;
-      boolean foundDrift = false;
-      while (cause != null) {
-        if (cause instanceof IllegalStateException
-            && cause.getMessage() != null
-            && cause.getMessage().contains("GhostTable")) {
-          foundDrift = true;
-          break;
-        }
-        cause = cause.getCause();
-      }
-      assertTrue("Expected drift IllegalStateException mentioning GhostTable, got: " + e,
-          foundDrift);
-    }
+    assertThrowsDriftWithMessageContaining(
+        () -> performUpgrade(schemaWithIndex(), AddDeferredIndex.class),
+        "GhostTable");
   }
 
 
@@ -865,12 +835,7 @@ public class TestDeployedIndexesIntegration {
   public void testCompletedDeferredChangedToNonDeferredDeletesRow() {
     // given — upgrade 1 creates and adopter builds the deferred index
     UpgradePath path1 = performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
-    DeployedIndexTracker tracker = newTracker();
-    for (DeferredIndexJob job : path1.getDeferredIndexStatements()) {
-      tracker.markStarted("Product", "Product_Name_1");
-      sqlScriptExecutorProvider.get().execute(job.getSql());
-      tracker.markCompleted("Product", "Product_Name_1");
-    }
+    buildDeferredIndexesViaAdopter(path1, "Product", "Product_Name_1");
     assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
     assertPhysicalIndexExists("Product", "Product_Name_1");
 
@@ -883,7 +848,7 @@ public class TestDeployedIndexesIntegration {
     );
     performUpgradeSteps(target,
         AddDeferredIndex.class,
-        org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v2_0_0.ChangeDeferredToNonDeferred.class);
+        ChangeDeferredToNonDeferred.class);
 
     // then — tracking row deleted, physical index still exists (rebuilt as non-deferred)
     assertNull("Tracking row for Product_Name_1 should be deleted (no longer declared deferred)",
@@ -908,26 +873,9 @@ public class TestDeployedIndexesIntegration {
     assertPhysicalIndexDoesNotExist("Product", "Phantom_Idx");
 
     // when / then — any subsequent upgrade trips the enricher's drift check
-    try {
-      performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
-      org.junit.Assert.fail("Expected IllegalStateException for drift");
-    } catch (RuntimeException e) {
-      // The exception may be wrapped by the upgrade framework; walk the cause chain.
-      Throwable cause = e;
-      boolean foundDriftMessage = false;
-      while (cause != null) {
-        if (cause instanceof IllegalStateException
-            && cause.getMessage() != null
-            && cause.getMessage().contains("Phantom_Idx")
-            && cause.getMessage().contains("COMPLETED")) {
-          foundDriftMessage = true;
-          break;
-        }
-        cause = cause.getCause();
-      }
-      assertTrue("Expected drift IllegalStateException mentioning Phantom_Idx + COMPLETED, got: " + e,
-          foundDriftMessage);
-    }
+    assertThrowsDriftWithMessageContaining(
+        () -> performUpgrade(schemaWithIndex(), AddDeferredIndex.class),
+        "Phantom_Idx", "COMPLETED");
   }
 
 
@@ -986,11 +934,6 @@ public class TestDeployedIndexesIntegration {
   }
 
 
-  // testPrepopulationPopulatesExistingIndexes: deleted in slim.
-  // Prepopulation was a full-model feature — slim tracks only deferred,
-  // so there are no pre-existing indexes to prepopulate rows for.
-
-
   // =========================================================================
   // Config overrides (additional)
   // =========================================================================
@@ -1006,12 +949,12 @@ public class TestDeployedIndexesIntegration {
     // given
     UpgradeConfigAndContext forceConfig = new UpgradeConfigAndContext();
     forceConfig.setDeferredIndexCreationEnabled(true);
-    forceConfig.setForceDeferredIndexes(java.util.Set.of("Product_Name_1"));
+    forceConfig.setForceDeferredIndexes(Set.of("Product_Name_1"));
 
     // when -- AddImmediateIndex uses addIndex() without .deferred()
     UpgradePath path = Upgrade.performUpgrade(schemaWithIndex(),
         Collections.singletonList(
-            org.alfasoftware.morf.upgrade.deployedindexes.upgrade.v1_0_0.AddImmediateIndex.class),
+            AddImmediateIndex.class),
         connectionResources, forceConfig, viewDeploymentValidator);
 
     // then -- deferred despite no .deferred() on the index
@@ -1028,11 +971,11 @@ public class TestDeployedIndexesIntegration {
   @Test
   public void testUnsupportedDialectFallsBackToImmediate() {
     // given -- spy dialect returning supportsDeferredIndexCreation()=false
-    org.alfasoftware.morf.jdbc.SqlDialect realDialect = connectionResources.sqlDialect();
-    org.alfasoftware.morf.jdbc.SqlDialect spyDialect = org.mockito.Mockito.spy(realDialect);
-    org.mockito.Mockito.when(spyDialect.supportsDeferredIndexCreation()).thenReturn(false);
-    org.alfasoftware.morf.jdbc.ConnectionResources spyConn = org.mockito.Mockito.spy(connectionResources);
-    org.mockito.Mockito.when(spyConn.sqlDialect()).thenReturn(spyDialect);
+    SqlDialect realDialect = connectionResources.sqlDialect();
+    SqlDialect spyDialect = spy(realDialect);
+    when(spyDialect.supportsDeferredIndexCreation()).thenReturn(false);
+    ConnectionResources spyConn = spy(connectionResources);
+    when(spyConn.sqlDialect()).thenReturn(spyDialect);
 
     // when
     Upgrade.performUpgrade(schemaWithIndex(),
@@ -1070,13 +1013,55 @@ public class TestDeployedIndexesIntegration {
   }
 
   /** Helper: builds a schema with Morf infrastructure tables + the given user tables. */
-  private static Schema schemaWith(org.alfasoftware.morf.metadata.Table... tables) {
-    java.util.List<org.alfasoftware.morf.metadata.Table> all = new java.util.ArrayList<>();
+  private static Schema schemaWith(Table... tables) {
+    List<Table> all = new ArrayList<>();
     all.add(deployedViewsTable());
     all.add(upgradeAuditTable());
     all.add(deployedIndexesTable());
-    java.util.Collections.addAll(all, tables);
+    Collections.addAll(all, tables);
     return schema(all);
+  }
+
+  /**
+   * Simulates an adopter executing every job from {@code path.getDeferredIndexStatements()}:
+   * markStarted → run the SQL → markCompleted. The (tableName, indexName) literals are
+   * passed explicitly because dialect schema scans (e.g. H2) fold names to upper case while
+   * the persisted row carries the step's original mixed case — and the DAO match is
+   * case-sensitive.
+   */
+  private void buildDeferredIndexesViaAdopter(UpgradePath path, String tableName, String indexName) {
+    DeployedIndexTracker tracker = newTracker();
+    for (DeferredIndexJob job : path.getDeferredIndexStatements()) {
+      tracker.markStarted(tableName, indexName);
+      sqlScriptExecutorProvider.get().execute(job.getSql());
+      tracker.markCompleted(tableName, indexName);
+    }
+  }
+
+  /**
+   * Asserts that {@code action} throws a {@link RuntimeException} whose cause chain contains
+   * an {@link IllegalStateException} whose message contains every supplied substring. Several
+   * drift checks are wrapped by the upgrade framework's exception handling, so the
+   * {@code IllegalStateException} typically isn't the top-level throwable — we walk the chain.
+   */
+  private static void assertThrowsDriftWithMessageContaining(Runnable action, String... expectedSubstrings) {
+    try {
+      action.run();
+      fail("Expected IllegalStateException for drift mentioning " + Arrays.toString(expectedSubstrings));
+    } catch (RuntimeException e) {
+      Throwable cause = e;
+      while (cause != null) {
+        if (cause instanceof IllegalStateException && cause.getMessage() != null) {
+          boolean allMatch = true;
+          for (String needle : expectedSubstrings) {
+            if (!cause.getMessage().contains(needle)) { allMatch = false; break; }
+          }
+          if (allMatch) return;
+        }
+        cause = cause.getCause();
+      }
+      fail("Expected drift IllegalStateException mentioning " + Arrays.toString(expectedSubstrings) + ", got: " + e);
+    }
   }
 
   private void assertPhysicalIndexExists(String tableName, String indexName) {

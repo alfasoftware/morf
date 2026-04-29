@@ -18,9 +18,10 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeBuilder.GraphBasedUpgradeBuilderFactory;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeSchemaChangeVisitor.GraphBasedUpgradeSchemaChangeVisitorFactory;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeScriptGenerator.GraphBasedUpgradeScriptGeneratorFactory;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession;
+import org.alfasoftware.morf.upgrade.upgrade.CreateDeployedIndexes;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -584,11 +585,11 @@ public class TestGraphBasedUpgradeBuilder {
   public void testCreateDeferredIndexTablesRunsBeforeOtherSteps() {
     // CreateDeployedIndexes is @ExclusiveExecution @Sequence(1)
     // DeferredUser modifies an unrelated table "Product" at sequence 100
-    UpgradeStep createTablesStep = new org.alfasoftware.morf.upgrade.upgrade.CreateDeployedIndexes();
+    UpgradeStep createTablesStep = new CreateDeployedIndexes();
     UpgradeStep deferredUserStep = new DeferredUser();
 
     when(upgradeTableResolution.getModifiedTables(
-        org.alfasoftware.morf.upgrade.upgrade.CreateDeployedIndexes.class.getName()))
+        CreateDeployedIndexes.class.getName()))
         .thenReturn(Sets.newHashSet("DeployedIndexes"));
     when(upgradeTableResolution.getModifiedTables(DeferredUser.class.getName()))
         .thenReturn(Sets.newHashSet("Product"));
@@ -609,12 +610,12 @@ public class TestGraphBasedUpgradeBuilder {
    */
   @Test
   public void testDeferredIndexUsersRunInParallel() {
-    UpgradeStep createTablesStep = new org.alfasoftware.morf.upgrade.upgrade.CreateDeployedIndexes();
+    UpgradeStep createTablesStep = new CreateDeployedIndexes();
     UpgradeStep deferredUser1 = new DeferredUser();
     UpgradeStep deferredUser2 = new DeferredUser2();
 
     when(upgradeTableResolution.getModifiedTables(
-        org.alfasoftware.morf.upgrade.upgrade.CreateDeployedIndexes.class.getName()))
+        CreateDeployedIndexes.class.getName()))
         .thenReturn(Sets.newHashSet("DeployedIndexes"));
     when(upgradeTableResolution.getModifiedTables(DeferredUser.class.getName()))
         .thenReturn(Sets.newHashSet("Product"));

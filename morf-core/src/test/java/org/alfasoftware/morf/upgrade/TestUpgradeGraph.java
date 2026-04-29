@@ -1,4 +1,4 @@
-/* Copyright 2017 Alfa Financial Software
+/* Copyright 2026 Alfa Financial Software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.empty;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertThrows;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -27,12 +27,10 @@ import java.util.List;
 
 import org.junit.Test;
 
-import com.google.common.collect.Lists;
-
 /**
  * Tests for {@link UpgradeGraph}.
  *
- * @author Copyright (c) Alfa Financial Software 2024
+ * @author Copyright (c) Alfa Financial Software 2026
  */
 public class TestUpgradeGraph {
 
@@ -81,7 +79,7 @@ public class TestUpgradeGraph {
 
     UpgradeGraph graph = new UpgradeGraph(steps);
 
-    List<Class<? extends UpgradeStep>> ordered = Lists.newArrayList(graph.orderedSteps());
+    List<Class<? extends UpgradeStep>> ordered = new ArrayList<>(graph.orderedSteps());
     assertEquals("First should be seq 1000", ValidStepWithVersion.class, ordered.get(0));
     assertEquals("Second should be seq 3000", ValidStepMinimalVersion.class, ordered.get(1));
     assertEquals("Third should be seq 4000", ValidStepComplexVersion.class, ordered.get(2));
@@ -110,13 +108,9 @@ public class TestUpgradeGraph {
     List<Class<? extends UpgradeStep>> steps = new ArrayList<>();
     steps.add(StepMissingSequence.class);
 
-    try {
-      new UpgradeGraph(steps);
-      fail("Should throw IllegalStateException for missing @Sequence");
-    } catch (IllegalStateException e) {
-      assertThat(e.getMessage(), containsString("does not have an @Sequence annotation"));
-      assertThat(e.getMessage(), containsString("StepMissingSequence"));
-    }
+    IllegalStateException e = assertThrows(IllegalStateException.class, () -> new UpgradeGraph(steps));
+    assertThat(e.getMessage(), containsString("does not have an @Sequence annotation"));
+    assertThat(e.getMessage(), containsString("StepMissingSequence"));
   }
 
 
@@ -129,13 +123,9 @@ public class TestUpgradeGraph {
     steps.add(ValidStepWithVersion.class);    // seq 1000
     steps.add(StepDuplicateSequence.class);   // seq 1000
 
-    try {
-      new UpgradeGraph(steps);
-      fail("Should throw IllegalStateException for duplicate sequence");
-    } catch (IllegalStateException e) {
-      assertThat(e.getMessage(), containsString("sh  are the same @Sequence annotation"));
-      assertThat(e.getMessage(), containsString("[1000]"));
-    }
+    IllegalStateException e = assertThrows(IllegalStateException.class, () -> new UpgradeGraph(steps));
+    assertThat(e.getMessage(), containsString("sh  are the same @Sequence annotation"));
+    assertThat(e.getMessage(), containsString("[1000]"));
   }
 
 
@@ -147,42 +137,35 @@ public class TestUpgradeGraph {
     List<Class<? extends UpgradeStep>> steps = new ArrayList<>();
     steps.add(StepInvalidVersionFormat.class);
 
-    try {
-      new UpgradeGraph(steps);
-      fail("Should throw IllegalStateException for invalid @Version");
-    } catch (IllegalStateException e) {
-      assertThat(e.getMessage(), containsString("invalid @Version annotation"));
-      assertThat(e.getMessage(), containsString("StepInvalidVersionFormat"));
-    }
+    IllegalStateException e = assertThrows(IllegalStateException.class, () -> new UpgradeGraph(steps));
+    assertThat(e.getMessage(), containsString("invalid @Version annotation"));
+    assertThat(e.getMessage(), containsString("StepInvalidVersionFormat"));
   }
 
 
   /**
-   * Test various invalid version formats.
+   * A @Version with no minor number ("1") is rejected.
    */
   @Test
-  public void testInvalidVersionFormats() {
-    // Test version with no minor number
+  public void testRejectsVersionWithNoMinor() {
     List<Class<? extends UpgradeStep>> steps = new ArrayList<>();
     steps.add(StepInvalidVersionNoMinor.class);
 
-    try {
-      new UpgradeGraph(steps);
-      fail("Should throw IllegalStateException for version with no minor number");
-    } catch (IllegalStateException e) {
-      assertThat(e.getMessage(), containsString("invalid @Version annotation"));
-    }
+    IllegalStateException e = assertThrows(IllegalStateException.class, () -> new UpgradeGraph(steps));
+    assertThat(e.getMessage(), containsString("invalid @Version annotation"));
+  }
 
-    // Test version with leading 'v'
-    steps.clear();
+
+  /**
+   * A @Version with a leading 'v' ("v1.0.0") is rejected.
+   */
+  @Test
+  public void testRejectsVersionWithLeadingV() {
+    List<Class<? extends UpgradeStep>> steps = new ArrayList<>();
     steps.add(StepInvalidVersionLeadingV.class);
 
-    try {
-      new UpgradeGraph(steps);
-      fail("Should throw IllegalStateException for version with leading v");
-    } catch (IllegalStateException e) {
-      assertThat(e.getMessage(), containsString("invalid @Version annotation"));
-    }
+    IllegalStateException e = assertThrows(IllegalStateException.class, () -> new UpgradeGraph(steps));
+    assertThat(e.getMessage(), containsString("invalid @Version annotation"));
   }
 
 
@@ -194,13 +177,9 @@ public class TestUpgradeGraph {
     List<Class<? extends UpgradeStep>> steps = new ArrayList<>();
     steps.add(StepNoVersionInvalidPackage.class);
 
-    try {
-      new UpgradeGraph(steps);
-      fail("Should throw IllegalStateException for invalid package name");
-    } catch (IllegalStateException e) {
-      assertThat(e.getMessage(), containsString("not contained in a package named after the release version"));
-      assertThat(e.getMessage(), containsString("StepNoVersionInvalidPackage"));
-    }
+    IllegalStateException e = assertThrows(IllegalStateException.class, () -> new UpgradeGraph(steps));
+    assertThat(e.getMessage(), containsString("not contained in a package named after the release version"));
+    assertThat(e.getMessage(), containsString("StepNoVersionInvalidPackage"));
   }
 
 
@@ -215,15 +194,11 @@ public class TestUpgradeGraph {
     steps.add(StepDuplicateSequence.class);     // seq 1000
     steps.add(StepInvalidVersionFormat.class);
 
-    try {
-      new UpgradeGraph(steps);
-      fail("Should throw IllegalStateException with multiple errors");
-    } catch (IllegalStateException e) {
-      String message = e.getMessage();
-      assertThat(message, containsString("does not have an @Sequence annotation"));
-      assertThat(message, containsString("sh  are the same @Sequence annotation"));
-      assertThat(message, containsString("invalid @Version annotation"));
-    }
+    IllegalStateException e = assertThrows(IllegalStateException.class, () -> new UpgradeGraph(steps));
+    String message = e.getMessage();
+    assertThat(message, containsString("does not have an @Sequence annotation"));
+    assertThat(message, containsString("sh  are the same @Sequence annotation"));
+    assertThat(message, containsString("invalid @Version annotation"));
   }
 
 
@@ -256,7 +231,7 @@ public class TestUpgradeGraph {
 
     UpgradeGraph graph = new UpgradeGraph(steps);
 
-    List<Class<? extends UpgradeStep>> ordered = Lists.newArrayList(graph.orderedSteps());
+    List<Class<? extends UpgradeStep>> ordered = new ArrayList<>(graph.orderedSteps());
     assertEquals("Should be sorted in ascending order", 3, ordered.size());
     assertEquals("First", ValidStepWithVersion.class, ordered.get(0));
     assertEquals("Second", ValidStepMinimalVersion.class, ordered.get(1));
@@ -276,7 +251,7 @@ public class TestUpgradeGraph {
     UpgradeGraph graph = new UpgradeGraph(steps);
 
     Collection<Class<? extends UpgradeStep>> ordered = graph.orderedSteps();
-    List<Class<? extends UpgradeStep>> orderedList = Lists.newArrayList(ordered);
+    List<Class<? extends UpgradeStep>> orderedList = new ArrayList<>(ordered);
 
     assertEquals("Should be in sequence order", ValidStepWithVersion.class, orderedList.get(0));
     assertEquals("Should be in sequence order", ValidStepComplexVersion.class, orderedList.get(1));
@@ -299,222 +274,49 @@ public class TestUpgradeGraph {
 
   // ========================================================================
   // Mock UpgradeStep implementations for testing
+  //
+  // These are pure scaffolding for exercising UpgradeGraph's annotation
+  // parsing. The behaviour under test is entirely in the @Sequence and
+  // @Version annotations on each subclass; getJiraId / getDescription /
+  // execute are inherited no-ops so the relevant differences stand out.
   // ========================================================================
 
-  @Sequence(1000)
-  @Version("1.0.0")
-  public static class ValidStepWithVersion implements UpgradeStep {
-    @Override
-    public String getJiraId() {
-      return "TEST-1";
-    }
-
-    @Override
-    public String getDescription() {
-      return "Valid step with version";
-    }
-
-    @Override
-    public void execute(SchemaEditor schema, DataEditor data) {
-      // No-op
-    }
+  abstract static class TestStepBase implements UpgradeStep {
+    @Override public final String getJiraId() { return "TEST-" + getClass().getSimpleName(); }
+    @Override public final String getDescription() { return getClass().getSimpleName(); }
+    @Override public final void execute(SchemaEditor schema, DataEditor data) { /* No-op */ }
   }
 
+  @Sequence(1000) @Version("1.0.0")
+  public static class ValidStepWithVersion extends TestStepBase {}
 
-  @Sequence(3000)
-  @Version("1.0")
-  public static class ValidStepMinimalVersion implements UpgradeStep {
-    @Override
-    public String getJiraId() {
-      return "TEST-3";
-    }
+  @Sequence(3000) @Version("1.0")
+  public static class ValidStepMinimalVersion extends TestStepBase {}
 
-    @Override
-    public String getDescription() {
-      return "Valid step with minimal version";
-    }
+  @Sequence(4000) @Version("5.3.20a")
+  public static class ValidStepComplexVersion extends TestStepBase {}
 
-    @Override
-    public void execute(SchemaEditor schema, DataEditor data) {
-      // No-op
-    }
-  }
+  @Sequence(9999) @Version("2.0.0")
+  public static class ValidStepHighSequence extends TestStepBase {}
 
-
-  @Sequence(4000)
-  @Version("5.3.20a")
-  public static class ValidStepComplexVersion implements UpgradeStep {
-    @Override
-    public String getJiraId() {
-      return "TEST-4";
-    }
-
-    @Override
-    public String getDescription() {
-      return "Valid step with complex version";
-    }
-
-    @Override
-    public void execute(SchemaEditor schema, DataEditor data) {
-      // No-op
-    }
-  }
-
-
-  @Sequence(9999)
-  @Version("2.0.0")
-  public static class ValidStepHighSequence implements UpgradeStep {
-    @Override
-    public String getJiraId() {
-      return "TEST-9999";
-    }
-
-    @Override
-    public String getDescription() {
-      return "Valid step with high sequence";
-    }
-
-    @Override
-    public void execute(SchemaEditor schema, DataEditor data) {
-      // No-op
-    }
-  }
-
-
-  @Sequence(6001)
-  @Version("10.20.30.40")
-  public static class ValidStepMultiSegmentVersion implements UpgradeStep {
-    @Override
-    public String getJiraId() {
-      return "TEST-6001";
-    }
-
-    @Override
-    public String getDescription() {
-      return "Valid step with multi-segment version";
-    }
-
-    @Override
-    public void execute(SchemaEditor schema, DataEditor data) {
-      // No-op
-    }
-  }
-
+  @Sequence(6001) @Version("10.20.30.40")
+  public static class ValidStepMultiSegmentVersion extends TestStepBase {}
 
   @Version("1.0.0")
-  public static class StepMissingSequence implements UpgradeStep {
-    @Override
-    public String getJiraId() {
-      return "TEST-MISSING";
-    }
+  public static class StepMissingSequence extends TestStepBase {}
 
-    @Override
-    public String getDescription() {
-      return "Step missing sequence annotation";
-    }
+  @Sequence(1000) @Version("2.0.0")
+  public static class StepDuplicateSequence extends TestStepBase {}
 
-    @Override
-    public void execute(SchemaEditor schema, DataEditor data) {
-      // No-op
-    }
-  }
+  @Sequence(5000) @Version("invalid")
+  public static class StepInvalidVersionFormat extends TestStepBase {}
 
+  @Sequence(6000) @Version("1")
+  public static class StepInvalidVersionNoMinor extends TestStepBase {}
 
-  @Sequence(1000)
-  @Version("2.0.0")
-  public static class StepDuplicateSequence implements UpgradeStep {
-    @Override
-    public String getJiraId() {
-      return "TEST-DUP";
-    }
-
-    @Override
-    public String getDescription() {
-      return "Step with duplicate sequence";
-    }
-
-    @Override
-    public void execute(SchemaEditor schema, DataEditor data) {
-      // No-op
-    }
-  }
-
-
-  @Sequence(5000)
-  @Version("invalid")
-  public static class StepInvalidVersionFormat implements UpgradeStep {
-    @Override
-    public String getJiraId() {
-      return "TEST-INVALID";
-    }
-
-    @Override
-    public String getDescription() {
-      return "Step with invalid version format";
-    }
-
-    @Override
-    public void execute(SchemaEditor schema, DataEditor data) {
-      // No-op
-    }
-  }
-
-
-  @Sequence(6000)
-  @Version("1")
-  public static class StepInvalidVersionNoMinor implements UpgradeStep {
-    @Override
-    public String getJiraId() {
-      return "TEST-NO-MINOR";
-    }
-
-    @Override
-    public String getDescription() {
-      return "Step with version missing minor number";
-    }
-
-    @Override
-    public void execute(SchemaEditor schema, DataEditor data) {
-      // No-op
-    }
-  }
-
-
-  @Sequence(7000)
-  @Version("v1.0.0")
-  public static class StepInvalidVersionLeadingV implements UpgradeStep {
-    @Override
-    public String getJiraId() {
-      return "TEST-LEADING-V";
-    }
-
-    @Override
-    public String getDescription() {
-      return "Step with version having leading v";
-    }
-
-    @Override
-    public void execute(SchemaEditor schema, DataEditor data) {
-      // No-op
-    }
-  }
-
+  @Sequence(7000) @Version("v1.0.0")
+  public static class StepInvalidVersionLeadingV extends TestStepBase {}
 
   @Sequence(8000)
-  public static class StepNoVersionInvalidPackage implements UpgradeStep {
-    @Override
-    public String getJiraId() {
-      return "TEST-INVALID-PKG";
-    }
-
-    @Override
-    public String getDescription() {
-      return "Step with no version and invalid package";
-    }
-
-    @Override
-    public void execute(SchemaEditor schema, DataEditor data) {
-      // No-op
-    }
-  }
+  public static class StepNoVersionInvalidPackage extends TestStepBase {}
 }

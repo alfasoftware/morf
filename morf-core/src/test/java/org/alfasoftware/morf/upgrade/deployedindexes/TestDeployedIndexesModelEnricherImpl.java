@@ -20,6 +20,7 @@ import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.alfasoftware.morf.metadata.SchemaUtils.schema;
 import static org.alfasoftware.morf.metadata.SchemaUtils.table;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -164,8 +165,8 @@ public class TestDeployedIndexesModelEnricherImpl {
         enriched.isDeferred());
     // and — session knows it's tracked but NOT awaiting build (status=COMPLETED)
     assertTrue(session.isTrackedDeferred("MyTable", "MyIdx"));
-    assertEquals("Built deferred should NOT be awaiting build",
-        false, session.isAwaitingBuild("MyTable", "MyIdx"));
+    assertFalse("Built deferred should NOT be awaiting build",
+        session.isAwaitingBuild("MyTable", "MyIdx"));
   }
 
 
@@ -256,15 +257,15 @@ public class TestDeployedIndexesModelEnricherImpl {
     DeployedIndex entryA = makeRow("TableA", "A_Idx", List.of("id"), DeployedIndexStatus.COMPLETED);
     DeployedIndex entryB = makeRow("TableB", "B_Idx", List.of("name"), DeployedIndexStatus.PENDING);
     when(dao.findAll()).thenReturn(List.of(entryA, entryB));
-    DeferredIndexSession spy = mock(DeferredIndexSession.class);
+    DeferredIndexSession mockSession = mock(DeferredIndexSession.class);
     DeployedIndexesModelEnricher enricher = new DeployedIndexesModelEnricherImpl(dao, config);
 
     // when
-    enricher.enrich(input, spy);
+    enricher.enrich(input, mockSession);
 
     // then — both rows primed
-    verify(spy).prime(entryA);
-    verify(spy).prime(entryB);
+    verify(mockSession).prime(entryA);
+    verify(mockSession).prime(entryB);
   }
 
 

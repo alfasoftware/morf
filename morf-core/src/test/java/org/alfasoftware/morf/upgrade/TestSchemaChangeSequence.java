@@ -85,11 +85,11 @@ public class TestSchemaChangeSequence {
 
 
   /**
-   * Tests that addIndexDeferred() records a DeferredAddIndex in the change sequence with the
-   * correct table, index, and upgradeUUID taken from the step's {@code @UUID} annotation.
+   * A declared-deferred index ({@code .deferred()}) added through the schema editor is
+   * recorded as an {@link AddIndex} change whose new index reports {@code isDeferred()=true}.
    */
   @Test
-  public void testAddIndexDeferredProducesDeferredAddIndex() {
+  public void testAddIndexDeferredProducesAddIndexWithDeferredFlag() {
     // given
     when(index.getName()).thenReturn("TestIdx");
     when(index.columnNames()).thenReturn(List.of("col1"));

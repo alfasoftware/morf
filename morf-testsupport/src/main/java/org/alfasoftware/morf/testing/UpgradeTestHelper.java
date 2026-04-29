@@ -45,7 +45,7 @@ import org.alfasoftware.morf.upgrade.UUID;
 import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 import org.alfasoftware.morf.upgrade.UpgradeGraph;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexState;
+import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -132,9 +132,7 @@ public class UpgradeTestHelper {
       public void writeSql(Collection<String> sql) {
         sqlScript.addAll(sql);
       }
-    }, SqlDialect.IdTable.withPrefix(connectionResources.sqlDialect(), "temp_id_"), DeployedIndexState.empty(),
-      new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesServiceImpl(
-          new org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesStatementFactoryImpl()));
+    }, SqlDialect.IdTable.withPrefix(connectionResources.sqlDialect(), "temp_id_"), DeferredIndexSession.create());
 
     // Apply the steps to the upgrader
     inlineTableUpgrader.preUpgrade();

@@ -23,7 +23,12 @@ import static org.junit.Assert.assertTrue;
 import java.util.List;
 
 import org.alfasoftware.morf.metadata.Index;
+import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.Statement;
+import org.alfasoftware.morf.sql.UpdateStatement;
+import org.alfasoftware.morf.sql.element.Criterion;
+import org.alfasoftware.morf.sql.element.FieldLiteral;
+import org.alfasoftware.morf.sql.element.Operator;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -62,7 +67,6 @@ public class TestDeferredIndexSessionImpl {
     session.prime(entry);
 
     // then — state is seeded
-    assertTrue("Primed entry should be tracked", session.isTrackedDeferred("Product", "Product_Name_1"));
     assertTrue("Primed entry should be tracked as deferred", session.isTrackedDeferred("Product", "Product_Name_1"));
 
     // and — a subsequent removeIndex produces a DELETE DML (not a no-op),
@@ -225,14 +229,12 @@ public class TestDeferredIndexSessionImpl {
     assertEquals("Only Idx1 should be affected", 1, stmts.size());
 
     // and -- UPDATE sets indexColumns="newCol,col2" and filters on (Table1, Idx1)
-    org.alfasoftware.morf.sql.UpdateStatement upd =
-        (org.alfasoftware.morf.sql.UpdateStatement) stmts.get(0);
+    UpdateStatement upd = (UpdateStatement) stmts.get(0);
     assertEquals(1, upd.getFields().size());
     assertEquals("indexColumns", upd.getFields().get(0).getAlias());
-    assertEquals("newCol,col2",
-        ((org.alfasoftware.morf.sql.element.FieldLiteral) upd.getFields().get(0)).getValue());
-    org.alfasoftware.morf.sql.element.Criterion where = upd.getWhereCriterion();
-    assertEquals(org.alfasoftware.morf.sql.element.Operator.AND, where.getOperator());
+    assertEquals("newCol,col2", ((FieldLiteral) upd.getFields().get(0)).getValue());
+    Criterion where = upd.getWhereCriterion();
+    assertEquals(Operator.AND, where.getOperator());
     assertEquals(2, where.getCriteria().size());
   }
 
@@ -345,10 +347,10 @@ public class TestDeferredIndexSessionImpl {
 
     // then -- the INSERT statement has a FieldLiteral "a,b,c" among its values
     assertEquals(1, stmts.size());
-    org.alfasoftware.morf.sql.InsertStatement insert = (org.alfasoftware.morf.sql.InsertStatement) stmts.get(0);
+    InsertStatement insert = (InsertStatement) stmts.get(0);
     boolean sawJoined = insert.getValues().stream()
-        .filter(f -> f instanceof org.alfasoftware.morf.sql.element.FieldLiteral)
-        .map(f -> ((org.alfasoftware.morf.sql.element.FieldLiteral) f).getValue())
+        .filter(f -> f instanceof FieldLiteral)
+        .map(f -> ((FieldLiteral) f).getValue())
         .anyMatch("a,b,c"::equals);
     assertTrue("multi-column indexColumns should be comma-joined in declared order", sawJoined);
   }
