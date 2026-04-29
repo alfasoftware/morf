@@ -86,7 +86,7 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
           column("indexUnique", DataType.BOOLEAN),
           column("indexColumns", DataType.STRING, 4000),
           column("status", DataType.STRING, 20),
-          column("retryCount", DataType.INTEGER),
+          column("attemptsCount", DataType.INTEGER),
           column("createdTime", DataType.DECIMAL, 14),
           column("startedTime", DataType.DECIMAL, 14).nullable(),
           column("completedTime", DataType.DECIMAL, 14).nullable(),

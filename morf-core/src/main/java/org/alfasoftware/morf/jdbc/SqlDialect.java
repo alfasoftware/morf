@@ -36,6 +36,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -4078,6 +4079,63 @@ public abstract class SqlDialect {
    */
   public Collection<String> deferredIndexDeploymentStatements(Table table, Index index) {
     return addIndexStatements(table, index);
+  }
+
+
+  /**
+   * Returns a session-scoped statement that bounds how long a subsequent DDL/DML will
+   * wait for a lock on this dialect, or {@link Optional#empty()} if the dialect doesn't
+   * benefit from the gate (e.g. its default is already fail-fast).
+   *
+   * <p>The deferred-index reconciliation path uses this before issuing {@code DROP INDEX}
+   * to avoid hanging the adopter's executor when a previous backend is still holding a
+   * lock (e.g. PostgreSQL {@code CREATE INDEX CONCURRENTLY} from a since-disconnected
+   * client whose backend hasn't yet been reaped via TCP keepalive).</p>
+   *
+   * <p>Default returns {@link Optional#empty()}. PostgreSQL overrides to emit
+   * {@code SET lock_timeout = X}. Oracle's {@code DDL_LOCK_TIMEOUT} default of {@code 0}
+   * already fail-fasts; H2's default 1 s is short enough; both accept the default.</p>
+   *
+   * @param timeout The maximum time to wait for a lock.
+   * @return The dialect-specific SQL to set the timeout, or {@link Optional#empty()} to keep defaults.
+   */
+  public Optional<String> setLockTimeoutSql(Duration timeout) {
+    return Optional.empty();
+  }
+
+
+  /**
+   * Returns whether the named physical index is valid (built and usable).
+   *
+   * <p>Used by the deferred-index reconciliation path to decide whether a tracking row
+   * should be promoted to {@code COMPLETED} (a valid index already exists), driven through
+   * the {@code CREATE INDEX} branch (no index in the catalog), or driven through
+   * {@code DROP + CREATE} (a previous build left an invalid leftover behind).</p>
+   *
+   * <p>Returns:</p>
+   * <ul>
+   *   <li>{@link Optional#empty()} if the index is not present, or if the dialect cannot
+   *       determine validity. Callers should treat empty as "not present" in the
+   *       reconciliation path.</li>
+   *   <li>{@code Optional.of(true)} if the index exists and is fully usable.</li>
+   *   <li>{@code Optional.of(false)} if the index exists in the catalog but is not usable
+   *       (PostgreSQL {@code indisvalid=false}, Oracle {@code STATUS='UNUSABLE'}). H2 has
+   *       no in-catalog INVALID state.</li>
+   * </ul>
+   *
+   * <p>Default returns {@link Optional#empty()}. Dialects that can answer the question
+   * (PostgreSQL, Oracle, H2) override this. No special grants are required for the
+   * per-dialect implementations.</p>
+   *
+   * @param connection JDBC connection used to query the catalog.
+   * @param tableName The table the index is defined on.
+   * @param indexName The index name.
+   * @return The validity tri-state.
+   */
+  public Optional<Boolean> isIndexValid(@SuppressWarnings("unused") Connection connection,
+                                         @SuppressWarnings("unused") String tableName,
+                                         @SuppressWarnings("unused") String indexName) {
+    return Optional.empty();
   }
 
 

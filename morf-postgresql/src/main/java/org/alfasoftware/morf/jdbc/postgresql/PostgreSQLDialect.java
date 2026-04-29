@@ -8,11 +8,17 @@ import static org.alfasoftware.morf.sql.SqlUtils.field;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+
+import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.StringJoiner;
 
@@ -896,6 +902,39 @@ class PostgreSQLDialect extends SqlDialect {
   @Override
   public Collection<String> deferredIndexDeploymentStatements(Table table, Index index) {
     return ImmutableList.of(buildPostgreSqlCreateIndex(table, index, true), addIndexComment(index.getName()));
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#setLockTimeoutSql(java.time.Duration)
+   */
+  @Override
+  public Optional<String> setLockTimeoutSql(Duration timeout) {
+    return Optional.of("SET lock_timeout = " + timeout.toMillis());
+  }
+
+
+  /**
+   * Reads {@code pg_index.indisvalid} for the given index. The catalog is world-readable;
+   * no special grants are required.
+   *
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#isIndexValid(java.sql.Connection, String, String)
+   */
+  @Override
+  public Optional<Boolean> isIndexValid(Connection connection, String tableName, String indexName) {
+    String sql = "SELECT i.indisvalid FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid"
+        + " WHERE lower(c.relname) = lower(?)";
+    try (PreparedStatement ps = connection.prepareStatement(sql)) {
+      ps.setString(1, indexName);
+      try (ResultSet rs = ps.executeQuery()) {
+        if (rs.next()) {
+          return Optional.of(rs.getBoolean(1));
+        }
+        return Optional.empty();
+      }
+    } catch (SQLException e) {
+      throw new RuntimeSqlException("Error reading pg_index.indisvalid for [" + indexName + "]", e);
+    }
   }
 
 

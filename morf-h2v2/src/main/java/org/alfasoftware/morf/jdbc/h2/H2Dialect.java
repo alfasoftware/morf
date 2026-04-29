@@ -23,9 +23,14 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Optional;
 
 import org.alfasoftware.morf.jdbc.DatabaseType;
+import org.alfasoftware.morf.jdbc.RuntimeSqlException;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Column;
 import org.alfasoftware.morf.metadata.DataType;
@@ -723,5 +728,27 @@ class H2Dialect extends SqlDialect {
   @Override
   public boolean supportsDeferredIndexCreation() {
     return true;
+  }
+
+
+  /**
+   * H2 has no in-catalog INVALID state — CREATE INDEX is atomic, the index either
+   * exists fully or doesn't exist at all. Returns {@code Optional.of(true)} when the
+   * index is present in {@code INFORMATION_SCHEMA.INDEXES}, {@code Optional.empty()}
+   * otherwise.
+   *
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#isIndexValid(java.sql.Connection, String, String)
+   */
+  @Override
+  public Optional<Boolean> isIndexValid(Connection connection, String tableName, String indexName) {
+    String sql = "SELECT 1 FROM INFORMATION_SCHEMA.INDEXES WHERE UPPER(INDEX_NAME) = ?";
+    try (PreparedStatement ps = connection.prepareStatement(sql)) {
+      ps.setString(1, indexName.toUpperCase());
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next() ? Optional.of(Boolean.TRUE) : Optional.empty();
+      }
+    } catch (SQLException e) {
+      throw new RuntimeSqlException("Error reading INFORMATION_SCHEMA.INDEXES for [" + indexName + "]", e);
+    }
   }
 }

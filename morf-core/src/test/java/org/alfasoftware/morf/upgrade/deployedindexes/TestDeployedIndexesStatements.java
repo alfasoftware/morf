@@ -162,7 +162,7 @@ public class TestDeployedIndexesStatements {
     InsertStatement stmt = statements.trackIndex("Product", idx);
 
     // then -- 8 values corresponding to the 8 columns the factory populates
-    // (id, tableName, indexName, indexUnique, indexColumns, status, retryCount, createdTime)
+    // (id, tableName, indexName, indexUnique, indexColumns, status, attemptsCount, createdTime)
     assertEquals(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME,
         stmt.getTable().getName());
     assertEquals(8, stmt.getValues().size());

@@ -134,7 +134,7 @@ class DeployedIndexesDAO {
    */
   void markFailed(String tableName, String indexName, String errorMessage) {
     executeUpdate(statements.markFailed(tableName, indexName, errorMessage));
-    executeUpdate(statements.bumpRetryCount(tableName, indexName));
+    executeUpdate(statements.bumpAttemptsCount(tableName, indexName));
   }
 
 

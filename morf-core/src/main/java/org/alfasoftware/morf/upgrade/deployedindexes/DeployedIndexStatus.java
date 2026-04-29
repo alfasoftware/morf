@@ -35,6 +35,6 @@ public enum DeployedIndexStatus {
   /** Successfully built and physically present in the database. */
   COMPLETED,
 
-  /** Build failed. {@code retryCount} indicates the number of attempts. */
+  /** Build failed. {@code attemptsCount} indicates the number of attempts. */
   FAILED
 }

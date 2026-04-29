@@ -74,8 +74,8 @@ class DeployedIndexesStatements {
   static final String COL_INDEX_COLUMNS = "indexColumns";
   /** Column: lifecycle status (PENDING/IN_PROGRESS/COMPLETED/FAILED). */
   static final String COL_STATUS = "status";
-  /** Column: retry count for failed deferred builds. */
-  static final String COL_RETRY_COUNT = "retryCount";
+  /** Column: number of CREATE attempts for the deferred build (reset on COMPLETED). */
+  static final String COL_ATTEMPTS_COUNT = "attemptsCount";
   /** Column: epoch ms when the tracking row was created. */
   static final String COL_CREATED_TIME = "createdTime";
   /** Column: epoch ms when the app started building this deferred index. */
@@ -175,12 +175,12 @@ class DeployedIndexesStatements {
   /**
    * @param tableName the table.
    * @param indexName the index.
-   * @return UPDATE bumping retry count to 1 (simplified — the DSL doesn't
-   *     support field + 1; the adopter manages retry counts).
+   * @return UPDATE bumping attempts count to 1 (simplified — the DSL doesn't
+   *     support field + 1; the adopter manages attempts counts).
    */
-  UpdateStatement bumpRetryCount(String tableName, String indexName) {
+  UpdateStatement bumpAttemptsCount(String tableName, String indexName) {
     return update(tableRef(TABLE))
-        .set(literal(1).as(COL_RETRY_COUNT))
+        .set(literal(1).as(COL_ATTEMPTS_COUNT))
         .where(and(
             field(COL_TABLE_NAME).eq(tableName),
             field(COL_INDEX_NAME).eq(indexName)));
@@ -216,7 +216,7 @@ class DeployedIndexesStatements {
             literal(index.isUnique()).as(COL_INDEX_UNIQUE),
             literal(String.join(",", index.columnNames())).as(COL_INDEX_COLUMNS),
             literal(DeployedIndexStatus.PENDING.name()).as(COL_STATUS),
-            literal(0).as(COL_RETRY_COUNT),
+            literal(0).as(COL_ATTEMPTS_COUNT),
             literal(createdTime).as(COL_CREATED_TIME)
         );
   }
@@ -306,7 +306,7 @@ class DeployedIndexesStatements {
     entry.setIndexUnique(rs.getBoolean(COL_INDEX_UNIQUE));
     entry.setIndexColumns(Arrays.asList(rs.getString(COL_INDEX_COLUMNS).split(",")));
     entry.setStatus(DeployedIndexStatus.valueOf(rs.getString(COL_STATUS)));
-    entry.setRetryCount(rs.getInt(COL_RETRY_COUNT));
+    entry.setAttemptsCount(rs.getInt(COL_ATTEMPTS_COUNT));
     entry.setCreatedTime(rs.getLong(COL_CREATED_TIME));
 
     long startedTime = rs.getLong(COL_STARTED_TIME);
@@ -344,7 +344,7 @@ class DeployedIndexesStatements {
     return select(
         field(COL_ID), field(COL_TABLE_NAME),
         field(COL_INDEX_NAME), field(COL_INDEX_UNIQUE), field(COL_INDEX_COLUMNS),
-        field(COL_STATUS), field(COL_RETRY_COUNT),
+        field(COL_STATUS), field(COL_ATTEMPTS_COUNT),
         field(COL_CREATED_TIME), field(COL_STARTED_TIME), field(COL_COMPLETED_TIME),
         field(COL_ERROR_MESSAGE))
         .from(tableRef(TABLE));

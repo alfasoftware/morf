@@ -37,7 +37,7 @@ public class DeployedIndex {
   private boolean indexUnique;
   private List<String> indexColumns;
   private DeployedIndexStatus status;
-  private int retryCount;
+  private int attemptsCount;
   private long createdTime;
   private Long startedTime;
   private Long completedTime;
@@ -104,14 +104,14 @@ public class DeployedIndex {
     this.status = status;
   }
 
-  /** @see #retryCount */
-  public int getRetryCount() {
-    return retryCount;
+  /** @see #attemptsCount */
+  public int getAttemptsCount() {
+    return attemptsCount;
   }
 
-  /** @see #retryCount */
-  public void setRetryCount(int retryCount) {
-    this.retryCount = retryCount;
+  /** @see #attemptsCount */
+  public void setAttemptsCount(int attemptsCount) {
+    this.attemptsCount = attemptsCount;
   }
 
   /** @see #createdTime */

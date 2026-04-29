@@ -815,7 +815,7 @@ public class TestDeployedIndexesIntegration {
     // given — manually insert a row referencing a non-existent table
     sqlScriptExecutorProvider.get().execute(List.of(
         "INSERT INTO DeployedIndexes (id, tableName, indexName, indexUnique, "
-            + "indexColumns, status, retryCount, createdTime) "
+            + "indexColumns, status, attemptsCount, createdTime)"
             + "VALUES (42, 'GhostTable', 'GhostIdx', 0, 'col', 'PENDING', 0, 0)"));
 
     // when / then — enricher detects the orphan
@@ -868,7 +868,7 @@ public class TestDeployedIndexesIntegration {
     // physical index that doesn't exist
     sqlScriptExecutorProvider.get().execute(List.of(
         "INSERT INTO DeployedIndexes (id, tableName, indexName, indexUnique, "
-            + "indexColumns, status, retryCount, createdTime) "
+            + "indexColumns, status, attemptsCount, createdTime)"
             + "VALUES (1, 'Product', 'Phantom_Idx', 0, 'name', 'COMPLETED', 0, 0)"));
     assertPhysicalIndexDoesNotExist("Product", "Phantom_Idx");
 
