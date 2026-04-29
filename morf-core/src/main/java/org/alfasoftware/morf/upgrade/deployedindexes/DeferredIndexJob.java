@@ -23,11 +23,10 @@ import java.util.Objects;
  * One unit of work for the app-side deferred-index executor: a (table,
  * index) pair together with the SQL statements needed to build it.
  *
- * <p>Returned by {@code UpgradePath.getDeferredIndexStatements()}. The
- * app pairs each job's SQL with the matching {@link DeployedIndexTracker}
- * calls — {@code markStarted(tableName, indexName)} /
- * {@code markCompleted(...)} / {@code markFailed(...)} — without having
- * to parse SQL to recover the names.</p>
+ * <p>Returned by the deprecated
+ * {@link org.alfasoftware.morf.upgrade.UpgradePath#getDeferredIndexStatements()}.
+ * Retained transitionally; new code should drive deferred indexes through
+ * {@link DeferredIndexService}'s build-task API instead.</p>
  *
  * <p>Most dialects return a single CREATE INDEX statement per job
  * ({@code sql.size() == 1}); some dialects (e.g. PostgreSQL with its

@@ -214,14 +214,16 @@ public class UpgradePath implements SqlStatementWriter {
 
 
   /**
-   * Returns jobs for building all unbuilt deferred indexes. Each job
-   * carries the table name, index name, and SQL statement(s) to build
-   * that one index, so the application can pair the SQL execution with
-   * {@link org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexTracker}
-   * status updates without parsing SQL.
-   *
+   * @deprecated retained transitionally for callers still using the legacy
+   *     "execute SQL + report status" flow. New code should drive deferred
+   *     indexes via
+   *     {@link org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexService}
+   *     — see {@code DeferredIndexService.getBuildTasks()}. This method (and
+   *     the {@link DeferredIndexJob} type) will be removed in a follow-up
+   *     phase that fully retires the SQL-based path.
    * @return list of deferred index jobs, or empty if none.
    */
+  @Deprecated
   public List<DeferredIndexJob> getDeferredIndexStatements() {
     return deferredIndexJobs;
   }

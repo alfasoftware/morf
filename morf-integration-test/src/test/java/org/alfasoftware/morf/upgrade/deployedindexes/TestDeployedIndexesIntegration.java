@@ -881,18 +881,21 @@ public class TestDeployedIndexesIntegration {
 
   /**
    * Adopter flow — failure path: if executing a job's SQL fails, the app
-   * calls markFailed with an error message; the row flips to FAILED and
-   * the errorMessage is persisted.
+   * marks the row FAILED with an error message; the row flips to FAILED
+   * and the errorMessage is persisted.
+   *
+   * <p>TODO (Phase 5): rewrite to drive via the new
+   * {@code DeferredIndexService.getBuildTasks().forEach(Runnable::run)} flow.</p>
    */
   @Test
   public void testAppSideAdopterFlowMarksFailed() {
     // given -- upgrade creates a PENDING deferred index
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
-    DeployedIndexTracker tracker = newTracker();
+    DeployedIndexesDAO dao = newDao();
 
     // when -- app-side loop simulates a failure mid-execution
-    tracker.markStarted("Product", "Product_Name_1");
-    tracker.markFailed("Product", "Product_Name_1", "disk full");
+    dao.markStarted("Product", "Product_Name_1", System.currentTimeMillis(), 1);
+    dao.markFailed("Product", "Product_Name_1", "disk full");
 
     // then -- row flipped to FAILED, error message persisted, physical index NOT built
     assertEquals("FAILED", queryDeployedIndexField("Product_Name_1", "status"));
@@ -901,36 +904,10 @@ public class TestDeployedIndexesIntegration {
   }
 
 
-  /** Helper: construct a tracker backed by the test's executor + connection. */
-  private DeployedIndexTracker newTracker() {
-    return new DeployedIndexTrackerImpl(
-        new DeployedIndexesDAO(sqlScriptExecutorProvider, connectionResources,
-            new DeployedIndexesStatements()));
-  }
-
-
-  /**
-   * Crash recovery: if the tracker marks an index as IN_PROGRESS and the
-   * process crashes, {@code tracker.resetInProgress()} should transition
-   * it back to PENDING on next startup.
-   */
-  @Test
-  public void testCrashRecoveryResetsInProgressToPending() {
-    // given -- upgrade creates a PENDING deferred index
-    performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
-
-    // given -- simulate crash: mark as IN_PROGRESS
-    DeployedIndexTracker tracker = newTracker();
-    tracker.markStarted("Product", "Product_Name_1");
-    assertEquals("IN_PROGRESS",
-        queryDeployedIndexField("Product_Name_1", "status"));
-
-    // when -- simulate restart
-    tracker.resetInProgress();
-
-    // then
-    assertEquals("PENDING",
-        queryDeployedIndexField("Product_Name_1", "status"));
+  /** Helper: construct the DAO backed by the test's executor + connection. */
+  private DeployedIndexesDAO newDao() {
+    return new DeployedIndexesDAO(sqlScriptExecutorProvider, connectionResources,
+        new DeployedIndexesStatements());
   }
 
 
@@ -1028,13 +1005,16 @@ public class TestDeployedIndexesIntegration {
    * passed explicitly because dialect schema scans (e.g. H2) fold names to upper case while
    * the persisted row carries the step's original mixed case — and the DAO match is
    * case-sensitive.
+   *
+   * <p>TODO (Phase 5): rewrite to drive via
+   * {@code service.getBuildTasks().forEach(Runnable::run)} once the new flow lands.</p>
    */
   private void buildDeferredIndexesViaAdopter(UpgradePath path, String tableName, String indexName) {
-    DeployedIndexTracker tracker = newTracker();
+    DeployedIndexesDAO dao = newDao();
     for (DeferredIndexJob job : path.getDeferredIndexStatements()) {
-      tracker.markStarted(tableName, indexName);
+      dao.markStarted(tableName, indexName, System.currentTimeMillis(), 1);
       sqlScriptExecutorProvider.get().execute(job.getSql());
-      tracker.markCompleted(tableName, indexName);
+      dao.markCompleted(tableName, indexName, System.currentTimeMillis());
     }
   }
 

@@ -37,10 +37,10 @@ import org.alfasoftware.morf.sql.UpdateStatement;
  * that subsequent {@code removeIndex / updateIndexName / updateColumnName}
  * etc. produce correct DML against rows persisted by earlier upgrades.</p>
  *
- * <p>Separate from {@link DeployedIndexTracker} because the two have
+ * <p>Separate from {@link DeferredIndexService} because the two have
  * fundamentally different shapes: this interface returns DSL statements
- * for batched emission during an upgrade; the tracker executes
- * JDBC directly at application runtime.</p>
+ * for batched emission during an upgrade; the service drives JDBC reads
+ * and writes at application runtime.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */

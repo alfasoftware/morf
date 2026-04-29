@@ -17,64 +17,46 @@ package org.alfasoftware.morf.upgrade.deployedindexes;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.alfasoftware.morf.jdbc.ConnectionResources;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 
 /**
- * Default implementation of {@link DeployedIndexTracker}. Delegates every
- * call to {@link DeployedIndexesDAO}; mark-started/completed additionally
- * captures the current wall-clock time.
+ * Default implementation of {@link DeferredIndexService}. Reads non-{@code
+ * COMPLETED} rows from {@link DeployedIndexesDAO} and wraps each in a
+ * {@link DeferredIndexBuildTaskImpl}; progress reads delegate straight to the
+ * DAO.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
 @Singleton
-public class DeployedIndexTrackerImpl implements DeployedIndexTracker {
+class DeferredIndexServiceImpl implements DeferredIndexService {
 
+  private final ConnectionResources connectionResources;
   private final DeployedIndexesDAO dao;
 
 
-  /**
-   * @param dao persistence layer for DeployedIndexes.
-   */
   @Inject
-  public DeployedIndexTrackerImpl(DeployedIndexesDAO dao) {
+  DeferredIndexServiceImpl(ConnectionResources connectionResources, DeployedIndexesDAO dao) {
+    this.connectionResources = connectionResources;
     this.dao = dao;
   }
 
 
   @Override
-  public void markStarted(String tableName, String indexName) {
-    dao.markStarted(tableName, indexName, System.currentTimeMillis());
-  }
-
-
-  @Override
-  public void markCompleted(String tableName, String indexName) {
-    dao.markCompleted(tableName, indexName, System.currentTimeMillis());
-  }
-
-
-  @Override
-  public void markFailed(String tableName, String indexName, String errorMessage) {
-    dao.markFailed(tableName, indexName, errorMessage);
+  public List<DeferredIndexBuildTask> getBuildTasks() {
+    return dao.findNonTerminal().stream()
+        .map(row -> (DeferredIndexBuildTask) new DeferredIndexBuildTaskImpl(
+            row.getTableName(), row.getIndexName(), connectionResources, dao))
+        .collect(Collectors.toUnmodifiableList());
   }
 
 
   @Override
   public Map<DeployedIndexStatus, Integer> getProgress() {
     return dao.getProgressCounts();
-  }
-
-
-  @Override
-  public List<DeployedIndex> getPendingIndexes() {
-    return dao.findNonTerminal();
-  }
-
-
-  @Override
-  public void resetInProgress() {
-    dao.resetInProgress();
   }
 }

@@ -19,6 +19,7 @@ import static org.alfasoftware.morf.sql.SqlUtils.delete;
 import static org.alfasoftware.morf.sql.SqlUtils.field;
 import static org.alfasoftware.morf.sql.SqlUtils.insert;
 import static org.alfasoftware.morf.sql.SqlUtils.literal;
+import static org.alfasoftware.morf.sql.SqlUtils.nullLiteral;
 import static org.alfasoftware.morf.sql.SqlUtils.select;
 import static org.alfasoftware.morf.sql.SqlUtils.tableRef;
 import static org.alfasoftware.morf.sql.SqlUtils.update;
@@ -114,6 +115,19 @@ class DeployedIndexesStatements {
   }
 
 
+  /**
+   * @param tableName the table.
+   * @param indexName the index.
+   * @return SELECT the single row for ({@code tableName}, {@code indexName}).
+   */
+  SelectStatement selectByTableAndIndex(String tableName, String indexName) {
+    return selectAllColumns()
+        .where(and(
+            field(COL_TABLE_NAME).eq(tableName),
+            field(COL_INDEX_NAME).eq(indexName)));
+  }
+
+
   /** @return SELECT status column alone (caller aggregates into status → count). */
   SelectStatement selectStatusColumn() {
     return select(field(COL_STATUS)).from(tableRef(TABLE));
@@ -127,13 +141,19 @@ class DeployedIndexesStatements {
   /**
    * @param tableName the table.
    * @param indexName the index.
-   * @param startedTime epoch ms.
-   * @return UPDATE flipping status to IN_PROGRESS and setting startedTime.
+   * @param startedTime epoch ms when this attempt began.
+   * @param newAttemptsCount the value to write into {@code attemptsCount} —
+   *     the build task computes this as {@code currentAttemptsCount + 1} from
+   *     the row it just re-fetched.
+   * @return UPDATE flipping status to IN_PROGRESS, setting startedTime, and
+   *     bumping attemptsCount. Leaves the existing errorMessage in place so
+   *     operators can see the prior failure detail until success clears it.
    */
-  UpdateStatement markStarted(String tableName, String indexName, long startedTime) {
+  UpdateStatement markStarted(String tableName, String indexName, long startedTime, int newAttemptsCount) {
     return update(tableRef(TABLE))
         .set(literal(DeployedIndexStatus.IN_PROGRESS.name()).as(COL_STATUS),
-             literal(startedTime).as(COL_STARTED_TIME))
+             literal(startedTime).as(COL_STARTED_TIME),
+             literal(newAttemptsCount).as(COL_ATTEMPTS_COUNT))
         .where(and(
             field(COL_TABLE_NAME).eq(tableName),
             field(COL_INDEX_NAME).eq(indexName)));
@@ -144,12 +164,16 @@ class DeployedIndexesStatements {
    * @param tableName the table.
    * @param indexName the index.
    * @param completedTime epoch ms.
-   * @return UPDATE flipping status to COMPLETED and setting completedTime.
+   * @return UPDATE flipping status to COMPLETED, setting completedTime, and
+   *     clearing the recoverable-failure tracking columns
+   *     ({@code attemptsCount=0}, {@code errorMessage=NULL}).
    */
   UpdateStatement markCompleted(String tableName, String indexName, long completedTime) {
     return update(tableRef(TABLE))
         .set(literal(DeployedIndexStatus.COMPLETED.name()).as(COL_STATUS),
-             literal(completedTime).as(COL_COMPLETED_TIME))
+             literal(completedTime).as(COL_COMPLETED_TIME),
+             literal(0).as(COL_ATTEMPTS_COUNT),
+             nullLiteral().as(COL_ERROR_MESSAGE))
         .where(and(
             field(COL_TABLE_NAME).eq(tableName),
             field(COL_INDEX_NAME).eq(indexName)));
@@ -159,8 +183,10 @@ class DeployedIndexesStatements {
   /**
    * @param tableName the table.
    * @param indexName the index.
-   * @param errorMessage the failure message.
-   * @return UPDATE flipping status to FAILED and setting errorMessage.
+   * @param errorMessage the failure message (replaces any prior value).
+   * @return UPDATE flipping status to FAILED and setting errorMessage. Does
+   *     not touch attemptsCount — that was already bumped by the matching
+   *     {@link #markStarted}.
    */
   UpdateStatement markFailed(String tableName, String indexName, String errorMessage) {
     return update(tableRef(TABLE))
@@ -169,29 +195,6 @@ class DeployedIndexesStatements {
         .where(and(
             field(COL_TABLE_NAME).eq(tableName),
             field(COL_INDEX_NAME).eq(indexName)));
-  }
-
-
-  /**
-   * @param tableName the table.
-   * @param indexName the index.
-   * @return UPDATE bumping attempts count to 1 (simplified — the DSL doesn't
-   *     support field + 1; the adopter manages attempts counts).
-   */
-  UpdateStatement bumpAttemptsCount(String tableName, String indexName) {
-    return update(tableRef(TABLE))
-        .set(literal(1).as(COL_ATTEMPTS_COUNT))
-        .where(and(
-            field(COL_TABLE_NAME).eq(tableName),
-            field(COL_INDEX_NAME).eq(indexName)));
-  }
-
-
-  /** @return UPDATE flipping every IN_PROGRESS row back to PENDING. */
-  UpdateStatement resetInProgress() {
-    return update(tableRef(TABLE))
-        .set(literal(DeployedIndexStatus.PENDING.name()).as(COL_STATUS))
-        .where(field(COL_STATUS).eq(DeployedIndexStatus.IN_PROGRESS.name()));
   }
 
 

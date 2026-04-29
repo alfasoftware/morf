@@ -91,61 +91,61 @@ public class TestDeployedIndexesStatements {
 
   // ---- Status update statements ------------------------------------------
 
-  /** markStarted sets status=IN_PROGRESS and startedTime, filters on (tableName, indexName). */
+  /** markStarted sets status=IN_PROGRESS, startedTime, and attemptsCount; filters on (tableName, indexName). */
   @Test
   public void testMarkStarted() {
-    // when
-    UpdateStatement stmt = statements.markStarted("Product", "Idx1", 12345L);
+    // when -- attempts=3 means this is the 3rd attempt (build task computed prior+1)
+    UpdateStatement stmt = statements.markStarted("Product", "Idx1", 12345L, 3);
 
-    // then -- SET status=IN_PROGRESS, startedTime=12345
+    // then -- SET status=IN_PROGRESS, startedTime=12345, attemptsCount=3
     assertEquals(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME,
         stmt.getTable().getName());
-    assertEquals(List.of("status", "startedTime"), aliases(stmt.getFields()));
-    assertEquals(List.of(DeployedIndexStatus.IN_PROGRESS.name(), "12345"), literalValues(stmt.getFields()));
+    assertEquals(List.of("status", "startedTime", "attemptsCount"), aliases(stmt.getFields()));
+    assertEquals(List.of(DeployedIndexStatus.IN_PROGRESS.name(), "12345", "3"), literalValues(stmt.getFields()));
     assertWhereOnTableAndIndex(stmt.getWhereCriterion(), "Product", "Idx1");
   }
 
 
-  /** markCompleted sets status=COMPLETED and completedTime, filters on (tableName, indexName). */
+  /** markCompleted sets status=COMPLETED, completedTime, and clears attemptsCount + errorMessage. */
   @Test
   public void testMarkCompleted() {
     // when
     UpdateStatement stmt = statements.markCompleted("Product", "Idx1", 12345L);
 
-    // then
-    assertEquals(List.of("status", "completedTime"), aliases(stmt.getFields()));
-    assertEquals(List.of(DeployedIndexStatus.COMPLETED.name(), "12345"), literalValues(stmt.getFields()));
+    // then -- SET status, completedTime, AND reset attemptsCount=0, errorMessage=NULL
+    assertEquals(List.of("status", "completedTime", "attemptsCount", "errorMessage"), aliases(stmt.getFields()));
+    // attemptsCount and errorMessage are reset; the FieldLiteral mapping for nullLiteral has no String value
+    List<String> values = literalValues(stmt.getFields());
+    assertEquals(DeployedIndexStatus.COMPLETED.name(), values.get(0));
+    assertEquals("12345", values.get(1));
+    assertEquals("0", values.get(2));
+    // values[3] is the null literal — no string representation, but it's a FieldLiteral
     assertWhereOnTableAndIndex(stmt.getWhereCriterion(), "Product", "Idx1");
   }
 
 
-  /** markFailed sets status=FAILED and errorMessage, filters on (tableName, indexName). */
+  /** markFailed sets status=FAILED and errorMessage; does not touch attemptsCount. */
   @Test
   public void testMarkFailed() {
     // when
     UpdateStatement stmt = statements.markFailed("Product", "Idx1", "boom");
 
-    // then
+    // then -- only status + errorMessage; attemptsCount was bumped at markStarted
     assertEquals(List.of("status", "errorMessage"), aliases(stmt.getFields()));
     assertEquals(List.of(DeployedIndexStatus.FAILED.name(), "boom"), literalValues(stmt.getFields()));
     assertWhereOnTableAndIndex(stmt.getWhereCriterion(), "Product", "Idx1");
   }
 
 
-  /** resetInProgress sets status=PENDING, filters on status=IN_PROGRESS. */
+  /** selectByTableAndIndex projects all columns and filters on (tableName, indexName). */
   @Test
-  public void testResetInProgress() {
+  public void testSelectByTableAndIndex() {
     // when
-    UpdateStatement stmt = statements.resetInProgress();
+    SelectStatement stmt = statements.selectByTableAndIndex("Product", "Idx1");
 
-    // then -- SET status=PENDING
-    assertEquals(List.of("status"), aliases(stmt.getFields()));
-    assertEquals(List.of(DeployedIndexStatus.PENDING.name()), literalValues(stmt.getFields()));
-    // and -- WHERE status=IN_PROGRESS
-    Criterion where = stmt.getWhereCriterion();
-    assertEquals(Operator.EQ, where.getOperator());
-    assertEquals("status", ((FieldReference) where.getField()).getName());
-    assertEquals(DeployedIndexStatus.IN_PROGRESS.name(), where.getValue());
+    // then -- projects all 11 columns (matching selectAll), no order-by needed for unique key
+    assertEquals(11, stmt.getFields().size());
+    assertWhereOnTableAndIndex(stmt.getWhereCriterion(), "Product", "Idx1");
   }
 
 

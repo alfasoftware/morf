@@ -18,6 +18,7 @@ package org.alfasoftware.morf.upgrade.deployedindexes;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.alfasoftware.morf.jdbc.SqlDialect;
@@ -41,7 +42,8 @@ import org.apache.commons.logging.LogFactory;
  * split served no behavioural purpose (every method was a 1-line wrapper)
  * and the class is package-private, so there's no adopter-facing contract
  * to model. Contributors inside this package depend on it directly;
- * {@link DeployedIndexTrackerImpl} delegates here, and
+ * {@link DeferredIndexServiceImpl} fans these reads/writes out to adopter
+ * threads via {@link DeferredIndexBuildTaskImpl}, and
  * {@link DeployedIndexesModelEnricherImpl} injects it for the upgrade-start
  * {@link #findAll()} read.</p>
  *
@@ -84,6 +86,18 @@ class DeployedIndexesDAO {
   }
 
 
+  /**
+   * @param tableName the table.
+   * @param indexName the index.
+   * @return the single row matching ({@code tableName}, {@code indexName}),
+   *     or empty if none.
+   */
+  Optional<DeployedIndex> findByTableAndIndex(String tableName, String indexName) {
+    List<DeployedIndex> rows = executeQuery(statements.selectByTableAndIndex(tableName, indexName));
+    return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
+  }
+
+
   /** @return counts of every persisted row grouped by status. */
   Map<DeployedIndexStatus, Integer> getProgressCounts() {
     Map<DeployedIndexStatus, Integer> result = new EnumMap<>(DeployedIndexStatus.class);
@@ -108,16 +122,26 @@ class DeployedIndexesDAO {
 
 
   /**
+   * Marks the row IN_PROGRESS, records {@code startedTime}, and writes the
+   * supplied {@code newAttemptsCount}. The build task computes
+   * {@code newAttemptsCount} as {@code currentAttemptsCount + 1} from the row
+   * it just re-fetched.
+   *
    * @param tableName the table.
    * @param indexName the index.
-   * @param startedTime epoch ms.
+   * @param startedTime epoch ms when this attempt began.
+   * @param newAttemptsCount the value to write into {@code attemptsCount}.
    */
-  void markStarted(String tableName, String indexName, long startedTime) {
-    executeUpdate(statements.markStarted(tableName, indexName, startedTime));
+  void markStarted(String tableName, String indexName, long startedTime, int newAttemptsCount) {
+    executeUpdate(statements.markStarted(tableName, indexName, startedTime, newAttemptsCount));
   }
 
 
   /**
+   * Marks the row COMPLETED, records {@code completedTime}, and clears the
+   * recoverable-failure tracking columns ({@code attemptsCount=0},
+   * {@code errorMessage=NULL}).
+   *
    * @param tableName the table.
    * @param indexName the index.
    * @param completedTime epoch ms.
@@ -128,20 +152,16 @@ class DeployedIndexesDAO {
 
 
   /**
+   * Marks the row FAILED with {@code errorMessage}. Does not touch
+   * {@code attemptsCount} — that was already bumped by the matching
+   * {@link #markStarted}.
+   *
    * @param tableName the table.
    * @param indexName the index.
    * @param errorMessage the failure message.
    */
   void markFailed(String tableName, String indexName, String errorMessage) {
     executeUpdate(statements.markFailed(tableName, indexName, errorMessage));
-    executeUpdate(statements.bumpAttemptsCount(tableName, indexName));
-  }
-
-
-  /** Flips every IN_PROGRESS row back to PENDING. */
-  void resetInProgress() {
-    executeUpdate(statements.resetInProgress());
-    log.debug("Reset all IN_PROGRESS entries in DeployedIndexes to PENDING");
   }
 
 

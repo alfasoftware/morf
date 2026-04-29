@@ -60,7 +60,7 @@ import org.apache.commons.logging.LogFactory;
  * </ol>
  *
  * <p>Reads persisted rows via {@link DeployedIndexesDAO#findAll()} — a
- * package-private concrete class that also backs {@link DeployedIndexTrackerImpl}.</p>
+ * package-private concrete class that also backs {@link DeferredIndexServiceImpl}.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */

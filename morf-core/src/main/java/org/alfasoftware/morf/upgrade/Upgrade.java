@@ -116,22 +116,21 @@ public class Upgrade {
    *
    * <p><b>This static context does not support Graph Based Upgrade.</b></p>
    *
-   * <p>Returns the computed {@link UpgradePath}, primarily so callers can
-   * access {@link UpgradePath#getDeferredIndexStatements()} — the list of
-   * {@link org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexJob}
-   * entries the application must execute asynchronously after the upgrade
-   * completes. Applications use
-   * {@link org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexTracker}
-   * to report markStarted / markCompleted / markFailed per job.</p>
+   * <p>Returns the computed {@link UpgradePath}. After the upgrade completes,
+   * the application drives any deferred-index reconciliation via
+   * {@link org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexService}.
+   * Each call to
+   * {@link org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexService#getBuildTasks()}
+   * returns one {@link org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexBuildTask}
+   * per non-{@code COMPLETED} tracking row; the adopter runs them serially or
+   * via its own executor.</p>
    *
    * @param targetSchema The target database schema.
    * @param upgradeSteps All upgrade steps which should be deemed to have already run.
    * @param connectionResources Connection details for the database.
    * @param upgradeConfigAndContext Config and context object.
    * @param viewDeploymentValidator External view deployment validator.
-   * @return the upgrade path that was executed; inspect
-   *     {@link UpgradePath#getDeferredIndexStatements()} for deferred-index
-   *     work the application must drive.
+   * @return the upgrade path that was executed.
    */
   public static UpgradePath performUpgrade(Schema targetSchema, Collection<Class<? extends UpgradeStep>> upgradeSteps, ConnectionResources connectionResources, UpgradeConfigAndContext upgradeConfigAndContext, ViewDeploymentValidator viewDeploymentValidator) {
     SqlScriptExecutorProvider sqlScriptExecutorProvider = new SqlScriptExecutorProvider(connectionResources);
