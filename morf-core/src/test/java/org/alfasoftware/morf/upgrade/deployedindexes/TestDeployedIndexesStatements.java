@@ -17,6 +17,7 @@ package org.alfasoftware.morf.upgrade.deployedindexes;
 
 import static org.alfasoftware.morf.metadata.SchemaUtils.index;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -32,6 +33,7 @@ import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.FieldLiteral;
 import org.alfasoftware.morf.sql.element.FieldReference;
+import org.alfasoftware.morf.sql.element.NullFieldLiteral;
 import org.alfasoftware.morf.sql.element.Operator;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 import org.junit.Test;
@@ -91,7 +93,7 @@ public class TestDeployedIndexesStatements {
 
   // ---- Status update statements ------------------------------------------
 
-  /** markStarted sets status=IN_PROGRESS, startedTime, and attemptsCount; filters on (tableName, indexName). */
+  /** markStarted sets status=IN_PROGRESS, startedTime, and attemptsCount; explicitly does NOT touch errorMessage. */
   @Test
   public void testMarkStarted() {
     // when -- attempts=3 means this is the 3rd attempt (build task computed prior+1)
@@ -102,6 +104,9 @@ public class TestDeployedIndexesStatements {
         stmt.getTable().getName());
     assertEquals(List.of("status", "startedTime", "attemptsCount"), aliases(stmt.getFields()));
     assertEquals(List.of(DeployedIndexStatus.IN_PROGRESS.name(), "12345", "3"), literalValues(stmt.getFields()));
+    // and -- errorMessage is intentionally absent so prior failure detail stays visible until success clears it
+    assertFalse("markStarted must not touch errorMessage",
+        aliases(stmt.getFields()).contains("errorMessage"));
     assertWhereOnTableAndIndex(stmt.getWhereCriterion(), "Product", "Idx1");
   }
 
@@ -114,12 +119,14 @@ public class TestDeployedIndexesStatements {
 
     // then -- SET status, completedTime, AND reset attemptsCount=0, errorMessage=NULL
     assertEquals(List.of("status", "completedTime", "attemptsCount", "errorMessage"), aliases(stmt.getFields()));
-    // attemptsCount and errorMessage are reset; the FieldLiteral mapping for nullLiteral has no String value
     List<String> values = literalValues(stmt.getFields());
     assertEquals(DeployedIndexStatus.COMPLETED.name(), values.get(0));
     assertEquals("12345", values.get(1));
     assertEquals("0", values.get(2));
-    // values[3] is the null literal — no string representation, but it's a FieldLiteral
+    // and -- errorMessage is set to a SQL NULL literal; verify the field type, not just the value
+    assertTrue("errorMessage column must be set to a NullFieldLiteral, not an empty string literal: "
+            + stmt.getFields().get(3).getClass().getSimpleName(),
+        stmt.getFields().get(3) instanceof NullFieldLiteral);
     assertWhereOnTableAndIndex(stmt.getWhereCriterion(), "Product", "Idx1");
   }
 

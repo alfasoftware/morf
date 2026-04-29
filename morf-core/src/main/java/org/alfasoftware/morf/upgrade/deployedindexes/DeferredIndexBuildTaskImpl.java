@@ -174,9 +174,11 @@ class DeferredIndexBuildTaskImpl implements DeferredIndexBuildTask {
     Index index = row.toIndex();
 
     Optional<String> lockTimeoutSql = dialect.setLockTimeoutSql(LOCK_TIMEOUT);
+    boolean lockTimeoutSet = false;
     if (lockTimeoutSql.isPresent()) {
       try {
         executeOne(connection, lockTimeoutSql.get());
+        lockTimeoutSet = true;
       } catch (SQLException e) {
         // Fail-fast safety net is best-effort; proceed with dialect default.
         log.debug("Could not set lock_timeout for [" + tableName + "." + indexName + "]: " + e.getMessage());
@@ -184,19 +186,35 @@ class DeferredIndexBuildTaskImpl implements DeferredIndexBuildTask {
     }
 
     try {
-      executeAll(connection, dialect.indexDropStatements(table, index));
-    } catch (SQLException e) {
-      log.warn("DROP INDEX failed for invalid leftover [" + tableName + "." + indexName + "]: " + e.getMessage());
-      dao.markFailed(tableName, indexName, "could not drop invalid leftover: " + e.getMessage());
-      return;
-    }
+      try {
+        executeAll(connection, dialect.indexDropStatements(table, index));
+      } catch (SQLException e) {
+        log.warn("DROP INDEX failed for invalid leftover [" + tableName + "." + indexName + "]: " + e.getMessage());
+        dao.markFailed(tableName, indexName, "could not drop invalid leftover: " + e.getMessage());
+        return;
+      }
 
-    try {
-      executeAll(connection, dialect.deferredIndexDeploymentStatements(table, index));
-      dao.markCompleted(tableName, indexName, System.currentTimeMillis());
-    } catch (SQLException e) {
-      log.warn("CREATE INDEX failed for [" + tableName + "." + indexName + "]: " + e.getMessage());
-      dao.markFailed(tableName, indexName, e.getMessage());
+      try {
+        executeAll(connection, dialect.deferredIndexDeploymentStatements(table, index));
+        dao.markCompleted(tableName, indexName, System.currentTimeMillis());
+      } catch (SQLException e) {
+        log.warn("CREATE INDEX failed for [" + tableName + "." + indexName + "]: " + e.getMessage());
+        dao.markFailed(tableName, indexName, e.getMessage());
+      }
+    } finally {
+      // Clear the session-scoped lock_timeout so it doesn't bleed back into pooled
+      // connections — the next caller borrowing this connection would otherwise
+      // inherit the 10s timeout we set above.
+      if (lockTimeoutSet) {
+        dialect.resetLockTimeoutSql().ifPresent(reset -> {
+          try {
+            executeOne(connection, reset);
+          } catch (SQLException e) {
+            log.warn("Could not reset lock_timeout on connection for [" + tableName + "." + indexName
+                + "]: " + e.getMessage() + " — connection will be discarded by the pool");
+          }
+        });
+      }
     }
   }
 

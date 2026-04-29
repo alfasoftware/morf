@@ -23,9 +23,11 @@ import org.alfasoftware.morf.metadata.Index;
 import org.alfasoftware.morf.metadata.SchemaUtils.IndexBuilder;
 
 /**
- * Represents a row in the DeployedIndexes table. Under the slim invariant
- * every row is a deferred index — the {@code indexDeferred} column was
- * dropped in SP5 as redundant.
+ * Represents a row in the {@code DeployedIndexes} tracking table. Every row
+ * is a deferred index — non-deferred indexes are not tracked. The lifecycle
+ * is {@link DeployedIndexStatus#PENDING} → {@code IN_PROGRESS} →
+ * {@code COMPLETED} or {@code FAILED}, with {@code FAILED} non-terminal
+ * (re-tried on the next build pass).
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */

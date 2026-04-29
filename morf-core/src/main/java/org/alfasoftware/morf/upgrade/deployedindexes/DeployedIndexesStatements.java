@@ -204,7 +204,7 @@ class DeployedIndexesStatements {
 
   /**
    * @param tableName the table.
-   * @param index the index (deferred under the slim invariant).
+   * @param index the index — must be effective-deferred.
    * @return INSERT adding a new tracking row with status PENDING.
    */
   InsertStatement trackIndex(String tableName, Index index) {

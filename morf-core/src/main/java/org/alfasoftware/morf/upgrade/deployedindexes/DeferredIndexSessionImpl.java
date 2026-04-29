@@ -67,7 +67,7 @@ public class DeferredIndexSessionImpl implements DeferredIndexSession {
       log.debug("Priming (persisted row): table=" + entry.getTableName()
           + ", index=" + entry.getIndexName() + ", status=" + entry.getStatus());
     }
-    // Slim invariant: every persisted row is a deferred index.
+    // Every persisted row is a deferred index.
     IndexBuilder builder = index(entry.getIndexName()).columns(entry.getIndexColumns());
     if (entry.isIndexUnique()) {
       builder = builder.unique();

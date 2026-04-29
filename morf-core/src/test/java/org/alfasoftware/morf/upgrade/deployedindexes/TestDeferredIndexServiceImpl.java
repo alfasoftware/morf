@@ -55,7 +55,7 @@ public class TestDeferredIndexServiceImpl {
 
   /** getBuildTasks returns one task per non-terminal row, preserving table/index identity. */
   @Test
-  public void testGetBuildTasks_OneTaskPerNonTerminalRow() {
+  public void testGetBuildTasksOneTaskPerNonTerminalRow() {
     when(dao.findNonTerminal()).thenReturn(List.of(
         row("Product", "Idx_A", DeployedIndexStatus.PENDING),
         row("Customer", "Idx_B", DeployedIndexStatus.IN_PROGRESS),
@@ -75,7 +75,7 @@ public class TestDeferredIndexServiceImpl {
 
   /** getBuildTasks returns empty when the DAO has no non-terminal rows. */
   @Test
-  public void testGetBuildTasks_EmptyWhenAllCompleted() {
+  public void testGetBuildTasksEmptyWhenAllCompleted() {
     when(dao.findNonTerminal()).thenReturn(List.of());
 
     assertTrue(service.getBuildTasks().isEmpty());
@@ -84,7 +84,7 @@ public class TestDeferredIndexServiceImpl {
 
   /** Each task is a {@link DeferredIndexBuildTaskImpl} (so adopters get the package-private behaviour). */
   @Test
-  public void testGetBuildTasks_ReturnsBuildTaskImpl() {
+  public void testGetBuildTasksReturnsBuildTaskImpl() {
     when(dao.findNonTerminal()).thenReturn(List.of(row("Product", "Idx", DeployedIndexStatus.PENDING)));
 
     DeferredIndexBuildTask t = service.getBuildTasks().get(0);
@@ -96,7 +96,7 @@ public class TestDeferredIndexServiceImpl {
 
   /** Returned list is unmodifiable so callers can't mutate it after dispatch. */
   @Test
-  public void testGetBuildTasks_ReturnsUnmodifiableList() {
+  public void testGetBuildTasksReturnsUnmodifiableList() {
     when(dao.findNonTerminal()).thenReturn(List.of(row("Product", "Idx", DeployedIndexStatus.PENDING)));
 
     List<DeferredIndexBuildTask> tasks = service.getBuildTasks();
@@ -107,7 +107,7 @@ public class TestDeferredIndexServiceImpl {
 
   /** getProgress delegates the count map straight from the DAO (same instance, no copy). */
   @Test
-  public void testGetProgress_DelegatesToDao() {
+  public void testGetProgressDelegatesToDao() {
     Map<DeployedIndexStatus, Integer> counts = new EnumMap<>(DeployedIndexStatus.class);
     counts.put(DeployedIndexStatus.PENDING, 2);
     counts.put(DeployedIndexStatus.IN_PROGRESS, 1);

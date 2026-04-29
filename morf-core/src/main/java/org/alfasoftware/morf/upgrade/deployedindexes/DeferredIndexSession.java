@@ -28,7 +28,7 @@ import org.alfasoftware.morf.sql.UpdateStatement;
  * DML statements the visitor should emit alongside its physical DDL to
  * keep the {@code DeployedIndexes} tracking table in sync.
  *
- * <p><b>Slim invariant</b>: only deferred indexes are tracked — callers
+ * <p><b>Tracking invariant</b>: only deferred indexes are tracked — callers
  * (the visitor) gate {@link #trackIndex(String, Index)} on the index's
  * effective {@code isDeferred()} after dialect-support normalization.</p>
  *
@@ -56,8 +56,8 @@ public interface DeferredIndexSession {
 
 
   /**
-   * Records a deferred index and returns the INSERT DML. Under the slim
-   * invariant callers only invoke this for effective-deferred indexes.
+   * Records a deferred index and returns the INSERT DML. Callers only
+   * invoke this for effective-deferred indexes.
    *
    * @param tableName the table.
    * @param index the index (must be {@code isDeferred()=true}).

@@ -4105,6 +4105,26 @@ public abstract class SqlDialect {
 
 
   /**
+   * Returns a session-scoped statement that restores the lock-timeout default after a
+   * matching {@link #setLockTimeoutSql} call, or {@link Optional#empty()} if the dialect
+   * doesn't need a reset (default empty matches default empty {@code setLockTimeoutSql}).
+   *
+   * <p>The deferred-index reconciliation path uses this in a {@code finally} block after
+   * issuing {@code DROP INDEX} so the session-scoped {@code SET lock_timeout} doesn't
+   * bleed back into pooled connections. Without this reset, the next caller borrowing the
+   * connection would inherit the 10-second timeout — silent breakage of unrelated DDL.</p>
+   *
+   * <p>Default returns {@link Optional#empty()}. PostgreSQL overrides to emit
+   * {@code RESET lock_timeout}.</p>
+   *
+   * @return The dialect-specific SQL to clear the timeout, or {@link Optional#empty()}.
+   */
+  public Optional<String> resetLockTimeoutSql() {
+    return Optional.empty();
+  }
+
+
+  /**
    * Returns whether the named physical index is valid (built and usable).
    *
    * <p>Used by the deferred-index reconciliation path to decide whether a tracking row

@@ -915,17 +915,38 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#resetLockTimeoutSql()
+   */
+  @Override
+  public Optional<String> resetLockTimeoutSql() {
+    return Optional.of("RESET lock_timeout");
+  }
+
+
+  /**
    * Reads {@code pg_index.indisvalid} for the given index. The catalog is world-readable;
-   * no special grants are required.
+   * no special grants are required. When the dialect is configured with a schema name
+   * the query is restricted via {@code pg_namespace} so that an identical index name in
+   * another schema (multi-tenant or leftover dev schema) is not matched accidentally.
    *
    * @see org.alfasoftware.morf.jdbc.SqlDialect#isIndexValid(java.sql.Connection, String, String)
    */
   @Override
   public Optional<Boolean> isIndexValid(Connection connection, String tableName, String indexName) {
-    String sql = "SELECT i.indisvalid FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid"
-        + " WHERE lower(c.relname) = lower(?)";
-    try (PreparedStatement ps = connection.prepareStatement(sql)) {
-      ps.setString(1, indexName);
+    String schemaName = getSchemaName();
+    boolean filterBySchema = StringUtils.isNotBlank(schemaName);
+    StringBuilder sql = new StringBuilder("SELECT i.indisvalid FROM pg_index i")
+        .append(" JOIN pg_class c ON c.oid = i.indexrelid");
+    if (filterBySchema) {
+      sql.append(" JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = ?");
+    }
+    sql.append(" WHERE lower(c.relname) = lower(?)");
+    try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
+      int param = 1;
+      if (filterBySchema) {
+        ps.setString(param++, schemaName);
+      }
+      ps.setString(param, indexName);
       try (ResultSet rs = ps.executeQuery()) {
         if (rs.next()) {
           return Optional.of(rs.getBoolean(1));
