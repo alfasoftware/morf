@@ -15,6 +15,8 @@
 
 package org.alfasoftware.morf.upgrade.deployedindexes;
 
+import java.util.Optional;
+
 /**
  * One unit of background-build work for a single deferred index. Each task is
  * self-contained: when {@link #run()} executes, it opens its own JDBC
@@ -56,4 +58,35 @@ public interface DeferredIndexBuildTask extends Runnable {
 
   /** @return the deferred index name. */
   String getIndexName();
+
+
+  /**
+   * @return the row's status as observed when {@link DeferredIndexService#getBuildTasks()}
+   *     captured the snapshot. Non-{@code COMPLETED} by construction (the service only
+   *     hands out tasks for non-terminal rows). Snapshot-only -- live state may have
+   *     advanced by the time {@link #run()} executes; the task itself re-fetches the
+   *     row before deciding what to do.
+   */
+  DeployedIndexStatus getStatus();
+
+
+  /**
+   * @return the row's {@code attemptsCount} as observed at snapshot time. Adopters can
+   *     filter this list to skip rows that have already retried too many times -- e.g.
+   *     {@code service.getBuildTasks().stream().filter(t -> t.getAttemptsCount() < 5)
+   *     .forEach(Runnable::run)}.
+   *
+   *     <p>Snapshot-only. The next {@link #run()} that executes the {@code markStarted}
+   *     path will increment the live value -- so the snapshot represents prior attempts,
+   *     not including the about-to-start one.</p>
+   */
+  int getAttemptsCount();
+
+
+  /**
+   * @return the {@code errorMessage} from the most recent failure (if any), as observed
+   *     at snapshot time. {@code Optional.empty()} when the row has never failed or when
+   *     the most recent {@code markCompleted} cleared it.
+   */
+  Optional<String> getErrorMessage();
 }

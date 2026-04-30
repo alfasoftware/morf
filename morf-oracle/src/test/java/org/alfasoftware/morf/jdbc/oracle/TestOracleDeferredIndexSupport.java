@@ -133,4 +133,11 @@ public class TestOracleDeferredIndexSupport {
   public void testResetLockTimeoutSqlReturnsEmpty() {
     assertEquals(Optional.empty(), dialect.resetLockTimeoutSql());
   }
+
+
+  /** Oracle does not require autocommit for the build path -- DDL is implicitly committed. */
+  @Test
+  public void testDeferredIndexBuildDoesNotRequireAutoCommit() {
+    assertEquals(false, dialect.deferredIndexBuildRequiresAutoCommit());
+  }
 }

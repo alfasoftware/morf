@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -90,7 +91,7 @@ public class TestDeferredIndexBuildTaskImpl {
     when(dialect.setLockTimeoutSql(any(Duration.class))).thenReturn(Optional.empty());
     when(dialect.resetLockTimeoutSql()).thenReturn(Optional.empty());
 
-    task = new DeferredIndexBuildTaskImpl(TABLE, INDEX, connectionResources, dao);
+    task = new DeferredIndexBuildTaskImpl(rowWith(DeployedIndexStatus.PENDING, 0), connectionResources, dao);
   }
 
 
@@ -323,9 +324,15 @@ public class TestDeferredIndexBuildTaskImpl {
 
   // ---- Connection lifecycle ----------------------------------------------
 
-  /** AutoCommit is set to true for the work and restored on close (PG CONCURRENTLY constraint). */
+  /**
+   * When the dialect declares it requires autocommit (PG, because
+   * {@code CREATE INDEX CONCURRENTLY} can't run in a transaction block),
+   * the build task flips autocommit on for the work and restores the prior
+   * value on close.
+   */
   @Test
-  public void testAutoCommitSetTrueAndRestored() throws SQLException {
+  public void testAutoCommitSetTrueAndRestoredWhenDialectRequires() throws SQLException {
+    when(dialect.deferredIndexBuildRequiresAutoCommit()).thenReturn(true);
     when(dao.findByTableAndIndex(TABLE, INDEX)).thenReturn(Optional.of(rowWith(DeployedIndexStatus.PENDING, 0)));
     when(dialect.isIndexValid(connection, TABLE, INDEX)).thenReturn(Optional.of(Boolean.TRUE));
     when(connection.getAutoCommit()).thenReturn(false);
@@ -336,6 +343,24 @@ public class TestDeferredIndexBuildTaskImpl {
     order.verify(connection).getAutoCommit();
     order.verify(connection).setAutoCommit(true);
     order.verify(connection).setAutoCommit(false);  // restored
+  }
+
+
+  /**
+   * When the dialect does NOT require autocommit (Oracle, H2 — DDL is
+   * implicitly committed regardless), the build task leaves the connection's
+   * autocommit state alone — neither read nor written.
+   */
+  @Test
+  public void testAutoCommitNotTouchedWhenDialectDoesNotRequire() throws SQLException {
+    when(dialect.deferredIndexBuildRequiresAutoCommit()).thenReturn(false);
+    when(dao.findByTableAndIndex(TABLE, INDEX)).thenReturn(Optional.of(rowWith(DeployedIndexStatus.PENDING, 0)));
+    when(dialect.isIndexValid(connection, TABLE, INDEX)).thenReturn(Optional.of(Boolean.TRUE));
+
+    task.run();
+
+    verify(connection, never()).getAutoCommit();
+    verify(connection, never()).setAutoCommit(anyBoolean());
   }
 
 
@@ -376,6 +401,30 @@ public class TestDeferredIndexBuildTaskImpl {
   public void testIdentityGetters() {
     assertEquals(TABLE, task.getTableName());
     assertEquals(INDEX, task.getIndexName());
+  }
+
+
+  /** Snapshot getters expose status, attemptsCount, and errorMessage from the row captured at construction. */
+  @Test
+  public void testSnapshotGettersExposeRowStateAtConstructionTime() {
+    DeployedIndex row = rowWith(DeployedIndexStatus.FAILED, 3);
+    row.setErrorMessage("disk full");
+    DeferredIndexBuildTaskImpl t = new DeferredIndexBuildTaskImpl(row, connectionResources, dao);
+
+    assertEquals(DeployedIndexStatus.FAILED, t.getStatus());
+    assertEquals(3, t.getAttemptsCount());
+    assertEquals(Optional.of("disk full"), t.getErrorMessage());
+  }
+
+
+  /** When the row has never failed, errorMessage is empty (not "" or null-leak). */
+  @Test
+  public void testSnapshotGettersErrorMessageEmptyWhenNeverFailed() {
+    DeployedIndex row = rowWith(DeployedIndexStatus.PENDING, 0);
+    row.setErrorMessage(null);
+    DeferredIndexBuildTaskImpl t = new DeferredIndexBuildTaskImpl(row, connectionResources, dao);
+
+    assertEquals(Optional.empty(), t.getErrorMessage());
   }
 
 

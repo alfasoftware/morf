@@ -4083,6 +4083,23 @@ public abstract class SqlDialect {
 
 
   /**
+   * Returns whether the deferred-index build path on this dialect requires the JDBC
+   * connection to be in autocommit mode for the duration of the
+   * {@link #deferredIndexDeploymentStatements} (and any matching DROP) execution.
+   *
+   * <p>The motivating case is PostgreSQL {@code CREATE INDEX CONCURRENTLY}, which refuses
+   * to run inside a transaction block. Other dialects treat DDL as implicitly committed
+   * regardless of autocommit setting, so they don't need the build task to disturb the
+   * borrowed connection's autocommit state. Default {@code false}.</p>
+   *
+   * @return {@code true} if the build task must flip autocommit on for this dialect.
+   */
+  public boolean deferredIndexBuildRequiresAutoCommit() {
+    return false;
+  }
+
+
+  /**
    * Returns a session-scoped statement that bounds how long a subsequent DDL/DML will
    * wait for a lock on this dialect, or {@link Optional#empty()} if the dialect doesn't
    * benefit from the gate (e.g. its default is already fail-fast).

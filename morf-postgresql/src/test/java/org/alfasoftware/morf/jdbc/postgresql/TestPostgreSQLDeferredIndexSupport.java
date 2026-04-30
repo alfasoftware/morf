@@ -202,4 +202,11 @@ public class TestPostgreSQLDeferredIndexSupport {
     Optional<String> sql = new PostgreSQLDialect("schemaA").resetLockTimeoutSql();
     assertEquals(Optional.of("RESET lock_timeout"), sql);
   }
+
+
+  /** PostgreSQL requires autocommit for the build path because {@code CREATE INDEX CONCURRENTLY} can't run inside a transaction block. */
+  @Test
+  public void testDeferredIndexBuildRequiresAutoCommit() {
+    assertTrue(new PostgreSQLDialect("schemaA").deferredIndexBuildRequiresAutoCommit());
+  }
 }

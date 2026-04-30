@@ -81,18 +81,25 @@ class DeferredIndexBuildTaskImpl implements DeferredIndexBuildTask {
    */
   static final Duration LOCK_TIMEOUT = Duration.ofSeconds(10);
 
+  private final DeployedIndex snapshot;
   private final String tableName;
   private final String indexName;
   private final ConnectionResources connectionResources;
   private final DeployedIndexesDAO dao;
 
 
-  DeferredIndexBuildTaskImpl(String tableName,
-                             String indexName,
+  /**
+   * @param snapshot the tracking row as observed when the service captured the
+   *     task list; exposed to adopters via the snapshot getters. The task does
+   *     <i>not</i> use this for its own decisions -- {@link #run()} re-fetches
+   *     the row before acting.
+   */
+  DeferredIndexBuildTaskImpl(DeployedIndex snapshot,
                              ConnectionResources connectionResources,
                              DeployedIndexesDAO dao) {
-    this.tableName = tableName;
-    this.indexName = indexName;
+    this.snapshot = snapshot;
+    this.tableName = snapshot.getTableName();
+    this.indexName = snapshot.getIndexName();
     this.connectionResources = connectionResources;
     this.dao = dao;
   }
@@ -111,18 +118,40 @@ class DeferredIndexBuildTaskImpl implements DeferredIndexBuildTask {
 
 
   @Override
+  public DeployedIndexStatus getStatus() {
+    return snapshot.getStatus();
+  }
+
+
+  @Override
+  public int getAttemptsCount() {
+    return snapshot.getAttemptsCount();
+  }
+
+
+  @Override
+  public Optional<String> getErrorMessage() {
+    return Optional.ofNullable(snapshot.getErrorMessage());
+  }
+
+
+  @Override
   public void run() {
     SqlDialect dialect = connectionResources.sqlDialect();
     DataSource dataSource = connectionResources.getDataSource();
 
     try (Connection connection = dataSource.getConnection()) {
-      // PG CREATE INDEX CONCURRENTLY can't run in a transaction block.
-      boolean priorAutoCommit = connection.getAutoCommit();
-      connection.setAutoCommit(true);
-      try {
+      if (dialect.deferredIndexBuildRequiresAutoCommit()) {
+        // PG CREATE INDEX CONCURRENTLY can't run in a transaction block.
+        boolean priorAutoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(true);
+        try {
+          reconcile(connection, dialect);
+        } finally {
+          connection.setAutoCommit(priorAutoCommit);
+        }
+      } else {
         reconcile(connection, dialect);
-      } finally {
-        connection.setAutoCommit(priorAutoCommit);
       }
     } catch (SQLException e) {
       throw new RuntimeSqlException(

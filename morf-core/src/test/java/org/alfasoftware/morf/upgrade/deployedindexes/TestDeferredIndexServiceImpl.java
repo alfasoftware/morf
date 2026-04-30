@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.alfasoftware.morf.jdbc.ConnectionResources;
 import org.junit.Before;
@@ -102,6 +103,32 @@ public class TestDeferredIndexServiceImpl {
     List<DeferredIndexBuildTask> tasks = service.getBuildTasks();
 
     assertThrows(UnsupportedOperationException.class, () -> tasks.add(null));
+  }
+
+
+  /**
+   * Each returned task carries a snapshot of its row's status/attemptsCount/errorMessage
+   * so adopters can implement caps (e.g. skip retrying after N attempts) and surface
+   * per-row diagnostics without an extra DB query.
+   */
+  @Test
+  public void testGetBuildTasksExposesRowSnapshotForAdopterFiltering() {
+    DeployedIndex r1 = row("Product", "Idx_OK", DeployedIndexStatus.PENDING);
+    r1.setAttemptsCount(0);
+    DeployedIndex r2 = row("Product", "Idx_Failing", DeployedIndexStatus.FAILED);
+    r2.setAttemptsCount(7);
+    r2.setErrorMessage("unique constraint violated");
+    when(dao.findNonTerminal()).thenReturn(List.of(r1, r2));
+
+    List<DeferredIndexBuildTask> tasks = service.getBuildTasks();
+
+    assertEquals(DeployedIndexStatus.PENDING, tasks.get(0).getStatus());
+    assertEquals(0, tasks.get(0).getAttemptsCount());
+    assertEquals(Optional.empty(), tasks.get(0).getErrorMessage());
+
+    assertEquals(DeployedIndexStatus.FAILED, tasks.get(1).getStatus());
+    assertEquals(7, tasks.get(1).getAttemptsCount());
+    assertEquals(Optional.of("unique constraint violated"), tasks.get(1).getErrorMessage());
   }
 
 

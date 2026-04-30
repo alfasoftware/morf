@@ -119,4 +119,11 @@ public class TestH2DeferredIndexSupport {
   public void testResetLockTimeoutSqlReturnsEmpty() {
     assertEquals(Optional.empty(), dialect.resetLockTimeoutSql());
   }
+
+
+  /** H2 does not require autocommit for the build path -- atomic CREATE, DDL implicitly committed. */
+  @Test
+  public void testDeferredIndexBuildDoesNotRequireAutoCommit() {
+    assertEquals(false, dialect.deferredIndexBuildRequiresAutoCommit());
+  }
 }

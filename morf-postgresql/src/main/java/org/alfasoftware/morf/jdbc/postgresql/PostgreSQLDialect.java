@@ -906,6 +906,15 @@ class PostgreSQLDialect extends SqlDialect {
 
 
   /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#deferredIndexBuildRequiresAutoCommit()
+   */
+  @Override
+  public boolean deferredIndexBuildRequiresAutoCommit() {
+    return true;
+  }
+
+
+  /**
    * @see org.alfasoftware.morf.jdbc.SqlDialect#setLockTimeoutSql(java.time.Duration)
    */
   @Override
