@@ -76,8 +76,6 @@ import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.FieldReference;
 import org.alfasoftware.morf.sql.element.Function;
-import org.alfasoftware.morf.sql.element.PortableSqlExpression;
-import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
@@ -1595,10 +1593,8 @@ class OracleDialect extends SqlDialect {
    */
   @Override
   protected String updateStatementPreTableDirectives(UpdateStatement updateStatement) {
-    if(updateStatement.getHints().isEmpty()) {
-      return "";
-    }
-    StringBuilder builder = new StringBuilder("/*+");
+    StringBuilder builder = new StringBuilder();
+
     for (Hint hint : updateStatement.getHints()) {
       if (hint instanceof UseParallelDml) {
         builder.append(" ENABLE_PARALLEL_DML PARALLEL");
@@ -1606,8 +1602,17 @@ class OracleDialect extends SqlDialect {
                 .map(d -> "(" + d + ")")
                 .orElse(""));
       }
+      else if ( hint instanceof DialectSpecificHint && ((DialectSpecificHint)hint).isSameDatabaseType(Oracle.IDENTIFIER) ) {
+        builder.append(" ")
+                .append(((DialectSpecificHint)hint).getHintContents());
+      }
     }
-    return builder.append(" */ ").toString();
+
+    if (builder.length() == 0) {
+      return super.updateStatementPreTableDirectives(updateStatement);
+    }
+
+    return "/*+" + builder.append(" */ ");
   }
 
 

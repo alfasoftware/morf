@@ -29,21 +29,8 @@ import org.alfasoftware.morf.metadata.SchemaUtils;
 import org.alfasoftware.morf.metadata.Sequence;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.metadata.View;
-import org.alfasoftware.morf.sql.DeleteStatement;
-import org.alfasoftware.morf.sql.DeleteStatementBuilder;
-import org.alfasoftware.morf.sql.DialectSpecificHint;
-import org.alfasoftware.morf.sql.Hint;
-import org.alfasoftware.morf.sql.MergeMatchClause;
+import org.alfasoftware.morf.sql.*;
 import org.alfasoftware.morf.sql.MergeMatchClause.MatchAction;
-import org.alfasoftware.morf.sql.MergeStatement;
-import org.alfasoftware.morf.sql.OptimiseForRowCount;
-import org.alfasoftware.morf.sql.ParallelQueryHint;
-import org.alfasoftware.morf.sql.PostgreSQLCustomHint;
-import org.alfasoftware.morf.sql.SelectFirstStatement;
-import org.alfasoftware.morf.sql.SelectStatement;
-import org.alfasoftware.morf.sql.SelectStatementBuilder;
-import org.alfasoftware.morf.sql.UseImplicitJoinOrder;
-import org.alfasoftware.morf.sql.UseIndex;
 import org.alfasoftware.morf.sql.element.AliasedField;
 import org.alfasoftware.morf.sql.element.BlobFieldLiteral;
 import org.alfasoftware.morf.sql.element.Cast;
@@ -51,8 +38,6 @@ import org.alfasoftware.morf.sql.element.ConcatenatedField;
 import org.alfasoftware.morf.sql.element.Criterion;
 import org.alfasoftware.morf.sql.element.Function;
 import org.alfasoftware.morf.sql.element.FunctionType;
-import org.alfasoftware.morf.sql.element.PortableSqlExpression;
-import org.alfasoftware.morf.sql.element.PortableSqlFunction;
 import org.alfasoftware.morf.sql.element.SequenceReference;
 import org.alfasoftware.morf.sql.element.SqlParameter;
 import org.alfasoftware.morf.sql.element.TableReference;
@@ -773,6 +758,28 @@ class PostgreSQLDialect extends SqlDialect {
 
     if (builder.length() == 0) {
       return super.selectStatementPreFieldDirectives(selectStatement);
+    }
+
+    return "/*+" + builder.append(" */ ");
+  }
+
+
+  /**
+   * @see org.alfasoftware.morf.jdbc.SqlDialect#updateStatementPreTableDirectives(org.alfasoftware.morf.sql.UpdateStatement)
+   */
+  @Override
+  protected String updateStatementPreTableDirectives(UpdateStatement updateStatement) {
+    StringBuilder builder = new StringBuilder();
+
+    for (Hint hint : updateStatement.getHints()) {
+      if ( hint instanceof DialectSpecificHint && ((DialectSpecificHint)hint).isSameDatabaseType(PostgreSQL.IDENTIFIER) ) {
+        builder.append(" ")
+                .append(((DialectSpecificHint)hint).getHintContents());
+      }
+    }
+
+    if (builder.length() == 0) {
+      return super.updateStatementPreTableDirectives(updateStatement);
     }
 
     return "/*+" + builder.append(" */ ");
