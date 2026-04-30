@@ -122,35 +122,56 @@ public class DeferredIndexesModelEnricherImpl implements DeferredIndexesModelEnr
 
   @Override
   public Schema enrich(Schema physicalSchema, DeferredIndexSession session) {
+    // Feature disabled, or DeferredIndexes table not yet created -- pass the schema through unchanged.
     if (shouldSkipEnrichment(physicalSchema)) {
       return physicalSchema;
     }
 
+    // Read every tracking row in one go (built and unbuilt). If nothing is tracked, the
+    // enricher has nothing to do; the visitor will INSERT new rows during this upgrade run.
     List<DeferredIndex> entries = dao.findAll();
     if (entries.isEmpty()) {
       log.debug("Skipping enrichment — DeferredIndexes table is empty");
       return physicalSchema;
     }
 
+    // Seed the per-upgrade session with every persisted row before the visitor mutates anything,
+    // so subsequent remove/rename/column operations cascade correctly to prior-upgrade rows.
     primeSession(entries, session);
+
+    // (table -> (index -> row)) bucketed by upper-cased name for fast per-table lookup
+    // while we walk the physical schema. We'll remove() as we consume each table's bucket;
+    // anything left over after the walk is an orphan (tracking row references a missing table).
     Map<String, Map<String, DeferredIndex>> entriesByTable = bucketByTable(entries);
 
     SqlDialect dialect = connectionResources.sqlDialect();
     List<String> drifts = new ArrayList<>();
+    // The connection is needed by dialect.isIndexValid() inside reconcileTable -- we hold it
+    // open for the whole pass rather than borrow per-call. Closes via try-with-resources.
     try (Connection connection = connectionResources.getDataSource().getConnection()) {
       List<Table> enrichedTables = new ArrayList<>();
+      // Track whether any table actually got rewritten -- avoids allocating a new Schema
+      // when no tracked indexes were present (common case for an early upgrade run).
       boolean changed = false;
       for (Table physicalTable : physicalSchema.tables()) {
         Map<String, DeferredIndex> rowsForTable =
             entriesByTable.remove(physicalTable.getName().toUpperCase());
         if (rowsForTable == null || rowsForTable.isEmpty()) {
+          // No tracking rows for this table -- nothing to virtualize, no drift to check.
           enrichedTables.add(physicalTable);
           continue;
         }
+        // reconcileTable rewrites the index list (adds .deferred() flag to COMPLETED-row matches,
+        // virtualizes non-COMPLETED rows, appends drift messages for COMPLETED-row anomalies).
         enrichedTables.add(reconcileTable(physicalTable, rowsForTable, dialect, connection, drifts));
         changed = true;
       }
+      // Whatever's left in entriesByTable references tables not present in physicalSchema --
+      // each of those is an operator-caused drift (table dropped without removing the row).
       collectOrphanedRowDrifts(entriesByTable, drifts);
+
+      // Collect-then-throw: every drift across the schema is reported in a single exception
+      // (mirrors SchemaHomology's DifferenceWriter pattern -- operator sees every issue at once).
       if (!drifts.isEmpty()) {
         throw new IllegalStateException(
             "DeferredIndexes drift detected (" + drifts.size() + " issue"
