@@ -364,6 +364,50 @@ public class TestDeployedIndexesModelEnricherImpl {
   }
 
 
+  /**
+   * Multi-drift collection: when several COMPLETED-row anomalies exist
+   * across the schema (missing physical, INVALID physical, orphan table),
+   * every single one is reported in the single {@link IllegalStateException}
+   * — operator sees the full picture in one boot cycle rather than fixing
+   * one issue, restarting, and finding the next.
+   */
+  @Test
+  public void testCollectsMultipleDriftsInOneException() {
+    // given — three independent drift sources:
+    //   (1) COMPLETED row whose physical is present but INVALID
+    //   (2) COMPLETED row whose physical is missing
+    //   (3) tracking row referencing a table not in the physical schema
+    Schema input = schema(
+        table(DatabaseUpgradeTableContribution.DEPLOYED_INDEXES_NAME)
+            .columns(column("id", DataType.BIG_INTEGER).primaryKey()),
+        table("Alpha").columns(column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 50))
+            .indexes(index("Alpha_Idx").columns("name")),
+        table("Beta").columns(column("id", DataType.BIG_INTEGER).primaryKey())
+            // no physical Beta_Idx
+    );
+    DeployedIndex invalidPhys = makeRow("Alpha", "Alpha_Idx", List.of("name"), DeployedIndexStatus.COMPLETED);
+    DeployedIndex missingPhys = makeRow("Beta",  "Beta_Idx",  List.of("id"),   DeployedIndexStatus.COMPLETED);
+    DeployedIndex orphanTable = makeRow("Ghost", "GhostIdx",  List.of("id"),   DeployedIndexStatus.PENDING);
+    when(dao.findAll()).thenReturn(List.of(invalidPhys, missingPhys, orphanTable));
+    when(dialect.isIndexValid(eq(connection), eq("Alpha"), eq("Alpha_Idx")))
+        .thenReturn(Optional.of(Boolean.FALSE));
+    DeployedIndexesModelEnricher enricher = newEnricher();
+
+    // when / then — single exception mentioning every distinct drift
+    IllegalStateException ex = assertThrows(IllegalStateException.class,
+        () -> enricher.enrich(input, session));
+    assertTrue("Message should report a count of 3 drifts: " + ex.getMessage(),
+        ex.getMessage().contains("3 issue"));
+    assertTrue("Message should mention Alpha_Idx INVALID drift",
+        ex.getMessage().contains("Alpha_Idx") && ex.getMessage().contains("INVALID"));
+    assertTrue("Message should mention Beta_Idx missing-physical drift",
+        ex.getMessage().contains("Beta_Idx") && ex.getMessage().contains("missing"));
+    assertTrue("Message should mention orphan-table GhostIdx",
+        ex.getMessage().contains("GhostIdx") && ex.getMessage().contains("Ghost"));
+  }
+
+
   /** Enricher primes the session with every persisted row regardless of status. */
   @Test
   public void testEnrichPrimesSessionWithEveryPersistedRow() {

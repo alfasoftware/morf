@@ -34,7 +34,6 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -184,9 +183,20 @@ public class TestDeferredIndexBuildTaskImpl {
    * the DROP, and the CREATE all run on the same connection in order; the
    * lock_timeout is reset in the finally block to avoid leaking into the
    * connection pool.
+   *
+   * <p>Each phase opens its own {@link Statement} (executeOne/executeAll
+   * use try-with-resources). Stubbing distinct mock instances per
+   * createStatement() call lets the test verify each {@code execute} against
+   * the right phase, so a future refactor that splits work across different
+   * connections would be caught.</p>
    */
   @Test
   public void testInvalidHappyPathPostgresLockTimeout() throws SQLException {
+    Statement stmtSet = mock(Statement.class);
+    Statement stmtDrop = mock(Statement.class);
+    Statement stmtCreate = mock(Statement.class);
+    Statement stmtReset = mock(Statement.class);
+    when(connection.createStatement()).thenReturn(stmtSet, stmtDrop, stmtCreate, stmtReset);
     when(dao.findByTableAndIndex(TABLE, INDEX)).thenReturn(Optional.of(rowWith(DeployedIndexStatus.IN_PROGRESS, 0)));
     when(dialect.isIndexValid(connection, TABLE, INDEX)).thenReturn(Optional.of(Boolean.FALSE));
     when(dialect.setLockTimeoutSql(eq(DeferredIndexBuildTaskImpl.LOCK_TIMEOUT))).thenReturn(Optional.of(LOCK_TIMEOUT_SQL));
@@ -196,13 +206,17 @@ public class TestDeferredIndexBuildTaskImpl {
 
     task.run();
 
-    InOrder order = inOrder(dao, statement);
+    verify(stmtSet).execute(LOCK_TIMEOUT_SQL);
+    verify(stmtDrop).execute(DROP_SQL);
+    verify(stmtCreate).execute(CREATE_SQL);
+    verify(stmtReset).execute(LOCK_TIMEOUT_RESET_SQL);
+    InOrder order = inOrder(dao, stmtSet, stmtDrop, stmtCreate, stmtReset);
     order.verify(dao).markStarted(eq(TABLE), eq(INDEX), anyLong(), eq(1));
-    order.verify(statement).execute(LOCK_TIMEOUT_SQL);
-    order.verify(statement).execute(DROP_SQL);
-    order.verify(statement).execute(CREATE_SQL);
+    order.verify(stmtSet).execute(LOCK_TIMEOUT_SQL);
+    order.verify(stmtDrop).execute(DROP_SQL);
+    order.verify(stmtCreate).execute(CREATE_SQL);
     order.verify(dao).markCompleted(eq(TABLE), eq(INDEX), anyLong());
-    order.verify(statement).execute(LOCK_TIMEOUT_RESET_SQL);
+    order.verify(stmtReset).execute(LOCK_TIMEOUT_RESET_SQL);
     verify(dao, never()).markFailed(any(), any(), any());
   }
 
@@ -210,6 +224,9 @@ public class TestDeferredIndexBuildTaskImpl {
   /** Dialect does not supply lock_timeout (Oracle/H2) — the SET is skipped; DROP + CREATE proceed; no reset. */
   @Test
   public void testInvalidNoLockTimeoutSkipsSet() throws SQLException {
+    Statement stmtDrop = mock(Statement.class);
+    Statement stmtCreate = mock(Statement.class);
+    when(connection.createStatement()).thenReturn(stmtDrop, stmtCreate);
     when(dao.findByTableAndIndex(TABLE, INDEX)).thenReturn(Optional.of(rowWith(DeployedIndexStatus.PENDING, 0)));
     when(dialect.isIndexValid(connection, TABLE, INDEX)).thenReturn(Optional.of(Boolean.FALSE));
     when(dialect.setLockTimeoutSql(any(Duration.class))).thenReturn(Optional.empty());
@@ -218,9 +235,8 @@ public class TestDeferredIndexBuildTaskImpl {
 
     task.run();
 
-    ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
-    verify(statement, times(2)).execute(sql.capture());
-    assertEquals(Arrays.asList(DROP_SQL, CREATE_SQL), sql.getAllValues());
+    verify(stmtDrop).execute(DROP_SQL);
+    verify(stmtCreate).execute(CREATE_SQL);
     verify(dao).markCompleted(eq(TABLE), eq(INDEX), anyLong());
   }
 
@@ -228,13 +244,17 @@ public class TestDeferredIndexBuildTaskImpl {
   /** INVALID + DROP fails (e.g. lock timeout) — markFailed with the "could not drop" prefix; CREATE not attempted; lock_timeout still reset. */
   @Test
   public void testInvalidDropFailsMarksFailedWithPrefixAndDoesNotCreate() throws SQLException {
+    Statement stmtSet = mock(Statement.class);
+    Statement stmtDrop = mock(Statement.class);
+    Statement stmtReset = mock(Statement.class);
+    when(connection.createStatement()).thenReturn(stmtSet, stmtDrop, stmtReset);
     when(dao.findByTableAndIndex(TABLE, INDEX)).thenReturn(Optional.of(rowWith(DeployedIndexStatus.FAILED, 7)));
     when(dialect.isIndexValid(connection, TABLE, INDEX)).thenReturn(Optional.of(Boolean.FALSE));
     when(dialect.setLockTimeoutSql(any(Duration.class))).thenReturn(Optional.of(LOCK_TIMEOUT_SQL));
     when(dialect.resetLockTimeoutSql()).thenReturn(Optional.of(LOCK_TIMEOUT_RESET_SQL));
     when(dialect.indexDropStatements(any(), any())).thenReturn(List.of(DROP_SQL));
     when(dialect.deferredIndexDeploymentStatements(any(), any())).thenReturn(List.of(CREATE_SQL));
-    doThrow(new SQLException("canceling statement due to lock timeout")).when(statement).execute(DROP_SQL);
+    doThrow(new SQLException("canceling statement due to lock timeout")).when(stmtDrop).execute(DROP_SQL);
 
     task.run();
 
@@ -243,8 +263,10 @@ public class TestDeferredIndexBuildTaskImpl {
     verify(dao).markFailed(eq(TABLE), eq(INDEX), errMsg.capture());
     assertTrue("expected 'could not drop' prefix; got: " + errMsg.getValue(),
         errMsg.getValue().startsWith("could not drop invalid leftover: "));
-    verify(statement, never()).execute(CREATE_SQL);
-    verify(statement).execute(LOCK_TIMEOUT_RESET_SQL);
+    verify(stmtSet).execute(LOCK_TIMEOUT_SQL);
+    verify(stmtReset).execute(LOCK_TIMEOUT_RESET_SQL);
+    // CREATE is never attempted — verify on the statement-pool level via createStatement count.
+    verify(connection, times(3)).createStatement();
     verify(dao, never()).markCompleted(any(), any(), anyLong());
   }
 
@@ -252,16 +274,21 @@ public class TestDeferredIndexBuildTaskImpl {
   /** INVALID + DROP succeeds + CREATE fails — markFailed with the raw SQL message (no prefix). */
   @Test
   public void testInvalidCreateAfterDropFailsMarksFailedWithRawMessage() throws SQLException {
+    Statement stmtDrop = mock(Statement.class);
+    Statement stmtCreate = mock(Statement.class);
+    when(connection.createStatement()).thenReturn(stmtDrop, stmtCreate);
     when(dao.findByTableAndIndex(TABLE, INDEX)).thenReturn(Optional.of(rowWith(DeployedIndexStatus.IN_PROGRESS, 1)));
     when(dialect.isIndexValid(connection, TABLE, INDEX)).thenReturn(Optional.of(Boolean.FALSE));
     when(dialect.setLockTimeoutSql(any(Duration.class))).thenReturn(Optional.empty());
     when(dialect.indexDropStatements(any(), any())).thenReturn(List.of(DROP_SQL));
     when(dialect.deferredIndexDeploymentStatements(any(), any())).thenReturn(List.of(CREATE_SQL));
-    doThrow(new SQLException("disk full")).when(statement).execute(CREATE_SQL);
+    doThrow(new SQLException("disk full")).when(stmtCreate).execute(CREATE_SQL);
 
     task.run();
 
     verify(dao).markFailed(eq(TABLE), eq(INDEX), eq("disk full"));
+    verify(stmtDrop).execute(DROP_SQL);
+    verify(stmtCreate).execute(CREATE_SQL);
   }
 
 
@@ -272,20 +299,25 @@ public class TestDeferredIndexBuildTaskImpl {
    */
   @Test
   public void testInvalidLockTimeoutSetFailsStillProceeds() throws SQLException {
+    Statement stmtSet = mock(Statement.class);
+    Statement stmtDrop = mock(Statement.class);
+    Statement stmtCreate = mock(Statement.class);
+    when(connection.createStatement()).thenReturn(stmtSet, stmtDrop, stmtCreate);
     when(dao.findByTableAndIndex(TABLE, INDEX)).thenReturn(Optional.of(rowWith(DeployedIndexStatus.PENDING, 0)));
     when(dialect.isIndexValid(connection, TABLE, INDEX)).thenReturn(Optional.of(Boolean.FALSE));
     when(dialect.setLockTimeoutSql(any(Duration.class))).thenReturn(Optional.of(LOCK_TIMEOUT_SQL));
     when(dialect.resetLockTimeoutSql()).thenReturn(Optional.of(LOCK_TIMEOUT_RESET_SQL));
     when(dialect.indexDropStatements(any(), any())).thenReturn(List.of(DROP_SQL));
     when(dialect.deferredIndexDeploymentStatements(any(), any())).thenReturn(List.of(CREATE_SQL));
-    doThrow(new SQLException("permission denied")).when(statement).execute(LOCK_TIMEOUT_SQL);
+    doThrow(new SQLException("permission denied")).when(stmtSet).execute(LOCK_TIMEOUT_SQL);
 
     task.run();
 
-    verify(statement).execute(DROP_SQL);
-    verify(statement).execute(CREATE_SQL);
+    verify(stmtDrop).execute(DROP_SQL);
+    verify(stmtCreate).execute(CREATE_SQL);
     verify(dao).markCompleted(eq(TABLE), eq(INDEX), anyLong());
-    verify(statement, never()).execute(LOCK_TIMEOUT_RESET_SQL);
+    // No 4th createStatement (no reset path engaged).
+    verify(connection, times(3)).createStatement();
   }
 
 
@@ -314,6 +346,25 @@ public class TestDeferredIndexBuildTaskImpl {
 
     RuntimeSqlException thrown = assertThrows(RuntimeSqlException.class, task::run);
     assertTrue(thrown.getMessage().contains(TABLE + "." + INDEX));
+    verify(dao, never()).markFailed(any(), any(), any());
+  }
+
+
+  /**
+   * Unexpected DAO failure during the row re-fetch propagates as a
+   * {@link RuntimeException}; the task does not catch it or persist it as
+   * FAILED — the next pass retries from a fresh connection.
+   */
+  @Test
+  public void testDaoFindByTableAndIndexThrowsPropagates() {
+    when(dao.findByTableAndIndex(TABLE, INDEX))
+        .thenThrow(new RuntimeSqlException("tracking-table connection broken", new SQLException("conn closed")));
+
+    RuntimeException thrown = assertThrows(RuntimeException.class, task::run);
+    assertTrue("expected the DAO failure to propagate; got: " + thrown.getMessage(),
+        thrown.getMessage().contains("tracking-table connection broken"));
+    verify(dao, never()).markStarted(any(), any(), anyLong(), anyInt());
+    verify(dao, never()).markCompleted(any(), any(), anyLong());
     verify(dao, never()).markFailed(any(), any(), any());
   }
 

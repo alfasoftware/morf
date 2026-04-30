@@ -44,7 +44,9 @@ import com.google.inject.ImplementedBy;
  * {@code COMPLETED} rows throws — a missing physical index (manual DROP)
  * or an {@code INVALID} physical (corruption). The routine-restart case
  * (non-COMPLETED row + physical present) does NOT throw — the build task
- * reconciles via {@code dialect.isIndexValid} on its next pass.</p>
+ * reconciles via {@code dialect.isIndexValid} on its next pass. All drifts
+ * across the schema are collected and reported in a single
+ * {@link IllegalStateException} at the end of the pass.</p>
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */

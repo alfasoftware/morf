@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.alfasoftware.morf.guicesupport.InjectMembersRule;
@@ -81,8 +82,8 @@ import net.jcip.annotations.NotThreadSafe;
 
 /**
  * Integration tests for the DeployedIndexes architecture. Exercises the
- * full upgrade framework path with the new DeployedIndexes table,
- * model enricher, and the non-terminal row list.
+ * full upgrade framework path with the DeployedIndexes table, the model
+ * enricher, and the {@link DeferredIndexService} build flow.
  *
  * @author Copyright (c) Alfa Financial Software Limited. 2026
  */
@@ -127,13 +128,13 @@ public class TestDeployedIndexesIntegration {
 
 
   /**
-   * Verifies the full lifecycle of a single deferred index: the upgrade step
-   * creates a PENDING row in DeployedIndexes, the physical index is NOT built,
-   * and the non-terminal row list returns CREATE INDEX SQL referencing
-   * the correct index name.
+   * Verifies the upgrade-time setup of a single deferred index: the upgrade
+   * step creates a PENDING row in DeployedIndexes, the physical index is
+   * NOT built, and the row's persisted column metadata matches the
+   * declaration.
    */
   @Test
-  public void testGetDeferredIndexStatementsReturnsSQL() {
+  public void testDeferredIndexProducesPendingTrackingRow() {
     // given
     Schema targetSchema = schemaWithIndex();
 
@@ -143,9 +144,9 @@ public class TestDeployedIndexesIntegration {
     // then -- physical index NOT built (deferred)
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
 
-    // then -- the non-terminal row list returns a job for the index
+    // then -- the tracking row is persisted as non-terminal
     List<DeployedIndex> deferredJobs = newDao().findNonTerminal();
-    assertFalse("Should return at least one deferred job", deferredJobs.isEmpty());
+    assertFalse("Should persist at least one deferred tracking row", deferredJobs.isEmpty());
     assertTrue("Job should reference the index name",
         deferredJobs.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
 
@@ -155,8 +156,8 @@ public class TestDeployedIndexesIntegration {
 
 
   /**
-   * An upgrade with no deferred indexes should return empty
-   * the non-terminal row list.
+   * An upgrade with no deferred indexes should leave the DeployedIndexes
+   * tracking table empty (no non-COMPLETED rows).
    */
   @Test
   public void testNoDeferredIndexesReturnsEmptyStatements() {
@@ -178,9 +179,9 @@ public class TestDeployedIndexesIntegration {
 
 
   /**
-   * Two deferred indexes added in a single upgrade step should both appear
-   * in the non-terminal row list, neither should be physically built,
-   * and both should have PENDING rows in DeployedIndexes.
+   * Two deferred indexes added in a single upgrade step should both be
+   * persisted as non-COMPLETED tracking rows, neither should be physically
+   * built, and both rows should be PENDING.
    */
   @Test
   public void testMultipleDeferredIndexesInOneStep() {
@@ -202,7 +203,7 @@ public class TestDeployedIndexesIntegration {
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
     assertPhysicalIndexDoesNotExist("Product", "Product_IdName_1");
 
-    // then -- both in the non-terminal row list
+    // then -- both rows persisted as non-COMPLETED
     List<DeployedIndex> deferredJobs = newDao().findNonTerminal();
     assertTrue("Should contain Product_Name_1",
         deferredJobs.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
@@ -217,7 +218,7 @@ public class TestDeployedIndexesIntegration {
 
   /**
    * When deferredIndexCreationEnabled is false, deferred indexes should
-   * be built immediately and the non-terminal row list is empty.
+   * be built immediately and no tracking rows should be written.
    */
   @Test
   public void testDisabledFeatureBuildsDeferredImmediately() {
@@ -274,8 +275,8 @@ public class TestDeployedIndexesIntegration {
   /**
    * Step A defers an index on column "name". Step B renames "name" to "label".
    * The DeployedIndexes table's indexColumns is updated via the change service,
-   * and the rebuilt schema preserves isDeferred() so the non-terminal row list
-   * emits SQL referencing the new column name.
+   * and the rebuilt schema preserves isDeferred() so the persisted tracking
+   * row references the new column name.
    */
   @Test
   public void testCrossStepColumnRename() {
@@ -391,8 +392,8 @@ public class TestDeployedIndexesIntegration {
 
 
   /**
-   * Deferred indexes on multiple tables should all appear in
-   * the non-terminal row list.
+   * Deferred indexes on multiple tables should each be persisted as their
+   * own non-COMPLETED tracking row.
    */
   @Test
   public void testDeferredIndexesOnMultipleTables() {
@@ -455,9 +456,8 @@ public class TestDeployedIndexesIntegration {
   /**
    * When forceImmediateIndexes is configured for an index name, a deferred
    * addIndex should be built immediately during upgrade. The physical index
-   * should exist and {@code the non-terminal row list} should be empty.
-   * <b>Slim invariant:</b> since the index ends up non-deferred after the
-   * force-immediate resolution, it is not tracked.
+   * should exist and no tracking row should be written. Since the index ends
+   * up non-deferred after the force-immediate resolution, it is not tracked.
    */
   @Test
   public void testForceImmediateBypassesDeferral() {
@@ -497,8 +497,9 @@ public class TestDeployedIndexesIntegration {
 
 
   /**
-   * Same-step: add deferred then rename in the same step. Renamed
-   * deferred index should appear in the non-terminal row list.
+   * Same-step: add deferred then rename in the same step. The renamed
+   * deferred index should be persisted as a non-COMPLETED tracking row
+   * under its new name.
    */
   @Test
   public void testAddDeferredThenRenameInSameStep() {
@@ -527,7 +528,7 @@ public class TestDeployedIndexesIntegration {
   // Unique and multi-column deferred indexes
   // =========================================================================
 
-  /** Unique deferred index should preserve unique flag in the non-terminal row list. */
+  /** Unique deferred index should preserve its unique flag in the persisted tracking row. */
   @Test
   public void testUniqueDeferredIndex() {
     // given
@@ -586,8 +587,8 @@ public class TestDeployedIndexesIntegration {
   // =========================================================================
 
   /**
-   * A second upgrade should include previously-unbuilt deferred indexes
-   * in the non-terminal row list.
+   * A second upgrade should leave previously-unbuilt deferred indexes
+   * persisted as non-COMPLETED tracking rows alongside any new ones.
    */
   @Test
   public void testSequentialUpgradeIncludesPreviousDeferred() {
@@ -644,7 +645,7 @@ public class TestDeployedIndexesIntegration {
     // then -- physical index NOT built; tracking row PENDING; job available
     assertPhysicalIndexDoesNotExist("Category", "Category_Label_1");
     assertEquals("PENDING", queryDeployedIndexField("Category_Label_1", "status"));
-    assertFalse("the non-terminal row list should return a job for the inline-deferred index",
+    assertFalse("inline-deferred index should produce a non-COMPLETED tracking row",
         newDao().findNonTerminal().isEmpty());
 
     // when -- adopter executes the deferred SQL
@@ -932,7 +933,10 @@ public class TestDeployedIndexesIntegration {
   @Test
   public void testInProgressRowWithValidPhysicalAutoCompletes() {
     // given — upgrade creates a PENDING row; we then simulate a crash-near-completion
-    // by manually creating the physical index and flipping the row to IN_PROGRESS
+    // by manually creating the physical index and flipping the row to IN_PROGRESS.
+    // The direct UPDATE bypasses the DAO intentionally — no public API drives a row
+    // to IN_PROGRESS without also bumping attemptsCount, and we want to assert the
+    // self-heal path independent of any attempts bookkeeping.
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
     sqlScriptExecutorProvider.get().execute(List.of(
         "CREATE INDEX Product_Name_1 ON Product(name)",
@@ -999,12 +1003,260 @@ public class TestDeployedIndexesIntegration {
     assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
 
     // when — call again; no rows are non-COMPLETED so no work
-    new DeferredIndexServiceImpl(connectionResources, newDao()).getBuildTasks()
-        .forEach(Runnable::run);
+    runBuildTasks();
 
     // then — state unchanged
     assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
     assertPhysicalIndexExists("Product", "Product_Name_1");
+  }
+
+
+  // =========================================================================
+  // Multi-task scenarios — comprehensive coverage of the new build flow
+  // =========================================================================
+
+  /**
+   * MT1 — three deferred indexes on one table built in a single pass.
+   * Verifies fanout: every task runs, every physical index ends up present,
+   * every row reaches {@code COMPLETED}.
+   */
+  @Test
+  public void testMT1ThreeDeferredIndexesOnOneTableAllBuildInOnePass() {
+    // given — schema declares all three indexes
+    Schema target = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(
+            index("Product_Name_1").columns("name").deferred(),
+            index("Product_IdName_1").columns("id", "name").deferred(),
+            index("Product_Name_UQ").unique().columns("name").deferred())
+    );
+    performUpgradeSteps(target,
+        AddDeferredIndex.class,
+        AddSecondDeferredIndex.class,
+        AddDeferredUniqueIndex.class);
+    assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
+    assertEquals("PENDING", queryDeployedIndexField("Product_IdName_1", "status"));
+    assertEquals("PENDING", queryDeployedIndexField("Product_Name_UQ", "status"));
+
+    // when
+    runBuildTasks();
+
+    // then — every index physical + COMPLETED
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+    assertPhysicalIndexExists("Product", "Product_IdName_1");
+    assertPhysicalIndexExists("Product", "Product_Name_UQ");
+    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
+    assertEquals("COMPLETED", queryDeployedIndexField("Product_IdName_1", "status"));
+    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_UQ", "status"));
+  }
+
+
+  /**
+   * MT2 — deferred indexes spread across two tables. No cross-table
+   * interference: both tables' indexes complete cleanly via the service.
+   */
+  @Test
+  public void testMT2DeferredIndexesAcrossTwoTablesAllBuild() {
+    // given
+    Schema target = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(index("Product_Name_1").columns("name").deferred()),
+        table("Category").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("label", DataType.STRING, 50)
+        ).indexes(index("Category_Label_1").columns("label").deferred())
+    );
+    performUpgradeSteps(target, AddDeferredIndex.class, AddTableWithDeferredIndex.class);
+
+    // when
+    runBuildTasks();
+
+    // then — both physical present, both rows COMPLETED
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+    assertPhysicalIndexExists("Category", "Category_Label_1");
+    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
+    assertEquals("COMPLETED", queryDeployedIndexField("Category_Label_1", "status"));
+  }
+
+
+  /**
+   * MT3 — mixed success and failure in one pass. Three deferred indexes;
+   * one is unique on a column with pre-existing duplicates and must fail
+   * its CREATE. The build task isolates the failure: the other two complete
+   * cleanly, the failing one is FAILED with errorMessage, and {@code
+   * getProgress()} reports the split.
+   */
+  @Test
+  public void testMT3MixedSuccessAndFailureInOnePass() {
+    // given
+    Schema target = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(
+            index("Product_Name_1").columns("name").deferred(),
+            index("Product_IdName_1").columns("id", "name").deferred(),
+            index("Product_Name_UQ").unique().columns("name").deferred())
+    );
+    performUpgradeSteps(target,
+        AddDeferredIndex.class,
+        AddSecondDeferredIndex.class,
+        AddDeferredUniqueIndex.class);
+
+    // and — pre-populate duplicates so CREATE UNIQUE INDEX must fail
+    sqlScriptExecutorProvider.get().execute(List.of(
+        "INSERT INTO Product (id, name) VALUES (1, 'dup')",
+        "INSERT INTO Product (id, name) VALUES (2, 'dup')"));
+
+    // when
+    runBuildTasks();
+
+    // then — non-unique indexes complete; unique one is FAILED with a message
+    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
+    assertEquals("COMPLETED", queryDeployedIndexField("Product_IdName_1", "status"));
+    assertEquals("FAILED", queryDeployedIndexField("Product_Name_UQ", "status"));
+    assertNotNull("Failing row's errorMessage should be persisted",
+        queryDeployedIndexField("Product_Name_UQ", "errorMessage"));
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+    assertPhysicalIndexExists("Product", "Product_IdName_1");
+    assertPhysicalIndexDoesNotExist("Product", "Product_Name_UQ");
+
+    // and — getProgress reports 2 COMPLETED + 1 FAILED
+    Map<DeployedIndexStatus, Integer> progress =
+        new DeferredIndexServiceImpl(connectionResources, newDao()).getProgress();
+    assertEquals(Integer.valueOf(2), progress.get(DeployedIndexStatus.COMPLETED));
+    assertEquals(Integer.valueOf(1), progress.get(DeployedIndexStatus.FAILED));
+    assertEquals(Integer.valueOf(0), progress.get(DeployedIndexStatus.PENDING));
+    assertEquals(Integer.valueOf(0), progress.get(DeployedIndexStatus.IN_PROGRESS));
+  }
+
+
+  /**
+   * MT4 — cross-upgrade lifecycle. Upgrade 1 declares two deferred indexes;
+   * after build, both COMPLETED. Upgrade 2 declares a third deferred index;
+   * after build, the new one is COMPLETED while the prior two stay
+   * COMPLETED with attemptsCount=0 (untouched on the second pass).
+   */
+  @Test
+  public void testMT4CrossUpgradeLifecycle() {
+    // given — upgrade 1: two deferred indexes, build, both COMPLETED
+    Schema after1 = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(
+            index("Product_Name_1").columns("name").deferred(),
+            index("Product_IdName_1").columns("id", "name").deferred())
+    );
+    performUpgradeSteps(after1, AddDeferredIndex.class, AddSecondDeferredIndex.class);
+    runBuildTasks();
+    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
+    assertEquals("COMPLETED", queryDeployedIndexField("Product_IdName_1", "status"));
+
+    // when — upgrade 2: a third deferred index; build
+    Schema after2 = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(
+            index("Product_Name_1").columns("name").deferred(),
+            index("Product_IdName_1").columns("id", "name").deferred(),
+            index("Product_Name_UQ").unique().columns("name").deferred())
+    );
+    performUpgradeSteps(after2,
+        AddDeferredIndex.class,
+        AddSecondDeferredIndex.class,
+        AddDeferredUniqueIndex.class);
+    runBuildTasks();
+
+    // then — new index COMPLETED; prior two unchanged
+    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_UQ", "status"));
+    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
+    assertEquals("COMPLETED", queryDeployedIndexField("Product_IdName_1", "status"));
+    assertEquals("0", queryDeployedIndexField("Product_Name_1", "attemptsCount"));
+    assertEquals("0", queryDeployedIndexField("Product_IdName_1", "attemptsCount"));
+  }
+
+
+  /**
+   * MT5 — {@code getProgress()} accuracy across the lifecycle. Three
+   * deferred indexes report 3 PENDING before any build, then 3 COMPLETED
+   * after one build pass.
+   */
+  @Test
+  public void testMT5GetProgressAccuracyAcrossLifecycle() {
+    // given
+    Schema target = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(
+            index("Product_Name_1").columns("name").deferred(),
+            index("Product_IdName_1").columns("id", "name").deferred(),
+            index("Product_Name_UQ").unique().columns("name").deferred())
+    );
+    performUpgradeSteps(target,
+        AddDeferredIndex.class,
+        AddSecondDeferredIndex.class,
+        AddDeferredUniqueIndex.class);
+    DeferredIndexService service = new DeferredIndexServiceImpl(connectionResources, newDao());
+
+    // pre-build
+    Map<DeployedIndexStatus, Integer> before = service.getProgress();
+    assertEquals(Integer.valueOf(3), before.get(DeployedIndexStatus.PENDING));
+    assertEquals(Integer.valueOf(0), before.get(DeployedIndexStatus.COMPLETED));
+
+    // when
+    runBuildTasks();
+
+    // post-build
+    Map<DeployedIndexStatus, Integer> after = service.getProgress();
+    assertEquals(Integer.valueOf(0), after.get(DeployedIndexStatus.PENDING));
+    assertEquals(Integer.valueOf(3), after.get(DeployedIndexStatus.COMPLETED));
+    assertEquals(Integer.valueOf(0), after.get(DeployedIndexStatus.FAILED));
+    assertEquals(Integer.valueOf(0), after.get(DeployedIndexStatus.IN_PROGRESS));
+  }
+
+
+  /**
+   * MT6 — repeated invocation idempotency for multi-task case. Declare two
+   * deferred indexes; first call builds both. Subsequent calls return an
+   * empty task list (every row is COMPLETED) so {@code forEach} is a true
+   * no-op.
+   */
+  @Test
+  public void testMT6RepeatedInvocationIdempotency() {
+    // given — two deferred indexes, both PENDING
+    Schema target = schemaWith(
+        table("Product").columns(
+            column("id", DataType.BIG_INTEGER).primaryKey(),
+            column("name", DataType.STRING, 100)
+        ).indexes(
+            index("Product_Name_1").columns("name").deferred(),
+            index("Product_IdName_1").columns("id", "name").deferred())
+    );
+    performUpgradeSteps(target, AddDeferredIndex.class, AddSecondDeferredIndex.class);
+    DeferredIndexService service = new DeferredIndexServiceImpl(connectionResources, newDao());
+    assertEquals(2, service.getBuildTasks().size());
+
+    // when — first call builds both
+    service.getBuildTasks().forEach(Runnable::run);
+    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
+    assertEquals("COMPLETED", queryDeployedIndexField("Product_IdName_1", "status"));
+
+    // then — subsequent calls return empty task lists
+    assertTrue("Second call should return no tasks (all COMPLETED)",
+        service.getBuildTasks().isEmpty());
+    assertTrue("Third call should return no tasks (all COMPLETED)",
+        service.getBuildTasks().isEmpty());
+
+    // and — physical state unchanged
+    assertPhysicalIndexExists("Product", "Product_Name_1");
+    assertPhysicalIndexExists("Product", "Product_IdName_1");
   }
 
 
@@ -1033,8 +1285,8 @@ public class TestDeployedIndexesIntegration {
   /**
    * Force-deferred: an addIndex() without .deferred() should be deferred
    * when forceDeferredIndexes config includes the index name. The physical
-   * index should NOT be built, and the non-terminal row list should
-   * contain the SQL.
+   * index should NOT be built, and a non-COMPLETED tracking row should be
+   * persisted.
    */
   @Test
   public void testForceDeferredOverridesImmediate() {

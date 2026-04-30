@@ -66,7 +66,11 @@ import org.apache.commons.logging.LogFactory;
  *   <li><b>Hard-fail only on operator-caused corruption</b>: a COMPLETED
  *       row whose physical index is missing or {@code INVALID} — the
  *       executor cannot auto-recover from these without operator
- *       intervention.</li>
+ *       intervention. Every drift across the schema is collected and
+ *       reported in a single {@link IllegalStateException} at the end of
+ *       the pass (collect-then-throw, mirroring
+ *       {@code SchemaHomology}'s {@code DifferenceWriter} pattern) so the
+ *       operator sees every issue in one boot cycle.</li>
  * </ol>
  *
  * <p>The drift policy is intentionally <i>narrow</i> compared to the slim
@@ -132,6 +136,7 @@ public class DeployedIndexesModelEnricherImpl implements DeployedIndexesModelEnr
     Map<String, Map<String, DeployedIndex>> entriesByTable = bucketByTable(entries);
 
     SqlDialect dialect = connectionResources.sqlDialect();
+    List<String> drifts = new ArrayList<>();
     try (Connection connection = connectionResources.getDataSource().getConnection()) {
       List<Table> enrichedTables = new ArrayList<>();
       boolean changed = false;
@@ -142,10 +147,16 @@ public class DeployedIndexesModelEnricherImpl implements DeployedIndexesModelEnr
           enrichedTables.add(physicalTable);
           continue;
         }
-        enrichedTables.add(reconcileTable(physicalTable, rowsForTable, dialect, connection));
+        enrichedTables.add(reconcileTable(physicalTable, rowsForTable, dialect, connection, drifts));
         changed = true;
       }
-      failOnOrphanedRows(entriesByTable);
+      collectOrphanedRowDrifts(entriesByTable, drifts);
+      if (!drifts.isEmpty()) {
+        throw new IllegalStateException(
+            "DeployedIndexes drift detected (" + drifts.size() + " issue"
+                + (drifts.size() == 1 ? "" : "s") + "):\n  - "
+                + String.join("\n  - ", drifts));
+      }
       return changed ? SchemaUtils.schema(enrichedTables) : physicalSchema;
     } catch (SQLException e) {
       throw new RuntimeSqlException("Error opening connection for DeployedIndexes enrichment", e);
@@ -181,19 +192,25 @@ public class DeployedIndexesModelEnricherImpl implements DeployedIndexesModelEnr
    * <ul>
    *   <li>physical index matching a COMPLETED row → check
    *       {@link SqlDialect#isIndexValid} — VALID or unknown rebuilds with
-   *       {@code .deferred()}; INVALID throws drift</li>
+   *       {@code .deferred()}; INVALID records a drift</li>
    *   <li>physical index matching a non-COMPLETED row → mark
-   *       {@code .deferred()} and let the build task reconcile (no longer
-   *       throws as in the slim branch — this is the routine-restart case)</li>
+   *       {@code .deferred()} and let the build task reconcile (the
+   *       routine-restart case)</li>
    *   <li>tracking row with no matching physical → virtualize as deferred,
-   *       unless COMPLETED in which case throws drift (operator-caused
+   *       unless COMPLETED in which case records a drift (operator-caused
    *       state corruption — manual recovery required)</li>
    * </ul>
+   *
+   * <p>Drift findings are appended to {@code drifts} rather than thrown; the
+   * caller emits a single {@link IllegalStateException} after every table is
+   * walked so the operator sees every issue in one boot cycle. Mirrors
+   * {@code SchemaHomology}'s collect-then-report pattern.</p>
    */
   private Table reconcileTable(Table physicalTable,
                                Map<String, DeployedIndex> rowsForTable,
                                SqlDialect dialect,
-                               Connection connection) {
+                               Connection connection,
+                               List<String> drifts) {
     Set<String> matchedRowNames = new HashSet<>();
     List<Index> indexes = new ArrayList<>();
 
@@ -209,12 +226,11 @@ public class DeployedIndexesModelEnricherImpl implements DeployedIndexesModelEnr
         if (valid.orElse(true)) {
           indexes.add(asDeferred(physical));
         } else {
-          throw new IllegalStateException(
-              "DeployedIndexes drift: row for index '" + row.getIndexName()
+          drifts.add(
+              "row for index '" + row.getIndexName()
                   + "' on table '" + row.getTableName() + "' is COMPLETED but the physical"
-                  + " index is INVALID. The executor cannot auto-recover from this state."
-                  + " Drop the invalid physical index manually, mark the row non-COMPLETED"
-                  + " (e.g. PENDING) so the next build pass rebuilds it, and restart.");
+                  + " index is INVALID. Drop the invalid physical index manually, mark the row"
+                  + " non-COMPLETED (e.g. PENDING) so the next build pass rebuilds it, and restart.");
         }
       } else {
         // Non-COMPLETED row + physical present is the routine-restart case.
@@ -229,13 +245,13 @@ public class DeployedIndexesModelEnricherImpl implements DeployedIndexesModelEnr
         continue;
       }
       if (row.getStatus() == DeployedIndexStatus.COMPLETED) {
-        throw new IllegalStateException(
-            "DeployedIndexes drift: row for index '" + row.getIndexName()
+        drifts.add(
+            "row for index '" + row.getIndexName()
                 + "' on table '" + row.getTableName() + "' is COMPLETED but the physical"
-                + " index is missing. The executor cannot auto-recover from this state"
-                + " (someone dropped a built index out-of-band). Either restore the index"
-                + " from backup or mark the row non-COMPLETED (e.g. PENDING) so the next"
-                + " build pass rebuilds it, then restart.");
+                + " index is missing (someone dropped a built index out-of-band). Either"
+                + " restore the index from backup or mark the row non-COMPLETED (e.g. PENDING)"
+                + " so the next build pass rebuilds it, then restart.");
+        continue;
       }
       indexes.add(row.toIndex());
     }
@@ -246,21 +262,19 @@ public class DeployedIndexesModelEnricherImpl implements DeployedIndexesModelEnr
   }
 
 
-  /** Throws if any tracking rows reference tables not in the physical
-   *  schema. SchemaHomology would normally surface this later, but a
-   *  table-level message here is clearer. */
-  private void failOnOrphanedRows(Map<String, Map<String, DeployedIndex>> remaining) {
-    if (remaining.isEmpty()) return;
-    List<DeployedIndex> stragglers = new ArrayList<>();
+  /** Records a drift entry for every tracking row that references a table
+   *  not in the physical schema. SchemaHomology would normally surface this
+   *  later, but per-row messages here are clearer. */
+  private void collectOrphanedRowDrifts(Map<String, Map<String, DeployedIndex>> remaining,
+                                         List<String> drifts) {
     for (Map<String, DeployedIndex> rows : remaining.values()) {
-      stragglers.addAll(rows.values());
+      for (DeployedIndex row : rows.values()) {
+        drifts.add(
+            "row for index '" + row.getIndexName()
+                + "' references table '" + row.getTableName() + "' which is not in the"
+                + " physical schema. Reconcile manually before retrying.");
+      }
     }
-    DeployedIndex first = stragglers.get(0);
-    throw new IllegalStateException(
-        "DeployedIndexes drift: row for index '" + first.getIndexName()
-            + "' references table '" + first.getTableName() + "' which is not in the"
-            + " physical schema. Reconcile manually before retrying."
-            + (stragglers.size() > 1 ? " (" + (stragglers.size() - 1) + " more like this.)" : ""));
   }
 
 
