@@ -42,8 +42,8 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
   /** Name of the table containing information on the views deployed within the app's database. */
   public static final String DEPLOYED_VIEWS_NAME = "DeployedViews";
 
-  /** Name of the table tracking all deployed indexes (deferred and non-deferred). */
-  public static final String DEPLOYED_INDEXES_NAME = "DeployedIndexes";
+  /** Name of the table tracking all deferred indexes (deferred and non-deferred). */
+  public static final String DEFERRED_INDEXES_NAME = "DeferredIndexes";
 
 
 
@@ -75,10 +75,10 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
 
 
   /**
-   * @return The Table descriptor of DeployedIndexes.
+   * @return The Table descriptor of DeferredIndexes.
    */
-  public static Table deployedIndexesTable() {
-    return table(DEPLOYED_INDEXES_NAME)
+  public static Table deferredIndexesTable() {
+    return table(DEFERRED_INDEXES_NAME)
         .columns(
           column("id", DataType.BIG_INTEGER).primaryKey(),
           column("tableName", DataType.STRING, 60),
@@ -93,8 +93,8 @@ public class DatabaseUpgradeTableContribution implements TableContribution {
           column("errorMessage", DataType.CLOB).nullable()
         )
         .indexes(
-          index("DeployedIdx_1").columns("tableName", "indexName").unique(),
-          index("DeployedIdx_2").columns("status")
+          index("DeferredIdx_1").columns("tableName", "indexName").unique(),
+          index("DeferredIdx_2").columns("status")
         );
   }
 

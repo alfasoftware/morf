@@ -14,7 +14,7 @@ import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeSchemaChangeVisitor.GraphBasedUpgradeSchemaChangeVisitorFactory;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession;
+import org.alfasoftware.morf.upgrade.deferredindexes.DeferredIndexSession;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeScriptGenerator.GraphBasedUpgradeScriptGeneratorFactory;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;

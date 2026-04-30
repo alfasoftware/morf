@@ -52,8 +52,8 @@ import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactoryImpl;
 import org.alfasoftware.morf.upgrade.UpgradePathFinder.NoUpgradePathExistsException;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher;
+import org.alfasoftware.morf.upgrade.deferredindexes.DeferredIndexSession;
+import org.alfasoftware.morf.upgrade.deferredindexes.DeferredIndexesModelEnricher;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -81,7 +81,7 @@ public class Upgrade {
   private final DatabaseUpgradePathValidationService databaseUpgradePathValidationService;
   private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
   private final UpgradeConfigAndContext upgradeConfigAndContext;
-  private final DeployedIndexesModelEnricher deployedIndexesModelEnricher;
+  private final DeferredIndexesModelEnricher deferredIndexesModelEnricher;
 
 
   public Upgrade(
@@ -93,7 +93,7 @@ public class Upgrade {
       DatabaseUpgradePathValidationService databaseUpgradePathValidationService,
       GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
       UpgradeConfigAndContext upgradeConfigAndContext,
-      DeployedIndexesModelEnricher deployedIndexesModelEnricher) {
+      DeferredIndexesModelEnricher deferredIndexesModelEnricher) {
     super();
     this.connectionResources = connectionResources;
     this.upgradePathFactory = upgradePathFactory;
@@ -103,7 +103,7 @@ public class Upgrade {
     this.databaseUpgradePathValidationService = databaseUpgradePathValidationService;
     this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
     this.upgradeConfigAndContext = upgradeConfigAndContext;
-    this.deployedIndexesModelEnricher = deployedIndexesModelEnricher;
+    this.deferredIndexesModelEnricher = deferredIndexesModelEnricher;
   }
 
 
@@ -117,10 +117,10 @@ public class Upgrade {
    *
    * <p>Returns the computed {@link UpgradePath}. After the upgrade completes,
    * the application drives any deferred-index reconciliation via
-   * {@link org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexService}.
+   * {@link org.alfasoftware.morf.upgrade.deferredindexes.DeferredIndexService}.
    * Each call to
-   * {@link org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexService#getBuildTasks()}
-   * returns one {@link org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexBuildTask}
+   * {@link org.alfasoftware.morf.upgrade.deferredindexes.DeferredIndexService#getBuildTasks()}
+   * returns one {@link org.alfasoftware.morf.upgrade.deferredindexes.DeferredIndexBuildTask}
    * per non-{@code COMPLETED} tracking row; the adopter runs them serially or
    * via its own executor.</p>
    *
@@ -192,8 +192,8 @@ public class Upgrade {
     UpgradePathFactory upgradePathFactory = new UpgradePathFactoryImpl(upgradeScriptAdditionsProvider, upgradeStatusTableServiceFactory);
     ViewChangesDeploymentHelper viewChangesDeploymentHelper = new ViewChangesDeploymentHelper(connectionResources.sqlDialect());
     GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory = null;
-    DeployedIndexesModelEnricher enricher =
-        DeployedIndexesModelEnricher.create(
+    DeferredIndexesModelEnricher enricher =
+        DeferredIndexesModelEnricher.create(
             connectionResources, upgradeConfigAndContext);
 
     Upgrade upgrade = new Upgrade(
@@ -267,7 +267,7 @@ public class Upgrade {
     }
 
     // Construct a per-upgrade session. The enricher primes it with every
-    // persisted DeployedIndexes row before anything else so that the
+    // persisted DeferredIndexes row before anything else so that the
     // visitor's remove/rename/column operations emit correct DML against
     // prior-upgrade tracking rows.
     DeferredIndexSession deferredIndexSession = DeferredIndexSession.create();
@@ -502,7 +502,7 @@ public class Upgrade {
 
 
   /**
-   * Enriches the source schema with DeployedIndexes metadata: rebuilds
+   * Enriches the source schema with DeferredIndexes metadata: rebuilds
    * built-deferred indexes with the {@code .deferred()} flag, virtualizes
    * unbuilt-deferred rows as declared indexes, and primes the per-upgrade
    * session so the visitor can answer presence queries via
@@ -516,10 +516,10 @@ public class Upgrade {
    * @return the enriched schema.
    */
   private Schema enrichSourceSchema(Schema sourceSchema, DeferredIndexSession session) {
-    if (deployedIndexesModelEnricher == null) {
+    if (deferredIndexesModelEnricher == null) {
       return sourceSchema;
     }
-    return deployedIndexesModelEnricher.enrich(sourceSchema, session);
+    return deferredIndexesModelEnricher.enrich(sourceSchema, session);
   }
 
 
@@ -535,7 +535,7 @@ public class Upgrade {
     private final ViewDeploymentValidator.Factory viewDeploymentValidatorFactory;
     private final DatabaseUpgradePathValidationService.Factory databaseUpgradePathValidationServiceFactory;
     private final GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory;
-    private final DeployedIndexesModelEnricher deployedIndexesModelEnricher;
+    private final DeferredIndexesModelEnricher deferredIndexesModelEnricher;
 
     private UpgradeConfigAndContext upgradeConfiguration = new UpgradeConfigAndContext();
 
@@ -546,14 +546,14 @@ public class Upgrade {
                    ViewDeploymentValidator.Factory viewDeploymentValidatorFactory,
                    DatabaseUpgradePathValidationService.Factory databaseUpgradePathValidationServiceFactory,
                    GraphBasedUpgradeBuilderFactory graphBasedUpgradeBuilderFactory,
-                   DeployedIndexesModelEnricher deployedIndexesModelEnricher) {
+                   DeferredIndexesModelEnricher deferredIndexesModelEnricher) {
       this.upgradePathFactory = upgradePathFactory;
       this.upgradeStatusTableServiceFactory =  upgradeStatusTableServiceFactory;
       this.viewChangesDeploymentHelperFactory = viewChangesDeploymentHelperFactory;
       this.viewDeploymentValidatorFactory = viewDeploymentValidatorFactory;
       this.databaseUpgradePathValidationServiceFactory = databaseUpgradePathValidationServiceFactory;
       this.graphBasedUpgradeBuilderFactory = graphBasedUpgradeBuilderFactory;
-      this.deployedIndexesModelEnricher = deployedIndexesModelEnricher;
+      this.deferredIndexesModelEnricher = deferredIndexesModelEnricher;
     }
 
     public Factory withUpgradeConfiguration(UpgradeConfigAndContext upgradeConfiguration) {
@@ -570,7 +570,7 @@ public class Upgrade {
                          databaseUpgradePathValidationServiceFactory.create(connectionResources),
                          graphBasedUpgradeBuilderFactory,
                          upgradeConfiguration,
-                         deployedIndexesModelEnricher);
+                         deferredIndexesModelEnricher);
     }
   }
 }

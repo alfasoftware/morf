@@ -45,7 +45,7 @@ import org.alfasoftware.morf.upgrade.UUID;
 import org.alfasoftware.morf.upgrade.UpgradeConfigAndContext;
 import org.alfasoftware.morf.upgrade.UpgradeGraph;
 import org.alfasoftware.morf.upgrade.UpgradeStep;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession;
+import org.alfasoftware.morf.upgrade.deferredindexes.DeferredIndexSession;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;

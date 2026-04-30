@@ -52,7 +52,7 @@ import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.sql.UpdateStatement;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession;
+import org.alfasoftware.morf.upgrade.deferredindexes.DeferredIndexSession;
 import org.mockito.ArgumentMatchers;
 import org.junit.Before;
 import org.junit.Test;
@@ -87,10 +87,10 @@ public class TestInlineTableUpgrader {
     upgradeConfigAndContext.setExclusiveExecutionSteps(Set.of());
     upgradeConfigAndContext.setDeferredIndexCreationEnabled(true);
     when(sqlDialect.supportsDeferredIndexCreation()).thenReturn(true);
-    // Default: allow DeployedIndexes DML to be converted without error
-    when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.InsertStatement.class))).thenReturn(List.of("INSERT INTO DeployedIndexes ..."));
-    when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.UpdateStatement.class))).thenReturn("UPDATE DeployedIndexes ...");
-    when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.DeleteStatement.class))).thenReturn("DELETE FROM DeployedIndexes ...");
+    // Default: allow DeferredIndexes DML to be converted without error
+    when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.InsertStatement.class))).thenReturn(List.of("INSERT INTO DeferredIndexes ..."));
+    when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.UpdateStatement.class))).thenReturn("UPDATE DeferredIndexes ...");
+    when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.DeleteStatement.class))).thenReturn("DELETE FROM DeferredIndexes ...");
 
     upgrader = new InlineTableUpgrader(schema, upgradeConfigAndContext, sqlDialect, sqlStatementWriter, SqlDialect.IdTable.withDeterministicName(ID_TABLE_NAME),
         DeferredIndexSession.create());
@@ -604,7 +604,7 @@ public class TestInlineTableUpgrader {
 
 
   /**
-   * Tests that a deferred AddIndex emits an INSERT into DeployedIndexes
+   * Tests that a deferred AddIndex emits an INSERT into DeferredIndexes
    * without emitting physical CREATE INDEX DDL.
    */
   @Test
@@ -624,7 +624,7 @@ public class TestInlineTableUpgrader {
     // when
     upgrader.visit(addIndex);
 
-    // then -- INSERT into DeployedIndexes, no physical DDL
+    // then -- INSERT into DeferredIndexes, no physical DDL
     verify(sqlStatementWriter, atLeast(1)).writeSql(anyCollection());
     verify(sqlDialect, never()).addIndexStatements(ArgumentMatchers.any(), ArgumentMatchers.any());
   }
@@ -661,7 +661,7 @@ public class TestInlineTableUpgrader {
 
   /**
    * Tests that ChangeIndex for a deferred index that is not physically present
-   * emits DELETE + INSERT in DeployedIndexes without physical DROP INDEX DDL.
+   * emits DELETE + INSERT in DeferredIndexes without physical DROP INDEX DDL.
    */
   @Test
   public void testChangeIndexCancelsPendingDeferredAddAndAddsNewIndex() {
@@ -701,7 +701,7 @@ public class TestInlineTableUpgrader {
     // when
     upgrader.visit(changeIndex);
 
-    // then — no physical DROP INDEX (not built), but DeployedIndexes updated
+    // then — no physical DROP INDEX (not built), but DeferredIndexes updated
     verify(sqlDialect, never()).indexDropStatements(ArgumentMatchers.any(), ArgumentMatchers.any());
     verify(sqlStatementWriter, atLeast(1)).writeSql(anyCollection());
   }
@@ -709,7 +709,7 @@ public class TestInlineTableUpgrader {
 
   /**
    * Tests that RenameIndex for a deferred index not physically built updates
-   * only the DeployedIndexes table without emitting RENAME INDEX DDL.
+   * only the DeferredIndexes table without emitting RENAME INDEX DDL.
    */
   @Test
   public void testRenameIndexUpdatesPendingDeferredAdd() {
@@ -750,7 +750,7 @@ public class TestInlineTableUpgrader {
 
   /**
    * Tests that RemoveIndex for a deferred index not physically built emits
-   * DELETE from DeployedIndexes without physical DROP INDEX DDL.
+   * DELETE from DeferredIndexes without physical DROP INDEX DDL.
    */
   @Test
   public void testRemoveIndexCancelsPendingDeferredAdd() {
@@ -816,7 +816,7 @@ public class TestInlineTableUpgrader {
 
 
   /**
-   * Tests that RemoveTable removes all tracked indexes for that table from DeployedIndexes.
+   * Tests that RemoveTable removes all tracked indexes for that table from DeferredIndexes.
    */
   @Test
   public void testRemoveTableCancelsPendingDeferredIndexes() {
@@ -844,14 +844,14 @@ public class TestInlineTableUpgrader {
     // when
     upgrader.visit(removeTable);
 
-    // then — DROP TABLE + DELETE from DeployedIndexes
+    // then — DROP TABLE + DELETE from DeferredIndexes
     verify(sqlDialect).dropStatements(mockTable);
     verify(sqlStatementWriter, atLeast(1)).writeSql(anyCollection());
   }
 
 
   /**
-   * Tests that RemoveColumn removes tracked indexes referencing the column from DeployedIndexes.
+   * Tests that RemoveColumn removes tracked indexes referencing the column from DeferredIndexes.
    */
   @Test
   public void testRemoveColumnCancelsPendingDeferredIndexContainingColumn() {
@@ -883,14 +883,14 @@ public class TestInlineTableUpgrader {
     // when
     upgrader.visit(removeColumn);
 
-    // then — DELETE from DeployedIndexes + DROP COLUMN
+    // then — DELETE from DeferredIndexes + DROP COLUMN
     verify(sqlDialect).alterTableDropColumnStatements(ArgumentMatchers.any(), ArgumentMatchers.eq(mockColumn));
     verify(sqlStatementWriter, atLeast(1)).writeSql(anyCollection());
   }
 
 
   /**
-   * Tests that RenameTable updates table name in DeployedIndexes for tracked indexes.
+   * Tests that RenameTable updates table name in DeferredIndexes for tracked indexes.
    */
   @Test
   public void testRenameTableUpdatesPendingDeferredIndexTableName() {
@@ -922,14 +922,14 @@ public class TestInlineTableUpgrader {
     // when
     upgrader.visit(renameTable);
 
-    // then — UPDATE in DeployedIndexes + RENAME TABLE DDL
+    // then — UPDATE in DeferredIndexes + RENAME TABLE DDL
     verify(sqlDialect).renameTableStatements(oldTable, newTable);
     verify(sqlStatementWriter, atLeast(1)).writeSql(anyCollection());
   }
 
 
   /**
-   * Tests that ChangeColumn with a column rename updates column references in DeployedIndexes.
+   * Tests that ChangeColumn with a column rename updates column references in DeferredIndexes.
    */
   @Test
   public void testChangeColumnUpdatesPendingDeferredIndexColumnName() {
@@ -964,7 +964,7 @@ public class TestInlineTableUpgrader {
     // when
     upgrader.visit(changeColumn);
 
-    // then — UPDATE in DeployedIndexes + ALTER TABLE DDL
+    // then — UPDATE in DeferredIndexes + ALTER TABLE DDL
     verify(sqlDialect).alterTableChangeColumnStatements(ArgumentMatchers.any(), ArgumentMatchers.eq(fromColumn), ArgumentMatchers.eq(toColumn));
     verify(sqlStatementWriter, atLeast(1)).writeSql(anyCollection());
   }
@@ -974,7 +974,7 @@ public class TestInlineTableUpgrader {
    * Slim invariant + dialect-support normalization: on a dialect without
    * deferred-index-creation support, a declared-deferred AddIndex is
    * normalized to immediate (CREATE INDEX runs now) AND — because the slim
-   * model only tracks deferred indexes — produces NO DeployedIndexes INSERT
+   * model only tracks deferred indexes — produces NO DeferredIndexes INSERT
    * at all. The app-side executor therefore cannot double-CREATE.
    */
   @Test
@@ -1012,7 +1012,7 @@ public class TestInlineTableUpgrader {
    * Slim invariant + dialect-support normalization: ChangeIndex from
    * immediate to declared-deferred on a dialect without deferred support
    * emits physical DROP + CREATE (the to-index normalizes to immediate) AND
-   * produces no DeployedIndexes INSERT for the new row. No DELETE either,
+   * produces no DeferredIndexes INSERT for the new row. No DELETE either,
    * since the from-index wasn't tracked in the first place.
    */
   @Test

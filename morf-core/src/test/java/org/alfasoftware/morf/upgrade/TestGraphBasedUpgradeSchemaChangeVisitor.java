@@ -32,9 +32,9 @@ import org.alfasoftware.morf.metadata.Table;
 import org.alfasoftware.morf.sql.SelectStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.upgrade.GraphBasedUpgradeSchemaChangeVisitor.GraphBasedUpgradeSchemaChangeVisitorFactory;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndex;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexStatus;
+import org.alfasoftware.morf.upgrade.deferredindexes.DeferredIndexSession;
+import org.alfasoftware.morf.upgrade.deferredindexes.DeferredIndex;
+import org.alfasoftware.morf.upgrade.deferredindexes.DeferredIndexStatus;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.junit.Before;
@@ -86,10 +86,10 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
     upgradeConfigAndContext = new UpgradeConfigAndContext();
     upgradeConfigAndContext.setDeferredIndexCreationEnabled(true);
     when(sqlDialect.supportsDeferredIndexCreation()).thenReturn(true);
-    // Default: allow DeployedIndexes DML to be converted without error
-    when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.InsertStatement.class))).thenReturn(List.of("INSERT INTO DeployedIndexes ..."));
-    when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.UpdateStatement.class))).thenReturn("UPDATE DeployedIndexes ...");
-    when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.DeleteStatement.class))).thenReturn("DELETE FROM DeployedIndexes ...");
+    // Default: allow DeferredIndexes DML to be converted without error
+    when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.InsertStatement.class))).thenReturn(List.of("INSERT INTO DeferredIndexes ..."));
+    when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.UpdateStatement.class))).thenReturn("UPDATE DeferredIndexes ...");
+    when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.DeleteStatement.class))).thenReturn("DELETE FROM DeferredIndexes ...");
     visitor = new GraphBasedUpgradeSchemaChangeVisitor(sourceSchema, upgradeConfigAndContext, sqlDialect, idTable,
         DeferredIndexSession.create(),
         nodes);
@@ -324,12 +324,12 @@ public class TestGraphBasedUpgradeSchemaChangeVisitor {
   public void testRemoveIndexVisitRespectsAwaitingBuildSession() {
     // given — primed session with a PENDING entry for SomeIdx
     DeferredIndexSession primedSession = DeferredIndexSession.create();
-    DeployedIndex pendingRow = new DeployedIndex();
+    DeferredIndex pendingRow = new DeferredIndex();
     pendingRow.setTableName("SomeTable");
     pendingRow.setIndexName("SomeIdx");
     pendingRow.setIndexUnique(false);
     pendingRow.setIndexColumns(List.of("col1"));
-    pendingRow.setStatus(DeployedIndexStatus.PENDING);
+    pendingRow.setStatus(DeferredIndexStatus.PENDING);
     primedSession.prime(pendingRow);
 
     GraphBasedUpgradeSchemaChangeVisitor visitorWithAwaitingBuild =

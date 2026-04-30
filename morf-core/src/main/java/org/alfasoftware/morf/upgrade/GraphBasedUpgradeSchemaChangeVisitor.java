@@ -7,7 +7,7 @@ import java.util.UUID;
 import org.alfasoftware.morf.jdbc.SqlDialect;
 import org.alfasoftware.morf.metadata.Schema;
 import org.alfasoftware.morf.metadata.Table;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession;
+import org.alfasoftware.morf.upgrade.deferredindexes.DeferredIndexSession;
 
 /**
  * Graph Based Upgrade implementation of the {@link SchemaChangeVisitor} which

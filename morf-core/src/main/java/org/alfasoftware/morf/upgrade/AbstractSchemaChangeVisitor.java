@@ -16,7 +16,7 @@ import org.alfasoftware.morf.sql.DeleteStatement;
 import org.alfasoftware.morf.sql.InsertStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.sql.UpdateStatement;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession;
+import org.alfasoftware.morf.upgrade.deferredindexes.DeferredIndexSession;
 
 /**
  * Common code between SchemaChangeVisitor implementors
@@ -71,7 +71,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
 
   /**
-   * Whether DeployedIndexes tracking is active.
+   * Whether DeferredIndexes tracking is active.
    */
   private boolean isDeployedIndexesEnabled() {
     return upgradeConfigAndContext.isDeferredIndexCreationEnabled();
@@ -79,8 +79,8 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
 
   /**
-   * Converts and writes an INSERT against the DeployedIndexes table. Uses
-   * the schema-free overload because DeployedIndexes is Morf infrastructure,
+   * Converts and writes an INSERT against the DeferredIndexes table. Uses
+   * the schema-free overload because DeferredIndexes is Morf infrastructure,
    * not part of the user schema model. Each typed overload is its own
    * compile-time entry point — new DML types (e.g. MERGE) force a new
    * overload rather than a runtime instanceof failure.
@@ -96,7 +96,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
 
   /**
-   * Converts and writes an UPDATE against the DeployedIndexes table.
+   * Converts and writes an UPDATE against the DeferredIndexes table.
    *
    * @param s the UPDATE.
    */
@@ -109,7 +109,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
 
   /**
-   * Converts and writes a DELETE against the DeployedIndexes table.
+   * Converts and writes a DELETE against the DeferredIndexes table.
    *
    * @param s the DELETE.
    */
@@ -134,7 +134,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     for (Index index : original.indexes()) {
       Index effective = trackingPolicy.effectiveIndex(index);
       if (trackingPolicy.shouldTrack(effective)) {
-        trackInDeployedIndexes(original.getName(), effective);
+        trackInDeferredIndexes(original.getName(), effective);
       }
     }
   }
@@ -166,7 +166,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     currentSchema = changeColumn.apply(currentSchema);
     writeStatements(sqlDialect.alterTableChangeColumnStatements(currentSchema.getTable(tableName), changeColumn.getFromColumn(), changeColumn.getToColumn()));
 
-    // Update column references in DeployedIndexes if column was renamed
+    // Update column references in DeferredIndexes if column was renamed
     if (!oldColName.equalsIgnoreCase(newColName)) {
       deferredIndexSession.updateColumnName(tableName, oldColName, newColName)
           .forEach(this::writeDeployedIndexesDml);
@@ -232,7 +232,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
       writeStatements(sqlDialect.addIndexStatements(currentSchema.getTable(tableName), toIndex));
     }
     if (trackingPolicy.shouldTrack(toIndex)) {
-      trackInDeployedIndexes(tableName, toIndex);
+      trackInDeferredIndexes(tableName, toIndex);
     }
   }
 
@@ -260,7 +260,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   public void visit(RenameTable renameTable) {
     Table oldTable = currentSchema.getTable(renameTable.getOldTableName());
 
-    // Update table name in DeployedIndexes for ALL indexes on this table
+    // Update table name in DeferredIndexes for ALL indexes on this table
     deferredIndexSession.updateTableName(renameTable.getOldTableName(), renameTable.getNewTableName())
         .forEach(this::writeDeployedIndexesDml);
 
@@ -293,7 +293,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     for (Index index : original.indexes()) {
       Index effective = trackingPolicy.effectiveIndex(index);
       if (trackingPolicy.shouldTrack(effective)) {
-        trackInDeployedIndexes(original.getName(), effective);
+        trackInDeferredIndexes(original.getName(), effective);
       }
     }
   }
@@ -367,7 +367,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
       emitAddIndexOrRename(tableName, newIndex);
     }
     if (trackingPolicy.shouldTrack(newIndex)) {
-      trackInDeployedIndexes(tableName, newIndex);
+      trackInDeferredIndexes(tableName, newIndex);
     }
   }
 
@@ -408,12 +408,12 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
 
   /**
-   * Records the index in DeployedIndexes and emits the INSERT DML.
+   * Records the index in DeferredIndexes and emits the INSERT DML.
    *
    * @param tableName the table the index belongs to.
    * @param index the index being tracked.
    */
-  private void trackInDeployedIndexes(String tableName, Index index) {
+  private void trackInDeferredIndexes(String tableName, Index index) {
     deferredIndexSession.trackIndex(tableName, index)
         .forEach(this::writeDeployedIndexesDml);
   }

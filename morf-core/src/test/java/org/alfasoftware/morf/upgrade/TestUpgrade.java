@@ -80,8 +80,8 @@ import org.alfasoftware.morf.upgrade.MockConnectionResources.StubSchemaResource;
 import org.alfasoftware.morf.upgrade.SchemaAutoHealer.SchemaHealingResults;
 import org.alfasoftware.morf.upgrade.UpgradePath.UpgradePathFactory;
 import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeferredIndexSession;
-import org.alfasoftware.morf.upgrade.deployedindexes.DeployedIndexesModelEnricher;
+import org.alfasoftware.morf.upgrade.deferredindexes.DeferredIndexSession;
+import org.alfasoftware.morf.upgrade.deferredindexes.DeferredIndexesModelEnricher;
 import org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.ChangeCar;
 import org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.ChangeDriver;
 import org.alfasoftware.morf.upgrade.testupgrade.upgrade.v1_0_0.CreateDeployedViews;
@@ -1033,8 +1033,8 @@ public class TestUpgrade {
   }
 
 
-  private static DeployedIndexesModelEnricher mockEnricher() {
-    DeployedIndexesModelEnricher enricher = mock(DeployedIndexesModelEnricher.class);
+  private static DeferredIndexesModelEnricher mockEnricher() {
+    DeferredIndexesModelEnricher enricher = mock(DeferredIndexesModelEnricher.class);
     when(enricher.enrich(any(Schema.class), any(DeferredIndexSession.class)))
         .thenAnswer(inv -> inv.getArgument(0));
     return enricher;

@@ -21,7 +21,7 @@ import org.alfasoftware.morf.metadata.SchemaUtils;
 
 /**
  * Policy class encapsulating the dialect-aware "should we track this index
- * in DeployedIndexes?" decision and the matching "should we emit physical
+ * in DeferredIndexes?" decision and the matching "should we emit physical
  * CREATE INDEX immediately?" decision.
  *
  * <p>Replaces three formerly-scattered concerns in
