@@ -205,7 +205,7 @@ class DeferredIndexBuilder {
       return true;
     } catch (SQLException e) {
       // Best-effort safety net; proceed with dialect default.
-      log.debug("Could not set lock_timeout for [" + tableName + "." + indexName + "]: " + e.getMessage());
+      log.warn("Could not set lock_timeout for [" + tableName + "." + indexName + "]: " + e.getMessage());
       return false;
     }
   }
@@ -222,7 +222,7 @@ class DeferredIndexBuilder {
         execute(connection, reset);
       } catch (SQLException e) {
         log.warn("Could not reset lock_timeout on connection for [" + tableName + "." + indexName
-            + "]: " + e.getMessage() + " — connection will be discarded by the pool");
+            + "]: " + e.getMessage());
       }
     });
   }
