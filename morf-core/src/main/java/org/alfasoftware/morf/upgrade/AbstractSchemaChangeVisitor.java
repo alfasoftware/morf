@@ -109,9 +109,9 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     Table original = addTable.getTable();
     currentSchema = addTable.apply(currentSchema);
 
-    // Slim invariant: deferred indexes are NOT built immediately. Filter them
-    // out of the CREATE TABLE statement so the adopter builds them via the
-    // deferred pipeline. Register them as PENDING (same as addIndex separately).
+    // Deferred indexes are NOT built immediately. Filter them out of the CREATE
+    // TABLE statement so the adopter builds them via the deferred pipeline.
+    // Register them as PENDING (same as addIndex separately).
     writeStatements(sqlDialect.tableDeploymentStatements(withoutDeferredOnSupportingDialect(original)));
 
     for (Index index : original.indexes()) {
@@ -440,11 +440,10 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
    * Projects forward: will this index exist in the DB by the time the
    * generated script reaches the current emission point?
    *
-   * <p>Under the "row-existence = declared deferred" model, the session
-   * has the answer: an index is physically absent iff it's registered AND its
-   * status is non-terminal (declared deferred but not yet built by the
-   * adopter). All other indexes — non-registered (non-deferred physical) and
-   * registered-COMPLETED (built deferred) — are present.</p>
+   * <p>The session is the source of truth: an index is physically absent iff it
+   * is registered AND its status is non-terminal (declared deferred but not yet
+   * built by the adopter). Every other case — unregistered (non-deferred
+   * physical) and registered-COMPLETED (built deferred) — counts as present.</p>
    *
    * @param tableName the table name.
    * @param indexName the index name.

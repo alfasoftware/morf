@@ -73,13 +73,12 @@ import org.apache.commons.logging.LogFactory;
  *       operator sees every issue in one boot cycle.</li>
  * </ol>
  *
- * <p>The drift policy is intentionally <i>narrow</i> compared to the slim
- * branch's wide hard-fail: routine restarts during long-running builds
- * (Kubernetes pod evict, JVM restart) leave non-COMPLETED rows alongside a
- * physical index. The build task self-heals these via per-task
- * reconciliation. Only the COMPLETED-row anomalies remain as hard failures
- * — those represent state corruption no automated reconciliation can
- * safely fix.</p>
+ * <p>The drift policy is deliberately narrow: routine restarts during
+ * long-running builds (Kubernetes pod evict, JVM restart) leave non-COMPLETED
+ * rows alongside a physical index. The build task self-heals these via
+ * per-task reconciliation. Only the COMPLETED-row anomalies remain as hard
+ * failures — those represent state corruption no automated reconciliation
+ * can safely fix.</p>
  *
  * <p>{@code SchemaHomology.checkIndex} does not compare {@code isDeferred()}
  * and only logs warnings on missing indexes — so the COMPLETED-row drift

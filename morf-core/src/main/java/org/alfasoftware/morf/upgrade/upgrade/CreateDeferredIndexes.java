@@ -31,10 +31,10 @@ import org.alfasoftware.morf.upgrade.db.DatabaseUpgradeTableContribution;
 /**
  * Creates the DeferredIndexes registration table.
  *
- * <p>Under the slim invariant the table only ever holds rows for deferred
- * indexes, so there's no prepopulation step — nothing to seed for indexes
- * that existed before the feature was introduced (they're non-deferred and
- * live only in the physical DB, where {@code SchemaHomology} handles them).</p>
+ * <p>The table only ever holds rows for deferred indexes, so there's no
+ * prepopulation step — nothing to seed for indexes that existed before the
+ * feature was introduced (they're non-deferred and live only in the physical
+ * DB, where {@code SchemaHomology} handles them).</p>
  *
  * <p>Runs under {@link ExclusiveExecution} so it can't race with other
  * steps.</p>
