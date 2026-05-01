@@ -971,11 +971,10 @@ public class TestInlineTableUpgrader {
 
 
   /**
-   * Slim invariant + dialect-support normalization: on a dialect without
-   * deferred-index-creation support, a declared-deferred AddIndex is
-   * normalized to immediate (CREATE INDEX runs now) AND — because the slim
-   * model only tracks deferred indexes — produces NO DeferredIndexes INSERT
-   * at all. The app-side executor therefore cannot double-CREATE.
+   * Dialect-support normalization: on a dialect without deferred-index-creation
+   * support, a declared-deferred AddIndex is normalized to immediate (CREATE
+   * INDEX runs now) AND produces NO DeferredIndexes INSERT — only deferred
+   * indexes are ever registered, so the app-side executor cannot double-CREATE.
    */
   @Test
   public void testVisitAddIndexDeferredOnDialectWithoutDeferredSupport() {
@@ -1003,17 +1002,17 @@ public class TestInlineTableUpgrader {
     // then — physical CREATE INDEX emitted (declared-deferred promoted-to-immediate)
     verify(sqlDialect).addIndexStatements(nullable(Table.class), nullable(Index.class));
 
-    // and — NO registration INSERT (slim: non-deferred is not registered)
+    // and — NO registration INSERT (only deferred indexes are registered)
     verify(sqlDialect, never()).convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.InsertStatement.class));
   }
 
 
   /**
-   * Slim invariant + dialect-support normalization: ChangeIndex from
-   * immediate to declared-deferred on a dialect without deferred support
-   * emits physical DROP + CREATE (the to-index normalizes to immediate) AND
-   * produces no DeferredIndexes INSERT for the new row. No DELETE either,
-   * since the from-index wasn't registered in the first place.
+   * Dialect-support normalization for ChangeIndex: from immediate to
+   * declared-deferred on a dialect without deferred support emits physical
+   * DROP + CREATE (the to-index normalizes to immediate) AND produces no
+   * DeferredIndexes INSERT for the new row. No DELETE either, since the
+   * from-index wasn't registered in the first place.
    */
   @Test
   public void testVisitChangeIndexToDeferredOnDialectWithoutDeferredSupport() {
@@ -1050,7 +1049,7 @@ public class TestInlineTableUpgrader {
     verify(sqlDialect).indexDropStatements(nullable(Table.class), nullable(Index.class));
     verify(sqlDialect).addIndexStatements(nullable(Table.class), nullable(Index.class));
 
-    // and — NO registration INSERT (slim: non-deferred is not registered)
+    // and — NO registration INSERT (only deferred indexes are registered)
     verify(sqlDialect, never()).convertStatementToSQL(ArgumentMatchers.any(org.alfasoftware.morf.sql.InsertStatement.class));
   }
 }

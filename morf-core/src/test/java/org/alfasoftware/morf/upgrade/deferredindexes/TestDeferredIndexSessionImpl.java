@@ -49,9 +49,9 @@ public class TestDeferredIndexSessionImpl {
 
   /**
    * prime populates the in-session map from a persisted registration row
-   * without emitting any DML. After priming, isRegistered / isRegistered
-   * must return true so subsequent remove/rename/etc. calls correctly
-   * produce DML against the persisted row.
+   * without emitting any DML. After priming, isRegistered must return true
+   * so subsequent unregister/rename/etc. calls correctly produce DML
+   * against the persisted row.
    */
   @Test
   public void testPrimeSeedsInSessionStateWithoutEmittingDml() {
@@ -69,10 +69,10 @@ public class TestDeferredIndexSessionImpl {
     // then — state is seeded
     assertTrue("Primed entry should be registered as deferred", session.isRegistered("Product", "Product_Name_1"));
 
-    // and — a subsequent removeIndex produces a DELETE DML (not a no-op),
+    // and — a subsequent unregisterIndex produces a DELETE DML (not a no-op),
     // because the primed row is treated as if it existed in-session.
     List<? extends Statement> deleteStmts = session.unregisterIndex("Product", "Product_Name_1");
-    assertEquals("removeIndex on primed row should emit one DELETE", 1, deleteStmts.size());
+    assertEquals("unregisterIndex on primed row should emit one DELETE", 1, deleteStmts.size());
   }
 
 
@@ -92,9 +92,9 @@ public class TestDeferredIndexSessionImpl {
   }
 
 
-  /** registerIndex for deferred should set isRegistered. In the slim
-   *  invariant the visitor only ever calls registerIndex for deferred indexes,
-   *  so there is no non-deferred case to test. */
+  /** registerIndex for a deferred index sets isRegistered. The visitor only
+   *  ever calls registerIndex for deferred indexes (non-deferred indexes are
+   *  built directly), so there is no non-deferred case to test. */
   @Test
   public void testRegisterDeferredIndex() {
     // given
@@ -120,7 +120,7 @@ public class TestDeferredIndexSessionImpl {
   }
 
 
-  /** removeIndex should return DELETE and unregister. */
+  /** unregisterIndex returns a DELETE and clears the in-session registration. */
   @Test
   public void testUnregisterIndex() {
     // given
@@ -135,7 +135,7 @@ public class TestDeferredIndexSessionImpl {
   }
 
 
-  /** removeIndex for non-registered should return empty. */
+  /** unregisterIndex for an unknown (table, index) pair returns an empty list. */
   @Test
   public void testUnregisterUnknownIndex() {
     // when
@@ -241,7 +241,7 @@ public class TestDeferredIndexSessionImpl {
 
   // ---- Negative / no-op paths -------------------------------------------
 
-  /** removeIndex for an unregistered (table, index) pair is a no-op. */
+  /** unregisterIndex for an unregistered (table, index) pair is a no-op. */
   @Test
   public void testUnregisterIndexOnUnregisteredTableIsNoOp() {
     // when

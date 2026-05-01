@@ -162,7 +162,7 @@ public class TestDeferredIndexesStatements {
   // ---- Registration DML ------------------------------------------------------
 
   /** registerIndex produces an INSERT against the DeferredIndexes table with
-   *  status=PENDING for a deferred index (slim: only deferred gets registered). */
+   *  status=PENDING. Only deferred indexes are ever registered. */
   @Test
   public void testRegisterDeferredIndex() {
     // given
@@ -181,7 +181,7 @@ public class TestDeferredIndexesStatements {
         .filter(f -> f instanceof FieldLiteral)
         .map(f -> ((FieldLiteral) f).getValue())
         .anyMatch(v -> DeferredIndexStatus.PENDING.name().equals(v));
-    assertTrue("deferred track should emit PENDING", sawPending);
+    assertTrue("registered deferred index should emit status=PENDING", sawPending);
   }
 
 
@@ -203,7 +203,7 @@ public class TestDeferredIndexesStatements {
   }
 
 
-  /** removeIndex produces a DELETE with WHERE on (tableName, indexName). */
+  /** unregisterIndex produces a DELETE with WHERE on (tableName, indexName). */
   @Test
   public void testUnregisterIndex() {
     // when

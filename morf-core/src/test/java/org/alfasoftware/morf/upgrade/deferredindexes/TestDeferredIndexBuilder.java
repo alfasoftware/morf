@@ -187,11 +187,10 @@ public class TestDeferredIndexBuilder {
    * lock_timeout is reset in the finally block to avoid leaking into the
    * connection pool.
    *
-   * <p>Each phase opens its own {@link Statement} (executeOne/executeAll
-   * use try-with-resources). Stubbing distinct mock instances per
-   * createStatement() call lets the test verify each {@code execute} against
-   * the right phase, so a future refactor that splits work across different
-   * connections would be caught.</p>
+   * <p>Each phase opens its own {@link Statement} via try-with-resources.
+   * Stubbing distinct mock instances per createStatement() call lets the
+   * test verify each {@code execute} against the right phase, so a future
+   * refactor that splits work across different connections would be caught.</p>
    */
   @Test
   public void testInvalidHappyPathPostgresLockTimeout() throws SQLException {

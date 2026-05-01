@@ -31,7 +31,7 @@ import org.junit.Test;
  */
 public class TestDeferredIndex {
 
-  /** toIndex reconstructs a non-unique deferred index (slim: always deferred). */
+  /** toIndex reconstructs a non-unique deferred index. */
   @Test
   public void testToIndexBasic() {
     // given
@@ -47,7 +47,7 @@ public class TestDeferredIndex {
     assertEquals("Idx1", idx.getName());
     assertEquals(List.of("col1", "col2"), idx.columnNames());
     assertFalse(idx.isUnique());
-    assertTrue("Slim invariant: every persisted row reconstructs as deferred", idx.isDeferred());
+    assertTrue("every persisted row reconstructs as deferred", idx.isDeferred());
   }
 
 

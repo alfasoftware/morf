@@ -150,7 +150,7 @@ public class TestDeferredIndexesIntegration {
     assertTrue("Job should reference the index name",
         deferredJobs.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
 
-    // then -- DeferredIndexes row is PENDING (slim: every registered row is deferred by invariant)
+    // then -- DeferredIndexes row is PENDING
     assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
   }
 
@@ -234,8 +234,8 @@ public class TestDeferredIndexesIntegration {
     // then -- index built immediately
     assertPhysicalIndexExists("Product", "Product_Name_1");
 
-    // and -- no deferred jobs returned (adopter contract when feature is disabled)
-    assertTrue("No deferred jobs expected when feature is disabled",
+    // and -- no deferred registrations persisted (adopter contract when feature is disabled)
+    assertTrue("No deferred registrations expected when feature is disabled",
         newDao().findNonTerminal().isEmpty());
   }
 
@@ -308,8 +308,8 @@ public class TestDeferredIndexesIntegration {
 
   /**
    * Step A adds a non-deferred index on column "name". Step B renames "name"
-   * to "label". <b>Slim invariant:</b> non-deferred indexes are not registered
-   * in {@code DeferredIndexes} — the rename is applied physically via
+   * to "label". Non-deferred indexes are not registered in
+   * {@code DeferredIndexes} — the rename is applied physically via
    * ALTER TABLE and no registration row exists to update.
    */
   @Test
@@ -329,7 +329,7 @@ public class TestDeferredIndexesIntegration {
 
     // then -- physical index exists (under the renamed column) and no registration row
     assertPhysicalIndexExists("Product", "Product_Name_1");
-    assertNull("Slim: non-deferred indexes are not registered in DeferredIndexes",
+    assertNull("non-deferred indexes are not registered in DeferredIndexes",
         queryDeferredIndexField("Product_Name_1", "status"));
   }
 
@@ -429,8 +429,7 @@ public class TestDeferredIndexesIntegration {
 
   /**
    * A non-deferred addIndex should be built immediately and exist physically.
-   * <b>Slim invariant:</b> non-deferred indexes are not registered in
-   * {@code DeferredIndexes}.
+   * Non-deferred indexes are not registered in {@code DeferredIndexes}.
    */
   @Test
   public void testNonDeferredIndexBuiltImmediately() {
@@ -446,9 +445,9 @@ public class TestDeferredIndexesIntegration {
     performUpgrade(targetSchema,
         AddImmediateIndex.class);
 
-    // then -- physical index exists and NO registration row (slim invariant)
+    // then -- physical index exists and NO registration row
     assertPhysicalIndexExists("Product", "Product_Name_1");
-    assertNull("Slim: non-deferred indexes are not registered in DeferredIndexes",
+    assertNull("non-deferred indexes are not registered in DeferredIndexes",
         queryDeferredIndexField("Product_Name_1", "status"));
   }
 
@@ -471,9 +470,9 @@ public class TestDeferredIndexesIntegration {
         Collections.singletonList(AddDeferredIndex.class),
         connectionResources, forceConfig, viewDeploymentValidator);
 
-    // then -- built immediately + no registration row (slim: non-deferred not registered)
+    // then -- built immediately + no registration row (force-immediate ends up non-deferred → not registered)
     assertPhysicalIndexExists("Product", "Product_Name_1");
-    assertNull("Slim: force-immediate ends up non-deferred → not registered",
+    assertNull("force-immediate ends up non-deferred → not registered",
         queryDeferredIndexField("Product_Name_1", "status"));
     assertTrue("No deferred statements expected", newDao().findNonTerminal().isEmpty());
   }
@@ -789,8 +788,7 @@ public class TestDeferredIndexesIntegration {
    * the physical index already exists, the enricher does NOT throw — it
    * rebuilds the index as deferred in the enriched schema and the build
    * task reconciles via {@code dialect.isIndexValid} on its next pass
-   * (marking it COMPLETED if VALID). This is the routine-restart case that
-   * used to boot-loop on the slim branch.
+   * (marking it COMPLETED if VALID). This is the routine-restart case.
    */
   @Test
   public void testNonCompletedRowWithMatchingPhysicalAutoRecovers() {
@@ -927,8 +925,7 @@ public class TestDeferredIndexesIntegration {
   /**
    * Crash-near-completion auto-heal: a row stuck in IN_PROGRESS whose
    * physical index is already VALID is auto-promoted to COMPLETED on the
-   * next build pass via {@code dialect.isIndexValid}. Slim used to
-   * boot-loop on this case.
+   * next build pass via {@code dialect.isIndexValid}.
    */
   @Test
   public void testInProgressRowWithValidPhysicalAutoCompletes() {

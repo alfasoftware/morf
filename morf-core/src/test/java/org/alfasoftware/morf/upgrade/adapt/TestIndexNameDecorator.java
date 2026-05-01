@@ -42,8 +42,7 @@ public class TestIndexNameDecorator {
   }
 
 
-  /** isDeferred delegates to the wrapped index -- previously the override was missing
-   *  and the decorator silently inherited the interface's default-false. */
+  /** isDeferred delegates to the wrapped index, preserving the deferred flag through renaming. */
   @Test
   public void testIsDeferredDelegatesToWrappedDeferredIndex() {
     Index wrapped = index("Original_Idx").deferred().columns("col1");

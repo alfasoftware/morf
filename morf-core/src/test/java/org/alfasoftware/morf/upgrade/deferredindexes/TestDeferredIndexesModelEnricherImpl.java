@@ -169,10 +169,9 @@ public class TestDeferredIndexesModelEnricherImpl {
 
 
   /**
-   * Non-COMPLETED row + matching physical → rebuilt as deferred (USED to
-   * throw on the slim branch). This is the routine-restart case: the build
-   * task crashed mid-build; the next pass will see {@code isIndexValid} and
-   * either mark COMPLETED or DROP+CREATE.
+   * Non-COMPLETED row + matching physical → rebuilt as deferred. This is the
+   * routine-restart case: the build task crashed mid-build; the next pass
+   * will see {@code isIndexValid} and either mark COMPLETED or DROP+CREATE.
    */
   @Test
   public void testNonCompletedRowWithPhysicalMatchRebuiltAsDeferred() {
@@ -314,7 +313,7 @@ public class TestDeferredIndexesModelEnricherImpl {
   }
 
 
-  /** COMPLETED row + NO physical match → drift; sharpened message hints at manual recovery. */
+  /** COMPLETED row + NO physical match → drift exception. */
   @Test
   public void testCompletedRowWithoutPhysicalMatchThrowsDrift() {
     // given — registration row says COMPLETED but physical index is missing
