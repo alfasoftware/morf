@@ -106,7 +106,7 @@ public class TestDeferredIndexesModelEnricherImpl {
 
   /** When DeferredIndexes table doesn't exist, returns input schema unchanged. */
   @Test
-  public void testNoDeployedIndexesTableReturnsUnchanged() {
+  public void testNoDeferredIndexesTableReturnsUnchanged() {
     // given
     Schema input = schema(table("Foo").columns(column("id", DataType.BIG_INTEGER).primaryKey()));
     DeferredIndexesModelEnricher enricher = newEnricher();
@@ -121,7 +121,7 @@ public class TestDeferredIndexesModelEnricherImpl {
 
   /** When DeferredIndexes table is empty, returns input schema unchanged. */
   @Test
-  public void testEmptyDeployedIndexesReturnsUnchanged() {
+  public void testEmptyDeferredIndexesReturnsUnchanged() {
     // given
     Schema input = schema(
         table(DatabaseUpgradeTableContribution.DEFERRED_INDEXES_NAME)

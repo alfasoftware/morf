@@ -151,7 +151,7 @@ public class TestDeferredIndexesIntegration {
         deferredJobs.stream().anyMatch(j -> "Product_Name_1".equalsIgnoreCase(j.getIndexName())));
 
     // then -- DeferredIndexes row is PENDING (slim: every tracked row is deferred by invariant)
-    assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
+    assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
   }
 
 
@@ -211,8 +211,8 @@ public class TestDeferredIndexesIntegration {
         deferredJobs.stream().anyMatch(j -> "Product_IdName_1".equalsIgnoreCase(j.getIndexName())));
 
     // then -- both PENDING in DeferredIndexes
-    assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
-    assertEquals("PENDING", queryDeployedIndexField("Product_IdName_1", "status"));
+    assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("PENDING", queryDeferredIndexField("Product_IdName_1", "status"));
   }
 
 
@@ -294,8 +294,8 @@ public class TestDeferredIndexesIntegration {
         RenameColumnWithDeferredIndex.class);
 
     // then -- DeferredIndexes row reflects the renamed column
-    assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
-    assertEquals("label", queryDeployedIndexField("Product_Name_1", "indexColumns"));
+    assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("label", queryDeferredIndexField("Product_Name_1", "indexColumns"));
 
     // then -- the persisted row carries the new column name 'label'
     List<DeferredIndex> deferredJobs = newDao().findNonTerminal();
@@ -330,7 +330,7 @@ public class TestDeferredIndexesIntegration {
     // then -- physical index exists (under the renamed column) and no tracking row
     assertPhysicalIndexExists("Product", "Product_Name_1");
     assertNull("Slim: non-deferred indexes are not tracked in DeferredIndexes",
-        queryDeployedIndexField("Product_Name_1", "status"));
+        queryDeferredIndexField("Product_Name_1", "status"));
   }
 
 
@@ -355,7 +355,7 @@ public class TestDeferredIndexesIntegration {
     // then -- physical index absent AND DeferredIndexes row cleaned up
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
     assertNull("DeferredIndexes row should be deleted",
-        queryDeployedIndexField("Product_Name_1", "status"));
+        queryDeferredIndexField("Product_Name_1", "status"));
   }
 
 
@@ -387,7 +387,7 @@ public class TestDeferredIndexesIntegration {
         deferredJobs.stream().anyMatch(j -> "Item".equalsIgnoreCase(j.getTableName())));
 
     // then -- DeferredIndexes tableName updated
-    assertEquals("Item", queryDeployedIndexField("Product_Name_1", "tableName"));
+    assertEquals("Item", queryDeferredIndexField("Product_Name_1", "tableName"));
   }
 
 
@@ -449,7 +449,7 @@ public class TestDeferredIndexesIntegration {
     // then -- physical index exists and NO tracking row (slim invariant)
     assertPhysicalIndexExists("Product", "Product_Name_1");
     assertNull("Slim: non-deferred indexes are not tracked in DeferredIndexes",
-        queryDeployedIndexField("Product_Name_1", "status"));
+        queryDeferredIndexField("Product_Name_1", "status"));
   }
 
 
@@ -474,7 +474,7 @@ public class TestDeferredIndexesIntegration {
     // then -- built immediately + no tracking row (slim: non-deferred not tracked)
     assertPhysicalIndexExists("Product", "Product_Name_1");
     assertNull("Slim: force-immediate ends up non-deferred → not tracked",
-        queryDeployedIndexField("Product_Name_1", "status"));
+        queryDeferredIndexField("Product_Name_1", "status"));
     assertTrue("No deferred statements expected", newDao().findNonTerminal().isEmpty());
   }
 
@@ -492,7 +492,7 @@ public class TestDeferredIndexesIntegration {
     // then -- neither physical index nor DeferredIndexes row
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
     assertNull("Should have no DeferredIndexes row",
-        queryDeployedIndexField("Product_Name_1", "status"));
+        queryDeferredIndexField("Product_Name_1", "status"));
   }
 
 
@@ -577,8 +577,8 @@ public class TestDeferredIndexesIntegration {
     assertFalse("Should have a deferred job", deferredJobs.isEmpty());
 
     // then -- DeferredIndexes has correct columns
-    assertEquals("PENDING", queryDeployedIndexField("Product_IdName_1", "status"));
-    assertEquals("id,name", queryDeployedIndexField("Product_IdName_1", "indexColumns"));
+    assertEquals("PENDING", queryDeferredIndexField("Product_IdName_1", "status"));
+    assertEquals("id,name", queryDeferredIndexField("Product_IdName_1", "indexColumns"));
   }
 
 
@@ -644,7 +644,7 @@ public class TestDeferredIndexesIntegration {
 
     // then -- physical index NOT built; tracking row PENDING; job available
     assertPhysicalIndexDoesNotExist("Category", "Category_Label_1");
-    assertEquals("PENDING", queryDeployedIndexField("Category_Label_1", "status"));
+    assertEquals("PENDING", queryDeferredIndexField("Category_Label_1", "status"));
     assertFalse("inline-deferred index should produce a non-COMPLETED tracking row",
         newDao().findNonTerminal().isEmpty());
 
@@ -653,7 +653,7 @@ public class TestDeferredIndexesIntegration {
 
     // then -- physical built, row COMPLETED
     assertPhysicalIndexExists("Category", "Category_Label_1");
-    assertEquals("COMPLETED", queryDeployedIndexField("Category_Label_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Category_Label_1", "status"));
   }
 
 
@@ -661,7 +661,7 @@ public class TestDeferredIndexesIntegration {
    * Creating a new table should track all its indexes in DeferredIndexes.
    */
   @Test
-  public void testAddTableTracksIndexesInDeployedTable() {
+  public void testAddTableTracksIndexesInDeferredTable() {
     // given
     Schema targetSchema = schemaWith(
         table("Product").columns(
@@ -678,7 +678,7 @@ public class TestDeferredIndexesIntegration {
     performUpgrade(targetSchema, AddTableWithDeferredIndex.class);
 
     // then -- Category_Label_1 should be tracked (deferred)
-    assertEquals("PENDING", queryDeployedIndexField("Category_Label_1", "status"));
+    assertEquals("PENDING", queryDeferredIndexField("Category_Label_1", "status"));
   }
 
 
@@ -695,13 +695,13 @@ public class TestDeferredIndexesIntegration {
   public void testReUpgradeIsIdempotent() {
     // given -- first upgrade defers an index
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
-    assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
+    assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
 
     // when -- second upgrade with same schema and steps
     UpgradePath path2 = performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
 
     // then -- no errors, state unchanged
-    assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
+    assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
   }
 
 
@@ -723,7 +723,7 @@ public class TestDeferredIndexesIntegration {
 
     // then -- no DeferredIndexes row for the removed table's index
     assertNull("DeferredIndexes row should be deleted after removeTable",
-        queryDeployedIndexField("Product_Name_1", "status"));
+        queryDeferredIndexField("Product_Name_1", "status"));
   }
 
 
@@ -737,7 +737,7 @@ public class TestDeferredIndexesIntegration {
   public void testAppSideAdopterFlowBuildsAndMarksCompleted() {
     // given -- upgrade creates a PENDING deferred index
     UpgradePath path = performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
-    assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
+    assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
     assertFalse("Should have a job to execute", newDao().findNonTerminal().isEmpty());
 
@@ -746,7 +746,7 @@ public class TestDeferredIndexesIntegration {
 
     // then -- physical index built AND row flipped to COMPLETED
     assertPhysicalIndexExists("Product", "Product_Name_1");
-    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
   }
 
 
@@ -762,7 +762,7 @@ public class TestDeferredIndexesIntegration {
     // given — upgrade 1 creates and adopter builds the deferred index
     UpgradePath path1 = performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
     buildDeferredIndexesViaAdopter(path1, "Product", "Product_Name_1");
-    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
     assertPhysicalIndexExists("Product", "Product_Name_1");
 
     // when — upgrade 2 renames the underlying column (physical column rename
@@ -779,8 +779,8 @@ public class TestDeferredIndexesIntegration {
         RenameColumnWithDeferredIndex.class);
 
     // then — row's indexColumns updated; row stays COMPLETED (still declared deferred)
-    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
-    assertEquals("label", queryDeployedIndexField("Product_Name_1", "indexColumns"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("label", queryDeferredIndexField("Product_Name_1", "indexColumns"));
   }
 
 
@@ -796,7 +796,7 @@ public class TestDeferredIndexesIntegration {
   public void testNonCompletedRowWithMatchingPhysicalAutoRecovers() {
     // given — first upgrade creates a PENDING deferred index
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
-    assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
+    assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
     // simulate the routine-restart case: physical index already exists but
     // the row never got flipped to COMPLETED (process crashed mid-build)
     sqlScriptExecutorProvider.get().execute(List.of(
@@ -810,7 +810,7 @@ public class TestDeferredIndexesIntegration {
     runBuildTasks();
 
     // then — row flipped to COMPLETED via isIndexValid auto-detect
-    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
     assertPhysicalIndexExists("Product", "Product_Name_1");
   }
 
@@ -846,7 +846,7 @@ public class TestDeferredIndexesIntegration {
     // given — upgrade 1 creates and adopter builds the deferred index
     UpgradePath path1 = performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
     buildDeferredIndexesViaAdopter(path1, "Product", "Product_Name_1");
-    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
     assertPhysicalIndexExists("Product", "Product_Name_1");
 
     // when — upgrade 2 changes the index from deferred to non-deferred
@@ -862,7 +862,7 @@ public class TestDeferredIndexesIntegration {
 
     // then — tracking row deleted, physical index still exists (rebuilt as non-deferred)
     assertNull("Tracking row for Product_Name_1 should be deleted (no longer declared deferred)",
-        queryDeployedIndexField("Product_Name_1", "status"));
+        queryDeferredIndexField("Product_Name_1", "status"));
     assertPhysicalIndexExists("Product", "Product_Name_1");
   }
 
@@ -905,7 +905,7 @@ public class TestDeferredIndexesIntegration {
         ).indexes(index("Product_Name_UQ").unique().columns("name").deferred())
     );
     performUpgrade(target, AddDeferredUniqueIndex.class);
-    assertEquals("PENDING", queryDeployedIndexField("Product_Name_UQ", "status"));
+    assertEquals("PENDING", queryDeferredIndexField("Product_Name_UQ", "status"));
 
     // and — pre-populate the table with duplicates so CREATE UNIQUE INDEX must fail
     sqlScriptExecutorProvider.get().execute(List.of(
@@ -916,8 +916,8 @@ public class TestDeferredIndexesIntegration {
     runBuildTasks();
 
     // then — row is FAILED with an error message; physical index NOT built
-    assertEquals("FAILED", queryDeployedIndexField("Product_Name_UQ", "status"));
-    String err = queryDeployedIndexField("Product_Name_UQ", "errorMessage");
+    assertEquals("FAILED", queryDeferredIndexField("Product_Name_UQ", "status"));
+    String err = queryDeferredIndexField("Product_Name_UQ", "errorMessage");
     assertNotNull("Error message should be persisted on failure", err);
     assertFalse("Error message should not be empty", err.isEmpty());
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_UQ");
@@ -941,14 +941,14 @@ public class TestDeferredIndexesIntegration {
     sqlScriptExecutorProvider.get().execute(List.of(
         "CREATE INDEX Product_Name_1 ON Product(name)",
         "UPDATE DeferredIndexes SET status = 'IN_PROGRESS' WHERE indexName = 'Product_Name_1'"));
-    assertEquals("IN_PROGRESS", queryDeployedIndexField("Product_Name_1", "status"));
+    assertEquals("IN_PROGRESS", queryDeferredIndexField("Product_Name_1", "status"));
     assertPhysicalIndexExists("Product", "Product_Name_1");
 
     // when — build tasks run
     runBuildTasks();
 
     // then — row auto-promoted to COMPLETED
-    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
   }
 
 
@@ -973,9 +973,9 @@ public class TestDeferredIndexesIntegration {
 
     // when — first pass: build fails, attemptsCount=1, errorMessage set
     runBuildTasks();
-    assertEquals("FAILED", queryDeployedIndexField("Product_Name_UQ", "status"));
-    assertEquals("1", queryDeployedIndexField("Product_Name_UQ", "attemptsCount"));
-    assertNotNull(queryDeployedIndexField("Product_Name_UQ", "errorMessage"));
+    assertEquals("FAILED", queryDeferredIndexField("Product_Name_UQ", "status"));
+    assertEquals("1", queryDeferredIndexField("Product_Name_UQ", "attemptsCount"));
+    assertNotNull(queryDeferredIndexField("Product_Name_UQ", "errorMessage"));
 
     // and — second pass after fixing the data: build succeeds
     sqlScriptExecutorProvider.get().execute(List.of(
@@ -983,10 +983,10 @@ public class TestDeferredIndexesIntegration {
     runBuildTasks();
 
     // then — attemptsCount reset to 0, errorMessage cleared
-    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_UQ", "status"));
-    assertEquals("0", queryDeployedIndexField("Product_Name_UQ", "attemptsCount"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_UQ", "status"));
+    assertEquals("0", queryDeferredIndexField("Product_Name_UQ", "attemptsCount"));
     assertNull("errorMessage should be cleared on success",
-        queryDeployedIndexField("Product_Name_UQ", "errorMessage"));
+        queryDeferredIndexField("Product_Name_UQ", "errorMessage"));
   }
 
 
@@ -1000,13 +1000,13 @@ public class TestDeferredIndexesIntegration {
     // given
     performUpgrade(schemaWithIndex(), AddDeferredIndex.class);
     runBuildTasks();
-    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
 
     // when — call again; no rows are non-COMPLETED so no work
     runBuildTasks();
 
     // then — state unchanged
-    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
     assertPhysicalIndexExists("Product", "Product_Name_1");
   }
 
@@ -1036,9 +1036,9 @@ public class TestDeferredIndexesIntegration {
         AddDeferredIndex.class,
         AddSecondDeferredIndex.class,
         AddDeferredUniqueIndex.class);
-    assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
-    assertEquals("PENDING", queryDeployedIndexField("Product_IdName_1", "status"));
-    assertEquals("PENDING", queryDeployedIndexField("Product_Name_UQ", "status"));
+    assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("PENDING", queryDeferredIndexField("Product_IdName_1", "status"));
+    assertEquals("PENDING", queryDeferredIndexField("Product_Name_UQ", "status"));
 
     // when
     runBuildTasks();
@@ -1047,9 +1047,9 @@ public class TestDeferredIndexesIntegration {
     assertPhysicalIndexExists("Product", "Product_Name_1");
     assertPhysicalIndexExists("Product", "Product_IdName_1");
     assertPhysicalIndexExists("Product", "Product_Name_UQ");
-    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
-    assertEquals("COMPLETED", queryDeployedIndexField("Product_IdName_1", "status"));
-    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_UQ", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_IdName_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_UQ", "status"));
   }
 
 
@@ -1078,8 +1078,8 @@ public class TestDeferredIndexesIntegration {
     // then — both physical present, both rows COMPLETED
     assertPhysicalIndexExists("Product", "Product_Name_1");
     assertPhysicalIndexExists("Category", "Category_Label_1");
-    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
-    assertEquals("COMPLETED", queryDeployedIndexField("Category_Label_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Category_Label_1", "status"));
   }
 
 
@@ -1116,11 +1116,11 @@ public class TestDeferredIndexesIntegration {
     runBuildTasks();
 
     // then — non-unique indexes complete; unique one is FAILED with a message
-    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
-    assertEquals("COMPLETED", queryDeployedIndexField("Product_IdName_1", "status"));
-    assertEquals("FAILED", queryDeployedIndexField("Product_Name_UQ", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_IdName_1", "status"));
+    assertEquals("FAILED", queryDeferredIndexField("Product_Name_UQ", "status"));
     assertNotNull("Failing row's errorMessage should be persisted",
-        queryDeployedIndexField("Product_Name_UQ", "errorMessage"));
+        queryDeferredIndexField("Product_Name_UQ", "errorMessage"));
     assertPhysicalIndexExists("Product", "Product_Name_1");
     assertPhysicalIndexExists("Product", "Product_IdName_1");
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_UQ");
@@ -1154,8 +1154,8 @@ public class TestDeferredIndexesIntegration {
     );
     performUpgradeSteps(after1, AddDeferredIndex.class, AddSecondDeferredIndex.class);
     runBuildTasks();
-    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
-    assertEquals("COMPLETED", queryDeployedIndexField("Product_IdName_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_IdName_1", "status"));
 
     // when — upgrade 2: a third deferred index; build
     Schema after2 = schemaWith(
@@ -1174,11 +1174,11 @@ public class TestDeferredIndexesIntegration {
     runBuildTasks();
 
     // then — new index COMPLETED; prior two unchanged
-    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_UQ", "status"));
-    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
-    assertEquals("COMPLETED", queryDeployedIndexField("Product_IdName_1", "status"));
-    assertEquals("0", queryDeployedIndexField("Product_Name_1", "attemptsCount"));
-    assertEquals("0", queryDeployedIndexField("Product_IdName_1", "attemptsCount"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_UQ", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_IdName_1", "status"));
+    assertEquals("0", queryDeferredIndexField("Product_Name_1", "attemptsCount"));
+    assertEquals("0", queryDeferredIndexField("Product_IdName_1", "attemptsCount"));
   }
 
 
@@ -1245,8 +1245,8 @@ public class TestDeferredIndexesIntegration {
 
     // when — first call builds both
     service.getBuildTasks().forEach(Runnable::run);
-    assertEquals("COMPLETED", queryDeployedIndexField("Product_Name_1", "status"));
-    assertEquals("COMPLETED", queryDeployedIndexField("Product_IdName_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_Name_1", "status"));
+    assertEquals("COMPLETED", queryDeferredIndexField("Product_IdName_1", "status"));
 
     // then — subsequent calls return empty task lists
     assertTrue("Second call should return no tasks (all COMPLETED)",
@@ -1304,7 +1304,7 @@ public class TestDeferredIndexesIntegration {
     // then -- deferred despite no .deferred() on the index
     assertPhysicalIndexDoesNotExist("Product", "Product_Name_1");
     assertFalse("Should have deferred statements", newDao().findNonTerminal().isEmpty());
-    assertEquals("PENDING", queryDeployedIndexField("Product_Name_1", "status"));
+    assertEquals("PENDING", queryDeferredIndexField("Product_Name_1", "status"));
   }
 
 
@@ -1427,7 +1427,7 @@ public class TestDeferredIndexesIntegration {
     }
   }
 
-  private String queryDeployedIndexField(String indexName, String fieldName) {
+  private String queryDeferredIndexField(String indexName, String fieldName) {
     String sql = "SELECT " + fieldName + " FROM DeferredIndexes WHERE UPPER(indexName) = '"
         + indexName.toUpperCase() + "'";
     return sqlScriptExecutorProvider.get().executeQuery(sql, rs -> rs.next() ? rs.getString(1) : null);

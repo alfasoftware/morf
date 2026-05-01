@@ -73,7 +73,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   /**
    * Whether DeferredIndexes tracking is active.
    */
-  private boolean isDeployedIndexesEnabled() {
+  private boolean isDeferredIndexesEnabled() {
     return upgradeConfigAndContext.isDeferredIndexCreationEnabled();
   }
 
@@ -87,8 +87,8 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
    *
    * @param s the INSERT.
    */
-  private void writeDeployedIndexesDml(InsertStatement s) {
-    if (!isDeployedIndexesEnabled()) {
+  private void writeDeferredIndexesDml(InsertStatement s) {
+    if (!isDeferredIndexesEnabled()) {
       return;
     }
     writeStatements(sqlDialect.convertStatementToSQL(s));
@@ -100,8 +100,8 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
    *
    * @param s the UPDATE.
    */
-  private void writeDeployedIndexesDml(UpdateStatement s) {
-    if (!isDeployedIndexesEnabled()) {
+  private void writeDeferredIndexesDml(UpdateStatement s) {
+    if (!isDeferredIndexesEnabled()) {
       return;
     }
     writeStatements(List.of(sqlDialect.convertStatementToSQL(s)));
@@ -113,8 +113,8 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
    *
    * @param s the DELETE.
    */
-  private void writeDeployedIndexesDml(DeleteStatement s) {
-    if (!isDeployedIndexesEnabled()) {
+  private void writeDeferredIndexesDml(DeleteStatement s) {
+    if (!isDeferredIndexesEnabled()) {
       return;
     }
     writeStatements(List.of(sqlDialect.convertStatementToSQL(s)));
@@ -144,7 +144,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
   public void visit(RemoveTable removeTable) {
     // Remove all tracked indexes for this table
     deferredIndexSession.removeAllForTable(removeTable.getTable().getName())
-        .forEach(this::writeDeployedIndexesDml);
+        .forEach(this::writeDeferredIndexesDml);
     currentSchema = removeTable.apply(currentSchema);
     writeStatements(sqlDialect.dropStatements(removeTable.getTable()));
   }
@@ -169,7 +169,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     // Update column references in DeferredIndexes if column was renamed
     if (!oldColName.equalsIgnoreCase(newColName)) {
       deferredIndexSession.updateColumnName(tableName, oldColName, newColName)
-          .forEach(this::writeDeployedIndexesDml);
+          .forEach(this::writeDeferredIndexesDml);
     }
   }
 
@@ -181,7 +181,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
     // Remove tracked indexes referencing the column
     deferredIndexSession.removeIndexesReferencingColumn(tableName, colName)
-        .forEach(this::writeDeployedIndexesDml);
+        .forEach(this::writeDeferredIndexesDml);
 
     currentSchema = removeColumn.apply(currentSchema);
     writeStatements(sqlDialect.alterTableDropColumnStatements(currentSchema.getTable(tableName), removeColumn.getColumnDefinition()));
@@ -199,7 +199,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     boolean willBePresent = willBePhysicallyPresentAtThisEmission(tableName, indexToRemove.getName());
 
     deferredIndexSession.removeIndex(tableName, indexToRemove.getName())
-        .forEach(this::writeDeployedIndexesDml);
+        .forEach(this::writeDeferredIndexesDml);
 
     currentSchema = removeIndex.apply(currentSchema);
 
@@ -222,7 +222,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     // no-op if the row doesn't exist, and we want to purge any prior deferred
     // tracking row if we're changing away from a deferred index.
     deferredIndexSession.removeIndex(tableName, fromIndex.getName())
-        .forEach(this::writeDeployedIndexesDml);
+        .forEach(this::writeDeferredIndexesDml);
     currentSchema = changeIndex.apply(currentSchema);
 
     if (fromWillBePresent) {
@@ -245,7 +245,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
     boolean willBePresent = willBePhysicallyPresentAtThisEmission(tableName, renameIndex.getFromIndexName());
 
     deferredIndexSession.updateIndexName(tableName, renameIndex.getFromIndexName(), renameIndex.getToIndexName())
-        .forEach(this::writeDeployedIndexesDml);
+        .forEach(this::writeDeferredIndexesDml);
 
     currentSchema = renameIndex.apply(currentSchema);
 
@@ -262,7 +262,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
 
     // Update table name in DeferredIndexes for ALL indexes on this table
     deferredIndexSession.updateTableName(renameTable.getOldTableName(), renameTable.getNewTableName())
-        .forEach(this::writeDeployedIndexesDml);
+        .forEach(this::writeDeferredIndexesDml);
 
     currentSchema = renameTable.apply(currentSchema);
     Table newTable = currentSchema.getTable(renameTable.getNewTableName());
@@ -415,7 +415,7 @@ public abstract class AbstractSchemaChangeVisitor implements SchemaChangeVisitor
    */
   private void trackInDeferredIndexes(String tableName, Index index) {
     deferredIndexSession.trackIndex(tableName, index)
-        .forEach(this::writeDeployedIndexesDml);
+        .forEach(this::writeDeferredIndexesDml);
   }
 
 
