@@ -124,7 +124,7 @@ public class TestUpgradeGraph {
     steps.add(StepDuplicateSequence.class);   // seq 1000
 
     IllegalStateException e = assertThrows(IllegalStateException.class, () -> new UpgradeGraph(steps));
-    assertThat(e.getMessage(), containsString("sh  are the same @Sequence annotation"));
+    assertThat(e.getMessage(), containsString("share the same @Sequence annotation"));
     assertThat(e.getMessage(), containsString("[1000]"));
   }
 
@@ -197,7 +197,7 @@ public class TestUpgradeGraph {
     IllegalStateException e = assertThrows(IllegalStateException.class, () -> new UpgradeGraph(steps));
     String message = e.getMessage();
     assertThat(message, containsString("does not have an @Sequence annotation"));
-    assertThat(message, containsString("sh  are the same @Sequence annotation"));
+    assertThat(message, containsString("share the same @Sequence annotation"));
     assertThat(message, containsString("invalid @Version annotation"));
   }
 

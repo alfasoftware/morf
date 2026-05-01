@@ -98,7 +98,6 @@ public class TestDeferredIndexesIntegration {
   @Inject private ViewDeploymentValidator viewDeploymentValidator;
 
   private final UpgradeConfigAndContext config = new UpgradeConfigAndContext();
-  { config.setDeferredIndexCreationEnabled(true); }
 
   private static final Schema INITIAL_SCHEMA = schema(
       deployedViewsTable(),
@@ -114,6 +113,7 @@ public class TestDeferredIndexesIntegration {
   /** Create a fresh schema before each test. */
   @Before
   public void setUp() {
+    config.setDeferredIndexCreationEnabled(true);
     schemaManager.dropAllTables();
     schemaManager.mutateToSupportSchema(INITIAL_SCHEMA, TruncationBehavior.ALWAYS);
   }
@@ -1348,7 +1348,7 @@ public class TestDeferredIndexesIntegration {
   }
 
   /** Helper: schema with Product table having one index on name. */
-  private Schema schemaWithIndex() {
+  private static Schema schemaWithIndex() {
     return schemaWith(
         table("Product").columns(
             column("id", DataType.BIG_INTEGER).primaryKey(),

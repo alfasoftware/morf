@@ -5,6 +5,8 @@ import static org.hamcrest.Matchers.any;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -135,7 +137,7 @@ public class TestSchemaChangeSequence {
     assertThat(changes.get(0), instanceOf(AddIndex.class));
     AddIndex change = (AddIndex) changes.get(0);
     assertEquals("TestIdx", change.getNewIndex().getName());
-    assertEquals("Kill switch off should force non-deferred", false, change.getNewIndex().isDeferred());
+    assertFalse("Kill switch off should force non-deferred", change.getNewIndex().isDeferred());
   }
 
 
@@ -268,22 +270,24 @@ public class TestSchemaChangeSequence {
 
 
   /** Tests that configuring the same index as both force-immediate and force-deferred throws. */
-  @Test(expected = IllegalStateException.class)
+  @Test
   public void testConflictingForceImmediateAndForceDeferredThrows() {
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
     config.setDeferredIndexCreationEnabled(true);
     config.setForceImmediateIndexes(Set.of("ConflictIdx"));
-    config.setForceDeferredIndexes(Set.of("ConflictIdx"));
+    assertThrows(IllegalStateException.class,
+        () -> config.setForceDeferredIndexes(Set.of("ConflictIdx")));
   }
 
 
   /** Tests that the conflict check is case-insensitive. */
-  @Test(expected = IllegalStateException.class)
+  @Test
   public void testConflictingForceImmediateAndForceDeferredCaseInsensitive() {
     UpgradeConfigAndContext config = new UpgradeConfigAndContext();
     config.setDeferredIndexCreationEnabled(true);
     config.setForceImmediateIndexes(Set.of("MyIndex"));
-    config.setForceDeferredIndexes(Set.of("MYINDEX"));
+    assertThrows(IllegalStateException.class,
+        () -> config.setForceDeferredIndexes(Set.of("MYINDEX")));
   }
 
 

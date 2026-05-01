@@ -68,7 +68,7 @@ public class UpgradeGraph {
       Class<? extends UpgradeStep> displacedStepClass = orderedSteps.put(sequence, stepClass);
 
       if (displacedStepClass != null) {
-        errors.add(String.format("%s and %s sh  are the same @Sequence annotation value of [%d]", stepClass, displacedStepClass, sequence));
+        errors.add(String.format("%s and %s share the same @Sequence annotation value of [%d]", stepClass, displacedStepClass, sequence));
       }
 
 

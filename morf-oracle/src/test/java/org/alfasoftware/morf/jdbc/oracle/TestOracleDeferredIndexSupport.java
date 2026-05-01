@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.jdbc.oracle;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -138,6 +139,6 @@ public class TestOracleDeferredIndexSupport {
   /** Oracle does not require autocommit for the build path -- DDL is implicitly committed. */
   @Test
   public void testDeferredIndexBuildDoesNotRequireAutoCommit() {
-    assertEquals(false, dialect.deferredIndexBuildRequiresAutoCommit());
+    assertFalse(dialect.deferredIndexBuildRequiresAutoCommit());
   }
 }

@@ -16,6 +16,7 @@
 package org.alfasoftware.morf.jdbc.h2;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -124,6 +125,6 @@ public class TestH2DeferredIndexSupport {
   /** H2 does not require autocommit for the build path -- atomic CREATE, DDL implicitly committed. */
   @Test
   public void testDeferredIndexBuildDoesNotRequireAutoCommit() {
-    assertEquals(false, dialect.deferredIndexBuildRequiresAutoCommit());
+    assertFalse(dialect.deferredIndexBuildRequiresAutoCommit());
   }
 }

@@ -46,6 +46,7 @@ import org.mockito.ArgumentCaptor;
  */
 public class TestPostgreSQLDeferredIndexSupport {
 
+  private final PostgreSQLDialect dialect = new PostgreSQLDialect("schemaA");
   private final Connection connection = mock(Connection.class, RETURNS_SMART_NULLS);
   private final PreparedStatement statement = mock(PreparedStatement.class, RETURNS_SMART_NULLS);
   private final ResultSet resultSet = mock(ResultSet.class, RETURNS_SMART_NULLS);
@@ -66,7 +67,7 @@ public class TestPostgreSQLDeferredIndexSupport {
     when(resultSet.next()).thenReturn(true);
     when(resultSet.getBoolean(1)).thenReturn(true);
 
-    Optional<Boolean> result = new PostgreSQLDialect("schemaA").isIndexValid(connection, "Product", "Product_Idx");
+    Optional<Boolean> result = dialect.isIndexValid(connection, "Product", "Product_Idx");
 
     assertEquals(Optional.of(Boolean.TRUE), result);
   }
@@ -78,7 +79,7 @@ public class TestPostgreSQLDeferredIndexSupport {
     when(resultSet.next()).thenReturn(true);
     when(resultSet.getBoolean(1)).thenReturn(false);
 
-    Optional<Boolean> result = new PostgreSQLDialect("schemaA").isIndexValid(connection, "Product", "Product_Idx");
+    Optional<Boolean> result = dialect.isIndexValid(connection, "Product", "Product_Idx");
 
     assertEquals(Optional.of(Boolean.FALSE), result);
   }
@@ -89,7 +90,7 @@ public class TestPostgreSQLDeferredIndexSupport {
   public void testIsIndexValidWhenNoRowReturnsEmpty() throws SQLException {
     when(resultSet.next()).thenReturn(false);
 
-    Optional<Boolean> result = new PostgreSQLDialect("schemaA").isIndexValid(connection, "Product", "Product_Idx");
+    Optional<Boolean> result = dialect.isIndexValid(connection, "Product", "Product_Idx");
 
     assertEquals(Optional.empty(), result);
   }
@@ -159,7 +160,7 @@ public class TestPostgreSQLDeferredIndexSupport {
     when(resultSet.getBoolean(1)).thenReturn(true);
     ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
 
-    new PostgreSQLDialect("schemaA").isIndexValid(connection, "Product", "MIXEDcase_Idx");
+    dialect.isIndexValid(connection, "Product", "MIXEDcase_Idx");
 
     verify(connection).prepareStatement(sql.capture());
     assertTrue("Query should lowercase both sides for case-insensitive compare: " + sql.getValue(),
@@ -173,7 +174,7 @@ public class TestPostgreSQLDeferredIndexSupport {
     when(connection.prepareStatement(anyString())).thenThrow(new SQLException("conn closed"));
 
     RuntimeSqlException ex = assertThrows(RuntimeSqlException.class,
-        () -> new PostgreSQLDialect("schemaA").isIndexValid(connection, "Product", "Product_Idx"));
+        () -> dialect.isIndexValid(connection, "Product", "Product_Idx"));
     assertTrue(ex.getMessage().contains("Product_Idx"));
   }
 
@@ -183,7 +184,7 @@ public class TestPostgreSQLDeferredIndexSupport {
   /** {@code SET lock_timeout} uses the supplied duration in milliseconds. */
   @Test
   public void testSetLockTimeoutSqlReturnsExpectedFormat() {
-    Optional<String> sql = new PostgreSQLDialect("schemaA").setLockTimeoutSql(Duration.ofSeconds(10));
+    Optional<String> sql = dialect.setLockTimeoutSql(Duration.ofSeconds(10));
     assertEquals(Optional.of("SET lock_timeout = 10000"), sql);
   }
 
@@ -191,7 +192,7 @@ public class TestPostgreSQLDeferredIndexSupport {
   /** Sub-second durations round-trip through {@code toMillis()}. */
   @Test
   public void testSetLockTimeoutSqlSubSecond() {
-    Optional<String> sql = new PostgreSQLDialect("schemaA").setLockTimeoutSql(Duration.ofMillis(500));
+    Optional<String> sql = dialect.setLockTimeoutSql(Duration.ofMillis(500));
     assertEquals(Optional.of("SET lock_timeout = 500"), sql);
   }
 
@@ -199,7 +200,7 @@ public class TestPostgreSQLDeferredIndexSupport {
   /** {@code RESET lock_timeout} restores the session default. */
   @Test
   public void testResetLockTimeoutSqlReturnsExpectedValue() {
-    Optional<String> sql = new PostgreSQLDialect("schemaA").resetLockTimeoutSql();
+    Optional<String> sql = dialect.resetLockTimeoutSql();
     assertEquals(Optional.of("RESET lock_timeout"), sql);
   }
 
@@ -207,6 +208,6 @@ public class TestPostgreSQLDeferredIndexSupport {
   /** PostgreSQL requires autocommit for the build path because {@code CREATE INDEX CONCURRENTLY} can't run inside a transaction block. */
   @Test
   public void testDeferredIndexBuildRequiresAutoCommit() {
-    assertTrue(new PostgreSQLDialect("schemaA").deferredIndexBuildRequiresAutoCommit());
+    assertTrue(dialect.deferredIndexBuildRequiresAutoCommit());
   }
 }

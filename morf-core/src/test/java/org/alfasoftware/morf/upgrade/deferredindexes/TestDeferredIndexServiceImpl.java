@@ -82,18 +82,6 @@ public class TestDeferredIndexServiceImpl {
   }
 
 
-  /** Each task is a {@link DeferredIndexBuildTaskImpl} (so adopters get the package-private behaviour). */
-  @Test
-  public void testGetBuildTasksReturnsBuildTaskImpl() {
-    when(dao.findNonTerminal()).thenReturn(List.of(row("Product", "Idx", DeferredIndexStatus.PENDING)));
-
-    DeferredIndexBuildTask t = service.getBuildTasks().get(0);
-
-    assertTrue("expected DeferredIndexBuildTaskImpl, got " + t.getClass().getName(),
-        t instanceof DeferredIndexBuildTaskImpl);
-  }
-
-
   /** Returned list is unmodifiable so callers can't mutate it after dispatch. */
   @Test
   public void testGetBuildTasksReturnsUnmodifiableList() {

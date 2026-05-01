@@ -637,13 +637,13 @@ public class TestGraphBasedUpgradeBuilder {
 
 
   /**
-   * Test step simulating a user of addIndex (deferred)() on table Product.
+   * Test step simulating a user of {@code schema.addIndex(table, index().deferred())} on table Product.
    */
   @Sequence(100L)
   static class DeferredUser extends U1 {}
 
   /**
-   * Test step simulating a user of addIndex (deferred)() on table Customer.
+   * Test step simulating a user of {@code schema.addIndex(table, index().deferred())} on table Customer.
    */
   @Sequence(101L)
   static class DeferredUser2 extends U1 {}

@@ -23,6 +23,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
@@ -53,7 +54,6 @@ import org.alfasoftware.morf.sql.MergeStatement;
 import org.alfasoftware.morf.sql.Statement;
 import org.alfasoftware.morf.sql.UpdateStatement;
 import org.alfasoftware.morf.upgrade.deferredindexes.DeferredIndexSession;
-import org.mockito.ArgumentMatchers;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -88,9 +88,9 @@ public class TestInlineTableUpgrader {
     upgradeConfigAndContext.setDeferredIndexCreationEnabled(true);
     when(sqlDialect.supportsDeferredIndexCreation()).thenReturn(true);
     // Default: allow DeferredIndexes DML to be converted without error
-    when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(InsertStatement.class))).thenReturn(List.of("INSERT INTO DeferredIndexes ..."));
-    when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(UpdateStatement.class))).thenReturn("UPDATE DeferredIndexes ...");
-    when(sqlDialect.convertStatementToSQL(ArgumentMatchers.any(DeleteStatement.class))).thenReturn("DELETE FROM DeferredIndexes ...");
+    when(sqlDialect.convertStatementToSQL(any(InsertStatement.class))).thenReturn(List.of("INSERT INTO DeferredIndexes ..."));
+    when(sqlDialect.convertStatementToSQL(any(UpdateStatement.class))).thenReturn("UPDATE DeferredIndexes ...");
+    when(sqlDialect.convertStatementToSQL(any(DeleteStatement.class))).thenReturn("DELETE FROM DeferredIndexes ...");
 
     upgrader = new InlineTableUpgrader(schema, upgradeConfigAndContext, sqlDialect, sqlStatementWriter, SqlDialect.IdTable.withDeterministicName(ID_TABLE_NAME),
         DeferredIndexSession.create());
@@ -371,7 +371,7 @@ public class TestInlineTableUpgrader {
     when(schema.tableExists("SomeTable")).thenReturn(true);
 
     RemoveIndex removeIndex = mock(RemoveIndex.class);
-    given(removeIndex.apply(ArgumentMatchers.any())).willReturn(schema);
+    given(removeIndex.apply(any())).willReturn(schema);
     when(removeIndex.getTableName()).thenReturn("SomeTable");
     when(removeIndex.getIndexToBeRemoved()).thenReturn(mockIndex);
 
@@ -379,7 +379,7 @@ public class TestInlineTableUpgrader {
     upgrader.visit(removeIndex);
 
     // then
-    verify(sqlDialect).indexDropStatements(ArgumentMatchers.any(), ArgumentMatchers.eq(mockIndex));
+    verify(sqlDialect).indexDropStatements(any(), eq(mockIndex));
     verify(sqlStatementWriter).writeSql(anyCollection());
   }
 
@@ -405,7 +405,7 @@ public class TestInlineTableUpgrader {
     when(schema.tableExists("SomeTable")).thenReturn(true);
 
     ChangeIndex changeIndex = mock(ChangeIndex.class);
-    given(changeIndex.apply(ArgumentMatchers.any())).willReturn(schema);
+    given(changeIndex.apply(any())).willReturn(schema);
     given(changeIndex.getTableName()).willReturn("SomeTable");
     given(changeIndex.getFromIndex()).willReturn(fromIndex);
     given(changeIndex.getToIndex()).willReturn(toIndex);
@@ -414,8 +414,8 @@ public class TestInlineTableUpgrader {
     upgrader.visit(changeIndex);
 
     // then
-    verify(sqlDialect).indexDropStatements(ArgumentMatchers.any(), ArgumentMatchers.eq(fromIndex));
-    verify(sqlDialect).addIndexStatements(ArgumentMatchers.any(), ArgumentMatchers.eq(toIndex));
+    verify(sqlDialect).indexDropStatements(any(), eq(fromIndex));
+    verify(sqlDialect).addIndexStatements(any(), eq(toIndex));
     verify(sqlStatementWriter, atLeast(2)).writeSql(anyCollection());
   }
 
@@ -626,7 +626,7 @@ public class TestInlineTableUpgrader {
 
     // then -- INSERT into DeferredIndexes, no physical DDL
     verify(sqlStatementWriter).writeSql(anyCollection());
-    verify(sqlDialect, never()).addIndexStatements(ArgumentMatchers.any(), ArgumentMatchers.any());
+    verify(sqlDialect, never()).addIndexStatements(any(), any());
   }
 
 
@@ -693,7 +693,7 @@ public class TestInlineTableUpgrader {
     when(mockTable.indexes()).thenReturn(List.of(mockIndex));
 
     ChangeIndex changeIndex = mock(ChangeIndex.class);
-    given(changeIndex.apply(ArgumentMatchers.any())).willReturn(schema);
+    given(changeIndex.apply(any())).willReturn(schema);
     when(changeIndex.getTableName()).thenReturn("TestTable");
     when(changeIndex.getFromIndex()).thenReturn(mockIndex);
     when(changeIndex.getToIndex()).thenReturn(toIndex);
@@ -702,7 +702,7 @@ public class TestInlineTableUpgrader {
     upgrader.visit(changeIndex);
 
     // then — no physical DROP INDEX (not built); DELETE old registration + INSERT new = 2 writes
-    verify(sqlDialect, never()).indexDropStatements(ArgumentMatchers.any(), ArgumentMatchers.any());
+    verify(sqlDialect, never()).indexDropStatements(any(), any());
     verify(sqlStatementWriter, times(2)).writeSql(anyCollection());
   }
 
@@ -734,7 +734,7 @@ public class TestInlineTableUpgrader {
     when(schema.tableExists("TestTable")).thenReturn(true);
 
     RenameIndex renameIndex = mock(RenameIndex.class);
-    given(renameIndex.apply(ArgumentMatchers.any())).willReturn(schema);
+    given(renameIndex.apply(any())).willReturn(schema);
     when(renameIndex.getTableName()).thenReturn("TestTable");
     when(renameIndex.getFromIndexName()).thenReturn("TestIdx");
     when(renameIndex.getToIndexName()).thenReturn("RenamedIdx");
@@ -743,7 +743,7 @@ public class TestInlineTableUpgrader {
     upgrader.visit(renameIndex);
 
     // then — no physical RENAME INDEX DDL (index not built)
-    verify(sqlDialect, never()).renameIndexStatements(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any());
+    verify(sqlDialect, never()).renameIndexStatements(any(), any(), any());
     verify(sqlStatementWriter).writeSql(anyCollection());
   }
 
@@ -775,7 +775,7 @@ public class TestInlineTableUpgrader {
     when(schema.tableExists("TestTable")).thenReturn(true);
 
     RemoveIndex removeIndex = mock(RemoveIndex.class);
-    given(removeIndex.apply(ArgumentMatchers.any())).willReturn(schema);
+    given(removeIndex.apply(any())).willReturn(schema);
     when(removeIndex.getTableName()).thenReturn("TestTable");
     when(removeIndex.getIndexToBeRemoved()).thenReturn(mockIndex);
 
@@ -783,7 +783,7 @@ public class TestInlineTableUpgrader {
     upgrader.visit(removeIndex);
 
     // then — no physical DROP INDEX (index not built)
-    verify(sqlDialect, never()).indexDropStatements(ArgumentMatchers.any(), ArgumentMatchers.any());
+    verify(sqlDialect, never()).indexDropStatements(any(), any());
     verify(sqlStatementWriter).writeSql(anyCollection());
   }
 
@@ -803,7 +803,7 @@ public class TestInlineTableUpgrader {
     when(schema.tableExists("TestTable")).thenReturn(true);
 
     RemoveIndex removeIndex = mock(RemoveIndex.class);
-    given(removeIndex.apply(ArgumentMatchers.any())).willReturn(schema);
+    given(removeIndex.apply(any())).willReturn(schema);
     when(removeIndex.getTableName()).thenReturn("TestTable");
     when(removeIndex.getIndexToBeRemoved()).thenReturn(mockIndex);
 
@@ -811,7 +811,7 @@ public class TestInlineTableUpgrader {
     upgrader.visit(removeIndex);
 
     // then — physical DROP INDEX DDL emitted
-    verify(sqlDialect).indexDropStatements(ArgumentMatchers.any(), ArgumentMatchers.eq(mockIndex));
+    verify(sqlDialect).indexDropStatements(any(), eq(mockIndex));
   }
 
 
@@ -838,7 +838,7 @@ public class TestInlineTableUpgrader {
     Table mockTable = mock(Table.class);
     when(mockTable.getName()).thenReturn("TestTable");
     RemoveTable removeTable = mock(RemoveTable.class);
-    given(removeTable.apply(ArgumentMatchers.any())).willReturn(schema);
+    given(removeTable.apply(any())).willReturn(schema);
     when(removeTable.getTable()).thenReturn(mockTable);
 
     // when
@@ -876,7 +876,7 @@ public class TestInlineTableUpgrader {
     when(schema.getTable("TestTable")).thenReturn(mockTable);
 
     RemoveColumn removeColumn = mock(RemoveColumn.class);
-    given(removeColumn.apply(ArgumentMatchers.any())).willReturn(schema);
+    given(removeColumn.apply(any())).willReturn(schema);
     when(removeColumn.getTableName()).thenReturn("TestTable");
     when(removeColumn.getColumnDefinition()).thenReturn(mockColumn);
 
@@ -884,7 +884,7 @@ public class TestInlineTableUpgrader {
     upgrader.visit(removeColumn);
 
     // then — DELETE from DeferredIndexes + DROP COLUMN = 2 writes
-    verify(sqlDialect).alterTableDropColumnStatements(ArgumentMatchers.any(), ArgumentMatchers.eq(mockColumn));
+    verify(sqlDialect).alterTableDropColumnStatements(any(), eq(mockColumn));
     verify(sqlStatementWriter, times(2)).writeSql(anyCollection());
   }
 
@@ -915,7 +915,7 @@ public class TestInlineTableUpgrader {
     when(schema.getTable("NewTable")).thenReturn(newTable);
 
     RenameTable renameTable = mock(RenameTable.class);
-    given(renameTable.apply(ArgumentMatchers.any())).willReturn(schema);
+    given(renameTable.apply(any())).willReturn(schema);
     when(renameTable.getOldTableName()).thenReturn("OldTable");
     when(renameTable.getNewTableName()).thenReturn("NewTable");
 
@@ -956,7 +956,7 @@ public class TestInlineTableUpgrader {
     when(schema.getTable("TestTable")).thenReturn(mockTable);
 
     ChangeColumn changeColumn = mock(ChangeColumn.class);
-    given(changeColumn.apply(ArgumentMatchers.any())).willReturn(schema);
+    given(changeColumn.apply(any())).willReturn(schema);
     when(changeColumn.getTableName()).thenReturn("TestTable");
     when(changeColumn.getFromColumn()).thenReturn(fromColumn);
     when(changeColumn.getToColumn()).thenReturn(toColumn);
@@ -965,7 +965,7 @@ public class TestInlineTableUpgrader {
     upgrader.visit(changeColumn);
 
     // then — UPDATE in DeferredIndexes + ALTER TABLE DDL = 2 writes
-    verify(sqlDialect).alterTableChangeColumnStatements(ArgumentMatchers.any(), ArgumentMatchers.eq(fromColumn), ArgumentMatchers.eq(toColumn));
+    verify(sqlDialect).alterTableChangeColumnStatements(any(), eq(fromColumn), eq(toColumn));
     verify(sqlStatementWriter, times(2)).writeSql(anyCollection());
   }
 
@@ -1003,7 +1003,7 @@ public class TestInlineTableUpgrader {
     verify(sqlDialect).addIndexStatements(nullable(Table.class), nullable(Index.class));
 
     // and — NO registration INSERT (only deferred indexes are registered)
-    verify(sqlDialect, never()).convertStatementToSQL(ArgumentMatchers.any(InsertStatement.class));
+    verify(sqlDialect, never()).convertStatementToSQL(any(InsertStatement.class));
   }
 
 
@@ -1037,7 +1037,7 @@ public class TestInlineTableUpgrader {
     when(schema.tableExists("TestTable")).thenReturn(true);
 
     ChangeIndex changeIndex = mock(ChangeIndex.class);
-    given(changeIndex.apply(ArgumentMatchers.any())).willReturn(schema);
+    given(changeIndex.apply(any())).willReturn(schema);
     when(changeIndex.getTableName()).thenReturn("TestTable");
     when(changeIndex.getFromIndex()).thenReturn(fromIndex);
     when(changeIndex.getToIndex()).thenReturn(toIndex);
@@ -1050,6 +1050,6 @@ public class TestInlineTableUpgrader {
     verify(sqlDialect).addIndexStatements(nullable(Table.class), nullable(Index.class));
 
     // and — NO registration INSERT (only deferred indexes are registered)
-    verify(sqlDialect, never()).convertStatementToSQL(ArgumentMatchers.any(InsertStatement.class));
+    verify(sqlDialect, never()).convertStatementToSQL(any(InsertStatement.class));
   }
 }
